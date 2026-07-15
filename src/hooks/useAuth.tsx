@@ -1,18 +1,18 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
-import { syncServerAuthSession } from '@/lib/auth/clientSession';
+import { activateGuestServerSession, syncServerAuthSession } from '@/lib/auth/clientSession';
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isGuest: boolean;
-  continueAsGuest: () => boolean;
+  continueAsGuest: () => Promise<boolean>;
   signIn: (username: string, password: string) => Promise<{
     error: Error | null;
     user?: User | null;
@@ -28,6 +28,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const GUEST_MODE_STORAGE_KEY = 'sfm_guest_mode';
 const GUEST_STARTED_AT_STORAGE_KEY = 'sfm_guest_started_at';
 const GUEST_COOKIE_NAME = 'sfm_guest';
+const GUEST_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+let guestActivationInFlight: Promise<boolean> | null = null;
 
 function cleanObject<T extends Record<string, unknown>>(payload: T) {
   return Object.fromEntries(
@@ -38,7 +40,12 @@ function cleanObject<T extends Record<string, unknown>>(payload: T) {
 function getStoredGuestMode() {
   if (typeof window === 'undefined') return false;
   try {
-    if (window.localStorage?.getItem(GUEST_MODE_STORAGE_KEY) === 'true') return true;
+    if (window.localStorage?.getItem(GUEST_MODE_STORAGE_KEY) === 'true') {
+      const startedAt = Date.parse(window.localStorage?.getItem(GUEST_STARTED_AT_STORAGE_KEY) || '');
+      if (!Number.isFinite(startedAt) || Date.now() - startedAt <= GUEST_SESSION_MAX_AGE_SECONDS * 1000) return true;
+      window.localStorage?.removeItem(GUEST_MODE_STORAGE_KEY);
+      window.localStorage?.removeItem(GUEST_STARTED_AT_STORAGE_KEY);
+    }
   } catch {
     // Fall back to the guest cookie when localStorage is unavailable.
   }
@@ -74,7 +81,7 @@ function clearStoredGuestMode() {
 function syncGuestCookie(guestMode: boolean) {
   if (typeof document === 'undefined') return false;
   try {
-    document.cookie = `${GUEST_COOKIE_NAME}=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? 60 * 60 * 24 : 0}; SameSite=Lax`;
+    document.cookie = `${GUEST_COOKIE_NAME}=${guestMode ? 'true' : ''}; path=/; max-age=${guestMode ? GUEST_SESSION_MAX_AGE_SECONDS : 0}; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
     return guestMode ? getStoredGuestMode() : !getStoredGuestMode();
   } catch {
     return false;
@@ -86,6 +93,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const authInitializationRef = useRef(true);
+
+  const continueAsGuest = useCallback(() => {
+    if (guestActivationInFlight) return guestActivationInFlight;
+    const activation = (async () => {
+      if (session) await supabase.auth.signOut({ scope: 'local' });
+      const stored = setStoredGuestMode();
+      const sync = await activateGuestServerSession();
+      // Mirror the server cookie in the browser as well. This keeps production HTTPS secure,
+      // while allowing localhost production-mode validation where Secure cookies may be
+      // rejected by individual browser engines.
+      const browserCookieSynced = syncGuestCookie(true);
+      const cookiesSynced = sync.ok || browserCookieSynced;
+      if (!stored && !cookiesSynced) throw new Error('Guest mode is unavailable in this browser.');
+      setSession(null);
+      setUser(null);
+      setIsGuest(true);
+      return true;
+    })().finally(() => {
+      if (guestActivationInFlight === activation) guestActivationInFlight = null;
+    });
+    guestActivationInFlight = activation;
+    return activation;
+  }, [session]);
 
   useEffect(() => {
     let mounted = true;
@@ -94,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         const guestMode = getStoredGuestMode();
         if (data.session) clearStoredGuestMode();
-        const sync = await syncServerAuthSession(data.session);
+        const sync = data.session ? await syncServerAuthSession(data.session) : { ok: true as const };
         if (!mounted) return;
         if (data.session && !sync.ok && sync.code === 'UNAUTHORIZED') {
           await supabase.auth.signOut({ scope: 'local' });
@@ -115,7 +146,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(null);
           setUser(null);
           setIsGuest(guestMode);
-          void syncServerAuthSession(null);
           syncGuestCookie(guestMode);
         }
         if (process.env.NODE_ENV === 'development') {
@@ -125,17 +155,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .finally(() => {
+        authInitializationRef.current = false;
         if (mounted) setLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      // getSession performs the authoritative initial restore and server-cookie verification.
+      // Ignoring overlapping INITIAL_SESSION/TOKEN_REFRESHED callbacks prevents auth UI from
+      // rendering before that verification settles.
+      if (authInitializationRef.current) return;
+      // Local sign-out is part of the authenticated-to-guest handoff. The guest
+      // activation request owns cookie replacement, so a concurrent signed-out
+      // DELETE must not race it and clear the freshly issued guest cookie.
+      if (event === 'SIGNED_OUT' && guestActivationInFlight) return;
       if (nextSession) clearStoredGuestMode();
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       const guestMode = getStoredGuestMode();
       setIsGuest(!nextSession && guestMode);
       syncGuestCookie(!nextSession && guestMode);
-      void syncServerAuthSession(nextSession);
+      if (nextSession) void syncServerAuthSession(nextSession);
+      else if (event === 'SIGNED_OUT') void syncServerAuthSession(null);
       setLoading(false);
     });
 
@@ -150,18 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     loading,
     isGuest,
-    continueAsGuest: () => {
-      const stored = setStoredGuestMode();
-      void syncServerAuthSession(null);
-      const cookiesSynced = syncGuestCookie(true);
-      if (!stored && !cookiesSynced) {
-        throw new Error('Guest mode is unavailable in this browser.');
-      }
-      setSession(null);
-      setUser(null);
-      setIsGuest(true);
-      return true;
-    },
+    continueAsGuest,
     signIn: async (username: string, password: string) => {
       try {
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
@@ -323,7 +352,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setIsGuest(false);
     },
-  }), [isGuest, loading, session, user]);
+  }), [continueAsGuest, isGuest, loading, session, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

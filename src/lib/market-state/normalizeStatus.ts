@@ -13,7 +13,8 @@ const DISCONNECTED_KEYWORDS = [
   // 'unhealthy' must be checked before the connected list below — otherwise its "healthy"
   // substring would falsely match as connected.
   'disconnected', 'unavailable', 'unhealthy', 'provider_error', 'error', 'failed', 'failure',
-  'unauthorized', 'invalid_request', 'timeout',
+  'unauthorized', 'invalid_request', 'timeout', 'tls_error', 'dns_error', 'network_error',
+  'server_error', 'maintenance',
 ];
 const CONNECTED_KEYWORDS = ['healthy', 'connected', 'available', 'success', 'ok', 'live'];
 

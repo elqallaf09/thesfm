@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:debug": "NODE_OPTIONS='--inspect' next dev",
-    "build": "next build",
+    "build": "node scripts/clean-next-build.mjs && next build",
     "start": "next start",
     "check:i18n": "node scripts/check-translations.mjs",
     "check:visual-system": "node scripts/check-visual-system.mjs",

@@ -49,7 +49,16 @@ const populatedRows: Record<string, unknown> = {
 async function installDashboardFixture(page: Page, options: { empty?: boolean; failGoals?: boolean } = {}) {
   const calls = new Map<string, number>();
   await page.route('**/api/auth/session', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        // This UI fixture does not exercise server-side token verification. Preserve an
+        // allowed middleware state so the authenticated client fixture can reach dashboard.
+        'set-cookie': 'sfm_guest=true; Path=/; SameSite=Lax',
+      },
+      body: JSON.stringify({ ok: true }),
+    });
   });
   await page.route('**/api/auth/login', async (route) => {
     await route.fulfill({

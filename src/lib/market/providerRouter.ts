@@ -35,6 +35,7 @@ import {
   fetchEodhdBatch,
   isEodhdConfigured,
 } from './providers/eodhd';
+import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
 
 // ─── Asset class ─────────────────────────────────────────────────────────────
 
@@ -147,14 +148,14 @@ export type RouterQuote = {
   symbol:          string;
   name:            string;
   market:          string;
-  price:           number;
-  currency:        string;
+  price:           number | null;
+  currency:        string | null;
   change:          number | null;
   changePercent:   number | null;
   recommendation:  string | null;
   confidence:      number | null;
   source:          'THE SFM';
-  lastUpdated:     string;
+  lastUpdated:     string | null;
   status:          RouterStatus;
 };
 
@@ -164,14 +165,14 @@ export function unavailableRouterQuote(symbol: string, name?: string): RouterQuo
     symbol:         symbol.toUpperCase(),
     name:           name ?? symbol,
     market:         '',
-    price:          0,
-    currency:       'USD',
+    price:          null,
+    currency:       null,
     change:         null,
     changePercent:  null,
     recommendation: null,
     confidence:     null,
     source:         'THE SFM',
-    lastUpdated:    new Date().toISOString(),
+    lastUpdated:    null,
     status:         'unavailable',
   };
 }
@@ -211,12 +212,15 @@ export function validateQuote(q: {
 type CacheEntry = { quote: RouterQuote; fetchedAt: number };
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const STALE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const _cache = new Map<string, CacheEntry>();
 
-function cacheGet(sym: string): RouterQuote | null {
+function cacheGet(sym: string, allowStale = false): RouterQuote | null {
   const entry = _cache.get(sym);
   if (!entry) return null;
-  if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) { _cache.delete(sym); return null; }
+  const age = Date.now() - entry.fetchedAt;
+  if (age > STALE_CACHE_TTL_MS) { _cache.delete(sym); return null; }
+  if (!allowStale && age > CACHE_TTL_MS) return null;
   return { ...entry.quote, status: 'cached' };
 }
 
@@ -233,10 +237,7 @@ type LogLevel = 'info' | 'warn' | 'error';
 
 function logDiag(level: LogLevel, event: string, meta: Record<string, unknown>): void {
   if (typeof process === 'undefined') return;
-  // Strip any fields that could carry API keys before logging
-  const { apiKey: _a, token: _t, key: _k, password: _p, ...safe } = meta as Record<string, unknown>;
-  const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.info;
-  fn(`[providerRouter] ${event}`, safe);
+  logReliabilityEvent(level, `provider_router_${event}`, meta);
 }
 
 // ─── Quote normalization ──────────────────────────────────────────────────────
@@ -579,12 +580,26 @@ export async function routeQuote(
     const t0 = Date.now();
     let quote: RouterQuote | null = null;
 
-    switch (provider) {
-      case 'twelvedata': quote = await fetchViaTwelveData(sym, assetClass);               break;
-      case 'eodhd':      quote = await fetchViaEodhd(sym, assetClass, options.exchange);  break;
-      case 'yahoo':      quote = await fetchViaYahoo(sym);                                break;
-      case 'fmp':        quote = await fetchViaFmp(sym);                                  break;
-      case 'finnhub':    quote = null; break; // reserved
+    try {
+      switch (provider) {
+        case 'twelvedata': quote = await fetchViaTwelveData(sym, assetClass);               break;
+        case 'eodhd':      quote = await fetchViaEodhd(sym, assetClass, options.exchange);  break;
+        case 'yahoo':      quote = await fetchViaYahoo(sym);                                break;
+        case 'fmp':        quote = await fetchViaFmp(sym);                                  break;
+        case 'finnhub':    quote = null; break; // reserved
+      }
+    } catch (error) {
+      const failure = classifyRuntimeFailure(error);
+      logDiag('warn', 'provider_failed', {
+        symbol: sym,
+        provider,
+        assetClass,
+        failureCode: failure.code,
+        category: failure.category,
+        retryable: failure.retryable,
+        elapsedMs: Date.now() - t0,
+      });
+      continue;
     }
 
     const ms = Date.now() - t0;
@@ -598,6 +613,11 @@ export async function routeQuote(
     logDiag('warn', 'provider_empty', { symbol: sym, provider, assetClass, elapsedMs: ms });
   }
 
+  const cachedFallback = cacheGet(sym, true);
+  if (cachedFallback) {
+    logDiag('warn', 'stale_cache_fallback', { symbol: sym, assetClass });
+    return cachedFallback;
+  }
   logDiag('error', 'all_providers_failed', { symbol: sym, assetClass, priority });
   return unavailableRouterQuote(sym);
 }
@@ -671,7 +691,10 @@ export async function routeBatchQuotes(
         await Promise.allSettled(remaining.map(async sym => {
           const q = await fetchViaYahoo(sym);
           if (q) { cacheSet(sym, q); result.set(sym, q); }
-          else     result.set(sym, unavailableRouterQuote(sym));
+          else {
+            const cachedFallback = cacheGet(sym, true);
+            result.set(sym, cachedFallback ?? unavailableRouterQuote(sym));
+          }
         }));
       }
     })());

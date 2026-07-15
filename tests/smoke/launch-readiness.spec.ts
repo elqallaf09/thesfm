@@ -41,8 +41,16 @@ test.describe('launch smoke coverage', () => {
 
   test('continue as guest works from the registration view', async ({ page }) => {
     const consoleErrors: string[] = [];
+    let guestSessionActivations = 0;
     page.on('console', message => {
       if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+    page.on('request', request => {
+      if (new URL(request.url()).pathname === '/api/auth/session'
+        && request.method() === 'DELETE'
+        && request.headers()['x-sfm-guest-session'] === 'activate') {
+        guestSessionActivations += 1;
+      }
     });
 
     await expectUsablePage(page, '/login?mode=register');
@@ -59,6 +67,16 @@ test.describe('launch smoke coverage', () => {
     expect(cookie).toContain('sfm_guest=true');
     expect(cookie).not.toContain('sfm_auth=true');
     expect(cookie).not.toContain('sfm_access_token=');
+    expect(guestSessionActivations).toBe(1);
+
+    for (const guestPath of ['/invest', '/reports-center', '/dashboard']) {
+      await expectUsablePage(page, guestPath);
+      await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+      await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('sfm_guest_mode'))).toBe('true');
+    }
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+    expect(guestSessionActivations).toBe(1);
 
     await expectUsablePage(page, '/sfm-admin-control');
     await expect(page).toHaveURL(/\/login\?next=.*sfm-admin-control/);

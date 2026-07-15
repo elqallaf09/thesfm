@@ -29,6 +29,27 @@ describe('classifyProviderError', () => {
     expect(classified.retryable).toBe(true);
   });
 
+  it.each([
+    [401, 'authentication', false],
+    [403, 'permission', false],
+    [404, 'not_found', false],
+    [429, 'rate_limit', true],
+    [503, 'provider', true],
+    [500, 'server', true],
+  ] as const)('keeps HTTP %s distinct as %s', (status, category, retryable) => {
+    const classified = classifyProviderError({ status });
+    expect(classified.category).toBe(category);
+    expect(classified.retryable).toBe(retryable);
+  });
+
+  it.each([
+    [Object.assign(new Error('certificate verify failed'), { code: 'ERR_TLS_CERT_ALTNAME_INVALID' }), 'tls'],
+    [Object.assign(new Error('getaddrinfo failed'), { code: 'ENOTFOUND' }), 'dns'],
+    [Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' }), 'provider'],
+  ] as const)('classifies transport failures without collapsing them', (error, category) => {
+    expect(classifyProviderError(error).category).toBe(category);
+  });
+
   it('classifies a malformed/unknown error as a safe, retryable unknown category', () => {
     const classified = classifyProviderError('some unexpected non-error value');
     expect(classified.category).toBe('unknown');
