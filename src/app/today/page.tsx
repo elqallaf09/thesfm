@@ -444,6 +444,7 @@ export default function FinancialTodayPage() {
     diagnostics: Object.values(sourceDiagnostics),
   });
   const hasSourceFailure = ['partial', 'failed', 'unavailable'].includes(dailySourceStatus);
+  const hasReportReadinessFailure = reportSummary.failed > 0 || reportSummary.unknown > 0;
   const sourceStatusMessage = dailySourceStatus === 'failed'
     ? text.failedData
     : dailySourceStatus === 'unavailable'
@@ -487,7 +488,7 @@ export default function FinancialTodayPage() {
               <AppCard><TodayMetric label={text.dueToday} value={hasSourceFailure ? '—' : `${dailyBrief.dueTodayCount}`} icon={<ClockIcon />} tone="blue" /></AppCard>
               <AppCard><TodayMetric label={text.highPriority} value={hasSourceFailure ? '—' : `${dailyBrief.highPriorityCount}`} icon={<AlertTriangle size={20} />} tone={dailyBrief.highPriorityCount > 0 ? 'danger' : 'blue'} /></AppCard>
               <AppCard><TodayMetric label={text.tasksNeedAction} value={hasSourceFailure ? '—' : `${dailyBrief.taskActionCount}`} icon={<ClipboardList size={20} />} tone={dailyBrief.taskActionCount > 0 ? 'warning' : 'blue'} /></AppCard>
-              <AppCard><TodayMetric label={text.reportsReady} value={`${reportSummary.ready}`} icon={<FileText size={20} />} tone="teal" /></AppCard>
+              <AppCard><TodayMetric label={text.reportsReady} value={hasReportReadinessFailure ? '—' : `${reportSummary.ready}`} icon={<FileText size={20} />} tone="teal" /></AppCard>
             </StatGrid>
 
             <FeaturedAction item={dailyBrief.topAction} text={text} locale={locale} />
