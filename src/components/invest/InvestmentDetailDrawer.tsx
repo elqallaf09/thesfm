@@ -45,7 +45,7 @@ interface Props {
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
-  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null) => string;
+  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => string;
   accountValue: number | null;
   onClose: () => void;
   onRefreshPrice?: (item: Investment) => void;
@@ -135,13 +135,13 @@ export function InvestmentDetailDrawer({
           {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label={t('invest_detail_weight_grams')} value={`${formatPreciseNumber(investment.grams, lang)} g`} ltr />}
           {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label={t('invest_detail_pure_metal')} value={`${formatPreciseNumber(investment.pureMetalGrams, lang)} g`} ltr />}
           {metrics.purchasePrice !== null && (
-            <Info label={labels.purchasePrice || t('invest_detail_purchase_price')} value={formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)} ltr />
+            <Info label={labels.purchasePrice || t('invest_detail_purchase_price')} value={formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} ltr />
           )}
           {metrics.totalInvested !== null && nativeCurrency && (
             <Info label={labels.totalInvested || t('invest_detail_total_invested')} value={formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} ltr />
           )}
           {metrics.currentPrice !== null && nativeCurrency && (
-            <Info label={labels.currentPrice || t('invest_detail_current_price')} value={formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)} ltr />
+            <Info label={labels.currentPrice || t('invest_detail_current_price')} value={formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} ltr />
           )}
           {metrics.currentPrice === null && metrics.isMarketLinked && (
             <Info label={labels.currentPrice || t('invest_detail_current_price')} value={labels.currentPriceUnavailable || unavailable} />

@@ -605,7 +605,7 @@ export default function InvestPage() {
   }, [L, currency, lang]);
   const accountCurrency = currency.toUpperCase();
   const accountValue = useCallback((item: Investment) => accountMarketValueOf(item, accountCurrency), [accountCurrency]);
-  const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null) => {
+  const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return labels.unavailable;
     const resolvedCurrency = resolveMarketCurrency({
       providerCurrency: nativeCurrency ?? item?.nativeCurrency ?? item?.priceCurrency ?? item?.currency,
@@ -620,6 +620,9 @@ export default function InvestPage() {
         minimumFractionDigits: 0,
         maximumFractionDigits: Math.abs(amount) >= 1000 ? 2 : 4,
       });
+    }
+    if (!options?.unitPrice) {
+      return formatCurrency(amount, resolvedCurrency, lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en');
     }
     return formatMarketPrice({
       price: amount,

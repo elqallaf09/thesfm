@@ -121,7 +121,7 @@ interface Props {
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
-  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null) => string;
+  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => string;
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
@@ -345,8 +345,8 @@ export const InvestmentRow = memo(function InvestmentRow({
               <ExpandedTitle icon={<Building2 size={16} />} title={labels.overview || 'Overview'} />
               <div className="invest-holding-secondary invest-financial-details">
                 <DetailChip label={quantityLabel} value={quantityValue} />
-                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)} />
-                <DetailChip label={labels.currentPrice || 'Current price'} value={metrics.currentPrice === null ? (labels.currentPriceUnavailable || labels.unavailable || '-') : formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)} />
+                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} />
+                <DetailChip label={labels.currentPrice || 'Current price'} value={metrics.currentPrice === null ? (labels.currentPriceUnavailable || labels.unavailable || '-') : formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} />
                 <DetailChip label={labels.averageCost || 'Average cost'} value={labels.unavailable || '-'} />
                 <DetailChip label={labels.investedValue || labels.totalInvested || 'Invested value'} value={metrics.totalInvested === null ? (labels.purchasePriceMissing || labels.unavailable || '-') : formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} />
                 <DetailChip label={labels.currentMarketValue || 'Current market value'} value={metrics.currentValue === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.currentValue, nativeCurrency, investment)} />

@@ -2380,7 +2380,27 @@
 
 @container (max-width: 28rem) {
   .invest-holding-identity {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
     gap: var(--space-3);
+  }
+
+  .invest-holding-copy {
+    display: contents;
+  }
+
+  .invest-holding-title-line,
+  .invest-asset-meta {
+    grid-column: 2;
+  }
+
+  .invest-holding-badges,
+  .invest-platform-identity {
+    grid-column: 1 / -1;
+  }
+
+  .invest-status-pill {
+    display: none;
   }
 
   .invest-asset-lens {
@@ -2388,12 +2408,24 @@
     height: 3rem;
   }
 
-  .invest-holding-actions {
-    grid-template-columns: minmax(0, 1fr) 2.75rem;
+  .invest-holding-card .invest-holding-actions {
+    grid-template-columns: minmax(0, 1fr) 2.75rem 2.75rem;
   }
 
-  .invest-card-action--primary {
-    grid-column: 1 / -1;
+  .invest-holding-actions .invest-card-action--primary {
+    grid-column: auto;
+  }
+
+  .invest-expand-btn span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .invest-expanded-inner {
@@ -2407,7 +2439,7 @@
   }
 }
 
-@container (max-width: 20rem) {
+@container (max-width: 14.5rem) {
   .invest-holding-summary {
     grid-template-columns: 1fr;
   }
@@ -2508,12 +2540,12 @@
 
   .invest-holding-actions {
     width: 100%;
-    grid-template-columns: minmax(0, 1fr) 2.75rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2.75rem;
     justify-content: stretch;
   }
 
   .invest-card-action--primary {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 
   .invest-row-actions button {
@@ -2525,8 +2557,8 @@
   }
 
   .invest-row {
-    gap: var(--space-3);
-    padding: var(--space-3);
+    gap: 0.625rem;
+    padding: 0.625rem;
   }
 
   .invest-holding-summary {
@@ -2535,7 +2567,7 @@
   }
 
   .invest-holding-metric {
-    min-height: 5.5rem;
+    min-height: 4.75rem;
     padding: var(--space-2);
   }
 
