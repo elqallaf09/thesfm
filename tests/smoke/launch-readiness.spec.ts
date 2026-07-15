@@ -145,10 +145,10 @@ test.describe('launch smoke coverage', () => {
           const mobileMenu = page.locator('#sfm-mobile-menu');
           await expect(mobileMenuButton).toBeVisible();
           await expect(async () => {
-            if (await mobileMenu.isVisible()) return;
-            await mobileMenuButton.click();
-            await expect(mobileMenu).toBeVisible({ timeout: 1_000 });
+            if (await mobileMenu.count() === 0) await mobileMenuButton.click();
+            await expect(mobileMenu).toBeAttached({ timeout: 1_000 });
           }).toPass({ timeout: 20_000 });
+          await expect(mobileMenu).toBeVisible({ timeout: 20_000 });
         }
 
         const themeToggle = isMobile
