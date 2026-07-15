@@ -118,10 +118,10 @@ export const CommandMenuButton = forwardRef<HTMLButtonElement, CommandMenuButton
           flex: 0 0 auto;
           border: 1px solid var(--border);
           border-radius: var(--radius-sm);
-          padding: 2px 5px;
+          padding: 1px 4px;
           color: var(--foreground-muted);
           background: var(--surface-muted);
-          font-size: 12px;
+          font-size: 11px;
           font-family: var(--font-ui);
           font-weight: 500;
           line-height: 1.3;

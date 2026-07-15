@@ -418,9 +418,10 @@ export function Sidebar() {
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-sidebar-brand{justify-content:center;margin-inline:var(--space-1);padding-inline:4px}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-sidebar-brand-copy{display:none}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-sidebar-collapse{position:absolute;inset-block-start:88px;inset-inline-end:-14px;background:var(--sidebar-glass-bg-elevated);z-index:2}
-          .sfm-shared-tools .sfm-command-trigger{border-color:var(--sidebar-search-border);background:var(--sidebar-search-bg);color:var(--sidebar-item-text);box-shadow:var(--sidebar-search-shadow)}
+          .sfm-shared-tools .sfm-command-trigger{min-height:40px;border-color:var(--sidebar-search-border);background:var(--sidebar-search-bg);color:var(--sidebar-item-text);box-shadow:var(--sidebar-search-shadow)}
           .sfm-shared-tools .sfm-command-trigger:hover{border-color:var(--sidebar-item-border-hover);background:var(--sidebar-item-bg-hover);box-shadow:var(--sidebar-item-shadow-hover)}
-          .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-tools{padding:8px;background:transparent}
+          .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-tools{padding:7px;background:transparent}
+          .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-tools .sfm-command-trigger{min-height:44px}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-quick-row{grid-template-columns:44px;justify-content:center}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-primary-scroll{padding-inline:8px;scrollbar-gutter:auto}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-nav{gap:8px}
