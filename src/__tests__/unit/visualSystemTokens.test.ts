@@ -13,6 +13,7 @@ const loginStyles = loginPage.slice(loginPage.indexOf('<style jsx global>'));
 const landingPage = read('src/app/page.tsx');
 const landingStyles = landingPage.slice(landingPage.indexOf('const landingStyles = `'));
 const traderAccessGate = read('src/app/thesfm-trader-own/TraderAccessGate.tsx');
+const dashboard = read('src/app/dashboard/page.tsx');
 const appHeader = read('src/components/AppHeader.tsx');
 const shariaNewsStyles = read('src/components/shariah-stocks/ShariahStocksNewsPage.module.css');
 const tabs = read('src/components/ui/tabs.tsx');
@@ -25,13 +26,27 @@ const sidebarPrimitive = read('src/components/ui/sidebar.tsx');
 const requiredSemanticTokens = [
   'background',
   'surface',
+  'surface-secondary',
   'surface-elevated',
   'surface-muted',
+  'surface-hover',
+  'surface-active',
+  'card',
+  'card-elevated',
+  'modal',
+  'popover',
+  'tooltip',
+  'header',
+  'footer',
+  'navigation',
   'foreground',
   'foreground-secondary',
   'foreground-muted',
+  'placeholder',
+  'link',
   'border',
   'border-strong',
+  'divider',
   'primary',
   'primary-hover',
   'primary-foreground',
@@ -42,12 +57,41 @@ const requiredSemanticTokens = [
   'danger',
   'info',
   'focus-ring',
+  'selection-background',
+  'background-overlay',
   'sidebar-background',
   'sidebar-foreground',
   'sidebar-active',
   'sidebar-hover',
   'chart-grid',
   'chart-label',
+  'chart-tooltip',
+  'button-primary-background',
+  'button-secondary-background',
+  'button-ghost-background',
+  'button-danger-background',
+  'button-success-background',
+  'button-disabled-background',
+  'input-background',
+  'input-border',
+  'input-focus-border',
+  'table-header',
+  'table-row-hover',
+  'table-row-selected',
+  'badge-background',
+  'tag-background',
+  'progress-track',
+  'progress-fill',
+  'switch-track',
+  'switch-track-active',
+  'checkbox-active',
+  'radio-active',
+  'tabs-background',
+  'accordion-background',
+  'timeline-line',
+  'calendar-background',
+  'scrollbar-thumb',
+  'skeleton-base',
 ] as const;
 
 function themeBlock(selector: ':root' | '.dark') {
@@ -89,26 +133,26 @@ describe('central visual-system contract', () => {
   it('locks the approved light palette at the semantic source', () => {
     const light = themeBlock(':root');
     const approved = {
-      background: '#F4F7FB',
+      background: '#FFFFFF',
       surface: '#FFFFFF',
-      'surface-muted': '#F8FAFC',
-      foreground: '#0F2742',
-      'foreground-secondary': '#334155',
-      'foreground-muted': '#5F6F84',
-      'foreground-subtle': '#64748B',
-      border: '#E2E8F0',
-      'border-strong': '#7C8A9E',
-      primary: '#1769D2',
-      'primary-hover': '#1258B3',
-      'primary-soft': '#EAF3FF',
-      accent: '#0F9F9A',
-      'accent-hover': '#0B7F7A',
-      'accent-soft': '#E6F8F6',
-      success: '#15803D',
-      warning: '#B45309',
-      danger: '#C62828',
-      info: '#0369A1',
-      'focus-ring': '#2563EB',
+      'surface-muted': '#F1F4F8',
+      foreground: '#0B172A',
+      'foreground-secondary': '#344258',
+      'foreground-muted': '#5D6B80',
+      'foreground-subtle': '#5D6B80',
+      border: '#DDE3EC',
+      'border-strong': '#718096',
+      primary: '#155EEF',
+      'primary-hover': '#0B4FD6',
+      'primary-soft': '#EAF1FF',
+      accent: '#0F766E',
+      'accent-hover': '#0B5F59',
+      'accent-soft': '#E7F7F4',
+      success: '#18794E',
+      warning: '#8A4B0F',
+      danger: '#C4323C',
+      info: '#1D65A6',
+      'focus-ring': '#155EEF',
     } as const;
 
     for (const [token, value] of Object.entries(approved)) {
@@ -119,10 +163,10 @@ describe('central visual-system contract', () => {
   it('keeps dark interactive surfaces on the canonical dark palette', () => {
     const dark = themeBlock('.dark');
 
-    expect(dark).toContain('--surface-hover: #132D47;');
-    expect(dark).toContain('--surface-active: #12365A;');
-    expect(dark).toContain('--surface-disabled: #14283B;');
-    expect(dark).toContain('--border-strong: #64748B;');
+    expect(dark).toContain('--surface-hover: #182334;');
+    expect(dark).toContain('--surface-active: #172B46;');
+    expect(dark).toContain('--surface-disabled: #111925;');
+    expect(dark).toContain('--border-strong: #65738A;');
   });
 
   it('centralizes theme-safe skeleton and print-view colors', () => {
@@ -152,6 +196,13 @@ describe('central visual-system contract', () => {
         ['primary-foreground', 'primary'],
         ['accent-foreground', 'accent'],
         ['sidebar-active-foreground', 'sidebar-active'],
+        ['success', 'success-soft'],
+        ['warning', 'warning-soft'],
+        ['danger', 'danger-soft'],
+        ['info', 'info-soft'],
+        ['tag-foreground', 'tag-background'],
+        ['button-disabled-foreground', 'button-disabled-background'],
+        ['input-disabled-foreground', 'input-disabled-background'],
       ] as const;
 
       for (const [foreground, background] of pairs) {
@@ -173,6 +224,15 @@ describe('central visual-system contract', () => {
         'border-strong against surface',
       ).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it('keeps dashboard hero and secondary controls theme-safe', () => {
+    expect(dashboard).toContain('background: var(--hero-gradient);');
+    expect(dashboard).toContain('background: var(--button-primary-background);');
+    expect(dashboard).toContain('color: var(--button-primary-foreground);');
+    expect(dashboard).toContain('background: var(--button-secondary-background);');
+    expect(dashboard).toContain('color: var(--button-secondary-foreground);');
+    expect(dashboard).not.toContain('background: var(--hero-foreground);');
   });
 
   it('bridges popovers, tooltips, and shadcn colors without a compatibility palette', () => {
@@ -253,6 +313,7 @@ describe('central visual-system contract', () => {
     expect(primaryBlock).not.toMatch(/#[0-9a-f]{3,8}|rgba\(|gradient\(/i);
 
     expect(cardStart).toBeGreaterThanOrEqual(0);
+    expect(cardBlock).toContain('background: var(--card) !important');
     expect(cardBlock).toContain('border-color: var(--border) !important');
     expect(cardBlock).toContain('box-shadow: var(--shadow-card) !important');
     expect(cardBlock).not.toMatch(/border-color:\s*rgba|box-shadow:\s*[^;]*rgba/i);
@@ -266,11 +327,11 @@ describe('central visual-system contract', () => {
 
     expect(modalStart).toBeGreaterThanOrEqual(0);
     expect(modalEnd).toBeGreaterThan(modalStart);
-    expect(modalLayer).toContain('background: var(--background-overlay) !important');
+    expect(modalLayer).toContain('background: var(--backdrop) !important');
     expect(modalLayer).toContain('border: 1px solid var(--border) !important');
-    expect(modalLayer).toContain('background: var(--surface-elevated) !important');
+    expect(modalLayer).toContain('background: var(--modal) !important');
     expect(modalLayer).toContain('box-shadow: var(--shadow-popover) !important');
-    expect(modalLayer).toContain('background: var(--surface-muted) !important');
+    expect(modalLayer).toContain('background: var(--surface-secondary) !important');
     expect(modalLayer).toContain('color: var(--foreground) !important');
     expect(modalLayer).not.toMatch(/#[0-9a-f]{3,8}|rgba\(|(?:linear|radial)-gradient\(/i);
     expect(globals).not.toContain('.dark .sfm-modal-header');

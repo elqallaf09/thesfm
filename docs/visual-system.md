@@ -17,6 +17,26 @@ documented domain roles. New UI must not introduce page-local brand palettes, di
 font systems, or raw Tailwind colour scales. IBM Plex Sans Arabic is the UI font; IBM Plex Mono is
 reserved for prices, percentages, tickers, and other financial data roles.
 
+## Theme architecture
+
+Light and dark mode are independently authored in `src/styles/themes.css`; dark mode is not a
+mechanical inversion of the light palette. Both blocks expose the same complete role set for
+canvas and layered surfaces, cards and overlays, application chrome, text and links, borders,
+buttons, forms, tables, charts, status feedback, badges and tags, navigation, loading states,
+scrollbars, and compound components such as tabs, calendars, switches, checkboxes, radios,
+timelines, accordions, and pricing cards.
+
+Light mode uses a white canvas, restrained gray secondary surfaces, dark navy text, and blue/teal
+actions. Dark mode uses a deep neutral canvas with progressively lighter blue-gray surfaces and
+luminance-balanced blue/teal accents. Component code must select a semantic role for its intent;
+it must not assume that `surface`, `sidebar`, `hero`, or inverse text has a particular luminance.
+
+The shared chart palette provides eight ordered series roles (`chart-1` through `chart-8`) plus
+axis, grid, label, tooltip, and tooltip-border roles. Tables similarly use explicit header, row,
+hover, selected, border, sort, filter, search, and pagination roles. Normal text/action pairs meet
+WCAG AA, strong control boundaries meet the 3:1 non-text contrast requirement, and status meaning
+is always paired with labels or icons rather than conveyed by color alone.
+
 ## Source guard
 
 Run:

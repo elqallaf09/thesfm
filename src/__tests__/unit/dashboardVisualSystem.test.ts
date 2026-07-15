@@ -18,7 +18,8 @@ describe('main dashboard visual-system guard', () => {
 
   it('uses one centralized hero gradient and flat semantic surfaces elsewhere', () => {
     expect(dashboardStyles.match(/var\(--hero-gradient\)/g)).toHaveLength(1);
-    expect(dashboardStyles).toMatch(/\.hero-card \{[\s\S]*?background: var\(--hero-gradient\);/);
+    expect(dashboardStyles).toMatch(/\.reference-hero \{[\s\S]*?background: var\(--hero-gradient\);/);
+    expect(dashboardStyles).toMatch(/\.hero-card \{[\s\S]*?background: var\(--surface\);/);
     expect(dashboardStyles).toContain('background: var(--surface)');
     expect(dashboardStyles).toContain('background: var(--surface-muted)');
     expect(dashboardStyles).toContain('box-shadow: var(--shadow-card)');

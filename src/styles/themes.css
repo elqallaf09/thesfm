@@ -1,114 +1,247 @@
 /*
  * The SFM semantic colour system.
  *
- * Components consume these intent-based tokens directly so light and dark
- * mode share one auditable visual language.
+ * This is the only browser palette source. Components consume intent-based
+ * roles so light and dark mode can be designed independently without local
+ * colour decisions or theme-specific component branches.
  */
 
 :root {
   color-scheme: light;
 
-  /* Canvas and surfaces */
-  --background: #F4F7FB;
+  /* Canvas and layered surfaces */
+  --background: #FFFFFF;
   --surface: #FFFFFF;
+  --surface-secondary: #F7F9FC;
   --surface-elevated: #FFFFFF;
-  --surface-muted: #F8FAFC;
-  --surface-hover: #F1F5F9;
-  --surface-active: #EAF3FF;
-  --surface-disabled: #F1F5F9;
-  --popover: var(--surface-elevated);
-  --popover-foreground: var(--foreground);
-  --tooltip: var(--surface-elevated);
-  --tooltip-foreground: var(--foreground);
+  --surface-muted: #F1F4F8;
+  --surface-hover: #EDF2F7;
+  --surface-active: #E8F0FE;
+  --surface-disabled: #F3F5F8;
+  --card: #FFFFFF;
+  --card-foreground: #0B172A;
+  --card-elevated: #FFFFFF;
+  --modal: #FFFFFF;
+  --popover: #FFFFFF;
+  --popover-foreground: #0B172A;
+  --tooltip: #172033;
+  --tooltip-foreground: #FFFFFF;
+  --header: #FFFFFF;
+  --footer: #F7F9FC;
+  --navigation: #FFFFFF;
+  --pricing-card: #FFFFFF;
 
   /* Text */
-  --foreground: #0F2742;
-  --foreground-secondary: #334155;
-  --foreground-muted: #5F6F84;
-  --foreground-subtle: #64748B;
+  --foreground: #0B172A;
+  --foreground-secondary: #344258;
+  --foreground-muted: #5D6B80;
+  --foreground-subtle: #5D6B80;
   --foreground-inverse: #FFFFFF;
+  --placeholder: #5D6B80;
+  --link: #155EEF;
+  --link-hover: #0B4FD6;
+  --link-active: #083FAF;
+  --link-visited: #5B43A5;
 
-  /* Borders */
-  --border: #E2E8F0;
-  --border-strong: #7C8A9E;
-  --divider: #E2E8F0;
+  /* Borders and dividers */
+  --border: #DDE3EC;
+  --border-strong: #718096;
+  --divider: #E6EAF0;
 
   /* Brand */
-  --primary: #1769D2;
-  --primary-hover: #1258B3;
-  --primary-active: #0F4B99;
-  --primary-soft: #EAF3FF;
+  --primary: #155EEF;
+  --primary-hover: #0B4FD6;
+  --primary-active: #083FAF;
+  --primary-soft: #EAF1FF;
   --primary-foreground: #FFFFFF;
-  --accent: #0F9F9A;
-  --accent-hover: #0B7F7A;
-  --accent-soft: #E6F8F6;
-  --accent-foreground: #052B2A;
+  --accent: #0F766E;
+  --accent-hover: #0B5F59;
+  --accent-active: #084C48;
+  --accent-soft: #E7F7F4;
+  --accent-foreground: #FFFFFF;
 
   /* Status */
-  --success: #15803D;
-  --success-soft: #EAF7EE;
-  --warning: #B45309;
-  --warning-soft: #FFF7E6;
-  --danger: #C62828;
-  --danger-soft: #FDECEC;
+  --success: #18794E;
+  --success-hover: #12613E;
+  --success-soft: #E8F5EE;
+  --success-foreground: #FFFFFF;
+  --warning: #8A4B0F;
+  --warning-hover: #703C0C;
+  --warning-soft: #FFF4DE;
+  --warning-foreground: #FFFFFF;
+  --danger: #C4323C;
+  --danger-hover: #A62630;
+  --danger-soft: #FDEBEC;
   --danger-foreground: #FFFFFF;
-  --info: #0369A1;
-  --info-soft: #EAF6FC;
+  --info: #1D65A6;
+  --info-hover: #175287;
+  --info-soft: #EAF2FB;
+  --info-foreground: #FFFFFF;
 
-  /* Interaction */
-  --focus-ring: #2563EB;
+  /* Interaction and system feedback */
+  --focus-ring: #155EEF;
   --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 24%, transparent);
-  --selection-background: #D7E8FF;
-  --selection-foreground: var(--foreground);
-  --background-overlay: rgba(15, 39, 66, 0.48);
-  --shadow-color: #0F2742;
+  --selection-background: #DCE8FF;
+  --selection-foreground: #0B172A;
+  --background-overlay: rgba(11, 23, 42, 0.52);
+  --overlay: var(--background-overlay);
+  --backdrop: var(--background-overlay);
+  --shadow-color: #0B172A;
 
-  /* Sidebar */
-  --sidebar-background: #071F3F;
-  --sidebar-foreground: #F7FBFF;
-  --sidebar-muted: #9FB3CA;
-  --sidebar-border: #315779;
-  --sidebar-hover: #123B63;
-  --sidebar-expanded: #0A2D50;
-  --sidebar-active: #0969E8;
+  /* Sidebar and application chrome */
+  --sidebar-background: #F7F9FC;
+  --sidebar-foreground: #172033;
+  --sidebar-muted: #5D6B80;
+  --sidebar-border: #D9E0EA;
+  --sidebar-hover: #EDF2F7;
+  --sidebar-expanded: #F1F4F8;
+  --sidebar-active: #155EEF;
   --sidebar-active-foreground: #FFFFFF;
+  --navigation-hover: #EDF2F7;
+  --navigation-active: #EAF1FF;
+  --navigation-active-foreground: #0B4FD6;
+  --header-border: #E6EAF0;
+  --footer-border: #DDE3EC;
 
-  /* Data visualisation */
-  --chart-grid: #E2E8F0;
-  --chart-label: #64748B;
+  /* Buttons */
+  --button-primary-background: #155EEF;
+  --button-primary-foreground: #FFFFFF;
+  --button-primary-border: #155EEF;
+  --button-primary-hover: #0B4FD6;
+  --button-primary-active: #083FAF;
+  --button-secondary-background: #FFFFFF;
+  --button-secondary-foreground: #172033;
+  --button-secondary-border: #718096;
+  --button-secondary-hover: #F1F4F8;
+  --button-secondary-active: #E6EBF2;
+  --button-ghost-background: transparent;
+  --button-ghost-foreground: #344258;
+  --button-ghost-hover: #EDF2F7;
+  --button-ghost-active: #E6EBF2;
+  --button-danger-background: #C4323C;
+  --button-danger-foreground: #FFFFFF;
+  --button-danger-hover: #A62630;
+  --button-success-background: #18794E;
+  --button-success-foreground: #FFFFFF;
+  --button-success-hover: #12613E;
+  --button-disabled-background: #EEF1F5;
+  --button-disabled-foreground: #5D6B80;
+  --button-disabled-border: #DDE3EC;
+
+  /* Forms and controls */
+  --control-background: #FFFFFF;
+  --control-hover: #FFFFFF;
+  --control-active: #FFFFFF;
+  --control-disabled: #F3F5F8;
+  --control-placeholder: #5D6B80;
+  --input-background: #FFFFFF;
+  --input-foreground: #0B172A;
+  --input-border: #718096;
+  --input-hover-border: #53657F;
+  --input-focus-border: #155EEF;
+  --input-disabled-background: #F3F5F8;
+  --input-disabled-foreground: #5D6B80;
+  --input-invalid-border: #C4323C;
+  --input-valid-border: #18794E;
+  --autocomplete-background: #EAF1FF;
+
+  /* Tables, search, sorting, and pagination */
+  --table-header: #F7F9FC;
+  --table-row: #FFFFFF;
+  --table-row-hover: #F3F6FA;
+  --table-row-selected: #EAF1FF;
+  --table-border: #E3E8F0;
+  --table-sort: #155EEF;
+  --table-filter: #F7F9FC;
+  --table-search: #FFFFFF;
+  --table-pagination: #FFFFFF;
+  --table-pagination-active: #155EEF;
+  --table-pagination-active-foreground: #FFFFFF;
+
+  /* Data visualisation: colour-blind-safe blue, teal, violet, amber, coral */
+  --chart-grid: #E3E8F0;
+  --chart-axis: #A2ADBC;
+  --chart-label: #5D6B80;
   --chart-tooltip: #FFFFFF;
-  --chart-1: #1769D2;
-  --chart-2: #0F9F9A;
-  --chart-3: #15803D;
-  --chart-4: #B45309;
-  --chart-5: #64748B;
+  --chart-tooltip-border: #DDE3EC;
+  --chart-1: #155EEF;
+  --chart-2: #0F766E;
+  --chart-3: #7C3AED;
+  --chart-4: #A85B12;
+  --chart-5: #C4323C;
+  --chart-6: #1D65A6;
+  --chart-7: #18794E;
+  --chart-8: #6F7D91;
 
-  /* Shared component surfaces */
-  --control-background: var(--surface);
-  --control-hover: var(--surface-hover);
-  --control-disabled: var(--surface-disabled);
-  --control-placeholder: var(--foreground-muted);
-  --table-header: var(--surface-muted);
-  --table-row-hover: #F3F7FC;
-  --table-row-selected: var(--primary-soft);
-  --skeleton-base: #E2E8F0;
+  /* Badges, tags, alerts, and notifications */
+  --badge-background: #F1F4F8;
+  --badge-foreground: #344258;
+  --badge-border: #DDE3EC;
+  --tag-background: #EAF1FF;
+  --tag-foreground: #0B4FD6;
+  --tag-border: #C9DAFF;
+  --alert-success-background: #E8F5EE;
+  --alert-warning-background: #FFF4DE;
+  --alert-danger-background: #FDEBEC;
+  --alert-info-background: #EAF2FB;
+  --toast-background: #FFFFFF;
+  --toast-foreground: #0B172A;
+  --toast-border: #DDE3EC;
+  --dropdown-background: #FFFFFF;
+  --dropdown-hover: #EDF2F7;
+  --dropdown-active: #EAF1FF;
+
+  /* Component state roles */
+  --progress-track: #E6EBF2;
+  --progress-fill: #155EEF;
+  --switch-track: #718096;
+  --switch-track-active: #155EEF;
+  --switch-thumb: #FFFFFF;
+  --checkbox-background: #FFFFFF;
+  --checkbox-border: #718096;
+  --checkbox-active: #155EEF;
+  --checkbox-foreground: #FFFFFF;
+  --radio-background: #FFFFFF;
+  --radio-border: #718096;
+  --radio-active: #155EEF;
+  --tabs-background: #F1F4F8;
+  --tabs-hover: #EDF2F7;
+  --tabs-active: #FFFFFF;
+  --tabs-active-foreground: #0B172A;
+  --accordion-background: #FFFFFF;
+  --accordion-border: #DDE3EC;
+  --timeline-line: #DDE3EC;
+  --timeline-marker: #155EEF;
+  --calendar-background: #FFFFFF;
+  --calendar-hover: #EDF2F7;
+  --calendar-selected: #155EEF;
+  --calendar-selected-foreground: #FFFFFF;
+  --pricing-card-featured: #EAF1FF;
+  --pricing-card-border: #DDE3EC;
+  --pricing-card-featured-border: #155EEF;
+
+  /* Scrollbars and loading */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #9AA6B7;
+  --scrollbar-thumb-hover: #718096;
+  --skeleton-base: #E6EBF2;
   --skeleton-highlight: #F8FAFC;
   --skeleton-gradient: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
 
-  /* Print views stay legible even when the active application theme is dark. */
+  /* Print views stay legible even when the application theme is dark. */
   --print-background: #FFFFFF;
   --print-surface: #FFFFFF;
-  --print-foreground: #0F2742;
-  --print-foreground-secondary: #334155;
-  --print-foreground-muted: #64748B;
-  --print-border: #CBD5E1;
+  --print-foreground: #0B172A;
+  --print-foreground-secondary: #344258;
+  --print-foreground-muted: #5D6B80;
+  --print-border: #CBD3DF;
 
   /* Intentional brand hero only. Normal controls and cards remain flat. */
-  --hero-gradient-start: #0F2742;
-  --hero-gradient-mid: #1258B3;
-  --hero-gradient-end: #0B6664;
+  --hero-gradient-start: #102A43;
+  --hero-gradient-mid: #174EA6;
+  --hero-gradient-end: #0F5B56;
   --hero-foreground: #FFFFFF;
-  --hero-foreground-muted: #DCE8F5;
+  --hero-foreground-muted: #E5EEF8;
   --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
 
   /* Domain semantics */
@@ -130,104 +263,285 @@
   --shariah-conflict: var(--danger);
 
   /* shadcn/Tailwind semantic bridge */
-  --card: var(--surface);
-  --card-foreground: var(--foreground);
   --secondary: var(--surface-muted);
   --secondary-foreground: var(--foreground);
   --muted: var(--surface-muted);
   --muted-foreground: var(--foreground-muted);
-  --input: var(--border-strong);
+  --input: var(--input-border);
   --ring: var(--focus-ring);
   --destructive: var(--danger);
   --destructive-foreground: var(--danger-foreground);
   --sidebar: var(--sidebar-background);
   --sidebar-accent: var(--sidebar-hover);
   --sidebar-accent-foreground: var(--sidebar-foreground);
-
 }
 
 .dark {
   color-scheme: dark;
 
-  --background: #071522;
-  --surface: #0B2035;
-  --surface-elevated: #102A44;
-  --surface-muted: #0D253C;
-  --surface-hover: #132D47;
-  --surface-active: #12365A;
-  --surface-disabled: #14283B;
-  --tooltip: var(--surface-elevated);
-  --tooltip-foreground: var(--foreground);
+  /* Canvas and layered surfaces */
+  --background: #080C14;
+  --surface: #0E1521;
+  --surface-secondary: #111A28;
+  --surface-elevated: #151E2D;
+  --surface-muted: #111A28;
+  --surface-hover: #182334;
+  --surface-active: #172B46;
+  --surface-disabled: #111925;
+  --card: #0E1521;
+  --card-foreground: #F4F7FB;
+  --card-elevated: #151E2D;
+  --modal: #151E2D;
+  --popover: #151E2D;
+  --popover-foreground: #F4F7FB;
+  --tooltip: #202B3D;
+  --tooltip-foreground: #F4F7FB;
+  --header: #0A101A;
+  --footer: #0A101A;
+  --navigation: #0E1521;
+  --pricing-card: #0E1521;
 
-  --foreground: #F8FAFC;
-  --foreground-secondary: #CBD5E1;
+  /* Text */
+  --foreground: #F4F7FB;
+  --foreground-secondary: #C4CEDB;
   --foreground-muted: #94A3B8;
-  --foreground-subtle: #7C8DA3;
-  --foreground-inverse: #071522;
+  --foreground-subtle: #94A3B8;
+  --foreground-inverse: #07111F;
+  --placeholder: #94A3B8;
+  --link: #8AB4FA;
+  --link-hover: #A9C9FD;
+  --link-active: #6D9FF5;
+  --link-visited: #B5A1FA;
 
-  --border: #243B53;
-  --border-strong: #64748B;
-  --divider: #243B53;
+  /* Borders and dividers */
+  --border: #263248;
+  --border-strong: #65738A;
+  --divider: #202B3D;
 
-  --primary: #4C96F5;
-  --primary-hover: #73ACF7;
-  --primary-active: #2F7DDF;
-  --primary-soft: #102F50;
-  --primary-foreground: #071522;
-  --accent: #35BDB7;
-  --accent-hover: #5CCBC6;
-  --accent-soft: #0D3839;
-  --accent-foreground: #061B1B;
+  /* Brand */
+  --primary: #6D9FF5;
+  --primary-hover: #8AB4FA;
+  --primary-active: #4D86E8;
+  --primary-soft: #172A49;
+  --primary-foreground: #07111F;
+  --accent: #5ABEB6;
+  --accent-hover: #78CEC8;
+  --accent-active: #3EA49D;
+  --accent-soft: #123333;
+  --accent-foreground: #071A1A;
 
-  --success: #4ADE80;
-  --success-soft: #103525;
-  --warning: #FBBF24;
-  --warning-soft: #3A2A0D;
-  --danger: #F87171;
-  --danger-soft: #3E1A20;
-  --danger-foreground: #071522;
-  --info: #38BDF8;
-  --info-soft: #0B3046;
+  /* Status */
+  --success: #59C98A;
+  --success-hover: #78D8A2;
+  --success-soft: #123222;
+  --success-foreground: #07140D;
+  --warning: #E9B65B;
+  --warning-hover: #F1C879;
+  --warning-soft: #33270F;
+  --warning-foreground: #171006;
+  --danger: #F07A7F;
+  --danger-hover: #F59699;
+  --danger-soft: #35191E;
+  --danger-foreground: #1B090B;
+  --info: #79ADEF;
+  --info-hover: #97C0F4;
+  --info-soft: #142A44;
+  --info-foreground: #07111F;
 
-  --focus-ring: #60A5FA;
+  /* Interaction and system feedback */
+  --focus-ring: #8AB4FA;
   --focus-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 34%, transparent);
-  --selection-background: #174A77;
-  --selection-foreground: #FFFFFF;
-  --background-overlay: rgba(2, 10, 18, 0.72);
+  --selection-background: #244D80;
+  --selection-foreground: #F4F7FB;
+  --background-overlay: rgba(2, 5, 10, 0.76);
+  --overlay: var(--background-overlay);
+  --backdrop: var(--background-overlay);
   --shadow-color: #000000;
 
-  --sidebar-background: #081A2C;
-  --sidebar-foreground: #F8FAFC;
-  --sidebar-muted: #A8B6C7;
-  --sidebar-border: #243B53;
-  --sidebar-hover: #102A44;
-  --sidebar-expanded: #0D253C;
-  --sidebar-active: #12365A;
-  --sidebar-active-foreground: #DCEBFF;
+  /* Sidebar and application chrome */
+  --sidebar-background: #0A101A;
+  --sidebar-foreground: #EDF3FA;
+  --sidebar-muted: #9BAABC;
+  --sidebar-border: #202B3D;
+  --sidebar-hover: #151E2D;
+  --sidebar-expanded: #111A28;
+  --sidebar-active: #244D80;
+  --sidebar-active-foreground: #F4F8FF;
+  --navigation-hover: #182334;
+  --navigation-active: #172A49;
+  --navigation-active-foreground: #A9C9FD;
+  --header-border: #202B3D;
+  --footer-border: #202B3D;
 
-  --chart-grid: #294157;
-  --chart-label: #A8B6C7;
-  --chart-tooltip: #102A44;
-  --chart-1: #60A5FA;
-  --chart-2: #35BDB7;
-  --chart-3: #4ADE80;
-  --chart-4: #FBBF24;
-  --chart-5: #A8B6C7;
+  /* Buttons */
+  --button-primary-background: #6D9FF5;
+  --button-primary-foreground: #07111F;
+  --button-primary-border: #6D9FF5;
+  --button-primary-hover: #8AB4FA;
+  --button-primary-active: #4D86E8;
+  --button-secondary-background: #151E2D;
+  --button-secondary-foreground: #F4F7FB;
+  --button-secondary-border: #65738A;
+  --button-secondary-hover: #182334;
+  --button-secondary-active: #202B3D;
+  --button-ghost-background: transparent;
+  --button-ghost-foreground: #C4CEDB;
+  --button-ghost-hover: #182334;
+  --button-ghost-active: #202B3D;
+  --button-danger-background: #F07A7F;
+  --button-danger-foreground: #1B090B;
+  --button-danger-hover: #F59699;
+  --button-success-background: #59C98A;
+  --button-success-foreground: #07140D;
+  --button-success-hover: #78D8A2;
+  --button-disabled-background: #151E2D;
+  --button-disabled-foreground: #94A3B8;
+  --button-disabled-border: #263248;
 
-  --control-background: var(--surface);
-  --control-hover: var(--surface-hover);
-  --control-disabled: var(--surface-disabled);
-  --control-placeholder: var(--foreground-muted);
-  --table-header: var(--surface-muted);
-  --table-row-hover: #102A44;
-  --table-row-selected: var(--primary-soft);
-  --skeleton-base: #18324A;
-  --skeleton-highlight: #27445E;
+  /* Forms and controls */
+  --control-background: #0E1521;
+  --control-hover: #111A28;
+  --control-active: #151E2D;
+  --control-disabled: #111925;
+  --control-placeholder: #94A3B8;
+  --input-background: #0E1521;
+  --input-foreground: #F4F7FB;
+  --input-border: #65738A;
+  --input-hover-border: #8290A5;
+  --input-focus-border: #8AB4FA;
+  --input-disabled-background: #111925;
+  --input-disabled-foreground: #94A3B8;
+  --input-invalid-border: #F07A7F;
+  --input-valid-border: #59C98A;
+  --autocomplete-background: #172A49;
 
-  --hero-gradient-start: #071522;
-  --hero-gradient-mid: #123D68;
-  --hero-gradient-end: #0B6664;
+  /* Tables, search, sorting, and pagination */
+  --table-header: #111A28;
+  --table-row: #0E1521;
+  --table-row-hover: #151E2D;
+  --table-row-selected: #172A49;
+  --table-border: #263248;
+  --table-sort: #8AB4FA;
+  --table-filter: #111A28;
+  --table-search: #0E1521;
+  --table-pagination: #0E1521;
+  --table-pagination-active: #6D9FF5;
+  --table-pagination-active-foreground: #07111F;
+
+  /* Data visualisation: luminance-balanced for dark surfaces */
+  --chart-grid: #2A374C;
+  --chart-axis: #526078;
+  --chart-label: #9BAABC;
+  --chart-tooltip: #151E2D;
+  --chart-tooltip-border: #344157;
+  --chart-1: #6D9FF5;
+  --chart-2: #5ABEB6;
+  --chart-3: #A78BFA;
+  --chart-4: #E9B65B;
+  --chart-5: #F07A7F;
+  --chart-6: #79ADEF;
+  --chart-7: #59C98A;
+  --chart-8: #A7B4C5;
+
+  /* Badges, tags, alerts, and notifications */
+  --badge-background: #111A28;
+  --badge-foreground: #C4CEDB;
+  --badge-border: #263248;
+  --tag-background: #172A49;
+  --tag-foreground: #A9C9FD;
+  --tag-border: #2B4E7D;
+  --alert-success-background: #123222;
+  --alert-warning-background: #33270F;
+  --alert-danger-background: #35191E;
+  --alert-info-background: #142A44;
+  --toast-background: #151E2D;
+  --toast-foreground: #F4F7FB;
+  --toast-border: #344157;
+  --dropdown-background: #151E2D;
+  --dropdown-hover: #182334;
+  --dropdown-active: #172A49;
+
+  /* Component state roles */
+  --progress-track: #263248;
+  --progress-fill: #6D9FF5;
+  --switch-track: #65738A;
+  --switch-track-active: #6D9FF5;
+  --switch-thumb: #F4F7FB;
+  --checkbox-background: #0E1521;
+  --checkbox-border: #65738A;
+  --checkbox-active: #6D9FF5;
+  --checkbox-foreground: #07111F;
+  --radio-background: #0E1521;
+  --radio-border: #65738A;
+  --radio-active: #6D9FF5;
+  --tabs-background: #111A28;
+  --tabs-hover: #182334;
+  --tabs-active: #202B3D;
+  --tabs-active-foreground: #F4F7FB;
+  --accordion-background: #0E1521;
+  --accordion-border: #263248;
+  --timeline-line: #344157;
+  --timeline-marker: #6D9FF5;
+  --calendar-background: #0E1521;
+  --calendar-hover: #182334;
+  --calendar-selected: #6D9FF5;
+  --calendar-selected-foreground: #07111F;
+  --pricing-card-featured: #172A49;
+  --pricing-card-border: #263248;
+  --pricing-card-featured-border: #6D9FF5;
+
+  /* Scrollbars and loading */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #526078;
+  --scrollbar-thumb-hover: #7E8DA3;
+  --skeleton-base: #202B3D;
+  --skeleton-highlight: #344157;
+  --skeleton-gradient: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+
+  /* Dark theme keeps the shared light print contract explicit. */
+  --print-background: #FFFFFF;
+  --print-surface: #FFFFFF;
+  --print-foreground: #0B172A;
+  --print-foreground-secondary: #344258;
+  --print-foreground-muted: #5D6B80;
+  --print-border: #CBD3DF;
+
+  /* Intentional brand hero only. */
+  --hero-gradient-start: #080C14;
+  --hero-gradient-mid: #19355C;
+  --hero-gradient-end: #123F3E;
   --hero-foreground: #FFFFFF;
-  --hero-foreground-muted: #CBD5E1;
+  --hero-foreground-muted: #D3DEE9;
+  --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
 
+  /* Domain semantics remain stable while their values adapt to dark mode. */
+  --market-positive: var(--success);
+  --market-negative: var(--danger);
+  --market-neutral: var(--foreground-muted);
+  --market-delayed: var(--warning);
+  --market-stale: var(--info);
+  --market-unavailable: var(--foreground-muted);
+  --provider-connected: var(--success);
+  --provider-degraded: var(--warning);
+  --provider-disconnected: var(--danger);
+  --provider-rate-limited: var(--warning);
+  --provider-disabled: var(--foreground-muted);
+  --shariah-compliant: var(--success);
+  --shariah-non-compliant: var(--danger);
+  --shariah-review: var(--warning);
+  --shariah-insufficient: var(--foreground-muted);
+  --shariah-conflict: var(--danger);
+
+  /* shadcn/Tailwind semantic bridge */
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--foreground-muted);
+  --input: var(--input-border);
+  --ring: var(--focus-ring);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
+  --sidebar: var(--sidebar-background);
+  --sidebar-accent: var(--sidebar-hover);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
 }

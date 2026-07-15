@@ -1370,7 +1370,7 @@ const dashboardStyles = `
     padding: 20px;
     border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
     border-radius: var(--radius-panel);
-    background: var(--sidebar-background);
+    background: var(--hero-gradient);
     box-shadow: var(--shadow-md);
     color: var(--hero-foreground);
   }
@@ -1404,7 +1404,7 @@ const dashboardStyles = `
   }
   .reference-primary-button,
   .reference-period-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; }
-  .reference-primary-button { border: 1px solid var(--primary); background: var(--primary); color: var(--hero-foreground); box-shadow: var(--shadow-sm); }
+  .reference-primary-button { border: 1px solid var(--button-primary-border); background: var(--button-primary-background); color: var(--button-primary-foreground); box-shadow: var(--shadow-sm); }
   .reference-primary-button:hover { background: var(--primary-hover); transform: translateY(-1px); }
   .reference-period-button { border: 1px solid color-mix(in srgb, var(--hero-foreground) 34%, transparent); background: color-mix(in srgb, var(--hero-gradient-start) 54%, transparent); color: var(--hero-foreground); }
   .reference-period-button:hover { background: color-mix(in srgb, var(--hero-gradient-mid) 82%, transparent); }
@@ -1439,7 +1439,7 @@ const dashboardStyles = `
   .reference-chart-legend i { width: 7px; height: 7px; border-radius: var(--radius-pill); }
   .reference-chart-legend .is-income { background: var(--accent); }
   .reference-chart-legend .is-expense { background: var(--primary); }
-  .reference-icon-button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 10px; border: 1px solid var(--border); background: var(--hero-foreground); color: var(--foreground-secondary); }
+  .reference-icon-button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 10px; border: 1px solid var(--button-secondary-border); background: var(--button-secondary-background); color: var(--button-secondary-foreground); }
   .reference-line-chart { position: relative; min-height: 245px; padding-inline-start: 42px; }
   .reference-line-chart > svg { width: 100%; height: 205px; overflow: visible; }
   .reference-grid-lines path { fill: none; stroke: var(--chart-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -1467,8 +1467,8 @@ const dashboardStyles = `
   .reference-health-list span { display: grid; color: var(--foreground-secondary); font-size: 11px; }
   .reference-health-list strong { margin-top: 2px; color: var(--primary); font-size: 11px; }
   .reference-health-method { display: block; margin-top: 8px; color: var(--foreground-muted); font-size: 10px; line-height: 1.6; }
-  .reference-secondary-button { justify-content: center; gap: 8px; min-height: 40px; margin-top: 12px; border: 1px solid var(--border-strong); background: var(--hero-foreground); color: var(--primary); }
-  .reference-secondary-button:hover { border-color: var(--primary); background: var(--primary-soft); }
+  .reference-secondary-button { justify-content: center; gap: 8px; min-height: 40px; margin-top: 12px; border: 1px solid var(--button-secondary-border); background: var(--button-secondary-background); color: var(--button-secondary-foreground); }
+  .reference-secondary-button:hover { border-color: var(--primary); background: var(--button-secondary-hover); }
   [dir='rtl'] .reference-secondary-button svg, [dir='rtl'] .reference-text-link svg { transform: scaleX(-1); }
 
   .reference-table-wrap { overflow-x: auto; flex: 1; }
@@ -1605,8 +1605,8 @@ const dashboardStyles = `
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
     border-radius: var(--radius-panel);
-    background: var(--hero-gradient);
-    color: var(--hero-foreground);
+    background: var(--surface);
+    color: var(--foreground);
     box-shadow: var(--shadow-md);
   }
 

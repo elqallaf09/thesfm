@@ -334,7 +334,7 @@ export function PageTabs({
         }
         .page-section-tabs button.active b {
           background: var(--primary);
-          color: var(--primary-foreground);
+          color: var(--primary-foreground) !important;
         }
         .page-section-tabs button:disabled {
           opacity: .62;

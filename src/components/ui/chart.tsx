@@ -53,7 +53,7 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_*]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_*]:stroke-border [&_.recharts-sector]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+          "flex aspect-video justify-center text-xs text-[var(--chart-label)] [&_.recharts-cartesian-axis-line]:stroke-[var(--chart-axis)] [&_.recharts-cartesian-axis-tick_line]:stroke-[var(--chart-axis)] [&_.recharts-cartesian-axis-tick_text]:fill-[var(--chart-label)] [&_.recharts-cartesian-grid_line]:stroke-[var(--chart-grid)] [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[var(--chart-axis)] [&_.recharts-dot]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_*]:stroke-[var(--chart-grid)] [&_.recharts-radial-bar-background-sector]:fill-[var(--surface-muted)] [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-[var(--surface-hover)] [&_.recharts-reference-line_*]:stroke-[var(--chart-axis)] [&_.recharts-sector]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
           className
         )}
         {...props}
@@ -180,7 +180,7 @@ const ChartTooltipContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "grid min-w-[8rem] items-start gap-1.5 rounded-[var(--radius-control)] border border-border bg-[var(--chart-tooltip)] px-2.5 py-1.5 text-xs text-foreground shadow-[var(--shadow-popover)]",
+          "grid min-w-[8rem] items-start gap-1.5 rounded-[var(--radius-control)] border border-[var(--chart-tooltip-border)] bg-[var(--chart-tooltip)] px-2.5 py-1.5 text-xs text-foreground shadow-[var(--shadow-popover)]",
           className
         )}
       >
@@ -281,7 +281,7 @@ const ChartLegendContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "flex items-center justify-center gap-4",
+          "flex items-center justify-center gap-4 text-[var(--chart-label)]",
           verticalAlign === "top" ? "pb-3" : "pt-3",
           className
         )}
