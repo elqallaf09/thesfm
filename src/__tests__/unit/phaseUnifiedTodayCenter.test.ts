@@ -84,4 +84,15 @@ describe('unified Today operational workflow', () => {
     expect(read('src/hooks/useNotificationEvents.ts')).toContain('CACHE_TTL_MS');
     expect(read('src/hooks/useRecentAccountActivity.ts')).toContain('CACHE_TTL_MS');
   });
+
+  it('does not present a failed recent-activity query as an empty result', () => {
+    const hook = read('src/hooks/useRecentAccountActivity.ts');
+    const today = read('src/app/today/page.tsx');
+
+    expect(hook).toContain('if (queryError) throw new Error(queryError.message)');
+    expect(hook).toContain("setError(loadError instanceof Error ? loadError.message : 'Account activity load failed')");
+    expect(today).toContain('recentActivityError ?');
+    expect(today).toContain('role="alert"');
+    expect(today).toContain('reloadRecentActivity()');
+  });
 });
