@@ -41,7 +41,7 @@ import { InvestmentSparkline, type InvestmentHistoryPoint } from './InvestmentSp
 import { PlatformIdentity } from './PlatformIdentity';
 
 export type InvestmentPriceRefreshStatus = {
-  state: 'failed' | 'updated';
+  state: 'failed' | 'updated' | 'guest_restricted' | 'offline';
   message?: string;
   at: string;
 };
@@ -79,6 +79,7 @@ export type InvestmentCardLabels = {
   priceStatus?: string;
   priceUpdated?: string;
   priceUpdateFailed?: string;
+  guestPriceRefreshRestricted?: string;
   currentPriceUnavailable?: string;
   purchasePriceMissing?: string;
   unavailable?: string;
@@ -201,14 +202,18 @@ export const InvestmentRow = memo(function InvestmentRow({
       : metrics.profitLossAmount < 0
         ? 'loss'
         : 'neutral';
-  const priceStatus = priceRefreshStatus?.state === 'failed'
-    ? labels.priceUpdateFailed || 'Could not refresh price'
+  const priceStatus = priceRefreshStatus?.state === 'guest_restricted'
+    ? labels.guestPriceRefreshRestricted || 'Automatic refresh is paused in guest mode'
+    : priceRefreshStatus?.state === 'offline'
+      ? 'Offline'
+      : priceRefreshStatus?.state === 'failed'
+        ? labels.priceUpdateFailed || 'Could not refresh price'
     : refreshing
       ? labels.refreshingPrice || 'Refreshing'
       : metrics.isMarketLinked && metrics.currentPrice === null
         ? labels.currentPriceUnavailable || labels.unavailable || 'Current price unavailable'
         : labels.priceUpdated || 'Price available';
-  const StatusIcon = priceRefreshStatus?.state === 'failed'
+  const StatusIcon = priceRefreshStatus?.state === 'failed' || priceRefreshStatus?.state === 'guest_restricted' || priceRefreshStatus?.state === 'offline'
     ? AlertTriangle
     : metrics.isMarketLinked && metrics.currentPrice === null
       ? AlertTriangle

@@ -190,6 +190,9 @@ describe('unavailableRouterQuote', () => {
     expect(q.status).toBe('unavailable');
     expect(q.symbol).toBe('META');
     expect(q.source).toBe('THE SFM');
+    expect(q.price).toBeNull();
+    expect(q.currency).toBeNull();
+    expect(q.lastUpdated).toBeNull();
   });
 
   test('has no provider names in public fields', () => {
@@ -312,7 +315,7 @@ describe('routeQuote — provider priority', () => {
     const q = await rq('ZZZZ');
 
     expect(q.status).toBe('unavailable');
-    expect(q.price).toBe(0);
+    expect(q.price).toBeNull();
     expect(q.source).toBe('THE SFM');
     assertNoProviderLeakage(q);
   });

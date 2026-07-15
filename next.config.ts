@@ -5,7 +5,11 @@ import path from "node:path";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
 const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
-const IS_WINDOWS_BUILD = process.platform === "win32" && process.env.NEXT_DISABLE_WINDOWS_BUILD_SHIM !== "1";
+const IS_WINDOWS_BUILD = process.platform === "win32";
+// Keep deterministic single-worker compilation on Windows. The legacy manifest writer can
+// race Next's own pages compiler and leave a successful-looking build with development bundles,
+// so it is retained only as an explicit recovery option.
+const ENABLE_WINDOWS_MANIFEST_SHIM = IS_WINDOWS_BUILD && process.env.NEXT_ENABLE_WINDOWS_BUILD_SHIM === "1";
 const WINDOWS_BUILD_EXPERIMENTS = IS_WINDOWS_BUILD
   ? {
       cpus: 1,
@@ -222,7 +226,7 @@ const nextConfig: NextConfig = {
   },
   experimental: WINDOWS_BUILD_EXPERIMENTS,
   webpack(config, { dev }) {
-    if (!dev && IS_WINDOWS_BUILD) {
+    if (!dev && ENABLE_WINDOWS_MANIFEST_SHIM) {
       config.cache = false;
       config.plugins ??= [];
       config.plugins.push({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -8,14 +8,20 @@ export default function GuestPage() {
   const { continueAsGuest, session } = useAuth();
   const { t, dir } = useLanguage();
   const [error, setError] = useState('');
+  const startedRef = useRef(false);
 
   useEffect(() => {
-    try {
-      if (!session) continueAsGuest();
-      window.location.replace('/dashboard');
-    } catch {
-      setError(t('guest_error'));
-    }
+    if (startedRef.current) return;
+    startedRef.current = true;
+    void (async () => {
+      try {
+        if (!session) await continueAsGuest();
+        window.location.replace('/dashboard');
+      } catch {
+        startedRef.current = false;
+        setError(t('guest_error'));
+      }
+    })();
   }, [continueAsGuest, session, t]);
 
   return (

@@ -34,6 +34,16 @@ export function clearAuthenticatedCookies(response: NextResponse) {
   clearCookie(response, LEGACY_MFA_COOKIE);
 }
 
+export function setGuestCookie(response: NextResponse, maxAge = 60 * 60 * 24 * 30) {
+  response.cookies.set('sfm_guest', 'true', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge,
+  });
+}
+
 export function setEmailMfaChallengeCookie(response: NextResponse, value: string, maxAge = 10 * 60) {
   response.cookies.set(EMAIL_MFA_CHALLENGE_COOKIE, value, authCookieOptions(maxAge));
 }

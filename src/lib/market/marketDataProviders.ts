@@ -6,6 +6,7 @@ import { isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
+import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
 
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'yahoo';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
@@ -93,7 +94,25 @@ export type NormalizedExchangeMetadata = {
   raw?: Record<string, unknown>;
 };
 
-export type ProviderHealthStatus = 'healthy' | 'not_configured' | 'error';
+export type ProviderHealthStatus =
+  | 'healthy'
+  | 'not_configured'
+  | 'unauthorized'
+  | 'forbidden'
+  | 'not_found'
+  | 'rate_limited'
+  | 'tls_error'
+  | 'dns_error'
+  | 'timeout'
+  | 'network_error'
+  | 'provider_unavailable'
+  | 'maintenance'
+  | 'no_data'
+  | 'invalid_symbol'
+  | 'unsupported_asset'
+  | 'server_error'
+  | 'invalid_response'
+  | 'error';
 
 export type ProviderHealthResult = {
   provider: MarketDataProviderName;
@@ -112,6 +131,8 @@ export type ProviderAttemptFailure = {
   code: string;
   status?: number;
   message: string;
+  category: string;
+  retryable: boolean;
 };
 
 export type ProviderFallbackResult<T> =
@@ -142,6 +163,10 @@ const CANDLES_CACHE_MS = 5 * 60 * 1000;
 
 const providerErrors = new Map<MarketDataProviderName, string>();
 const memoryCache = new Map<string, { data: unknown; createdAt: number; expiresAt: number }>();
+const fallbackCache = new Map<string, { data: unknown; provider: MarketDataProviderName; storedAt: number }>();
+const FALLBACK_QUOTE_TTL_MS = 6 * 60 * 60 * 1000;
+const FALLBACK_CANDLES_TTL_MS = 24 * 60 * 60 * 1000;
+const FALLBACK_PROFILE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function apiKey(name: 'TWELVE_DATA_API_KEY' | 'FINNHUB_API_KEY' | 'EODHD_API_KEY' | 'MARKETSTACK_API_KEY') {
   return cleanEnv(process.env[name]);
@@ -356,13 +381,15 @@ function logProviderSuccess(provider: MarketDataProviderName, operation: string,
 
 function logProviderFailure(provider: MarketDataProviderName, operation: string, symbol: string, error: ProviderAttemptFailure) {
   providerErrors.set(provider, error.code);
-  console.warn('[market-data-provider] failed', {
+  logReliabilityEvent('warn', 'market_data_provider_failed', {
     provider,
     operation,
     symbol,
     providerSymbol: error.providerSymbol,
-    code: error.code,
-    status: error.status,
+    failureCode: error.code,
+    category: error.category,
+    httpStatus: error.status,
+    retryable: error.retryable,
   });
 }
 
@@ -386,7 +413,66 @@ async function fetchJson(url: string, options?: { cacheKey?: string; ttlMs?: num
 }
 
 function providerError(provider: MarketDataProviderName, code: string, message: string, providerSymbol?: string, status?: number): ProviderAttemptFailure {
-  return { provider, providerSymbol, code, status, message };
+  const classified = classifyRuntimeFailure(
+    status === undefined ? new Error(message || code) : { status, message },
+    {
+      httpStatus: status,
+      noData: /returned_empty|no_data|empty_result/i.test(code),
+      notConfigured: code === 'not_configured',
+      invalidSymbol: /invalid_symbol/i.test(code),
+      unsupportedAsset: /unsupported/i.test(code),
+    },
+  );
+  return {
+    provider,
+    providerSymbol,
+    code: classified.code,
+    status,
+    message: classified.messageKey,
+    category: classified.category,
+    retryable: classified.retryable,
+  };
+}
+
+function fallbackKey(operation: string, symbol: string, market?: string | null, context?: MarketDataProviderContext) {
+  return [operation, upper(symbol), upper(market), upper(context?.assetType), upper(context?.exchange)].join(':');
+}
+
+function setFallback<T>(key: string, data: T, provider: MarketDataProviderName) {
+  fallbackCache.set(key, { data, provider, storedAt: Date.now() });
+}
+
+function getFallback<T>(key: string, maxAgeMs: number) {
+  const cached = fallbackCache.get(key);
+  if (!cached) return null;
+  if (Date.now() - cached.storedAt > maxAgeMs) {
+    fallbackCache.delete(key);
+    return null;
+  }
+  return cached as { data: T; provider: MarketDataProviderName; storedAt: number };
+}
+
+function healthStatusForFailure(code: string): ProviderHealthStatus {
+  const statuses: Partial<Record<string, ProviderHealthStatus>> = {
+    UNAUTHORIZED: 'unauthorized',
+    AUTHENTICATION_EXPIRED: 'unauthorized',
+    FORBIDDEN: 'forbidden',
+    NOT_FOUND: 'not_found',
+    RATE_LIMITED: 'rate_limited',
+    TLS_FAILURE: 'tls_error',
+    DNS_FAILURE: 'dns_error',
+    TIMEOUT: 'timeout',
+    NETWORK_FAILURE: 'network_error',
+    PROVIDER_UNAVAILABLE: 'provider_unavailable',
+    PROVIDER_MAINTENANCE: 'maintenance',
+    NO_MARKET_DATA: 'no_data',
+    INVALID_SYMBOL: 'invalid_symbol',
+    UNSUPPORTED_ASSET: 'unsupported_asset',
+    SERVER_ERROR: 'server_error',
+    INVALID_RESPONSE: 'invalid_response',
+    NOT_CONFIGURED: 'not_configured',
+  };
+  return statuses[code] ?? 'error';
 }
 
 function twelveExchangeCandidates(symbol: string, market?: string | null, context?: MarketDataProviderContext) {
@@ -522,16 +608,31 @@ abstract class BaseProvider implements MarketDataProvider {
         provider: this.name,
         displayName: this.displayName,
         configured: true,
-        status: quote ? 'healthy' : 'error',
+        status: quote ? 'healthy' : healthStatusForFailure(providerErrors.get(this.name) ?? 'NO_MARKET_DATA'),
         latencyMs: Date.now() - started,
         remainingQuota: null,
-        latestError: quote ? null : providerErrors.get(this.name) ?? 'provider_returned_empty',
+        latestError: quote ? null : providerErrors.get(this.name) ?? 'NO_MARKET_DATA',
         lastCheckedAt: checkedAt,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'provider_error';
-      providerErrors.set(this.name, message);
-      return { provider: this.name, displayName: this.displayName, configured: true, status: 'error', latencyMs: Date.now() - started, remainingQuota: null, latestError: message, lastCheckedAt: checkedAt };
+      const classified = classifyRuntimeFailure(error);
+      providerErrors.set(this.name, classified.code);
+      logReliabilityEvent('warn', 'market_data_provider_health_failed', {
+        provider: this.name,
+        failureCode: classified.code,
+        category: classified.category,
+        retryable: classified.retryable,
+      });
+      return {
+        provider: this.name,
+        displayName: this.displayName,
+        configured: true,
+        status: healthStatusForFailure(classified.code),
+        latencyMs: Date.now() - started,
+        remainingQuota: null,
+        latestError: classified.code,
+        lastCheckedAt: checkedAt,
+      };
     }
   }
 }
@@ -1071,6 +1172,7 @@ function providerExcluded(provider: MarketDataProvider, context: MarketDataProvi
 
 export async function getQuoteWithFallback(symbol: string, market?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedMarketQuote>> {
   const attempts: ProviderAttemptFailure[] = [];
+  const key = fallbackKey('quote', symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
     if (!provider.configured()) {
@@ -1079,7 +1181,10 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
     }
     try {
       const quote = await provider.getQuote(symbol, market, context);
-      if (quote) return { ok: true, data: quote, provider: provider.name, attempts };
+      if (quote) {
+        setFallback(key, quote, provider.name);
+        return { ok: true, data: quote, provider: provider.name, attempts };
+      }
       const failure = providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty');
       attempts.push(failure);
       logProviderFailure(provider.name, 'quote', symbol, failure);
@@ -1089,11 +1194,17 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
       logProviderFailure(provider.name, 'quote', symbol, failure);
     }
   }
+  const cached = getFallback<NormalizedMarketQuote>(key, FALLBACK_QUOTE_TTL_MS);
+  if (cached) {
+    logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'quote', symbol: upper(symbol), provider: cached.provider });
+    return { ok: true, data: { ...cached.data, cached: true, delayType: 'cached' }, provider: cached.provider, attempts };
+  }
   return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
 }
 
 export async function getCandlesWithFallback(symbol: string, market?: string | null, interval?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedMarketCandle[]>> {
   const attempts: ProviderAttemptFailure[] = [];
+  const key = fallbackKey(`candles:${interval ?? ''}`, symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
     if (!provider.configured()) {
@@ -1102,17 +1213,26 @@ export async function getCandlesWithFallback(symbol: string, market?: string | n
     }
     try {
       const candles = await provider.getCandles(symbol, market, interval, context);
-      if (candles.length > 0) return { ok: true, data: candles, provider: provider.name, attempts };
+      if (candles.length > 0) {
+        setFallback(key, candles, provider.name);
+        return { ok: true, data: candles, provider: provider.name, attempts };
+      }
       attempts.push(providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty'));
     } catch (error) {
       attempts.push(providerError(provider.name, 'provider_error', error instanceof Error ? error.message : 'provider_error'));
     }
+  }
+  const cached = getFallback<NormalizedMarketCandle[]>(key, FALLBACK_CANDLES_TTL_MS);
+  if (cached) {
+    logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'historical_prices', symbol: upper(symbol), provider: cached.provider });
+    return { ok: true, data: cached.data, provider: cached.provider, attempts };
   }
   return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
 }
 
 export async function getCompanyProfileWithFallback(symbol: string, market?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedCompanyProfile>> {
   const attempts: ProviderAttemptFailure[] = [];
+  const key = fallbackKey('profile', symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
     if (!provider.configured()) {
@@ -1121,11 +1241,19 @@ export async function getCompanyProfileWithFallback(symbol: string, market?: str
     }
     try {
       const profile = await provider.getCompanyProfile(symbol, market, context);
-      if (profile) return { ok: true, data: profile, provider: provider.name, attempts };
+      if (profile) {
+        setFallback(key, profile, provider.name);
+        return { ok: true, data: profile, provider: provider.name, attempts };
+      }
       attempts.push(providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty'));
     } catch (error) {
       attempts.push(providerError(provider.name, 'provider_error', error instanceof Error ? error.message : 'provider_error'));
     }
+  }
+  const cached = getFallback<NormalizedCompanyProfile>(key, FALLBACK_PROFILE_TTL_MS);
+  if (cached) {
+    logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'profile', symbol: upper(symbol), provider: cached.provider });
+    return { ok: true, data: cached.data, provider: cached.provider, attempts };
   }
   return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
 }

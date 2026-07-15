@@ -264,7 +264,7 @@ export default function InvestPage() {
     omitDefault: true,
   });
   const [portfolioLiveTrend, setPortfolioLiveTrend] = useState<PortfolioLiveTrend | null>(null);
-  const [liveRefreshState, setLiveRefreshState] = useState<'idle' | 'refreshing' | 'error'>('idle');
+  const [liveRefreshState, setLiveRefreshState] = useState<'idle' | 'refreshing' | 'error' | 'guest_restricted' | 'offline'>('idle');
   const [lastLiveRefreshAt, setLastLiveRefreshAt] = useState<string | null>(null);
   const insightsRef = useRef<HTMLDivElement | null>(null);
   const autoRefreshedRef = useRef(false);
@@ -329,6 +329,7 @@ export default function InvestPage() {
     priceStatus: L('حالة السعر', 'Price status', 'Statut du prix'),
     priceUpdated: L('السعر محدث', 'Price updated', 'Prix actualisé'),
     priceUpdateFailed: L('تعذر تحديث السعر حالياً', 'Could not update the price right now', 'Impossible d’actualiser le prix pour le moment'),
+    guestPriceRefreshRestricted: L('التحديث التلقائي متوقف في وضع الضيف', 'Automatic refresh is paused in guest mode', 'L’actualisation automatique est suspendue en mode invité'),
     currentPriceUnavailable: L('السعر الحالي غير متاح', 'Current price unavailable', 'Prix actuel indisponible'),
     purchasePriceMissing: L('سعر الشراء غير مكتمل', 'Purchase price is incomplete', 'Prix d’achat incomplet'),
     approxUserCurrency: L('تعادل تقريباً', 'Approx. in your currency', 'Équivaut environ'),
@@ -821,11 +822,31 @@ export default function InvestPage() {
   async function handleRefreshPrice(item: Investment, options?: { silent?: boolean }) {
     const providerSymbol = investmentLinkedSymbol(item);
     if (!providerSymbol) return false;
+    const metalKind = investmentMetalKind(item);
+
+    if (isGuest && !metalKind) {
+      const restrictedAt = new Date().toISOString();
+      setPriceRefreshStatuses(prev => ({
+        ...prev,
+        [item.id]: { state: 'guest_restricted', message: 'GUEST_RESTRICTION', at: restrictedAt },
+      }));
+      if (!options?.silent) showToast(labels.guestPriceRefreshRestricted);
+      return false;
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const offlineAt = new Date().toISOString();
+      setPriceRefreshStatuses(prev => ({
+        ...prev,
+        [item.id]: { state: 'offline', message: 'OFFLINE', at: offlineAt },
+      }));
+      if (!options?.silent) showToast(L('أنت غير متصل بالإنترنت', 'You are offline', 'Vous êtes hors ligne'));
+      return false;
+    }
 
     if (!options?.silent) setRefreshingPriceId(item.id);
     try {
       const requestedCurrency = (item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
-      const metalKind = investmentMetalKind(item);
       let responseOk = false;
       let payload: InvestmentPricePayload;
 
@@ -996,10 +1017,19 @@ export default function InvestPage() {
   useEffect(() => {
     if (isLoading) return;
 
+    if (isGuest) {
+      setLiveRefreshState('guest_restricted');
+      return;
+    }
+
     let cancelled = false;
     const runLiveRefresh = async () => {
       if (cancelled || liveRefreshInFlightRef.current) return;
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setLiveRefreshState('offline');
+        return;
+      }
 
       const refreshable = liveItemsRef.current.filter(item => investmentLinkedSymbol(item));
       if (refreshable.length === 0) {
@@ -1028,11 +1058,11 @@ export default function InvestPage() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [isLoading]);
+  }, [isGuest, isLoading]);
 
   // Auto-refresh market prices on first load for investments missing current price
   useEffect(() => {
-    if (isLoading || autoRefreshedRef.current) return;
+    if (isLoading || isGuest || autoRefreshedRef.current) return;
     const stale = items.filter(
       item => investmentLinkedSymbol(item) && !item.lastPrice && !item.currentPrice
     );
@@ -1040,7 +1070,7 @@ export default function InvestPage() {
     autoRefreshedRef.current = true;
     void handleRefreshPrices(stale, { silent: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, items]);
+  }, [isGuest, isLoading, items]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -1074,6 +1104,10 @@ export default function InvestPage() {
     : L('لم يبدأ بعد', 'Not started yet', 'Pas encore demarre');
   const liveRefreshCopy = liveRefreshState === 'refreshing'
     ? L('تحديث الأسعار الآن', 'Refreshing prices now', 'Actualisation des prix')
+    : liveRefreshState === 'guest_restricted'
+      ? labels.guestPriceRefreshRestricted
+      : liveRefreshState === 'offline'
+        ? L('التحديث متوقف حتى عودة الاتصال', 'Refresh paused until you are back online', 'Actualisation suspendue jusqu’au retour de la connexion')
     : liveRefreshState === 'error'
       ? L('تعذر آخر تحديث مباشر', 'Last live refresh failed', 'Derniere actualisation echouee')
       : L(`تحديث حي كل ${LIVE_PRICE_REFRESH_MS / 1000} ثواني`, `Live refresh every ${LIVE_PRICE_REFRESH_MS / 1000}s`, `Actualisation toutes les ${LIVE_PRICE_REFRESH_MS / 1000}s`);

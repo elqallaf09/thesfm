@@ -50,7 +50,7 @@ async function enterPremiumPortfolio(page: Page, width: number, options: Portfol
   }));
   await page.goto('/invest', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main.invest-main')).toBeVisible();
-  await expect(page.locator('html')).toHaveAttribute('data-sfm-lang', /^(ar|en|fr)$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', /^(ar|en|fr)$/);
   await page.evaluate(settledLang => {
     localStorage.setItem('sfm_lang', settledLang);
     window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: settledLang } }));
@@ -124,6 +124,93 @@ test('compact card preserves identity, financial hierarchy, accessible actions, 
     const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
     expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(4);
   }
+});
+
+test('guest automatic refresh never calls the protected investment price endpoint', async ({ page }) => {
+  let protectedRefreshRequests = 0;
+  await page.route('**/api/market/refresh-investment-price', route => {
+    protectedRefreshRequests += 1;
+    return route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: false, code: 'UNAUTHORIZED' }),
+    });
+  });
+
+  await enterPremiumPortfolio(page, 390, { lang: 'en', theme: 'dark' });
+  await expect(page.getByText('Automatic refresh is paused in guest mode')).toBeVisible();
+  await page.waitForTimeout(1_000);
+  expect(protectedRefreshRequests).toBe(0);
+
+  const card = page.locator('.invest-holding-card').first();
+  await card.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Refresh price' }).click();
+  await expect(page.getByText('Automatic refresh is paused in guest mode').last()).toBeVisible();
+  expect(protectedRefreshRequests).toBe(0);
+});
+
+test('offline manual metal refresh recovers without issuing an upstream request', async ({ page }) => {
+  const goldInvestment: Investment = {
+    ...sampleInvestments[0],
+    id: 'offline-gold',
+    name: 'Physical Gold',
+    type: 'gold',
+    assetType: 'gold',
+    metalType: 'gold',
+    symbol: 'XAUUSD',
+    providerSymbol: 'XAUUSD',
+    market: 'Metals',
+  };
+  let metalsRequests = 0;
+  await page.route('**/api/market/metals?**', route => {
+    metalsRequests += 1;
+    return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ success: false }) });
+  });
+
+  await enterPremiumPortfolio(page, 390, { investments: [goldInvestment], lang: 'en' });
+  const card = page.locator('.invest-holding-card').first();
+  await card.getByRole('button', { name: 'More actions' }).click();
+  const refreshAction = page.getByRole('menuitem', { name: 'Refresh price' });
+  await expect(refreshAction).toBeVisible();
+  await page.context().setOffline(true);
+  await refreshAction.click();
+  await expect(page.getByText('You are offline').last()).toBeVisible();
+  expect(metalsRequests).toBe(0);
+  await page.context().setOffline(false);
+});
+
+test('provider-unavailable metal refresh reports a safe failure and preserves the prior price', async ({ page }) => {
+  const goldInvestment: Investment = {
+    ...sampleInvestments[0],
+    id: 'unavailable-gold',
+    name: 'Physical Gold',
+    type: 'gold',
+    assetType: 'gold',
+    metalType: 'gold',
+    symbol: 'XAUUSD',
+    providerSymbol: 'XAUUSD',
+    market: 'Metals',
+    currentPrice: 24.5,
+  };
+  await page.route('**/api/market/metals?**', route => route.fulfill({
+    status: 503,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      success: false,
+      code: 'PROVIDER_UNAVAILABLE',
+      retryable: true,
+      error: 'Metals market data is temporarily unavailable.',
+    }),
+  }));
+
+  await enterPremiumPortfolio(page, 390, { investments: [goldInvestment], lang: 'en' });
+  const card = page.locator('.invest-holding-card').first();
+  const valueBefore = await card.locator('.invest-holding-metric').first().locator('strong').textContent();
+  await card.getByRole('button', { name: 'More actions' }).click();
+  await page.getByRole('menuitem', { name: 'Refresh price' }).click();
+  await expect(page.getByText('Could not update the price right now').last()).toBeVisible();
+  await expect(card.locator('.invest-holding-metric').first().locator('strong')).toHaveText(valueBefore || '');
+  await expect(page.getByText(/PROVIDER_UNAVAILABLE|503/)).toHaveCount(0);
 });
 
 test('overflow edit and delete retain their existing dialogs and destructive confirmation', async ({ page }) => {

@@ -123,12 +123,12 @@ export function AuthForm() {
 
   const usernameToEmail = (u: string) => `${u.trim().toLowerCase()}@smart-finance.local`;
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     if (guestLoading) return;
     setGuestLoading(true);
     setError('');
     try {
-      continueAsGuest();
+      await continueAsGuest();
       window.location.href = '/dashboard';
     } catch (err) {
       setGuestLoading(false);

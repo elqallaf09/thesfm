@@ -819,12 +819,12 @@ function LoginContent() {
     setSocialLoading(null);
   }
 
-  function enterGuestMode() {
+  async function enterGuestMode() {
     if (guestSubmitting) return;
     setGuestSubmitting(true);
     setMessage(null);
     try {
-      continueAsGuest();
+      await continueAsGuest();
       redirectingRef.current = true;
       window.location.href = '/dashboard';
     } catch (error) {

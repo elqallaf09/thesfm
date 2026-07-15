@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EMAIL_MFA_PROOF_COOKIE } from '@/lib/auth/sessionSecurity';
-import { clearAuthenticatedCookies, setAuthenticatedCookies } from '@/lib/server/authCookies';
+import { clearAuthenticatedCookies, setAuthenticatedCookies, setGuestCookie } from '@/lib/server/authCookies';
 import { bearerToken, inspectSessionSecurity } from '@/lib/server/authSession';
 
 export const runtime = 'nodejs';
@@ -28,8 +28,9 @@ export async function POST(request: NextRequest) {
   return response;
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const response = json({ ok: true });
   clearAuthenticatedCookies(response);
+  if (request.headers.get('x-sfm-guest-session') === 'activate') setGuestCookie(response);
   return response;
 }

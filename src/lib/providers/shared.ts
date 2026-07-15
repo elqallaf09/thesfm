@@ -5,6 +5,17 @@ export type ProviderApiStatus =
   | 'unauthorized'
   | 'forbidden'
   | 'rate_limited'
+  | 'not_found'
+  | 'no_data'
+  | 'invalid_symbol'
+  | 'unsupported_asset'
+  | 'maintenance'
+  | 'timeout'
+  | 'tls_error'
+  | 'dns_error'
+  | 'network_error'
+  | 'server_error'
+  | 'invalid_response'
   | 'provider_error'
   | 'invalid_request';
 
@@ -96,6 +107,9 @@ export function mapHttpProviderStatus(status: number): ProviderApiStatus {
   if (status === 401) return 'unauthorized';
   if (status === 403) return 'forbidden';
   if (status === 429) return 'rate_limited';
+  if (status === 404) return 'not_found';
+  if (status === 503) return 'maintenance';
+  if (status >= 500) return 'server_error';
   if (status >= 400 && status < 500) return 'provider_error';
   return 'provider_error';
 }
@@ -105,6 +119,17 @@ export function messageCodeForStatus(status: ProviderApiStatus) {
   if (status === 'not_entitled') return 'provider_access_denied';
   if (status === 'unauthorized' || status === 'forbidden') return 'provider_access_denied';
   if (status === 'rate_limited') return 'provider_rate_limited';
+  if (status === 'not_found') return 'provider_not_found';
+  if (status === 'no_data') return 'no_market_data';
+  if (status === 'invalid_symbol') return 'invalid_symbol';
+  if (status === 'unsupported_asset') return 'unsupported_asset';
+  if (status === 'maintenance') return 'provider_maintenance';
+  if (status === 'timeout') return 'provider_timeout';
+  if (status === 'tls_error') return 'provider_tls_failure';
+  if (status === 'dns_error') return 'provider_dns_failure';
+  if (status === 'network_error') return 'provider_network_failure';
+  if (status === 'server_error') return 'server_error';
+  if (status === 'invalid_response') return 'provider_invalid_response';
   if (status === 'invalid_request') return 'provider_invalid_request';
   if (status === 'provider_error') return 'provider_temporarily_unavailable';
   return null;
