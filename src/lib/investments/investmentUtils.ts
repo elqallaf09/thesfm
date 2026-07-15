@@ -4,6 +4,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
+import type { InvestmentPlatformStatus, InvestmentPlatformType } from '@/types/investmentPlatform';
 import { firstMoneyValue, parseMoneyValue } from '@/lib/money';
 import { normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 
@@ -74,6 +75,9 @@ export type DbInvestmentRow = {
   last_price_updated_at?: string | null;
   price_updated_at?: string | null;
   data_source?: string | null;
+  purchase_platform_id?: string | null;
+  purchase_platform_name?: string | null;
+  purchase_platform_type?: InvestmentPlatformType | string | null;
   notes?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -131,6 +135,10 @@ export function safeInvestmentSummary(item: Partial<InvestmentInput & Investment
     symbol: item.symbol,
     providerSymbol: item.providerSymbol,
     market: item.market,
+    purchasePlatformId: item.purchasePlatformId,
+    purchasePlatformName: item.purchasePlatformName,
+    purchasePlatformType: item.purchasePlatformType,
+    purchasePlatformStatus: item.purchasePlatformStatus,
     currency: item.currency ?? item.nativeCurrency ?? item.priceCurrency,
     quantity: item.quantity,
     purchasePrice: item.purchasePrice,
@@ -276,6 +284,9 @@ const CORE_SAVE_KEYS = new Set([
   'last_price',
   'last_price_updated_at',
   'data_source',
+  'purchase_platform_id',
+  'purchase_platform_name',
+  'purchase_platform_type',
 ]);
 
 export const PRICE_REFRESH_UPDATE_KEYS = new Set([
@@ -556,6 +567,10 @@ export function mergeInvestmentForUpdate(previous: Investment, data: InvestmentI
     grams: preserve(data.grams, previous.grams),
     pureMetalGrams: preserve(data.pureMetalGrams, previous.pureMetalGrams),
     priceSource: preserve(data.priceSource, previous.priceSource),
+    purchasePlatformId: preserve(data.purchasePlatformId, previous.purchasePlatformId),
+    purchasePlatformName: preserve(data.purchasePlatformName, previous.purchasePlatformName),
+    purchasePlatformType: preserve(data.purchasePlatformType, previous.purchasePlatformType),
+    purchasePlatformStatus: preserve(data.purchasePlatformStatus, previous.purchasePlatformStatus),
   };
 }
 
@@ -726,6 +741,9 @@ export function compactUpdatePayload<T extends Record<string, unknown>>(payload:
     'valuation_last_updated_at',
     'data_source',
     'investment_snapshot',
+    'purchase_platform_id',
+    'purchase_platform_name',
+    'purchase_platform_type',
   ]);
 
   return cleanInvestmentUpdatePayload(payload, { dropZeroKeys: protectedEmptyKeys });
@@ -805,6 +823,9 @@ export function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     grams: moneyNumber(data.grams) ?? null,
     pure_metal_grams: moneyNumber(data.pureMetalGrams) ?? null,
     price_source: data.priceSource ?? data.dataSource ?? null,
+    purchase_platform_id: data.purchasePlatformId ?? null,
+    purchase_platform_name: data.purchasePlatformName ?? null,
+    purchase_platform_type: data.purchasePlatformType ?? null,
     notes: data.notes ?? null,
     investment_snapshot: investmentSnapshotFromInput(data),
   };
@@ -870,6 +891,8 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
   const metalPurity = parseMoneyValue(row.metal_purity ?? meta?.metalPurity);
   const grams = parseMoneyValue(row.grams ?? meta?.grams);
   const pureMetalGrams = parseMoneyValue(row.pure_metal_grams ?? meta?.pureMetalGrams);
+  const purchasePlatformType = (row.purchase_platform_type ?? meta?.purchasePlatformType) as InvestmentPlatformType | undefined;
+  const purchasePlatformStatus = meta?.purchasePlatformStatus as InvestmentPlatformStatus | 'local' | undefined;
   const resolvedDisplayValue = displayAmount.status === 'valid' ? displayAmount.value : purchaseTotalValue ?? null;
   const resolvedDisplayStatus = resolvedDisplayValue !== null ? 'valid' : displayAmount.status;
   return {
@@ -937,6 +960,10 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
     grams: grams.status === 'valid' ? grams.value : meta?.grams,
     pureMetalGrams: pureMetalGrams.status === 'valid' ? pureMetalGrams.value : meta?.pureMetalGrams,
     priceSource: row.price_source ?? meta?.priceSource ?? row.data_source ?? meta?.dataSource,
+    purchasePlatformId: row.purchase_platform_id ?? meta?.purchasePlatformId,
+    purchasePlatformName: row.purchase_platform_name ?? meta?.purchasePlatformName,
+    purchasePlatformType,
+    purchasePlatformStatus,
     createdAt,
     updatedAt: row.updated_at || createdAt,
   };
@@ -1002,6 +1029,10 @@ export function metaFromInvestment(item: Investment | InvestmentInput): Investme
     grams: item.grams,
     pureMetalGrams: item.pureMetalGrams,
     priceSource: item.priceSource,
+    purchasePlatformId: item.purchasePlatformId,
+    purchasePlatformName: item.purchasePlatformName,
+    purchasePlatformType: item.purchasePlatformType,
+    purchasePlatformStatus: item.purchasePlatformStatus,
   };
 }
 

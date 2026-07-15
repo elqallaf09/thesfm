@@ -250,6 +250,7 @@ describe('workspace navigation ownership', () => {
     });
     expect(companyReviewerGroups.find(group => group.id === 'admin')?.items.map(item => item.id)).toEqual([
       'admin-companies',
+      'admin-investment-platforms',
     ]);
 
     const superAdminGroups = filterNavigationGroups(NAV_GROUPS, {

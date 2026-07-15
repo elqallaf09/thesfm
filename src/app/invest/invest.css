@@ -689,7 +689,7 @@
 
 .invest-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(10rem, 13.75rem) minmax(10rem, 13.75rem);
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-4);
@@ -780,6 +780,7 @@
 }
 
 .invest-badge-soft,
+.invest-platform-badge,
 .invest-risk-badge,
 .invest-weight-badge,
 .invest-detail-chip {
@@ -796,6 +797,12 @@
   font-size: var(--type-caption-size);
   font-weight: 500;
   line-height: 1;
+}
+
+.invest-platform-badge {
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary-hover);
 }
 
 .invest-row-actions button {
@@ -1100,6 +1107,314 @@
   width: 1.75rem;
   height: 1.75rem;
   border-radius: var(--radius-sm);
+}
+
+.invest-platform-directory {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-top: var(--space-1);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-muted);
+}
+
+.invest-platform-heading,
+.invest-platform-summary,
+.invest-platform-custom-head,
+.invest-platform-custom-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.invest-platform-heading {
+  align-items: flex-start;
+}
+
+.invest-platform-icon,
+.invest-platform-result-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  border-radius: var(--radius-control);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+}
+
+.invest-platform-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.invest-platform-result-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.invest-platform-heading div,
+.invest-platform-summary > span:nth-child(2) {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.invest-platform-heading h3,
+.invest-platform-heading p,
+.invest-platform-empty,
+.invest-platform-error,
+.invest-platform-results p {
+  margin: 0;
+}
+
+.invest-platform-heading h3 {
+  color: var(--foreground);
+  font-size: var(--type-body-size);
+  font-weight: 600;
+}
+
+.invest-platform-heading p,
+.invest-platform-empty,
+.invest-platform-results p {
+  color: var(--foreground-muted);
+  font-size: var(--type-caption-size);
+  line-height: var(--type-caption-leading);
+}
+
+.invest-platform-controls,
+.invest-platform-custom {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.7fr) minmax(0, 1.3fr);
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.invest-platform-controls label,
+.invest-platform-custom label,
+.invest-platform-search-label {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  color: var(--foreground-secondary);
+  font-size: var(--type-body-small-size);
+  font-weight: 500;
+}
+
+.invest-platform-search-label > label {
+  color: inherit;
+  font: inherit;
+}
+
+.invest-platform-controls select,
+.invest-platform-custom input,
+.invest-platform-custom select,
+.invest-platform-combobox {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-h-lg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--control-background);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.invest-platform-controls select,
+.invest-platform-custom input,
+.invest-platform-custom select {
+  padding-inline: var(--space-3);
+}
+
+.invest-platform-combobox {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.invest-platform-combobox > svg {
+  margin-inline-start: var(--space-3);
+  color: var(--foreground-muted);
+}
+
+.invest-platform-combobox > input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding-inline: var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  outline: 0;
+}
+
+.invest-platform-combobox > button,
+.invest-platform-summary > button,
+.invest-platform-custom-head button {
+  width: var(--control-h-lg);
+  min-width: var(--control-h-lg);
+  min-height: var(--control-h-lg);
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--foreground-secondary);
+  cursor: pointer;
+}
+
+.invest-platform-controls select:focus-visible,
+.invest-platform-custom input:focus-visible,
+.invest-platform-custom select:focus-visible,
+.invest-platform-combobox:focus-within,
+.invest-platform-combobox > button:focus-visible,
+.invest-platform-summary > button:focus-visible,
+.invest-platform-custom-head button:focus-visible,
+.invest-platform-results button:focus-visible,
+.invest-platform-add-link:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: var(--focus-shadow);
+}
+
+.invest-platform-results {
+  position: absolute;
+  z-index: 8;
+  inset-inline: 0;
+  top: calc(100% + var(--space-2));
+  max-height: min(18rem, 40vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-popover);
+}
+
+.invest-platform-results > button {
+  width: 100%;
+  min-height: var(--control-h-lg);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--foreground);
+  text-align: start;
+  cursor: pointer;
+}
+
+.invest-platform-results > button:hover,
+.invest-platform-results > button.active,
+.invest-platform-results > button[aria-selected="true"] {
+  border-color: var(--border);
+  background: var(--surface-hover);
+}
+
+.invest-platform-results > button > span:nth-child(2) {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.invest-platform-results strong,
+.invest-platform-results small {
+  overflow-wrap: anywhere;
+}
+
+.invest-platform-results small {
+  color: var(--foreground-muted);
+}
+
+.invest-platform-add-result {
+  color: var(--primary-hover) !important;
+}
+
+.invest-platform-summary {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+  border-radius: var(--radius-control);
+  background: var(--surface);
+}
+
+.invest-platform-summary > span:nth-child(2) {
+  flex: 1;
+}
+
+.invest-platform-summary small,
+.invest-platform-summary em {
+  color: var(--foreground-muted);
+  font-size: var(--type-caption-size);
+  font-style: normal;
+}
+
+.invest-platform-summary strong {
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+}
+
+.invest-platform-pending,
+.invest-platform-local {
+  padding: var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+}
+
+.invest-platform-pending {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.invest-platform-local {
+  background: var(--surface-muted);
+  color: var(--foreground-secondary);
+}
+
+.invest-platform-add-link {
+  min-height: var(--control-h-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  justify-self: start;
+  padding-inline: var(--space-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--primary-hover);
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+.invest-platform-custom {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.invest-platform-custom-head,
+.invest-platform-custom-actions {
+  grid-column: 1 / -1;
+  justify-content: space-between;
+}
+
+.invest-platform-custom-actions {
+  justify-content: flex-end;
+}
+
+.invest-platform-error {
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--type-body-small-size);
 }
 
 .invest-type-grid {
@@ -1648,9 +1963,26 @@
   .invest-form,
   .invest-detail-grid,
   .invest-selected-asset,
+  .invest-platform-controls,
+  .invest-platform-custom,
   .invest-type-grid,
   .invest-analysis-grid {
     grid-template-columns: 1fr;
+  }
+
+  .invest-platform-custom-head,
+  .invest-platform-custom-actions,
+  .invest-platform-custom .span-2 {
+    grid-column: auto;
+  }
+
+  .invest-platform-summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .invest-platform-summary > span:nth-child(2) {
+    flex-basis: calc(100% - 3rem);
   }
 
   .invest-list-toolbar {

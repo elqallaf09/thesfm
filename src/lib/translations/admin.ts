@@ -3,6 +3,7 @@ import type { Lang } from '../translations';
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
 export const TR_ADMIN: Record<string, TranslationEntry> = {
+  nav_admin_investment_platforms: { ar:'دليل منصات الاستثمار', en:'Investment platform directory', fr:'Répertoire des plateformes d’investissement' },
   admin_permissions_title: { ar:'إدارة صلاحيات المسؤولين', en:'Administrator permissions', fr:'Autorisations des administrateurs' },
   admin_permissions_desc: { ar:'تُمنح صلاحيات المسؤولين وتُسحب من الخادم فقط، مع سجل تدقيق لكل تغيير.', en:'Administrator access is granted and revoked only by the server, with an audit trail for every change.', fr:'Les accès administrateur sont accordés et révoqués uniquement par le serveur, avec un journal d’audit pour chaque modification.' },
   admin_permissions_load_error: { ar:'تعذر تحميل بيانات صلاحيات المسؤولين.', en:'Unable to load administrator permissions.', fr:'Impossible de charger les autorisations des administrateurs.' },

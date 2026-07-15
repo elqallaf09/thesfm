@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Edit3, Eye, Minus, RefreshCw, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Building2, CheckCircle2, ChevronDown, ChevronUp, Edit3, Eye, Minus, RefreshCw, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Investment } from '@/types/investment';
@@ -18,6 +18,8 @@ interface Props {
   portfolioPercent: number | null;
   labels: {
     details: string;
+    expandDetails?: string;
+    collapseDetails?: string;
     edit: string;
     delete: string;
     monthly: string;
@@ -50,6 +52,11 @@ interface Props {
     unavailable?: string;
     approxUserCurrency?: string;
     currency?: string;
+    purchasePlatform?: string;
+    purchasePlatformBadgeTitle?: string;
+    purchasePlatformPending?: string;
+    purchasePlatformNotSpecified?: string;
+    platformTypeLabels?: Record<string, string>;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -124,6 +131,12 @@ export function InvestmentRow({
             <div className="invest-holding-badges">
               {metrics.linkedSymbol && <span className="invest-badge-soft" dir="ltr">{metrics.linkedSymbol}</span>}
               <span className="invest-badge-soft">{typeLabel(investment.type)}</span>
+              {investment.purchasePlatformName && (
+                <span className="invest-platform-badge" title={labels.purchasePlatformBadgeTitle}>
+                  <Building2 size={13} aria-hidden="true" />
+                  {investment.purchasePlatformName}
+                </span>
+              )}
               <span className={`invest-risk-badge invest-risk-badge--${investment.riskLevel}`}>{riskLabel(investment.riskLevel)}</span>
               {portfolioPercent !== null && (
                 <span className="invest-weight-badge">
@@ -135,9 +148,13 @@ export function InvestmentRow({
         </div>
 
         <div className="invest-row-actions invest-holding-actions">
-          <button type="button" className="invest-expand-btn" onClick={() => setIsExpanded(v => !v)} aria-expanded={isExpanded} aria-label={isExpanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}>
+          <button type="button" className="invest-expand-btn" onClick={() => setIsExpanded(v => !v)} aria-expanded={isExpanded} aria-label={isExpanded ? labels.collapseDetails : labels.expandDetails}>
             {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            <span>{isExpanded ? 'إخفاء' : 'تفاصيل'}</span>
+            <span>{isExpanded ? labels.collapseDetails : labels.expandDetails}</span>
+          </button>
+          <button type="button" onClick={() => onDetails(investment)} aria-label={labels.details} title={labels.details}>
+            <Eye size={15} />
+            <span>{labels.details}</span>
           </button>
           <button type="button" onClick={() => onEdit(investment)} aria-label={labels.edit} title={labels.edit}>
             <Edit3 size={15} />
@@ -229,6 +246,9 @@ export function InvestmentRow({
         <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
         <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
         {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
+        <DetailChip label={labels.purchasePlatform || 'Purchase or custody platform'} value={investment.purchasePlatformName || labels.purchasePlatformNotSpecified || '-'} />
+        {investment.purchasePlatformType && <DetailChip label={labels.purchasePlatform || 'Platform type'} value={labels.platformTypeLabels?.[investment.purchasePlatformType] || investment.purchasePlatformType} />}
+        {investment.purchasePlatformStatus === 'pending' && <DetailChip label={labels.purchasePlatform || 'Platform status'} value={labels.purchasePlatformPending || 'Added platform pending review'} tone="neutral" />}
         <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
         {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && (
           <DetailChip label={labels.metalCount || labels.assetQuantity || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />

@@ -244,7 +244,7 @@ export default function InvestPage() {
   const router = useRouter();
   const { lang, dir, t } = useLanguage();
   const { currency } = useCurrency();
-  const { session } = useAuth();
+  const { session, isGuest } = useAuth();
   const { items, isLoading, error, add, update, updateMarketPrice, remove } = useInvestments();
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
@@ -294,6 +294,8 @@ export default function InvestPage() {
     riskDesc: t('invest_list_riskDesc'),
     newest: t('invest_list_newest'),
     details: t('invest_list_details'),
+    expandDetails: t('invest_list_expand_details'),
+    collapseDetails: t('invest_list_collapse_details'),
     edit: t('invest_list_edit'),
     delete: t('invest_list_delete'),
     monthly: t('invest_form_monthly'),
@@ -333,6 +335,23 @@ export default function InvestPage() {
     startDate: t('invest_form_startDate'),
     notes: t('invest_form_notes'),
     close: t('close'),
+    purchasePlatform: t('invest_platform_detail_label'),
+    purchasePlatformBadgeTitle: t('invest_platform_badge_title'),
+    purchasePlatformPending: t('invest_platform_pending'),
+    purchasePlatformNotSpecified: t('invest_platform_not_specified'),
+    allPlatforms: t('invest_platform_all'),
+    platformTypeLabels: {
+      stock_broker: t('invest_platform_type_stock_broker'),
+      bank_brokerage: t('invest_platform_type_bank_brokerage'),
+      multi_asset_broker: t('invest_platform_type_multi_asset_broker'),
+      crypto_exchange: t('invest_platform_type_crypto_exchange'),
+      fund_platform: t('invest_platform_type_fund_platform'),
+      robo_advisor: t('invest_platform_type_robo_advisor'),
+      precious_metals_dealer: t('invest_platform_type_precious_metals_dealer'),
+      real_estate_platform: t('invest_platform_type_real_estate_platform'),
+      private_investment_provider: t('invest_platform_type_private_investment_provider'),
+      other: t('invest_platform_type_other'),
+    },
   }), [L, t]);
 
   const formLabels = useMemo(() => ({
@@ -466,6 +485,53 @@ export default function InvestPage() {
       commercial: t('invest_form_propertyTypeCommercial'),
       land: t('invest_form_propertyTypeLand'),
       other: t('invest_form_propertyTypeOther'),
+    },
+    platform: {
+      sectionTitle: t('invest_platform_section'),
+      contextual: {
+        stocks: t('invest_platform_context_stocks'),
+        realEstate: t('invest_platform_context_realEstate'),
+        fund: t('invest_platform_context_fund'),
+        gold: t('invest_platform_context_gold'),
+        silver: t('invest_platform_context_silver'),
+        cash: t('invest_platform_context_cash'),
+        crypto: t('invest_platform_context_crypto'),
+        project: t('invest_platform_context_project'),
+        other: t('invest_platform_context_other'),
+      },
+      optional: t('invest_platform_optional'),
+      type: t('invest_platform_type'),
+      allTypes: t('invest_platform_all_types'),
+      search: t('invest_platform_search'),
+      noResults: t('invest_platform_no_results'),
+      loadFailed: t('invest_platform_load_failed'),
+      addNew: t('invest_platform_add_new'),
+      addTitle: t('invest_platform_add_new'),
+      name: t('invest_platform_name'),
+      website: t('invest_platform_website'),
+      websiteOptional: t('invest_platform_website_optional'),
+      add: t('invest_platform_add'),
+      adding: t('invest_platform_adding'),
+      cancel: t('cancel'),
+      clear: t('invest_platform_clear'),
+      selected: t('invest_platform_selected'),
+      pending: t('invest_platform_pending'),
+      localOnly: t('invest_platform_local_only'),
+      notSpecified: t('invest_platform_not_specified'),
+      submissionFailed: t('invest_platform_submission_failed'),
+      validationInvalid: t('invest_platform_validation_invalid'),
+      typeLabels: {
+        stock_broker: t('invest_platform_type_stock_broker'),
+        bank_brokerage: t('invest_platform_type_bank_brokerage'),
+        multi_asset_broker: t('invest_platform_type_multi_asset_broker'),
+        crypto_exchange: t('invest_platform_type_crypto_exchange'),
+        fund_platform: t('invest_platform_type_fund_platform'),
+        robo_advisor: t('invest_platform_type_robo_advisor'),
+        precious_metals_dealer: t('invest_platform_type_precious_metals_dealer'),
+        real_estate_platform: t('invest_platform_type_real_estate_platform'),
+        private_investment_provider: t('invest_platform_type_private_investment_provider'),
+        other: t('invest_platform_type_other'),
+      },
     },
     assetTypes: {
       stock: t('invest_asset_type_stock'),
@@ -1269,6 +1335,8 @@ export default function InvestPage() {
           riskLabel={riskLabel}
           initialValues={selected}
           saving={saving}
+          authToken={session?.access_token}
+          isGuest={isGuest}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
         />
