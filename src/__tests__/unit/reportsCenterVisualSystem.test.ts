@@ -91,12 +91,9 @@ describe('Reports Center visual-system guard', () => {
     expect(reportsCenterStyles).toContain('@media print');
   });
 
-  it('keeps the reports shortcut flat, logical, and theme-safe', () => {
-    expect(reportsShortcutPage).not.toMatch(/#[0-9a-f]{3,8}\b|(?:rgb|hsl)a?\(|(?:linear|radial|conic)-gradient\(/i);
-    expect(reportsShortcutPage).not.toMatch(/\b(?:Tajawal|Cairo|Arial)\b|\.dark\b|var\(--sfm-|var\(--r-/i);
-    expect(reportsShortcutPage).toContain('inset-inline-start:');
-    expect(reportsShortcutPage).toContain('background:var(--surface-elevated)');
-    expect(reportsShortcutPage).toContain('outline:2px solid var(--focus-ring)');
-    expect(reportsShortcutPage).toContain('min-height:44px');
+  it('retires the duplicate reports shortcut UI with a server redirect', () => {
+    expect(reportsShortcutPage).toContain("redirect('/reports-center')");
+    expect(reportsShortcutPage).not.toContain("'use client'");
+    expect(reportsShortcutPage).not.toMatch(/<Link|<button|<style/);
   });
 });

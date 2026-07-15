@@ -37,7 +37,7 @@ must never disappear). No navigation array was duplicated.
 
 ## Route → workspace mapping
 
-- **personal-finance** — `/dashboard`, `/command-center`, `/decisions`,
+- **personal-finance** — `/dashboard`, `/decisions`,
   `/today`, `/tasks`, `/income`, `/expenses`, `/debts`, `/savings`,
   `/goals`, `/reports`, `/reports-center`, `/documents`, `/notifications`,
   `/zakat`, `/khums`, `/charity*`, `/ai`, `/financial-theories`, `/ebooks`,
@@ -55,8 +55,8 @@ must never disappear). No navigation array was duplicated.
   (`/investment-companies` … `/financial-consulting-companies`) and their
   `/services/*` aliases, `/companies/[id]`, `/company-listing/*`, and
   `/profile/companies` (longest-prefix beats `/profile`).
-- **administration** — `/sfm-admin-control/*` only. `/command-center` is a
-  general authenticated page (no admin gate) and stays in Personal Finance.
+- **administration** — `/sfm-admin-control/*` only. The retired general
+  `/command-center` URL is retained only as an authenticated redirect to `/today`.
 
 ## Shell integration
 

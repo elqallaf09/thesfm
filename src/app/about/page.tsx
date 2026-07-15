@@ -62,7 +62,7 @@ const COPY = {
     disclaimerText: 'THE SFM هو أداة للتنظيم، التخطيط، والتحليل. لا يعتبر بديلاً عن مستشار مالي أو قانوني أو ضريبي أو شرعي مختص. يجب مراجعة الجهات المختصة عند اتخاذ قرارات مالية أو قانونية أو شرعية مهمة.',
     ctaTitle: 'ابدأ تنظيم حياتك المالية بذكاء',
     ctaText: 'ابدأ بإضافة دخلك، مصروفاتك، أهدافك، أو مشروعك الأول، ودع THE SFM يساعدك على رؤية الصورة الكاملة.',
-    commandCenter: 'استكشف مركز القيادة',
+    todayCenter: 'افتح مركز اليوم',
     openMenu: 'فتح القائمة',
     closeMenu: 'إغلاق القائمة',
     footerProduct: 'المنتج',
@@ -137,7 +137,7 @@ const COPY = {
     disclaimerText: 'THE SFM is a tool for organization, planning, and analysis. It is not a replacement for a qualified financial, legal, tax, or religious advisor. Users should consult qualified professionals before making important financial, legal, tax, or religious decisions.',
     ctaTitle: 'Start organizing your financial life intelligently',
     ctaText: 'Start by adding your income, expenses, goals, or first project, and let THE SFM help you see the full picture.',
-    commandCenter: 'Explore Command Center',
+    todayCenter: 'Open Today Center',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
     footerProduct: 'Product',
@@ -212,7 +212,7 @@ const COPY = {
     disclaimerText: 'THE SFM est un outil d’organisation, de planification et d’analyse. Il ne remplace pas un conseiller financier, juridique, fiscal ou religieux qualifié. Les utilisateurs doivent consulter des professionnels qualifiés avant de prendre des décisions importantes.',
     ctaTitle: 'Commencez à organiser votre vie financière intelligemment',
     ctaText: 'Ajoutez vos revenus, vos dépenses, vos objectifs ou votre premier projet, et laissez THE SFM vous aider à voir l’ensemble.',
-    commandCenter: 'Explorer le centre de commande',
+    todayCenter: 'Ouvrir le Centre du jour',
     openMenu: 'Ouvrir le menu',
     closeMenu: 'Fermer le menu',
     footerProduct: 'Produit',
@@ -407,7 +407,7 @@ export default function AboutPage() {
         <p>{text.ctaText}</p>
         <div className="cta-actions">
           <Link href={appHref}>{primaryLabel}</Link>
-          <Link href="/command-center">{text.commandCenter}<ArrowRight size={16} /></Link>
+          <Link href="/today">{text.todayCenter}<ArrowRight size={16} /></Link>
         </div>
       </section>
 

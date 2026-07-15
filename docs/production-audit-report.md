@@ -198,7 +198,7 @@ Launch checks required:
 | /charity | src/app/charity/page.tsx | shared/sidebar-aware | yes | no |
 | /charity-projects | src/app/charity-projects/page.tsx | shared/sidebar-aware | yes | no |
 | /charity-projects/report | src/app/charity-projects/report/page.tsx | review | yes | no |
-| /command-center | src/app/command-center/page.tsx | shared/sidebar-aware | yes | no |
+| /command-center | src/app/command-center/page.tsx | server redirect to /today | yes | no |
 | /companies/[id] | src/app/companies/[id]/page.tsx | review | review | no |
 | /company-listing/cancel | src/app/company-listing/cancel/page.tsx | review | review | no |
 | /company-listing/submit | src/app/company-listing/submit/page.tsx | review | review | no |

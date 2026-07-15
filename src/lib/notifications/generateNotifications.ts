@@ -1,3 +1,5 @@
+import { summarizeWorkflowReportReadiness } from '@/lib/reports/reportReadiness';
+
 export type NotificationLang = 'ar' | 'en' | 'fr';
 export type SmartNotificationSeverity = 'info' | 'success' | 'warning' | 'danger';
 export type SmartNotificationType =
@@ -381,16 +383,24 @@ export function generateSmartNotifications(data: NotificationSourceData, lang: N
     }
   });
 
-  if ((data.income?.length ?? 0) > 0 || (data.expenses?.length ?? 0) > 0) {
+  const reportReadiness = summarizeWorkflowReportReadiness({
+    income: data.income,
+    expenses: data.expenses,
+    projects: data.projects,
+    zakatAssets: data.zakatAssets,
+    charityProjects: data.charityProjects,
+    charityBeneficiaries: data.charityBeneficiaries,
+  });
+  if (reportReadiness.financial === 'ready') {
     add({ id: makeId(['report-ready', 'financial', today]), title: copy.reportReadyTitle, message: copy.reportReadyMessage(copy.financialReport), type: 'report', severity: 'info', sourceModule: 'reports', actionUrl: '/reports-center', dueDate: today });
   }
-  if ((data.projects?.length ?? 0) > 0) {
+  if (reportReadiness.projects === 'ready') {
     add({ id: makeId(['report-ready', 'projects', today]), title: copy.reportReadyTitle, message: copy.reportReadyMessage(copy.projectReport), type: 'report', severity: 'info', sourceModule: 'reports', actionUrl: '/reports-center', dueDate: today });
   }
-  if ((data.zakatAssets?.length ?? 0) > 0) {
+  if (reportReadiness.zakat === 'ready') {
     add({ id: makeId(['report-ready', 'zakat', today]), title: copy.reportReadyTitle, message: copy.reportReadyMessage(copy.zakatReport), type: 'report', severity: 'info', sourceModule: 'reports', actionUrl: '/reports-center', dueDate: today });
   }
-  if ((data.charityProjects?.length ?? 0) > 0 || (data.charityBeneficiaries?.length ?? 0) > 0) {
+  if (reportReadiness.charity === 'ready') {
     add({ id: makeId(['report-ready', 'charity', today]), title: copy.reportReadyTitle, message: copy.reportReadyMessage(copy.charityReport), type: 'report', severity: 'info', sourceModule: 'reports', actionUrl: '/reports-center', dueDate: today });
   }
 

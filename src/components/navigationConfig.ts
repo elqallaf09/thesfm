@@ -78,7 +78,6 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: true,
     items: [
       { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
-      { id: 'command-center', icon: Compass, href: '/command-center', labelKey: 'nav_command_center' },
       { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions' },
       { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today' },
       { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories' },
