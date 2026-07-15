@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables } from '@/lib/data/reportsData';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { buildFeasibilityStudyExportRow, printFeasibilityStudyToPdf } from '@/lib/reports/feasibilityStudyExport';
+import { evaluateReportReadiness } from '@/lib/reports/reportReadiness';
 import { formatDate, formatNumber, normalizeDigits, toLatinNumberLocale } from '@/lib/locale';
 import { trackEvent } from '@/lib/analytics';
 import { recordAccountActivity } from '@/lib/accountActivity';
@@ -1534,26 +1535,8 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[], lang: La
 }
 
 function reportStatus(report: ReportDefinition, records: RecordsState, loadErrors: Partial<Record<TableKey, string>>) {
-  if (report.unavailable) return 'unavailable' as ReportStatus;
-  if ([...report.required, ...(report.optional ?? [])].some(key => loadErrors[key])) return 'error' as ReportStatus;
-  if (report.id === 'monthly-financial') {
-    return records.income.length > 0 || records.expenses.length > 0 || records.savings.length > 0 || records.investments.length > 0 ? 'ready' : 'needs_data';
-  }
-  if (report.id === 'zakat') return records.zakatCalculations.length > 0 || records.zakatAssets.length > 0 ? 'ready' : 'needs_data';
-  if (report.id === 'charity-impact') {
-    return records.charityImpact.length > 0 || records.charityDonations.length > 0 || records.charityBeneficiaries.length > 0 ? 'ready' : 'needs_data';
-  }
-  if (report.id === 'project-kpis') {
-    return records.projects.length > 0 && (records.tasks.length > 0 || records.financialModels.length > 0 || records.documents.length > 0 || records.milestones.length > 0)
-      ? 'ready'
-      : 'needs_data';
-  }
-  if (report.id === 'project-financial') {
-    return records.projects.length > 0 && (records.financialModels.length > 0 || records.projectIncome.length > 0 || records.projectExpenses.length > 0)
-      ? 'ready'
-      : 'needs_data';
-  }
-  return report.required.every(key => records[key]?.length > 0) ? 'ready' : 'needs_data';
+  const status = evaluateReportReadiness(report.id, records, loadErrors);
+  return (status === 'unknown' ? 'error' : status) as ReportStatus;
 }
 
 function missingDataKeys(report: ReportDefinition, records: RecordsState) {

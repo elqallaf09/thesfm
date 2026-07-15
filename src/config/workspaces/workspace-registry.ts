@@ -29,7 +29,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
     icon: Wallet,
     defaultRoute: '/dashboard',
     routePrefixes: [
-      '/dashboard', '/command-center', '/decisions', '/today', '/tasks',
+      '/dashboard', '/decisions', '/today', '/tasks',
       '/income', '/expenses', '/debts', '/savings', '/goals',
       '/reports', '/reports-center', '/documents', '/notifications', '/notif',
       '/zakat', '/khums', '/charity', '/charity-projects',

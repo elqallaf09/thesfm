@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
@@ -10,43 +10,34 @@ import {
   ChevronRight,
   ClipboardList,
   FileText,
-  HandHeart,
   LayoutDashboard,
   Loader2,
   Sparkles,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { CardsGrid, StatGrid } from '@/components/layout/LayoutPrimitives';
+import { StatGrid } from '@/components/layout/LayoutPrimitives';
 import { AppCard } from '@/components/layout/AppCard';
 import { EmptyState } from '@/components/layout/EmptyState';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useSmartTasks, type SmartTask } from '@/hooks/useSmartTasks';
-import { supabase } from '@/integrations/supabase/client';
-import { loadUserDataTables, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { formatDate } from '@/lib/formatDate';
+import {
+  prioritizeDailyWorkflow,
+  resolveDailySourceStatus,
+  type DailyWorkflowItem,
+} from '@/lib/daily-workflow/prioritizeDailyItems';
 import {
   generateSmartNotifications,
   type NotificationSourceData,
   type SmartNotification,
   type SmartNotificationSeverity,
 } from '@/lib/notifications/generateNotifications';
+import { summarizeReportReadiness } from '@/lib/reports/reportReadiness';
 
 type Lang = 'ar' | 'en' | 'fr';
-type SourceKey = keyof NotificationSourceData;
 type DailyPriority = 'urgent' | 'high' | 'medium' | 'low';
-
-type DailyItem = {
-  id: string;
-  title: string;
-  description: string;
-  href: string;
-  source: string;
-  priority: DailyPriority;
-  dueDate?: string | null;
-  actionLabel: string;
-  kind: 'task' | 'notification' | 'report' | 'reminder';
-};
+type DailyItem = DailyWorkflowItem;
 
 type StoredNotificationRow = {
   id: string;
@@ -64,27 +55,9 @@ type StoredNotificationRow = {
   due_date?: string | null;
 };
 
-const SOURCE_TABLES: Array<{ key: SourceKey; table: string }> = [
-  { key: 'income', table: 'monthly_income_sources' },
-  { key: 'expenses', table: 'expense_items' },
-  { key: 'goals', table: 'financial_goals' },
-  { key: 'marketPriceAlerts', table: 'market_price_alerts' },
-  { key: 'projects', table: 'projects' },
-  { key: 'feasibilityStudies', table: 'project_feasibility_studies' },
-  { key: 'financialModels', table: 'project_financial_models' },
-  { key: 'projectTasks', table: 'project_tasks' },
-  { key: 'projectMilestones', table: 'project_milestones' },
-  { key: 'projectDocuments', table: 'project_documents' },
-  { key: 'zakatAssets', table: 'zakat_assets' },
-  { key: 'charityProjects', table: 'charity_projects' },
-  { key: 'charityReminders', table: 'charity_reminders' },
-  { key: 'charityBeneficiaries', table: 'charity_beneficiaries' },
-  { key: 'charityContributors', table: 'charity_project_contributors' },
-];
-
 const TEXT = {
   ar: {
-    title: 'اليوم المالي',
+    title: 'مركز اليوم',
     subtitle: 'ملخص يومي ذكي للعناصر التي تحتاج إلى انتباهك اليوم من مهام، تقارير، إشعارات، وتنبيهات مالية.',
     eyebrow: 'موجز يومي',
     dailyQuestion: 'ما أهم إجراء أحتاج إلى القيام به اليوم؟',
@@ -96,7 +69,7 @@ const TEXT = {
     tasksNeedAction: 'مهام تحتاج إجراء',
     reportsReady: 'تقارير جاهزة',
     topAction: 'أهم إجراء اليوم',
-    stableTitle: 'كل شيء مستقر اليوم',
+    stableTitle: 'لا توجد إجراءات عاجلة اليوم',
     stableBody: 'لا توجد مهام عاجلة أو إشعارات عالية الأهمية. يمكنك مراجعة التقارير أو تحديث بياناتك المالية.',
     openReports: 'فتح التقارير',
     updateData: 'تحديث بياناتي',
@@ -129,10 +102,20 @@ const TEXT = {
     sourceExpenses: 'المصروفات',
     sourceZakat: 'الزكاة',
     sourceCharity: 'الخير',
+    urgentHighTasks: 'المهام العاجلة وعالية الأولوية',
+    reportSummary: 'ملخص جاهزية التقارير',
+    reportsNeedData: 'تحتاج بيانات',
+    partialData: 'بعض المصادر غير متاحة. نعرض النتائج المؤكدة فقط.',
+    failedData: 'تعذر تحميل المصادر اليومية. حاول مرة أخرى من مركز المهام.',
+    unavailableData: 'المصادر اليومية غير متاحة حالياً. لم يتم عرض أرقام صفرية بديلة.',
+    unauthorizedData: 'سجّل الدخول لعرض موجزك اليومي.',
+    partialReports: 'افتح مركز التقارير لعرض الحالة الكاملة.',
+    accountWarning: 'أكمل إعداد حسابك لتحسين دقة المهام والتنبيهات.',
+    completeAccount: 'إكمال الحساب',
   },
   en: {
-    title: 'Financial Today',
-    subtitle: 'A smart daily brief for the tasks, reports, notifications, and financial alerts that need attention today.',
+    title: 'Today Center',
+    subtitle: 'A concise daily brief of the real tasks, notifications, and report status that need your attention.',
     eyebrow: 'Daily brief',
     dailyQuestion: 'What should I handle today?',
     loading: 'Loading what matters today...',
@@ -143,8 +126,8 @@ const TEXT = {
     tasksNeedAction: 'Tasks Needing Action',
     reportsReady: 'Reports Ready',
     topAction: 'Top Action Today',
-    stableTitle: 'Everything is stable today',
-    stableBody: 'There are no urgent tasks or high-priority notifications. You can review reports or update your financial data.',
+    stableTitle: 'No urgent actions today',
+    stableBody: 'No urgent action was found in the sources that loaded successfully. You can review reports or update your financial data.',
     openReports: 'Open Reports',
     updateData: 'Update My Data',
     needsAction: 'Needs Action',
@@ -176,10 +159,20 @@ const TEXT = {
     sourceExpenses: 'Expenses',
     sourceZakat: 'Zakat',
     sourceCharity: 'Charity',
+    urgentHighTasks: 'Urgent and high-priority tasks',
+    reportSummary: 'Report readiness summary',
+    reportsNeedData: 'Need data',
+    partialData: 'Some sources are unavailable. Only confirmed results are shown.',
+    failedData: 'Daily sources could not be loaded. Try again from Tasks Center.',
+    unavailableData: 'Daily sources are currently unavailable. Placeholder zeroes are not shown.',
+    unauthorizedData: 'Sign in to view your daily brief.',
+    partialReports: 'Open Reports Center for the complete status.',
+    accountWarning: 'Complete your account setup to improve task and alert accuracy.',
+    completeAccount: 'Complete account',
   },
   fr: {
-    title: 'Aujourd’hui financier',
-    subtitle: 'Un brief quotidien intelligent pour les tâches, rapports, notifications et alertes financières à traiter aujourd’hui.',
+    title: 'Centre du jour',
+    subtitle: 'Un brief quotidien concis des tâches, notifications et rapports réels qui demandent votre attention.',
     eyebrow: 'Brief quotidien',
     dailyQuestion: 'Que dois-je traiter aujourd’hui ?',
     loading: 'Chargement des éléments importants du jour...',
@@ -190,8 +183,8 @@ const TEXT = {
     tasksNeedAction: 'Tâches à traiter',
     reportsReady: 'Rapports prêts',
     topAction: 'Action prioritaire du jour',
-    stableTitle: 'Tout est stable aujourd’hui',
-    stableBody: 'Il n’y a aucune tâche urgente ni notification haute priorité. Vous pouvez consulter les rapports ou mettre à jour vos données financières.',
+    stableTitle: 'Aucune action urgente aujourd’hui',
+    stableBody: 'Aucune action urgente n’a été trouvée dans les sources chargées. Vous pouvez consulter les rapports ou mettre à jour vos données.',
     openReports: 'Ouvrir les rapports',
     updateData: 'Mettre à jour mes données',
     needsAction: 'Nécessite une action',
@@ -223,6 +216,16 @@ const TEXT = {
     sourceExpenses: 'Dépenses',
     sourceZakat: 'Zakat',
     sourceCharity: 'Charité',
+    urgentHighTasks: 'Tâches urgentes et prioritaires',
+    reportSummary: 'Résumé de préparation des rapports',
+    reportsNeedData: 'Données requises',
+    partialData: 'Certaines sources sont indisponibles. Seuls les résultats confirmés sont affichés.',
+    failedData: 'Les sources quotidiennes n’ont pas pu être chargées. Réessayez depuis le Centre des tâches.',
+    unavailableData: 'Les sources quotidiennes sont indisponibles. Aucun zéro fictif n’est affiché.',
+    unauthorizedData: 'Connectez-vous pour afficher votre brief quotidien.',
+    partialReports: 'Ouvrez le Centre des rapports pour l’état complet.',
+    accountWarning: 'Complétez votre compte pour améliorer la précision des tâches et alertes.',
+    completeAccount: 'Compléter le compte',
   },
 } as const;
 
@@ -275,32 +278,6 @@ function isOpenTask(task: SmartTask) {
   return task.status === 'open';
 }
 
-function isDueOrLate(value: string | null | undefined, todayKey: string) {
-  const key = toDateKey(value);
-  return Boolean(key && key <= todayKey);
-}
-
-function priorityRank(priority: DailyPriority) {
-  return {
-    urgent: 0,
-    high: 1,
-    medium: 2,
-    low: 3,
-  }[priority];
-}
-
-function uniqueItems(items: DailyItem[]) {
-  return Array.from(new Map(items.map(item => [`${item.kind}:${item.id}`, item])).values());
-}
-
-function sortDailyItems(items: DailyItem[]) {
-  return [...items].sort((a, b) => {
-    const priorityDiff = priorityRank(a.priority) - priorityRank(b.priority);
-    if (priorityDiff !== 0) return priorityDiff;
-    return toDateKey(a.dueDate).localeCompare(toDateKey(b.dueDate));
-  });
-}
-
 function notificationPriority(notice: SmartNotification): DailyPriority {
   if (notice.severity === 'danger') return 'urgent';
   if (notice.severity === 'warning') return 'high';
@@ -341,25 +318,31 @@ function taskToItem(task: SmartTask, text: typeof TEXT.ar): DailyItem {
     description: task.description ?? '',
     href: task.actionUrl || '/tasks',
     source: sourceLabel(task.sourceModule, 'task', text),
+    sourceModule: task.sourceModule,
+    sourceId: task.sourceId,
     priority: taskPriority(task),
     dueDate: task.dueDate ?? null,
     actionLabel: task.actionLabel || text.handle,
-    kind: 'task',
+    kind: task.sourceModule === 'report' ? 'report' : 'task',
   };
 }
 
 function notificationToItem(notice: SmartNotification, text: typeof TEXT.ar): DailyItem {
-  const kind = notice.type === 'report' ? 'report' : isHigh(notice) ? 'notification' : 'reminder';
+  const kind = notice.type === 'report' ? 'report' : 'notification';
   return {
     id: notice.id,
     title: notice.title,
     description: notice.message,
     href: notice.actionUrl || '/notifications',
     source: sourceLabel(notice.sourceModule, notice.type, text),
+    sourceModule: notice.sourceModule,
+    sourceId: notice.sourceId,
     priority: notificationPriority(notice),
     dueDate: notice.dueDate,
+    createdAt: notice.createdAt,
     actionLabel: notice.type === 'report' ? text.viewReport : text.open,
     kind,
+    unread: notice.status === 'unread',
   };
 }
 
@@ -368,93 +351,107 @@ export default function FinancialTodayPage() {
   const { lang, dir } = useLanguage();
   const text = TEXT[(lang as Lang) || 'ar'] as typeof TEXT.ar;
   const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
-  const { tasks, loading: tasksLoading } = useSmartTasks();
-  const [loading, setLoading] = useState(true);
-  const [notifications, setNotifications] = useState<SmartNotification[]>([]);
+  const { tasks, profile, records, errors, sourceDiagnostics, loading: tasksLoading } = useSmartTasks();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      if (!user) {
-        setNotifications([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const db = supabase as any;
-      const sourceResult = await loadUserDataTables(db, user.id, SOURCE_TABLES);
-      let stored: StoredNotificationRow[] = [];
-
-      try {
-        const { data, error } = await db
-          .from('notifications')
-          .select('id,type,title,message,read,link,created_at,severity,source_module,source_id,action_url,status,due_date')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(100);
-        if (!error) stored = data ?? [];
-      } catch {
-        stored = [];
-      }
-
-      const notificationRecords = {
-        ...sourceResult.records,
-        income: personalIncomeRows(sourceResult.records.income ?? []),
-        expenses: personalExpenseRows(sourceResult.records.expenses ?? []),
-      } as NotificationSourceData;
-      const dynamic = generateSmartNotifications(notificationRecords, lang as Lang);
-      const merged = new Map<string, SmartNotification>();
-      stored.map(normalizeStored).forEach(notice => merged.set(`stored:${notice.id}`, notice));
-      dynamic.forEach(notice => merged.set(`dynamic:${notice.id}`, notice));
-
-      if (!cancelled) {
-        setNotifications(Array.from(merged.values()).filter(isActive));
-        setLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [lang, user]);
+  const notifications = useMemo(() => {
+    if (!user) return [];
+    const dynamic = generateSmartNotifications(records as NotificationSourceData, locale);
+    const merged = new Map<string, SmartNotification>();
+    (records.notifications ?? []).map(row => normalizeStored(row as StoredNotificationRow))
+      .forEach(notice => merged.set(`stored:${notice.id}`, notice));
+    dynamic.forEach(notice => merged.set(`dynamic:${notice.id}`, notice));
+    return Array.from(merged.values()).filter(notice => isActive(notice) && notice.status === 'unread');
+  }, [locale, records, user]);
 
   const todayKey = useMemo(() => formatLocalDateKey(new Date()), []);
   const dailyBrief = useMemo(() => {
     const openTasks = tasks.filter(isOpenTask);
-    const dueTasks = openTasks.filter(task => isDueOrLate(task.dueDate, todayKey));
-    const urgentTasks = openTasks.filter(task => task.priority === 'urgent' || task.priority === 'high' || isDueOrLate(task.dueDate, todayKey));
+    const dueTasks = openTasks.filter(task => toDateKey(task.dueDate) === todayKey);
+    const urgentTasks = openTasks.filter(task => task.priority === 'urgent' || task.priority === 'high');
     const highPriorityNotices = notifications.filter(isHigh);
-    const dueNotices = notifications.filter(notice => toDateKey(notice.dueDate) === todayKey);
-    const dueOrLateNotices = notifications.filter(notice => isDueOrLate(notice.dueDate, todayKey));
-    const reportsReady = notifications.filter(notice => notice.type === 'report' && notice.severity !== 'danger');
-    const reminders = notifications.filter(notice => !isHigh(notice) && notice.type !== 'report' && !isDueOrLate(notice.dueDate, todayKey));
-
-    const taskItems = urgentTasks.map(task => taskToItem(task, text));
-    const alertItems = highPriorityNotices.map(notice => notificationToItem(notice, text));
-    const dueNoticeItems = dueOrLateNotices
-      .filter(notice => notice.type !== 'report')
-      .map(notice => notificationToItem(notice, text));
-    const reportItems = reportsReady.map(notice => notificationToItem(notice, text));
-    const followLaterItems = reminders.map(notice => notificationToItem(notice, text));
-    const actionItems = sortDailyItems(uniqueItems([...taskItems, ...dueNoticeItems])).slice(0, 3);
-    const topAction = sortDailyItems(uniqueItems([...taskItems, ...alertItems.filter(item => isDueOrLate(item.dueDate, todayKey)), ...alertItems, ...dueNoticeItems]))[0] ?? null;
+    const items: DailyItem[] = [
+      ...openTasks.map(task => taskToItem(task, text)),
+      ...notifications.map(notice => notificationToItem(notice, text)),
+    ];
+    if (profile?.onboarding_completed === false) {
+      items.push({
+        id: 'account:completion',
+        title: text.accountWarning,
+        description: text.accountWarning,
+        href: '/onboarding',
+        source: text.sourceTasks,
+        sourceModule: 'account',
+        priority: 'high',
+        actionLabel: text.completeAccount,
+        kind: 'account',
+      });
+    }
+    const prioritized = prioritizeDailyWorkflow(items);
 
     return {
-      dueTodayCount: dueTasks.length + dueNotices.length,
+      dueTodayCount: dueTasks.length,
       highPriorityCount: highPriorityNotices.length,
       taskActionCount: urgentTasks.length,
-      reportsReadyCount: reportsReady.length,
-      actionItems,
-      alertItems: sortDailyItems(alertItems).slice(0, 3),
-      reportItems: sortDailyItems(reportItems).slice(0, 3),
-      followLaterItems: sortDailyItems(followLaterItems).slice(0, 3),
-      topAction,
+      urgentAndHighTasks: prioritized.urgentAndHighTasks,
+      dueTodayItems: prioritized.dueToday,
+      alertItems: prioritized.importantNotifications,
+      topAction: prioritized.topAction,
       openTaskCount: openTasks.length,
     };
-  }, [notifications, tasks, text, todayKey]);
+  }, [notifications, profile?.onboarding_completed, tasks, text, todayKey]);
+
+  const reportSummary = useMemo(() => summarizeReportReadiness({
+    income: records.income,
+    expenses: records.expenses,
+    savings: records.savings,
+    goals: records.goals,
+    investments: records.investments,
+    projects: records.projects,
+    feasibility: records.feasibilityStudies,
+    financialModels: records.financialModels,
+    tasks: records.projectTasks,
+    milestones: records.projectMilestones,
+    documents: records.projectDocuments,
+    pitchDecks: records.pitchDecks,
+    marketWatchlist: records.marketWatchlist,
+    zakatCalculations: records.zakatCalculations,
+    zakatAssets: records.zakatAssets,
+    charityProjects: records.charityProjects,
+    charityBeneficiaries: records.charityBeneficiaries,
+  }, {
+    income: errors.income,
+    expenses: errors.expenses,
+    savings: errors.savings,
+    goals: errors.goals,
+    investments: errors.investments,
+    projects: errors.projects,
+    feasibility: errors.feasibilityStudies,
+    financialModels: errors.financialModels,
+    tasks: errors.projectTasks,
+    milestones: errors.projectMilestones,
+    documents: errors.projectDocuments,
+    pitchDecks: errors.pitchDecks,
+    marketWatchlist: errors.marketWatchlist,
+    zakatCalculations: errors.zakatCalculations,
+    zakatAssets: errors.zakatAssets,
+    charityProjects: errors.charityProjects,
+    charityBeneficiaries: errors.charityBeneficiaries,
+  }), [errors, records]);
+
+  const dailySourceStatus = resolveDailySourceStatus({
+    loading: tasksLoading,
+    authenticated: Boolean(user),
+    diagnostics: Object.values(sourceDiagnostics),
+  });
+  const hasSourceFailure = ['partial', 'failed', 'unavailable'].includes(dailySourceStatus);
+  const hasReportReadinessFailure = reportSummary.failed > 0 || reportSummary.unknown > 0;
+  const sourceStatusMessage = dailySourceStatus === 'failed'
+    ? text.failedData
+    : dailySourceStatus === 'unavailable'
+      ? text.unavailableData
+      : dailySourceStatus === 'unauthorized'
+        ? text.unauthorizedData
+        : text.partialData;
 
   return (
     <div className="today-shell" dir={dir}>
@@ -482,29 +479,50 @@ export default function FinancialTodayPage() {
           </div>
         </section>
 
-        {loading || tasksLoading ? (
+        {tasksLoading ? (
           <EmptyState icon={<Loader2 className="spin" size={24} />} title={text.loading} />
         ) : (
           <>
+            {hasSourceFailure ? <div className="today-partial-state" role="status">{sourceStatusMessage}</div> : null}
             <StatGrid className="today-summary-grid">
-              <AppCard><TodayMetric label={text.dueToday} value={`${dailyBrief.dueTodayCount}`} icon={<ClockIcon />} tone="blue" /></AppCard>
-              <AppCard><TodayMetric label={text.highPriority} value={`${dailyBrief.highPriorityCount}`} icon={<AlertTriangle size={20} />} tone={dailyBrief.highPriorityCount > 0 ? 'danger' : 'blue'} /></AppCard>
-              <AppCard><TodayMetric label={text.tasksNeedAction} value={`${dailyBrief.taskActionCount}`} icon={<ClipboardList size={20} />} tone={dailyBrief.taskActionCount > 0 ? 'warning' : 'blue'} /></AppCard>
-              <AppCard><TodayMetric label={text.reportsReady} value={`${dailyBrief.reportsReadyCount}`} icon={<FileText size={20} />} tone="teal" /></AppCard>
+              <AppCard><TodayMetric label={text.dueToday} value={hasSourceFailure ? '—' : `${dailyBrief.dueTodayCount}`} icon={<ClockIcon />} tone="blue" /></AppCard>
+              <AppCard><TodayMetric label={text.highPriority} value={hasSourceFailure ? '—' : `${dailyBrief.highPriorityCount}`} icon={<AlertTriangle size={20} />} tone={dailyBrief.highPriorityCount > 0 ? 'danger' : 'blue'} /></AppCard>
+              <AppCard><TodayMetric label={text.tasksNeedAction} value={hasSourceFailure ? '—' : `${dailyBrief.taskActionCount}`} icon={<ClipboardList size={20} />} tone={dailyBrief.taskActionCount > 0 ? 'warning' : 'blue'} /></AppCard>
+              <AppCard><TodayMetric label={text.reportsReady} value={hasReportReadinessFailure ? '—' : `${reportSummary.ready}`} icon={<FileText size={20} />} tone="teal" /></AppCard>
             </StatGrid>
 
             <FeaturedAction item={dailyBrief.topAction} text={text} locale={locale} />
 
+            {profile?.onboarding_completed === false && dailyBrief.topAction?.kind !== 'account' ? (
+              <AppCard className="today-account-warning">
+                <AlertTriangle size={20} aria-hidden="true" />
+                <p>{text.accountWarning}</p>
+                <Link className="sfm-primary-link" href="/onboarding">{text.completeAccount}</Link>
+              </AppCard>
+            ) : null}
+
             <section className="today-lanes" aria-label={text.dailyQuestion}>
               <PriorityLane
-                title={text.needsAction}
-                count={dailyBrief.actionItems.length}
+                title={text.urgentHighTasks}
+                count={dailyBrief.urgentAndHighTasks.length}
                 icon={<ClipboardList size={20} />}
-                items={dailyBrief.actionItems}
+                items={dailyBrief.urgentAndHighTasks}
                 empty={dailyBrief.openTaskCount > 0 ? text.noSectionItems : text.noOpenTasks}
                 locale={locale}
                 text={text}
+                footerHref="/tasks"
+                footerLabel={text.openTasks}
                 accent="warning"
+              />
+              <PriorityLane
+                title={text.dueToday}
+                count={dailyBrief.dueTodayItems.length}
+                icon={<CalendarDays size={20} />}
+                items={dailyBrief.dueTodayItems}
+                empty={text.noSectionItems}
+                locale={locale}
+                text={text}
+                accent="blue"
               />
               <PriorityLane
                 title={text.importantAlerts}
@@ -516,27 +534,11 @@ export default function FinancialTodayPage() {
                 text={text}
                 accent="danger"
               />
-              <PriorityLane
-                title={text.reportsReady}
-                count={dailyBrief.reportItems.length}
-                icon={<FileText size={20} />}
-                items={dailyBrief.reportItems}
-                empty={text.noSectionItems}
-                locale={locale}
+              <ReportReadinessSummary
+                ready={reportSummary.ready}
+                needsData={reportSummary.needsData}
+                partial={reportSummary.unknown > 0 || reportSummary.failed > 0}
                 text={text}
-                footerHref="/reports-center"
-                footerLabel={text.viewAllReports}
-                accent="teal"
-              />
-              <PriorityLane
-                title={text.followLater}
-                count={dailyBrief.followLaterItems.length}
-                icon={<HandHeart size={20} />}
-                items={dailyBrief.followLaterItems}
-                empty={text.noSectionItems}
-                locale={locale}
-                text={text}
-                accent="blue"
               />
             </section>
 
@@ -576,12 +578,12 @@ export default function FinancialTodayPage() {
         .today-hero {
           position: relative;
           overflow: hidden;
-          min-height: 230px;
+          min-height: 176px;
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
           align-items: center;
           gap: 24px;
-          padding: clamp(24px, 4vw, 40px);
+          padding: clamp(20px, 3vw, 30px);
           border: 1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);
           border-radius: var(--radius-panel);
           background: var(--hero-gradient);
@@ -617,7 +619,7 @@ export default function FinancialTodayPage() {
         .today-hero h1 {
           margin: 0;
           color: var(--hero-foreground);
-          font:600 clamp(34px, 5vw, 56px)/1.05 var(--font-ui);
+          font:600 clamp(30px, 4vw, 42px)/1.1 var(--font-ui);
           letter-spacing: 0;
         }
         .today-hero p {
@@ -635,8 +637,8 @@ export default function FinancialTodayPage() {
         .today-hero-mark {
           position: relative;
           z-index: 1;
-          width: clamp(112px, 14vw, 150px);
-          height: clamp(112px, 14vw, 150px);
+          width: clamp(92px, 10vw, 112px);
+          height: clamp(92px, 10vw, 112px);
           display: grid;
           place-items: center;
           border-radius:var(--radius-panel);
@@ -653,7 +655,7 @@ export default function FinancialTodayPage() {
         }
         .sfm-primary-link,
         .sfm-secondary-link {
-          min-height: 42px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -693,6 +695,22 @@ export default function FinancialTodayPage() {
           display: grid;
           align-items: center;
         }
+        .today-partial-state {
+          border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--border));
+          border-radius: var(--radius-card);
+          background: var(--warning-soft);
+          color: var(--warning);
+          padding: 12px 14px;
+          font-weight: 600;
+        }
+        .today-account-warning {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 12px;
+          border-color: color-mix(in srgb, var(--warning) 30%, var(--border)) !important;
+        }
+        .today-account-warning > p { margin: 0; color: var(--foreground); line-height: 1.6; }
         .today-lanes {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -717,7 +735,7 @@ export default function FinancialTodayPage() {
           padding-inline: 4px;
         }
         .today-quick-links a {
-          min-height: 38px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           gap: 7px;
@@ -783,6 +801,17 @@ export default function FinancialTodayPage() {
           .today-summary-grid {
             grid-template-columns: 1fr !important;
           }
+          .today-account-warning { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .today-shell *,
+          .today-shell *::before,
+          .today-shell *::after {
+            scroll-behavior: auto !important;
+            transition-duration: 0.01ms !important;
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
         }
       `}</style>
     </div>
@@ -814,6 +843,50 @@ function TodayMetric({ label, value, icon, tone = 'blue' }: { label: string; val
   );
 }
 
+function ReportReadinessSummary({
+  ready,
+  needsData,
+  partial,
+  text,
+}: {
+  ready: number;
+  needsData: number;
+  partial: boolean;
+  text: typeof TEXT.ar;
+}) {
+  return (
+    <AppCard className="today-report-summary">
+      <header>
+        <span aria-hidden="true"><FileText size={20} /></span>
+        <h2>{text.reportSummary}</h2>
+      </header>
+      <div className="today-report-counts">
+        <div><strong>{ready}</strong><span>{text.reportsReady}</span></div>
+        <div><strong>{needsData}</strong><span>{text.reportsNeedData}</span></div>
+      </div>
+      {partial ? <p role="status">{text.partialReports}</p> : null}
+      <Link className="today-lane-footer" href="/reports-center">
+        {text.viewAllReports}
+        <ChevronRight size={15} aria-hidden="true" />
+      </Link>
+      <style jsx>{`
+        :global(.today-report-summary) { display: grid; align-content: start; gap: 14px; }
+        header { display: flex; align-items: center; gap: 10px; }
+        header > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: var(--radius-control); background: var(--primary-soft); color: var(--primary); }
+        h2, p { margin: 0; }
+        h2 { color: var(--foreground); font-size: 19px; }
+        p { color: var(--foreground-muted); font-size: 13px; line-height: 1.6; }
+        .today-report-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .today-report-counts div { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-muted); }
+        .today-report-counts strong { color: var(--foreground); font: 600 24px/1 var(--font-data); }
+        .today-report-counts span { color: var(--foreground-muted); font-size: 12px; font-weight: 600; }
+        :global(.today-report-summary .today-lane-footer) { width: fit-content; min-height: 38px; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); padding: 0 14px; background: var(--surface); color: var(--primary); text-decoration: none; font-size: 12px; font-weight: 600; }
+        :global(.today-report-summary .today-lane-footer) { min-height: 44px; }
+      `}</style>
+    </AppCard>
+  );
+}
+
 function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: typeof TEXT.ar; locale: Lang }) {
   return (
     <AppCard className={`today-featured-action ${item ? 'attention' : 'stable'}`.trim()} tone="dark">
@@ -837,7 +910,7 @@ function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: 
         ) : (
           <>
             <Link className="sfm-primary-link" href="/reports-center">{text.openReports}</Link>
-            <Link className="sfm-secondary-link" href="/dashboard">{text.updateData}</Link>
+            <Link className="sfm-secondary-link" href="/dashboard">{text.openDashboard}</Link>
           </>
         )}
       </div>
@@ -849,7 +922,7 @@ function FeaturedAction({ item, text, locale }: { item: DailyItem | null; text: 
           grid-template-columns: minmax(0, 1fr) auto;
           align-items: center;
           gap: 18px;
-          min-height: 220px;
+          min-height: 164px;
           background: var(--hero-gradient) !important;
         }
         :global(.today-featured-action.stable) {
@@ -1186,7 +1259,7 @@ function PriorityLane({
         }
         .today-lane-footer {
           width: fit-content;
-          min-height: 36px;
+          min-height: 44px;
           padding: 0 16px;
           border: 1px solid color-mix(in srgb, var(--info) 22%, transparent);
           background: color-mix(in srgb, var(--info) 6%, transparent);

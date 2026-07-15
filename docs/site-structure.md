@@ -18,14 +18,14 @@ This document maps the main product routes after the navigation cleanup. Public 
 
 | Route | Arabic Name | English Name | Sidebar Group | Related Pages |
 | --- | --- | --- | --- | --- |
-| `/dashboard` | الصفحة الرئيسية | Home Page | الرئيسية | `/command-center`, `/today`, `/reports-center`, `/notifications` |
-| `/command-center` | مركز القيادة | Command Center | الرئيسية | `/dashboard`, `/today`, `/site-map` |
-| `/today` | اليوم المالي | Financial Today | الرئيسية | `/notifications`, `/tasks`, `/income`, `/projects`, `/zakat` |
-| `/tasks` | مركز المهام | Tasks Center | الرئيسية | `/dashboard`, `/today`, `/command-center`, `/notifications` |
+| `/dashboard` | الصفحة الرئيسية | Home Page | الرئيسية | `/today`, `/reports-center`, `/notifications` |
+| `/command-center` | رابط قديم | Redirect to Today Center | قديم | `/today` |
+| `/today` | مركز اليوم | Today Center | الرئيسية | `/notifications`, `/tasks`, `/reports-center`, `/dashboard` |
+| `/tasks` | مركز المهام | Tasks Center | الرئيسية | `/dashboard`, `/today`, `/notifications` |
 | `/documents` | مركز المستندات | Documents Center | الرئيسية | `/projects/[id]`, `/charity-projects`, `/reports-center`, `/business-hub` |
 | `/notifications` | الإشعارات الذكية | Smart Notifications | الرئيسية | `/today`, `/projects`, `/zakat`, `/reports-center` |
 | `/reports-center` | مركز التقارير | Reports Center | الرئيسية | `/reports`, `/income`, `/expenses`, `/projects` |
-| `/reports` | التقارير | Reports | مرتبطة | `/reports-center` |
+| `/reports` | رابط تقارير قديم | Redirect to Reports Center | قديم | `/reports-center` |
 | `/income` | الدخل | Income | المال الشخصي | `/dashboard`, `/reports-center`, `/notifications` |
 | `/expenses` | المصروفات | Expenses | المال الشخصي | `/dashboard`, `/reports-center`, `/monthly-subscriptions` |
 | `/monthly-subscriptions` | الاشتراكات الشهرية | Monthly Subscriptions | المال الشخصي | `/expenses`, `/debts` |
@@ -33,7 +33,7 @@ This document maps the main product routes after the navigation cleanup. Public 
 | `/savings` | المدخرات | Savings | المال الشخصي | `/zakat`, `/dashboard` |
 | `/goals` | الأهداف المالية | Financial Goals | المال الشخصي | `/dashboard`, `/notifications`, `/reports-center` |
 | `/financial-theories` | النظريات المالية | Financial Theories | الذكاء المالي | `/ai`, `/dashboard` |
-| `/ai` | مساعدي الذكي | AI Assistant | الذكاء المالي | `/command-center`, `/projects/[id]`, `/business-hub` |
+| `/ai` | مساعدي الذكي | AI Assistant | الذكاء المالي | `/today`, `/projects/[id]`, `/business-hub` |
 | `/invest` | الاستثمارات | Investments | الاستثمار والسوق | `/market-analysis`, `/market-agent`, `/zakat` |
 | `/market-analysis` | تحليلات السوق | Market Analysis | الاستثمار والسوق | `/invest`, `/market-agent` |
 | `/market-agent` | وكيل تحليل الأسواق | Market Analysis Agent | الاستثمار والسوق | `/market-analysis`, `/invest` |
@@ -50,7 +50,7 @@ This document maps the main product routes after the navigation cleanup. Public 
 | `/services/advisory-firms` | شركات الاستشارات المالية | Financial Advisory Firms | الخدمات | `/business-hub` |
 | `/profile` | الملف الشخصي | Profile | الحساب | `/security` |
 | `/settings` | تحويل قديم | Legacy Redirect | قديم | `/profile` |
-| `/site-map` | خريطة THE SFM | THE SFM Map | داعمة | `/command-center`, `/profile` |
+| `/site-map` | خريطة THE SFM | THE SFM Map | داعمة | `/today`, `/profile` |
 | `/setup` | إعداد الحساب | Account Setup | داعمة | `/dashboard`, `/profile` |
 
 ## Workspace Navigation

@@ -49,7 +49,7 @@ export const THEME_SCOPE_ROUTES: Record<ThemeScope, readonly string[]> = {
     '/growth-stocks',
   ],
   /* Admin / operations diagnostics. */
-  admin: ['/sfm-admin-control', '/command-center'],
+  admin: ['/sfm-admin-control'],
   /* Shariah screener and research. */
   shariah: ['/sharia-stocks'],
 };

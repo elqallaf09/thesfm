@@ -1,4 +1,5 @@
 import { normalizeDigits } from '@/lib/locale';
+import { summarizeWorkflowReportReadiness } from '@/lib/reports/reportReadiness';
 
 export type SmartTaskLang = 'ar' | 'en' | 'fr';
 export type SmartTaskPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -823,17 +824,28 @@ export function generateSmartTasks({
     add({ id: makeId(['charity-commitment', row.id, String(due)]), title: copy.charityCommitmentTitle, description: copy.charityCommitmentDescription(name), sourceModule: 'charity', sourceId: row.id, priority: priorityFromDue(diff), dueDate: String(due), actionUrl: '/charity-projects' });
   });
 
-  if (((data.income?.length ?? 0) > 0 || (data.expenses?.length ?? 0) > 0) && !((data.income?.length ?? 0) > 0 && (data.expenses?.length ?? 0) > 0)) {
-    add({ id: makeId(['report-needs-data', 'financial']), title: copy.reportNeedsDataTitle, description: copy.reportNeedsDataDescription, sourceModule: 'report', priority: 'medium', actionUrl: '/reports-center' });
-  }
-  if ((data.income?.length ?? 0) > 0 && (data.expenses?.length ?? 0) > 0) {
+  const reportReadiness = summarizeWorkflowReportReadiness({
+    income: data.income,
+    expenses: data.expenses,
+    savings: data.savings,
+    investments: data.investments,
+    projects: data.projects,
+    zakatCalculations: data.zakatCalculations,
+    zakatAssets: data.zakatAssets,
+    charityProjects: data.charityProjects,
+    charityBeneficiaries: data.charityBeneficiaries,
+  });
+  if (reportReadiness.financial === 'ready') {
     add({ id: makeId(['report-ready', 'financial', dateKey(now)]), title: copy.reportReadyTitle, description: copy.reportReadyDescription, sourceModule: 'report', priority: 'low', dueDate: dateKey(now), actionUrl: '/reports-center' });
   }
-  if ((data.projects?.length ?? 0) > 0) {
+  if (reportReadiness.projects === 'ready') {
     add({ id: makeId(['report-ready', 'projects', dateKey(now)]), title: copy.reportReadyTitle, description: copy.reportReadyDescription, sourceModule: 'report', priority: 'low', dueDate: dateKey(now), actionUrl: '/reports-center' });
   }
-  if ((data.zakatCalculations?.length ?? 0) > 0 || (data.charityProjects?.length ?? 0) > 0) {
-    add({ id: makeId(['report-ready', 'zakat-charity', dateKey(now)]), title: copy.reportReadyTitle, description: copy.reportReadyDescription, sourceModule: 'report', priority: 'low', dueDate: dateKey(now), actionUrl: '/reports-center' });
+  if (reportReadiness.zakat === 'ready') {
+    add({ id: makeId(['report-ready', 'zakat', dateKey(now)]), title: copy.reportReadyTitle, description: copy.reportReadyDescription, sourceModule: 'report', priority: 'low', dueDate: dateKey(now), actionUrl: '/reports-center' });
+  }
+  if (reportReadiness.charity === 'ready') {
+    add({ id: makeId(['report-ready', 'charity', dateKey(now)]), title: copy.reportReadyTitle, description: copy.reportReadyDescription, sourceModule: 'report', priority: 'low', dueDate: dateKey(now), actionUrl: '/reports-center' });
   }
 
   (data.notifications ?? []).forEach(row => {

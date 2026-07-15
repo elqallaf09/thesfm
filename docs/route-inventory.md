@@ -91,7 +91,7 @@ Unauthenticated requests redirect to `/login?next=<path>`. Authenticated session
 - `/charity/donations`
 - `/charity-projects`
 - `/charity-projects/report`
-- `/command-center`
+- `/command-center` — legacy authenticated bookmark; server-redirects to `/today`
 - `/customers`
 - `/dashboard`
 - `/debts`

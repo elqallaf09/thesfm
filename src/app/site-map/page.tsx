@@ -49,7 +49,6 @@ const TEXT = {
     supportGroupDesc: 'صفحات مساعدة للتعريف بالمنصة والدعم وخريطة الموقع.',
     siteMapDesc: 'هذه الصفحة تساعدك على فهم بنية التطبيق والتنقل بين أقسامه.',
     dashboardDesc: 'نظرة تنفيذية مختصرة على بياناتك الحقيقية.',
-    commandDesc: 'بوابة منظمة إلى العوالم الرئيسية في التطبيق.',
     decisionsDesc: 'تحليل قرار مالي قبل الشراء أو الاستثمار أو الالتزام.',
     todayDesc: 'ما يحتاج انتباهك اليوم فقط.',
     theoriesDesc: 'مكتبة مبسطة لفهم قواعد المال والاستثمار.',
@@ -107,7 +106,6 @@ const TEXT = {
     supportGroupDesc: 'Helpful pages for learning about the platform and getting support.',
     siteMapDesc: 'This page helps you understand the app structure and move between sections.',
     dashboardDesc: 'A concise executive overview of your real data.',
-    commandDesc: 'A clean gateway into the main worlds of the app.',
     decisionsDesc: 'Analyze a financial decision before buying, investing, or committing.',
     todayDesc: 'Only what needs attention today.',
     theoriesDesc: 'A simple library for understanding money and investment principles.',
@@ -165,7 +163,6 @@ const TEXT = {
     supportGroupDesc: 'Pages utiles pour comprendre la plateforme et contacter le support.',
     siteMapDesc: 'Cette page aide à comprendre la structure de l’application et à naviguer.',
     dashboardDesc: 'Vue exécutive concise de vos données réelles.',
-    commandDesc: 'Passerelle claire vers les principaux univers de l’application.',
     decisionsDesc: 'Analyser une décision financière avant un achat, investissement ou engagement.',
     todayDesc: 'Seulement ce qui demande votre attention aujourd’hui.',
     theoriesDesc: 'Bibliothèque simple pour comprendre les principes financiers.',
@@ -202,7 +199,6 @@ const TEXT = {
 
 const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   home: 'dashboardDesc',
-  'command-center': 'commandDesc',
   decisions: 'decisionsDesc',
   today: 'todayDesc',
   'financial-theories': 'theoriesDesc',

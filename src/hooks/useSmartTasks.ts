@@ -290,6 +290,8 @@ export function useSmartTasks() {
   return {
     tasks,
     rawTasks: generatedTasks,
+    profile,
+    records,
     loading: authLoading || loading,
     errors,
     sourceDiagnostics,

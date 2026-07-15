@@ -30,7 +30,6 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/charity-projects', variant: 'full', description: 'Charity operations and reporting workspace' },
   { prefix: '/charity', variant: 'full', description: 'Charity dashboard and donation records' },
   { prefix: '/projects/', variant: 'full', description: 'Individual project workspace' },
-  { prefix: '/command-center', variant: 'full', description: 'Executive command center' },
   { prefix: '/dashboard', variant: 'full', description: 'Primary financial dashboard' },
   { prefix: '/customers', variant: 'full', description: 'Business records table' },
   { prefix: '/invoices', variant: 'full', description: 'Business records table' },

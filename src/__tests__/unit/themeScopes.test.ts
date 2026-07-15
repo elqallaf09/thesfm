@@ -50,7 +50,7 @@ describe('getThemeScope', () => {
   it('maps admin and shariah areas to their own scopes', () => {
     expect(getThemeScope('/sfm-admin-control')).toBe('admin');
     expect(getThemeScope('/sfm-admin-control/shariah')).toBe('admin');
-    expect(getThemeScope('/command-center')).toBe('admin');
+    expect(getThemeScope('/command-center')).toBeNull();
     expect(getThemeScope('/sharia-stocks')).toBe('shariah');
   });
 
