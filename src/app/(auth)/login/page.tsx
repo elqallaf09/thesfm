@@ -789,7 +789,9 @@ function LoginContent() {
 
     setSubmitting(true);
     try {
-      console.debug('[auth] login started', { mode });
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[auth] login started', { mode });
+      }
       const error =
         mode === 'login' ? await handleLogin()
         : mode === 'register' ? await handleRegister()

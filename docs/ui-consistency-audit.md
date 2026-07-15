@@ -62,7 +62,7 @@ its own 12/16/20/28px scale, from the same declarations.
   mode by the layer, raw in dark.
 - Migrate raw `<input>`/`<select>` to the shadcn primitives page-by-page over time; the global
   element CSS now matches them, so migrations become invisible.
-- Cleanup: `components/Wakeel.tsx.backup-*` files at the repo root should be deleted or gitignored.
+- Cleanup completed in Phase 2.10: obsolete tracked Wakeel backup sources were removed.
 
 ## Theme scoping (2026-07-12)
 

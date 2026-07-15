@@ -19,8 +19,11 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
   });
 
   test('the legacy reports bookmark redirects to the full Reports Center for a guest session', async ({ page }) => {
-    await page.goto('/guest', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/dashboard(?:\?|$)/);
+    // The guest page intentionally replaces the document as soon as it hydrates.
+    // Waiting only for the initial response commit avoids WebKit treating that
+    // expected replacement as an interrupted navigation.
+    await page.goto('/guest', { waitUntil: 'commit' });
+    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
     await page.goto('/reports', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/reports-center(?:\?|$)/);
     await expect(page.locator('.reports-center-main')).toBeVisible();
@@ -30,8 +33,8 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
 
   test('Reports Center remains responsive across the required viewport widths', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium-desktop', 'The complete width matrix runs once in desktop Chromium.');
-    await page.goto('/guest', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/dashboard(?:\?|$)/);
+    await page.goto('/guest', { waitUntil: 'commit' });
+    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
 
     for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });

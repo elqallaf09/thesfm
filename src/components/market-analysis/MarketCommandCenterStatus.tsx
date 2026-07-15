@@ -53,8 +53,9 @@ const OVERLAP_LABEL_KEYS = {
 export function MarketCommandCenterStatus({ selectedSymbol }: MarketCommandCenterStatusProps) {
   const { lang, t } = useLanguage();
   const { system, isLoading, error, retry } = useMarketSystemContext();
-  const [sessionNow, setSessionNow] = useState(() => new Date());
+  const [sessionNow, setSessionNow] = useState<Date | null>(null);
   useEffect(() => {
+    setSessionNow(new Date());
     const intervalId = window.setInterval(() => setSessionNow(new Date()), 60_000);
     return () => window.clearInterval(intervalId);
   }, []);
@@ -65,16 +66,22 @@ export function MarketCommandCenterStatus({ selectedSymbol }: MarketCommandCente
     isStale: freshness.isStale,
     system,
   });
-  const openSessions = getTradingSessionsState(sessionNow).filter(session => session.isOpen);
-  const activeOverlaps = getActiveOverlapIds(sessionNow);
+  const openSessions = sessionNow
+    ? getTradingSessionsState(sessionNow).filter(session => session.isOpen)
+    : [];
+  const activeOverlaps = sessionNow ? getActiveOverlapIds(sessionNow) : [];
   const lastProviderUpdate = system?.lastSynchronizedAt
     ? formatDateTime(system.lastSynchronizedAt, lang)
     : '';
 
-  const sessionValue = openSessions.length > 0
+  const sessionValue = sessionNow === null
+    ? t('market_command_data_state_loading')
+    : openSessions.length > 0
     ? openSessions.map(session => t(`market_session_name_${session.id}`)).join(' · ')
     : t('market_command_no_active_session');
-  const overlapValue = activeOverlaps.length > 0
+  const overlapValue = sessionNow === null
+    ? t('market_command_data_state_loading')
+    : activeOverlaps.length > 0
     ? activeOverlaps
         .map(overlap => t(OVERLAP_LABEL_KEYS[overlap as keyof typeof OVERLAP_LABEL_KEYS]))
         .join(' · ')

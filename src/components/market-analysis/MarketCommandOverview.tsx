@@ -10,20 +10,31 @@ import {
 type MarketCommandOverviewProps = Omit<MarketOverviewPanelProps, 'session'> & {
   sessionCopy: Readonly<{
     label: string;
+    loading: string;
     noActiveSession: string;
     name: (sessionId: TradingSessionId) => string;
   }>;
 };
 
 export function MarketCommandOverview({ sessionCopy, ...props }: MarketCommandOverviewProps) {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    setNow(new Date());
     const intervalId = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(intervalId);
   }, []);
 
   const session = useMemo(() => {
+    if (now === null) {
+      return {
+        state: 'not-loaded' as const,
+        label: sessionCopy.label,
+        message: sessionCopy.loading,
+        tone: 'neutral' as const,
+      };
+    }
+
     const openSessions = getTradingSessionsState(now).filter(item => item.isOpen);
     return {
       state: 'available' as const,
