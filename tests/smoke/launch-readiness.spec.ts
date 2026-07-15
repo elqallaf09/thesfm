@@ -184,6 +184,7 @@ test.describe('launch smoke coverage', () => {
         await expect(page.locator(`${iframeSelector}:visible`)).toHaveCount(1);
         const reloadedFrame = reloadedIframe.contentFrame();
         await expect(page.locator('html')).toHaveClass(/dark/);
+        await expect(reloadedFrame.locator('#app-shell')).toBeVisible({ timeout: 20_000 });
         await expect(reloadedFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
         await expectNoHorizontalOverflow(page);
       } else {

@@ -1,13 +1,31 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { userAuthStatePath } from './auth-state';
 
 const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
 
-async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
+async function expectNoHorizontalOverflow(page: Page) {
   await expect.poll(async () => page.evaluate(() => (
     Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
       - document.documentElement.clientWidth
   ))).toBeLessThanOrEqual(4);
+}
+
+const authenticatedRouteMatrix = [
+  { path: '/today', url: /\/today(?:\?|$)/, marker: '.today-main' },
+  { path: '/tasks', url: /\/tasks(?:\?|$)/, marker: '.tasks-toolbar [role="tablist"]' },
+  { path: '/notifications', url: /\/notifications(?:\?|$)/, marker: '.notification-list' },
+] as const;
+
+async function navigateToStableAuthenticatedRoute(
+  page: Page,
+  route: (typeof authenticatedRouteMatrix)[number],
+) {
+  if (page.url() !== 'about:blank') await page.waitForLoadState('domcontentloaded');
+
+  const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+  expect(response?.status() ?? 200).toBeLessThan(500);
+  await expect(page).toHaveURL(route.url);
+  await expect(page.locator(route.marker)).toBeVisible();
 }
 
 test.describe('Phase 3.5 daily workflow consolidation', () => {
@@ -77,10 +95,12 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
       test.skip(!userAuthConfigured, 'No E2E user credentials are configured for source-backed workflow validation.');
       test.skip(testInfo.project.name !== 'chromium-desktop', 'The complete width matrix runs once in desktop Chromium.');
 
-      for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
-        await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
-        for (const route of ['/today', '/tasks', '/notifications']) {
-          await page.goto(route, { waitUntil: 'domcontentloaded' });
+      for (const route of authenticatedRouteMatrix) {
+        await navigateToStableAuthenticatedRoute(page, route);
+        for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
+          await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
+          await expect(page).toHaveURL(route.url);
+          await expect(page.locator(route.marker)).toBeVisible();
           await expectNoHorizontalOverflow(page);
         }
       }
