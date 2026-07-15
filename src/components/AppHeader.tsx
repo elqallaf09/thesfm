@@ -28,6 +28,7 @@ export function AppHeader() {
   const { access: adminAccess } = useAdminAccess(user?.id);
   const [open, setOpen] = useState(false);
   const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
+  const [mobileMenuReady, setMobileMenuReady] = useState(false);
   const [effectivePathname, setEffectivePathname] = useState(pathname);
   const openingFrameRef = useRef<number | null>(null);
   const closingTimerRef = useRef<number | null>(null);
@@ -61,12 +62,10 @@ export function AppHeader() {
   }, []);
 
   useEffect(() => {
-    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
-    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
-    openingFrameRef.current = null;
-    closingTimerRef.current = null;
-    setOpen(false);
-    setMobileMenuMounted(false);
+    setMobileMenuReady(true);
+  }, []);
+
+  useEffect(() => {
     const nextPath = typeof window === 'undefined'
       ? null
       : new URLSearchParams(window.location.search).get('next');
@@ -117,6 +116,7 @@ export function AppHeader() {
             aria-label={t('nav_open_menu')}
             aria-expanded={open}
             aria-controls="sfm-mobile-menu"
+            disabled={!mobileMenuReady}
             onClick={openMobileMenu}
           >
             <Menu size={22} aria-hidden="true" />
