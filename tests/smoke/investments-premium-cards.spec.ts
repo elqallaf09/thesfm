@@ -133,6 +133,7 @@ test('overflow edit and delete retain their existing dialogs and destructive con
 
 test('history chart renders provider points only after expansion', async ({ page }) => {
   const points = [
+    { time: '2025-07-14T00:00:00.000Z', close: 0.500 },
     { time: '2026-06-16T00:00:00.000Z', close: 0.744 },
     { time: '2026-06-23T00:00:00.000Z', close: 0.752 },
     { time: '2026-06-30T00:00:00.000Z', close: 0.748 },
@@ -146,7 +147,9 @@ test('history chart renders provider points only after expansion', async ({ page
   const chart = card.locator('.invest-sparkline');
   await expect(chart).toBeVisible();
   await expect(chart).toContainText('30D');
-  await expect(chart.locator('.invest-sparkline-path')).toHaveAttribute('d', /^M2\.00/);
+  const path = chart.locator('.invest-sparkline-path');
+  await expect(path).toHaveAttribute('d', /^M2\.00/);
+  expect(((await path.getAttribute('d'))?.match(/L/g) ?? []).length).toBe(4);
   await expect(card.getByText('Historical prices are unavailable from the data provider')).toHaveCount(0);
 });
 
