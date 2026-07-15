@@ -77,7 +77,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
               data-active={current ? 'true' : 'false'}
               aria-current={current ? 'page' : undefined}
             >
-              <Icon size={16} aria-hidden="true" />
+              <Icon size={17} aria-hidden="true" />
               <span className="sfm-workspace-label-full">{workspace.labels[locale]}</span>
             </Link>
           );
@@ -94,14 +94,19 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
         .sfm-workspace-tabs {
           min-width: 0;
+          min-height: var(--control-h);
           display: flex;
           align-items: stretch;
-          gap: 4px;
+          gap: 5px;
           overflow-x: auto;
           overflow-y: hidden;
           overscroll-behavior-inline: contain;
+          border-radius: var(--radius-control);
+          background: var(--workspace-switcher-bg);
+          box-shadow: var(--workspace-switcher-frame-shadow);
           scrollbar-width: none;
           scroll-padding-inline: 10px;
+          scroll-snap-type: inline proximity;
           -webkit-overflow-scrolling: touch;
         }
 
@@ -118,53 +123,108 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           justify-content: center;
           gap: 7px;
           padding: 0 12px;
-          border: 1px solid transparent;
+          border: 1px solid var(--workspace-switcher-item-border);
           border-radius: var(--radius-control);
-          background: transparent;
-          color: var(--foreground-secondary);
+          background: var(--workspace-switcher-item-bg);
+          color: var(--workspace-switcher-item-text);
+          box-shadow: var(--workspace-switcher-shadow);
           text-decoration: none;
           white-space: nowrap;
           font-size: var(--type-navigation-size);
           font-weight: var(--type-navigation-weight);
           line-height: var(--type-navigation-leading);
-          transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out;
+          scroll-snap-align: nearest;
+          touch-action: manipulation;
+          cursor: pointer;
+          transition:
+            background-color var(--duration-fast) ease-out,
+            color var(--duration-fast) ease-out,
+            border-color var(--duration-fast) ease-out,
+            box-shadow var(--duration-fast) ease-out,
+            transform var(--duration-fast) ease-out;
           -webkit-tap-highlight-color: transparent;
         }
 
         .sfm-workspace-tab svg {
           flex: 0 0 auto;
-          color: var(--foreground-muted);
+          color: var(--workspace-switcher-icon);
+          transition: color var(--duration-fast) ease-out;
         }
 
-        .sfm-workspace-tab:hover {
-          background: var(--sidebar-hover);
-          color: var(--foreground);
+        .sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true']) {
+          border-color: var(--workspace-switcher-item-border-hover);
+          background: var(--workspace-switcher-item-hover);
+          color: var(--workspace-switcher-item-text);
+          box-shadow: var(--workspace-switcher-shadow-hover);
+        }
+
+        .sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true']) svg {
+          color: var(--workspace-switcher-icon-hover);
         }
 
         .sfm-workspace-tab:focus-visible {
-          outline: 2px solid var(--focus-ring);
-          outline-offset: -2px;
+          z-index: 1;
+          outline: 3px solid var(--workspace-switcher-focus);
+          outline-offset: -3px;
+          box-shadow: var(--focus-shadow), var(--workspace-switcher-shadow-hover);
         }
 
         .sfm-workspace-tab[data-active='true'] {
-          border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
-          background: var(--sidebar-active);
-          color: var(--sidebar-active-foreground);
+          border-color: var(--workspace-switcher-item-border-active);
+          background: var(--workspace-switcher-item-active);
+          color: var(--workspace-switcher-item-text-active);
+          box-shadow: var(--workspace-switcher-shadow-active);
           font-weight: var(--type-navigation-active-weight);
         }
 
         .sfm-workspace-tab[data-active='true']::after {
           content: '';
           position: absolute;
-          inset-inline: 10px;
-          inset-block-end: 0;
+          inset-inline: 9px;
+          inset-block-end: 3px;
           height: 3px;
-          border-radius: var(--radius-pill) var(--radius-pill) 0 0;
-          background: var(--primary);
+          border-radius: var(--radius-pill);
+          background: var(--workspace-switcher-indicator);
         }
 
         .sfm-workspace-tab[data-active='true'] svg {
-          color: var(--primary);
+          color: var(--workspace-switcher-icon-active);
+        }
+
+        .sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) {
+          box-shadow: var(--workspace-switcher-shadow-active-hover);
+        }
+
+        .sfm-workspace-tab[data-active='true']:focus-visible {
+          box-shadow: var(--focus-shadow), var(--workspace-switcher-shadow-active);
+        }
+
+        .sfm-workspace-tab:active:not([aria-disabled='true']):not([data-disabled='true']) {
+          border-color: var(--workspace-switcher-item-border-hover);
+          background: var(--workspace-switcher-item-pressed);
+          box-shadow: var(--workspace-switcher-shadow-pressed);
+          transform: translateY(1px);
+        }
+
+        .sfm-workspace-tab[data-active='true']:active:not([aria-disabled='true']):not([data-disabled='true']) {
+          border-color: var(--workspace-switcher-item-border-active);
+          background: var(--workspace-switcher-item-active);
+          box-shadow: var(--workspace-switcher-shadow-active-pressed);
+        }
+
+        .sfm-workspace-tab[aria-disabled='true'],
+        .sfm-workspace-tab[data-disabled='true'] {
+          border-color: var(--workspace-switcher-border);
+          background: var(--workspace-switcher-item-disabled);
+          color: var(--workspace-switcher-item-text-disabled);
+          box-shadow: none;
+          opacity: 0.72;
+          cursor: not-allowed;
+        }
+
+        .sfm-workspace-tab[aria-disabled='true'] svg,
+        .sfm-workspace-tab[data-disabled='true'] svg {
+          color: currentColor;
         }
 
         @media (max-width: 900px) {
@@ -177,6 +237,10 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
         @media (prefers-reduced-motion: reduce) {
           .sfm-workspace-tab {
+            transition: none;
+          }
+
+          .sfm-workspace-tab svg {
             transition: none;
           }
         }
