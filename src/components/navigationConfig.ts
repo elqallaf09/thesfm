@@ -3,7 +3,6 @@
 import type { ComponentType } from 'react';
 import {
   BarChart3,
-  Bell,
   BookOpen,
   Bot,
   BriefcaseBusiness,
@@ -78,14 +77,13 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: true,
     items: [
       { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
-      { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions' },
       { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today' },
+      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center' },
+      { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions' },
       { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories' },
       { id: 'ebooks', icon: Library, href: '/ebooks', labelKey: 'nav_ebooks' },
-      { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks' },
-      { id: 'notif', icon: Bell, href: '/notifications', labelKey: 'nav_notif' },
-      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center' },
       { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center' },
+      { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks' },
     ],
   },
   {
