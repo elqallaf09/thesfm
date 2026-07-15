@@ -800,15 +800,15 @@
 .invest-row {
   position: relative;
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
-  padding: var(--space-4);
+  padding: var(--space-3);
   overflow: hidden;
   border: 1px solid var(--sidebar-glass-border);
   border-radius: var(--radius-panel);
   background-color: var(--sidebar-glass-bg-fallback);
   background: var(--sidebar-glass-bg);
-  box-shadow: var(--sidebar-glass-inner-shadow), var(--sidebar-glass-shadow);
+  box-shadow: var(--sidebar-glass-inner-shadow), var(--shadow-card);
   backdrop-filter: var(--sidebar-glass-filter);
   -webkit-backdrop-filter: var(--sidebar-glass-filter);
   isolation: isolate;
@@ -828,7 +828,7 @@
 
 .invest-row:hover {
   border-color: var(--sidebar-item-border-hover);
-  box-shadow: var(--sidebar-glass-inner-shadow), var(--sidebar-glass-shadow), var(--sidebar-glass-glow);
+  box-shadow: var(--sidebar-glass-inner-shadow), var(--shadow-elevated), var(--sidebar-glass-glow);
   transform: translateY(var(--sidebar-item-hover-lift));
 }
 
@@ -845,28 +845,28 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
 }
 
 .invest-holding-identity {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .invest-asset-lens {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 3.5rem;
+  height: 3.5rem;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  border: 1px solid var(--sidebar-glass-border-highlight);
+  border: 1px solid color-mix(in srgb, var(--sidebar-glass-border) 76%, transparent);
   border-radius: var(--radius-panel);
   background: var(--sidebar-glass-bg-elevated);
-  box-shadow: var(--sidebar-glass-inner-shadow), var(--sidebar-glass-glow);
+  box-shadow: var(--sidebar-glass-inner-shadow), var(--sidebar-item-shadow-hover);
 }
 
 .invest-asset-lens .asset-avatar {
@@ -876,7 +876,7 @@
 
 .invest-holding-copy {
   display: grid;
-  gap: var(--space-2);
+  gap: 0.375rem;
   min-width: 0;
 }
 
@@ -953,7 +953,7 @@
 }
 
 .invest-holding-badges {
-  gap: var(--space-2);
+  gap: 0.375rem;
 }
 
 .invest-platform-identity {
@@ -973,10 +973,10 @@
   place-items: center;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid var(--sidebar-item-border);
+  border: 1px solid color-mix(in srgb, var(--sidebar-item-border) 70%, transparent);
   border-radius: var(--radius-control);
   background: var(--surface-elevated);
-  box-shadow: var(--sidebar-item-shadow);
+  box-shadow: none;
   color: var(--foreground-muted);
 }
 
@@ -995,11 +995,23 @@
   opacity: 1;
 }
 
+.invest-platform-monogram {
+  color: var(--foreground-secondary);
+  font-family: var(--font-data);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.invest-platform-logo:not([data-fallback="true"]) .invest-platform-monogram {
+  opacity: 0;
+}
+
 .invest-holding-actions {
-  width: min(22rem, 42%);
+  width: min(25rem, 48%);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: minmax(8rem, 1.15fr) minmax(8rem, 1fr) 2.75rem;
+  gap: 0.375rem;
   flex: 0 0 auto;
 }
 
@@ -1011,7 +1023,7 @@
   border-radius: var(--radius-control);
   background: var(--sidebar-item-bg);
   color: var(--foreground-secondary);
-  box-shadow: var(--sidebar-item-shadow);
+  box-shadow: none;
 }
 
 .invest-row-actions .invest-card-action:hover:not(:disabled) {
@@ -1038,6 +1050,29 @@
 }
 
 .invest-row-actions .invest-card-action--danger {
+  color: var(--danger);
+}
+
+.invest-card-overflow {
+  width: 2.75rem;
+  padding-inline: 0 !important;
+}
+
+.invest-card-menu {
+  width: 12rem;
+  max-width: min(15rem, calc(100dvw - var(--space-4)));
+  border-color: var(--border-strong);
+  background: var(--surface-elevated);
+  color: var(--foreground);
+}
+
+.invest-card-menu-danger {
+  color: var(--danger);
+}
+
+.invest-card-menu-danger:focus,
+.invest-card-menu-danger[data-highlighted] {
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -1092,30 +1127,27 @@
 }
 
 .invest-holding-overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(9rem, 12rem);
-  gap: var(--space-3);
-  align-items: stretch;
+  display: block;
   min-width: 0;
 }
 
 .invest-holding-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
   min-width: 0;
 }
 
 .invest-holding-metric {
-  min-height: 6rem;
+  min-height: 4.625rem;
   display: grid;
   gap: var(--space-2);
   align-content: center;
-  padding: var(--space-3);
-  border: 1px solid var(--sidebar-item-border);
+  padding: 0.625rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--sidebar-item-border) 72%, transparent);
   border-radius: var(--radius-card);
   background: var(--sidebar-item-bg);
-  box-shadow: var(--sidebar-item-shadow);
+  box-shadow: none;
 }
 
 .invest-metric-label {
@@ -1212,13 +1244,16 @@
   gap: var(--space-2);
   margin: 0;
   padding: var(--space-3);
-  border: 1px solid var(--sidebar-item-border);
+  border: 1px solid color-mix(in srgb, var(--sidebar-item-border) 72%, transparent);
   border-radius: var(--radius-card);
   background: var(--sidebar-item-bg);
-  box-shadow: var(--sidebar-item-shadow);
+  box-shadow: none;
 }
 
 .invest-sparkline figcaption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--foreground-muted);
   font-size: var(--type-caption-size);
   font-weight: 500;
@@ -1261,15 +1296,8 @@
 }
 
 .invest-expanded-region {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows var(--duration-slow) var(--ease), opacity var(--duration) var(--ease);
-}
-
-.invest-holding-card.is-expanded .invest-expanded-region {
-  grid-template-rows: 1fr;
-  opacity: 1;
+  display: block;
+  padding-top: var(--space-1);
 }
 
 .invest-expanded-inner {
@@ -1286,15 +1314,29 @@
   gap: var(--space-2);
   align-content: start;
   padding: var(--space-3);
-  border: 1px solid var(--sidebar-item-border);
+  border: 1px solid color-mix(in srgb, var(--sidebar-item-border) 66%, transparent);
   border-radius: var(--radius-card);
   background: var(--sidebar-item-bg);
-  box-shadow: var(--sidebar-item-shadow);
+  box-shadow: none;
 }
 
 .invest-expanded-section--overview,
 .invest-expanded-section--wide {
   grid-column: 1 / -1;
+}
+
+.invest-expanded-section--history {
+  grid-column: span 2;
+}
+
+.invest-history-state {
+  min-height: 5rem;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  text-align: center;
 }
 
 .invest-expanded-section h4 {
@@ -1368,10 +1410,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   flex-wrap: wrap;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--sidebar-item-border);
+  padding-top: var(--space-2);
+  border-top: 1px solid color-mix(in srgb, var(--sidebar-item-border) 72%, transparent);
   color: var(--foreground-muted);
   font-size: var(--type-caption-size);
 }
@@ -2312,11 +2354,7 @@
 
   .invest-holding-actions {
     width: 100%;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .invest-holding-overview {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) 2.75rem;
   }
 
   .invest-sparkline {
@@ -2325,10 +2363,14 @@
 }
 
 @container (max-width: 44rem) {
-  .invest-holding-actions,
   .invest-holding-summary,
   .invest-expanded-inner {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .invest-expanded-section--overview,
+  .invest-expanded-section--wide {
+    grid-column: 1 / -1;
   }
 }
 
@@ -2338,8 +2380,16 @@
   }
 
   .invest-asset-lens {
-    width: 3.75rem;
-    height: 3.75rem;
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .invest-holding-actions {
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
+  }
+
+  .invest-card-action--primary {
+    grid-column: 1 / -1;
   }
 
   .invest-expanded-inner {
@@ -2347,8 +2397,15 @@
   }
 
   .invest-expanded-section--overview,
-  .invest-expanded-section--wide {
+  .invest-expanded-section--wide,
+  .invest-expanded-section--history {
     grid-column: auto;
+  }
+}
+
+@container (max-width: 20rem) {
+  .invest-holding-summary {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2447,8 +2504,12 @@
 
   .invest-holding-actions {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
     justify-content: stretch;
+  }
+
+  .invest-card-action--primary {
+    grid-column: 1 / -1;
   }
 
   .invest-row-actions button {

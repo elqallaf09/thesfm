@@ -13,6 +13,7 @@ import {
   FileText,
   FolderOpen,
   Minus,
+  MoreHorizontal,
   NotebookText,
   Paperclip,
   PieChart,
@@ -24,12 +25,19 @@ import {
   TrendingUp,
   WalletCards,
 } from 'lucide-react';
-import { memo, useId, useMemo, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { calculateInvestmentHoldingMetrics, investmentNativeCurrency } from '@/lib/investmentCalculations';
 import type { Investment } from '@/types/investment';
-import { InvestmentSparkline } from './InvestmentSparkline';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { InvestmentSparkline, type InvestmentHistoryPoint } from './InvestmentSparkline';
 import { PlatformIdentity } from './PlatformIdentity';
 
 export type InvestmentPriceRefreshStatus = {
@@ -42,6 +50,7 @@ export type InvestmentCardLabels = {
   details: string;
   expandDetails?: string;
   collapseDetails?: string;
+  moreActions?: string;
   edit: string;
   delete: string;
   monthly: string;
@@ -95,6 +104,12 @@ export type InvestmentCardLabels = {
   currentStatus?: string;
   activeStatus?: string;
   riskShort?: string;
+  averageCost?: string;
+  investedValue?: string;
+  todayChange?: string;
+  historyLoading?: string;
+  historyUnavailable?: string;
+  period30Days?: string;
 };
 
 interface Props {
@@ -115,6 +130,12 @@ interface Props {
   platformLogoUrl?: string | null;
 }
 
+type InvestmentHistoryState =
+  | { status: 'idle' | 'loading' | 'unavailable'; points: InvestmentHistoryPoint[] }
+  | { status: 'ready'; points: InvestmentHistoryPoint[] };
+
+const investmentHistoryCache = new Map<string, InvestmentHistoryState>();
+
 export const InvestmentRow = memo(function InvestmentRow({
   investment,
   accountValue,
@@ -134,6 +155,7 @@ export const InvestmentRow = memo(function InvestmentRow({
 }: Props) {
   const metrics = useMemo(() => calculateInvestmentHoldingMetrics(investment), [investment]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [historyState, setHistoryState] = useState<InvestmentHistoryState>({ status: 'idle', points: [] });
   const expansionId = useId();
   const expansionButtonId = `${expansionId}-trigger`;
   const nativeCurrency = investmentNativeCurrency(investment);
@@ -169,9 +191,57 @@ export const InvestmentRow = memo(function InvestmentRow({
     : metrics.isMarketLinked && metrics.currentPrice === null
       ? AlertTriangle
       : CheckCircle2;
-  const sparklineStart = metrics.purchasePrice ?? metrics.totalInvested;
-  const sparklineEnd = metrics.currentPrice ?? metrics.currentValue;
-  const hasSparkline = sparklineStart !== null && sparklineEnd !== null && sparklineStart > 0;
+  const historySymbol = investment.providerSymbol || metrics.linkedSymbol || investment.symbol;
+  const historyKey = historySymbol
+    ? [historySymbol, investment.assetType || investment.type, '1M'].join(':')
+    : null;
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    if (!historyKey || !historySymbol || !metrics.isMarketLinked) {
+      setHistoryState({ status: 'unavailable', points: [] });
+      return;
+    }
+
+    const cached = investmentHistoryCache.get(historyKey);
+    if (cached) {
+      setHistoryState(cached);
+      return;
+    }
+
+    const controller = new AbortController();
+    setHistoryState({ status: 'loading', points: [] });
+    const params = new URLSearchParams({
+      symbol: metrics.linkedSymbol || investment.symbol || historySymbol,
+      providerSymbol: historySymbol,
+      assetType: investment.assetType || investment.type,
+      range: '1M',
+    });
+    void fetch(`/api/market/history?${params.toString()}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+      .then(response => response.ok ? response.json() : null)
+      .then((payload: { points?: Array<{ time?: unknown; close?: unknown }> } | null) => {
+        if (controller.signal.aborted) return;
+        const points = (payload?.points ?? [])
+          .map(point => ({ time: String(point.time ?? ''), close: Number(point.close) }))
+          .filter(point => point.time && Number.isFinite(point.close));
+        const next: InvestmentHistoryState = points.length >= 2
+          ? { status: 'ready', points }
+          : { status: 'unavailable', points: [] };
+        investmentHistoryCache.set(historyKey, next);
+        setHistoryState(next);
+      })
+      .catch(error => {
+        if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return;
+        const next: InvestmentHistoryState = { status: 'unavailable', points: [] };
+        investmentHistoryCache.set(historyKey, next);
+        setHistoryState(next);
+      });
+
+    return () => controller.abort();
+  }, [historyKey, historySymbol, investment.assetType, investment.symbol, investment.type, isExpanded, metrics.isMarketLinked, metrics.linkedSymbol]);
 
   return (
     <article className={`invest-row invest-holding-card invest-holding-card--${gainState}${isExpanded ? ' is-expanded' : ''}`}>
@@ -217,42 +287,44 @@ export const InvestmentRow = memo(function InvestmentRow({
             <Eye size={16} aria-hidden="true" />
             <span>{labels.details}</span>
           </button>
-          <button type="button" className="invest-card-action" onClick={() => onEdit(investment)} aria-label={labels.edit}>
-            <Edit3 size={16} aria-hidden="true" />
-            <span>{labels.edit}</span>
-          </button>
-          <button type="button" className="invest-card-action invest-card-action--danger" onClick={() => onDelete(investment)} aria-label={labels.delete}>
-            <Trash2 size={16} aria-hidden="true" />
-            <span>{labels.delete}</span>
-          </button>
           <button id={expansionButtonId} type="button" className="invest-card-action invest-expand-btn" onClick={() => setIsExpanded(value => !value)} aria-expanded={isExpanded} aria-controls={expansionId} aria-label={isExpanded ? labels.collapseDetails : labels.expandDetails}>
             {isExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
             <span>{isExpanded ? labels.collapseDetails : labels.expandDetails}</span>
           </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="invest-card-action invest-card-overflow" aria-label={labels.moreActions || 'More actions'}>
+                <MoreHorizontal size={18} aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="invest-card-menu" align="end" sideOffset={6} collisionPadding={8}>
+              {metrics.linkedSymbol && onRefreshPrice ? (
+                <DropdownMenuItem disabled={refreshing} onSelect={() => onRefreshPrice(investment)}>
+                  <RefreshCw className={refreshing ? 'invest-spin' : undefined} aria-hidden="true" />
+                  <span>{refreshing ? labels.refreshingPrice : labels.refreshPrice}</span>
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onSelect={() => onEdit(investment)}>
+                <Edit3 aria-hidden="true" />
+                <span>{labels.edit}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="invest-card-menu-danger" onSelect={() => onDelete(investment)}>
+                <Trash2 aria-hidden="true" />
+                <span>{labels.delete}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
       <div className="invest-holding-overview">
         <div className="invest-holding-summary">
           <Metric
-            label={metrics.purchasePrice !== null ? (labels.purchasePrice || 'Purchase price') : (labels.totalInvested || 'Total invested')}
-            value={metrics.purchasePrice !== null
-              ? formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)
-              : metrics.totalInvested !== null
-                ? formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)
-                : labels.purchasePriceMissing || '-'}
-            tone={metrics.purchasePrice === null && metrics.totalInvested === null ? 'warning' : 'default'}
+            label={labels.currentMarketValue || 'Current market value'}
+            value={metrics.currentValue !== null ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment) : labels.unavailable || '-'}
+            tone={metrics.currentValue === null ? 'warning' : 'default'}
             icon={<WalletCards size={15} />}
-          />
-          <Metric
-            label={metrics.currentPrice !== null ? (labels.currentPrice || 'Current price') : (labels.currentMarketValue || 'Holding value')}
-            value={metrics.currentPrice !== null
-              ? formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)
-              : metrics.currentValue !== null
-                ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment)
-                : labels.currentPriceUnavailable || labels.unavailable || '-'}
-            tone={metrics.currentPrice === null && metrics.currentValue === null && metrics.isMarketLinked ? 'warning' : 'default'}
-            icon={<BarChart3 size={15} />}
           />
           <Metric
             label={labels.profitLoss || 'Profit / loss'}
@@ -261,79 +333,89 @@ export const InvestmentRow = memo(function InvestmentRow({
             tone={gainState}
             icon={gainState === 'gain' ? <TrendingUp size={15} /> : gainState === 'loss' ? <TrendingDown size={15} /> : <Minus size={15} />}
           />
-          <Metric
-            label={labels.currentMarketValue || 'Holding value'}
-            value={metrics.currentValue !== null ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment) : labels.unavailable || '-'}
-            icon={<PieChart size={15} />}
-          />
         </div>
-        {hasSparkline && (
-          <InvestmentSparkline start={sparklineStart} end={sparklineEnd} label={labels.lifetime || 'Lifetime'} gain={sparklineEnd >= sparklineStart} />
-        )}
       </div>
 
-      <div id={expansionId} className="invest-expanded-region" role="region" aria-labelledby={expansionButtonId} aria-hidden={!isExpanded}>
-        <div className="invest-expanded-inner">
-          <section className="invest-expanded-section invest-expanded-section--overview">
-            <ExpandedTitle icon={<Building2 size={16} />} title={labels.overview || 'Overview'} />
-            <div className="invest-holding-secondary">
-              <DetailChip label={quantityLabel} value={quantityValue} />
-              <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
-              <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${formatNumber(investment.expectedAnnualReturn)}%`} />
-              {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
-              <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
-              {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && <DetailChip label={labels.metalCount || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />}
-              <DetailChip label={labels.startDate || 'Entry date'} value={formatDateOnly(investment.startDate) || labels.unavailable || '-'} />
-              {showConvertedLine && <DetailChip label={labels.approxUserCurrency || 'Approx.'} value={formatMoney(accountValue, 'valid')} />}
-            </div>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<Sparkles size={16} />} title={labels.aiSummary || 'AI summary'} />
-            <p>{labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<PieChart size={16} />} title={labels.allocation || 'Allocation'} />
-            <strong className="invest-expanded-value">{portfolioPercent === null ? (labels.unavailable || '-') : `${formatPercent(portfolioPercent)}%`}</strong>
-            <progress className="invest-allocation-track" max="100" value={Math.min(Math.max(portfolioPercent ?? 0, 0), 100)} aria-label={labels.allocation || 'Allocation'} />
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<TrendingUp size={16} />} title={labels.performance || 'Performance'} />
-            <strong className={`invest-expanded-value invest-tone-${gainState}`}>{metrics.profitLossPercent === null ? profitUnavailableText(metrics, labels) : `${formatSignedNumber(metrics.profitLossPercent)}%`}</strong>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<ScrollText size={16} />} title={labels.dividends || 'Dividends'} />
-            <p>{labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section invest-expanded-section--wide">
-            <ExpandedTitle icon={<NotebookText size={16} />} title={labels.notes || 'Notes'} />
-            <p>{investment.notes || labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<Paperclip size={16} />} title={labels.attachments || 'Attachments'} />
-            <p>{labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<Building2 size={16} />} title={labels.brokerNotes || 'Broker notes'} />
-            <p>{investment.purchasePlatformName || labels.purchasePlatformNotSpecified || labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<Clock3 size={16} />} title={labels.transactions || 'Transactions'} />
-            <p>{formatDateOnly(investment.startDate) || labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<BarChart3 size={16} />} title={labels.priceHistory || 'Price history'} />
-            {hasSparkline ? <InvestmentSparkline start={sparklineStart} end={sparklineEnd} label={labels.lifetime || 'Lifetime'} gain={sparklineEnd >= sparklineStart} /> : <p>{labels.noData || '-'}</p>}
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<FileText size={16} />} title={labels.documents || 'Documents'} />
-            <p>{labels.noData || '-'}</p>
-          </section>
-          <section className="invest-expanded-section">
-            <ExpandedTitle icon={<FolderOpen size={16} />} title={labels.dataSource || 'Data source'} />
-            <p>{investment.priceSource || investment.dataSource || investment.valuationSource || labels.noData || '-'}</p>
-          </section>
+      {isExpanded ? (
+        <div id={expansionId} className="invest-expanded-region" role="region" aria-labelledby={expansionButtonId}>
+          <div className="invest-expanded-inner">
+            <section className="invest-expanded-section invest-expanded-section--overview">
+              <ExpandedTitle icon={<Building2 size={16} />} title={labels.overview || 'Overview'} />
+              <div className="invest-holding-secondary invest-financial-details">
+                <DetailChip label={quantityLabel} value={quantityValue} />
+                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment)} />
+                <DetailChip label={labels.currentPrice || 'Current price'} value={metrics.currentPrice === null ? (labels.currentPriceUnavailable || labels.unavailable || '-') : formatNativeMoney(metrics.currentPrice, nativeCurrency, investment)} />
+                <DetailChip label={labels.averageCost || 'Average cost'} value={labels.unavailable || '-'} />
+                <DetailChip label={labels.investedValue || labels.totalInvested || 'Invested value'} value={metrics.totalInvested === null ? (labels.purchasePriceMissing || labels.unavailable || '-') : formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} />
+                <DetailChip label={labels.currentMarketValue || 'Current market value'} value={metrics.currentValue === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.currentValue, nativeCurrency, investment)} />
+                <DetailChip label={labels.profitLoss || 'Profit / loss'} value={metrics.profitLossAmount === null ? profitUnavailableText(metrics, labels) : `${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}`} tone={gainState} />
+                <DetailChip label={labels.profitLossPercent || 'ROI'} value={metrics.profitLossPercent === null ? profitUnavailableText(metrics, labels) : `${formatSignedNumber(metrics.profitLossPercent)}%`} tone={gainState} />
+                <DetailChip label={labels.todayChange || 'Today change'} value={labels.unavailable || '-'} />
+                <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
+                <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? (labels.unavailable || '-') : `${formatNumber(investment.expectedAnnualReturn)}%`} />
+                {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
+                <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
+                {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && <DetailChip label={labels.metalCount || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />}
+                <DetailChip label={labels.startDate || 'Entry date'} value={formatDateOnly(investment.startDate) || labels.unavailable || '-'} />
+                {showConvertedLine && <DetailChip label={labels.approxUserCurrency || 'Approx.'} value={formatMoney(accountValue, 'valid')} />}
+              </div>
+            </section>
+            <section className="invest-expanded-section invest-expanded-section--history">
+              <ExpandedTitle icon={<BarChart3 size={16} />} title={labels.priceHistory || 'Price history'} />
+              {historyState.status === 'ready' ? (
+                <InvestmentSparkline points={historyState.points} label={labels.period30Days || '30D'} />
+              ) : (
+                <p className="invest-history-state" role="status">
+                  {historyState.status === 'loading'
+                    ? labels.historyLoading || 'Loading historical prices'
+                    : labels.historyUnavailable || labels.noData || 'Historical prices unavailable'}
+                </p>
+              )}
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<PieChart size={16} />} title={labels.allocation || 'Allocation'} />
+              <strong className="invest-expanded-value">{portfolioPercent === null ? (labels.unavailable || '-') : `${formatPercent(portfolioPercent)}%`}</strong>
+              <progress className="invest-allocation-track" max="100" value={Math.min(Math.max(portfolioPercent ?? 0, 0), 100)} aria-label={labels.allocation || 'Allocation'} />
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<TrendingUp size={16} />} title={labels.performance || 'Performance'} />
+              <strong className={`invest-expanded-value invest-tone-${gainState}`}>{metrics.profitLossPercent === null ? profitUnavailableText(metrics, labels) : `${formatSignedNumber(metrics.profitLossPercent)}%`}</strong>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<Sparkles size={16} />} title={labels.aiSummary || 'AI summary'} />
+              <p>{labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<ScrollText size={16} />} title={labels.dividends || 'Dividends'} />
+              <p>{labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section invest-expanded-section--wide">
+              <ExpandedTitle icon={<NotebookText size={16} />} title={labels.notes || 'Notes'} />
+              <p>{investment.notes || labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<Paperclip size={16} />} title={labels.attachments || 'Attachments'} />
+              <p>{labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<Building2 size={16} />} title={labels.brokerNotes || 'Broker notes'} />
+              <p>{investment.purchasePlatformName || labels.purchasePlatformNotSpecified || labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<Clock3 size={16} />} title={labels.transactions || 'Transactions'} />
+              <p>{formatDateOnly(investment.startDate) || labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<FileText size={16} />} title={labels.documents || 'Documents'} />
+              <p>{labels.noData || '-'}</p>
+            </section>
+            <section className="invest-expanded-section">
+              <ExpandedTitle icon={<FolderOpen size={16} />} title={labels.dataSource || 'Data source'} />
+              <p>{investment.priceSource || investment.dataSource || investment.valuationSource || labels.noData || '-'}</p>
+            </section>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <footer className="invest-holding-footer">
         <div className="invest-price-status">
@@ -343,12 +425,6 @@ export const InvestmentRow = memo(function InvestmentRow({
         <span className="invest-last-updated">
           {labels.lastUpdated || 'Last updated'}: <b dir="ltr">{formatDate(investment.lastPriceUpdatedAt || investment.valuationLastUpdatedAt || priceRefreshStatus?.at) || labels.unavailable || '-'}</b>
         </span>
-        {metrics.linkedSymbol && onRefreshPrice && (
-          <button type="button" className="invest-refresh-inline" onClick={() => onRefreshPrice(investment)} aria-label={labels.refreshPrice} disabled={refreshing}>
-            <RefreshCw size={15} className={refreshing ? 'invest-spin' : undefined} aria-hidden="true" />
-            <span>{refreshing ? labels.refreshingPrice : labels.refreshPrice}</span>
-          </button>
-        )}
       </footer>
     </article>
   );
@@ -371,8 +447,8 @@ function Metric({ label, value, meta, tone = 'default', icon }: { label: string;
   );
 }
 
-function DetailChip({ label, value }: { label: string; value: string }) {
-  return <span className="invest-detail-chip"><b>{label}</b><em dir="auto">{value}</em></span>;
+function DetailChip({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'gain' | 'loss' | 'neutral' }) {
+  return <span className={`invest-detail-chip invest-detail-chip--${tone}`}><b>{label}</b><em dir="auto">{value}</em></span>;
 }
 
 function ExpandedTitle({ icon, title }: { icon: ReactNode; title: string }) {
