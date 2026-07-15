@@ -16,6 +16,8 @@ export type MonthlyHealthSnapshot = {
   monthlyExpenses: number;
   hasIncomeData: boolean;
   hasExpenseData: boolean;
+  incomeAmountsComplete: boolean;
+  expenseAmountsComplete: boolean;
 };
 
 export type FinancialHealthInput = {
@@ -238,24 +240,36 @@ export function buildMonthlyHealthSnapshot(
 ): MonthlyHealthSnapshot {
   const compatibleIncome = incomeRows.filter(includeRow);
   const compatibleExpenses = expenseRows.filter(includeRow);
-  const incomeRecurring = recurringRows(compatibleIncome, 'income').filter(hasRecurringAmount);
-  const expenseRecurring = recurringRows(compatibleExpenses, 'expense').filter(hasRecurringAmount);
+  const incomeStartKeys = ['start_date', 'recurrence_start_date', 'received_date', 'generated_for_date', 'created_at'];
+  const incomeEndKeys = ['end_date', 'recurrence_end_date'];
+  const expenseStartKeys = ['start_date', 'date', 'expense_date', 'created_at'];
+  const expenseEndKeys = ['end_date'];
+  const incomeRecurringCandidates = recurringRows(compatibleIncome, 'income').filter(
+    (row) => recurrenceCount(row, incomeStartKeys, incomeEndKeys, now) > 0,
+  );
+  const expenseRecurringCandidates = recurringRows(compatibleExpenses, 'expense').filter(
+    (row) => recurrenceCount(row, expenseStartKeys, expenseEndKeys, now) > 0,
+  );
+  const incomeRecurring = incomeRecurringCandidates.filter(hasRecurringAmount);
+  const expenseRecurring = expenseRecurringCandidates.filter(hasRecurringAmount);
   const recurringIncomeSet = new Set(compatibleIncome.filter(isRecurringIncome));
   const recurringExpenseSet = new Set(compatibleExpenses.filter(isRecurringExpense));
 
-  const oneTimeIncome = realizedIncomeRows(compatibleIncome, now).filter((row) =>
-    !recurringIncomeSet.has(row) && rowIsInMonth(row, INCOME_DATE_KEYS, now) && parsedAmount(row.amount) !== null,
+  const oneTimeIncomeCandidates = realizedIncomeRows(compatibleIncome, now).filter((row) =>
+    !recurringIncomeSet.has(row) && rowIsInMonth(row, INCOME_DATE_KEYS, now),
   );
-  const oneTimeExpenses = realizedExpenseRows(compatibleExpenses, now).filter((row) =>
-    !recurringExpenseSet.has(row) && rowIsInMonth(row, EXPENSE_DATE_KEYS, now) && parsedAmount(row.amount) !== null,
+  const oneTimeExpenseCandidates = realizedExpenseRows(compatibleExpenses, now).filter((row) =>
+    !recurringExpenseSet.has(row) && rowIsInMonth(row, EXPENSE_DATE_KEYS, now),
   );
+  const oneTimeIncome = oneTimeIncomeCandidates.filter((row) => parsedAmount(row.amount) !== null);
+  const oneTimeExpenses = oneTimeExpenseCandidates.filter((row) => parsedAmount(row.amount) !== null);
 
   const monthlyIncome = oneTimeIncome.reduce((total, row) => total + amount(row.amount), 0) + incomeRecurring.reduce(
-    (total, row) => total + recurringAmount(row, ['start_date', 'recurrence_start_date', 'received_date', 'generated_for_date', 'created_at'], ['end_date', 'recurrence_end_date'], now),
+    (total, row) => total + recurringAmount(row, incomeStartKeys, incomeEndKeys, now),
     0,
   );
   const monthlyExpenses = oneTimeExpenses.reduce((total, row) => total + amount(row.amount), 0) + expenseRecurring.reduce(
-    (total, row) => total + recurringAmount(row, ['start_date', 'date', 'expense_date', 'created_at'], ['end_date'], now),
+    (total, row) => total + recurringAmount(row, expenseStartKeys, expenseEndKeys, now),
     0,
   );
 
@@ -264,6 +278,12 @@ export function buildMonthlyHealthSnapshot(
     monthlyExpenses,
     hasIncomeData: oneTimeIncome.length > 0 || incomeRecurring.length > 0,
     hasExpenseData: oneTimeExpenses.length > 0 || expenseRecurring.length > 0,
+    incomeAmountsComplete:
+      oneTimeIncome.length === oneTimeIncomeCandidates.length &&
+      incomeRecurring.length === incomeRecurringCandidates.length,
+    expenseAmountsComplete:
+      oneTimeExpenses.length === oneTimeExpenseCandidates.length &&
+      expenseRecurring.length === expenseRecurringCandidates.length,
   };
 }
 

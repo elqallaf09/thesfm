@@ -219,8 +219,6 @@ export default function ExecutiveDashboardPage() {
     const debtPaymentsComplete = activeDebts.every((row) => firstNumber(row, ['monthly_payment']) !== null);
     const investmentValues = sources.investments.rows.map((row) => investmentValue(row, primaryCurrency));
     const investmentsComplete = investmentValues.every((value) => value !== null && value.currency !== null);
-    const incomeAmountsComplete = sources.income.rows.filter(compatible).every((row) => firstNumber(row, ['amount']) !== null);
-    const expenseAmountsComplete = sources.expenses.rows.filter(compatible).every((row) => firstNumber(row, ['amount']) !== null);
     const savingsBalance = sumRows(valuedSavingsRows, ['current_amount', 'balance', 'amount']);
     const monthlyDebtPayments = sumRows(activeDebts, ['monthly_payment']);
     const debtBalanceTotal = activeDebts.reduce((total, row) => total + (debtBalance(row) ?? 0), 0);
@@ -237,8 +235,8 @@ export default function ExecutiveDashboardPage() {
       monthlyExpenses,
       savingsBalance,
       monthlyDebtPayments,
-      hasIncomeData: loaded(sources.income.status) && monthlyPlan.hasIncomeData && incomeAmountsComplete,
-      hasExpenseData: loaded(sources.expenses.status) && monthlyPlan.hasExpenseData && expenseAmountsComplete,
+      hasIncomeData: loaded(sources.income.status) && monthlyPlan.hasIncomeData && monthlyPlan.incomeAmountsComplete,
+      hasExpenseData: loaded(sources.expenses.status) && monthlyPlan.hasExpenseData && monthlyPlan.expenseAmountsComplete,
       hasSavingsData: loaded(sources.savings.status) && valuedSavingsRows.length > 0 && savingsAmountsComplete,
       debtsLoaded: loaded(sources.debts.status) && debtPaymentsComplete,
     };
@@ -273,8 +271,8 @@ export default function ExecutiveDashboardPage() {
       monthlyIncome,
       monthlyExpenses,
       monthlyNet,
-      hasIncomeData: monthlyPlan.hasIncomeData && incomeAmountsComplete,
-      hasExpenseData: monthlyPlan.hasExpenseData && expenseAmountsComplete,
+      hasIncomeData: monthlyPlan.hasIncomeData && monthlyPlan.incomeAmountsComplete,
+      hasExpenseData: monthlyPlan.hasExpenseData && monthlyPlan.expenseAmountsComplete,
       health,
       indicators,
       observedCashFlow,

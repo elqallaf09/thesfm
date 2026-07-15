@@ -76,7 +76,38 @@ describe('dashboard financial metrics', () => {
       now,
       (row) => row.currency === 'KWD',
     );
-    expect(snapshot).toEqual({ monthlyIncome: 1000, monthlyExpenses: 600, hasIncomeData: true, hasExpenseData: true });
+    expect(snapshot).toEqual({
+      monthlyIncome: 1000,
+      monthlyExpenses: 600,
+      hasIncomeData: true,
+      hasExpenseData: true,
+      incomeAmountsComplete: true,
+      expenseAmountsComplete: true,
+    });
+  });
+
+  it('evaluates completeness only for current contributing rows and accepts normalized recurring amounts', () => {
+    const snapshot = buildMonthlyHealthSnapshot(
+      [
+        { id: 'historical', amount: null, currency: 'KWD', received_date: '2026-06-01', status: 'received' },
+        { id: 'salary', amount: null, monthly_amount: 1200, currency: 'KWD', is_recurring: true, frequency: 'monthly', start_date: '2026-01-01' },
+      ],
+      [
+        { id: 'current-missing', amount: null, currency: 'KWD', date: '2026-07-05' },
+        { id: 'future-plan', amount: null, currency: 'KWD', is_recurring: true, frequency: 'monthly', start_date: '2026-08-01' },
+      ],
+      now,
+      (row) => row.currency === 'KWD',
+    );
+
+    expect(snapshot).toMatchObject({
+      monthlyIncome: 1200,
+      hasIncomeData: true,
+      incomeAmountsComplete: true,
+      monthlyExpenses: 0,
+      hasExpenseData: false,
+      expenseAmountsComplete: false,
+    });
   });
 
   it('keeps available indicators visible when the full score is unavailable', () => {
