@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type FrameLocator, type Page } from '@playwright/test';
 import { adminAuthStatePath, userAuthStatePath } from './auth-state';
 
 const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
@@ -22,6 +22,22 @@ async function expectNoHorizontalOverflow(page: Page) {
     const body = document.body;
     return Math.max(documentElement.scrollWidth, body.scrollWidth) - documentElement.clientWidth;
   })).toBeLessThanOrEqual(4);
+}
+
+async function expectTraderThemeStable(frame: FrameLocator, expectedTheme: 'light' | 'dark') {
+  await expect.poll(async () => frame.locator('html').evaluate(element => {
+    const frameWindow = element.ownerDocument.defaultView as (Window & {
+      SFMTraderTheme?: { getResolvedTheme?: () => string };
+    }) | null;
+
+    return {
+      attribute: element.getAttribute('data-theme'),
+      bridge: frameWindow?.SFMTraderTheme?.getResolvedTheme?.() ?? null,
+    };
+  }), {
+    message: `Trader theme bridge should settle on ${expectedTheme}`,
+    timeout: 20_000,
+  }).toEqual({ attribute: expectedTheme, bridge: expectedTheme });
 }
 
 async function setLanguage(page: Page, lang: 'ar' | 'en') {
@@ -155,9 +171,10 @@ test.describe('launch smoke coverage', () => {
         await expect(iframe).toBeVisible();
         await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=home');
         const traderFrame = traderShell.frameLocator(iframeSelector);
+        await page.waitForLoadState('load');
         await expect(traderFrame.locator('#app-shell')).toBeVisible({ timeout: 20_000 });
         await expect(page.locator('html')).toHaveClass(/light/);
-        await expect(traderFrame.locator('html')).toHaveAttribute('data-theme', 'light');
+        await expectTraderThemeStable(traderFrame, 'light');
         await expect(traderFrame.locator('#theme-switcher, #terminal-language-switcher, .workspace-exit-link, .workspace-exit-chip')).toHaveCount(0);
         const stableFrameSrc = await iframe.getAttribute('src');
 
@@ -190,10 +207,11 @@ test.describe('launch smoke coverage', () => {
           await page.locator('#sfm-mobile-menu .sfm-mobile-close').click();
           await expect(page.locator('#sfm-mobile-menu')).toBeHidden();
         }
-        await expect(traderFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
+        await expectTraderThemeStable(traderFrame, 'dark');
         await expect(iframe).toHaveAttribute('src', stableFrameSrc ?? '/thesfm-trader-own/app/index.html?route=home');
 
-        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForLoadState('load');
+        await page.reload({ waitUntil: 'load' });
         const reloadedTraderShell = page.getByRole('main', { name: 'SFM Smart Analyzer' });
         await expect(reloadedTraderShell).toHaveCount(1);
         const reloadedIframe = reloadedTraderShell.locator(iframeSelector);
@@ -202,7 +220,8 @@ test.describe('launch smoke coverage', () => {
         await expect(page.locator(`${iframeSelector}:visible`)).toHaveCount(1);
         const reloadedFrame = reloadedIframe.contentFrame();
         await expect(page.locator('html')).toHaveClass(/dark/);
-        await expect(reloadedFrame.locator('html')).toHaveAttribute('data-theme', 'dark');
+        await expect(reloadedFrame.locator('#app-shell')).toBeVisible({ timeout: 20_000 });
+        await expectTraderThemeStable(reloadedFrame, 'dark');
         await expectNoHorizontalOverflow(page);
       } else {
         await expect(page.locator('body')).toBeVisible();

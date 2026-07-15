@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { Investment } from '@/types/investment';
 
 const sampleInvestments: Investment[] = [
@@ -57,6 +57,20 @@ async function enterPremiumPortfolio(page: Page, width: number, options: Portfol
   }, lang);
   await expect(page.locator('html')).toHaveAttribute('lang', lang);
   await expect(page.locator('html')).toHaveClass(new RegExp(`(^|\\s)${theme}(\\s|$)`));
+}
+
+async function selectOverflowAction(page: Page, card: Locator, name: 'Edit' | 'Delete') {
+  const trigger = card.getByRole('button', { name: 'More actions' });
+  await expect(trigger).toBeVisible();
+  await expect(trigger).toBeEnabled();
+  await trigger.click();
+
+  const menu = page.locator('.invest-card-menu[data-state="open"]');
+  await expect(menu).toBeVisible();
+  const item = menu.getByRole('menuitem', { name, exact: true });
+  await expect(item).toBeVisible();
+  await expect(item).toBeEnabled();
+  await item.press('Enter');
 }
 
 test('compact card preserves identity, financial hierarchy, accessible actions, and 320px reflow', async ({ page }) => {
@@ -203,13 +217,13 @@ test('overflow edit and delete retain their existing dialogs and destructive con
   await enterPremiumPortfolio(page, 390);
   const card = page.locator('.invest-holding-card').filter({ hasText: 'Kuwait Finance House' });
 
-  await card.getByRole('button', { name: 'More actions' }).click();
-  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await selectOverflowAction(page, card, 'Edit');
   await expect(page.locator('.invest-modal[role="dialog"]')).toBeVisible();
-  await page.locator('.invest-modal[role="dialog"]').getByRole('button', { name: 'Close' }).click();
+  const closeEditDialog = page.locator('.invest-modal[role="dialog"]').getByRole('button', { name: 'Close' });
+  await expect(closeEditDialog).toBeEnabled();
+  await closeEditDialog.press('Enter');
 
-  await card.getByRole('button', { name: 'More actions' }).click();
-  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await selectOverflowAction(page, card, 'Delete');
   const confirmation = page.locator('.invest-confirm[role="alertdialog"]');
   await expect(confirmation).toBeVisible();
   await expect(confirmation).toContainText('Kuwait Finance House');

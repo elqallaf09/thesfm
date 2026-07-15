@@ -38,9 +38,9 @@ type FilterId = 'all' | 'urgent' | 'thisWeek' | 'personal' | 'projects' | 'zakat
 
 const TEXT = {
   ar: {
-    title: 'مركز المهام',
-    subtitle: 'كل ما تحتاج تنفيذه في THE SFM، مرتب حسب الأولوية ومن بياناتك الفعلية.',
-    eyebrow: 'ما المطلوب مني الآن؟',
+    title: 'إدارة المهام',
+    subtitle: 'ابحث وصفِّ وأدر سجل المهام الكامل. تظهر الأولويات اليومية المختصرة في مركز اليوم.',
+    eyebrow: 'إدارة متقدمة',
     loading: 'جاري تحميل المهام...',
     loadWarningSingle: 'تعذر تحميل مصدر المهام:',
     loadWarning: 'تعذر تحميل بعض مصادر المهام:',
@@ -91,11 +91,14 @@ const TEXT = {
     sourceZakatCharity: 'الزكاة والأعمال الخيرية',
     sourceMarket: 'السوق',
     sourceNotifications: 'الإشعارات',
+    debt: 'الديون',
+    subscription: 'الاشتراكات',
+    bill: 'الفواتير',
   },
   en: {
-    title: 'Tasks Center',
-    subtitle: 'Everything you need to do in THE SFM, organized by priority and based on your real data.',
-    eyebrow: 'What should I do now?',
+    title: 'Task Management',
+    subtitle: 'Search, filter, and manage the complete task record. Daily priorities stay focused in Today Center.',
+    eyebrow: 'Advanced management',
     loading: 'Loading tasks...',
     loadWarningSingle: 'Could not load task source:',
     loadWarning: 'Some task sources could not be loaded:',
@@ -146,11 +149,14 @@ const TEXT = {
     sourceZakatCharity: 'Zakat & charity',
     sourceMarket: 'Market',
     sourceNotifications: 'Notifications',
+    debt: 'Debts',
+    subscription: 'Subscriptions',
+    bill: 'Bills',
   },
   fr: {
-    title: 'Centre des tâches',
-    subtitle: 'Tout ce que vous devez faire dans THE SFM, classé par priorité et basé sur vos données réelles.',
-    eyebrow: 'Que dois-je faire maintenant ?',
+    title: 'Gestion des tâches',
+    subtitle: 'Recherchez, filtrez et gérez le registre complet. Les priorités quotidiennes restent dans le Centre du jour.',
+    eyebrow: 'Gestion avancée',
     loading: 'Chargement des tâches...',
     loadWarningSingle: 'Impossible de charger la source de tâches :',
     loadWarning: 'Certaines sources de tâches n’ont pas pu être chargées :',
@@ -201,12 +207,15 @@ const TEXT = {
     sourceZakatCharity: 'Zakat et charité',
     sourceMarket: 'Marché',
     sourceNotifications: 'Notifications',
+    debt: 'Dettes',
+    subscription: 'Abonnements',
+    bill: 'Factures',
   },
 } as const;
 
 type TasksText = (typeof TEXT)[Lang];
 
-const PERSONAL_MODULES = new Set(['setup', 'income', 'expense', 'goal', 'savings']);
+const PERSONAL_MODULES = new Set(['setup', 'income', 'expense', 'goal', 'savings', 'debt', 'subscription', 'bill']);
 const PROJECT_MODULES = new Set(['project', 'business']);
 const ZAKAT_CHARITY_MODULES = new Set(['zakat', 'charity']);
 
@@ -218,6 +227,8 @@ function sourceLabel(source: string, text: TasksText) {
 function taskIcon(source: string) {
   if (source === 'setup') return <Landmark size={20} />;
   if (source === 'income' || source === 'expense' || source === 'savings') return <Wallet size={20} />;
+  if (source === 'debt') return <Landmark size={20} />;
+  if (source === 'subscription' || source === 'bill') return <CalendarClock size={20} />;
   if (source === 'goal') return <Target size={20} />;
   if (source === 'project' || source === 'business') return <BriefcaseBusiness size={20} />;
   if (source === 'zakat' || source === 'charity') return <HandHeart size={20} />;
@@ -233,7 +244,6 @@ function sourceDiagnosticLabel(source: SmartTaskSourceId, text: TasksText) {
     projects: text.sourceProjects,
     zakatCharity: text.sourceZakatCharity,
     market: text.sourceMarket,
-    notifications: text.sourceNotifications,
   };
   return labels[source];
 }

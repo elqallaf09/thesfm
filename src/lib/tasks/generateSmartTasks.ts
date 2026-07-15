@@ -1,5 +1,6 @@
 import { normalizeDigits } from '@/lib/locale';
 import { summarizeWorkflowReportReadiness } from '@/lib/reports/reportReadiness';
+import { calculateDebtSchedule, debtPaymentMonth } from '@/lib/debts/calculateDebtSchedule';
 
 export type SmartTaskLang = 'ar' | 'en' | 'fr';
 export type SmartTaskPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -29,6 +30,8 @@ export type SmartTaskProfile = {
 export type SmartTaskSourceData = {
   income?: any[];
   expenses?: any[];
+  debts?: any[];
+  debtPayments?: any[];
   goals?: any[];
   savings?: any[];
   investments?: any[];
@@ -82,6 +85,12 @@ type Copy = {
   receiptFailedDescription: string;
   spendingTitle: string;
   spendingDescription: string;
+  billDueTitle: string;
+  billDueDescription: (name: string) => string;
+  debtDueTitle: string;
+  debtDueDescription: (name: string) => string;
+  subscriptionDueTitle: string;
+  subscriptionDueDescription: (name: string) => string;
   goalAmountTitle: string;
   goalAmountDescription: (name: string) => string;
   goalBehindTitle: string;
@@ -182,6 +191,12 @@ const COPY: Record<SmartTaskLang, Copy> = {
     receiptFailedDescription: 'يوجد إيصال لم يكتمل تحليله آلياً، ويمكنك حفظ المصروف يدوياً.',
     spendingTitle: 'راجع ارتفاع المصروفات',
     spendingDescription: 'مصروفات الشهر المسجلة أعلى من الدخل المسجل لهذا الشهر.',
+    billDueTitle: 'راجع فاتورة مستحقة',
+    billDueDescription: (name) => `الفاتورة "${name}" مستحقة أو يقترب موعدها حسب التاريخ المسجل.`,
+    debtDueTitle: 'راجع دفعة دين مستحقة',
+    debtDueDescription: (name) => `دفعة الدين "${name}" مستحقة أو لم تُسجل بعد.`,
+    subscriptionDueTitle: 'راجع تجديد اشتراك',
+    subscriptionDueDescription: (name) => `الاشتراك "${name}" سيتجدد قريباً حسب التاريخ المسجل.`,
     goalAmountTitle: 'أضف المبلغ الحالي للهدف',
     goalAmountDescription: (name) => `الهدف "${name}" يحتاج مبلغاً حالياً لحساب التقدم.`,
     goalBehindTitle: 'راجع هدفاً متأخراً عن الجدول',
@@ -280,6 +295,12 @@ const COPY: Record<SmartTaskLang, Copy> = {
     receiptFailedDescription: 'A receipt scan did not complete; manual expense entry can still be saved.',
     spendingTitle: 'Review high monthly spending',
     spendingDescription: 'Recorded expenses are higher than recorded income for this month.',
+    billDueTitle: 'Review a bill due',
+    billDueDescription: (name) => `The bill "${name}" is due or approaching its recorded due date.`,
+    debtDueTitle: 'Review a debt payment',
+    debtDueDescription: (name) => `The debt payment for "${name}" is due or has not been recorded.`,
+    subscriptionDueTitle: 'Review a subscription renewal',
+    subscriptionDueDescription: (name) => `The subscription "${name}" will renew soon based on its recorded date.`,
     goalAmountTitle: 'Add current amount to goal',
     goalAmountDescription: (name) => `"${name}" needs a current amount to calculate progress.`,
     goalBehindTitle: 'Review goal behind schedule',
@@ -378,6 +399,12 @@ const COPY: Record<SmartTaskLang, Copy> = {
     receiptFailedDescription: 'Un scan de reçu n’a pas abouti; la saisie manuelle reste possible.',
     spendingTitle: 'Vérifier les dépenses mensuelles élevées',
     spendingDescription: 'Les dépenses enregistrées sont supérieures aux revenus enregistrés ce mois-ci.',
+    billDueTitle: 'Vérifier une facture à échéance',
+    billDueDescription: (name) => `La facture « ${name} » est due ou approche de sa date enregistrée.`,
+    debtDueTitle: 'Vérifier un paiement de dette',
+    debtDueDescription: (name) => `Le paiement de la dette « ${name} » est dû ou n’a pas encore été enregistré.`,
+    subscriptionDueTitle: 'Vérifier un renouvellement',
+    subscriptionDueDescription: (name) => `L’abonnement « ${name} » sera bientôt renouvelé selon la date enregistrée.`,
     goalAmountTitle: 'Ajouter le montant actuel de l’objectif',
     goalAmountDescription: (name) => `"${name}" nécessite un montant actuel pour calculer la progression.`,
     goalBehindTitle: 'Vérifier un objectif en retard',
@@ -527,6 +554,23 @@ function hasJsonContent(value: unknown) {
   return true;
 }
 
+function recordObject(value: unknown): Record<string, any> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) return value as Record<string, any>;
+  if (typeof value !== 'string' || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, any> : {};
+  } catch {
+    return {};
+  }
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 function hasProjectRecord(rows: any[] | undefined, projectId: string) {
   return (rows ?? []).some(row => String(row.project_id ?? '') === projectId);
 }
@@ -666,6 +710,68 @@ export function generateSmartTasks({
   if (monthIncome > 0 && monthExpenses > monthIncome) {
     add({ id: makeId(['expenses', 'over-income', dateKey(now)]), title: copy.spendingTitle, description: copy.spendingDescription, sourceModule: 'expense', priority: 'high', dueDate: dateKey(now), actionUrl: '/expenses' });
   }
+
+  (data.expenses ?? []).forEach(row => {
+    const enhanced = recordObject(row.enhanced);
+    const marker = `${row.category ?? ''} ${row.source ?? ''} ${enhanced.source ?? ''} ${enhanced.created_from ?? ''}`.toLowerCase();
+    const isSubscription = marker.includes('subscription');
+    const status = String(enhanced.subscription_status ?? enhanced.status ?? row.status ?? 'active').toLowerCase();
+    const due = isSubscription
+      ? enhanced.next_renewal_date ?? row.next_renewal_date ?? row.date
+      : row.due_date;
+    const diff = daysUntil(due, now);
+    if (isClosedStatus(status) || ['paid', 'paused', 'expired'].includes(status) || diff === null || diff > 7) return;
+    const name = firstText(
+      enhanced,
+      ['subscription_service', 'service_label', 'service_name', 'subscription_name', 'name'],
+      firstText(row, ['description', 'name'], copy.expenseFallback),
+    );
+    add({
+      id: makeId([isSubscription ? 'subscription-due' : 'bill-due', row.id, String(due)]),
+      title: isSubscription ? copy.subscriptionDueTitle : copy.billDueTitle,
+      description: isSubscription ? copy.subscriptionDueDescription(name) : copy.billDueDescription(name),
+      sourceModule: isSubscription ? 'subscription' : 'bill',
+      sourceId: row.id,
+      priority: priorityFromDue(diff),
+      dueDate: String(due),
+      actionUrl: isSubscription ? '/expenses/monthly-subscriptions' : '/expenses',
+    });
+  });
+
+  (data.debts ?? []).forEach(row => {
+    if (String(row.status ?? 'active').toLowerCase() !== 'active') return;
+    const debtId = String(row.id ?? '');
+    if (!debtId) return;
+    const paidMonths = new Set(
+      (data.debtPayments ?? [])
+        .filter(payment => String(payment.debt_id ?? '') === debtId)
+        .map(payment => debtPaymentMonth(String(payment.payment_date ?? '')))
+        .filter(Boolean),
+    );
+    const schedule = calculateDebtSchedule({
+      originalAmount: amount(row.original_amount),
+      startDate: String(row.start_date ?? ''),
+      firstPaymentDate: row.first_payment_date,
+      monthlyPayment: amount(row.monthly_payment),
+      interestRate: amount(row.interest_rate),
+      interestType: row.interest_type,
+      paymentDay: row.payment_day,
+      today: addDays(now, 7),
+    });
+    const outstanding = schedule.duePayments.find(payment => !paidMonths.has(payment.paymentMonth));
+    if (!outstanding) return;
+    const name = firstText(row, ['name', 'creditor_name'], 'Debt');
+    add({
+      id: makeId(['debt-due', debtId, outstanding.paymentDate]),
+      title: copy.debtDueTitle,
+      description: copy.debtDueDescription(name),
+      sourceModule: 'debt',
+      sourceId: debtId,
+      priority: priorityFromDue(daysUntil(outstanding.paymentDate, now)),
+      dueDate: outstanding.paymentDate,
+      actionUrl: '/debts',
+    });
+  });
 
   (data.goals ?? []).forEach(row => {
     const name = firstText(row, ['name', 'goal', 'title'], copy.goalFallback);

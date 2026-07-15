@@ -41,7 +41,7 @@ describe('Phase 3.5 route and navigation consolidation', () => {
     expect(today).toContain('href="/reports-center"');
     expect(today).toContain("task.status === 'open'");
     expect(today).toContain("notice.status === 'unread'");
-    expect(today).toContain("hasReportReadinessFailure ? '—' : `${reportSummary.ready}`");
+    expect(today).toContain("hasReportReadinessFailure ? '—' : reportSummary.ready");
   });
 
   it('preserves the complete Tasks Center controls and actions', () => {
