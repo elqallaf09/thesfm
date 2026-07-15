@@ -30,9 +30,6 @@
     "**/*.backup-*.ts",
     "**/*.backup-*.tsx",
     "**/*_backup_*/**",
-    "app_backup_before_wakeel_fix/**",
-    "components_backup_before_wakeel_fix/**",
-    "lib_backup_before_wakeel_fix/**",
     "wakeel-admin/**",
     "wakeel-tracking/**"
   ]

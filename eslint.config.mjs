@@ -14,9 +14,6 @@ const eslintConfig = [
     ignores: [
       ".next/**",
       "artifacts/**",
-      "app_backup_before_wakeel_fix/**",
-      "components_backup_before_wakeel_fix/**",
-      "lib_backup_before_wakeel_fix/**",
       "next-env.d.ts",
     ],
   },
