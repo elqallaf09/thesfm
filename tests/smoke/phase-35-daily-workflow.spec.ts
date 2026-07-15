@@ -57,7 +57,7 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
 
       await page.goto('/tasks', { waitUntil: 'domcontentloaded' });
       await expect(page.locator('.tasks-search input')).toBeVisible();
-      await expect(page.locator('.tasks-tabs')).toBeVisible();
+      await expect(page.locator('.tasks-toolbar [role="tablist"]')).toBeVisible();
 
       await page.goto('/command-center', { waitUntil: 'domcontentloaded' });
       await expect(page).toHaveURL(/\/today(?:\?|$)/);
