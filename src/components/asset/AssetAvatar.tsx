@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BadgeDollarSign,
   Banknote,
   Bitcoin,
   Building2,
+  BriefcaseBusiness,
   ChartCandlestick,
   CircleDollarSign,
   Droplets,
@@ -13,6 +14,8 @@ import {
   Gem,
   Landmark,
   LineChart,
+  House,
+  WalletCards,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAssetVisualMeta, type AssetVisualInput, type AssetVisualMeta, type AssetVisualType } from '@/lib/assetVisuals';
@@ -61,6 +64,9 @@ const toneClass: Record<AssetVisualType, string> = {
   gas: 'border-accent/25 bg-accent-soft text-foreground-secondary',
   index: 'border-primary/25 bg-primary-soft text-primary',
   fund: 'border-primary/25 bg-primary-soft text-primary',
+  'real-estate': 'border-accent/25 bg-accent-soft text-accent',
+  cash: 'border-success/25 bg-success-soft text-success',
+  project: 'border-primary/25 bg-primary-soft text-primary',
   unknown: 'border-border bg-surface-muted text-foreground-secondary',
 };
 
@@ -74,6 +80,9 @@ function IconForType({ meta, size }: { meta: AssetVisualMeta; size: AssetAvatarS
   if (meta.iconKind === 'oil') return <Droplets size={pixels} />;
   if (meta.iconKind === 'gas') return <Flame size={pixels} />;
   if (meta.iconKind === 'commodity') return <ChartCandlestick size={pixels} />;
+  if (meta.iconKind === 'real-estate') return <House size={pixels} />;
+  if (meta.iconKind === 'cash') return <WalletCards size={pixels} />;
+  if (meta.iconKind === 'project') return <BriefcaseBusiness size={pixels} />;
   if (meta.symbol.length >= 6 && meta.assetType === 'forex') return <Banknote size={pixels} />;
   if (meta.symbol.includes('BANK')) return <Landmark size={pixels} />;
   return <Building2 size={pixels} />;
@@ -104,8 +113,21 @@ export function AssetAvatar({
     symbol,
   ]);
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const showImage = Boolean(meta.logoUrl && !imageFailed);
-  const showFlags = !showImage && meta.flags.length >= 2;
+
+  useEffect(() => {
+    setImageFailed(false);
+    setImageLoaded(false);
+  }, [meta.logoUrl]);
+
+  const fallback = meta.flags.length >= 2 ? (
+    <span className="flex items-center justify-center -space-x-1 text-[1.05em]" aria-hidden="true">
+      {meta.flags.map(flag => <span key={flag}>{flag}</span>)}
+    </span>
+  ) : (
+    <IconForType meta={meta} size={size} />
+  );
 
   return (
     <span
@@ -120,24 +142,20 @@ export function AssetAvatar({
       title={decorative ? undefined : meta.alt}
       dir="ltr"
     >
-      {showImage ? (
+      {fallback}
+      {showImage && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={meta.logoUrl ?? undefined}
-          alt={decorative ? '' : meta.alt}
+          alt=""
+          aria-hidden="true"
           loading="lazy"
           decoding="async"
-          className={cn('h-full w-full object-contain p-1', imageClassName)}
+          referrerPolicy="no-referrer"
+          className={cn('absolute inset-0 h-full w-full object-contain p-1 transition-opacity', imageLoaded ? 'opacity-100' : 'opacity-0', imageClassName)}
+          onLoad={() => setImageLoaded(true)}
           onError={() => setImageFailed(true)}
         />
-      ) : showFlags ? (
-        <span className="flex items-center justify-center -space-x-1 text-[1.05em]" aria-hidden="true">
-          {meta.flags.map(flag => <span key={flag}>{flag}</span>)}
-        </span>
-      ) : meta.iconKind === 'stock' || meta.iconKind === 'unknown' ? (
-        <span className="tracking-normal">{meta.fallbackText}</span>
-      ) : (
-        <IconForType meta={meta} size={size} />
       )}
     </span>
   );

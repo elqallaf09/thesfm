@@ -57,12 +57,12 @@ test('purchase platform remains distinct, keyboard-selectable, persistent, and v
 
   const holding = page.locator('.invest-holding-card').filter({ hasText: 'Platform smoke holding' });
   await expect(holding).toBeVisible();
-  await expect(holding.getByText('XTB', { exact: true })).toBeVisible();
+  await expect(holding.locator('.invest-platform-identity').getByText('XTB', { exact: true })).toBeVisible();
   await page.reload({ waitUntil: 'domcontentloaded' });
   const restored = page.locator('.invest-holding-card').filter({ hasText: 'Platform smoke holding' });
-  await expect(restored.getByText('XTB', { exact: true })).toBeVisible();
+  await expect(restored.locator('.invest-platform-identity').getByText('XTB', { exact: true })).toBeVisible();
 
-  await restored.getByRole('button', { name: 'Details', exact: true }).click();
+  await restored.getByRole('button', { name: 'View details', exact: true }).click();
   const details = page.getByRole('dialog');
   await expect(details.getByText('Purchase or custody platform', { exact: true })).toBeVisible();
   await expect(details.getByText('XTB', { exact: true })).toBeVisible();
