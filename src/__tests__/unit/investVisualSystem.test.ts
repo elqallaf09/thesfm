@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { resolveAssetLogoUrl } from '@/lib/assetVisuals';
 
 const readSource = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 
@@ -68,6 +69,8 @@ describe('investments visual system', () => {
     expect(investmentRow).toContain('<AssetAvatar');
     expect(investmentRow).toContain('<PlatformIdentity');
     expect(investmentRow).toContain('<InvestmentSparkline');
+    expect(investmentRow).toContain('<DropdownMenu');
+    expect(investmentRow).toContain('labels.moreActions');
   });
 
   it('exposes the complete premium expansion without manufacturing financial records', () => {
@@ -76,6 +79,21 @@ describe('investments visual system', () => {
     }
     expect(investmentRow).toContain('labels.noData');
     expect(investmentRow).not.toMatch(/Math\.random|mock|samplePrice|fake/i);
+    expect(investmentRow).toContain("range: '1M'");
+    expect(investmentRow).toContain("cache: 'no-store'");
+    expect(investmentRow).toContain('controller.abort()');
+    expect(investmentRow).toContain('{isExpanded ? (');
+    expect(investmentSparkline).toContain('points: InvestmentHistoryPoint[]');
+    expect(investmentSparkline).not.toMatch(/start:\s*number|end:\s*number|Math\.abs\(delta\)/);
+  });
+
+  it('uses verified identities for supported assets and never substitutes AMD branding', () => {
+    expect(resolveAssetLogoUrl({ symbol: 'NVDA', assetType: 'stock' })).toBe('https://cdn.simpleicons.org/nvidia');
+    expect(resolveAssetLogoUrl({ symbol: 'AMD', assetType: 'stock' })).toBe('https://cdn.simpleicons.org/amd');
+    expect(resolveAssetLogoUrl({ symbol: 'BTC-USD', assetType: 'crypto' })).toContain('cdn.simpleicons.org/bitcoin/');
+    expect(resolveAssetLogoUrl({ symbol: 'KFH.KW', assetType: 'stock' })).toContain('domain_url=https://www.kfh.com');
+    expect(platformIdentity).toContain('invest-platform-monogram');
+    expect(platformIdentity).not.toContain('<Building2');
   });
 
   it('retains responsive, directional, focus, and reduced-motion behavior', () => {
