@@ -8,7 +8,7 @@ on:
 
 jobs:
   typecheck:
-    name: TypeScript check
+    name: CI/TypeScript check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
         name: tsc --noEmit
 
   lint:
-    name: ESLint
+    name: CI/ESLint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
       - run: pnpm lint
 
   i18n:
-    name: i18n check
+    name: CI/i18n check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
       - run: pnpm check:i18n
 
   launch-guards:
-    name: Production launch guards
+    name: CI/Production launch guards
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
       - run: pnpm check:public-env
 
   test:
-    name: Unit & Integration tests
+    name: CI/Unit & Integration tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +97,7 @@ jobs:
           path: coverage/
 
   build:
-    name: Production build
+    name: CI/Production build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +117,7 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
 
   smoke:
-    name: Playwright smoke tests
+    name: CI/Playwright smoke tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -237,7 +237,7 @@ jobs:
           retention-days: 7
 
   lighthouse:
-    name: Lighthouse CI
+    name: CI/Lighthouse CI
     runs-on: ubuntu-latest
     needs: [build]
     steps:
