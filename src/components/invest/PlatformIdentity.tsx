@@ -1,6 +1,5 @@
 'use client';
 
-import { Building2 } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
 
 type PlatformIdentityProps = {
@@ -27,6 +26,12 @@ const PLATFORM_DOMAINS: Record<string, string> = {
   kfh: 'kfh.com',
 };
 
+const VERIFIED_PLATFORM_LOGOS: Record<string, string> = {
+  binance: 'https://cdn.simpleicons.org/binance',
+  coinbase: 'https://cdn.simpleicons.org/coinbase',
+  robinhood: 'https://cdn.simpleicons.org/robinhood',
+};
+
 function safeLogoUrl(value?: string | null) {
   if (!value) return null;
   try {
@@ -40,7 +45,10 @@ function safeLogoUrl(value?: string | null) {
 export function resolvePlatformLogoUrl(name: string, explicitLogoUrl?: string | null) {
   const explicit = safeLogoUrl(explicitLogoUrl);
   if (explicit) return explicit;
-  const domain = PLATFORM_DOMAINS[name.trim().toLocaleLowerCase('en-US')];
+  const normalizedName = name.trim().toLocaleLowerCase('en-US');
+  const verified = VERIFIED_PLATFORM_LOGOS[normalizedName];
+  if (verified) return verified;
+  const domain = PLATFORM_DOMAINS[normalizedName];
   if (!domain) return null;
   return `https://www.google.com/s2/favicons?domain_url=https://${domain}&sz=64`;
 }
@@ -49,6 +57,14 @@ export const PlatformIdentity = memo(function PlatformIdentity({ name, logoUrl, 
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const source = useMemo(() => resolvePlatformLogoUrl(name, logoUrl), [logoUrl, name]);
+  const monogram = useMemo(() => name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toLocaleUpperCase('en-US')
+    .slice(0, 2) || '—', [name]);
 
   useEffect(() => {
     setFailed(false);
@@ -57,8 +73,8 @@ export const PlatformIdentity = memo(function PlatformIdentity({ name, logoUrl, 
 
   return (
     <span className="invest-platform-identity" title={title}>
-      <span className="invest-platform-logo" aria-hidden="true">
-        <Building2 size={15} />
+      <span className="invest-platform-logo" data-fallback={!source || failed || !loaded ? 'true' : 'false'} aria-hidden="true">
+        <span className="invest-platform-monogram">{monogram}</span>
         {source && !failed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={source} alt="" width="24" height="24" loading="lazy" decoding="async" referrerPolicy="no-referrer" data-loaded={loaded || undefined} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />

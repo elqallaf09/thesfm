@@ -129,7 +129,7 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
     expect(sidebar).toContain('ref={navigationScrollRef} className="sfm-shared-primary-scroll"');
     expect(sidebar).toContain('className="sfm-shared-utilities"');
     expect(sidebar).toMatch(/<nav\r?\n\s+className="sfm-shared-utilities"/);
-    expect(sidebar).toContain('max-height:min(44dvh,370px)');
+    expect(sidebar).toContain('max-height:min(40dvh,340px)');
     expect(sidebar).toContain('target.scrollIntoView');
     expect(mobile).toContain('className="sfm-mobile-utilities"');
     expect(mobile).toContain('className="sfm-mobile-utility-nav"');

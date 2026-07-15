@@ -30,7 +30,7 @@ interface Props {
   typeLabel: (type: InvestmentType) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
-  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null) => string;
+  formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => string;
   accountValue: (item: Investment) => number | null;
   onDetails: (item: Investment) => void;
   onEdit: (item: Investment) => void;
