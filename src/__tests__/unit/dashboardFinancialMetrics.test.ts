@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLinePoints,
   buildMonthlyCashFlow,
+  buildMonthlyHealthSnapshot,
   calculateFinancialHealth,
+  calculateFinancialHealthIndicators,
   monthOverMonthChange,
   realizedIncomeRows,
 } from '@/lib/dashboard/financialMetrics';
@@ -26,8 +28,8 @@ describe('dashboard financial metrics', () => {
       now,
     );
     expect(points).toHaveLength(12);
-    expect(points.at(-2)).toMatchObject({ key: '2026-06', income: 500, expenses: 200 });
-    expect(points.at(-1)).toMatchObject({ key: '2026-07', income: 0, expenses: 50 });
+    expect(points.at(-2)).toMatchObject({ key: '2026-06', income: 500, expenses: 200, incomeRecords: 1, expenseRecords: 1 });
+    expect(points.at(-1)).toMatchObject({ key: '2026-07', income: 0, expenses: 50, incomeRecords: 0, expenseRecords: 1 });
   });
 
   it('refuses to invent a health score when a required source is missing', () => {
@@ -58,5 +60,66 @@ describe('dashboard financial metrics', () => {
     expect(monthOverMonthChange(120, 100, true, true)).toBeCloseTo(0.2);
     expect(monthOverMonthChange(120, 0, true, true)).toBeNull();
     expect(buildLinePoints([100, 200, 150])).not.toBe('');
+  });
+
+  it('restores active monthly plans without counting generated children or inactive subscriptions', () => {
+    const snapshot = buildMonthlyHealthSnapshot(
+      [
+        { id: 'salary', amount: 1000, currency: 'KWD', status: 'expected', is_recurring: true, frequency: 'monthly', start_date: '2026-05-01' },
+        { id: 'salary-july', parent_recurring_income_id: 'salary', amount: 1000, currency: 'KWD', status: 'expected', is_recurring: true, frequency: 'monthly', generated_for_date: '2026-07-01' },
+      ],
+      [
+        { id: 'rent', amount: 600, currency: 'KWD', is_recurring: true, frequency: 'monthly', start_date: '2026-01-01' },
+        { id: 'paused', amount: 200, currency: 'KWD', is_recurring: true, frequency: 'monthly', enhanced: { subscription_status: 'paused' } },
+        { id: 'foreign', amount: 300, currency: 'USD', is_recurring: true, frequency: 'monthly' },
+      ],
+      now,
+      (row) => row.currency === 'KWD',
+    );
+    expect(snapshot).toEqual({
+      monthlyIncome: 1000,
+      monthlyExpenses: 600,
+      hasIncomeData: true,
+      hasExpenseData: true,
+      incomeAmountsComplete: true,
+      expenseAmountsComplete: true,
+    });
+  });
+
+  it('evaluates completeness only for current contributing rows and accepts normalized recurring amounts', () => {
+    const snapshot = buildMonthlyHealthSnapshot(
+      [
+        { id: 'historical', amount: null, currency: 'KWD', received_date: '2026-06-01', status: 'received' },
+        { id: 'salary', amount: null, monthly_amount: 1200, currency: 'KWD', is_recurring: true, frequency: 'monthly', start_date: '2026-01-01' },
+      ],
+      [
+        { id: 'current-missing', amount: null, currency: 'KWD', date: '2026-07-05' },
+        { id: 'future-plan', amount: null, currency: 'KWD', is_recurring: true, frequency: 'monthly', start_date: '2026-08-01' },
+      ],
+      now,
+      (row) => row.currency === 'KWD',
+    );
+
+    expect(snapshot).toMatchObject({
+      monthlyIncome: 1200,
+      hasIncomeData: true,
+      incomeAmountsComplete: true,
+      monthlyExpenses: 0,
+      hasExpenseData: false,
+      expenseAmountsComplete: false,
+    });
+  });
+
+  it('keeps available indicators visible when the full score is unavailable', () => {
+    expect(calculateFinancialHealthIndicators({
+      monthlyIncome: 1000,
+      monthlyExpenses: 500,
+      savingsBalance: 0,
+      monthlyDebtPayments: 100,
+      hasIncomeData: true,
+      hasExpenseData: true,
+      hasSavingsData: false,
+      debtsLoaded: true,
+    })).toEqual({ savingsRatio: 0.5, expenseCoverage: 2, emergencyFundMonths: null, debtToIncome: 0.1 });
   });
 });

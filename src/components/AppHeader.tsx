@@ -305,7 +305,10 @@ export function AppHeader() {
           }
 
           .sfm-global-workspaces {
-            width: 100%;
+            width: auto;
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
             justify-self: stretch;
           }
 
@@ -316,7 +319,16 @@ export function AppHeader() {
 
         @media (max-width: 767px) {
           .sfm-global-header {
+            width: 100%;
+            max-width: 100vw;
+            grid-template-columns: minmax(0, 1fr) auto;
+            overflow-x: clip;
             padding-inline: 12px;
+          }
+
+          .sfm-global-workspaces {
+            width: calc(100vw - 24px);
+            max-width: calc(100vw - 24px);
           }
 
           .sfm-global-actions {

@@ -1,2397 +1,613 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
-  ArrowRight,
+  ArrowUpRight,
   BarChart3,
-  Bell,
-  BriefcaseBusiness,
-  Building2,
   CalendarDays,
-  ClipboardList,
-  Coins,
-  FileText,
-  Gauge,
-  Goal,
-  HeartHandshake,
+  CircleDollarSign,
+  FileChartColumn,
+  Flag,
   Landmark,
-  LineChart,
-  Loader2,
-  Plus,
   PiggyBank,
-  ReceiptText,
+  RefreshCw,
   ShieldCheck,
   Target,
+  TrendingDown,
   TrendingUp,
-  Wallet,
-  Zap,
+  WalletCards,
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { useSmartTasks } from '@/hooks/useSmartTasks';
 import { supabase } from '@/integrations/supabase/client';
-import { currentMonthRange, personalExpenseRows, personalIncomeRows, safeDivide, sumAmounts } from '@/lib/data/financeData';
-import { formatDate } from '@/lib/formatDate';
-import { formatMoney } from '@/lib/formatMoney';
-import { calculateGoalProgress } from '@/lib/goalProgress';
+import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import {
   buildLinePoints,
   buildMonthlyCashFlow,
+  buildMonthlyHealthSnapshot,
   calculateFinancialHealth,
-  monthOverMonthChange,
+  calculateFinancialHealthIndicators,
+  financialRowDate,
   realizedExpenseRows,
   realizedIncomeRows,
+  type CashFlowPoint,
+  type FinancialRow,
 } from '@/lib/dashboard/financialMetrics';
 import {
-  type DataRow, CardShell, MetricCard, SmallStat, ActionLink, EmptyState, ProgressBar,
-  normalizeDashboardError, logDashboardFailure, isGlobalDashboardFailure,
-  firstNumber, firstText, firstDate, parseRecordDate,
-  isCurrentMonth, daysUntil, isOpenStatus, isTaskOverdue, goalProgress,
-  latestByDate, statusLabel, getRecordCurrency,
-} from '@/components/dashboard/DashboardSubComponents';
+  activeDebtRows,
+  classifyDashboardError,
+  currentMonthRows,
+  debtBalance,
+  debtBreakdown,
+  expenseCategoryBreakdown,
+  firstNumber,
+  groupCurrencyAmounts,
+  investmentBreakdown,
+  investmentValue,
+  isCurrency,
+  primaryInvestmentTotal,
+  rowCurrency,
+  summarizeGoal,
+  sumRows,
+  type CurrencyAmount,
+  type DashboardSourceKey,
+  type DashboardSourceStatus,
+  type GoalSummary,
+} from '@/lib/dashboard/executiveOverview';
+import { formatCurrency, formatDate, formatNumber, formatPercent } from '@/lib/locale';
+import styles from './dashboard.module.css';
 
-
-type Lang = 'ar' | 'en' | 'fr';
-
-type DashboardKey =
-  | 'income'
-  | 'expenses'
-  | 'debts'
-  | 'savings'
-  | 'goals'
-  | 'investments'
-  | 'projects'
-  | 'projectTasks'
-  | 'projectMilestones'
-  | 'projectFinancialModels'
-  | 'projectPitchDecks'
-  | 'projectFundingReadiness'
-  | 'marketWatchlist'
-  | 'marketPriceAlerts'
-  | 'zakatCalculations'
-  | 'zakatAssets'
-  | 'charityProjects'
-  | 'charityDonations'
-  | 'charityReminders'
-  | 'charityCommitments'
-  | 'notifications';
-
-type DashboardRecords = Record<DashboardKey, DataRow[]>;
-type DashboardTable = { key: DashboardKey; table: string; limit?: number; order?: { column: string; ascending?: boolean } };
-type DashboardFailureSection = DashboardKey | 'profile' | 'auth';
-type DashboardLoadFailure = {
-  section: DashboardFailureSection;
-  table: string;
-  message: string;
-  code?: string;
-  details?: string;
-  hint?: string;
+type SourceState = {
+  rows: FinancialRow[];
+  status: DashboardSourceStatus;
 };
 
-type ProfileRow = {
+type Profile = FinancialRow & {
   default_currency?: string | null;
-  onboarding_completed?: boolean | null;
+  preferred_currency?: string | null;
 };
 
-type PriorityItem = {
+type AttentionItem = {
   id: string;
   title: string;
-  message: string;
+  body: string;
   href: string;
-  severity: 'info' | 'success' | 'warning' | 'danger';
-  dueDate?: string | null;
+  tone: 'danger' | 'warning' | 'info';
 };
 
-const DASHBOARD_TABLES: DashboardTable[] = [
-  { key: 'income', table: 'monthly_income_sources', limit: 1000 },
-  { key: 'expenses', table: 'expense_items', limit: 1000 },
-  { key: 'debts', table: 'debts', limit: 1000 },
-  { key: 'savings', table: 'savings_items', limit: 1000 },
-  { key: 'goals', table: 'financial_goals', limit: 1000 },
-  { key: 'investments', table: 'investment_items', limit: 1000 },
-  { key: 'projects', table: 'projects', limit: 1000 },
-  { key: 'projectTasks', table: 'project_tasks', limit: 1000 },
-  { key: 'projectMilestones', table: 'project_milestones', limit: 1000 },
-  { key: 'projectFinancialModels', table: 'project_financial_models', limit: 1000 },
-  { key: 'projectPitchDecks', table: 'project_pitch_decks', limit: 1000 },
-  { key: 'projectFundingReadiness', table: 'project_funding_readiness', limit: 1000 },
-  { key: 'marketWatchlist', table: 'market_watchlist', limit: 1000 },
-  { key: 'marketPriceAlerts', table: 'market_price_alerts', limit: 1000 },
-  { key: 'zakatCalculations', table: 'zakat_calculations', limit: 1000 },
-  { key: 'zakatAssets', table: 'zakat_assets', limit: 1000 },
-  { key: 'charityProjects', table: 'charity_projects', limit: 1000 },
-  { key: 'charityDonations', table: 'charity_project_donations', limit: 1000 },
-  { key: 'charityReminders', table: 'charity_reminders', limit: 1000 },
-  { key: 'charityCommitments', table: 'charity_commitments', limit: 1000 },
-  { key: 'notifications', table: 'notifications', limit: 1000 },
+const SOURCE_TABLES: Array<{ key: Exclude<DashboardSourceKey, 'profile'>; table: string }> = [
+  { key: 'income', table: 'monthly_income_sources' },
+  { key: 'expenses', table: 'expense_items' },
+  { key: 'savings', table: 'savings_items' },
+  { key: 'goals', table: 'financial_goals' },
+  { key: 'investments', table: 'investment_items' },
+  { key: 'debts', table: 'debts' },
 ];
 
-const OPTIONAL_DASHBOARD_SECTIONS = new Set<DashboardFailureSection>([
-  'debts',
-  'projectTasks',
-  'projectMilestones',
-  'projectFinancialModels',
-  'projectPitchDecks',
-  'projectFundingReadiness',
-  'marketWatchlist',
-  'marketPriceAlerts',
-  'zakatCalculations',
-  'zakatAssets',
-  'charityProjects',
-  'charityDonations',
-  'charityReminders',
-  'charityCommitments',
-  'notifications',
-]);
+const EMPTY_SOURCES = SOURCE_TABLES.reduce((result, source) => {
+  result[source.key] = { rows: [], status: 'loading' };
+  return result;
+}, {} as Record<Exclude<DashboardSourceKey, 'profile'>, SourceState>);
 
-const EMPTY_RECORDS = DASHBOARD_TABLES.reduce((acc, item) => {
-  acc[item.key] = [];
-  return acc;
-}, {} as DashboardRecords);
-
-
-async function fetchDashboardTable(userId: string, item: DashboardTable): Promise<{ key: DashboardKey; rows: DataRow[] }> {
-  let query = supabase
-    .from(item.table)
-    .select('*')
-    .eq('user_id', userId)
-    .limit(item.limit ?? 1000);
-  if (item.order) {
-    query = query.order(item.order.column, { ascending: item.order.ascending ?? false });
-  }
-  const { data, error } = await query;
-  if (error) throw error;
-  return { key: item.key, rows: (data ?? []) as DataRow[] };
+function loaded(status: DashboardSourceStatus) {
+  return status === 'success' || status === 'empty';
 }
-const TEXT = {
-  ar: {
-    pageTitle: 'الصفحة الرئيسية',
-    pageSubtitle: 'نظرة شاملة على أموالك، مشاريعك، استثماراتك، زكاتك، وتنبيهاتك في مكان واحد.',
-    updatedNow: 'محدث الآن',
-    lastUpdatedNow: 'آخر تحديث: الآن',
-    totalAssets: 'إجمالي الأصول',
-    todayAlerts: 'تنبيهات اليوم',
-    totalIncome: 'إجمالي الدخل',
-    totalExpenses: 'إجمالي المصروفات',
-    netBalance: 'صافي الرصيد',
-    savings: 'المدخرات',
-    investments: 'الاستثمارات',
-    upcomingCommitments: 'الالتزامات القادمة',
-    currentMonth: 'الشهر الحالي',
-    allRecords: 'كل السجلات',
-    insufficientData: 'بيانات غير كافية',
-    noCurrentMonthData: 'لا توجد بيانات للشهر الحالي',
-    notCalculable: 'غير قابل للحساب',
-    notEntered: 'غير مدخل',
-    invalidValue: 'قيمة غير صالحة',
-    noDataYet: 'لا توجد بيانات حالياً',
-    noDataBody: 'أضف بياناتك للبدء',
-    openPage: 'فتح الصفحة',
-    financialHealth: 'الصحة المالية',
-    financialHealthHint: 'أضف الدخل والمصروفات والمدخرات لحساب الصحة المالية.',
-    excellent: 'ممتاز',
-    good: 'جيد',
-    needsReview: 'يحتاج مراجعة',
-    insufficientStatus: 'بيانات غير كافية',
-    topActionToday: 'أهم إجراء اليوم',
-    noUrgentActions: 'لا توجد إجراءات عاجلة حالياً.',
-    incomeExpenses: 'الدخل والمصروفات',
-    currentMonthIncome: 'دخل الشهر الحالي',
-    currentMonthExpenses: 'مصروفات الشهر الحالي',
-    spendingRatio: 'نسبة الصرف',
-    viewIncome: 'عرض الدخل',
-    viewExpenses: 'عرض المصروفات',
-    openReports: 'فتح التقارير',
-    goalsSavings: 'الأهداف والمدخرات',
-    activeGoals: 'الأهداف النشطة',
-    nearestTarget: 'أقرب تاريخ هدف',
-    averageProgress: 'متوسط التقدم',
-    totalGoalBalance: 'الرصيد الحالي للأهداف',
-    noGoals: 'لا توجد أهداف مالية حتى الآن.',
-    openGoals: 'فتح الأهداف المالية',
-    investmentsMarket: 'الاستثمارات والسوق',
-    watchlist: 'قائمة المتابعة',
-    marketAlerts: 'تنبيهات السوق',
-    topWatchedAsset: 'أبرز أصل متابع',
-    marketUnavailable: 'لا توجد بيانات سوق كافية حالياً.',
-    openInvestments: 'فتح الاستثمارات',
-    openMarket: 'فتح تحليلات السوق',
-    projectsBusinessHub: 'المشاريع ومركز الأعمال',
-    activeProjects: 'المشاريع النشطة',
-    overdueTasks: 'المهام المتأخرة',
-    fundingReadiness: 'جاهزية التمويل',
-    pitchDecks: 'العروض الاستثمارية',
-    noProjects: 'لا توجد مشاريع بعد. أضف مشروعك الأول للبدء.',
-    openProjects: 'فتح مشاريعي',
-    openBusinessHub: 'فتح مركز الأعمال',
-    createPitchDeck: 'إنشاء Pitch Deck',
-    zakatCharity: 'الزكاة والأعمال الخيرية',
-    zakatSaved: 'آخر زكاة محفوظة',
-    nextZakatDate: 'تاريخ الاستحقاق القادم',
-    charityProjects: 'المشاريع الخيرية',
-    annualDonations: 'تبرعات السنة',
-    noZakat: 'لا توجد حسابات زكاة محفوظة',
-    openZakat: 'فتح الزكاة',
-    openCharityProjects: 'فتح المشاريع الخيرية',
-    openCharity: 'فتح الأعمال الخيرية',
-    reports: 'التقارير',
-    readyReports: 'تقارير جاهزة',
-    reportsNeedData: 'تقارير تحتاج بيانات',
-    lastGenerated: 'آخر تقرير محفوظ',
-    lastGeneratedUnavailable: 'لا توجد تقارير محفوظة حالياً',
-    openReportsCenter: 'فتح مركز التقارير',
-    smartNotifications: 'الإشعارات الذكية',
-    smartTasks: 'مركز المهام',
-    viewAllTasks: 'عرض كل المهام',
-    noTasks: 'لا توجد مهام حالياً.',
-    unread: 'غير مقروءة',
-    highPriority: 'عالية الأهمية',
-    dueToday: 'مستحقة اليوم',
-    viewAllNotifications: 'عرض كل الإشعارات',
-    noNotifications: 'لا توجد إشعارات حالياً',
-    completeSetupTitle: 'أكمل إعداد حسابك',
-    completeSetupText: 'أضف بياناتك الأساسية للحصول على لوحة قيادة أدق.',
-    completeSetup: 'إكمال الإعداد',
-    loading: 'جاري تحميل لوحة القيادة...',
-    dataError: 'تعذر تحميل بعض البيانات حالياً',
-    debugLabel: 'تشخيص لوحة التحكم التنفيذية',
-    debugTitle: 'تشخيص لوحة التحكم: أقسام تعذر تحميلها',
-    addIncomeAction: 'أضف دخلك الشهري لتفعيل تقارير الدخل ولوحة القيادة.',
-    reportNeedsDataAction: 'أكمل البيانات المطلوبة في مركز التقارير.',
-    overdueTaskAction: 'راجع المهام المتأخرة في مشاريعك.',
-    zakatDueAction: 'راجع استحقاق الزكاة القادم.',
-    notificationAction: 'راجع الإشعارات عالية الأهمية.',
-  },
-  en: {
-    pageTitle: 'Home Page',
-    pageSubtitle: 'A complete overview of your finances, projects, investments, zakat, and alerts in one place.',
-    updatedNow: 'Updated now',
-    lastUpdatedNow: 'Last updated: now',
-    totalAssets: 'Total assets',
-    todayAlerts: 'Today alerts',
-    totalIncome: 'Total Income',
-    totalExpenses: 'Total Expenses',
-    netBalance: 'Net Balance',
-    savings: 'Savings',
-    investments: 'Investments',
-    upcomingCommitments: 'Upcoming Commitments',
-    currentMonth: 'Current month',
-    allRecords: 'All records',
-    insufficientData: 'Insufficient data',
-    noCurrentMonthData: 'No data for the current month',
-    notCalculable: 'Not calculable',
-    notEntered: 'Not entered',
-    invalidValue: 'Invalid value',
-    noDataYet: 'No data yet',
-    noDataBody: 'Add your data to get started.',
-    openPage: 'Open page',
-    financialHealth: 'Financial Health',
-    financialHealthHint: 'Add income, expenses, and savings to calculate financial health.',
-    excellent: 'Excellent',
-    good: 'Good',
-    needsReview: 'Needs Review',
-    insufficientStatus: 'Insufficient Data',
-    topActionToday: 'Top Action Today',
-    noUrgentActions: 'No urgent actions right now.',
-    incomeExpenses: 'Income and Expenses',
-    currentMonthIncome: 'Current month income',
-    currentMonthExpenses: 'Current month expenses',
-    spendingRatio: 'Spending ratio',
-    viewIncome: 'View Income',
-    viewExpenses: 'View Expenses',
-    openReports: 'Open Reports',
-    goalsSavings: 'Goals and Savings',
-    activeGoals: 'Active goals',
-    nearestTarget: 'Nearest target date',
-    averageProgress: 'Average progress',
-    totalGoalBalance: 'Current goal balance',
-    noGoals: 'No financial goals yet.',
-    openGoals: 'Open Financial Goals',
-    investmentsMarket: 'Investments and Market',
-    watchlist: 'Watchlist',
-    marketAlerts: 'Market alerts',
-    topWatchedAsset: 'Top watched asset',
-    marketUnavailable: 'No sufficient market data right now.',
-    openInvestments: 'Open Investments',
-    openMarket: 'Open Market Analysis',
-    projectsBusinessHub: 'Projects and Business Hub',
-    activeProjects: 'Active projects',
-    overdueTasks: 'Overdue tasks',
-    fundingReadiness: 'Funding readiness',
-    pitchDecks: 'Pitch decks',
-    noProjects: 'No projects yet. Add your first project to begin.',
-    openProjects: 'Open My Projects',
-    openBusinessHub: 'Open Business Hub',
-    createPitchDeck: 'Create Pitch Deck',
-    zakatCharity: 'Zakat and Charity',
-    zakatSaved: 'Latest saved zakat',
-    nextZakatDate: 'Next due date',
-    charityProjects: 'Charity projects',
-    annualDonations: 'Annual donations',
-    noZakat: 'No saved zakat calculations',
-    openZakat: 'Open Zakat',
-    openCharityProjects: 'Open Charity Projects',
-    openCharity: 'Open Charity',
-    reports: 'Reports',
-    readyReports: 'Ready reports',
-    reportsNeedData: 'Reports needing data',
-    lastGenerated: 'Last saved report',
-    lastGeneratedUnavailable: 'No saved reports yet',
-    openReportsCenter: 'Open Reports Center',
-    smartNotifications: 'Smart Notifications',
-    smartTasks: 'Tasks Center',
-    viewAllTasks: 'View all tasks',
-    noTasks: 'No tasks right now.',
-    unread: 'Unread',
-    highPriority: 'High Priority',
-    dueToday: 'Due Today',
-    viewAllNotifications: 'View all notifications',
-    noNotifications: 'No notifications yet',
-    completeSetupTitle: 'Complete your account setup',
-    completeSetupText: 'Add your core data to get a more accurate home page.',
-    completeSetup: 'Complete Setup',
-    loading: 'Loading home page...',
-    dataError: 'Could not load some data right now.',
-    debugLabel: 'Executive dashboard diagnostics',
-    debugTitle: 'Dashboard diagnostics: failed sections',
-    addIncomeAction: 'Add monthly income to activate income reports and dashboard totals.',
-    reportNeedsDataAction: 'Complete the required data in Reports Center.',
-    overdueTaskAction: 'Review overdue tasks in your projects.',
-    zakatDueAction: 'Review your upcoming zakat due date.',
-    notificationAction: 'Review high priority notifications.',
-  },
-  fr: {
-    pageTitle: "Page d'accueil",
-    pageSubtitle: 'Une vue complète de vos finances, projets, investissements, zakat et alertes en un seul endroit.',
-    updatedNow: 'Mis à jour',
-    lastUpdatedNow: 'Dernière mise à jour : maintenant',
-    totalAssets: 'Actifs totaux',
-    todayAlerts: 'Alertes du jour',
-    totalIncome: 'Revenus totaux',
-    totalExpenses: 'Dépenses totales',
-    netBalance: 'Solde net',
-    savings: 'Épargne',
-    investments: 'Investissements',
-    upcomingCommitments: 'Engagements à venir',
-    currentMonth: 'Mois en cours',
-    allRecords: 'Tous les enregistrements',
-    insufficientData: 'Données insuffisantes',
-    noCurrentMonthData: 'Aucune donnée pour le mois en cours',
-    notCalculable: 'Non calculable',
-    notEntered: 'Non saisi',
-    invalidValue: 'Valeur invalide',
-    noDataYet: 'Aucune donnée pour le moment',
-    noDataBody: 'Ajoutez vos données pour commencer.',
-    openPage: 'Ouvrir la page',
-    financialHealth: 'Santé financière',
-    financialHealthHint: 'Ajoutez les revenus, dépenses et épargne pour calculer la santé financière.',
-    excellent: 'Excellent',
-    good: 'Bon',
-    needsReview: 'À réviser',
-    insufficientStatus: 'Données insuffisantes',
-    topActionToday: 'Action prioritaire du jour',
-    noUrgentActions: 'Aucune action urgente pour le moment.',
-    incomeExpenses: 'Revenus et dépenses',
-    currentMonthIncome: 'Revenus du mois',
-    currentMonthExpenses: 'Dépenses du mois',
-    spendingRatio: 'Ratio de dépenses',
-    viewIncome: 'Voir les revenus',
-    viewExpenses: 'Voir les dépenses',
-    openReports: 'Ouvrir les rapports',
-    goalsSavings: 'Objectifs et épargne',
-    activeGoals: 'Objectifs actifs',
-    nearestTarget: 'Date cible la plus proche',
-    averageProgress: 'Progression moyenne',
-    totalGoalBalance: 'Solde actuel des objectifs',
-    noGoals: 'Aucun objectif financier pour le moment.',
-    openGoals: 'Ouvrir les objectifs financiers',
-    investmentsMarket: 'Investissements et marché',
-    watchlist: 'Liste de suivi',
-    marketAlerts: 'Alertes marché',
-    topWatchedAsset: 'Actif le plus suivi',
-    marketUnavailable: 'Aucune donnée de marché suffisante pour le moment.',
-    openInvestments: 'Ouvrir les investissements',
-    openMarket: 'Ouvrir l’analyse de marché',
-    projectsBusinessHub: 'Projets et Centre d’affaires',
-    activeProjects: 'Projets actifs',
-    overdueTasks: 'Tâches en retard',
-    fundingReadiness: 'Préparation au financement',
-    pitchDecks: 'Pitch decks',
-    noProjects: 'Aucun projet pour le moment. Ajoutez votre premier projet pour commencer.',
-    openProjects: 'Ouvrir mes projets',
-    openBusinessHub: 'Ouvrir le Centre d’affaires',
-    createPitchDeck: 'Créer un Pitch Deck',
-    zakatCharity: 'Zakat et charité',
-    zakatSaved: 'Dernière zakat enregistrée',
-    nextZakatDate: 'Prochaine échéance',
-    charityProjects: 'Projets caritatifs',
-    annualDonations: 'Dons annuels',
-    noZakat: 'Aucun calcul de zakat enregistré',
-    openZakat: 'Ouvrir la zakat',
-    openCharityProjects: 'Ouvrir les projets caritatifs',
-    openCharity: 'Ouvrir la charité',
-    reports: 'Rapports',
-    readyReports: 'Rapports prêts',
-    reportsNeedData: 'Rapports avec données requises',
-    lastGenerated: 'Dernier rapport enregistré',
-    lastGeneratedUnavailable: 'Aucun rapport enregistré',
-    openReportsCenter: 'Ouvrir le Centre des rapports',
-    smartNotifications: 'Notifications intelligentes',
-    smartTasks: 'Centre des tâches',
-    viewAllTasks: 'Voir toutes les tâches',
-    noTasks: 'Aucune tâche pour le moment.',
-    unread: 'Non lues',
-    highPriority: 'Haute priorité',
-    dueToday: 'À échéance aujourd’hui',
-    viewAllNotifications: 'Voir toutes les notifications',
-    noNotifications: 'Aucune notification pour le moment',
-    completeSetupTitle: 'Complétez la configuration du compte',
-    completeSetupText: 'Ajoutez vos données de base pour obtenir un tableau de bord plus précis.',
-    completeSetup: 'Terminer la configuration',
-    loading: 'Chargement du tableau de bord exécutif...',
-    dataError: 'Impossible de charger certaines données pour le moment.',
-    debugLabel: 'Diagnostics du tableau de bord exécutif',
-    debugTitle: 'Diagnostics du tableau de bord : sections en échec',
-    addIncomeAction: 'Ajoutez vos revenus mensuels pour activer les rapports et les totaux du tableau de bord.',
-    reportNeedsDataAction: 'Complétez les données requises dans le Centre des rapports.',
-    overdueTaskAction: 'Vérifiez les tâches en retard de vos projets.',
-    zakatDueAction: 'Vérifiez votre prochaine échéance de zakat.',
-    notificationAction: 'Vérifiez les notifications haute priorité.',
-  },
-} satisfies Record<Lang, Record<string, string>>;
+
+function sourceStatusText(status: DashboardSourceStatus, t: ReturnType<typeof useLanguage>['t']) {
+  if (status === 'permission') return t('dashboard_exec_permission');
+  if (status === 'network') return t('dashboard_exec_network');
+  if (status === 'unavailable') return t('dashboard_exec_source_unavailable');
+  if (status === 'empty') return t('dashboard_exec_no_records');
+  return t('dashboard_exec_loading');
+}
+
+function logSourceFailure(source: DashboardSourceKey, error: unknown) {
+  if (process.env.NODE_ENV === 'development') {
+    const value = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+    console.warn('[dashboard] source unavailable', {
+      source,
+      code: typeof value.code === 'string' ? value.code : undefined,
+      status: classifyDashboardError(error),
+    });
+  }
+}
 
 export default function ExecutiveDashboardPage() {
-  const { user, loading } = useAuth();
-  const { lang, dir } = useLanguage();
-  const locale: Lang = lang === 'en' || lang === 'fr' ? lang : 'ar';
-  const text = TEXT[locale];
-  const { tasks: dashboardTasks, loading: tasksLoading } = useSmartTasks();
-  const userId = user?.id;
+  const { user, loading: authLoading } = useAuth();
+  const { lang, dir, t } = useLanguage();
+  const [sources, setSources] = useState(EMPTY_SOURCES);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileStatus, setProfileStatus] = useState<DashboardSourceStatus>('loading');
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
-  const [records, setRecords] = useState<DashboardRecords>(EMPTY_RECORDS);
-  const [errors, setErrors] = useState<Partial<Record<DashboardKey, string>>>({});
-  const [loadFailures, setLoadFailures] = useState<DashboardLoadFailure[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-
-  const loadDashboard = useCallback(async () => {
-    if (!userId) {
-      setRecords(EMPTY_RECORDS);
-      setProfile(null);
-      setErrors({});
-      setLoadFailures([]);
-      setIsLoadingData(false);
-      return;
-    }
-
-    setIsLoadingData(true);
-
-    try {
-      const profileQuery = supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-      const [profileResult, ...tableResults] = await Promise.allSettled([
-        profileQuery,
-        ...DASHBOARD_TABLES.map((item) => fetchDashboardTable(userId, item)),
-      ]);
-
-      const failures: DashboardLoadFailure[] = [];
-      const nextErrors: Partial<Record<DashboardKey, string>> = {};
-      const nextRecords: DashboardRecords = { ...EMPTY_RECORDS };
-
-      if (profileResult.status === 'fulfilled') {
-        if (profileResult.value.error) {
-          const normalized = normalizeDashboardError(profileResult.value.error);
-          failures.push({ section: 'profile', table: 'profiles', ...normalized });
-          setProfile(null);
-        } else {
-          setProfile(profileResult.value.data ?? null);
-        }
-      } else {
-        const normalized = normalizeDashboardError(profileResult.reason);
-        failures.push({ section: 'profile', table: 'profiles', ...normalized });
-        setProfile(null);
-      }
-
-      tableResults.forEach((result, index) => {
-        const table = DASHBOARD_TABLES[index];
-        if (result.status === 'fulfilled') {
-          nextRecords[result.value.key] = result.value.rows;
-          return;
-        }
-
-        const normalized = normalizeDashboardError(result.reason);
-        failures.push({ section: table.key, table: table.table, ...normalized });
-        nextErrors[table.key] = normalized.message;
-        nextRecords[table.key] = [];
-      });
-
-      nextRecords.income = personalIncomeRows(nextRecords.income ?? []);
-      nextRecords.expenses = personalExpenseRows(nextRecords.expenses ?? []);
-
-      failures.forEach(logDashboardFailure);
-      setRecords(nextRecords);
-      setErrors(nextErrors);
-      setLoadFailures(failures);
-    } catch (error) {
-      const normalized = normalizeDashboardError(error);
-      const failure: DashboardLoadFailure = { section: 'auth', table: 'dashboard', ...normalized };
-      logDashboardFailure(failure);
-      setRecords(EMPTY_RECORDS);
-      setErrors({ income: normalized.message });
-      setLoadFailures([failure]);
-    } finally {
-      setIsLoadingData(false);
-    }
-  }, [userId]);
+  const loadDashboard = useCallback(() => setReloadToken((value) => value + 1), []);
 
   useEffect(() => {
-    if (!loading) void loadDashboard();
-  }, [loading, loadDashboard]);
+    if (authLoading) return;
+    const controller = new AbortController();
+
+    if (!user?.id) {
+      setProfile(null);
+      setProfileStatus('empty');
+      setSources(SOURCE_TABLES.reduce((result, source) => {
+        result[source.key] = { rows: [], status: 'empty' };
+        return result;
+      }, {} as typeof sources));
+      setUpdatedAt(new Date());
+      return () => controller.abort();
+    }
+
+    setProfileStatus('loading');
+    setSources(SOURCE_TABLES.reduce((result, source) => {
+      result[source.key] = { rows: [], status: 'loading' };
+      return result;
+    }, {} as typeof sources));
+
+    const profileRequest = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .abortSignal(controller.signal)
+          .maybeSingle();
+        if (error) throw error;
+        if (!controller.signal.aborted) {
+          setProfile((data ?? null) as Profile | null);
+          setProfileStatus(data ? 'success' : 'empty');
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        logSourceFailure('profile', error);
+        setProfile(null);
+        setProfileStatus(classifyDashboardError(error));
+      }
+    })();
+
+    const tableRequests = SOURCE_TABLES.map((source) => (async () => {
+      try {
+        const { data, error } = await supabase
+          .from(source.table)
+          .select('*')
+          .eq('user_id', user.id)
+          .limit(1000)
+          .abortSignal(controller.signal);
+        if (error) throw error;
+        if (controller.signal.aborted) return;
+        let rows = (data ?? []) as FinancialRow[];
+        if (source.key === 'income') rows = personalIncomeRows(rows);
+        if (source.key === 'expenses') rows = personalExpenseRows(rows);
+        setSources((current) => ({
+          ...current,
+          [source.key]: { rows, status: rows.length > 0 ? 'success' : 'empty' },
+        }));
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        logSourceFailure(source.key, error);
+        setSources((current) => ({
+          ...current,
+          [source.key]: { rows: [], status: classifyDashboardError(error) },
+        }));
+      }
+    })());
+
+    void Promise.allSettled([profileRequest, ...tableRequests]).then(() => {
+      if (!controller.signal.aborted) setUpdatedAt(new Date());
+    });
+
+    return () => controller.abort();
+  }, [authLoading, reloadToken, user?.id]);
 
   const summary = useMemo(() => {
-    const defaultCurrency =
-      profile?.default_currency ||
-      getRecordCurrency(records.income) ||
-      getRecordCurrency(records.expenses) ||
-      getRecordCurrency(records.savings) ||
-      'KWD';
-
-    const realizedIncome = realizedIncomeRows(records.income);
-    const realizedExpenses = realizedExpenseRows(records.expenses);
-    const incomeTotal = sumAmounts(realizedIncome, ['amount']);
-    const expenseTotal = sumAmounts(realizedExpenses, ['amount']);
-    const savingsTotal = sumAmounts(records.savings, ['current_amount', 'balance', 'amount']);
-    const investmentsTotal = sumAmounts(records.investments, ['converted_market_value', 'current_value', 'market_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
-
-    const monthRange = currentMonthRange();
-    const monthIncomeRows = realizedIncome.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'received_date', 'generated_for_date', 'created_at'], monthRange));
-    const monthExpenseRows = realizedExpenses.filter((row) => isCurrentMonth(row, ['transaction_date', 'date', 'recorded_at', 'expense_date', 'created_at'], monthRange));
-    const currentMonthIncome = sumAmounts(monthIncomeRows, ['amount']);
-    const currentMonthExpenses = sumAmounts(monthExpenseRows, ['amount']);
-    const spendingRatio = safeDivide(currentMonthExpenses, currentMonthIncome);
-    const hasCurrentMonthData = monthIncomeRows.length > 0 || monthExpenseRows.length > 0;
-    const currentMonthNet = currentMonthIncome - currentMonthExpenses;
-
-    const goalProgressValues = records.goals.map(goalProgress).filter((value): value is number => value !== null);
-    const averageGoalProgress = goalProgressValues.length ? goalProgressValues.reduce((total, value) => total + value, 0) / goalProgressValues.length : null;
-    const nearestGoalDate = records.goals
-      .map((row) => firstDate(row, ['target_date', 'due_date', 'end_date']))
-      .filter((value): value is string => Boolean(value))
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
-
-    const activeProjects = records.projects.filter(isOpenStatus);
-    const overdueTasks = records.projectTasks.filter(isTaskOverdue);
-    const fundingScores = records.projectFundingReadiness
-      .map((row) => firstNumber(row, ['readiness_score', 'score']))
-      .filter((value): value is number => value !== null);
-    const fundingAverage = fundingScores.length ? fundingScores.reduce((total, value) => total + value, 0) / fundingScores.length : null;
-
-    const latestZakat = latestByDate(records.zakatCalculations, ['calculation_date', 'created_at']);
-    const zakatDue = latestZakat ? firstNumber(latestZakat, ['zakat_due', 'amount', 'total_zakat']) : null;
-    const nextZakatDate = records.zakatAssets
-      .map((row) => firstDate(row, ['zakat_due_date', 'due_date', 'hawl_date']))
-      .filter((value): value is string => Boolean(value))
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
-
-    const currentYear = new Date().getFullYear();
-    const annualDonations = sumAmounts(
-      records.charityDonations.filter((row) => {
-        const date = firstDate(row, ['donation_date', 'created_at']);
-        return date ? new Date(date).getFullYear() === currentYear : false;
-      }),
-      ['amount']
-    );
-
-    const upcomingCommitments =
-      records.charityCommitments.filter((row) => {
-        const due = firstDate(row, ['due_date', 'next_due_date']);
-        const days = daysUntil(due);
-        return isOpenStatus(row) && days !== null && days >= 0 && days <= 30;
-      }).length +
-      records.charityReminders.filter((row) => {
-        const due = firstDate(row, ['due_date', 'reminder_date']);
-        const days = daysUntil(due);
-        return isOpenStatus(row) && days !== null && days >= 0 && days <= 30;
-      }).length;
-
-    const activeNotifications = records.notifications.filter((row) => firstText(row, ['status']).toLowerCase() !== 'archived');
-    const unreadNotifications = activeNotifications.filter((row) => {
-      const status = firstText(row, ['status']).toLowerCase();
-      const read = row.read;
-      return status === 'unread' || read === false || (!status && read !== true);
+    const primaryCurrency = rowCurrency(profile ?? {}, ['default_currency', 'preferred_currency', 'currency']);
+    const now = updatedAt ?? new Date();
+    const compatible = (row: FinancialRow) => Boolean(primaryCurrency && isCurrency(row, primaryCurrency));
+    const realizedIncome = realizedIncomeRows(sources.income.rows, now).filter(compatible);
+    const realizedExpenses = realizedExpenseRows(sources.expenses.rows, now).filter(compatible);
+    const monthIncomeRows = currentMonthRows(realizedIncome, 'income', now);
+    const monthExpenseRows = currentMonthRows(realizedExpenses, 'expense', now);
+    const monthlyPlan = buildMonthlyHealthSnapshot(sources.income.rows, sources.expenses.rows, now, compatible);
+    const savingsRows = sources.savings.rows.filter(compatible);
+    const activeDebts = activeDebtRows(sources.debts.rows).filter(compatible);
+    const valuedSavingsRows = savingsRows.filter((row) => firstNumber(row, ['current_amount', 'balance', 'amount']) !== null);
+    const savingsAmountsComplete = valuedSavingsRows.length === savingsRows.length;
+    const debtBalancesComplete = activeDebts.every((row) => debtBalance(row) !== null);
+    const debtPaymentsComplete = activeDebts.every((row) => firstNumber(row, ['monthly_payment']) !== null);
+    const investmentValues = sources.investments.rows.map((row) => investmentValue(row, primaryCurrency));
+    const investmentsComplete = investmentValues.every((value) => value !== null && value.currency !== null);
+    const savingsBalance = sumRows(valuedSavingsRows, ['current_amount', 'balance', 'amount']);
+    const monthlyDebtPayments = sumRows(activeDebts, ['monthly_payment']);
+    const debtBalanceTotal = activeDebts.reduce((total, row) => total + (debtBalance(row) ?? 0), 0);
+    const investmentsTotal = primaryInvestmentTotal(sources.investments.rows, primaryCurrency);
+    const hasInvestmentValue = sources.investments.rows.some((row) => {
+      const breakdown = investmentBreakdown([row], primaryCurrency);
+      return breakdown.some((item) => item.currency === primaryCurrency);
     });
-    const highPriorityNotifications = activeNotifications.filter((row) => ['danger', 'warning', 'high'].includes(firstText(row, ['severity', 'priority']).toLowerCase()));
-    const dueTodayNotifications = activeNotifications.filter((row) => daysUntil(firstDate(row, ['due_date'])) === 0);
-
-    const readyReports = [
-      records.income.length > 0,
-      records.expenses.length > 0,
-      records.savings.length > 0,
-      records.goals.length > 0,
-      records.investments.length > 0,
-      records.projects.length > 0,
-      records.zakatCalculations.length > 0,
-      records.charityDonations.length > 0 || records.charityProjects.length > 0,
-    ].filter(Boolean).length;
-    const reportsNeedData = 8 - readyReports;
-
-    const activeDebts = records.debts.filter((row) => {
-      const debtStatus = firstText(row, ['status'], 'active').toLowerCase();
-      const remaining = firstNumber(row, ['calculated_remaining_amount', 'remaining_amount']);
-      return debtStatus !== 'paid' && (remaining === null || remaining > 0);
-    });
-    const monthlyDebtPayments = sumAmounts(activeDebts, ['monthly_payment']);
-    const healthDetails = calculateFinancialHealth({
-      monthlyIncome: currentMonthIncome,
-      monthlyExpenses: currentMonthExpenses,
-      savingsBalance: savingsTotal,
+    const monthlyIncome = monthlyPlan.monthlyIncome;
+    const monthlyExpenses = monthlyPlan.monthlyExpenses;
+    const monthlyNet = monthlyIncome - monthlyExpenses;
+    const financialInput = {
+      monthlyIncome,
+      monthlyExpenses,
+      savingsBalance,
       monthlyDebtPayments,
-      hasIncomeData: monthIncomeRows.length > 0,
-      hasExpenseData: monthExpenseRows.length > 0,
-      hasSavingsData: records.savings.length > 0,
-      debtsLoaded: !errors.debts,
-    });
-    const netBalance = incomeTotal - expenseTotal;
-    const cashFlowSeries = buildMonthlyCashFlow(realizedIncome, realizedExpenses);
-
-    const priorityItems: PriorityItem[] = [];
-    if (profile?.onboarding_completed === false) {
-      priorityItems.push({
-        id: 'setup',
-        title: text.completeSetupTitle,
-        message: text.completeSetupText,
-        href: '/onboarding',
-        severity: 'warning',
+      hasIncomeData: loaded(sources.income.status) && monthlyPlan.hasIncomeData && monthlyPlan.incomeAmountsComplete,
+      hasExpenseData: loaded(sources.expenses.status) && monthlyPlan.hasExpenseData && monthlyPlan.expenseAmountsComplete,
+      hasSavingsData: loaded(sources.savings.status) && valuedSavingsRows.length > 0 && savingsAmountsComplete,
+      debtsLoaded: loaded(sources.debts.status) && debtPaymentsComplete,
+    };
+    const health = calculateFinancialHealth(financialInput);
+    const indicators = calculateFinancialHealthIndicators(financialInput);
+    const cashFlow = buildMonthlyCashFlow(sources.income.rows, sources.expenses.rows, now, compatible);
+    const observedCashFlow = cashFlow.filter((point) => point.incomeRecords > 0 || point.expenseRecords > 0);
+    const goals = sources.goals.rows
+      .map((row) => summarizeGoal(row, primaryCurrency, now))
+      .filter((goal) => goal.title)
+      .sort((a, b) => {
+        const priority = { behind: 0, on_track: 1, insufficient: 2, completed: 3 };
+        return priority[a.status] - priority[b.status];
       });
-    }
-    if (overdueTasks.length > 0) {
-      priorityItems.push({
-        id: 'overdue-tasks',
-        title: text.overdueTasks,
-        message: text.overdueTaskAction,
-        href: '/projects',
-        severity: 'danger',
+    const currentCategories = expenseCategoryBreakdown(monthExpenseRows).slice(0, 4);
+    const savingsBreakdown = groupCurrencyAmounts(sources.savings.rows, (row) => firstNumber(row, ['current_amount', 'balance', 'amount']));
+    const investmentsBreakdown = investmentBreakdown(sources.investments.rows, primaryCurrency);
+    const debtsBreakdown = debtBreakdown(sources.debts.rows);
+    const cashFlowStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const cashFlowIncomplete = [...realizedIncome.map((row) => ({ row, kind: 'income' as const })), ...realizedExpenses.map((row) => ({ row, kind: 'expense' as const }))]
+      .some(({ row, kind }) => {
+        const date = financialRowDate(row, kind);
+        return Boolean(date && date >= cashFlowStart && firstNumber(row, ['amount']) === null);
       });
-    }
-    if (nextZakatDate && daysUntil(nextZakatDate) !== null && (daysUntil(nextZakatDate) ?? 999) <= 7) {
-      priorityItems.push({
-        id: 'zakat-due',
-        title: text.nextZakatDate,
-        message: text.zakatDueAction,
-        href: '/zakat',
-        severity: 'danger',
-        dueDate: nextZakatDate,
-      });
-    }
-    if (highPriorityNotifications.length > 0) {
-      const notification = highPriorityNotifications[0];
-      priorityItems.push({
-        id: firstText(notification, ['id'], 'notification'),
-        title: firstText(notification, ['title'], text.smartNotifications),
-        message: firstText(notification, ['message'], text.notificationAction),
-        href: firstText(notification, ['action_url'], '/notifications'),
-        severity: 'warning',
-        dueDate: firstDate(notification, ['due_date']),
-      });
-    }
-    if (reportsNeedData > 0 && readyReports > 0) {
-      priorityItems.push({
-        id: 'reports-need-data',
-        title: text.reportsNeedData,
-        message: text.reportNeedsDataAction,
-        href: '/reports-center',
-        severity: 'info',
-      });
-    }
-    if (records.income.length === 0) {
-      priorityItems.push({
-        id: 'income-missing',
-        title: text.totalIncome,
-        message: text.addIncomeAction,
-        href: '/income',
-        severity: 'info',
-      });
-    }
+    const categoryAmountsComplete = monthExpenseRows.every((row) => firstNumber(row, ['amount']) !== null);
+    const positionReady = Boolean(primaryCurrency) && loaded(sources.savings.status) && loaded(sources.investments.status) && loaded(sources.debts.status)
+      && savingsAmountsComplete && investmentsComplete && debtBalancesComplete
+      && (valuedSavingsRows.length > 0 || hasInvestmentValue || activeDebts.length > 0);
 
     return {
-      defaultCurrency,
-      incomeTotal,
-      expenseTotal,
-      netBalance,
-      savingsTotal,
+      primaryCurrency,
+      monthlyIncome,
+      monthlyExpenses,
+      monthlyNet,
+      hasIncomeData: monthlyPlan.hasIncomeData && monthlyPlan.incomeAmountsComplete,
+      hasExpenseData: monthlyPlan.hasExpenseData && monthlyPlan.expenseAmountsComplete,
+      health,
+      indicators,
+      observedCashFlow,
+      monthIncomeRows,
+      monthExpenseRows,
+      currentCategories,
+      cashFlowIncomplete,
+      categoryAmountsComplete,
+      goals,
+      savingsBalance,
       investmentsTotal,
-      currentMonthIncome,
-      currentMonthExpenses,
-      currentMonthNet,
-      realizedIncome,
-      realizedExpenses,
-      cashFlowSeries,
-      spendingRatio,
-      hasCurrentMonthData,
-      activeGoals: records.goals.length,
-      nearestGoalDate,
-      averageGoalProgress,
-      totalGoalBalance: records.goals.reduce((sum, row) => sum + calculateGoalProgress(row).currentAmount, 0),
-      watchlistCount: records.marketWatchlist.length,
-      marketAlertsCount: records.marketPriceAlerts.length,
-      topWatchedAsset: firstText(records.marketWatchlist[0] ?? {}, ['symbol', 'name', 'asset_name']),
-      activeProjects: activeProjects.length,
-      overdueTasks: overdueTasks.length,
-      fundingAverage,
-      pitchDecks: records.projectPitchDecks.length,
-      zakatDue,
-      nextZakatDate,
-      charityProjects: records.charityProjects.length,
-      annualDonations,
-      upcomingCommitments,
-      readyReports,
-      reportsNeedData,
-      unreadNotifications: unreadNotifications.length,
-      highPriorityNotifications: highPriorityNotifications.length,
-      dueTodayNotifications: dueTodayNotifications.length,
-      topNotifications: activeNotifications.slice(0, 3),
-      healthScore: healthDetails?.score ?? null,
-      healthDetails,
-      monthlyDebtPayments,
-      priorityItem: priorityItems[0] ?? null,
+      debtBalanceTotal,
+      trackedPosition: savingsBalance + investmentsTotal - debtBalanceTotal,
+      positionReady,
+      savingsBreakdown,
+      investmentsBreakdown,
+      debtsBreakdown,
+      savingsAmountsComplete,
+      investmentsComplete,
+      debtBalancesComplete,
+      hasForeignCurrency: Boolean(primaryCurrency) && [...savingsBreakdown, ...investmentsBreakdown, ...debtsBreakdown].some((item) => item.currency !== primaryCurrency),
     };
-  }, [errors.debts, profile?.default_currency, profile?.onboarding_completed, records, text]);
+  }, [profile, sources, updatedAt]);
 
-  const money = useCallback(
-    (amount: number | null | undefined) => {
-      if (amount === null || amount === undefined) return text.notEntered;
-      if (!Number.isFinite(amount)) return text.invalidValue;
-      return formatMoney(amount, summary.defaultCurrency, locale);
-    },
-    [locale, summary.defaultCurrency, text.invalidValue, text.notEntered]
-  );
+  const sourceFailures = useMemo(() => SOURCE_TABLES.filter((source) => ['permission', 'network', 'unavailable'].includes(sources[source.key].status)), [sources]);
+  const attention = useMemo<AttentionItem[]>(() => {
+    const items: AttentionItem[] = [];
+    if (summary.monthlyIncome > 0 && summary.monthlyExpenses > summary.monthlyIncome) {
+      items.push({ id: 'overspending', title: t('dashboard_exec_overspending_title'), body: t('dashboard_exec_overspending_body'), href: '/expenses', tone: 'danger' });
+    }
+    if (summary.indicators.debtToIncome !== null && summary.indicators.debtToIncome > 0.3) {
+      items.push({ id: 'debt-risk', title: t('dashboard_exec_debt_risk_title'), body: t('dashboard_exec_debt_risk_body'), href: '/debts', tone: 'warning' });
+    }
+    const behindGoal = summary.goals.find((goal) => goal.status === 'behind');
+    if (behindGoal) {
+      items.push({ id: `goal-${behindGoal.id}`, title: t('dashboard_exec_goal_risk_title'), body: t('dashboard_exec_goal_risk_body'), href: '/goals', tone: 'warning' });
+    }
+    if (sourceFailures.length > 0) {
+      items.push({ id: 'source', title: t('dashboard_exec_source_issue_title'), body: t('dashboard_exec_source_issue_body'), href: '/profile', tone: 'info' });
+    }
+    return items.slice(0, 3);
+  }, [sourceFailures.length, summary.goals, summary.indicators.debtToIncome, summary.monthlyExpenses, summary.monthlyIncome, t]);
 
-  const percent = useCallback(
-    (value: number | null) => (value === null ? text.insufficientData : `${Math.round(value * 100)}%`),
-    [text.insufficientData]
-  );
+  const isInitialLoading = authLoading || SOURCE_TABLES.every((source) => sources[source.key].status === 'loading');
+  if (isInitialLoading) return <DashboardSkeleton dir={dir} label={t('dashboard_exec_loading')} />;
 
-  const monthlySpendingRatio = useMemo(() => {
-    if (!summary.hasCurrentMonthData) return text.noCurrentMonthData;
-    if (summary.currentMonthIncome <= 0 && summary.currentMonthExpenses > 0) return text.notCalculable;
-    if (summary.currentMonthIncome <= 0 && summary.currentMonthExpenses <= 0) return text.insufficientData;
-    return percent(summary.spendingRatio);
-  }, [percent, summary.currentMonthExpenses, summary.currentMonthIncome, summary.hasCurrentMonthData, summary.spendingRatio, text.insufficientData, text.noCurrentMonthData, text.notCalculable]);
-
-  const globalLoadFailures = loadFailures.filter(isGlobalDashboardFailure);
-  const hasErrors = globalLoadFailures.length > 0;
-  const topOpenTasks = dashboardTasks.filter(task => task.status === 'open').slice(0, 3);
-  const sourceUnavailable = (...keys: DashboardKey[]) => keys.some((key) => Boolean(errors[key]));
-  const hasAssetData = records.savings.length > 0 || records.investments.length > 0 || records.goals.length > 0;
-  const totalAssets = summary.savingsTotal + summary.investmentsTotal + summary.totalGoalBalance;
-  const reportKpiSources: DashboardKey[] = [
-    'income',
-    'expenses',
-    'savings',
-    'goals',
-    'investments',
-    'projects',
-    'projectFinancialModels',
-    'zakatCalculations',
-    'charityDonations',
-  ];
-  const heroKpis = [
-    {
-      label: text.totalAssets,
-      value: !sourceUnavailable('savings', 'investments', 'goals') && hasAssetData ? money(totalAssets) : text.insufficientData,
-    },
-    {
-      label: text.activeProjects,
-      value: sourceUnavailable('projects') ? text.insufficientData : `${summary.activeProjects}`,
-    },
-    {
-      label: text.todayAlerts,
-      value: sourceUnavailable('notifications') ? text.insufficientData : `${summary.dueTodayNotifications}`,
-    },
-    {
-      label: text.readyReports,
-      value: sourceUnavailable(...reportKpiSources) ? text.insufficientData : `${summary.readyReports}`,
-    },
-  ];
-
-  const dashboardCopy = lang === 'ar'
-    ? {
-        greeting: 'مرحباً', overview: 'هذه نظرة شاملة على أدائك المالي المسجل', addTransaction: 'إضافة معاملة',
-        thisMonth: 'هذا الشهر', cashFlow: 'التدفق النقدي', income: 'الدخل', expenses: 'المصروفات',
-        financialHealth: 'الصحة المالية', savingsRatio: 'نسبة الادخار', expenseCoverage: 'أشهر تغطية المدخرات للمصروفات',
-        debtLevel: 'نسبة أقساط الديون إلى الدخل', details: 'عرض التفاصيل', healthMethod: 'المعادلة: 35 نقطة لفائض شهري يصل إلى 20%، و35 نقطة لمدخرات تغطي 6 أشهر، و30 نقطة لعبء دين لا يتجاوز 20%؛ وتنخفض نقاط الدين تدريجياً حتى 50%.',
-        recentTransactions: 'آخر المعاملات', merchant: 'التاجر / الجهة', category: 'الفئة', date: 'التاريخ', amount: 'المبلغ',
-        expenseDistribution: 'توزيع المصروفات', dailyActions: 'إجراءات اليوم', goals: 'الأهداف المالية',
-        viewAll: 'عرض الجميع', viewReport: 'عرض التقرير', annualGoal: 'هدف مالي', noTransactions: 'لا توجد معاملات فعلية حديثة', months12: '12 شهراً',
-        previousCompletedMonth: 'مقارنة بآخر شهر مكتمل', noComparison: 'لا تتوفر مقارنة شهرية', noDistribution: 'لا توجد مصروفات فعلية لتوزيعها',
-      }
-    : lang === 'fr'
-      ? {
-          greeting: 'Bienvenue', overview: 'Vue de vos performances financières enregistrées', addTransaction: 'Ajouter une transaction',
-          thisMonth: 'Ce mois', cashFlow: 'Flux de trésorerie', income: 'Revenus', expenses: 'Dépenses',
-          financialHealth: 'Santé financière', savingsRatio: "Taux d'épargne", expenseCoverage: "Mois de dépenses couverts par l'épargne",
-          debtLevel: "Mensualités de dette / revenu", details: 'Voir les détails', healthMethod: "Formule : 35 points pour un excédent mensuel allant jusqu'à 20 %, 35 pour six mois d'épargne et 30 pour une charge de dette jusqu'à 20 %, décroissant jusqu'à 50 %.",
-          recentTransactions: 'Transactions récentes', merchant: 'Commerçant', category: 'Catégorie', date: 'Date', amount: 'Montant',
-          expenseDistribution: 'Répartition des dépenses', dailyActions: "Actions du jour", goals: 'Objectifs financiers',
-          viewAll: 'Tout afficher', viewReport: 'Voir le rapport', annualGoal: 'Objectif financier', noTransactions: 'Aucune transaction réalisée récente', months12: '12 mois',
-          previousCompletedMonth: 'Par rapport au dernier mois complet', noComparison: 'Comparaison mensuelle indisponible', noDistribution: 'Aucune dépense réalisée à répartir',
-        }
-      : {
-          greeting: 'Welcome', overview: 'A view of your recorded financial performance', addTransaction: 'Add transaction',
-          thisMonth: 'This month', cashFlow: 'Cash flow', income: 'Income', expenses: 'Expenses',
-          financialHealth: 'Financial health', savingsRatio: 'Savings ratio', expenseCoverage: 'Months of expenses covered by savings',
-          debtLevel: 'Debt payments to income', details: 'View details', healthMethod: 'Formula: 35 points for monthly surplus up to 20%, 35 for six months of savings coverage, and 30 for debt burden up to 20%, tapering to zero at 50%.',
-          recentTransactions: 'Recent transactions', merchant: 'Merchant', category: 'Category', date: 'Date', amount: 'Amount',
-          expenseDistribution: 'Expense distribution', dailyActions: "Today's actions", goals: 'Financial goals',
-          viewAll: 'View all', viewReport: 'View report', annualGoal: 'Financial goal', noTransactions: 'No recent realized transactions', months12: '12 months',
-          previousCompletedMonth: 'Compared with the last completed month', noComparison: 'Monthly comparison unavailable', noDistribution: 'No realized expenses to distribute',
-        };
-
-  const displayName = firstText(user?.user_metadata ?? {}, ['display_name', 'full_name', 'name']) || user?.email?.split('@')[0] || '';
-  const completedMonth = summary.cashFlowSeries.at(-2);
-  const priorCompletedMonth = summary.cashFlowSeries.at(-3);
-  const changeFor = (current: number, previous: number) => monthOverMonthChange(current, previous, current !== 0, previous !== 0);
-  const completedNet = (completedMonth?.income ?? 0) - (completedMonth?.expenses ?? 0);
-  const priorNet = (priorCompletedMonth?.income ?? 0) - (priorCompletedMonth?.expenses ?? 0);
-  const formatTrend = (value: number | null) => value === null ? null : `${Math.abs(value * 100).toFixed(1)}%`;
-  const sparklineFor = (values: number[]) => buildLinePoints(values, 118, 4, 28);
-  const financialKpis = [
-    { label: text.netBalance, value: summary.realizedIncome.length || summary.realizedExpenses.length ? money(summary.netBalance) : text.insufficientData, icon: <Wallet size={19} />, tone: 'blue', change: changeFor(completedNet, priorNet), path: sparklineFor(summary.cashFlowSeries.map(point => point.income - point.expenses)) },
-    { label: text.totalIncome, value: summary.realizedIncome.length ? money(summary.incomeTotal) : text.insufficientData, icon: <Wallet size={19} />, tone: 'green', change: changeFor(completedMonth?.income ?? 0, priorCompletedMonth?.income ?? 0), path: sparklineFor(summary.cashFlowSeries.map(point => point.income)) },
-    { label: text.totalExpenses, value: summary.realizedExpenses.length ? money(summary.expenseTotal) : text.insufficientData, icon: <Coins size={19} />, tone: 'red', change: changeFor(completedMonth?.expenses ?? 0, priorCompletedMonth?.expenses ?? 0), path: sparklineFor(summary.cashFlowSeries.map(point => point.expenses)) },
-    { label: text.investments, value: records.investments.length ? money(summary.investmentsTotal) : text.insufficientData, icon: <TrendingUp size={19} />, tone: 'teal', change: null, path: '' },
-  ];
-
-  const cashFlowMaximum = Math.max(...summary.cashFlowSeries.flatMap((point) => [point.income, point.expenses]), 0);
-  const cashFlowHasData = cashFlowMaximum > 0;
-  const cashFlowIncomePoints = buildLinePoints(summary.cashFlowSeries.map((point) => point.income), 760, 18, 202, cashFlowMaximum);
-  const cashFlowExpensePoints = buildLinePoints(summary.cashFlowSeries.map((point) => point.expenses), 760, 18, 202, cashFlowMaximum);
-  const cashFlowScale = [1, 0.75, 0.5, 0.25, 0].map((factor) => cashFlowMaximum * factor);
-  const compactNumber = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
-  const cashFlowMonths = summary.cashFlowSeries.map((point) => new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(point.year, point.month, 1)));
-  const actualPercent = (value: number | null | undefined) => value === null || value === undefined || !Number.isFinite(value)
-    ? text.insufficientData
-    : `${(value * 100).toFixed(1)}%`;
-  const actualMonths = (value: number | null | undefined) => value === null || value === undefined || !Number.isFinite(value)
-    ? text.insufficientData
-    : `${value.toFixed(1)} ${lang === 'ar' ? 'شهر' : lang === 'fr' ? 'mois' : value === 1 ? 'month' : 'months'}`;
-
-  const recentTransactions = [
-    ...summary.realizedExpenses.map((row, index) => ({
-      id: firstText(row, ['id'], `expense-${index}`),
-      merchant: firstText(row, ['merchant', 'name', 'title', 'description'], dashboardCopy.expenses),
-      category: firstText(row, ['category', 'category_name', 'type'], dashboardCopy.expenses),
-      date: firstDate(row, ['transaction_date', 'expense_date', 'date', 'created_at']),
-      amount: -(firstNumber(row, ['amount']) ?? 0),
-    })),
-    ...summary.realizedIncome.map((row, index) => ({
-      id: firstText(row, ['id'], `income-${index}`),
-      merchant: firstText(row, ['source_name', 'name', 'title', 'description'], dashboardCopy.income),
-      category: firstText(row, ['category', 'type'], dashboardCopy.income),
-      date: firstDate(row, ['transaction_date', 'received_date', 'date', 'created_at']),
-      amount: firstNumber(row, ['amount']) ?? 0,
-    })),
-  ]
-    .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime())
-    .slice(0, 5);
-
-  const expenseGroups = Array.from(summary.realizedExpenses.reduce((groups, row) => {
-    const label = firstText(row, ['category', 'category_name', 'type'], dashboardCopy.expenses);
-    groups.set(label, (groups.get(label) ?? 0) + (firstNumber(row, ['amount']) ?? 0));
-    return groups;
-  }, new Map<string, number>()).entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
-  const expenseGroupTotal = expenseGroups.reduce((sum, [, value]) => sum + value, 0);
-  let expenseOffset = 0;
-  const expenseLegend = expenseGroups.map(([label, value], index) => {
-    const percentage = expenseGroupTotal ? (value / expenseGroupTotal) * 100 : 0;
-    const item = { label, percentage, index, offset: expenseOffset };
-    expenseOffset += percentage;
-    return item;
-  });
-  const taskPriorityLabels = {
-    urgent: lang === 'ar' ? 'عاجلة' : lang === 'fr' ? 'Urgente' : 'Urgent',
-    high: lang === 'ar' ? 'عالية' : lang === 'fr' ? 'Élevée' : 'High',
-    medium: lang === 'ar' ? 'متوسطة' : lang === 'fr' ? 'Moyenne' : 'Medium',
-    low: lang === 'ar' ? 'منخفضة' : lang === 'fr' ? 'Faible' : 'Low',
-  };
-
-  if (loading || isLoadingData) {
-    return (
-      <div className="dashboard-shell" dir={dir}>
-        <main className="dashboard-main loading-main">
-          <Loader2 className="loader" aria-hidden="true" />
-          <p>{text.loading}</p>
-        </main>
-        <style jsx global>{dashboardStyles}</style>
-      </div>
-    );
-  }
+  const incomeReady = Boolean(summary.primaryCurrency) && loaded(sources.income.status) && summary.hasIncomeData;
+  const expensesReady = Boolean(summary.primaryCurrency) && loaded(sources.expenses.status) && summary.hasExpenseData;
+  const netReady = incomeReady && expensesReady;
+  const healthLoading = [sources.income.status, sources.expenses.status, sources.savings.status, sources.debts.status].some((status) => status === 'loading');
+  const cashFlowLoading = sources.income.status === 'loading' || sources.expenses.status === 'loading';
+  const cashFlowFailure = [sources.income.status, sources.expenses.status].find((status) => status === 'permission' || status === 'network' || status === 'unavailable');
+  const attentionLoading = SOURCE_TABLES.some((source) => sources[source.key].status === 'loading');
 
   return (
-    <div className="dashboard-shell" dir={dir}>
-      <main className="dashboard-main">
-        <section className="reference-hero" aria-labelledby="reference-dashboard-title">
-          <div className="reference-hero-head">
-            <div className="reference-hero-copy">
-              <h1 id="reference-dashboard-title">{dashboardCopy.greeting}{displayName ? `، ${displayName}` : ''}</h1>
-              <p>{dashboardCopy.overview}</p>
-            </div>
-            <div className="reference-hero-actions">
-              <span className="reference-period-button">
-                <CalendarDays size={17} aria-hidden="true" />
-                <span>{dashboardCopy.thisMonth}</span>
-              </span>
-              <Link href="/income" className="reference-primary-button">
-                <Plus size={18} aria-hidden="true" />
-                <span>{dashboardCopy.addTransaction}</span>
-              </Link>
-            </div>
+    <main className={styles.page} dir={dir} lang={lang} aria-labelledby="dashboard-title" data-dashboard-executive="true">
+      <header className={styles.hero}>
+        <div className={styles.heroCopy}>
+          <p className={styles.eyebrow}>{t('dashboard_exec_eyebrow')}</p>
+          <h1 id="dashboard-title">{t('dashboard_exec_title')}</h1>
+          <p className={styles.subtitle}>{t('dashboard_exec_subtitle')}</p>
+          <div className={styles.contextRow} aria-label={t('dashboard_exec_current_month')}>
+            <span><CalendarDays aria-hidden="true" />{t('dashboard_exec_current_month')}</span>
+            <span><CircleDollarSign aria-hidden="true" />{t('dashboard_exec_primary_currency')}: <bdi>{summary.primaryCurrency ?? t('dashboard_exec_not_configured')}</bdi></span>
+            {updatedAt ? <span>{t('dashboard_exec_updated')}: {formatDate(updatedAt, lang, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}
           </div>
+        </div>
+        <button type="button" className={styles.refreshButton} onClick={loadDashboard} aria-label={t('dashboard_exec_refresh')}>
+          <RefreshCw aria-hidden="true" />
+          <span>{t('dashboard_exec_refresh')}</span>
+        </button>
+      </header>
 
-          <div className="reference-kpi-grid">
-            {financialKpis.map((item) => (
-              <article className={`reference-kpi-card reference-kpi-${item.tone}`} key={item.label}>
-                <div className="reference-kpi-title">
-                  <span>{item.label}</span>
-                  <i aria-hidden="true">{item.icon}</i>
-                </div>
-                <strong data-financial-value="true">{item.value}</strong>
-                <div className="reference-kpi-foot">
-                  {item.change === null ? (
-                    <small>{dashboardCopy.noComparison}</small>
-                  ) : (
-                    <><span className={`reference-trend ${item.change < 0 ? 'is-down' : 'is-up'}`}>{item.change < 0 ? '▼' : '▲'} {formatTrend(item.change)}</span><small>{dashboardCopy.previousCompletedMonth}</small></>
-                  )}
-                  {item.path ? <svg viewBox="0 0 120 34" aria-hidden="true"><polyline points={item.path} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg> : null}
-                </div>
-              </article>
-            ))}
+      <section className={styles.section} aria-labelledby="executive-summary-title">
+        <SectionHeading id="executive-summary-title" title={t('dashboard_exec_summary')} />
+        <div className={styles.metricGrid}>
+          <MetricCard
+            label={t('dashboard_exec_position')}
+            value={summary.positionReady && summary.primaryCurrency ? formatCurrency(summary.trackedPosition, summary.primaryCurrency, lang) : null}
+            status={summary.positionReady ? t('dashboard_exec_primary_only') : summary.primaryCurrency ? sourceReason([sources.savings.status, sources.investments.status, sources.debts.status], t) : t('dashboard_exec_not_configured')}
+            icon={<WalletCards />}
+            tone={summary.trackedPosition < 0 ? 'danger' : 'primary'}
+          />
+          <MetricCard
+            label={t('dashboard_exec_monthly_income')}
+            value={incomeReady && summary.primaryCurrency ? formatCurrency(summary.monthlyIncome, summary.primaryCurrency, lang) : null}
+            status={incomeReady ? (summary.monthlyIncome === 0 ? t('dashboard_exec_real_zero') : t('dashboard_exec_planned_actual')) : summary.primaryCurrency ? sourceReason([sources.income.status], t) : t('dashboard_exec_not_configured')}
+            icon={<TrendingUp />}
+            tone="success"
+          />
+          <MetricCard
+            label={t('dashboard_exec_monthly_expenses')}
+            value={expensesReady && summary.primaryCurrency ? formatCurrency(summary.monthlyExpenses, summary.primaryCurrency, lang) : null}
+            status={expensesReady ? (summary.monthlyExpenses === 0 ? t('dashboard_exec_real_zero') : t('dashboard_exec_planned_actual')) : summary.primaryCurrency ? sourceReason([sources.expenses.status], t) : t('dashboard_exec_not_configured')}
+            icon={<TrendingDown />}
+            tone="danger"
+          />
+          <MetricCard
+            label={summary.monthlyNet < 0 ? t('dashboard_exec_monthly_deficit') : t('dashboard_exec_monthly_surplus')}
+            value={netReady && summary.primaryCurrency ? formatCurrency(Math.abs(summary.monthlyNet), summary.primaryCurrency, lang) : null}
+            status={netReady ? (summary.monthlyNet === 0 ? t('dashboard_exec_real_zero') : t('dashboard_exec_primary_only')) : summary.primaryCurrency ? sourceReason([sources.income.status, sources.expenses.status], t) : t('dashboard_exec_not_configured')}
+            icon={<PiggyBank />}
+            tone={summary.monthlyNet < 0 ? 'danger' : 'accent'}
+          />
+        </div>
+        <p className={styles.methodNote}>{t('dashboard_exec_position_hint')}</p>
+      </section>
+
+      <section className={styles.section} aria-labelledby="financial-health-title">
+        <SectionHeading id="financial-health-title" title={t('dashboard_exec_health_title')} description={t('dashboard_exec_health_desc')} />
+        {healthLoading ? <SectionSkeleton /> : <div className={styles.healthGrid}>
+          <article className={styles.scoreCard}>
+            <div className={styles.scoreRing} aria-label={summary.health ? `${t('dashboard_exec_health_score')}: ${summary.health.score}/100` : t('dashboard_exec_score_unavailable')}>
+              <span>{summary.health?.score ?? '—'}</span>
+              <small>/ 100</small>
+            </div>
+            <div>
+              <h3>{t('dashboard_exec_health_score')}</h3>
+              <p>{summary.health ? t('dashboard_exec_current_month') : t('dashboard_exec_score_unavailable')}</p>
+            </div>
+          </article>
+          <div className={styles.indicatorGrid}>
+            <HealthIndicator label={t('dashboard_exec_savings_rate')} value={summary.indicators.savingsRatio === null ? null : formatPercent(summary.indicators.savingsRatio, lang, { maximumFractionDigits: 1 })} unavailable={t('dashboard_exec_calculation_unavailable')} />
+            <HealthIndicator label={t('dashboard_exec_expense_coverage')} value={summary.indicators.expenseCoverage === null ? null : formatNumber(summary.indicators.expenseCoverage, lang, { maximumFractionDigits: 2 })} unavailable={t('dashboard_exec_calculation_unavailable')} />
+            <HealthIndicator label={t('dashboard_exec_emergency_coverage')} value={summary.indicators.emergencyFundMonths === null ? null : `${formatNumber(summary.indicators.emergencyFundMonths, lang, { maximumFractionDigits: 1 })} ${t('dashboard_exec_months')}`} unavailable={t('dashboard_exec_calculation_unavailable')} />
+            <HealthIndicator label={t('dashboard_exec_debt_ratio')} value={summary.indicators.debtToIncome === null ? null : formatPercent(summary.indicators.debtToIncome, lang, { maximumFractionDigits: 1 })} unavailable={t('dashboard_exec_calculation_unavailable')} />
           </div>
+        </div>}
+      </section>
+
+      <div className={styles.primaryGrid}>
+        <section className={`${styles.section} ${styles.cashFlowSection}`} aria-labelledby="cash-flow-title">
+          <SectionHeading id="cash-flow-title" title={t('dashboard_exec_cashflow_title')} description={t('dashboard_exec_cashflow_desc')} />
+          {cashFlowLoading
+            ? <SectionSkeleton compact />
+            : cashFlowFailure
+              ? <InlineSourceState status={cashFlowFailure} t={t} onRetry={loadDashboard} />
+              : !summary.primaryCurrency
+                ? <StateMessage icon={<CircleDollarSign />} title={t('dashboard_exec_not_configured')} />
+                : summary.cashFlowIncomplete
+                ? <StateMessage icon={<AlertTriangle />} title={t('dashboard_exec_calculation_unavailable')} />
+                : <CashFlowChart points={summary.observedCashFlow} currency={summary.primaryCurrency} lang={lang} label={t('dashboard_exec_cashflow_chart_label')} periodLabel={t('dashboard_exec_period')} incomeLabel={t('dashboard_exec_income')} expensesLabel={t('dashboard_exec_expenses')} insufficientLabel={summary.observedCashFlow.length === 0 ? t('dashboard_exec_no_cashflow') : t('dashboard_exec_insufficient_history')} />}
         </section>
 
-        <section className="reference-overview-grid" aria-label={dashboardCopy.cashFlow}>
-          <article className="reference-panel reference-cashflow">
-            <header className="reference-panel-heading">
-              <div>
-                <h2>{dashboardCopy.cashFlow}</h2>
-                <div className="reference-chart-legend">
-                  <span><i className="is-income" />{dashboardCopy.income}</span>
-                  <span><i className="is-expense" />{dashboardCopy.expenses}</span>
-                </div>
-              </div>
-              <span className="reference-icon-button">
-                <span>{dashboardCopy.months12}</span>
-                <CalendarDays size={15} aria-hidden="true" />
-              </span>
-            </header>
-            {cashFlowHasData ? <div className="reference-line-chart" aria-label={dashboardCopy.cashFlow}>
-              <div className="reference-chart-scale" aria-hidden="true">{cashFlowScale.map((value, index) => <span key={index}>{compactNumber.format(value)}</span>)}</div>
-              <svg viewBox="0 0 760 220" role="img" aria-label={dashboardCopy.cashFlow} preserveAspectRatio="none">
-                <g className="reference-grid-lines"><path d="M0 18H760M0 64H760M0 110H760M0 156H760M0 202H760" /></g>
-                <polygon className="reference-income-area" points={`${cashFlowIncomePoints} 760,202 0,202`} />
-                <polygon className="reference-expense-area" points={`${cashFlowExpensePoints} 760,202 0,202`} />
-                <polyline className="reference-income-line" points={cashFlowIncomePoints} />
-                <polyline className="reference-expense-line" points={cashFlowExpensePoints} />
-              </svg>
-              <div className="reference-months" aria-hidden="true">{cashFlowMonths.map((month, index) => <span key={`${summary.cashFlowSeries[index].key}-${month}`}>{month}</span>)}</div>
-            </div> : <div className="reference-compact-empty">{text.insufficientData}</div>}
-          </article>
-
-          <article className="reference-panel reference-health">
-            <header className="reference-panel-heading"><h2>{dashboardCopy.financialHealth}</h2><ShieldCheck size={19} aria-hidden="true" /></header>
-            <div className="reference-health-body">
-              <div className="reference-score-ring">
-                <svg viewBox="0 0 42 42" aria-hidden="true"><circle className="ring-track" cx="21" cy="21" r="16" pathLength="100"/><circle className="ring-value" cx="21" cy="21" r="16" pathLength="100" strokeDasharray={`${summary.healthScore ?? 0} 100`}/></svg>
-                <div><strong>{summary.healthScore ?? '—'}</strong>{summary.healthScore === null ? null : <span>/100</span>}</div>
-              </div>
-              <strong className="reference-score-label">{summary.healthScore === null ? text.insufficientData : statusLabel(summary.healthScore, text)}</strong>
-              <div className="reference-health-list">
-                {[
-                  [dashboardCopy.savingsRatio, actualPercent(summary.healthDetails?.savingsRatio)],
-                  [dashboardCopy.expenseCoverage, actualMonths(summary.healthDetails?.emergencyFundMonths)],
-                  [dashboardCopy.debtLevel, actualPercent(summary.healthDetails?.debtToIncome)],
-                ].map(([label, value]) => (
-                  <div key={label}><Gauge size={18} aria-hidden="true" /><span>{label}<strong>{value}</strong></span></div>
-                ))}
-              </div>
-            </div>
-            <small className="reference-health-method">{dashboardCopy.healthMethod}</small>
-            <Link href="/reports-center" className="reference-secondary-button">{dashboardCopy.details}<ArrowRight size={15} aria-hidden="true" /></Link>
-          </article>
-        </section>
-
-        <section className="reference-detail-grid">
-          <article className="reference-panel reference-transactions">
-            <header className="reference-panel-heading"><h2>{dashboardCopy.recentTransactions}</h2><ReceiptText size={19} aria-hidden="true" /></header>
-            {recentTransactions.length ? (
-              <div className="reference-table-wrap"><table><thead><tr><th>{dashboardCopy.merchant}</th><th>{dashboardCopy.category}</th><th>{dashboardCopy.date}</th><th>{dashboardCopy.amount}</th></tr></thead><tbody>
-                {recentTransactions.map((transaction) => <tr key={transaction.id}><td>{transaction.merchant}</td><td>{transaction.category}</td><td>{transaction.date ? formatDate(transaction.date, locale) : '—'}</td><td className={transaction.amount >= 0 ? 'is-positive' : 'is-negative'}>{money(transaction.amount)}</td></tr>)}
-              </tbody></table></div>
-            ) : <div className="reference-compact-empty">{dashboardCopy.noTransactions}</div>}
-            <Link href="/reports-center" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
-          </article>
-
-          <article className="reference-panel reference-expenses-card">
-            <header className="reference-panel-heading"><h2>{dashboardCopy.expenseDistribution}</h2><BarChart3 size={19} aria-hidden="true" /></header>
-            {expenseLegend.length ? <div className="reference-donut-layout">
-              <div className="reference-donut"><svg viewBox="0 0 42 42" aria-hidden="true"><circle className="donut-track" cx="21" cy="21" r="16" pathLength="100"/>{expenseLegend.map(item => <circle key={item.label} data-index={item.index} cx="21" cy="21" r="16" pathLength="100" strokeDasharray={`${item.percentage} ${100 - item.percentage}`} strokeDashoffset={-item.offset}/>)}</svg><span><strong>{money(summary.expenseTotal)}</strong><small>{dashboardCopy.expenses}</small></span></div>
-              <div className="reference-expense-legend">{expenseLegend.map((item) => <div key={item.label}><i data-index={item.index} /><span>{item.label}</span><strong>{item.percentage.toFixed(1)}%</strong></div>)}</div>
-            </div> : <div className="reference-compact-empty">{dashboardCopy.noDistribution}</div>}
-            <Link href="/expenses" className="reference-text-link">{dashboardCopy.viewReport}<ArrowRight size={14} aria-hidden="true" /></Link>
-          </article>
-
-          <article className="reference-panel reference-actions-card">
-            <header className="reference-panel-heading"><h2>{dashboardCopy.dailyActions}</h2><ClipboardList size={19} aria-hidden="true" /></header>
-            {tasksLoading ? <div className="reference-compact-empty">{text.loading}</div> : topOpenTasks.length ? <div className="reference-action-list">
-              {topOpenTasks.map((task) => { const tone = task.priority === 'urgent' || task.priority === 'high' ? 'high' : task.priority; return <Link href={task.actionUrl || '/tasks'} key={task.id}><i className={`is-${tone}`}><ClipboardList size={18}/></i><span><strong>{task.title}</strong><small>{task.dueDate ? formatDate(task.dueDate, locale) : task.description || task.sourceModule}</small></span><em className={`is-${tone}`}>{taskPriorityLabels[task.priority]}</em></Link>; })}
-            </div> : <div className="reference-compact-empty">{text.noTasks}</div>}
-            <Link href="/tasks" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
-          </article>
-
-          <article className="reference-panel reference-goals-card">
-            <header className="reference-panel-heading"><h2>{dashboardCopy.goals}</h2><Target size={19} aria-hidden="true" /></header>
-            <div className="reference-goal-list">
-              {records.goals.slice(0, 2).map((goal, index) => {
-                const progress = Math.round((goalProgress(goal) ?? 0) * 100);
-                return <div key={firstText(goal, ['id'], `goal-${index}`)}><span><strong>{firstText(goal, ['name', 'title'], dashboardCopy.annualGoal)}</strong><small>{progress}%</small></span><div><i style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div></div>;
+        <section className={styles.section} aria-labelledby="expense-categories-title">
+          <SectionHeading id="expense-categories-title" title={t('dashboard_exec_categories')} description={t('dashboard_exec_current_month')} />
+          {sources.expenses.status === 'loading' ? <SectionSkeleton compact /> : !summary.primaryCurrency ? <StateMessage icon={<CircleDollarSign />} title={t('dashboard_exec_not_configured')} /> : !summary.categoryAmountsComplete ? <StateMessage icon={<AlertTriangle />} title={t('dashboard_exec_calculation_unavailable')} /> : summary.currentCategories.length > 0 ? (
+            <div className={styles.categoryList}>
+              {summary.currentCategories.map((item) => {
+                const maximum = summary.currentCategories[0]?.amount || 1;
+                return (
+                  <div className={styles.categoryItem} key={item.category}>
+                    <div><span>{item.category}</span><bdi>{formatCurrency(item.amount, summary.primaryCurrency!, lang)}</bdi></div>
+                    <span className={styles.categoryTrack} aria-hidden="true"><i style={{ inlineSize: `${Math.max(4, (item.amount / maximum) * 100)}%` }} /></span>
+                  </div>
+                );
               })}
-              {records.goals.length === 0 ? <div className="reference-compact-empty">{text.noGoals}</div> : null}
             </div>
-            <Link href="/goals" className="reference-text-link">{dashboardCopy.viewAll}<ArrowRight size={14} aria-hidden="true" /></Link>
-          </article>
+          ) : <StateMessage icon={<BarChart3 />} title={t('dashboard_exec_no_categories')} />}
+          {!loaded(sources.expenses.status) && sources.expenses.status !== 'loading' ? <InlineSourceState status={sources.expenses.status} t={t} onRetry={loadDashboard} /> : null}
+        </section>
+      </div>
+
+      <section className={styles.section} aria-labelledby="allocation-title">
+        <SectionHeading id="allocation-title" title={t('dashboard_exec_allocation_title')} description={t('dashboard_exec_allocation_desc')} />
+        <div className={styles.allocationGrid}>
+          <AllocationCard title={t('dashboard_exec_savings')} items={summary.savingsBreakdown} empty={t('dashboard_exec_no_assets')} lang={lang} status={sources.savings.status} incomplete={!summary.savingsAmountsComplete} t={t} onRetry={loadDashboard} />
+          <AllocationCard title={t('dashboard_exec_investments')} items={summary.investmentsBreakdown} empty={t('dashboard_exec_no_assets')} lang={lang} status={sources.investments.status} incomplete={!summary.investmentsComplete} t={t} onRetry={loadDashboard} />
+          <AllocationCard title={t('dashboard_exec_debts')} items={summary.debtsBreakdown} empty={t('dashboard_exec_no_debts')} lang={lang} status={sources.debts.status} incomplete={!summary.debtBalancesComplete} t={t} onRetry={loadDashboard} />
+        </div>
+        {summary.hasForeignCurrency ? <p className={styles.currencyNote}><CircleDollarSign aria-hidden="true" />{t('dashboard_exec_multi_currency_note')}</p> : null}
+      </section>
+
+      <div className={styles.secondaryGrid}>
+        <section className={styles.section} aria-labelledby="goals-title">
+          <SectionHeading id="goals-title" title={t('dashboard_exec_goals_title')} description={t('dashboard_exec_goals_desc')} action={<Link href="/goals">{t('dashboard_exec_view_all')}<ArrowUpRight aria-hidden="true" /></Link>} />
+          {sources.goals.status === 'loading' ? <SectionSkeleton compact /> : loaded(sources.goals.status) ? (
+            summary.goals.length > 0
+              ? <div className={styles.goalList}>{summary.goals.slice(0, 3).map((goal) => <GoalItem key={goal.id} goal={goal} lang={lang} t={t} />)}</div>
+              : <StateMessage icon={<Target />} title={t('dashboard_exec_no_goals')} action={<Link href="/goals/add">{t('dashboard_exec_add_goal')}</Link>} />
+          ) : <InlineSourceState status={sources.goals.status} t={t} onRetry={loadDashboard} />}
         </section>
 
-        <section className="hero-card" aria-labelledby="dashboard-hero-title">
-          <div className="hero-visual" aria-hidden="true">
-            <span className="hero-grid-plane" />
-            <span className="hero-chart-line hero-chart-line-one" />
-            <span className="hero-chart-line hero-chart-line-two" />
-            <span className="hero-glow-dot hero-glow-dot-one" />
-            <span className="hero-glow-dot hero-glow-dot-two" />
-          </div>
-
-          <div className="hero-content">
-            <span className="hero-kicker">
-              <Zap size={14} aria-hidden="true" />
-              {text.updatedNow}
-            </span>
-            <h1 id="dashboard-hero-title">{text.pageTitle}</h1>
-            <p>{text.pageSubtitle}</p>
-            <span className="hero-status">{text.lastUpdatedNow}</span>
-          </div>
-
-          <div className="hero-side">
-            <div className="hero-actions">
-              <ActionLink href="/tasks">{text.viewAllTasks}</ActionLink>
-              <ActionLink href="/reports-center">{text.openReportsCenter}</ActionLink>
-              <ActionLink href="/notifications">{text.viewAllNotifications}</ActionLink>
-            </div>
-
-            <div className="hero-kpi-grid" aria-label={text.pageTitle}>
-              {heroKpis.map((item) => (
-                <article className="hero-kpi-card" key={item.label}>
-                  <span>{item.label}</span>
-                  <strong data-financial-value={/[0-9]/.test(item.value) ? 'true' : undefined}>{item.value}</strong>
+        <section className={styles.section} aria-labelledby="attention-title">
+          <SectionHeading id="attention-title" title={t('dashboard_exec_attention_title')} description={t('dashboard_exec_attention_desc')} />
+          {attentionLoading ? <SectionSkeleton compact /> : attention.length > 0 ? (
+            <div className={styles.attentionList}>
+              {attention.map((item) => (
+                <article className={styles.attentionItem} data-tone={item.tone} key={item.id}>
+                  <span className={styles.attentionIcon} aria-hidden="true">{item.tone === 'danger' ? <AlertTriangle /> : item.tone === 'warning' ? <Flag /> : <ShieldCheck />}</span>
+                  <div><h3>{item.title}</h3><p>{item.body}</p></div>
+                  <Link href={item.href} aria-label={`${t('dashboard_exec_review')}: ${item.title}`}><ArrowUpRight aria-hidden="true" /></Link>
                 </article>
               ))}
             </div>
-          </div>
+          ) : <StateMessage icon={<ShieldCheck />} title={t('dashboard_exec_no_attention')} />}
         </section>
+      </div>
 
-        {hasErrors ? (
-          <div className="notice-card" role="status">
-            <AlertTriangle size={18} aria-hidden="true" />
-            <span>{text.dataError}</span>
-          </div>
-        ) : null}
+      <section className={styles.section} aria-labelledby="next-actions-title">
+        <SectionHeading id="next-actions-title" title={t('dashboard_exec_next_title')} description={t('dashboard_exec_next_desc')} />
+        <nav className={styles.shortcutGrid} aria-label={t('dashboard_exec_next_title')}>
+          <Shortcut href="/reports-center" icon={<FileChartColumn />} label={t('dashboard_exec_reports')} />
+          <Shortcut href="/today" icon={<CalendarDays />} label={t('dashboard_exec_today')} />
+          <Shortcut href="/goals" icon={<Target />} label={t('dashboard_exec_goals')} />
+          <Shortcut href="/invest" icon={<TrendingUp />} label={t('dashboard_exec_invest')} />
+          <Shortcut href="/debts" icon={<Landmark />} label={t('dashboard_exec_debt_workspace')} />
+          <Shortcut href="/income" icon={<CircleDollarSign />} label={t('dashboard_exec_income_workspace')} />
+          <Shortcut href="/expenses" icon={<WalletCards />} label={t('dashboard_exec_expense_workspace')} />
+        </nav>
+      </section>
 
-        {process.env.NODE_ENV !== 'production' && loadFailures.length > 0 ? (
-          <section className="dashboard-debug-panel" aria-label={text.debugLabel}>
-            <strong>{text.debugTitle}</strong>
-            <ul>
-              {loadFailures.map((failure) => (
-                <li key={`${failure.section}-${failure.table}`}>
-                  <span>{failure.section}</span>
-                  <code>{failure.table}</code>
-                  <em>{failure.code ? `${failure.code}: ` : ''}{failure.message}</em>
-                  {failure.details ? <small>{failure.details}</small> : null}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {profile?.onboarding_completed === false ? (
-          <section className="setup-card">
-            <div>
-              <h2>{text.completeSetupTitle}</h2>
-              <p>{text.completeSetupText}</p>
-            </div>
-            <ActionLink href="/onboarding">{text.completeSetup}</ActionLink>
-          </section>
-        ) : null}
-
-        <section className="metrics-grid" aria-label={text.pageTitle}>
-          <MetricCard title={text.totalIncome} value={summary.realizedIncome.length ? money(summary.incomeTotal) : text.insufficientData} detail={text.allRecords} icon={<Wallet size={22} />} tone="positive" />
-          <MetricCard title={text.totalExpenses} value={summary.realizedExpenses.length ? money(summary.expenseTotal) : text.insufficientData} detail={text.allRecords} icon={<Coins size={22} />} tone="warning" />
-          <MetricCard title={text.netBalance} value={summary.realizedIncome.length || summary.realizedExpenses.length ? money(summary.netBalance) : text.insufficientData} detail={text.allRecords} icon={<Gauge size={22} />} tone={summary.netBalance >= 0 ? 'positive' : 'warning'} />
-          <MetricCard title={text.savings} value={records.savings.length ? money(summary.savingsTotal) : text.insufficientData} detail={text.allRecords} icon={<PiggyBank size={22} />} />
-          <MetricCard title={text.investments} value={records.investments.length ? money(summary.investmentsTotal) : text.insufficientData} detail={text.allRecords} icon={<TrendingUp size={22} />} />
-          <MetricCard title={text.upcomingCommitments} value={`${summary.upcomingCommitments}`} detail={text.currentMonth} icon={<ClipboardList size={22} />} />
-        </section>
-
-        <section className="dashboard-grid">
-          <CardShell title={text.financialHealth} icon={<ShieldCheck size={20} />} action={<ActionLink href="/reports-center">{text.openReportsCenter}</ActionLink>}>
-            {summary.healthScore === null ? (
-              <EmptyState title={text.insufficientData} body={text.financialHealthHint} />
-            ) : (
-              <>
-                <div className="score-row">
-                  <strong>{summary.healthScore}/100</strong>
-                  <span>{statusLabel(summary.healthScore, text)}</span>
-                </div>
-                <ProgressBar value={summary.healthScore} label={text.financialHealth} />
-              </>
-            )}
-          </CardShell>
-
-          <CardShell title={text.topActionToday} icon={<Zap size={20} />} action={summary.priorityItem ? <ActionLink href={summary.priorityItem.href}>{text.openPage}</ActionLink> : undefined}>
-            {summary.priorityItem ? (
-              <div className={`priority-card priority-${summary.priorityItem.severity}`}>
-                <strong>{summary.priorityItem.title}</strong>
-                <p>{summary.priorityItem.message}</p>
-                {summary.priorityItem.dueDate ? <span>{formatDate(summary.priorityItem.dueDate, locale)}</span> : null}
-              </div>
-            ) : (
-              <EmptyState title={text.noUrgentActions} />
-            )}
-          </CardShell>
-
-          <CardShell title={text.smartTasks} icon={<ClipboardList size={20} />} action={<ActionLink href="/tasks">{text.viewAllTasks}</ActionLink>}>
-            {tasksLoading ? (
-              <EmptyState title={text.loading} />
-            ) : topOpenTasks.length === 0 ? (
-              <EmptyState title={text.noTasks} />
-            ) : (
-              <div className="task-list">
-                {topOpenTasks.map(task => (
-                  <Link href={task.actionUrl || '/tasks'} key={task.id}>
-                    <strong>{task.title}</strong>
-                    <span>{task.description || text.openPage}</span>
-                    {task.dueDate ? <em>{formatDate(task.dueDate, locale)}</em> : null}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardShell>
-
-          <CardShell
-            title={text.incomeExpenses}
-            icon={<BarChart3 size={20} />}
-            action={
-              <>
-                <ActionLink href="/income">{text.viewIncome}</ActionLink>
-                <ActionLink href="/expenses">{text.viewExpenses}</ActionLink>
-                <ActionLink href="/reports-center">{text.openReports}</ActionLink>
-              </>
-            }
-          >
-            {!summary.hasCurrentMonthData ? (
-              <EmptyState title={text.noCurrentMonthData} />
-            ) : (
-              <div className="stats-grid">
-                <SmallStat label={text.currentMonthIncome} value={money(summary.currentMonthIncome)} />
-                <SmallStat label={text.currentMonthExpenses} value={money(summary.currentMonthExpenses)} />
-                <SmallStat label={text.netBalance} value={money(summary.currentMonthNet)} />
-                <SmallStat label={text.spendingRatio} value={monthlySpendingRatio} />
-              </div>
-            )}
-          </CardShell>
-
-          <CardShell title={text.goalsSavings} icon={<Goal size={20} />} action={<ActionLink href="/goals">{text.openGoals}</ActionLink>}>
-            {summary.activeGoals === 0 ? (
-              <EmptyState title={text.noGoals} body={text.noDataBody} />
-            ) : (
-              <div className="stats-grid">
-                <SmallStat label={text.activeGoals} value={`${summary.activeGoals}`} />
-                <SmallStat label={text.nearestTarget} value={summary.nearestGoalDate ? formatDate(summary.nearestGoalDate, locale) : text.insufficientData} />
-                <SmallStat label={text.averageProgress} value={percent(summary.averageGoalProgress)} />
-                <SmallStat label={text.totalGoalBalance} value={money(summary.totalGoalBalance)} />
-              </div>
-            )}
-          </CardShell>
-
-          <CardShell
-            title={text.investmentsMarket}
-            icon={<LineChart size={20} />}
-            action={
-              <>
-                <ActionLink href="/invest">{text.openInvestments}</ActionLink>
-                <ActionLink href="/market-analysis">{text.openMarket}</ActionLink>
-              </>
-            }
-          >
-            {records.investments.length === 0 && summary.watchlistCount === 0 ? (
-              <EmptyState title={text.marketUnavailable} body={text.noDataBody} />
-            ) : (
-              <div className="stats-grid">
-                <SmallStat label={text.investments} value={money(summary.investmentsTotal)} />
-                <SmallStat label={text.watchlist} value={`${summary.watchlistCount}`} />
-                <SmallStat label={text.marketAlerts} value={`${summary.marketAlertsCount}`} />
-                <SmallStat label={text.topWatchedAsset} value={summary.topWatchedAsset || text.insufficientData} />
-              </div>
-            )}
-          </CardShell>
-
-          <CardShell
-            title={text.projectsBusinessHub}
-            icon={<BriefcaseBusiness size={20} />}
-            action={
-              <>
-                <ActionLink href="/projects" variant="secondary">{text.openProjects}</ActionLink>
-                <ActionLink href="/business-hub" variant="primary">{text.openBusinessHub}</ActionLink>
-                {summary.activeProjects > 0 ? <ActionLink href="/projects" variant="primary">{text.createPitchDeck}</ActionLink> : null}
-              </>
-            }
-          >
-            {records.projects.length === 0 ? (
-              <EmptyState title={text.noProjects} />
-            ) : (
-              <div className="stats-grid">
-                <SmallStat label={text.activeProjects} value={`${summary.activeProjects}`} />
-                <SmallStat label={text.overdueTasks} value={`${summary.overdueTasks}`} />
-                <SmallStat label={text.fundingReadiness} value={summary.fundingAverage === null ? text.insufficientData : `${Math.round(summary.fundingAverage)}%`} />
-                <SmallStat label={text.pitchDecks} value={`${summary.pitchDecks}`} />
-              </div>
-            )}
-          </CardShell>
-
-          <CardShell
-            title={text.zakatCharity}
-            icon={<HeartHandshake size={20} />}
-            action={
-              <>
-                <ActionLink href="/zakat">{text.openZakat}</ActionLink>
-                <ActionLink href="/charity-projects">{text.openCharityProjects}</ActionLink>
-                <ActionLink href="/charity">{text.openCharity}</ActionLink>
-              </>
-            }
-          >
-            {records.zakatCalculations.length === 0 && records.charityProjects.length === 0 && records.charityDonations.length === 0 ? (
-              <EmptyState title={text.noZakat} body={text.noDataBody} />
-            ) : (
-              <div className="stats-grid">
-                <SmallStat label={text.zakatSaved} value={summary.zakatDue === null ? text.insufficientData : money(summary.zakatDue)} />
-                <SmallStat label={text.nextZakatDate} value={summary.nextZakatDate ? formatDate(summary.nextZakatDate, locale) : text.insufficientData} />
-                <SmallStat label={text.charityProjects} value={`${summary.charityProjects}`} />
-                <SmallStat label={text.annualDonations} value={money(summary.annualDonations)} />
-              </div>
-            )}
-          </CardShell>
-
-          <CardShell title={text.reports} icon={<FileText size={20} />} action={<ActionLink href="/reports-center">{text.openReportsCenter}</ActionLink>}>
-            <div className="stats-grid">
-              <SmallStat label={text.readyReports} value={`${summary.readyReports}`} />
-              <SmallStat label={text.reportsNeedData} value={`${summary.reportsNeedData}`} />
-              <SmallStat label={text.lastGenerated} value={text.lastGeneratedUnavailable} />
-            </div>
-          </CardShell>
-
-          <CardShell title={text.smartNotifications} icon={<Bell size={20} />} action={<ActionLink href="/notifications">{text.viewAllNotifications}</ActionLink>}>
-            {summary.topNotifications.length === 0 ? (
-              <EmptyState title={text.noNotifications} />
-            ) : (
-              <>
-                <div className="stats-grid compact">
-                  <SmallStat label={text.unread} value={`${summary.unreadNotifications}`} />
-                  <SmallStat label={text.highPriority} value={`${summary.highPriorityNotifications}`} />
-                  <SmallStat label={text.dueToday} value={`${summary.dueTodayNotifications}`} />
-                </div>
-                <div className="notification-list">
-                  {summary.topNotifications.map((notification, index) => (
-                    <Link href={firstText(notification, ['action_url'], '/notifications')} key={firstText(notification, ['id'], `notification-${index}`)}>
-                      <strong>{firstText(notification, ['title'], text.smartNotifications)}</strong>
-                      <span>{firstText(notification, ['message'], text.openPage)}</span>
-                    </Link>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardShell>
-        </section>
-
-        <section className="quick-links" aria-label={text.openPage}>
-          <ActionLink href="/tasks">
-            <ClipboardList size={16} aria-hidden="true" />
-            {text.smartTasks}
-          </ActionLink>
-          <ActionLink href="/savings">
-            <PiggyBank size={16} aria-hidden="true" />
-            {text.savings}
-          </ActionLink>
-          <ActionLink href="/invest">
-            <Landmark size={16} aria-hidden="true" />
-            {text.investments}
-          </ActionLink>
-          <ActionLink href="/business-hub">
-            <Building2 size={16} aria-hidden="true" />
-            {text.openBusinessHub}
-          </ActionLink>
-          <ActionLink href="/notifications">
-            <Bell size={16} aria-hidden="true" />
-            {text.smartNotifications}
-          </ActionLink>
-        </section>
-      </main>
-      <style jsx global>{dashboardStyles}</style>
-    </div>
+      {profileStatus === 'permission' || profileStatus === 'network' || profileStatus === 'unavailable' ? (
+        <div className={styles.profileNotice} role="status">{sourceStatusText(profileStatus, t)}</div>
+      ) : null}
+    </main>
   );
 }
 
-const dashboardStyles = `
-  html,
-  body {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
-  .dashboard-main > .hero-card,
-  .dashboard-main > .metrics-grid,
-  .dashboard-main > .dashboard-grid {
-    display: none;
-  }
-
-  .reference-hero {
-    overflow: hidden;
-    padding: 20px;
-    border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
-    border-radius: var(--radius-panel);
-    background: var(--hero-gradient);
-    box-shadow: var(--shadow-md);
-    color: var(--hero-foreground);
-  }
-
-  .reference-hero-head,
-  .reference-panel-heading,
-  .reference-kpi-title,
-  .reference-kpi-foot,
-  .reference-text-link,
-  .reference-secondary-button {
-    display: flex;
-    align-items: center;
-  }
-
-  .reference-hero-head { justify-content: space-between; gap: 18px; margin-bottom: 20px; }
-  .reference-hero-copy h1 { margin: 0; color: var(--hero-foreground); font-size: clamp(1.45rem, 2.3vw, 2rem); font-weight: 700; line-height: 1.25; }
-  .reference-hero-copy p { margin: 5px 0 0; color: var(--hero-foreground-muted); font-size: 13px; line-height: 1.7; }
-  .reference-hero-actions { display: flex; align-items: center; gap: 10px; }
-  .reference-primary-button,
-  .reference-period-button,
-  .reference-secondary-button,
-  .reference-icon-button {
-    min-height: 44px;
-    border-radius: var(--radius-control);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-  }
-  .reference-primary-button,
-  .reference-period-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 0 16px; }
-  .reference-primary-button { border: 1px solid var(--button-primary-border); background: var(--button-primary-background); color: var(--button-primary-foreground); box-shadow: var(--shadow-sm); }
-  .reference-primary-button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-  .reference-period-button { border: 1px solid color-mix(in srgb, var(--hero-foreground) 34%, transparent); background: color-mix(in srgb, var(--hero-gradient-start) 54%, transparent); color: var(--hero-foreground); }
-  .reference-period-button:hover { background: color-mix(in srgb, var(--hero-gradient-mid) 82%, transparent); }
-
-  .reference-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-  .reference-kpi-card { min-width: 0; padding: 15px 16px 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--foreground); box-shadow: var(--shadow-card); }
-  .reference-kpi-title { justify-content: space-between; gap: 10px; color: var(--foreground-secondary); font-size: 12px; }
-  .reference-kpi-title i { width: 31px; height: 31px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--primary-soft); color: var(--primary); font-style: normal; }
-  .reference-kpi-card > strong { display: block; margin-top: 7px; color: var(--foreground); font-family:var(--font-data); font-size: clamp(1.15rem, 1.8vw, 1.55rem); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .reference-kpi-foot { gap: 7px; margin-top: 9px; color: var(--foreground-muted); }
-  .reference-kpi-foot small { font-size: 10px; white-space: nowrap; }
-  .reference-kpi-foot svg { width: 35%; min-width: 74px; height: 30px; margin-inline-start: auto; }
-  .reference-trend { padding: 4px 7px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 700; direction: ltr; }
-  .reference-trend.is-up { background: var(--success-soft); color: var(--success); }
-  .reference-trend.is-down { background: var(--danger-soft); color: var(--danger); }
-  .reference-kpi-red .reference-kpi-title i { background: var(--danger-soft); color: var(--danger); }
-  .reference-kpi-red .reference-kpi-foot svg { color: var(--danger); }
-  .reference-kpi-green .reference-kpi-title i, .reference-kpi-teal .reference-kpi-title i { background: var(--accent-soft); color: var(--accent); }
-  .reference-kpi-green .reference-kpi-foot svg, .reference-kpi-teal .reference-kpi-foot svg { color: var(--accent); }
-  .reference-kpi-blue .reference-kpi-foot svg { color: var(--primary); }
-
-  .reference-overview-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .85fr); gap: 14px; margin-top: 14px; }
-  .reference-detail-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
-  .reference-panel { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); color: var(--foreground); }
-  .reference-overview-grid .reference-panel { padding: 16px; }
-  .reference-detail-grid .reference-panel { display: flex; flex-direction: column; min-height: 318px; padding: 14px; }
-  .reference-panel-heading { justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-  .reference-panel-heading h2 { margin: 0; color: var(--foreground); font-size: 15px; font-weight: 700; }
-  .reference-panel-heading > svg { color: var(--foreground-secondary); }
-  .reference-chart-legend { display: flex; gap: 14px; margin-top: 8px; color: var(--foreground-secondary); font-size: 11px; }
-  .reference-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .reference-chart-legend i { width: 7px; height: 7px; border-radius: var(--radius-pill); }
-  .reference-chart-legend .is-income { background: var(--accent); }
-  .reference-chart-legend .is-expense { background: var(--primary); }
-  .reference-icon-button { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 10px; border: 1px solid var(--button-secondary-border); background: var(--button-secondary-background); color: var(--button-secondary-foreground); }
-  .reference-line-chart { position: relative; min-height: 245px; padding-inline-start: 42px; }
-  .reference-line-chart > svg { width: 100%; height: 205px; overflow: visible; }
-  .reference-grid-lines path { fill: none; stroke: var(--chart-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
-  .reference-income-area { fill: var(--accent); opacity: .12; }
-  .reference-expense-area { fill: var(--primary); opacity: .1; }
-  .reference-income-line, .reference-expense-line { fill: none; stroke-width: 2.2; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-  .reference-income-line { stroke: var(--accent); }
-  .reference-expense-line { stroke: var(--primary); }
-  .reference-chart-scale { position: absolute; inset-inline-start: 0; top: 2px; bottom: 33px; display: flex; flex-direction: column; justify-content: space-between; color: var(--chart-label); font-family:var(--font-data); font-size: 10px; direction: ltr; }
-  .reference-months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; color: var(--chart-label); font-size: 10px; text-align: center; }
-
-  .reference-health { display: flex; flex-direction: column; }
-  .reference-health-body { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px 18px; align-items: center; flex: 1; }
-  .reference-score-ring { width: 138px; height: 138px; display: grid; place-items: center; border-radius: var(--radius-pill); position: relative; }
-  .reference-score-ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-  .reference-score-ring circle { fill: none; stroke-width: 3.5; }
-  .reference-score-ring .ring-track { stroke: var(--surface-hover); }
-  .reference-score-ring .ring-value { stroke: var(--primary); stroke-linecap: round; }
-  .reference-score-ring > div { position: relative; z-index: 1; display: grid; text-align: center; }
-  .reference-score-ring strong { color: var(--foreground); font: 700 2.65rem/1 var(--font-data); }
-  .reference-score-ring span { color: var(--foreground-secondary); font: 500 1rem/1.2 var(--font-data); }
-  .reference-score-label { grid-column: 1; text-align: center; color: var(--foreground); font-size: 14px; }
-  .reference-health-list { grid-column: 2; grid-row: 1 / span 2; display: grid; gap: 8px; }
-  .reference-health-list > div { min-height: 47px; display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-muted); color: var(--accent); }
-  .reference-health-list span { display: grid; color: var(--foreground-secondary); font-size: 11px; }
-  .reference-health-list strong { margin-top: 2px; color: var(--primary); font-size: 11px; }
-  .reference-health-method { display: block; margin-top: 8px; color: var(--foreground-muted); font-size: 10px; line-height: 1.6; }
-  .reference-secondary-button { justify-content: center; gap: 8px; min-height: 40px; margin-top: 12px; border: 1px solid var(--button-secondary-border); background: var(--button-secondary-background); color: var(--button-secondary-foreground); }
-  .reference-secondary-button:hover { border-color: var(--primary); background: var(--button-secondary-hover); }
-  [dir='rtl'] .reference-secondary-button svg, [dir='rtl'] .reference-text-link svg { transform: scaleX(-1); }
-
-  .reference-table-wrap { overflow-x: auto; flex: 1; }
-  .reference-transactions table { width: 100%; border-collapse: collapse; font-size: 10px; white-space: nowrap; }
-  .reference-transactions th { padding: 8px 6px; background: var(--table-header); color: var(--foreground-muted); font-weight: 600; text-align: start; }
-  .reference-transactions td { padding: 9px 6px; border-bottom: 1px solid var(--border); color: var(--foreground-secondary); text-align: start; }
-  .reference-transactions td.is-positive { color: var(--success); font-weight: 700; }
-  .reference-transactions td.is-negative { color: var(--danger); font-weight: 700; }
-  .reference-text-link { justify-content: center; gap: 7px; min-height: 40px; margin-top: auto; border-top: 1px solid var(--border); color: var(--primary); font-size: 11px; font-weight: 600; text-decoration: none; }
-  .reference-compact-empty { display: grid; place-items: center; flex: 1; color: var(--foreground-muted); font-size: 12px; }
-
-  .reference-donut-layout { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(130px, 1fr); gap: 14px; align-items: center; flex: 1; }
-  .reference-donut { width: min(100%, 145px); aspect-ratio: 1; display: grid; place-items: center; margin: auto; border-radius: var(--radius-pill); position: relative; }
-  .reference-donut > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-  .reference-donut circle { fill: none; stroke-width: 8; }
-  .reference-donut .donut-track { stroke: var(--surface-hover); }
-  .reference-donut circle[data-index='0'] { stroke: var(--primary); }
-  .reference-donut circle[data-index='1'] { stroke: var(--accent); }
-  .reference-donut circle[data-index='2'] { stroke: var(--chart-4); }
-  .reference-donut circle[data-index='3'] { stroke: var(--danger); }
-  .reference-donut circle[data-index='4'] { stroke: var(--chart-5); }
-  .reference-donut span { position: relative; z-index: 1; display: grid; max-width: 70px; text-align: center; }
-  .reference-donut strong { color: var(--foreground); font: 700 11px/1.3 var(--font-data); overflow: hidden; text-overflow: ellipsis; }
-  .reference-donut small { color: var(--chart-5); font-size: 9px; }
-  .reference-expense-legend { display: grid; gap: 10px; }
-  .reference-expense-legend > div { display: grid; grid-template-columns: 7px minmax(0, 1fr) auto; gap: 6px; align-items: center; color: var(--foreground-muted); font-size: 10px; }
-  .reference-expense-legend i { width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--primary); }
-  .reference-expense-legend i[data-index='1'] { background: var(--accent); }.reference-expense-legend i[data-index='2'] { background: var(--chart-4); }.reference-expense-legend i[data-index='3'] { background: var(--danger); }.reference-expense-legend i[data-index='4'] { background: var(--chart-5); }
-  .reference-expense-legend strong { color: var(--foreground-secondary); font-family:var(--font-data); }
-
-  .reference-action-list { display: grid; gap: 8px; flex: 1; }
-  .reference-action-list > a { min-height: 60px; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); color: inherit; text-decoration: none; }
-  .reference-action-list > a > i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-style: normal; }
-  .reference-action-list > a > i.is-medium { background: var(--warning-soft); color: var(--warning); }.reference-action-list > a > i.is-low { background: var(--success-soft); color: var(--success); }
-  .reference-action-list span { display: grid; min-width: 0; }
-  .reference-action-list span strong { color: var(--foreground-secondary); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .reference-action-list span small { margin-top: 3px; color: var(--foreground-muted); font-size: 9px; }
-  .reference-action-list em { padding: 4px 6px; border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger); font-size: 9px; font-style: normal; }.reference-action-list em.is-medium { background: var(--warning-soft); color: var(--warning); }.reference-action-list em.is-low { background: var(--success-soft); color: var(--success); }
-
-  .reference-goal-list { display: grid; gap: 20px; flex: 1; align-content: start; padding-top: 8px; }
-  .reference-goal-list > div > span { display: flex; justify-content: space-between; gap: 12px; color: var(--foreground-secondary); font-size: 11px; }
-  .reference-goal-list small { color: var(--primary); font-family:var(--font-data); }
-  .reference-goal-list > div > div { height: 7px; margin-top: 10px; overflow: hidden; border-radius: var(--radius-pill); background: var(--surface-muted); }
-  .reference-goal-list i { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
-
-  @media (max-width: 1180px) {
-    .reference-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .reference-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  }
-  @media (max-width: 900px) {
-    .reference-overview-grid { grid-template-columns: 1fr; }
-    .reference-health-body { grid-template-columns: 150px minmax(0, 1fr); }
-  }
-  @media (max-width: 640px) {
-    .reference-hero { padding: 16px; }
-    .reference-hero-head { align-items: stretch; flex-direction: column; }
-    .reference-hero-actions { display: grid; grid-template-columns: 1fr 1fr; }
-    .reference-kpi-grid, .reference-detail-grid { grid-template-columns: 1fr; }
-    .reference-kpi-card > strong { white-space: normal; }
-    .reference-line-chart { min-height: 220px; padding-inline-start: 34px; }
-    .reference-months span:nth-child(even) { display: none; }
-    .reference-months { grid-template-columns: repeat(6, 1fr); }
-    .reference-health-body { grid-template-columns: 1fr; justify-items: center; }
-    .reference-health-list { width: 100%; grid-column: 1; grid-row: auto; }
-    .reference-score-label { grid-column: 1; }
-  }
-
-  .dashboard-shell,
-  .dashboard-shell *,
-  .dashboard-shell *::before,
-  .dashboard-shell *::after {
-    box-sizing: border-box;
-  }
-
-  .dashboard-shell {
-    width: 100%;
-    min-width: 0;
-    min-height: 100%;
-    overflow-x: clip;
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-ui);
-  }
-
-  .dashboard-shell :is(a, button, input, select, textarea, code) {
-    font-family: var(--font-ui);
-  }
-
-  .dashboard-main {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    margin-inline: 0;
-    padding: var(--workspace-page-padding-block) var(--workspace-page-padding-inline)
-      clamp(2rem, 4vi, 3rem);
-  }
-
-  .dashboard-main > * {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    margin-inline: 0;
-  }
-
-  .loading-main {
-    min-height: 70vh;
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 12px;
-    color: var(--foreground-muted);
-  }
-
-  .loader {
-    animation: dashboard-spin 0.9s linear infinite;
-    color: var(--primary);
-  }
-
-  @keyframes dashboard-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .hero-card {
-    position: relative;
-    isolation: isolate;
-    display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.72fr);
-    gap: 24px;
-    align-items: end;
-    min-height: 300px;
-    padding: clamp(24px, 2.8vi, 34px);
-    overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
-    border-radius: var(--radius-panel);
-    background: var(--surface);
-    color: var(--foreground);
-    box-shadow: var(--shadow-md);
-  }
-
-  .hero-card::before,
-  .hero-card::after {
-    content: none;
-  }
-
-  .hero-content,
-  .hero-side {
-    position: relative;
-    z-index: 1;
-    min-width: 0;
-  }
-
-  .hero-content {
-    max-width: 790px;
-  }
-
-  .hero-side {
-    display: grid;
-    gap: 18px;
-  }
-
-  .hero-visual {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .hero-grid-plane {
-    position: absolute;
-    inset-inline-start: 48%;
-    top: 36px;
-    width: 46%;
-    height: 66%;
-    border: 1px solid color-mix(in srgb, var(--hero-foreground) 16%, transparent);
-    border-radius: var(--radius-panel);
-    background: color-mix(in srgb, var(--hero-foreground) 6%, transparent);
-    transform: perspective(760px) rotateX(58deg) rotateZ(-8deg);
-    transform-origin: center;
-    opacity: 0.44;
-  }
-
-  .hero-chart-line {
-    position: absolute;
-    height: 3px;
-    border-radius: var(--radius-pill);
-    background: var(--accent);
-    opacity: 0.58;
-    transform: rotate(-8deg);
-  }
-
-  .hero-chart-line-one {
-    inset-inline-end: 7%;
-    top: 31%;
-    width: 42%;
-  }
-
-  .hero-chart-line-two {
-    inset-inline-end: 15%;
-    top: 55%;
-    width: 30%;
-    opacity: 0.38;
-    transform: rotate(8deg);
-  }
-
-  .hero-glow-dot {
-    position: absolute;
-    width: 96px;
-    height: 96px;
-    border: 1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);
-    border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
-    opacity: 0.6;
-  }
-
-  .hero-glow-dot-one {
-    inset-inline-end: 18%;
-    top: 16%;
-  }
-
-  .hero-glow-dot-two {
-    inset-inline-end: 3%;
-    bottom: 18%;
-    width: 68px;
-    height: 68px;
-    background: color-mix(in srgb, var(--primary) 22%, transparent);
-  }
-
-  .hero-kicker,
-  .hero-status {
-    width: fit-content;
-    max-width: 100%;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid color-mix(in srgb, var(--hero-foreground) 24%, transparent);
-    border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
-    color: var(--hero-foreground);
-    font-size: var(--type-caption-size);
-    line-height: var(--type-caption-leading);
-  }
-
-  .hero-kicker {
-    padding: 8px 12px;
-    font-weight: 600;
-  }
-
-  .hero-status {
-    margin-top: 18px;
-    padding: 7px 11px;
-    font-weight: 500;
-  }
-
-  .hero-card h1 {
-    margin: 16px 0 12px;
-    color: var(--hero-foreground);
-    font-size: var(--type-display-size);
-    font-weight: var(--type-display-weight);
-    line-height: var(--type-display-leading);
-    letter-spacing: var(--type-display-tracking);
-    overflow-wrap: anywhere;
-  }
-
-  .hero-card p {
-    max-width: 760px;
-    margin: 0;
-    color: var(--hero-foreground-muted);
-    font-size: clamp(0.9375rem, 1.1vi, 1.0625rem);
-    font-weight: 400;
-    line-height: 1.8;
-  }
-
-  .hero-actions,
-  .card-actions,
-  .quick-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .hero-card .hero-actions {
-    justify-content: flex-end;
-  }
-
-  .hero-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .hero-kpi-card {
-    min-width: 0;
-    padding: 14px;
-    border: 1px solid color-mix(in srgb, var(--hero-foreground) 22%, transparent);
-    border-radius: var(--radius-card);
-    background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
-    color: var(--hero-foreground);
-    box-shadow: none;
-    transition:
-      background-color var(--duration-fast) var(--ease),
-      border-color var(--duration-fast) var(--ease),
-      transform var(--duration-fast) var(--ease);
-  }
-
-  .hero-kpi-card:hover {
-    border-color: color-mix(in srgb, var(--hero-foreground) 36%, transparent);
-    background: color-mix(in srgb, var(--hero-foreground) 15%, transparent);
-    transform: translateY(-1px);
-  }
-
-  .hero-kpi-card span,
-  .hero-kpi-card strong {
-    display: block;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .hero-kpi-card span {
-    color: var(--hero-foreground-muted);
-    font-size: var(--type-caption-size);
-    font-weight: 500;
-    line-height: var(--type-caption-leading);
-  }
-
-  .hero-kpi-card strong {
-    margin-top: 8px;
-    color: var(--hero-foreground);
-    font-size: clamp(1rem, 2vi, 1.28rem);
-    font-weight: 600;
-    line-height: 1.3;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .notice-card,
-  .setup-card,
-  .dashboard-card,
-  .metric-card,
-  .quick-links {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--foreground);
-    box-shadow: var(--shadow-card);
-  }
-
-  .notice-card {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-color: color-mix(in srgb, var(--info) 28%, var(--border));
-    border-radius: var(--radius-card);
-    background: var(--info-soft);
-    color: var(--info);
-  }
-
-  .dashboard-debug-panel {
-    margin-top: 14px;
-    padding: 14px 16px;
-    border: 1px dashed color-mix(in srgb, var(--danger) 36%, var(--border));
-    border-radius: var(--radius-card);
-    background: var(--danger-soft);
-    color: var(--danger);
-    font-size: var(--type-body-small-size);
-    line-height: var(--type-body-small-leading);
-  }
-
-  .dashboard-debug-panel strong {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: 600;
-  }
-
-  .dashboard-debug-panel ul {
-    display: grid;
-    gap: 8px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .dashboard-debug-panel li {
-    display: grid;
-    gap: 4px;
-    padding: 10px;
-    border: 1px solid color-mix(in srgb, var(--danger) 20%, var(--border));
-    border-radius: var(--radius-control);
-    background: var(--surface);
-    color: var(--foreground-secondary);
-  }
-
-  .dashboard-debug-panel span {
-    color: var(--danger);
-    font-weight: 600;
-  }
-
-  .dashboard-debug-panel :is(code, em, small) {
-    color: var(--foreground-secondary);
-    font-style: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .setup-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 18px;
-    margin-top: 18px;
-    padding: 18px;
-    border-radius: var(--radius-card);
-  }
-
-  .setup-card h2 {
-    margin: 0 0 6px;
-    color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    font-weight: var(--type-card-title-weight);
-    line-height: var(--type-card-title-leading);
-  }
-
-  .setup-card p {
-    margin: 0;
-    color: var(--foreground-muted);
-    font-size: var(--type-body-size);
-    line-height: var(--type-body-leading);
-  }
-
-  .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
-    gap: 14px;
-    margin: 22px 0;
-  }
-
-  .metric-card {
-    min-width: 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 18px;
-    border-radius: var(--radius-card);
-  }
-
-  .metric-icon,
-  .card-icon {
-    width: 42px;
-    height: 42px;
-    flex: 0 0 42px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--border));
-    border-radius: var(--radius-control);
-    background: var(--primary-soft);
-    color: var(--primary);
-  }
-
-  .metric-positive .metric-icon {
-    border-color: color-mix(in srgb, var(--success) 24%, var(--border));
-    background: var(--success-soft);
-    color: var(--success);
-  }
-
-  .metric-warning .metric-icon {
-    border-color: color-mix(in srgb, var(--warning) 24%, var(--border));
-    background: var(--warning-soft);
-    color: var(--warning);
-  }
-
-  .metric-card p,
-  .metric-card span {
-    margin: 0;
-    color: var(--foreground-muted);
-    font-size: var(--type-body-small-size);
-    line-height: var(--type-body-small-leading);
-  }
-
-  .metric-card strong {
-    display: block;
-    margin: 4px 0;
-    color: var(--foreground);
-    font-size: var(--type-numeric-value-size);
-    font-weight: var(--type-numeric-value-weight);
-    line-height: var(--type-numeric-value-leading);
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
-  }
-
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-  }
-
-  .dashboard-card {
-    min-width: 0;
-    padding: 20px;
-    border-radius: var(--radius-card);
-  }
-
-  .card-heading {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .card-heading h2 {
-    min-width: 0;
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    font-weight: var(--type-card-title-weight);
-    line-height: var(--type-card-title-leading);
-    overflow-wrap: anywhere;
-  }
-
-  .card-body {
-    min-width: 0;
-  }
-
-  .card-actions {
-    margin-top: 18px;
-  }
-
-  .action-link {
-    min-width: 0;
-    min-height: var(--control-h);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    padding: 9px 14px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-control);
-    background: var(--surface);
-    color: var(--foreground-secondary);
-    box-shadow: none;
-    font-size: var(--type-button-size);
-    font-weight: var(--type-button-weight);
-    line-height: var(--type-button-leading);
-    text-align: center;
-    text-decoration: none;
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease),
-      border-color var(--duration-fast) var(--ease),
-      color var(--duration-fast) var(--ease),
-      transform var(--duration-fast) var(--ease);
-  }
-
-  .action-link-primary {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: var(--primary-foreground);
-    box-shadow: var(--shadow-xs);
-  }
-
-  .action-link-secondary {
-    border-color: var(--border-strong);
-    background: var(--surface);
-    color: var(--foreground-secondary);
-  }
-
-  .action-link:hover {
-    border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-    background: var(--surface-hover);
-    color: var(--primary-hover);
-    transform: translateY(-1px);
-  }
-
-  .action-link-primary:hover {
-    border-color: var(--primary-hover);
-    background: var(--primary-hover);
-    color: var(--primary-foreground);
-  }
-
-  .action-link:focus-visible,
-  .task-list a:focus-visible,
-  .notification-list a:focus-visible {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
-    box-shadow: var(--focus-shadow);
-  }
-
-  .action-link:active {
-    transform: translateY(0) scale(0.98);
-  }
-
-  .action-link-label {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .action-link-icon {
-    width: 26px;
-    height: 26px;
-    flex: 0 0 26px;
-    display: inline-grid;
-    place-items: center;
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, currentColor 10%, transparent);
-    color: inherit;
-  }
-
-  [dir='rtl'] .action-link-icon svg {
-    transform: scaleX(-1);
-  }
-
-  .hero-card .action-link {
-    border-color: color-mix(in srgb, var(--hero-foreground) 28%, transparent);
-    background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
-    color: var(--hero-foreground);
-    box-shadow: none;
-  }
-
-  .hero-card .action-link:hover {
-    border-color: color-mix(in srgb, var(--hero-foreground) 44%, transparent);
-    background: color-mix(in srgb, var(--hero-foreground) 16%, transparent);
-    color: var(--hero-foreground);
-  }
-
-  .hero-card .hero-actions .action-link:first-child {
-    border-color: var(--primary-foreground);
-    background: var(--primary-foreground);
-    color: var(--primary-active);
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .stats-grid.compact {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .small-stat {
-    min-width: 0;
-    padding: 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    background: var(--surface-muted);
-  }
-
-  .small-stat span {
-    display: block;
-    color: var(--foreground-muted);
-    font-size: var(--type-body-small-size);
-    line-height: var(--type-body-small-leading);
-  }
-
-  .small-stat strong {
-    display: block;
-    margin-top: 6px;
-    color: var(--foreground);
-    font-size: var(--type-financial-value-size);
-    font-weight: var(--type-financial-value-weight);
-    line-height: var(--type-financial-value-leading);
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
-  }
-
-  .empty-state {
-    padding: 18px;
-    border: 1px dashed var(--border-strong);
-    border-radius: var(--radius-card);
-    background: var(--surface-muted);
-    color: var(--foreground-muted);
-  }
-
-  .empty-state p {
-    margin: 0;
-    color: var(--foreground);
-    font-weight: 600;
-  }
-
-  .empty-state span {
-    display: block;
-    margin-top: 6px;
-    color: var(--foreground-muted);
-    line-height: var(--type-body-leading);
-  }
-
-  .score-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 14px;
-  }
-
-  .score-row strong {
-    color: var(--foreground);
-    font-family: var(--font-data);
-    font-size: 2rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .score-row span {
-    color: var(--info);
-    font-weight: 600;
-  }
-
-  .progress-wrap {
-    width: 100%;
-    height: 12px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-pill);
-    background: var(--surface-muted);
-  }
-
-  .progress-wrap div {
-    height: 100%;
-    border-radius: inherit;
-    background: var(--primary);
-  }
-
-  .priority-card {
-    padding: 16px;
-    border: 1px solid color-mix(in srgb, var(--info) 24%, var(--border));
-    border-radius: var(--radius-card);
-    background: var(--info-soft);
-    color: var(--foreground);
-  }
-
-  .priority-card strong {
-    display: block;
-    color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    font-weight: 600;
-  }
-
-  .priority-card p {
-    margin: 8px 0 0;
-    color: var(--foreground-secondary);
-    line-height: var(--type-body-leading);
-  }
-
-  .priority-card > span {
-    display: block;
-    margin-top: 8px;
-    color: var(--foreground-muted);
-    font-size: var(--type-body-small-size);
-  }
-
-  .priority-warning {
-    border-color: color-mix(in srgb, var(--warning) 30%, var(--border));
-    background: var(--warning-soft);
-  }
-
-  .priority-danger {
-    border-color: color-mix(in srgb, var(--danger) 30%, var(--border));
-    background: var(--danger-soft);
-  }
-
-  .task-list,
-  .notification-list {
-    display: grid;
-    gap: 10px;
-  }
-
-  .notification-list {
-    margin-top: 12px;
-  }
-
-  .task-list a,
-  .notification-list a {
-    display: block;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-control);
-    background: var(--surface-muted);
-    color: var(--foreground);
-    text-decoration: none;
-    transition:
-      background-color var(--duration-fast) var(--ease),
-      border-color var(--duration-fast) var(--ease);
-  }
-
-  .task-list a:hover,
-  .notification-list a:hover {
-    border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
-    background: var(--surface-hover);
-  }
-
-  .task-list strong,
-  .task-list span,
-  .task-list em,
-  .notification-list strong,
-  .notification-list span {
-    display: block;
-    overflow-wrap: anywhere;
-  }
-
-  .task-list strong,
-  .notification-list strong {
-    color: var(--foreground);
-    font-weight: 600;
-  }
-
-  .task-list span,
-  .task-list em,
-  .notification-list span {
-    margin-top: 4px;
-    color: var(--foreground-muted);
-    font-size: var(--type-body-small-size);
-    font-style: normal;
-    line-height: var(--type-body-small-leading);
-  }
-
-  .quick-links {
-    margin-top: 18px;
-    padding: 16px;
-    border-radius: var(--radius-card);
-  }
-
-  @media (max-width: 1180px) {
-    .dashboard-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  @media (max-width: 1024px) {
-    .hero-card {
-      grid-template-columns: minmax(0, 1fr);
-      min-height: auto;
-      align-items: stretch;
-    }
-
-    .hero-card .hero-actions {
-      justify-content: flex-start;
-    }
-
-    .hero-grid-plane {
-      inset-inline-start: 18%;
-      width: 82%;
-      opacity: 0.3;
-    }
-
-    .setup-card {
-      flex-direction: column;
-      align-items: stretch;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .hero-card {
-      gap: 18px;
-      padding: 22px 18px;
-    }
-
-    .hero-card h1 {
-      font-size: clamp(1.8rem, 10vi, 2.5rem);
-    }
-
-    .hero-card p {
-      font-size: var(--type-body-size);
-    }
-
-    .hero-kpi-grid,
-    .metrics-grid,
-    .stats-grid,
-    .stats-grid.compact {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .hero-glow-dot,
-    .hero-chart-line {
-      opacity: 0.3;
-    }
-
-    .dashboard-card,
-    .metric-card {
-      padding: 16px;
-    }
-
-    .card-actions,
-    .hero-actions,
-    .quick-links {
-      align-items: stretch;
-    }
-
-    .action-link {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 430px) {
-    .dashboard-main {
-      padding-inline: 14px;
-    }
-
-    .hero-card {
-      padding: 20px 16px;
-    }
-
-    .hero-actions .action-link {
-      padding-inline: 10px;
-    }
-
-    .metric-card {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .dashboard-shell *,
-    .dashboard-shell *::before,
-    .dashboard-shell *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      scroll-behavior: auto !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-`;
+function sourceReason(statuses: DashboardSourceStatus[], t: ReturnType<typeof useLanguage>['t']) {
+  const failure = statuses.find((status) => status === 'permission' || status === 'network' || status === 'unavailable');
+  if (failure) return sourceStatusText(failure, t);
+  if (statuses.some((status) => status === 'loading')) return t('dashboard_exec_loading');
+  if (statuses.some((status) => status === 'empty')) return t('dashboard_exec_no_records');
+  return t('dashboard_exec_calculation_unavailable');
+}
+
+function SectionHeading({ id, title, description, action }: { id: string; title: string; description?: string; action?: ReactNode }) {
+  return <header className={styles.sectionHeading}><div><h2 id={id}>{title}</h2>{description ? <p>{description}</p> : null}</div>{action}</header>;
+}
+
+function MetricCard({ label, value, status, icon, tone }: { label: string; value: string | null; status: string; icon: ReactNode; tone: 'primary' | 'success' | 'danger' | 'accent' }) {
+  return (
+    <article className={styles.metricCard} data-tone={tone}>
+      <div className={styles.metricHeader}><span>{label}</span><i aria-hidden="true">{icon}</i></div>
+      <strong className={styles.financialValue} data-financial-value="true"><bdi>{value ?? '—'}</bdi></strong>
+      <p>{status}</p>
+    </article>
+  );
+}
+
+function HealthIndicator({ label, value, unavailable }: { label: string; value: string | null; unavailable: string }) {
+  return <article className={styles.healthIndicator}><span>{label}</span><strong data-financial-value="true"><bdi>{value ?? '—'}</bdi></strong><small>{value === null ? unavailable : ''}</small></article>;
+}
+
+function CashFlowChart({ points, currency, lang, label, periodLabel, incomeLabel, expensesLabel, insufficientLabel }: { points: CashFlowPoint[]; currency: string; lang: 'ar' | 'en' | 'fr'; label: string; periodLabel: string; incomeLabel: string; expensesLabel: string; insufficientLabel: string }) {
+  if (points.length < 2) return <StateMessage icon={<BarChart3 />} title={insufficientLabel} />;
+  const maximum = Math.max(...points.flatMap((point) => [point.income, point.expenses]), 0);
+  if (maximum <= 0) return <StateMessage icon={<BarChart3 />} title={insufficientLabel} />;
+  const incomePoints = buildLinePoints(points.map((point) => point.income), 760, 18, 190, maximum);
+  const expensePoints = buildLinePoints(points.map((point) => point.expenses), 760, 18, 190, maximum);
+  const x = (index: number) => points.length === 1 ? 0 : (index / (points.length - 1)) * 760;
+  const y = (value: number) => 190 - (Math.max(0, value) / maximum) * 172;
+  return (
+    <figure className={styles.chartFigure}>
+      <div className={styles.chartLegend}><span data-series="income">{incomeLabel}</span><span data-series="expenses">{expensesLabel}</span></div>
+      <svg viewBox="0 0 760 220" role="img" aria-label={label} preserveAspectRatio="none">
+        <title>{label}</title>
+        {[18, 61, 104, 147, 190].map((line) => <line key={line} x1="0" y1={line} x2="760" y2={line} className={styles.chartGridLine} />)}
+        <polyline points={incomePoints} className={styles.incomeLine} vectorEffect="non-scaling-stroke" />
+        <polyline points={expensePoints} className={styles.expenseLine} vectorEffect="non-scaling-stroke" />
+        {points.map((point, index) => (
+          <g key={point.key}>
+            <circle cx={x(index)} cy={y(point.income)} r="5" className={styles.incomePoint} tabIndex={0}>
+              <title>{`${incomeLabel}, ${point.key}: ${formatCurrency(point.income, currency, lang)}`}</title>
+            </circle>
+            <circle cx={x(index)} cy={y(point.expenses)} r="5" className={styles.expensePoint} tabIndex={0}>
+              <title>{`${expensesLabel}, ${point.key}: ${formatCurrency(point.expenses, currency, lang)}`}</title>
+            </circle>
+          </g>
+        ))}
+      </svg>
+      <div className={styles.chartLabels} style={{ gridTemplateColumns: `repeat(${points.length}, minmax(2.5rem, 1fr))` }}>{points.map((point) => <span key={point.key}>{formatDate(new Date(point.year, point.month, 1), lang, { month: 'short' })}</span>)}</div>
+      <table className={styles.srOnly}>
+        <caption>{label}</caption><thead><tr><th>{periodLabel}</th><th>{incomeLabel}</th><th>{expensesLabel}</th></tr></thead>
+        <tbody>{points.map((point) => <tr key={point.key}><th>{point.key}</th><td>{formatCurrency(point.income, currency, lang)}</td><td>{formatCurrency(point.expenses, currency, lang)}</td></tr>)}</tbody>
+      </table>
+    </figure>
+  );
+}
+
+function AllocationCard({ title, items, empty, lang, status, incomplete, t, onRetry }: { title: string; items: CurrencyAmount[]; empty: string; lang: 'ar' | 'en' | 'fr'; status: DashboardSourceStatus; incomplete: boolean; t: ReturnType<typeof useLanguage>['t']; onRetry: () => void }) {
+  return (
+    <article className={styles.allocationCard}>
+      <h3>{title}</h3>
+      {status === 'loading'
+        ? <SectionSkeleton compact />
+        : loaded(status)
+          ? incomplete
+            ? <p>{t('dashboard_exec_calculation_unavailable')}</p>
+            : items.length > 0 ? <dl>{items.map((item) => <div key={item.currency}><dt><bdi>{item.currency}</bdi><small>{formatNumber(item.records, lang)}</small></dt><dd data-financial-value="true"><bdi>{formatCurrency(item.amount, item.currency, lang)}</bdi></dd></div>)}</dl> : <p>{empty}</p>
+          : <InlineSourceState status={status} t={t} onRetry={onRetry} />}
+    </article>
+  );
+}
+
+function GoalItem({ goal, lang, t }: { goal: GoalSummary; lang: 'ar' | 'en' | 'fr'; t: ReturnType<typeof useLanguage>['t'] }) {
+  const statusKey = `dashboard_exec_status_${goal.status}` as 'dashboard_exec_status_completed' | 'dashboard_exec_status_on_track' | 'dashboard_exec_status_behind' | 'dashboard_exec_status_insufficient';
+  return (
+    <article className={styles.goalItem}>
+      <div className={styles.goalHeading}><h3>{goal.title}</h3><span data-status={goal.status}>{t(statusKey)}</span></div>
+      {goal.progressRatio !== null ? <div className={styles.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(goal.progressRatio * 100)} aria-label={`${goal.title}: ${formatPercent(goal.progressRatio, lang)}`}><i style={{ inlineSize: `${goal.progressRatio * 100}%` }} /></div> : <p className={styles.goalUnavailable}>{t('dashboard_exec_progress_unavailable')}</p>}
+      <dl className={styles.goalFacts}>
+        <div><dt>{t('dashboard_exec_current')}</dt><dd><bdi>{goal.currentAmount === null || !goal.currency ? '—' : formatCurrency(goal.currentAmount, goal.currency, lang)}</bdi></dd></div>
+        <div><dt>{t('dashboard_exec_target')}</dt><dd><bdi>{goal.targetAmount === null || !goal.currency ? '—' : formatCurrency(goal.targetAmount, goal.currency, lang)}</bdi></dd></div>
+        <div><dt>{t('dashboard_exec_deadline')}</dt><dd>{goal.deadline ? formatDate(goal.deadline, lang) : '—'}</dd></div>
+      </dl>
+    </article>
+  );
+}
+
+function StateMessage({ icon, title, action }: { icon: ReactNode; title: string; action?: ReactNode }) {
+  return <div className={styles.stateMessage}><span aria-hidden="true">{icon}</span><p>{title}</p>{action}</div>;
+}
+
+function InlineSourceState({ status, t, onRetry }: { status: DashboardSourceStatus; t: ReturnType<typeof useLanguage>['t']; onRetry: () => void }) {
+  return <div className={styles.sourceState} role={status === 'loading' ? 'status' : 'alert'}><p>{sourceStatusText(status, t)}</p>{status !== 'loading' ? <button type="button" onClick={onRetry}>{t('dashboard_exec_retry')}</button> : null}</div>;
+}
+
+function Shortcut({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
+  return <Link href={href} className={styles.shortcut}><span aria-hidden="true">{icon}</span><b>{label}</b><ArrowUpRight aria-hidden="true" /></Link>;
+}
+
+function SectionSkeleton({ compact = false }: { compact?: boolean }) {
+  return <div className={`${styles.sectionSkeleton} ${compact ? styles.sectionSkeletonCompact : ''}`} aria-hidden="true"><i /><i /><i /></div>;
+}
+
+function DashboardSkeleton({ dir, label }: { dir: 'rtl' | 'ltr'; label: string }) {
+  return (
+    <main className={styles.page} dir={dir} aria-busy="true" aria-label={label} data-dashboard-skeleton="true">
+      <div className={`${styles.skeleton} ${styles.skeletonHero}`} />
+      <div className={styles.metricGrid}>{Array.from({ length: 4 }, (_, index) => <div className={`${styles.skeleton} ${styles.skeletonMetric}`} key={index} />)}</div>
+      <div className={`${styles.skeleton} ${styles.skeletonPanel}`} />
+      <div className={styles.primaryGrid}><div className={`${styles.skeleton} ${styles.skeletonPanel}`} /><div className={`${styles.skeleton} ${styles.skeletonPanel}`} /></div>
+      <span className={styles.srOnly}>{label}</span>
+    </main>
+  );
+}

@@ -24,7 +24,7 @@ async function enterGuestDashboard(page: Page) {
   await guestButton.press('Enter');
   await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
   await expect(page.locator('header.sfm-global-header')).toBeVisible();
-  await expect(page.locator('main.dashboard-main')).toBeVisible();
+  await expect(page.locator('main[data-dashboard-executive="true"]')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await setLanguage(page, 'en');
 }
@@ -97,7 +97,7 @@ test.describe('Phase 3.1 global header and typography', () => {
     await expect(header.locator('.sfm-language-trigger:visible')).toHaveCount(1);
     await expect(header.locator('.sfm-user-chip:visible')).toHaveCount(1);
     await expect(page.locator('main .sfm-language-trigger, main .sfm-user-chip')).toHaveCount(0);
-    await expect(page.locator('main.dashboard-main > .topbar')).toHaveCount(0);
+    await expect(page.locator('main[data-dashboard-executive="true"] > .topbar')).toHaveCount(0);
 
     await expectGuestWorkspaceTabs(page);
     await expect(page.getByRole('button', { name: /^(Basic View|Advanced View)$/i })).toHaveCount(0);
@@ -149,7 +149,7 @@ test.describe('Phase 3.1 global header and typography', () => {
     await expect(page.locator('.sfm-language-trigger:visible')).toHaveCount(0);
     await expect(page.locator('.sfm-user-chip:visible')).toHaveCount(0);
     await expect(page.locator('main .sfm-language-trigger, main .sfm-user-chip')).toHaveCount(0);
-    await expect(page.locator('main.dashboard-main > .topbar')).toHaveCount(0);
+    await expect(page.locator('main[data-dashboard-executive="true"] > .topbar')).toHaveCount(0);
 
     await menuButton.click();
     const drawer = page.locator('#sfm-mobile-menu');

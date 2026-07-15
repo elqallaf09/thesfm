@@ -107,4 +107,13 @@ describe('production auth security contracts', () => {
     expect(middleware).toContain('hasGuestSession && isGuestAllowed(pathname)');
     expect(middleware).toContain('const session = await sessionForRequest(request)');
   });
+
+  it('keeps local Dashboard and trader QA bypasses separate and disabled on Vercel', () => {
+    const middleware = source('src/middleware.ts');
+    expect(middleware).toContain("process.env.SFM_LOCAL_DASHBOARD_QA === '1'");
+    expect(middleware).toContain("process.env.SFM_LOCAL_TRADER_QA === '1'");
+    expect(middleware).toContain("if (process.env.VERCEL === '1') return false");
+    expect(middleware).toContain('if (isTraderPath)');
+    expect(middleware).toContain('if (isDashboardPath)');
+  });
 });

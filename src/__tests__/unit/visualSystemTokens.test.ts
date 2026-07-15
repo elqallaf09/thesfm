@@ -14,6 +14,7 @@ const landingPage = read('src/app/page.tsx');
 const landingStyles = landingPage.slice(landingPage.indexOf('const landingStyles = `'));
 const traderAccessGate = read('src/app/thesfm-trader-own/TraderAccessGate.tsx');
 const dashboard = read('src/app/dashboard/page.tsx');
+const dashboardStyles = read('src/app/dashboard/dashboard.module.css');
 const appHeader = read('src/components/AppHeader.tsx');
 const shariaNewsStyles = read('src/components/shariah-stocks/ShariahStocksNewsPage.module.css');
 const tabs = read('src/components/ui/tabs.tsx');
@@ -227,12 +228,13 @@ describe('central visual-system contract', () => {
   });
 
   it('keeps dashboard hero and secondary controls theme-safe', () => {
-    expect(dashboard).toContain('background: var(--hero-gradient);');
-    expect(dashboard).toContain('background: var(--button-primary-background);');
-    expect(dashboard).toContain('color: var(--button-primary-foreground);');
-    expect(dashboard).toContain('background: var(--button-secondary-background);');
-    expect(dashboard).toContain('color: var(--button-secondary-foreground);');
-    expect(dashboard).not.toContain('background: var(--hero-foreground);');
+    expect(dashboard).toContain("import styles from './dashboard.module.css';");
+    expect(dashboardStyles).toContain('background: var(--surface);');
+    expect(dashboardStyles).toContain('background: var(--surface-elevated);');
+    expect(dashboardStyles).toContain('background: var(--primary);');
+    expect(dashboardStyles).toContain('color: var(--primary-foreground);');
+    expect(dashboardStyles).toContain('color: var(--foreground);');
+    expect(dashboardStyles).not.toContain('background: var(--hero-foreground);');
   });
 
   it('bridges popovers, tooltips, and shadcn colors without a compatibility palette', () => {

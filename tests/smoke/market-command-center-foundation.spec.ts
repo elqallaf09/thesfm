@@ -139,7 +139,7 @@ async function enterGuestWorkspace(page: Page) {
   await expect(guestButton).toBeVisible();
   await guestButton.click();
   await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
-  await expect(page.locator('main.dashboard-main')).toBeVisible();
+  await expect(page.locator('main[data-dashboard-executive="true"]')).toBeVisible();
   await expect(page.locator('header.sfm-global-header')).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('sfm_guest_mode')))
     .toBe('true');

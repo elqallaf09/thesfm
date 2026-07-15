@@ -76,15 +76,15 @@ function isGuestAllowed(pathname: string) {
   return guestAllowedPaths.has(pathname);
 }
 
-function isLocalTraderQaBypass(pathname: string) {
-  return (
-    process.env.SFM_LOCAL_TRADER_QA === '1' &&
-    process.env.VERCEL !== '1' &&
-    (pathname === '/thesfm-trader-own' ||
-      pathname.startsWith('/thesfm-trader-own/') ||
-      pathname === '/dashboard' ||
-      pathname.startsWith('/dashboard/'))
-  );
+function isLocalQaBypass(pathname: string) {
+  if (process.env.VERCEL === '1') return false;
+  const isTraderPath = pathname === '/thesfm-trader-own' || pathname.startsWith('/thesfm-trader-own/');
+  const isDashboardPath = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
+  if (isTraderPath) return process.env.SFM_LOCAL_TRADER_QA === '1';
+  if (isDashboardPath) {
+    return process.env.SFM_LOCAL_DASHBOARD_QA === '1' || process.env.SFM_LOCAL_TRADER_QA === '1';
+  }
+  return false;
 }
 
 function withSecurityHeaders<T extends NextResponse>(response: T) {
@@ -152,7 +152,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (isLocalTraderQaBypass(pathname)) return response;
+  if (isLocalQaBypass(pathname)) return response;
   const needsSession = authPages.includes(pathname) || isProtected(pathname);
   if (!needsSession) return response;
 

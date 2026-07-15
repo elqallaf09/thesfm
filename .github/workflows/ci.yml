@@ -207,6 +207,9 @@ jobs:
           PLAYWRIGHT_NO_COPY_PROMPT: '1'
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
           PLAYWRIGHT_WEB_SERVER_COMMAND: node scripts/playwright-https-proxy.mjs
+          # Allows the synthetic Dashboard source fixture through local
+          # middleware only. The bypass is disabled automatically on Vercel.
+          SFM_LOCAL_DASHBOARD_QA: '1'
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
           PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
