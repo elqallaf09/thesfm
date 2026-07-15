@@ -9,6 +9,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 
 const traderTools = read('src/components/market-analysis/TraderToolsDashboard.tsx');
 const marketPage = read('src/app/market-analysis/page.tsx');
+const marketCommandCenter = read('src/components/market-analysis/marketCommandCenter.ts');
 const marketTraderStyles = read('src/components/market-analysis/MarketTraderStyles.tsx');
 const marketBaseStyles = read('src/components/market-analysis/MarketBaseStyles.tsx');
 const marketPageStyles = read('src/components/market-analysis/market-page.css');
@@ -23,7 +24,8 @@ describe('Phase 3.2 workspace width and layout consistency', () => {
       en: 'Trading Tools',
       fr: 'Outils de trading',
     });
-    expect(marketPage).toContain("{ id: 'traderTools', label: t('market_trader_tools') }");
+    expect(marketCommandCenter).toContain("tabs: ['traderTools', 'assetReport']");
+    expect(marketCommandCenter).toContain("traderTools: 'market_trader_tools'");
     expect(marketPage).toContain("activeTab === 'traderTools'");
   });
 

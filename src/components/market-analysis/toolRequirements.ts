@@ -47,6 +47,13 @@ export const TRADER_TOOL_REQUIREMENTS: Record<TraderToolsSubTab, AnalysisToolCon
 };
 
 export const MARKET_TAB_REQUIREMENTS: Record<MarketTab, AnalysisToolConfig> = {
+  overview: {
+    id: 'marketCommandOverview',
+    requiresAsset: false,
+    requiresMarketData: false,
+    requiresAccountBalance: false,
+    requiresMonthlyIncome: false,
+  },
   analyze: {
     id: 'marketAnalysis',
     requiresAsset: true,

@@ -4,11 +4,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { normalizeBusinessHubTab, type BusinessHubTab } from '@/app/business-hub/_lib';
-import { normalizeMarketTab } from '@/components/market-analysis/utils';
+import { normalizeMarketTab, shouldOpenLegacySymbolAnalysis } from '@/components/market-analysis/utils';
 import type { MarketTab } from '@/components/market-analysis/types';
 import { canonicalizeUrlTabState, readUrlTabValue } from '@/lib/navigation/urlTabState';
 
 const marketTabs = [
+  'overview',
   'analyze',
   'traderTools',
   'economicCalendar',
@@ -33,7 +34,7 @@ const businessTabs = [
 const marketOptions = {
   param: 'tab',
   values: marketTabs,
-  defaultValue: 'analyze' as const,
+  defaultValue: 'overview' as const,
   omitDefault: true,
   legacyValueResolver: normalizeMarketTab,
   legacyHash: true,
@@ -58,6 +59,41 @@ describe('legacy workspace tab deep links', () => {
       'https://www.the-sfm.com/market-analysis?symbol=AAPL#watchlist',
       marketOptions,
     )).toBe('/market-analysis?symbol=AAPL&tab=watchlist');
+  });
+
+  it.each([
+    ['overview', 'overview'],
+    ['command-center', 'overview'],
+    ['dashboard', 'overview'],
+    ['analysis', 'analyze'],
+    ['trader-tools', 'traderTools'],
+    ['calendar', 'economicCalendar'],
+    ['trading-sessions', 'sessions'],
+    ['technical-analysis', 'technicalAnalysis'],
+    ['news', 'newsSentiment'],
+    ['sentiment', 'newsSentiment'],
+    ['market-watchlist', 'watchlist'],
+    ['market-alerts', 'alerts'],
+    ['price-alerts', 'alerts'],
+    ['compare', 'comparison'],
+    ['report', 'assetReport'],
+  ] as const)('maps the legacy Market Analysis value %s to %s', (legacy, expected) => {
+    expect(normalizeMarketTab(legacy)).toBe(expected);
+    expect(readUrlTabValue(`?tab=${legacy}`, marketOptions)).toBe(expected);
+  });
+
+  it('uses Overview for the bare route while keeping Analyze links explicit', () => {
+    expect(readUrlTabValue('', marketOptions)).toBe('overview');
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL')).toBe(true);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=watchlist')).toBe(false);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL', '#watchlist')).toBe(false);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=unknown')).toBe(true);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL', '#unrelated-anchor')).toBe(true);
+    expect(shouldOpenLegacySymbolAnalysis('')).toBe(false);
+    expect(canonicalizeUrlTabState(
+      'https://www.the-sfm.com/market-analysis?tab=analysis&symbol=AAPL',
+      marketOptions,
+    )).toBe('/market-analysis?tab=analyze&symbol=AAPL');
   });
 
   it('keeps the previous Business Hub aliases, including #funding', () => {

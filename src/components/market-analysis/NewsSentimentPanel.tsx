@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Activity, AlertTriangle, BarChart3, CheckCircle2, Clock3, ExternalLink, Filter, Landmark, LineChart, Newspaper, Search, ShieldAlert, Sparkles, Tags, X } from 'lucide-react';
+import { URL_TAB_STATE_CHANGE_EVENT } from '@/lib/navigation/urlTabState';
 import type { ApiListState, SelectedMarketAsset } from './types';
 import { sentimentAssetBadgeType, sentimentProviderBadgeKey, sentimentContextBodyKey, sentimentAssetBadgeKey } from './utils';
 import {
@@ -696,7 +697,7 @@ export function NewsSentimentPanel({
   useEffect(() => {
     if (!filtersReady || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    params.set('tab', 'news');
+    params.set('tab', 'newsSentiment');
     const updateParam = (key: string, value: string, emptyValue = 'all') => {
       if (!value || value === emptyValue) params.delete(key);
       else params.set(key, value);
@@ -716,9 +717,13 @@ export function NewsSentimentPanel({
     updateParam('sort', sortOrder, 'latest');
     updateParam('scope', scope, 'market');
     updateParam('page', String(requestedPage), '1');
-    const nextUrl = `${window.location.pathname}?${params.toString()}`;
-    const currentUrl = `${window.location.pathname}${window.location.search}`;
-    if (nextUrl !== currentUrl) window.history.replaceState(null, '', nextUrl);
+    const queryString = params.toString();
+    const nextUrl = `${window.location.pathname}${queryString ? `?${queryString}` : ''}${window.location.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(window.history.state, '', nextUrl);
+      window.dispatchEvent(new Event(URL_TAB_STATE_CHANGE_EVENT));
+    }
   }, [assetFilter, categoryFilter, debouncedSearch, exchangeFilter, filtersReady, impactFilter, marketFilter, officialOnly, requestedPage, scope, sectorFilter, sentimentFilter, sortOrder, sourceFilter, timeFilter, verificationFilter]);
 
   const filteredArticles = useMemo(() => {

@@ -49,18 +49,23 @@ describe('Phase 3.4 React Trader presentation contracts', () => {
 
   it('keeps symbol, asset type, timeframe, and Analyze in one responsive toolbar', () => {
     const marketPage = read('src/app/market-analysis/page.tsx');
-    const symbolIndex = marketPage.indexOf('className="market-search-field"');
-    const typeIndex = marketPage.indexOf("t('market_asset_type')", symbolIndex);
-    const timeframeIndex = marketPage.indexOf('className="market-timeframe-field"', typeIndex);
-    const submitIndex = marketPage.indexOf('className="market-search-submit"', timeframeIndex);
+    const commandBar = read('src/components/market-analysis/MarketCommandBar.tsx');
+    const commandBarStyles = read('src/components/market-analysis/MarketCommandBar.module.css');
+    const symbolIndex = commandBar.indexOf('htmlFor="market-asset-search"');
+    const typeIndex = commandBar.indexOf("t('market_asset_type')", symbolIndex);
+    const timeframeIndex = commandBar.indexOf("t('market_timeframe')", typeIndex);
+    const submitIndex = commandBar.indexOf('className={styles.submit}', timeframeIndex);
 
     expect(symbolIndex).toBeGreaterThan(-1);
     expect(typeIndex).toBeGreaterThan(symbolIndex);
     expect(timeframeIndex).toBeGreaterThan(typeIndex);
     expect(submitIndex).toBeGreaterThan(timeframeIndex);
-    expect(marketPage).toContain('grid-template-columns:minmax(280px,1.6fr) minmax(160px,.7fr) minmax(150px,.65fr) max-content');
-    expect(marketPage).toContain('grid-template-columns:repeat(2,minmax(0,1fr))');
-    expect(marketPage).toContain('@media(max-width:720px)');
+    expect(commandBarStyles).toContain('grid-template-columns: minmax(15rem, 1.8fr) minmax(10rem, 0.72fr) minmax(8rem, 0.55fr) max-content');
+    expect(commandBarStyles).toContain('grid-template-columns: minmax(0, 1.4fr) minmax(10rem, 0.8fr)');
+    expect(commandBarStyles).toContain('@media (max-width: 720px)');
+    expect(commandBarStyles).toContain('grid-template-columns: minmax(0, 1fr)');
+    expect(commandBarStyles).toContain('min-height: var(--control-h-lg)');
+    expect(marketPage).toContain('<MarketCommandBar');
     expect(marketPage).toContain('className="market-shell" dir={dir}');
     expect(marketPage).not.toContain('className="timeframe-row"');
   });
