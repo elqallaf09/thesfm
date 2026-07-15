@@ -283,6 +283,13 @@ test.describe('Phase 4.1A Market Command Center foundation', () => {
     await expect(navigation).toHaveAttribute('data-command-group', 'toolsReports');
     await expect(navigation).toHaveAttribute('data-active-tab', 'traderTools');
 
+    for (const tab of ['economicCalendar', 'technicalAnalysis', 'newsSentiment'] as const) {
+      await openMarketCommandCenter(page, `/market-analysis?symbol=AAPL&tab=${tab}`);
+      await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe(tab);
+      expect(new URL(page.url()).searchParams.get('symbol')).toBe('AAPL');
+      await expect(navigation).toHaveAttribute('data-active-tab', tab);
+    }
+
     await openMarketCommandCenter(page, '/market-analysis?symbol=AAPL#watchlist');
     await expect.poll(() => ({
       tab: new URL(page.url()).searchParams.get('tab'),

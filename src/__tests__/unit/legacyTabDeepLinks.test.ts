@@ -86,6 +86,9 @@ describe('legacy workspace tab deep links', () => {
     expect(readUrlTabValue('', marketOptions)).toBe('overview');
     expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL')).toBe(true);
     expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=watchlist')).toBe(false);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=economicCalendar')).toBe(false);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=technicalAnalysis')).toBe(false);
+    expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=newsSentiment')).toBe(false);
     expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL', '#watchlist')).toBe(false);
     expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL&tab=unknown')).toBe(true);
     expect(shouldOpenLegacySymbolAnalysis('?symbol=AAPL', '#unrelated-anchor')).toBe(true);
