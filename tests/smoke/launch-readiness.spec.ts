@@ -97,7 +97,10 @@ test.describe('launch smoke coverage', () => {
       await expectUsablePage(page, '/sfm-admin-control');
       if (adminAuthConfigured) {
         await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
-        const adminShell = page.locator('main[data-sfm-shell="dashboard"]');
+        const adminShell = page
+          .locator('main[data-sfm-shell="dashboard"]')
+          .filter({ has: page.locator('.admin-dashboard') });
+        await expect(adminShell).toHaveCount(1);
         await expect(adminShell).toBeVisible();
         await expect(adminShell.locator('.admin-dashboard')).toBeVisible();
         await expect(isMobile
