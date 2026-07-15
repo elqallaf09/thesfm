@@ -1000,10 +1000,10 @@ export function normalizeMarketTab(value: string | null | undefined): MarketTab 
   if (normalized === 'overview' || normalized === 'command-center' || normalized === 'dashboard') return 'overview';
   if (normalized === 'analysis' || normalized === 'analyze') return 'analyze';
   if (normalized === 'trader-tools' || normalized === 'tradertools' || normalized === 'tools') return 'traderTools';
-  if (normalized === 'economic-calendar' || normalized === 'calendar') return 'economicCalendar';
+  if (normalized === 'economic-calendar' || normalized === 'economiccalendar' || normalized === 'calendar') return 'economicCalendar';
   if (normalized === 'sessions' || normalized === 'trading-sessions') return 'sessions';
-  if (normalized === 'technical-analysis' || normalized === 'technical') return 'technicalAnalysis';
-  if (normalized === 'news-sentiment' || normalized === 'news' || normalized === 'sentiment') return 'newsSentiment';
+  if (normalized === 'technical-analysis' || normalized === 'technicalanalysis' || normalized === 'technical') return 'technicalAnalysis';
+  if (normalized === 'news-sentiment' || normalized === 'newssentiment' || normalized === 'news' || normalized === 'sentiment') return 'newsSentiment';
   if (normalized === 'watchlist' || normalized === 'market-watchlist') return 'watchlist';
   if (normalized === 'alerts' || normalized === 'market-alerts' || normalized === 'price-alerts') return 'alerts';
   if (normalized === 'comparison' || normalized === 'compare') return 'comparison';
