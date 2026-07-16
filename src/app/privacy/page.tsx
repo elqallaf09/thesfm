@@ -12,7 +12,7 @@ const TEXT = {
   ar: {
     title: 'سياسة الخصوصية',
     subtitle: 'تشرح هذه السياسة كيف يتعامل THE SFM مع بياناتك المالية والشخصية داخل المنصة. هدفنا أن تبقى التحليلات والتقارير مبنية على بياناتك الحقيقية فقط.',
-    updated: 'آخر تحديث: مايو 2026',
+    updated: 'آخر تحديث: يوليو 2026',
     home: 'العودة إلى الرئيسية',
     contact: 'تواصل معنا',
     contactAria: 'تواصل معنا بخصوص سياسة الخصوصية',
@@ -23,6 +23,7 @@ const TEXT = {
       ['مدة الاحتفاظ', 'نحتفظ ببياناتك ما دام حسابك نشطاً أو ما دامت مطلوبة لتقديم الخدمة. عند طلب حذف الحساب أو البيانات، نعمل على حذفها أو تعطيل الوصول إليها وفق الإمكانات الفنية والمتطلبات النظامية.'],
       ['الكوكيز والتخزين المحلي', 'قد نستخدم الكوكيز أو التخزين المحلي لحفظ حالة تسجيل الدخول، اللغة، السمات، وبعض تفضيلات الواجهة. لا تستخدم هذه العناصر لعرض أرقام مالية وهمية.'],
       ['الأطراف الثالثة', 'قد تعتمد المنصة على مزودي خدمات مثل الاستضافة، قاعدة البيانات، المصادقة، وقراءة المستندات. لا نشارك مفاتيحك أو بياناتك الحساسة علناً، ويجب عدم إرسال كلمات المرور عبر رسائل الدعم.'],
+      ['بيانات الموثوقية التشغيلية', 'نجمع قياسات تشغيلية محدودة مثل مؤشرات أداء الصفحة، زمن المسارات، فئات الأخطاء، ونوع المتصفح والجهاز والشبكة بصورة عامة. تستخدم القياسات معرّف جلسة عشوائياً ومؤقتاً ومسارات منزوعة المعرّفات. لا تشمل هوية الحساب أو القيم المالية أو النصوص المدخلة أو عناوين URL الكاملة أو رموز الدخول. تُحذف الأحداث الخام عادة بعد 14 يوماً وتُحتفظ الملخصات المجمعة حتى 180 يوماً.'],
       ['حقوقك', 'يمكنك طلب تصدير بياناتك أو حذفها أو تصحيحها عند الحاجة. قد تتطلب بعض الطلبات تحققاً من الهوية لحماية الحساب.'],
       ['القانون الحاكم', 'تُفسّر هذه السياسة وفق القوانين والأنظمة المطبقة على تشغيل الخدمة ومكان تقديمها، مع احترام المتطلبات النظامية ذات الصلة بحماية البيانات.'],
     ],
@@ -30,7 +31,7 @@ const TEXT = {
   en: {
     title: 'Privacy Policy',
     subtitle: 'This policy explains how THE SFM handles your financial and personal data. The platform is designed so analysis and reports rely on your real data only.',
-    updated: 'Last updated: May 2026',
+    updated: 'Last updated: July 2026',
     home: 'Back to home',
     contact: 'Contact us',
     contactAria: 'Contact us about the privacy policy',
@@ -41,6 +42,7 @@ const TEXT = {
       ['Retention', 'We keep your data while your account is active or as needed to provide the service. When deletion is requested, we work to delete or restrict access according to technical capability and legal requirements.'],
       ['Cookies and local storage', 'We may use cookies or local storage to keep sign-in state, language, theme, and interface preferences. These are not used to show fictional financial numbers.'],
       ['Third parties', 'The platform may rely on providers for hosting, database, authentication, and document reading. We do not publicly expose keys or sensitive data, and passwords should not be sent in support messages.'],
+      ['Operational reliability data', 'We collect limited operational measurements such as page performance signals, route timings, error categories, and coarse browser, device, and network classes. Measurements use a random temporary session identifier and de-identified route templates. They exclude account identity, financial values, entered text, full URLs, and access credentials. Raw events are normally deleted after 14 days and aggregate summaries are retained for up to 180 days.'],
       ['Your rights', 'You may request export, deletion, or correction of your data. Some requests may require identity verification to protect the account.'],
       ['Governing law', 'This policy is interpreted under the laws and regulations applicable to operating and providing the service, including relevant data protection requirements.'],
     ],
@@ -48,7 +50,7 @@ const TEXT = {
   fr: {
     title: 'Politique de confidentialité',
     subtitle: 'Cette politique explique comment THE SFM traite vos données financières et personnelles. Les analyses et rapports reposent uniquement sur vos données réelles.',
-    updated: 'Dernière mise à jour : mai 2026',
+    updated: 'Dernière mise à jour : juillet 2026',
     home: 'Retour à l’accueil',
     contact: 'Nous contacter',
     contactAria: 'Nous contacter à propos de la politique de confidentialité',
@@ -59,13 +61,14 @@ const TEXT = {
       ['Durée de conservation', 'Nous conservons vos données tant que votre compte est actif ou nécessaire au service. En cas de demande de suppression, nous supprimons ou limitons l’accès selon les capacités techniques et obligations légales.'],
       ['Cookies et stockage local', 'Nous pouvons utiliser cookies ou stockage local pour conserver session, langue, thème et préférences d’interface. Ils ne servent pas à afficher de faux chiffres financiers.'],
       ['Tiers', 'La plateforme peut utiliser des fournisseurs pour hébergement, base de données, authentification et lecture de documents. Nous n’exposons pas publiquement les clés ou données sensibles, et les mots de passe ne doivent pas être envoyés au support.'],
+      ['Données de fiabilité opérationnelle', 'Nous collectons des mesures opérationnelles limitées : performance des pages, durée des routes, catégories d’erreurs et classes générales de navigateur, appareil et réseau. Ces mesures utilisent un identifiant de session aléatoire et temporaire et des modèles de routes désidentifiés. Elles excluent l’identité du compte, les valeurs financières, le texte saisi, les URL complètes et les identifiants d’accès. Les événements bruts sont normalement supprimés après 14 jours et les agrégats conservés jusqu’à 180 jours.'],
       ['Vos droits', 'Vous pouvez demander l’export, la suppression ou la correction de vos données. Certaines demandes peuvent exiger une vérification d’identité pour protéger le compte.'],
       ['Droit applicable', 'Cette politique est interprétée selon les lois et règles applicables à l’exploitation et à la fourniture du service, y compris les exigences de protection des données.'],
     ],
   },
 } as const;
 
-const icons = [Database, ShieldCheck, LockKeyhole, Trash2, ShieldCheck, Database, Download, LockKeyhole];
+const icons = [Database, ShieldCheck, LockKeyhole, Trash2, ShieldCheck, Database, ShieldCheck, Download, LockKeyhole];
 
 export default function PrivacyPage() {
   const { lang, dir } = useLanguage();

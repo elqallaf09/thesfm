@@ -9,6 +9,7 @@ import { AdaptiveLanguageProvider } from '@/components/AdaptiveLanguageProvider'
 import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
+import { ObservabilityLoader } from '@/components/ObservabilityLoader';
 import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
@@ -70,6 +71,7 @@ export default function RootLayout({
                 <LocalizedSkipLink />
                 <CurrencyProvider>
                   <AnalyticsTracker />
+                  <ObservabilityLoader />
                   <AppLayout>{children}</AppLayout>
                 </CurrencyProvider>
                 <GlobalClientEffects />

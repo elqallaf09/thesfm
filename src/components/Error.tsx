@@ -1,28 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/hooks/useLanguage";
+import { enqueueObservabilityEvent } from '@/lib/observability/client';
+import { errorSignature, normalizeRoute, sanitizeErrorText } from '@/lib/observability/core';
 
 export default function Error({
   error,
 }: {
-  error: Error & { digest?: string; cause?: any };
+  error: Error & { digest?: string; cause?: unknown };
 }) {
   const { t, dir } = useLanguage();
-  const [errorDetails, setErrorDetails] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const details: Record<string, any> = {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-    };
-
-    details.url = window.location.href;
-    details.timestamp = new Date().toISOString();
-
-    setErrorDetails(details);
+    const safe = sanitizeErrorText(error);
+    enqueueObservabilityEvent({
+      type: 'client_error',
+      name: 'react_error_boundary',
+      value: 1,
+      errorSignature: errorSignature(safe),
+      failureClass: /hydration/i.test(safe) ? 'hydration' : 'runtime',
+    });
   }, [error]);
 
   return (
@@ -30,13 +29,13 @@ export default function Error({
       <div className="text-2xl font-semibold text-danger" role="alert">{t('error_generic_title')}</div>
       <Button
         onClick={() => {
-          if (window.parent && window.parent !== window) {
+          if (window.parent && window.parent !== window && window.location.origin !== 'null') {
             window.parent.postMessage(
               {
                 type: "IFRAME_ERROR",
-                payload: errorDetails,
+                payload: { signature: errorSignature(sanitizeErrorText(error)), route: normalizeRoute(window.location.pathname) },
               },
-              "*"
+              window.location.origin,
             );
           }
         }}
