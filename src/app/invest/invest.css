@@ -1449,7 +1449,9 @@
 .invest-overlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  /* Above the sticky global header (z-index 100) so the dialog backdrop
+     always covers application chrome, below the mobile drawer (9998+). */
+  z-index: 110;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2271,7 +2273,8 @@
 
 .invest-toast {
   position: fixed;
-  z-index: 100;
+  /* Toasts stay readable above dialogs and their backdrop (z-index 110). */
+  z-index: 130;
   inset-inline-end: var(--space-5);
   bottom: var(--space-5);
   max-width: min(24rem, calc(100% - 2rem));
