@@ -24,7 +24,26 @@ const PLATFORM_DOMAINS: Record<string, string> = {
   kraken: 'kraken.com',
   'kuwait finance house': 'kfh.com',
   kfh: 'kfh.com',
+  zad: 'joinzad.com',
 };
+
+/**
+ * Users type the same platform many ways ("ZAD", "zad", "زاد", "Zad Fintech").
+ * Collapse the known variants onto one canonical key before lookups.
+ */
+const PLATFORM_NAME_ALIASES: Record<string, string> = {
+  'زاد': 'zad',
+  'zad fintech': 'zad',
+  'zad investment': 'zad',
+  'zad investments': 'zad',
+  'join zad': 'zad',
+  joinzad: 'zad',
+};
+
+export function normalizePlatformIdentifier(name: string) {
+  const normalized = name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US');
+  return PLATFORM_NAME_ALIASES[normalized] || normalized;
+}
 
 const VERIFIED_PLATFORM_LOGOS: Record<string, string> = {
   binance: 'https://cdn.simpleicons.org/binance',
@@ -45,7 +64,7 @@ function safeLogoUrl(value?: string | null) {
 export function resolvePlatformLogoUrl(name: string, explicitLogoUrl?: string | null) {
   const explicit = safeLogoUrl(explicitLogoUrl);
   if (explicit) return explicit;
-  const normalizedName = name.trim().toLocaleLowerCase('en-US');
+  const normalizedName = normalizePlatformIdentifier(name);
   const verified = VERIFIED_PLATFORM_LOGOS[normalizedName];
   if (verified) return verified;
   const domain = PLATFORM_DOMAINS[normalizedName];

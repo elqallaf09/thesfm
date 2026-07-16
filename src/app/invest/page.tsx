@@ -266,6 +266,7 @@ export default function InvestPage() {
   const [refreshingAllPrices, setRefreshingAllPrices] = useState(false);
   const [priceRefreshStatuses, setPriceRefreshStatuses] = useState<Record<string, InvestmentPriceRefreshStatus>>({});
   const [toast, setToast] = useState('');
+  const [platformLogos, setPlatformLogos] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useUrlTabState<InvestTab>({
     param: 'tab',
     values: INVEST_TAB_IDS,
@@ -691,6 +692,22 @@ export default function InvestPage() {
     .map(item => ({ investment: item, symbol: investmentSymbol(item) }))
     .filter((item): item is MarketLinkEntry => Boolean(item.symbol)), [items]);
   const liveRefreshableCount = useMemo(() => items.filter(item => investmentLinkedSymbol(item)).length, [items]);
+  useEffect(() => {
+    if (!items.some(item => item.purchasePlatformId)) return;
+    const controller = new AbortController();
+    void fetch('/api/investment-platforms?limit=50', { cache: 'no-store', signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then((payload: { items?: Array<{ id: string; logoUrl?: string | null }> } | null) => {
+        const entries = (payload?.items ?? [])
+          .filter(entry => entry.logoUrl)
+          .map(entry => [entry.id, entry.logoUrl as string] as const);
+        setPlatformLogos(Object.fromEntries(entries));
+      })
+      .catch(error => {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) setPlatformLogos({});
+      });
+    return () => controller.abort();
+  }, [items]);
   const portfolioPreview = useMemo(() => [...items]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5), [items]);
@@ -1256,6 +1273,7 @@ export default function InvestPage() {
                     onRefreshPrice={handleRefreshPrice}
                     refreshing={refreshingPriceId === item.id}
                     priceRefreshStatus={priceRefreshStatuses[item.id]}
+                    platformLogoUrl={item.purchasePlatformId ? platformLogos[item.purchasePlatformId] : null}
                   />
                 ))}
               </div>
@@ -1390,6 +1408,7 @@ export default function InvestPage() {
               refreshingPriceId={refreshingPriceId}
               refreshingPrices={refreshingAllPrices}
               priceRefreshStatuses={priceRefreshStatuses}
+              platformLogos={platformLogos}
             />
             )}
             </PageTabPanel>

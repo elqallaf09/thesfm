@@ -1,9 +1,8 @@
 'use client';
 
 import { RefreshCw } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Investment, InvestmentType } from '@/types/investment';
-import type { InvestmentPlatformDirectoryItem } from '@/types/investmentPlatform';
 import { InvestmentRow, type InvestmentCardLabels, type InvestmentPriceRefreshStatus } from './InvestmentRow';
 
 type SortMode = 'valueDesc' | 'valueAsc' | 'monthlyDesc' | 'riskDesc' | 'newest';
@@ -40,6 +39,8 @@ interface Props {
   refreshingPriceId?: string | null;
   refreshingPrices?: boolean;
   priceRefreshStatuses?: Record<string, InvestmentPriceRefreshStatus>;
+  /** Platform-directory logos, fetched once by the page and shared with the preview panel. */
+  platformLogos?: Record<string, string>;
 }
 
 export function InvestmentList({
@@ -59,29 +60,12 @@ export function InvestmentList({
   refreshingPriceId,
   refreshingPrices = false,
   priceRefreshStatuses,
+  platformLogos = {},
 }: Props) {
   const [query, setQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | InvestmentType>('all');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [sort, setSort] = useState<SortMode>('valueDesc');
-  const [platformLogos, setPlatformLogos] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!investments.some(item => item.purchasePlatformId)) return;
-    const controller = new AbortController();
-    void fetch('/api/investment-platforms?limit=50', { cache: 'no-store', signal: controller.signal })
-      .then(response => response.ok ? response.json() : null)
-      .then((payload: { items?: InvestmentPlatformDirectoryItem[] } | null) => {
-        const entries = (payload?.items ?? [])
-          .filter(item => item.logoUrl)
-          .map(item => [item.id, item.logoUrl as string] as const);
-        setPlatformLogos(Object.fromEntries(entries));
-      })
-      .catch(error => {
-        if (!(error instanceof DOMException && error.name === 'AbortError')) setPlatformLogos({});
-      });
-    return () => controller.abort();
-  }, [investments]);
 
   const total = useMemo(() => investments.reduce((sum, item) => sum + (accountValue(item) ?? 0), 0), [accountValue, investments]);
   const platformOptions = useMemo(() => {
