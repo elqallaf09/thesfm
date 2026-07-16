@@ -5,8 +5,8 @@ Measured locally on 2026-07-16 with identical production builds and headless Chr
 ## Build output
 
 - Baseline static JavaScript on `origin/main` (`09f6356c`): 10,852,748 bytes across 620 files.
-- Phase build static JavaScript with RUM enabled: 10,915,162 bytes across 625 files.
-- Repository-wide delta, including the admin-only dashboard: 62,414 bytes uncompressed (0.575%).
+- Phase build static JavaScript with RUM enabled: 10,915,653 bytes across 625 files.
+- Repository-wide delta, including the admin-only dashboard: 62,905 bytes uncompressed (0.580%).
 - Deferred RUM chunk: 19,453 bytes uncompressed / 6,756 bytes gzip.
 - The final launch gate measured homepage initial JavaScript at 234.2 KiB gzip versus the 233.1 KiB gzip baseline; it remains below the configured 239.3 KiB budget.
 - All configured performance budgets pass after moving RUM behind the idle-loaded boundary.
