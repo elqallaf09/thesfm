@@ -23,15 +23,17 @@ describe('platform performance architecture', () => {
     expect(appLayout).not.toContain("from '@/components/AppHeader'");
   });
 
-  it('stabilizes global context values and reuses the initialized auth session for analytics', () => {
+  it('stabilizes global context values and keeps analytics independent of access credentials', () => {
     const currencyProvider = read('src/lib/useCurrency.tsx');
     const tracker = read('src/components/AnalyticsTracker.tsx');
     const analytics = read('src/lib/analytics.ts');
 
     expect(currencyProvider).toContain('useCallback((code: string)');
     expect(currencyProvider).toContain('useMemo(() => ({ currency, setCurrency })');
-    expect(tracker).toContain('accessToken: session?.access_token ?? null');
-    expect(analytics).toContain("'accessToken' in payload");
+    expect(tracker).not.toContain('access_token');
+    expect(analytics).not.toContain('access_token');
+    expect(analytics).not.toContain('supabase.auth.getSession');
+    expect(analytics).toContain('sessionStorage.getItem(SESSION_KEY)');
   });
 
   it('does not auto-prefetch every route exposed by the deferred workspace shell', () => {
