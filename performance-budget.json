@@ -1,0 +1,37 @@
+{
+  "largestClientChunkBytes": 585000,
+  "largestPublicImageBytes": 800000,
+  "builtFontTotalBytes": 380000,
+  "routes": {
+    "/": {
+      "manifestKey": "/page",
+      "initialJavaScriptGzipBytes": 245000,
+      "initialCssGzipBytes": 67000
+    },
+    "/dashboard": {
+      "manifestKey": "/dashboard/page",
+      "initialJavaScriptGzipBytes": 220000,
+      "initialCssGzipBytes": 72000
+    },
+    "/today": {
+      "manifestKey": "/today/page",
+      "initialJavaScriptGzipBytes": 240000,
+      "initialCssGzipBytes": 67000
+    },
+    "/invest": {
+      "manifestKey": "/invest/page",
+      "initialJavaScriptGzipBytes": 240000,
+      "initialCssGzipBytes": 67000
+    },
+    "/business-hub": {
+      "manifestKey": "/business-hub/page",
+      "initialJavaScriptGzipBytes": 270000,
+      "initialCssGzipBytes": 80000
+    },
+    "/market-analysis": {
+      "manifestKey": "/market-analysis/page",
+      "initialJavaScriptGzipBytes": 320000,
+      "initialCssGzipBytes": 80000
+    }
+  }
+}

@@ -250,6 +250,7 @@ export function Sidebar() {
                   const childElement = child.href ? (
                     <Link
                       href={child.href}
+                      prefetch={false}
                       className={`sfm-shared-subitem${childSelected ? ' active' : ''}`}
                       aria-current={childSelected ? 'page' : undefined}
                       aria-label={t(child.labelKey)}
@@ -294,6 +295,7 @@ export function Sidebar() {
     const element = item.href ? (
       <Link
         href={item.href}
+        prefetch={false}
         className={className}
         aria-current={selected ? 'page' : undefined}
         aria-label={accessibleLabel}
@@ -336,7 +338,7 @@ export function Sidebar() {
         <Suspense fallback={null}>
           <NavigationQueryObserver onQueryChange={setSearch} />
         </Suspense>
-        <Link href="/dashboard" className="sfm-sidebar-brand" aria-label="THE SFM">
+        <Link href="/dashboard" prefetch={false} className="sfm-sidebar-brand" aria-label="THE SFM">
           <span className="sfm-sidebar-brand-mark" aria-hidden="true">
             <Image src="/sfm-logo.png" alt="" width={39} height={39} priority />
           </span>
@@ -607,6 +609,7 @@ export function Sidebar() {
                     ) : item.href ? (
                       <Link
                         href={item.href}
+                        prefetch={false}
                         className={`sfm-shared-support-item${active ? ' active' : ''}`}
                         aria-current={active ? 'page' : undefined}
                         aria-label={t(item.labelKey)}

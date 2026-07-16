@@ -1,5 +1,6 @@
 import { getWorkspaceById, WORKSPACES } from './workspace-registry';
 import type { WorkspaceDefinition, WorkspaceId } from './workspace-types';
+export { isPublicShellRoute } from './public-shell-routes';
 
 /**
  * Centralized route → workspace resolution (phase 3).
@@ -74,24 +75,6 @@ export function isAdminWorkspaceRoute(pathname: string | null | undefined): bool
  * than) the middleware's unauthenticated allowances; it never grants
  * access, it only removes the app shell.
  */
-const PUBLIC_SHELL_EXACT = new Set([
-  '/',
-  '/login',
-  '/reset-password',
-  '/about',
-  '/contact',
-  '/terms',
-  '/privacy',
-]);
-
-const PUBLIC_SHELL_PREFIXES = ['/investor'] as const;
-
-export function isPublicShellRoute(pathname: string | null | undefined): boolean {
-  const normalized = normalizePathname(pathname);
-  if (PUBLIC_SHELL_EXACT.has(normalized)) return true;
-  return PUBLIC_SHELL_PREFIXES.some(prefix => normalized.startsWith(`${prefix}/`));
-}
-
 /**
  * Workspaces the switcher may show. Admin visibility is a courtesy filter
  * only — /sfm-admin-control stays server-validated regardless of what the

@@ -46,7 +46,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import type { AdminPermission } from '@/lib/adminPermissions';
-import { TR } from '@/lib/translations';
+import type { TR } from '@/lib/translations';
 
 export type TranslationKey = keyof typeof TR;
 

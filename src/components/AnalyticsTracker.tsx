@@ -9,7 +9,7 @@ import { moduleFromPath, trackEvent } from '@/lib/analytics';
 export function AnalyticsTracker() {
   const pathname = usePathname() || '/';
   const { lang } = useLanguage();
-  const { loading } = useAuth();
+  const { loading, session } = useAuth();
   const lastTracked = useRef('');
 
   useEffect(() => {
@@ -23,10 +23,11 @@ export function AnalyticsTracker() {
         page_title: document.title,
         module: moduleFromPath(pathname),
         language: lang,
+        accessToken: session?.access_token ?? null,
       });
     }, 250);
     return () => window.clearTimeout(timeout);
-  }, [lang, loading, pathname]);
+  }, [lang, loading, pathname, session?.access_token]);
 
   return null;
 }

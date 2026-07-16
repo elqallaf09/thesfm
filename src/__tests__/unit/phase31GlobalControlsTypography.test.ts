@@ -96,7 +96,7 @@ describe('Phase 3.1 global-controls contract', () => {
       'src/app/reset-password/page.tsx',
     ]);
 
-    const publicRouteRegistry = read('src/config/workspaces/workspace-resolver.ts');
+    const publicRouteRegistry = read('src/config/workspaces/public-shell-routes.ts');
     for (const route of ['/', '/login', '/reset-password', '/about', '/contact']) {
       expect(publicRouteRegistry).toContain(`'${route}'`);
     }

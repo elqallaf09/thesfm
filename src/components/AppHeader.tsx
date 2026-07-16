@@ -88,7 +88,7 @@ export function AppHeader() {
   return (
     <>
       <header className="sfm-global-header" dir={dir}>
-        <Link href="/dashboard" className="sfm-global-brand" aria-label="THE SFM">
+        <Link href="/dashboard" prefetch={false} className="sfm-global-brand" aria-label="THE SFM">
           <Image src="/sfm-logo.png" alt="" width={34} height={34} priority className="sfm-brand-mark sfm-brand-mark--header" />
           <span className="sfm-global-brand-copy">
             <strong>THE SFM</strong>
@@ -105,6 +105,7 @@ export function AppHeader() {
           <DensityToggle />
           <Link
             href="/notifications"
+            prefetch={false}
             className="sfm-global-notifications"
             aria-label={unreadNotifications > 0 ? `${t('nav_notif')} (${unreadNotifications})` : t('nav_notif')}
             title={t('nav_notif')}

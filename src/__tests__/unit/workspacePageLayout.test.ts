@@ -82,8 +82,8 @@ describe('workspace page layout policy', () => {
       .toEqual(new Set(['full', 'wide', 'standard', 'reading']));
   });
 
-  it('makes AppLayout the only application-shell width owner', () => {
-    const source = readFileSync(resolve(root, 'src/components/AppLayout.tsx'), 'utf8');
+  it('makes WorkspaceShell the only application-shell width owner', () => {
+    const source = readFileSync(resolve(root, 'src/components/WorkspaceShell.tsx'), 'utf8');
     expect(source).toContain('data-workspace-shell="true"');
     expect(source).toContain('<WorkspacePageContainer');
     expect(source).toContain('<Sidebar />');

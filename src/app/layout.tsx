@@ -5,7 +5,7 @@ import { DensityProvider } from '@/hooks/useDensity';
 import { Toaster } from '@/components/ui/sonner';
 import GlobalClientEffects from '@/components/GlobalClientEffects';
 import { AuthProvider } from '@/hooks/useAuth';
-import { LanguageProvider } from '@/components/LanguageProvider';
+import { AdaptiveLanguageProvider } from '@/components/AdaptiveLanguageProvider';
 import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
 import { AnalyticsTracker } from '@/components/AnalyticsTracker';
@@ -16,7 +16,7 @@ import './globals.css';
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
   variable: '--font-ibm-plex-sans-arabic',
   subsets: ['arabic', 'latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
@@ -66,14 +66,14 @@ export default function RootLayout({
           <Toaster />
           <DensityProvider>
             <AuthProvider>
-              <LanguageProvider>
+              <AdaptiveLanguageProvider>
                 <LocalizedSkipLink />
                 <CurrencyProvider>
                   <AnalyticsTracker />
                   <AppLayout>{children}</AppLayout>
                 </CurrencyProvider>
                 <GlobalClientEffects />
-              </LanguageProvider>
+              </AdaptiveLanguageProvider>
             </AuthProvider>
           </DensityProvider>
         </ThemeProvider>
