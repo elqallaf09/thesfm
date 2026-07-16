@@ -7,6 +7,7 @@ import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
+import { recordProviderMetric } from '@/lib/observability/server';
 
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'yahoo';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
@@ -294,12 +295,8 @@ function normalizeQuote(input: {
   });
   if (collisionReason) {
     console.warn('[market-data-provider] rejected quote collision', {
-      canonicalSymbol: canonicalCryptoFor(input.symbol, input.context)?.canonicalSymbol,
       assetClass: assetType,
       provider: input.provider,
-      providerSymbol: input.providerSymbol,
-      responseName: textOrNull(input.name),
-      responsePrice: rawPrice,
       rejectionReason: collisionReason,
     });
     return null;
@@ -374,9 +371,9 @@ function normalizeQuote(input: {
   };
 }
 
-function logProviderSuccess(provider: MarketDataProviderName, operation: string, symbol: string, latencyMs: number, cacheHit?: boolean) {
+function logProviderSuccess(provider: MarketDataProviderName, operation: string, _symbol: string, latencyMs: number, cacheHit?: boolean) {
   providerErrors.delete(provider);
-  console.info('[market-data-provider] success', { provider, operation, symbol, latencyMs, cacheHit: Boolean(cacheHit) });
+  console.info('[market-data-provider] success', { provider, operation, latencyMs, cacheHit: Boolean(cacheHit) });
 }
 
 function logProviderFailure(provider: MarketDataProviderName, operation: string, symbol: string, error: ProviderAttemptFailure) {
@@ -1179,24 +1176,29 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;
     }
+    const providerStarted = Date.now();
     try {
       const quote = await provider.getQuote(symbol, market, context);
       if (quote) {
         setFallback(key, quote, provider.name);
+        recordProviderMetric({ provider: provider.name, endpointClass: 'quote', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 0, cacheStatus: quote.cached ? 'hit' : 'miss', retryCount: attempts.length });
         return { ok: true, data: quote, provider: provider.name, attempts };
       }
       const failure = providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty');
       attempts.push(failure);
       logProviderFailure(provider.name, 'quote', symbol, failure);
+      recordProviderMetric({ provider: provider.name, endpointClass: 'quote', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 1, failureClass: failure.category, retryCount: attempts.length - 1 });
     } catch (error) {
       const failure = providerError(provider.name, error instanceof Error && error.name === 'TimeoutError' ? 'provider_timeout' : 'provider_error', error instanceof Error ? error.message : 'provider_error');
       attempts.push(failure);
       logProviderFailure(provider.name, 'quote', symbol, failure);
+      recordProviderMetric({ provider: provider.name, endpointClass: 'quote', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 1, failureClass: failure.category, retryCount: attempts.length - 1 });
     }
   }
   const cached = getFallback<NormalizedMarketQuote>(key, FALLBACK_QUOTE_TTL_MS);
   if (cached) {
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'quote', symbol: upper(symbol), provider: cached.provider });
+    recordProviderMetric({ provider: cached.provider, endpointClass: 'quote', assetClass: context.assetType, durationMs: 0, fallbackUsed: true, cacheStatus: 'stale', retryCount: attempts.length });
     return { ok: true, data: { ...cached.data, cached: true, delayType: 'cached' }, provider: cached.provider, attempts };
   }
   return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
@@ -1211,20 +1213,27 @@ export async function getCandlesWithFallback(symbol: string, market?: string | n
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;
     }
+    const providerStarted = Date.now();
     try {
       const candles = await provider.getCandles(symbol, market, interval, context);
       if (candles.length > 0) {
         setFallback(key, candles, provider.name);
+        recordProviderMetric({ provider: provider.name, endpointClass: 'historical_prices', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 0, cacheStatus: 'miss', retryCount: attempts.length });
         return { ok: true, data: candles, provider: provider.name, attempts };
       }
-      attempts.push(providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty'));
+      const failure = providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty');
+      attempts.push(failure);
+      recordProviderMetric({ provider: provider.name, endpointClass: 'historical_prices', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 1, failureClass: failure.category, retryCount: attempts.length - 1 });
     } catch (error) {
-      attempts.push(providerError(provider.name, 'provider_error', error instanceof Error ? error.message : 'provider_error'));
+      const failure = providerError(provider.name, 'provider_error', error instanceof Error ? error.message : 'provider_error');
+      attempts.push(failure);
+      recordProviderMetric({ provider: provider.name, endpointClass: 'historical_prices', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 1, failureClass: failure.category, retryCount: attempts.length - 1 });
     }
   }
   const cached = getFallback<NormalizedMarketCandle[]>(key, FALLBACK_CANDLES_TTL_MS);
   if (cached) {
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'historical_prices', symbol: upper(symbol), provider: cached.provider });
+    recordProviderMetric({ provider: cached.provider, endpointClass: 'historical_prices', assetClass: context.assetType, durationMs: 0, fallbackUsed: true, cacheStatus: 'stale', retryCount: attempts.length });
     return { ok: true, data: cached.data, provider: cached.provider, attempts };
   }
   return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
@@ -1239,20 +1248,27 @@ export async function getCompanyProfileWithFallback(symbol: string, market?: str
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;
     }
+    const providerStarted = Date.now();
     try {
       const profile = await provider.getCompanyProfile(symbol, market, context);
       if (profile) {
         setFallback(key, profile, provider.name);
+        recordProviderMetric({ provider: provider.name, endpointClass: 'profile', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 0, cacheStatus: 'miss', retryCount: attempts.length });
         return { ok: true, data: profile, provider: provider.name, attempts };
       }
-      attempts.push(providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty'));
+      const failure = providerError(provider.name, 'provider_returned_empty', 'provider_returned_empty');
+      attempts.push(failure);
+      recordProviderMetric({ provider: provider.name, endpointClass: 'profile', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 1, failureClass: failure.category, retryCount: attempts.length - 1 });
     } catch (error) {
-      attempts.push(providerError(provider.name, 'provider_error', error instanceof Error ? error.message : 'provider_error'));
+      const failure = providerError(provider.name, 'provider_error', error instanceof Error ? error.message : 'provider_error');
+      attempts.push(failure);
+      recordProviderMetric({ provider: provider.name, endpointClass: 'profile', assetClass: context.assetType, durationMs: Date.now() - providerStarted, fallbackUsed: attempts.length > 1, failureClass: failure.category, retryCount: attempts.length - 1 });
     }
   }
   const cached = getFallback<NormalizedCompanyProfile>(key, FALLBACK_PROFILE_TTL_MS);
   if (cached) {
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'profile', symbol: upper(symbol), provider: cached.provider });
+    recordProviderMetric({ provider: cached.provider, endpointClass: 'profile', assetClass: context.assetType, durationMs: 0, fallbackUsed: true, cacheStatus: 'stale', retryCount: attempts.length });
     return { ok: true, data: cached.data, provider: cached.provider, attempts };
   }
   return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
