@@ -50,6 +50,7 @@
 - The currency context value and setter are stable, preventing unrelated consumers from rerendering when an ancestor rerenders.
 - The unused IBM Plex Sans Arabic 300 weight was removed; all weights referenced by production CSS remain loaded.
 - CI now blocks route/chunk/font/image budget regressions and runs Lighthouse three times plus the cross-browser performance regression suite.
+- Lighthouse CI uses three-run medians with GitHub-hosted-runner guardrails of performance >= 0.70, LCP <= 7.0 s, TBT <= 300 ms, CLS <= 0.05, and accessibility >= 0.98. These environment-specific regression limits are separate from the same-host before/after measurements above.
 
 ## Images, memory, and deferred work
 
