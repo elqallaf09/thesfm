@@ -152,7 +152,7 @@ async function openMarketCommandCenter(page: Page, path = '/market-analysis') {
   const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
   await expect(page).toHaveURL(new RegExp(`/market-analysis(?:[?#]|$)`));
-  await expect(page.locator('#market-command-center-title')).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('#market-command-center-title:visible')).toBeVisible({ timeout: 45_000 });
   await expect(page.locator('nav[data-command-group][data-active-tab]')).toBeVisible();
 }
 
@@ -374,7 +374,7 @@ test.describe('Phase 4.1A Market Command Center foundation', () => {
 
     for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
-      await expect(page.locator('#market-command-center-title')).toBeVisible();
+      await expect(page.locator('#market-command-center-title:visible')).toBeVisible();
       await expect(page.locator('#market-asset-search')).toBeVisible();
       await expectNoHorizontalOverflow(page);
     }

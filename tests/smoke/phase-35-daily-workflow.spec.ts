@@ -44,7 +44,7 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
     await expect(page).toHaveURL(/\/dashboard(?:\?|$)/, { timeout: 25_000 });
     await page.goto('/reports', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/reports-center(?:\?|$)/);
-    await expect(page.locator('.reports-center-main')).toBeVisible();
+    await expect(page.locator('.reports-center-main:visible')).toBeVisible();
     await expect(page.locator('.reports-layout')).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
@@ -57,7 +57,7 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
     for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: width <= 430 ? 844 : 900 });
       await page.goto('/reports-center', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('.reports-center-main')).toBeVisible();
+      await expect(page.locator('.reports-center-main:visible')).toBeVisible();
       await expectNoHorizontalOverflow(page);
     }
   });
