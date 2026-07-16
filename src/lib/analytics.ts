@@ -32,6 +32,7 @@ type TrackPayload = {
   referrer?: string;
   language?: string;
   metadata?: Record<string, unknown>;
+  accessToken?: string | null;
 };
 
 const SESSION_KEY = 'sfm_analytics_session_id';
@@ -137,7 +138,9 @@ export async function trackEvent(eventType: AnalyticsEventType, payload: TrackPa
   if (window.location.pathname.startsWith('/sfm-admin-control')) return;
 
   const ua = navigator.userAgent || '';
-  const sessionResult = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+  const accessToken = 'accessToken' in payload
+    ? payload.accessToken ?? null
+    : (await supabase.auth.getSession().catch(() => ({ data: { session: null } }))).data.session?.access_token ?? null;
   const body = {
     event_type: eventType,
     session_id: getAnalyticsSessionId(),
@@ -152,7 +155,7 @@ export async function trackEvent(eventType: AnalyticsEventType, payload: TrackPa
     os: operatingSystem(ua),
     operating_system: operatingSystem(ua),
     metadata: sanitizeMetadata(payload.metadata),
-    access_token: sessionResult.data.session?.access_token ?? null,
+    access_token: accessToken,
   };
 
   const serializedBody = JSON.stringify(body);
