@@ -386,7 +386,9 @@ html {
   scroll-behavior:smooth;
   -webkit-text-size-adjust:100%;
   max-width:100%;
-  overflow-x:hidden;
+  /* clip (not hidden): hidden turns body into a scroll container, which
+     silently disables position:sticky for the global header and sidebar. */
+  overflow-x:clip;
 }
 
 body {
@@ -400,7 +402,8 @@ body {
   direction:inherit;
   max-width:100%;
   min-width:0;
-  overflow-x:hidden;
+  /* clip (not hidden): keeps sticky chrome working; see html note above. */
+  overflow-x:clip;
   overscroll-behavior-x:none;
 }
 
