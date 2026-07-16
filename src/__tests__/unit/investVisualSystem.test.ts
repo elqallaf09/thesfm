@@ -73,10 +73,17 @@ describe('investments visual system', () => {
     expect(investmentRow).toContain('labels.moreActions');
   });
 
-  it('exposes the complete premium expansion without manufacturing financial records', () => {
-    for (const label of ['aiSummary', 'allocation', 'performance', 'dividends', 'notes', 'attachments', 'brokerNotes', 'transactions', 'priceHistory', 'documents']) {
+  it('keeps the expansion focused on real data without manufacturing financial records', () => {
+    // The refined expansion only renders sections that carry real content:
+    // overview, price history, allocation, performance, plus conditional
+    // notes/data-source. Placeholder-only sections were removed on purpose.
+    for (const label of ['overview', 'allocation', 'performance', 'notes', 'priceHistory', 'dataSource']) {
       expect(investmentRow).toContain(`labels.${label}`);
     }
+    for (const removedPlaceholder of ['labels.aiSummary', 'labels.dividends', 'labels.attachments', 'labels.brokerNotes', 'labels.transactions', 'labels.documents']) {
+      expect(investmentRow).not.toContain(removedPlaceholder);
+    }
+    expect(investmentRow).toContain('investment.notes ? (');
     expect(investmentRow).toContain('labels.noData');
     expect(investmentRow).not.toMatch(/Math\.random|mock|samplePrice|fake/i);
     expect(investmentRow).toContain("range: '1M'");
