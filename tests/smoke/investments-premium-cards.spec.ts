@@ -83,7 +83,7 @@ test('compact card preserves identity, financial hierarchy, accessible actions, 
   await expect(card).toBeVisible();
   await expect(card.locator('.invest-asset-lens .asset-avatar')).toBeVisible();
   await expect(card.locator('.invest-platform-identity')).toContainText('Interactive Brokers');
-  await expect(card.locator('.invest-holding-metric')).toHaveCount(2);
+  await expect(card.locator('.invest-holding-metric')).toHaveCount(3);
   await expect(card.locator('.invest-holding-metric').first().locator('strong')).toContainText('771.000');
   await expect(card.locator('.invest-expanded-section')).toHaveCount(0);
   await expect(card.getByRole('button', { name: 'View details' })).toBeVisible();
@@ -108,12 +108,19 @@ test('compact card preserves identity, financial hierarchy, accessible actions, 
   await expect(expand).toHaveAttribute('aria-controls', /.+/);
   await expand.click();
   await expect(card.getByRole('button', { name: 'Collapse card details' })).toHaveAttribute('aria-expanded', 'true');
-  for (const heading of ['Asset overview', 'AI summary', 'Allocation', 'Performance', 'Dividends', 'Notes', 'Attachments', 'Broker notes', 'Transactions', 'Price history', 'Documents']) {
+  for (const heading of ['Asset overview', 'Price history', 'Allocation', 'Performance', 'Notes']) {
     await expect(card.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
+  // Placeholder-only sections were removed by the UX refinement pass:
+  // the expansion now renders sections that carry real content only.
+  for (const removedHeading of ['AI summary', 'Dividends', 'Attachments', 'Broker notes', 'Transactions', 'Documents']) {
+    await expect(card.getByRole('heading', { name: removedHeading, exact: true })).toHaveCount(0);
+  }
   await expect(card.getByText('Historical prices are unavailable from the data provider')).toBeVisible();
-  await expect(card.getByText('Average cost')).toBeVisible();
-  await expect(card.getByText('Today change')).toBeVisible();
+  await expect(card.getByText('Current price')).toBeVisible();
+  await expect(card.getByText('Purchase price')).toBeVisible();
+  await expect(card.getByText('Average cost')).toHaveCount(0);
+  await expect(card.getByText('Today change')).toHaveCount(0);
   expect(historyRequests).toBe(1);
 
   await card.getByRole('button', { name: 'Collapse card details' }).click();
