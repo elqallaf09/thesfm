@@ -8,8 +8,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
-  UserRound,
+  CircleUser,
+  LifeBuoy,
 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
@@ -222,7 +222,7 @@ export function Sidebar() {
           aria-controls={nestedId}
           aria-label={t(item.labelKey)}
         >
-          <span className="sfm-shared-icon" aria-hidden="true"><NavIcon size={18} /></span>
+          <span className="sfm-shared-icon" aria-hidden="true"><NavIcon size={18} strokeWidth={1.75} /></span>
           <span className="sfm-shared-label">{t(item.labelKey)}</span>
           <ChevronDown className="sfm-nested-chevron" size={15} aria-hidden="true" />
         </button>
@@ -243,7 +243,7 @@ export function Sidebar() {
                   const childSelected = child.id === selectedItemId;
                   const content = (
                     <>
-                      <span className="sfm-shared-subitem-icon" aria-hidden="true"><ChildIcon size={18} /></span>
+                      <span className="sfm-shared-subitem-icon" aria-hidden="true"><ChildIcon size={18} strokeWidth={1.75} /></span>
                       <span className="sfm-shared-subitem-label">{t(child.labelKey)}</span>
                     </>
                   );
@@ -279,7 +279,7 @@ export function Sidebar() {
 
     const content = (
       <>
-        <span className="sfm-shared-icon" aria-hidden="true"><NavIcon size={18} /></span>
+        <span className="sfm-shared-icon" aria-hidden="true"><NavIcon size={18} strokeWidth={1.75} /></span>
         <span className="sfm-shared-label">{t(item.labelKey)}</span>
         {item.id === 'notif' && unreadNotifications > 0 ? (
           <span className="sfm-shared-badge" aria-hidden="true">
@@ -395,8 +395,10 @@ export function Sidebar() {
           .sfm-shared-item.active::before,.sfm-shared-subitem.active::before,.sfm-shared-support-item.active::before{content:"";position:absolute;inset-inline-start:0;inset-block:5px;width:3px;border-radius:var(--radius-pill);background:var(--sidebar-active-indicator);box-shadow:var(--sidebar-glass-glow)}
           .sfm-shared-item-parent.expanded{background:var(--sidebar-item-bg);color:var(--sidebar-item-text);border-color:var(--sidebar-item-border);box-shadow:var(--sidebar-item-shadow);font-weight:var(--type-navigation-weight)}
           .sfm-shared-item.danger:hover,.sfm-shared-item.danger:focus-visible{background:var(--danger-soft);color:var(--danger)}
-          .sfm-shared-icon,.sfm-shared-subitem-icon,.sfm-shared-support-icon{width:22px;height:22px;display:grid;place-items:center;flex:0 0 22px;color:var(--sidebar-icon);transition:color var(--duration-fast) var(--ease)}
+          .sfm-shared-icon{width:36px;height:36px;display:grid;place-items:center;flex:0 0 36px;border-radius:var(--radius-sm);background:var(--sidebar-icon-chip-bg);color:var(--sidebar-icon);transition:color var(--duration-fast) var(--ease),background-color var(--duration-fast) var(--ease)}
+          .sfm-shared-subitem-icon,.sfm-shared-support-icon{width:22px;height:22px;display:grid;place-items:center;flex:0 0 22px;color:var(--sidebar-icon);transition:color var(--duration-fast) var(--ease)}
           .sfm-shared-item.active .sfm-shared-icon,.sfm-shared-subitem.active .sfm-shared-subitem-icon,.sfm-shared-support-item.active .sfm-shared-support-icon{color:var(--sidebar-icon-active)}
+          .sfm-shared-item.active .sfm-shared-icon{background:var(--sidebar-icon-chip-bg-active)}
           .sfm-shared-label,.sfm-shared-subitem-label,.sfm-shared-support-label{min-width:0;flex:1;overflow-wrap:anywhere;hyphens:auto}
           .sfm-shared-badge{min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0 5px;border:1px solid color-mix(in srgb,var(--primary) 24%,var(--sidebar-border));border-radius:var(--radius-pill);background:var(--sidebar-active);color:var(--sidebar-active-foreground);font-family:var(--font-data);font-size:12px;font-weight:600;line-height:1;direction:ltr;unicode-bidi:isolate}
           .sfm-nested-chevron,.sfm-group-chevron,.sfm-shared-global-toggle .sfm-chevron{margin-inline-start:auto;flex:0 0 auto;color:var(--sidebar-icon);transition:transform var(--duration-fast) var(--ease)}
@@ -440,10 +442,20 @@ export function Sidebar() {
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-global-group,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-support{padding:3px;border-radius:var(--radius-control)}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-global-toggle{width:44px;height:44px;min-height:44px;justify-content:center;margin-inline:auto;padding:0}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-global-toggle>span:not(.sfm-shared-global-icon),.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-global-toggle .sfm-chevron{display:none}
+          @keyframes sfmSidebarItemIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+          .sfm-shared-group-items>.sfm-shared-item-wrap{animation:sfmSidebarItemIn .32s var(--ease) both}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(1){animation-delay:.03s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(2){animation-delay:.06s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(3){animation-delay:.09s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(4){animation-delay:.12s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(5){animation-delay:.15s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(6){animation-delay:.18s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(7){animation-delay:.21s}
+          .sfm-shared-group-items>.sfm-shared-item-wrap:nth-child(n+8){animation-delay:.24s}
           @media(max-width:767px){.sfm-shared-sidebar{display:none}}
           @supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){.sfm-shared-sidebar{background:var(--sidebar-glass-bg-fallback)}}
           @media(prefers-reduced-transparency:reduce){.sfm-shared-sidebar{background:var(--sidebar-glass-bg-fallback);-webkit-backdrop-filter:none;backdrop-filter:none}}
-          @media(prefers-reduced-motion:reduce){.sfm-shared-sidebar,.sfm-sidebar-collapse,.sfm-shared-group-toggle,.sfm-shared-global-toggle,.sfm-shared-item,.sfm-shared-subitem,.sfm-shared-support-item,.sfm-shared-icon,.sfm-shared-subitem-icon,.sfm-shared-support-icon,.sfm-shared-disclosure,.sfm-nested-chevron,.sfm-group-chevron,.sfm-chevron{transition:none!important}}
+          @media(prefers-reduced-motion:reduce){.sfm-shared-sidebar,.sfm-sidebar-collapse,.sfm-shared-group-toggle,.sfm-shared-global-toggle,.sfm-shared-item,.sfm-shared-subitem,.sfm-shared-support-item,.sfm-shared-icon,.sfm-shared-subitem-icon,.sfm-shared-support-icon,.sfm-shared-disclosure,.sfm-nested-chevron,.sfm-group-chevron,.sfm-chevron{transition:none!important}.sfm-shared-group-items>.sfm-shared-item-wrap{animation:none!important}}
         `}</style>
 
         <div className="sfm-shared-tools">
@@ -539,7 +551,7 @@ export function Sidebar() {
                         ? current.filter(id => id !== group.id)
                         : [...current, group.id])}
                   >
-                    <span className="sfm-shared-global-icon" aria-hidden="true"><UserRound size={18} /></span>
+                    <span className="sfm-shared-global-icon" aria-hidden="true"><CircleUser size={18} strokeWidth={1.75} /></span>
                     <span>{t(group.labelKey)}</span>
                     <ChevronDown className="sfm-chevron" size={15} aria-hidden="true" />
                   </button>
@@ -564,7 +576,7 @@ export function Sidebar() {
                 aria-controls="sfm-sidebar-group-support"
                 onClick={() => collapsed ? setCollapsed(false) : setSupportOpen(current => !current)}
               >
-                <span className="sfm-shared-global-icon" aria-hidden="true"><CircleHelp size={18} /></span>
+                <span className="sfm-shared-global-icon" aria-hidden="true"><LifeBuoy size={18} strokeWidth={1.75} /></span>
                 <span>{t('nav_group_support')}</span>
                 <ChevronDown className="sfm-chevron" size={15} aria-hidden="true" />
               </button>
@@ -577,7 +589,7 @@ export function Sidebar() {
                     const SupportIcon = item.icon;
                     const content = (
                       <>
-                        <span className="sfm-shared-support-icon" aria-hidden="true"><SupportIcon size={18} /></span>
+                        <span className="sfm-shared-support-icon" aria-hidden="true"><SupportIcon size={18} strokeWidth={1.75} /></span>
                         <span className="sfm-shared-support-label">
                           <span>{t(item.labelKey)}</span>
                           {item.caption ? <small>{item.caption}</small> : null}

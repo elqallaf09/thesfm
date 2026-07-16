@@ -8,16 +8,19 @@ import {
   BriefcaseBusiness,
   Building2,
   Calculator,
+  CalendarClock,
   CalendarDays,
   CircleHelp,
   CircleDollarSign,
-  ClipboardList,
+  CircleUser,
   Compass,
   CreditCard,
+  FileBarChart,
   FileSearch,
   FileText,
   Files,
   FolderKanban,
+  HandCoins,
   HandHeart,
   HeartHandshake,
   Info,
@@ -26,17 +29,19 @@ import {
   LayoutDashboard,
   Library,
   LineChart,
+  ListChecks,
   LogOut,
   Mail,
   Newspaper,
   PiggyBank,
   Presentation,
-  ReceiptText,
+  Receipt,
+  Scale,
   ShieldCheck,
+  Sparkles,
   Target,
   Terminal,
   TrendingUp,
-  UserRound,
   UsersRound,
   Wallet,
 } from 'lucide-react';
@@ -49,7 +54,7 @@ export type NavigationAction = 'logout';
 
 export type NavigationItem = {
   id: string;
-  icon: ComponentType<{ size?: number }>;
+  icon: ComponentType<{ size?: number; strokeWidth?: number | string }>;
   href?: string;
   labelKey: TranslationKey;
   action?: NavigationAction;
@@ -78,12 +83,12 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
       { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today' },
-      { id: 'reports-center', icon: FileText, href: '/reports-center', labelKey: 'nav_reports_center' },
-      { id: 'decisions', icon: Landmark, href: '/decisions', labelKey: 'nav_decisions' },
+      { id: 'reports-center', icon: FileBarChart, href: '/reports-center', labelKey: 'nav_reports_center' },
+      { id: 'decisions', icon: Scale, href: '/decisions', labelKey: 'nav_decisions' },
       { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories' },
       { id: 'ebooks', icon: Library, href: '/ebooks', labelKey: 'nav_ebooks' },
       { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center' },
-      { id: 'tasks', icon: ClipboardList, href: '/tasks', labelKey: 'nav_tasks' },
+      { id: 'tasks', icon: ListChecks, href: '/tasks', labelKey: 'nav_tasks' },
     ],
   },
   {
@@ -93,11 +98,11 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income' },
       {
         id: 'expenses',
-        icon: ReceiptText,
+        icon: Receipt,
         labelKey: 'nav_expenses',
         children: [
-          { id: 'expenses-overview', icon: ReceiptText, href: '/expenses', labelKey: 'nav_expenses' },
-          { id: 'monthly-subscriptions', icon: CreditCard, href: '/expenses/monthly-subscriptions', labelKey: 'nav_monthly_subscriptions' },
+          { id: 'expenses-overview', icon: Receipt, href: '/expenses', labelKey: 'nav_expenses' },
+          { id: 'monthly-subscriptions', icon: CalendarClock, href: '/expenses/monthly-subscriptions', labelKey: 'nav_monthly_subscriptions' },
         ],
       },
       {
@@ -115,7 +120,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_financial_ai',
     defaultOpen: true,
     items: [
-      { id: 'smart-assistant', icon: Bot, href: '/ai', labelKey: 'nav_smart_assistant' },
+      { id: 'smart-assistant', icon: Sparkles, href: '/ai', labelKey: 'nav_smart_assistant' },
     ],
   },
   {
@@ -172,7 +177,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     id: 'charity',
     labelKey: 'nav_group_charity',
     items: [
-      { id: 'zakat', icon: Calculator, href: '/zakat', labelKey: 'nav_zakat' },
+      { id: 'zakat', icon: HandCoins, href: '/zakat', labelKey: 'nav_zakat' },
       { id: 'khums', icon: Landmark, href: '/khums', labelKey: 'nav_khums' },
       { id: 'charity', icon: HandHeart, href: '/charity', labelKey: 'nav_charity' },
       { id: 'charity-projects', icon: HeartHandshake, href: '/charity-projects', labelKey: 'nav_charity_projects' },
@@ -209,7 +214,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_account',
     defaultOpen: true,
     items: [
-      { id: 'profile', icon: UserRound, href: '/profile', labelKey: 'nav_profile' },
+      { id: 'profile', icon: CircleUser, href: '/profile', labelKey: 'nav_profile' },
       { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout' },
     ],

@@ -10,6 +10,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { CommandMenuButton } from '@/components/CommandMenuButton';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DensityToggle } from '@/components/DensityToggle';
@@ -26,6 +27,7 @@ export function AppHeader() {
   const { dir, t } = useLanguage();
   const { user } = useAuth();
   const { access: adminAccess } = useAdminAccess(user?.id);
+  const unreadNotifications = useUnreadNotifications(user?.id);
   const [open, setOpen] = useState(false);
   const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
   const [mobileMenuReady, setMobileMenuReady] = useState(false);
@@ -105,10 +107,11 @@ export function AppHeader() {
             href="/notifications"
             prefetch={false}
             className="sfm-global-notifications"
-            aria-label={t('nav_notif')}
+            aria-label={unreadNotifications > 0 ? `${t('nav_notif')} (${unreadNotifications})` : t('nav_notif')}
             title={t('nav_notif')}
           >
             <Bell size={18} aria-hidden="true" />
+            {unreadNotifications > 0 ? <span className="sfm-global-bell-dot" aria-hidden="true" /> : null}
           </Link>
           <UserChip />
           <button
@@ -147,9 +150,26 @@ export function AppHeader() {
           padding: 8px clamp(12px, 1.5vw, 24px);
           border-bottom: 1px solid var(--border);
           background: var(--surface);
+          background: var(--header-glass-bg);
+          -webkit-backdrop-filter: blur(14px) saturate(120%);
+          backdrop-filter: blur(14px) saturate(120%);
           color: var(--foreground);
           box-shadow: var(--shadow-xs);
           font-family: var(--font-ui);
+        }
+
+        @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+          .sfm-global-header {
+            background: var(--surface);
+          }
+        }
+
+        @media (prefers-reduced-transparency: reduce) {
+          .sfm-global-header {
+            background: var(--surface);
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+          }
         }
 
         .sfm-global-brand {
@@ -245,6 +265,7 @@ export function AppHeader() {
 
         .sfm-global-notifications,
         .sfm-global-menu-button {
+          position: relative;
           width: 44px;
           height: 44px;
           min-width: 44px;
@@ -256,14 +277,26 @@ export function AppHeader() {
           color: var(--foreground-secondary);
           text-decoration: none;
           cursor: pointer;
-          transition: background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out;
+          transition: background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform var(--duration-fast) ease-out;
         }
 
         .sfm-global-notifications:hover,
         .sfm-global-menu-button:hover {
           border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-          background: var(--sidebar-hover);
+          background: var(--primary-soft);
           color: var(--primary);
+          transform: translateY(-1px);
+        }
+
+        .sfm-global-bell-dot {
+          position: absolute;
+          inset-block-start: 7px;
+          inset-inline-end: 7px;
+          width: 10px;
+          height: 10px;
+          border: 2px solid var(--surface);
+          border-radius: var(--radius-circle);
+          background: var(--danger);
         }
 
         .sfm-global-notifications:focus-visible,

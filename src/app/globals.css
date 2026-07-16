@@ -5633,6 +5633,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 /* Financial and market data opt into mono after every legacy UI font rule, so
    equal-specificity input and component declarations cannot override it. */
 body :is(
+  .num,
   .font-mono,
   .font-mono *,
   [data-financial-value],
@@ -5652,6 +5653,14 @@ body :is(
   font-family: var(--font-data) !important;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
+  unicode-bidi: isolate;
+}
+
+/* Numbers are always Latin digits, formatted by <Num/> (Intl.NumberFormat
+   'en-US') and displayed LTR inside their own element so surrounding RTL
+   copy keeps its direction. */
+.num {
+  direction: ltr;
   unicode-bidi: isolate;
 }
 

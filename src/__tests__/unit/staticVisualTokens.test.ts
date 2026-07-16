@@ -11,10 +11,10 @@ describe('static visual-token adapter', () => {
     const adapter = read('src/styles/static-tokens.ts');
     const manifest = read('src/app/manifest.ts');
 
-    expect(themes).toContain('--background: #FFFFFF;');
-    expect(themes).toContain('--foreground: #0B172A;');
-    expect(adapter).toContain("background: '#FFFFFF'");
-    expect(adapter).toContain("foreground: '#0B172A'");
+    expect(themes).toContain('--background: #F7F8FE;');
+    expect(themes).toContain('--foreground: #14183A;');
+    expect(adapter).toContain("background: '#F7F8FE'");
+    expect(adapter).toContain("foreground: '#14183A'");
     expect(manifest).toContain('STATIC_LIGHT_VISUAL_TOKENS.background');
     expect(manifest).toContain('STATIC_LIGHT_VISUAL_TOKENS.foreground');
     expect(manifest).not.toMatch(/#[0-9a-f]{3,8}\b/i);
@@ -34,10 +34,10 @@ describe('static visual-token adapter', () => {
 
     for (const [name, value] of [
       ['surface', '#FFFFFF'],
-      ['foregroundSecondary', '#344258'],
-      ['foregroundMuted', '#5D6B80'],
-      ['border', '#DDE3EC'],
-      ['primary', '#155EEF'],
+      ['foregroundSecondary', '#3A4160'],
+      ['foregroundMuted', '#5B6178'],
+      ['border', '#E9EBF7'],
+      ['primary', '#4F46E5'],
       ['primaryForeground', '#FFFFFF'],
     ]) {
       expect(adapter).toContain(`${name}: '${value}'`);

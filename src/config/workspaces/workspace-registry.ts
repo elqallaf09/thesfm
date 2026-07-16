@@ -1,4 +1,4 @@
-import { Building2, CandlestickChart, ShieldCheck, Wallet } from 'lucide-react';
+import { Briefcase, CandlestickChart, ShieldCheck, Wallet } from 'lucide-react';
 import type { WorkspaceDefinition, WorkspaceId } from './workspace-types';
 
 /**
@@ -69,7 +69,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
       en: 'Projects, business operations, investment offers, companies, and services.',
       fr: 'Projets, opérations, offres d’investissement, entreprises et services.',
     },
-    icon: Building2,
+    icon: Briefcase,
     defaultRoute: '/business-hub',
     guestDefaultRoute: '/investment-companies',
     routePrefixes: [
