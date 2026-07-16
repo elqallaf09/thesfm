@@ -120,6 +120,35 @@
   --global-header-height: 64px;
 
   /*
+   * Variant 03 floating global header geometry.
+   * The header is a rounded, inset "card" that stays sticky. Consumers of the
+   * shell (sidebar offset, content min-height) must reserve the FULL occupied
+   * band — content height plus the top inset and the bottom gap — via
+   * --app-header-height, not the bare content height. The calc references the
+   * live --global-header-height so the responsive two-row override recomputes
+   * automatically.
+   */
+  --app-header-inset-block: 10px;
+  --app-header-inset-inline: clamp(10px, 1.4vw, 18px);
+  --app-header-gap-block: 10px;
+  --app-header-height: calc(
+    var(--global-header-height) + var(--app-header-inset-block) + var(--app-header-gap-block)
+  );
+
+  /*
+   * Semantic z-index layers. Prefer these over scattered magic numbers so the
+   * header, sidebar, and overlays keep a predictable stacking order across the
+   * app (dialogs/menus/toasts must always clear the sticky chrome).
+   */
+  --z-content: 1;
+  --z-sidebar: 50;
+  --z-header: 100;
+  --z-dropdown: 1000;
+  --z-drawer: 1100;
+  --z-dialog: 1200;
+  --z-toast: 1300;
+
+  /*
    * Workspace content geometry.
    *
    * The application shell owns the available inline size; page content only
@@ -161,3 +190,5 @@
   --sidebar-mobile-glass-filter: blur(14px) saturate(118%);
   --sidebar-item-hover-lift: -1px;
 }
+
+/* Vercel preview trigger: Variant 03 verified */

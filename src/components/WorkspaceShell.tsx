@@ -48,7 +48,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           display: grid;
           grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
           align-items: start;
-          min-height: calc(100dvh - var(--global-header-height));
+          min-height: calc(100dvh - var(--app-header-height));
           transition: grid-template-columns var(--duration-fast) var(--ease);
         }
 
@@ -68,7 +68,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         @media (max-width: 767px) {
           .sfm-app-shell-grid {
             grid-template-columns: minmax(0, 1fr);
-            min-height: calc(100dvh - var(--global-header-height));
+            min-height: calc(100dvh - var(--app-header-height));
           }
 
           .sfm-app-sidebar-slot {
