@@ -9,7 +9,7 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import type { InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
 import { EmptyState } from '@/components/invest/EmptyState';
-import { MarketLinkPanel, type MarketLinkEntry } from '@/components/invest/MarketLinkPanel';
+import type { MarketLinkEntry } from '@/components/invest/MarketLinkPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -57,6 +57,14 @@ const InvestmentFormModal = dynamic(
 const InvestmentDetailDrawer = dynamic(
   () => import('@/components/invest/InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer),
   { ssr: false },
+);
+
+const MarketLinkPanel = dynamic(
+  () => import('@/components/invest/MarketLinkPanel').then(mod => mod.MarketLinkPanel),
+  {
+    ssr: false,
+    loading: () => <div className="invest-market-rows invest-list-skeleton" aria-hidden="true" />,
+  },
 );
 
 const ConfirmDeleteModal = dynamic(
