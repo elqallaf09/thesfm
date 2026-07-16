@@ -314,3 +314,75 @@ test('light, dark, Arabic, and French card surfaces retain direction and boundar
 
   expect(surfaceColors.size).toBeGreaterThanOrEqual(2);
 });
+
+test('sticky shell, single asset visual, verified zad logo, and dialog stacking survive scroll', async ({ page }, testInfo) => {
+  const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+
+  const zadInvestment: Investment = {
+    ...sampleInvestments[0],
+    id: 'regression-zad-nvda',
+    name: 'NVIDIA Corporation',
+    symbol: 'NVDA',
+    providerSymbol: 'NVDA',
+    market: 'NASDAQ',
+    purchasePlatformId: undefined,
+    purchasePlatformName: 'zad',
+  };
+  await enterPremiumPortfolio(page, 1440, { investments: [zadInvestment] });
+
+  const card = page.locator('.invest-holding-card').filter({ hasText: 'NVIDIA Corporation' });
+  await expect(card).toBeVisible();
+
+  // Exactly one asset visual: once the verified logo loads, the fallback
+  // icon/monogram must leave the avatar entirely.
+  const avatar = card.locator('.invest-asset-lens .asset-avatar');
+  await expect(avatar.locator('img')).toHaveCount(1);
+  await expect(avatar.locator('svg')).toHaveCount(0);
+
+  // ZAD identifier variants resolve to the verified platform logo.
+  const platformLogo = card.locator('.invest-platform-logo');
+  await expect(platformLogo).toHaveAttribute('data-fallback', 'false');
+  await expect(platformLogo.locator('img')).toHaveCount(1);
+
+  const isMobileProject = testInfo.project.name.includes('mobile');
+  if (!isMobileProject) {
+    // Sticky chrome: after scrolling, the header hugs the viewport top, the
+    // sidebar stays fully in view below it, and content never sits under it.
+    await page.evaluate(() => window.scrollTo(0, 900));
+    await page.waitForTimeout(400);
+    const chrome = await page.evaluate(() => {
+      const header = document.querySelector('.sfm-global-header')?.getBoundingClientRect();
+      const sidebar = document.querySelector('.sfm-shared-sidebar')?.getBoundingClientRect();
+      const main = document.querySelector('main.invest-main')?.getBoundingClientRect();
+      return {
+        scrolled: window.scrollY,
+        headerTop: header ? Math.round(header.top) : null,
+        sidebarTop: sidebar ? Math.round(sidebar.top) : null,
+        sidebarBottom: sidebar ? Math.round(sidebar.bottom) : null,
+        overlap: main && sidebar
+          ? Math.max(0, Math.min(main.right, sidebar.right) - Math.max(main.left, sidebar.left))
+          : 0,
+        viewport: window.innerHeight,
+      };
+    });
+    expect(chrome.scrolled).toBeGreaterThan(0);
+    expect(chrome.headerTop).toBe(0);
+    expect(chrome.sidebarTop).toBeGreaterThanOrEqual(64);
+    expect(chrome.sidebarBottom).toBeLessThanOrEqual(chrome.viewport + 1);
+    expect(chrome.overlap).toBeLessThanOrEqual(1);
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
+
+  // The details dialog backdrop must stack above the sticky header so the
+  // dark overlay always covers chrome uniformly, never cards behind chrome.
+  await card.getByRole('button', { name: 'View details' }).click();
+  const stacking = await page.evaluate(() => ({
+    overlay: Number(getComputedStyle(document.querySelector('.invest-overlay')!).zIndex),
+    header: Number(getComputedStyle(document.querySelector('.sfm-global-header')!).zIndex),
+  }));
+  expect(stacking.overlay).toBeGreaterThan(stacking.header);
+  await page.locator('.invest-drawer .invest-icon-btn').click();
+  await expect(page.locator('.invest-overlay')).toHaveCount(0);
+});

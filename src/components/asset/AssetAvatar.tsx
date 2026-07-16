@@ -142,7 +142,10 @@ export function AssetAvatar({
       title={decorative ? undefined : meta.alt}
       dir="ltr"
     >
-      {fallback}
+      {/* Exactly one visual: the fallback icon/flags render only until a real
+          logo has loaded, because most logos are transparent images that would
+          otherwise show the fallback through them. */}
+      {(!showImage || !imageLoaded) && fallback}
       {showImage && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
