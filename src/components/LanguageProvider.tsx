@@ -1,9 +1,14 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
 import { trackEvent } from '@/lib/analytics';
+import {
+  LanguageContext,
+  useLang,
+  type LanguageContextValue,
+} from '@/components/LanguageContext';
 
 const STORAGE_KEY = 'sfm_lang';
 const LANG_EVENT = 'sfm-language-change';
@@ -22,26 +27,6 @@ function readStoredLang(): Lang {
     return 'ar';
   }
 }
-
-interface LangCtx {
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  t: (key: keyof typeof TR) => string;
-  dir: 'rtl' | 'ltr';
-  isAr: boolean;
-  isEn: boolean;
-  isFr: boolean;
-}
-
-const Ctx = createContext<LangCtx>({
-  lang: 'ar',
-  setLang: () => {},
-  t: k => String(k),
-  dir: 'rtl',
-  isAr: true,
-  isEn: false,
-  isFr: false,
-});
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('ar');
@@ -96,7 +81,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const tFn = useCallback((key: keyof typeof TR) => translate(key, lang), [lang]);
 
-  const value = useMemo<LangCtx>(() => ({
+  const value = useMemo<LanguageContextValue>(() => ({
     lang,
     setLang,
     t: tFn,
@@ -107,12 +92,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }), [lang, setLang, tFn]);
 
   return (
-    <Ctx.Provider value={value}>
+    <LanguageContext.Provider value={value}>
       {children}
-    </Ctx.Provider>
+    </LanguageContext.Provider>
   );
 }
 
-export function useLang() {
-  return useContext(Ctx);
-}
+export { useLang };

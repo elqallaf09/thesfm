@@ -16,6 +16,7 @@ const sidebar = read('src/components/Sidebar.tsx');
 const mobile = read('src/components/MobileMenu.tsx');
 const header = read('src/components/AppHeader.tsx');
 const appLayout = read('src/components/AppLayout.tsx');
+const workspaceShell = read('src/components/WorkspaceShell.tsx');
 const commandButton = read('src/components/CommandMenuButton.tsx');
 const commandMenu = read('src/components/CommandMenu.tsx');
 const lazyCommandMenu = read('src/components/LazyCommandMenu.tsx');
@@ -231,8 +232,10 @@ describe('Phase 3.3 mobile drawer semantics and performance', () => {
   it('keeps all drawer navigation targets at 44px and avoids duplicate mounted trees after hydration', () => {
     expect(mobile).toContain('min-height:var(--control-h)');
     expect(mobile).toContain('body.sfm-mobile-lock .sfm-language-option{min-height:var(--control-h)}');
-    expect(appLayout).toContain('{!isMobile && (');
-    expect(appLayout).toContain('<Sidebar />');
+    expect(appLayout).toContain('const WorkspaceShell = dynamic(');
+    expect(appLayout).toContain("import('@/components/WorkspaceShell')");
+    expect(workspaceShell).toContain('{!isMobile && (');
+    expect(workspaceShell).toContain('<Sidebar />');
     expect(header).toContain('{mobileMenuMounted && <MobileMenu open={open}');
   });
 

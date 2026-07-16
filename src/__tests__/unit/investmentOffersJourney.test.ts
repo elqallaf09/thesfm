@@ -161,8 +161,8 @@ describe('Investor secure sharing (phase 2.9)', () => {
     // Public-shell detection moved to the workspace resolver in phase 3;
     // AppLayout consumes the shared helper and /investor stays chrome-free.
     expect(appLayout).toContain('isPublicShellRoute(pathname)');
-    const resolver = read('src/config/workspaces/workspace-resolver.ts');
-    expect(resolver).toContain("'/investor'");
+    const publicRoutes = read('src/config/workspaces/public-shell-routes.ts');
+    expect(publicRoutes).toContain("'/investor'");
     expect(viewerPage).toContain("kind: 'password'");
     expect(viewerPage).toContain('text.viewerExpired');
     expect(viewerPage).toContain('text.viewerRevoked');
