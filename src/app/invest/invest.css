@@ -2619,3 +2619,318 @@
     margin-inline: calc(var(--space-5) * -1);
   }
 }
+
+/* ==========================================================================
+   Final UX refinement pass
+   --------------------------------------------------------------------------
+   Density, information hierarchy, button weight, drawer sections, and the
+   market analysis link panel. Pure presentation: no behavioural changes.
+   ========================================================================== */
+
+/* Holding cards: tighter rhythm and a clamped, tooltipped title. */
+.invest-row {
+  gap: var(--space-2);
+}
+
+.invest-asset-lens {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-card);
+  box-shadow: var(--sidebar-glass-inner-shadow);
+}
+
+.invest-holding-identity h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.invest-holding-copy {
+  gap: 0.3125rem;
+}
+
+/* Platform identity reads as secondary metadata, not a competing badge. */
+.invest-platform-identity {
+  color: var(--foreground-muted);
+  font-weight: 400;
+}
+
+.invest-platform-logo {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.invest-platform-logo img {
+  width: 1.0625rem;
+  height: 1.0625rem;
+}
+
+/* Badge family: type stays quiet, weight reads numeric, status stays small. */
+.invest-badge-soft {
+  background: transparent;
+}
+
+.invest-weight-badge {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Financial metrics: a compact three-up group on wide cards. */
+.invest-holding-metric {
+  min-height: 3.75rem;
+  gap: 0.3125rem;
+  padding: 0.5rem 0.75rem;
+}
+
+@container (min-width: 36rem) {
+  .invest-holding-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Action hierarchy: details soft-primary, expand ghost, overflow ghost. */
+.invest-row-actions .invest-card-action {
+  border-color: color-mix(in srgb, var(--sidebar-item-border) 82%, transparent);
+  background: transparent;
+}
+
+.invest-row-actions .invest-card-action--primary {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  box-shadow: none;
+}
+
+.invest-row-actions .invest-card-action--primary:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 78%, var(--surface-hover));
+  color: var(--primary-hover);
+}
+
+/* Summary cards: less trapped vertical space. */
+.invest-summary-card {
+  min-height: 7rem;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Detail drawer: grouped sections replace one long list. */
+.invest-drawer-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.invest-drawer-section + .invest-drawer-section {
+  margin-top: var(--space-4);
+}
+
+.invest-drawer-section h4 {
+  margin: 0;
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--divider);
+  color: var(--foreground-secondary);
+  font-size: var(--type-label-size);
+  font-weight: 600;
+}
+
+.invest-drawer-section .invest-notes-box {
+  margin-top: 0;
+}
+
+.invest-drawer-section:has(.invest-detail-grid:empty) {
+  display: none;
+}
+
+/* Market analysis link panel. */
+.invest-market-panel {
+  display: grid;
+  gap: var(--space-3);
+  container-type: inline-size;
+}
+
+.invest-market-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.invest-market-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h-sm);
+  padding-inline: var(--space-3);
+  border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-control);
+  background: var(--input-background);
+  color: var(--foreground-muted);
+}
+
+.invest-market-search:focus-within {
+  border-color: var(--input-focus-border);
+  box-shadow: var(--focus-shadow);
+}
+
+.invest-market-search input,
+.invest-market-search input:focus {
+  flex: 1;
+  min-width: 0;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.invest-market-toolbar select {
+  min-height: var(--control-h-sm);
+  height: var(--control-h-sm);
+}
+
+.invest-market-rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.invest-market-rows li {
+  min-height: 3.25rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface-muted);
+}
+
+.invest-market-row-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.125rem;
+}
+
+.invest-market-row-copy strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: var(--type-body-small-size);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invest-market-row-copy span {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--foreground-muted);
+  font-size: var(--type-caption-size);
+}
+
+.invest-market-row-copy b {
+  color: var(--foreground-secondary);
+  font-family: var(--font-data);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.invest-market-row-copy em {
+  font-style: normal;
+}
+
+.invest-market-row-copy em::before {
+  content: "·";
+  margin-inline-end: var(--space-2);
+  color: var(--divider);
+}
+
+.invest-market-row-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--success);
+  font-size: var(--type-caption-size);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.invest-market-row-status > span {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: var(--radius-circle);
+  background: currentColor;
+}
+
+.invest-market-open {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-inline: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  border-radius: var(--radius-control);
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  font-size: var(--type-caption-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.invest-market-open:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 78%, var(--surface-hover));
+}
+
+.invest-market-open:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.invest-market-empty {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  color: var(--foreground-muted);
+  text-align: center;
+}
+
+@container (max-width: 30rem) {
+  .invest-market-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .invest-market-rows li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .invest-market-row-copy {
+    flex: 1 1 10rem;
+  }
+
+  .invest-market-row-status {
+    margin-inline-start: auto;
+  }
+
+  .invest-market-open {
+    flex: 1 1 100%;
+    justify-content: center;
+    min-height: 2.75rem;
+  }
+}
+
+@container (max-width: 28rem) {
+  .invest-holding-metric strong {
+    font-size: var(--type-body-small-size);
+  }
+}
