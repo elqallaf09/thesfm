@@ -9,6 +9,7 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import type { InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
 import { EmptyState } from '@/components/invest/EmptyState';
+import { MarketLinkPanel, type MarketLinkEntry } from '@/components/invest/MarketLinkPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -680,7 +681,7 @@ export default function InvestPage() {
   );
   const marketLinkedInvestments = useMemo(() => items
     .map(item => ({ investment: item, symbol: investmentSymbol(item) }))
-    .filter(item => item.symbol), [items]);
+    .filter((item): item is MarketLinkEntry => Boolean(item.symbol)), [items]);
   const liveRefreshableCount = useMemo(() => items.filter(item => investmentLinkedSymbol(item)).length, [items]);
   const portfolioPreview = useMemo(() => [...items]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -1258,14 +1259,20 @@ export default function InvestPage() {
                 <h2>{L('ربط الاستثمار بتحليل السوق','Investments and Market Analysis','Investissements et analyse du marché')}</h2>
               </div>
               {marketLinkedInvestments.length > 0 ? (
-                <div className="invest-market-chips">
-                  {marketLinkedInvestments.map(item => (
-                    <button key={`${item.investment.id}-${item.symbol}`} type="button" onClick={() => router.push(marketAnalysisUrl(item.symbol))}>
-                      <strong>{item.symbol}</strong>
-                      <span>{item.investment.name}</span>
-                    </button>
-                  ))}
-                </div>
+                <MarketLinkPanel
+                  entries={marketLinkedInvestments}
+                  labels={{
+                    search: labels.search,
+                    sortBy: labels.sortBy,
+                    sortName: L('الاسم', 'Name', 'Nom'),
+                    sortSymbol: L('الرمز', 'Symbol', 'Symbole'),
+                    connected: L('مرتبط بالسوق', 'Market linked', 'Lié au marché'),
+                    openAnalysis: L('فتح التحليل', 'Open analysis', 'Ouvrir l’analyse'),
+                    holdingsCount: L('{count} حيازات', '{count} holdings', '{count} positions'),
+                    noResults: L('لا توجد نتائج مطابقة', 'No matching assets', 'Aucun actif correspondant'),
+                  }}
+                  onOpen={symbol => router.push(marketAnalysisUrl(symbol))}
+                />
               ) : (
                 <p>{L('أضف رمز الأصل لتحليل السوق. لا يتم عرض أسعار أو أرباح غير محققة بدون بيانات سوق حقيقية.','Add asset symbol for market analysis. No prices or unrealized gains are shown without real market data.','Ajoutez le symbole de l’actif pour l’analyse du marché. Aucun prix ni gain latent n’est affiché sans données de marché réelles.')}</p>
               )}
