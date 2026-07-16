@@ -30,6 +30,11 @@ const COPY = {
 function number(value: number | null, suffix = ' ms') { return value == null ? '—' : `${new Intl.NumberFormat('en-US', { maximumFractionDigits: value < 10 ? 2 : 0 }).format(value)}${suffix}`; }
 function rate(value: number) { return new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 }).format(value); }
 function date(value?: string | null) { return value ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'; }
+function alertValue(key: string, value: number) {
+  if (key.endsWith('_rate')) return rate(value);
+  if (key === 'web_vital_cls_p75' || key.startsWith('repeated_')) return number(value, '');
+  return number(value);
+}
 
 export default function ObservabilityDashboardClient() {
   const { lang, dir } = useLanguage();
@@ -74,7 +79,7 @@ export default function ObservabilityDashboardClient() {
         <DataSection title={text.deployments} rows={data.deployments.map(row => [row.deploymentSha.slice(0, 12), String(row.samples), number(row.p75), rate(row.failureRate), date(row.lastSeen)])} headers={['SHA', text.samples, text.p75, text.failure, text.updated]} />
         {data.deploymentComparison.length > 0 && <DataSection title={`${text.deployments} · comparison`} rows={data.deploymentComparison.map(row => [row.metric, number(row.current, row.metric.startsWith('CLS') ? '' : ' ms'), number(row.previous, row.metric.startsWith('CLS') ? '' : ' ms'), rate(row.delta), row.status, `${row.currentSamples} / ${row.previousSamples}`])} headers={[text.metric, 'Current', 'Previous', 'Delta', 'Status', text.samples]} />}
         <section aria-labelledby="distribution-heading"><h2 id="distribution-heading">{text.distributions}</h2><div className={styles.cards}>{(['browsers', 'devices', 'networks'] as const).map(kind => <article className={styles.card} key={kind}><h3>{kind}</h3><ul className={styles.list}>{data.distributions[kind].map(item => <li key={item.name}><span>{item.name}</span><b>{item.samples}</b></li>)}</ul></article>)}</div></section>
-        <section aria-labelledby="alerts-heading"><h2 id="alerts-heading">{text.alerts}</h2>{data.alerts.length ? <div className={styles.alerts}>{data.alerts.map(alert => <article key={alert.alert_key}><AlertTriangle aria-hidden="true" /><div><h3>{alert.metric_name}</h3><p>{number(alert.observed_value)} / {number(alert.threshold_value)} · n={alert.sample_count} · {date(alert.last_seen_at)}</p></div><b>{alert.severity}</b></article>)}</div> : <p className={styles.state}>{text.noAlerts}</p>}</section>
+        <section aria-labelledby="alerts-heading"><h2 id="alerts-heading">{text.alerts}</h2>{data.alerts.length ? <div className={styles.alerts}>{data.alerts.map(alert => <article key={alert.alert_key}><AlertTriangle aria-hidden="true" /><div><h3>{alert.metric_name}</h3><p>{alertValue(alert.alert_key, alert.observed_value)} / {alertValue(alert.alert_key, alert.threshold_value)} · n={alert.sample_count} · {date(alert.last_seen_at)}</p></div><b>{alert.severity}</b></article>)}</div> : <p className={styles.state}>{text.noAlerts}</p>}</section>
       </>}
     </div>
   </AdminDashboardShell>;

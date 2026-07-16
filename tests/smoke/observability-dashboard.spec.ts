@@ -80,6 +80,8 @@ test.describe('authenticated observability dashboard', () => {
     await expect(page.getByRole('table', { name: 'Providers' })).toBeVisible();
     await expect(page.getByText('metals_live')).toBeVisible();
     await expect(page.getByText('Provider failure rate')).toBeVisible();
+    await expect(page.getByText(/30% \/ 20%/)).toBeVisible();
+    await expect(page.getByText(/0\.3 ms \/ 0\.2 ms/)).toHaveCount(0);
     await expect(page.getByText('warning')).toBeVisible();
     await expect(page.getByText('This dashboard never exposes account identities, financial values, or raw URLs.')).toBeVisible();
     await saveEvidence(page, testInfo, 'provider-degradation');
