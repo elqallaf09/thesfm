@@ -113,5 +113,5 @@ export async function POST(request: Request) {
     console.error('[observability] ingestion failed', { code: error.code, eventCount: rows.length, environment, deploymentSha });
     return NextResponse.json({ code: 'INGESTION_FAILED' }, { status: 503 });
   }
-  return new NextResponse(null, { status: 202, headers: { 'Cache-Control': 'no-store' } });
+  return new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
 }
