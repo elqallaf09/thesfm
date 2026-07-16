@@ -2,6 +2,7 @@
 
 import type { ComponentType } from 'react';
 import {
+  Activity,
   BarChart3,
   BookOpen,
   Bot,
@@ -202,6 +203,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'admin-companies', icon: Building2, href: '/sfm-admin-control/companies', labelKey: 'nav_admin_companies', adminOnly: true, adminPermission: 'company_reviews' },
       { id: 'admin-investment-platforms', icon: Landmark, href: '/sfm-admin-control/investment-platforms', labelKey: 'nav_admin_investment_platforms', adminOnly: true, adminPermission: 'company_reviews' },
       { id: 'admin-analytics', icon: BarChart3, href: '/sfm-admin-control', labelKey: 'admin_dashboard_title', adminOnly: true, adminPermission: 'admin_dashboard' },
+      { id: 'admin-observability', icon: Activity, href: '/sfm-admin-control/observability', labelKey: 'admin_observability_title', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'admin-operations-center', icon: BarChart3, href: '/sfm-admin-control/market-diagnostics', labelKey: 'ops_center_title', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'admin-news-providers', icon: Newspaper, href: '/sfm-admin-control/news-providers', labelKey: 'nav_admin_news_providers', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'admin-shariah', icon: ShieldCheck, href: '/sfm-admin-control/shariah', labelKey: 'admin_shariah_title', adminOnly: true, adminPermission: 'admin_dashboard' },
