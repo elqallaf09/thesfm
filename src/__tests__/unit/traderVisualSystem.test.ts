@@ -67,23 +67,23 @@ describe('standalone Trader visual-system contract', () => {
   it('consumes the approved central light palette and coherent dark palette', () => {
     const light = themeBlock(':root');
     const approved = {
-      background: '#FFFFFF',
+      background: '#F7F8FE',
       surface: '#FFFFFF',
-      'surface-muted': '#F1F4F8',
-      foreground: '#0B172A',
-      'foreground-secondary': '#344258',
-      'foreground-muted': '#5D6B80',
-      border: '#DDE3EC',
-      'border-strong': '#718096',
-      primary: '#155EEF',
-      'primary-hover': '#0B4FD6',
-      'primary-soft': '#EAF1FF',
-      accent: '#0F766E',
+      'surface-muted': '#EFF1FA',
+      foreground: '#14183A',
+      'foreground-secondary': '#3A4160',
+      'foreground-muted': '#5B6178',
+      border: '#E9EBF7',
+      'border-strong': '#6E759C',
+      primary: '#4F46E5',
+      'primary-hover': '#4338CA',
+      'primary-soft': '#ECEDFB',
+      accent: '#0B7C72',
       success: '#18794E',
       warning: '#8A4B0F',
-      danger: '#C4323C',
+      danger: '#C21744',
       info: '#1D65A6',
-      'focus-ring': '#155EEF',
+      'focus-ring': '#4F46E5',
     } as const;
     for (const [token, value] of Object.entries(approved)) {
       expect(light, token).toContain(`--${token}: ${value};`);

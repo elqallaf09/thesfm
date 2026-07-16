@@ -134,26 +134,26 @@ describe('central visual-system contract', () => {
   it('locks the approved light palette at the semantic source', () => {
     const light = themeBlock(':root');
     const approved = {
-      background: '#FFFFFF',
+      background: '#F7F8FE',
       surface: '#FFFFFF',
-      'surface-muted': '#F1F4F8',
-      foreground: '#0B172A',
-      'foreground-secondary': '#344258',
-      'foreground-muted': '#5D6B80',
-      'foreground-subtle': '#5D6B80',
-      border: '#DDE3EC',
-      'border-strong': '#718096',
-      primary: '#155EEF',
-      'primary-hover': '#0B4FD6',
-      'primary-soft': '#EAF1FF',
-      accent: '#0F766E',
-      'accent-hover': '#0B5F59',
-      'accent-soft': '#E7F7F4',
+      'surface-muted': '#EFF1FA',
+      foreground: '#14183A',
+      'foreground-secondary': '#3A4160',
+      'foreground-muted': '#5B6178',
+      'foreground-subtle': '#5B6178',
+      border: '#E9EBF7',
+      'border-strong': '#6E759C',
+      primary: '#4F46E5',
+      'primary-hover': '#4338CA',
+      'primary-soft': '#ECEDFB',
+      accent: '#0B7C72',
+      'accent-hover': '#096A61',
+      'accent-soft': '#E5F6F3',
       success: '#18794E',
       warning: '#8A4B0F',
-      danger: '#C4323C',
+      danger: '#C21744',
       info: '#1D65A6',
-      'focus-ring': '#155EEF',
+      'focus-ring': '#4F46E5',
     } as const;
 
     for (const [token, value] of Object.entries(approved)) {
@@ -164,10 +164,10 @@ describe('central visual-system contract', () => {
   it('keeps dark interactive surfaces on the canonical dark palette', () => {
     const dark = themeBlock('.dark');
 
-    expect(dark).toContain('--surface-hover: #182334;');
-    expect(dark).toContain('--surface-active: #172B46;');
-    expect(dark).toContain('--surface-disabled: #111925;');
-    expect(dark).toContain('--border-strong: #65738A;');
+    expect(dark).toContain('--surface-hover: #182452;');
+    expect(dark).toContain('--surface-active: #1E2B61;');
+    expect(dark).toContain('--surface-disabled: #0F1737;');
+    expect(dark).toContain('--border-strong: #6E79A8;');
   });
 
   it('centralizes theme-safe skeleton and print-view colors', () => {

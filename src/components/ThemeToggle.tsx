@@ -55,7 +55,9 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
         title={label}
         onClick={handleToggle}
       >
-        {isDark ? <Moon size={18} aria-hidden="true" /> : <Sun size={18} aria-hidden="true" />}
+        <span key={isDark ? 'moon' : 'sun'} className="sfm-theme-toggle-icon" aria-hidden="true">
+          {isDark ? <Moon size={18} /> : <Sun size={18} />}
+        </span>
       </button>
       <style jsx global>{`
         .sfm-theme-toggle {
@@ -81,11 +83,33 @@ export function ThemeToggle({ className = '' }: ThemeToggleProps) {
         .sfm-theme-toggle:focus-visible {
           outline: none;
           border-color: var(--primary);
-          background: var(--surface-hover);
+          background: var(--primary-soft);
           color: var(--primary);
           box-shadow: var(--focus-shadow);
         }
 
+        .sfm-theme-toggle-icon {
+          display: grid;
+          place-items: center;
+          animation: sfmThemeIconIn var(--duration-slow) var(--ease);
+        }
+
+        @keyframes sfmThemeIconIn {
+          from {
+            transform: rotate(-90deg) scale(0.6);
+            opacity: 0;
+          }
+          to {
+            transform: rotate(0deg) scale(1);
+            opacity: 1;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .sfm-theme-toggle-icon {
+            animation: none;
+          }
+        }
       `}</style>
     </>
   );

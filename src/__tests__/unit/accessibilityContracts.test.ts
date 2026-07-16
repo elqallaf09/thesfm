@@ -37,13 +37,13 @@ describe('accessibility contracts', () => {
 
   it('meets WCAG AA normal-text contrast in both themes', () => {
     const combinations = [
-      ['light sidebar utility', '#172033', '#F7F9FC'],
-      ['dark sidebar utility', '#EDF3FA', '#0A101A'],
-      ['light muted insight', '#5D6B80', '#F1F4F8'],
-      ['dark muted insight', '#94A3B8', '#182334'],
+      ['light sidebar utility', '#171D46', '#F5F6FD'],
+      ['dark sidebar utility', '#E7ECFB', '#0B1334'],
+      ['light muted insight', '#5B6178', '#EFF1FA'],
+      ['dark muted insight', '#98A2C9', '#182452'],
     ] as const;
 
-    expect(themes).toContain('--foreground-muted: #5D6B80');
+    expect(themes).toContain('--foreground-muted: #5B6178');
     for (const [label, foreground, background] of combinations) {
       expect(contrast(foreground, background), label).toBeGreaterThanOrEqual(4.5);
     }
