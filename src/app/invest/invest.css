@@ -2934,3 +2934,21 @@
     font-size: var(--type-body-small-size);
   }
 }
+
+/* Very narrow cards: tighter metric blocks and a balanced full-width P/L row. */
+@container (max-width: 28rem) {
+  .invest-holding-metric {
+    min-height: 3.25rem;
+    padding: 0.4375rem 0.625rem;
+  }
+
+  .invest-holding-summary > .invest-holding-metric:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 30rem) {
+  .invest-row {
+    gap: 0.5rem;
+  }
+}
