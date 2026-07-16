@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { mkdir } from 'node:fs/promises';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { adminAuthStatePath } from './auth-state';
 
 const adminAuthConfigured = Boolean(process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD);
@@ -32,6 +33,13 @@ async function mockDashboard(page: Page, payload: typeof emptyPayload | typeof p
   await page.route('**/api/admin/observability?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) }));
 }
 
+async function saveEvidence(page: Page, testInfo: TestInfo, name: string) {
+  if (!process.env.CI) return;
+  const directory = 'test-results/observability-evidence';
+  await mkdir(directory, { recursive: true });
+  await page.locator('main[data-sfm-shell="dashboard"]').screenshot({ path: `${directory}/${testInfo.project.name}-${name}.png` });
+}
+
 test('observability dashboard denies anonymous access', async ({ page }) => {
   const response = await page.goto('/sfm-admin-control/observability', { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
@@ -60,7 +68,7 @@ test.describe('authenticated observability dashboard', () => {
       await expect(page.getByText(/No sufficient data|لم تصل بيانات|Aucune donnée suffisante/)).toBeVisible();
       const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(4);
-      await testInfo.attach(`observability-empty-${item.lang}-${item.theme}`, { body: await page.locator('main[data-sfm-shell="dashboard"]').screenshot(), contentType: 'image/png' });
+      await saveEvidence(page, testInfo, `empty-${item.lang}-${item.theme}`);
     }
   });
 
@@ -74,7 +82,7 @@ test.describe('authenticated observability dashboard', () => {
     await expect(page.getByText('Provider failure rate')).toBeVisible();
     await expect(page.getByText('warning')).toBeVisible();
     await expect(page.getByText('This dashboard never exposes account identities, financial values, or raw URLs.')).toBeVisible();
-    await testInfo.attach('observability-provider-degradation', { body: await page.locator('main[data-sfm-shell="dashboard"]').screenshot(), contentType: 'image/png' });
+    await saveEvidence(page, testInfo, 'provider-degradation');
   });
 
   test('reports an offline refresh without losing the current page', async ({ page, context }, testInfo) => {
@@ -86,7 +94,7 @@ test.describe('authenticated observability dashboard', () => {
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByRole('status')).toContainText('could not be refreshed');
     await expect(page).toHaveURL(/\/sfm-admin-control\/observability/);
-    await testInfo.attach('observability-offline', { body: await page.locator('main[data-sfm-shell="dashboard"]').screenshot(), contentType: 'image/png' });
+    await saveEvidence(page, testInfo, 'offline');
     await context.setOffline(false);
   });
 });
