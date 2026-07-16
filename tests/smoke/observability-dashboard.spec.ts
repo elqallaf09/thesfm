@@ -45,7 +45,7 @@ test.describe('authenticated observability dashboard', () => {
     test.skip(!adminAuthConfigured, 'Admin E2E credentials are required for permission-gated dashboard coverage.');
   });
 
-  test('renders empty state in Arabic, English, and French across themes', async ({ page }) => {
+  test('renders empty state in Arabic, English, and French across themes', async ({ page }, testInfo) => {
     await mockDashboard(page, emptyPayload);
     const cases = [
       { lang: 'ar', theme: 'light', title: 'مراقبة الإنتاج', dir: 'rtl' },
@@ -60,10 +60,11 @@ test.describe('authenticated observability dashboard', () => {
       await expect(page.getByText(/No sufficient data|لم تصل بيانات|Aucune donnée suffisante/)).toBeVisible();
       const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(4);
+      await testInfo.attach(`observability-empty-${item.lang}-${item.theme}`, { body: await page.locator('main[data-sfm-shell="dashboard"]').screenshot(), contentType: 'image/png' });
     }
   });
 
-  test('renders populated and provider-degradation states accessibly', async ({ page }) => {
+  test('renders populated and provider-degradation states accessibly', async ({ page }, testInfo) => {
     await mockDashboard(page, populatedPayload);
     await page.addInitScript(() => { localStorage.setItem('sfm_lang', 'en'); localStorage.setItem('the-sfm-theme', 'dark'); });
     await page.goto('/sfm-admin-control/observability', { waitUntil: 'networkidle' });
@@ -73,9 +74,10 @@ test.describe('authenticated observability dashboard', () => {
     await expect(page.getByText('Provider failure rate')).toBeVisible();
     await expect(page.getByText('warning')).toBeVisible();
     await expect(page.getByText('This dashboard never exposes account identities, financial values, or raw URLs.')).toBeVisible();
+    await testInfo.attach('observability-provider-degradation', { body: await page.locator('main[data-sfm-shell="dashboard"]').screenshot(), contentType: 'image/png' });
   });
 
-  test('reports an offline refresh without losing the current page', async ({ page, context }) => {
+  test('reports an offline refresh without losing the current page', async ({ page, context }, testInfo) => {
     await mockDashboard(page, emptyPayload);
     await page.addInitScript(() => localStorage.setItem('sfm_lang', 'en'));
     await page.goto('/sfm-admin-control/observability', { waitUntil: 'networkidle' });
@@ -84,6 +86,7 @@ test.describe('authenticated observability dashboard', () => {
     await page.getByRole('button', { name: 'Refresh' }).click();
     await expect(page.getByRole('status')).toContainText('could not be refreshed');
     await expect(page).toHaveURL(/\/sfm-admin-control\/observability/);
+    await testInfo.attach('observability-offline', { body: await page.locator('main[data-sfm-shell="dashboard"]').screenshot(), contentType: 'image/png' });
     await context.setOffline(false);
   });
 });
