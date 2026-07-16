@@ -656,4 +656,44 @@
   --print-foreground: #14183A;
   --print-foreground-secondary: #3A4160;
   --print-foreground-muted: #5B6178;
-  --print-borde
+  --print-border: #CDD1E4;
+
+  /* Intentional brand hero only. */
+  --hero-gradient-start: #0A1230;
+  --hero-gradient-mid: #31399B;
+  --hero-gradient-end: #12433F;
+  --hero-foreground: #FFFFFF;
+  --hero-foreground-muted: #D6DCF5;
+  --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
+
+  /* Domain semantics remain stable while their values adapt to dark mode. */
+  --market-positive: var(--success);
+  --market-negative: var(--danger);
+  --market-neutral: var(--foreground-muted);
+  --market-delayed: var(--warning);
+  --market-stale: var(--info);
+  --market-unavailable: var(--foreground-muted);
+  --provider-connected: var(--success);
+  --provider-degraded: var(--warning);
+  --provider-disconnected: var(--danger);
+  --provider-rate-limited: var(--warning);
+  --provider-disabled: var(--foreground-muted);
+  --shariah-compliant: var(--success);
+  --shariah-non-compliant: var(--danger);
+  --shariah-review: var(--warning);
+  --shariah-insufficient: var(--foreground-muted);
+  --shariah-conflict: var(--danger);
+
+  /* shadcn/Tailwind semantic bridge */
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--foreground);
+  --muted: var(--surface-muted);
+  --muted-foreground: var(--foreground-muted);
+  --input: var(--input-border);
+  --ring: var(--focus-ring);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
+  --sidebar: var(--sidebar-background);
+  --sidebar-accent: var(--sidebar-hover);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+}
