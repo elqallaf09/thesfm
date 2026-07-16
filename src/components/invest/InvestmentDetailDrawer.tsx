@@ -99,61 +99,114 @@ export function InvestmentDetailDrawer({
           </button>
         )}
 
-        <div className="invest-detail-grid">
-          <Info label={labels.type} value={typeLabel(investment.type)} />
-          <Info
-            label={labels.currentMarketValue || labels.currentValue}
-            value={metrics.currentValue !== null && nativeCurrency
-              ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment)
-              : labels.currentPriceUnavailable || unavailable}
-            ltr={metrics.currentValue !== null}
-          />
-          {nativeValue !== null && nativeCurrency && <Info label={t('invest_detail_original_value')} value={formatNativeMoney(nativeValue, nativeCurrency, null)} ltr />}
-          {accountValue !== null && <Info label={t('invest_detail_account_value')} value={formatMoney(accountValue, 'valid')} />}
-          {investment.fxRateToUserCurrency && nativeCurrency && investment.userCurrency && nativeCurrency !== investment.userCurrency && (
-            <Info label={t('invest_detail_exchange_rate')} value={`1 ${nativeCurrency} = ${formatNumber(investment.fxRateToUserCurrency, lang)} ${investment.userCurrency}`} ltr />
-          )}
-          <Info label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
-          <Info label={labels.startDate} value={investment.startDate} />
-          <Info label={labels.risk} value={riskLabel(investment.riskLevel)} />
-          <Info label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`} />
-          {linkedSymbol && <Info label={labels.symbol || t('invest_detail_symbol')} value={linkedSymbol} ltr />}
-          {investment.market && <Info label={labels.market || t('invest_detail_market')} value={investment.market} />}
-          <Info label={labels.purchasePlatform || t('invest_platform_detail_label')} value={investment.purchasePlatformName || labels.purchasePlatformNotSpecified || t('invest_platform_not_specified')} />
-          {investment.purchasePlatformType && <Info label={t('invest_platform_type')} value={labels.platformTypeLabels?.[investment.purchasePlatformType] || investment.purchasePlatformType} />}
-          {investment.purchasePlatformStatus === 'pending' && <Info label={t('invest_platform_detail_label')} value={labels.purchasePlatformPending || t('invest_platform_pending')} />}
-          {investment.type === 'project' && investment.projectId && <Info label={t('invest_detail_linked_project')} value={investment.projectName || investment.name} />}
-          {!isMetal && metrics.quantity !== null && <Info label={quantityLabel(investment, labels, t)} value={formatPreciseNumber(metrics.quantity, lang)} ltr />}
-          {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && (
-            <Info label={labels.metalCount || labels.assetQuantity || t('invest_detail_piece_count')} value={formatPreciseNumber(metalPieceCount, lang)} ltr />
-          )}
-          {isMetal && investment.metalProductType && (
-            <Info label={t('invest_detail_metal_type')} value={metalProductLabel(investment.metalProductType, t)} />
-          )}
-          {investment.type === 'gold' && typeof investment.metalKarat === 'number' && <Info label={t('invest_detail_karat')} value={`${investment.metalKarat}K`} ltr />}
-          {investment.type === 'silver' && typeof investment.metalPurity === 'number' && <Info label={t('invest_detail_purity')} value={formatPreciseNumber(investment.metalPurity, lang)} ltr />}
-          {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label={t('invest_detail_weight_grams')} value={`${formatPreciseNumber(investment.grams, lang)} g`} ltr />}
-          {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label={t('invest_detail_pure_metal')} value={`${formatPreciseNumber(investment.pureMetalGrams, lang)} g`} ltr />}
-          {metrics.purchasePrice !== null && (
-            <Info label={labels.purchasePrice || t('invest_detail_purchase_price')} value={formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} ltr />
-          )}
-          {metrics.totalInvested !== null && nativeCurrency && (
-            <Info label={labels.totalInvested || t('invest_detail_total_invested')} value={formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} ltr />
-          )}
-          {metrics.currentPrice !== null && nativeCurrency && (
-            <Info label={labels.currentPrice || t('invest_detail_current_price')} value={formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} ltr />
-          )}
-          {metrics.currentPrice === null && metrics.isMarketLinked && (
-            <Info label={labels.currentPrice || t('invest_detail_current_price')} value={labels.currentPriceUnavailable || unavailable} />
-          )}
-          {investment.lastPriceUpdatedAt && <Info label={labels.lastUpdated || t('invest_detail_last_updated')} value={formatDate(investment.lastPriceUpdatedAt, lang) || unavailable} ltr />}
-          {(investment.priceSource || investment.dataSource) && <Info label={labels.dataSource || t('invest_detail_data_source')} value={investment.priceSource || investment.dataSource || ''} />}
-        </div>
+        <section className="invest-drawer-section" aria-label={S('نظرة عامة', 'Overview', 'Aperçu', lang)}>
+          <h4>{S('نظرة عامة', 'Overview', 'Aperçu', lang)}</h4>
+          <div className="invest-detail-grid">
+            <Info label={labels.type} value={typeLabel(investment.type)} />
+            <Info label={labels.risk} value={riskLabel(investment.riskLevel)} />
+            {linkedSymbol && <Info label={labels.symbol || t('invest_detail_symbol')} value={linkedSymbol} ltr />}
+            {investment.market && <Info label={labels.market || t('invest_detail_market')} value={investment.market} />}
+            {investment.type === 'project' && investment.projectId && <Info label={t('invest_detail_linked_project')} value={investment.projectName || investment.name} />}
+          </div>
+        </section>
 
-        <div className="invest-notes-box">
-          <strong>{labels.notes}</strong>
-          <p>{investment.notes || '-'}</p>
-        </div>
+        <section className="invest-drawer-section" aria-label={S('الأسعار', 'Prices', 'Prix', lang)}>
+          <h4>{S('الأسعار', 'Prices', 'Prix', lang)}</h4>
+          <div className="invest-detail-grid">
+            {metrics.purchasePrice !== null && (
+              <Info label={labels.purchasePrice || t('invest_detail_purchase_price')} value={formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} ltr />
+            )}
+            {metrics.currentPrice !== null && nativeCurrency && (
+              <Info label={labels.currentPrice || t('invest_detail_current_price')} value={formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} ltr />
+            )}
+            {metrics.currentPrice === null && metrics.isMarketLinked && (
+              <Info label={labels.currentPrice || t('invest_detail_current_price')} value={labels.currentPriceUnavailable || unavailable} />
+            )}
+            {investment.lastPriceUpdatedAt && <Info label={labels.lastUpdated || t('invest_detail_last_updated')} value={formatDate(investment.lastPriceUpdatedAt, lang) || unavailable} ltr />}
+          </div>
+        </section>
+
+        <section className="invest-drawer-section" aria-label={S('الملكية', 'Ownership', 'Propriété', lang)}>
+          <h4>{S('الملكية', 'Ownership', 'Propriété', lang)}</h4>
+          <div className="invest-detail-grid">
+            {!isMetal && metrics.quantity !== null && <Info label={quantityLabel(investment, labels, t)} value={formatPreciseNumber(metrics.quantity, lang)} ltr />}
+            {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && (
+              <Info label={labels.metalCount || labels.assetQuantity || t('invest_detail_piece_count')} value={formatPreciseNumber(metalPieceCount, lang)} ltr />
+            )}
+            {isMetal && investment.metalProductType && (
+              <Info label={t('invest_detail_metal_type')} value={metalProductLabel(investment.metalProductType, t)} />
+            )}
+            {investment.type === 'gold' && typeof investment.metalKarat === 'number' && <Info label={t('invest_detail_karat')} value={`${investment.metalKarat}K`} ltr />}
+            {investment.type === 'silver' && typeof investment.metalPurity === 'number' && <Info label={t('invest_detail_purity')} value={formatPreciseNumber(investment.metalPurity, lang)} ltr />}
+            {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label={t('invest_detail_weight_grams')} value={`${formatPreciseNumber(investment.grams, lang)} g`} ltr />}
+            {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label={t('invest_detail_pure_metal')} value={`${formatPreciseNumber(investment.pureMetalGrams, lang)} g`} ltr />}
+            {metrics.totalInvested !== null && nativeCurrency && (
+              <Info label={labels.totalInvested || t('invest_detail_total_invested')} value={formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} ltr />
+            )}
+          </div>
+        </section>
+
+        <section className="invest-drawer-section" aria-label={S('الأداء', 'Performance', 'Performance', lang)}>
+          <h4>{S('الأداء', 'Performance', 'Performance', lang)}</h4>
+          <div className="invest-detail-grid">
+            <Info
+              label={labels.currentMarketValue || labels.currentValue}
+              value={metrics.currentValue !== null && nativeCurrency
+                ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment)
+                : labels.currentPriceUnavailable || unavailable}
+              ltr={metrics.currentValue !== null}
+            />
+            {nativeValue !== null && nativeCurrency && <Info label={t('invest_detail_original_value')} value={formatNativeMoney(nativeValue, nativeCurrency, null)} ltr />}
+            {accountValue !== null && <Info label={t('invest_detail_account_value')} value={formatMoney(accountValue, 'valid')} />}
+            {metrics.profitLossAmount !== null && nativeCurrency && (
+              <Info
+                label={labels.profitLoss || S('الربح / الخسارة', 'Profit / loss', 'Profit / perte', lang)}
+                value={`${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}`}
+                tone={metrics.profitLossAmount > 0 ? 'gain' : metrics.profitLossAmount < 0 ? 'loss' : undefined}
+                ltr
+              />
+            )}
+            {metrics.profitLossPercent !== null && (
+              <Info
+                label={S('نسبة العائد', 'ROI', 'ROI', lang)}
+                value={`${metrics.profitLossPercent > 0 ? '+' : ''}${formatNumber(metrics.profitLossPercent, lang)}%`}
+                tone={metrics.profitLossPercent > 0 ? 'gain' : metrics.profitLossPercent < 0 ? 'loss' : undefined}
+                ltr
+              />
+            )}
+          </div>
+        </section>
+
+        <section className="invest-drawer-section" aria-label={S('المزود', 'Provider', 'Fournisseur', lang)}>
+          <h4>{S('المزود', 'Provider', 'Fournisseur', lang)}</h4>
+          <div className="invest-detail-grid">
+            <Info label={labels.purchasePlatform || t('invest_platform_detail_label')} value={investment.purchasePlatformName || labels.purchasePlatformNotSpecified || t('invest_platform_not_specified')} />
+            {investment.purchasePlatformType && <Info label={t('invest_platform_type')} value={labels.platformTypeLabels?.[investment.purchasePlatformType] || investment.purchasePlatformType} />}
+            {investment.purchasePlatformStatus === 'pending' && <Info label={t('invest_platform_detail_label')} value={labels.purchasePlatformPending || t('invest_platform_pending')} />}
+            {(investment.priceSource || investment.dataSource) && <Info label={labels.dataSource || t('invest_detail_data_source')} value={investment.priceSource || investment.dataSource || ''} />}
+            {investment.fxRateToUserCurrency && nativeCurrency && investment.userCurrency && nativeCurrency !== investment.userCurrency && (
+              <Info label={t('invest_detail_exchange_rate')} value={`1 ${nativeCurrency} = ${formatNumber(investment.fxRateToUserCurrency, lang)} ${investment.userCurrency}`} ltr />
+            )}
+          </div>
+        </section>
+
+        {investment.notes ? (
+          <section className="invest-drawer-section" aria-label={labels.notes}>
+            <h4>{labels.notes}</h4>
+            <div className="invest-notes-box">
+              <p>{investment.notes}</p>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="invest-drawer-section" aria-label={S('بيانات إضافية', 'Metadata', 'Métadonnées', lang)}>
+          <h4>{S('بيانات إضافية', 'Metadata', 'Métadonnées', lang)}</h4>
+          <div className="invest-detail-grid">
+            <Info label={labels.startDate} value={investment.startDate} />
+            <Info label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
+            <Info label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`} />
+          </div>
+        </section>
       </aside>
     </div>
   );
@@ -165,11 +218,16 @@ function quantityLabel(investment: Investment, labels: Props['labels'], t: (key:
   return labels.quantity || t('invest_detail_quantity');
 }
 
-function Info({ label, value, ltr = false }: { label: string; value: string; ltr?: boolean }) {
+/* Inline trilingual copy, matching the page-level L() helper. */
+function S(ar: string, en: string, fr: string, lang: string) {
+  return lang === 'ar' ? ar : lang === 'fr' ? fr : en;
+}
+
+function Info({ label, value, ltr = false, tone }: { label: string; value: string; ltr?: boolean; tone?: 'gain' | 'loss' }) {
   return (
     <div>
       <span>{label}</span>
-      <strong dir={ltr ? 'ltr' : undefined}>{value}</strong>
+      <strong dir={ltr ? 'ltr' : undefined} className={tone ? `invest-tone-${tone}` : undefined}>{value}</strong>
     </div>
   );
 }

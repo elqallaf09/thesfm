@@ -2,24 +2,19 @@
 
 import {
   AlertTriangle,
+  Banknote,
   BarChart3,
-  Building2,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock3,
   Edit3,
   Eye,
-  FileText,
   FolderOpen,
   Minus,
   MoreHorizontal,
   NotebookText,
-  Paperclip,
   PieChart,
   RefreshCw,
-  ScrollText,
-  Sparkles,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -285,25 +280,25 @@ export const InvestmentRow = memo(function InvestmentRow({
           </span>
           <div className="invest-holding-copy">
             <div className="invest-holding-title-line">
-              <h3 id={cardTitleId}>{investment.name}</h3>
-              <span className="invest-status-pill"><span aria-hidden="true" />{labels.activeStatus || labels.priceUpdated}</span>
+              <h3 id={cardTitleId} title={investment.name}>{investment.name}</h3>
             </div>
             {(metrics.linkedSymbol || investment.market) && <div className="invest-asset-meta">
               {metrics.linkedSymbol && <span className="invest-ticker" dir="ltr">{metrics.linkedSymbol}</span>}
               {investment.market && <span>{investment.market}</span>}
             </div>}
+            {investment.purchasePlatformName && (
+              <PlatformIdentity name={investment.purchasePlatformName} logoUrl={platformLogoUrl} title={labels.purchasePlatformBadgeTitle} />
+            )}
             <div className="invest-holding-badges">
               <span className="invest-badge-soft">{typeLabel(investment.type)}</span>
               <span className={`invest-risk-badge invest-risk-badge--${investment.riskLevel}`}>{riskLabel(investment.riskLevel)} {labels.riskShort || labels.risk}</span>
               {portfolioPercent !== null && (
-                <span className="invest-weight-badge">
+                <span className="invest-weight-badge" dir="ltr">
                   {labels.ofPortfolio.replace('{pct}', formatPercent(portfolioPercent))}
                 </span>
               )}
+              <span className="invest-status-pill"><span aria-hidden="true" />{labels.activeStatus || labels.priceUpdated}</span>
             </div>
-            {investment.purchasePlatformName && (
-              <PlatformIdentity name={investment.purchasePlatformName} logoUrl={platformLogoUrl} title={labels.purchasePlatformBadgeTitle} />
-            )}
           </div>
         </div>
 
@@ -352,6 +347,12 @@ export const InvestmentRow = memo(function InvestmentRow({
             icon={<WalletCards size={15} />}
           />
           <Metric
+            label={labels.investedValue || labels.totalInvested || 'Invested'}
+            value={metrics.totalInvested !== null ? formatNativeMoney(metrics.totalInvested, nativeCurrency, investment) : labels.purchasePriceMissing || labels.unavailable || '-'}
+            tone={metrics.totalInvested === null ? 'warning' : 'default'}
+            icon={<Banknote size={15} />}
+          />
+          <Metric
             label={labels.profitLoss || 'Profit / loss'}
             value={metrics.profitLossAmount !== null ? `${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}` : profitUnavailableText(metrics, labels)}
             meta={metrics.profitLossPercent !== null ? `${formatSignedNumber(metrics.profitLossPercent)}%` : undefined}
@@ -365,22 +366,16 @@ export const InvestmentRow = memo(function InvestmentRow({
         <div id={expansionId} className="invest-expanded-region" role="region" aria-labelledby={expansionButtonId}>
           <div className="invest-expanded-inner">
             <section className="invest-expanded-section invest-expanded-section--overview">
-              <ExpandedTitle icon={<Building2 size={16} />} title={labels.overview || 'Overview'} />
+              <ExpandedTitle icon={<FolderOpen size={16} />} title={labels.overview || 'Overview'} />
               <div className="invest-holding-secondary invest-financial-details">
-                <DetailChip label={quantityLabel} value={quantityValue} />
-                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} />
                 <DetailChip label={labels.currentPrice || 'Current price'} value={metrics.currentPrice === null ? (labels.currentPriceUnavailable || labels.unavailable || '-') : formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} />
-                <DetailChip label={labels.averageCost || 'Average cost'} value={labels.unavailable || '-'} />
-                <DetailChip label={labels.investedValue || labels.totalInvested || 'Invested value'} value={metrics.totalInvested === null ? (labels.purchasePriceMissing || labels.unavailable || '-') : formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} />
-                <DetailChip label={labels.currentMarketValue || 'Current market value'} value={metrics.currentValue === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.currentValue, nativeCurrency, investment)} />
-                <DetailChip label={labels.profitLoss || 'Profit / loss'} value={metrics.profitLossAmount === null ? profitUnavailableText(metrics, labels) : `${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}`} tone={gainState} />
-                <DetailChip label={labels.profitLossPercent || 'ROI'} value={metrics.profitLossPercent === null ? profitUnavailableText(metrics, labels) : `${formatSignedNumber(metrics.profitLossPercent)}%`} tone={gainState} />
-                <DetailChip label={labels.todayChange || 'Today change'} value={labels.unavailable || '-'} />
+                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} />
+                <DetailChip label={quantityLabel} value={quantityValue} />
+                {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && <DetailChip label={labels.metalCount || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />}
                 <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
                 <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? (labels.unavailable || '-') : `${formatNumber(investment.expectedAnnualReturn)}%`} />
                 {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
                 <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
-                {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && <DetailChip label={labels.metalCount || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />}
                 <DetailChip label={labels.startDate || 'Entry date'} value={formatDateOnly(investment.startDate) || labels.unavailable || '-'} />
                 {showConvertedLine && <DetailChip label={labels.approxUserCurrency || 'Approx.'} value={formatMoney(accountValue, 'valid')} />}
               </div>
@@ -406,38 +401,18 @@ export const InvestmentRow = memo(function InvestmentRow({
               <ExpandedTitle icon={<TrendingUp size={16} />} title={labels.performance || 'Performance'} />
               <strong className={`invest-expanded-value invest-tone-${gainState}`}>{metrics.profitLossPercent === null ? profitUnavailableText(metrics, labels) : `${formatSignedNumber(metrics.profitLossPercent)}%`}</strong>
             </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<Sparkles size={16} />} title={labels.aiSummary || 'AI summary'} />
-              <p>{labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<ScrollText size={16} />} title={labels.dividends || 'Dividends'} />
-              <p>{labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section invest-expanded-section--wide">
-              <ExpandedTitle icon={<NotebookText size={16} />} title={labels.notes || 'Notes'} />
-              <p>{investment.notes || labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<Paperclip size={16} />} title={labels.attachments || 'Attachments'} />
-              <p>{labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<Building2 size={16} />} title={labels.brokerNotes || 'Broker notes'} />
-              <p>{investment.purchasePlatformName || labels.purchasePlatformNotSpecified || labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<Clock3 size={16} />} title={labels.transactions || 'Transactions'} />
-              <p>{formatDateOnly(investment.startDate) || labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<FileText size={16} />} title={labels.documents || 'Documents'} />
-              <p>{labels.noData || '-'}</p>
-            </section>
-            <section className="invest-expanded-section">
-              <ExpandedTitle icon={<FolderOpen size={16} />} title={labels.dataSource || 'Data source'} />
-              <p>{investment.priceSource || investment.dataSource || investment.valuationSource || labels.noData || '-'}</p>
-            </section>
+            {investment.notes ? (
+              <section className="invest-expanded-section invest-expanded-section--wide">
+                <ExpandedTitle icon={<NotebookText size={16} />} title={labels.notes || 'Notes'} />
+                <p>{investment.notes}</p>
+              </section>
+            ) : null}
+            {(investment.priceSource || investment.dataSource || investment.valuationSource) ? (
+              <section className="invest-expanded-section">
+                <ExpandedTitle icon={<FolderOpen size={16} />} title={labels.dataSource || 'Data source'} />
+                <p>{investment.priceSource || investment.dataSource || investment.valuationSource}</p>
+              </section>
+            ) : null}
           </div>
         </div>
       ) : null}
