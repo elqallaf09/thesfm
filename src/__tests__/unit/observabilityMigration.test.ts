@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 const baseline = readFileSync('supabase/migrations/00000000000000_create_base_public_schema.sql', 'utf8');
 const migration = readFileSync('supabase/migrations/20260716113325_create_observability_schema.sql', 'utf8');
+const supabaseConfig = readFileSync('supabase/config.toml', 'utf8');
+
+describe('Supabase Preview configuration', () => {
+  it('uses PostgreSQL 17 without seeds or paid Vector Buckets', () => {
+    expect(supabaseConfig).toMatch(/\[db\][\s\S]*?major_version = 17/);
+    expect(supabaseConfig).toMatch(/\[db\.seed\][\s\S]*?enabled = false/);
+    expect(supabaseConfig).toMatch(/\[storage\.vector\][\s\S]*?enabled = false/);
+  });
+});
 
 describe('schema-only public baseline migration', () => {
   it('creates exactly the seven required base tables', () => {
