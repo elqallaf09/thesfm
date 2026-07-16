@@ -255,6 +255,20 @@ begin
   if p_raw_days not between 7 and 30 or p_rollup_days not between 30 and 365 or p_alert_days not between 30 and 180 then
     raise exception 'retention outside approved bounds';
   end if;
+  -- Keep the legacy aggregate analytics store privacy-minimized during a staged
+  -- deployment too. This repeats the migration-time remediation so events
+  -- written by an older deployment between migration and cutover are sanitized.
+  update public.site_events
+  set user_id = null,
+      page_title = null,
+      referrer = null,
+      page_path = regexp_replace(split_part(page_path, '?', 1), '[0-9a-f]{8}-[0-9a-f-]{27,}', '[id]', 'gi')
+  where user_id is not null or page_title is not null or referrer is not null or page_path like '%?%' or page_path ~* '[0-9a-f]{8}-[0-9a-f-]{27,}';
+  update public.site_sessions
+  set user_id = null, referrer = null
+  where user_id is not null or referrer is not null;
+  delete from public.site_events where created_at < now() - interval '90 days';
+  delete from public.site_sessions where last_seen_at < now() - interval '90 days';
   delete from public.observability_events where occurred_at < now() - make_interval(days => p_raw_days);
   get diagnostics raw_count = row_count;
   delete from public.observability_rollups where bucket_start < now() - make_interval(days => p_rollup_days);

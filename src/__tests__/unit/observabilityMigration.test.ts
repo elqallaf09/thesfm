@@ -19,8 +19,9 @@ describe('observability storage and retention migration', () => {
   });
 
   it('remediates raw identity, title, and referrer retention in legacy analytics', () => {
-    expect(migration).toContain('set user_id = null');
-    expect(migration).toContain('page_title = null');
-    expect(migration).toContain('referrer = null');
+    expect(migration.match(/set user_id = null/g)).toHaveLength(4);
+    expect(migration.match(/page_title = null/g)).toHaveLength(2);
+    expect(migration.match(/referrer = null/g)).toHaveLength(4);
+    expect(migration).toContain('older deployment between migration and cutover are sanitized');
   });
 });
