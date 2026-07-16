@@ -205,6 +205,11 @@ function scheduleWindowsServerManifests() {
 }
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_DEPLOYMENT_SHA: process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_DEPLOYMENT_SHA || 'local',
+    NEXT_PUBLIC_BUILD_VERSION: process.env.NEXT_PUBLIC_BUILD_VERSION || process.env.npm_package_version || '0.1.0',
+    NEXT_PUBLIC_DEPLOYMENT_ENV: process.env.VERCEL_ENV || process.env.NEXT_PUBLIC_DEPLOYMENT_ENV || 'development',
+  },
   outputFileTracingRoot: PROJECT_ROOT,
   // The Sharia research browser renderer is an opt-in Node-only fallback. Keep
   // Playwright outside the application bundle so normal HTTP research remains lean.
