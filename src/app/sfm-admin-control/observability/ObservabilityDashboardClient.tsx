@@ -50,8 +50,8 @@ export default function ObservabilityDashboardClient() {
   }, [environment, range]);
   useEffect(() => { void load(); }, [load]);
 
-  return <AdminDashboardShell ariaLabel={text.title} contentStyle={{ maxWidth: 'none', width: '100%' }}>
-    <main className={styles.dashboard} dir={dir} aria-busy={loading}>
+  return <AdminDashboardShell ariaLabel={text.title} dir={dir} contentStyle={{ maxWidth: 'none', width: '100%' }}>
+    <div className={styles.dashboard} aria-busy={loading}>
       <header className={styles.header}>
         <div><p className={styles.eyebrow}><Activity aria-hidden="true" /> Phase 5.0B</p><h1>{text.title}</h1><p>{text.subtitle}</p></div>
         <div className={styles.controls}>
@@ -76,7 +76,7 @@ export default function ObservabilityDashboardClient() {
         <section aria-labelledby="distribution-heading"><h2 id="distribution-heading">{text.distributions}</h2><div className={styles.cards}>{(['browsers', 'devices', 'networks'] as const).map(kind => <article className={styles.card} key={kind}><h3>{kind}</h3><ul className={styles.list}>{data.distributions[kind].map(item => <li key={item.name}><span>{item.name}</span><b>{item.samples}</b></li>)}</ul></article>)}</div></section>
         <section aria-labelledby="alerts-heading"><h2 id="alerts-heading">{text.alerts}</h2>{data.alerts.length ? <div className={styles.alerts}>{data.alerts.map(alert => <article key={alert.alert_key}><AlertTriangle aria-hidden="true" /><div><h3>{alert.metric_name}</h3><p>{number(alert.observed_value)} / {number(alert.threshold_value)} · n={alert.sample_count} · {date(alert.last_seen_at)}</p></div><b>{alert.severity}</b></article>)}</div> : <p className={styles.state}>{text.noAlerts}</p>}</section>
       </>}
-    </main>
+    </div>
   </AdminDashboardShell>;
 }
 
