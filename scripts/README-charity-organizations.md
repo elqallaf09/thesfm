@@ -16,7 +16,7 @@ Otherwise use `pending_review` or `unverified`.
 ## Run
 
 ```bash
-SUPABASE_URL="https://..." SUPABASE_SERVICE_ROLE_KEY="..." tsx scripts/import-charity-organizations.ts ./organizations.csv
+SUPABASE_URL="https://..." SUPABASE_SECRET_KEY="..." tsx scripts/import-charity-organizations.ts ./organizations.csv
 ```
 
 The service role key is server-only. Never expose it through `NEXT_PUBLIC_*` variables or frontend code.

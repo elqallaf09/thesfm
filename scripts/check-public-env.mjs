@@ -33,6 +33,7 @@ const SAFE_PUBLIC_ENV_NAMES = new Set([
   'NEXT_PUBLIC_APP_URL',
   'NEXT_PUBLIC_SITE_URL',
   'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
   'NEXT_PUBLIC_INSTAGRAM_URL',
@@ -41,6 +42,7 @@ const SAFE_PUBLIC_ENV_NAMES = new Set([
 ]);
 
 const SENSITIVE_PUBLIC_NAME = /NEXT_PUBLIC_[A-Z0-9_]*(?:SECRET|SERVICE_ROLE|PRIVATE|PASSWORD|WEBHOOK|TOKEN|ACCESS_TOKEN|REFRESH_TOKEN|API_KEY|CLIENT_SECRET|SIGNING_SECRET)[A-Z0-9_]*/g;
+const SERVER_ONLY_SUPABASE_NAME = /\b(?:SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|DATABASE_SERVICE_ROLE_KEY)\b/g;
 
 function walk(targetPath) {
   const fullPath = path.join(root, targetPath);
@@ -75,11 +77,26 @@ for (const scanRoot of SCAN_ROOTS) {
         source: lines[line - 1]?.trim() ?? '',
       });
     }
+
+    const relativePath = path.relative(root, filePath).replaceAll(path.sep, '/');
+    const clientModule = relativePath === 'src/integrations/supabase/client.ts'
+      || /^\s*['"]use client['"];?/m.test(text);
+    if (!clientModule) continue;
+    SERVER_ONLY_SUPABASE_NAME.lastIndex = 0;
+    while ((match = SERVER_ONLY_SUPABASE_NAME.exec(text))) {
+      const line = text.slice(0, match.index).split(/\r?\n/).length;
+      findings.push({
+        file: relativePath,
+        line,
+        envName: match[0],
+        source: lines[line - 1]?.trim() ?? '',
+      });
+    }
   }
 }
 
 if (findings.length > 0) {
-  console.error('Public environment guard failed. Do not expose secret-like variables through NEXT_PUBLIC_* names:');
+  console.error('Public environment guard failed. Do not expose secret-like variables through NEXT_PUBLIC_* names or client modules:');
   for (const finding of findings) {
     console.error(`- ${finding.file}:${finding.line} ${finding.envName}`);
     console.error(`  ${finding.source}`);
@@ -87,4 +104,4 @@ if (findings.length > 0) {
   process.exit(1);
 }
 
-console.log('Public environment guard passed: no secret-like NEXT_PUBLIC_* variables found.');
+console.log('Public environment guard passed: no secret-like NEXT_PUBLIC_* names or server-only Supabase keys in client modules.');

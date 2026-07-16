@@ -1,4 +1,5 @@
 import 'server-only';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export type AppNewsLanguage = 'ar' | 'en' | 'fr';
@@ -73,10 +74,9 @@ function hasPremiumTranslationProvider() {
 
 function getSupabaseAdmin() {
   if (supabaseAdmin !== undefined) return supabaseAdmin;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.DATABASE_SERVICE_ROLE_KEY?.trim();
-  supabaseAdmin = url && key
-    ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } })
+  const config = getSupabasePrivilegedConfig();
+  supabaseAdmin = config
+    ? createClient(config.url, config.secretKey, { auth: { persistSession: false, autoRefreshToken: false } })
     : null;
   return supabaseAdmin;
 }

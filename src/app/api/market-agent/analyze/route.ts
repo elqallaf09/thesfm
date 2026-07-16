@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
 import OpenAI from 'openai';
 import { proxyHistory } from '@/lib/market/marketDataProvider';
 import { normalizeResearchStatus } from '@/lib/market-state/normalizeStatus';
@@ -235,14 +236,13 @@ function resolveProviderAssetType(assetType: MarketAgentAssetType, normalizedAss
 }
 
 async function saveHistory(token: string | null, analysis: MarketAgentSuccessResponse) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!token || !supabaseUrl || !anonKey) return;
+  const config = getSupabasePublicConfig();
+  if (!token || !config) return;
 
   const user = await getUserFromBearerToken(token);
   if (!user?.id) return;
 
-  const client = createClient(supabaseUrl, anonKey, {
+  const client = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
@@ -346,16 +346,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const token = bearerToken(request);
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!token || !supabaseUrl || !anonKey) {
+  const config = getSupabasePublicConfig();
+  if (!token || !config) {
     return json({ ok: true, success: true, items: [] });
   }
 
   const user = await getUserFromBearerToken(token);
   if (!user?.id) return json({ ok: true, success: true, items: [] });
 
-  const client = createClient(supabaseUrl, anonKey, {
+  const client = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });

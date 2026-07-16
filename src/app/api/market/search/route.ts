@@ -16,6 +16,8 @@ import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbol
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { normalizeTraderSymbolMetadata } from '@/lib/trader/marketMetadata';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 type MarketSymbolRow = {
   symbol: string;
@@ -42,10 +44,12 @@ type MarketSymbolRow = {
 };
 
 function getSupabaseServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, {
+  const privileged = getSupabasePrivilegedConfig();
+  const config = privileged
+    ? { url: privileged.url, key: privileged.secretKey }
+    : getSupabasePublicConfig();
+  if (!config) return null;
+  return createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
