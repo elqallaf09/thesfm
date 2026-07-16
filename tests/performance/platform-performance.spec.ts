@@ -104,6 +104,36 @@ test('responsive, language, theme, and offline states remain stable', async ({ p
   await page.context().setOffline(false);
 });
 
+test('deferred workspace navigation does not eagerly prefetch unvisited routes', async ({ page }) => {
+  const consoleProblems: string[] = [];
+  const dashboardPrefetches: string[] = [];
+  page.on('console', message => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      consoleProblems.push(`${message.type()}: ${message.text()}`);
+    }
+  });
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/dashboard' && url.searchParams.has('_rsc')) {
+      dashboardPrefetches.push(url.toString());
+    }
+  });
+
+  await page.goto('/login', { waitUntil: 'networkidle' });
+  await page.locator('button.guest-btn').first().click();
+  await page.waitForURL(url => url.pathname === '/dashboard');
+  await page.waitForLoadState('networkidle');
+
+  consoleProblems.length = 0;
+  dashboardPrefetches.length = 0;
+  await page.goto('/invest', { waitUntil: 'networkidle' });
+  await expect(page.locator('main').first()).toBeVisible();
+  await page.waitForTimeout(3_000);
+
+  expect(consoleProblems).toEqual([]);
+  expect(dashboardPrefetches).toEqual([]);
+});
+
 declare global {
   interface Window {
     __sfmPerformanceMetrics: BrowserMetric;

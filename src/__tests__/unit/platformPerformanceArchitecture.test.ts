@@ -34,6 +34,18 @@ describe('platform performance architecture', () => {
     expect(analytics).toContain("'accessToken' in payload");
   });
 
+  it('does not auto-prefetch every route exposed by the deferred workspace shell', () => {
+    const workspaceNavigation = [
+      read('src/components/AppHeader.tsx'),
+      read('src/components/Sidebar.tsx'),
+      read('src/components/WorkspaceSwitcher.tsx'),
+    ].join('\n');
+    const links = workspaceNavigation.match(/<Link\b[\s\S]*?>/g) ?? [];
+
+    expect(links.length).toBeGreaterThan(0);
+    expect(links.every(link => link.includes('prefetch={false}'))).toBe(true);
+  });
+
   it('loads only font weights used by the production UI and enforces CI budgets', () => {
     const layout = read('src/app/layout.tsx');
     const packageJson = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
