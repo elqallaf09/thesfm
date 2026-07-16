@@ -147,7 +147,7 @@ describe('workspace navigation direction and presentation contract', () => {
   const mobile = readFileSync(join(process.cwd(), 'src/components/MobileMenu.tsx'), 'utf8');
   const switcher = readFileSync(join(process.cwd(), 'src/components/WorkspaceSwitcher.tsx'), 'utf8');
   const header = readFileSync(join(process.cwd(), 'src/components/AppHeader.tsx'), 'utf8');
-  const appLayout = readFileSync(join(process.cwd(), 'src/components/AppLayout.tsx'), 'utf8');
+  const workspaceShell = readFileSync(join(process.cwd(), 'src/components/WorkspaceShell.tsx'), 'utf8');
   const globals = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
 
   it('binds both navigation surfaces to the active language direction', () => {
@@ -187,8 +187,8 @@ describe('workspace navigation direction and presentation contract', () => {
     expect(sidebar).toContain("window.matchMedia('(min-width: 768px)')");
     expect(sidebar).toContain('@media(max-width:767px){.sfm-shared-sidebar{display:none}}');
     expect(header).toContain('@media (max-width: 767px)');
-    expect(appLayout).toContain('@media (max-width: 767px)');
-    expect(appLayout).not.toContain('@media (max-width: 1024px)');
+    expect(workspaceShell).toContain('@media (max-width: 767px)');
+    expect(workspaceShell).not.toContain('@media (max-width: 1024px)');
     expect(globals).toContain('@media (min-width:768px) and (max-width:1024px)');
     expect(globals).toContain(':root{--sidebar-w:220px}');
     expect(globals).toContain('@media (min-width: 768px) and (max-width: 1024px)');

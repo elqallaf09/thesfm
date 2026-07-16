@@ -38,7 +38,7 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { INSTAGRAM_ARIA_LABEL, INSTAGRAM_URL, SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
-import { TR } from '@/lib/translations';
+import { TR_NAV } from '@/lib/translations/nav';
 
 type Lang = 'ar' | 'en' | 'fr';
 type TranslationTuple = readonly [string, string, string];
@@ -633,9 +633,10 @@ function pickOne(item: readonly [string, string, string], lang: Lang) {
   return item[index];
 }
 
-function pickTranslation(key: keyof typeof TR, lang: Lang) {
-  const item = TR[key];
-  return lang === 'ar' ? item.ar : lang === 'fr' ? item.fr : item.en;
+function pickTranslation(key: string, lang: Lang) {
+  const item = TR_NAV[key as keyof typeof TR_NAV];
+  if (!item) return key;
+  return lang === 'ar' ? item.ar : lang === 'fr' ? item.fr ?? item.en : item.en;
 }
 
 export default function PublicLandingPage() {

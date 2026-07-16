@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { useLang } from "@/components/LanguageProvider"
+import { useLang } from "@/components/LanguageContext"
 
 const Sheet = SheetPrimitive.Root
 

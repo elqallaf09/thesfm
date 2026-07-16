@@ -10,6 +10,8 @@ node_modules
 .vercel
 tsconfig.tsbuildinfo
 artifacts/
+.lighthouseci/
+.perf-*.json
 
 # Playwright MCP scratch/session output
 .playwright-mcp/
