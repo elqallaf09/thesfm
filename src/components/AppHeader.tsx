@@ -137,8 +137,8 @@ export function AppHeader() {
 
         .sfm-global-header {
           position: sticky;
-          inset-block-start: 0;
-          z-index: 100;
+          inset-block-start: var(--app-header-inset-block);
+          z-index: var(--z-header, 100);
           grid-area: header;
           min-width: 0;
           min-height: var(--global-header-height);
@@ -147,14 +147,17 @@ export function AppHeader() {
           grid-template-areas: 'brand workspaces actions';
           align-items: center;
           gap: 14px;
-          padding: 8px clamp(12px, 1.5vw, 24px);
-          border-bottom: 1px solid var(--border);
+          /* Variant 03: an inset floating panel that stays sticky. */
+          margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
+          padding: 8px clamp(12px, 1.5vw, 22px);
+          border: 1px solid var(--header-border);
+          border-radius: var(--radius-card);
           background: var(--surface);
-          background: var(--header-glass-bg);
-          -webkit-backdrop-filter: blur(14px) saturate(120%);
-          backdrop-filter: blur(14px) saturate(120%);
+          background: var(--header-surface, var(--header-glass-bg));
+          -webkit-backdrop-filter: blur(16px) saturate(128%);
+          backdrop-filter: blur(16px) saturate(128%);
           color: var(--foreground);
-          box-shadow: var(--shadow-xs);
+          box-shadow: var(--header-shadow), var(--header-edge-glow);
           font-family: var(--font-ui);
         }
 
@@ -248,8 +251,8 @@ export function AppHeader() {
 
         .sfm-global-header .sfm-user-chip {
           min-height: var(--control-h);
-          border-color: var(--border-strong);
-          background: var(--surface);
+          border-color: var(--header-control-border, var(--border-strong));
+          background: var(--header-control-bg, var(--surface));
           color: var(--foreground);
           font-family: var(--font-ui);
         }
@@ -269,11 +272,12 @@ export function AppHeader() {
           width: 44px;
           height: 44px;
           min-width: 44px;
-          border: 1px solid var(--border-strong);
+          /* Variant 03: grouped utilities — subtle idle surface, no heavy per-control border. */
+          border: 1px solid var(--header-control-border, transparent);
           border-radius: var(--radius-control);
           display: grid;
           place-items: center;
-          background: var(--surface);
+          background: var(--header-control-bg, var(--surface));
           color: var(--foreground-secondary);
           text-decoration: none;
           cursor: pointer;
@@ -283,7 +287,7 @@ export function AppHeader() {
         .sfm-global-notifications:hover,
         .sfm-global-menu-button:hover {
           border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-          background: var(--primary-soft);
+          background: var(--header-control-hover, var(--primary-soft));
           color: var(--primary);
           transform: translateY(-1px);
         }
@@ -294,7 +298,7 @@ export function AppHeader() {
           inset-inline-end: 7px;
           width: 10px;
           height: 10px;
-          border: 2px solid var(--surface);
+          border: 2px solid var(--surface-elevated);
           border-radius: var(--radius-circle);
           background: var(--danger);
         }
@@ -352,11 +356,24 @@ export function AppHeader() {
         }
 
         @media (max-width: 767px) {
+          :root {
+            /* Mobile header is edge-to-edge, so the reserved band = content height. */
+            --app-header-inset-block: 0px;
+            --app-header-inset-inline: 0px;
+            --app-header-gap-block: 0px;
+          }
+
           .sfm-global-header {
             width: 100%;
             max-width: 100vw;
             grid-template-columns: minmax(0, 1fr) auto;
             overflow-x: clip;
+            margin: 0;
+            border-inline: 0;
+            border-block-start: 0;
+            border-radius: 0;
+            border-block-end: 1px solid var(--border);
+            box-shadow: var(--shadow-xs);
             padding-inline: 12px;
           }
 
