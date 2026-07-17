@@ -48,7 +48,7 @@ function catalogFixture(overrides: { fmp?: Partial<typeof baseCapability>; yahoo
       unsupportedSymbols: [],
       providerLatencyMs: { fmp: 120 },
       cacheStatus: 'hit',
-      summary: { loadedSymbols: 13307, failedSymbols: 0, cachedSymbols: 13307, skippedDueToRateLimit: 0, fmpStatus: 'healthy', openbbStatus: 'unavailable' },
+      summary: { loadedSymbols: 13307, failedSymbols: 0, cachedSymbols: 13307, skippedDueToRateLimit: 0, fmpStatus: 'healthy' },
       sources: {},
       generatedAt: '2026-07-10T12:00:00.000Z',
     },

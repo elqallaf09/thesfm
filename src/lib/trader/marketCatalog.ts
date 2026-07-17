@@ -34,11 +34,10 @@ import {
   getFmpRuntimeStatus,
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
-import { getOpenbbConfiguredStatus } from '@/lib/trader/providers/openbb';
 import { getBundledUsSymbolCatalog } from '@/lib/server/usSymbolCatalog';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'openbb' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack';
+export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack';
 export type TraderCatalogSource = 'seed' | 'bundled' | 'fmp' | 'supabase';
 
 export type TraderMarketDef = {
@@ -127,7 +126,6 @@ export type CatalogDiagnostics = {
     cachedSymbols: number;
     skippedDueToRateLimit: number;
     fmpStatus: string;
-    openbbStatus: string;
   };
   sources: Record<string, number>;
   generatedAt: string;
@@ -523,7 +521,6 @@ function providerSymbolsFor(symbol: string, assetType: TraderAssetType, provider
       return {
         fmp: uniq([canonical.providerSymbols.fmp]),
         yahoo: uniq([canonical.providerSymbols.yahoo]),
-        openbb: uniq([canonical.providerSymbols.fmp, canonical.displaySymbol]),
         finnhub: uniq([canonical.providerSymbols.finnhub, canonical.providerSymbols.binance]),
         twelve_data: uniq([canonical.providerSymbols.twelveData]),
         eodhd: uniq([canonical.providerSymbols.eodhd]),
@@ -542,7 +539,6 @@ function providerSymbolsFor(symbol: string, assetType: TraderAssetType, provider
   return {
     fmp: uniq([...(fmpAlias.length ? fmpAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}USD` : null]),
     yahoo: uniq([...(yahooAlias.length ? yahooAlias : []), providerSymbol, base, assetType === 'crypto' ? `${compactCrypto}-USD` : null]),
-    openbb: uniq([providerSymbol, base]),
     finnhub: uniq([...(finnhubAlias.length ? finnhubAlias : []), providerSymbol, base]),
     twelve_data: uniq([providerSymbol, base]),
     eodhd: uniq([providerSymbol, base]),
@@ -727,7 +723,7 @@ function mergeSymbol(target: TraderCatalogSymbol, next: TraderCatalogSymbol) {
   if (preferNextMetadata || !target.metadataDiagnostics.finalExchange) target.metadataDiagnostics = next.metadataDiagnostics;
   const shariah = pickPreferredShariahClassification(catalogShariahClassification(target), catalogShariahClassification(next));
   Object.assign(target, shariahClassificationFields(shariah));
-  for (const provider of ['fmp', 'yahoo', 'openbb', 'finnhub', 'twelve_data', 'eodhd', 'marketstack'] as TraderQuoteProvider[]) {
+  for (const provider of ['fmp', 'yahoo', 'finnhub', 'twelve_data', 'eodhd', 'marketstack'] as TraderQuoteProvider[]) {
     target.providerSymbols[provider] = uniq([...(target.providerSymbols[provider] ?? []), ...(next.providerSymbols[provider] ?? [])]);
   }
   if (target.source !== next.source) {
@@ -945,7 +941,6 @@ function capabilityMatrix(cacheAvailable = false) {
   const eodhdConfigured = Boolean(cleanEnv(process.env.EODHD_API_KEY));
   const marketstackConfigured = Boolean(cleanEnv(process.env.MARKETSTACK_API_KEY));
   const fmpStatus = getFmpRuntimeStatus(fmpConfigured, cacheAvailable);
-  const openbbStatus = getOpenbbConfiguredStatus();
   const configuredCapability = (provider: TraderQuoteProvider, configured: boolean, supports: Partial<ProviderCapability> = {}): ProviderCapability => ({
     provider,
     configured,
@@ -1017,24 +1012,6 @@ function capabilityMatrix(cacheAvailable = false) {
       supportsIpos: false,
       supportsEconomicCalendar: false,
       reason: 'health_not_measured',
-    },
-    openbb: {
-      provider: 'openbb',
-      configured: openbbStatus.configured,
-      healthy: openbbStatus.healthy,
-      status: openbbStatus.status,
-      rateLimited: false,
-      lastSuccessfulFetch: openbbStatus.lastSuccessfulFetch,
-      lastError: openbbStatus.lastError,
-      nextRetryAt: null,
-      cacheAvailable: openbbStatus.cacheAvailable,
-      supportsQuotes: true,
-      supportsTechnicalAnalysis: true,
-      supportsEarnings: false,
-      supportsDividends: false,
-      supportsIpos: false,
-      supportsEconomicCalendar: false,
-      reason: openbbStatus.configured ? openbbStatus.lastError : 'openbb_not_configured',
     },
   } satisfies Record<TraderQuoteProvider, ProviderCapability>;
 }
@@ -1118,7 +1095,6 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
           failedSymbols: fmp.failed.length,
           skippedDueToRateLimit: getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), true).skippedDueToRateLimit,
           fmpStatus: 'rate_limited',
-          openbbStatus: getOpenbbConfiguredStatus().status,
         },
       },
     };
@@ -1155,7 +1131,6 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
       cachedSymbols: cached?.value.symbols.length ?? 0,
       skippedDueToRateLimit: fmpRuntime.skippedDueToRateLimit,
       fmpStatus: fmpRuntime.status,
-      openbbStatus: getOpenbbConfiguredStatus().status,
     },
     sources,
     generatedAt: new Date().toISOString(),
