@@ -613,9 +613,11 @@ export function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
   const lastPrice = coalesceNumber(data.lastPrice, data.currentPrice, data.nativeUnitPrice);
   const currentMarketValue = coalesceNumber(data.currentMarketValue, data.nativeMarketValue);
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
-  const holdingCurrentValue = coalesceNumber(data.currentValue);
   const updatedAt = data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? (currentPrice !== undefined ? nowIso() : null);
   const resolvedCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency) ?? data.nativeCurrency ?? data.priceCurrency ?? null;
+  const userCurrency = normalizeMarketCurrencyCode(data.userCurrency);
+  const isSameCurrency = Boolean(resolvedCurrency && userCurrency && resolvedCurrency === userCurrency);
+  const accountMarketValue = convertedMarketValue ?? (isSameCurrency ? currentMarketValue : undefined);
 
   return cleanInvestmentUpdatePayload({
     current_price: currentPrice,
@@ -633,8 +635,11 @@ export function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
     current_market_value: currentMarketValue,
     native_unit_price: currentPrice,
     native_market_value: currentMarketValue,
-    current_value: holdingCurrentValue,
-    converted_market_value: convertedMarketValue,
+    // Never write a native-market amount into account-currency fields. When
+    // conversion is unavailable, omitting these keys preserves the last known
+    // valid account value while the fresh native quote is still recorded.
+    current_value: accountMarketValue,
+    converted_market_value: accountMarketValue,
     // FX
     user_currency: data.userCurrency ?? null,
     fx_rate_to_user_currency: coalesceNumber(data.fxRateToUserCurrency),
@@ -653,15 +658,15 @@ export function mergeMarketPriceIntoInvestment(previous: Investment, data: Inves
     ?? previous.currentMarketValue;
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
   const holdingCurrency = resolveHoldingCurrency({ currency: previous.currency, fallback: previous.userCurrency });
-  const priceCurrency = normalizeMarketCurrencyCode(data.priceCurrency ?? data.nativeCurrency)
-    ?? previous.priceCurrency
-    ?? previous.nativeCurrency;
+  const priceCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency)
+    ?? previous.nativeCurrency
+    ?? previous.priceCurrency;
   const sameCurrencyMarketValue = holdingCurrency && priceCurrency && holdingCurrency === priceCurrency
     ? currentMarketValue
     : undefined;
-  const holdingCurrentValue = coalesceNumber(data.currentValue)
+  const holdingCurrentValue = convertedMarketValue
     ?? sameCurrencyMarketValue
-    ?? moneyNumber(previous.currentValue);
+    ?? finitePreviousValue(previous);
   const profitLoss = holdingCurrentValue !== undefined && purchaseTotal !== undefined
     ? holdingCurrentValue - purchaseTotal
     : previous.profitLoss;
