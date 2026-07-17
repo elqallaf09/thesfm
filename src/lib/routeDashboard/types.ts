@@ -22,6 +22,11 @@ export type MoneyItem = {
   current_market_value?: number | string | null;
   native_market_value?: number | string | null;
   currency?: string | null;
+  price_currency?: string | null;
+  native_currency?: string | null;
+  user_currency?: string | null;
+  fx_rate_to_user_currency?: number | string | null;
+  fx_source?: string | null;
   saving_type?: string | null;
   saving_method?: string | null;
   method?: string | null;

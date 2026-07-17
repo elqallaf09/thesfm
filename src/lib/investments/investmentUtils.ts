@@ -149,8 +149,15 @@ export function safeInvestmentSummary(item: Partial<InvestmentInput & Investment
   };
 }
 
-function resolveInvestmentCurrency(input: {
+function resolveHoldingCurrency(input: {
   currency?: unknown;
+  fallback?: unknown;
+}) {
+  return normalizeMarketCurrencyCode(input.currency)
+    ?? normalizeMarketCurrencyCode(input.fallback);
+}
+
+function resolveQuoteCurrency(input: {
   nativeCurrency?: unknown;
   priceCurrency?: unknown;
   market?: unknown;
@@ -160,7 +167,7 @@ function resolveInvestmentCurrency(input: {
   assetType?: unknown;
   fallback?: unknown;
 }) {
-  const providerCurrency = normalizeMarketCurrencyCode(input.nativeCurrency ?? input.priceCurrency ?? input.currency);
+  const providerCurrency = normalizeMarketCurrencyCode(input.priceCurrency ?? input.nativeCurrency);
   const resolved = resolveMarketCurrency({
     providerCurrency,
     symbol: input.symbol,
@@ -363,9 +370,9 @@ export function buildSnapshotFallbackPayload(data: InvestmentInput, userId?: str
   return {
     ...(userId ? { user_id: userId } : {}),
     name: data.name,
-    amount: normalized.accountValue,
+    amount: normalized.purchaseTotal ?? normalized.holdingCurrentValue,
     type: data.type,
-    current_value: normalized.accountValue,
+    current_value: normalized.holdingCurrentValue,
     monthly_contribution: moneyNumber(data.monthlyContribution) ?? 0,
     start_date: data.startDate,
     risk_level: data.riskLevel,
@@ -474,11 +481,12 @@ export function normalizeInvestmentForSave(data: InvestmentInput) {
   const currentMarketValue = computedCurrentMarketValue
     ?? (isMarketLinked && currentPrice === undefined ? undefined : explicitCurrentMarketValue)
     ?? (isMarketLinked ? undefined : fallbackCurrentValue);
-  const accountValue = coalesceNumber(data.defaultCurrencyValue, data.convertedMarketValue, data.currentValue, currentMarketValue, purchaseTotal) ?? 0;
+  const holdingCurrentValue = coalesceNumber(data.currentValue, purchaseTotal) ?? 0;
+  const accountValue = coalesceNumber(data.defaultCurrencyValue, data.convertedMarketValue, holdingCurrentValue) ?? holdingCurrentValue;
   const defaultCurrencyValue = coalesceNumber(data.defaultCurrencyValue, data.convertedMarketValue, accountValue);
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue, accountValue);
-  const profitLoss = purchaseTotal !== undefined && currentMarketValue !== undefined
-    ? currentMarketValue - purchaseTotal
+  const profitLoss = purchaseTotal !== undefined && holdingCurrentValue !== undefined
+    ? holdingCurrentValue - purchaseTotal
     : moneyNumber(data.profitLoss);
   const profitLossPercent = purchaseTotal !== undefined && purchaseTotal > 0 && profitLoss !== undefined
     ? (profitLoss / purchaseTotal) * 100
@@ -491,6 +499,7 @@ export function normalizeInvestmentForSave(data: InvestmentInput) {
     currentPrice,
     currentMarketValue,
     accountValue,
+    holdingCurrentValue,
     defaultCurrencyValue,
     convertedMarketValue,
     profitLoss,
@@ -506,15 +515,18 @@ export function mergeInvestmentForUpdate(previous: Investment, data: InvestmentI
   const symbol = preserve(data.symbol, previous.symbol);
   const providerSymbol = preserve(data.providerSymbol, previous.providerSymbol);
   const assetType = preserve(data.assetType, previous.assetType);
-  const resolvedCurrency = resolveInvestmentCurrency({
+  const holdingCurrency = resolveHoldingCurrency({
     currency: data.currency,
-    nativeCurrency: data.nativeCurrency,
-    priceCurrency: data.priceCurrency,
+    fallback: previous.currency,
+  });
+  const quoteCurrency = resolveQuoteCurrency({
+    nativeCurrency: data.nativeCurrency ?? previous.nativeCurrency,
+    priceCurrency: data.priceCurrency ?? previous.priceCurrency,
     market,
     symbol,
     providerSymbol,
     assetType: assetType ?? data.type,
-    fallback: previous.nativeCurrency ?? previous.priceCurrency ?? previous.currency,
+    fallback: holdingCurrency,
   });
 
   return {
@@ -528,7 +540,7 @@ export function mergeInvestmentForUpdate(previous: Investment, data: InvestmentI
     providerSymbol,
     market,
     assetType,
-    currency: resolvedCurrency ?? preserve(data.currency, previous.currency),
+    currency: holdingCurrency ?? preserve(data.currency, previous.currency),
     quantity: preserve(data.quantity, previous.quantity),
     amount: preserve(data.amount, previous.amount),
     purchasePrice: preserve(data.purchasePrice, previous.purchasePrice),
@@ -539,8 +551,8 @@ export function mergeInvestmentForUpdate(previous: Investment, data: InvestmentI
     profitLossPercent: preserve(data.profitLossPercent, previous.profitLossPercent),
     defaultCurrencyValue: preserve(data.defaultCurrencyValue, previous.defaultCurrencyValue),
     unit: preserve(data.unit, previous.unit),
-    priceCurrency: resolvedCurrency ?? preserve(data.priceCurrency, previous.priceCurrency),
-    nativeCurrency: resolvedCurrency ?? preserve(data.nativeCurrency, previous.nativeCurrency),
+    priceCurrency: quoteCurrency ?? preserve(data.priceCurrency, previous.priceCurrency),
+    nativeCurrency: quoteCurrency ?? preserve(data.nativeCurrency, previous.nativeCurrency),
     nativeUnitPrice: preserve(data.nativeUnitPrice, previous.nativeUnitPrice),
     nativeMarketValue: preserve(data.nativeMarketValue, previous.nativeMarketValue),
     userCurrency: preserve(data.userCurrency, previous.userCurrency),
@@ -575,6 +587,7 @@ export function mergeInvestmentForUpdate(previous: Investment, data: InvestmentI
 }
 
 export type InvestmentMarketPriceUpdate = {
+  currentValue?: unknown;
   currentPrice?: unknown;
   currentMarketValue?: unknown;
   defaultCurrencyValue?: unknown;
@@ -600,6 +613,7 @@ export function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
   const lastPrice = coalesceNumber(data.lastPrice, data.currentPrice, data.nativeUnitPrice);
   const currentMarketValue = coalesceNumber(data.currentMarketValue, data.nativeMarketValue);
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
+  const holdingCurrentValue = coalesceNumber(data.currentValue);
   const updatedAt = data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? (currentPrice !== undefined ? nowIso() : null);
   const resolvedCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency) ?? data.nativeCurrency ?? data.priceCurrency ?? null;
 
@@ -619,7 +633,7 @@ export function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
     current_market_value: currentMarketValue,
     native_unit_price: currentPrice,
     native_market_value: currentMarketValue,
-    current_value: convertedMarketValue ?? currentMarketValue,
+    current_value: holdingCurrentValue,
     converted_market_value: convertedMarketValue,
     // FX
     user_currency: data.userCurrency ?? null,
@@ -638,21 +652,26 @@ export function mergeMarketPriceIntoInvestment(previous: Investment, data: Inves
     ?? positiveProduct(quantity, currentPrice)
     ?? previous.currentMarketValue;
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
-  const accountValue = convertedMarketValue ?? currentMarketValue ?? finitePreviousValue(previous);
-  const profitLoss = currentMarketValue !== undefined && purchaseTotal !== undefined
-    ? currentMarketValue - purchaseTotal
+  const holdingCurrency = resolveHoldingCurrency({ currency: previous.currency, fallback: previous.userCurrency });
+  const priceCurrency = normalizeMarketCurrencyCode(data.priceCurrency ?? data.nativeCurrency)
+    ?? previous.priceCurrency
+    ?? previous.nativeCurrency;
+  const sameCurrencyMarketValue = holdingCurrency && priceCurrency && holdingCurrency === priceCurrency
+    ? currentMarketValue
+    : undefined;
+  const holdingCurrentValue = coalesceNumber(data.currentValue)
+    ?? sameCurrencyMarketValue
+    ?? moneyNumber(previous.currentValue);
+  const profitLoss = holdingCurrentValue !== undefined && purchaseTotal !== undefined
+    ? holdingCurrentValue - purchaseTotal
     : previous.profitLoss;
   const profitLossPercent = profitLoss !== undefined && purchaseTotal !== undefined && purchaseTotal > 0
     ? (profitLoss / purchaseTotal) * 100
     : previous.profitLossPercent;
-  const priceCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency)
-    ?? previous.nativeCurrency
-    ?? previous.priceCurrency;
-
   return {
     ...previous,
-    currentValue: accountValue,
-    displayValue: accountValue,
+    currentValue: holdingCurrentValue ?? previous.currentValue,
+    displayValue: holdingCurrentValue ?? previous.displayValue,
     displayValueStatus: 'valid',
     currentPrice: currentPrice ?? previous.currentPrice,
     currentMarketValue,
@@ -676,10 +695,6 @@ export function mergeMarketPriceIntoInvestment(previous: Investment, data: Inves
     priceSource: data.priceSource ?? data.dataSource ?? previous.priceSource,
     updatedAt,
   };
-}
-
-function finitePreviousValue(previous: Investment) {
-  return moneyNumber(previous.currentValue) ?? previous.displayValue ?? 0;
 }
 
 type CleanInvestmentUpdateOptions = {
@@ -754,22 +769,32 @@ export function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
   const priceUpdatedAt = normalized.currentPrice !== undefined
     ? data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? null
     : null;
-  const resolvedCurrency = resolveInvestmentCurrency({
+  const holdingCurrency = resolveHoldingCurrency({
     currency: data.currency,
+    fallback: data.userCurrency,
+  });
+  const quoteCurrency = resolveQuoteCurrency({
     nativeCurrency: data.nativeCurrency,
     priceCurrency: data.priceCurrency,
     market: data.market,
     symbol: data.symbol,
     providerSymbol: data.providerSymbol,
     assetType: data.assetType ?? data.type,
+    fallback: holdingCurrency,
   });
+  const reportingCurrency = normalizeMarketCurrencyCode(data.userCurrency) ?? holdingCurrency;
+  const reportingValue = coalesceNumber(
+    data.convertedMarketValue,
+    data.defaultCurrencyValue,
+    reportingCurrency === holdingCurrency ? normalized.holdingCurrentValue : undefined,
+  );
   return {
     ...(userId ? { user_id: userId } : {}),
     name: data.name,
     asset_name: data.name,
-    amount: normalized.accountValue,
+    amount: normalized.purchaseTotal ?? normalized.holdingCurrentValue,
     type: data.type,
-    current_value: normalized.accountValue,
+    current_value: normalized.holdingCurrentValue,
     monthly_contribution: moneyNumber(data.monthlyContribution) ?? 0,
     start_date: data.startDate,
     purchase_date: data.startDate,
@@ -781,7 +806,7 @@ export function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     market: data.market ?? null,
     exchange: data.market ?? null,
     asset_type: data.assetType ?? null,
-    currency: resolvedCurrency ?? null,
+    currency: holdingCurrency ?? null,
     quantity: normalized.quantity ?? null,
     shares: normalized.quantity ?? null,
     unit: data.unit ?? null,
@@ -792,7 +817,7 @@ export function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     invested_amount: normalized.purchaseTotal ?? null,
     profit_loss: normalized.profitLoss ?? null,
     profit_loss_percent: normalized.profitLossPercent ?? null,
-    default_currency_value: normalized.defaultCurrencyValue ?? null,
+    default_currency_value: reportingValue ?? null,
     location: data.location ?? null,
     property_type: data.propertyType ?? null,
     expected_monthly_income: moneyNumber(data.expectedMonthlyIncome) ?? null,
@@ -800,13 +825,13 @@ export function buildInvestmentPayload(data: InvestmentInput, userId?: string) {
     maturity_date: data.maturityDate ?? null,
     current_price: normalized.currentPrice ?? null,
     current_market_value: normalized.currentMarketValue ?? null,
-    price_currency: resolvedCurrency ?? null,
-    native_currency: resolvedCurrency ?? null,
+    price_currency: quoteCurrency ?? null,
+    native_currency: quoteCurrency ?? null,
     native_unit_price: normalized.nativeUnitPrice ?? null,
     native_market_value: normalized.nativeMarketValue ?? null,
-    user_currency: data.userCurrency ?? null,
+    user_currency: reportingCurrency ?? null,
     fx_rate_to_user_currency: moneyNumber(data.fxRateToUserCurrency) ?? null,
-    converted_market_value: normalized.convertedMarketValue ?? null,
+    converted_market_value: reportingValue ?? null,
     fx_source: data.fxSource ?? null,
     fx_last_updated_at: data.fxLastUpdatedAt ?? null,
     valuation_source: data.valuationSource ?? data.dataSource ?? data.priceSource ?? null,
@@ -839,8 +864,11 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
   const resolvedProviderSymbol = row.provider_symbol ?? meta?.providerSymbol;
   const resolvedMarket = row.market ?? row.exchange ?? meta?.market;
   const resolvedAssetType = row.asset_type ?? meta?.assetType;
-  const resolvedCurrency = resolveInvestmentCurrency({
+  const holdingCurrency = resolveHoldingCurrency({
     currency: row.currency ?? meta?.currency,
+    fallback: row.user_currency ?? meta?.userCurrency,
+  });
+  const quoteCurrency = resolveQuoteCurrency({
     nativeCurrency: row.native_currency ?? meta?.nativeCurrency,
     priceCurrency: row.price_currency ?? meta?.priceCurrency,
     market: resolvedMarket,
@@ -848,8 +876,20 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
     symbol: resolvedSymbol,
     providerSymbol: resolvedProviderSymbol,
     assetType: resolvedAssetType ?? row.type ?? meta?.type,
+    fallback: holdingCurrency,
   });
-  const displayAmount = firstMoneyValue(row as Record<string, unknown>, ['converted_market_value', 'current_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const reportingCurrency = normalizeMarketCurrencyCode(row.user_currency ?? meta?.userCurrency);
+  const explicitHoldingValue = parseMoneyValue(row.current_value ?? meta?.currentValue);
+  const convertedValue = parseMoneyValue(row.converted_market_value ?? meta?.convertedMarketValue);
+  const nativeValueForHolding = holdingCurrency && quoteCurrency && holdingCurrency === quoteCurrency
+    ? parseMoneyValue(row.current_market_value ?? row.native_market_value ?? meta?.currentMarketValue ?? meta?.nativeMarketValue)
+    : parseMoneyValue(undefined);
+  const legacyHoldingValue = reportingCurrency && reportingCurrency === holdingCurrency && convertedValue.status === 'valid'
+    ? convertedValue
+    : nativeValueForHolding.status === 'valid'
+      ? nativeValueForHolding
+      : firstMoneyValue(row as Record<string, unknown>, ['amount', 'invested_amount', 'initial_value', 'purchase_total', 'total_invested', 'value']);
+  const displayAmount = explicitHoldingValue.status === 'valid' ? explicitHoldingValue : legacyHoldingValue;
   const monthlyAmount = parseMoneyValue(row.monthly_contribution ?? meta?.monthlyContribution);
   const expectedReturn = parseMoneyValue(row.expected_annual_return ?? row.expected_return ?? meta?.expectedAnnualReturn);
   const quantity = parseMoneyValue(row.quantity ?? row.shares ?? meta?.quantity);
@@ -868,16 +908,17 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
     ? currentMarketValue.value
     : positiveProduct(quantityValue, currentPriceValue) ?? meta?.currentMarketValue ?? meta?.nativeMarketValue;
   const profitLoss = parseMoneyValue(row.profit_loss ?? meta?.profitLoss);
-  const profitLossValue = profitLoss.status === 'valid'
-    ? profitLoss.value
-    : purchaseTotalValue !== undefined && currentMarketValueValue !== undefined
-      ? currentMarketValueValue - purchaseTotalValue
+  const holdingCurrentValueForProfit = displayAmount.status === 'valid' ? displayAmount.value : undefined;
+  const profitLossValue = purchaseTotalValue !== undefined && holdingCurrentValueForProfit !== undefined
+    ? holdingCurrentValueForProfit - purchaseTotalValue
+    : profitLoss.status === 'valid'
+      ? profitLoss.value
       : meta?.profitLoss;
   const profitLossPercent = parseMoneyValue(row.profit_loss_percent ?? meta?.profitLossPercent);
-  const profitLossPercentValue = profitLossPercent.status === 'valid'
-    ? profitLossPercent.value
-    : purchaseTotalValue !== undefined && purchaseTotalValue > 0 && profitLossValue !== undefined
-      ? (profitLossValue / purchaseTotalValue) * 100
+  const profitLossPercentValue = purchaseTotalValue !== undefined && purchaseTotalValue > 0 && profitLossValue !== undefined
+    ? (profitLossValue / purchaseTotalValue) * 100
+    : profitLossPercent.status === 'valid'
+      ? profitLossPercent.value
       : meta?.profitLossPercent;
   const defaultCurrencyValue = parseMoneyValue(row.default_currency_value ?? meta?.defaultCurrencyValue ?? row.converted_market_value ?? row.current_value ?? row.amount);
   const expectedMonthlyIncome = parseMoneyValue(row.expected_monthly_income ?? meta?.expectedMonthlyIncome);
@@ -885,7 +926,7 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
   const nativeUnitPrice = parseMoneyValue(row.native_unit_price ?? meta?.nativeUnitPrice ?? row.current_price ?? row.last_price ?? meta?.currentPrice ?? meta?.lastPrice);
   const nativeMarketValue = parseMoneyValue(row.native_market_value ?? meta?.nativeMarketValue ?? row.current_market_value ?? meta?.currentMarketValue);
   const fxRateToUserCurrency = parseMoneyValue(row.fx_rate_to_user_currency ?? meta?.fxRateToUserCurrency);
-  const convertedMarketValue = parseMoneyValue(row.converted_market_value ?? meta?.convertedMarketValue ?? row.current_value ?? row.amount);
+  const convertedMarketValue = parseMoneyValue(row.converted_market_value ?? meta?.convertedMarketValue);
   const lastPrice = parseMoneyValue(row.last_price ?? row.current_price ?? meta?.lastPrice ?? meta?.currentPrice);
   const metalKarat = parseMoneyValue(row.metal_karat ?? meta?.metalKarat);
   const metalPurity = parseMoneyValue(row.metal_purity ?? meta?.metalPurity);
@@ -913,22 +954,22 @@ export function normalizeInvestment(row: DbInvestmentRow, meta?: Partial<Investm
     providerSymbol: resolvedProviderSymbol,
     market: resolvedMarket,
     assetType: resolvedAssetType,
-    currency: resolvedCurrency ?? meta?.currency,
+    currency: holdingCurrency ?? meta?.currency,
     amount: amount.status === 'valid' ? amount.value : meta?.amount,
     purchasePrice: purchasePriceValue,
     purchaseTotal: purchaseTotalValue,
     currentPrice: currentPriceValue,
     currentMarketValue: currentMarketValueValue !== undefined
       ? currentMarketValueValue
-      : displayAmount.status === 'valid'
+      : holdingCurrency && quoteCurrency && holdingCurrency === quoteCurrency && displayAmount.status === 'valid'
         ? displayAmount.value
         : meta?.currentMarketValue,
     profitLoss: profitLossValue,
     profitLossPercent: profitLossPercentValue,
     defaultCurrencyValue: defaultCurrencyValue.status === 'valid' ? defaultCurrencyValue.value : meta?.defaultCurrencyValue,
     unit: row.unit ?? meta?.unit,
-    priceCurrency: resolvedCurrency ?? row.price_currency ?? meta?.priceCurrency ?? row.currency ?? meta?.currency,
-    nativeCurrency: resolvedCurrency ?? row.native_currency ?? meta?.nativeCurrency ?? row.price_currency ?? row.currency ?? meta?.priceCurrency ?? meta?.currency,
+    priceCurrency: quoteCurrency ?? row.price_currency ?? meta?.priceCurrency,
+    nativeCurrency: quoteCurrency ?? row.native_currency ?? meta?.nativeCurrency ?? row.price_currency ?? meta?.priceCurrency,
     nativeUnitPrice: nativeUnitPrice.status === 'valid' ? nativeUnitPrice.value : meta?.nativeUnitPrice,
     nativeMarketValue: nativeMarketValue.status === 'valid'
       ? nativeMarketValue.value
@@ -1035,4 +1076,3 @@ export function metaFromInvestment(item: Investment | InvestmentInput): Investme
     purchasePlatformStatus: item.purchasePlatformStatus,
   };
 }
-
