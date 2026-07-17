@@ -236,7 +236,7 @@ describe('Route bridge keeps the shell URL and the terminal in lock-step', () =>
 
 describe('Smart Analysis stage matches the shell in both themes and all widths', () => {
   it('sizes the stage from shared shell tokens with no hardcoded colors', () => {
-    expect(shellPageSource).toContain('var(--global-header-height)');
+    expect(shellPageSource).toContain('var(--app-header-height)');
     expect(shellPageSource).toContain('var(--workspace-page-padding-block');
     expect(shellPageSource).toContain('var(--border)');
     expect(shellPageSource).toContain('var(--background)');
@@ -248,7 +248,7 @@ describe('Smart Analysis stage matches the shell in both themes and all widths',
 
   it('keeps the shared sidebar sticky below the global header with internal scrolling', () => {
     expect(sidebarSource).toContain('position:sticky');
-    expect(sidebarSource).toContain('var(--global-header-height)');
+    expect(sidebarSource).toContain('var(--app-header-height)');
     expect(sidebarSource).toContain('overflow-y:auto');
   });
 

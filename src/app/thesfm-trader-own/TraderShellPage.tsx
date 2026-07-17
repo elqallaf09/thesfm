@@ -106,7 +106,7 @@ export default function TraderShellPage() {
           min-width: 0;
           width: 100%;
           height: calc(
-            100dvh - var(--global-header-height) -
+            100dvh - var(--app-header-height) -
             var(--workspace-page-padding-block, 24px) -
             var(--workspace-page-padding-block, 24px)
           );
@@ -128,7 +128,7 @@ export default function TraderShellPage() {
         @media (max-width: 767px) {
           .trader-shell-page {
             height: calc(
-              100dvh - var(--global-header-height) -
+              100dvh - var(--app-header-height) -
               var(--workspace-page-padding-block, 16px) -
               var(--workspace-page-padding-block, 16px)
             );
