@@ -1566,7 +1566,11 @@ export default function SetupPage() {
 
   return (
     <div className="setup-page" dir={dir}>
-      <DashboardPageShell contentClassName="setup-content">
+      <DashboardPageShell
+        ariaLabel={text.pageName}
+        className="account-setup-workspace-page"
+        contentClassName="setup-content"
+      >
         <header className="setup-top">
           <div>
             <span>{text.eyebrow}</span>
@@ -1601,7 +1605,29 @@ export default function SetupPage() {
             />
           )}
           <div className="step-layout">
-            <aside className="step-side">
+            <div className="step-main">
+              {step < 8 && (
+                <div className="setup-info-alert">
+                  <ShieldCheck size={18} aria-hidden="true" />
+                  <span>{text.realDataLong}</span>
+                </div>
+              )}
+              {renderStep()}
+              {error && <div className="setup-error" role="alert">{error}</div>}
+              {step > 0 && step < 8 && (
+                <div className="wizard-actions">
+                  <button type="button" className="ghost-btn" onClick={() => setStep(current => Math.max(0, current - 1) as Step)} disabled={saving}>
+                    <ArrowLeft size={16} />
+                    {text.back}
+                  </button>
+                  <button type="button" className="primary-btn" onClick={nextStep} disabled={saving}>
+                    {saving ? <Loader2 className="spin" size={16} /> : step === 7 ? <CheckCircle2 size={16} /> : <ArrowRight size={16} />}
+                    {saving ? text.saving : step === 7 ? text.finish : text.next}
+                  </button>
+                </div>
+              )}
+            </div>
+            <aside className="step-side" aria-label={text.progressTitle}>
               <div className="step-side-head">
                 <span>{step + 1}</span>
                 <div>
@@ -1627,35 +1653,13 @@ export default function SetupPage() {
                 }}
               />
             </aside>
-            <main className="step-main">
-              {step < 8 && (
-                <div className="setup-info-alert">
-                  <ShieldCheck size={18} aria-hidden="true" />
-                  <span>{text.realDataLong}</span>
-                </div>
-              )}
-              {renderStep()}
-              {error && <div className="setup-error" role="alert">{error}</div>}
-              {step > 0 && step < 8 && (
-                <div className="wizard-actions">
-                  <button type="button" className="ghost-btn" onClick={() => setStep(current => Math.max(0, current - 1) as Step)} disabled={saving}>
-                    <ArrowLeft size={16} />
-                    {text.back}
-                  </button>
-                  <button type="button" className="primary-btn" onClick={nextStep} disabled={saving}>
-                    {saving ? <Loader2 className="spin" size={16} /> : step === 7 ? <CheckCircle2 size={16} /> : <ArrowRight size={16} />}
-                    {saving ? text.saving : step === 7 ? text.finish : text.next}
-                  </button>
-                </div>
-              )}
-            </main>
           </div>
         </section>
       </DashboardPageShell>
       <style jsx>{`
         .setup-page{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui);overflow-x:hidden}
-        :global(.setup-page .sfm-dashboard-page-content){max-inline-size:1120px!important;margin-inline:auto!important}
-        .setup-content{display:grid;gap:22px;min-width:0}
+        :global(.setup-page .account-setup-workspace-page){inline-size:100%;max-inline-size:none}
+        .setup-content{display:grid;inline-size:100%;max-inline-size:none;margin-inline:0;gap:22px;min-width:0}
         .setup-top{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
         .setup-top span{display:block;color:var(--foreground-muted);font-size:12px;font-weight:600}
         .setup-top h1{margin:3px 0 0;font-size:clamp(24px,4vw,36px);font-weight:700;color:var(--foreground)}
@@ -1676,8 +1680,8 @@ export default function SetupPage() {
         .setup-hero.finish-hero .progress-orb small{max-width:92px;color:var(--foreground-secondary)}
         .setup-card{background:var(--surface-elevated);border:1px solid var(--border);border-radius:var(--radius-panel);padding:22px;box-shadow:var(--shadow-card);min-width:0}
         .setup-card-final{padding:18px}
-        .step-layout{display:grid;grid-template-columns:minmax(300px,.36fr) minmax(0,1fr);gap:20px;align-items:stretch}
-        .step-side{position:sticky;top:18px;align-self:start;background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-panel);padding:18px;display:grid;gap:14px;box-shadow:var(--shadow-xs)}
+        .step-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,320px);gap:20px;align-items:start;min-width:0}
+        .step-side{position:sticky;top:calc(var(--app-header-height) + var(--workspace-page-padding-block));align-self:start;background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-panel);padding:18px;display:grid;gap:14px;box-shadow:var(--shadow-xs);min-width:0}
         .step-side-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
         .step-side-head>span{width:48px;height:48px;border-radius:var(--radius-card);background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;font-weight:700;font-size:18px}
         .step-side small{display:block;color:var(--primary-hover);font-size:12px;font-weight:600;margin-bottom:4px}.step-side strong{display:block;font-size:19px;color:var(--foreground);line-height:1.35}.step-progress{height:11px;border-radius:var(--radius-pill);background:var(--border);overflow:hidden}.step-progress i{display:block;height:100%;border-radius:var(--radius-pill);background:var(--primary);transition:width .28s ease}
@@ -1772,7 +1776,7 @@ export default function SetupPage() {
         .setup-error{border:1px solid color-mix(in srgb,var(--danger) 30%,var(--border));background:var(--danger-soft);color:var(--danger);border-radius:var(--radius-control);padding:12px;font-weight:600}
         .wizard-actions{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:18px;margin-top:auto}.primary-btn,.ghost-btn{min-height:52px;border-radius:var(--radius-card);padding:0 20px;font:600 14px var(--font-ui);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease,border-color .18s ease,background .18s ease}.primary-btn{border:1px solid var(--primary);background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-sm)}.primary-btn:not(:disabled):hover{transform:translateY(-2px);background:var(--primary-hover);border-color:var(--primary-hover);box-shadow:var(--shadow-md)}.primary-btn:not(:disabled):active{transform:translateY(0) scale(.985)}.primary-btn:focus-visible,.ghost-btn:focus-visible,.finish-actions button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}.ghost-btn{border:1px solid var(--border-strong);background:var(--surface-muted);color:var(--foreground)}.ghost-btn:not(:disabled):hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 38%,var(--border));background:var(--surface-hover);box-shadow:var(--shadow-sm)}.primary-btn:disabled,.ghost-btn:disabled{opacity:.65;cursor:not-allowed;transform:none;box-shadow:none}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
         .finish-actions{display:flex;gap:10px;flex-wrap:wrap}.finish-actions button{min-height:46px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);color:var(--foreground);padding:0 15px;font-weight:600;font-family:var(--font-ui);cursor:pointer}.finish-actions button.primary{border:1px solid var(--primary);background:var(--primary);color:var(--primary-foreground)}
-        @media(max-width:1024px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout,.financial-snapshot-card{grid-template-columns:1fr}.progress-orb{width:124px;height:124px}.step-side{position:static}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.recommendation-list{grid-template-columns:1fr}}
+        @media(max-width:960px){.setup-page .sfm-dashboard-page-shell{margin-inline-start:0}.setup-hero,.step-layout,.financial-snapshot-card{grid-template-columns:minmax(0,1fr)}.progress-orb{width:124px;height:124px}.step-side{position:static;top:auto}.setup-plan ul{grid-template-columns:repeat(2,minmax(0,1fr))}.completion-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.recommendation-list{grid-template-columns:1fr}}
         @media(max-width:720px){:global(.setup-page .sfm-dashboard-page-shell){padding-inline:16px!important}.setup-top{align-items:flex-start}.setup-hero{grid-template-columns:1fr;border-radius:var(--radius-panel);padding:20px}.setup-hero.finish-hero .progress-orb,.progress-orb{width:108px;height:108px}.setup-card{padding:14px;border-radius:var(--radius-panel)}.setup-card-final{padding:12px}.form-grid,.expense-grid,.summary-grid,.focus-grid,.setup-plan ul,.completion-summary-grid,.snapshot-metrics,.report-grid{grid-template-columns:1fr}.wizard-actions,.choice-row,.welcome-actions,.finish-actions,.report-actions{display:grid;grid-template-columns:1fr}.income-decision-actions{max-width:100%}.income-skip-link{width:100%;justify-content:center}.primary-btn,.ghost-btn,.choice-btn,.toggle-card,.finish-actions button,.income-action-btn,.report-actions button{width:100%;min-width:0}.income-decision-card{padding:22px 16px;border-radius:var(--radius-panel)}.income-decision-icon{width:68px;height:68px}.recurring-income-card{grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;border-radius:var(--radius-card)}.step-main{padding:14px;min-height:auto}.step-heading h2{font-size:22px}.completion-hero{grid-template-columns:1fr;text-align:center;justify-items:center;border-radius:var(--radius-card);padding:18px}.completion-copy h2{font-size:24px}.completion-summary-grid :global(.completion-summary-card){grid-template-columns:minmax(0,1fr);text-align:start}.financial-snapshot-card,.recommendation-panel{border-radius:var(--radius-card);padding:14px}.recommendation-head,.recommendation-single{grid-template-columns:minmax(0,1fr)}.recommendation-surplus{display:grid;justify-items:start}.report-modal-backdrop{align-items:end;padding:10px}.initial-report-modal{max-height:88dvh;border-radius:var(--radius-panel) var(--radius-panel) 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}.report-modal-head{display:grid}.report-modal-head button{justify-self:end}:global(.setup-page .progress-details ol){max-height:280px}:global(.setup-page .progress-details li){grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state" "icon badge"}:global(.setup-page .progress-details li em){justify-self:start}.report-grid :global(.report-card){grid-template-columns:minmax(0,1fr)}}
       `}</style>
     </div>
@@ -2243,4 +2247,3 @@ export default function SetupPage() {
     );
   }
 }
-

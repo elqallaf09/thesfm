@@ -12,6 +12,7 @@ const root = process.cwd();
 describe('workspace page layout policy', () => {
   it.each([
     ['/dashboard', 'full'],
+    ['/setup', 'full'],
     ['/market-analysis', 'full'],
     ['/market-analysis?tab=traderTools', 'full'],
     ['/market-analysis#trader-tools', 'full'],
