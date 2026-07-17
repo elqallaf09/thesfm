@@ -123,12 +123,15 @@ jobs:
       - name: 4. Complete smoke suite
         run: pnpm exec playwright test --workers=1 --max-failures=1
 
-      - name: Remove browser auth material and DOM error contexts
+      - name: Clean synthetic records and browser auth material
         if: always()
         shell: bash
         run: |
+          cleanup_status=0
+          pnpm exec playwright test auth.teardown.ts --project=auth-cleanup --workers=1 || cleanup_status=$?
           rm -rf playwright/.auth
           find test-results -type f -name 'error-context.md' -delete 2>/dev/null || true
+          exit "$cleanup_status"
 
       - name: Upload failure diagnostics
         if: failure()

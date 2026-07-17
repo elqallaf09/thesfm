@@ -37,6 +37,25 @@ describe('saved-record ownership and failure-state recovery', () => {
     expect(source.indexOf('if (error) throw error')).toBeLessThan(source.indexOf('const parent = data as IncomeRow'));
   });
 
+  it('creates and validates a fresh browser session for every real authenticated test', () => {
+    const helper = readSource('tests/smoke/authenticated-browser.ts');
+    expect(helper).toContain('await context.clearCookies');
+    expect(helper).toContain("await createAuthenticatedDataClientFromPage(page)");
+    expect(helper).toContain("const landingPath = role === 'admin' ? '/sfm-admin-control' : '/dashboard'");
+
+    for (const path of [
+      'tests/smoke/authenticated-data-integrity.spec.ts',
+      'tests/smoke/launch-readiness.spec.ts',
+      'tests/smoke/phase-31-global-header-typography.spec.ts',
+      'tests/smoke/phase-35-daily-workflow.spec.ts',
+    ]) {
+      const source = readSource(path);
+      expect(source).toContain('authenticateBrowserRole');
+      expect(source).not.toContain('storageState: userAuthStatePath');
+      expect(source).not.toContain('storageState: adminAuthStatePath');
+    }
+  });
+
   it('distinguishes project loading and provider failure from a real empty account', () => {
     const source = readSource('src/app/projects/page.tsx');
     expect(source).toContain("const [projectsLoading, setProjectsLoading] = useState(false)");

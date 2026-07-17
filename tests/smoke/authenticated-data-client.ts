@@ -80,6 +80,10 @@ export async function createAuthenticatedDataClientFromPage(page: Page): Promise
       headers: { Authorization: `Bearer ${stored.accessToken}` },
     },
   });
+  const { data: validated, error: validationError } = await client.auth.getUser(stored.accessToken);
+  if (validationError || !validated.user || validated.user.id !== stored.userId) {
+    throw new Error('The browser Supabase session could not be validated.');
+  }
   return { client, user: { id: stored.userId } };
 }
 

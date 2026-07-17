@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { adminAuthStatePath } from './auth-state';
+import { authenticateBrowserRole } from './authenticated-browser';
 
 const adminAuthConfigured = Boolean(process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD);
 
@@ -211,7 +211,9 @@ test.describe('Phase 3.1 global header and typography', () => {
 });
 
 test.describe('Phase 3.1 permission-gated Administration workspace', () => {
-  test.use({ storageState: adminAuthStatePath });
+  test.beforeEach(async ({ page, isMobile }) => {
+    if (adminAuthConfigured && !isMobile) await authenticateBrowserRole(page, 'admin');
+  });
 
   test('authorized administrators see all four full workspace labels in the header', async ({ page, isMobile }) => {
     test.skip(isMobile, 'The full authorized label set is asserted once in the desktop project.');

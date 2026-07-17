@@ -7,14 +7,14 @@ import {
   createAuthenticatedDataClientFromPage,
   syntheticIncomePrefix,
 } from './authenticated-data-client';
-import { userAuthStatePath } from './auth-state';
+import { authenticateBrowserRole } from './authenticated-browser';
 
 const userCredentialsConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
 const adminCredentialsConfigured = Boolean(process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD);
 
 // These tests enter real credentials and load real user-owned records. Network
 // traces, screenshots, and video must never persist either into CI artifacts.
-test.use({ storageState: userAuthStatePath, trace: 'off', screenshot: 'off', video: 'off' });
+test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 test.setTimeout(120_000);
 
 function syntheticLabel(suffix: string) {
@@ -30,21 +30,6 @@ async function openIncomeSources(page: Page) {
   await expect(page.getByRole('tab', { name: /^Sources/ })).toHaveAttribute('aria-selected', 'true');
 }
 
-async function signInAgain(page: Page) {
-  const email = process.env.E2E_USER_EMAIL;
-  const password = process.env.E2E_USER_PASSWORD;
-  if (!email || !password) throw new Error('Authenticated user persistence validation is not configured.');
-
-  const loginInput = page
-    .locator('input[type="email"], input[autocomplete="username"], input[name="email"], input[name="username"]')
-    .first();
-  await expect(loginInput).toBeVisible();
-  await loginInput.fill(email);
-  await page.locator('input[type="password"]').first().fill(password);
-  await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL(url => url.pathname !== '/login', { waitUntil: 'domcontentloaded', timeout: 30_000 });
-}
-
 test('authenticated CRUD persists across reload and logout/login', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium-desktop', 'Source-backed CRUD runs once in desktop Chromium.');
   test.skip(!userCredentialsConfigured, 'The E2E user account is not configured.');
@@ -55,6 +40,7 @@ test('authenticated CRUD persists across reload and logout/login', async ({ page
   await page.addInitScript(() => window.localStorage.setItem('sfm_lang', 'en'));
 
   try {
+    await authenticateBrowserRole(page, 'user');
     const response = await page.goto('/income', { waitUntil: 'domcontentloaded' });
     expect(response?.status() ?? 200).toBeLessThan(500);
     await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
@@ -117,7 +103,7 @@ test('authenticated CRUD persists across reload and logout/login', async ({ page
 
     await page.getByRole('button', { name: 'Logout' }).click();
     await page.waitForURL(/\/login(?:\?|$)/, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-    await signInAgain(page);
+    await authenticateBrowserRole(page, 'user');
     await openIncomeSources(page);
     const reauthenticated = await createAuthenticatedDataClientFromPage(page);
     authenticated = reauthenticated;
@@ -150,6 +136,7 @@ test('failed authenticated insert does not update the income UI', async ({ page 
   await page.addInitScript(() => window.localStorage.setItem('sfm_lang', 'en'));
 
   try {
+    await authenticateBrowserRole(page, 'user');
     const response = await page.goto('/income', { waitUntil: 'domcontentloaded' });
     expect(response?.status() ?? 200).toBeLessThan(500);
     await expect(page.locator('button.hero-primary')).toBeEnabled();
