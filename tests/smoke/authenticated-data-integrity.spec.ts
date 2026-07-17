@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 import {
   cleanupAllSyntheticIncomeRecords,
+  cleanupSyntheticIncomeRecordsWithClient,
   createAuthenticatedDataClient,
+  createAuthenticatedDataClientFromPage,
   syntheticIncomePrefix,
 } from './authenticated-data-client';
 import { userAuthStatePath } from './auth-state';
@@ -49,22 +51,32 @@ test('authenticated CRUD persists across reload and logout/login', async ({ page
 
   const label = syntheticLabel('crud');
   const editedLabel = `${label}-edited`;
-  const authenticated = await createAuthenticatedDataClient('user');
+  let authenticated: Awaited<ReturnType<typeof createAuthenticatedDataClientFromPage>> | null = null;
   await page.addInitScript(() => window.localStorage.setItem('sfm_lang', 'en'));
 
   try {
-    await cleanupAllSyntheticIncomeRecords();
     const response = await page.goto('/income', { waitUntil: 'domcontentloaded' });
     expect(response?.status() ?? 200).toBeLessThan(500);
     await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
     await expect(page.locator('.income-shell')).toBeVisible();
+    await expect(page.locator('button.hero-primary')).toBeEnabled();
+    authenticated = await createAuthenticatedDataClientFromPage(page);
+    await cleanupSyntheticIncomeRecordsWithClient(authenticated);
 
     await page.locator('button.hero-primary').click();
     const createDialog = page.getByRole('dialog');
     await expect(createDialog).toBeVisible();
     await createDialog.locator('input').first().fill(label);
     await createDialog.locator('input[inputmode="decimal"]').fill('12.345');
+    const insertResponsePromise = page.waitForResponse(candidate => {
+      const url = new URL(candidate.url());
+      return candidate.request().method() === 'POST' && url.pathname === '/rest/v1/monthly_income_sources';
+    });
     await createDialog.getByRole('button', { name: 'Save income' }).click();
+    const insertResponse = await insertResponsePromise;
+    expect(insertResponse.status(), 'The authenticated income insert did not succeed.').toBe(201);
+    const insertedRecord = await insertResponse.json() as { id?: string; label?: string; user_id?: string };
+    expect(insertedRecord).toEqual(expect.objectContaining({ label, user_id: authenticated.user.id }));
     await expect(createDialog).toBeHidden();
 
     await page.getByRole('tab', { name: /^Sources/ }).click();
@@ -107,22 +119,80 @@ test('authenticated CRUD persists across reload and logout/login', async ({ page
     await page.waitForURL(/\/login(?:\?|$)/, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await signInAgain(page);
     await openIncomeSources(page);
+    const reauthenticated = await createAuthenticatedDataClientFromPage(page);
+    authenticated = reauthenticated;
     row = page.locator('article.income-row').filter({ hasText: editedLabel });
     await expect(row).toHaveCount(1);
 
     await row.getByRole('button', { name: 'Delete' }).click();
     await expect(row).toHaveCount(0);
     await expect.poll(async () => {
-      const { count, error } = await authenticated.client
+      const { count, error } = await reauthenticated.client
         .from('monthly_income_sources')
         .select('id', { count: 'exact', head: true })
         .eq('id', recordId)
-        .eq('user_id', authenticated.user.id);
+        .eq('user_id', reauthenticated.user.id);
       if (error) throw new Error('The deleted income row could not be verified at its source of truth.');
       return count;
     }).toBe(0);
   } finally {
-    await authenticated.client.auth.signOut({ scope: 'local' });
+    if (authenticated) await cleanupSyntheticIncomeRecordsWithClient(authenticated).catch(() => undefined);
+    await cleanupAllSyntheticIncomeRecords();
+  }
+});
+
+test('failed authenticated insert does not update the income UI', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium-desktop', 'Authenticated failure handling runs once in desktop Chromium.');
+  test.skip(!userCredentialsConfigured, 'The E2E user account is not configured.');
+
+  const label = syntheticLabel('failed-insert');
+  let authenticated: Awaited<ReturnType<typeof createAuthenticatedDataClientFromPage>> | null = null;
+  await page.addInitScript(() => window.localStorage.setItem('sfm_lang', 'en'));
+
+  try {
+    const response = await page.goto('/income', { waitUntil: 'domcontentloaded' });
+    expect(response?.status() ?? 200).toBeLessThan(500);
+    await expect(page.locator('button.hero-primary')).toBeEnabled();
+    authenticated = await createAuthenticatedDataClientFromPage(page);
+    await cleanupSyntheticIncomeRecordsWithClient(authenticated);
+
+    const supabaseOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin;
+    await page.route(`${supabaseOrigin}/rest/v1/monthly_income_sources**`, async route => {
+      if (route.request().method() !== 'POST') {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 'E2E_INSERT_FAILURE', message: 'Synthetic provider failure' }),
+      });
+    });
+
+    await page.locator('button.hero-primary').click();
+    const dialog = page.getByRole('dialog');
+    await dialog.locator('input').first().fill(label);
+    await dialog.locator('input[inputmode="decimal"]').fill('9.875');
+    await dialog.getByRole('button', { name: 'Save income' }).click();
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.form-error')).toHaveText('Income could not be saved right now. Try again.');
+    await expect(page.locator('article.income-row').filter({ hasText: label })).toHaveCount(0);
+    const guestContainsFailedRow = await page.evaluate(expectedLabel => {
+      const rows = JSON.parse(window.localStorage.getItem('sfm_guest_income') ?? '[]') as Array<{ label?: string }>;
+      return rows.some(row => row.label === expectedLabel);
+    }, label);
+    expect(guestContainsFailedRow).toBe(false);
+
+    const { count, error } = await authenticated.client
+      .from('monthly_income_sources')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', authenticated.user.id)
+      .eq('label', label);
+    expect(error, 'The failed insert verification query returned a provider error.').toBeNull();
+    expect(count).toBe(0);
+  } finally {
+    if (authenticated) await cleanupSyntheticIncomeRecordsWithClient(authenticated).catch(() => undefined);
     await cleanupAllSyntheticIncomeRecords();
   }
 });

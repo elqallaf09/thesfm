@@ -106,7 +106,7 @@ jobs:
         run: >-
           pnpm exec playwright test authenticated-data-integrity.spec.ts
           --project=chromium-desktop --workers=1 --max-failures=1
-          --grep='authenticated CRUD persists across reload and logout/login'
+          --grep='authenticated CRUD persists across reload and logout/login|failed authenticated insert'
 
       - name: 2. Second-user RLS isolation
         run: >-

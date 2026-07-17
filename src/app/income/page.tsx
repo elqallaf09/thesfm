@@ -220,6 +220,9 @@ const TX: Record<string, Record<Lang, string>> = {
   frequencyError: { ar: 'يرجى اختيار التكرار', en: 'Please choose frequency.', fr: 'Veuillez choisir la fréquence.' },
   receivedDateError: { ar: 'يرجى اختيار تاريخ الاستلام', en: 'Please choose received date.', fr: 'Veuillez choisir la date de réception.' },
   requiredError: { ar: 'يرجى إكمال الحقول المطلوبة.', en: 'Please complete the required fields.', fr: 'Veuillez compléter les champs requis.' },
+  authPending: { ar: 'يرجى الانتظار حتى يكتمل تحميل حسابك.', en: 'Please wait while your account finishes loading.', fr: 'Veuillez patienter pendant le chargement de votre compte.' },
+  authRequired: { ar: 'جلستك غير متاحة. سجّل الدخول ثم حاول مرة أخرى.', en: 'Your session is unavailable. Sign in and try again.', fr: 'Votre session est indisponible. Connectez-vous puis réessayez.' },
+  saveFailed: { ar: 'تعذر حفظ الدخل الآن. حاول مرة أخرى.', en: 'Income could not be saved right now. Try again.', fr: 'Le revenu n’a pas pu être enregistré. Réessayez.' },
   saved: { ar: 'تمت إضافة الدخل بنجاح', en: 'Income added successfully', fr: 'Revenu ajouté avec succès' },
   deleted: { ar: 'تم حذف الدخل', en: 'Income deleted', fr: 'Revenu supprimé' },
   deleteFailed: { ar: 'تعذر حذف الدخل حالياً', en: 'Income could not be deleted right now', fr: 'Impossible de supprimer le revenu pour le moment' },
@@ -678,7 +681,7 @@ function currencySymbol(code: string) {
 
 export default function IncomePage() {
   const { lang, dir } = useLanguage();
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, loading: authLoading } = useAuth();
   const { currency: defaultCurrency } = useCurrency();
   const [rows, setRows] = useState<IncomeRow[]>([]);
   const [expenseRows, setExpenseRows] = useState<ExpenseRow[]>([]);
@@ -709,7 +712,8 @@ export default function IncomePage() {
   const load = useCallback(async () => {
     setLoading(true);
     setInsightLoadError(false);
-    if (isGuest || !user) {
+    if (authLoading) return;
+    if (isGuest) {
       try {
         const local = JSON.parse(localStorage.getItem('sfm_guest_income') || '[]') as IncomeRow[];
         setRows(local);
@@ -722,6 +726,13 @@ export default function IncomePage() {
       } catch {
         setExpenseRows([]);
       }
+      setLoading(false);
+      return;
+    }
+    if (!user) {
+      setRows([]);
+      setExpenseRows([]);
+      setInsightLoadError(true);
       setLoading(false);
       return;
     }
@@ -751,7 +762,7 @@ export default function IncomePage() {
       setExpenseRows(personalExpenseRows((expenseResult.data ?? []) as ExpenseRow[]));
     }
     setLoading(false);
-  }, [isGuest, user]);
+  }, [authLoading, isGuest, user]);
 
   useEffect(() => {
     void load();
@@ -1005,6 +1016,14 @@ export default function IncomePage() {
   }
 
   function openCreate() {
+    if (authLoading) {
+      showToast(tr('authPending', lang));
+      return;
+    }
+    if (!isGuest && !user) {
+      showToast(tr('authRequired', lang));
+      return;
+    }
     setForm({ ...emptyForm(), currency: normalizeCurrency(defaultCurrency, 'KWD') });
     setFormError('');
     setFormErrors({});
@@ -1076,7 +1095,7 @@ export default function IncomePage() {
         attachment_size: existing?.attachment_size ?? null,
       };
     }
-    if (isGuest || !user) {
+    if (isGuest) {
       return {
         attachment_url: URL.createObjectURL(selectedFile),
         attachment_name: selectedFile.name,
@@ -1084,6 +1103,7 @@ export default function IncomePage() {
         attachment_size: selectedFile.size,
       };
     }
+    if (!user) throw new Error(tr('authRequired', lang));
     const safeName = selectedFile.name.replace(/[^\w.\-]+/g, '-');
     const path = `${user.id}/${incomeId}/${Date.now()}-${safeName}`;
     const { error } = await supabase.storage.from('income-attachments').upload(path, selectedFile, {
@@ -1278,6 +1298,14 @@ export default function IncomePage() {
   async function saveIncome(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
+    if (authLoading) {
+      setFormError(tr('authPending', lang));
+      return;
+    }
+    if (!isGuest && !user) {
+      setFormError(tr('authRequired', lang));
+      return;
+    }
     const name = form.name.trim();
     const amount = parseIncomeAmount(form.amount);
     const currency = normalizeCurrency(form.currency, '');
@@ -1366,7 +1394,7 @@ export default function IncomePage() {
     }));
 
     try {
-      if (isGuest || !user) {
+      if (isGuest) {
         const generatedRows = form.isRecurring && !form.id ? makeGeneratedRows(id) : [];
         const combined = form.id ? rows.map(row => row.id === id ? { ...row, ...nextRow } : row) : [nextRow, ...generatedRows, ...rows];
         const seen = new Set<string>();
@@ -1378,6 +1406,8 @@ export default function IncomePage() {
         });
         localStorage.setItem('sfm_guest_income', JSON.stringify(next));
         setRows(next);
+      } else if (!user) {
+        throw new Error(tr('authRequired', lang));
       } else if (form.id) {
         const { error } = await supabase.from('monthly_income_sources').update(payload).eq('id', id).eq('user_id', user.id);
         if (error) throw error;
@@ -1446,8 +1476,12 @@ export default function IncomePage() {
       setAttachmentError('');
       showToast(tr('saved', lang));
     } catch (error) {
-      console.error('[Income] Failed to save income record', error);
-      setFormError(error instanceof Error ? error.message : tr('requiredError', lang));
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Income] Failed to save income record', error);
+      }
+      setFormError(error instanceof Error && error.message === tr('authRequired', lang)
+        ? error.message
+        : tr('saveFailed', lang));
     } finally {
       setSaving(false);
     }
@@ -1455,10 +1489,17 @@ export default function IncomePage() {
 
   async function deleteIncome(row: IncomeRow) {
     try {
-      if (isGuest || !user) {
+      if (authLoading) {
+        showToast(tr('authPending', lang));
+        return;
+      }
+      if (isGuest) {
         const next = rows.filter(item => item.id !== row.id);
         localStorage.setItem('sfm_guest_income', JSON.stringify(next));
         setRows(next);
+      } else if (!user) {
+        showToast(tr('authRequired', lang));
+        return;
       } else {
         const { error } = await supabase.from('monthly_income_sources').delete().eq('id', row.id).eq('user_id', user.id);
         if (error) throw error;
@@ -1474,10 +1515,17 @@ export default function IncomePage() {
     const confirmedAt = new Date().toISOString();
     const nextRow = { ...row, status: 'received', confirmed_at: confirmedAt, updated_at: confirmedAt };
     try {
-      if (isGuest || !user) {
+      if (authLoading) {
+        showToast(tr('authPending', lang));
+        return;
+      }
+      if (isGuest) {
         const next = rows.map(item => item.id === row.id ? nextRow : item);
         localStorage.setItem('sfm_guest_income', JSON.stringify(next));
         setRows(next);
+      } else if (!user) {
+        showToast(tr('authRequired', lang));
+        return;
       } else {
         const { error } = await supabase
           .from('monthly_income_sources')
@@ -1518,7 +1566,7 @@ export default function IncomePage() {
               <span>{tr('selectedMonthLabel', lang)}</span>
               <input type="month" value={selectedMonth} onChange={event => setSelectedMonth(event.target.value || todayDateOnly().slice(0, 7))} />
             </label>
-            <button type="button" className="primary hero-primary" onClick={openCreate} aria-label={tr('addIncome', lang)}>
+            <button type="button" className="primary hero-primary" onClick={openCreate} aria-label={tr('addIncome', lang)} disabled={authLoading || (!isGuest && !user)}>
               <Plus size={16} />{tr('addIncome', lang)}
             </button>
             <div className="export-wrap" ref={exportRef}>
@@ -1839,7 +1887,7 @@ export default function IncomePage() {
               {formError && <div className="form-error">{formError}</div>}
               <div className="form-actions">
                 <button type="button" className="ghost-light" onClick={() => setModalOpen(false)} disabled={saving}>{tr('cancel', lang)}</button>
-                <button type="submit" className="primary-dark" disabled={saving}>{saving ? tr('saving', lang) : tr('saveIncome', lang)}</button>
+                <button type="submit" className="primary-dark" disabled={saving || authLoading || (!isGuest && !user)}>{saving ? tr('saving', lang) : tr('saveIncome', lang)}</button>
               </div>
             </form>
           </div>

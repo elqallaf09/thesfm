@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import type { Page } from '@playwright/test';
 
 export const syntheticIncomePrefix = 'e2e-pr34-';
 
@@ -6,7 +7,12 @@ type E2ERole = 'user' | 'admin';
 
 export type AuthenticatedDataClient = {
   client: SupabaseClient;
-  user: User;
+  user: Pick<User, 'id'>;
+};
+
+type StoredBrowserSession = {
+  accessToken: string;
+  userId: string;
 };
 
 function credentialsFor(role: E2ERole) {
@@ -38,6 +44,52 @@ export async function createAuthenticatedDataClient(role: E2ERole): Promise<Auth
     throw new Error(`Authenticated ${role} data validation could not establish a session.`);
   }
   return { client, user: data.user };
+}
+
+export async function createAuthenticatedDataClientFromPage(page: Page): Promise<AuthenticatedDataClient> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) throw new Error('Authenticated browser data validation is not configured.');
+
+  const stored = await page.evaluate(() => {
+    for (const key of Object.keys(window.localStorage)) {
+      if (!/^sb-[a-z0-9]+-auth-token$/i.test(key)) continue;
+      try {
+        const value = JSON.parse(window.localStorage.getItem(key) ?? 'null') as {
+          access_token?: unknown;
+          user?: { id?: unknown };
+        } | null;
+        if (typeof value?.access_token === 'string' && typeof value.user?.id === 'string') {
+          return { accessToken: value.access_token, userId: value.user.id } satisfies StoredBrowserSession;
+        }
+      } catch {
+        // Continue looking for the authenticated Supabase session entry.
+      }
+    }
+    return null;
+  });
+  if (!stored) throw new Error('The browser does not have an authenticated Supabase session.');
+
+  const client = createClient(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+    global: {
+      headers: { Authorization: `Bearer ${stored.accessToken}` },
+    },
+  });
+  return { client, user: { id: stored.userId } };
+}
+
+export async function cleanupSyntheticIncomeRecordsWithClient(authenticated: AuthenticatedDataClient) {
+  const { error } = await authenticated.client
+    .from('monthly_income_sources')
+    .delete()
+    .eq('user_id', authenticated.user.id)
+    .like('label', `${syntheticIncomePrefix}%`);
+  if (error) throw new Error('Synthetic income cleanup failed for the authenticated browser account.');
 }
 
 export async function cleanupSyntheticIncomeRecords(role: E2ERole) {

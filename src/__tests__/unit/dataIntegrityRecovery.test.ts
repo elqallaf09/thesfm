@@ -27,6 +27,16 @@ describe('saved-record ownership and failure-state recovery', () => {
     expect(source).toContain("showToast(tr('deleteFailed', lang))");
   });
 
+  it('never treats an unresolved authenticated session as guest income', () => {
+    const source = readSource('src/app/income/page.tsx');
+    expect(source).toContain('const { user, isGuest, loading: authLoading } = useAuth()');
+    expect(source).toContain('if (authLoading) return;');
+    expect(source).toContain('if (isGuest) {');
+    expect(source).not.toContain('if (isGuest || !user) {');
+    expect(source).toContain(".insert({ ...payload, user_id: user.id })");
+    expect(source.indexOf('if (error) throw error')).toBeLessThan(source.indexOf('const parent = data as IncomeRow'));
+  });
+
   it('distinguishes project loading and provider failure from a real empty account', () => {
     const source = readSource('src/app/projects/page.tsx');
     expect(source).toContain("const [projectsLoading, setProjectsLoading] = useState(false)");
