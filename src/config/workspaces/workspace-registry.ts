@@ -57,7 +57,11 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
       '/energy-stocks', '/banking-stocks', '/sharia-stocks', '/growth-stocks',
       '/defensive-stocks', '/cyclical-stocks', '/dividend-stocks',
     ],
-    navGroupIds: ['investment-market', 'market-news', 'stock-categories'],
+    navGroupIds: [
+      'investment-market', 'market-news', 'stock-categories',
+      // SFM Smart Analyzer contextual groups (render only inside /thesfm-trader-own).
+      'trader-trading', 'trader-follow', 'trader-more',
+    ],
     access: { authenticationRequired: true, guestAllowed: true },
     enabled: true,
   },

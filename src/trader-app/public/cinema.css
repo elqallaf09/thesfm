@@ -13979,3 +13979,21 @@ html[data-theme] .evaluation-score-card.danger {
   background: var(--danger-soft) !important;
   color: var(--danger) !important;
 }
+
+/* ==========================================================================
+   sfm-embedded-shell-layer — Smart Analysis shell unification (2026-07)
+   Inside the main THE SFM shell (data-embedded="true", stamped pre-paint by
+   index.html/detail.html) the host application provides the global header,
+   the shared workspace sidebar, and the mobile navigation drawer. The
+   terminal therefore drops its own navigation column at every viewport so a
+   single navigation surface remains, and the stage takes the full width.
+   The bottom mobile tab bar stays: it is terminal-internal quick switching,
+   not a second sidebar. Standalone mode is completely unaffected.
+   ========================================================================== */
+html[data-embedded="true"] .terminal-sidebar {
+  display: none;
+}
+
+html[data-embedded="true"] .terminal-app {
+  grid-template-columns: minmax(0, 1fr);
+}
