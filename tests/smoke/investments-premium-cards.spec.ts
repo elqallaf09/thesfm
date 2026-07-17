@@ -389,3 +389,99 @@ test('sticky shell, single asset visual, verified zad logo, and dialog stacking 
   await page.locator('.invest-drawer .invest-icon-btn').click();
   await expect(page.locator('.invest-overlay')).toHaveCount(0);
 });
+
+const tsmAliasInvestments: Array<[label: string, symbol: string, name: string]> = [
+  ['ticker TSM', 'TSM', 'Taiwan Semiconductor Manufacturing Company'],
+  ['ticker TSMC', 'TSMC', 'Taiwan Semiconductor Manufacturing Company'],
+  ['full ADR display name', 'TSM', 'Taiwan Semiconductor Manufacturing Co. Ltd. ADR'],
+];
+
+for (const [label, symbol, name] of tsmAliasInvestments) {
+  test(`TSM asset card (${label}) shows the verified TSMC logo, not the generic building fallback`, async ({ page }) => {
+    const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    let tsmcFaviconRequested = false;
+    // Playwright matches routes most-recently-registered-first, so the
+    // specific tsmc.com assertion route must be registered LAST to take
+    // priority over the generic favicon/simpleicons mocks below it.
+    await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+    await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+    await page.route('**tsmc.com**', route => {
+      tsmcFaviconRequested = true;
+      return route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL });
+    });
+
+    const tsmInvestment: Investment = {
+      ...sampleInvestments[0],
+      id: `regression-tsm-${symbol.toLowerCase()}`,
+      name,
+      symbol,
+      providerSymbol: symbol,
+      market: 'NYSE',
+      assetType: 'stock',
+      purchasePlatformId: undefined,
+      purchasePlatformName: 'zad',
+    };
+    await enterPremiumPortfolio(page, 1440, { investments: [tsmInvestment] });
+
+    const card = page.locator('.invest-holding-card').filter({ hasText: name });
+    await expect(card).toBeVisible();
+
+    // Exactly one asset visual, and it must be the verified TSMC logo — not
+    // the generic Building2 fallback icon that shows for unresolved tickers.
+    const avatar = card.locator('.invest-asset-lens .asset-avatar');
+    await expect(avatar.locator('img')).toHaveCount(1);
+    await expect(avatar.locator('svg')).toHaveCount(0);
+    await expect(avatar.locator('img')).toHaveAttribute('src', /tsmc\.com/);
+    expect(tsmcFaviconRequested).toBe(true);
+
+    // The ZAD platform badge stays separate secondary ownership metadata —
+    // its own element, verified, and not overlapping the asset avatar.
+    const platformIdentity = card.locator('.invest-platform-identity');
+    await expect(platformIdentity).toBeVisible();
+    const platformLogo = card.locator('.invest-platform-logo');
+    await expect(platformLogo).toHaveAttribute('data-fallback', 'false');
+    await expect(platformLogo.locator('img')).toHaveCount(1);
+    const overlap = await page.evaluate(() => {
+      const assetBox = document.querySelector('.invest-asset-lens .asset-avatar')?.getBoundingClientRect();
+      const platformBox = document.querySelector('.invest-platform-logo')?.getBoundingClientRect();
+      if (!assetBox || !platformBox) return -1;
+      const xOverlap = Math.max(0, Math.min(assetBox.right, platformBox.right) - Math.max(assetBox.left, platformBox.left));
+      const yOverlap = Math.max(0, Math.min(assetBox.bottom, platformBox.bottom) - Math.max(assetBox.top, platformBox.top));
+      return xOverlap * yOverlap;
+    });
+    expect(overlap).toBe(0);
+  });
+}
+
+test('TSM asset card falls back safely (no broken image, no duplicate icon) when the verified logo request fails', async ({ page }) => {
+  const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  // Registered last so it takes priority over the generic favicon mock below
+  // (Playwright matches the most-recently-registered route first).
+  await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**tsmc.com**', route => route.fulfill({ status: 500 }));
+
+  const tsmInvestment: Investment = {
+    ...sampleInvestments[0],
+    id: 'regression-tsm-broken-logo',
+    name: 'Taiwan Semiconductor Manufacturing Co. Ltd. ADR',
+    symbol: 'TSM',
+    providerSymbol: 'TSM',
+    market: 'NYSE',
+    assetType: 'stock',
+    purchasePlatformId: undefined,
+    purchasePlatformName: 'zad',
+  };
+  await enterPremiumPortfolio(page, 1440, { investments: [tsmInvestment] });
+
+  const card = page.locator('.invest-holding-card').filter({ hasText: 'Taiwan Semiconductor Manufacturing' });
+  await expect(card).toBeVisible();
+  const avatar = card.locator('.invest-asset-lens .asset-avatar');
+
+  // The broken remote logo must never render as a broken <img>: once it
+  // fails to load, AssetAvatar unmounts the image entirely and the single
+  // fallback icon takes over — no broken image left behind, no duplicate
+  // fallback rendered alongside it.
+  await expect(avatar.locator('img')).toHaveCount(0);
+  await expect(avatar.locator('svg')).toHaveCount(1);
+});

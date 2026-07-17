@@ -54,9 +54,39 @@ const CRYPTO_LOGO_SLUGS: Record<string, string> = {
 const VERIFIED_ASSET_LOGOS: Record<string, string> = {
   AMD: 'https://cdn.simpleicons.org/amd',
   NVDA: 'https://cdn.simpleicons.org/nvidia',
+  TSM: 'https://www.google.com/s2/favicons?domain_url=https://www.tsmc.com&sz=128',
   KFH: 'https://www.google.com/s2/favicons?domain_url=https://www.kfh.com&sz=128',
   'KFH.KW': 'https://www.google.com/s2/favicons?domain_url=https://www.kfh.com&sz=128',
 };
+
+/**
+ * Canonical asset identity. Logos resolve primarily by normalized ticker
+ * (plus market-qualified forms like KFH.KW), never by full display name;
+ * these alias tables only bridge alternate spellings back to the one
+ * canonical ticker so every variant resolves to the same asset.
+ */
+const CANONICAL_SYMBOL_ALIASES: Record<string, string> = {
+  TSMC: 'TSM',
+};
+
+const CANONICAL_NAME_ALIASES: Record<string, string> = {
+  'tsmc': 'TSM',
+  'taiwan semiconductor': 'TSM',
+  'taiwan semiconductor manufacturing': 'TSM',
+};
+
+/**
+ * Corporate designators (including ADR/ADS depositary wording) are stripped
+ * from the END of a display name before alias lookup, so
+ * "Taiwan Semiconductor Manufacturing Co. Ltd. ADR" and
+ * "Taiwan Semiconductor Manufacturing" identify the same asset.
+ */
+const NAME_DESIGNATOR_TOKENS = new Set([
+  'adr', 'ads', 'american', 'depositary', 'depository', 'receipt', 'receipts',
+  'sponsored', 'unsponsored', 'shares', 'share', 'class', 'cl',
+  'inc', 'incorporated', 'corp', 'corporation', 'company', 'co',
+  'ltd', 'limited', 'plc', 'sa', 'nv', 'ag', 'se',
+]);
 
 const CURRENCY_FLAGS: Record<string, string> = {
   AED: '🇦🇪',
@@ -92,13 +122,51 @@ function cleanText(value: unknown) {
 }
 
 function normalizeSymbol(symbol: unknown) {
-  return cleanText(symbol)
+  const normalized = cleanText(symbol)
     .toUpperCase()
     .replace(
       /^(NASDAQ|NYSE|AMEX|TADAWUL|TASI|TAD|DFM|ADX|KASE|XKUW|KW|KSE|LSE|TSX|ASX|HKEX|BATS|CRYPTO|FOREX|FX|US|EU|GCC)[:\s-]+/i,
       '',
     )
+    // ADR/ADS designators are aliases of the underlying ticker
+    // ("TSM ADR", "TSM.ADR", "TSM-ADS") and must never break matching.
+    .replace(/(?:[\s.\-_/]+(?:ADR|ADS))+\s*$/, '')
     .replace(/\s+/g, '');
+  return CANONICAL_SYMBOL_ALIASES[normalized] ?? normalized;
+}
+
+function normalizeCompanyNameKey(value: unknown) {
+  const words = cleanText(value)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  while (words.length > 1 && NAME_DESIGNATOR_TOKENS.has(words[words.length - 1])) {
+    words.pop();
+  }
+  return words.join(' ');
+}
+
+const TICKER_SHAPE_PATTERN = /^[A-Z][A-Z0-9.\-=^]{0,9}$/;
+
+/**
+ * Resolves the one canonical ticker for an asset. A ticker-shaped symbol
+ * always wins (logos resolve by ticker and market, not display name); the
+ * verified name aliases only step in when the record carries no usable
+ * ticker — for example a holding saved as
+ * "Taiwan Semiconductor Manufacturing Co. Ltd. ADR" with no symbol.
+ */
+export function canonicalAssetTicker(
+  input: Pick<AssetVisualInput, 'symbol' | 'name' | 'companyName'>,
+): string {
+  const fromSymbol = normalizeSymbol(input.symbol);
+  if (fromSymbol && TICKER_SHAPE_PATTERN.test(fromSymbol)) return fromSymbol;
+
+  for (const candidate of [input.symbol, input.companyName, input.name]) {
+    const alias = CANONICAL_NAME_ALIASES[normalizeCompanyNameKey(candidate)];
+    if (alias) return alias;
+  }
+  return fromSymbol;
 }
 
 function safeImageUrl(value: unknown) {
@@ -111,7 +179,7 @@ export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
   const explicitUrl = safeImageUrl(input.logoUrl) || safeImageUrl(input.imageUrl);
   if (explicitUrl) return explicitUrl;
 
-  const symbol = normalizeSymbol(input.symbol);
+  const symbol = canonicalAssetTicker(input);
   const verifiedAssetLogo = VERIFIED_ASSET_LOGOS[symbol];
   if (verifiedAssetLogo) return verifiedAssetLogo;
   const rawType = cleanText(input.assetType ?? input.market ?? input.exchange).toLowerCase();
@@ -187,7 +255,7 @@ function forexFlags(symbol: string) {
 }
 
 export function getAssetVisualMeta(input: AssetVisualInput): AssetVisualMeta {
-  const symbol = normalizeSymbol(input.symbol);
+  const symbol = canonicalAssetTicker(input);
   const label = cleanText(input.companyName) || cleanText(input.name) || symbol || 'Asset';
   const inferredType = normalizeAssetType(input.assetType ?? input.market ?? input.exchange, symbol, label);
   const logoUrl = resolveAssetLogoUrl(input);
