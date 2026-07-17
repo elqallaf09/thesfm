@@ -46,6 +46,7 @@ const protectedPrefixes = [
   '/notifications',
   '/market-alerts',
   '/market-analysis',
+  '/market-agent',
   '/market-watchlist',
   '/watchlist',
   '/sfm-admin-control',
@@ -90,7 +91,7 @@ function isLocalQaBypass(pathname: string) {
 function withSecurityHeaders<T extends NextResponse>(response: T) {
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
-  response.headers.set('Permissions-Policy', 'microphone=(self), camera=(self)');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   return response;
 }
 

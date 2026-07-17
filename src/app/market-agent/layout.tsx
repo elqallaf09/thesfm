@@ -15,6 +15,14 @@ export const metadata: Metadata = {
     locale: 'ar_KW',
     type: 'website',
   },
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
 };
 
 export default function MarketAgentLayout({ children }: { children: ReactNode }) {

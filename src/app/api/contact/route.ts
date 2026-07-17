@@ -22,7 +22,10 @@ type ContactPayload = {
 };
 
 function jsonError(message: string, status = 400, code = 'invalid_request') {
-  return NextResponse.json({ success: false, error: message, code }, { status });
+  return NextResponse.json(
+    { success: false, error: message, code },
+    { status, headers: { 'Cache-Control': 'private, no-store' } },
+  );
 }
 
 function clean(value: unknown, maxLength = 500) {
@@ -256,7 +259,10 @@ export async function POST(request: NextRequest) {
 
   try {
     await sendMail({ name, email, subject, message });
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { success: true },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
   } catch (error) {
     const code = typeof error === 'object' && error && 'code' in error ? String((error as { code?: unknown }).code) : 'send_failed';
     console.error('Contact email send failed:', {
