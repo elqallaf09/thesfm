@@ -185,7 +185,11 @@ test.describe('long-page workspaces', () => {
     const hydratedCounts = [...requests];
     await page.goBack();
     await expect(page.locator('[data-workspace-tablist="calendar"]')).toBeVisible();
-    await dashboardLink.click();
+    // Mobile WebKit can keep Playwright's actionability click waiting on the
+    // history navigation even after the link's handler has fired. Dispatch a
+    // real DOM click, then let the destination assertion prove navigation.
+    await page.locator('[data-route="dashboard"][href$="/dashboard"]:visible').first()
+      .evaluate((link: HTMLElement) => link.click());
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect.poll(() => requests.length).toBe(hydratedCounts.length);
     expect(requests).toEqual(hydratedCounts);
