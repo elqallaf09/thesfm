@@ -297,7 +297,7 @@ export default function SiteMapPage() {
   const normalizedQuery = normalize(query);
 
   const sourceGroups = useMemo(() => [
-    ...NAV_GROUPS,
+    ...NAV_GROUPS.filter(group => !group.routeScope),
     {
       id: 'support',
       labelKey: 'nav_group_support' as TranslationKey,
@@ -307,7 +307,7 @@ export default function SiteMapPage() {
 
   const allLinks = useMemo(() => {
     const sourceGroups = [
-      ...NAV_GROUPS,
+      ...NAV_GROUPS.filter(group => !group.routeScope),
       {
         id: 'support',
         labelKey: 'nav_group_support' as TranslationKey,

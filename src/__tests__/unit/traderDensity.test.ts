@@ -64,11 +64,11 @@ describe('trader terminal density (phase 2.7)', () => {
   it('busts stale caches with a bumped asset version', () => {
     expect(indexHtml).toContain('/semantic-tokens.css?v=20260713-central-system');
     expect(indexHtml).toContain('/theme-bridge.js?v=20260714-phase34');
-    expect(indexHtml).toContain('/cinema.css?v=20260714-phase34');
-    expect(indexHtml).toContain('/app.js?v=20260714-phase34');
+    expect(indexHtml).toContain('/cinema.css?v=20260717-shell-unify');
+    expect(indexHtml).toContain('/app.js?v=20260717-shell-unify');
     expect(detailHtml).toContain('/semantic-tokens.css?v=20260713-central-system');
     expect(detailHtml).toContain('/theme-bridge.js?v=20260714-phase34');
-    expect(detailHtml).toContain('/cinema.css?v=20260714-phase34');
+    expect(detailHtml).toContain('/cinema.css?v=20260717-shell-unify');
     expect(detailHtml).toContain('/detail.css?v=20260714-phase34');
     expect(detailHtml).toContain('/detail.js?v=20260714-phase34');
   });

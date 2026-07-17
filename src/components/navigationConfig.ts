@@ -3,6 +3,7 @@
 import type { ComponentType } from 'react';
 import {
   BarChart3,
+  Bell,
   BookOpen,
   Bot,
   BriefcaseBusiness,
@@ -10,16 +11,19 @@ import {
   Calculator,
   CalendarClock,
   CalendarDays,
+  CandlestickChart,
   CircleHelp,
   CircleDollarSign,
   CircleUser,
   Compass,
   CreditCard,
+  Eye,
   FileBarChart,
   FileSearch,
   FileText,
   Files,
   FolderKanban,
+  GraduationCap,
   HandCoins,
   HandHeart,
   HeartHandshake,
@@ -35,8 +39,10 @@ import {
   Newspaper,
   PiggyBank,
   Presentation,
+  Radar,
   Receipt,
   Scale,
+  Settings,
   ShieldCheck,
   Sparkles,
   Target,
@@ -73,7 +79,17 @@ export type NavigationGroup = {
   collapsible?: boolean;
   items: NavigationItem[];
   adminOnly?: boolean;
+  /**
+   * Contextual sub-navigation: the group renders only while the active
+   * pathname is inside this prefix, and while inside it the workspace's
+   * non-scoped groups step aside (see filterGroupsForRoute). Route-scoped
+   * groups stay out of global surfaces such as the command menu.
+   */
+  routeScope?: string;
 };
+
+/** Public base path of the SFM Smart Analyzer (trading terminal). */
+export const TRADER_TERMINAL_ROUTE_SCOPE = '/thesfm-trader-own';
 
 export const NAV_GROUPS: NavigationGroup[] = [
   {
@@ -158,6 +174,40 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'defensive-stocks', icon: ShieldCheck, href: '/defensive-stocks', labelKey: 'nav_defensive_stocks' },
       { id: 'cyclical-stocks', icon: LineChart, href: '/cyclical-stocks', labelKey: 'nav_cyclical_stocks' },
       { id: 'dividend-stocks', icon: PiggyBank, href: '/dividend-stocks', labelKey: 'nav_dividend_stocks' },
+    ],
+  },
+  {
+    id: 'trader-trading',
+    labelKey: 'nav_group_trader_trading',
+    routeScope: TRADER_TERMINAL_ROUTE_SCOPE,
+    items: [
+      { id: 'trader-dashboard', icon: LayoutDashboard, href: '/thesfm-trader-own/dashboard', labelKey: 'nav_trader_dashboard' },
+      { id: 'trader-markets', icon: CandlestickChart, href: '/thesfm-trader-own/markets', labelKey: 'nav_trader_markets' },
+      { id: 'trader-ai-scanner', icon: Radar, href: '/thesfm-trader-own/ai-scanner', labelKey: 'nav_trader_ai_scanner' },
+      { id: 'trader-symbol-details', icon: FileSearch, href: '/thesfm-trader-own/symbol-details', labelKey: 'nav_trader_symbol_details' },
+    ],
+  },
+  {
+    id: 'trader-follow',
+    labelKey: 'nav_group_trader_follow',
+    routeScope: TRADER_TERMINAL_ROUTE_SCOPE,
+    items: [
+      { id: 'trader-watchlist', icon: Eye, href: '/thesfm-trader-own/watchlist', labelKey: 'nav_trader_watchlist' },
+      { id: 'trader-portfolio', icon: Wallet, href: '/thesfm-trader-own/portfolio', labelKey: 'nav_trader_portfolio' },
+      { id: 'trader-alerts', icon: Bell, href: '/thesfm-trader-own/alerts', labelKey: 'nav_trader_alerts' },
+      { id: 'trader-recommendations', icon: Target, href: '/thesfm-trader-own/recommendations', labelKey: 'nav_trader_recommendations' },
+      { id: 'trader-trade-performance', icon: TrendingUp, href: '/thesfm-trader-own/trade-performance', labelKey: 'nav_trader_trade_performance' },
+    ],
+  },
+  {
+    id: 'trader-more',
+    labelKey: 'nav_group_trader_more',
+    routeScope: TRADER_TERMINAL_ROUTE_SCOPE,
+    items: [
+      { id: 'trader-news', icon: Newspaper, href: '/thesfm-trader-own/news', labelKey: 'nav_trader_news' },
+      { id: 'trader-calendar', icon: CalendarDays, href: '/thesfm-trader-own/calendar', labelKey: 'nav_trader_calendar' },
+      { id: 'trader-education', icon: GraduationCap, href: '/thesfm-trader-own/education', labelKey: 'nav_trader_education' },
+      { id: 'trader-settings', icon: Settings, href: '/thesfm-trader-own/settings', labelKey: 'nav_trader_settings' },
     ],
   },
   {
@@ -303,10 +353,13 @@ export function getFirstAccessibleAdminRoute(
   return firstRoutableItem?.href ?? null;
 }
 
-export function flattenNavigationItems(options: { includeActions?: boolean } = {}) {
+export function flattenNavigationItems(options: { includeActions?: boolean; includeRouteScoped?: boolean } = {}) {
   const flatten = (items: NavigationItem[]): NavigationItem[] =>
     items.flatMap(item => [item, ...(item.children ? flatten(item.children) : [])]);
-  return NAV_GROUPS.flatMap(group => flatten(group.items)).filter(item => options.includeActions || !item.action);
+  return NAV_GROUPS
+    .filter(group => options.includeRouteScoped || !group.routeScope)
+    .flatMap(group => flatten(group.items))
+    .filter(item => options.includeActions || !item.action);
 }
 
 export function normalizeNavigationSource(pathname: string, hash = '', search = '') {

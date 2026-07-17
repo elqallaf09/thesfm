@@ -9,6 +9,19 @@
     <script src="/theme-bridge.js?v=20260714-phase34"></script>
     <script>
       (function () {
+        // Embedded-shell detection stamped pre-paint: inside the main
+        // THE SFM shell (iframe) the host provides the global header,
+        // shared sidebar and mobile drawer, so cinema.css removes the
+        // terminal's own navigation column (sfm-embedded-shell-layer).
+        try {
+          document.documentElement.dataset.embedded = window.parent === window ? "false" : "true";
+        } catch (_) {
+          document.documentElement.dataset.embedded = "true";
+        }
+      })();
+    </script>
+    <script>
+      (function () {
         try {
           // Information-density preference shared with the parent app
           // (src/lib/ui/density.ts). Explicit choice wins; "auto" lets the
@@ -37,7 +50,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/semantic-tokens.css?v=20260713-central-system" />
-    <link rel="stylesheet" href="/cinema.css?v=20260714-phase34" />
+    <link rel="stylesheet" href="/cinema.css?v=20260717-shell-unify" />
     <link rel="stylesheet" href="/detail.css?v=20260714-phase34" />
     <script>
       // إلغاء أي Service Worker قديم وتنظيف كاشه (نفس معالجة index.html)

@@ -1960,6 +1960,7 @@
     bindWorkspaceHostHistory();
     window.addEventListener("pagehide", unbindWorkspaceHostHistory);
     window.addEventListener("pageshow", bindWorkspaceHostHistory);
+    window.addEventListener("message", handleHostRouteMessage);
     document.addEventListener("click", (event) => {
       if (_mobileMoreOpen && !event.target.closest("[data-mobile-more]")) setMobileMoreOpen(false);
       const link = event.target.closest("[data-route-link]");
@@ -2374,12 +2375,71 @@
   function navigate(href) {
     if (!href) return;
     setMobileMoreOpen(false);
-    try { history.pushState({}, "", href); } catch (_e) { location.href = href; return; }
-    state.route = readRoute();
-    syncWorkspaceViewFromLocation(state.route.id);
+    if (isEmbeddedShellHost()) {
+      // The parent shell owns the URL: report the destination up so the
+      // shared sidebar active state and browser history stay in sync, and
+      // never touch the iframe history (that would double the back stack).
+      postRouteChangeToHost(href);
+    } else {
+      try { history.pushState({}, "", href); } catch (_e) { location.href = href; return; }
+    }
+    applyRouteFromHref(href);
+  }
+
+  function applyRouteFromHref(href) {
+    let url;
+    try { url = new URL(href, location.origin); } catch (_e) { return; }
+    state.route = readRouteFromParts(url.pathname, url.search);
+    const scope = state.route.id;
+    const values = WORKSPACE_VIEW_IDS[scope];
+    if (values) {
+      const requested = new URLSearchParams(url.search).get("view");
+      state.workspace[scope] = values.includes(requested) ? requested : workspaceDefault(scope);
+    }
     document.getElementById("terminal-content")?.scrollIntoView({ block: "start" });
     render();
     afterRoute();
+  }
+
+  /* Route bridge with the parent THE SFM shell (see src/lib/trader/routeBridge.ts). */
+  const ROUTE_MESSAGE_VERSION = 1;
+  const ROUTE_SET_MESSAGE_TYPE = "SFM_TRADER_ROUTE_SET";
+  const ROUTE_CHANGE_MESSAGE_TYPE = "SFM_TRADER_ROUTE_CHANGE";
+  const SAFE_APP_ROUTE_PATTERN = /^[a-z0-9][a-z0-9/_.=^%-]*$/i;
+
+  function isEmbeddedShellHost() {
+    return sameOriginWorkspaceHost() !== null;
+  }
+
+  function postRouteChangeToHost(href) {
+    let url;
+    try { url = new URL(href, location.origin); } catch (_e) { return; }
+    try {
+      window.parent.postMessage({
+        type: ROUTE_CHANGE_MESSAGE_TYPE,
+        version: ROUTE_MESSAGE_VERSION,
+        path: `${url.pathname}${url.search}${url.hash}`,
+      }, window.location.origin);
+    } catch (_e) {}
+  }
+
+  function handleHostRouteMessage(event) {
+    if (event.origin !== window.location.origin || event.source !== window.parent) return;
+    const data = event.data;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return;
+    if (data.type !== ROUTE_SET_MESSAGE_TYPE || data.version !== ROUTE_MESSAGE_VERSION) return;
+    const route = data.route;
+    if (typeof route !== "string" || route.length > 128) return;
+    if (!SAFE_APP_ROUTE_PATTERN.test(route) || route.includes("..") || route.includes("//")) return;
+    const href = route === "home" || route === "app" ? ROOT : `${ROOT}/${route}`;
+    let target;
+    try { target = new URL(href, location.origin); } catch (_e) { return; }
+    const next = readRouteFromParts(target.pathname, target.search);
+    const current = state.route || {};
+    if (next.id === current.id
+      && (next.market || "") === (current.market || "")
+      && (next.symbol || "") === (current.symbol || "")) return;
+    applyRouteFromHref(href);
   }
   async function retryRoute() {
     state.errors = {};
@@ -2417,8 +2477,12 @@
   }
 
   function readRoute() {
-    const q = new URLSearchParams(location.search).get("route");
-    const raw = q || location.pathname.replace(ROOT, "").replace(/^\/+|\/+$/g, "") || "dashboard";
+    return readRouteFromParts(location.pathname, location.search);
+  }
+
+  function readRouteFromParts(pathname, search) {
+    const q = new URLSearchParams(search || "").get("route");
+    const raw = q || String(pathname || "").replace(ROOT, "").replace(/^\/+|\/+$/g, "") || "dashboard";
     const clean = decodeURIComponent(raw).replace(/^\/+|\/+$/g, "");
     if (!clean || clean === "home" || clean === "app") return { id: "dashboard" };
     const [id, ...rest] = clean.split("/");

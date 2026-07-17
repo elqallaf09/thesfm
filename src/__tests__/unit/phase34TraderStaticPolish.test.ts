@@ -23,7 +23,7 @@ describe('Phase 3.4 standalone Trader contracts', () => {
     for (const html of [indexHtml, detailHtml]) {
       const bridgeAt = html.indexOf('/theme-bridge.js?v=20260714-phase34');
       const tokensAt = html.indexOf('/semantic-tokens.css?v=20260713-central-system');
-      const cinemaAt = html.indexOf('/cinema.css?v=20260714-phase34');
+      const cinemaAt = html.indexOf('/cinema.css?v=20260717-shell-unify');
 
       expect(bridgeAt).toBeGreaterThan(-1);
       expect(tokensAt).toBeGreaterThan(bridgeAt);

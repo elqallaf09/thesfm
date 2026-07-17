@@ -15,7 +15,7 @@ describe('standalone Trader detail visual-system contract', () => {
   it('loads its retained layout after the centralized token and terminal layers', () => {
     const themeBridgeAt = detailHtml.indexOf('/theme-bridge.js?v=20260714-phase34');
     const tokensAt = detailHtml.indexOf('/semantic-tokens.css?v=20260713-central-system');
-    const cinemaAt = detailHtml.indexOf('/cinema.css?v=20260714-phase34');
+    const cinemaAt = detailHtml.indexOf('/cinema.css?v=20260717-shell-unify');
     const detailAt = detailHtml.indexOf('/detail.css?v=20260714-phase34');
 
     expect(themeBridgeAt).toBeGreaterThan(-1);
@@ -109,7 +109,7 @@ describe('standalone Trader detail visual-system contract', () => {
   it('rewrites, precaches, and serves the scoped stylesheet as a public CSS asset', async () => {
     expect(traderAssetRoute).toContain(".replaceAll('href=\"/detail.css', 'href=\"/thesfm-trader-own/app/detail.css')");
     expect(traderAssetRoute).toContain(".replaceAll('src=\"/theme-bridge.js', 'src=\"/thesfm-trader-own/app/theme-bridge.js')");
-    expect(serviceWorker).toContain('the-sfm-trader-v20260714-phase34');
+    expect(serviceWorker).toContain('the-sfm-trader-v20260717-shell-unify');
     expect(serviceWorker).toContain('/theme-bridge.js?v=20260714-phase34');
     expect(serviceWorker).toContain('/detail.css?v=20260714-phase34');
 

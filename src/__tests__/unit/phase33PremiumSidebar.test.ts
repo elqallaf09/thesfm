@@ -60,6 +60,9 @@ describe('Phase 3.3 workspace-navigation architecture', () => {
       'investment-market',
       'market-news',
       'stock-categories',
+      'trader-trading',
+      'trader-follow',
+      'trader-more',
       'account',
     ]);
 

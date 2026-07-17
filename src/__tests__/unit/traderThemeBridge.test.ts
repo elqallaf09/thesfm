@@ -11,11 +11,11 @@ import {
 
 const root = process.cwd();
 const frameSource = readFileSync(
-  resolve(root, 'src/app/thesfm-trader-own/TraderThemeFrame.tsx'),
+  resolve(root, 'src/app/thesfm-trader-own/TraderShellPage.tsx'),
   'utf8',
 );
 const accessFrameSource = readFileSync(
-  resolve(root, 'src/app/thesfm-trader-own/TraderOwnFrame.tsx'),
+  resolve(root, 'src/app/thesfm-trader-own/layout.tsx'),
   'utf8',
 );
 const rootLayoutSource = readFileSync(resolve(root, 'src/app/layout.tsx'), 'utf8');
@@ -69,9 +69,10 @@ describe('Trader host theme bridge', () => {
 
   it('keeps the server authorization gate and iframe URL stable across theme changes', () => {
     expect(accessFrameSource).toContain('const access = await getTraderAccess()');
-    expect(accessFrameSource).toContain("redirect(`/login?next=${encodeURIComponent(resolvePublicRoute(appRoute))}`)");
-    expect(accessFrameSource).toContain('<TraderThemeFrame src={src} />');
-    expect(frameSource).toContain('export default function TraderThemeFrame({ src }');
+    expect(accessFrameSource).toContain('redirect(`/login?next=${encodeURIComponent(TRADER_PUBLIC_BASE_PATH)}`)');
+    expect(accessFrameSource).toContain('<TraderShellPage />');
+    expect(frameSource).toContain('export default function TraderShellPage()');
+    expect(frameSource).toContain('const [initialSrc] = useState');
     expect(frameSource).not.toMatch(/setSrc|theme=.*src|key=.*theme/);
   });
 

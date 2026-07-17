@@ -1,14 +1,7 @@
-import TraderOwnFrame from '../../TraderOwnFrame';
-
-type PageProps = {
-  params: Promise<{
-    symbol: string;
-  }>;
-};
-
 export const dynamic = 'force-dynamic';
 
-export default async function TraderSymbolDetailsSymbolPage({ params }: PageProps) {
-  const { symbol } = await params;
-  return <TraderOwnFrame appRoute={`symbol-details/${encodeURIComponent(symbol)}`} />;
+// URL anchor for a terminal symbol view; the persistent Smart Analyzer stage
+// in the segment layout reads the symbol from the pathname.
+export default function TraderSymbolDetailsSymbolPage() {
+  return null;
 }

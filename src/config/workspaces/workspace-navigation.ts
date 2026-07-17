@@ -35,3 +35,25 @@ export function filterGroupsForWorkspace(groups: NavigationGroup[], workspaceId:
   return groups.filter(group =>
     isSharedNavGroup(group.id) || GROUP_OWNER.get(group.id) === workspaceId);
 }
+
+function pathnameWithinScope(pathname: string, scope: string): boolean {
+  return pathname === scope || pathname.startsWith(`${scope}/`);
+}
+
+/**
+ * Contextual sub-navigation (Smart Analyzer shell unification): a group with
+ * a routeScope renders only while the pathname is inside that prefix, and
+ * while a scope is active the workspace's non-scoped groups step aside so a
+ * single navigation column remains. Shared groups (account) always render.
+ */
+export function filterGroupsForRoute(groups: NavigationGroup[], pathname: string): NavigationGroup[] {
+  const normalized = (String(pathname || '/').split(/[?#]/, 1)[0] || '/').replace(/(.)\/+$/, '$1');
+  const scopeActive = groups.some(group =>
+    group.routeScope && pathnameWithinScope(normalized, group.routeScope));
+
+  return groups.filter(group => {
+    if (group.routeScope) return pathnameWithinScope(normalized, group.routeScope);
+    if (isSharedNavGroup(group.id)) return true;
+    return !scopeActive;
+  });
+}

@@ -169,7 +169,7 @@ test.describe('launch smoke coverage', () => {
         const iframe = traderShell.locator(iframeSelector);
         await expect(iframe).toHaveCount(1);
         await expect(iframe).toBeVisible();
-        await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=home');
+        await expect(iframe).toHaveAttribute('src', '/thesfm-trader-own/app/index.html?route=dashboard');
         const traderFrame = traderShell.frameLocator(iframeSelector);
         await page.waitForLoadState('load');
         await expect(traderFrame.locator('#app-shell')).toBeVisible({ timeout: 20_000 });
@@ -208,7 +208,7 @@ test.describe('launch smoke coverage', () => {
           await expect(page.locator('#sfm-mobile-menu')).toBeHidden();
         }
         await expectTraderThemeStable(traderFrame, 'dark');
-        await expect(iframe).toHaveAttribute('src', stableFrameSrc ?? '/thesfm-trader-own/app/index.html?route=home');
+        await expect(iframe).toHaveAttribute('src', stableFrameSrc ?? '/thesfm-trader-own/app/index.html?route=dashboard');
 
         await page.waitForLoadState('load');
         await page.reload({ waitUntil: 'load' });

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { NavigationQueryObserver } from '@/components/NavigationQueryObserver';
-import { filterGroupsForWorkspace } from '@/config/workspaces/workspace-navigation';
+import { filterGroupsForRoute, filterGroupsForWorkspace } from '@/config/workspaces/workspace-navigation';
 import { resolveActiveWorkspace } from '@/config/workspaces/workspace-resolver';
 import {
   filterNavigationGroups,
@@ -107,8 +107,11 @@ export function Sidebar() {
   const { access: adminAccess } = useAdminAccess(user?.id);
   const activeWorkspace = resolveActiveWorkspace(pathname);
   const navGroups = useMemo(
-    () => filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, adminAccess), activeWorkspace.id),
-    [adminAccess, activeWorkspace.id],
+    () => filterGroupsForRoute(
+      filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, adminAccess), activeWorkspace.id),
+      pathname,
+    ),
+    [adminAccess, activeWorkspace.id, pathname],
   );
   const primaryGroups = useMemo(() => navGroups.filter(group => group.id !== 'account'), [navGroups]);
   const globalGroups = useMemo(() => navGroups.filter(group => group.id === 'account'), [navGroups]);

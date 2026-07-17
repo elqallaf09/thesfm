@@ -168,7 +168,7 @@ describe('standalone Trader visual-system contract', () => {
     for (const html of [indexHtml, detailHtml]) {
       expect(html).toContain('/theme-bridge.js?v=20260714-phase34');
       expect(html).toContain('/semantic-tokens.css?v=20260713-central-system');
-      expect(html).toContain('/cinema.css?v=20260714-phase34');
+      expect(html).toContain('/cinema.css?v=20260717-shell-unify');
       expect(html.indexOf('/theme-bridge.js')).toBeLessThan(html.indexOf('/semantic-tokens.css'));
       expect(html.indexOf('/semantic-tokens.css')).toBeLessThan(html.indexOf('/cinema.css'));
       expect(html).not.toMatch(/<meta name="theme-color" content="#[0-9a-f]+"/i);
@@ -183,7 +183,7 @@ describe('standalone Trader visual-system contract', () => {
     expect(traderAssetRoute).toContain(".replaceAll('src=\"/theme-bridge.js', 'src=\"/thesfm-trader-own/app/theme-bridge.js')");
     expect(serviceWorker).toContain('/semantic-tokens.css?v=20260713-central-system');
     expect(serviceWorker).toContain('/theme-bridge.js?v=20260714-phase34');
-    expect(serviceWorker).toContain('/cinema.css?v=20260714-phase34');
+    expect(serviceWorker).toContain('/cinema.css?v=20260717-shell-unify');
     expect(serviceWorker).not.toMatch(/\/(?:styles|desktop-balance)\.css/);
   });
 
