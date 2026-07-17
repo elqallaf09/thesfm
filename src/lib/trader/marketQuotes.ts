@@ -910,7 +910,6 @@ function candidateSymbols(display: string, provider: TraderQuoteProvider, meta?:
       if (provider === 'finnhub') return unique([canonical.providerSymbols.finnhub, canonical.providerSymbols.binance]);
       if (provider === 'twelve_data') return unique([canonical.providerSymbols.twelveData]);
       if (provider === 'eodhd') return unique([canonical.providerSymbols.eodhd]);
-      if (provider === 'openbb') return unique([canonical.providerSymbols.fmp, canonical.displaySymbol]);
       return [];
     }
   }

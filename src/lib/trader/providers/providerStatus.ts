@@ -70,7 +70,6 @@ const PROVIDER_FEATURES: Record<TraderProviderName, TraderProviderFeature[]> = {
   tradingeconomics: ['economic'],
   yahoo: ['prices'],
   'multi-source': ['news'],
-  openbb: [], // OpenBB service removed
 };
 
 const CALENDAR_SUPPORTED_PROVIDERS: Record<TraderCalendarFeature, TraderCalendarProvider[]> = {
@@ -137,7 +136,6 @@ function configuredKeys() {
     fmp: cleanEnv(process.env.FMP_API_KEY),
     finnhub: cleanEnv(process.env.FINNHUB_API_KEY),
     tradingeconomics: cleanEnv(process.env.TRADING_ECONOMICS_API_KEY),
-    openbb: '', // OpenBB service removed — always unconfigured
   };
 }
 
@@ -158,6 +156,15 @@ function errorFromUnknown(error: unknown) {
   if (error instanceof ProviderError) return error;
   const message = error instanceof Error ? redactProviderMessage(error.message || error.name) : 'provider_error';
   return new ProviderError('provider_error', 'provider_temporarily_unavailable', undefined, message);
+}
+
+function emptyProviderResult(feature: TraderCalendarFeature) {
+  return new ProviderError(
+    'provider_error',
+    `${feature}_provider_returned_empty`,
+    undefined,
+    'provider_returned_empty',
+  );
 }
 
 function logProviderAttempt(args: {
@@ -449,15 +456,19 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
         const key = cacheKey(feature, candidate.provider, query);
         const cached = cache.get(key);
         if (cached && cached.expiresAt > Date.now() && !query.force) {
-          return toResult(feature, query, cached.provider, 'success', cached.data, {
-            cached: true,
-            updatedAt: cached.updatedAt,
-            lastSuccessfulUpdate: cached.updatedAt,
-          });
+          if (cached.data.length > 0) {
+            return toResult(feature, query, cached.provider, 'success', cached.data, {
+              cached: true,
+              updatedAt: cached.updatedAt,
+              lastSuccessfulUpdate: cached.updatedAt,
+            });
+          }
+          cache.delete(key);
         }
 
         try {
           const data = dedupeCalendarEvents(feature, await candidate.fetchEvents() as TraderCalendarDataMap[K][]);
+          if (data.length === 0) throw emptyProviderResult(feature);
           const updatedAt = new Date().toISOString();
           cache.set(key, {
             provider: candidate.provider,
@@ -603,7 +614,6 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
       fmpConfigured: Boolean(keys.fmp),
       finnhubConfigured: Boolean(keys.finnhub),
       tradingEconomicsConfigured: Boolean(keys.tradingeconomics),
-      openbbConfigured: false, // OpenBB service removed
     },
     features,
     dataProvider: {
