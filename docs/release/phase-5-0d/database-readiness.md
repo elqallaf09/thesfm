@@ -23,7 +23,8 @@ Verdict: **NO-GO**
 - Production records `20260715070314 investment_platform_directory_tracking` and `20260715070609 investment_platform_directory_index_hardening`.
 - The repository carried identical names under different version prefixes. This branch renames those two files only. No SQL changed and no Production migration was applied.
 - The clean empty-database chain does not pass: the first checked-in migration alters pre-existing tables and no preceding schema baseline creates them.
-- Supabase CLI and Docker are unavailable in the audit environment, and no isolated Preview database exists. Therefore clean-chain execution and Production dry-run are **blocked**.
+- Supabase CLI and Docker were unavailable locally, and no isolated Preview database existed during the baseline. Therefore a local clean-chain execution and Production dry-run are **blocked**.
+- After draft PR #37 opened, Supabase created isolated Preview ref `lwcaapfqxaoxkojehfdq`; its check ended `MIGRATIONS_FAILED`. This runtime result confirms that the clean chain cannot initialize the Preview database. No repair SQL was applied.
 - There is no pending migration approved for Production. The public financial-bucket fix requires a separately approved additive migration, rollback SQL, timeout/lock review, and isolated Preview proof.
 
 ## Backup gate
