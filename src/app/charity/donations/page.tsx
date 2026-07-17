@@ -127,9 +127,9 @@ export default function DonationsPage() {
   }
 
   async function remove(id: string) {
-    if (deleting) return;
+    if (deleting || !user) return;
     setDeleting(id);
-    const { error } = await supabase.from('expense_items').delete().eq('id', id);
+    const { error } = await supabase.from('expense_items').delete().eq('id', id).eq('user_id', user.id);
     if (error) {
       setMessage({ type: 'error', text: `${tr.deleteError}: ${error.message}` });
     } else {

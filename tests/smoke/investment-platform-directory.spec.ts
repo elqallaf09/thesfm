@@ -20,7 +20,7 @@ async function enterGuestInvestments(page: Page) {
   await page.locator('button.guest-btn').click();
   await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
   await page.goto('/invest', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('main.invest-main')).toBeVisible();
+  await expect(page.locator('main.invest-main:visible')).toBeVisible();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {

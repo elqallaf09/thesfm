@@ -146,6 +146,57 @@ describe('investment platform persistence', () => {
     expect(refreshed.dataSource).toBe('new-market-provider');
   });
 
+  it('preserves the last valid account value when a native quote refresh has no FX conversion', () => {
+    const crossCurrency: Investment = {
+      ...investment,
+      currentValue: 30.7,
+      displayValue: 30.7,
+      currency: 'USD',
+      nativeCurrency: 'USD',
+      priceCurrency: 'USD',
+      currentMarketValue: 125,
+      nativeMarketValue: 125,
+      userCurrency: 'KWD',
+      convertedMarketValue: 30.7,
+      defaultCurrencyValue: 30.7,
+    };
+    const refresh = {
+      currentPrice: 140,
+      currentMarketValue: 140,
+      nativeMarketValue: 140,
+      nativeCurrency: 'USD',
+      priceCurrency: 'USD',
+      userCurrency: 'KWD',
+      dataSource: 'live-provider',
+    };
+
+    const payload = buildPriceRefreshPayload(refresh);
+    expect(payload).toMatchObject({ current_price: 140, current_market_value: 140, native_market_value: 140 });
+    expect(payload).not.toHaveProperty('current_value');
+    expect(payload).not.toHaveProperty('converted_market_value');
+
+    const refreshed = mergeMarketPriceIntoInvestment(crossCurrency, refresh, '2026-07-17T01:00:00.000Z');
+    expect(refreshed).toMatchObject({
+      currentValue: 30.7,
+      displayValue: 30.7,
+      currentMarketValue: 140,
+      nativeMarketValue: 140,
+      convertedMarketValue: 30.7,
+      userCurrency: 'KWD',
+      nativeCurrency: 'USD',
+    });
+  });
+
+  it('updates account value directly when native and account currencies match', () => {
+    const payload = buildPriceRefreshPayload({
+      currentPrice: 140,
+      currentMarketValue: 140,
+      nativeCurrency: 'USD',
+      userCurrency: 'USD',
+    });
+    expect(payload).toMatchObject({ current_value: 140, converted_market_value: 140 });
+  });
+
   it('keeps the complete platform snapshot in guest-mode JSON storage', () => {
     const stored = JSON.parse(JSON.stringify([investment])) as Investment[];
     expect(stored[0]).toMatchObject({ purchasePlatformName: 'XTB', purchasePlatformType: 'multi_asset_broker', purchasePlatformStatus: 'approved' });

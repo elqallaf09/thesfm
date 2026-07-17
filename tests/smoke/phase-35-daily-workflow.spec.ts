@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { userAuthStatePath } from './auth-state';
+import { authenticateBrowserRole } from './authenticated-browser';
 
 const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
 
@@ -63,7 +63,9 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
   });
 
   test.describe('authenticated daily workflow', () => {
-    test.use({ storageState: userAuthStatePath });
+    test.beforeEach(async ({ page }) => {
+      if (userAuthConfigured) await authenticateBrowserRole(page, 'user');
+    });
 
     test('Today, Tasks, Notifications, and Command Center redirect respect the unified responsibility model', async ({ page }) => {
       test.skip(!userAuthConfigured, 'No E2E user credentials are configured for source-backed daily workflow validation.');

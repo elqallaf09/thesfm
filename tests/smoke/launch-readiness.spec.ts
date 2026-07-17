@@ -1,5 +1,5 @@
 import { expect, test, type FrameLocator, type Page } from '@playwright/test';
-import { adminAuthStatePath, userAuthStatePath } from './auth-state';
+import { authenticateBrowserRole } from './authenticated-browser';
 
 const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
 const adminAuthConfigured = Boolean(process.env.E2E_ADMIN_EMAIL && process.env.E2E_ADMIN_PASSWORD);
@@ -100,7 +100,9 @@ test.describe('launch smoke coverage', () => {
   });
 
   test.describe('authenticated user routes', () => {
-    test.use({ storageState: userAuthStatePath });
+    test.beforeEach(async ({ page }) => {
+      if (userAuthConfigured) await authenticateBrowserRole(page, 'user');
+    });
 
     test('dashboard route loads or redirects safely', async ({ page }) => {
       await expectUsablePage(page, '/dashboard');
@@ -125,7 +127,9 @@ test.describe('launch smoke coverage', () => {
   });
 
   test.describe('authenticated admin routes', () => {
-    test.use({ storageState: adminAuthStatePath });
+    test.beforeEach(async ({ page }) => {
+      if (adminAuthConfigured) await authenticateBrowserRole(page, 'admin');
+    });
 
     test('admin page access is gated and responsive admin shell is available for admins', async ({ page, isMobile }) => {
       await expectUsablePage(page, '/sfm-admin-control');

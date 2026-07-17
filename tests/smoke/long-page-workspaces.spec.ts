@@ -185,7 +185,15 @@ test.describe('long-page workspaces', () => {
     const hydratedCounts = [...requests];
     await page.goBack();
     await expect(page.locator('[data-workspace-tablist="calendar"]')).toBeVisible();
-    await dashboardLink.click();
+    const dashboardReturnLink = page.locator('[data-route="dashboard"][href$="/dashboard"]:visible').first();
+    await expect(dashboardReturnLink).toBeVisible();
+    // WebKit can destroy the frame context while an evaluated click is returning
+    // after history traversal. Schedule the same DOM click so evaluation settles
+    // first, then let URL and destination assertions own the navigation wait.
+    await dashboardReturnLink.evaluate((link: HTMLElement) => {
+      window.setTimeout(() => link.click(), 0);
+    });
+    await expect(page).toHaveURL(/\/thesfm-trader-own\/dashboard(?:[?#]|$)/);
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect.poll(() => requests.length).toBe(hydratedCounts.length);
     expect(requests).toEqual(hydratedCounts);

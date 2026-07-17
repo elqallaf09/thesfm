@@ -56,7 +56,7 @@ export default function ExpensesPage() {
     if (!name.trim() || !amt) { setMsg({ type: 'err', text: text.required }); return; }
     setSaving(true); setMsg(null);
     if (editId) {
-      const { error } = await supabase.from('expense_items').update({ name: name.trim(), amount: amt }).eq('id', editId);
+      const { error } = await supabase.from('expense_items').update({ name: name.trim(), amount: amt }).eq('id', editId).eq('user_id', user!.id);
       if (!error) { setItems(prev => prev.map(i => i.id === editId ? { ...i, name: name.trim(), amount: amt } : i)); setMsg({ type: 'ok', text: text.updated }); }
       else setMsg({ type: 'err', text: text.saveError });
       setEditId(null);
@@ -69,8 +69,9 @@ export default function ExpensesPage() {
   };
 
   const remove = async (id: string) => {
+    if (!user) return;
     setDeleting(id);
-    const { error } = await supabase.from('expense_items').delete().eq('id', id);
+    const { error } = await supabase.from('expense_items').delete().eq('id', id).eq('user_id', user.id);
     if (!error) setItems(prev => prev.filter(i => i.id !== id));
     setDeleting(null);
   };
