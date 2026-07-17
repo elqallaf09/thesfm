@@ -336,7 +336,8 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
     ?? profile?.default_currency
     ?? profile?.currency
     ?? investmentRows[0]?.user_currency
-    ?? holdingCurrencyFromRow(investmentRows[0] ?? {}),
+    ?? holdingCurrencyFromRow(investmentRows[0] ?? {})
+    ?? '',
   ).trim().toUpperCase();
   const investmentTotal = investmentCurrency
     ? investmentRows.reduce((sum, row) => sum + (investmentValueInCurrency(row, investmentCurrency)?.amount ?? 0), 0)

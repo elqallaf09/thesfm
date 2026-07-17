@@ -13,6 +13,7 @@ import {
 } from '@/lib/investments/investmentUtils';
 import { investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
 import { primaryInvestmentTotal } from '@/lib/dashboard/executiveOverview';
+import { buildFinanceOverview } from '@/lib/data/financeData';
 import type { Investment, InvestmentInput, InvestmentType } from '@/types/investment';
 
 function holding(overrides: Partial<Investment> = {}): Investment {
@@ -176,5 +177,16 @@ describe('investment holding currency integrity', () => {
       { currency: 'EUR', price_currency: 'USD', current_value: 50, user_currency: 'EUR', converted_market_value: 50, native_market_value: 160 },
     ];
     expect(primaryInvestmentTotal(rows, 'KWD')).toBeCloseTo(36.6);
+  });
+
+  it('does not treat a missing portfolio currency as the literal NULL currency', () => {
+    const overview = buildFinanceOverview({
+      investments: [
+        { amount: 36.6 },
+        { currency: 'EUR', current_value: 50 },
+      ],
+    });
+
+    expect(overview.investmentTotal).toBe(0);
   });
 });
