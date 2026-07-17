@@ -1,0 +1,140 @@
+name: PR 34 authenticated Preview validation
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: Protected Vercel Preview URL
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: pr-34-authenticated-preview-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authenticated-preview:
+    name: Preview/Authenticated data integrity
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.number == 34 && github.head_ref == 'fix/data-integrity-missing-information-recovery')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      PLAYWRIGHT_NO_COPY_PROMPT: '1'
+      E2E_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_url || 'https://thesfm-git-fix-data-integri-52c48b-mohammed-alqallaf-s-projects.vercel.app' }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      GH_TOKEN: ${{ github.token }}
+      PREVIEW_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Wait for the matching Vercel Preview
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          for attempt in {1..60}; do
+            conclusion="$(gh api "repos/$GITHUB_REPOSITORY/commits/$PREVIEW_COMMIT_SHA/check-runs" \
+              --jq '[.check_runs[] | select(.name == "Vercel")][0].conclusion // "pending"')"
+            if [[ "$conclusion" == 'success' ]]; then
+              exit 0
+            fi
+            if [[ "$conclusion" == 'failure' || "$conclusion" == 'cancelled' || "$conclusion" == 'timed_out' ]]; then
+              printf 'Vercel Preview check ended with conclusion: %s\n' "$conclusion" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo 'Vercel Preview did not become READY within 10 minutes.' >&2
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium webkit
+
+      - name: Validate protected Preview environment
+        shell: bash
+        run: |
+          missing=()
+          for name in \
+            E2E_BASE_URL \
+            VERCEL_AUTOMATION_BYPASS_SECRET \
+            NEXT_PUBLIC_SUPABASE_URL \
+            NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            E2E_USER_EMAIL \
+            E2E_USER_PASSWORD \
+            E2E_ADMIN_EMAIL \
+            E2E_ADMIN_PASSWORD
+          do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required Preview validation variable: %s\n' "${missing[@]}" >&2
+            exit 1
+          fi
+          if [[ "$E2E_BASE_URL" != https://*.vercel.app ]]; then
+            echo 'E2E_BASE_URL must be an HTTPS vercel.app Preview URL.' >&2
+            exit 1
+          fi
+
+      - name: 1. Authenticated CRUD and persistence
+        run: >-
+          pnpm exec playwright test authenticated-data-integrity.spec.ts
+          --project=chromium-desktop --workers=1 --max-failures=1
+          --grep='authenticated CRUD persists across reload and logout/login'
+
+      - name: 2. Second-user RLS isolation
+        run: >-
+          pnpm exec playwright test authenticated-data-integrity.spec.ts
+          --project=chromium-desktop --workers=1 --max-failures=1
+          --grep='second-user data isolation and RLS'
+
+      - name: 3. Protected Admin and authenticated routes
+        run: >-
+          pnpm exec playwright test launch-readiness.spec.ts
+          --project=chromium-desktop --workers=1 --max-failures=1
+          --grep='authenticated (user|admin) routes'
+
+      - name: 4. Complete smoke suite
+        run: pnpm exec playwright test --workers=1 --max-failures=1
+
+      - name: Remove browser auth material and DOM error contexts
+        if: always()
+        shell: bash
+        run: |
+          rm -rf playwright/.auth
+          find test-results -type f -name 'error-context.md' -delete 2>/dev/null || true
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-34-preview-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

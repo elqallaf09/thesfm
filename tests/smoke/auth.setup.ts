@@ -8,6 +8,7 @@ import {
   type Response as PlaywrightResponse,
 } from '@playwright/test';
 import { adminAuthStatePath, authStateDir, userAuthStatePath } from './auth-state';
+import { previewBypassStatePath, usesPreviewProtection } from './preview-protection';
 
 const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
 const baseURL = process.env.E2E_BASE_URL
@@ -24,7 +25,10 @@ test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 test.setTimeout(90_000);
 
 test('real user and admin sign-ins create reusable browser sessions', async ({ browser }) => {
-  await fs.rm(authStateDir, { recursive: true, force: true });
+  await Promise.all([
+    fs.rm(userAuthStatePath, { force: true }),
+    fs.rm(adminAuthStatePath, { force: true }),
+  ]);
   await fs.mkdir(authStateDir, { recursive: true });
 
   await createRoleState(
@@ -64,6 +68,7 @@ async function createRoleState(
   const context = await browser.newContext({
     baseURL,
     ignoreHTTPSErrors: httpsLoopback,
+    storageState: usesPreviewProtection ? previewBypassStatePath : undefined,
   });
   try {
     const page = await context.newPage();

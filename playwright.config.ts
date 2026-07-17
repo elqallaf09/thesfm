@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { previewBypassStatePath, usesPreviewProtection } from './tests/smoke/preview-protection';
 
 // Playwright's AI error context includes a full DOM snapshot by default. Auth
 // fields and signed-in identifiers must never be copied into CI artifacts.
@@ -11,6 +12,7 @@ const authProjectFiles = /auth\.(?:setup|teardown)\.ts/;
 
 export default defineConfig({
   testDir: './tests/smoke',
+  globalSetup: './tests/smoke/global.setup.ts',
   timeout: 30_000,
   expect: {
     timeout: 8_000,
@@ -25,8 +27,13 @@ export default defineConfig({
   use: {
     baseURL,
     ignoreHTTPSErrors: httpsLoopback,
-    trace: 'retain-on-failure',
+    // Preview protection is bootstrapped once in global setup. Traces can
+    // serialize context cookies, so keep them disabled while the protected
+    // Preview bypass cookie is active.
+    storageState: usesPreviewProtection ? previewBypassStatePath : undefined,
+    trace: usesPreviewProtection ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
+    video: 'off',
   },
   webServer: process.env.E2E_BASE_URL
     ? undefined
