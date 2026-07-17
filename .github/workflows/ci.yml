@@ -160,11 +160,7 @@ jobs:
             NEXT_PUBLIC_SUPABASE_URL \
             NEXT_PUBLIC_SUPABASE_ANON_KEY \
             SUPABASE_SERVICE_ROLE_KEY \
-            SUPER_ADMIN_EMAILS \
-            E2E_USER_EMAIL \
-            E2E_USER_PASSWORD \
-            E2E_ADMIN_EMAIL \
-            E2E_ADMIN_PASSWORD
+            SUPER_ADMIN_EMAILS
           do
             if [[ -z "$(trim_whitespace "${!name:-}")" ]]; then
               missing+=("$name")
@@ -221,10 +217,8 @@ jobs:
           # boots, enabling investor/admin flows. Never echoed by tests.
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
-          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          # Real credential, persistence, RLS, and protected-route coverage runs
+          # serially against the protected Preview in preview-validation.yml.
       - run: pnpm test:performance
         name: Playwright platform performance regression suite
       - name: Remove Playwright DOM error contexts
