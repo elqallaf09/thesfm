@@ -3,11 +3,11 @@ import { redirect } from 'next/navigation';
 export const dynamic = 'force-dynamic';
 
 const allowedMarkets = new Set([
+  'us-stocks',
   'forex',
-  'indices',
-  'stocks',
   'crypto',
   'commodities',
+  'indices',
   'etfs',
   'saudi',
   'kuwait',
@@ -17,15 +17,13 @@ const allowedMarkets = new Set([
   'oman',
   'europe',
   'asia',
+  'technology',
   'ai',
-  'tech',
-  'energy',
-  'defensive',
-  'dividends',
   'semiconductors',
+  'energy',
+  'banking',
   'food',
   'healthcare',
-  'banking',
 ]);
 
 // URL anchor for a terminal view (stage rendered by the segment layout);
