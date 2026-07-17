@@ -112,6 +112,7 @@ Tests and evidence:
 - `src/__tests__/unit/dataIntegrityRecovery.test.ts`
 - `src/__tests__/unit/investmentPlatformDirectory.test.ts`
 - `tests/smoke/dashboard-executive-overview.spec.ts`
+- `tests/smoke/long-page-workspaces.spec.ts`
 - `docs/screenshots/dashboard-executive/after-chromium-desktop-ar-dark.png`
 - `docs/screenshots/dashboard-executive/after-chromium-desktop-en-light.png`
 - `docs/screenshots/dashboard-executive/after-chromium-desktop-fr-light.png`
@@ -139,6 +140,7 @@ Rollback: revert the application/test commit; no database rollback is required.
 - New/changed focused unit tests: 34 tests passed.
 - Dashboard Playwright: 6/6 passed across desktop and mobile projects.
 - Investment/platform/market Playwright: 15/15 passed.
+- Mobile WebKit cached-route navigation stabilization: 2/2 repeated targeted runs passed.
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
 - `pnpm check:i18n`: passed for Arabic, English, and French.
@@ -154,13 +156,14 @@ Local production-mode evidence:
 - Investment browser tests passed provider failure, last-known-value preservation, offline/reconnect, fractional/value presentation, ZAD identity, logo fallback, locale/theme, and responsive checks.
 - Market command-center browser tests passed provider status, degraded response, lazy loading, route canonicalization, RTL/LTR, and responsive checks.
 
-Remote Preview URL and READY status: pending draft PR creation and Vercel check completion.
+Remote Preview: `https://thesfm-git-fix-data-integri-52c48b-mohammed-alqallaf-s-projects.vercel.app` reached READY. Vercel Authentication protects the hostname, and unauthenticated route and health requests redirect to Vercel login. No protection was bypassed or weakened; remote page-level validation therefore requires an authorized Vercel session or bypass token.
 
 ## G. Remaining blockers
 
 1. No safe authenticated E2E account credentials were provided, so real Supabase CRUD, refresh, logout/login, and cross-user isolation were not executed against Preview.
 2. No provider keys were supplied locally, so live provider entitlements/freshness cannot be certified from this workspace.
-3. Production rollout remains blocked until the draft PR CI is green, Vercel Preview is READY, and the designated authenticated Preview account passes the safe-record checklist.
+3. The READY Preview is protected by Vercel Authentication, so remote page-level browser validation remains blocked without an authorized session or bypass token.
+4. Production rollout remains blocked until the draft PR CI is green and the designated authenticated Preview account passes the safe-record checklist.
 
 ## H. Production rollout recommendation
 

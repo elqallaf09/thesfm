@@ -185,7 +185,13 @@ test.describe('long-page workspaces', () => {
     const hydratedCounts = [...requests];
     await page.goBack();
     await expect(page.locator('[data-workspace-tablist="calendar"]')).toBeVisible();
-    await dashboardLink.click();
+    const dashboardReturnLink = page.locator('[data-route="dashboard"][href$="/dashboard"]:visible').first();
+    await expect(dashboardReturnLink).toBeVisible();
+    // WebKit can keep the action-level navigation waiter open when revisiting a
+    // cached terminal route after history traversal. A DOM click exercises the
+    // same product handler while URL and destination assertions own the wait.
+    await dashboardReturnLink.evaluate((link: HTMLElement) => link.click());
+    await expect(page).toHaveURL(/\/thesfm-trader-own\/dashboard(?:[?#]|$)/);
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect.poll(() => requests.length).toBe(hydratedCounts.length);
     expect(requests).toEqual(hydratedCounts);
