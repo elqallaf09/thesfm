@@ -228,6 +228,12 @@ test('populated executive overview renders verified data across locales, themes,
       await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
       await expectNoHorizontalOverflow(page, `${width}px`);
       await expect(page.getByRole('button', { name: /refresh|actualiser|تحديث/i })).toBeVisible();
+      if (process.env.DASHBOARD_CAPTURE_SCREENSHOTS === '1' && [390, 768, 1440, 1920].includes(width)) {
+        await page.screenshot({
+          path: `docs/screenshots/dashboard-executive/phase-5-0c-${width}px-fr-dark.png`,
+          fullPage: true,
+        });
+      }
     }
   }
 
