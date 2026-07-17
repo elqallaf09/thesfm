@@ -186,7 +186,7 @@ describe('workspace page layout policy', () => {
   it('keeps the trader canvas inside the shared header and sidebar tracks', () => {
     const source = readFileSync(resolve(root, 'src/app/thesfm-trader-own/TraderShellPage.tsx'), 'utf8');
     expect(source).toContain('width: 100%');
-    expect(source).toContain('var(--global-header-height)');
+    expect(source).toContain('var(--app-header-height)');
     expect(source).toContain('var(--workspace-page-padding-block');
     expect(source).not.toMatch(/position:\s*fixed|inset:\s*0|100vw|2147483000/);
     expect(source).not.toMatch(/html,\s*\n\s*body\s*\{/);
