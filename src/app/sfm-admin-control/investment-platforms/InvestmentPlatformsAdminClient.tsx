@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Building2, Check, CircleOff, Merge, Save, X } from 'lucide-react';
+import { Check, CircleOff, Merge, Save, X } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
+import { PlatformAvatar } from '@/components/invest/PlatformAvatar';
 import { INVESTMENT_PLATFORM_TYPES, type InvestmentPlatformDirectoryItem, type InvestmentPlatformStatus, type InvestmentPlatformType } from '@/types/investmentPlatform';
 
 type ModerationItem = InvestmentPlatformDirectoryItem & {
@@ -114,7 +115,7 @@ export default function InvestmentPlatformsAdminClient({ initialItems }: Props) 
         <div className="platform-admin-list" role="list" aria-label={c.title}>
           {filtered.map(item => (
             <button key={item.id} type="button" role="listitem" className={item.id === selectedId ? 'selected' : ''} onClick={() => choose(item)}>
-              <Building2 size={18} aria-hidden="true" />
+              <PlatformAvatar slug={item.slug} name={item.canonicalName} websiteUrl={item.websiteUrl} logoUrl={item.logoUrl} aliases={item.aliases} platformType={item.platformType} size="sm" />
               <span><strong>{item.canonicalName}</strong><small>{TYPE_LABELS[locale][item.platformType]} · {item.isSeeded ? c.seeded : c.custom}</small></span>
               <em className={`status-${item.status}`}>{c[item.status]}</em>
             </button>
@@ -125,7 +126,7 @@ export default function InvestmentPlatformsAdminClient({ initialItems }: Props) 
         <aside className="platform-admin-review">
           {selected ? (
             <>
-              <div className="platform-admin-review-title"><Building2 aria-hidden="true" /><div><h2>{selected.canonicalName}</h2><span>{c[selected.status]}</span></div></div>
+              <div className="platform-admin-review-title"><PlatformAvatar slug={selected.slug} name={selected.canonicalName} websiteUrl={selected.websiteUrl} logoUrl={selected.logoUrl} aliases={selected.aliases} platformType={selected.platformType} size="md" /><div><h2>{selected.canonicalName}</h2><span>{c[selected.status]}</span></div></div>
               <p className="platform-admin-note">{c.directoryNote}</p>
               <label>{c.name}<input value={draft.name} maxLength={80} onChange={event => setDraft(current => ({ ...current, name: event.target.value }))} /></label>
               <label>{c.type}<select value={draft.platformType} onChange={event => setDraft(current => ({ ...current, platformType: event.target.value as InvestmentPlatformType }))}>{INVESTMENT_PLATFORM_TYPES.map(type => <option key={type} value={type}>{TYPE_LABELS[locale][type]}</option>)}</select></label>

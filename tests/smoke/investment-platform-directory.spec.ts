@@ -79,3 +79,81 @@ test('purchase platform remains distinct, keyboard-selectable, persistent, and v
   await expect(platformFilter.getByRole('option', { name: 'XTB' })).toHaveCount(1);
   await expectNoHorizontalOverflow(page);
 });
+
+const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+
+// Trading 212 (verified favicon), Binance (verified simpleicons), and an
+// unknown crypto exchange (category-icon fallback, no logoUrl).
+const VISUAL_DIRECTORY = {
+  ok: true, page: 1, limit: 25, total: 3,
+  items: [
+    { id: '20000000-0000-4000-8000-000000000004', canonicalName: 'Trading 212', normalizedName: 'trading 212', slug: 'trading-212', platformType: 'multi_asset_broker', websiteUrl: null, logoUrl: null, countryCode: null, aliases: [], status: 'approved', isSeeded: true },
+    { id: '20000000-0000-4000-8000-000000000011', canonicalName: 'Binance', normalizedName: 'binance', slug: 'binance', platformType: 'crypto_exchange', websiteUrl: null, logoUrl: null, countryCode: null, aliases: [], status: 'approved', isSeeded: true },
+    { id: '20000000-0000-4000-8000-0000000000ff', canonicalName: 'Obscure Local Exchange', normalizedName: 'obscure local exchange', slug: 'obscure-local-exchange', platformType: 'crypto_exchange', websiteUrl: null, logoUrl: null, countryCode: null, aliases: [], status: 'approved', isSeeded: false },
+  ],
+};
+
+async function openPlatformDirectory(page: Page, lang: 'en' | 'ar') {
+  await page.addInitScript(l => window.localStorage.setItem('sfm_lang', l), lang);
+  // Verified logo hosts return a real pixel; the resolver output is what we test.
+  await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**/api/investment-platforms?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VISUAL_DIRECTORY) }));
+  await page.goto('/login?mode=register', { waitUntil: 'domcontentloaded' });
+  await page.locator('button.guest-btn').click();
+  await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
+  await page.goto('/invest', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('main.invest-main')).toBeVisible();
+  // Language-independent selectors: the add trigger and platform combobox are
+  // located structurally so the same flow works in English and Arabic. Platform
+  // names in the results are data (never translated).
+  await page.locator('button.invest-primary-btn').first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  const combobox = dialog.locator('.invest-platform-combobox input[role="combobox"]');
+  await combobox.focus();
+  await expect(dialog.locator('.invest-platform-results')).toBeVisible();
+  return dialog;
+}
+
+for (const [lang, dir, width] of [['en', 'ltr', 1280], ['ar', 'rtl', 390]] as const) {
+  test(`platform directory rows show a verified logo or a safe category icon (${lang} ${dir}, ${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    const dialog = await openPlatformDirectory(page, lang);
+    await expect(page.locator('html')).toHaveAttribute('dir', dir);
+    const listbox = dialog.getByRole('listbox');
+
+    const verifiedRow = listbox.getByRole('option', { name: /Trading 212/ });
+    const cryptoVerifiedRow = listbox.getByRole('option', { name: /Binance/ });
+    const unknownRow = listbox.getByRole('option', { name: /Obscure Local Exchange/ });
+
+    // Every row starts with exactly one platform avatar.
+    for (const row of [verifiedRow, cryptoVerifiedRow, unknownRow]) {
+      await expect(row.locator('.platform-avatar')).toHaveCount(1);
+    }
+
+    // Verified platforms render exactly one loaded logo image, no fallback icon.
+    for (const row of [verifiedRow, cryptoVerifiedRow]) {
+      const avatar = row.locator('.platform-avatar');
+      await expect(avatar.locator('img')).toHaveCount(1);
+      await expect.poll(() => avatar.locator('img').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+      await expect(avatar.locator('svg')).toHaveCount(0);
+      await expect(avatar).toHaveAttribute('data-fallback', 'false');
+    }
+
+    // Unknown platform shows a single semantic category icon, no broken image.
+    const unknownAvatar = unknownRow.locator('.platform-avatar');
+    await expect(unknownAvatar.locator('img')).toHaveCount(0);
+    await expect(unknownAvatar.locator('svg')).toHaveCount(1);
+    await expect(unknownAvatar).toHaveAttribute('data-category', 'crypto');
+
+    // Consistent avatar size across rows, and no row/logo overlap with the label.
+    const sizes = await listbox.locator('.platform-avatar').evaluateAll(nodes => nodes.map(n => {
+      const r = n.getBoundingClientRect();
+      return `${Math.round(r.width)}x${Math.round(r.height)}`;
+    }));
+    expect(new Set(sizes).size).toBe(1);
+
+    await expectNoHorizontalOverflow(page);
+  });
+}

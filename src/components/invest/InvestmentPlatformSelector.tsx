@@ -8,6 +8,7 @@ import {
   cleanPlatformWebsite,
   PlatformValidationError,
 } from '@/lib/investments/platformDirectory';
+import { PlatformAvatar } from '@/components/invest/PlatformAvatar';
 import type { InvestmentType } from '@/types/investment';
 import {
   INVESTMENT_PLATFORM_TYPES,
@@ -229,7 +230,7 @@ export function InvestmentPlatformSelector({ investmentType, labels, value, onCh
                     onMouseEnter={() => setActiveIndex(index)}
                     onClick={() => selectItem(item)}
                   >
-                    <span className="invest-platform-result-icon"><Building2 size={16} /></span>
+                    <PlatformAvatar slug={item.slug} name={item.canonicalName} websiteUrl={item.websiteUrl} logoUrl={item.logoUrl} aliases={item.aliases} platformType={item.platformType} size="sm" />
                     <span><strong>{item.canonicalName}</strong><small>{labels.typeLabels[item.platformType]}</small></span>
                     {value?.id === item.id && <Check size={16} aria-hidden="true" />}
                   </button>
@@ -246,7 +247,7 @@ export function InvestmentPlatformSelector({ investmentType, labels, value, onCh
       {!value && <p className="invest-platform-empty">{labels.notSpecified}</p>}
       {value && (
         <div className="invest-platform-summary" aria-live="polite">
-          <span className="invest-platform-result-icon"><Building2 size={17} /></span>
+          <PlatformAvatar name={value.name} platformType={value.type} size="sm" />
           <span><small>{labels.selected}</small><strong>{value.name}</strong><em>{summaryType}</em></span>
           {value.status === 'pending' && <b className="invest-platform-pending">{labels.pending}</b>}
           {value.status === 'local' && <b className="invest-platform-local">{labels.localOnly}</b>}
