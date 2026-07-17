@@ -1,0 +1,272 @@
+route,kind,access,source,observed_status,observed_location,evidence
+/,page,public,src/app/page.tsx,200,,filesystem+middleware; production GET
+/about,page,public,src/app/about/page.tsx,200,,filesystem+middleware; production GET
+/accounting-companies,page,public,src/app/accounting-companies/page.tsx,200,,filesystem+middleware; production GET
+/ai,page,authenticated-or-guest-demo,src/app/ai/page.tsx,307,/login?next=%2Fai,filesystem+middleware; production GET
+/alerts,page,redirect,src/app/alerts/page.tsx,200,,filesystem+middleware; production GET
+/api/account/delete,route-handler,authenticated-api,src/app/api/account/delete/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/access,route-handler,admin-only-api,src/app/api/admin/access/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/ai-usage-limits,route-handler,admin-only-api,src/app/api/admin/ai-usage-limits/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/analytics,route-handler,admin-only-api,src/app/api/admin/analytics/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/audit-logs,route-handler,admin-only-api,src/app/api/admin/audit-logs/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/companies/review,route-handler,admin-only-api,src/app/api/admin/companies/review/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/investment-platforms,route-handler,admin-only-api,src/app/api/admin/investment-platforms/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/market-news/providers,route-handler,admin-only-api,src/app/api/admin/market-news/providers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/me,route-handler,admin-only-api,src/app/api/admin/me/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/ops-center,route-handler,admin-only-api,src/app/api/admin/ops-center/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/roles,route-handler,admin-only-api,src/app/api/admin/roles/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/roles/:id,route-handler,admin-only-api,src/app/api/admin/roles/[id]/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/roles/grant,route-handler,admin-only-api,src/app/api/admin/roles/grant/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/roles/revoke,route-handler,admin-only-api,src/app/api/admin/roles/revoke/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/shariah,route-handler,admin-only-api,src/app/api/admin/shariah/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/admin/users/search,route-handler,admin-only-api,src/app/api/admin/users/search/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/ai/receipt-scan,route-handler,authenticated-api,src/app/api/ai/receipt-scan/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/analytics/track,route-handler,authenticated-api,src/app/api/analytics/track/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/asset,route-handler,public-api,src/app/api/asset/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/login,route-handler,authenticated-api,src/app/api/auth/login/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/mfa/email/start,route-handler,authenticated-api,src/app/api/auth/mfa/email/start/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/mfa/email/verify,route-handler,authenticated-api,src/app/api/auth/mfa/email/verify/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/password-reset/check,route-handler,public-api,src/app/api/auth/password-reset/check/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/password-reset/request,route-handler,public-api,src/app/api/auth/password-reset/request/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/resolve-username,route-handler,public-api,src/app/api/auth/resolve-username/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/auth/session,route-handler,authenticated-api,src/app/api/auth/session/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/banking-stocks/movers,route-handler,public-api,src/app/api/banking-stocks/movers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/banking-stocks/news,route-handler,public-api,src/app/api/banking-stocks/news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/banking-stocks/ticker,route-handler,public-api,src/app/api/banking-stocks/ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/business/subscriptions/reminders,route-handler,cron-secret-api,src/app/api/business/subscriptions/reminders/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/business/subscriptions/reminders/status,route-handler,authenticated-api,src/app/api/business/subscriptions/reminders/status/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/business/subscriptions/reminders/test-email,route-handler,authenticated-api,src/app/api/business/subscriptions/reminders/test-email/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/charity-projects/export,route-handler,authenticated-api,src/app/api/charity-projects/export/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/charity-projects/metals-prices,route-handler,public-api,src/app/api/charity-projects/metals-prices/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/companies/:companyId/analytics,route-handler,public-api,src/app/api/companies/[companyId]/analytics/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/companies/:companyId/track,route-handler,public-api,src/app/api/companies/[companyId]/track/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/companies/analytics,route-handler,public-api,src/app/api/companies/analytics/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings,route-handler,authenticated-api,src/app/api/company-listings/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings/:id,route-handler,admin-only-api,src/app/api/company-listings/[id]/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings/admin,route-handler,authenticated-api,src/app/api/company-listings/admin/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings/eligibility,route-handler,authenticated-api,src/app/api/company-listings/eligibility/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings/owner,route-handler,authenticated-api,src/app/api/company-listings/owner/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings/owner/:id,route-handler,authenticated-api,src/app/api/company-listings/owner/[id]/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/company-listings/resolve-image,route-handler,public-api,src/app/api/company-listings/resolve-image/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/contact,route-handler,public-api,src/app/api/contact/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/crypto-news,route-handler,public-api,src/app/api/crypto-news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/crypto-news/market,route-handler,public-api,src/app/api/crypto-news/market/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/cyclical-stocks/economic-cycle,route-handler,public-api,src/app/api/cyclical-stocks/economic-cycle/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/cyclical-stocks/movers,route-handler,public-api,src/app/api/cyclical-stocks/movers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/cyclical-stocks/news,route-handler,public-api,src/app/api/cyclical-stocks/news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/cyclical-stocks/ticker,route-handler,public-api,src/app/api/cyclical-stocks/ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/daily-tip,route-handler,authenticated-api,src/app/api/daily-tip/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/debts/generate-monthly-expenses,route-handler,cron-secret-api,src/app/api/debts/generate-monthly-expenses/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/debug/document-ai,route-handler,admin-only-api,src/app/api/debug/document-ai/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/debug/receipt-provider,route-handler,admin-only-api,src/app/api/debug/receipt-provider/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/defensive-stocks/movers,route-handler,public-api,src/app/api/defensive-stocks/movers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/defensive-stocks/news,route-handler,public-api,src/app/api/defensive-stocks/news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/defensive-stocks/ticker,route-handler,public-api,src/app/api/defensive-stocks/ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/dividend-stocks/calendar,route-handler,public-api,src/app/api/dividend-stocks/calendar/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/dividend-stocks/movers,route-handler,public-api,src/app/api/dividend-stocks/movers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/dividend-stocks/news,route-handler,public-api,src/app/api/dividend-stocks/news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/dividend-stocks/ticker,route-handler,public-api,src/app/api/dividend-stocks/ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/economic-calendar,route-handler,public-api,src/app/api/economic-calendar/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/energy-stocks/movers,route-handler,public-api,src/app/api/energy-stocks/movers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/energy-stocks/news,route-handler,public-api,src/app/api/energy-stocks/news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/energy-stocks/ticker,route-handler,public-api,src/app/api/energy-stocks/ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/europe-news,route-handler,public-api,src/app/api/europe-news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/followed-trades,route-handler,authenticated-api,src/app/api/followed-trades/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/funding-programs/admin,route-handler,authenticated-api,src/app/api/funding-programs/admin/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/growth-stocks/movers,route-handler,public-api,src/app/api/growth-stocks/movers/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/growth-stocks/news,route-handler,public-api,src/app/api/growth-stocks/news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/growth-stocks/ticker,route-handler,public-api,src/app/api/growth-stocks/ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/gulf-news,route-handler,public-api,src/app/api/gulf-news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/health,route-handler,public-api,src/app/api/health/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/health/database,route-handler,admin-only-api,src/app/api/health/database/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/approve,route-handler,authenticated-api,src/app/api/instagram-automation/approve/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/create-draft,route-handler,authenticated-api,src/app/api/instagram-automation/create-draft/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/delete,route-handler,authenticated-api,src/app/api/instagram-automation/delete/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/list,route-handler,authenticated-api,src/app/api/instagram-automation/list/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/publish,route-handler,authenticated-api,src/app/api/instagram-automation/publish/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/reject,route-handler,authenticated-api,src/app/api/instagram-automation/reject/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/instagram-automation/send-approval,route-handler,authenticated-api,src/app/api/instagram-automation/send-approval/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/investment-platforms,route-handler,authenticated-api,src/app/api/investment-platforms/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/investor/links,route-handler,authenticated-api,src/app/api/investor/links/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/investor/view,route-handler,public-api,src/app/api/investor/view/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/invoices/analyze,route-handler,authenticated-api,src/app/api/invoices/analyze/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market-agent/analyze,route-handler,authenticated-api,src/app/api/market-agent/analyze/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market-data/status,route-handler,public-api,src/app/api/market-data/status/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market-news,route-handler,public-api,src/app/api/market-news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market-news/ingest,route-handler,cron-secret-api,src/app/api/market-news/ingest/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market-state/system,route-handler,admin-only-api,src/app/api/market-state/system/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market-ticker,route-handler,public-api,src/app/api/market-ticker/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/ai-insight,route-handler,authenticated-api,src/app/api/market/ai-insight/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/analyze,route-handler,public-api,src/app/api/market/analyze/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/asset-profile,route-handler,public-api,src/app/api/market/asset-profile/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/banking/snapshot,route-handler,public-api,src/app/api/market/banking/snapshot/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/central-bank-news,route-handler,public-api,src/app/api/market/central-bank-news/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/company-profile,route-handler,public-api,src/app/api/market/company-profile/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/compare,route-handler,public-api,src/app/api/market/compare/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/dividends/provider-status,route-handler,admin-only-api,src/app/api/market/dividends/provider-status/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/economic-calendar,route-handler,public-api,src/app/api/market/economic-calendar/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/energy/commodities,route-handler,public-api,src/app/api/market/energy/commodities/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/fx/batch,route-handler,public-api,src/app/api/market/fx/batch/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/fx/rate,route-handler,public-api,src/app/api/market/fx/rate/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/health,route-handler,public-api,src/app/api/market/health/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/history,route-handler,public-api,src/app/api/market/history/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/metals,route-handler,public-api,src/app/api/market/metals/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/performance,route-handler,public-api,src/app/api/market/performance/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/provider-health,route-handler,admin-only-api,src/app/api/market/provider-health/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/providers/health,route-handler,public-api,src/app/api/market/providers/health/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/refresh-investment-price,route-handler,cron-secret-api,src/app/api/market/refresh-investment-price/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/search,route-handler,public-api,src/app/api/market/search/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/search-assets,route-handler,public-api,src/app/api/market/search-assets/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/sentiment,route-handler,public-api,src/app/api/market/sentiment/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/sentiment/health,route-handler,public-api,src/app/api/market/sentiment/health/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/signal-alerts,route-handler,authenticated-api,src/app/api/market/signal-alerts/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/signal-alerts/read,route-handler,authenticated-api,src/app/api/market/signal-alerts/read/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/signal-preferences,route-handler,authenticated-api,src/app/api/market/signal-preferences/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/signals,route-handler,authenticated-api,src/app/api/market/signals/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/signals/:symbol,route-handler,authenticated-api,src/app/api/market/signals/[symbol]/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/signals/refresh,route-handler,cron-secret-api,src/app/api/market/signals/refresh/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/symbols,route-handler,public-api,src/app/api/market/symbols/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/technical-analysis,route-handler,public-api,src/app/api/market/technical-analysis/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/market/tickers/crypto,route-handler,public-api,src/app/api/market/tickers/crypto/route.ts,,,filesystem+handler-source; runtime requires…1428 tokens truncated…src/app/api/trader/calendar/earnings/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/calendar/economic,route-handler,public-api,src/app/api/trader/calendar/economic/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/calendar/ipos,route-handler,public-api,src/app/api/trader/calendar/ipos/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/provider-status,route-handler,authenticated-api,src/app/api/trader/provider-status/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/scanner/results,route-handler,authenticated-api,src/app/api/trader/scanner/results/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/scanner/run,route-handler,cron-secret-api,src/app/api/trader/scanner/run/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/status,route-handler,authenticated-api,src/app/api/trader/status/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/trader/us-stocks,route-handler,public-api,src/app/api/trader/us-stocks/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/tts,route-handler,authenticated-api,src/app/api/tts/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/wakeel,route-handler,authenticated-api,src/app/api/wakeel/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/watchlist,route-handler,authenticated-api,src/app/api/watchlist/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/api/zakat/metals-prices,route-handler,public-api,src/app/api/zakat/metals-prices/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/banking-stocks,page,public,src/app/banking-stocks/page.tsx,200,,filesystem+middleware; production GET
+/business,page,authenticated,src/app/business/page.tsx,307,/login?next=%2Fbusiness,filesystem+middleware; production GET
+/business-hub,page,authenticated,src/app/business-hub/page.tsx,307,/login?next=%2Fbusiness-hub,filesystem+middleware; production GET
+/business-operations,page,authenticated,src/app/business-operations/page.tsx,307,/login?next=%2Fbusiness-operations,filesystem+middleware; production GET
+/business/subscriptions,page,authenticated,src/app/business/subscriptions/page.tsx,307,/login?next=%2Fbusiness%2Fsubscriptions,filesystem+middleware; production GET
+/business/subscriptions/:clientId,page,authenticated,src/app/business/subscriptions/[clientId]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/charity,page,authenticated,src/app/charity/page.tsx,307,/login?next=%2Fcharity,filesystem+middleware; production GET
+/charity-projects,page,authenticated,src/app/charity-projects/page.tsx,307,/login?next=%2Fcharity-projects,filesystem+middleware; production GET
+/charity-projects/report,page,authenticated,src/app/charity-projects/report/page.tsx,307,/login?next=%2Fcharity-projects%2Freport,filesystem+middleware; production GET
+/charity/donations,page,authenticated,src/app/charity/donations/page.tsx,307,/login?next=%2Fcharity%2Fdonations,filesystem+middleware; production GET
+/command-center,page,authenticated,src/app/command-center/page.tsx,307,/login?next=%2Fcommand-center,filesystem+middleware; production GET
+/companies/:id,page,public,src/app/companies/[id]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/company-listing/cancel,page,public,src/app/company-listing/cancel/page.tsx,200,,filesystem+middleware; production GET
+/company-listing/submit,page,public,src/app/company-listing/submit/page.tsx,200,,filesystem+middleware; production GET
+/company-listing/success,page,public,src/app/company-listing/success/page.tsx,200,,filesystem+middleware; production GET
+/contact,page,public,src/app/contact/page.tsx,200,,filesystem+middleware; production GET
+/crypto-news,page,public,src/app/crypto-news/page.tsx,200,,filesystem+middleware; production GET
+/customers,page,authenticated,src/app/customers/page.tsx,307,/login?next=%2Fcustomers,filesystem+middleware; production GET
+/cyclical-stocks,page,public,src/app/cyclical-stocks/page.tsx,200,,filesystem+middleware; production GET
+/dashboard,page,authenticated-or-guest-demo,src/app/dashboard/page.tsx,307,/login?next=%2Fdashboard,filesystem+middleware; production GET
+/debts,page,authenticated,src/app/debts/page.tsx,307,/login?next=%2Fdebts,filesystem+middleware; production GET
+/debts/monthly-subscriptions,page,authenticated,src/app/debts/monthly-subscriptions/page.tsx,307,/login?next=%2Fdebts%2Fmonthly-subscriptions,filesystem+middleware; production GET
+/decisions,page,authenticated,src/app/decisions/page.tsx,307,/login?next=%2Fdecisions,filesystem+middleware; production GET
+/defensive-stocks,page,public,src/app/defensive-stocks/page.tsx,200,,filesystem+middleware; production GET
+/dividend-stocks,page,public,src/app/dividend-stocks/page.tsx,200,,filesystem+middleware; production GET
+/documents,page,authenticated,src/app/documents/page.tsx,307,/login?next=%2Fdocuments,filesystem+middleware; production GET
+/ebooks,page,public,src/app/ebooks/page.tsx,200,,filesystem+middleware; production GET
+/ebooks/:slug,page,public,src/app/ebooks/[slug]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/education,page,public,src/app/education/page.tsx,200,,filesystem+middleware; production GET
+/education/expenses,page,public,src/app/education/expenses/page.tsx,200,,filesystem+middleware; production GET
+/education/investments,page,authenticated,src/app/education/investments/page.tsx,307,/login?next=%2Feducation%2Finvestments,filesystem+middleware; production GET
+/education/savings,page,public,src/app/education/savings/page.tsx,200,,filesystem+middleware; production GET
+/employees,page,authenticated,src/app/employees/page.tsx,307,/login?next=%2Femployees,filesystem+middleware; production GET
+/energy-stocks,page,public,src/app/energy-stocks/page.tsx,200,,filesystem+middleware; production GET
+/europe-news,page,public,src/app/europe-news/page.tsx,200,,filesystem+middleware; production GET
+/expenses,page,authenticated-or-guest-demo,src/app/expenses/page.tsx,307,/login?next=%2Fexpenses,filesystem+middleware; production GET
+/expenses/add,page,authenticated,src/app/expenses/add/page.tsx,307,/login?next=%2Fexpenses%2Fadd,filesystem+middleware; production GET
+/expenses/monthly-subscriptions,page,authenticated-or-guest-demo,src/app/expenses/monthly-subscriptions/page.tsx,307,/login?next=%2Fexpenses%2Fmonthly-subscriptions,filesystem+middleware; production GET
+/favicon.ico,route-handler,hidden/internal,src/app/favicon.ico/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/feasibility-companies,page,public,src/app/feasibility-companies/page.tsx,200,,filesystem+middleware; production GET
+/financial-consulting-companies,page,public,src/app/financial-consulting-companies/page.tsx,200,,filesystem+middleware; production GET
+/financial-theories,page,public,src/app/financial-theories/page.tsx,200,,filesystem+middleware; production GET
+/goals,page,authenticated-or-guest-demo,src/app/goals/page.tsx,307,/login?next=%2Fgoals,filesystem+middleware; production GET
+/goals/add,page,authenticated,src/app/goals/add/page.tsx,307,/login?next=%2Fgoals%2Fadd,filesystem+middleware; production GET
+/growth-stocks,page,public,src/app/growth-stocks/page.tsx,200,,filesystem+middleware; production GET
+/guest,page,public,src/app/guest/page.tsx,200,,filesystem+middleware; production GET
+/gulf-news,page,public,src/app/gulf-news/page.tsx,200,,filesystem+middleware; production GET
+/income,page,authenticated-or-guest-demo,src/app/income/page.tsx,307,/login?next=%2Fincome,filesystem+middleware; production GET
+/income/add,page,authenticated,src/app/income/add/page.tsx,307,/login?next=%2Fincome%2Fadd,filesystem+middleware; production GET
+/invest,page,authenticated-or-guest-demo,src/app/invest/page.tsx,307,/login?next=%2Finvest,filesystem+middleware; production GET
+/invest/add,page,authenticated,src/app/invest/add/page.tsx,307,/login?next=%2Finvest%2Fadd,filesystem+middleware; production GET
+/investment-companies,page,public,src/app/investment-companies/page.tsx,200,,filesystem+middleware; production GET
+/investment-offers,page,authenticated,src/app/investment-offers/page.tsx,307,/login?next=%2Finvestment-offers,filesystem+middleware; production GET
+/investor/:token,page,public,src/app/investor/[token]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/invoices,page,authenticated,src/app/invoices/page.tsx,307,/login?next=%2Finvoices,filesystem+middleware; production GET
+/khums,page,authenticated,src/app/khums/page.tsx,307,/login?next=%2Fkhums,filesystem+middleware; production GET
+/login,page,public,src/app/(auth)/login/page.tsx,200,,filesystem+middleware; production GET
+/market-agent,page,authenticated,src/app/market-agent/page.tsx,200,,filesystem+middleware; production GET
+/market-alerts,page,authenticated,src/app/market-alerts/page.tsx,307,/login?next=%2Fmarket-alerts,filesystem+middleware; production GET
+/market-analysis,page,authenticated-or-guest-demo,src/app/market-analysis/page.tsx,307,/login?next=%2Fmarket-analysis,filesystem+middleware; production GET
+/market-watchlist,page,authenticated,src/app/market-watchlist/page.tsx,307,/login?next=%2Fmarket-watchlist,filesystem+middleware; production GET
+/mfa/verify,page,authenticated,src/app/mfa/verify/page.tsx,307,/login?next=%2Fmfa%2Fverify,filesystem+middleware; production GET
+/notif,page,redirect,src/app/notif/page.tsx,200,,filesystem+middleware; production GET
+/notifications,page,authenticated,src/app/notifications/page.tsx,307,/login?next=%2Fnotifications,filesystem+middleware; production GET
+/onboarding,page,authenticated,src/app/onboarding/page.tsx,307,/login?next=%2Fonboarding,filesystem+middleware; production GET
+/operating-expenses,page,authenticated,src/app/operating-expenses/page.tsx,307,/login?next=%2Foperating-expenses,filesystem+middleware; production GET
+/privacy,page,public,src/app/privacy/page.tsx,200,,filesystem+middleware; production GET
+/profile,page,authenticated,src/app/profile/page.tsx,307,/login?next=%2Fprofile,filesystem+middleware; production GET
+/profile/companies,page,authenticated,src/app/profile/companies/page.tsx,307,/login?next=%2Fprofile%2Fcompanies,filesystem+middleware; production GET
+/projects,page,authenticated,src/app/projects/page.tsx,307,/login?next=%2Fprojects,filesystem+middleware; production GET
+/projects/:id,page,authenticated,src/app/projects/[id]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/projects/ad-calculator,page,authenticated,src/app/projects/ad-calculator/page.tsx,307,/login?next=%2Fprojects%2Fad-calculator,filesystem+middleware; production GET
+/reports,page,authenticated-or-guest-demo,src/app/reports/page.tsx,307,/login?next=%2Freports,filesystem+middleware; production GET
+/reports-center,page,authenticated-or-guest-demo,src/app/reports-center/page.tsx,307,/login?next=%2Freports-center,filesystem+middleware; production GET
+/reset-password,page,public,src/app/reset-password/page.tsx,200,,filesystem+middleware; production GET
+/sales,page,authenticated,src/app/sales/page.tsx,307,/login?next=%2Fsales,filesystem+middleware; production GET
+/savings,page,authenticated-or-guest-demo,src/app/savings/page.tsx,307,/login?next=%2Fsavings,filesystem+middleware; production GET
+/security,page,authenticated,src/app/security/page.tsx,307,/login?next=%2Fsecurity,filesystem+middleware; production GET
+/services/accounting-firms,page,public,src/app/services/accounting-firms/page.tsx,200,,filesystem+middleware; production GET
+/services/advisory-firms,page,public,src/app/services/advisory-firms/page.tsx,200,,filesystem+middleware; production GET
+/services/feasibility-firms,page,public,src/app/services/feasibility-firms/page.tsx,200,,filesystem+middleware; production GET
+/services/investment-firms,page,public,src/app/services/investment-firms/page.tsx,200,,filesystem+middleware; production GET
+/settings,page,authenticated,src/app/settings/page.tsx,307,/login?next=%2Fsettings,filesystem+middleware; production GET
+/setup,page,public,src/app/setup/page.tsx,200,,filesystem+middleware; production GET
+/sfm-admin-control,page,admin-only,src/app/sfm-admin-control/page.tsx,307,/login?next=%2Fsfm-admin-control,filesystem+middleware; production GET
+/sfm-admin-control/admin-permissions,page,admin-only,src/app/sfm-admin-control/admin-permissions/page.tsx,307,/login?next=%2Fsfm-admin-control%2Fadmin-permissions,filesystem+middleware; production GET
+/sfm-admin-control/companies,page,admin-only,src/app/sfm-admin-control/companies/page.tsx,307,/login?next=%2Fsfm-admin-control%2Fcompanies,filesystem+middleware; production GET
+/sfm-admin-control/instagram-automation,page,admin-only,src/app/sfm-admin-control/instagram-automation/page.tsx,307,/login?next=%2Fsfm-admin-control%2Finstagram-automation,filesystem+middleware; production GET
+/sfm-admin-control/investment-platforms,page,admin-only,src/app/sfm-admin-control/investment-platforms/page.tsx,307,/login?next=%2Fsfm-admin-control%2Finvestment-platforms,filesystem+middleware; production GET
+/sfm-admin-control/market-diagnostics,page,admin-only,src/app/sfm-admin-control/market-diagnostics/page.tsx,307,/login?next=%2Fsfm-admin-control%2Fmarket-diagnostics,filesystem+middleware; production GET
+/sfm-admin-control/news-providers,page,admin-only,src/app/sfm-admin-control/news-providers/page.tsx,307,/login?next=%2Fsfm-admin-control%2Fnews-providers,filesystem+middleware; production GET
+/sfm-admin-control/shariah,page,admin-only,src/app/sfm-admin-control/shariah/page.tsx,307,/login?next=%2Fsfm-admin-control%2Fshariah,filesystem+middleware; production GET
+/sharia-stocks,page,public,src/app/sharia-stocks/page.tsx,200,,filesystem+middleware; production GET
+/site-map,page,authenticated,src/app/site-map/page.tsx,307,/login?next=%2Fsite-map,filesystem+middleware; production GET
+/suppliers,page,authenticated,src/app/suppliers/page.tsx,307,/login?next=%2Fsuppliers,filesystem+middleware; production GET
+/tasks,page,authenticated,src/app/tasks/page.tsx,307,/login?next=%2Ftasks,filesystem+middleware; production GET
+/tech-news,page,public,src/app/tech-news/page.tsx,200,,filesystem+middleware; production GET
+/terms,page,public,src/app/terms/page.tsx,200,,filesystem+middleware; production GET
+/thesfm-trader-own,page,authenticated,src/app/thesfm-trader-own/page.tsx,307,/login?next=%2Fthesfm-trader-own,filesystem+middleware; production GET
+/thesfm-trader-own/ai-analysis,page,authenticated,src/app/thesfm-trader-own/ai-analysis/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fai-analysis,filesystem+middleware; production GET
+/thesfm-trader-own/ai-analysis/:market,page,authenticated,src/app/thesfm-trader-own/ai-analysis/[market]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/thesfm-trader-own/ai-scanner,page,authenticated,src/app/thesfm-trader-own/ai-scanner/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fai-scanner,filesystem+middleware; production GET
+/thesfm-trader-own/alerts,page,authenticated,src/app/thesfm-trader-own/alerts/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Falerts,filesystem+middleware; production GET
+/thesfm-trader-own/app/:path*?,route-handler,hidden/internal,src/app/thesfm-trader-own/app/[[...path]]/route.ts,,,filesystem+handler-source; runtime requires method/fixture
+/thesfm-trader-own/calendar,page,authenticated,src/app/thesfm-trader-own/calendar/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fcalendar,filesystem+middleware; production GET
+/thesfm-trader-own/dashboard,page,authenticated,src/app/thesfm-trader-own/dashboard/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fdashboard,filesystem+middleware; production GET
+/thesfm-trader-own/education,page,authenticated,src/app/thesfm-trader-own/education/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Feducation,filesystem+middleware; production GET
+/thesfm-trader-own/market-analysis,page,authenticated,src/app/thesfm-trader-own/market-analysis/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fmarket-analysis,filesystem+middleware; production GET
+/thesfm-trader-own/market-analysis/:market,page,authenticated,src/app/thesfm-trader-own/market-analysis/[market]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/thesfm-trader-own/markets,page,authenticated,src/app/thesfm-trader-own/markets/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fmarkets,filesystem+middleware; production GET
+/thesfm-trader-own/markets/:market,page,authenticated,src/app/thesfm-trader-own/markets/[market]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/thesfm-trader-own/news,page,authenticated,src/app/thesfm-trader-own/news/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fnews,filesystem+middleware; production GET
+/thesfm-trader-own/portfolio,page,authenticated,src/app/thesfm-trader-own/portfolio/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fportfolio,filesystem+middleware; production GET
+/thesfm-trader-own/positions,page,authenticated,src/app/thesfm-trader-own/positions/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fpositions,filesystem+middleware; production GET
+/thesfm-trader-own/recommendations,page,authenticated,src/app/thesfm-trader-own/recommendations/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Frecommendations,filesystem+middleware; production GET
+/thesfm-trader-own/recommendations-history,page,authenticated,src/app/thesfm-trader-own/recommendations-history/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Frecommendations-history,filesystem+middleware; production GET
+/thesfm-trader-own/scanner,page,authenticated,src/app/thesfm-trader-own/scanner/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fscanner,filesystem+middleware; production GET
+/thesfm-trader-own/settings,page,authenticated,src/app/thesfm-trader-own/settings/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fsettings,filesystem+middleware; production GET
+/thesfm-trader-own/signal-history,page,authenticated,src/app/thesfm-trader-own/signal-history/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fsignal-history,filesystem+middleware; production GET
+/thesfm-trader-own/symbol-details,page,authenticated,src/app/thesfm-trader-own/symbol-details/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fsymbol-details,filesystem+middleware; production GET
+/thesfm-trader-own/symbol-details/:symbol,page,authenticated,src/app/thesfm-trader-own/symbol-details/[symbol]/page.tsx,,,filesystem+middleware; runtime requires fixture identifier
+/thesfm-trader-own/trade-history,page,authenticated,src/app/thesfm-trader-own/trade-history/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Ftrade-history,filesystem+middleware; production GET
+/thesfm-trader-own/trade-performance,page,authenticated,src/app/thesfm-trader-own/trade-performance/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Ftrade-performance,filesystem+middleware; production GET
+/thesfm-trader-own/trades,page,authenticated,src/app/thesfm-trader-own/trades/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Ftrades,filesystem+middleware; production GET
+/thesfm-trader-own/watchlist,page,authenticated,src/app/thesfm-trader-own/watchlist/page.tsx,307,/login?next=%2Fthesfm-trader-own%2Fwatchlist,filesystem+middleware; production GET
+/today,page,authenticated,src/app/today/page.tsx,307,/login?next=%2Ftoday,filesystem+middleware; production GET
+/trading-companies,page,public,src/app/trading-companies/page.tsx,200,,filesystem+middleware; production GET
+/wakeel,page,authenticated,src/app/wakeel/page.tsx,307,/login?next=%2Fwakeel,filesystem+middleware; production GET
+/watchlist,page,authenticated,src/app/watchlist/page.tsx,307,/login?next=%2Fwatchlist,filesystem+middleware; production GET
+/zakat,page,authenticated,src/app/zakat/page.tsx,307,/login?next=%2Fzakat,filesystem+middleware; production GET
+/zoer_proxy/:path*,route-handler,hidden/internal,src/app/zoer_proxy/[...path]/route.ts,,,filesystem+handler-source; runtime requires method/fixture
