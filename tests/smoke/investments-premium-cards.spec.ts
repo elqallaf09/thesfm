@@ -486,13 +486,8 @@ test('TSM asset card falls back safely (no broken image, no duplicate icon) when
   await expect(avatar.locator('svg')).toHaveCount(1);
 });
 
-test('long ADR company name never shifts, clips, or overlaps the TSM asset logo', async ({ page }) => {
-  const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
-  await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
-  await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
-  await page.route('**tsmc.com**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
-
-  const tsmInvestment: Investment = {
+function longNameTsmInvestment(): Investment {
+  return {
     ...sampleInvestments[0],
     id: 'regression-tsm-long-name',
     name: 'Taiwan Semiconductor Manufacturing Company Limited American Depositary Shares (Sponsored)',
@@ -503,56 +498,62 @@ test('long ADR company name never shifts, clips, or overlaps the TSM asset logo'
     purchasePlatformId: undefined,
     purchasePlatformName: 'zad',
   };
+}
 
-  await enterPremiumPortfolio(page, 1440, { investments: [tsmInvestment], lang: 'en', theme: 'light' });
+async function routeVerifiedLogoHosts(page: Page) {
+  const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+  await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+  await page.route('**tsmc.com**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
+}
 
-  for (const { width, lang, dir, theme } of [
-    { width: 1440, lang: 'en', dir: 'ltr', theme: 'light' },
-    { width: 390, lang: 'ar', dir: 'rtl', theme: 'dark' },
-  ] as const) {
-    await page.evaluate(scenario => {
-      localStorage.setItem('sfm_lang', scenario.lang);
-      localStorage.setItem('the-sfm-theme', scenario.theme);
-    }, { lang, theme });
-    await page.setViewportSize({ width, height: 900 });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.locator('main.invest-main')).toBeVisible();
-    await expect(page.locator('html')).toHaveAttribute('dir', dir);
-    await expect(page.locator('html')).toHaveClass(new RegExp(`(^|\\s)${theme}(\\s|$)`));
+async function assertLongNameTsmLogoLayout(page: Page, label: string) {
+  const card = page.locator('.invest-holding-card').filter({ hasText: 'Taiwan Semiconductor Manufacturing' });
+  await expect(card).toBeVisible();
+  const avatar = card.locator('.invest-asset-lens .asset-avatar');
 
-    const card = page.locator('.invest-holding-card').filter({ hasText: 'Taiwan Semiconductor Manufacturing' });
-    await expect(card).toBeVisible();
-    const avatar = card.locator('.invest-asset-lens .asset-avatar');
+  // Exactly one verified asset image, still the TSMC logo under a very long name.
+  await expect(avatar.locator('img')).toHaveCount(1);
+  await expect(avatar.locator('img')).toHaveAttribute('src', /tsmc\.com/);
+  await expect(avatar.locator('svg')).toHaveCount(0);
 
-    // Exactly one verified asset image, still the TSMC logo under a very long name.
-    await expect(avatar.locator('img')).toHaveCount(1);
-    await expect(avatar.locator('img')).toHaveAttribute('src', /tsmc\.com/);
-    await expect(avatar.locator('svg')).toHaveCount(0);
+  // The long name must not push the logo off, clip it, or overlap the ZAD badge.
+  const geometry = await card.evaluate(cardEl => {
+    const avatarEl = cardEl.querySelector('.invest-asset-lens .asset-avatar') as HTMLElement | null;
+    const platformEl = cardEl.querySelector('.invest-platform-logo') as HTMLElement | null;
+    const cardBox = cardEl.getBoundingClientRect();
+    const a = avatarEl?.getBoundingClientRect();
+    const p = platformEl?.getBoundingClientRect();
+    const intersect = (x?: DOMRect, y?: DOMRect) => (!x || !y) ? 0
+      : Math.max(0, Math.min(x.right, y.right) - Math.max(x.left, y.left))
+        * Math.max(0, Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top));
+    return {
+      avatarW: a ? Math.round(a.width) : 0,
+      avatarH: a ? Math.round(a.height) : 0,
+      avatarInsideCard: !!a && a.left >= cardBox.left - 1 && a.right <= cardBox.right + 1,
+      avatarPlatformOverlap: intersect(a, p),
+    };
+  });
+  // Logo keeps its rendered box (not collapsed/clipped by the long label).
+  expect(geometry.avatarW, `${label} avatar width`).toBeGreaterThanOrEqual(40);
+  expect(geometry.avatarH, `${label} avatar height`).toBeGreaterThanOrEqual(40);
+  expect(geometry.avatarInsideCard, `${label} avatar within card`).toBe(true);
+  expect(geometry.avatarPlatformOverlap, `${label} asset/platform overlap`).toBe(0);
 
-    // The long name must not push the logo off, clip it, or overlap the ZAD badge.
-    const geometry = await card.evaluate(cardEl => {
-      const avatarEl = cardEl.querySelector('.invest-asset-lens .asset-avatar') as HTMLElement | null;
-      const platformEl = cardEl.querySelector('.invest-platform-logo') as HTMLElement | null;
-      const cardBox = cardEl.getBoundingClientRect();
-      const a = avatarEl?.getBoundingClientRect();
-      const p = platformEl?.getBoundingClientRect();
-      const intersect = (x?: DOMRect, y?: DOMRect) => (!x || !y) ? 0
-        : Math.max(0, Math.min(x.right, y.right) - Math.max(x.left, y.left))
-          * Math.max(0, Math.min(x.bottom, y.bottom) - Math.max(x.top, y.top));
-      return {
-        avatarW: a ? Math.round(a.width) : 0,
-        avatarH: a ? Math.round(a.height) : 0,
-        avatarInsideCard: !!a && a.left >= cardBox.left - 1 && a.right <= cardBox.right + 1,
-        avatarPlatformOverlap: intersect(a, p),
-      };
-    });
-    // Logo keeps its rendered box (not collapsed/clipped by the long label).
-    expect(geometry.avatarW, `${lang} avatar width`).toBeGreaterThanOrEqual(40);
-    expect(geometry.avatarH, `${lang} avatar height`).toBeGreaterThanOrEqual(40);
-    expect(geometry.avatarInsideCard, `${lang} avatar within card`).toBe(true);
-    expect(geometry.avatarPlatformOverlap, `${lang} asset/platform overlap`).toBe(0);
+  const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
+  expect(overflow, `${label} horizontal overflow`).toBeLessThanOrEqual(4);
+}
 
-    const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
-    expect(overflow, `${lang} horizontal overflow`).toBeLessThanOrEqual(4);
-  }
+test('long ADR company name never shifts, clips, or overlaps the TSM asset logo (desktop, English LTR)', async ({ page }) => {
+  await routeVerifiedLogoHosts(page);
+  await enterPremiumPortfolio(page, 1440, { investments: [longNameTsmInvestment()], lang: 'en', theme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+  await assertLongNameTsmLogoLayout(page, 'en');
+});
+
+test('long ADR company name never shifts, clips, or overlaps the TSM asset logo (mobile, Arabic RTL)', async ({ page }) => {
+  await routeVerifiedLogoHosts(page);
+  await enterPremiumPortfolio(page, 390, { investments: [longNameTsmInvestment()], lang: 'ar', theme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await assertLongNameTsmLogoLayout(page, 'ar');
 });
