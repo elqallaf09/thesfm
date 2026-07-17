@@ -106,6 +106,15 @@ async function authenticateFixture(page: Page) {
   await passwordInput.fill('dashboard-safe-password');
   await page.locator('button[type="submit"]').first().click();
   await page.waitForURL((url) => url.pathname === '/dashboard', { timeout: 15_000 });
+  await page.context().addCookies([
+    {
+      name: 'sfm_guest',
+      value: 'true',
+      domain: '127.0.0.1',
+      path: '/',
+      sameSite: 'Lax',
+    },
+  ]);
 }
 
 async function fulfillJson(route: Route, body: unknown) {
@@ -188,6 +197,15 @@ test('populated executive overview renders verified data across locales, themes,
         window.localStorage.setItem('sfm_lang', locale);
         window.localStorage.setItem('the-sfm-theme', theme);
       }, { locale, theme });
+      await page.context().addCookies([
+        {
+          name: 'sfm_guest',
+          value: 'true',
+          domain: '127.0.0.1',
+          path: '/',
+          sameSite: 'Lax',
+        },
+      ]);
       await page.reload({ waitUntil: 'domcontentloaded' });
       await expect(page.locator('[data-dashboard-executive="true"]')).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
@@ -214,6 +232,12 @@ test('populated executive overview renders verified data across locales, themes,
       await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
       await expectNoHorizontalOverflow(page, `${width}px`);
       await expect(page.getByRole('button', { name: /refresh|actualiser|تحديث/i })).toBeVisible();
+      if (process.env.DASHBOARD_CAPTURE_SCREENSHOTS === '1' && [390, 768, 1440, 1920].includes(width)) {
+        await page.screenshot({
+          path: `docs/screenshots/dashboard-executive/phase-5-0c-${width}px-fr-dark.png`,
+          fullPage: true,
+        });
+      }
     }
   }
 
