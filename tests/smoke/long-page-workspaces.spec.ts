@@ -187,10 +187,12 @@ test.describe('long-page workspaces', () => {
     await expect(page.locator('[data-workspace-tablist="calendar"]')).toBeVisible();
     const dashboardReturnLink = page.locator('[data-route="dashboard"][href$="/dashboard"]:visible').first();
     await expect(dashboardReturnLink).toBeVisible();
-    // WebKit can keep the action-level navigation waiter open when revisiting a
-    // cached terminal route after history traversal. A DOM click exercises the
-    // same product handler while URL and destination assertions own the wait.
-    await dashboardReturnLink.evaluate((link: HTMLElement) => link.click());
+    // WebKit can destroy the frame context while an evaluated click is returning
+    // after history traversal. Schedule the same DOM click so evaluation settles
+    // first, then let URL and destination assertions own the navigation wait.
+    await dashboardReturnLink.evaluate((link: HTMLElement) => {
+      window.setTimeout(() => link.click(), 0);
+    });
     await expect(page).toHaveURL(/\/thesfm-trader-own\/dashboard(?:[?#]|$)/);
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect.poll(() => requests.length).toBe(hydratedCounts.length);

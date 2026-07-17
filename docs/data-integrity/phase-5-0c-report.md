@@ -140,7 +140,7 @@ Rollback: revert the application/test commit; no database rollback is required.
 - New/changed focused unit tests: 34 tests passed.
 - Dashboard Playwright: 6/6 passed across desktop and mobile projects.
 - Investment/platform/market Playwright: 15/15 passed.
-- Mobile WebKit cached-route navigation stabilization: 2/2 repeated targeted runs passed.
+- Mobile WebKit stabilization stress runs: cached-route navigation 5/5 passed; platform-directory persistence 3/3 passed.
 - `pnpm typecheck`: passed.
 - `pnpm lint`: passed.
 - `pnpm check:i18n`: passed for Arabic, English, and French.
