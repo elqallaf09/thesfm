@@ -167,16 +167,20 @@ export function NotificationsPage() {
         : { read: state.read.filter(id => id !== notice.id), archived: Array.from(new Set([...state.archived, notice.id])) });
       return true;
     }
+    if (!user?.id) {
+      setMessage(text.actionFailed);
+      return false;
+    }
     const db = supabase as any;
     const result = action === 'delete'
-      ? await db.from('notifications').delete().eq('id', notice.id)
+      ? await db.from('notifications').delete().eq('id', notice.id).eq('user_id', user.id)
       : await db.from('notifications').update(action === 'read'
         ? { read: true, status: 'read', read_at: new Date().toISOString() }
-        : { read: true, status: 'archived', read_at: new Date().toISOString() }).eq('id', notice.id);
+        : { read: true, status: 'archived', read_at: new Date().toISOString() }).eq('id', notice.id).eq('user_id', user.id);
     if (result.error) { setMessage(text.actionFailed); return false; }
     updateEvents(current => action === 'delete' ? current.filter(item => item.id !== notice.id) : current.map(item => item.id === notice.id ? { ...item, status: action === 'read' ? 'read' : 'archived' } : item));
     return true;
-  }, [text.actionFailed, updateDynamicState, updateEvents]);
+  }, [text.actionFailed, updateDynamicState, updateEvents, user?.id]);
 
   const markAllRead = useCallback(async () => {
     for (const notice of visible.filter(item => item.status === 'unread')) await mutateStored(notice, 'read');

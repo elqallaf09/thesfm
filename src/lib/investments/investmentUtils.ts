@@ -602,6 +602,9 @@ export function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
   const updatedAt = data.lastPriceUpdatedAt ?? data.valuationLastUpdatedAt ?? (currentPrice !== undefined ? nowIso() : null);
   const resolvedCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency) ?? data.nativeCurrency ?? data.priceCurrency ?? null;
+  const userCurrency = normalizeMarketCurrencyCode(data.userCurrency);
+  const isSameCurrency = Boolean(resolvedCurrency && userCurrency && resolvedCurrency === userCurrency);
+  const accountMarketValue = convertedMarketValue ?? (isSameCurrency ? currentMarketValue : undefined);
 
   return cleanInvestmentUpdatePayload({
     current_price: currentPrice,
@@ -619,8 +622,11 @@ export function buildPriceRefreshPayload(data: InvestmentMarketPriceUpdate) {
     current_market_value: currentMarketValue,
     native_unit_price: currentPrice,
     native_market_value: currentMarketValue,
-    current_value: convertedMarketValue ?? currentMarketValue,
-    converted_market_value: convertedMarketValue,
+    // Never write a native-market amount into account-currency fields. When
+    // conversion is unavailable, omitting these keys preserves the last known
+    // valid account value while the fresh native quote is still recorded.
+    current_value: accountMarketValue,
+    converted_market_value: accountMarketValue,
     // FX
     user_currency: data.userCurrency ?? null,
     fx_rate_to_user_currency: coalesceNumber(data.fxRateToUserCurrency),
@@ -638,17 +644,21 @@ export function mergeMarketPriceIntoInvestment(previous: Investment, data: Inves
     ?? positiveProduct(quantity, currentPrice)
     ?? previous.currentMarketValue;
   const convertedMarketValue = coalesceNumber(data.convertedMarketValue, data.defaultCurrencyValue);
-  const accountValue = convertedMarketValue ?? currentMarketValue ?? finitePreviousValue(previous);
+  const priceCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency)
+    ?? previous.nativeCurrency
+    ?? previous.priceCurrency;
+  const userCurrency = normalizeMarketCurrencyCode(data.userCurrency)
+    ?? normalizeMarketCurrencyCode(previous.userCurrency);
+  const isSameCurrency = Boolean(priceCurrency && userCurrency && priceCurrency === userCurrency);
+  const accountValue = convertedMarketValue
+    ?? (isSameCurrency ? currentMarketValue : undefined)
+    ?? finitePreviousValue(previous);
   const profitLoss = currentMarketValue !== undefined && purchaseTotal !== undefined
     ? currentMarketValue - purchaseTotal
     : previous.profitLoss;
   const profitLossPercent = profitLoss !== undefined && purchaseTotal !== undefined && purchaseTotal > 0
     ? (profitLoss / purchaseTotal) * 100
     : previous.profitLossPercent;
-  const priceCurrency = normalizeMarketCurrencyCode(data.nativeCurrency ?? data.priceCurrency)
-    ?? previous.nativeCurrency
-    ?? previous.priceCurrency;
-
   return {
     ...previous,
     currentValue: accountValue,
@@ -1035,4 +1045,3 @@ export function metaFromInvestment(item: Investment | InvestmentInput): Investme
     purchasePlatformStatus: item.purchasePlatformStatus,
   };
 }
-
