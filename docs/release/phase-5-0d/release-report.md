@@ -4,12 +4,13 @@
 
 **NO-GO** — do not merge, tag `v1.0.0-rc.1`, or deploy this release branch to Production.
 
-The application code has a strong local/CI baseline and the narrow fixes in this branch are green. The release itself is blocked by two P0 controls and multiple P1 runtime/operational gaps: no verified backup/restore, failed clean-chain Supabase Preview migrations, uncertain Preview/Production credential isolation, public financial upload buckets, Production cron timeouts, and unproven live payment/email/auth/admin/provider/observability readiness.
+The application has a strong non-browser build/test baseline and the narrow product fixes in this branch passed their focused checks. The release itself is blocked by two P0 controls and multiple P1 runtime/operational gaps: no verified backup/restore, failed clean-chain Supabase Preview migrations, uncertain Preview/Production credential isolation, public financial upload buckets, Production cron timeouts, and unproven live payment/email/auth/admin/provider/observability readiness.
 
 During the audit, PR #35 merged and Vercel automatically deployed main SHA `72a7865d65a267638d44a87cf48a18cf87e8f5ed` as Production deployment `dpl_C5hzbDrwGnZwif7324wLGpaWtwVX`. That deployment was external to this release branch. The original baseline was `04cffaa7…` / `dpl_F77F5k3D4XDcFnp6YJdLxwCPxCgj`; therefore Production changed during the audit and must receive a fresh complete baseline before approval.
 
 - Draft PR: https://github.com/elqallaf09/thesfm/pull/37
 - Integrated product code head validated before the final test/docs commits: `5606b24b5d88514e56dcabb5c301ba7fd8da5525`
+- Final browser-test change validated locally: `43baad6c4ec562ef007ee02a04f6509dcbc16523`
 - Preview for that code head: `dpl_8muq3o2kip2fZx7Ry3hadq687uQR`, READY, protected by Vercel SSO
 - Supabase Preview: `lwcaapfqxaoxkojehfdq`, ACTIVE_HEALTHY project but `MIGRATIONS_FAILED`
 
@@ -153,8 +154,10 @@ Associated CSS budgets all pass. The largest route first-load bundle observed in
 - Local: typecheck, lint, i18n, visual-system, Production endpoint, public-env, 186 test files/1,460 tests, production build, and all 15 performance budgets pass.
 - Focused: 47/47 Smart Analysis, release-boundary, and migration-directory tests pass.
 - Local Playwright performance: 9/9 pass across desktop Chromium, mobile Chromium, and mobile WebKit.
-- GitHub CI at integrated head: TypeScript, ESLint, i18n, launch guards, unit/integration, Production build/budgets, Vercel Preview, and Lighthouse pass. The smoke job reported 203 pass/83 skip/1 Mobile WebKit history-navigation timeout after both attempts; Supabase Preview failed.
-- The WebKit failure was reproduced as passing locally, then its history-navigation click was made deterministic without changing product behavior. Focused validation passed five consecutive Mobile WebKit runs plus desktop/mobile Chromium (11/11 including setup/cleanup). Final-head CI must still be green before any approval.
+- GitHub CI before the final browser-test budget change: TypeScript, ESLint, i18n, launch guards, unit/integration, Production build/budgets, Vercel Preview, and Lighthouse passed. The smoke job reported 203 pass/83 credential-dependent skips/1 Mobile WebKit history/cache timeout after both attempts; Supabase Preview failed.
+- The failing history/cache scenario kept every navigation, hydration, and request-count assertion. Its hosted-runner budget was increased from 60 to 120 seconds, matching other long terminal scenarios. Current-head focused validation passed 25 consecutive scenario repetitions across desktop Chromium, mobile Chromium, and mobile WebKit.
+- An initial local full-smoke command omitted the CI-only dashboard fixture environment and therefore reported nine expected fixture-auth configuration timeouts plus one transient tooltip assertion (188 pass/89 skip/10 fail). Under the complete safe synthetic dashboard configuration, all three dashboard cases passed; the tooltip scenario passed on repeat. These are not represented as live-account E2E evidence.
+- Final-head CI must pass the browser job before any approval. Supabase Preview is expected to remain failed until the clean migration chain is repaired; that failure is a release blocker, not an allowed CI exception.
 - Production screenshot set is committed under `artifacts/release/phase-5-0d/baseline/`. It contains 12 requested baseline views. Authenticated/dashboard screenshots are guest/auth-wall evidence where credentials were unavailable and are labeled accordingly.
 
 ## Exact changed files and migrations
@@ -191,6 +194,26 @@ This branch has not been deployed to Production. If its Preview must be withdraw
 3. The migration filename renames contain no SQL/runtime change and require no database rollback.
 4. If a future separately approved database migration is involved, use its reviewed rollback/restore plan; never roll app code across incompatible schema.
 5. Verify health, auth, admin, contact, payment, email, providers, logs, and error rate before sign-off.
+
+## Production deployment checklist
+
+- [ ] Current Production SHA/deployment re-baselined after the mid-audit main deployment
+- [ ] All required CI green, including the full browser smoke suite
+- [ ] Supabase Preview migrations green from an empty isolated project
+- [ ] Verified database backup timestamp, retention, downloadable artifact, and restore test
+- [ ] Migration dry-run, rollback SQL, lock-risk review, timeout, and maintenance window approved
+- [ ] Preview READY and complete public/authenticated/admin smoke green
+- [ ] Multi-user RLS/data-isolation checks green with deterministic cleanup
+- [ ] Public financial storage remediated and regression-tested
+- [ ] Payment launch mode and complete verified lifecycle approved, or paid CTA safely disabled
+- [ ] Email sender/domain and required delivery/bounce flows proven, or affected flows safely disabled
+- [ ] Production cron/provider/observability P1 failures resolved
+- [ ] Required legal pages approved by legal counsel and published
+- [ ] No open P0/P1 issue; known P2/P3 items explicitly accepted
+- [ ] Low-traffic rollout window, exact operator, rollback owner, and monitoring window recorded
+- [ ] Explicit Production owner approval recorded
+
+Every item is currently unchecked. No tag, merge, or Production deployment is authorized by this report.
 
 ## Final recommendation
 
