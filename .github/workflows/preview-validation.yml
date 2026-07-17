@@ -47,13 +47,13 @@ jobs:
         shell: bash
         run: |
           for attempt in {1..60}; do
-            conclusion="$(gh api "repos/$GITHUB_REPOSITORY/commits/$PREVIEW_COMMIT_SHA/check-runs" \
-              --jq '[.check_runs[] | select(.name == "Vercel")][0].conclusion // "pending"')"
-            if [[ "$conclusion" == 'success' ]]; then
+            state="$(gh api "repos/$GITHUB_REPOSITORY/commits/$PREVIEW_COMMIT_SHA/status" \
+              --jq '[.statuses[] | select(.context == "Vercel")][0].state // "pending"')"
+            if [[ "$state" == 'success' ]]; then
               exit 0
             fi
-            if [[ "$conclusion" == 'failure' || "$conclusion" == 'cancelled' || "$conclusion" == 'timed_out' ]]; then
-              printf 'Vercel Preview check ended with conclusion: %s\n' "$conclusion" >&2
+            if [[ "$state" == 'failure' || "$state" == 'error' ]]; then
+              printf 'Vercel Preview status ended with state: %s\n' "$state" >&2
               exit 1
             fi
             sleep 10
