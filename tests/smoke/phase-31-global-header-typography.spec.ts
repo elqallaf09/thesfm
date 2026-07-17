@@ -111,7 +111,11 @@ test.describe('Phase 3.1 global header and typography', () => {
         shellTop: shell?.getBoundingClientRect().top ?? -2,
       };
     });
-    expect(Math.abs(layoutPosition.headerBottom - layoutPosition.shellTop)).toBeLessThanOrEqual(1);
+    // Variant 03: the floating header keeps --app-header-gap-block (10px)
+    // of intentional breathing room before the shell grid begins.
+    const headerShellGap = layoutPosition.shellTop - layoutPosition.headerBottom;
+    expect(headerShellGap).toBeGreaterThanOrEqual(-1);
+    expect(headerShellGap).toBeLessThanOrEqual(12);
 
     const bodyTypography = await computedTypography(page.locator('body'));
     const workspaceTypography = await computedTypography(header.locator('.sfm-workspace-tab').first());

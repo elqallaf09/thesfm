@@ -352,8 +352,8 @@ export function Sidebar() {
         </Link>
         <style>{`
           .sfm-shared-sidebar{
-            width:var(--sidebar-w);height:calc(100dvh - var(--global-header-height) - var(--space-4));max-height:calc(100dvh - var(--global-header-height) - var(--space-4));min-height:0;
-            position:sticky;inset-block-start:calc(var(--global-header-height) + var(--space-2));inset-inline-start:0;align-self:start;z-index:50;display:flex;flex-direction:column;
+            width:var(--sidebar-w);height:calc(100dvh - var(--app-header-height) - var(--space-2));max-height:calc(100dvh - var(--app-header-height) - var(--space-2));min-height:0;
+            position:sticky;inset-block-start:var(--app-header-height);inset-inline-start:0;align-self:start;z-index:var(--z-sidebar, 50);display:flex;flex-direction:column;
             margin-block:var(--space-2);overflow:visible;isolation:isolate;
             background-color:var(--sidebar-glass-bg-fallback);background-image:var(--sidebar-glass-bg);color:var(--sidebar-item-text);
             border:1px solid var(--sidebar-glass-border);border-radius:var(--radius-panel);box-shadow:var(--sidebar-glass-shadow),var(--sidebar-glass-inner-shadow);

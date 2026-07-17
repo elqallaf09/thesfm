@@ -40,11 +40,14 @@ describe('invest and shell production regressions', () => {
   });
 
   it('keeps the sidebar and header sticky with viewport-bound sidebar height', () => {
+    // Variant 03: the floating header reserves --app-header-height (content
+    // height + insets); the sidebar offsets and sizes against that band.
     expect(sidebar).toContain('position:sticky');
-    expect(sidebar).toContain('height:calc(100dvh - var(--global-header-height)');
+    expect(sidebar).toContain('height:calc(100dvh - var(--app-header-height)');
+    expect(sidebar).toContain('inset-block-start:var(--app-header-height)');
     expect(sidebar).toContain('overflow-y:auto');
     expect(appHeader).toContain('position: sticky');
-    expect(appHeader).toContain('z-index: 100;');
+    expect(appHeader).toContain('z-index: var(--z-header, 100);');
   });
 
   it('stacks modal backdrops above application chrome', () => {
