@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { requireAdminApiAccess } from '@/lib/server/adminAccess';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,12 +64,13 @@ export async function GET(request: Request) {
     adminClient = auth.admin;
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(supabaseUrl && anonKey);
+  const config = getSupabasePublicConfig();
+  const supabaseUrl = config?.url;
+  const publicKey = config?.key;
+  const configured = Boolean(config);
   const notChecked = Object.fromEntries(Object.keys(TABLE_CHECKS).map(key => [key, 'not_checked'])) as Record<string, DiagnosticStatus>;
 
-  if (!supabaseUrl || !anonKey) {
+  if (!supabaseUrl || !publicKey) {
     if (!detailsRequested) return response(publicHealthBody(false, false, checkedAt), 503);
     return response({
       ok: false,
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
       database: 'unavailable',
       configuration: {
         urlConfigured: Boolean(supabaseUrl),
-        anonKeyConfigured: Boolean(anonKey),
+        publicKeyConfigured: Boolean(publicKey),
       },
       tables: notChecked,
       columns: { 'expense_items.enhanced': 'not_checked' },
@@ -85,7 +87,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = adminClient ?? createClient(supabaseUrl, anonKey, {
+    const supabase = adminClient ?? createClient(supabaseUrl, publicKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
@@ -112,7 +114,7 @@ export async function GET(request: Request) {
       ok,
       status: ok ? 'success' : 'error',
       database: ok ? 'available' : 'unavailable',
-      configuration: { urlConfigured: true, anonKeyConfigured: true },
+      configuration: { urlConfigured: true, publicKeyConfigured: true },
       tables,
       columns,
       checkedAt,

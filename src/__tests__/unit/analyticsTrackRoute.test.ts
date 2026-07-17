@@ -29,6 +29,8 @@ describe('POST /api/analytics/track configuration diagnostics', () => {
     vi.clearAllMocks();
     mocks.createAdmin.mockReturnValue(null);
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+    vi.stubEnv('SUPABASE_URL', '');
+    vi.stubEnv('SUPABASE_SECRET_KEY', '');
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
     vi.stubEnv('DATABASE_SERVICE_ROLE_KEY', '');
   });
@@ -59,7 +61,7 @@ describe('POST /api/analytics/track configuration diagnostics', () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(
       '[analytics] tracking disabled: incomplete Supabase configuration',
-      { missing: 'NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY' },
+      { missing: 'NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY' },
     );
   });
 });

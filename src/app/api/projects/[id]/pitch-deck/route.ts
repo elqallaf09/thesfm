@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { personalIncomeRows } from '@/lib/data/financeData';
@@ -216,10 +217,9 @@ const TEXT = {
 } as const;
 
 function getSupabase(token: string) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, {
+  const config = getSupabasePublicConfig();
+  if (!config) return null;
+  return createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });

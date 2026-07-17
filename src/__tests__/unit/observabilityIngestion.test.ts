@@ -31,7 +31,7 @@ describe('POST /api/observability', () => {
 
   it('accepts only whitelisted data and attributes the server deployment', async () => {
     const response = await POST(request(JSON.stringify(payload())));
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(204);
     const rows = mocks.insert.mock.calls[0][0];
     expect(rows[0]).toMatchObject({ deployment_sha: 'server-deployment-sha', environment: 'production', route_template: '/projects/[id]' });
     expect(JSON.stringify(rows[0])).not.toContain('tab=finance');

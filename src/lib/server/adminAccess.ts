@@ -8,6 +8,8 @@ import {
   type AdminPermission,
   type AdminPermissions,
 } from '@/lib/adminPermissions';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 export const ADMIN_SESSION_COOKIE = 'sfm_admin_session';
 export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60;
@@ -73,10 +75,9 @@ export function isAdminEmail(email?: string | null) {
 }
 
 export function createServerSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) return null;
-  return createClient(supabaseUrl, serviceRoleKey, {
+  const config = getSupabasePrivilegedConfig();
+  if (!config) return null;
+  return createClient(config.url, config.secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
@@ -269,11 +270,10 @@ export function verifyAdminSessionToken(token: string | undefined, user: User | 
 }
 
 export async function getUserFromBearerToken(token?: string | null): Promise<User | null> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!token || !supabaseUrl || !anonKey) return null;
+  const config = getSupabasePublicConfig();
+  if (!token || !config) return null;
 
-  const client = createClient(supabaseUrl, anonKey, {
+  const client = createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });

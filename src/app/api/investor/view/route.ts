@@ -9,6 +9,7 @@ import {
   type InvestorSection,
 } from '@/lib/investor/shareAccess';
 import { computeReadiness } from '@/lib/investor/readiness';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 export const runtime = 'nodejs';
 
@@ -22,10 +23,9 @@ type Row = Record<string, any>;
  * filtered server-side and never serialized.
  */
 function getServiceClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const config = getSupabasePrivilegedConfig();
+  if (!config) return null;
+  return createClient(config.url, config.secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 function safeDocument(row: Row, allowDownloads: boolean) {

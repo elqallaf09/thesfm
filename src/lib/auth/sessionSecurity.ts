@@ -142,8 +142,9 @@ export function getMfaSigningSecret() {
   return (
     process.env.AUTH_MFA_SECRET ||
     process.env.ADMIN_DIAGNOSTICS_TOKEN ||
-    process.env.DATABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.DATABASE_SERVICE_ROLE_KEY ||
     ''
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { normalizeRoute } from '@/lib/observability/core';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 export const runtime = 'nodejs';
 
@@ -49,8 +50,8 @@ function warnIncompleteConfigurationOnce() {
 
   const missing: string[] = [];
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) missing.push('NEXT_PUBLIC_SUPABASE_URL');
-  if (!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_SERVICE_ROLE_KEY)?.trim()) {
-    missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (!getSupabasePrivilegedConfig()) {
+    missing.push('SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY');
   }
   safeLog('warn', '[analytics] tracking disabled: incomplete Supabase configuration', {
     missing: missing.join(', ') || 'server Supabase configuration',

@@ -155,7 +155,7 @@ Refresh the bundled official snapshots and optionally upsert them into Supabase:
 npm run symbols:sync -- --write-local
 ```
 
-Use `--no-supabase` when only refreshing local snapshots. The sync/upsert path requires `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL` plus `SUPABASE_SERVICE_ROLE_KEY` on a trusted machine only. Do not expose the service role key to the browser.
+Use `--no-supabase` when only refreshing local snapshots. The sync/upsert path requires `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL` plus `SUPABASE_SECRET_KEY` (preferred) or the legacy `SUPABASE_SERVICE_ROLE_KEY` on a trusted machine only. Never expose either server key to the browser.
 
 Validate coverage:
 
@@ -175,7 +175,7 @@ BOURSA_KUWAIT,Premier Market,NBK,NBK,NBK.KW,National Bank of Kuwait,بنك ال�
 Run later with:
 
 ```bash
-SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY pnpm dlx tsx scripts/import-market-symbols.ts ./symbols.csv
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SECRET_KEY=YOUR_SERVER_KEY pnpm dlx tsx scripts/import-market-symbols.ts ./symbols.csv
 ```
 
 ## Tech Market News

@@ -4,13 +4,16 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getSupabasePublicConfig, SUPABASE_PUBLIC_CONFIG_ERROR } from '@/integrations/supabase/environment';
 
 export async function createClient() {
   const cookieStore = await cookies(); // ملاحظة: cookies() صارت async في Next الحديث
+  const config = getSupabasePublicConfig();
+  if (!config) throw new Error(SUPABASE_PUBLIC_CONFIG_ERROR);
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, // أو publishable key الجديد (sb_publishable_...)
+    config.url,
+    config.key,
     {
       cookies: {
         getAll() {
