@@ -183,8 +183,6 @@ function diagnosticGroups(diagnostics: CatalogDiagnostics, normalized: Normalize
     });
   }
 
-  // OpenBB removed — no longer a configured provider
-
   return groups;
 }
 

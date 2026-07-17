@@ -3765,7 +3765,7 @@
     const raw = String(provider || "").trim().toLowerCase();
     if (!raw) return "";
     if (raw === "manual") return textPair("إدخال يدوي", "Manual entry");
-    const brands = ["fmp", "finnhub", "yahoo", "yahoo finance", "twelve data", "twelvedata", "eodhd", "tradingeconomics", "trading economics", "openbb"];
+    const brands = ["fmp", "finnhub", "yahoo", "yahoo finance", "twelve data", "twelvedata", "eodhd", "tradingeconomics", "trading economics"];
     if (brands.includes(raw)) return textPair("بيانات السوق", "Market data");
     // رموز غير معروفة تُخفى بدل كشف اسم داخلي
     return textPair("بيانات السوق", "Market data");
@@ -3785,8 +3785,7 @@
       twelvedata: "Twelve Data",
       eodhd: "EODHD",
       tradingeconomics: "Trading Economics",
-      "trading economics": "Trading Economics",
-      openbb: "OpenBB"
+      "trading economics": "Trading Economics"
     };
     return official[key] || raw;
   }
