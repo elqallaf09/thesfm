@@ -368,7 +368,10 @@ test('sticky shell, single asset visual, verified zad logo, and dialog stacking 
       };
     });
     expect(chrome.scrolled).toBeGreaterThan(0);
-    expect(chrome.headerTop).toBe(0);
+    // Variant 03: the floating header sticks at --app-header-inset-block
+    // (10px), not flush against the viewport edge.
+    expect(chrome.headerTop).toBeGreaterThanOrEqual(0);
+    expect(chrome.headerTop).toBeLessThanOrEqual(12);
     expect(chrome.sidebarTop).toBeGreaterThanOrEqual(64);
     expect(chrome.sidebarBottom).toBeLessThanOrEqual(chrome.viewport + 1);
     expect(chrome.overlap).toBeLessThanOrEqual(1);
