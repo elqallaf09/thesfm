@@ -56,6 +56,13 @@ describe('saved-record ownership and failure-state recovery', () => {
     }
   });
 
+  it('keeps Vercel Preview tooling out of browser automation', () => {
+    const protection = readSource('tests/smoke/preview-protection.ts');
+    const config = readSource('playwright.config.ts');
+    expect(protection).toContain("'x-vercel-skip-toolbar': '1'");
+    expect(config).toContain('extraHTTPHeaders: previewAutomationHeaders');
+  });
+
   it('distinguishes project loading and provider failure from a real empty account', () => {
     const source = readSource('src/app/projects/page.tsx');
     expect(source).toContain("const [projectsLoading, setProjectsLoading] = useState(false)");

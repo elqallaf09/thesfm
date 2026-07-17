@@ -202,7 +202,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      - run: pnpm test:smoke
+      - run: pnpm exec playwright test --workers=1
         env:
           # Prevent Playwright's generated AI error context from copying a DOM
           # snapshot containing filled auth fields into CI diagnostics.

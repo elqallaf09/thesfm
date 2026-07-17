@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
-import { previewBypassStatePath, usesPreviewProtection } from './tests/smoke/preview-protection';
+import {
+  previewAutomationHeaders,
+  previewBypassStatePath,
+  usesPreviewProtection,
+} from './tests/smoke/preview-protection';
 
 // Playwright's AI error context includes a full DOM snapshot by default. Auth
 // fields and signed-in identifiers must never be copied into CI artifacts.
@@ -31,6 +35,7 @@ export default defineConfig({
     // serialize context cookies, so keep them disabled while the protected
     // Preview bypass cookie is active.
     storageState: usesPreviewProtection ? previewBypassStatePath : undefined,
+    extraHTTPHeaders: previewAutomationHeaders,
     trace: usesPreviewProtection ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
