@@ -141,6 +141,20 @@ const VERIFIED_ASSET_LOGO_DIRECTORY: readonly VerifiedAssetLogo[] = [
     markets: ['KW'],
     nameAliases: ['kuwait finance house', 'بيت التمويل الكويتي'],
   },
+  {
+    canonicalTicker: 'IFA',
+    logoUrl: 'https://www.google.com/s2/favicons?domain_url=https://ifakuwait.com&sz=128',
+    expectedHost: 'www.google.com',
+    tickerAliases: ['IFA.KW'],
+    markets: ['KW'],
+    nameAliases: [
+      'international financial advisors',
+      'international financial advisors holding',
+      'ifa holding',
+      'الاستشارات المالية الدولية',
+      'الاستشارات المالية الدولية القابضة',
+    ],
+  },
 ];
 
 const CRYPTO_LOGO_SLUGS: Record<string, string> = {
@@ -181,6 +195,22 @@ const COMMODITY_KEYWORDS: Array<[RegExp, AssetVisualType]> = [
   [/\b(NATURAL\s*GAS|GAS|NG=F)\b/i, 'gas'],
   [/\b(COPPER|HG=F)\b/i, 'commodity'],
 ];
+
+// Compound forex-style spot quotes for precious metals (XAUUSD, XAGUSD=X) do
+// not contain "XAU"/"XAG" as a separate word, so the \b-based keywords above
+// never match them; matched against the bare symbol only (never the display
+// name) so a metal spot ticker is never misread as a 6-letter currency pair.
+const METAL_TICKER_PATTERNS: Array<[RegExp, 'gold' | 'silver']> = [
+  [/^XAU(?:USD|EUR|GBP|AUD|CHF)?(?:=X)?$/i, 'gold'],
+  [/^XAG(?:USD|EUR|GBP|AUD|CHF)?(?:=X)?$/i, 'silver'],
+];
+
+function commodityTypeFromSymbol(symbol: string): 'gold' | 'silver' | null {
+  for (const [pattern, type] of METAL_TICKER_PATTERNS) {
+    if (pattern.test(symbol)) return type;
+  }
+  return null;
+}
 
 // Dotted ticker suffixes that denote a listing venue (used to split
 // "KFH.KW" → ticker "KFH" + market "KW" and to disambiguate duplicate
@@ -480,21 +510,26 @@ export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
   if (identity.verified) return identity.verified.logoUrl;
 
   const symbol = identity.canonicalTicker;
-  const rawType = cleanText(input.assetType ?? input.market ?? input.exchange).toLowerCase();
-  const compactCryptoSymbol = symbol.replace(/(?:-?USD|-?USDT)$/i, '');
-  const cryptoSlug = CRYPTO_LOGO_SLUGS[compactCryptoSymbol];
-  if ((rawType.includes('crypto') || cryptoSlug) && cryptoSlug) {
-    return `https://cdn.simpleicons.org/${cryptoSlug}`;
-  }
-  const stockLikeType = !rawType
-    || rawType.includes('stock')
-    || rawType.includes('equity')
-    || rawType.includes('share')
-    || rawType.includes('etf')
-    || rawType.includes('fund');
+  const label = cleanText(input.companyName) || cleanText(input.name) || symbol || 'Asset';
+  const inferredType = inferAssetType(input, symbol, label);
 
+  if (inferredType === 'crypto') {
+    const compactCryptoSymbol = symbol.replace(/(?:-?USD|-?USDT)$/i, '');
+    const cryptoSlug = CRYPTO_LOGO_SLUGS[compactCryptoSymbol];
+    return cryptoSlug ? `https://cdn.simpleicons.org/${cryptoSlug}` : null;
+  }
+
+  // Only equity-shaped identities (stock/etf/fund) get the generic by-ticker
+  // guess; metals, forex, indices, cash, etc. render their category icon
+  // instead of fetching a company-logo-shaped URL that can never be correct.
+  const stockLikeType = inferredType === 'stock' || inferredType === 'etf' || inferredType === 'fund';
   if (!stockLikeType || !/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol)) return null;
   return `https://financialmodelingprep.com/image-stock/${encodeURIComponent(symbol)}.png`;
+}
+
+/** Single source of truth for classification, shared by the logo resolver and getAssetVisualMeta. */
+function inferAssetType(input: AssetVisualInput, symbol: string, label: string): AssetVisualType {
+  return normalizeAssetType(input.assetType ?? input.market ?? input.exchange, symbol, label);
 }
 
 function normalizeAssetType(value: unknown, symbol: string, label: string): AssetVisualType {
@@ -502,6 +537,16 @@ function normalizeAssetType(value: unknown, symbol: string, label: string): Asse
   const haystack = `${symbol} ${label}`.toUpperCase();
 
   if (raw.includes('crypto') || raw === 'coin') return 'crypto';
+  if (raw.includes('gold')) return 'gold';
+  if (raw.includes('silver')) return 'silver';
+  if (raw.includes('commodity') || raw.includes('future') || raw.includes('metal') || raw.includes('energy')) {
+    return commodityType(haystack);
+  }
+  // Ticker-shaped metal spot/future quotes are checked before the generic
+  // 6-letter forex shape below, so e.g. assetType "silver" + symbol "XAGUSD"
+  // (or a bare XAGUSD with no assetType hint) is never read as a currency pair.
+  const metalFromSymbol = commodityTypeFromSymbol(symbol);
+  if (metalFromSymbol) return metalFromSymbol;
   if (raw.includes('forex') || raw.includes('currency') || /^[A-Z]{6}(?:=X)?$/.test(symbol)) return 'forex';
   if (raw.includes('etf')) return 'etf';
   if (raw.includes('fund')) return 'fund';
@@ -509,14 +554,8 @@ function normalizeAssetType(value: unknown, symbol: string, label: string): Asse
   if (raw.includes('cash') || raw.includes('deposit')) return 'cash';
   if (raw.includes('project') || raw.includes('private investment')) return 'project';
   if (raw.includes('index') || raw.includes('indices') || symbol.startsWith('^')) return 'index';
-  if (raw.includes('gold')) return 'gold';
-  if (raw.includes('silver')) return 'silver';
-  if (raw.includes('commodity') || raw.includes('future') || raw.includes('metal') || raw.includes('energy')) {
-    return commodityType(haystack);
-  }
   if (raw.includes('stock') || raw.includes('equity') || raw.includes('share')) return 'stock';
 
-  if (/^[A-Z]{6}(?:=X)?$/.test(symbol)) return 'forex';
   if (/^(BTC|ETH|SOL|XRP|BNB|DOGE|ADA|TRX|LINK|AVAX|TON|DOT|LTC|BCH|XLM|ATOM|UNI|AAVE|MATIC|POL|NEAR|ICP|ETC|FIL|APT|SUI|SHIB)(?:USD|-USD)?$/.test(symbol)) return 'crypto';
   if (/^(SPY|QQQ|DIA|IWM|VTI|VOO|ARKK|XLF|XLK|XLE|XLV|VNQ|GLD|SLV|USO)$/.test(symbol)) return 'etf';
   if (COMMODITY_KEYWORDS.some(([pattern]) => pattern.test(haystack))) return commodityType(haystack);
@@ -557,7 +596,7 @@ export function getAssetVisualMeta(input: AssetVisualInput): AssetVisualMeta {
   // The display name is shown verbatim and is never mutated by identity
   // normalization — only the logo/ticker resolution uses the canonical forms.
   const label = cleanText(input.companyName) || cleanText(input.name) || symbol || 'Asset';
-  const inferredType = normalizeAssetType(input.assetType ?? input.market ?? input.exchange, symbol, label);
+  const inferredType = inferAssetType(input, symbol, label);
   const logoUrl = resolveAssetLogoUrl(input);
   const flags = inferredType === 'forex' ? forexFlags(symbol) : [];
   const iconKind = inferredType === 'commodity' ? commodityType(`${symbol} ${label}`.toUpperCase()) : inferredType;
