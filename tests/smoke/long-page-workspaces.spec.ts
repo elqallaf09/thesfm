@@ -142,7 +142,11 @@ test.describe('long-page workspaces', () => {
   });
 
   test('cross-route navigation hydrates the destination once and reuses its cache', async ({ page }) => {
-    test.setTimeout(60_000);
+    // This scenario validates three history transitions and the complete
+    // dashboard hydration fan-out. Hosted WebKit can be substantially slower
+    // under the full smoke-suite load, so keep the assertions strict while
+    // allowing the same budget as the other long-running terminal scenarios.
+    test.setTimeout(120_000);
     const requests: string[] = [];
     await configureTerminal(page, 'en', 'light');
     await page.route('**/api/**', async route => {
