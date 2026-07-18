@@ -30,8 +30,10 @@ test.use({
 test.describe('authenticated Preview release validation', () => {
   test.skip(!enabled, 'Preview-only request-to-row validation runs in the authenticated Preview job.');
 
-  test('Preview user is denied admin observability access while the admin is allowed', async ({ browser, page }) => {
-    const userAccess = await adminAccessProbe(page);
+  test('Preview user is denied admin observability access while the admin is allowed', async ({ browser, page, baseURL }) => {
+    const previewOrigin = exactPreviewOrigin(baseURL);
+    const userAccess = await adminAccessProbe(page, previewOrigin);
+    assertAdminProbeOrigin(userAccess, previewOrigin);
     if (userAccess.me.status !== 200 || userAccess.me.isAdmin !== false) {
       throw new Error('Preview user admin identity probe did not resolve as a normal user.');
     }
@@ -42,7 +44,8 @@ test.describe('authenticated Preview release validation', () => {
     const adminContext = await browser.newContext({ storageState: adminAuthStatePath });
     try {
       const adminPage = await adminContext.newPage();
-      const adminAccess = await adminAccessProbe(adminPage);
+      const adminAccess = await adminAccessProbe(adminPage, previewOrigin);
+      assertAdminProbeOrigin(adminAccess, previewOrigin);
       if (adminAccess.me.status !== 200 || adminAccess.me.isAdmin !== true || adminAccess.me.role !== 'admin') {
         throw new Error('Preview admin identity probe did not resolve as the active admin fixture.');
       }
@@ -151,12 +154,31 @@ test.describe('authenticated Preview release validation', () => {
   });
 });
 
-async function adminAccessProbe(page: import('@playwright/test').Page) {
-  return page.evaluate(async () => {
+function exactPreviewOrigin(baseURL: string | undefined) {
+  if (!baseURL) throw new Error('Authenticated admin probes require the configured Preview base URL.');
+  const target = new URL(baseURL);
+  if (target.protocol !== 'https:' || !target.hostname.endsWith('.vercel.app')) {
+    throw new Error('Authenticated admin probes may run only against an HTTPS Vercel Preview origin.');
+  }
+  return target.origin;
+}
+
+async function adminAccessProbe(page: import('@playwright/test').Page, previewOrigin: string) {
+  const initialUrl = page.url();
+  if (initialUrl !== 'about:blank') {
+    throw new Error('Authenticated admin probe regression requires a fresh about:blank page.');
+  }
+  const navigation = await page.goto(new URL('/', previewOrigin).href, { waitUntil: 'domcontentloaded' });
+  if ((navigation?.status() ?? 200) >= 500 || new URL(page.url()).origin !== previewOrigin) {
+    throw new Error('Authenticated admin probe did not establish the exact Preview origin.');
+  }
+
+  const access = await page.evaluate(async () => {
     const read = async (path: string) => {
       const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store' });
       const value = await response.json().catch(() => null) as Record<string, unknown> | null;
       return {
+        url: response.url,
         status: response.status,
         ok: value?.ok === true,
         code: typeof value?.code === 'string' ? value.code.slice(0, 80) : null,
@@ -169,6 +191,25 @@ async function adminAccessProbe(page: import('@playwright/test').Page) {
       operations: await read('/api/admin/ops-center'),
     };
   });
+  return { initialUrl, pageOrigin: new URL(page.url()).origin, ...access };
+}
+
+function assertAdminProbeOrigin(
+  access: Awaited<ReturnType<typeof adminAccessProbe>>,
+  previewOrigin: string,
+) {
+  if (access.initialUrl !== 'about:blank' || access.pageOrigin !== previewOrigin) {
+    throw new Error('Authenticated admin probe did not start from about:blank on the exact Preview origin.');
+  }
+  for (const [name, result, pathname] of [
+    ['identity', access.me, '/api/admin/me'],
+    ['operations', access.operations, '/api/admin/ops-center'],
+  ] as const) {
+    const target = new URL(result.url);
+    if (target.origin !== previewOrigin || target.pathname !== pathname) {
+      throw new Error(`Authenticated admin ${name} request escaped the exact Preview origin.`);
+    }
+  }
 }
 
 async function readSession(path: string) {
