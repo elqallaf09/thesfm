@@ -222,4 +222,27 @@ describe('intelligence orchestrator', () => {
       .analyze(request('correlation-unsupported'), new MemoryIntelligenceTelemetry()))
       .rejects.toMatchObject({ code: 'UNSUPPORTED_ASSET' });
   });
+
+  it('exposes shared results intentionally while isolating private history by owner', async () => {
+    const store = new MemoryIntelligenceAnalysisStore();
+    const source = successfulProvider();
+    const shared = await orchestratorFor({ providers: [source.provider] })
+      .analyze(request('correlation-shared'), new MemoryIntelligenceTelemetry());
+    const privateResult = {
+      ...shared,
+      analysisId: '00000000-0000-4000-8000-000000000099',
+      scope: 'PRIVATE' as const,
+      generatedAt: new Date(Date.parse(shared.generatedAt) + 1_000).toISOString(),
+    };
+    await store.save(shared, null);
+    await store.save(privateResult, '00000000-0000-4000-8000-000000000001');
+
+    const anonymousLatest = await store.getLatest({ asset: ASSET, horizon: 'SWING', userId: null });
+    const ownerLatest = await store.getLatest({ asset: ASSET, horizon: 'SWING', userId: '00000000-0000-4000-8000-000000000001' });
+    const otherUserLatest = await store.getLatest({ asset: ASSET, horizon: 'SWING', userId: '00000000-0000-4000-8000-000000000002' });
+
+    expect(anonymousLatest?.scope).toBe('SHARED');
+    expect(ownerLatest?.analysisId).toBe(privateResult.analysisId);
+    expect(otherUserLatest?.scope).toBe('SHARED');
+  });
 });

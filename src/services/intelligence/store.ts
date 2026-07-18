@@ -106,23 +106,26 @@ export class SupabaseIntelligenceAnalysisStore implements IntelligenceAnalysisSt
 }
 
 export class MemoryIntelligenceAnalysisStore implements IntelligenceAnalysisStore {
-  private readonly rows: AnalysisResult[] = [];
+  private readonly rows: Array<{ result: AnalysisResult; userId: string | null }> = [];
 
   async getLatest(query: LatestAnalysisQuery) {
     return this.rows
-      .filter(result => result.asset.canonicalSymbol === query.asset.canonicalSymbol)
-      .filter(result => result.asset.assetType === query.asset.assetType)
-      .filter(result => result.horizon === query.horizon)
-      .filter(result => result.scope === 'SHARED' || Boolean(query.userId && result.scope === 'PRIVATE'))
-      .sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt))[0] ?? null;
+      .filter(row => row.result.asset.canonicalSymbol === query.asset.canonicalSymbol)
+      .filter(row => row.result.asset.assetType === query.asset.assetType)
+      .filter(row => row.result.horizon === query.horizon)
+      .filter(row => row.result.scope === 'SHARED' || (
+        row.result.scope === 'PRIVATE' && Boolean(query.userId && row.userId === query.userId)
+      ))
+      .sort((left, right) => Date.parse(right.result.generatedAt) - Date.parse(left.result.generatedAt))[0]?.result ?? null;
   }
 
-  async save(result: AnalysisResult) {
-    this.rows.push(structuredClone(result));
+  async save(result: AnalysisResult, userId: string | null) {
+    if (result.scope === 'PRIVATE' && !userId) return false;
+    this.rows.push({ result: structuredClone(result), userId: result.scope === 'PRIVATE' ? userId : null });
     return true;
   }
 
   all() {
-    return structuredClone(this.rows);
+    return structuredClone(this.rows.map(row => row.result));
   }
 }
