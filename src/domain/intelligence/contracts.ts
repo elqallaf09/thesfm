@@ -216,6 +216,7 @@ export type AnalysisResult = {
   correlationId: string;
   status: AnalysisStatus;
   scope: 'SHARED' | 'PRIVATE';
+  requestSource: IntelligenceRequestSource;
   asset: CanonicalAssetIdentity;
   generatedAt: string;
   dataAsOf: string | null;
