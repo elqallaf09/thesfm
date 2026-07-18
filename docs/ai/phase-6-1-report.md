@@ -120,6 +120,8 @@ Passed locally on 2026-07-19:
 - credential-shaped added-line scan and public-environment secret guard;
 - migration/RLS static security tests.
 
-Live migration lint/apply and database RLS execution could not be run safely: this worktree has no Supabase project ref, no isolated Preview database credentials, and no local Docker runtime. The Supabase CLI refused the linked commands with `LegacyProjectNotLinkedError`; no project was guessed or linked.
+The local Supabase CLI refused linked commands with `LegacyProjectNotLinkedError`, so no project was guessed or linked. After draft PR #45 opened, Supabase provisioned isolated Preview ref `tilrkqdngnokvxuvllio`; database, services, APIs, configuration, migration, seed, and Edge Function tasks all passed there. The Vercel Preview also reached READY for the committed PR SHA.
 
-Current gate recommendation: **NO-GO pending isolated Preview migration validation, Preview deployment, and authenticated Preview smoke**. Local implementation and test gates are green. Production remains untouched.
+Remote CI passed TypeScript, ESLint, i18n, launch guards, the full unit/integration suite, the production build and performance budget, the complete Playwright smoke matrix, and Lighthouse. The first authenticated Preview job stopped before fixture creation because its Phase 5.0D Preview hostname had been retired and no longer resolved. The workflow, fixture mutation guard, observability check, and release-chain guard are now pinned to this PR's isolated Preview ref, and the branch-scoped privileged credential has been replaced. Follow-up authenticated Preview validation is required on the corrective commit.
+
+Current gate recommendation: **NO-GO pending the follow-up authenticated Preview smoke**. Local implementation gates and all other remote gates are green. Production remains untouched.

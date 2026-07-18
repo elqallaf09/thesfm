@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { test } from '@playwright/test';
 import { adminAuthStatePath, userAuthStatePath } from './auth-state';
 
-const approvedPreviewOrigin = 'https://lwcaapfqxaoxkojehfdq.supabase.co';
+const approvedPreviewOrigin = 'https://tilrkqdngnokvxuvllio.supabase.co';
 const enabled = process.env.SFM_PREVIEW_OBSERVABILITY_QA === '1';
 
 type StorageState = {

@@ -8,7 +8,7 @@ const workflow = readSource('.github/workflows/ci.yml');
 
 describe('Preview-only authentication fixtures', () => {
   it('hard-pins every fixture mutation to the isolated Preview project', () => {
-    expect(fixture).toContain("const approvedPreviewRef = 'lwcaapfqxaoxkojehfdq'");
+    expect(fixture).toContain("const approvedPreviewRef = 'tilrkqdngnokvxuvllio'");
     expect(fixture).toContain('origin.origin !== approvedPreviewOrigin');
     expect(fixture).toContain("payload.ref !== approvedPreviewRef");
     expect(fixture).not.toMatch(/SUPABASE_(?:PRODUCTION|PROJECT)_URL/);
