@@ -8,6 +8,7 @@ import {
   type Response as PlaywrightResponse,
 } from '@playwright/test';
 import { adminAuthStatePath, authStateDir, userAuthStatePath } from './auth-state';
+import { previewProtectionStatePath } from './preview-protection-state';
 
 const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
 const baseURL = process.env.E2E_BASE_URL
@@ -25,6 +26,8 @@ test.setTimeout(90_000);
 
 test('real user and admin sign-ins create reusable browser sessions', async ({ browser }) => {
   await fs.rm(authStateDir, { recursive: true, force: true });
+  expect(await fileExists(userAuthStatePath), 'Stale user storageState survived auth setup cleanup.').toBe(false);
+  expect(await fileExists(adminAuthStatePath), 'Stale admin storageState survived auth setup cleanup.').toBe(false);
   await fs.mkdir(authStateDir, { recursive: true });
 
   await createRoleState(
@@ -42,6 +45,10 @@ test('real user and admin sign-ins create reusable browser sessions', async ({ b
     adminAuthStatePath,
   );
 });
+
+async function fileExists(path: string) {
+  return fs.access(path).then(() => true).catch(() => false);
+}
 
 async function createRoleState(
   browser: Browser,
@@ -64,6 +71,7 @@ async function createRoleState(
   const context = await browser.newContext({
     baseURL,
     ignoreHTTPSErrors: httpsLoopback,
+    ...(process.env.E2E_BASE_URL ? { storageState: previewProtectionStatePath } : {}),
   });
   try {
     const page = await context.newPage();

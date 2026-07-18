@@ -2,8 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { userAuthStatePath } from './auth-state';
 
-const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://missing-supabase-env.supabase.co';
+const supabaseUrl = process.env.SUPABASE_PREVIEW_URL
+  || process.env.NEXT_PUBLIC_SUPABASE_URL
+  || 'https://missing-supabase-env.supabase.co';
 const mobileWidths = [320, 375, 390, 430, 768] as const;
 const desktopWidths = [1024, 1280, 1440, 1920] as const;
 
@@ -16,7 +17,7 @@ test.use({
 
 test.describe('Account Setup workspace layout', () => {
   test.beforeEach(async ({ page }) => {
-    if (!userAuthConfigured) await installMockUserSession(page);
+    await installMockUserSession(page);
   });
 
   test('uses the shared full-width shell with responsive columns and no overflow', async ({ page }) => {
@@ -185,8 +186,15 @@ async function setLanguage(page: Page, lang: 'ar' | 'en') {
 }
 
 async function columnPositions(page: Page) {
-  return page.evaluate(() => ({
-    mainX: document.querySelector<HTMLElement>('.step-main')!.getBoundingClientRect().x,
-    progressX: document.querySelector<HTMLElement>('.step-side')!.getBoundingClientRect().x,
-  }));
+  const main = page.locator('.step-main');
+  const progress = page.locator('.step-side');
+  await expect(main).toBeVisible();
+  await expect(progress).toBeVisible();
+  const [mainBox, progressBox] = await Promise.all([main.boundingBox(), progress.boundingBox()]);
+  expect(mainBox).not.toBeNull();
+  expect(progressBox).not.toBeNull();
+  return {
+    mainX: mainBox!.x,
+    progressX: progressBox!.x,
+  };
 }

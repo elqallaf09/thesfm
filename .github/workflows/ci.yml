@@ -266,3 +266,141 @@ jobs:
           configPath: .lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
+
+  authenticated-preview:
+    name: CI/Authenticated Preview smoke
+    if: github.event_name == 'pull_request'
+    needs: [typecheck, lint, i18n, launch-guards, test, build, smoke, lighthouse]
+    runs-on: ubuntu-latest
+    environment: Preview
+    permissions:
+      contents: read
+      deployments: read
+    env:
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      SUPABASE_PREVIEW_URL: https://lwcaapfqxaoxkojehfdq.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_EXPECTED_DEPLOYMENT_SHA: ${{ github.event.pull_request.head.sha }}
+      PLAYWRIGHT_NO_COPY_PROMPT: '1'
+    steps:
+      - name: Validate authenticated Preview environment
+        shell: bash
+        run: |
+          missing=()
+          for name in \
+            VERCEL_AUTOMATION_BYPASS_SECRET \
+            SUPABASE_SERVICE_ROLE_KEY \
+            SUPER_ADMIN_EMAILS \
+            E2E_USER_EMAIL \
+            E2E_USER_PASSWORD \
+            E2E_ADMIN_EMAIL \
+            E2E_ADMIN_PASSWORD \
+            E2E_EXPECTED_DEPLOYMENT_SHA
+          do
+            value="${!name:-}"
+            if [[ -z "${value//[[:space:]]/}" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required authenticated Preview environment variable: %s\n' "${missing[@]}" >&2
+            exit 1
+          fi
+          if [[ ! "$E2E_EXPECTED_DEPLOYMENT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'E2E_EXPECTED_DEPLOYMENT_SHA must be the exact committed SHA.' >&2
+            exit 1
+          fi
+
+      - name: Resolve READY Vercel Preview for exact SHA
+        id: preview
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha;
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const deployments = await github.paginate(github.rest.repos.listDeployments, {
+                ...context.repo,
+                sha,
+                environment: 'Preview',
+                per_page: 100,
+              });
+              const exact = deployments
+                .filter(deployment => deployment.sha === sha && deployment.ref === sha && deployment.environment === 'Preview')
+                .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
+              for (const deployment of exact) {
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  ...context.repo,
+                  deployment_id: deployment.id,
+                  per_page: 100,
+                });
+                const latest = statuses[0];
+                if (!latest) continue;
+                if (['failure', 'error', 'inactive'].includes(latest.state)) {
+                  core.setFailed(`Exact-SHA Preview deployment entered ${latest.state}.`);
+                  return;
+                }
+                if (latest.state !== 'success') continue;
+                const candidate = latest.environment_url || latest.target_url;
+                let target;
+                try {
+                  target = new URL(candidate);
+                } catch {
+                  core.setFailed('Successful Preview deployment did not provide a valid URL.');
+                  return;
+                }
+                if (target.protocol !== 'https:' || !target.hostname.endsWith('.vercel.app')) {
+                  core.setFailed('Resolved deployment URL was not an HTTPS Vercel Preview URL.');
+                  return;
+                }
+                core.setOutput('url', target.origin);
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed('No READY Vercel Preview deployment appeared for the exact committed SHA.');
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm exec playwright install --with-deps chromium webkit
+
+      - name: Provision isolated Preview auth fixtures
+        run: node tests/smoke/preview-auth-fixtures.mjs provision
+
+      - name: Validate authenticated request-to-row observability and isolation
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+          SFM_PREVIEW_OBSERVABILITY_QA: '1'
+        run: >-
+          pnpm exec playwright test
+          --config=playwright.preview.config.ts
+          --project=chromium-desktop
+          tests/smoke/observability-preview.spec.ts
+
+      - name: Run complete authenticated remote smoke suite
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+        run: pnpm exec playwright test --config=playwright.preview.config.ts
+
+      - name: Cleanup isolated Preview auth fixtures
+        if: always()
+        run: node tests/smoke/preview-auth-fixtures.mjs cleanup

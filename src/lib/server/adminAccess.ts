@@ -49,6 +49,18 @@ const NO_ADMIN_ACCESS: AdminAccess = {
   displayName: null,
 };
 
+function superAdminAccess(email: string): AdminAccess {
+  return {
+    isAdmin: true,
+    isSuperAdmin: true,
+    role: 'super_admin',
+    roleId: null,
+    permissions: { ...SUPER_ADMIN_PERMISSIONS },
+    email,
+    displayName: null,
+  };
+}
+
 function parseEmailList(value?: string | null) {
   return (value || '')
     .split(',')
@@ -99,31 +111,32 @@ export async function getAdminAccessForUser(
   if (!user?.id) return { ...NO_ADMIN_ACCESS, permissions: { ...EMPTY_ADMIN_PERMISSIONS } };
 
   const email = user.email?.trim().toLowerCase() || null;
-  if (isSuperAdminEmail(email)) {
-    return {
-      isAdmin: true,
-      isSuperAdmin: true,
-      role: 'super_admin',
-      roleId: null,
-      permissions: { ...SUPER_ADMIN_PERMISSIONS },
-      email,
-      displayName: null,
-    };
+  if (!adminClient) {
+    return email && isSuperAdminEmail(email)
+      ? superAdminAccess(email)
+      : { ...NO_ADMIN_ACCESS, email, permissions: { ...EMPTY_ADMIN_PERMISSIONS } };
   }
-
-  if (!adminClient) return { ...NO_ADMIN_ACCESS, email, permissions: { ...EMPTY_ADMIN_PERMISSIONS } };
 
   const { data, error } = await adminClient
     .from('admin_roles')
     .select('id,user_id,email,display_name,role,permissions,is_active,created_by,created_at,updated_at')
     .eq('user_id', user.id)
-    .eq('is_active', true)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     if (error && error.code !== 'PGRST116') {
       console.error('[admin-access] role lookup failed', { code: error.code, message: error.message });
     }
+    return { ...NO_ADMIN_ACCESS, email, permissions: { ...EMPTY_ADMIN_PERMISSIONS } };
+  }
+
+  if (!data) {
+    return email && isSuperAdminEmail(email)
+      ? superAdminAccess(email)
+      : { ...NO_ADMIN_ACCESS, email, permissions: { ...EMPTY_ADMIN_PERMISSIONS } };
+  }
+
+  if ((data as AdminRoleRow).user_id !== user.id || (data as AdminRoleRow).is_active !== true) {
     return { ...NO_ADMIN_ACCESS, email, permissions: { ...EMPTY_ADMIN_PERMISSIONS } };
   }
 
