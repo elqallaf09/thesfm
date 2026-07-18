@@ -4906,8 +4906,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           }
         }
 
-/* News category pages share the application canvas. Decorative legacy
-   background patterns and per-category palette overrides are retired. */
+/* News category pages share the application canvas. */
 .news-page-bg {
   position: relative;
   isolation: isolate;
@@ -4923,6 +4922,29 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   position: relative;
   z-index: 1;
 }
+
+/*
+ * Per-category visual identity. Each token (defined once in themes.css,
+ * see --market-news-category-*) is a restrained, abstract wash built only
+ * from semantic color tokens (no raw colors, no photography) layered behind
+ * the flat --background base, so cards/panels above stay on the regular
+ * opaque surface tokens and contrast is unaffected. Static (no motion), so
+ * no prefers-reduced-motion handling is needed. The compound class selector
+ * (.news-page-bg.news-bg-x) intentionally out-specifies the flat
+ * `.news-page-bg` rule above so no !important ordering games are needed
+ * elsewhere.
+ */
+.news-page-bg.news-bg-tech { background: var(--market-news-category-tech), var(--background) !important; }
+.news-page-bg.news-bg-europe { background: var(--market-news-category-europe), var(--background) !important; }
+.news-page-bg.news-bg-gulf { background: var(--market-news-category-gulf), var(--background) !important; }
+.news-page-bg.news-bg-crypto { background: var(--market-news-category-crypto), var(--background) !important; }
+.news-page-bg.news-bg-energy { background: var(--market-news-category-energy), var(--background) !important; }
+.news-page-bg.news-bg-banking { background: var(--market-news-category-banking), var(--background) !important; }
+.news-page-bg.news-bg-sharia { background: var(--market-news-category-sharia), var(--background) !important; }
+.news-page-bg.news-bg-growth { background: var(--market-news-category-growth), var(--background) !important; }
+.news-page-bg.news-bg-defensive { background: var(--market-news-category-defensive), var(--background) !important; }
+.news-page-bg.news-bg-cyclical { background: var(--market-news-category-cyclical), var(--background) !important; }
+.news-page-bg.news-bg-high-income { background: var(--market-news-category-high-income), var(--background) !important; }
 
 /* Unified THE SFM news/category page shell */
 .news-page-shell[data-news-page-shell="true"] {
@@ -5667,25 +5689,15 @@ body :is(
   unicode-bidi: isolate;
 }
 
-/* Category pages share the application canvas; decorative gradients and gold
-   motifs from the legacy news themes are intentionally retired. Major hero
-   surfaces below may still use the single semantic brand gradient. */
+/* The 11 active news categories get a dedicated identity above
+   (.news-page-bg.news-bg-x). These three remain unused by any route today,
+   so they stay on the flat semantic surface until a page adopts one. Major
+   hero surfaces below may still use the single semantic brand gradient. */
 :where(
   .news-page-bg,
-  .news-bg-tech,
-  .news-bg-crypto,
-  .news-bg-banking,
-  .news-bg-energy,
-  .news-bg-gulf,
-  .news-bg-europe,
-  .news-bg-sharia,
-  .news-bg-growth,
   .news-bg-dividend,
-  .news-bg-defensive,
-  .news-bg-cyclical,
   .news-bg-healthcare,
-  .news-bg-food,
-  .news-bg-high-income
+  .news-bg-food
 ) {
   background: var(--background) !important;
 }

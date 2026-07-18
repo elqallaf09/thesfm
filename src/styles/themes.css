@@ -322,6 +322,22 @@
   --hero-foreground-muted: #E7EAFB;
   --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
 
+  /* Restrained, abstract per-category identity washes for the unified
+     market-news pages. Each is derived only from existing semantic tokens
+     via color-mix, so the identical formula in :root and .dark tracks each
+     theme automatically without hand-picked per-theme colours. */
+  --market-news-category-tech: radial-gradient(640px circle at 90% -8%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 62%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--primary) 5%, transparent) 0 1px, transparent 1px 88px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--primary) 5%, transparent) 0 1px, transparent 1px 88px);
+  --market-news-category-europe: radial-gradient(680px circle at 6% -12%, color-mix(in srgb, var(--info) 12%, transparent), transparent 60%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--info) 4.5%, transparent) 0 1px, transparent 1px 120px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--info) 4.5%, transparent) 0 1px, transparent 1px 120px);
+  --market-news-category-gulf: radial-gradient(900px 420px at 50% 118%, color-mix(in srgb, var(--warning) 16%, transparent), transparent 68%), radial-gradient(520px circle at 82% -10%, color-mix(in srgb, var(--warning) 9%, transparent), transparent 60%);
+  --market-news-category-crypto: radial-gradient(620px circle at 92% 8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%), repeating-linear-gradient(60deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 70px), repeating-linear-gradient(-60deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 70px);
+  --market-news-category-energy: radial-gradient(760px 460px at -6% 112%, color-mix(in srgb, var(--warning) 15%, transparent), transparent 66%), repeating-linear-gradient(35deg, color-mix(in srgb, var(--danger) 4%, transparent) 0 1px, transparent 1px 64px);
+  --market-news-category-banking: radial-gradient(700px 320px at 50% -14%, color-mix(in srgb, var(--primary) 11%, transparent), transparent 62%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--primary) 5%, transparent) 0 2px, transparent 2px 56px);
+  --market-news-category-sharia: radial-gradient(600px circle at 50% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 62%), repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 4%, transparent) 0deg 3deg, transparent 3deg 45deg);
+  --market-news-category-growth: radial-gradient(620px circle at 88% -8%, color-mix(in srgb, var(--success) 13%, transparent), transparent 60%), repeating-linear-gradient(-35deg, color-mix(in srgb, var(--success) 5%, transparent) 0 1px, transparent 1px 60px);
+  --market-news-category-defensive: repeating-radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--info) 6%, transparent) 0 2px, transparent 2px 64px), radial-gradient(700px circle at 50% -12%, color-mix(in srgb, var(--info) 9%, transparent), transparent 62%);
+  --market-news-category-cyclical: repeating-radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--primary) 6%, transparent) 0 2px, transparent 2px 74px), radial-gradient(640px circle at 10% 108%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 62%);
+  --market-news-category-high-income: radial-gradient(680px 300px at 50% -14%, color-mix(in srgb, var(--success) 11%, transparent), transparent 62%), repeating-linear-gradient(0deg, color-mix(in srgb, var(--success) 4.5%, transparent) 0 1px, transparent 1px 46px);
+
   /* Domain semantics */
   --market-positive: var(--success);
   --market-negative: var(--danger);
@@ -665,6 +681,22 @@
   --hero-foreground: #FFFFFF;
   --hero-foreground-muted: #D6DCF5;
   --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
+
+  /* Restrained, abstract per-category identity washes for the unified
+     market-news pages. Identical formula to the :root declaration above;
+     the semantic tokens it derives from already carry the dark-mode
+     values, so no separate per-theme colours are hand-picked here. */
+  --market-news-category-tech: radial-gradient(640px circle at 90% -8%, color-mix(in srgb, var(--primary) 13%, transparent), transparent 62%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--primary) 5%, transparent) 0 1px, transparent 1px 88px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--primary) 5%, transparent) 0 1px, transparent 1px 88px);
+  --market-news-category-europe: radial-gradient(680px circle at 6% -12%, color-mix(in srgb, var(--info) 12%, transparent), transparent 60%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--info) 4.5%, transparent) 0 1px, transparent 1px 120px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--info) 4.5%, transparent) 0 1px, transparent 1px 120px);
+  --market-news-category-gulf: radial-gradient(900px 420px at 50% 118%, color-mix(in srgb, var(--warning) 16%, transparent), transparent 68%), radial-gradient(520px circle at 82% -10%, color-mix(in srgb, var(--warning) 9%, transparent), transparent 60%);
+  --market-news-category-crypto: radial-gradient(620px circle at 92% 8%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%), repeating-linear-gradient(60deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 70px), repeating-linear-gradient(-60deg, color-mix(in srgb, var(--accent) 5%, transparent) 0 1px, transparent 1px 70px);
+  --market-news-category-energy: radial-gradient(760px 460px at -6% 112%, color-mix(in srgb, var(--warning) 15%, transparent), transparent 66%), repeating-linear-gradient(35deg, color-mix(in srgb, var(--danger) 4%, transparent) 0 1px, transparent 1px 64px);
+  --market-news-category-banking: radial-gradient(700px 320px at 50% -14%, color-mix(in srgb, var(--primary) 11%, transparent), transparent 62%), repeating-linear-gradient(90deg, color-mix(in srgb, var(--primary) 5%, transparent) 0 2px, transparent 2px 56px);
+  --market-news-category-sharia: radial-gradient(600px circle at 50% -10%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 62%), repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 4%, transparent) 0deg 3deg, transparent 3deg 45deg);
+  --market-news-category-growth: radial-gradient(620px circle at 88% -8%, color-mix(in srgb, var(--success) 13%, transparent), transparent 60%), repeating-linear-gradient(-35deg, color-mix(in srgb, var(--success) 5%, transparent) 0 1px, transparent 1px 60px);
+  --market-news-category-defensive: repeating-radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--info) 6%, transparent) 0 2px, transparent 2px 64px), radial-gradient(700px circle at 50% -12%, color-mix(in srgb, var(--info) 9%, transparent), transparent 62%);
+  --market-news-category-cyclical: repeating-radial-gradient(circle at 78% 18%, color-mix(in srgb, var(--primary) 6%, transparent) 0 2px, transparent 2px 74px), radial-gradient(640px circle at 10% 108%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 62%);
+  --market-news-category-high-income: radial-gradient(680px 300px at 50% -14%, color-mix(in srgb, var(--success) 11%, transparent), transparent 62%), repeating-linear-gradient(0deg, color-mix(in srgb, var(--success) 4.5%, transparent) 0 1px, transparent 1px 46px);
 
   /* Domain semantics remain stable while their values adapt to dark mode. */
   --market-positive: var(--success);
