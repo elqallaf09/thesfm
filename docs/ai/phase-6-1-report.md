@@ -105,4 +105,21 @@ Known limit: the existing rate limiter and in-flight lock are process-local. Thi
 
 ## Validation status
 
-Focused type checking, linting, unit/integration tests, the production build used by Playwright, and desktop Chromium browser coverage passed during implementation. The final release-gate results, Preview URL, pull request URL, and exact head SHA are recorded in the pull request and final handoff after full validation.
+Passed locally on 2026-07-19:
+
+- `pnpm install --frozen-lockfile` with pnpm `11.1.3`;
+- repository-wide ESLint;
+- TypeScript `tsc --noEmit`;
+- Arabic/English/French translation completeness;
+- semantic visual-system guard with zero active-production findings;
+- public environment-variable guard;
+- complete Vitest suite: 127 files and 1627 tests passed;
+- Phase 6.1 Playwright suite: 11 runs passed across desktop Chromium, mobile Chrome, and mobile WebKit;
+- optimized Next.js production build: 156 static pages generated;
+- performance budgets, including `/market-analysis` at 305.4 KiB gzip initial JavaScript against 312.5 KiB and 76.6 KiB CSS against 78.1 KiB;
+- credential-shaped added-line scan and public-environment secret guard;
+- migration/RLS static security tests.
+
+Live migration lint/apply and database RLS execution could not be run safely: this worktree has no Supabase project ref, no isolated Preview database credentials, and no local Docker runtime. The Supabase CLI refused the linked commands with `LegacyProjectNotLinkedError`; no project was guessed or linked.
+
+Current gate recommendation: **NO-GO pending isolated Preview migration validation, Preview deployment, and authenticated Preview smoke**. Local implementation and test gates are green. Production remains untouched.
