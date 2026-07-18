@@ -47,6 +47,8 @@ describe('setup visual-system contract', () => {
 
   it('keeps layout within the workspace shell without viewport arithmetic', () => {
     expect(setupPage).not.toMatch(/100vw|calc\([^)]*(?:sidebar|100vw)|translateX\(/i);
-    expect(setupPage).toContain('<DashboardPageShell contentClassName="setup-content">');
+    expect(setupPage).toContain('<DashboardPageShell');
+    expect(setupPage).toContain('className="account-setup-workspace-page"');
+    expect(setupPage).toContain('contentClassName="setup-content"');
   });
 });
