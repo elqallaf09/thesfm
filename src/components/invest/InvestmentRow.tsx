@@ -23,7 +23,7 @@ import {
 import { memo, useEffect, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AssetAvatar } from '@/components/asset/AssetAvatar';
-import { calculateInvestmentHoldingMetrics, investmentNativeCurrency } from '@/lib/investmentCalculations';
+import { calculateInvestmentHoldingMetrics, investmentHoldingCurrency, investmentQuoteCurrency } from '@/lib/investmentCalculations';
 import type { Investment } from '@/types/investment';
 import {
   DropdownMenu,
@@ -36,7 +36,7 @@ import { InvestmentSparkline, type InvestmentHistoryPoint } from './InvestmentSp
 import { PlatformIdentity } from './PlatformIdentity';
 
 export type InvestmentPriceRefreshStatus = {
-  state: 'failed' | 'updated' | 'guest_restricted' | 'offline';
+  state: 'failed' | 'updated' | 'guest_restricted' | 'offline' | 'conversion_stale' | 'conversion_unavailable';
   message?: string;
   at: string;
 };
@@ -107,6 +107,9 @@ export type InvestmentCardLabels = {
   historyLoading?: string;
   historyUnavailable?: string;
   period30Days?: string;
+  marketQuoteCurrency?: string;
+  conversionStale?: string;
+  conversionUnavailable?: string;
 };
 
 interface Props {
@@ -176,7 +179,8 @@ export const InvestmentRow = memo(function InvestmentRow({
   const expansionId = useId();
   const cardTitleId = `${expansionId}-title`;
   const expansionButtonId = `${expansionId}-trigger`;
-  const nativeCurrency = investmentNativeCurrency(investment);
+  const holdingCurrency = investmentHoldingCurrency(investment);
+  const quoteCurrency = investmentQuoteCurrency(investment);
   const isMetal = investment.type === 'gold' || investment.type === 'silver';
   const quantityLabel = quantityMetricLabel(investment, labels);
   const quantityValue = isMetal && metrics.quantity !== null
@@ -187,9 +191,9 @@ export const InvestmentRow = memo(function InvestmentRow({
   const metalPieceCount = Number(investment.quantity);
   const hasAccountValue = accountValue !== null && Number.isFinite(accountValue);
   const showConvertedLine = hasAccountValue
-    && nativeCurrency
+    && holdingCurrency
     && investment.userCurrency
-    && nativeCurrency !== investment.userCurrency;
+    && holdingCurrency !== investment.userCurrency;
   const gainState = metrics.profitLossAmount === null
     ? 'neutral'
     : metrics.profitLossAmount > 0
@@ -203,12 +207,16 @@ export const InvestmentRow = memo(function InvestmentRow({
       ? 'Offline'
       : priceRefreshStatus?.state === 'failed'
         ? labels.priceUpdateFailed || 'Could not refresh price'
+        : priceRefreshStatus?.state === 'conversion_unavailable' || metrics.conversionState === 'unavailable'
+          ? labels.conversionUnavailable || 'Currency conversion unavailable'
+          : priceRefreshStatus?.state === 'conversion_stale' || metrics.conversionState === 'stale'
+            ? labels.conversionStale || 'Using the last verified currency conversion'
     : refreshing
       ? labels.refreshingPrice || 'Refreshing'
       : metrics.isMarketLinked && metrics.currentPrice === null
         ? labels.currentPriceUnavailable || labels.unavailable || 'Current price unavailable'
         : labels.priceUpdated || 'Price available';
-  const StatusIcon = priceRefreshStatus?.state === 'failed' || priceRefreshStatus?.state === 'guest_restricted' || priceRefreshStatus?.state === 'offline'
+  const StatusIcon = priceRefreshStatus?.state === 'failed' || priceRefreshStatus?.state === 'guest_restricted' || priceRefreshStatus?.state === 'offline' || priceRefreshStatus?.state === 'conversion_unavailable' || priceRefreshStatus?.state === 'conversion_stale' || metrics.conversionState === 'unavailable' || metrics.conversionState === 'stale'
     ? AlertTriangle
     : metrics.isMarketLinked && metrics.currentPrice === null
       ? AlertTriangle
@@ -342,19 +350,19 @@ export const InvestmentRow = memo(function InvestmentRow({
         <div className="invest-holding-summary">
           <Metric
             label={labels.currentValue || labels.currentMarketValue || 'Current value'}
-            value={metrics.currentValue !== null ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment) : labels.unavailable || '-'}
+            value={metrics.currentValue !== null ? formatNativeMoney(metrics.currentValue, holdingCurrency, investment) : labels.unavailable || '-'}
             tone={metrics.currentValue === null ? 'warning' : 'default'}
             icon={<WalletCards size={15} />}
           />
           <Metric
             label={labels.investedValue || labels.totalInvested || 'Invested'}
-            value={metrics.totalInvested !== null ? formatNativeMoney(metrics.totalInvested, nativeCurrency, investment) : labels.purchasePriceMissing || labels.unavailable || '-'}
+            value={metrics.totalInvested !== null ? formatNativeMoney(metrics.totalInvested, holdingCurrency, investment) : labels.purchasePriceMissing || labels.unavailable || '-'}
             tone={metrics.totalInvested === null ? 'warning' : 'default'}
             icon={<Banknote size={15} />}
           />
           <Metric
             label={labels.profitLoss || 'Profit / loss'}
-            value={metrics.profitLossAmount !== null ? `${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}` : profitUnavailableText(metrics, labels)}
+            value={metrics.profitLossAmount !== null ? `${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, holdingCurrency, investment)}` : profitUnavailableText(metrics, labels)}
             meta={metrics.profitLossPercent !== null ? `${formatSignedNumber(metrics.profitLossPercent)}%` : undefined}
             tone={gainState}
             icon={gainState === 'gain' ? <TrendingUp size={15} /> : gainState === 'loss' ? <TrendingDown size={15} /> : <Minus size={15} />}
@@ -368,14 +376,15 @@ export const InvestmentRow = memo(function InvestmentRow({
             <section className="invest-expanded-section invest-expanded-section--overview">
               <ExpandedTitle icon={<FolderOpen size={16} />} title={labels.overview || 'Overview'} />
               <div className="invest-holding-secondary invest-financial-details">
-                <DetailChip label={labels.currentPrice || 'Current price'} value={metrics.currentPrice === null ? (labels.currentPriceUnavailable || labels.unavailable || '-') : formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} />
-                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} />
+                <DetailChip label={labels.currentPrice || 'Current price'} value={metrics.currentPrice === null ? (labels.currentPriceUnavailable || labels.unavailable || '-') : formatNativeMoney(metrics.currentPrice, quoteCurrency, investment, { unitPrice: true })} />
+                <DetailChip label={labels.purchasePrice || 'Purchase price'} value={metrics.purchasePrice === null ? (labels.unavailable || '-') : formatNativeMoney(metrics.purchasePrice, holdingCurrency, investment, { unitPrice: true })} />
+                {quoteCurrency && <DetailChip label={labels.marketQuoteCurrency || 'Market quote'} value={quoteCurrency} />}
                 <DetailChip label={quantityLabel} value={quantityValue} />
                 {isMetal && Number.isFinite(metalPieceCount) && metalPieceCount > 0 && <DetailChip label={labels.metalCount || 'Pieces'} value={formatPreciseNumber(metalPieceCount)} />}
                 <DetailChip label={labels.monthly} value={formatMoney(investment.monthlyContribution, investment.monthlyContributionStatus)} />
                 <DetailChip label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? (labels.unavailable || '-') : `${formatNumber(investment.expectedAnnualReturn)}%`} />
                 {investment.market && <DetailChip label={labels.market || 'Market'} value={investment.market} />}
-                <DetailChip label={labels.currency || 'Currency'} value={nativeCurrency || labels.unavailable || '-'} />
+                <DetailChip label={labels.currency || 'Currency'} value={holdingCurrency || labels.unavailable || '-'} />
                 <DetailChip label={labels.startDate || 'Entry date'} value={formatDateOnly(investment.startDate) || labels.unavailable || '-'} />
                 {showConvertedLine && <DetailChip label={labels.approxUserCurrency || 'Approx.'} value={formatMoney(accountValue, 'valid')} />}
               </div>

@@ -19,7 +19,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { InvestmentPlatformSelector } from '@/components/invest/InvestmentPlatformSelector';
 import { currencyDisplayName, getCurrency, getCurrencyOptions, type CurrencyLocale } from '@/lib/currencies';
 import { parseMoneyValue } from '@/lib/money';
-import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
+import { formatMarketPrice, normalizeMarketCurrencyCode } from '@/lib/market/marketCurrency';
 import { MARKET_EXCHANGE_OPTIONS, normalizeMarketExchange, type MarketExchangeId } from '@/lib/market/marketExchangeOptions';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 import type { InvestmentPlatformSelection, InvestmentPlatformType } from '@/types/investmentPlatform';
@@ -36,6 +36,7 @@ type FxState = {
   source?: string | null;
   lastUpdated?: string | null;
   message?: string;
+  stale?: boolean;
 };
 
 type ParsedFormNumber = {
@@ -335,16 +336,8 @@ function resolveFormCurrency(input: {
   assetType?: unknown;
   fallback: string;
 }) {
-  const providerCurrency = normalizeMarketCurrencyCode(input.nativeCurrency ?? input.priceCurrency ?? input.currency);
-  const resolved = resolveMarketCurrency({
-    providerCurrency,
-    symbol: input.symbol,
-    providerSymbol: input.providerSymbol,
-    exchange: input.market,
-    market: input.market,
-    assetType: typeof input.assetType === 'string' ? input.assetType : null,
-  });
-  return resolved.currency ?? providerCurrency ?? normalizedCurrency(null, input.fallback);
+  return normalizeMarketCurrencyCode(input.currency)
+    ?? normalizedCurrency(null, input.fallback);
 }
 
 function assetInvestmentType(assetType: string): InvestmentType {
@@ -365,7 +358,7 @@ function assetFromInvestment(item: Investment | null | undefined): AssetSearchIt
     provider_symbol: item.providerSymbol ?? item.symbol ?? null,
     market: item.market ?? null,
     asset_type: item.assetType ?? (item.type === 'fund' ? 'etf' : item.type === 'crypto' ? 'crypto' : 'stock'),
-    currency: item.currency ?? item.nativeCurrency ?? null,
+    currency: item.priceCurrency ?? item.nativeCurrency ?? item.currency ?? null,
     price: item.lastPrice ?? item.currentPrice ?? null,
     updated_at: item.lastPriceUpdatedAt ?? null,
     source: item.dataSource ?? item.priceSource ?? '',
@@ -478,6 +471,7 @@ export function InvestmentFormModal({
     silver: null,
   });
   const [fx, setFx] = useState<FxState>({ state: 'idle', from: '', to: '', rate: null });
+  const [valuationFx, setValuationFx] = useState<FxState>({ state: 'idle', from: '', to: '', rate: null });
   const [fxReloadKey, setFxReloadKey] = useState(0);
   const [purchasePlatform, setPurchasePlatform] = useState<InvestmentPlatformSelection | null>(null);
 
@@ -537,7 +531,7 @@ export function InvestmentFormModal({
     : purchaseUnitPrice;
   const metalLivePrice = type === 'gold' ? metals.gold?.price ?? null : type === 'silver' ? metals.silver?.price ?? null : null;
   const metalLiveCurrency = normalizedCurrency(type === 'gold' ? metals.gold?.currency : type === 'silver' ? metals.silver?.currency : formCurrency, formCurrency);
-  const effectiveLiveMetalPrice = metalLiveCurrency === formCurrency ? metalLivePrice : null;
+  const effectiveLiveMetalPrice = metalLivePrice && metalLivePrice > 0 ? metalLivePrice : null;
   const unitPrice = isMarketType(type)
     ? hasLiveAssetPrice
       ? selectedPrice
@@ -579,28 +573,44 @@ export function InvestmentFormModal({
     ?? cashAmount
     ?? projectCapital
     ?? otherPurchaseTotal;
-  const nativeCurrentValue = marketCurrentValue
-    ?? metalCurrentValue
-    ?? realEstateCurrentValue
+  const quoteCurrency = isMarketType(type) && hasLiveAssetPrice
+    ? normalizedCurrency(selectedAsset?.currency, formCurrency)
+    : isMetal && effectiveLiveMetalPrice
+      ? metalLiveCurrency
+      : formCurrency;
+  const quoteCurrentValue = marketCurrentValue ?? metalCurrentValue;
+  const directCurrentValue = realEstateCurrentValue
     ?? cashAmount
     ?? projectCapital
     ?? otherCurrentValue
     ?? null;
-  const nativeValueForFx = nativeCurrentValue ?? purchaseTotal;
-  const profitLoss = purchaseTotal !== null && nativeCurrentValue !== null
-    ? nativeCurrentValue - purchaseTotal
+  const liveHoldingCurrentValue = quoteCurrentValue !== null
+    ? quoteCurrency === formCurrency
+      ? quoteCurrentValue
+      : valuationFx.state === 'ready' && valuationFx.rate !== null
+        ? quoteCurrentValue * valuationFx.rate
+        : null
+    : directCurrentValue;
+  const lastKnownHoldingNumber = Number(initialValues?.currentValue);
+  const lastKnownHoldingValue = mode === 'edit' && Number.isFinite(lastKnownHoldingNumber) && lastKnownHoldingNumber > 0
+    ? lastKnownHoldingNumber
+    : null;
+  const holdingCurrentValue = liveHoldingCurrentValue ?? ((isMarketType(type) || isMetal) ? lastKnownHoldingValue : null);
+  const nativeValueForFx = holdingCurrentValue ?? purchaseTotal;
+  const profitLoss = purchaseTotal !== null && holdingCurrentValue !== null
+    ? holdingCurrentValue - purchaseTotal
     : isProject
       ? projectNetProfit
       : null;
-  const profitLossPercent = purchaseTotal !== null && purchaseTotal > 0 && nativeCurrentValue !== null
+  const profitLossPercent = purchaseTotal !== null && purchaseTotal > 0 && holdingCurrentValue !== null
     ? (profitLoss! / purchaseTotal) * 100
     : null;
   const isSameAccountCurrency = formCurrency === accountCurrency;
-  const convertedCurrentValue = nativeCurrentValue !== null
+  const convertedCurrentValue = holdingCurrentValue !== null
     ? isSameAccountCurrency
-      ? nativeCurrentValue
+      ? holdingCurrentValue
       : fx.state === 'ready' && fx.rate !== null
-        ? nativeCurrentValue * fx.rate
+        ? holdingCurrentValue * fx.rate
         : null
     : null;
   const convertedValueForSave = nativeValueForFx !== null
@@ -617,7 +627,7 @@ export function InvestmentFormModal({
         ? purchaseTotal * fx.rate
         : null
     : null;
-  const summaryReady = purchaseTotal !== null && purchaseTotal > 0 && nativeCurrentValue !== null && nativeCurrentValue > 0;
+  const summaryReady = purchaseTotal !== null && purchaseTotal > 0 && holdingCurrentValue !== null && holdingCurrentValue > 0;
 
   const resetCreateForm = useCallback((nextType: InvestmentType = 'stocks') => {
     setType(nextType);
@@ -759,7 +769,7 @@ export function InvestmentFormModal({
 
     async function loadMetals() {
       setMetals(prev => ({ ...prev, state: 'loading', message: undefined }));
-      const targets = Array.from(new Set([formCurrency, accountCurrency, 'USD']));
+      const targets = ['USD'];
       for (const target of targets) {
         try {
           const response = await fetch(`/api/market/metals?currency=${encodeURIComponent(target)}`, { cache: 'no-store' });
@@ -805,6 +815,63 @@ export function InvestmentFormModal({
   }, [accountCurrency, formCurrency, isMetal, labels.metalsPriceUnavailable, open]);
 
   useEffect(() => {
+    if (!open || quoteCurrentValue === null || quoteCurrentValue <= 0) {
+      setValuationFx({ state: 'idle', from: '', to: '', rate: null });
+      return;
+    }
+    if (quoteCurrency === formCurrency) {
+      setValuationFx({
+        state: 'ready',
+        from: quoteCurrency,
+        to: formCurrency,
+        rate: 1,
+        source: 'same_currency',
+        lastUpdated: new Date().toISOString(),
+      });
+      return;
+    }
+
+    let cancelled = false;
+    const timeout = window.setTimeout(async () => {
+      setValuationFx({ state: 'loading', from: quoteCurrency, to: formCurrency, rate: null });
+      try {
+        const params = new URLSearchParams({ from: quoteCurrency, to: formCurrency });
+        const response = await fetch(`/api/market/fx/rate?${params.toString()}`, { cache: 'no-store' });
+        const payload = await response.json() as {
+          ok?: boolean;
+          rate?: number | null;
+          source?: string | null;
+          lastUpdated?: string | null;
+          stale?: boolean;
+          error?: string;
+        };
+        if (cancelled) return;
+        const rate = Number(payload.rate);
+        if (!response.ok || payload.ok === false || !Number.isFinite(rate) || rate <= 0) {
+          setValuationFx({ state: 'error', from: quoteCurrency, to: formCurrency, rate: null, message: payload.error || labels.fxUnavailable });
+          return;
+        }
+        setValuationFx({
+          state: 'ready',
+          from: quoteCurrency,
+          to: formCurrency,
+          rate,
+          source: payload.source || 'FX provider',
+          lastUpdated: payload.lastUpdated || new Date().toISOString(),
+          stale: payload.stale,
+        });
+      } catch {
+        if (!cancelled) setValuationFx({ state: 'error', from: quoteCurrency, to: formCurrency, rate: null, message: labels.fxUnavailable });
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [formCurrency, fxReloadKey, labels.fxUnavailable, open, quoteCurrency, quoteCurrentValue]);
+
+  useEffect(() => {
     if (!open || !nativeValueForFx || nativeValueForFx <= 0) {
       setFx({ state: 'idle', from: '', to: '', rate: null });
       return;
@@ -832,6 +899,7 @@ export function InvestmentFormModal({
           rate?: number | null;
           source?: string | null;
           lastUpdated?: string | null;
+          stale?: boolean;
           error?: string;
         };
         if (cancelled) return;
@@ -847,6 +915,7 @@ export function InvestmentFormModal({
           rate,
           source: payload.source || 'FX provider',
           lastUpdated: payload.lastUpdated || new Date().toISOString(),
+          stale: payload.stale,
         });
       } catch {
         if (!cancelled) setFx({ state: 'error', from: formCurrency, to: accountCurrency, rate: null, message: labels.fxUnavailable });
@@ -1010,7 +1079,6 @@ export function InvestmentFormModal({
     setSelectedAsset(asset);
     setName(localizedName);
     setType(assetInvestmentType(asset.asset_type));
-    setInvestmentCurrency(normalizedCurrency(asset.currency, accountCurrency));
     setSelectedExchange(normalizeMarketExchange(asset.market_en ?? asset.market) ?? selectedExchange);
     setSearchResults([]);
     setSearchState('idle');
@@ -1027,8 +1095,7 @@ export function InvestmentFormModal({
     const expectedMonthlyIncomeForSave = expectedMonthlyIncomeParsed.status === 'valid' ? expectedMonthlyIncomeParsed.value : undefined;
     const expectedMonthlyExpenseForSave = expectedMonthlyExpenseParsed.status === 'valid' ? expectedMonthlyExpenseParsed.value : undefined;
     const purchaseUnitPriceForSave = isMarketType(type) ? marketPurchaseUnitPrice : purchaseUnitPrice;
-    const nativeValue = nativeCurrentValue ?? purchaseTotal ?? 0;
-    const accountValue = convertedValueForSave ?? nativeValue;
+    const holdingValue = holdingCurrentValue ?? lastKnownHoldingValue ?? purchaseTotal ?? 0;
     const addAnother = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === 'another';
     const marketOrMetalUnitPrice = unitPrice ?? undefined;
     const savedSymbol = mode === 'edit' ? initialValues?.symbol : undefined;
@@ -1039,7 +1106,7 @@ export function InvestmentFormModal({
     const resolvedProviderSymbol = selectedAsset?.provider_symbol ?? savedProviderSymbol;
     const resolvedMarket = selectedAsset ? localizedMarketName(selectedAsset, dir) : savedMarket;
     const resolvedAssetType = selectedAsset?.asset_type ?? savedAssetType ?? (isMetal ? 'commodity' : type);
-    const resolvedCurrency = resolveFormCurrency({
+    const holdingCurrency = resolveFormCurrency({
       currency: formCurrency,
       market: resolvedMarket,
       symbol: resolvedSymbol,
@@ -1047,6 +1114,19 @@ export function InvestmentFormModal({
       assetType: resolvedAssetType,
       fallback: accountCurrency,
     });
+    const quoteToAccountRate = quoteCurrency === accountCurrency
+      ? 1
+      : quoteCurrency === formCurrency
+        ? fx.rate ?? undefined
+        : formCurrency === accountCurrency
+          ? valuationFx.rate ?? undefined
+          : valuationFx.rate !== null && fx.rate !== null
+            ? valuationFx.rate * fx.rate
+            : undefined;
+    const quoteToAccountSource = quoteCurrency === accountCurrency
+      ? 'same_currency'
+      : [valuationFx.source, fx.source].filter(Boolean).join(' -> ') || undefined;
+    const conversionIsStale = Boolean(valuationFx.stale || fx.stale);
     const priceSource = isMetal
       ? metals.source || initialValues?.priceSource || initialValues?.dataSource || undefined
       : selectedAsset?.source ?? initialValues?.priceSource ?? initialValues?.dataSource;
@@ -1059,8 +1139,8 @@ export function InvestmentFormModal({
     const input: InvestmentInput = {
       name: name.trim(),
       type,
-      currentValue: accountValue,
-      amount: accountValue,
+      currentValue: holdingValue,
+      amount: purchaseTotal ?? holdingValue,
       monthlyContribution: monthlyContributionForSave ?? (mode === 'edit' ? initialValues?.monthlyContribution : undefined) ?? 0,
       startDate,
       riskLevel,
@@ -1070,25 +1150,25 @@ export function InvestmentFormModal({
       providerSymbol: resolvedProviderSymbol,
       market: resolvedMarket,
       assetType: resolvedAssetType,
-      currency: resolvedCurrency,
+      currency: holdingCurrency,
       quantity: (isMarketType(type) || isMetal) && quantityValue !== null ? quantityValue : undefined,
       unit: isMetal ? metalUnit : undefined,
       purchasePrice: purchaseUnitPriceForSave ?? undefined,
       purchaseTotal: purchaseTotal ?? undefined,
       currentPrice: marketOrMetalUnitPrice,
-      currentMarketValue: nativeCurrentValue ?? undefined,
+      currentMarketValue: quoteCurrentValue ?? undefined,
       profitLoss: profitLoss ?? undefined,
       profitLossPercent: profitLossPercent ?? undefined,
       defaultCurrencyValue: convertedCurrentValue ?? convertedValueForSave ?? undefined,
-      priceCurrency: resolvedCurrency,
-      nativeCurrency: resolvedCurrency,
+      priceCurrency: quoteCurrency,
+      nativeCurrency: quoteCurrency,
       nativeUnitPrice: marketOrMetalUnitPrice,
-      nativeMarketValue: nativeCurrentValue ?? nativeValue,
+      nativeMarketValue: quoteCurrentValue ?? (quoteCurrency === holdingCurrency ? holdingValue : undefined),
       userCurrency: accountCurrency,
-      fxRateToUserCurrency: isSameAccountCurrency ? 1 : fx.rate ?? undefined,
+      fxRateToUserCurrency: quoteToAccountRate,
       convertedMarketValue: convertedCurrentValue ?? convertedValueForSave ?? undefined,
-      fxSource: isSameAccountCurrency ? 'same_currency' : fx.source ?? undefined,
-      fxLastUpdatedAt: isSameAccountCurrency ? new Date().toISOString() : fx.lastUpdated ?? undefined,
+      fxSource: conversionIsStale ? `stale:${quoteToAccountSource || 'last_known_good'}` : quoteToAccountSource,
+      fxLastUpdatedAt: valuationFx.lastUpdated ?? fx.lastUpdated ?? undefined,
       valuationSource: priceSource,
       valuationLastUpdatedAt: lastUpdated,
       lastPrice: marketOrMetalUnitPrice,
@@ -1127,8 +1207,8 @@ export function InvestmentFormModal({
     : mode === 'create'
       ? labels.save
       : labels.update;
-  const nativeValueText = nativeCurrentValue !== null
-    ? formatMarketPrice({ price: nativeCurrentValue, currency: formCurrency, locale })
+  const nativeValueText = holdingCurrentValue !== null
+    ? formatMarketPrice({ price: holdingCurrentValue, currency: formCurrency, locale })
     : labels.unavailable;
   const accountValueText = convertedCurrentValue !== null
     ? formatMarketPrice({ price: convertedCurrentValue, currency: accountCurrency, locale })
@@ -1357,14 +1437,14 @@ export function InvestmentFormModal({
                 <MoneyInput currency={formCurrency} value={purchaseTotalInput} onChange={setPurchaseTotalInput} />
               </Field>
               {hasLiveAssetPrice ? (
-                <ReadonlyMoney label={currentUnitLabel} currency={formCurrency} value={selectedPrice!} helper={labels.livePriceHint} />
+                <ReadonlyMoney label={currentUnitLabel} currency={quoteCurrency} value={selectedPrice!} helper={labels.livePriceHint} />
               ) : (
                 <Field label={currentUnitLabel} error={errors.currentPrice} helper={activePriceHint}>
                   <MoneyInput currency={formCurrency} value={currentPrice} onChange={setCurrentPrice} />
                 </Field>
               )}
               <ReadonlyMoney label={labels.summaryPurchaseTotal} currency={formCurrency} value={marketPurchaseTotal} />
-              <ReadonlyMoney label={labels.currentMarketValue} currency={formCurrency} value={marketCurrentValue} />
+              <ReadonlyMoney label={labels.currentMarketValue} currency={formCurrency} value={holdingCurrentValue} />
             </>
           )}
 
@@ -1387,7 +1467,7 @@ export function InvestmentFormModal({
                 <MoneyInput currency={formCurrency} value={purchasePrice} onChange={setPurchasePrice} />
               </Field>
               {effectiveLiveMetalPrice && effectiveLiveMetalPrice > 0 ? (
-                <ReadonlyMoney label={labels.currentPricePerGram} currency={formCurrency} value={effectiveLiveMetalPrice} helper={labels.livePriceHint} />
+                <ReadonlyMoney label={labels.currentPricePerGram} currency={quoteCurrency} value={effectiveLiveMetalPrice} helper={labels.livePriceHint} />
               ) : (
                 <Field label={labels.currentPricePerGram} error={errors.currentPrice} helper={metals.state === 'loading' ? labels.metalsPriceLoading : labels.manualPriceHint}>
                   <MoneyInput currency={formCurrency} value={currentPrice} onChange={setCurrentPrice} />
@@ -1400,7 +1480,7 @@ export function InvestmentFormModal({
                 </div>
               )}
               <ReadonlyMoney label={labels.purchaseTotal} currency={formCurrency} value={metalPurchaseTotal} />
-              <ReadonlyMoney label={labels.currentMarketValue} currency={formCurrency} value={metalCurrentValue} />
+              <ReadonlyMoney label={labels.currentMarketValue} currency={formCurrency} value={holdingCurrentValue} />
             </>
           )}
 

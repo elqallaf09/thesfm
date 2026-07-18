@@ -1,6 +1,7 @@
 import { calculateGoalProgress, parseGoalNotes } from '@/lib/goalProgress';
 import { parseMoneyValue } from '@/lib/money';
 import { financialRowDate, type FinancialRow } from './financialMetrics';
+import { holdingCurrencyFromRow, holdingValueFromRow, investmentValueInCurrency, quoteCurrencyFromRow } from '@/lib/investments/currencyIntegrity';
 
 export type DashboardSourceKey = 'profile' | 'income' | 'expenses' | 'savings' | 'goals' | 'investments' | 'debts';
 export type DashboardSourceStatus = 'loading' | 'success' | 'empty' | 'permission' | 'network' | 'unavailable';
@@ -115,23 +116,17 @@ export function groupCurrencyAmounts(
 
 export function investmentValue(row: FinancialRow, primaryCurrency: string | null): InvestmentValue | null {
   const primary = currencyCode(primaryCurrency);
-  const nativeCurrency = rowCurrency(row, ['native_currency', 'currency', 'price_currency']);
-  const userCurrency = rowCurrency(row, ['user_currency']);
-  const convertedAmount = firstNumber(row, ['converted_market_value']);
-  const hasVerifiedFx = firstNumber(row, ['fx_rate_to_user_currency']) !== null || Boolean(firstText(row, ['fx_source']));
+  const resolved = primary ? investmentValueInCurrency(row, primary) : null;
+  if (resolved) return { amount: resolved.amount, currency: resolved.currency, converted: resolved.source !== 'holding' };
 
-  if (primary && userCurrency === primary && convertedAmount !== null && (nativeCurrency === primary || hasVerifiedFx)) {
-    return { amount: convertedAmount, currency: primary, converted: nativeCurrency !== primary };
-  }
+  const holdingCurrency = holdingCurrencyFromRow(row);
+  const holdingAmount = holdingValueFromRow(row);
+  if (holdingCurrency && holdingAmount !== null) return { amount: holdingAmount, currency: holdingCurrency, converted: false };
 
-  const nativeAmount = firstNumber(row, [
-    'native_market_value',
-    'current_market_value',
-    'current_value',
-    'amount',
-  ]);
-  if (nativeAmount === null) return null;
-  return { amount: nativeAmount, currency: nativeCurrency, converted: false };
+  const quoteCurrency = quoteCurrencyFromRow(row);
+  const quoteAmount = firstNumber(row, ['native_market_value', 'current_market_value']);
+  if (!quoteCurrency || quoteAmount === null) return null;
+  return { amount: quoteAmount, currency: quoteCurrency, converted: false };
 }
 
 export function investmentBreakdown(rows: FinancialRow[], primaryCurrency: string | null): CurrencyAmount[] {

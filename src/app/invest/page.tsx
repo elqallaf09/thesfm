@@ -16,9 +16,9 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { useCurrency } from '@/lib/useCurrency';
 import { formatCurrency } from '@/lib/format';
-import { formatMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
+import { formatMarketPrice, normalizeMarketCurrencyCode, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import type { MoneyParseStatus } from '@/lib/money';
-import { calculateInvestmentHoldingMetrics, investmentLinkedSymbol } from '@/lib/investmentCalculations';
+import { calculateInvestmentHoldingMetrics, investmentHoldingCurrency, investmentLinkedSymbol, investmentQuoteCurrency } from '@/lib/investmentCalculations';
 import { investmentSymbol, marketAnalysisUrl } from '@/lib/data/investmentData';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 
@@ -164,10 +164,11 @@ function normalizedCurrency(value: string | null | undefined) {
 }
 
 function nativeCurrencyOf(item: Investment) {
-  return normalizedCurrency(item.nativeCurrency)
-    ?? normalizedCurrency(item.priceCurrency)
-    ?? normalizedCurrency(item.currency)
-    ?? null;
+  return investmentQuoteCurrency(item);
+}
+
+function holdingCurrencyOf(item: Investment) {
+  return investmentHoldingCurrency(item);
 }
 
 function nativeMarketValueOf(item: Investment) {
@@ -179,13 +180,13 @@ function nativeMarketValueOf(item: Investment) {
 
 function accountMarketValueOf(item: Investment, accountCurrency: string) {
   const userCurrency = normalizedCurrency(item.userCurrency);
-  const nativeCurrency = nativeCurrencyOf(item);
+  const holdingCurrency = holdingCurrencyOf(item);
+  const quoteCurrency = nativeCurrencyOf(item);
   const converted = finiteNumber(item.convertedMarketValue);
-  if (converted !== null && (!userCurrency || userCurrency === accountCurrency)) return converted;
-  if (!nativeCurrency || nativeCurrency === accountCurrency) {
-    return nativeMarketValueOf(item) ?? finiteNumber(item.currentValue);
-  }
-  if (!item.nativeCurrency && !item.priceCurrency && !item.userCurrency) return finiteNumber(item.currentValue);
+  if (converted !== null && userCurrency === accountCurrency) return converted;
+  if (holdingCurrency === accountCurrency) return finiteNumber(item.currentValue);
+  if (quoteCurrency === accountCurrency) return nativeMarketValueOf(item);
+  if (!holdingCurrency && !quoteCurrency && !userCurrency) return finiteNumber(item.currentValue);
   return null;
 }
 
@@ -339,6 +340,9 @@ export default function InvestPage() {
     priceStatus: L('حالة السعر', 'Price status', 'Statut du prix'),
     priceUpdated: L('السعر محدث', 'Price updated', 'Prix actualisé'),
     priceUpdateFailed: L('تعذر تحديث السعر حالياً', 'Could not update the price right now', 'Impossible d’actualiser le prix pour le moment'),
+    marketQuoteCurrency: L('عملة تسعير السوق', 'Market quote', 'Devise de cotation'),
+    conversionStale: L('يتم استخدام آخر تحويل عملة موثّق', 'Using the last verified currency conversion', 'Dernière conversion de devise vérifiée utilisée'),
+    conversionUnavailable: L('تحويل العملة غير متاح حالياً', 'Currency conversion is currently unavailable', 'Conversion de devise actuellement indisponible'),
     guestPriceRefreshRestricted: L('التحديث التلقائي متوقف في وضع الضيف', 'Automatic refresh is paused in guest mode', 'L’actualisation automatique est suspendue en mode invité'),
     currentPriceUnavailable: L('السعر الحالي غير متاح', 'Current price unavailable', 'Prix actuel indisponible'),
     purchasePriceMissing: L('سعر الشراء غير مكتمل', 'Purchase price is incomplete', 'Prix d’achat incomplet'),
@@ -618,8 +622,9 @@ export default function InvestPage() {
   const accountValue = useCallback((item: Investment) => accountMarketValueOf(item, accountCurrency), [accountCurrency]);
   const formatNativeMoney = useCallback((amount: number | null | undefined, nativeCurrency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => {
     if (amount === null || amount === undefined || !Number.isFinite(amount)) return labels.unavailable;
-    const resolvedCurrency = resolveMarketCurrency({
-      providerCurrency: nativeCurrency ?? item?.nativeCurrency ?? item?.priceCurrency ?? item?.currency,
+    const explicitCurrency = normalizeMarketCurrencyCode(nativeCurrency);
+    const resolvedCurrency = explicitCurrency ?? resolveMarketCurrency({
+      providerCurrency: item?.priceCurrency ?? item?.nativeCurrency,
       exchange: item?.market,
       market: item?.market,
       symbol: item?.symbol ?? item?.providerSymbol,
@@ -790,6 +795,7 @@ export default function InvestPage() {
         rate: 1,
         source: 'same_currency',
         lastUpdated: new Date().toISOString(),
+        stale: false,
       };
     }
     const params = new URLSearchParams({ from, to });
@@ -800,6 +806,7 @@ export default function InvestPage() {
       source?: string | null;
       lastUpdated?: string | null;
       error?: string;
+      stale?: boolean;
     };
     const rate = Number(payload.rate);
     if (!response.ok || payload.ok === false || !Number.isFinite(rate) || rate <= 0) {
@@ -809,6 +816,7 @@ export default function InvestPage() {
       rate,
       source: payload.source || 'FX provider',
       lastUpdated: payload.lastUpdated || new Date().toISOString(),
+      stale: Boolean(payload.stale),
     };
   }
 
@@ -872,7 +880,7 @@ export default function InvestPage() {
 
     if (!options?.silent) setRefreshingPriceId(item.id);
     try {
-      const requestedCurrency = (item.nativeCurrency || item.priceCurrency || item.currency || currency).toUpperCase();
+      const requestedCurrency = (investmentQuoteCurrency(item) || 'USD').toUpperCase();
       let responseOk = false;
       let payload: InvestmentPricePayload;
 
@@ -914,25 +922,36 @@ export default function InvestPage() {
       }
 
       const nativeCurrency = (payload.item?.currency || requestedCurrency).toUpperCase();
+      const holdingCurrency = investmentHoldingCurrency(item) || accountCurrency;
       const metrics = calculateInvestmentHoldingMetrics(item, { currentPrice: price });
-      const currentMarketValue = metrics.currentValue;
-      let fx: Awaited<ReturnType<typeof fetchFxRate>> | null = null;
-      if (currentMarketValue !== null) {
-        try {
-          fx = await fetchFxRate(nativeCurrency, accountCurrency);
-        } catch {
-          fx = nativeCurrency === accountCurrency
-            ? { rate: 1, source: 'same_currency', lastUpdated: new Date().toISOString() }
-            : null;
-        }
-      }
-      const convertedMarketValue = currentMarketValue !== null && fx
-        ? currentMarketValue * fx.rate
+      const currentMarketValue = metrics.quantity !== null ? metrics.quantity * price : null;
+      const holdingFx = currentMarketValue !== null
+        ? await fetchFxRate(nativeCurrency, holdingCurrency).catch(() => null)
+        : null;
+      const reportingFx = currentMarketValue !== null
+        ? accountCurrency === holdingCurrency
+          ? holdingFx
+          : await fetchFxRate(nativeCurrency, accountCurrency).catch(() => null)
+        : null;
+      const holdingMarketValue = currentMarketValue !== null && holdingFx
+        ? currentMarketValue * holdingFx.rate
+        : null;
+      const convertedMarketValue = currentMarketValue !== null && reportingFx
+        ? currentMarketValue * reportingFx.rate
         : null;
       const valuationUpdatedAt = payload.item?.updated_at || new Date().toISOString();
       const source = payload.item?.source || item.priceSource || item.dataSource;
+      const holdingConversionState = nativeCurrency === holdingCurrency
+        ? 'same_currency'
+        : !holdingFx
+          ? 'unavailable'
+          : holdingFx.stale
+            ? 'stale'
+            : 'verified';
+      const fxSource = `holding:${holdingConversionState}${holdingFx?.source ? `:${holdingFx.source}` : ''};reporting:${reportingFx?.source || 'unavailable'}`;
       const updated = await updateMarketPrice(item.id, {
         currentPrice: price,
+        currentValue: holdingMarketValue ?? undefined,
         currentMarketValue: currentMarketValue ?? undefined,
         defaultCurrencyValue: convertedMarketValue ?? undefined,
         convertedMarketValue: convertedMarketValue ?? undefined,
@@ -941,22 +960,26 @@ export default function InvestPage() {
         dataSource: source,
         priceSource: source,
         valuationSource: source,
-        valuationLastUpdatedAt: valuationUpdatedAt,
+        valuationLastUpdatedAt: holdingMarketValue !== null ? valuationUpdatedAt : undefined,
         priceCurrency: nativeCurrency,
         nativeCurrency,
         nativeUnitPrice: price,
         nativeMarketValue: currentMarketValue ?? undefined,
         userCurrency: accountCurrency,
-        fxRateToUserCurrency: fx?.rate,
-        fxSource: fx?.source ?? (nativeCurrency === accountCurrency ? 'same_currency' : 'unavailable'),
-        fxLastUpdatedAt: fx?.lastUpdated,
+        fxRateToUserCurrency: reportingFx?.rate,
+        fxSource,
+        fxLastUpdatedAt: reportingFx?.lastUpdated,
       });
       if (details?.id === item.id) setDetails(updated);
       if (selected?.id === item.id) setSelected(updated);
       setPriceRefreshStatuses(prev => ({
         ...prev,
         [item.id]: {
-          state: 'updated',
+          state: holdingConversionState === 'unavailable'
+            ? 'conversion_unavailable'
+            : holdingConversionState === 'stale'
+              ? 'conversion_stale'
+              : 'updated',
           at: valuationUpdatedAt,
         },
       }));

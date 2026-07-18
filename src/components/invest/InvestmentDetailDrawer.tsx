@@ -2,7 +2,7 @@
 
 import { RefreshCw, TrendingUp, X } from 'lucide-react';
 import type { Investment } from '@/types/investment';
-import { calculateInvestmentHoldingMetrics, investmentNativeCurrency } from '@/lib/investmentCalculations';
+import { calculateInvestmentHoldingMetrics, investmentHoldingCurrency, investmentQuoteCurrency } from '@/lib/investmentCalculations';
 import { useLanguage } from '@/hooks/useLanguage';
 
 interface Props {
@@ -41,6 +41,9 @@ interface Props {
     purchasePlatformPending?: string;
     purchasePlatformNotSpecified?: string;
     platformTypeLabels?: Record<string, string>;
+    marketQuoteCurrency?: string;
+    conversionStale?: string;
+    conversionUnavailable?: string;
   };
   typeLabel: (type: Investment['type']) => string;
   riskLabel: (risk: Investment['riskLevel']) => string;
@@ -70,9 +73,11 @@ export function InvestmentDetailDrawer({
 
   const linkedSymbol = investment.providerSymbol || investment.symbol;
   const unavailable = labels.unavailable || '-';
-  const nativeCurrency = investmentNativeCurrency(investment);
+  const holdingCurrency = investmentHoldingCurrency(investment);
+  const quoteCurrency = investmentQuoteCurrency(investment);
   const metrics = calculateInvestmentHoldingMetrics(investment);
-  const nativeValue = metrics.currentValue;
+  const quoteValueNumber = Number(investment.nativeMarketValue ?? investment.currentMarketValue);
+  const quoteValue = Number.isFinite(quoteValueNumber) ? quoteValueNumber : null;
   const isMetal = investment.type === 'gold' || investment.type === 'silver';
   const metalPieceCount = Number(investment.quantity);
 
@@ -114,10 +119,10 @@ export function InvestmentDetailDrawer({
           <h4>{S('الأسعار', 'Prices', 'Prix', lang)}</h4>
           <div className="invest-detail-grid">
             {metrics.purchasePrice !== null && (
-              <Info label={labels.purchasePrice || t('invest_detail_purchase_price')} value={formatNativeMoney(metrics.purchasePrice, nativeCurrency, investment, { unitPrice: true })} ltr />
+              <Info label={labels.purchasePrice || t('invest_detail_purchase_price')} value={formatNativeMoney(metrics.purchasePrice, holdingCurrency, investment, { unitPrice: true })} ltr />
             )}
-            {metrics.currentPrice !== null && nativeCurrency && (
-              <Info label={labels.currentPrice || t('invest_detail_current_price')} value={formatNativeMoney(metrics.currentPrice, nativeCurrency, investment, { unitPrice: true })} ltr />
+            {metrics.currentPrice !== null && quoteCurrency && (
+              <Info label={labels.currentPrice || t('invest_detail_current_price')} value={formatNativeMoney(metrics.currentPrice, quoteCurrency, investment, { unitPrice: true })} ltr />
             )}
             {metrics.currentPrice === null && metrics.isMarketLinked && (
               <Info label={labels.currentPrice || t('invest_detail_current_price')} value={labels.currentPriceUnavailable || unavailable} />
@@ -140,8 +145,8 @@ export function InvestmentDetailDrawer({
             {investment.type === 'silver' && typeof investment.metalPurity === 'number' && <Info label={t('invest_detail_purity')} value={formatPreciseNumber(investment.metalPurity, lang)} ltr />}
             {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.grams === 'number' && <Info label={t('invest_detail_weight_grams')} value={`${formatPreciseNumber(investment.grams, lang)} g`} ltr />}
             {(investment.type === 'gold' || investment.type === 'silver') && typeof investment.pureMetalGrams === 'number' && <Info label={t('invest_detail_pure_metal')} value={`${formatPreciseNumber(investment.pureMetalGrams, lang)} g`} ltr />}
-            {metrics.totalInvested !== null && nativeCurrency && (
-              <Info label={labels.totalInvested || t('invest_detail_total_invested')} value={formatNativeMoney(metrics.totalInvested, nativeCurrency, investment)} ltr />
+            {metrics.totalInvested !== null && holdingCurrency && (
+              <Info label={labels.totalInvested || t('invest_detail_total_invested')} value={formatNativeMoney(metrics.totalInvested, holdingCurrency, investment)} ltr />
             )}
           </div>
         </section>
@@ -151,17 +156,17 @@ export function InvestmentDetailDrawer({
           <div className="invest-detail-grid">
             <Info
               label={labels.currentMarketValue || labels.currentValue}
-              value={metrics.currentValue !== null && nativeCurrency
-                ? formatNativeMoney(metrics.currentValue, nativeCurrency, investment)
+              value={metrics.currentValue !== null && holdingCurrency
+                ? formatNativeMoney(metrics.currentValue, holdingCurrency, investment)
                 : labels.currentPriceUnavailable || unavailable}
               ltr={metrics.currentValue !== null}
             />
-            {nativeValue !== null && nativeCurrency && <Info label={t('invest_detail_original_value')} value={formatNativeMoney(nativeValue, nativeCurrency, null)} ltr />}
+            {quoteValue !== null && quoteCurrency && holdingCurrency !== quoteCurrency && <Info label={labels.marketQuoteCurrency || t('invest_detail_original_value')} value={formatNativeMoney(quoteValue, quoteCurrency, null)} ltr />}
             {accountValue !== null && <Info label={t('invest_detail_account_value')} value={formatMoney(accountValue, 'valid')} />}
-            {metrics.profitLossAmount !== null && nativeCurrency && (
+            {metrics.profitLossAmount !== null && holdingCurrency && (
               <Info
                 label={labels.profitLoss || S('الربح / الخسارة', 'Profit / loss', 'Profit / perte', lang)}
-                value={`${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, nativeCurrency, investment)}`}
+                value={`${metrics.profitLossAmount > 0 ? '+' : ''}${formatNativeMoney(metrics.profitLossAmount, holdingCurrency, investment)}`}
                 tone={metrics.profitLossAmount > 0 ? 'gain' : metrics.profitLossAmount < 0 ? 'loss' : undefined}
                 ltr
               />
@@ -184,8 +189,10 @@ export function InvestmentDetailDrawer({
             {investment.purchasePlatformType && <Info label={t('invest_platform_type')} value={labels.platformTypeLabels?.[investment.purchasePlatformType] || investment.purchasePlatformType} />}
             {investment.purchasePlatformStatus === 'pending' && <Info label={t('invest_platform_detail_label')} value={labels.purchasePlatformPending || t('invest_platform_pending')} />}
             {(investment.priceSource || investment.dataSource) && <Info label={labels.dataSource || t('invest_detail_data_source')} value={investment.priceSource || investment.dataSource || ''} />}
-            {investment.fxRateToUserCurrency && nativeCurrency && investment.userCurrency && nativeCurrency !== investment.userCurrency && (
-              <Info label={t('invest_detail_exchange_rate')} value={`1 ${nativeCurrency} = ${formatNumber(investment.fxRateToUserCurrency, lang)} ${investment.userCurrency}`} ltr />
+            {metrics.conversionState === 'stale' && <Info label={labels.marketQuoteCurrency || 'FX'} value={labels.conversionStale || 'Using the last verified currency conversion'} />}
+            {metrics.conversionState === 'unavailable' && <Info label={labels.marketQuoteCurrency || 'FX'} value={labels.conversionUnavailable || 'Currency conversion is currently unavailable'} />}
+            {investment.fxRateToUserCurrency && quoteCurrency && investment.userCurrency && quoteCurrency !== investment.userCurrency && (
+              <Info label={t('invest_detail_exchange_rate')} value={`1 ${quoteCurrency} = ${formatNumber(investment.fxRateToUserCurrency, lang)} ${investment.userCurrency}`} ltr />
             )}
           </div>
         </section>

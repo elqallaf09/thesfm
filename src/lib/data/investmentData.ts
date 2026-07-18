@@ -1,9 +1,13 @@
-import { sumAmounts } from './financeData';
+import { holdingCurrencyFromRow, investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
 
 export const INVESTMENT_TABLE = 'investment_items';
 
-export function totalInvestments(rows: any[] = []) {
-  return sumAmounts(rows, ['converted_market_value', 'current_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+export function totalInvestments(rows: any[] = [], targetCurrency?: string | null) {
+  const target = targetCurrency
+    ?? rows.map(row => String(row?.user_currency ?? holdingCurrencyFromRow(row) ?? '').trim().toUpperCase()).find(Boolean)
+    ?? null;
+  if (!target) return 0;
+  return rows.reduce((sum, row) => sum + (investmentValueInCurrency(row, target)?.amount ?? 0), 0);
 }
 
 export function investmentSymbol(row: any) {
