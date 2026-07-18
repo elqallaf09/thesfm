@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { installOptionalStorageApiCompatibility } from './browser-api-compat';
+
 function screeningResult(classification = 'requires_review') {
   const source = {
     id: 'source-1',
@@ -97,6 +99,10 @@ async function mockSuccessfulResearch(page: import('@playwright/test').Page) {
 
 test.describe('Arabic Sharia screening and documented research page', () => {
   test.use({ viewport: { width: 393, height: 852 } });
+
+  test.beforeEach(async ({ page }) => {
+    await installOptionalStorageApiCompatibility(page);
+  });
 
   test('keeps stocks and news visible and embeds research without horizontal overflow', async ({ page }) => {
     test.setTimeout(90_000);

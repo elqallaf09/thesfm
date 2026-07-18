@@ -1,6 +1,8 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 
-const SUPABASE_ORIGIN = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://dashboard-fixture.supabase.co';
+const SUPABASE_ORIGIN = process.env.SUPABASE_PREVIEW_URL
+  ?? process.env.NEXT_PUBLIC_SUPABASE_URL
+  ?? 'https://dashboard-fixture.supabase.co';
 
 const session = {
   access_token: fixtureAccessToken(),
@@ -99,13 +101,24 @@ async function installDashboardFixture(page: Page, options: { empty?: boolean; f
 
 async function authenticateFixture(page: Page) {
   await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await allowDashboardFixtureThroughMiddleware(page);
   const loginInput = page.locator('input[type="email"], input[autocomplete="username"], input[name="email"], input[name="username"]').first();
   const passwordInput = page.locator('input[type="password"]').first();
   await expect(loginInput).toBeVisible();
   await loginInput.fill('dashboard-fixture@example.invalid');
   await passwordInput.fill('dashboard-safe-password');
   await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL((url) => url.pathname === '/dashboard', { timeout: 15_000 });
+  await expect(page).toHaveURL((url) => url.pathname === '/dashboard');
+  await expect(page.locator('[data-dashboard-executive="true"]')).toBeVisible();
+}
+
+async function allowDashboardFixtureThroughMiddleware(page: Page) {
+  await page.context().addCookies([{
+    name: 'sfm_guest',
+    value: 'true',
+    url: new URL(page.url()).origin,
+    sameSite: 'Lax',
+  }]);
 }
 
 async function fulfillJson(route: Route, body: unknown) {
@@ -188,6 +201,7 @@ test('populated executive overview renders verified data across locales, themes,
         window.localStorage.setItem('sfm_lang', locale);
         window.localStorage.setItem('the-sfm-theme', theme);
       }, { locale, theme });
+      await allowDashboardFixtureThroughMiddleware(page);
       await page.reload({ waitUntil: 'domcontentloaded' });
       await expect(page.locator('[data-dashboard-executive="true"]')).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');

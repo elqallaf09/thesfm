@@ -1,5 +1,7 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Request } from '@playwright/test';
 import type { Investment } from '@/types/investment';
+
+import { installOptionalStorageApiCompatibility } from './browser-api-compat';
 
 const sampleInvestments: Investment[] = [
   {
@@ -61,6 +63,7 @@ async function enterPremiumPortfolio(page: Page, width: number, options: Portfol
   const lang = options.lang ?? 'en';
   const theme = options.theme ?? 'dark';
   const investments = options.investments ?? sampleInvestments;
+  await installOptionalStorageApiCompatibility(page);
   await page.setViewportSize({ width, height: 900 });
   await page.context().addCookies([{ name: 'sfm_guest', value: 'true', url: baseURL, sameSite: 'Lax' }]);
   await page.addInitScript(({ investments: storedInvestments, lang: storedLang, theme: storedTheme }) => {
@@ -358,7 +361,10 @@ for (const scenario of [
       if (message.type() === 'error') problems.push(`console: ${message.text()}`);
     });
     page.on('pageerror', error => problems.push(`page: ${error.message}`));
-    page.on('requestfailed', request => problems.push(`request: ${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`));
+    page.on('requestfailed', request => {
+      if (isExpectedVercelAuxiliaryFailure(request)) return;
+      problems.push(`request: ${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`);
+    });
     page.on('response', response => {
       if (response.status() >= 500) problems.push(`response: ${response.status()} ${response.url()}`);
     });
@@ -397,6 +403,20 @@ for (const scenario of [
     await expect(page.locator('.invest-drawer')).toContainText(scenario.lang === 'ar' ? /KWD|د\.ك/ : /KWD/);
     expect(problems).toEqual([]);
   });
+}
+
+function isExpectedVercelAuxiliaryFailure(request: Request) {
+  const errorText = request.failure()?.errorText ?? '';
+  if (!/abort|cancel/i.test(errorText)) return false;
+
+  const expectedOrigin = new URL(baseURL).origin;
+  const requestUrl = new URL(request.url());
+  if (requestUrl.origin !== expectedOrigin || !requestUrl.hostname.endsWith('.vercel.app')) return false;
+
+  const method = request.method();
+  if (method === 'GET' && requestUrl.pathname === '/.well-known/vercel/jwe') return true;
+  if (method === 'OPTIONS' && requestUrl.pathname === '/') return true;
+  return method === 'HEAD' && requestUrl.pathname === '/invest';
 }
 
 test('sticky shell, single asset visual, verified zad logo, and dialog stacking survive scroll', async ({ page }, testInfo) => {

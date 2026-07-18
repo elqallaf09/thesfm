@@ -185,8 +185,15 @@ async function setLanguage(page: Page, lang: 'ar' | 'en') {
 }
 
 async function columnPositions(page: Page) {
-  return page.evaluate(() => ({
-    mainX: document.querySelector<HTMLElement>('.step-main')!.getBoundingClientRect().x,
-    progressX: document.querySelector<HTMLElement>('.step-side')!.getBoundingClientRect().x,
-  }));
+  const main = page.locator('.step-main');
+  const progress = page.locator('.step-side');
+  await expect(main).toBeVisible();
+  await expect(progress).toBeVisible();
+  const [mainBox, progressBox] = await Promise.all([main.boundingBox(), progress.boundingBox()]);
+  expect(mainBox).not.toBeNull();
+  expect(progressBox).not.toBeNull();
+  return {
+    mainX: mainBox!.x,
+    progressX: progressBox!.x,
+  };
 }
