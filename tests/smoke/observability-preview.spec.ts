@@ -30,6 +30,30 @@ test.use({
 test.describe('authenticated Preview release validation', () => {
   test.skip(!enabled, 'Preview-only request-to-row validation runs in the authenticated Preview job.');
 
+  test('Preview user is denied admin observability access while the admin is allowed', async ({ browser, page }) => {
+    const userAccess = await adminAccessProbe(page);
+    if (userAccess.me.status !== 200 || userAccess.me.isAdmin !== false) {
+      throw new Error('Preview user admin identity probe did not resolve as a normal user.');
+    }
+    if (userAccess.operations.status !== 403 || userAccess.operations.code !== 'FORBIDDEN') {
+      throw new Error('Preview user was not denied the admin observability route.');
+    }
+
+    const adminContext = await browser.newContext({ storageState: adminAuthStatePath });
+    try {
+      const adminPage = await adminContext.newPage();
+      const adminAccess = await adminAccessProbe(adminPage);
+      if (adminAccess.me.status !== 200 || adminAccess.me.isAdmin !== true || adminAccess.me.role !== 'admin') {
+        throw new Error('Preview admin identity probe did not resolve as the active admin fixture.');
+      }
+      if (adminAccess.operations.status !== 200 || adminAccess.operations.ok !== true) {
+        throw new Error('Preview admin could not access the required admin observability route.');
+      }
+    } finally {
+      await adminContext.close();
+    }
+  });
+
   test('authenticated browser request creates one isolated Preview observability row and cleans it up', async ({ page }) => {
   const previewOrigin = process.env.SUPABASE_PREVIEW_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -126,6 +150,26 @@ test.describe('authenticated Preview release validation', () => {
     if (validationError) throw validationError;
   });
 });
+
+async function adminAccessProbe(page: import('@playwright/test').Page) {
+  return page.evaluate(async () => {
+    const read = async (path: string) => {
+      const response = await fetch(path, { credentials: 'same-origin', cache: 'no-store' });
+      const value = await response.json().catch(() => null) as Record<string, unknown> | null;
+      return {
+        status: response.status,
+        ok: value?.ok === true,
+        code: typeof value?.code === 'string' ? value.code.slice(0, 80) : null,
+        isAdmin: typeof value?.isAdmin === 'boolean' ? value.isAdmin : null,
+        role: value?.role === 'admin' || value?.role === 'super_admin' ? value.role : null,
+      };
+    };
+    return {
+      me: await read('/api/admin/me'),
+      operations: await read('/api/admin/ops-center'),
+    };
+  });
+}
 
 async function readSession(path: string) {
   const state = JSON.parse(await fs.readFile(path, 'utf8')) as StorageState;

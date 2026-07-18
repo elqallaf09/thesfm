@@ -26,6 +26,8 @@ test.setTimeout(90_000);
 
 test('real user and admin sign-ins create reusable browser sessions', async ({ browser }) => {
   await fs.rm(authStateDir, { recursive: true, force: true });
+  expect(await fileExists(userAuthStatePath), 'Stale user storageState survived auth setup cleanup.').toBe(false);
+  expect(await fileExists(adminAuthStatePath), 'Stale admin storageState survived auth setup cleanup.').toBe(false);
   await fs.mkdir(authStateDir, { recursive: true });
 
   await createRoleState(
@@ -43,6 +45,10 @@ test('real user and admin sign-ins create reusable browser sessions', async ({ b
     adminAuthStatePath,
   );
 });
+
+async function fileExists(path: string) {
+  return fs.access(path).then(() => true).catch(() => false);
+}
 
 async function createRoleState(
   browser: Browser,

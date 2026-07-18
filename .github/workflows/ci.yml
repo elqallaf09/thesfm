@@ -383,6 +383,9 @@ jobs:
 
       - run: pnpm exec playwright install --with-deps chromium webkit
 
+      - name: Provision isolated Preview auth fixtures
+        run: node tests/smoke/preview-auth-fixtures.mjs provision
+
       - name: Validate authenticated request-to-row observability and isolation
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
@@ -397,3 +400,7 @@ jobs:
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
         run: pnpm exec playwright test --config=playwright.preview.config.ts
+
+      - name: Cleanup isolated Preview auth fixtures
+        if: always()
+        run: node tests/smoke/preview-auth-fixtures.mjs cleanup
