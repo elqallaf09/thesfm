@@ -9,7 +9,8 @@ const symbolSchema = z.string()
   .trim()
   .min(1)
   .max(32)
-  .regex(/^[A-Za-z0-9.^=:_/-]+$/, 'invalid_symbol');
+  .regex(/^[A-Za-z0-9.^=:_/-]+$/, 'invalid_symbol')
+  .refine(value => !value.includes('://') && !value.includes('//'), 'invalid_symbol');
 
 export const analyzeIntelligenceInputSchema = z.object({
   asset: z.object({
@@ -32,4 +33,5 @@ export const latestIntelligenceQuerySchema = z.object({
   symbol: symbolSchema,
   assetType: z.enum(INTELLIGENCE_ASSET_TYPES),
   horizon: z.enum(INTELLIGENCE_HORIZONS).default('SWING'),
+  locale: z.enum(['ar', 'en', 'fr']).default('ar'),
 }).strict();
