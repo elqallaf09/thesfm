@@ -20,7 +20,7 @@ import {
 import type { Investment, InvestmentInput } from '@/types/investment';
 
 const readSource = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
-const migration = readSource('supabase/migrations/20260715070314_investment_platform_directory_tracking.sql');
+const migration = readSource('supabase/migrations/20260715062013_investment_platform_directory_tracking.sql');
 const selector = readSource('src/components/invest/InvestmentPlatformSelector.tsx');
 const row = readSource('src/components/invest/InvestmentRow.tsx');
 const drawer = readSource('src/components/invest/InvestmentDetailDrawer.tsx');

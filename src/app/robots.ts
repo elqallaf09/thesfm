@@ -40,7 +40,6 @@ const privateRoutes = [
   '/investment-offers',
   '/market-alerts',
   '/market-analysis',
-  '/market-agent',
   '/market-watchlist',
   '/watchlist',
   '/employees',
@@ -49,7 +48,7 @@ const privateRoutes = [
   '/invoices',
   '/suppliers',
   '/operating-expenses',
-  '/education/investments',
+  '/education',
   '/services',
   '/settings',
   '/security',
@@ -57,8 +56,6 @@ const privateRoutes = [
   '/sfm-admin-control',
   '/thesfm-trader-own',
   '/wakeel',
-  '/company-listing',
-  '/investor',
   '/zoer_proxy',
 ];
 

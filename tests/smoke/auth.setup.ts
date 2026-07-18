@@ -8,6 +8,7 @@ import {
   type Response as PlaywrightResponse,
 } from '@playwright/test';
 import { adminAuthStatePath, authStateDir, userAuthStatePath } from './auth-state';
+import { previewProtectionStatePath } from './preview-protection-state';
 
 const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
 const baseURL = process.env.E2E_BASE_URL
@@ -64,6 +65,7 @@ async function createRoleState(
   const context = await browser.newContext({
     baseURL,
     ignoreHTTPSErrors: httpsLoopback,
+    ...(process.env.E2E_BASE_URL ? { storageState: previewProtectionStatePath } : {}),
   });
   try {
     const page = await context.newPage();

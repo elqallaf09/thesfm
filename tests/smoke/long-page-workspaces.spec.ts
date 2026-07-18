@@ -142,11 +142,7 @@ test.describe('long-page workspaces', () => {
   });
 
   test('cross-route navigation hydrates the destination once and reuses its cache', async ({ page }) => {
-    // This scenario validates three history transitions and the complete
-    // dashboard hydration fan-out. Hosted WebKit can be substantially slower
-    // under the full smoke-suite load, so keep the assertions strict while
-    // allowing the same budget as the other long-running terminal scenarios.
-    test.setTimeout(120_000);
+    test.setTimeout(60_000);
     const requests: string[] = [];
     await configureTerminal(page, 'en', 'light');
     await page.route('**/api/**', async route => {
@@ -189,11 +185,7 @@ test.describe('long-page workspaces', () => {
     const hydratedCounts = [...requests];
     await page.goBack();
     await expect(page.locator('[data-workspace-tablist="calendar"]')).toBeVisible();
-    // Mobile WebKit can keep Playwright's actionability click waiting on the
-    // history navigation even after the link's handler has fired. Dispatch a
-    // real DOM click, then let the destination assertion prove navigation.
-    await page.locator('[data-route="dashboard"][href$="/dashboard"]:visible').first()
-      .evaluate((link: HTMLElement) => link.click());
+    await dashboardLink.click();
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect.poll(() => requests.length).toBe(hydratedCounts.length);
     expect(requests).toEqual(hydratedCounts);
