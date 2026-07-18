@@ -1,3 +1,5 @@
+import { holdingCurrencyFromRow, investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
+
 export type SfmDataKey =
   | 'profiles'
   | 'income'
@@ -327,7 +329,19 @@ export function buildFinanceOverview(records: Partial<SfmRecords>) {
   const incomeTotal = sumAmounts(personalIncome, ['amount']);
   const expenseTotal = sumAmounts(personalExpenses, ['amount']);
   const savingsTotal = sumAmounts(records.savings ?? [], ['amount', 'current_value']);
-  const investmentTotal = sumAmounts(records.investments ?? [], ['converted_market_value', 'current_value', 'amount', 'current_market_value', 'native_market_value', 'invested_amount', 'initial_value', 'purchase_price', 'value']);
+  const investmentRows = records.investments ?? [];
+  const profile = records.profiles?.[0];
+  const investmentCurrency = String(
+    profile?.preferred_currency
+    ?? profile?.default_currency
+    ?? profile?.currency
+    ?? investmentRows[0]?.user_currency
+    ?? holdingCurrencyFromRow(investmentRows[0] ?? {})
+    ?? '',
+  ).trim().toUpperCase();
+  const investmentTotal = investmentCurrency
+    ? investmentRows.reduce((sum, row) => sum + (investmentValueInCurrency(row, investmentCurrency)?.amount ?? 0), 0)
+    : 0;
   const debts = records.debts ?? [];
   const activeDebts = debts.filter(row => {
     const status = String(row?.status ?? 'active').trim().toLowerCase();

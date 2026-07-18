@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 test.setTimeout(60_000);
 
+const baseURL = process.env.E2E_BASE_URL || (process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1' ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3000');
+
 const DIRECTORY_RESPONSE = {
   ok: true,
   page: 1,
@@ -13,12 +15,17 @@ const DIRECTORY_RESPONSE = {
   ],
 };
 
+async function primeGuestInvestments(page: Page, lang: 'en' | 'ar') {
+  await page.context().addCookies([{ name: 'sfm_guest', value: 'true', url: baseURL, sameSite: 'Lax' }]);
+  await page.addInitScript(nextLang => {
+    window.localStorage.setItem('sfm_lang', nextLang);
+    window.localStorage.setItem('sfm_guest_mode', 'true');
+  }, lang);
+}
+
 async function enterGuestInvestments(page: Page) {
-  await page.addInitScript(() => window.localStorage.setItem('sfm_lang', 'en'));
+  await primeGuestInvestments(page, 'en');
   await page.route('**/api/investment-platforms?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DIRECTORY_RESPONSE) }));
-  await page.goto('/login?mode=register', { waitUntil: 'domcontentloaded' });
-  await page.locator('button.guest-btn').click();
-  await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
   await page.goto('/invest', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main.invest-main')).toBeVisible();
 }
@@ -94,14 +101,11 @@ const VISUAL_DIRECTORY = {
 };
 
 async function openPlatformDirectory(page: Page, lang: 'en' | 'ar') {
-  await page.addInitScript(l => window.localStorage.setItem('sfm_lang', l), lang);
+  await primeGuestInvestments(page, lang);
   // Verified logo hosts return a real pixel; the resolver output is what we test.
   await page.route('**google.com/s2/favicons**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
   await page.route('**cdn.simpleicons.org/**', route => route.fulfill({ status: 200, contentType: 'image/png', body: PIXEL }));
   await page.route('**/api/investment-platforms?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VISUAL_DIRECTORY) }));
-  await page.goto('/login?mode=register', { waitUntil: 'domcontentloaded' });
-  await page.locator('button.guest-btn').click();
-  await page.waitForURL(/\/dashboard(?:\?|$)/, { timeout: 15_000 });
   await page.goto('/invest', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main.invest-main')).toBeVisible();
   // Language-independent selectors: the add trigger and platform combobox are
