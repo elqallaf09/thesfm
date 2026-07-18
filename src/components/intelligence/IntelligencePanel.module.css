@@ -1,10 +1,10 @@
 .panel {
   border: 1px solid var(--border);
   border-inline-start: 3px solid var(--accent);
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   background: var(--surface-elevated);
   color: var(--foreground);
-  box-shadow: 0 10px 28px -24px color-mix(in srgb, var(--shadow-color) 44%, transparent);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -28,7 +28,7 @@
 
 .identity { gap: 12px; min-width: 0; }
 .title { display: grid; gap: 3px; min-width: 0; }
-.title > span { display: flex; align-items: center; gap: 7px; color: var(--accent); font-weight: 800; }
+.title > span { display: flex; align-items: center; gap: 7px; color: var(--accent); font-weight: 700; }
 .title small { color: var(--foreground-muted); }
 
 .recommendation {
@@ -37,7 +37,7 @@
   min-width: 112px;
   padding: 8px 12px;
   border: 1px solid currentColor;
-  border-radius: 12px;
+  border-radius: var(--radius-control);
   background: var(--surface-secondary);
 }
 .recommendation small { opacity: .76; }
@@ -56,7 +56,7 @@
 .contextLine span + span::before { content: '·'; margin-inline-end: 8px; }
 
 .alerts { display: grid; gap: 6px; padding: 0 18px; }
-.alerts p { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 10px; font-size: .84rem; }
+.alerts p { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: var(--radius-control); font-size: .84rem; }
 .alerts svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 1px; }
 .warning { color: var(--warning); background: var(--warning-soft); }
 .info { color: var(--info); background: var(--info-soft); }
@@ -78,7 +78,7 @@
 .sectionHeading h3 { margin: 0; font-size: .95rem; }
 .sectionHeading span { color: var(--foreground-muted); font-size: .75rem; }
 .factorGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
-.factor { border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; background: var(--surface-secondary); min-width: 0; }
+.factor { border: 1px solid var(--border); border-radius: var(--radius-control); padding: 9px 10px; background: var(--surface-secondary); min-width: 0; }
 .factor > div { justify-content: space-between; gap: 7px; }
 .factor strong { font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .factor span,
@@ -87,7 +87,7 @@
 .factorScore b { color: var(--accent); font-size: .86rem; }
 
 .details { border-top: 1px solid var(--divider); }
-.details summary { justify-content: space-between; gap: 12px; padding: 12px 18px; cursor: pointer; color: var(--foreground-secondary); font-weight: 750; list-style: none; }
+.details summary { justify-content: space-between; gap: 12px; padding: 12px 18px; cursor: pointer; color: var(--foreground-secondary); font-weight: 700; list-style: none; }
 .details summary::-webkit-details-marker { display: none; }
 .details summary svg { width: 17px; transition: transform .18s ease; }
 .details[open] summary svg { transform: rotate(180deg); }
@@ -100,7 +100,7 @@
 .detailsBody ul { margin: 0; color: var(--foreground-muted); font-size: .78rem; line-height: 1.65; }
 .detailsBody ul { padding-inline-start: 18px; }
 .evidenceColumns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.evidenceColumns section { padding: 11px 12px; border-radius: 10px; background: var(--surface-secondary); }
+.evidenceColumns section { padding: 11px 12px; border-radius: var(--radius-control); background: var(--surface-secondary); }
 .evidenceColumns ul { list-style: none; padding: 0; display: grid; gap: 5px; }
 .evidenceColumns li { display: flex; justify-content: space-between; gap: 12px; }
 .evidenceColumns strong { color: var(--foreground); }
@@ -109,7 +109,7 @@
 
 .state { justify-content: center; flex-wrap: wrap; gap: 10px; min-height: 84px; padding: 18px; color: var(--foreground-secondary); }
 .state > svg { color: var(--accent); }
-.state button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 9px; padding: 7px 10px; background: var(--surface); color: var(--foreground); cursor: pointer; }
+.state button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 10px; background: var(--surface); color: var(--foreground); cursor: pointer; }
 .state button svg { width: 15px; }
 
 @media (max-width: 980px) {
