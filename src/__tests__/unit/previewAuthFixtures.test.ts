@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const readSource = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 const fixture = readSource('tests/smoke/preview-auth-fixtures.mjs');
 const workflow = readSource('.github/workflows/ci.yml');
+const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-preview:'));
 
 describe('Preview-only authentication fixtures', () => {
   it('hard-pins every fixture mutation to the isolated Preview project', () => {
@@ -25,6 +26,12 @@ describe('Preview-only authentication fixtures', () => {
     }
     expect(fixture).not.toMatch(/console\.(?:log|info|warn|error)\([^\n]*(?:email|password)/i);
     expect(workflow).not.toMatch(/preview-auth-fixtures\.mjs\s+(?:provision|cleanup)\s+--/);
+    expect(authenticatedPreviewJob).toContain(
+      'SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY }}',
+    );
+    expect(authenticatedPreviewJob).not.toContain(
+      'SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}',
+    );
   });
 
   it('is idempotent, refuses real users, validates JWTs, and removes synthetic resources', () => {

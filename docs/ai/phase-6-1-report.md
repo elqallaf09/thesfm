@@ -75,6 +75,7 @@ The same Playwright specification is configured for desktop Chromium, mobile Chr
 Resolved:
 
 - browser Supabase configuration prefers an independently rotatable publishable key while preserving generated legacy consumers through a compatibility adapter;
+- authenticated Preview CI uses a dedicated encrypted branch credential instead of the Production-scoped shared service credential;
 - client-supplied user IDs and provider preferences are rejected;
 - URL-shaped symbols are rejected before resolution;
 - provider secrets and raw errors never enter API results;
