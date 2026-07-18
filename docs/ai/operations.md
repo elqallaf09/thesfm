@@ -98,6 +98,8 @@ Operational rollback requires rolling back the application first, exporting any 
 ## Security checklist
 
 - Provider credentials remain in server-only environment variables.
+- Browser-safe Supabase configuration prefers `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the legacy anon variable is a compatibility fallback only.
+- Preview automation and server persistence use an independently rotatable modern Supabase secret key under the existing server-only credential contract.
 - Body validation rejects user IDs, provider preferences, unknown fields, URLs, and unsupported asset types.
 - Body size is limited to 16 KiB.
 - Force refresh requires an authenticated server session.
