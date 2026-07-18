@@ -30,7 +30,6 @@ import {
   findSelectedNavigationItemId,
   getExpandableNavigationItemState,
   getNavigationGroupDisclosureState,
-  navigationGroupContainsId,
 } from '@/lib/navigation/workspaceNavigationState';
 
 export const NAV_ITEMS = flattenNavigationItems();
@@ -80,7 +79,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
     .filter(group => group.defaultOpen)
     .map(group => group.id));
   const [openItemIds, setOpenItemIds] = useState<string[]>([]);
-  const [openGlobalGroupIds, setOpenGlobalGroupIds] = useState<string[]>(['account']);
+  const [openGlobalGroupIds, setOpenGlobalGroupIds] = useState<string[]>([]);
   const [supportOpen, setSupportOpen] = useState(false);
   const previousLang = useRef(lang);
   const layerRef = useRef<HTMLDivElement | null>(null);
@@ -132,12 +131,6 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
   useEffect(() => {
     if (!open) return;
     setOpenItemIds(current => Array.from(new Set([...current, ...activeParentItemIds])));
-    const activeGlobalGroup = globalGroups.find(group => navigationGroupContainsId(group, selectedItemId));
-    if (activeGlobalGroup) {
-      setOpenGlobalGroupIds(current => current.includes(activeGlobalGroup.id)
-        ? current
-        : [...current, activeGlobalGroup.id]);
-    }
     if (activeSupport) setSupportOpen(true);
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -146,7 +139,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
       document.body.style.overflow = original;
       document.body.classList.remove('sfm-mobile-lock');
     };
-  }, [activeParentItemIds, activeSupport, globalGroups, open, selectedItemId]);
+  }, [activeParentItemIds, activeSupport, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -530,7 +523,12 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
             );
             const items = (
               <ul className="sfm-mobile-group-items">
-                {group.items.map(item => renderMobileItem(item, groupId))}
+                {group.items.flatMap(item => item.sectionLabelKey ? [
+                  <li key={`${item.id}-section`} className="sfm-mobile-subgroup-label" role="presentation">
+                    <span>{t(item.sectionLabelKey)}</span>
+                  </li>,
+                  renderMobileItem(item, groupId),
+                ] : [renderMobileItem(item, groupId)])}
               </ul>
             );
             return (
@@ -702,6 +700,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
         .sfm-mobile-group-toggle[aria-expanded="true"],.sfm-mobile-global-toggle.expanded{background:var(--sidebar-item-bg);color:var(--sidebar-item-text);border-color:var(--sidebar-item-border)}
         .sfm-mobile-group-toggle:active,.sfm-mobile-global-toggle:active{transform:scale(.99)}
         .sfm-mobile-group-items,.sfm-mobile-subitems{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+        .sfm-mobile-subgroup-label{margin:6px 0 0;padding:3px 8px 0;color:var(--sidebar-section-label);font-size:var(--type-caption-size);font-weight:var(--type-caption-weight);line-height:var(--type-caption-leading);opacity:.82;overflow-wrap:anywhere}
+        .sfm-mobile-group-items>.sfm-mobile-subgroup-label:first-child{margin-top:0}
         .sfm-mobile-group-items li,.sfm-mobile-subitems li{min-width:0;list-style:none}
         .sfm-mobile-nav-item,.sfm-mobile-parent-item,.sfm-mobile-subitem,.sfm-mobile-support-link{position:relative;width:100%;min-width:0;min-height:44px;display:flex;align-items:center;gap:8px;padding:5px 7px;border:1px solid var(--sidebar-item-border);border-radius:var(--radius-control);background:var(--sidebar-item-bg);color:var(--sidebar-item-text);box-shadow:var(--sidebar-item-shadow);text-align:start;text-decoration:none;font:var(--type-navigation-weight) var(--type-navigation-size)/var(--type-navigation-leading) var(--font-ui);cursor:pointer;transition:background-color var(--duration-fast) var(--ease),color var(--duration-fast) var(--ease),border-color var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease),transform var(--duration-fast) var(--ease)}
         .sfm-mobile-nav-item:hover,.sfm-mobile-parent-item:hover,.sfm-mobile-subitem:hover,.sfm-mobile-support-link:hover{background:var(--sidebar-item-bg-hover);border-color:var(--sidebar-item-border-hover);color:var(--sidebar-item-text);box-shadow:var(--sidebar-item-shadow-hover);transform:translateY(var(--sidebar-item-hover-lift))}

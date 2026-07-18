@@ -59,7 +59,6 @@ describe('Phase 3.3 workspace-navigation architecture', () => {
     expect(markets.map(group => group.id)).toEqual([
       'investment-market',
       'market-news',
-      'stock-categories',
       'trader-trading',
       'trader-follow',
       'trader-more',
@@ -97,19 +96,25 @@ describe('Phase 3.3 workspace-navigation architecture', () => {
 });
 
 describe('Phase 3.3 Markets grouping and disclosure', () => {
-  it('groups News and Stock Categories with complete trilingual labels', () => {
+  it('unifies news and stock categories under one group with labeled subsections and complete trilingual labels', () => {
     expect(TR_NAV.nav_group_market_news).toEqual({
       ar: 'أخبار الأسواق',
       en: 'Market News',
       fr: 'Actualités des marchés',
     });
-    expect(TR_NAV.nav_group_stock_categories).toEqual({
-      ar: 'فئات الأسهم',
-      en: 'Stock Categories',
-      fr: 'Catégories d’actions',
+    expect(TR_NAV.nav_subgroup_regional_markets).toEqual({
+      ar: 'الأسواق والمناطق',
+      en: 'Regional & Market',
+      fr: 'Régional et marché',
     });
-    expect(NAV_GROUPS.find(group => group.id === 'market-news')?.items).toHaveLength(4);
-    expect(NAV_GROUPS.find(group => group.id === 'stock-categories')?.items).toHaveLength(7);
+    expect(TR_NAV.nav_subgroup_sector_strategy).toEqual({
+      ar: 'القطاعات والاستراتيجيات',
+      en: 'Sector & Strategy',
+      fr: 'Secteur et stratégie',
+    });
+    expect(TR_NAV.nav_group_stock_categories).toBeUndefined();
+    expect(NAV_GROUPS.find(group => group.id === 'market-news')?.items).toHaveLength(11);
+    expect(NAV_GROUPS.some(group => group.id === 'stock-categories')).toBe(false);
   });
 
   it('uses accessible two-level disclosures and always reveals an active child', () => {

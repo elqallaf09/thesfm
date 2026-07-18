@@ -36,7 +36,6 @@ import {
   findSelectedNavigationItemId,
   getExpandableNavigationItemState,
   getNavigationGroupDisclosureState,
-  navigationGroupContainsId,
 } from '@/lib/navigation/workspaceNavigationState';
 
 const SIDEBAR_COPY = {
@@ -91,7 +90,7 @@ export function Sidebar() {
   const [openItemIds, setOpenItemIds] = useState<string[]>([]);
   const [openGroupIds, setOpenGroupIds] = useState<string[]>(() =>
     NAV_GROUPS.filter(group => group.collapsible && group.defaultOpen).map(group => group.id));
-  const [openGlobalGroupIds, setOpenGlobalGroupIds] = useState<string[]>(['account']);
+  const [openGlobalGroupIds, setOpenGlobalGroupIds] = useState<string[]>([]);
   const [supportOpen, setSupportOpen] = useState(false);
   const previousSidebarWidth = useRef<string | null>(null);
   const navigationScrollRef = useRef<HTMLDivElement | null>(null);
@@ -128,14 +127,6 @@ export function Sidebar() {
     if (!activeParents.length) return;
     setOpenItemIds(current => Array.from(new Set([...current, ...activeParents])));
   }, [navGroups, selectedItemId]);
-
-  useEffect(() => {
-    const activeGlobalGroup = globalGroups.find(group => navigationGroupContainsId(group, selectedItemId));
-    if (!activeGlobalGroup) return;
-    setOpenGlobalGroupIds(current => current.includes(activeGlobalGroup.id)
-      ? current
-      : [...current, activeGlobalGroup.id]);
-  }, [globalGroups, selectedItemId]);
 
   useEffect(() => {
     if (activeSupport) setSupportOpen(true);
@@ -387,6 +378,8 @@ export function Sidebar() {
           .sfm-shared-group-toggle:focus-visible{outline:2px solid var(--focus-ring);outline-offset:1px;box-shadow:var(--focus-shadow)}
           .sfm-shared-group-toggle span{min-width:0;flex:1}
           .sfm-shared-group-items,.sfm-shared-subitems{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+          .sfm-shared-subgroup-label{margin:6px 0 0;padding:0 8px;color:var(--sidebar-section-label);font-size:var(--type-caption-size);font-weight:var(--type-caption-weight);line-height:var(--type-caption-leading);opacity:.82;overflow-wrap:anywhere}
+          .sfm-shared-group-items>.sfm-shared-subgroup-label:first-child{margin-top:0}
           .sfm-shared-item-wrap{min-width:0;list-style:none}
           .sfm-shared-item,.sfm-shared-subitem,.sfm-shared-support-item{position:relative;width:100%;min-width:0;min-height:var(--control-h);display:flex;align-items:center;gap:8px;border:1px solid var(--sidebar-item-border);border-radius:var(--radius-control);background:var(--sidebar-item-bg);color:var(--sidebar-item-text);box-shadow:var(--sidebar-item-shadow);text-align:start;text-decoration:none;font:var(--type-navigation-weight) var(--type-navigation-size)/var(--type-navigation-leading) var(--font-ui);cursor:pointer;padding:6px 8px;transition:background-color var(--duration-fast) var(--ease),color var(--duration-fast) var(--ease),border-color var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease),transform var(--duration-fast) var(--ease)}
           .sfm-shared-item:hover,.sfm-shared-subitem:hover,.sfm-shared-support-item:hover{background:var(--sidebar-item-bg-hover);color:var(--sidebar-item-text);border-color:var(--sidebar-item-border-hover);box-shadow:var(--sidebar-item-shadow-hover);transform:translateY(var(--sidebar-item-hover-lift))}
@@ -436,6 +429,7 @@ export function Sidebar() {
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-group+.sfm-shared-group{border-top:1px solid var(--sidebar-divider)}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-group-label,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-group-toggle{height:1px;min-height:1px;margin:2px 6px;padding:0;background:var(--sidebar-divider);overflow:hidden;color:transparent;pointer-events:none}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-group-label::before,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-group-toggle::before,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-group-toggle>*{display:none}
+          .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-subgroup-label{display:none}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-label,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-subitem-label,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-support-label,.sfm-shared-sidebar[data-collapsed="true"] .sfm-nested-chevron{display:none}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-item,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-subitem,.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-support-item{width:44px;height:44px;min-height:44px;justify-content:center;margin-inline:auto;padding:0}
           .sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-subitems{padding:0;margin-block:2px;border-inline-start:0}
@@ -523,7 +517,12 @@ export function Sidebar() {
                   >
                     <div>
                       <ul className="sfm-shared-group-items" id={groupId}>
-                        {group.items.map(item => renderNavigationItem(item, group.id))}
+                        {group.items.flatMap(item => item.sectionLabelKey ? [
+                          <li key={`${item.id}-section`} className="sfm-shared-subgroup-label" role="presentation">
+                            <span>{t(item.sectionLabelKey)}</span>
+                          </li>,
+                          renderNavigationItem(item, group.id),
+                        ] : [renderNavigationItem(item, group.id)])}
                       </ul>
                     </div>
                   </div>

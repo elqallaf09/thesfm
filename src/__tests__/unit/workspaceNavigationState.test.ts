@@ -60,10 +60,10 @@ describe('workspace navigation selection state', () => {
     });
   });
 
-  it('keeps market-news and stock categories distinct and collapsible', () => {
+  it('unifies market news and stock categories into one collapsible group with labeled subsections', () => {
     const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
-    const stockCategories = NAV_GROUPS.find(group => group.id === 'stock-categories');
 
+    expect(NAV_GROUPS.some(group => group.id === 'stock-categories')).toBe(false);
     expect(NAV_GROUPS.some(group => group.id === 'stock-news')).toBe(false);
     expect(marketNews).toMatchObject({
       labelKey: 'nav_group_market_news',
@@ -75,13 +75,6 @@ describe('workspace navigation selection state', () => {
       'europe-news',
       'gulf-news',
       'crypto-news',
-    ]);
-    expect(stockCategories).toMatchObject({
-      labelKey: 'nav_group_stock_categories',
-      collapsible: true,
-      defaultOpen: false,
-    });
-    expect(stockCategories?.items.map(item => item.id)).toEqual([
       'energy-stocks',
       'banking-stocks',
       'sharia-stocks',
@@ -90,27 +83,31 @@ describe('workspace navigation selection state', () => {
       'cyclical-stocks',
       'dividend-stocks',
     ]);
+    expect(marketNews?.items.find(item => item.id === 'tech-news')?.sectionLabelKey)
+      .toBe('nav_subgroup_regional_markets');
+    expect(marketNews?.items.find(item => item.id === 'energy-stocks')?.sectionLabelKey)
+      .toBe('nav_subgroup_sector_strategy');
+    expect(marketNews?.items.filter(item => item.sectionLabelKey)).toHaveLength(2);
   });
 
   it('automatically reveals a collapsed group containing the active page', () => {
     const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
-    const stockCategories = NAV_GROUPS.find(group => group.id === 'stock-categories');
 
     expect(getNavigationGroupDisclosureState(marketNews!, 'tech-news')).toEqual({
       active: true,
       expanded: true,
     });
-    expect(getNavigationGroupDisclosureState(stockCategories!, 'energy-stocks', false)).toEqual({
+    expect(getNavigationGroupDisclosureState(marketNews!, 'energy-stocks', false)).toEqual({
       active: true,
       expanded: true,
     });
-    expect(getNavigationGroupDisclosureState(stockCategories!, null)).toEqual({
-      active: false,
-      expanded: false,
-    });
-    expect(getNavigationGroupDisclosureState(stockCategories!, null, true)).toEqual({
+    expect(getNavigationGroupDisclosureState(marketNews!, null)).toEqual({
       active: false,
       expanded: true,
+    });
+    expect(getNavigationGroupDisclosureState(marketNews!, null, false)).toEqual({
+      active: false,
+      expanded: false,
     });
   });
 });

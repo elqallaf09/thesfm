@@ -70,6 +70,12 @@ export type NavigationItem = {
   adminOnly?: boolean;
   adminPermission?: AdminPermission;
   superAdminOnly?: boolean;
+  /**
+   * Marks this item as the first entry of a labeled subsection within its
+   * group's flat item list. Rendered as a lightweight, non-interactive
+   * divider immediately before the item.
+   */
+  sectionLabelKey?: TranslationKey;
 };
 
 export type NavigationGroup = {
@@ -155,19 +161,11 @@ export const NAV_GROUPS: NavigationGroup[] = [
     collapsible: true,
     defaultOpen: true,
     items: [
-      { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news' },
+      { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news', sectionLabelKey: 'nav_subgroup_regional_markets' },
       { id: 'europe-news', icon: Newspaper, href: '/europe-news', labelKey: 'nav_europe_news' },
       { id: 'gulf-news', icon: Newspaper, href: '/gulf-news', labelKey: 'nav_gulf_news' },
       { id: 'crypto-news', icon: CircleDollarSign, href: '/crypto-news', labelKey: 'nav_crypto_news' },
-    ],
-  },
-  {
-    id: 'stock-categories',
-    labelKey: 'nav_group_stock_categories',
-    collapsible: true,
-    defaultOpen: false,
-    items: [
-      { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks' },
+      { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks', sectionLabelKey: 'nav_subgroup_sector_strategy' },
       { id: 'banking-stocks', icon: Landmark, href: '/banking-stocks', labelKey: 'nav_banking_stocks' },
       { id: 'sharia-stocks', icon: ShieldCheck, href: '/sharia-stocks', labelKey: 'nav_sharia_stocks' },
       { id: 'growth-stocks', icon: TrendingUp, href: '/growth-stocks', labelKey: 'nav_growth_stocks' },
@@ -262,7 +260,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
   {
     id: 'account',
     labelKey: 'nav_group_account',
-    defaultOpen: true,
+    defaultOpen: false,
     items: [
       { id: 'profile', icon: CircleUser, href: '/profile', labelKey: 'nav_profile' },
       { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },

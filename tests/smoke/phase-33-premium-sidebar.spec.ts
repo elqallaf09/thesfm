@@ -30,7 +30,7 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test.describe('Phase 3.3 premium desktop sidebar', () => {
-  test('uses grouped route navigation, one active page, and an accessible collapsed rail', async ({ page, isMobile }) => {
+  test('uses one unified Market News group with labeled subsections, one active page, and an accessible collapsed rail', async ({ page, isMobile }) => {
     test.skip(isMobile, 'Desktop rail coverage runs in the desktop project.');
     await enterGuestDashboard(page);
 
@@ -46,18 +46,19 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     await expect(sidebar.locator('.sfm-workspace-navigation')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^(Basic View|Advanced View)$/i })).toHaveCount(0);
 
-    const newsToggle = sidebar.getByRole('button', { name: 'Market News' });
-    const categoriesToggle = sidebar.getByRole('button', { name: 'Stock Categories' });
-    await expect(newsToggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(categoriesToggle).toHaveAttribute('aria-expanded', 'false');
-    await categoriesToggle.click();
-    await expect(categoriesToggle).toHaveAttribute('aria-expanded', 'true');
+    // Single unified news section, no duplicated "Stock Categories" section.
+    await expect(sidebar.getByRole('button', { name: 'Stock Categories' })).toHaveCount(0);
+    const marketNewsToggle = sidebar.getByRole('button', { name: 'Market News' });
+    await expect(marketNewsToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(sidebar.getByText('Regional & Market', { exact: true })).toBeVisible();
+    await expect(sidebar.getByText('Sector & Strategy', { exact: true })).toBeVisible();
+    await expect(sidebar.getByRole('link', { name: 'Tech Market News' })).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'Energy News' })).toBeVisible();
 
     await page.goto('/dividend-stocks', { waitUntil: 'domcontentloaded' });
-    const deepCategoriesToggle = sidebar.getByRole('button', { name: 'Stock Categories' });
-    await expect(deepCategoriesToggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(deepCategoriesToggle).not.toHaveAttribute('aria-current', 'page');
+    const deepMarketNewsToggle = sidebar.getByRole('button', { name: 'Market News' });
+    await expect(deepMarketNewsToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(deepMarketNewsToggle).not.toHaveAttribute('aria-current', 'page');
     const deepActiveLink = sidebar.getByRole('link', { name: 'High Income Stocks News' });
     await expect(deepActiveLink).toHaveAttribute('aria-current', 'page');
     await expect.poll(() => deepActiveLink.evaluate(element => {
@@ -69,7 +70,7 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     })).toBe(true);
 
     const parentAndActiveStates = await Promise.all([
-      deepCategoriesToggle.evaluate(element => {
+      deepMarketNewsToggle.evaluate(element => {
         const style = getComputedStyle(element);
         return { background: style.backgroundColor, weight: Number.parseInt(style.fontWeight, 10) };
       }),
@@ -150,6 +151,93 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
   });
 });
 
+test.describe('Account section stays collapsed until explicitly opened', () => {
+  // /profile and /security require a real signed-in session (guests are
+  // redirected to /login), so a guest session can never make the account
+  // group's own routes "active". What the fix actually guarantees is that no
+  // route change of any kind re-expands it, which navigating across several
+  // unrelated guest-accessible routes below exercises directly.
+  test('desktop: collapsed on first render, route changes never re-expand it, click opens and a second click closes it, and it opens via keyboard', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Desktop account-disclosure coverage runs in the desktop project.');
+    await enterGuestDashboard(page);
+
+    const sidebar = page.locator('aside.sfm-shared-sidebar');
+    const accountToggle = sidebar.getByRole('button', { name: 'Account' });
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(sidebar.getByRole('link', { name: 'Profile' })).toHaveCount(0);
+
+    for (const route of ['/market-analysis', '/dividend-stocks', '/dashboard']) {
+      await page.goto(route, { waitUntil: 'domcontentloaded' });
+      await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(sidebar.getByRole('link', { name: 'Profile' })).toHaveCount(0);
+    }
+
+    await accountToggle.click();
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'true');
+    const profileLink = sidebar.getByRole('link', { name: 'Profile' });
+    await expect(profileLink).toBeVisible();
+    await expect(sidebar.getByRole('button', { name: 'Logout' })).toBeVisible();
+
+    await accountToggle.click();
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(profileLink).toHaveCount(0);
+
+    // Keyboard activation (Enter) opens it too.
+    await accountToggle.focus();
+    await page.keyboard.press('Enter');
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(sidebar.getByRole('link', { name: 'Profile' })).toBeVisible();
+  });
+
+  test('mobile: collapsed on first render, a route change never re-expands it, and click opens/closes it', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'Drawer account-disclosure coverage runs in mobile projects.');
+    await enterGuestDashboard(page);
+    await page.goto('/dividend-stocks', { waitUntil: 'domcontentloaded' });
+
+    const trigger = page.locator('.sfm-global-menu-button');
+    await trigger.click();
+    const drawer = page.locator('#sfm-mobile-menu');
+    await expect(drawer).toBeVisible({ timeout: 20_000 });
+
+    const utilities = drawer.locator('.sfm-mobile-utilities');
+    const accountToggle = utilities.getByRole('button', { name: 'Account' });
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(utilities.getByRole('link', { name: 'Profile' })).toHaveCount(0);
+
+    await accountToggle.click();
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'true');
+    const profileLink = utilities.getByRole('link', { name: 'Profile' });
+    await expect(profileLink).toBeVisible();
+    await expect(utilities.getByRole('button', { name: 'Logout' })).toBeVisible();
+
+    await accountToggle.click();
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(profileLink).toHaveCount(0);
+  });
+
+  test('starts collapsed in Arabic RTL just like English LTR', async ({ page, isMobile }) => {
+    await enterGuestDashboard(page);
+    await setLanguage(page, 'ar');
+    await page.goto('/dividend-stocks', { waitUntil: 'domcontentloaded' });
+
+    if (isMobile) {
+      const trigger = page.locator('.sfm-global-menu-button');
+      await trigger.click();
+      const drawer = page.locator('#sfm-mobile-menu');
+      await expect(drawer).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator('.sfm-mobile-layer')).toHaveAttribute('dir', 'rtl');
+      const accountToggle = drawer.locator('.sfm-mobile-utilities').getByRole('button', { name: 'الحساب' });
+      await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+      return;
+    }
+
+    const sidebar = page.locator('aside.sfm-shared-sidebar');
+    await expect(sidebar).toHaveAttribute('dir', 'rtl');
+    const accountToggle = sidebar.getByRole('button', { name: 'الحساب' });
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
 test.describe('Phase 3.3 premium mobile drawer', () => {
   test('traps and restores focus, locks the page, and exposes semantic navigation links', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'Drawer coverage runs in mobile projects.');
@@ -206,7 +294,7 @@ test.describe('Phase 3.3 premium mobile drawer', () => {
     await expectNoHorizontalOverflow(page);
   });
 
-  test('closes before command search and keeps account/support reachable on short screens', async ({ page, isMobile }) => {
+  test('closes before command search and keeps the collapsed account section reachable on short screens', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'Drawer coverage runs in mobile projects.');
     await page.setViewportSize({ width: 390, height: 620 });
     await enterGuestDashboard(page);
@@ -219,15 +307,21 @@ test.describe('Phase 3.3 premium mobile drawer', () => {
 
     const utilities = drawer.locator('.sfm-mobile-utilities');
     await expect(utilities).toBeVisible();
-    const stockCategories = drawer.locator('#sfm-mobile-group-stock-categories-heading');
-    await expect(stockCategories).toHaveAttribute('aria-expanded', 'true');
+    const marketNewsHeading = drawer.locator('#sfm-mobile-group-market-news-heading');
+    await expect(marketNewsHeading).toHaveAttribute('aria-expanded', 'true');
     await expect(drawer.getByRole('link', { name: 'High Income Stocks News' }))
       .toHaveAttribute('aria-current', 'page');
+
+    // Account stays collapsed until explicitly opened, and opening it does not
+    // push Logout out of reach.
     const accountToggle = utilities.getByRole('button', { name: 'Account' });
+    await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
+    await accountToggle.click();
     await expect(accountToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(utilities.getByRole('link', { name: 'Profile' })).toBeVisible();
     await expect(utilities.getByRole('link', { name: 'Security & Privacy' })).toBeVisible();
     await expect(utilities.getByRole('button', { name: 'Logout' })).toBeVisible();
+
     const supportToggle = utilities.getByRole('button', { name: 'Support' });
     await supportToggle.click();
     await expect(supportToggle).toHaveAttribute('aria-expanded', 'true');
@@ -266,7 +360,7 @@ test.describe('Phase 3.3 premium mobile drawer', () => {
     const drawer = page.locator('#sfm-mobile-menu');
     await expect(drawer).toBeVisible({ timeout: 20_000 });
     await expect.poll(() => drawer.evaluate(element => getComputedStyle(element).direction)).toBe('rtl');
-    await expect(drawer.locator('#sfm-mobile-group-stock-categories-heading'))
+    await expect(drawer.locator('#sfm-mobile-group-market-news-heading'))
       .toHaveAttribute('aria-expanded', 'true');
     await expect(drawer.locator('[aria-current="page"]')).toHaveCount(1);
 
