@@ -331,7 +331,7 @@ jobs:
                 per_page: 100,
               });
               const exact = deployments
-                .filter(deployment => deployment.sha === sha && deployment.environment === 'Preview')
+                .filter(deployment => deployment.sha === sha && deployment.ref === sha && deployment.environment === 'Preview')
                 .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
               for (const deployment of exact) {
                 const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
