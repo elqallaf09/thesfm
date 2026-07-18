@@ -121,7 +121,7 @@ interface Props {
   riskLabel: (risk: Investment['riskLevel']) => string;
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
   formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => string;
-  onDetails: (item: Investment) => void;
+  onDetails: (item: Investment, trigger: HTMLButtonElement) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
   onRefreshPrice?: (item: Investment) => void;
@@ -311,7 +311,7 @@ export const InvestmentRow = memo(function InvestmentRow({
         </div>
 
         <div className="invest-row-actions invest-holding-actions">
-          <button type="button" className="invest-card-action invest-card-action--primary" onClick={() => onDetails(investment)} aria-label={labels.details}>
+          <button type="button" className="invest-card-action invest-card-action--primary" onClick={event => onDetails(investment, event.currentTarget)} aria-label={labels.details}>
             <Eye size={16} aria-hidden="true" />
             <span>{labels.details}</span>
           </button>
@@ -438,6 +438,8 @@ export const InvestmentRow = memo(function InvestmentRow({
     </article>
   );
 });
+
+InvestmentRow.displayName = 'InvestmentRow';
 
 function quantityMetricLabel(investment: Investment, labels: InvestmentCardLabels) {
   if (investment.type === 'gold' || investment.type === 'silver') return labels.metalWeight || 'Weight in grams';

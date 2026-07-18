@@ -50,6 +50,7 @@ interface Props {
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
   formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => string;
   accountValue: number | null;
+  detailsReady?: boolean;
   onClose: () => void;
   onRefreshPrice?: (item: Investment) => void;
   refreshing?: boolean;
@@ -64,6 +65,7 @@ export function InvestmentDetailDrawer({
   formatMoney,
   formatNativeMoney,
   accountValue,
+  detailsReady = true,
   onClose,
   onRefreshPrice,
   refreshing = false,
@@ -104,6 +106,8 @@ export function InvestmentDetailDrawer({
           </button>
         )}
 
+        {detailsReady && (
+          <>
         <section className="invest-drawer-section" aria-label={S('نظرة عامة', 'Overview', 'Aperçu', lang)}>
           <h4>{S('نظرة عامة', 'Overview', 'Aperçu', lang)}</h4>
           <div className="invest-detail-grid">
@@ -214,6 +218,8 @@ export function InvestmentDetailDrawer({
             <Info label={labels.expectedReturn} value={investment.expectedAnnualReturn === undefined ? '-' : `${investment.expectedAnnualReturn}%`} />
           </div>
         </section>
+          </>
+        )}
       </aside>
     </div>
   );

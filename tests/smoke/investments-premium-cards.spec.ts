@@ -464,14 +464,17 @@ test('sticky shell, single asset visual, verified zad logo, and dialog stacking 
 
   // The details dialog backdrop must stack above the sticky header so the
   // dark overlay always covers chrome uniformly, never cards behind chrome.
-  await card.getByRole('button', { name: 'View details' }).click();
+  const detailsTrigger = card.getByRole('button', { name: 'View details' });
+  await detailsTrigger.click();
   const stacking = await page.evaluate(() => ({
     overlay: Number(getComputedStyle(document.querySelector('.invest-overlay')!).zIndex),
     header: Number(getComputedStyle(document.querySelector('.sfm-global-header')!).zIndex),
   }));
   expect(stacking.overlay).toBeGreaterThan(stacking.header);
-  await page.locator('.invest-drawer .invest-icon-btn').click();
+  await page.locator('.invest-drawer .invest-icon-btn').focus();
+  await page.locator('.invest-drawer .invest-icon-btn').press('Enter');
   await expect(page.locator('.invest-overlay')).toHaveCount(0);
+  await expect(detailsTrigger).toBeFocused();
 });
 
 const tsmAliasInvestments: Array<[label: string, symbol: string, name: string]> = [
