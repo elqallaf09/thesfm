@@ -6,6 +6,9 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
+  // Performance budgets must run without other browser projects competing for
+  // the same production server and CPU during a throttled interaction trace.
+  workers: 1,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report/performance', open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:3002',

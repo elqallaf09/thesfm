@@ -1,7 +1,7 @@
 'use client';
 
 import { RefreshCw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { Investment, InvestmentType } from '@/types/investment';
 import { InvestmentRow, type InvestmentCardLabels, type InvestmentPriceRefreshStatus } from './InvestmentRow';
 
@@ -31,7 +31,7 @@ interface Props {
   formatMoney: (amount: number | null | undefined, status?: Investment['displayValueStatus']) => string;
   formatNativeMoney: (amount: number | null | undefined, currency?: string | null, item?: Investment | null, options?: { unitPrice?: boolean }) => string;
   accountValue: (item: Investment) => number | null;
-  onDetails: (item: Investment) => void;
+  onDetails: (item: Investment, trigger: HTMLButtonElement) => void;
   onEdit: (item: Investment) => void;
   onDelete: (item: Investment) => void;
   onRefreshPrice?: (item: Investment) => void;
@@ -43,7 +43,7 @@ interface Props {
   platformLogos?: Record<string, string>;
 }
 
-export function InvestmentList({
+export const InvestmentList = memo(function InvestmentList({
   investments,
   labels,
   types,
@@ -164,7 +164,9 @@ export function InvestmentList({
       </div>
     </section>
   );
-}
+});
+
+InvestmentList.displayName = 'InvestmentList';
 
 function platformKey(item: Investment) {
   return item.purchasePlatformId || item.purchasePlatformName?.trim().toLocaleLowerCase('en-US') || '';

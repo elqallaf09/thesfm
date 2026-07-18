@@ -8,6 +8,7 @@ import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieC
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import type { InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
+import { InvestmentDetailsController, type InvestmentDetailsControllerHandle } from '@/components/invest/InvestmentDetailsController';
 import { EmptyState } from '@/components/invest/EmptyState';
 import type { MarketLinkEntry } from '@/components/invest/MarketLinkPanel';
 import { useAuth } from '@/hooks/useAuth';
@@ -51,11 +52,6 @@ const InvestPerformanceCharts = dynamic(() => import('@/components/invest/Invest
 
 const InvestmentFormModal = dynamic(
   () => import('@/components/invest/InvestmentFormModal').then(mod => mod.InvestmentFormModal),
-  { ssr: false },
-);
-
-const InvestmentDetailDrawer = dynamic(
-  () => import('@/components/invest/InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer),
   { ssr: false },
 );
 
@@ -259,7 +255,6 @@ export default function InvestPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState<'create' | 'edit'>('create');
   const [selected, setSelected] = useState<Investment | null>(null);
-  const [details, setDetails] = useState<Investment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Investment | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -284,6 +279,7 @@ export default function InvestPage() {
   const liveItemsRef = useRef<Investment[]>([]);
   const liveRefreshHandlerRef = useRef<((visibleItems: Investment[], options?: { silent?: boolean }) => Promise<void>) | null>(null);
   const lastPortfolioValueRef = useRef<number | null>(null);
+  const detailsControllerRef = useRef<InvestmentDetailsControllerHandle | null>(null);
   const L = useCallback((ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en, [lang]);
 
   const labels = useMemo(() => ({
@@ -782,12 +778,12 @@ export default function InvestPage() {
     return next;
   }, [accountValue, analysisReturn, canShowReturnProjection, items, money, projections, t, totalMonthly, totalValue, typeLabel, uniqueCategories]);
 
-  function showToast(message: string) {
+  const showToast = useCallback((message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(''), 2200);
-  }
+  }, []);
 
-  async function fetchFxRate(fromCurrency: string, toCurrency: string) {
+  const fetchFxRate = useCallback(async (fromCurrency: string, toCurrency: string) => {
     const from = fromCurrency.toUpperCase();
     const to = toCurrency.toUpperCase();
     if (from === to) {
@@ -818,21 +814,25 @@ export default function InvestPage() {
       lastUpdated: payload.lastUpdated || new Date().toISOString(),
       stale: Boolean(payload.stale),
     };
-  }
+  }, [L]);
 
-  function openCreate() {
+  const openCreate = useCallback(() => {
     setSelected(null);
     setMode('create');
     setModalOpen(true);
-  }
+  }, []);
 
-  function openEdit(item: Investment) {
+  const openEdit = useCallback((item: Investment) => {
     setSelected(item);
     setMode('edit');
     setModalOpen(true);
-  }
+  }, []);
 
-  async function handleSave(input: InvestmentInput, options?: { addAnother?: boolean }) {
+  const openDetails = useCallback((item: Investment, trigger: HTMLButtonElement) => {
+    detailsControllerRef.current?.open(item, trigger);
+  }, []);
+
+  const handleSave = useCallback(async (input: InvestmentInput, options?: { addAnother?: boolean }) => {
     setSaving(true);
     try {
       if (mode === 'create') {
@@ -851,9 +851,9 @@ export default function InvestPage() {
     } finally {
       setSaving(false);
     }
-  }
+  }, [add, mode, selected, showToast, t, update]);
 
-  async function handleRefreshPrice(item: Investment, options?: { silent?: boolean }) {
+  const handleRefreshPrice = useCallback(async (item: Investment, options?: { silent?: boolean }) => {
     const providerSymbol = investmentLinkedSymbol(item);
     if (!providerSymbol) return false;
     const metalKind = investmentMetalKind(item);
@@ -970,8 +970,8 @@ export default function InvestPage() {
         fxSource,
         fxLastUpdatedAt: reportingFx?.lastUpdated,
       });
-      if (details?.id === item.id) setDetails(updated);
-      if (selected?.id === item.id) setSelected(updated);
+      detailsControllerRef.current?.update(updated);
+      setSelected(current => current?.id === item.id ? updated : current);
       setPriceRefreshStatuses(prev => ({
         ...prev,
         [item.id]: {
@@ -1000,9 +1000,9 @@ export default function InvestPage() {
     } finally {
       if (!options?.silent) setRefreshingPriceId(null);
     }
-  }
+  }, [L, accountCurrency, fetchFxRate, isGuest, labels.guestPriceRefreshRestricted, labels.priceUpdateFailed, session?.access_token, showToast, t, updateMarketPrice]);
 
-  async function handleRefreshPrices(visibleItems: Investment[], options?: { silent?: boolean }) {
+  const handleRefreshPrices = useCallback(async (visibleItems: Investment[], options?: { silent?: boolean }) => {
     const refreshable = visibleItems.filter(item => investmentLinkedSymbol(item));
     if (refreshable.length === 0 || batchPriceRefreshRef.current) return;
     batchPriceRefreshRef.current = true;
@@ -1029,7 +1029,7 @@ export default function InvestPage() {
       batchPriceRefreshRef.current = false;
       if (!options?.silent) setRefreshingAllPrices(false);
     }
-  }
+  }, [handleRefreshPrice, labels.priceUpdateFailed, session?.access_token, showToast, t]);
 
   useEffect(() => {
     liveItemsRef.current = items;
@@ -1037,7 +1037,7 @@ export default function InvestPage() {
 
   useEffect(() => {
     liveRefreshHandlerRef.current = handleRefreshPrices;
-  });
+  }, [handleRefreshPrices]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -1118,8 +1118,7 @@ export default function InvestPage() {
     if (stale.length === 0) return;
     autoRefreshedRef.current = true;
     void handleRefreshPrices(stale, { silent: true });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGuest, isLoading, items]);
+  }, [handleRefreshPrices, isGuest, isLoading, items]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -1290,7 +1289,7 @@ export default function InvestPage() {
                     riskLabel={riskLabel}
                     formatMoney={money}
                     formatNativeMoney={formatNativeMoney}
-                    onDetails={setDetails}
+                    onDetails={openDetails}
                     onEdit={openEdit}
                     onDelete={setDeleteTarget}
                     onRefreshPrice={handleRefreshPrice}
@@ -1423,7 +1422,7 @@ export default function InvestPage() {
               formatMoney={money}
               formatNativeMoney={formatNativeMoney}
               accountValue={accountValue}
-              onDetails={setDetails}
+              onDetails={openDetails}
               onEdit={openEdit}
               onDelete={setDeleteTarget}
               onRefreshPrice={handleRefreshPrice}
@@ -1456,18 +1455,16 @@ export default function InvestPage() {
           onSave={handleSave}
         />
 
-        <InvestmentDetailDrawer
-          open={Boolean(details)}
-          investment={details}
+        <InvestmentDetailsController
+          ref={detailsControllerRef}
           labels={labels}
           typeLabel={typeLabel}
           riskLabel={riskLabel}
           formatMoney={money}
           formatNativeMoney={formatNativeMoney}
-          accountValue={details ? accountValue(details) : null}
-          onClose={() => setDetails(null)}
+          accountValue={accountValue}
           onRefreshPrice={handleRefreshPrice}
-          refreshing={Boolean(details && refreshingPriceId === details.id)}
+          refreshingPriceId={refreshingPriceId}
         />
 
         <ConfirmDeleteModal
