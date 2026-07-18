@@ -108,6 +108,9 @@ async function openPlatformDirectory(page: Page, lang: 'en' | 'ar') {
   await page.route('**/api/investment-platforms?**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(VISUAL_DIRECTORY) }));
   await page.goto('/invest', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('main.invest-main')).toBeVisible();
+  // LanguageProvider applies this marker from a client effect, so it is also
+  // an explicit signal that the translated controls are hydrated and usable.
+  await expect(page.locator('html')).toHaveAttribute('data-sfm-lang', lang);
   // Language-independent selectors: the add trigger and platform combobox are
   // located structurally so the same flow works in English and Arabic. Platform
   // names in the results are data (never translated).
