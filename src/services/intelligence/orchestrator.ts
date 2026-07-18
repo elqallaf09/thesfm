@@ -148,7 +148,9 @@ export class IntelligenceOrchestrator {
       .map(entry => entry.result)
       .filter(result => `${result.asset.assetType}:${result.asset.canonicalSymbol}:${result.horizon}` === key)
       .sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt))[0];
-    return memory ?? this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
+    // Phase 6.1 endpoints expose only shared market intelligence. Keeping this
+    // lookup shared-only prevents a future private row from entering a shared cache.
+    return memory ?? this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: null });
   }
 
   async analyze(request: AnalysisRequest, telemetry: IntelligenceTelemetry): Promise<AnalysisResult> {
@@ -174,7 +176,7 @@ export class IntelligenceOrchestrator {
       }
       telemetry.record({ name: 'intelligence_cache_miss', cacheStatus: 'miss' });
 
-      const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
+      const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: null });
       if (stored && Date.parse(stored.expiresAt) > now && !stored.staleData) {
         this.cache.set(key, { result: stored, expiresAt: Date.parse(stored.expiresAt) });
         telemetry.record({ name: 'intelligence_cache_hit', cacheStatus: 'hit' });
@@ -213,7 +215,7 @@ export class IntelligenceOrchestrator {
     telemetry: IntelligenceTelemetry,
   ): Promise<AnalysisResult> {
     const config = getIntelligenceMethodologyConfig(asset.assetType, request.horizon);
-    const previous = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
+    const previous = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: null });
     const attempts: ProviderAttempt[] = [];
     let snapshot: VerifiedIntelligenceSnapshot | null = null;
 

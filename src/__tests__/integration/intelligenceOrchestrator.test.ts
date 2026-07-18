@@ -245,4 +245,27 @@ describe('intelligence orchestrator', () => {
     expect(ownerLatest?.analysisId).toBe(privateResult.analysisId);
     expect(otherUserLatest?.scope).toBe('SHARED');
   });
+
+  it('never promotes a private row into the shared latest endpoint or shared cache', async () => {
+    const store = new MemoryIntelligenceAnalysisStore();
+    const source = successfulProvider();
+    const seedOrchestrator = orchestratorFor({ providers: [source.provider] });
+    const shared = await seedOrchestrator.analyze(request('correlation-shared-seed'), new MemoryIntelligenceTelemetry());
+    await store.save(shared, null);
+    await store.save({
+      ...shared,
+      analysisId: '00000000-0000-4000-8000-000000000098',
+      scope: 'PRIVATE',
+      generatedAt: new Date(Date.parse(shared.generatedAt) + 1_000).toISOString(),
+    }, '00000000-0000-4000-8000-000000000001');
+    const orchestrator = orchestratorFor({ providers: [source.provider], store });
+
+    const latest = await orchestrator.latest({
+      ...request('correlation-private-cache-boundary'),
+      userId: '00000000-0000-4000-8000-000000000001',
+    });
+
+    expect(latest?.scope).toBe('SHARED');
+    expect(latest?.analysisId).toBe(shared.analysisId);
+  });
 });
