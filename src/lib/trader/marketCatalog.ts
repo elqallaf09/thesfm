@@ -4,6 +4,8 @@ import boursaKuwaitSymbols from '@/data/market-symbols/boursa-kuwait.json';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
 import dfmListedSymbols from '@/data/market-symbols/dfm-listed.json';
 import { createClient } from '@supabase/supabase-js';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
 import {
@@ -811,10 +813,12 @@ function fmpDiscoveryEndpoints(marketId?: string | null) {
 }
 
 function getSupabaseCatalogClient() {
-  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const key = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) || cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-  if (!url || !key) return null;
-  return createClient(url, key, {
+  const privileged = getSupabasePrivilegedConfig();
+  const config = privileged
+    ? { url: privileged.url, key: privileged.secretKey }
+    : getSupabasePublicConfig();
+  if (!config) return null;
+  return createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { supabase } from '@/integrations/supabase/client';
+import { normalizeRoute } from '@/lib/observability/core';
 
 export type AnalyticsEventType =
   | 'page_view'
@@ -26,50 +26,32 @@ export type AnalyticsEventType =
 
 type TrackPayload = {
   page_path?: string;
-  page_title?: string;
   module?: string;
   section_name?: string;
-  referrer?: string;
   language?: string;
   metadata?: Record<string, unknown>;
-  accessToken?: string | null;
 };
 
 const SESSION_KEY = 'sfm_analytics_session_id';
-const SENSITIVE_KEYS = [
-  'amount',
-  'value',
-  'salary',
-  'income',
-  'expense',
-  'saving',
-  'zakat',
-  'goal',
-  'note',
-  'notes',
-  'description',
-  'phone',
-  'mobile',
-  'security_answer',
-  'securityAnswer',
-  'password',
-  'document',
-  'file',
-  'private',
-];
-
 function randomId() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `sfm-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const secureCrypto = typeof globalThis.crypto !== 'undefined'
+    ? globalThis.crypto as { randomUUID?: () => string; getRandomValues?: (array: Uint8Array) => Uint8Array }
+    : null;
+  if (typeof secureCrypto?.randomUUID === 'function') return secureCrypto.randomUUID();
+  if (typeof secureCrypto?.getRandomValues === 'function') {
+    const bytes = secureCrypto.getRandomValues(new Uint8Array(16));
+    return `sfm-${Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')}`;
+  }
+  return '';
 }
 
 export function getAnalyticsSessionId() {
   if (typeof window === 'undefined') return '';
   try {
-    const stored = localStorage.getItem(SESSION_KEY);
+    const stored = sessionStorage.getItem(SESSION_KEY);
     if (stored) return stored;
     const next = randomId();
-    localStorage.setItem(SESSION_KEY, next);
+    sessionStorage.setItem(SESSION_KEY, next);
     return next;
   } catch {
     return randomId();
@@ -102,15 +84,9 @@ function operatingSystem(userAgent: string) {
 }
 
 function sanitizeMetadata(metadata?: Record<string, unknown>) {
-  if (!metadata) return {};
-  return Object.fromEntries(
-    Object.entries(metadata)
-      .filter(([key, value]) => {
-        const lowerKey = key.toLowerCase();
-        return value != null && !SENSITIVE_KEYS.some(sensitive => lowerKey.includes(sensitive.toLowerCase()));
-      })
-      .map(([key, value]) => [key, typeof value === 'object' ? String(value) : value]),
-  );
+  // Legacy product analytics intentionally retains no caller-provided values.
+  // Operational diagnostics use the separately whitelisted observability schema.
+  return metadata ? {} : {};
 }
 
 export function moduleFromPath(pathname: string) {
@@ -135,27 +111,23 @@ export function moduleFromPath(pathname: string) {
 
 export async function trackEvent(eventType: AnalyticsEventType, payload: TrackPayload = {}) {
   if (typeof window === 'undefined') return;
+  if (process.env.NEXT_PUBLIC_PRODUCT_ANALYTICS_ENABLED !== 'true') return;
   if (window.location.pathname.startsWith('/sfm-admin-control')) return;
 
   const ua = navigator.userAgent || '';
-  const accessToken = 'accessToken' in payload
-    ? payload.accessToken ?? null
-    : (await supabase.auth.getSession().catch(() => ({ data: { session: null } }))).data.session?.access_token ?? null;
+  const pagePath = normalizeRoute(payload.page_path ?? window.location.pathname);
   const body = {
     event_type: eventType,
     session_id: getAnalyticsSessionId(),
-    page_path: payload.page_path ?? window.location.pathname,
-    page_title: payload.page_title ?? document.title,
-    module: payload.module ?? moduleFromPath(payload.page_path ?? window.location.pathname),
-    section_name: payload.section_name ?? payload.module ?? moduleFromPath(payload.page_path ?? window.location.pathname),
-    referrer: payload.referrer ?? document.referrer,
+    page_path: pagePath,
+    module: payload.module ?? moduleFromPath(pagePath),
+    section_name: payload.section_name ?? payload.module ?? moduleFromPath(pagePath),
     language: payload.language ?? document.documentElement.lang ?? 'ar',
     device_type: deviceType(ua),
     browser: browser(ua),
     os: operatingSystem(ua),
     operating_system: operatingSystem(ua),
     metadata: sanitizeMetadata(payload.metadata),
-    access_token: accessToken,
   };
 
   const serializedBody = JSON.stringify(body);

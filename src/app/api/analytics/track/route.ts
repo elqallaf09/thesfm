@@ -1,7 +1,8 @@
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { createHash } from 'crypto';
-import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { randomUUID } from 'crypto';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { normalizeRoute } from '@/lib/observability/core';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 export const runtime = 'nodejs';
 
@@ -49,8 +50,8 @@ function warnIncompleteConfigurationOnce() {
 
   const missing: string[] = [];
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) missing.push('NEXT_PUBLIC_SUPABASE_URL');
-  if (!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_SERVICE_ROLE_KEY)?.trim()) {
-    missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (!getSupabasePrivilegedConfig()) {
+    missing.push('SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY');
   }
   safeLog('warn', '[analytics] tracking disabled: incomplete Supabase configuration', {
     missing: missing.join(', ') || 'server Supabase configuration',
@@ -130,13 +131,8 @@ function os(userAgent: string) {
   return 'Other';
 }
 
-function requestIp(request: Request) {
-  return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
-}
-
-function fallbackSessionId(request: Request, userAgent: string) {
-  const source = `${requestIp(request)}:${userAgent}:${new Date().toISOString().slice(0, 10)}`;
-  return `server-${createHash('sha256').update(source).digest('hex').slice(0, 24)}`;
+function fallbackSessionId() {
+  return `server-${randomUUID()}`;
 }
 
 async function readRequestBody(request: Request): Promise<Record<string, unknown> | null> {
@@ -161,7 +157,7 @@ export async function POST(request: Request) {
     const body = await readRequestBody(request);
     const rawEventType = text(body?.event_type, 80) ?? 'page_view';
     const eventType = ALLOWED_EVENTS.has(rawEventType) ? rawEventType : null;
-    const pagePath = text(body?.page_path, 300);
+    const pagePath = normalizeRoute(text(body?.page_path, 300) ?? '/');
 
     if (!eventType || !pagePath) {
       return ignored('ANALYTICS_INVALID_PAYLOAD');
@@ -174,25 +170,20 @@ export async function POST(request: Request) {
     }
 
     const userAgent = request.headers.get('user-agent') || '';
-    const cookieStore = await cookies();
-    const accessToken = text(body?.access_token, 4096) ?? cookieStore.get('sfm_access_token')?.value ?? null;
-    const user = accessToken ? await getUserFromBearerToken(accessToken) : null;
-
-    const sessionId = requiredText(body?.session_id, fallbackSessionId(request, userAgent), 180);
+    const sessionId = requiredText(body?.session_id, fallbackSessionId(), 180);
     const language = text(body?.language, 16) ?? 'ar';
     const resolvedDeviceType = text(body?.device_type, 80) ?? deviceType(userAgent);
     const resolvedBrowser = text(body?.browser, 80) ?? browser(userAgent);
     const resolvedOs = text(body?.os, 80) ?? text(body?.operating_system, 80) ?? os(userAgent);
-    const referrer = text(body?.referrer, 600) ?? text(request.headers.get('referer'), 600);
     const sectionName = text(body?.section_name, 140) ?? text(body?.module, 140);
     const eventPayload = {
-      user_id: user?.id ?? null,
+      user_id: null,
       session_id: sessionId,
       event_type: eventType,
       page_path: pagePath,
-      page_title: text(body?.page_title, 300),
+      page_title: null,
       section_name: sectionName,
-      referrer,
+      referrer: null,
       language,
       device_type: resolvedDeviceType,
       browser: resolvedBrowser,
@@ -219,9 +210,9 @@ export async function POST(request: Request) {
       device_type: resolvedDeviceType,
       browser: resolvedBrowser,
       os: resolvedOs,
-      referrer,
+      referrer: null,
     };
-    if (user?.id) sessionPayload.user_id = user.id;
+    sessionPayload.user_id = null;
 
     const sessionResult = await safeSupabaseRequest(admin
       .from('site_sessions')
@@ -259,13 +250,13 @@ export async function POST(request: Request) {
     }
 
     const legacyResult = await safeSupabaseRequest(admin.from('analytics_events').insert({
-      user_id: user?.id ?? null,
+      user_id: null,
       session_id: sessionId,
       event_type: eventType,
       page_path: pagePath,
       page_title: eventPayload.page_title,
       module: sectionName,
-      referrer,
+      referrer: null,
       language,
       device_type: resolvedDeviceType,
       browser: resolvedBrowser,

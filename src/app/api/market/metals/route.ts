@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { normalizeDigits } from '@/lib/locale';
 import { classifyRuntimeFailure, logReliabilityEvent, type ClassifiedRuntimeFailure } from '@/lib/runtime/reliability';
+import { recordProviderMetric } from '@/lib/observability/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +156,7 @@ async function fetchWithRetry(provider: string, request: () => Promise<unknown>)
         attempt,
         durationMs: Date.now() - startedAt,
       });
+      recordProviderMetric({ provider, endpointClass: 'metals', assetClass: 'commodity', durationMs: Date.now() - startedAt, fallbackUsed: attempt > 1, cacheStatus: 'miss', retryCount: attempt - 1 });
       return payload;
     } catch (error) {
       lastFailure = classifyRuntimeFailure(error);
@@ -168,6 +170,7 @@ async function fetchWithRetry(provider: string, request: () => Promise<unknown>)
         httpStatus: lastFailure.httpStatus,
         retryable: lastFailure.retryable,
       });
+      recordProviderMetric({ provider, endpointClass: 'metals', assetClass: 'commodity', durationMs: Date.now() - startedAt, fallbackUsed: attempt > 1, failureClass: lastFailure.category, retryCount: attempt - 1 });
       if (!lastFailure.retryable || attempt === MAX_PROVIDER_ATTEMPTS) break;
       const requestedDelay = error instanceof UpstreamHttpError ? error.retryAfterMs : 0;
       await delay(Math.min(750, Math.max(requestedDelay, attempt * 150)));

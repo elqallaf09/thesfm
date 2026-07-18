@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findAssetAliasMatches, normalizeAssetSearchText } from '@/lib/market/assetAliases';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 import { getQuoteWithFallback, type NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
 import { normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, normalizeMarketSymbolInput, validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
@@ -121,10 +123,12 @@ const MAX_RESULTS = 32;
 const PRICE_ENRICH_LIMIT = 10;
 
 function getSupabaseServerClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return createClient(url, key, {
+  const privileged = getSupabasePrivilegedConfig();
+  const config = privileged
+    ? { url: privileged.url, key: privileged.secretKey }
+    : getSupabasePublicConfig();
+  if (!config) return null;
+  return createClient(config.url, config.key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }

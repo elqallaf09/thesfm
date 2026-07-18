@@ -29,7 +29,7 @@ Leave ticket sizes, deadlines, eligibility, or links empty unless they come from
 ## Run
 
 ```bash
-SUPABASE_URL="https://..." SUPABASE_SERVICE_ROLE_KEY="..." tsx scripts/import-funding-programs.ts ./funding-programs.csv
+SUPABASE_URL="https://..." SUPABASE_SECRET_KEY="..." tsx scripts/import-funding-programs.ts ./funding-programs.csv
 ```
 
 The service role key is server-only. Never expose it through `NEXT_PUBLIC_*` variables or frontend code.

@@ -248,4 +248,5 @@ export const TR_ADMIN: Record<string, TranslationEntry> = {
   admin_news_status_approaching_limit: { ar:'يقترب من الحد', en:'Approaching limit', fr:'Proche de la limite' },
   admin_news_status_limited: { ar:'محدود', en:'Limited', fr:'Limité' },
   admin_news_status_temporarily_limited: { ar:'محدود مؤقتاً', en:'Temporarily limited', fr:'Limité temporairement' },
+  admin_observability_title: { ar:'مراقبة الإنتاج', en:'Production observability', fr:'Observabilité de production' },
 };

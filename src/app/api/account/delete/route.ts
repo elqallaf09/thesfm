@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,15 +60,17 @@ function isMissingOptionalTableError(error: { code?: string; message?: string; d
 }
 
 export async function POST(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.DATABASE_SERVICE_ROLE_KEY;
+  const publicConfig = getSupabasePublicConfig();
+  const privilegedConfig = getSupabasePrivilegedConfig();
+  const supabaseUrl = publicConfig?.url;
+  const publicKey = publicConfig?.key;
+  const serviceRoleKey = privilegedConfig?.secretKey;
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+  if (!supabaseUrl || !publicKey || !privilegedConfig || !serviceRoleKey) {
     console.error('[DeleteAccount] Failed', {
       userId: null,
       code: 'missing_environment',
-      message: 'Missing Supabase URL, anon key, or service role key.',
+      message: 'Missing Supabase URL, publishable/anon key, or secret/service-role key.',
       details: null,
     });
     return json({ success: false, error: 'delete_unavailable' }, { status: 503 });
@@ -75,12 +79,12 @@ export async function POST(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim();
   if (!token) return json({ success: false, error: 'unauthorized' }, { status: 401 });
 
-  const userClient = createClient(supabaseUrl, anonKey, {
+  const userClient = createClient(supabaseUrl, publicKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin = createClient(privilegedConfig.url, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

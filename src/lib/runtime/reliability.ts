@@ -124,7 +124,7 @@ export function classifyRuntimeFailure(
   return { code: 'UNKNOWN_ERROR', category: 'unknown', retryable: true, httpStatus, messageKey: 'provider_temporarily_unavailable' };
 }
 
-const SENSITIVE_KEY = /authorization|cookie|password|secret|token|api.?key|credential/i;
+const SENSITIVE_KEY = /authorization|cookie|password|secret|token|api.?key|credential|user|email|name|phone|symbol|portfolio|amount|value|price|currency/i;
 
 function safeMetadata(metadata: Record<string, unknown>) {
   const safe: Record<string, unknown> = {};

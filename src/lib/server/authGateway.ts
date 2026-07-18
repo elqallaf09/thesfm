@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import { isEmail } from '@/lib/authSecurity';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
+import { getSupabasePrivilegedConfig } from '@/lib/server/supabaseEnvironment';
 
 const PROVIDER_TIMEOUT_MS = 6_000;
 
@@ -24,9 +26,8 @@ export type EmailOtpVerificationResult =
   | { status: 'unavailable' };
 
 function providerConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return url && anonKey ? { url, anonKey } : null;
+  const config = getSupabasePublicConfig();
+  return config ? { url: config.url.replace(/\/$/, ''), anonKey: config.key } : null;
 }
 
 async function fetchWithTimeout(input: string | URL, init: RequestInit) {
@@ -54,18 +55,18 @@ export async function resolveIdentifierEmail(identifier: string) {
   if (!username) return { status: 'not_found' as const };
 
   const config = providerConfig();
-  const serviceKey = process.env.DATABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!config || !serviceKey) return { status: 'unavailable' as const };
+  const privilegedConfig = getSupabasePrivilegedConfig();
+  if (!config || !privilegedConfig) return { status: 'unavailable' as const };
 
-  const url = new URL(`${config.url}/rest/v1/profiles`);
+  const url = new URL(`${privilegedConfig.url.replace(/\/$/, '')}/rest/v1/profiles`);
   url.searchParams.set('select', 'email');
   url.searchParams.set('username', `eq.${username}`);
   url.searchParams.set('limit', '1');
   try {
     const response = await fetchWithTimeout(url, {
       headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
+        apikey: privilegedConfig.secretKey,
+        Authorization: `Bearer ${privilegedConfig.secretKey}`,
         Accept: 'application/json',
       },
       cache: 'no-store',

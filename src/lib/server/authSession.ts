@@ -6,6 +6,7 @@ import {
   getMfaSigningSecret,
   verifyAuthPayload,
 } from '@/lib/auth/sessionSecurity';
+import { getSupabasePublicConfig } from '@/integrations/supabase/environment';
 
 const AUTH_TIMEOUT_MS = 4_500;
 
@@ -60,8 +61,9 @@ export async function inspectSessionSecurity(
   token: string,
   emailProofCookie?: string | null,
 ): Promise<SessionSecurityResult> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const config = getSupabasePublicConfig();
+  const supabaseUrl = config?.url.replace(/\/$/, '');
+  const supabaseAnonKey = config?.key;
   if (!supabaseUrl || !supabaseAnonKey || !token) {
     return token ? { status: 'unavailable', reason: 'configuration' } : { status: 'unauthenticated' };
   }
