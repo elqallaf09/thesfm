@@ -253,7 +253,7 @@ const COMING_SOON_ROUTE_IDS = new Set<string>();
 const CATEGORY_DEFS = [
   { id: 'main', groupIds: ['main', 'financial-intelligence'] },
   { id: 'personal-finance', groupIds: ['personal-finance'] },
-  { id: 'investment-market', groupIds: ['investment-market', 'market-news', 'stock-categories'] },
+  { id: 'investment-market', groupIds: ['investment-market', 'market-news'] },
   { id: 'business-projects', groupIds: ['business-projects'] },
   { id: 'charity', groupIds: ['charity'] },
   { id: 'tools-support', groupIds: ['services', 'support'] },
