@@ -8,7 +8,7 @@ import type {
 } from '@/domain/intelligence/contracts';
 import { proxyAnalyze } from '@/lib/market/marketDataProvider';
 import type { MarketAnalysis } from '@/lib/market/marketService';
-import { marketAssetTypeFromIntelligence } from '@/services/intelligence/assetResolver';
+import { marketAssetTypeFromIntelligence } from '@/lib/intelligence/assetTypes';
 import { IntelligenceError } from '@/services/intelligence/errors';
 
 function validIso(value: unknown) {

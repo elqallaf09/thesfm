@@ -5,9 +5,11 @@ import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { Activity, AlertTriangle, BarChart3, Bell, Brain, CalendarDays, Calculator, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileText, Gauge, Info, Landmark, LineChart, Newspaper, Plus, RefreshCw, ShieldAlert, Star, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { IntelligencePanel } from '@/components/intelligence/IntelligencePanel';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { AssetProfileCard } from '@/components/market/AssetProfileCard';
-import { MarketSignalMiniBadge, MarketSignalPanel } from '@/components/market/MarketSignalPanel';
+import { MarketSignalMiniBadge } from '@/components/market/MarketSignalPanel';
+import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
@@ -16,6 +18,7 @@ import { useUrlTabState } from '@/hooks/useUrlTabState';
 import { supabase } from '@/integrations/supabase/client';
 import { currencyDisplaySymbol, getCurrency } from '@/lib/currencies';
 import { formatCurrency } from '@/lib/locale';
+import { intelligenceAssetTypeFromMarket } from '@/lib/intelligence/assetTypes';
 import { useCurrency } from '@/lib/useCurrency';
 import { generateEducationalMarketSummary, type EducationalSummaryLanguage } from '@/lib/market/generateEducationalMarketSummary';
 import { formatMarketPrice, marketCurrencyLabel, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -285,9 +288,10 @@ export default function MarketAnalysisPage() {
   const [suggestedAssets, setSuggestedAssets] = useState<MarketSearchItem[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [watchlistLoadState, setWatchlistLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [marketSignal, setMarketSignal] = useState<MarketSignal | null>(null);
-  const [marketSignalLoading, setMarketSignalLoading] = useState(false);
-  const [marketSignalError, setMarketSignalError] = useState(false);
+  const [intelligenceResult, setIntelligenceResult] = useState<AnalysisResult | null>(null);
+  const [intelligenceLoading, setIntelligenceLoading] = useState(false);
+  const [intelligenceError, setIntelligenceError] = useState<string | null>(null);
+  const intelligenceRequestIdRef = useRef(0);
   const [watchlistSignals, setWatchlistSignals] = useState<Record<string, MarketSignal>>({});
   const [alerts, setAlerts] = useState<SavedAlert[]>([]);
   const [alertsLoadState, setAlertsLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -818,6 +822,49 @@ export default function MarketAnalysisPage() {
     }
   }, [lang, t]);
 
+  const requestIntelligence = useCallback(async (marketData: MarketAnalysis, options?: { force?: boolean }) => {
+    const requestId = intelligenceRequestIdRef.current + 1;
+    intelligenceRequestIdRef.current = requestId;
+    setIntelligenceLoading(true);
+    setIntelligenceError(null);
+    try {
+      const response = await fetchJsonWithTimeout<{
+        ok?: boolean;
+        result?: AnalysisResult;
+        error?: { code?: string };
+      }>('/api/intelligence/analyze', 28_000, true, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          asset: {
+            symbol: marketData.providerSymbol ?? marketData.symbol,
+            assetType: intelligenceAssetTypeFromMarket(marketData.assetType),
+            exchange: marketData.exchange ?? null,
+            market: marketData.market ?? null,
+            quoteCurrency: marketData.currency ?? marketData.quote?.currency ?? null,
+          },
+          horizon: 'SWING',
+          locale: lang,
+          source: 'SMART_MARKET_ANALYSIS',
+          forceRefresh: Boolean(options?.force && user && !isGuest),
+        }),
+      });
+      if (requestId !== intelligenceRequestIdRef.current) return;
+      if (response.ok && response.result) {
+        setIntelligenceResult(response.result);
+        return;
+      }
+      setIntelligenceResult(null);
+      setIntelligenceError(response.error?.code ?? 'PROVIDER_UNAVAILABLE');
+    } catch (requestError) {
+      if (requestId !== intelligenceRequestIdRef.current || isAbortLikeError(requestError)) return;
+      setIntelligenceResult(null);
+      setIntelligenceError('PROVIDER_TIMEOUT');
+    } finally {
+      if (requestId === intelligenceRequestIdRef.current) setIntelligenceLoading(false);
+    }
+  }, [isGuest, lang, user]);
+
   const requestAnalysis = useCallback(async (symbolInput: string, typeInput: MarketAssetFilter, selectedInput?: Partial<SelectedMarketAsset>) => {
     const normalizedInput = normalizeMarketSymbolInput(selectedInput?.providerSymbol ?? symbolInput, typeInput);
     if (!normalizedInput.valid) {
@@ -828,6 +875,9 @@ export default function MarketAnalysisPage() {
       setAnalysis(null);
       setChartHistory([]);
       setAiInsight(null);
+      setIntelligenceResult(null);
+      setIntelligenceLoading(false);
+      setIntelligenceError('INVALID_ASSET');
       setLoading(false);
       return;
     }
@@ -840,6 +890,9 @@ export default function MarketAnalysisPage() {
       setAnalysis(null);
       setChartHistory([]);
       setAiInsight(null);
+      setIntelligenceResult(null);
+      setIntelligenceLoading(false);
+      setIntelligenceError('INVALID_ASSET');
       setLoading(false);
       return;
     }
@@ -852,6 +905,9 @@ export default function MarketAnalysisPage() {
     setAnalysis(null);
     setChartHistory([]);
     setAiInsight(null);
+    setIntelligenceResult(null);
+    setIntelligenceLoading(true);
+    setIntelligenceError(null);
     const slowTimer = window.setTimeout(() => {
       setSlowLoading(true);
       setNotice(t('market_service_waking'));
@@ -967,16 +1023,21 @@ export default function MarketAnalysisPage() {
             .eq('asset_type', selectedMeta.assetType);
         }
         void requestAiInsight(nextAnalysis);
+        void requestIntelligence(nextAnalysis);
         if (result.cached) setNotice(t('market_cached_data'));
       } else {
         setAnalysis(null);
         setChartHistory([]);
+        setIntelligenceLoading(false);
+        setIntelligenceError('PROVIDER_UNAVAILABLE');
         setError(t('market_analysis_unavailable'));
       }
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
       setAnalysis(null);
       setChartHistory([]);
+      setIntelligenceLoading(false);
+      setIntelligenceError('PROVIDER_UNAVAILABLE');
       const message = err instanceof Error && err.name === 'AbortError'
         ? t('market_timeout_error')
         : err instanceof Error
@@ -990,7 +1051,7 @@ export default function MarketAnalysisPage() {
       setSlowLoading(false);
       setLoading(false);
     }
-  }, [isGuest, requestAiInsight, t, user]);
+  }, [isGuest, requestAiInsight, requestIntelligence, t, user]);
 
   useEffect(() => {
     const initial = initialUrlStateRef.current;
@@ -1671,45 +1732,6 @@ export default function MarketAnalysisPage() {
     .join(','), [watchlist]);
 
   useEffect(() => {
-    const symbol = selectedMarketSymbol?.trim();
-    if (!symbol || !selectedMarketAssetType) {
-      setMarketSignal(null);
-      setMarketSignalLoading(false);
-      setMarketSignalError(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    setMarketSignal(null);
-    setMarketSignalLoading(true);
-    setMarketSignalError(false);
-    const params = new URLSearchParams({ assetType: selectedMarketAssetType });
-    fetch(`/api/market/signals/${encodeURIComponent(symbol)}?${params.toString()}`, {
-      signal: controller.signal,
-      cache: 'no-store',
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('market_signal_request_failed');
-        return response.json();
-      })
-      .then(payload => {
-        if (controller.signal.aborted) return;
-        setMarketSignal((payload?.signal ?? payload?.item ?? null) as MarketSignal | null);
-      })
-      .catch(fetchError => {
-        if (!isAbortLikeError(fetchError)) {
-          setMarketSignal(null);
-          setMarketSignalError(true);
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setMarketSignalLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [selectedMarketAssetType, selectedMarketSymbol]);
-
-  useEffect(() => {
     if (!watchlistSignalKey) {
       setWatchlistSignals({});
       return;
@@ -1841,7 +1863,7 @@ export default function MarketAnalysisPage() {
       + (selected.indicators.rsi >= 70 || selected.indicators.rsi <= 30 ? 12 : 0),
     )))
     : 0;
-  const visibleRiskScore = aiInsight?.riskScore ?? calculatedRiskScore;
+  const visibleRiskScore = calculatedRiskScore;
   const ruleBasedSummary = useMemo(() => {
     if (!selected) return null;
     return generateEducationalMarketSummary({
@@ -2090,17 +2112,14 @@ export default function MarketAnalysisPage() {
     };
     return copy[lang as 'ar' | 'en' | 'fr'] ?? copy.ar;
   }, [lang]);
-  const analysisConfidence = selected ? Math.min(100, Math.max(0, Math.round(
-    35
-    + ((selected.dataStatus ?? 'live') === 'live' ? 15 : selected.dataStatus === 'delayed' ? 9 : 0)
-    + (selectedPriceHistory.length >= 30 ? 18 : selectedPriceHistory.length >= 10 ? 10 : selectedPriceHistory.length > 0 ? 5 : 0)
-    + (selectedHasOhlc ? 7 : 0)
-    + (hasFundamentals ? 8 : 0)
-    + (aiInsight?.status === 'ready' ? 12 : ruleBasedSummary ? 6 : 0)
-    + (Number.isFinite(selected.latestPrice) && selected.latestPrice > 0 ? 5 : 0),
-  ))) : 0;
+  const analysisConfidence = intelligenceResult?.confidence ?? 0;
+  const analysisConfidenceLabel = intelligenceResult ? `${analysisConfidence}%` : analysisCopy.unavailableData;
   const analysisConfidencePresentation = evaluationScorePresentation(analysisConfidence);
-  const analysisConfidenceStatus = t(analysisConfidencePresentation.statusKey);
+  const analysisConfidenceStatus = intelligenceResult
+    ? t(analysisConfidencePresentation.statusKey)
+    : intelligenceLoading
+      ? t('market_loading_short')
+      : analysisCopy.unavailableData;
   const confidenceFactors = selected ? [
     {
       label: t('market_data_status'),
@@ -2616,22 +2635,24 @@ export default function MarketAnalysisPage() {
                 <span>{analysisCopy.currentReading}</span>
                 <strong>{decision?.status ?? assetSnapshot.trendLabel}</strong>
                 <small className={`analysis-score-summary ${analysisConfidencePresentation.tone}`}>
-                  <span>{analysisCopy.confidence}: <b dir="ltr">{analysisConfidence}%</b></span>
+                  <span>{analysisCopy.confidence}: <b dir="ltr">{analysisConfidenceLabel}</b></span>
                   <span className="analysis-score-status">
-                    {analysisConfidencePresentation.tone === 'success'
+                    {intelligenceResult && analysisConfidencePresentation.tone === 'success'
                       ? <CheckCircle2 size={14} aria-hidden="true" />
                       : <AlertTriangle size={14} aria-hidden="true" />}
                     {analysisConfidenceStatus}
                   </span>
                 </small>
-                <div
-                  className={`analysis-confidence-track ${analysisConfidencePresentation.tone}`}
-                  role="meter"
-                  aria-label={`${analysisCopy.confidence}: ${analysisConfidence}% - ${analysisConfidenceStatus}`}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={analysisConfidence}
-                ><i style={{ width: `${analysisConfidence}%` }} /></div>
+                {intelligenceResult ? (
+                  <div
+                    className={`analysis-confidence-track ${analysisConfidencePresentation.tone}`}
+                    role="meter"
+                    aria-label={`${analysisCopy.confidence}: ${analysisConfidence}% - ${analysisConfidenceStatus}`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={analysisConfidence}
+                  ><i style={{ width: `${analysisConfidence}%` }} /></div>
+                ) : null}
               </div>
               <div className="analysis-hero-actions" aria-label={analysisCopy.quickActions}>
                 <button type="button" onClick={() => void requestAnalysis(assetSnapshot.providerSymbol, assetSnapshot.assetType, {
@@ -2673,7 +2694,12 @@ export default function MarketAnalysisPage() {
               <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
             </section>
 
-            <MarketSignalPanel signal={marketSignal} loading={marketSignalLoading} error={marketSignalError} />
+            <IntelligencePanel
+              result={intelligenceResult}
+              loading={intelligenceLoading}
+              errorCode={intelligenceError}
+              onRetry={() => void requestIntelligence(selected, { force: Boolean(user && !isGuest) })}
+            />
 
             <div className="analysis-columns">
               <div className="analysis-main-column">
@@ -2686,7 +2712,7 @@ export default function MarketAnalysisPage() {
                     </div>
                   </div>
                   <div className="analysis-signal-grid">
-                    <MarketMetric label={analysisCopy.confidence} value={`${analysisConfidence}%`} valueDir="ltr" />
+                    <MarketMetric label={analysisCopy.confidence} value={analysisConfidenceLabel} valueDir="ltr" />
                     <MarketMetric label={t('market_risk_level')} value={assetSnapshot.riskLabel} />
                     <MarketMetric label={t('market_timeframe')} value={timeframe} valueDir="ltr" />
                     <MarketMetric label={analysisCopy.analysisTimestamp} value={assetSnapshot.quoteTimestampLabel} valueDir="ltr" />
@@ -4498,4 +4524,3 @@ export default function MarketAnalysisPage() {
     </div>
   );
 }
-
