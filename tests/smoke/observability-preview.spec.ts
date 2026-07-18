@@ -32,6 +32,9 @@ test.describe('authenticated Preview release validation', () => {
 
   test('Preview user is denied admin observability access while the admin is allowed', async ({ browser, page, baseURL }) => {
     const previewOrigin = exactPreviewOrigin(baseURL);
+    const userSession = await readSession(userAuthStatePath);
+    const adminSession = await readSession(adminAuthStatePath);
+    await assertPreviewRoleFixtureIntegrity(userSession.subject, adminSession.subject);
     const userAccess = await adminAccessProbe(page, previewOrigin);
     assertAdminProbeOrigin(userAccess, previewOrigin);
     if (userAccess.me.status !== 200 || userAccess.me.isAdmin !== false) {
@@ -47,7 +50,7 @@ test.describe('authenticated Preview release validation', () => {
       const adminAccess = await adminAccessProbe(adminPage, previewOrigin);
       assertAdminProbeOrigin(adminAccess, previewOrigin);
       if (adminAccess.me.status !== 200 || adminAccess.me.isAdmin !== true || adminAccess.me.role !== 'admin') {
-        throw new Error('Preview admin identity probe did not resolve as the active admin fixture.');
+        throw new Error(`Preview admin identity probe did not resolve as the active admin fixture: ${JSON.stringify(adminAccess.me)}.`);
       }
       if (adminAccess.operations.status !== 200 || adminAccess.operations.ok !== true) {
         throw new Error('Preview admin could not access the required admin observability route.');
@@ -230,6 +233,37 @@ async function readSession(path: string) {
     throw new Error('Authenticated Preview access session has no valid subject.');
   }
   return { token, subject };
+}
+
+async function assertPreviewRoleFixtureIntegrity(userSubject: string, adminSubject: string) {
+  const origin = process.env.SUPABASE_PREVIEW_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (origin !== approvedPreviewOrigin || !serviceRoleKey?.trim()) {
+    throw new Error('Preview role integrity requires the approved Preview service environment.');
+  }
+
+  const roleUrl = new URL('/rest/v1/admin_roles', origin);
+  roleUrl.searchParams.set('select', 'user_id,role,is_active,permissions');
+  roleUrl.searchParams.set('user_id', `in.(${userSubject},${adminSubject})`);
+  const response = await fetch(roleUrl, {
+    headers: { apikey: serviceRoleKey, authorization: `Bearer ${serviceRoleKey}` },
+  });
+  if (!response.ok) throw new Error(`Preview role integrity query failed with HTTP ${response.status}.`);
+  const rows = await response.json().catch(() => null) as Array<Record<string, unknown>> | null;
+  if (!Array.isArray(rows)) throw new Error('Preview role integrity query returned an invalid payload.');
+
+  const userRows = rows.filter(row => row.user_id === userSubject);
+  const adminRows = rows.filter(row => row.user_id === adminSubject);
+  if (userRows.length !== 0) throw new Error('Preview normal user unexpectedly owns an admin role.');
+  if (
+    adminRows.length !== 1
+    || adminRows[0].user_id !== adminSubject
+    || adminRows[0].role !== 'admin'
+    || adminRows[0].is_active !== true
+    || (adminRows[0].permissions as Record<string, unknown> | null)?.admin_dashboard !== true
+  ) {
+    throw new Error('Preview admin role is not one active least-privilege row owned by the authenticated admin subject.');
+  }
 }
 
 async function profileCount(origin: string, serviceRoleKey: string, userToken: string, profileId: string) {
