@@ -12,6 +12,9 @@ export type InvestmentHoldingMetrics = {
   profitLossPercent: number | null;
   canCalculateProfitLoss: boolean;
   isMarketLinked: boolean;
+  holdingCurrency: string | null;
+  quoteCurrency: string | null;
+  conversionState: 'same_currency' | 'valid' | 'stale' | 'unavailable';
 };
 
 const MARKET_LINKED_TYPES = new Set<Investment['type']>(['stocks', 'fund', 'crypto', 'gold', 'silver']);
@@ -56,8 +59,15 @@ function investmentPricedQuantity(item: Investment) {
   return positiveInvestmentNumber(item.quantity);
 }
 
-export function investmentNativeCurrency(item: Investment) {
-  const providerCurrency = normalizeMarketCurrencyCode(item.nativeCurrency ?? item.priceCurrency ?? item.currency);
+export function investmentHoldingCurrency(item: Investment) {
+  const quoteCurrency = normalizeMarketCurrencyCode(item.priceCurrency ?? item.nativeCurrency);
+  return normalizeMarketCurrencyCode(item.currency)
+    ?? (quoteCurrency ? null : normalizeMarketCurrencyCode(item.userCurrency))
+    ?? quoteCurrency;
+}
+
+export function investmentQuoteCurrency(item: Investment) {
+  const providerCurrency = normalizeMarketCurrencyCode(item.priceCurrency ?? item.nativeCurrency);
   return resolveMarketCurrency({
     providerCurrency,
     symbol: item.symbol,
@@ -68,12 +78,25 @@ export function investmentNativeCurrency(item: Investment) {
   }).currency ?? providerCurrency;
 }
 
+/** @deprecated Use investmentQuoteCurrency for market prices or investmentHoldingCurrency for holding values. */
+export const investmentNativeCurrency = investmentQuoteCurrency;
+
+function conversionState(item: Investment, holdingCurrency: string | null, quoteCurrency: string | null, currentValue: number | null) {
+  if (holdingCurrency && quoteCurrency && holdingCurrency === quoteCurrency) return 'same_currency' as const;
+  if (currentValue === null) return 'unavailable' as const;
+  const source = String(item.fxSource ?? '').toLowerCase();
+  if (source.includes('stale') || source.includes('unavailable')) return 'stale' as const;
+  return 'valid' as const;
+}
+
 export function calculateInvestmentHoldingMetrics(
   item: Investment,
   override?: { currentPrice?: number | null; currentValue?: number | null },
 ): InvestmentHoldingMetrics {
   const linkedSymbol = investmentLinkedSymbol(item);
   const isMarketLinked = isMarketLinkedInvestment(item);
+  const holdingCurrency = investmentHoldingCurrency(item);
+  const quoteCurrency = investmentQuoteCurrency(item);
   const quantity = investmentPricedQuantity(item);
   // item.purchaseTotal comes from purchase_total/invested_amount DB columns.
   // item.amount holds the original investment value at creation time and is never
@@ -96,14 +119,21 @@ export function calculateInvestmentHoldingMetrics(
     ? quantity * purchasePrice
     : storedPurchaseTotal;
 
-  const storedCurrentValue = positiveInvestmentNumber(
-    override?.currentValue
-    ?? item.nativeMarketValue
-    ?? item.currentMarketValue
-    ?? item.currentValue,
-  );
-  const computedCurrentValue = quantity !== null && currentPrice !== null ? quantity * currentPrice : null;
-  const currentValue = computedCurrentValue ?? (isMarketLinked ? null : storedCurrentValue);
+  const explicitHoldingValue = positiveInvestmentNumber(override?.currentValue ?? item.currentValue);
+  const reportingValueInHoldingCurrency = normalizeMarketCurrencyCode(item.userCurrency) === holdingCurrency
+    ? positiveInvestmentNumber(item.convertedMarketValue)
+    : null;
+  const storedQuoteValue = positiveInvestmentNumber(item.nativeMarketValue ?? item.currentMarketValue);
+  const computedQuoteValue = quantity !== null && currentPrice !== null ? quantity * currentPrice : null;
+  const sameCurrencyValue = holdingCurrency && quoteCurrency && holdingCurrency === quoteCurrency
+    ? computedQuoteValue ?? storedQuoteValue
+    : null;
+  const currentValue = override?.currentValue !== undefined
+    ? positiveInvestmentNumber(override.currentValue)
+    : sameCurrencyValue
+      ?? explicitHoldingValue
+      ?? reportingValueInHoldingCurrency
+      ?? (isMarketLinked ? null : storedQuoteValue);
   const canCalculateProfitLoss = totalInvested !== null && currentValue !== null && (!isMarketLinked || currentPrice !== null);
   const profitLossAmount = canCalculateProfitLoss ? currentValue - totalInvested : null;
   const profitLossPercent = profitLossAmount !== null && totalInvested !== null && totalInvested > 0
@@ -121,5 +151,8 @@ export function calculateInvestmentHoldingMetrics(
     profitLossPercent,
     canCalculateProfitLoss,
     isMarketLinked,
+    holdingCurrency,
+    quoteCurrency,
+    conversionState: conversionState(item, holdingCurrency, quoteCurrency, currentValue),
   };
 }

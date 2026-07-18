@@ -33,6 +33,7 @@ import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { useCurrency } from '@/lib/useCurrency';
+import { investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
 import {
   ExistingDataCard,
   Field,
@@ -758,7 +759,10 @@ function summarizeExistingData(data: ExistingSetupData): SetupSummary {
   const incomeTotal = incomeRows.reduce((total, row) => total + amountFrom(row.amount), 0);
   const expenseTotal = expenseRows.reduce((total, row) => total + amountFrom(row.amount), 0);
   const savingsTotal = savingsRows.reduce((total, row) => total + amountFromAny(row, ['amount', 'current_value']), 0);
-  const investmentTotal = investmentRows.reduce((total, row) => total + amountFromAny(row, ['amount', 'current_value', 'converted_market_value', 'current_market_value', 'native_market_value']), 0);
+  const reportingCurrency = String(data.profile?.preferred_currency ?? data.profile?.default_currency ?? data.profile?.currency ?? '').trim().toUpperCase();
+  const investmentTotal = reportingCurrency
+    ? investmentRows.reduce((total, row) => total + (investmentValueInCurrency(row, reportingCurrency)?.amount ?? 0), 0)
+    : 0;
   const goalTargetTotal = goalRows.reduce((total, row) => total + goalTargetAmount(row), 0);
   const goalRemainingTotal = goalRows.reduce((total, row) => total + Math.max(0, goalTargetAmount(row) - goalCurrentAmount(row)), 0);
   const expectedRemaining = Math.max(0, incomeTotal - expenseTotal);
@@ -2243,4 +2247,3 @@ export default function SetupPage() {
     );
   }
 }
-

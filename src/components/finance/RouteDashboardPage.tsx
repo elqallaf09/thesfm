@@ -53,6 +53,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { calculateGoalProgress, parseMoney } from '@/lib/goalProgress';
 import { normalizeNumberInput, parseMoneyValue } from '@/lib/money';
 import { isProjectLinkedExpenseRow, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
+import { investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
 import { trackEvent } from '@/lib/analytics';
 import { recordAccountActivity } from '@/lib/accountActivity';
 
@@ -487,7 +488,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         safeQuery<IncomeSource>(supabase.from('monthly_income_sources').select('*').eq('user_id', user.id) as unknown as QueryResult<IncomeSource>, queryMeta('monthly_income_sources', 'monthly_income_sources')),
         expensesQuery(),
         safeQuery<MoneyItem>(supabase.from('savings_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as unknown as QueryResult<MoneyItem>, queryMeta('savings_items', 'savings_items')),
-        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, converted_market_value, current_value, current_market_value, native_market_value, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
+        safeQuery<MoneyItem>(supabase.from('investment_items').select('id, name, amount, currency, price_currency, native_currency, user_currency, fx_rate_to_user_currency, fx_source, converted_market_value, current_value, current_market_value, native_market_value, created_at').eq('user_id', user.id) as unknown as QueryResult<MoneyItem>, queryMeta('investment_items', 'investment_items')),
         safeQuery<GoalRow>(supabase.from('financial_goals').select('*').eq('user_id', user.id) as unknown as QueryResult<GoalRow>, queryMeta('financial_goals', 'financial_goals')),
         debtsQuery(),
       ]);
@@ -498,10 +499,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
         income: personalIncomeRows(income.data).map(item => ({ ...item, name: item.label || item.category || item.name || 'Income' })),
         expenses: personalExpenseRows(expenses.data),
         savings: savings.data,
-        investments: investments.data.map(item => ({
-          ...item,
-          amount: parseMoney(item.converted_market_value ?? item.current_value ?? item.amount ?? item.current_market_value ?? item.native_market_value),
-        })),
+        investments: investments.data.flatMap(item => {
+          const resolvedValue = investmentValueInCurrency(item as Record<string, unknown>, currency);
+          return resolvedValue ? [{ ...item, amount: resolvedValue.amount, currency: resolvedValue.currency }] : [];
+        }),
         debts: debts.data,
         goals: goals.data.map(goalFromRow),
         error: [income.error, expenses.error, savings.error, investments.error, goals.error, debts.error].find(Boolean) ?? null,
@@ -513,7 +514,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     return () => {
       cancelled = true;
     };
-  }, [debtGenerationRefreshKey, isGuest, kind, user]);
+  }, [currency, debtGenerationRefreshKey, isGuest, kind, user]);
 
   useEffect(() => {
     if (kind !== 'expenses') return;
@@ -3366,4 +3367,3 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     </div>
   );
 }
-

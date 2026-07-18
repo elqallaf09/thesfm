@@ -5,12 +5,18 @@ export type FxRateResult = {
   source: string | null;
   lastUpdated: string | null;
   available: boolean;
+  stale?: boolean;
   error?: string;
 };
 
 const DEFAULT_EXCHANGE_URL = 'https://open.er-api.com/v6/latest/{BASE}';
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const fxCache = new Map<string, { expiresAt: number; result: FxRateResult }>();
+const STALE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const fxCache = new Map<string, { expiresAt: number; staleUntil: number; result: FxRateResult }>();
+
+export function __resetFxCacheForTests() {
+  fxCache.clear();
+}
 
 function normalizeCurrency(value: unknown) {
   const code = String(value ?? '').trim().toUpperCase();
@@ -107,6 +113,7 @@ export async function getFxRate(fromInput: unknown, toInput: unknown): Promise<F
       source: 'same_currency',
       lastUpdated: new Date().toISOString(),
       available: true,
+      stale: false,
     };
   }
 
@@ -126,11 +133,23 @@ export async function getFxRate(fromInput: unknown, toInput: unknown): Promise<F
       source: process.env.EXCHANGE_API_URL?.trim() ? 'configured_exchange_api' : 'open.er-api.com',
       lastUpdated: parseTimestamp(payload),
       available: true,
+      stale: false,
     };
-    fxCache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, result });
+    const cachedAt = Date.now();
+    fxCache.set(cacheKey, { expiresAt: cachedAt + CACHE_TTL_MS, staleUntil: cachedAt + STALE_CACHE_TTL_MS, result });
     return result;
   } catch (error) {
-    return unavailable(from, to, error instanceof Error ? error.message : 'FX_PROVIDER_UNAVAILABLE');
+    const message = error instanceof Error ? error.message : 'FX_PROVIDER_UNAVAILABLE';
+    if (cached && cached.staleUntil > Date.now()) {
+      return {
+        ...cached.result,
+        source: cached.result.source ? `stale_cache:${cached.result.source}` : 'stale_cache',
+        available: true,
+        stale: true,
+        error: message,
+      };
+    }
+    return unavailable(from, to, message);
   }
 }
 

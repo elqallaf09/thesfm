@@ -15,6 +15,39 @@ const sampleInvestments: Investment[] = [
     createdAt: '2024-01-10T00:00:00.000Z', updatedAt: '2026-07-15T10:14:00.000Z',
   },
 ];
+
+function kwdMetalInvestment(metal: 'gold' | 'silver'): Investment {
+  const isSilver = metal === 'silver';
+  return {
+    ...sampleInvestments[0],
+    id: `currency-integrity-${metal}`,
+    name: isSilver ? 'Currency Integrity Silver' : 'Currency Integrity Gold',
+    type: metal,
+    assetType: metal,
+    metalType: metal,
+    symbol: isSilver ? 'XAGUSD' : 'XAUUSD',
+    providerSymbol: isSilver ? 'XAGUSD' : 'XAUUSD',
+    market: 'Metals',
+    currency: 'KWD',
+    priceCurrency: 'USD',
+    nativeCurrency: 'USD',
+    userCurrency: 'KWD',
+    quantity: 10,
+    grams: 10,
+    purchasePrice: 9,
+    purchaseTotal: 90,
+    currentPrice: 30,
+    currentValue: 92.4,
+    displayValue: 92.4,
+    currentMarketValue: 300,
+    nativeMarketValue: 300,
+    convertedMarketValue: 92.4,
+    fxRateToUserCurrency: 0.308,
+    fxSource: 'frankfurter',
+    profitLoss: 2.4,
+    profitLossPercent: 2.6666666667,
+  };
+}
 const baseURL = process.env.E2E_BASE_URL || (process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1' ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3000');
 
 type PortfolioOptions = {
@@ -314,6 +347,57 @@ test('light, dark, Arabic, and French card surfaces retain direction and boundar
 
   expect(surfaceColors.size).toBeGreaterThanOrEqual(2);
 });
+
+for (const scenario of [
+  { metal: 'silver', width: 1440, height: 900, lang: 'en', dir: 'ltr' },
+  { metal: 'gold', width: 390, height: 844, lang: 'ar', dir: 'rtl' },
+] as const) {
+  test(`${scenario.metal} keeps KWD holding values separate from its USD market quote (${scenario.lang}/${scenario.dir})`, async ({ page }) => {
+    const problems: string[] = [];
+    page.on('console', message => {
+      if (message.type() === 'error') problems.push(`console: ${message.text()}`);
+    });
+    page.on('pageerror', error => problems.push(`page: ${error.message}`));
+    page.on('requestfailed', request => problems.push(`request: ${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`));
+    page.on('response', response => {
+      if (response.status() >= 500) problems.push(`response: ${response.status()} ${response.url()}`);
+    });
+
+    await enterPremiumPortfolio(page, scenario.width, {
+      investments: [kwdMetalInvestment(scenario.metal)],
+      lang: scenario.lang,
+      theme: 'light',
+      historyPoints: [],
+    });
+    await page.setViewportSize({ width: scenario.width, height: scenario.height });
+    await expect(page.locator('html')).toHaveAttribute('dir', scenario.dir);
+
+    const card = page.locator('.invest-holding-card').filter({ hasText: `Currency Integrity ${scenario.metal === 'silver' ? 'Silver' : 'Gold'}` });
+    await expect(card).toBeVisible();
+    await expect(card.locator('.invest-asset-lens .asset-avatar')).toBeVisible();
+
+    const primaryValues = card.locator('.invest-holding-metric strong');
+    await expect(primaryValues).toHaveCount(3);
+    for (const value of await primaryValues.allTextContents()) {
+      expect(value).not.toContain('USD');
+      expect(value).toMatch(scenario.lang === 'ar' ? /KWD|د\.ك/ : /KWD/);
+    }
+
+    await card.locator('.invest-expand-btn').click();
+    const financialDetails = card.locator('.invest-financial-details');
+    await expect(financialDetails).toContainText('USD');
+    await expect(financialDetails).toContainText(scenario.lang === 'ar' ? /KWD|د\.ك/ : /KWD/);
+
+    const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(4);
+
+    await card.locator('.invest-card-action--primary').click();
+    await expect(page.locator('.invest-drawer')).toBeVisible();
+    await expect(page.locator('.invest-drawer')).toContainText('USD');
+    await expect(page.locator('.invest-drawer')).toContainText(scenario.lang === 'ar' ? /KWD|د\.ك/ : /KWD/);
+    expect(problems).toEqual([]);
+  });
+}
 
 test('sticky shell, single asset visual, verified zad logo, and dialog stacking survive scroll', async ({ page }, testInfo) => {
   const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
