@@ -104,19 +104,22 @@ describe('Safe fallback behavior is preserved when no verified logo exists', () 
 });
 
 describe('Exactly one asset logo is rendered, with safe fallback on a broken remote image', () => {
-  it('renders at most one <img>, gated by a single loaded/failed state pair', () => {
+  it('renders at most one <img>, gated by cache-checked loaded/failed state', () => {
     const imgTagCount = (assetAvatarSource.match(/<img\b/g) ?? []).length;
     expect(imgTagCount).toBe(1);
-    expect(assetAvatarSource).toContain('onError={() => setImageFailed(true)}');
-    expect(assetAvatarSource).toContain('const showImage = Boolean(meta.logoUrl && !imageFailed);');
+    expect(assetAvatarSource).toContain('onError={handleImageError}');
+    expect(assetAvatarSource).toContain('cacheAssetLogoFailure(meta.logoUrl);');
+    expect(assetAvatarSource).toContain('isAssetLogoFailureCached(meta.logoUrl)');
+    expect(assetAvatarSource).toContain('const showImage = Boolean(meta.logoUrl && currentImageState && !imageState.failed);');
     // The fallback icon renders only until the real logo has finished loading,
     // and re-appears if the image fails - never both visuals at once.
     expect(assetAvatarSource).toContain('{(!showImage || !imageLoaded) && fallback}');
   });
 
-  it('resets load/error state per logo so a previous asset cannot leak its broken-image fallback', () => {
-    expect(assetAvatarSource).toContain('setImageFailed(false);');
-    expect(assetAvatarSource).toContain('setImageLoaded(false);');
+  it('checks cached failure state per logo so a prior URL cannot leak into the next asset', () => {
+    expect(assetAvatarSource).toContain('logoUrl: meta.logoUrl,');
+    expect(assetAvatarSource).toContain('cacheChecked: true,');
+    expect(assetAvatarSource).toContain('loaded: false,');
     expect(assetAvatarSource).toMatch(/}, \[meta\.logoUrl\]\);/);
   });
 });
