@@ -734,6 +734,7 @@ export default function PublicLandingPage() {
 
   useEffect(() => {
     const sections = ['features', 'tools', 'pricing', 'faq'];
+    let scheduledFrame = 0;
     const updateActiveSection = () => {
       let current = 'home';
       for (const section of sections) {
@@ -744,13 +745,22 @@ export default function PublicLandingPage() {
       }
       setActiveSection(current);
     };
+    const scheduleActiveSectionUpdate = () => {
+      if (scheduledFrame) return;
+      scheduledFrame = window.requestAnimationFrame(() => {
+        scheduledFrame = 0;
+        updateActiveSection();
+      });
+    };
 
-    updateActiveSection();
-    window.addEventListener('scroll', updateActiveSection, { passive: true });
-    window.addEventListener('resize', updateActiveSection);
+    // The initial state is already `home`. Reading every section geometry during
+    // hydration forces an avoidable full-page layout on the Lighthouse route.
+    window.addEventListener('scroll', scheduleActiveSectionUpdate, { passive: true });
+    window.addEventListener('resize', scheduleActiveSectionUpdate);
     return () => {
-      window.removeEventListener('scroll', updateActiveSection);
-      window.removeEventListener('resize', updateActiveSection);
+      if (scheduledFrame) window.cancelAnimationFrame(scheduledFrame);
+      window.removeEventListener('scroll', scheduleActiveSectionUpdate);
+      window.removeEventListener('resize', scheduleActiveSectionUpdate);
     };
   }, []);
 
