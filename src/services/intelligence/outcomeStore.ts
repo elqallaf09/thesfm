@@ -466,28 +466,40 @@ export class SupabaseIntelligenceOutcomeStore implements IntelligenceOutcomeStor
       }
     }
 
-    // A small backwards-compatible scan catches Phase 6.1 rows created before
-    // pending outcomes existed. It is deliberately bounded to avoid a provider fan-out.
+    // Phase 6.1 rows predate pending outcomes. Use a database anti-join instead of
+    // repeatedly inspecting the newest parent rows: once those rows have outcomes,
+    // a newest-first scan would permanently starve older legacy analyses. The unique
+    // analysis_id constraint still protects this query from a concurrent evaluator.
     if (selected.size < boundedLimit) {
-      const { data } = await admin
+      const remaining = boundedLimit - selected.size;
+      const { data, error } = await admin
         .from('intelligence_analyses')
-        .select(ANALYSIS_SELECT)
+        .select(`${ANALYSIS_SELECT},intelligence_analysis_outcomes!left(analysis_id)`)
         .lte('generated_at', now)
-        .order('generated_at', { ascending: false })
-        .limit(Math.min(200, boundedLimit * 12));
-      const candidates = (data ?? []).map(mapStoredAnalysis).filter((row): row is StoredIntelligenceAnalysis => row !== null);
-      const candidateIds = candidates.map(candidate => candidate.result.analysisId).filter(id => !selected.has(id));
-      if (candidateIds.length) {
-        const { data: existingRows } = await admin
-          .from('intelligence_analysis_outcomes')
-          .select('analysis_id')
-          .in('analysis_id', candidateIds);
-        const existingIds = new Set((existingRows ?? [])
-          .map(row => asString((row as RecordLike).analysis_id))
-          .filter((id): id is string => Boolean(id)));
-        for (const candidate of candidates) {
-          if (selected.size >= boundedLimit) break;
-          if (!existingIds.has(candidate.result.analysisId)) selected.set(candidate.result.analysisId, candidate);
+        .is('intelligence_analysis_outcomes.analysis_id', null)
+        .order('generated_at', { ascending: true })
+        .limit(remaining);
+      if (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[intelligence-outcome-store] legacy outcome backfill lookup skipped', { code: error.code });
+        }
+      } else {
+        const nowMs = Date.parse(now);
+        for (const candidate of (data ?? []).map(mapStoredAnalysis)) {
+          if (!candidate || selected.size >= boundedLimit) continue;
+          // The parent table did not retain a window end before Phase 6.2A; derive
+          // the versioned window locally and avoid handing an immature legacy row to
+          // the evaluator just because it has no outcome row.
+          try {
+            if (Date.parse(createEvaluationWindow(candidate.result).eligibleAt) <= nowMs) {
+              selected.set(candidate.result.analysisId, candidate);
+            }
+          } catch {
+            // Leave the malformed snapshot to the evaluator, which records a
+            // terminal FAILED outcome rather than letting one corrupt legacy row
+            // abort the complete scheduled evaluation run.
+            selected.set(candidate.result.analysisId, candidate);
+          }
         }
       }
     }
