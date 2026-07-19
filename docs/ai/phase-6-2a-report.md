@@ -7,7 +7,7 @@
 - Prerequisite: Phase 6.1 Financial Intelligence Core, merged through PR #45
 - Production changes: none
 - Production migration-history edits: none
-- Report state: implementation and verification are in progress; this document does not claim completion of pending checks.
+- Report state: local implementation and validation are complete; the isolated Preview and remote CI gate remain pending the draft pull request.
 
 ## Intended delivery scope
 
@@ -40,22 +40,32 @@ Operational rollback remains application-first: disable or roll back the evaluat
 
 ## Validation status
 
-| Check | Status at report creation |
-| --- | --- |
-| Locked-package install | Pending |
-| Lint | Pending |
-| Typecheck | Pending |
-| Unit tests | Pending |
-| Integration tests | Pending |
-| Production build | Pending |
-| Migration and RLS validation on isolated Preview | Pending |
-| Playwright desktop/mobile/RTL/LTR/light/dark coverage | Pending |
-| Performance budget and bundle-impact review | Pending |
-| Secret scan | Pending |
-| Authenticated Preview smoke | Pending |
-| Branch push and draft PR | Pending |
+Completed locally on 2026-07-19:
 
-No Preview URL, final branch SHA, PR URL, migration-application result, test result, or performance measurement is recorded here until it has been observed and verified.
+| Check | Result |
+| --- | --- |
+| Locked-package install | Passed: `pnpm install --frozen-lockfile` |
+| Lint | Passed: `pnpm lint` |
+| Typecheck | Passed: `pnpm typecheck` |
+| Translation completeness | Passed: `pnpm check:i18n` |
+| Visual-system guard | Passed: `pnpm check:visual-system` |
+| Unit and integration suite | Passed: `pnpm test:run` — 147 files, 1,648 tests |
+| Focused outcome/timeline coverage | Passed: horizon policy, BUY/SELL/WAIT treatment, MFE/MAE, stale/missing/currency behavior, provider failure retry, idempotency, isolation, pagination, comparison authorization, drift, calibration gating, migration/RLS static checks, and request-boundary validation |
+| Production build | Passed: `pnpm build` |
+| Public endpoint and environment guards | Passed: `pnpm check:prod-endpoints` and `pnpm check:public-env` |
+| Relevant desktop Playwright | Passed: 6/6 Chromium Smart Market Analysis checks, including timeline, pending/evaluated outcomes, comparison, RTL/LTR, theme, keyboard disclosure, and responsive behavior |
+| Mobile Playwright | Focused timeline checks passed in mobile Chrome and mobile WebKit. The earlier full local WebKit invocation retained one pre-existing guest-login setup timeout; no timeout or skip was changed. |
+| Performance budget | Passed: `/market-analysis` initial JavaScript 305.6 KiB gzip (312.5 KiB budget) and CSS 76.6 KiB gzip (78.1 KiB budget). The timeline is dynamically loaded; its emitted JavaScript/CSS chunks are 28,145/14,715 bytes before compression. |
+| Secret scan | No added literal secret assignments found in project source. The optional AgentShield scan reported no critical finding, but did report user-level agent-configuration hardening items outside this repository; they were not changed. |
+
+Pending after the draft pull request is opened:
+
+| Check | Required evidence |
+| --- | --- |
+| Migration and RLS validation on isolated Preview | Apply this forward-only migration only to the provisioned Preview database and run its migration/RLS checks. No local or Production database was linked or guessed. |
+| Authenticated Preview smoke | Resolve the exact-SHA HTTPS Vercel Preview, provision temporary Preview fixtures, run the remote suite, then clean up the fixtures. |
+| Remote CI / Lighthouse | Record the exact pull-request workflow and deployment result. |
+| Branch push and draft PR | Push only the feature branch and create a draft PR against `main`; do not merge. |
 
 ## Known limitations and deferred work
 
@@ -68,4 +78,4 @@ No Preview URL, final branch SHA, PR URL, migration-application result, test res
 
 ## Review recommendation
 
-**NO-GO pending implementation completion and the verification evidence above.** Production remains untouched. A GO recommendation requires a final exact commit SHA, draft PR, isolated Preview validation, security/RLS evidence, full relevant test results, performance review, and authenticated affected-surface smoke.
+**NO-GO pending isolated Preview migration/RLS validation, authenticated Preview smoke, and remote CI evidence.** Production remains untouched. A GO recommendation requires those remote checks against the final exact commit SHA; merge and Production deployment remain subject to explicit approval.
