@@ -21,7 +21,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
       <AppHeader />
       <div className="sfm-app-shell-grid">
         <div className="sfm-app-sidebar-slot" aria-hidden="false">
-          {!isMobile ? <Sidebar /> : null}
+          {!isMobile && (
+            <Sidebar />
+          )}
         </div>
         <WorkspacePageContainer
           id="main-content"
