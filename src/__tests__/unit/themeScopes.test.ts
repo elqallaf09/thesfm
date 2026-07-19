@@ -40,6 +40,9 @@ describe('getThemeScope', () => {
   });
 
   it('maps market and trading pages to the trader scope', () => {
+    expect(getThemeScope('/ai-analyst')).toBe('trader');
+    expect(getThemeScope('/ai-analyst/analyze/AAPL')).toBe('trader');
+    expect(getThemeScope('/symbol-details/AAPL')).toBe('trader');
     expect(getThemeScope('/market-analysis')).toBe('trader');
     expect(getThemeScope('/market-agent')).toBe('trader');
     expect(getThemeScope('/market-watchlist')).toBe('trader');

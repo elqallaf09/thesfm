@@ -23,9 +23,9 @@ async function setLanguage(page: Page, language: 'ar' | 'en' | 'fr') {
 }
 
 async function openTradingTools(page: Page) {
-  const response = await page.goto('/market-analysis?tab=traderTools', { waitUntil: 'domcontentloaded' });
+  const response = await page.goto('/ai-analyst/overview?legacy=market&tab=traderTools', { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
-  await expect(page).toHaveURL(/\/market-analysis\?tab=traderTools/);
+  await expect(page).toHaveURL(/\/ai-analyst\/overview\?legacy=market&tab=traderTools/);
   await expect(page.locator('.sfm-app-main[data-workspace-page-variant="full"]')).toBeVisible();
   await expect(page.locator('.trader-premium-dashboard')).toBeVisible({ timeout: 15_000 });
   await page.evaluate(() => document.fonts.ready);

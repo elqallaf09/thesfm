@@ -264,6 +264,7 @@ async function stubApis(page: Page, state: 'partial' | 'insufficient' | 'stale')
   }));
   await page.route('**/api/market/analyze**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(marketAnalysis()) }));
   await page.route('**/api/market/ai-insight', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'AI_PROVIDER_UNAVAILABLE' }) }));
+  await page.route('**/api/intelligence/latest**', route => route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'NOT_FOUND' } }) }));
   await page.route('**/api/intelligence/analyze', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: intelligenceResult(state), correlationId: 'e2e-correlation' }) }));
   await page.route('**/api/intelligence/timeline**', route => route.fulfill({
     status: 200,
@@ -275,7 +276,7 @@ async function stubApis(page: Page, state: 'partial' | 'insufficient' | 'stale')
 async function openAnalysis(page: Page, state: 'partial' | 'insufficient' | 'stale') {
   await stubApis(page, state);
   await enterGuest(page);
-  const response = await page.goto('/market-analysis?tab=analyze&symbol=AAPL&assetType=stock&autoRun=1', { waitUntil: 'domcontentloaded' });
+  const response = await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1', { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
   const panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
   await expect(panel).toBeVisible({ timeout: 45_000 });
@@ -288,9 +289,10 @@ test.setTimeout(120_000);
 test.describe('Phase 6.1 intelligence panel', () => {
   test('renders the canonical structured result with evidence and no generated price levels', async ({ page }) => {
     const panel = await openAnalysis(page, 'partial');
+    const status = page.getByTestId('intelligence-status-panel');
     await expect(panel.getByText('Analysis confidence')).toBeVisible();
     await expect(panel.getByText('64%')).toBeVisible();
-    await expect(panel.getByText('This analysis is partial', { exact: false })).toBeVisible();
+    await expect(status.getByRole('listitem').filter({ hasText: 'This analysis is partial' })).toBeVisible();
     await panel.locator('summary').click();
     await expect(panel.getByText('Entry prices, targets, and stop-loss values are unavailable', { exact: false })).toBeVisible();
     await expect(panel.getByText('verified-e2e-provider', { exact: true })).toBeVisible();
@@ -298,22 +300,26 @@ test.describe('Phase 6.1 intelligence panel', () => {
 
   test('renders insufficient-data and stale states truthfully', async ({ page }) => {
     let panel = await openAnalysis(page, 'insufficient');
+    let status = page.getByTestId('intelligence-status-panel');
     await expect(panel.getByText('Insufficient data', { exact: true })).toBeVisible();
-    await expect(panel.getByText('Available evidence is insufficient', { exact: false })).toBeVisible();
-    await expect(panel.getByText('The data provider is unavailable', { exact: false })).toBeVisible();
+    await expect(status.getByText('Available evidence is insufficient', { exact: false })).toBeVisible();
+    await expect(status.getByText('The data provider is unavailable', { exact: false })).toBeVisible();
 
     await page.unrouteAll({ behavior: 'wait' });
     await stubApis(page, 'stale');
-    await page.goto('/market-analysis?tab=analyze&symbol=AAPL&assetType=stock&autoRun=1', { waitUntil: 'domcontentloaded' });
+    await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1', { waitUntil: 'domcontentloaded' });
     panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
+    status = page.getByTestId('intelligence-status-panel');
     await expect(panel).toBeVisible({ timeout: 45_000 });
-    await expect(panel.getByText('This is an explicitly stale result', { exact: false })).toBeVisible();
+    await expect(status.getByText('This is an explicitly stale result', { exact: false })).toBeVisible();
     await expect(panel.getByText('34%')).toBeVisible();
   });
 
   test('keeps RTL/LTR, theme, keyboard disclosure, and mobile width behavior intact', async ({ page }) => {
     const panel = await openAnalysis(page, 'partial');
     const timeline = page.getByTestId('intelligence-timeline');
+    await expect(timeline).toHaveCount(0);
+    await page.getByRole('button', { name: /Show this asset/i }).click();
     await expect(timeline).toBeVisible();
     await panel.locator('summary').focus();
     await page.keyboard.press('Enter');
@@ -342,6 +348,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
 
   test('renders the historical timeline, pending/evaluated outcomes, and a deterministic comparison', async ({ page }) => {
     await openAnalysis(page, 'partial');
+    await page.getByRole('button', { name: /Show this asset/i }).click();
     const timeline = page.getByTestId('intelligence-timeline');
     await expect(timeline).toBeVisible();
     const readings = timeline.getByRole('option');

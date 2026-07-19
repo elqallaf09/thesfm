@@ -204,9 +204,9 @@ test.describe('mobile workspace switcher affordance', () => {
     const marketBox = await marketTab.boundingBox();
     expect(marketBox).not.toBeNull();
     await page.mouse.click(marketBox!.x + 2, marketBox!.y + marketBox!.height / 2);
-    await page.waitForURL(/\/market-analysis(?:\?|$)/);
+    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
     await expect(page.locator('[data-workspace-id="markets-trading"]')).toHaveAttribute('aria-current', 'page');
-    expect(navigations.filter(path => path === '/market-analysis')).toHaveLength(1);
+    expect(navigations.filter(path => path === '/ai-analyst/overview')).toHaveLength(1);
 
     const businessTab = page.locator('[data-workspace-id="business-projects"]');
     const businessBox = await businessTab.boundingBox();

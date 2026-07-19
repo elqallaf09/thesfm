@@ -13,6 +13,11 @@ describe('workspace page layout policy', () => {
   it.each([
     ['/dashboard', 'full'],
     ['/setup', 'full'],
+    ['/ai-analyst', 'full'],
+    ['/ai-analyst/overview', 'full'],
+    ['/ai-analyst/analyze/AAPL', 'full'],
+    ['/ai-analyst/history?view=accuracy', 'full'],
+    ['/symbol-details/AAPL', 'full'],
     ['/market-analysis', 'full'],
     ['/market-analysis?tab=traderTools', 'full'],
     ['/market-analysis#trader-tools', 'full'],
