@@ -71,6 +71,12 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
     await page.waitForURL(/\/ai-analyst\/agent(?:\?|$)/);
     await expect(page.getByRole('heading', { name: 'Smart market agent' })).toBeVisible();
 
+    await page.goto('/market-agent?symbol=EURUSD%3DX&assetType=FOREX&timeframe=1D', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/ai-analyst\/agent\?assetType=FOREX&horizon=INTRADAY&symbol=EURUSD%3DX/);
+    await expect(page.getByLabel('Symbol')).toHaveValue('EURUSD=X');
+    await expect(page.getByLabel('Asset type')).toHaveValue('FOREX');
+    await expect(page.getByLabel('Horizon')).toHaveValue('INTRADAY');
+
     await page.goto('/symbol-details/AAPL', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(/\/ai-analyst\/analyze\/AAPL\?assetType=STOCK&horizon=SWING/);
     await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();

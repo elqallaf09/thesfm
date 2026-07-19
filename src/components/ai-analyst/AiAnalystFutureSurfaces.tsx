@@ -2,6 +2,7 @@
 
 import { Bot, GitCompareArrows, Route, ScanSearch, ShieldAlert, Sparkles } from 'lucide-react';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
+import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
@@ -22,7 +23,15 @@ function ReservedCard({ icon: Icon, title, body, status }: {
   );
 }
 
-export function AiAnalystAgent() {
+export function AiAnalystAgent({
+  initialSymbol,
+  initialAssetType,
+  initialHorizon,
+}: {
+  initialSymbol?: string;
+  initialAssetType?: IntelligenceAssetType;
+  initialHorizon?: IntelligenceHorizon;
+}) {
   const { lang } = useLanguage();
   const copy = AI_ANALYST_COPY[aiAnalystLocale(lang)];
   return (
@@ -37,7 +46,11 @@ export function AiAnalystAgent() {
           <Bot aria-hidden="true" className={styles.placeholderIcon} />
         </header>
         <p className={styles.statusRail}><ShieldAlert size={16} aria-hidden="true" />{copy.agent.guardrail}</p>
-        <AiAnalystAssetPicker />
+        <AiAnalystAssetPicker
+          initialSymbol={initialSymbol}
+          initialAssetType={initialAssetType}
+          initialHorizon={initialHorizon}
+        />
       </section>
     </div>
   );
