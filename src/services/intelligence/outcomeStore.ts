@@ -14,8 +14,8 @@ import type {
 import {
   confidenceBucket,
   createEvaluationWindow,
+  createOutcomePolicySnapshot,
   INTELLIGENCE_CALIBRATION_METHODOLOGY_VERSION,
-  INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION,
 } from '@/lib/intelligence/outcomePolicy';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 
@@ -146,6 +146,7 @@ function mapOutcome(row: unknown): IntelligenceAnalysisOutcome | null {
   const outcome = asString(value?.outcome_classification);
   const provenance = asRecord(value?.provider_provenance) ?? {};
   const snapshot = asRecord(value?.methodology_snapshot) ?? {};
+  const evaluationPolicy = asRecord(snapshot.evaluationPolicy) ?? {};
   const providerAttempts = asArray(provenance.attempts, attempt => {
     const item = asRecord(attempt);
     const provider = asString(item?.provider);
@@ -203,9 +204,9 @@ function mapOutcome(row: unknown): IntelligenceAnalysisOutcome | null {
       startAt: windowStart,
       endAt: windowEnd,
       eligibleAt: windowEnd,
-      entryToleranceSeconds: asNumber(snapshot.entryToleranceSeconds) ?? 0,
-      finalToleranceSeconds: asNumber(snapshot.finalToleranceSeconds) ?? 0,
-      interval: asString(snapshot.interval) ?? 'unknown',
+      entryToleranceSeconds: asNumber(evaluationPolicy.entryToleranceSeconds) ?? asNumber(snapshot.entryToleranceSeconds) ?? 0,
+      finalToleranceSeconds: asNumber(evaluationPolicy.finalToleranceSeconds) ?? asNumber(snapshot.finalToleranceSeconds) ?? 0,
+      interval: asString(evaluationPolicy.interval) ?? asString(snapshot.interval) ?? 'unknown',
     },
     entryReferencePrice: asNumber(value.entry_reference_price),
     entryReferenceAt: asString(value.entry_reference_at),
@@ -257,7 +258,11 @@ function normalizedCurrency(value: string | null | undefined) {
 
 function pendingOutcome(analysis: StoredIntelligenceAnalysis): IntelligenceAnalysisOutcome {
   const { result } = analysis;
-  const window = createEvaluationWindow(result);
+  const evaluationPolicy = createOutcomePolicySnapshot({
+    horizon: result.horizon,
+    assetType: result.asset.assetType,
+  });
+  const window = createEvaluationWindow(result, evaluationPolicy);
   return {
     id: randomUUID(),
     analysisId: result.analysisId,
@@ -297,8 +302,9 @@ function pendingOutcome(analysis: StoredIntelligenceAnalysis): IntelligenceAnaly
     priceDataReceivedAt: null,
     providerProvenance: { selectedProvider: null, attempts: [], adjustedPrices: 'UNKNOWN' },
     warnings: [],
-    methodologyVersion: INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION,
+    methodologyVersion: evaluationPolicy.methodologyVersion,
     methodologySnapshot: {
+      evaluationPolicy,
       referenceSource: window.referenceSource,
       entryToleranceSeconds: window.entryToleranceSeconds,
       finalToleranceSeconds: window.finalToleranceSeconds,

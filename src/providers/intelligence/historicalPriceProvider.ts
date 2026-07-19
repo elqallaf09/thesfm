@@ -6,8 +6,10 @@ import type {
   IntelligenceHistoricalPriceAttempt,
   IntelligenceHistoricalPriceHistory,
   IntelligenceHistoricalPricePoint,
+  IntelligenceHistoricalPriceResult,
+  IntelligenceHistoricalPriceUnavailable,
+  IntelligenceOutcomePolicySnapshot,
 } from '@/domain/intelligence/outcomes';
-import { getOutcomeWindowConfig } from '@/lib/intelligence/outcomePolicy';
 import { marketAssetTypeFromIntelligence } from '@/lib/intelligence/assetTypes';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 
@@ -16,12 +18,14 @@ export type HistoricalPriceRequest = {
   horizon: IntelligenceHorizon;
   from: string;
   to: string;
+  /** Immutable policy copied from the pending outcome, never live config. */
+  policy: IntelligenceOutcomePolicySnapshot;
 };
 
 export interface IntelligenceHistoricalPriceProvider {
   id: string;
   supports(asset: CanonicalAssetIdentity): boolean;
-  getHistory(request: HistoricalPriceRequest): Promise<IntelligenceHistoricalPriceHistory | null>;
+  getHistory(request: HistoricalPriceRequest): Promise<IntelligenceHistoricalPriceResult | null>;
 }
 
 function finite(value: unknown) {
@@ -75,6 +79,38 @@ function failedAttempt(provider: string, startedAt: number, code: string): Intel
   };
 }
 
+function unavailableHistory(input: {
+  provider: string;
+  providerSymbol: string;
+  startedAt: number;
+  availability: IntelligenceHistoricalPriceUnavailable['availability'];
+  code: string;
+  warnings: string[];
+}): IntelligenceHistoricalPriceUnavailable {
+  return {
+    provider: input.provider,
+    providerSymbol: input.providerSymbol,
+    availability: input.availability,
+    code: input.code,
+    receivedAt: new Date().toISOString(),
+    attempts: [failedAttempt(input.provider, input.startedAt, input.code)],
+    warnings: input.warnings,
+  };
+}
+
+function yahooFailureAvailability(reason: string) {
+  if (reason === 'invalid_symbol' || reason === 'provider_returned_empty_history' || reason === 'provider_http_400' || reason === 'provider_http_404') {
+    return 'PERMANENT' as const;
+  }
+  return 'RETRYABLE' as const;
+}
+
+export function isHistoricalPriceUnavailable(
+  result: IntelligenceHistoricalPriceResult | null,
+): result is IntelligenceHistoricalPriceUnavailable {
+  return Boolean(result && 'availability' in result);
+}
+
 /**
  * Dedicated Phase 6.2A adapter. It intentionally does not call the generic
  * multi-provider candle fallback because that path can serve unlabelled stale data.
@@ -86,18 +122,26 @@ export class YahooIntelligenceHistoricalPriceProvider implements IntelligenceHis
     return true;
   }
 
-  async getHistory(request: HistoricalPriceRequest): Promise<IntelligenceHistoricalPriceHistory | null> {
+  async getHistory(request: HistoricalPriceRequest): Promise<IntelligenceHistoricalPriceResult | null> {
     const startedAt = Date.now();
-    const config = getOutcomeWindowConfig(request.horizon);
     const result = await fetchYahooHistory(
       request.asset.providerSymbol,
       marketAssetTypeFromIntelligence(request.asset.assetType),
-      config.historyPeriod,
-      config.interval,
+      request.policy.historyPeriod,
+      request.policy.interval,
     );
-    if (!result.success) return null;
+    if (!result.success) {
+      return unavailableHistory({
+        provider: result.provider,
+        providerSymbol: result.providerSymbol,
+        startedAt,
+        availability: yahooFailureAvailability(result.unavailableReason),
+        code: result.unavailableReason,
+        warnings: ['YAHOO_HISTORY_UNAVAILABLE'],
+      });
+    }
 
-    const daily = config.interval === '1d';
+    const daily = request.policy.interval === '1d';
     const allHaveAdjustedClose = daily && result.history.length > 0
       && result.history.every(point => finite(point.adjustedClose) !== null);
     const hasAdjustment = allHaveAdjustedClose && result.history.some(point => {
@@ -119,7 +163,16 @@ export class YahooIntelligenceHistoricalPriceProvider implements IntelligenceHis
       cached: result.cached === true,
       dataAsOf,
     };
-    if (!points.length) return null;
+    if (!points.length) {
+      return unavailableHistory({
+        provider: result.provider,
+        providerSymbol: result.providerSymbol,
+        startedAt,
+        availability: 'PERMANENT',
+        code: 'HISTORY_WINDOW_NOT_COVERED',
+        warnings: ['YAHOO_HISTORY_WINDOW_NOT_COVERED'],
+      });
+    }
 
     return {
       provider: result.provider,
@@ -145,7 +198,7 @@ export class YahooIntelligenceHistoricalPriceProvider implements IntelligenceHis
 export class MemoryIntelligenceHistoricalPriceProvider implements IntelligenceHistoricalPriceProvider {
   readonly id = 'memory-history';
 
-  constructor(private readonly history: IntelligenceHistoricalPriceHistory | null) {}
+  constructor(private readonly history: IntelligenceHistoricalPriceResult | null) {}
 
   supports() {
     return true;

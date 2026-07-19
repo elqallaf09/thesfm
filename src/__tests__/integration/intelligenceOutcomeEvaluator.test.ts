@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
-import type { IntelligenceHistoricalPriceHistory } from '@/domain/intelligence/outcomes';
+import type {
+  IntelligenceAnalysisOutcome,
+  IntelligenceHistoricalPriceHistory,
+  IntelligenceHistoricalPriceResult,
+  IntelligenceOutcomePolicySnapshot,
+} from '@/domain/intelligence/outcomes';
 import { createEvaluationWindow } from '@/lib/intelligence/outcomePolicy';
-import { MemoryIntelligenceHistoricalPriceProvider } from '@/providers/intelligence/historicalPriceProvider';
+import {
+  type HistoricalPriceRequest,
+  type IntelligenceHistoricalPriceProvider,
+  MemoryIntelligenceHistoricalPriceProvider,
+} from '@/providers/intelligence/historicalPriceProvider';
 import { createIntelligenceOutcomeEvaluator } from '@/services/intelligence/outcomeEvaluator';
 import {
   MemoryIntelligenceOutcomeStore,
+  type IntelligenceOutcomeStore,
   type StoredIntelligenceAnalysis,
+  type TerminalOutcomeUpdate,
 } from '@/services/intelligence/outcomeStore';
 import { MemoryIntelligenceTelemetry } from '@/services/intelligence/telemetry';
 
@@ -159,9 +170,28 @@ function historyFor(result: AnalysisResult, overrides: Partial<IntelligenceHisto
   } satisfies IntelligenceHistoricalPriceHistory;
 }
 
+function permanentEmptyCoverage(result: AnalysisResult): IntelligenceHistoricalPriceResult {
+  return {
+    provider: 'verified-history',
+    providerSymbol: result.asset.providerSymbol,
+    availability: 'PERMANENT',
+    code: 'HISTORY_WINDOW_NOT_COVERED',
+    receivedAt: '2025-03-01T00:00:00.000Z',
+    attempts: [{
+      provider: 'verified-history',
+      status: 'FAILED',
+      code: 'HISTORY_WINDOW_NOT_COVERED',
+      latencyMs: 1,
+      cached: false,
+      dataAsOf: null,
+    }],
+    warnings: ['YAHOO_HISTORY_WINDOW_NOT_COVERED'],
+  };
+}
+
 function evaluator(input: {
   store: MemoryIntelligenceOutcomeStore;
-  history: IntelligenceHistoricalPriceHistory | null;
+  history: IntelligenceHistoricalPriceResult | null;
   now?: number;
 }) {
   return createIntelligenceOutcomeEvaluator({
@@ -170,6 +200,21 @@ function evaluator(input: {
     now: () => input.now ?? Date.parse('2025-03-01T00:00:00.000Z'),
     providerTimeoutMs: 100,
   });
+}
+
+function seededPendingStore(pending: IntelligenceAnalysisOutcome) {
+  let current = structuredClone(pending);
+  return {
+    store: {
+      ensurePending: async () => structuredClone(current),
+      transitionPending: async (_analysisId: string, update: TerminalOutcomeUpdate) => {
+        if (current.evaluationStatus !== 'PENDING' || update.evaluationStatus === 'PENDING') return null;
+        current = { ...current, ...structuredClone(update) };
+        return structuredClone(current);
+      },
+    } as unknown as IntelligenceOutcomeStore,
+    outcome: () => structuredClone(current),
+  };
 }
 
 describe('intelligence outcome evaluator', () => {
@@ -254,7 +299,7 @@ describe('intelligence outcome evaluator', () => {
     await expect(evaluator({ store, history: historyFor(result), now: beforeWindowClose })
       .evaluateOne(stored(result), new MemoryIntelligenceTelemetry()))
       .resolves.toBe('NOT_DUE');
-    await expect(store.getOutcome(result.analysisId)).resolves.toBeNull();
+    await expect(store.getOutcome(result.analysisId)).resolves.toMatchObject({ evaluationStatus: 'PENDING' });
   });
 
   it('records truthful insufficient-data outcomes for stale cached, missing, and currency-conflicting history', async () => {
@@ -311,5 +356,138 @@ describe('intelligence outcome evaluator', () => {
       .evaluateOne(stored(result, USER_ONE), new MemoryIntelligenceTelemetry()))
       .resolves.toBe('EVALUATED');
     await expect(store.getOutcome(result.analysisId)).resolves.toMatchObject({ evaluationStatus: 'EVALUATED' });
+  });
+
+  it('replays the persisted policy snapshot after a policy-version change instead of using current configuration', async () => {
+    const result = analysis({ analysisId: '10000000-0000-4000-8000-000000000008' });
+    const sourceStore = new MemoryIntelligenceOutcomeStore([stored(result)]);
+    const basePending = await sourceStore.ensurePending(stored(result));
+    expect(basePending).not.toBeNull();
+
+    const persistedPolicy: IntelligenceOutcomePolicySnapshot = {
+      methodologyVersion: 'outcome-evaluation-v0',
+      horizon: 'SWING',
+      durationSeconds: 30 * 86_400,
+      interval: '1h',
+      historyPeriod: '1mo',
+      entryToleranceSeconds: 3 * 86_400,
+      finalToleranceSeconds: 10 * 86_400,
+      // A historical 11% neutral band intentionally differs from the live
+      // STOCK policy. A 10% move must therefore remain NEUTRAL on replay.
+      neutralBandPercent: 11,
+    };
+    const persistedPending: IntelligenceAnalysisOutcome = {
+      ...basePending!,
+      methodologyVersion: persistedPolicy.methodologyVersion,
+      evaluationWindow: {
+        ...basePending!.evaluationWindow,
+        methodologyVersion: persistedPolicy.methodologyVersion,
+        interval: persistedPolicy.interval,
+        entryToleranceSeconds: persistedPolicy.entryToleranceSeconds,
+        finalToleranceSeconds: persistedPolicy.finalToleranceSeconds,
+      },
+      methodologySnapshot: {
+        ...basePending!.methodologySnapshot,
+        evaluationPolicy: persistedPolicy,
+      },
+    };
+    const replayStore = seededPendingStore(persistedPending);
+    const receivedRequests: HistoricalPriceRequest[] = [];
+    const provider: IntelligenceHistoricalPriceProvider = {
+      id: 'recording-history',
+      supports: () => true,
+      getHistory: async request => {
+        receivedRequests.push(request);
+        return historyFor(result);
+      },
+    };
+    const subject = createIntelligenceOutcomeEvaluator({
+      store: replayStore.store,
+      providers: [provider],
+      now: () => Date.parse('2025-03-01T00:00:00.000Z'),
+      providerTimeoutMs: 100,
+    });
+
+    await expect(subject.evaluateOne(stored(result), new MemoryIntelligenceTelemetry())).resolves.toBe('EVALUATED');
+    expect(receivedRequests[0]?.policy).toEqual(persistedPolicy);
+    expect(replayStore.outcome()).toMatchObject({
+      evaluationStatus: 'EVALUATED',
+      outcome: 'NEUTRAL',
+      directionalReturn: 10,
+    });
+  });
+
+  it('terminally records a definitive empty-history window with provider provenance', async () => {
+    const result = analysis({ analysisId: '10000000-0000-4000-8000-000000000009' });
+    const store = new MemoryIntelligenceOutcomeStore([stored(result)]);
+    const emptyCoverage = permanentEmptyCoverage(result);
+
+    await expect(evaluator({ store, history: emptyCoverage })
+      .evaluateOne(stored(result), new MemoryIntelligenceTelemetry()))
+      .resolves.toBe('INSUFFICIENT_DATA');
+    expect(await store.getOutcome(result.analysisId)).toMatchObject({
+      evaluationStatus: 'INSUFFICIENT_DATA',
+      evaluationDataSource: 'verified-history',
+      providerProvenance: {
+        selectedProvider: 'verified-history',
+        attempts: [expect.objectContaining({ code: 'HISTORY_WINDOW_NOT_COVERED' })],
+      },
+    });
+    const outcome = await store.getOutcome(result.analysisId);
+    expect(outcome?.warnings ?? [])
+      .toContainEqual(expect.objectContaining({ code: 'HISTORICAL_PRICE_HISTORY_PERMANENTLY_UNAVAILABLE' }));
+  });
+
+  it('continues past permanent unavailable history to a later supported provider', async () => {
+    const result = analysis({ analysisId: '10000000-0000-4000-8000-000000000010' });
+    const store = new MemoryIntelligenceOutcomeStore([stored(result)]);
+    const calls: string[] = [];
+    const providers: IntelligenceHistoricalPriceProvider[] = [
+      {
+        id: 'permanent-empty-history',
+        supports: () => true,
+        getHistory: async () => {
+          calls.push('permanent-empty-history');
+          return permanentEmptyCoverage(result);
+        },
+      },
+      {
+        id: 'fallback-verified-history',
+        supports: () => true,
+        getHistory: async () => {
+          calls.push('fallback-verified-history');
+          return historyFor(result, {
+            provider: 'fallback-verified-history',
+            attempts: [{
+              provider: 'fallback-verified-history',
+              status: 'SUCCESS',
+              code: null,
+              latencyMs: 1,
+              cached: false,
+              dataAsOf: '2025-01-31T00:00:00.000Z',
+            }],
+          });
+        },
+      },
+    ];
+    const subject = createIntelligenceOutcomeEvaluator({
+      store,
+      providers,
+      now: () => Date.parse('2025-03-01T00:00:00.000Z'),
+      providerTimeoutMs: 100,
+    });
+
+    await expect(subject.evaluateOne(stored(result), new MemoryIntelligenceTelemetry())).resolves.toBe('EVALUATED');
+    expect(calls).toEqual(['permanent-empty-history', 'fallback-verified-history']);
+    expect(await store.getOutcome(result.analysisId)).toMatchObject({
+      evaluationStatus: 'EVALUATED',
+      providerProvenance: {
+        selectedProvider: 'fallback-verified-history',
+        attempts: [
+          expect.objectContaining({ code: 'HISTORY_WINDOW_NOT_COVERED' }),
+          expect.objectContaining({ provider: 'fallback-verified-history', status: 'SUCCESS' }),
+        ],
+      },
+    });
   });
 });

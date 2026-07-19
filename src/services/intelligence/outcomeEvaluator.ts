@@ -1,16 +1,24 @@
 import 'server-only';
 
-import type { IntelligenceAnalysisOutcome, IntelligenceOutcomeWarning } from '@/domain/intelligence/outcomes';
+import type {
+  IntelligenceAnalysisOutcome,
+  IntelligenceHistoricalPriceHistory,
+  IntelligenceHistoricalPriceUnavailable,
+  IntelligenceOutcomeWarning,
+} from '@/domain/intelligence/outcomes';
 import {
   calculateDirectionalReturn,
   calculateExcursions,
   classifyDirectionalOutcome,
-  createEvaluationWindow,
   isEvaluationEligible,
   referencePointAfter,
+  resolvePersistedOutcomePolicy,
 } from '@/lib/intelligence/outcomePolicy';
 import type { IntelligenceHistoricalPriceProvider } from '@/providers/intelligence/historicalPriceProvider';
-import { YahooIntelligenceHistoricalPriceProvider } from '@/providers/intelligence/historicalPriceProvider';
+import {
+  isHistoricalPriceUnavailable,
+  YahooIntelligenceHistoricalPriceProvider,
+} from '@/providers/intelligence/historicalPriceProvider';
 import type {
   IntelligenceOutcomeStore,
   StoredIntelligenceAnalysis,
@@ -132,12 +140,32 @@ function recordTerminalTelemetry(telemetry: IntelligenceTelemetry, outcome: Inte
   if (outcome.evaluationStatus === 'INSUFFICIENT_DATA') telemetry.record({ name: 'intelligence_outcome_evaluation_unavailable' });
 }
 
-function outcomeProviderProvenance(history: NonNullable<Awaited<ReturnType<IntelligenceHistoricalPriceProvider['getHistory']>>>) {
+function outcomeProviderProvenance(
+  history: IntelligenceHistoricalPriceHistory,
+  priorUnavailable: IntelligenceHistoricalPriceUnavailable[] = [],
+): IntelligenceAnalysisOutcome['providerProvenance'] {
   return {
     selectedProvider: history.provider,
-    attempts: history.attempts,
+    attempts: [...priorUnavailable.flatMap(item => item.attempts), ...history.attempts],
     adjustedPrices: history.adjustedPrices,
-  } as const;
+  };
+}
+
+function unavailableProviderProvenance(unavailable: IntelligenceHistoricalPriceUnavailable[]) {
+  return {
+    selectedProvider: unavailable.at(-1)?.provider ?? null,
+    attempts: unavailable.flatMap(item => item.attempts),
+    adjustedPrices: 'UNKNOWN' as const,
+  };
+}
+
+function unavailableWarnings(unavailable: IntelligenceHistoricalPriceUnavailable[]) {
+  const codes = new Set<string>();
+  for (const item of unavailable) {
+    codes.add(item.code);
+    for (const code of item.warnings) codes.add(code);
+  }
+  return [...codes].map(code => warning(code, 'INFO'));
 }
 
 export class IntelligenceOutcomeEvaluator {
@@ -157,7 +185,19 @@ export class IntelligenceOutcomeEvaluator {
       duplicatesPrevented: 0,
     };
     for (const analysis of candidates) {
-      const item = await this.evaluateOne(analysis, input.telemetry);
+      let item: OutcomeEvaluationItemResult;
+      try {
+        item = await this.evaluateOne(analysis, input.telemetry);
+      } catch {
+        // A malformed legacy snapshot or an unexpected adapter bug must not
+        // prevent the cron batch from evaluating other eligible analyses.
+        input.telemetry.record({
+          name: 'intelligence_outcome_evaluation_unavailable',
+          failureClass: 'outcome_evaluation_item_failed',
+        });
+        result.failed += 1;
+        continue;
+      }
       if (item === 'NOT_DUE') continue;
       result.eligible += 1;
       if (item === 'EVALUATED') result.evaluated += 1;
@@ -172,24 +212,16 @@ export class IntelligenceOutcomeEvaluator {
   }
 
   async evaluateOne(analysis: StoredIntelligenceAnalysis, telemetry: IntelligenceTelemetry): Promise<OutcomeEvaluationItemResult> {
-    let window;
+    // Persist/load the immutable PENDING row before interpreting any policy
+    // value. This locks the evaluation window and all policy inputs to the
+    // analysis-time snapshot rather than today's configuration.
+    let pending: IntelligenceAnalysisOutcome | null;
     try {
-      window = createEvaluationWindow(analysis.result);
+      pending = await this.dependencies.store.ensurePending(analysis);
     } catch {
-      const pending = await this.dependencies.store.ensurePending(analysis);
-      if (!pending) return 'PENDING_RETRY';
-      const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
-        status: 'FAILED',
-        evaluatedAt: isoAt(this.dependencies.now()),
-        warnings: [warning('INVALID_ANALYSIS_EVALUATION_WINDOW', 'CRITICAL')],
-      }));
-      recordTerminalTelemetry(telemetry, persisted);
-      return persisted ? 'FAILED' : 'DUPLICATE_PREVENTED';
+      telemetry.record({ name: 'intelligence_outcome_evaluation_unavailable', failureClass: 'pending_outcome_creation_failed' });
+      return 'PENDING_RETRY';
     }
-
-    if (!isEvaluationEligible(window, this.dependencies.now())) return 'NOT_DUE';
-    telemetry.record({ name: 'intelligence_outcome_eligible_analysis_found' });
-    const pending = await this.dependencies.store.ensurePending(analysis);
     if (!pending) {
       telemetry.record({ name: 'intelligence_outcome_evaluation_unavailable', failureClass: 'outcome_persistence_unavailable' });
       return 'PENDING_RETRY';
@@ -198,6 +230,24 @@ export class IntelligenceOutcomeEvaluator {
       telemetry.record({ name: 'intelligence_outcome_duplicate_prevented' });
       return 'DUPLICATE_PREVENTED';
     }
+
+    const replay = resolvePersistedOutcomePolicy({
+      horizon: pending.horizon,
+      evaluationWindow: pending.evaluationWindow,
+      methodologySnapshot: pending.methodologySnapshot,
+    });
+    if (!replay) {
+      const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
+        status: 'FAILED',
+        evaluatedAt: isoAt(this.dependencies.now()),
+        warnings: [warning('PERSISTED_OUTCOME_POLICY_SNAPSHOT_INVALID', 'CRITICAL')],
+      }));
+      recordTerminalTelemetry(telemetry, persisted);
+      return persisted ? 'FAILED' : 'DUPLICATE_PREVENTED';
+    }
+    const { policy, window } = replay;
+    if (!isEvaluationEligible(window, this.dependencies.now())) return 'NOT_DUE';
+    telemetry.record({ name: 'intelligence_outcome_eligible_analysis_found' });
 
     const evaluatedAt = isoAt(this.dependencies.now());
     if (analysis.result.recommendation === 'INSUFFICIENT_DATA' || analysis.result.status === 'FAILED') {
@@ -216,26 +266,45 @@ export class IntelligenceOutcomeEvaluator {
       horizon: analysis.result.horizon,
       from: window.startAt,
       to: isoAt(finalBoundary),
+      policy,
     };
     const providers = this.dependencies.providers.filter(provider => provider.supports(analysis.result.asset));
     if (!providers.length) {
       const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
-        status: 'INVALIDATED',
+        status: 'INSUFFICIENT_DATA',
         evaluatedAt,
         warnings: [warning('HISTORICAL_PRICE_PROVIDER_UNSUPPORTED')],
       }));
       recordTerminalTelemetry(telemetry, persisted);
-      return persisted ? 'INVALIDATED' : 'DUPLICATE_PREVENTED';
+      return persisted ? 'INSUFFICIENT_DATA' : 'DUPLICATE_PREVENTED';
     }
 
-    let history: Awaited<ReturnType<IntelligenceHistoricalPriceProvider['getHistory']>> = null;
+    let history: IntelligenceHistoricalPriceHistory | null = null;
+    const permanentUnavailable: IntelligenceHistoricalPriceUnavailable[] = [];
+    let retryableProviderFailure = false;
     for (const provider of providers) {
       telemetry.record({ name: 'intelligence_outcome_provider_history_requested', provider: provider.id });
       try {
-        history = await withTimeout(provider.getHistory(historyRequest), this.dependencies.providerTimeoutMs);
-        if (history) break;
-        telemetry.record({ name: 'intelligence_provider_failed', provider: provider.id, failureClass: 'history_unavailable' });
+        const response = await withTimeout(provider.getHistory(historyRequest), this.dependencies.providerTimeoutMs);
+        if (!response) {
+          retryableProviderFailure = true;
+          telemetry.record({ name: 'intelligence_provider_failed', provider: provider.id, failureClass: 'history_response_missing' });
+          continue;
+        }
+        if (isHistoricalPriceUnavailable(response)) {
+          telemetry.record({
+            name: 'intelligence_provider_failed',
+            provider: response.provider,
+            failureClass: response.availability === 'PERMANENT' ? 'history_permanently_unavailable' : 'history_retryable_unavailable',
+          });
+          if (response.availability === 'PERMANENT') permanentUnavailable.push(response);
+          else retryableProviderFailure = true;
+          continue;
+        }
+        history = response;
+        break;
       } catch (error) {
+        retryableProviderFailure = true;
         telemetry.record({
           name: 'intelligence_provider_failed',
           provider: provider.id,
@@ -243,14 +312,45 @@ export class IntelligenceOutcomeEvaluator {
         });
       }
     }
-    // A transport outage is retried from PENDING; it is not misclassified as a
-    // market outcome or a permanent absence of data.
     if (!history) {
+      // A transport outage is retried from PENDING; permanent absence is only
+      // terminal when every supported provider was definitive and none was
+      // retryable. Continue through fallbacks before making that distinction.
+      if (retryableProviderFailure || !permanentUnavailable.length) {
+        telemetry.record({ name: 'intelligence_outcome_evaluation_unavailable', failureClass: 'history_provider_unavailable' });
+        return 'PENDING_RETRY';
+      }
+      const provenance = unavailableProviderProvenance(permanentUnavailable);
       telemetry.record({ name: 'intelligence_outcome_evaluation_unavailable', failureClass: 'history_provider_unavailable' });
-      return 'PENDING_RETRY';
+      const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
+        status: 'INSUFFICIENT_DATA',
+        evaluatedAt,
+        warnings: [
+          ...unavailableWarnings(permanentUnavailable),
+          warning('HISTORICAL_PRICE_HISTORY_PERMANENTLY_UNAVAILABLE'),
+        ],
+        provider: provenance,
+        source: provenance.selectedProvider,
+        priceDataReceivedAt: safeIso(permanentUnavailable.at(-1)?.receivedAt),
+      }));
+      recordTerminalTelemetry(telemetry, persisted);
+      return persisted ? 'INSUFFICIENT_DATA' : 'DUPLICATE_PREVENTED';
     }
 
-    const provider = outcomeProviderProvenance(history);
+    const provider = outcomeProviderProvenance(history, permanentUnavailable);
+    if (history.deliveryState === 'UNAVAILABLE' || history.points.length === 0) {
+      const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
+        status: 'INSUFFICIENT_DATA',
+        evaluatedAt,
+        warnings: [...history.warnings.map(code => warning(code, 'INFO')), warning('HISTORICAL_PRICE_HISTORY_NOT_COVERED')],
+        provider,
+        source: history.provider,
+        priceDataAsOf: safeIso(history.dataAsOf),
+        priceDataReceivedAt: safeIso(history.receivedAt),
+      }));
+      recordTerminalTelemetry(telemetry, persisted);
+      return persisted ? 'INSUFFICIENT_DATA' : 'DUPLICATE_PREVENTED';
+    }
     if (history.deliveryState === 'CACHED'
       && (history.cacheAgeSeconds === null || history.cacheAgeSeconds > MAX_HISTORY_CACHE_AGE_SECONDS)) {
       const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
@@ -324,6 +424,7 @@ export class IntelligenceOutcomeEvaluator {
       recommendation: analysis.result.recommendation,
       assetType: analysis.result.asset.assetType,
       directionalReturn,
+      neutralBandPercent: policy.neutralBandPercent,
     });
     const intervalPoints = history.points.filter(point => {
       const at = Date.parse(point.at);

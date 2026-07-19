@@ -49,6 +49,22 @@ export type IntelligenceEvaluationWindow = {
   interval: string;
 };
 
+/**
+ * The complete set of configurable values used when an outcome is replayed.
+ * A pending outcome persists this object before any market-history request is
+ * made so later policy releases cannot reinterpret the original analysis.
+ */
+export type IntelligenceOutcomePolicySnapshot = {
+  methodologyVersion: string;
+  horizon: IntelligenceHorizon;
+  durationSeconds: number;
+  interval: string;
+  historyPeriod: string;
+  entryToleranceSeconds: number;
+  finalToleranceSeconds: number;
+  neutralBandPercent: number;
+};
+
 export type IntelligenceHistoricalPricePoint = {
   at: string;
   open: number | null;
@@ -81,6 +97,26 @@ export type IntelligenceHistoricalPriceHistory = {
   attempts: IntelligenceHistoricalPriceAttempt[];
   warnings: string[];
 };
+
+/**
+ * A provider can say that a request is permanently unavailable without
+ * pretending it was a transport outage. This lets the evaluator terminally
+ * record unsupported symbols and uncovered windows while retaining retry
+ * semantics for timeouts and temporary provider failures.
+ */
+export type IntelligenceHistoricalPriceUnavailable = {
+  provider: string;
+  providerSymbol: string;
+  availability: 'RETRYABLE' | 'PERMANENT';
+  code: string;
+  receivedAt: string;
+  attempts: IntelligenceHistoricalPriceAttempt[];
+  warnings: string[];
+};
+
+export type IntelligenceHistoricalPriceResult =
+  | IntelligenceHistoricalPriceHistory
+  | IntelligenceHistoricalPriceUnavailable;
 
 export type IntelligenceOutcomeWarning = {
   code: string;

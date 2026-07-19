@@ -9,6 +9,7 @@ import type {
   IntelligenceDirectionalOutcome,
   IntelligenceEvaluationWindow,
   IntelligenceHistoricalPricePoint,
+  IntelligenceOutcomePolicySnapshot,
 } from '@/domain/intelligence/outcomes';
 
 export const INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION = 'outcome-evaluation-v1';
@@ -93,7 +94,27 @@ export function getNeutralBandPercent(assetType: IntelligenceAssetType) {
   return NEUTRAL_BAND_BPS[assetType] / 100;
 }
 
-export function createEvaluationWindow(analysis: Pick<AnalysisResult, 'horizon' | 'generatedAt' | 'dataAsOf'>): IntelligenceEvaluationWindow {
+export function createOutcomePolicySnapshot(input: {
+  horizon: IntelligenceHorizon;
+  assetType: IntelligenceAssetType;
+}): IntelligenceOutcomePolicySnapshot {
+  const config = getOutcomeWindowConfig(input.horizon);
+  return {
+    methodologyVersion: INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION,
+    horizon: input.horizon,
+    durationSeconds: config.durationSeconds,
+    interval: config.interval,
+    historyPeriod: config.historyPeriod,
+    entryToleranceSeconds: config.entryToleranceSeconds,
+    finalToleranceSeconds: config.finalToleranceSeconds,
+    neutralBandPercent: getNeutralBandPercent(input.assetType),
+  };
+}
+
+export function createEvaluationWindow(
+  analysis: Pick<AnalysisResult, 'horizon' | 'generatedAt' | 'dataAsOf'>,
+  policy?: Pick<IntelligenceOutcomePolicySnapshot, 'methodologyVersion' | 'horizon' | 'durationSeconds' | 'interval' | 'entryToleranceSeconds' | 'finalToleranceSeconds'>,
+): IntelligenceEvaluationWindow {
   const generatedAt = validDate(analysis.generatedAt);
   if (!generatedAt) throw new Error('INVALID_ANALYSIS_GENERATED_AT');
   const suppliedDataAsOf = validDate(analysis.dataAsOf);
@@ -101,12 +122,19 @@ export function createEvaluationWindow(analysis: Pick<AnalysisResult, 'horizon' 
   const dataAsOfMs = suppliedDataAsOf ? Date.parse(suppliedDataAsOf) : Number.NaN;
   const useDataAsOf = Number.isFinite(dataAsOfMs) && dataAsOfMs <= generatedMs + 5 * 60 * 1000;
   const referenceAt = useDataAsOf ? suppliedDataAsOf! : generatedAt;
-  const config = HORIZON_WINDOWS[analysis.horizon];
+  const config = policy ?? {
+    methodologyVersion: INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION,
+    horizon: analysis.horizon,
+    ...HORIZON_WINDOWS[analysis.horizon],
+  };
+  if (config.horizon !== analysis.horizon || !Number.isFinite(config.durationSeconds) || config.durationSeconds <= 0) {
+    throw new Error('INVALID_OUTCOME_POLICY_SNAPSHOT');
+  }
   const startMs = Date.parse(referenceAt);
   const endMs = startMs + config.durationSeconds * 1000;
 
   return {
-    methodologyVersion: INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION,
+    methodologyVersion: config.methodologyVersion,
     horizon: analysis.horizon,
     referenceAt,
     referenceSource: useDataAsOf ? 'DATA_AS_OF' : 'GENERATED_AT',
@@ -116,6 +144,77 @@ export function createEvaluationWindow(analysis: Pick<AnalysisResult, 'horizon' 
     entryToleranceSeconds: config.entryToleranceSeconds,
     finalToleranceSeconds: config.finalToleranceSeconds,
     interval: config.interval,
+  };
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function validNonNegativeNumber(value: unknown) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function validPositiveInteger(value: unknown) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+/**
+ * Rebuild the evaluation inputs solely from the immutable pending outcome.
+ * There is deliberately no fallback to the currently deployed configuration:
+ * an incomplete legacy snapshot is terminally un-replayable rather than being
+ * silently reinterpreted by a later rules release.
+ */
+export function resolvePersistedOutcomePolicy(input: {
+  horizon: IntelligenceHorizon;
+  evaluationWindow: IntelligenceEvaluationWindow;
+  methodologySnapshot: Record<string, unknown>;
+}) {
+  const policy = record(input.methodologySnapshot.evaluationPolicy);
+  const methodologyVersion = typeof policy?.methodologyVersion === 'string' ? policy.methodologyVersion : null;
+  const horizon = typeof policy?.horizon === 'string' ? policy.horizon : null;
+  const interval = typeof policy?.interval === 'string' ? policy.interval : null;
+  const historyPeriod = typeof policy?.historyPeriod === 'string' ? policy.historyPeriod : null;
+  const durationSeconds = validPositiveInteger(policy?.durationSeconds);
+  const entryToleranceSeconds = validNonNegativeNumber(policy?.entryToleranceSeconds);
+  const finalToleranceSeconds = validNonNegativeNumber(policy?.finalToleranceSeconds);
+  const neutralBandPercent = validNonNegativeNumber(policy?.neutralBandPercent);
+  const startMs = Date.parse(input.evaluationWindow.startAt);
+  const endMs = Date.parse(input.evaluationWindow.endAt);
+
+  if (!methodologyVersion || horizon !== input.horizon || !interval || !historyPeriod
+    || durationSeconds === null || entryToleranceSeconds === null || finalToleranceSeconds === null
+    || neutralBandPercent === null || neutralBandPercent > 100
+    || !Number.isFinite(startMs) || !Number.isFinite(endMs)
+    || endMs - startMs !== durationSeconds * 1000
+    || input.evaluationWindow.horizon !== input.horizon
+    || input.evaluationWindow.methodologyVersion !== methodologyVersion
+    || input.evaluationWindow.interval !== interval
+    || input.evaluationWindow.entryToleranceSeconds !== entryToleranceSeconds
+    || input.evaluationWindow.finalToleranceSeconds !== finalToleranceSeconds) {
+    return null;
+  }
+
+  const persistedPolicy: IntelligenceOutcomePolicySnapshot = {
+    methodologyVersion,
+    horizon: input.horizon,
+    durationSeconds,
+    interval,
+    historyPeriod,
+    entryToleranceSeconds,
+    finalToleranceSeconds,
+    neutralBandPercent,
+  };
+  return {
+    policy: persistedPolicy,
+    window: {
+      ...input.evaluationWindow,
+      entryToleranceSeconds,
+      finalToleranceSeconds,
+      interval,
+    },
   };
 }
 
@@ -153,10 +252,13 @@ export function classifyDirectionalOutcome(input: {
   recommendation: IntelligenceRecommendation;
   assetType: IntelligenceAssetType;
   directionalReturn: number | null;
+  neutralBandPercent?: number;
 }): IntelligenceDirectionalOutcome {
   if (input.recommendation === 'WAIT' || input.recommendation === 'INSUFFICIENT_DATA') return 'NOT_APPLICABLE';
   if (input.directionalReturn === null) return 'NOT_APPLICABLE';
-  const neutralBand = getNeutralBandPercent(input.assetType);
+  const neutralBand = Number.isFinite(input.neutralBandPercent) && Number(input.neutralBandPercent) >= 0
+    ? Number(input.neutralBandPercent)
+    : getNeutralBandPercent(input.assetType);
   if (Math.abs(input.directionalReturn) <= neutralBand) return 'NEUTRAL';
   return input.directionalReturn > 0 ? 'CORRECT' : 'INCORRECT';
 }
