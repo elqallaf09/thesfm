@@ -32,10 +32,10 @@
 }
 
 .header > div { min-width: 0; }
-.eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-size: .76rem; font-weight: 750; }
+.eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-size: .76rem; font-weight: 700; }
 .header h2 { margin: 4px 0 3px; color: var(--foreground); font-size: 1rem; line-height: 1.25; }
 .header p { max-width: 60rem; margin: 0; color: var(--foreground-muted); font-size: .78rem; line-height: 1.6; }
-.horizon { flex: 0 0 auto; padding: 5px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-secondary); color: var(--foreground-secondary); font: 700 .68rem var(--font-data); }
+.horizon { flex: 0 0 auto; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-secondary); color: var(--foreground-secondary); font: 700 .68rem var(--font-data); }
 
 .selectionBar {
   justify-content: space-between;
@@ -113,16 +113,16 @@
   width: 8px;
   height: 8px;
   border: 2px solid var(--surface-elevated);
-  border-radius: 50%;
+  border-radius: var(--radius-circle);
   background: var(--accent);
-  box-shadow: 0 0 0 1px var(--border-strong);
+  box-shadow: var(--shadow-xs);
 }
-.itemSelected .marker { background: var(--info); box-shadow: 0 0 0 2px var(--focus-ring); }
+.itemSelected .marker { background: var(--info); box-shadow: var(--focus-shadow); }
 
 .itemTopline { justify-content: space-between; gap: 10px; }
 .itemTopline time { color: var(--foreground-muted); font: 600 .7rem var(--font-data); }
-.itemTopline em { margin-inline-start: auto; border-radius: 999px; padding: 3px 6px; background: var(--accent-soft); color: var(--accent); font-size: .63rem; font-style: normal; font-weight: 700; }
-.recommendation { flex: 0 0 auto; border: 1px solid currentColor; border-radius: 999px; padding: 3px 7px; font-size: .66rem; font-weight: 750; }
+.itemTopline em { margin-inline-start: auto; border-radius: var(--radius-pill); padding: 3px 6px; background: var(--accent-soft); color: var(--accent); font-size: .63rem; font-style: normal; font-weight: 700; }
+.recommendation { flex: 0 0 auto; border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 3px 7px; font-size: .66rem; font-weight: 700; }
 .buy { color: var(--success); background: var(--success-soft); }
 .sell { color: var(--danger); background: var(--danger-soft); }
 .wait { color: var(--warning); background: var(--warning-soft); }
