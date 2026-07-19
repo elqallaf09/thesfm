@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { test } from '@playwright/test';
 import { adminAuthStatePath, userAuthStatePath } from './auth-state';
 
-const approvedPreviewOrigin = 'https://tilrkqdngnokvxuvllio.supabase.co';
 const enabled = process.env.SFM_PREVIEW_OBSERVABILITY_QA === '1';
 
 type StorageState = {
@@ -61,12 +60,9 @@ test.describe('authenticated Preview release validation', () => {
   });
 
   test('authenticated browser request creates one isolated Preview observability row and cleans it up', async ({ page }) => {
-  const previewOrigin = process.env.SUPABASE_PREVIEW_URL;
+  const previewOrigin = requiredPreviewServiceOrigin();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const expectedSha = process.env.E2E_EXPECTED_DEPLOYMENT_SHA;
-  if (previewOrigin !== approvedPreviewOrigin) {
-    throw new Error('SUPABASE_PREVIEW_URL must target the approved isolated Preview project.');
-  }
   if (!serviceRoleKey?.trim()) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for Preview row validation.');
   if (!expectedSha || !/^[0-9a-f]{40}$/i.test(expectedSha)) {
     throw new Error('E2E_EXPECTED_DEPLOYMENT_SHA must be the exact 40-character committed SHA.');
@@ -166,6 +162,22 @@ function exactPreviewOrigin(baseURL: string | undefined) {
   return target.origin;
 }
 
+function requiredPreviewServiceOrigin() {
+  const previewRef = process.env.SUPABASE_PREVIEW_REF?.trim().toLowerCase();
+  const productionRef = process.env.SUPABASE_PRODUCTION_REF?.trim().toLowerCase();
+  if (!previewRef || !productionRef || !/^[a-z0-9]{20}$/.test(previewRef) || !/^[a-z0-9]{20}$/.test(productionRef)) {
+    throw new Error('Preview observability validation requires explicit Supabase Preview and Production refs.');
+  }
+  if (previewRef === productionRef) {
+    throw new Error('Preview observability validation may never target the Production Supabase ref.');
+  }
+  const expectedOrigin = `https://${previewRef}.supabase.co`;
+  if (process.env.SUPABASE_PREVIEW_URL !== expectedOrigin) {
+    throw new Error('SUPABASE_PREVIEW_URL did not match the verified isolated Preview ref.');
+  }
+  return expectedOrigin;
+}
+
 async function adminAccessProbe(page: import('@playwright/test').Page, previewOrigin: string) {
   const initialUrl = page.url();
   if (initialUrl !== 'about:blank') {
@@ -236,9 +248,9 @@ async function readSession(path: string) {
 }
 
 async function assertPreviewRoleFixtureIntegrity(userSubject: string, adminSubject: string) {
-  const origin = process.env.SUPABASE_PREVIEW_URL;
+  const origin = requiredPreviewServiceOrigin();
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (origin !== approvedPreviewOrigin || !serviceRoleKey?.trim()) {
+  if (!serviceRoleKey?.trim()) {
     throw new Error('Preview role integrity requires the approved Preview service environment.');
   }
 

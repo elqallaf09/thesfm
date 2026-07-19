@@ -4,15 +4,21 @@ import { describe, expect, it } from 'vitest';
 
 const readSource = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 const fixture = readSource('tests/smoke/preview-auth-fixtures.mjs');
+const observability = readSource('tests/smoke/observability-preview.spec.ts');
 const workflow = readSource('.github/workflows/ci.yml');
 const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-preview:'));
 
 describe('Preview-only authentication fixtures', () => {
-  it('hard-pins every fixture mutation to the isolated Preview project', () => {
-    expect(fixture).toContain("const approvedPreviewRef = 'tilrkqdngnokvxuvllio'");
+  it('dynamically pins every fixture mutation to the verified isolated Preview project', () => {
+    expect(fixture).toContain("const previewRef = requiredPreviewRef();");
+    expect(fixture).toContain("requiredEnvironment('SUPABASE_PREVIEW_REF')");
+    expect(fixture).toContain("requiredEnvironment('SUPABASE_PRODUCTION_REF')");
+    expect(fixture).toContain("if (previewRef === productionRef)");
     expect(fixture).toContain('origin.origin !== approvedPreviewOrigin');
-    expect(fixture).toContain("payload.ref !== approvedPreviewRef");
+    expect(fixture).toContain("payload.ref !== previewRef");
     expect(fixture).not.toMatch(/SUPABASE_(?:PRODUCTION|PROJECT)_URL/);
+    expect(observability).toContain('function requiredPreviewServiceOrigin()');
+    expect(observability).toContain('Preview observability validation may never target the Production Supabase ref.');
   });
 
   it('uses protected environment credentials without putting them in arguments or logs', () => {
@@ -32,6 +38,11 @@ describe('Preview-only authentication fixtures', () => {
     expect(authenticatedPreviewJob).not.toContain(
       'SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}',
     );
+    expect(authenticatedPreviewJob).toContain('SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}');
+    expect(authenticatedPreviewJob).toContain('checks: read');
+    expect(authenticatedPreviewJob).toContain('Resolve active isolated Supabase Preview ref for exact SHA');
+    expect(authenticatedPreviewJob).toContain("core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);");
+    expect(authenticatedPreviewJob).not.toMatch(/SUPABASE_PREVIEW_URL:\s*https:\/\//);
   });
 
   it('is idempotent, refuses real users, validates JWTs, and removes synthetic resources', () => {
