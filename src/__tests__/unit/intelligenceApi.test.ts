@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { analyzeIntelligenceInputSchema, latestIntelligenceQuerySchema } from '@/domain/intelligence/schemas';
+import {
+  analyzeIntelligenceInputSchema,
+  intelligenceTimelineQuerySchema,
+  latestIntelligenceQuerySchema,
+} from '@/domain/intelligence/schemas';
 import { intelligenceErrorResponse, readBoundedJson } from '@/lib/intelligence/api';
 
 describe('intelligence API boundary', () => {
@@ -39,6 +43,38 @@ describe('intelligence API boundary', () => {
     expect(() => latestIntelligenceQuerySchema.parse({
       symbol: 'BTC-USD',
       assetType: 'CRYPTO',
+      userId: 'cross-user-id',
+    })).toThrow();
+  });
+
+  it('bounds timeline reads and requires an intentional, two-analysis comparison', () => {
+    const firstAnalysisId = '11111111-1111-4111-8111-111111111111';
+    const secondAnalysisId = '22222222-2222-4222-8222-222222222222';
+    const parsed = intelligenceTimelineQuerySchema.parse({
+      symbol: 'AAPL',
+      assetType: 'STOCK',
+      horizon: 'SWING',
+      from: '2026-01-01T00:00:00.000Z',
+      to: '2026-01-31T00:00:00.000Z',
+      limit: '20',
+      analysisId: firstAnalysisId,
+      compareAnalysisId: secondAnalysisId,
+    });
+
+    expect(parsed.limit).toBe(20);
+    expect(() => intelligenceTimelineQuerySchema.parse({
+      symbol: 'AAPL',
+      assetType: 'STOCK',
+      analysisId: firstAnalysisId,
+    })).toThrow();
+    expect(() => intelligenceTimelineQuerySchema.parse({
+      symbol: 'AAPL',
+      assetType: 'STOCK',
+      limit: 51,
+    })).toThrow();
+    expect(() => intelligenceTimelineQuerySchema.parse({
+      symbol: 'AAPL',
+      assetType: 'STOCK',
       userId: 'cross-user-id',
     })).toThrow();
   });
