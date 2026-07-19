@@ -18,6 +18,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { cacheAssetLogoFailure, isAssetLogoFailureCached } from '@/lib/assetLogoFailureCache';
 import { getAssetVisualMeta, type AssetVisualInput, type AssetVisualMeta, type AssetVisualType } from '@/lib/assetVisuals';
 
 type AssetAvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -112,14 +113,37 @@ export function AssetAvatar({
     name,
     symbol,
   ]);
-  const [imageFailed, setImageFailed] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const showImage = Boolean(meta.logoUrl && !imageFailed);
+  const [imageState, setImageState] = useState<{
+    logoUrl: string | null;
+    cacheChecked: boolean;
+    failed: boolean;
+    loaded: boolean;
+  }>({ logoUrl: null, cacheChecked: false, failed: false, loaded: false });
+  const currentImageState = imageState.logoUrl === meta.logoUrl && imageState.cacheChecked;
+  const showImage = Boolean(meta.logoUrl && currentImageState && !imageState.failed);
+  const imageLoaded = currentImageState && imageState.loaded;
 
   useEffect(() => {
-    setImageFailed(false);
-    setImageLoaded(false);
+    setImageState({
+      logoUrl: meta.logoUrl,
+      cacheChecked: true,
+      failed: isAssetLogoFailureCached(meta.logoUrl),
+      loaded: false,
+    });
   }, [meta.logoUrl]);
+
+  const handleImageLoad = () => {
+    setImageState(current => current.logoUrl === meta.logoUrl
+      ? { ...current, loaded: true }
+      : current);
+  };
+
+  const handleImageError = () => {
+    cacheAssetLogoFailure(meta.logoUrl);
+    setImageState(current => current.logoUrl === meta.logoUrl
+      ? { ...current, failed: true, loaded: false }
+      : current);
+  };
 
   const fallback = meta.flags.length >= 2 ? (
     <span className="flex items-center justify-center -space-x-1 text-[1.05em]" aria-hidden="true">
@@ -156,8 +180,8 @@ export function AssetAvatar({
           decoding="async"
           referrerPolicy="no-referrer"
           className={cn('absolute inset-0 h-full w-full object-contain p-1 transition-opacity', imageLoaded ? 'opacity-100' : 'opacity-0', imageClassName)}
-          onLoad={() => setImageLoaded(true)}
-          onError={() => setImageFailed(true)}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
         />
       )}
     </span>

@@ -20,11 +20,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     <div className="sfm-app-layout" data-workspace-shell="true">
       <AppHeader />
       <div className="sfm-app-shell-grid">
-        {!isMobile && (
-          <div className="sfm-app-sidebar-slot" aria-hidden="false">
-            <Sidebar />
-          </div>
-        )}
+        <div className="sfm-app-sidebar-slot" aria-hidden="false">
+          {!isMobile ? <Sidebar /> : null}
+        </div>
         <WorkspacePageContainer
           id="main-content"
           tabIndex={-1}

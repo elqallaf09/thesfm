@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { cacheAssetLogoFailure, isAssetLogoFailureCached } from '@/lib/assetLogoFailureCache';
 import { getAssetVisualMeta, type AssetVisualInput } from '@/lib/assetVisuals';
 
 type CompanyLogoSize = 'sm' | 'md' | 'lg';
@@ -73,14 +74,34 @@ export function CompanyLogo({
     name,
     symbol,
   ]);
-  const [imageFailed, setImageFailed] = useState(false);
+  const [imageState, setImageState] = useState<{
+    logoUrl: string | null;
+    cacheChecked: boolean;
+    failed: boolean;
+  }>({ logoUrl: null, cacheChecked: false, failed: false });
   const dimension = LOGO_SIZE[size];
   const brandFallback = COMPANY_FALLBACKS[meta.symbol];
-  const showImage = Boolean(meta.logoUrl && !imageFailed);
+  const showImage = Boolean(
+    meta.logoUrl
+    && imageState.logoUrl === meta.logoUrl
+    && imageState.cacheChecked
+    && !imageState.failed,
+  );
 
   useEffect(() => {
-    setImageFailed(false);
+    setImageState({
+      logoUrl: meta.logoUrl,
+      cacheChecked: true,
+      failed: isAssetLogoFailureCached(meta.logoUrl),
+    });
   }, [meta.logoUrl]);
+
+  const handleImageError = () => {
+    cacheAssetLogoFailure(meta.logoUrl);
+    setImageState(current => current.logoUrl === meta.logoUrl
+      ? { ...current, failed: true }
+      : current);
+  };
 
   return (
     <span
@@ -121,7 +142,7 @@ export function CompanyLogo({
             objectFit: 'contain',
             objectPosition: 'center',
           }}
-          onError={() => setImageFailed(true)}
+          onError={handleImageError}
         />
       ) : (
         <span className={cn('block font-mono font-semibold tracking-normal', FALLBACK_TEXT_SIZE[size])}>

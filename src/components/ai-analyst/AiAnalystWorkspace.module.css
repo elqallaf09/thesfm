@@ -162,6 +162,17 @@
 .spanSix { grid-column: span 6; }
 .spanFive { grid-column: span 5; }
 .spanFour { grid-column: span 4; }
+.deferredPanelSlot { display: grid; min-width: 0; }
+.deferredPanelPlaceholder { align-content: start; min-block-size: 196px; }
+.deferredPanelPlaceholder span {
+  display: block;
+  block-size: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+}
+.deferredPanelPlaceholder span:first-child { inline-size: min(42%, 12rem); }
+.deferredPanelPlaceholder span:nth-child(2) { inline-size: min(82%, 28rem); }
+.deferredPanelPlaceholder span:last-child { inline-size: min(64%, 20rem); }
 
 .card,
 .picker,

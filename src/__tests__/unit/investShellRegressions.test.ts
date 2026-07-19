@@ -14,8 +14,9 @@ const investmentList = read('src/components/invest/InvestmentList.tsx');
 describe('invest and shell production regressions', () => {
   it('renders exactly one asset visual: fallback disappears once the logo loads', () => {
     expect(assetAvatar).toContain('{(!showImage || !imageLoaded) && fallback}');
-    expect(assetAvatar).toContain('onError={() => setImageFailed(true)}');
-    expect(assetAvatar).toContain('onLoad={() => setImageLoaded(true)}');
+    expect(assetAvatar).toContain('onError={handleImageError}');
+    expect(assetAvatar).toContain('onLoad={handleImageLoad}');
+    expect(assetAvatar).toContain('cacheAssetLogoFailure(meta.logoUrl);');
   });
 
   it('restores the verified ZAD platform logo across identifier variations', () => {

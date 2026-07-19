@@ -78,6 +78,74 @@ async function stubAnalystReads(page: Page) {
 test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 
 test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
+  test('caches missing logo failures while valid market logos keep rendering', async ({ page, isMobile }) => {
+    await stubAnalystReads(page);
+    let missingLogoRequests = 0;
+
+    await page.route('**/api/markets**', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        envelope: { status: 'fresh', freshness: { asOf: '2026-07-19T10:00:00.000Z', isStale: false } },
+        pagination: { total: 2 },
+        groups: [{ id: 'us-equities', en: 'US equities', ar: 'US equities', totalSymbols: 2 }],
+        markets: [
+          { displaySymbol: 'ZZZZ', displayName: 'Missing Logo Corp', assetType: 'STOCK', exchange: 'NASDAQ', currency: 'USD', source: 'catalog' },
+          { displaySymbol: 'NVDA', displayName: 'NVIDIA', assetType: 'STOCK', exchange: 'NASDAQ', currency: 'USD', source: 'catalog' },
+        ],
+      }),
+    }));
+    await page.route('**/image-stock/ZZZZ.png', route => {
+      missingLogoRequests += 1;
+      return route.fulfill({ status: 404, contentType: 'image/png', body: '' });
+    });
+    await page.route('https://cdn.simpleicons.org/nvidia', route => route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      headers: { 'cache-control': 'public, max-age=3600' },
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#76b900"/></svg>',
+    }));
+
+    await enterGuest(page);
+    await page.goto('/ai-analyst/markets', { waitUntil: 'domcontentloaded' });
+
+    const explorer = page.locator('[data-ai-analyst-surface="market-explorer"]');
+    const missingAsset = explorer.locator('li').filter({ hasText: 'Missing Logo Corp' });
+    const validAsset = explorer.locator('li').filter({ hasText: 'NVIDIA' });
+    await expect(missingAsset).toBeVisible();
+    await expect.poll(() => missingLogoRequests).toBe(1);
+    await expect(missingAsset.locator('.asset-avatar img')).toHaveCount(0);
+    const validLogo = validAsset.locator('img[src="https://cdn.simpleicons.org/nvidia"]');
+    await expect(validLogo).toBeVisible();
+    await expect.poll(() => validLogo.evaluate(image => {
+      const logo = image as HTMLImageElement;
+      return logo.complete && logo.naturalWidth > 0;
+    })).toBe(true);
+
+    const leadershipLink = isMobile
+      ? page.getByTestId('ai-analyst-mobile-navigation').getByRole('link', { name: 'Market leadership' })
+      : page.getByTestId('ai-analyst-tabs').getByRole('link', { name: 'Market leadership' });
+    if (isMobile) await page.getByRole('button', { name: 'Open AI Analyst sections' }).click();
+    await leadershipLink.click();
+    await expect(page.locator('[data-ai-analyst-surface="market-leadership"]')).toBeVisible();
+    await expect(page.getByText('Missing Logo Corp')).toBeVisible();
+    await page.waitForTimeout(250);
+    expect(missingLogoRequests).toBe(1);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.locator('[data-ai-analyst-surface="market-leadership"]')).toBeVisible();
+    await expect(page.getByText('Missing Logo Corp')).toBeVisible();
+    await page.waitForTimeout(250);
+    expect(missingLogoRequests).toBe(1);
+    await expect(page.locator('[data-ai-analyst-surface="market-leadership"] img').evaluateAll(images => (
+      images.every(image => {
+        const logo = image as HTMLImageElement;
+        return logo.complete && logo.naturalWidth > 0;
+      })
+    ))).resolves.toBe(true);
+  });
+
   test('redirects legacy entry points while keeping one sidebar intelligence destination', async ({ page }) => {
     await stubAnalystReads(page);
     await enterGuest(page);

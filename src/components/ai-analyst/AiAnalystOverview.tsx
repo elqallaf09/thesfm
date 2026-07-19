@@ -3,10 +3,9 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BellRing, ChartNoAxesCombined, History, Landmark, LineChart, Sparkles, TrendingUp } from 'lucide-react';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
-import { AccuracySummaryPanel } from './AccuracySummaryPanel';
-import { RecentAnalysesPanel } from './RecentAnalysesPanel';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
@@ -18,6 +17,52 @@ const LegacyMarketAnalysisWorkspace = dynamic(
   () => import('@/app/market-analysis/page'),
   { ssr: false },
 );
+
+const RecentAnalysesPanel = dynamic(
+  () => import('./RecentAnalysesPanel').then(module => module.RecentAnalysesPanel),
+  { loading: () => <OverviewPanelPlaceholder /> },
+);
+
+const AccuracySummaryPanel = dynamic(
+  () => import('./AccuracySummaryPanel').then(module => module.AccuracySummaryPanel),
+  { loading: () => <OverviewPanelPlaceholder /> },
+);
+
+function OverviewPanelPlaceholder() {
+  return (
+    <section className={`${styles.card} ${styles.deferredPanelPlaceholder}`} aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </section>
+  );
+}
+
+function DeferredOverviewPanel({ className, children }: { className: string; children: ReactNode }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
+
+  useEffect(() => {
+    const target = containerRef.current;
+    if (!target || typeof IntersectionObserver === 'undefined') {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (!entries.some(entry => entry.isIntersecting)) return;
+      setNearViewport(true);
+      observer.disconnect();
+    }, { rootMargin: '240px 0px' });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className={`${styles.deferredPanelSlot} ${className}`}>
+      {nearViewport ? children : <OverviewPanelPlaceholder />}
+    </div>
+  );
+}
 
 function PlaceholderCard({ icon: Icon, title, body, action }: {
   icon: typeof TrendingUp;
@@ -53,8 +98,12 @@ function OverviewSurface() {
         <AiAnalystAssetPicker />
       </section>
 
-      <RecentAnalysesPanel className={styles.spanEight} />
-      <AccuracySummaryPanel className={styles.spanFour} compact />
+      <DeferredOverviewPanel className={styles.spanEight}>
+        <RecentAnalysesPanel />
+      </DeferredOverviewPanel>
+      <DeferredOverviewPanel className={styles.spanFour}>
+        <AccuracySummaryPanel compact />
+      </DeferredOverviewPanel>
       <PlaceholderCard
         icon={Landmark}
         title={copy.navigation.items.marketLeadership}
