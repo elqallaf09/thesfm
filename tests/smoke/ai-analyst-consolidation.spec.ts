@@ -48,17 +48,42 @@ async function stubAnalystReads(page: Page) {
   await page.route('**/api/intelligence/latest**', route => route.fulfill({
     status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'NOT_FOUND' } }),
   }));
+  await page.route('**/api/markets**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      ok: true,
+      envelope: { status: 'fresh', freshness: { asOf: '2026-07-19T10:00:00.000Z', isStale: false } },
+      pagination: { total: 1 },
+      groups: [{ id: 'us-equities', en: 'US equities', ar: 'أسهم الولايات المتحدة', totalSymbols: 1 }],
+      markets: [{ displaySymbol: 'AAPL', displayName: 'Apple Inc.', assetType: 'STOCK', exchange: 'NASDAQ', currency: 'USD', source: 'catalog' }],
+    }),
+  }));
+  await page.route('**/api/market-news**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      ok: true,
+      lastUpdated: '2026-07-19T10:00:00.000Z',
+      items: [{ id: 'filing', title: 'Source-backed filing', sourceName: 'Exchange', publishedAt: '2026-07-19T09:00:00.000Z', originalUrl: 'https://example.com/filing', isOfficial: true }],
+    }),
+  }));
+  await page.route('**/api/economic-calendar**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ items: [], updated_at: '2026-07-19T10:00:00.000Z', source: 'unavailable' }),
+  }));
 }
 
 test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 
-test.describe('Phase 6.2B AI Analyst consolidation', () => {
+test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
   test('redirects legacy entry points while keeping one sidebar intelligence destination', async ({ page }) => {
     await stubAnalystReads(page);
     await enterGuest(page);
 
     await page.goto('/market-analysis', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
+    await page.waitForURL(/\/ai-analyst\/market-leadership(?:\?|$)/);
     await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
 
     const sidebar = page.locator('aside.sfm-shared-sidebar');
@@ -83,7 +108,7 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
     await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
   });
 
-  test('keeps the unified status truthful and all non-analysis routes inside the same workspace', async ({ page }) => {
+  test('keeps public market surfaces truthful and gates personal capabilities without hiding the workspace', async ({ page }) => {
     await stubAnalystReads(page);
     await enterGuest(page);
 
@@ -91,8 +116,21 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
     await expect(page.getByTestId('intelligence-status-panel')).toHaveCount(1);
     await expect(page.getByTestId('ai-analyst-canonical-result')).toHaveCount(0);
 
+    for (const [route, marker] of [
+      ['/ai-analyst/market-leadership', 'market-leadership'],
+      ['/ai-analyst/markets', 'market-explorer'],
+      ['/ai-analyst/markets/sessions', 'market-sessions'],
+      ['/ai-analyst/markets?view=map', 'market-map'],
+      ['/ai-analyst/news', 'market-news'],
+      ['/ai-analyst/calendar', 'economic-calendar'],
+      ['/ai-analyst/education', 'education'],
+    ] as const) {
+      await page.goto(route, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expect(page.locator(`[data-ai-analyst-surface="${marker}"]`)).toBeVisible();
+    }
+
     for (const [route, heading] of [
-      ['/ai-analyst/history?view=accuracy', 'Intelligence timeline and history'],
       ['/ai-analyst/compare', 'Analysis comparison'],
       ['/ai-analyst/agent', 'Smart market agent'],
       ['/ai-analyst/opportunities', 'Future opportunities'],
@@ -102,9 +140,14 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
       await expect(page.getByRole('heading', { name: heading })).toBeVisible();
     }
 
-    await page.goto('/ai-analyst/history?view=accuracy', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByTestId('ai-analyst-accuracy-summary')
-      .getByText('The sample is too small to display a meaningful accuracy percentage.').first()).toBeVisible();
+    for (const surface of ['history', 'watchlist', 'portfolio', 'alerts', 'recommendations', 'tradePerformance', 'settings']) {
+      const route = surface === 'history'
+        ? '/ai-analyst/history?view=accuracy'
+        : `/ai-analyst/${surface === 'tradePerformance' ? 'trade-performance' : surface}`;
+      await page.goto(route, { waitUntil: 'domcontentloaded' });
+      await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expect(page.getByTestId(`ai-analyst-${surface}-locked`)).toBeVisible();
+    }
   });
 
   test('keeps one canonical AI Analyst entry across desktop and mobile navigation in every locale', async ({ page, isMobile }) => {
@@ -137,11 +180,58 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
     }
   });
 
-  test('keeps RTL/LTR, dark mode, tabs, and a mobile viewport overflow-safe', async ({ page }) => {
+  test('uses grouped desktop navigation and an accessible mobile navigation drawer', async ({ page }) => {
+    await stubAnalystReads(page);
+    await enterGuest(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/ai-analyst/overview', { waitUntil: 'domcontentloaded' });
+
+    const desktopNavigation = page.getByTestId('ai-analyst-tabs');
+    await expect(desktopNavigation).toBeVisible();
+    for (const group of ['Analysis', 'Markets', 'Monitoring', 'Knowledge', 'Configuration']) {
+      await expect(desktopNavigation.getByRole('heading', { name: group })).toBeVisible();
+    }
+    await expect(desktopNavigation.getByRole('link', { name: 'Market leadership' })).toHaveAttribute('href', '/ai-analyst/market-leadership');
+    await expect(desktopNavigation.getByRole('link', { name: 'Market sessions and map' })).toHaveAttribute('href', '/ai-analyst/markets/sessions');
+    await expect(desktopNavigation.getByRole('link', { name: 'AI Analyst settings' })).toHaveAttribute('href', '/ai-analyst/settings');
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(desktopNavigation).toBeHidden();
+    const openNavigation = page.getByRole('button', { name: 'Open AI Analyst sections' });
+    await expect(openNavigation).toHaveAttribute('aria-expanded', 'false');
+    await openNavigation.click();
+    await expect(openNavigation).toHaveAttribute('aria-expanded', 'true');
+
+    const mobileNavigation = page.getByTestId('ai-analyst-mobile-navigation');
+    await expect(mobileNavigation).toBeVisible();
+    await expect(mobileNavigation.locator('details')).toHaveCount(5);
+    await expect(mobileNavigation.getByRole('link', { name: 'Future opportunities' })).toHaveAttribute('href', '/ai-analyst/opportunities');
+    await page.keyboard.press('Escape');
+    await expect(mobileNavigation).toHaveCount(0);
+
+    await page.evaluate(() => {
+      localStorage.setItem('sfm_lang', 'fr');
+      window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: 'fr' } }));
+    });
+    await expect(page.getByRole('heading', { name: 'Analyste IA SFM', level: 1 })).toBeVisible();
+
+    await page.evaluate(() => {
+      localStorage.setItem('sfm_lang', 'ar');
+      window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: 'ar' } }));
+    });
+    await expect(page.getByTestId('ai-analyst-workspace')).toHaveAttribute('dir', 'rtl');
+    await expect(page.getByRole('heading', { name: 'إس إف إم المحلل الذكي', level: 1 })).toBeVisible();
+  });
+
+  test('keeps RTL/LTR, dark mode, and a mobile viewport overflow-safe', async ({ page, isMobile }) => {
     await stubAnalystReads(page);
     await enterGuest(page);
     await page.goto('/ai-analyst/overview', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByTestId('ai-analyst-tabs')).toBeVisible();
+    if (isMobile) {
+      await expect(page.getByRole('button', { name: 'Open AI Analyst sections' })).toBeVisible();
+    } else {
+      await expect(page.getByTestId('ai-analyst-tabs')).toBeVisible();
+    }
 
     for (const [language, dir] of [['ar', 'rtl'], ['fr', 'ltr'], ['en', 'ltr']] as const) {
       await page.evaluate(nextLanguage => {

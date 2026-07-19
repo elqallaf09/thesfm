@@ -2,6 +2,31 @@ import type { IntelligenceAssetType, IntelligenceHorizon, IntelligenceRecommenda
 
 export type AiAnalystLocale = 'ar' | 'en' | 'fr';
 
+export type AiAnalystNavigationKey =
+  | 'overview'
+  | 'analysis'
+  | 'compare'
+  | 'agent'
+  | 'path'
+  | 'history'
+  | 'future'
+  | 'marketLeadership'
+  | 'markets'
+  | 'assetDetails'
+  | 'marketSessions'
+  | 'marketMap'
+  | 'watchlist'
+  | 'portfolio'
+  | 'alerts'
+  | 'recommendations'
+  | 'tradePerformance'
+  | 'news'
+  | 'calendar'
+  | 'education'
+  | 'settings';
+
+export type AiAnalystNavigationGroup = 'analysis' | 'markets' | 'monitoring' | 'knowledge' | 'configuration';
+
 export const AI_ANALYST_COPY = {
   ar: {
     title: 'إس إف إم المحلل الذكي',
@@ -9,6 +34,18 @@ export const AI_ANALYST_COPY = {
     eyebrow: 'مركز الذكاء المالي',
     redirecting: 'جارٍ فتح إس إف إم المحلل الذكي…',
     tabs: { overview: 'نظرة عامة', analysis: 'التحليل', timeline: 'المسار', history: 'السجل', compare: 'المقارنة', agent: 'الوكيل', future: 'القادم' },
+    navigation: {
+      label: 'تنقل المحلل الذكي',
+      open: 'فتح أقسام المحلل الذكي',
+      close: 'إغلاق أقسام المحلل الذكي',
+      groups: { analysis: 'التحليل', markets: 'الأسواق', monitoring: 'المتابعة', knowledge: 'المعرفة', configuration: 'الإعدادات' },
+      items: {
+        overview: 'نظرة عامة', analysis: 'التحليل الذكي', compare: 'المقارنة', agent: 'وكيل السوق الذكي', path: 'مسار التحليل', history: 'السجل والدقة', future: 'الفرص القادمة',
+        marketLeadership: 'قيادة السوق', markets: 'استكشاف الأسواق', assetDetails: 'تفاصيل الأصل', marketSessions: 'جلسات وخريطة السوق', marketMap: 'خريطة السوق',
+        watchlist: 'قائمة المتابعة', portfolio: 'المحفظة', alerts: 'التنبيهات', recommendations: 'التوصيات', tradePerformance: 'أداء التداول',
+        news: 'الأخبار', calendar: 'التقويم الاقتصادي', education: 'التعليم', settings: 'إعدادات المحلل الذكي',
+      },
+    },
     picker: {
       title: 'ابدأ بتحليل أصل',
       body: 'أدخل رمزاً وأفقاً زمنياً. لا يتم إنشاء قراءة أو سعر بديل عند غياب بيانات موثقة.',
@@ -114,11 +151,23 @@ export const AI_ANALYST_COPY = {
     actions: { retry: 'إعادة المحاولة', open: 'فتح', learnMore: 'التفاصيل' },
   },
   en: {
-    title: 'SFM Smart Analyst',
+    title: 'SFM AI Analyst',
     subtitle: 'Unified financial intelligence built from evidence that is actually available',
     eyebrow: 'Financial intelligence center',
-    redirecting: 'Opening SFM Smart Analyst…',
+    redirecting: 'Opening SFM AI Analyst…',
     tabs: { overview: 'Overview', analysis: 'Analysis', timeline: 'Timeline', history: 'History', compare: 'Compare', agent: 'Agent', future: 'Future' },
+    navigation: {
+      label: 'AI Analyst navigation',
+      open: 'Open AI Analyst sections',
+      close: 'Close AI Analyst sections',
+      groups: { analysis: 'Analysis', markets: 'Markets', monitoring: 'Monitoring', knowledge: 'Knowledge', configuration: 'Configuration' },
+      items: {
+        overview: 'Overview', analysis: 'Intelligent analysis', compare: 'Compare', agent: 'AI market agent', path: 'Analysis path', history: 'History and accuracy', future: 'Future opportunities',
+        marketLeadership: 'Market leadership', markets: 'Market explorer', assetDetails: 'Asset details', marketSessions: 'Market sessions and map', marketMap: 'Market map',
+        watchlist: 'Watchlist', portfolio: 'Portfolio', alerts: 'Alerts', recommendations: 'Recommendations', tradePerformance: 'Trade performance',
+        news: 'News', calendar: 'Economic calendar', education: 'Education', settings: 'AI Analyst settings',
+      },
+    },
     picker: {
       title: 'Start with an asset',
       body: 'Enter a symbol and horizon. No substitute reading or price is created when verified data is missing.',
@@ -224,11 +273,23 @@ export const AI_ANALYST_COPY = {
     actions: { retry: 'Try again', open: 'Open', learnMore: 'Details' },
   },
   fr: {
-    title: 'SFM Smart Analyst',
+    title: 'Analyste IA SFM',
     subtitle: 'Une intelligence financière unifiée fondée sur les preuves réellement disponibles',
     eyebrow: 'Centre d’intelligence financière',
-    redirecting: 'Ouverture de SFM Smart Analyst…',
+    redirecting: 'Ouverture de l’Analyste IA SFM…',
     tabs: { overview: 'Vue d’ensemble', analysis: 'Analyse', timeline: 'Chronologie', history: 'Historique', compare: 'Comparer', agent: 'Agent', future: 'À venir' },
+    navigation: {
+      label: 'Navigation de l’Analyste IA',
+      open: 'Ouvrir les sections de l’Analyste IA',
+      close: 'Fermer les sections de l’Analyste IA',
+      groups: { analysis: 'Analyse', markets: 'Marchés', monitoring: 'Suivi', knowledge: 'Connaissances', configuration: 'Configuration' },
+      items: {
+        overview: 'Vue d’ensemble', analysis: 'Analyse intelligente', compare: 'Comparer', agent: 'Agent de marché IA', path: 'Parcours d’analyse', history: 'Historique et précision', future: 'Opportunités futures',
+        marketLeadership: 'Leadership du marché', markets: 'Explorateur de marchés', assetDetails: 'Détails de l’actif', marketSessions: 'Sessions et carte du marché', marketMap: 'Carte du marché',
+        watchlist: 'Liste de suivi', portfolio: 'Portefeuille', alerts: 'Alertes', recommendations: 'Recommandations', tradePerformance: 'Performance des transactions',
+        news: 'Actualités', calendar: 'Calendrier économique', education: 'Formation', settings: 'Paramètres de l’Analyste IA',
+      },
+    },
     picker: {
       title: 'Commencer avec un actif',
       body: 'Saisissez un symbole et un horizon. Aucune lecture ni aucun prix de remplacement n’est créé si les données vérifiées manquent.',

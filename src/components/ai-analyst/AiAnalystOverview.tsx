@@ -3,15 +3,17 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { BellRing, ChartNoAxesCombined, History, LineChart, Sparkles, TrendingUp } from 'lucide-react';
+import { BellRing, ChartNoAxesCombined, History, Landmark, LineChart, Sparkles, TrendingUp } from 'lucide-react';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
 import { AccuracySummaryPanel } from './AccuracySummaryPanel';
-import { ProviderHealthPanel } from './ProviderHealthPanel';
 import { RecentAnalysesPanel } from './RecentAnalysesPanel';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
+// The legacy command center remains an authenticated/guest-only compatibility
+// surface while its remaining non-decision tools complete route-by-route parity.
+// It is intentionally not linked from the global or grouped AI Analyst navigation.
 const LegacyMarketAnalysisWorkspace = dynamic(
   () => import('@/app/market-analysis/page'),
   { ssr: false },
@@ -53,7 +55,12 @@ function OverviewSurface() {
 
       <RecentAnalysesPanel className={styles.spanEight} />
       <AccuracySummaryPanel className={styles.spanFour} compact />
-      <ProviderHealthPanel className={styles.spanSix} />
+      <PlaceholderCard
+        icon={Landmark}
+        title={copy.navigation.items.marketLeadership}
+        body={copy.overview.snapshotBody}
+        action={{ href: '/ai-analyst/market-leadership', label: copy.actions.open }}
+      />
       <PlaceholderCard icon={TrendingUp} title={copy.overview.trending} body={copy.overview.trendingBody} />
       <PlaceholderCard
         icon={History}
@@ -71,7 +78,7 @@ function OverviewSurface() {
         icon={BellRing}
         title={copy.overview.alerts}
         body={copy.overview.alertsBody}
-        action={{ href: '/ai-analyst/overview?legacy=market&tab=alerts', label: copy.overview.openLegacyAlerts }}
+        action={{ href: '/ai-analyst/alerts', label: copy.navigation.items.alerts }}
       />
       <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="ai-analyst-overview-next-title">
         <header className={styles.cardHeader}>

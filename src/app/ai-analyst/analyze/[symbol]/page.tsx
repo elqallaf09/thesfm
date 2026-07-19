@@ -20,7 +20,7 @@ export default async function AiAnalystAssetPage({ params, searchParams }: PageP
   const horizon = normalizeAiAnalystHorizon(single(query.horizon));
   const autoRun = single(query.autoRun) === '1' || single(query.autoRun) === 'true';
   return (
-    <AiAnalystShell activeTab="analysis">
+    <AiAnalystShell activeTab="assetDetails">
       <AiAnalystAnalysis symbol={symbol} assetType={assetType} horizon={horizon} autoRun={autoRun} />
     </AiAnalystShell>
   );

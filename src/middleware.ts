@@ -51,12 +51,6 @@ const protectedPrefixes = [
   '/mfa/verify',
   '/profile',
   '/notifications',
-  '/market-alerts',
-  '/ai-analyst',
-  '/symbol-details',
-  '/market-analysis',
-  '/market-watchlist',
-  '/watchlist',
   '/sfm-admin-control',
   '/thesfm-trader-own',
   '/wakeel',
@@ -74,18 +68,25 @@ const guestAllowedPaths = new Set([
   '/reports',
   '/reports-center',
   '/ai',
-  '/market-analysis',
 ]);
-
-const guestAllowedPrefixes = ['/ai-analyst', '/symbol-details'];
 
 function isProtected(pathname: string) {
   return protectedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isGuestAllowed(pathname: string) {
-  return guestAllowedPaths.has(pathname)
-    || guestAllowedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return guestAllowedPaths.has(pathname);
+}
+
+/**
+ * The retained legacy market adapter is intentionally isolated while its
+ * remaining route-by-route parity work is completed. It must never become a
+ * public backdoor to legacy directional UI merely because the canonical AI
+ * Analyst shell is publicly readable.
+ */
+function isLegacyMarketCompatibilityRoute(request: NextRequest) {
+  return request.nextUrl.pathname === '/ai-analyst/overview'
+    && request.nextUrl.searchParams.get('legacy') === 'market';
 }
 
 function isLocalQaBypass(pathname: string) {
@@ -163,7 +164,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isLocalQaBypass(pathname)) return response;
-  const needsSession = authPages.includes(pathname) || isProtected(pathname);
+  const isLegacyMarketCompatibility = isLegacyMarketCompatibilityRoute(request);
+  const needsSession = authPages.includes(pathname) || isProtected(pathname) || isLegacyMarketCompatibility;
   if (!needsSession) return response;
 
   const session = await sessionForRequest(request);
@@ -180,7 +182,9 @@ export async function middleware(request: NextRequest) {
     if (session.mfaRequirement === 'email') return response;
     const nextPath = resolveInternalDestination(request.nextUrl.searchParams.get('next'));
     const nextPathname = internalDestinationPathname(nextPath);
-    if (nextPath && nextPathname && isProtected(nextPathname)) {
+    const nextIsAuthTransition = Boolean(nextPathname
+      && (authPages.includes(nextPathname) || nextPathname === '/mfa/verify'));
+    if (nextPath && nextPathname && !nextIsAuthTransition) {
       const protectedTargetUrl = request.nextUrl.clone();
       applyInternalDestination(protectedTargetUrl, nextPath);
       return withSecurityHeaders(NextResponse.redirect(protectedTargetUrl));
@@ -193,6 +197,7 @@ export async function middleware(request: NextRequest) {
 
   if (session.status === 'unauthenticated') {
     if (hasGuestSession && isGuestAllowed(pathname)) return response;
+    if (hasGuestSession && isLegacyMarketCompatibility) return response;
     const redirect = redirectToLogin(request);
     if (request.cookies.has(AUTH_ACCESS_COOKIE)) clearAuthenticatedCookies(redirect);
     return redirect;

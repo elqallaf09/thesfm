@@ -812,7 +812,7 @@ export function generateSmartTasks({
     if (!['triggered', 'active_triggered', 'met'].includes(status)) return;
     const symbol = firstText(row, ['symbol'], '');
     if (!symbol) return;
-    add({ id: makeId(['market-alert', row.id, status]), title: copy.marketAlertTitle, description: copy.marketAlertDescription(symbol), sourceModule: 'market', sourceId: row.id, priority: 'high', actionUrl: '/ai-analyst/overview?legacy=market&tab=alerts' });
+    add({ id: makeId(['market-alert', row.id, status]), title: copy.marketAlertTitle, description: copy.marketAlertDescription(symbol), sourceModule: 'market', sourceId: row.id, priority: 'high', actionUrl: '/ai-analyst/alerts' });
   });
 
   (data.projects ?? []).forEach(row => {
