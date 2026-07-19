@@ -49,14 +49,13 @@ Completed locally on 2026-07-19:
 | Typecheck | Passed: `pnpm typecheck` |
 | Translation completeness | Passed: `pnpm check:i18n` |
 | Visual-system guard | Passed: `pnpm check:visual-system` |
-| Unit and integration suite | Passed: `pnpm test:run` — 147 files, 1,648 tests |
-| Focused outcome/timeline coverage | Passed: horizon policy, BUY/SELL/WAIT treatment, MFE/MAE, stale/missing/currency behavior, provider failure retry, idempotency, isolation, pagination, comparison authorization, drift, calibration gating, migration/RLS static checks, and request-boundary validation |
-| Production build | Passed: `pnpm build` |
+| Unit and integration suite | Passed: `pnpm test:run` — 147 files, 1,654 tests |
+| Focused outcome/timeline coverage | Passed: horizon policy, BUY/SELL/WAIT treatment, MFE/MAE, stale/missing/currency behavior, permanent-vs-retryable provider behavior, fallback provenance, idempotency, isolation, pagination, legacy backfill, policy-version replay, invalid-source-window failure handling, drift, calibration gating, migration/RLS static checks, and request-boundary validation |
+| Production build | Passed: `pnpm build` — 156 static pages generated |
 | Public endpoint and environment guards | Passed: `pnpm check:prod-endpoints` and `pnpm check:public-env` |
-| Relevant desktop Playwright | Passed: 6/6 Chromium Smart Market Analysis checks, including timeline, pending/evaluated outcomes, comparison, RTL/LTR, theme, keyboard disclosure, and responsive behavior |
-| Mobile Playwright | Focused timeline checks passed in mobile Chrome and mobile WebKit. The earlier full local WebKit invocation retained one pre-existing guest-login setup timeout; no timeout or skip was changed. |
+| Relevant Playwright | Passed: 6/6 each on desktop Chromium, mobile Chrome, and mobile WebKit. Coverage includes timeline, pending/evaluated outcomes, comparison, RTL/LTR, theme, keyboard disclosure, and mobile layout. No timeout, skip, or configuration was changed. |
 | Performance budget | Passed: `/market-analysis` initial JavaScript 305.6 KiB gzip (312.5 KiB budget) and CSS 76.6 KiB gzip (78.1 KiB budget). The timeline is dynamically loaded; its emitted JavaScript/CSS chunks are 28,145/14,715 bytes before compression. |
-| Secret scan | No added literal secret assignments found in project source. The optional AgentShield scan reported no critical finding, but did report user-level agent-configuration hardening items outside this repository; they were not changed. |
+| Secret scan | No added literal secret assignments found in project source. `gitleaks` is not installed locally; the optional AgentShield scan reported no critical finding, but did report user-level agent-configuration hardening items outside this repository; they were not changed. |
 
 Pending after the draft pull request is opened:
 
