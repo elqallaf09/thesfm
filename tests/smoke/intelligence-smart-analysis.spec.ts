@@ -121,6 +121,131 @@ function intelligenceResult(state: 'partial' | 'insufficient' | 'stale' = 'parti
   };
 }
 
+function timelineItem(id: string, generatedAt: string, recommendation: 'BUY' | 'WAIT', confidence: number, options?: { outcome?: 'PENDING' | 'EVALUATED'; previous?: boolean }) {
+  const current = id.endsWith('1');
+  const outcome = options?.outcome === 'EVALUATED' ? {
+    id: '20000000-0000-4000-8000-000000000001',
+    analysisId: id,
+    scope: 'SHARED',
+    asset: { canonicalSymbol: 'AAPL', providerSymbol: 'AAPL', displaySymbol: 'AAPL', assetType: 'STOCK', exchange: 'NASDAQ', market: 'US', quoteCurrency: 'USD' },
+    horizon: 'SWING',
+    originalRecommendation: recommendation,
+    originalConfidence: confidence,
+    originalConfidenceQuality: 'MODERATE_EVIDENCE',
+    originalEngineVersion: '6.1.0',
+    originalRulesVersion: 'recommendation-policy-v1',
+    originalWeightingVersion: 'asset-horizon-weights-v1',
+    confidenceBucket: '60_79',
+    evaluationStatus: 'EVALUATED',
+    evaluationWindow: { methodologyVersion: 'outcome-evaluation-v1', horizon: 'SWING', referenceAt: generatedAt, referenceSource: 'GENERATED_AT', startAt: generatedAt, endAt: '2026-07-18T08:00:00.000Z', eligibleAt: '2026-07-18T08:00:00.000Z', entryToleranceSeconds: 259200, finalToleranceSeconds: 864000, interval: '1d' },
+    entryReferencePrice: 145,
+    entryReferenceAt: generatedAt,
+    entryCurrency: 'USD',
+    finalReferencePrice: 151,
+    finalReferenceAt: '2026-07-18T08:00:00.000Z',
+    finalCurrency: 'USD',
+    maximumFavorableExcursion: 5.2,
+    maximumAdverseExcursion: -1.1,
+    directionalReturn: 4.14,
+    benchmarkReturn: null,
+    outcome: 'CORRECT',
+    evaluationDataSource: 'verified-e2e-history',
+    priceDataAsOf: '2026-07-18T08:00:00.000Z',
+    priceDataReceivedAt: '2026-07-18T08:05:00.000Z',
+    providerProvenance: { selectedProvider: 'verified-e2e-history', attempts: [], adjustedPrices: 'VERIFIED' },
+    warnings: [],
+    methodologyVersion: 'outcome-evaluation-v1',
+    methodologySnapshot: {},
+    evaluatedAt: '2026-07-18T08:06:00.000Z',
+    createdAt: '2026-07-18T08:06:00.000Z',
+  } : options?.outcome === 'PENDING' ? {
+    id: '20000000-0000-4000-8000-000000000002',
+    analysisId: id,
+    scope: 'SHARED',
+    asset: { canonicalSymbol: 'AAPL', providerSymbol: 'AAPL', displaySymbol: 'AAPL', assetType: 'STOCK', exchange: 'NASDAQ', market: 'US', quoteCurrency: 'USD' },
+    horizon: 'SWING',
+    originalRecommendation: recommendation,
+    originalConfidence: confidence,
+    originalConfidenceQuality: 'MODERATE_EVIDENCE',
+    originalEngineVersion: '6.1.0',
+    originalRulesVersion: 'recommendation-policy-v1',
+    originalWeightingVersion: 'asset-horizon-weights-v1',
+    confidenceBucket: '60_79',
+    evaluationStatus: 'PENDING',
+    evaluationWindow: { methodologyVersion: 'outcome-evaluation-v1', horizon: 'SWING', referenceAt: generatedAt, referenceSource: 'GENERATED_AT', startAt: generatedAt, endAt: '2026-08-18T08:00:00.000Z', eligibleAt: '2026-08-18T08:00:00.000Z', entryToleranceSeconds: 259200, finalToleranceSeconds: 864000, interval: '1d' },
+    entryReferencePrice: null,
+    entryReferenceAt: null,
+    entryCurrency: 'USD',
+    finalReferencePrice: null,
+    finalReferenceAt: null,
+    finalCurrency: 'USD',
+    maximumFavorableExcursion: null,
+    maximumAdverseExcursion: null,
+    directionalReturn: null,
+    benchmarkReturn: null,
+    outcome: 'NOT_APPLICABLE',
+    evaluationDataSource: null,
+    priceDataAsOf: null,
+    priceDataReceivedAt: null,
+    providerProvenance: { selectedProvider: null, attempts: [], adjustedPrices: 'UNKNOWN' },
+    warnings: [],
+    methodologyVersion: 'outcome-evaluation-v1',
+    methodologySnapshot: {},
+    evaluatedAt: null,
+    createdAt: generatedAt,
+  } : null;
+
+  return {
+    analysisId: id,
+    asset: { canonicalSymbol: 'AAPL', displaySymbol: 'AAPL', assetType: 'STOCK', exchange: 'NASDAQ', market: 'US', quoteCurrency: 'USD' },
+    generatedAt,
+    dataAsOf: generatedAt,
+    recommendation,
+    confidence,
+    risk: current ? 'MEDIUM' : 'LOW',
+    freshness: current ? 'FRESH' : 'DELAYED',
+    warnings: [],
+    provider: { selectedProvider: 'verified-e2e-provider', attempts: [], fallbackUsed: false, dataKinds: ['QUOTE'] },
+    versions: { engineVersion: '6.1.0', rulesVersion: 'recommendation-policy-v1', weightingVersion: 'asset-horizon-weights-v1' },
+    drift: {
+      methodologyVersion: 'confidence-drift-v1',
+      previousAnalysisId: options?.previous ? '00000000-0000-4000-8000-000000000000' : null,
+      confidenceDelta: options?.previous ? 8 : null,
+      recommendationTransition: { from: options?.previous ? 'BUY' : null, to: recommendation },
+      riskTransition: { from: options?.previous ? 'LOW' : null, to: current ? 'MEDIUM' : 'LOW' },
+      factorDeltas: [{ factor: 'TECHNICAL', previousScore: options?.previous ? 12 : null, currentScore: current ? 22 : 18, scoreDelta: options?.previous ? 10 : null, previousAvailability: 'AVAILABLE', currentAvailability: 'AVAILABLE' }],
+      coverageDelta: options?.previous ? 12 : null,
+      freshnessTransition: { from: options?.previous ? 'DELAYED' : null, to: current ? 'FRESH' : 'DELAYED' },
+      conflictTransition: { from: options?.previous ? 'NONE' : null, to: 'NONE' },
+      providerChanged: false,
+      methodologyChanged: false,
+      reasonCodes: options?.previous ? ['TECHNICAL_STRENGTHENED', 'RECOMMENDATION_CHANGED'] : ['NO_PREVIOUS_ANALYSIS'],
+      primaryReasonCode: options?.previous ? 'TECHNICAL_STRENGTHENED' : 'NO_PREVIOUS_ANALYSIS',
+    },
+    outcome,
+  };
+}
+
+function timelineResponse(includeComparison = false) {
+  const previous = timelineItem('00000000-0000-4000-8000-000000000000', '2026-06-15T08:00:00.000Z', 'BUY', 56, { outcome: 'EVALUATED' });
+  const current = timelineItem('00000000-0000-4000-8000-000000000001', now, 'WAIT', 64, { outcome: 'PENDING', previous: true });
+  return {
+    ok: true,
+    timeline: {
+      items: [current, previous],
+      nextCursor: null,
+      ...(includeComparison ? {
+        comparison: {
+          left: previous,
+          right: current,
+          drift: current.drift,
+        },
+      } : {}),
+    },
+    correlationId: 'e2e-timeline-correlation',
+  };
+}
+
 async function enterGuest(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem('sfm_lang', 'en');
@@ -140,6 +265,11 @@ async function stubApis(page: Page, state: 'partial' | 'insufficient' | 'stale')
   await page.route('**/api/market/analyze**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(marketAnalysis()) }));
   await page.route('**/api/market/ai-insight', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'AI_PROVIDER_UNAVAILABLE' }) }));
   await page.route('**/api/intelligence/analyze', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: intelligenceResult(state), correlationId: 'e2e-correlation' }) }));
+  await page.route('**/api/intelligence/timeline**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(timelineResponse(new URL(route.request().url()).searchParams.has('compareAnalysisId'))),
+  }));
 }
 
 async function openAnalysis(page: Page, state: 'partial' | 'insufficient' | 'stale') {
@@ -183,6 +313,8 @@ test.describe('Phase 6.1 intelligence panel', () => {
 
   test('keeps RTL/LTR, theme, keyboard disclosure, and mobile width behavior intact', async ({ page }) => {
     const panel = await openAnalysis(page, 'partial');
+    const timeline = page.getByTestId('intelligence-timeline');
+    await expect(timeline).toBeVisible();
     await panel.locator('summary').focus();
     await page.keyboard.press('Enter');
     await expect(panel.locator('details')).toHaveAttribute('open', '');
@@ -193,6 +325,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
         window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: nextLanguage } }));
       }, language);
       await expect.poll(() => panel.getAttribute('dir')).toBe(direction);
+      await expect.poll(() => timeline.getAttribute('dir')).toBe(direction);
     }
 
     for (const theme of ['dark', 'light'] as const) {
@@ -205,5 +338,23 @@ test.describe('Phase 6.1 intelligence panel', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(4);
+  });
+
+  test('renders the historical timeline, pending/evaluated outcomes, and a deterministic comparison', async ({ page }) => {
+    await openAnalysis(page, 'partial');
+    const timeline = page.getByTestId('intelligence-timeline');
+    await expect(timeline).toBeVisible();
+    const readings = timeline.getByRole('option');
+    await expect(readings).toHaveCount(2);
+    await expect(readings.nth(0).getByText('Awaiting evaluation', { exact: true })).toBeVisible();
+    await expect(readings.nth(1).getByText('Evaluated · Direction correct', { exact: true })).toBeVisible();
+    await readings.nth(0).focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(readings.nth(1)).toBeFocused();
+    await readings.nth(0).click();
+    await readings.nth(1).click();
+    await timeline.getByRole('button', { name: 'Compare selected readings' }).click();
+    await expect(timeline.getByText('Selected reading comparison', { exact: true })).toBeVisible();
+    await expect(timeline.getByText('Technical signals strengthened', { exact: true }).first()).toBeVisible();
   });
 });

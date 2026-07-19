@@ -187,6 +187,11 @@ const PriceHistoryChart = dynamic(
   },
 );
 
+const IntelligenceTimelinePanel = dynamic(
+  () => import('@/components/intelligence/IntelligenceTimelinePanel').then(mod => mod.IntelligenceTimelinePanel),
+  { ssr: false, loading: lazyMarketPanel('market_loading_short', 2) },
+);
+
 const isMarketAnalysisDev = process.env.NODE_ENV === 'development';
 const marketNoDataLabelAr = 'البيانات غير متاحة حالياً';
 const marketUnavailableBadgeAr = 'غير متاح';
@@ -2700,6 +2705,17 @@ export default function MarketAnalysisPage() {
               errorCode={intelligenceError}
               onRetry={() => void requestIntelligence(selected, { force: Boolean(user && !isGuest) })}
             />
+
+            {intelligenceResult ? (
+              <IntelligenceTimelinePanel
+                asset={{
+                  canonicalSymbol: intelligenceResult.asset.canonicalSymbol,
+                  assetType: intelligenceResult.asset.assetType,
+                }}
+                horizon={intelligenceResult.horizon}
+                activeAnalysisId={intelligenceResult.analysisId}
+              />
+            ) : null}
 
             <div className="analysis-columns">
               <div className="analysis-main-column">
