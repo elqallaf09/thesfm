@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { loadUserDataTables, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { formatCurrency } from '@/lib/format';
 import { formatDate } from '@/lib/formatters';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import {
   analyzeDecision,
   type DecisionAnalysis,
@@ -324,7 +325,7 @@ export default function DecisionsPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authLoading && !user) router.replace('/login?next=/decisions');
+    if (!authLoading && !user) router.replace(loginHrefForCurrentLocation('/decisions'));
   }, [authLoading, router, user]);
 
   const load = useCallback(async () => {

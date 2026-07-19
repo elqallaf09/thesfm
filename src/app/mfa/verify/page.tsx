@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeDigits } from '@/lib/locale';
+import { loginHrefForDestination, mergeClientHash } from '@/lib/auth/redirects';
 import { syncServerAuthSession } from '@/lib/auth/clientSession';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -48,17 +49,6 @@ const TEXT = {
   },
 } as const;
 
-function safeInternalPath(value: string | null | undefined) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
-  try {
-    const decoded = decodeURIComponent(value);
-    if (decoded.startsWith('//') || decoded.includes('\\')) return '/dashboard';
-  } catch {
-    return '/dashboard';
-  }
-  return value;
-}
-
 export default function MfaVerifyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -71,13 +61,16 @@ export default function MfaVerifyPage() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const nextPath = useMemo(() => {
-    return safeInternalPath(searchParams?.get('next'));
+    return mergeClientHash(
+      searchParams?.get('next'),
+      typeof window === 'undefined' ? '' : window.location.hash,
+    );
   }, [searchParams]);
 
   useEffect(() => {
     if (loading) return;
     if (!session) {
-      router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
+      router.replace(loginHrefForDestination(nextPath));
       return;
     }
     let cancelled = false;
@@ -141,7 +134,7 @@ export default function MfaVerifyPage() {
 
   async function backToLogin() {
     await signOut();
-    router.replace('/login');
+    router.replace(loginHrefForDestination(nextPath));
   }
 
   return (

@@ -42,7 +42,7 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     const sidebar = page.locator('aside.sfm-shared-sidebar');
     await expect(sidebar).toBeVisible();
     await expect(sidebar.locator('[aria-current="page"]')).toHaveCount(1);
-    await expect(sidebar.locator('[aria-current="page"]')).toContainText('SFM Smart Analyst');
+    await expect(sidebar.locator('[aria-current="page"]')).toContainText('SFM AI Analyst');
     await expect(sidebar.getByRole('link', { name: 'Market Analysis' })).toHaveCount(0);
     await expect(sidebar.getByRole('link', { name: 'Market Agent' })).toHaveCount(0);
     await expect(sidebar.locator('.sfm-workspace-navigation')).toHaveCount(0);

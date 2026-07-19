@@ -1,7 +1,10 @@
-import { redirect } from 'next/navigation';
-import { mapLegacySymbolDetailsRoute } from '@/lib/ai-analyst/legacyRoutes';
+import { LegacyRouteRedirect } from '@/components/ai-analyst/LegacyRouteRedirect';
 
-export default async function LegacySymbolDetailsPage({ params }: { params: Promise<{ symbol: string }> }) {
+type LegacySymbolDetailsPageProps = {
+  params: Promise<{ symbol: string }>;
+};
+
+export default async function LegacySymbolDetailsPage({ params }: LegacySymbolDetailsPageProps) {
   const { symbol } = await params;
-  redirect(mapLegacySymbolDetailsRoute(symbol));
+  return <LegacyRouteRedirect kind="symbol-details" symbol={symbol} />;
 }

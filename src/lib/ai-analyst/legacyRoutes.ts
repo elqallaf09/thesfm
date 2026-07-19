@@ -1,4 +1,5 @@
 import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
+import { resolveInternalDestination } from '@/lib/auth/redirects';
 
 export type LegacyMarketAnalysisRouteInput = {
   search: string;
@@ -47,6 +48,19 @@ const SUPPORTED_ASSET_TYPES: readonly IntelligenceAssetType[] = [
 const SUPPORTED_HORIZONS: readonly IntelligenceHorizon[] = [
   'INTRADAY', 'SHORT_TERM', 'SWING', 'POSITION', 'LONG_TERM',
 ];
+
+const CANONICAL_ASSET_QUERY_KEYS = new Set([
+  'symbol', 'assettype', 'horizon', 'range', 'timeframe', 'autorun', 'tab', 'legacy',
+]);
+
+const UNSAFE_REDIRECT_QUERY_KEYS = new Set([
+  'next', 'redirect', 'redirectto', 'redirecturl', 'callback', 'callbackurl',
+  'continue', 'continueurl', 'destination',
+]);
+
+const INTERNAL_RETURN_QUERY_KEYS = new Set([
+  'return', 'returnto', 'returnurl',
+]);
 
 function normalizedSearch(search: string) {
   return new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
@@ -103,6 +117,33 @@ function sharedAssetParams(params: URLSearchParams, symbol: string) {
   return { output, symbol };
 }
 
+function isSafeInternalNavigationValue(value: string) {
+  return Boolean(resolveInternalDestination(value));
+}
+
+/**
+ * Preserve opaque legacy query context after moving to a canonical AI Analyst
+ * route. Navigation-control values are kept only when they remain internal,
+ * so canonicalization cannot introduce an open redirect.
+ */
+function appendSafeLegacyContext(params: URLSearchParams, output: URLSearchParams) {
+  for (const [key, value] of params.entries()) {
+    const normalizedKey = key.toLowerCase();
+    if (CANONICAL_ASSET_QUERY_KEYS.has(normalizedKey)) continue;
+    if (UNSAFE_REDIRECT_QUERY_KEYS.has(normalizedKey)) continue;
+    if (INTERNAL_RETURN_QUERY_KEYS.has(normalizedKey) && !isSafeInternalNavigationValue(value)) continue;
+    output.append(key, value);
+  }
+}
+
+function preservedHash(hash: string) {
+  return hash;
+}
+
+function preservedMarketAnalysisHash(hash: string) {
+  return normalizeLegacyTab(hash) ? '' : preservedHash(hash);
+}
+
 /**
  * Centralizes legacy route migration. It deliberately maps old tools to the
  * hidden compatibility view rather than discarding working watchlist, alert,
@@ -116,11 +157,27 @@ export function mapLegacyMarketAnalysisRoute({ search, hash = '' }: LegacyMarket
 
   if (symbol && ((!hasTabParameter && !hash) || tab === 'analyze')) {
     const { output } = sharedAssetParams(params, symbol);
-    return `/ai-analyst/analyze/${encodeURIComponent(symbol)}${querySuffix(output)}`;
+    appendSafeLegacyContext(params, output);
+    return `/ai-analyst/analyze/${encodeURIComponent(symbol)}${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
   }
 
-  if (!symbol && !tab) return '/ai-analyst/overview';
-  if (!symbol && tab === 'overview') return '/ai-analyst/overview';
+  if (symbol && !hasTabParameter && !tab) {
+    const { output } = sharedAssetParams(params, symbol);
+    appendSafeLegacyContext(params, output);
+    return `/ai-analyst/analyze/${encodeURIComponent(symbol)}${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
+  }
+
+  if (!symbol && !tab) {
+    const output = new URLSearchParams();
+    appendSafeLegacyContext(params, output);
+    return `/ai-analyst/overview${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
+  }
+
+  if (!symbol && tab === 'overview') {
+    const output = new URLSearchParams();
+    appendSafeLegacyContext(params, output);
+    return `/ai-analyst/overview${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
+  }
 
   const output = new URLSearchParams();
   output.set('legacy', 'market');
@@ -130,21 +187,31 @@ export function mapLegacyMarketAnalysisRoute({ search, hash = '' }: LegacyMarket
     output.set('symbol', asset.symbol);
     for (const [key, value] of asset.output.entries()) output.set(key, value);
   }
-  return `/ai-analyst/overview${querySuffix(output)}`;
+  appendSafeLegacyContext(params, output);
+  return `/ai-analyst/overview${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
 }
 
-export function mapLegacyMarketAgentRoute({ search }: Pick<LegacyMarketAnalysisRouteInput, 'search'>): string {
+export function mapLegacyMarketAgentRoute({ search, hash = '' }: LegacyMarketAnalysisRouteInput): string {
   const params = normalizedSearch(search);
   const symbol = validSymbol(params.get('symbol'));
-  if (!symbol) return '/ai-analyst/agent';
-  const { output } = sharedAssetParams(params, symbol);
-  output.set('symbol', symbol);
-  return `/ai-analyst/agent${querySuffix(output)}`;
+  const output = new URLSearchParams();
+  if (symbol) {
+    const asset = sharedAssetParams(params, symbol);
+    for (const [key, value] of asset.output.entries()) output.set(key, value);
+    output.set('symbol', symbol);
+  }
+  appendSafeLegacyContext(params, output);
+  return `/ai-analyst/agent${querySuffix(output)}${preservedHash(hash)}`;
 }
 
-export function mapLegacySymbolDetailsRoute(symbolValue: string): string {
+export function mapLegacySymbolDetailsRoute(
+  symbolValue: string,
+  { search = '', hash = '' }: Partial<LegacyMarketAnalysisRouteInput> = {},
+): string {
   const symbol = validSymbol(symbolValue);
-  return symbol
-    ? `/ai-analyst/analyze/${encodeURIComponent(symbol)}?assetType=STOCK&horizon=SWING`
-    : '/ai-analyst/overview';
+  if (!symbol) return '/ai-analyst/overview';
+  const params = normalizedSearch(search);
+  const { output } = sharedAssetParams(params, symbol);
+  appendSafeLegacyContext(params, output);
+  return `/ai-analyst/analyze/${encodeURIComponent(symbol)}${querySuffix(output)}${preservedHash(hash)}`;
 }

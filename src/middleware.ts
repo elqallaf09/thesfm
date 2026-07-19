@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isCronApiPath, isCronAuthorized, isProtectedApiPath } from '@/lib/auth/accessPolicy';
 import { AUTH_ACCESS_COOKIE, EMAIL_MFA_PROOF_COOKIE } from '@/lib/auth/sessionSecurity';
+import {
+  applyInternalDestination,
+  DEFAULT_AUTH_DESTINATION,
+  internalDestinationPathname,
+  requestDestination,
+  resolveInternalDestination,
+} from '@/lib/auth/redirects';
 import { clearAuthenticatedCookies } from '@/lib/server/authCookies';
 import { bearerToken, inspectSessionSecurity, type SessionSecurityResult } from '@/lib/server/authSession';
 
@@ -106,22 +113,20 @@ function apiError(code: string, status: number, extra?: object) {
   ));
 }
 
-function safeInternalPath(value: string | null) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
-  try {
-    const decoded = decodeURIComponent(value);
-    if (decoded.startsWith('//') || decoded.includes('\\')) return null;
-  } catch {
-    return null;
+function authTransitionDestination(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const explicitNext = resolveInternalDestination(request.nextUrl.searchParams.get('next'));
+  if (authPages.includes(pathname) || pathname === '/mfa/verify') {
+    return explicitNext ?? DEFAULT_AUTH_DESTINATION;
   }
-  return value;
+  return requestDestination(pathname, request.nextUrl.search);
 }
 
 function redirectToLogin(request: NextRequest, reason?: string) {
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = '/login';
   loginUrl.search = '';
-  loginUrl.searchParams.set('next', request.nextUrl.pathname);
+  loginUrl.searchParams.set('next', authTransitionDestination(request));
   if (reason) loginUrl.searchParams.set('auth', reason);
   return withSecurityHeaders(NextResponse.redirect(loginUrl));
 }
@@ -130,7 +135,7 @@ function redirectToMfa(request: NextRequest, type: 'totp' | 'email') {
   const url = request.nextUrl.clone();
   url.pathname = type === 'totp' ? '/mfa/verify' : '/login';
   url.search = '';
-  url.searchParams.set('next', request.nextUrl.pathname);
+  url.searchParams.set('next', authTransitionDestination(request));
   if (type === 'email') url.searchParams.set('mfa', 'email');
   return withSecurityHeaders(NextResponse.redirect(url));
 }
@@ -173,11 +178,11 @@ export async function middleware(request: NextRequest) {
     }
     if (session.mfaRequirement === 'totp') return redirectToMfa(request, 'totp');
     if (session.mfaRequirement === 'email') return response;
-    const nextPath = safeInternalPath(request.nextUrl.searchParams.get('next'));
-    if (nextPath && isProtected(nextPath)) {
+    const nextPath = resolveInternalDestination(request.nextUrl.searchParams.get('next'));
+    const nextPathname = internalDestinationPathname(nextPath);
+    if (nextPath && nextPathname && isProtected(nextPathname)) {
       const protectedTargetUrl = request.nextUrl.clone();
-      protectedTargetUrl.pathname = nextPath;
-      protectedTargetUrl.search = '';
+      applyInternalDestination(protectedTargetUrl, nextPath);
       return withSecurityHeaders(NextResponse.redirect(protectedTargetUrl));
     }
     const dashboardUrl = request.nextUrl.clone();
@@ -199,10 +204,9 @@ export async function middleware(request: NextRequest) {
     return redirectToMfa(request, session.mfaRequirement);
   }
   if (pathname === '/mfa/verify') {
-    const target = safeInternalPath(request.nextUrl.searchParams.get('next')) || '/dashboard';
+    const target = resolveInternalDestination(request.nextUrl.searchParams.get('next')) || DEFAULT_AUTH_DESTINATION;
     const targetUrl = request.nextUrl.clone();
-    targetUrl.pathname = target;
-    targetUrl.search = '';
+    applyInternalDestination(targetUrl, target);
     return withSecurityHeaders(NextResponse.redirect(targetUrl));
   }
   if (pathname === '/dashboard' && !session.onboardingComplete) {

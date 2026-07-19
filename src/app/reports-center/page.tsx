@@ -32,6 +32,7 @@ import { formatDate, formatNumber, normalizeDigits, toLatinNumberLocale } from '
 import { trackEvent } from '@/lib/analytics';
 import { recordAccountActivity } from '@/lib/accountActivity';
 import { investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 
 type Lang = 'ar' | 'en' | 'fr';
 type ReportStatus = 'ready' | 'needs_data' | 'unavailable' | 'error';
@@ -2102,7 +2103,7 @@ export default function ReportsCenterPage() {
               <h1>{tr.title}</h1>
               <p>{tr.signedInRequired}</p>
             </div>
-            <button type="button" onClick={() => router.push('/login')}>{tr.signedInRequired}</button>
+            <button type="button" onClick={() => router.push(loginHrefForCurrentLocation('/reports-center'))}>{tr.signedInRequired}</button>
           </section>
         </DashboardPageShell>
         <style jsx>{pageStyles}</style>

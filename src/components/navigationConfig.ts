@@ -46,7 +46,6 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  Terminal,
   TrendingUp,
   UsersRound,
   Wallet,
@@ -151,7 +150,6 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
-      { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', adminOnly: true, superAdminOnly: true },
     ],
   },
   {

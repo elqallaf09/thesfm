@@ -24,6 +24,7 @@ import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { isEmail } from '@/lib/authSecurity';
+import { loginHrefForDestination, mergeClientHash } from '@/lib/auth/redirects';
 import { trackEvent } from '@/lib/analytics';
 import { normalizeDigits } from '@/lib/locale';
 import { syncServerAuthSession } from '@/lib/auth/clientSession';
@@ -379,17 +380,6 @@ function cleanObject<T extends Record<string, unknown>>(payload: T) {
   ) as Partial<T>;
 }
 
-function safeInternalPath(value: string | null | undefined) {
-  if (!value || !value.startsWith('/') || value.startsWith('//')) return '/dashboard';
-  try {
-    const decoded = decodeURIComponent(value);
-    if (decoded.startsWith('//') || decoded.includes('\\')) return '/dashboard';
-  } catch {
-    return '/dashboard';
-  }
-  return value;
-}
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -437,7 +427,10 @@ function LoginContent() {
   const [hydrated, setHydrated] = useState(false);
 
   const nextPath = useMemo(() => {
-    return safeInternalPath(searchParams?.get('next'));
+    return mergeClientHash(
+      searchParams?.get('next'),
+      typeof window === 'undefined' ? '' : window.location.hash,
+    );
   }, [searchParams]);
   const passwordStrength = useMemo(() => strengthFor(password), [password]);
   const passwordScore = useMemo(() => scorePassword(password), [password]);
@@ -813,7 +806,7 @@ function LoginContent() {
   async function signInWithGoogle() {
     setSocialLoading('google');
     setMessage(null);
-    const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(nextPath)}`;
+    const redirectTo = `${window.location.origin}${loginHrefForDestination(nextPath)}`;
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     if (error) setMessage({ type: 'error', text: error.message });
     setSocialLoading(null);

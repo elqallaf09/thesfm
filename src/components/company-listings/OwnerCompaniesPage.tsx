@@ -24,6 +24,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import {
   COMPANY_CATEGORIES,
   COMPANY_CATEGORY_CONFIGS,
@@ -168,7 +169,7 @@ export function OwnerCompaniesPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!session) {
-      router.replace('/login?next=/profile/companies');
+      router.replace(loginHrefForCurrentLocation('/profile/companies'));
       return;
     }
 
