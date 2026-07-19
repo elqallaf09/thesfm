@@ -24,6 +24,8 @@ export type MarketHistoryPoint = {
   high?: number;
   low?: number;
   close: number;
+  /** Provider-supplied adjusted close when available. Consumers must not infer it. */
+  adjustedClose?: number | null;
   volume?: number | null;
 };
 

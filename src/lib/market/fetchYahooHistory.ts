@@ -17,6 +17,9 @@ type YahooChartPayload = {
           close?: Array<number | null>;
           volume?: Array<number | null>;
         }>;
+        adjclose?: Array<{
+          adjclose?: Array<number | null>;
+        }>;
       };
     }>;
     error?: {
@@ -117,6 +120,7 @@ export function normalizeYahooChartHistory(payload: YahooChartPayload | null, in
   const result = payload?.chart?.result?.[0];
   const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : [];
   const quote = result?.indicators?.quote?.[0];
+  const adjusted = result?.indicators?.adjclose?.[0];
   if (!result || !quote || timestamps.length === 0) {
     return unavailable({ ...input, reason: 'provider_returned_empty_history' });
   }
@@ -135,6 +139,8 @@ export function normalizeYahooChartHistory(payload: YahooChartPayload | null, in
       if (open !== null && open > 0) point.open = open;
       if (high !== null && high > 0) point.high = high;
       if (low !== null && low > 0) point.low = low;
+      const adjustedClose = numberOrNull(adjusted?.adjclose?.[index]);
+      if (adjustedClose !== null && adjustedClose > 0) point.adjustedClose = adjustedClose;
       point.volume = volume !== null && volume >= 0 ? volume : null;
       return point;
     })

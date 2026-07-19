@@ -276,9 +276,10 @@ jobs:
     permissions:
       contents: read
       deployments: read
+      checks: read
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      SUPABASE_PREVIEW_URL: https://tilrkqdngnokvxuvllio.supabase.co
+      SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY }}
       SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
       E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
@@ -294,6 +295,7 @@ jobs:
           missing=()
           for name in \
             VERCEL_AUTOMATION_BYPASS_SECRET \
+            SUPABASE_PRODUCTION_REF \
             SUPABASE_SERVICE_ROLE_KEY \
             SUPER_ADMIN_EMAILS \
             E2E_USER_EMAIL \
@@ -313,6 +315,107 @@ jobs:
           fi
           if [[ ! "$E2E_EXPECTED_DEPLOYMENT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo 'E2E_EXPECTED_DEPLOYMENT_SHA must be the exact committed SHA.' >&2
+            exit 1
+          fi
+          if [[ ! "$SUPABASE_PRODUCTION_REF" =~ ^[a-z0-9]{20}$ ]]; then
+            echo 'SUPABASE_PRODUCTION_REF must be an explicit Supabase project ref.' >&2
+            exit 1
+          fi
+
+      - name: Resolve active isolated Supabase Preview ref for exact SHA
+        id: supabase-preview
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.pull_request.head.sha;
+            const productionRef = process.env.SUPABASE_PRODUCTION_REF?.trim();
+            if (!/^[a-z0-9]{20}$/.test(productionRef ?? '')) {
+              core.setFailed('SUPABASE_PRODUCTION_REF must be an explicit Supabase project ref.');
+              return;
+            }
+
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const { data } = await github.rest.checks.listForRef({
+                ...context.repo,
+                ref: sha,
+                per_page: 100,
+              });
+              const previews = data.check_runs.filter(check =>
+                check.name === 'Supabase Preview' && check.app?.slug === 'supabase',
+              );
+              const terminalFailure = previews.find(check =>
+                check.status === 'completed' && check.conclusion !== 'success',
+              );
+              if (terminalFailure) {
+                core.setFailed(`Exact-SHA Supabase Preview check entered ${terminalFailure.conclusion ?? 'an unknown terminal state'}.`);
+                return;
+              }
+
+              const successful = previews.filter(check =>
+                check.status === 'completed' && check.conclusion === 'success',
+              );
+              if (successful.length > 0) {
+                const resolvedRefs = new Set();
+                for (const check of successful) {
+                  let details;
+                  try {
+                    details = new URL(check.details_url ?? '');
+                  } catch {
+                    core.setFailed('Successful Supabase Preview check did not provide a valid dashboard URL.');
+                    return;
+                  }
+                  const match = details.protocol === 'https:'
+                    && details.hostname === 'supabase.com'
+                    && !details.port
+                    && !details.username
+                    && !details.password
+                    && !details.search
+                    && !details.hash
+                    && details.pathname.match(/^\/dashboard\/project\/([a-z0-9]{20})\/?$/);
+                  if (!match) {
+                    core.setFailed('Successful Supabase Preview check did not provide an exact Supabase dashboard project URL.');
+                    return;
+                  }
+                  resolvedRefs.add(match[1]);
+                }
+                if (resolvedRefs.size !== 1) {
+                  core.setFailed('Exact-SHA Supabase Preview checks resolved to ambiguous project refs.');
+                  return;
+                }
+
+                const [previewRef] = resolvedRefs;
+                if (previewRef === productionRef) {
+                  core.setFailed('Resolved Supabase Preview ref matched the Production ref.');
+                  return;
+                }
+                const previewUrl = `https://${previewRef}.supabase.co`;
+                core.setOutput('ref', previewRef);
+                core.setOutput('url', previewUrl);
+                core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);
+                core.exportVariable('SUPABASE_PREVIEW_URL', previewUrl);
+                core.info(`Resolved isolated Supabase Preview ref ${previewRef} for exact SHA ${sha}.`);
+                return;
+              }
+
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed('No READY isolated Supabase Preview check appeared for the exact committed SHA.');
+
+      - name: Validate resolved isolated Supabase Preview target
+        shell: bash
+        run: |
+          if [[ ! "$SUPABASE_PREVIEW_REF" =~ ^[a-z0-9]{20}$ ]]; then
+            echo 'Resolved Supabase Preview ref was invalid.' >&2
+            exit 1
+          fi
+          if [[ "$SUPABASE_PREVIEW_REF" == "$SUPABASE_PRODUCTION_REF" ]]; then
+            echo 'Resolved Supabase Preview ref must never equal the Production ref.' >&2
+            exit 1
+          fi
+          expected_url="https://${SUPABASE_PREVIEW_REF}.supabase.co"
+          if [[ "$SUPABASE_PREVIEW_URL" != "$expected_url" ]]; then
+            echo 'Resolved Supabase Preview URL did not match its verified ref.' >&2
             exit 1
           fi
 

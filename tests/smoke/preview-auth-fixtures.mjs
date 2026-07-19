@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 
-const approvedPreviewRef = 'tilrkqdngnokvxuvllio';
-const approvedPreviewOrigin = `https://${approvedPreviewRef}.supabase.co`;
 const fixtureMetadataKey = 'sfm_preview_auth_fixture';
 const fixtureVersion = 1;
 const pageSize = 1000;
@@ -41,6 +39,8 @@ function requiredEnvironment(name) {
 }
 
 function readConfig() {
+  const previewRef = requiredPreviewRef();
+  const approvedPreviewOrigin = `https://${previewRef}.supabase.co`;
   const rawOrigin = requiredEnvironment('SUPABASE_PREVIEW_URL');
   let origin;
   try {
@@ -53,7 +53,7 @@ function readConfig() {
   }
 
   const serviceRoleKey = requiredEnvironment('SUPABASE_SERVICE_ROLE_KEY');
-  assertServiceKeyRef(serviceRoleKey);
+  assertServiceKeyRef(serviceRoleKey, previewRef);
 
   const credentials = [
     {
@@ -71,15 +71,27 @@ function readConfig() {
     throw new Error('Preview user and admin fixtures must use distinct identities.');
   }
 
-  return { origin: origin.origin, serviceRoleKey, credentials };
+  return { origin: origin.origin, previewRef, serviceRoleKey, credentials };
 }
 
-function assertServiceKeyRef(key) {
+function requiredPreviewRef() {
+  const previewRef = requiredEnvironment('SUPABASE_PREVIEW_REF').toLowerCase();
+  const productionRef = requiredEnvironment('SUPABASE_PRODUCTION_REF').toLowerCase();
+  if (!/^[a-z0-9]{20}$/.test(previewRef) || !/^[a-z0-9]{20}$/.test(productionRef)) {
+    throw new Error('Preview fixture refs must be explicit Supabase project refs.');
+  }
+  if (previewRef === productionRef) {
+    throw new Error('Preview auth fixtures may never target the Production Supabase ref.');
+  }
+  return previewRef;
+}
+
+function assertServiceKeyRef(key, previewRef) {
   const parts = key.split('.');
   if (parts.length !== 3) return;
   try {
     const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-    if (typeof payload.ref === 'string' && payload.ref !== approvedPreviewRef) {
+    if (typeof payload.ref === 'string' && payload.ref !== previewRef) {
       throw new Error('SUPABASE_SERVICE_ROLE_KEY belongs to a different Supabase project.');
     }
   } catch (error) {
@@ -92,7 +104,7 @@ function normalizeEmail(value) {
 }
 
 function marker(role) {
-  return { version: fixtureVersion, preview_ref: approvedPreviewRef, role };
+  return { version: fixtureVersion, preview_ref: config.previewRef, role };
 }
 
 function isMarkedFixture(user, role) {
@@ -101,7 +113,7 @@ function isMarkedFixture(user, role) {
     value
       && typeof value === 'object'
       && value.version === fixtureVersion
-      && value.preview_ref === approvedPreviewRef
+      && value.preview_ref === config.previewRef
       && value.role === role,
   );
 }
@@ -273,7 +285,7 @@ async function provision() {
   if (safeUsers[0].userId === safeUsers[1].userId) {
     throw new Error('Preview user and admin fixtures resolved to the same user ID.');
   }
-  console.log(JSON.stringify({ event: 'preview-auth-fixtures-ready', previewRef: approvedPreviewRef, users: safeUsers }));
+  console.log(JSON.stringify({ event: 'preview-auth-fixtures-ready', previewRef: config.previewRef, users: safeUsers }));
 }
 
 async function deleteRows(table, column, ids, operation) {
@@ -351,5 +363,5 @@ async function cleanup() {
     role: credential.role,
     roleState: 'removed',
   }));
-  console.log(JSON.stringify({ event: 'preview-auth-fixtures-clean', previewRef: approvedPreviewRef, users: safeUsers, counts }));
+  console.log(JSON.stringify({ event: 'preview-auth-fixtures-clean', previewRef: config.previewRef, users: safeUsers, counts }));
 }
