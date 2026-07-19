@@ -231,6 +231,16 @@ export class IntelligenceOutcomeEvaluator {
       return 'DUPLICATE_PREVENTED';
     }
 
+    if (pending.methodologySnapshot.invalidParentWindow === true) {
+      const persisted = await this.dependencies.store.transitionPending(analysis.result.analysisId, terminalUpdate({
+        status: 'FAILED',
+        evaluatedAt: isoAt(this.dependencies.now()),
+        warnings: [warning('INVALID_ANALYSIS_EVALUATION_WINDOW', 'CRITICAL')],
+      }));
+      recordTerminalTelemetry(telemetry, persisted);
+      return persisted ? 'FAILED' : 'DUPLICATE_PREVENTED';
+    }
+
     const replay = resolvePersistedOutcomePolicy({
       horizon: pending.horizon,
       evaluationWindow: pending.evaluationWindow,

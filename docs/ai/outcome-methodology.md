@@ -23,6 +23,8 @@ Historical outcomes are descriptive only in this phase. They do not alter the li
 
 An analysis has at most one outcome record. A record starts as `PENDING` and may make one controlled transition to a terminal status. Terminal records are immutable. The database enforces the one-to-one analysis relationship and protects the original provenance fields from update.
 
+If an older immutable analysis snapshot has an invalid timestamp and therefore cannot form a real evaluation window, the evaluator records a `FAILED` audit outcome without requesting historical prices. Its database-required audit anchor is the parent row's creation timestamp and is explicitly marked as an invalid-parent-window condition; it is not a market reference, price window, or outcome measurement.
+
 ## Evaluation reference and horizon windows
 
 The window starts at the analysis `dataAsOf` timestamp only when it is valid and no more than five minutes after `generatedAt`. Otherwise it starts at `generatedAt`. This prevents an implausible provider timestamp from silently moving the measurement window.

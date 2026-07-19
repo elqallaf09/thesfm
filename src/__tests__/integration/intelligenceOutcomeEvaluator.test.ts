@@ -438,6 +438,46 @@ describe('intelligence outcome evaluator', () => {
       .toContainEqual(expect.objectContaining({ code: 'HISTORICAL_PRICE_HISTORY_PERMANENTLY_UNAVAILABLE' }));
   });
 
+  it('records an invalid legacy timestamp as FAILED without requesting market prices', async () => {
+    const result = analysis({
+      analysisId: '10000000-0000-4000-8000-000000000011',
+      generatedAt: 'not-a-timestamp',
+      dataAsOf: 'not-a-timestamp',
+    });
+    const store = new MemoryIntelligenceOutcomeStore([{
+      result,
+      userId: null,
+      createdAt: '2025-01-01T00:00:00.000Z',
+    }]);
+    let historyRequested = false;
+    const provider: IntelligenceHistoricalPriceProvider = {
+      id: 'must-not-be-called',
+      supports: () => true,
+      getHistory: async () => {
+        historyRequested = true;
+        return null;
+      },
+    };
+    const subject = createIntelligenceOutcomeEvaluator({
+      store,
+      providers: [provider],
+      now: () => Date.parse('2025-03-01T00:00:00.000Z'),
+      providerTimeoutMs: 100,
+    });
+
+    await expect(subject.evaluateOne({ result, userId: null, createdAt: '2025-01-01T00:00:00.000Z' }, new MemoryIntelligenceTelemetry()))
+      .resolves.toBe('FAILED');
+    expect(historyRequested).toBe(false);
+    expect(await store.getOutcome(result.analysisId)).toMatchObject({
+      evaluationStatus: 'FAILED',
+      outcome: 'NOT_APPLICABLE',
+      entryReferencePrice: null,
+      finalReferencePrice: null,
+      directionalReturn: null,
+      warnings: [expect.objectContaining({ code: 'INVALID_ANALYSIS_EVALUATION_WINDOW' })],
+    });
+  });
+
   it('continues past permanent unavailable history to a later supported provider', async () => {
     const result = analysis({ analysisId: '10000000-0000-4000-8000-000000000010' });
     const store = new MemoryIntelligenceOutcomeStore([stored(result)]);

@@ -256,13 +256,41 @@ function normalizedCurrency(value: string | null | undefined) {
   return trimmed && /^[A-Z0-9]{3,8}$/.test(trimmed) ? trimmed : null;
 }
 
+function validTimestamp(value: string | null | undefined) {
+  if (!value || !Number.isFinite(Date.parse(value))) return null;
+  return new Date(value).toISOString();
+}
+
 function pendingOutcome(analysis: StoredIntelligenceAnalysis): IntelligenceAnalysisOutcome {
   const { result } = analysis;
   const evaluationPolicy = createOutcomePolicySnapshot({
     horizon: result.horizon,
     assetType: result.asset.assetType,
   });
-  const window = createEvaluationWindow(result, evaluationPolicy);
+  let invalidParentWindow = false;
+  let window;
+  try {
+    window = createEvaluationWindow(result, evaluationPolicy);
+  } catch {
+    // A legacy/corrupt snapshot must not block later backfill rows. This anchor
+    // exists only to persist a FAILED audit record; the evaluator sees the
+    // explicit marker below and never requests or classifies market prices.
+    const auditAnchor = validTimestamp(analysis.createdAt);
+    if (!auditAnchor) throw new Error('INVALID_OUTCOME_AUDIT_ANCHOR');
+    invalidParentWindow = true;
+    window = {
+      methodologyVersion: evaluationPolicy.methodologyVersion,
+      horizon: result.horizon,
+      referenceAt: auditAnchor,
+      referenceSource: 'GENERATED_AT' as const,
+      startAt: auditAnchor,
+      endAt: auditAnchor,
+      eligibleAt: auditAnchor,
+      entryToleranceSeconds: 0,
+      finalToleranceSeconds: 0,
+      interval: 'unavailable',
+    };
+  }
   return {
     id: randomUUID(),
     analysisId: result.analysisId,
@@ -305,6 +333,7 @@ function pendingOutcome(analysis: StoredIntelligenceAnalysis): IntelligenceAnaly
     methodologyVersion: evaluationPolicy.methodologyVersion,
     methodologySnapshot: {
       evaluationPolicy,
+      invalidParentWindow,
       referenceSource: window.referenceSource,
       entryToleranceSeconds: window.entryToleranceSeconds,
       finalToleranceSeconds: window.finalToleranceSeconds,
