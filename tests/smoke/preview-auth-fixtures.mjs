@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const approvedPreviewRef = 'lwcaapfqxaoxkojehfdq';
+const approvedPreviewRef = 'tilrkqdngnokvxuvllio';
 const approvedPreviewOrigin = `https://${approvedPreviewRef}.supabase.co`;
 const fixtureMetadataKey = 'sfm_preview_auth_fixture';
 const fixtureVersion = 1;

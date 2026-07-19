@@ -5,6 +5,12 @@ import path from "node:path";
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
 const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
+// Keep generated and legacy consumers compatible while preferring Supabase's
+// independently rotatable browser-safe key. Never place a secret key here.
+const SUPABASE_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
+  || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+  || '';
 const IS_WINDOWS_BUILD = process.platform === "win32";
 // Keep deterministic single-worker compilation on Windows. The legacy manifest writer can
 // race Next's own pages compiler and leave a successful-looking build with development bundles,
@@ -206,6 +212,9 @@ function scheduleWindowsServerManifests() {
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: PROJECT_ROOT,
+  env: {
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_PUBLIC_KEY,
+  },
   // The Sharia research browser renderer is an opt-in Node-only fallback. Keep
   // Playwright outside the application bundle so normal HTTP research remains lean.
   serverExternalPackages: [

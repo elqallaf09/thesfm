@@ -1,0 +1,209 @@
+import { expect, test, type Page } from '@playwright/test';
+
+const now = '2026-07-19T08:00:00.000Z';
+
+function marketAnalysis() {
+  return {
+    ok: true,
+    success: true,
+    provider: 'verified-e2e-provider',
+    dataStatus: 'live',
+    symbol: 'AAPL',
+    providerSymbol: 'AAPL',
+    name: 'Apple Inc.',
+    assetType: 'stock',
+    currency: 'USD',
+    exchange: 'NASDAQ',
+    country: 'US',
+    market: 'US',
+    lastUpdated: now,
+    latestPrice: 150,
+    changePercent: 0.67,
+    quote: { price: 150, change: 1, changePercent: 0.67, currency: 'USD', timestamp: now },
+    fundamentals: { trailingPE: 26, trailingEps: 6.2, revenueGrowth: 0.12 },
+    fundamentalsAvailable: true,
+    fundamentalsSource: 'verified-e2e-provider',
+    trend: 'neutral',
+    riskLevel: 'medium',
+    indicators: { rsi: 54, sma20: 148, sma50: 145, volatility: 22 },
+    levels: { support: 145, resistance: 155 },
+    history: Array.from({ length: 80 }, (_, index) => ({
+      date: new Date(Date.parse(now) - (79 - index) * 86_400_000).toISOString(),
+      open: 101 + index * 0.6,
+      high: 103 + index * 0.6,
+      low: 100 + index * 0.6,
+      close: 102 + index * 0.6,
+      volume: 1_000_000 + index * 10_000,
+    })),
+    summary: 'Verified fixture data for UI contract coverage.',
+    source: 'verified-e2e-provider',
+    fallback: false,
+    cached: false,
+    warnings: [],
+  };
+}
+
+function factor(
+  key: 'TECHNICAL' | 'MOMENTUM' | 'RISK' | 'SENTIMENT',
+  score: number | null,
+  availability: 'AVAILABLE' | 'UNAVAILABLE' = 'AVAILABLE',
+) {
+  const directionalBias = score === null ? 'UNAVAILABLE' : score > 12 ? 'BULLISH' : score < -12 ? 'BEARISH' : 'NEUTRAL';
+  return {
+    factor: key,
+    availability,
+    normalizedScore: score,
+    directionalBias,
+    strength: score === null ? 0 : Math.abs(score),
+    required: key !== 'SENTIMENT',
+    freshness: { state: availability === 'AVAILABLE' ? 'FRESH' : 'UNAVAILABLE', observedAt: availability === 'AVAILABLE' ? now : null, ageSeconds: availability === 'AVAILABLE' ? 30 : null, thresholdSeconds: 900 },
+    evidence: score === null ? [] : [{
+      id: `${key.toLowerCase()}:fixture`,
+      factor: key,
+      kind: 'CALCULATION',
+      labelKey: key === 'TECHNICAL' ? 'intelligence_evidence_rsi14' : 'intelligence_evidence_change_5_period',
+      value: key === 'TECHNICAL' ? 54 : 2.4,
+      unit: key === 'TECHNICAL' ? null : '%',
+      observedAt: now,
+      source: 'verified-e2e-provider',
+      provider: 'verified-e2e-provider',
+      direction: directionalBias,
+      significance: 70,
+    }],
+    source: availability === 'AVAILABLE' ? 'verified-e2e-provider' : 'unavailable',
+    provider: availability === 'AVAILABLE' ? 'verified-e2e-provider' : 'unavailable',
+    operationalReliability: availability === 'AVAILABLE' ? 1 : 0,
+    warnings: availability === 'AVAILABLE' ? [] : [{ code: 'SENTIMENT_PROVIDER_NOT_AVAILABLE', severity: 'INFO', factor: key, detailKey: 'intelligence_warning_factor_unavailable' }],
+    failureReason: availability === 'AVAILABLE' ? null : 'SENTIMENT_PROVIDER_NOT_AVAILABLE',
+  };
+}
+
+function intelligenceResult(state: 'partial' | 'insufficient' | 'stale' = 'partial') {
+  const factors = state === 'insufficient'
+    ? [factor('TECHNICAL', null, 'UNAVAILABLE'), factor('MOMENTUM', null, 'UNAVAILABLE'), factor('RISK', null, 'UNAVAILABLE')]
+    : [factor('TECHNICAL', 22), factor('MOMENTUM', 18), factor('RISK', -24), factor('SENTIMENT', null, 'UNAVAILABLE')];
+  const insufficient = state === 'insufficient';
+  const stale = state === 'stale';
+  return {
+    analysisId: `00000000-0000-4000-8000-00000000000${state === 'partial' ? 1 : state === 'stale' ? 2 : 3}`,
+    correlationId: 'e2e-correlation',
+    status: insufficient ? 'INSUFFICIENT_DATA' : 'PARTIAL',
+    scope: 'SHARED',
+    requestSource: 'SMART_MARKET_ANALYSIS',
+    asset: { canonicalSymbol: 'AAPL', providerSymbol: 'AAPL', displaySymbol: 'AAPL', name: 'Apple Inc.', assetType: 'STOCK', exchange: 'NASDAQ', market: 'US', quoteCurrency: 'USD', country: 'US', logoUrl: null },
+    generatedAt: now,
+    dataAsOf: now,
+    expiresAt: '2026-07-19T08:15:00.000Z',
+    freshness: { state: stale ? 'STALE' : insufficient ? 'UNAVAILABLE' : 'FRESH', observedAt: insufficient ? null : now, ageSeconds: insufficient ? null : stale ? 3600 : 30, thresholdSeconds: 900 },
+    recommendation: insufficient ? 'INSUFFICIENT_DATA' : 'WAIT',
+    confidence: insufficient ? 0 : stale ? 34 : 64,
+    confidenceQuality: insufficient ? 'INSUFFICIENT_EVIDENCE' : stale ? 'LIMITED_EVIDENCE' : 'MODERATE_EVIDENCE',
+    confidenceCalculation: { methodologyVersion: 'deterministic-confidence-v1', weightingVersion: 'asset-horizon-weights-v1', appliedWeights: { TECHNICAL: 0.4, MOMENTUM: 0.3, RISK: 0.3 }, components: { coverage: insufficient ? 0 : 75, freshness: stale ? 20 : 100, consistency: 80, operationalReliability: 100, signalClarity: 40 }, penalties: stale ? [{ code: 'STALE_DATA', points: 24 }] : [], minimumEvidenceMet: !insufficient, availableDirectionalFactors: insufficient ? 0 : 3 },
+    risk: insufficient ? 'UNAVAILABLE' : 'MEDIUM',
+    horizon: 'SWING',
+    entryContext: { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
+    targets: [],
+    stopLossContext: { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
+    factors,
+    evidence: factors.flatMap(item => item.evidence),
+    warnings: stale ? [{ code: 'LIVE_REFRESH_FAILED_STALE_RESULT', severity: 'CRITICAL', factor: null, detailKey: 'intelligence_warning_live_refresh_failed' }] : [],
+    limitations: factors.filter(item => item.availability === 'UNAVAILABLE').map(item => item.failureReason),
+    providerProvenance: { selectedProvider: insufficient ? null : 'verified-e2e-provider', attempts: [], fallbackUsed: stale, dataKinds: insufficient ? [] : ['QUOTE', 'HISTORICAL_PRICES'] },
+    engineVersion: '6.1.0',
+    rulesVersion: 'recommendation-policy-v1',
+    weightingVersion: 'asset-horizon-weights-v1',
+    dataCompleteness: { requestedFactors: factors.length, availableFactors: factors.filter(item => item.availability === 'AVAILABLE').length, partialFactors: 0, unavailableFactors: factors.filter(item => item.availability === 'UNAVAILABLE').length, requiredFactors: ['TECHNICAL', 'MOMENTUM', 'RISK'], missingRequiredFactors: insufficient ? ['TECHNICAL', 'MOMENTUM', 'RISK'] : [], weightedCoverage: insufficient ? 0 : 0.75, percentage: insufficient ? 0 : 75 },
+    staleData: stale,
+    conflictStatus: 'NONE',
+    explanation: { supportingFactors: insufficient ? [] : ['TECHNICAL', 'MOMENTUM'], opposingFactors: insufficient ? [] : ['RISK'], limitationCodes: [], riskCodes: [], recommendationReasonCode: insufficient ? 'MINIMUM_EVIDENCE_NOT_MET' : 'SCORE_WITHIN_WAIT_BAND', confidenceReasonCodes: stale ? ['STALE_DATA'] : [], invalidationConditions: [{ code: 'DATA_STALENESS', factor: null, detailKey: 'intelligence_invalidation_data_stale' }, { code: 'RISK_ESCALATION', factor: 'RISK', detailKey: 'intelligence_invalidation_risk_escalation' }] },
+    recommendationDecision: { policyVersion: 'recommendation-policy-v1', compositeScore: insufficient ? 0 : 12, buyThreshold: 28, sellThreshold: -28, minimumDirectionalConfidence: 55, reasonCode: insufficient ? 'MINIMUM_EVIDENCE_NOT_MET' : 'SCORE_WITHIN_WAIT_BAND', materialFactorKeys: insufficient ? [] : ['TECHNICAL', 'MOMENTUM', 'RISK'] },
+    previousAnalysis: null,
+  };
+}
+
+async function enterGuest(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('sfm_lang', 'en');
+    localStorage.setItem('the-sfm-theme', 'light');
+  });
+  await page.goto('/login?mode=register', { waitUntil: 'domcontentloaded' });
+  await page.locator('button.guest-btn').first().click();
+  await page.waitForURL(/\/dashboard(?:\?|$)/);
+}
+
+async function stubApis(page: Page, state: 'partial' | 'insufficient' | 'stale') {
+  await page.route('**/api/market/**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ ok: false, success: false, code: 'PROVIDER_UNAVAILABLE', items: [], results: [], data: [] }),
+  }));
+  await page.route('**/api/market/analyze**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(marketAnalysis()) }));
+  await page.route('**/api/market/ai-insight', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'AI_PROVIDER_UNAVAILABLE' }) }));
+  await page.route('**/api/intelligence/analyze', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: intelligenceResult(state), correlationId: 'e2e-correlation' }) }));
+}
+
+async function openAnalysis(page: Page, state: 'partial' | 'insufficient' | 'stale') {
+  await stubApis(page, state);
+  await enterGuest(page);
+  const response = await page.goto('/market-analysis?tab=analyze&symbol=AAPL&assetType=stock&autoRun=1', { waitUntil: 'domcontentloaded' });
+  expect(response?.status() ?? 200).toBeLessThan(500);
+  const panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
+  await expect(panel).toBeVisible({ timeout: 45_000 });
+  return panel;
+}
+
+test.use({ trace: 'off', screenshot: 'off', video: 'off' });
+test.setTimeout(120_000);
+
+test.describe('Phase 6.1 intelligence panel', () => {
+  test('renders the canonical structured result with evidence and no generated price levels', async ({ page }) => {
+    const panel = await openAnalysis(page, 'partial');
+    await expect(panel.getByText('Analysis confidence')).toBeVisible();
+    await expect(panel.getByText('64%')).toBeVisible();
+    await expect(panel.getByText('This analysis is partial', { exact: false })).toBeVisible();
+    await panel.locator('summary').click();
+    await expect(panel.getByText('Entry prices, targets, and stop-loss values are unavailable', { exact: false })).toBeVisible();
+    await expect(panel.getByText('verified-e2e-provider', { exact: true })).toBeVisible();
+  });
+
+  test('renders insufficient-data and stale states truthfully', async ({ page }) => {
+    let panel = await openAnalysis(page, 'insufficient');
+    await expect(panel.getByText('Insufficient data', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Available evidence is insufficient', { exact: false })).toBeVisible();
+    await expect(panel.getByText('The data provider is unavailable', { exact: false })).toBeVisible();
+
+    await page.unrouteAll({ behavior: 'wait' });
+    await stubApis(page, 'stale');
+    await page.goto('/market-analysis?tab=analyze&symbol=AAPL&assetType=stock&autoRun=1', { waitUntil: 'domcontentloaded' });
+    panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
+    await expect(panel).toBeVisible({ timeout: 45_000 });
+    await expect(panel.getByText('This is an explicitly stale result', { exact: false })).toBeVisible();
+    await expect(panel.getByText('34%')).toBeVisible();
+  });
+
+  test('keeps RTL/LTR, theme, keyboard disclosure, and mobile width behavior intact', async ({ page }) => {
+    const panel = await openAnalysis(page, 'partial');
+    await panel.locator('summary').focus();
+    await page.keyboard.press('Enter');
+    await expect(panel.locator('details')).toHaveAttribute('open', '');
+
+    for (const [language, direction] of [['ar', 'rtl'], ['fr', 'ltr'], ['en', 'ltr']] as const) {
+      await page.evaluate(nextLanguage => {
+        localStorage.setItem('sfm_lang', nextLanguage);
+        window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: nextLanguage } }));
+      }, language);
+      await expect.poll(() => panel.getAttribute('dir')).toBe(direction);
+    }
+
+    for (const theme of ['dark', 'light'] as const) {
+      await page.evaluate(nextTheme => {
+        localStorage.setItem('the-sfm-theme', nextTheme);
+        document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+      }, theme);
+      await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(theme === 'dark');
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(4);
+  });
+});

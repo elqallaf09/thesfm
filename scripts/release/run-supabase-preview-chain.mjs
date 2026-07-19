@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
 const [envPath, mode = 'dry-run'] = process.argv.slice(2)
-const expectedPreviewRef = 'lwcaapfqxaoxkojehfdq'
+const expectedPreviewRef = 'tilrkqdngnokvxuvllio'
 const productionRef = 'hirjgsyfolsvfqjayyfz'
 
 if (!envPath || !['dry-run', 'apply'].includes(mode)) {

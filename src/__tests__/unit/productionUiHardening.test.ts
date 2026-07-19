@@ -22,8 +22,9 @@ describe('phase 2.10 production UI hardening', () => {
     expect(signalPanel).toContain("className: 'error', label: text.errorBadge");
     expect(signalPanel).toContain("className: 'empty', label: text.emptyBadge");
     expect(signalPanel).not.toContain("actionLabel(signal?.action ?? 'watch')");
-    expect(marketAnalysis).toContain('setMarketSignalError(true)');
-    expect(marketAnalysis).toContain('error={marketSignalError}');
+    expect(marketAnalysis).toContain("setIntelligenceError('PROVIDER_UNAVAILABLE')");
+    expect(marketAnalysis).toContain('errorCode={intelligenceError}');
+    expect(marketAnalysis).not.toContain('<MarketSignalPanel');
   });
 
   it('models every user-facing Trader data state without synthesizing a recommendation', () => {
