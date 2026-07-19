@@ -27,6 +27,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
+import { LegacyRouteRedirect } from '@/components/ai-analyst/LegacyRouteRedirect';
 import { supabase } from '@/integrations/supabase/client';
 import type { MarketAgentAssetType, MarketAgentResponse, MarketAgentTimeframe } from '@/lib/market/marketAgent';
 
@@ -484,7 +485,7 @@ function buildIndicatorRows(result: MarketAgentAnalysisResult, text: Copy): Indi
   ];
 }
 
-export default function MarketAgentPage() {
+function LegacyMarketAgentWorkspace() {
   const { dir, lang } = useLanguage();
   const text = COPY[lang] ?? COPY.ar;
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -2102,6 +2103,11 @@ export default function MarketAgentPage() {
       `}</style>
     </div>
   );
+}
+
+/** The old independent agent UI is retained as a non-default compatibility implementation. */
+export default function MarketAgentPage() {
+  return <LegacyRouteRedirect kind="market-agent" />;
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {

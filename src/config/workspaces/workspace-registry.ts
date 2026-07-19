@@ -49,8 +49,9 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
       fr: 'Analyse des marchés, actualités, listes de suivi, alertes et terminal de trading.',
     },
     icon: CandlestickChart,
-    defaultRoute: '/market-analysis',
+    defaultRoute: '/ai-analyst/overview',
     routePrefixes: [
+      '/ai-analyst', '/symbol-details',
       '/market-analysis', '/market-agent', '/market-alerts', '/market-watchlist',
       '/watchlist', '/alerts', '/invest', '/thesfm-trader-own',
       '/tech-news', '/europe-news', '/gulf-news', '/crypto-news',

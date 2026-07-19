@@ -112,6 +112,20 @@
 .state button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 10px; background: var(--surface); color: var(--foreground); cursor: pointer; }
 .state button svg { width: 15px; }
 
+.unifiedStatus { border-inline-start-color: var(--accent); }
+.statusHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; }
+.statusHeader > div { display: grid; gap: 4px; min-width: 0; }
+.statusHeader > div > span { display: flex; align-items: center; gap: 7px; color: var(--accent); font-size: .84rem; font-weight: 700; }
+.statusHeader small { color: var(--foreground-muted); font-size: .78rem; line-height: 1.55; }
+.statusAvailable,
+.statusDegraded { display: inline-flex; align-items: center; gap: 6px; max-inline-size: 42%; border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 6px 8px; font-size: .7rem; font-weight: 700; line-height: 1.3; }
+.statusAvailable { color: var(--success); background: var(--success-soft); }
+.statusDegraded { color: var(--warning); background: var(--warning-soft); }
+.statusAvailable svg,
+.statusDegraded svg { flex: 0 0 auto; width: 14px; height: 14px; }
+.statusList { display: grid; gap: 6px; margin: 0; padding: 0 16px 14px; list-style: none; }
+.statusList li { padding: 8px 10px; border-radius: var(--radius-control); font-size: .78rem; line-height: 1.5; }
+
 @media (max-width: 980px) {
   .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .metrics > div:nth-child(4) { border-inline-start: 0; border-top: 1px solid var(--divider); }
@@ -129,6 +143,9 @@
   .factorGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .evidenceColumns { grid-template-columns: 1fr; }
   .details summary, .detailsBody { padding-inline: 14px; }
+  .statusHeader { flex-direction: column; padding-inline: 14px; }
+  .statusAvailable, .statusDegraded { max-inline-size: 100%; }
+  .statusList { padding-inline: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

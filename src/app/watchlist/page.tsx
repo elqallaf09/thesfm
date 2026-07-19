@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function WatchlistRedirect() {
-  redirect('/market-analysis?tab=watchlist');
+  redirect('/ai-analyst/overview?legacy=market&tab=watchlist');
 }

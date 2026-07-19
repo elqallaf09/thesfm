@@ -109,6 +109,7 @@ import {
 import { getMarketToolRequirements } from '@/components/market-analysis/toolRequirements';
 import type { MarketNewsServerQuery } from '@/components/market-analysis/NewsSentimentPanel';
 import { MarketSystemStateProvider } from '@/components/market/MarketSystemStateProvider';
+import { LegacyRouteRedirect } from '@/components/ai-analyst/LegacyRouteRedirect';
 
 function MarketSectionLoading({ label, cards = 3 }: { label: string; cards?: number }) {
   return (
@@ -273,7 +274,7 @@ function readMarketAnalysisUrlState() {
   };
 }
 
-export default function MarketAnalysisPage() {
+function LegacyMarketAnalysisWorkspace() {
   const { dir, lang, t } = useLanguage();
   const { currency: userCurrency } = useCurrency();
   const currentUserProfile = useCurrentUserProfile();
@@ -4539,4 +4540,20 @@ export default function MarketAnalysisPage() {
 `}</style>
     </div>
   );
+}
+
+/**
+ * The former Smart Market Analysis URL is intentionally retained as a client
+ * redirect so fragment-based deep links (for example #watchlist) can be
+ * migrated without silently losing their intent. The legacy workspace above is
+ * loaded only by the explicit compatibility adapter in /ai-analyst/overview.
+ */
+export default function MarketAnalysisPage() {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname === '/ai-analyst/overview' && params.get('legacy') === 'market') {
+      return <LegacyMarketAnalysisWorkspace />;
+    }
+  }
+  return <LegacyRouteRedirect kind="market-analysis" />;
 }

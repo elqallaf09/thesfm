@@ -34,6 +34,8 @@ export const THEME_SCOPE_ROUTES: Record<ThemeScope, readonly string[]> = {
   business: ['/business', '/business-hub', '/business-operations'],
   /* Trader / market experience — keeps the trading redesign untouched. */
   trader: [
+    '/ai-analyst',
+    '/symbol-details',
     '/market-analysis',
     '/market-agent',
     '/market-alerts',

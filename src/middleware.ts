@@ -45,6 +45,8 @@ const protectedPrefixes = [
   '/profile',
   '/notifications',
   '/market-alerts',
+  '/ai-analyst',
+  '/symbol-details',
   '/market-analysis',
   '/market-watchlist',
   '/watchlist',
@@ -68,12 +70,15 @@ const guestAllowedPaths = new Set([
   '/market-analysis',
 ]);
 
+const guestAllowedPrefixes = ['/ai-analyst', '/symbol-details'];
+
 function isProtected(pathname: string) {
   return protectedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isGuestAllowed(pathname: string) {
-  return guestAllowedPaths.has(pathname);
+  return guestAllowedPaths.has(pathname)
+    || guestAllowedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isLocalQaBypass(pathname: string) {
