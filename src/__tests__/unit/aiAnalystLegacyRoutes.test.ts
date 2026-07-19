@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  mapLegacyAiAnalystSectionRoute,
   mapLegacyMarketAgentRoute,
   mapLegacyMarketAnalysisRoute,
   mapLegacySymbolDetailsRoute,
@@ -9,9 +10,9 @@ import {
 } from '@/lib/ai-analyst/legacyRoutes';
 
 describe('AI Analyst legacy route compatibility', () => {
-  it('maps the bare Market Analysis route to the single unified overview', () => {
-    expect(mapLegacyMarketAnalysisRoute({ search: '' })).toBe('/ai-analyst/overview');
-    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=overview' })).toBe('/ai-analyst/overview');
+  it('maps the bare Market Analysis route to canonical Market Leadership', () => {
+    expect(mapLegacyMarketAnalysisRoute({ search: '' })).toBe('/ai-analyst/market-leadership');
+    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=overview' })).toBe('/ai-analyst/market-leadership');
   });
 
   it('maps an explicit legacy analysis target to the canonical asset route', () => {
@@ -35,17 +36,44 @@ describe('AI Analyst legacy route compatibility', () => {
     })).toBe('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&filters=keep');
   });
 
-  it('retains working legacy tools and hash destinations through the explicit compatibility view', () => {
+  it('routes completed legacy tools directly and reserves compatibility only for trader tools', () => {
     expect(mapLegacyMarketAnalysisRoute({ search: '?symbol=AAPL', hash: '#watchlist' }))
-      .toBe('/ai-analyst/overview?legacy=market&tab=watchlist&symbol=AAPL&assetType=STOCK&horizon=SWING');
+      .toBe('/ai-analyst/watchlist?symbol=AAPL');
     expect(mapLegacyMarketAnalysisRoute({ search: '?tab=tools&next=https%3A%2F%2Fevil.example' }))
       .toBe('/ai-analyst/overview?legacy=market&tab=traderTools');
     expect(mapLegacyMarketAnalysisRoute({ search: '?tab=alerts' }))
-      .toBe('/ai-analyst/overview?legacy=market&tab=alerts');
+      .toBe('/ai-analyst/alerts');
+  });
+
+  it('maps completed legacy tab aliases to grouped canonical child routes', () => {
+    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=calendar&locale=ar' }))
+      .toBe('/ai-analyst/calendar?locale=ar');
+    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=sessions&market=GCC', hash: '#details' }))
+      .toBe('/ai-analyst/markets/sessions?market=GCC#details');
+    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=news&provider=finnhub' }))
+      .toBe('/ai-analyst/news?provider=finnhub');
+    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=compare&symbols=AAPL%2CMSFT' }))
+      .toBe('/ai-analyst/compare?symbols=AAPL%2CMSFT');
+    expect(mapLegacyMarketAnalysisRoute({ search: '?tab=technical-analysis' }))
+      .toBe('/ai-analyst/analyze');
+  });
+
+  it('maps direct watchlist and alert aliases without losing safe query context or fragments', () => {
+    expect(mapLegacyAiAnalystSectionRoute('watchlist', {
+      search: '?sort=newest&return=%2Fai-analyst%2Fwatchlist%3Fsort%3Dnewest&next=https%3A%2F%2Fevil.example',
+      hash: '#positions',
+    })).toBe('/ai-analyst/watchlist?sort=newest&return=%2Fai-analyst%2Fwatchlist%3Fsort%3Dnewest#positions');
+
+    expect(mapLegacyAiAnalystSectionRoute('alerts', {
+      search: '?symbol=AAPL&assetType=STOCK&nested=%7B%22channel%22%3A%22email%22%7D',
+      hash: '#access_token=secret',
+    })).toBe('/ai-analyst/alerts?symbol=AAPL&assetType=STOCK&nested=%7B%22channel%22%3A%22email%22%7D');
   });
 
   it('preserves safe agent context and root symbol query parameters without relaying redirect controls', () => {
     expect(mapLegacyMarketAgentRoute({ search: '' })).toBe('/ai-analyst/agent');
+    expect(mapLegacyMarketAgentRoute({ search: '?assetType=crypto&range=1W&autoRun=1' }))
+      .toBe('/ai-analyst/agent?assetType=CRYPTO&horizon=SHORT_TERM&autoRun=1');
     expect(mapLegacyMarketAgentRoute({ search: '?symbol=EURUSD%3DX&assetType=FOREX&timeframe=1D&next=%2Fadmin' }))
       .toBe('/ai-analyst/agent?assetType=FOREX&horizon=INTRADAY&symbol=EURUSD%3DX');
     expect(mapLegacyMarketAgentRoute({ search: '?filters=top-movers', hash: '#watchlist' }))
