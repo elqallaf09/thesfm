@@ -76,6 +76,7 @@ Resolved:
 
 - browser Supabase configuration prefers an independently rotatable publishable key while preserving generated legacy consumers through a compatibility adapter;
 - authenticated Preview CI uses a dedicated encrypted branch credential instead of the Production-scoped shared service credential;
+- the isolated Preview project's legacy API keys and legacy HS256 signing key were revoked after modern publishable/secret key validation; the Production project and its data were not changed;
 - client-supplied user IDs and provider preferences are rejected;
 - URL-shaped symbols are rejected before resolution;
 - provider secrets and raw errors never enter API results;
@@ -122,8 +123,8 @@ Passed locally on 2026-07-19:
 - credential-shaped added-line scan and public-environment secret guard;
 - migration/RLS static security tests.
 
-The local Supabase CLI refused linked commands with `LegacyProjectNotLinkedError`, so no project was guessed or linked. After draft PR #45 opened, Supabase provisioned isolated Preview ref `tilrkqdngnokvxuvllio`; database, services, APIs, configuration, migration, seed, and Edge Function tasks all passed there. The Vercel Preview also reached READY for the committed PR SHA.
+The local Supabase CLI refused linked commands with `LegacyProjectNotLinkedError`, so no project was guessed or linked. After draft PR #45 opened, Supabase provisioned isolated Preview ref `tilrkqdngnokvxuvllio`; database, services, APIs, configuration, migration, seed, and Edge Function tasks all passed there. The Vercel Preview reached READY at `https://thesfm-git-feature-phase-6-aa0268-mohammed-alqallaf-s-projects.vercel.app` for the committed PR SHA.
 
-Remote CI passed TypeScript, ESLint, i18n, launch guards, the full unit/integration suite, the production build and performance budget, the complete Playwright smoke matrix, and Lighthouse. The first authenticated Preview job stopped before fixture creation because its Phase 5.0D Preview hostname had been retired and no longer resolved. The workflow, fixture mutation guard, observability check, and release-chain guard are now pinned to this PR's isolated Preview ref, and the branch-scoped privileged credential has been replaced. Follow-up authenticated Preview validation is required on the corrective commit.
+Remote CI run `29665738621` passed TypeScript, ESLint, i18n, launch guards, 206 test files with 1629 unit/integration tests, the production build and performance budget, the complete Playwright smoke matrix, Lighthouse, and the complete authenticated Preview smoke. The authenticated job resolved the exact-SHA Vercel deployment, provisioned isolated Preview fixtures, validated request-to-row observability and cross-user isolation, passed the full remote browser suite, and removed its fixtures. An initial Lighthouse sample narrowly missed the unchanged performance threshold on a cold runner; the single unchanged retry passed, while the independent bundle budget and Playwright performance regression remained green.
 
-Current gate recommendation: **NO-GO pending the follow-up authenticated Preview smoke**. Local implementation gates and all other remote gates are green. Production remains untouched.
+Current gate recommendation: **GO for Phase 6.1 review**. Production remains untouched; merge and Production deployment still require explicit approval.
