@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useEffect, useState } from 'react';
 
 const DeferredToaster = dynamic(
   () => import('@/components/ui/sonner').then(module => module.Toaster),
@@ -18,6 +19,20 @@ const DeferredGlobalClientEffects = dynamic(
 );
 
 export function DeferredGlobalUtilities() {
+  const [shouldMount, setShouldMount] = useState(false);
+
+  useEffect(() => {
+    const mountUtilities = () => setShouldMount(true);
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(mountUtilities, { timeout: 1500 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(mountUtilities, 0);
+    return () => window.clearTimeout(handle);
+  }, []);
+
+  if (!shouldMount) return null;
+
   return (
     <>
       <DeferredToaster />
