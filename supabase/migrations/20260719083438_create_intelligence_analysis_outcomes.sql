@@ -101,6 +101,32 @@ as $$
 declare
   parent_analysis public.intelligence_analyses%rowtype;
 begin
+  -- An outcome is always born as an empty evaluation record. The only allowed
+  -- lifecycle transition is enforced separately by the immutable update trigger.
+  if new.evaluation_status <> 'pending' then
+    raise exception 'intelligence analysis outcomes must begin pending';
+  end if;
+
+  if new.evaluated_at is not null
+    or new.entry_reference_price is not null
+    or new.entry_reference_at is not null
+    or new.entry_currency is not null
+    or new.final_reference_price is not null
+    or new.final_reference_at is not null
+    or new.final_currency is not null
+    or new.maximum_favorable_excursion is not null
+    or new.maximum_adverse_excursion is not null
+    or new.directional_return is not null
+    or new.benchmark_return is not null
+    or new.outcome_classification <> 'NOT_APPLICABLE'
+    or new.evaluation_data_source is not null
+    or new.price_data_as_of is not null
+    or new.price_data_received_at is not null
+    or new.provider_provenance <> '{}'::jsonb
+    or new.warnings <> '[]'::jsonb then
+    raise exception 'pending intelligence analysis outcomes cannot include terminal evaluation payload';
+  end if;
+
   select *
   into parent_analysis
   from public.intelligence_analyses

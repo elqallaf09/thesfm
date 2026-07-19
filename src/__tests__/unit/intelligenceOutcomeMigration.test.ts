@@ -36,7 +36,15 @@ describe('intelligence outcome migration security', () => {
     expect(migration).toContain('before insert on public.intelligence_analysis_outcomes');
   });
 
-  it('permits only a pending-to-terminal transition and prohibits normal deletion', () => {
+  it('requires a blank pending row at insertion, then permits only a pending-to-terminal transition', () => {
+    expect(migration).toContain("if new.evaluation_status <> 'pending' then");
+    expect(migration).toContain("raise exception 'intelligence analysis outcomes must begin pending'");
+    expect(migration).toContain('new.evaluated_at is not null');
+    expect(migration).toContain('new.entry_reference_price is not null');
+    expect(migration).toContain('new.final_reference_price is not null');
+    expect(migration).toContain("new.outcome_classification <> 'not_applicable'");
+    expect(migration).toContain("new.provider_provenance <> '{}'::jsonb");
+    expect(migration).toContain("raise exception 'pending intelligence analysis outcomes cannot include terminal evaluation payload'");
     expect(migration).toContain('create function public.enforce_intelligence_analysis_outcome_immutability()');
     expect(migration).toContain("if old.evaluation_status <> 'pending' then");
     expect(migration).toContain("new.evaluation_status not in ('evaluated', 'insufficient_data', 'invalidated', 'failed')");
