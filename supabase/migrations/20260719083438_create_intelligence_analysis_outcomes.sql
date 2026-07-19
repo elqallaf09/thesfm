@@ -93,6 +93,52 @@ comment on column public.intelligence_analysis_outcomes.benchmark_return is
 comment on column public.intelligence_analysis_outcomes.methodology_snapshot is
   'Versioned evaluation configuration snapshot. No raw provider payloads, credentials, or personal data are permitted.';
 
+create function public.validate_intelligence_analysis_outcome_parent()
+returns trigger
+language plpgsql
+set search_path = pg_catalog
+as $$
+declare
+  parent_analysis public.intelligence_analyses%rowtype;
+begin
+  select *
+  into parent_analysis
+  from public.intelligence_analyses
+  where id = new.analysis_id;
+
+  if not found then
+    raise exception 'intelligence outcome parent analysis is required';
+  end if;
+
+  if new.user_id is distinct from parent_analysis.user_id
+    or new.scope is distinct from parent_analysis.scope
+    or new.canonical_symbol is distinct from parent_analysis.canonical_symbol
+    or new.provider_symbol is distinct from parent_analysis.provider_symbol
+    or new.display_symbol is distinct from parent_analysis.display_symbol
+    or new.asset_type is distinct from parent_analysis.asset_type
+    or new.exchange is distinct from parent_analysis.exchange
+    or new.market is distinct from parent_analysis.market
+    or new.quote_currency is distinct from parent_analysis.quote_currency
+    or new.horizon is distinct from parent_analysis.horizon
+    or new.original_recommendation is distinct from parent_analysis.recommendation
+    or new.original_confidence is distinct from parent_analysis.confidence
+    or new.original_confidence_quality is distinct from parent_analysis.confidence_quality
+    or new.original_engine_version is distinct from parent_analysis.engine_version
+    or new.original_rules_version is distinct from parent_analysis.rules_version
+    or new.original_weighting_version is distinct from parent_analysis.weighting_version then
+    raise exception 'intelligence outcome must match immutable parent analysis provenance';
+  end if;
+
+  return new;
+end;
+$$;
+
+revoke all on function public.validate_intelligence_analysis_outcome_parent() from public, anon, authenticated;
+
+create trigger intelligence_analysis_outcomes_parent_consistency
+  before insert on public.intelligence_analysis_outcomes
+  for each row execute function public.validate_intelligence_analysis_outcome_parent();
+
 create function public.enforce_intelligence_analysis_outcome_immutability()
 returns trigger
 language plpgsql

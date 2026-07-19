@@ -74,6 +74,8 @@ export type IntelligenceHistoricalPriceHistory = {
   receivedAt: string;
   dataAsOf: string | null;
   deliveryState: 'LIVE' | 'DELAYED' | 'CACHED' | 'UNAVAILABLE';
+  /** Cache age from the verified history adapter. Null means the provider did not expose it. */
+  cacheAgeSeconds: number | null;
   adjustedPrices: 'VERIFIED' | 'UNSUPPORTED' | 'UNKNOWN';
   points: IntelligenceHistoricalPricePoint[];
   attempts: IntelligenceHistoricalPriceAttempt[];
@@ -231,6 +233,8 @@ export type IntelligenceTimelineItem = {
   provider: AnalysisResult['providerProvenance'];
   versions: Pick<AnalysisResult, 'engineVersion' | 'rulesVersion' | 'weightingVersion'>;
   drift: IntelligenceAnalysisDrift;
+  /** PENDING is explicit even when an older Phase 6.1 row has not yet received its outcome row. */
+  outcomeStatus: IntelligenceOutcomeEvaluationStatus;
   outcome: IntelligenceAnalysisOutcome | null;
 };
 

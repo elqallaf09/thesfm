@@ -31,6 +31,9 @@ describe('intelligence outcome migration security', () => {
     expect(migration).toContain('from public.intelligence_analyses analysis');
     expect(migration).toContain("analysis.scope = 'shared'");
     expect(migration).toContain("analysis.scope = 'private' and analysis.user_id = (select auth.uid())");
+    expect(migration).toContain('create function public.validate_intelligence_analysis_outcome_parent()');
+    expect(migration).toContain('intelligence outcome must match immutable parent analysis provenance');
+    expect(migration).toContain('before insert on public.intelligence_analysis_outcomes');
   });
 
   it('permits only a pending-to-terminal transition and prohibits normal deletion', () => {

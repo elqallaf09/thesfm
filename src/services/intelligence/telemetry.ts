@@ -27,8 +27,13 @@ export class IntelligenceTelemetryCollector implements IntelligenceTelemetry {
     correlationId: string;
     authenticated: boolean;
     locale: IntelligenceLocale;
-    assetType: IntelligenceAssetType;
-    route: '/api/intelligence/analyze' | '/api/intelligence/latest';
+    assetType: IntelligenceAssetType | 'SYSTEM';
+    route:
+      | '/api/intelligence/analyze'
+      | '/api/intelligence/latest'
+      | '/api/intelligence/timeline'
+      | '/api/intelligence/outcomes/latest'
+      | '/api/intelligence/outcomes/evaluate';
   }) {}
 
   record(event: IntelligenceTelemetryEvent) {
@@ -66,7 +71,9 @@ export class IntelligenceTelemetryCollector implements IntelligenceTelemetry {
       cache_status: event.cacheStatus ?? null,
       provider: event.provider?.slice(0, 80) ?? null,
       endpoint_class: 'financial_intelligence',
-      asset_class: this.context.assetType.toLowerCase() === 'commodity'
+      asset_class: this.context.assetType === 'SYSTEM'
+        ? 'system'
+        : this.context.assetType.toLowerCase() === 'commodity'
         ? 'commodity'
         : this.context.assetType.toLowerCase() === 'fund'
           ? 'fund'

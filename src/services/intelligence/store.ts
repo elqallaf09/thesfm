@@ -4,6 +4,7 @@ import type {
   IntelligenceHorizon,
 } from '@/domain/intelligence/contracts';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { pendingOutcomeInsertRow } from './outcomeStore';
 
 export type LatestAnalysisQuery = {
   asset: CanonicalAssetIdentity;
@@ -100,6 +101,19 @@ export class SupabaseIntelligenceAnalysisStore implements IntelligenceAnalysisSt
     if (error) {
       console.warn('[intelligence-store] persistence skipped', { code: error.code });
       return false;
+    }
+    // Outcomes begin as an immutable PENDING record so the scheduled evaluator
+    // can safely transition them exactly once. The analysis itself remains usable
+    // if Preview has not yet applied the forward-only outcome migration.
+    const { error: outcomeError } = await admin
+      .from('intelligence_analysis_outcomes')
+      .insert(pendingOutcomeInsertRow({
+        result,
+        userId: privateScope ? userId : null,
+        createdAt: result.generatedAt,
+      }));
+    if (outcomeError && outcomeError.code !== '23505' && process.env.NODE_ENV !== 'production') {
+      console.warn('[intelligence-store] pending outcome initialization skipped', { code: outcomeError.code });
     }
     return true;
   }

@@ -15,6 +15,7 @@ const protectedApiPrefixes = [
   '/api/instagram-automation',
   '/api/investor/links',
   '/api/invoices/analyze',
+  '/api/intelligence/outcomes/evaluate',
   '/api/market-agent',
   '/api/market/refresh-investment-price',
   '/api/market/ai-insight',
@@ -46,6 +47,7 @@ export function isProtectedApiPath(pathname: string) {
 const cronApiPaths = new Set([
   '/api/business/subscriptions/reminders',
   '/api/debts/generate-monthly-expenses',
+  '/api/intelligence/outcomes/evaluate',
   '/api/market/refresh-investment-price',
   '/api/market/signals/refresh',
   '/api/market-news/ingest',
