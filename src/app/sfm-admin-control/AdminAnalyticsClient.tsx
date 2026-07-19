@@ -8,6 +8,7 @@ import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, isCompanyCategory } from '@/lib/companyListings';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { TR } from '@/lib/translations';
 
 type TranslationKey = keyof typeof TR;
@@ -295,7 +296,7 @@ export default function AdminAnalyticsClient() {
   const [pageVisibleCount, setPageVisibleCount] = useState(10);
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/login?next=/sfm-admin-control');
+    if (!loading && !user) router.replace(loginHrefForCurrentLocation('/sfm-admin-control'));
   }, [loading, router, user]);
 
   const query = useMemo(() => {
@@ -313,7 +314,7 @@ export default function AdminAnalyticsClient() {
     try {
       const response = await fetch(`/api/admin/analytics?${query}`, { cache: 'no-store' });
       if (response.status === 401) {
-        router.replace('/login?next=/sfm-admin-control');
+        router.replace(loginHrefForCurrentLocation('/sfm-admin-control'));
         return;
       }
       if (response.status === 403) {

@@ -20,6 +20,19 @@ describe('AI Analyst legacy route compatibility', () => {
     })).toBe('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1');
     expect(mapLegacyMarketAnalysisRoute({ search: '?symbol=BTC-USD&assetType=CRYPTO&horizon=SHORT_TERM' }))
       .toBe('/ai-analyst/analyze/BTC-USD?assetType=CRYPTO&horizon=SHORT_TERM');
+    expect(mapLegacyMarketAnalysisRoute({ search: '?symbol=AAPL&assetType=STOCK&horizon=SWING&autoRun=1' }))
+      .toBe('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1');
+  });
+
+  it('preserves safe opaque query context and a non-routing fragment through canonicalization', () => {
+    expect(mapLegacyMarketAnalysisRoute({
+      search: '?symbol=AAPL&assetType=STOCK&horizon=SWING&autoRun=1&filters=%7B%22range%22%3A%221M%22%7D&return=%2Fwatchlist%3Fsort%3Dnewest',
+      hash: '#details',
+    })).toBe('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1&filters=%7B%22range%22%3A%221M%22%7D&return=%2Fwatchlist%3Fsort%3Dnewest#details');
+
+    expect(mapLegacyMarketAnalysisRoute({
+      search: '?symbol=AAPL&assetType=STOCK&horizon=SWING&filters=keep&next=https%3A%2F%2Fevil.example&return=https%3A%2F%2Fevil.example',
+    })).toBe('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&filters=keep');
   });
 
   it('retains working legacy tools and hash destinations through the explicit compatibility view', () => {
@@ -31,11 +44,14 @@ describe('AI Analyst legacy route compatibility', () => {
       .toBe('/ai-analyst/overview?legacy=market&tab=alerts');
   });
 
-  it('maps the legacy agent and root symbol alias without retaining arbitrary query values', () => {
+  it('preserves safe agent context and root symbol query parameters without relaying redirect controls', () => {
     expect(mapLegacyMarketAgentRoute({ search: '' })).toBe('/ai-analyst/agent');
     expect(mapLegacyMarketAgentRoute({ search: '?symbol=EURUSD%3DX&assetType=FOREX&timeframe=1D&next=%2Fadmin' }))
       .toBe('/ai-analyst/agent?assetType=FOREX&horizon=INTRADAY&symbol=EURUSD%3DX');
-    expect(mapLegacySymbolDetailsRoute('msft')).toBe('/ai-analyst/analyze/MSFT?assetType=STOCK&horizon=SWING');
+    expect(mapLegacyMarketAgentRoute({ search: '?filters=top-movers', hash: '#watchlist' }))
+      .toBe('/ai-analyst/agent?filters=top-movers#watchlist');
+    expect(mapLegacySymbolDetailsRoute('msft', { search: '?filters=top-movers&return=%2Fwatchlist', hash: '#details' }))
+      .toBe('/ai-analyst/analyze/MSFT?assetType=STOCK&horizon=SWING&filters=top-movers&return=%2Fwatchlist#details');
   });
 
   it('fails closed for malformed assets and keeps canonical enums bounded', () => {

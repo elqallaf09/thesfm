@@ -3,9 +3,13 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
-import { mapLegacyMarketAgentRoute, mapLegacyMarketAnalysisRoute } from '@/lib/ai-analyst/legacyRoutes';
+import {
+  mapLegacyMarketAgentRoute,
+  mapLegacyMarketAnalysisRoute,
+  mapLegacySymbolDetailsRoute,
+} from '@/lib/ai-analyst/legacyRoutes';
 
-type RedirectKind = 'market-analysis' | 'market-agent';
+type RedirectKind = 'market-analysis' | 'market-agent' | 'symbol-details';
 
 const COPY = {
   ar: 'جارٍ فتح إس إف إم المحلل الذكي…',
@@ -13,16 +17,18 @@ const COPY = {
   fr: 'Ouverture de SFM Smart Analyst…',
 } as const;
 
-export function LegacyRouteRedirect({ kind }: { kind: RedirectKind }) {
+export function LegacyRouteRedirect({ kind, symbol }: { kind: RedirectKind; symbol?: string }) {
   const router = useRouter();
   const { dir, lang } = useLanguage();
 
   useEffect(() => {
     const destination = kind === 'market-analysis'
       ? mapLegacyMarketAnalysisRoute({ search: window.location.search, hash: window.location.hash })
-      : mapLegacyMarketAgentRoute({ search: window.location.search });
+      : kind === 'market-agent'
+        ? mapLegacyMarketAgentRoute({ search: window.location.search, hash: window.location.hash })
+        : mapLegacySymbolDetailsRoute(symbol ?? '', { search: window.location.search, hash: window.location.hash });
     router.replace(destination);
-  }, [kind, router]);
+  }, [kind, router, symbol]);
 
   const locale = lang === 'en' || lang === 'fr' ? lang : 'ar';
   return (

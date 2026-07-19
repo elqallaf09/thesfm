@@ -10,6 +10,7 @@ import { CompanyDashboardFrame } from '@/components/company-listings/CompanyDash
 import { CompanyImageUploadField } from '@/components/company-listings/CompanyImageUploadField';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { COMPANY_CATEGORY_CONFIGS, COMPANY_CATEGORIES, normalizeCompanyCategory, type CompanyCategory } from '@/lib/companyListings';
 import { isValidCompanySocialInput, normalizeCompanySocialUrl } from '@/lib/companySocialLinks';
 import { normalizeDigits } from '@/lib/locale';
@@ -197,8 +198,7 @@ export function CompanySubmitForm() {
   useEffect(() => {
     if (authLoading) return;
     if (!session) {
-      const nextPath = typeof window === 'undefined' ? '/company-listing/submit' : `${window.location.pathname}${window.location.search}`;
-      router.replace(`/login?next=${encodeURIComponent(nextPath)}`);
+      router.replace(loginHrefForCurrentLocation('/company-listing/submit'));
       return;
     }
     let cancelled = false;

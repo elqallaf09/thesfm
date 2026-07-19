@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import { calculateFinancialAnalysis } from '@/lib/financialAnalysis';
 import { formatCurrency } from '@/lib/format';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { useCurrency } from '@/lib/useCurrency';
 
 const AiCharts = dynamic(() => import('@/components/ai/AiCharts'), {
@@ -245,7 +246,7 @@ export default function AiPage() {
   const money = useCallback((value: number) => formatCurrency(value, currency, locale), [currency, locale]);
 
   useEffect(() => {
-    if (!loading && !user && !isGuest) router.push('/login');
+    if (!loading && !user && !isGuest) router.push(loginHrefForCurrentLocation('/ai'));
   }, [isGuest, loading, router, user]);
 
   useEffect(() => {

@@ -63,7 +63,7 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
 
     const sidebar = page.locator('aside.sfm-shared-sidebar');
     if (await sidebar.count()) {
-      await expect(sidebar.getByRole('link', { name: 'SFM Smart Analyst' })).toHaveCount(1);
+      await expect(sidebar.getByRole('link', { name: 'SFM AI Analyst' })).toHaveCount(1);
       await expect(sidebar.locator('a[href="/market-analysis"], a[href="/market-agent"]')).toHaveCount(0);
     }
 
@@ -77,8 +77,9 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
     await expect(page.getByLabel('Asset type')).toHaveValue('FOREX');
     await expect(page.getByLabel('Horizon')).toHaveValue('INTRADAY');
 
-    await page.goto('/symbol-details/AAPL', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/ai-analyst\/analyze\/AAPL\?assetType=STOCK&horizon=SWING/);
+    await page.goto('/symbol-details/AAPL?filters=top-movers&return=%2Fwatchlist%3Fsort%3Dnewest#details', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(url => `${url.pathname}${url.search}${url.hash}`
+      === '/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&filters=top-movers&return=%2Fwatchlist%3Fsort%3Dnewest#details');
     await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
   });
 
@@ -104,6 +105,36 @@ test.describe('Phase 6.2B AI Analyst consolidation', () => {
     await page.goto('/ai-analyst/history?view=accuracy', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('ai-analyst-accuracy-summary')
       .getByText('The sample is too small to display a meaningful accuracy percentage.').first()).toBeVisible();
+  });
+
+  test('keeps one canonical AI Analyst entry across desktop and mobile navigation in every locale', async ({ page, isMobile }) => {
+    await stubAnalystReads(page);
+    await enterGuest(page);
+    await page.goto('/ai-analyst/overview', { waitUntil: 'domcontentloaded' });
+
+    for (const [locale, label] of [
+      ['ar', 'إس إف إم المحلل الذكي'],
+      ['en', 'SFM AI Analyst'],
+      ['fr', 'Analyste IA SFM'],
+    ] as const) {
+      await page.evaluate(nextLanguage => {
+        localStorage.setItem('sfm_lang', nextLanguage);
+        window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: nextLanguage } }));
+      }, locale);
+
+      if (isMobile) await page.locator('.sfm-global-menu-button').click();
+      const navigation = isMobile
+        ? page.locator('#sfm-mobile-menu')
+        : page.locator('aside.sfm-shared-sidebar');
+      await expect(navigation).toBeVisible();
+      const analystLink = navigation.getByRole('link', { name: label });
+      await expect(analystLink).toHaveCount(1);
+      await expect(analystLink).toHaveAttribute('href', '/ai-analyst/overview');
+      await expect(navigation.locator('a[href="/thesfm-trader-own"]')).toHaveCount(0);
+
+      await analystLink.click();
+      await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
+    }
   });
 
   test('keeps RTL/LTR, dark mode, tabs, and a mobile viewport overflow-safe', async ({ page }) => {

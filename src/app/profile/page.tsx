@@ -40,6 +40,7 @@ import {
   X,
 } from 'lucide-react';
 import { formatDate, normalizeDigits } from '@/lib/locale';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
@@ -783,7 +784,7 @@ export default function ProfilePage() {
   );
 
   useEffect(() => {
-    if (!loading && !user) router.push('/login');
+    if (!loading && !user) router.push(loginHrefForCurrentLocation('/profile'));
   }, [loading, router, user]);
 
   useEffect(() => {

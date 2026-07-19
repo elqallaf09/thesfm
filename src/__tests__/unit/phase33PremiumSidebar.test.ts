@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { BrainCircuit } from 'lucide-react';
 import {
   filterNavigationGroups,
+  flattenNavigationItems,
   NAV_GROUPS,
   SUPPORT_LINKS,
   type NavigationItem,
@@ -88,23 +90,30 @@ describe('Phase 3.3 workspace-navigation architecture', () => {
   it('keeps one unified AI analyst entry in the markets sidebar', () => {
     const marketItems = NAV_GROUPS.find(group => group.id === 'investment-market')?.items ?? [];
     expect(marketItems.filter(item => item.id === 'ai-analyst')).toEqual([
-      expect.objectContaining({ href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' }),
+      expect.objectContaining({ icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' }),
     ]);
     expect(marketItems.some(item => item.id === 'market-analysis' || item.id === 'market-agent')).toBe(false);
     expect(TR_NAV.nav_ai_analyst).toEqual({
       ar: 'إس إف إم المحلل الذكي',
-      en: 'SFM Smart Analyst',
-      fr: 'Analyste intelligent SFM',
+      en: 'SFM AI Analyst',
+      fr: 'Analyste IA SFM',
     });
   });
 
   it('continues to filter Administration and super-admin-only navigation', () => {
     expect(filterNavigationGroups(NAV_GROUPS, false).some(group => group.id === 'admin')).toBe(false);
-    const ordinaryMarkets = filterGroupsForWorkspace(
-      filterNavigationGroups(NAV_GROUPS, false),
-      'markets-trading',
-    );
-    expect(ordinaryMarkets.flatMap(group => group.items).some(item => item.id === 'smart-trading-terminal')).toBe(false);
+    for (const access of [
+      false,
+      { isAdmin: true, isSuperAdmin: true, permissions: {} },
+    ] as const) {
+      const markets = filterGroupsForWorkspace(filterNavigationGroups(NAV_GROUPS, access), 'markets-trading');
+      const globalItems = markets.flatMap(group => group.items);
+      expect(globalItems.filter(item => item.id === 'ai-analyst')).toHaveLength(1);
+      expect(globalItems.some(item => item.id === 'smart-trading-terminal')).toBe(false);
+    }
+    const commandItems = flattenNavigationItems();
+    expect(commandItems.filter(item => item.id === 'ai-analyst')).toHaveLength(1);
+    expect(commandItems.some(item => item.id === 'smart-trading-terminal')).toBe(false);
   });
 });
 

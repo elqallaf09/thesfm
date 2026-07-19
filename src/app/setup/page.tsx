@@ -30,6 +30,7 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { formatCurrency } from '@/lib/format';
 import { getCurrency } from '@/lib/currencies';
 import { useCurrency } from '@/lib/useCurrency';
@@ -923,7 +924,7 @@ export default function SetupPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !user && !isGuest) router.replace('/login?next=/setup');
+    if (!authLoading && !user && !isGuest) router.replace(loginHrefForCurrentLocation('/setup'));
   }, [authLoading, isGuest, router, user]);
 
   useEffect(() => {
@@ -1561,7 +1562,7 @@ export default function SetupPage() {
       <main className="setup-auth" dir={dir}>
         <section>
           <h1>{text.signInTitle}</h1>
-          <button type="button" onClick={() => router.push('/login?next=/setup')}>{text.signInAction}</button>
+          <button type="button" onClick={() => router.push(loginHrefForCurrentLocation('/setup'))}>{text.signInAction}</button>
         </section>
         <style jsx>{`.setup-auth{min-height:100vh;display:grid;place-items:center;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}.setup-auth section{width:min(480px,calc(100% - 32px));background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-panel);padding:24px;text-align:center;box-shadow:var(--shadow-card)}.setup-auth button{margin-top:16px;min-height:44px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:0 18px;font-weight:600;cursor:pointer}`}</style>
       </main>
