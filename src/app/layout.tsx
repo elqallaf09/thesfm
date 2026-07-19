@@ -2,13 +2,11 @@ import type { Metadata } from 'next';
 import { IBM_Plex_Mono, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { DensityProvider } from '@/hooks/useDensity';
-import { Toaster } from '@/components/ui/sonner';
-import GlobalClientEffects from '@/components/GlobalClientEffects';
 import { AuthProvider } from '@/hooks/useAuth';
 import { AdaptiveLanguageProvider } from '@/components/AdaptiveLanguageProvider';
 import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
-import { AnalyticsTracker } from '@/components/AnalyticsTracker';
+import { DeferredGlobalUtilities } from '@/components/DeferredGlobalUtilities';
 import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
@@ -63,16 +61,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Toaster />
           <DensityProvider>
             <AuthProvider>
               <AdaptiveLanguageProvider>
                 <LocalizedSkipLink />
                 <CurrencyProvider>
-                  <AnalyticsTracker />
                   <AppLayout>{children}</AppLayout>
+                  <DeferredGlobalUtilities />
                 </CurrencyProvider>
-                <GlobalClientEffects />
               </AdaptiveLanguageProvider>
             </AuthProvider>
           </DensityProvider>
