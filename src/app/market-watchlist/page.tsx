@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { LegacyRouteRedirect } from '@/components/ai-analyst/LegacyRouteRedirect';
 
 export default function MarketWatchlistRedirect() {
-  redirect('/ai-analyst/overview?legacy=market&tab=watchlist');
+  return <LegacyRouteRedirect kind="watchlist" />;
 }

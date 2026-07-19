@@ -1,5 +1,5 @@
 import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
-import { resolveInternalDestination } from '@/lib/auth/redirects';
+import { mergeClientHash, resolveInternalDestination } from '@/lib/auth/redirects';
 
 export type LegacyMarketAnalysisRouteInput = {
   search: string;
@@ -61,6 +61,15 @@ const UNSAFE_REDIRECT_QUERY_KEYS = new Set([
 const INTERNAL_RETURN_QUERY_KEYS = new Set([
   'return', 'returnto', 'returnurl',
 ]);
+
+const LEGACY_HASH_PROBE_PATH = '/ai-analyst';
+
+type CanonicalLegacySection = 'alerts' | 'watchlist';
+
+const CANONICAL_SECTION_PATHS: Record<CanonicalLegacySection, string> = {
+  alerts: '/ai-analyst/alerts',
+  watchlist: '/ai-analyst/watchlist',
+};
 
 function normalizedSearch(search: string) {
   return new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
@@ -137,7 +146,12 @@ function appendSafeLegacyContext(params: URLSearchParams, output: URLSearchParam
 }
 
 function preservedHash(hash: string) {
-  return hash;
+  // Reuse the login redirect fragment policy so a legacy compatibility route
+  // cannot move OAuth/recovery credentials into an application destination.
+  const destination = mergeClientHash(LEGACY_HASH_PROBE_PATH, hash, LEGACY_HASH_PROBE_PATH);
+  return destination === LEGACY_HASH_PROBE_PATH
+    ? ''
+    : destination.slice(LEGACY_HASH_PROBE_PATH.length);
 }
 
 function preservedMarketAnalysisHash(hash: string) {
@@ -145,9 +159,41 @@ function preservedMarketAnalysisHash(hash: string) {
 }
 
 /**
- * Centralizes legacy route migration. It deliberately maps old tools to the
- * hidden compatibility view rather than discarding working watchlist, alert,
- * calendar, or report flows while they are progressively absorbed.
+ * Preserves non-routing context while moving a legacy section to its direct
+ * canonical child route. `tab` and `legacy` are intentionally consumed by
+ * the mapper, and redirect controls remain fail-closed.
+ */
+function appendSafeSectionContext(params: URLSearchParams, output: URLSearchParams) {
+  for (const [key, value] of params.entries()) {
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKey === 'tab' || normalizedKey === 'legacy') continue;
+    if (UNSAFE_REDIRECT_QUERY_KEYS.has(normalizedKey)) continue;
+    if (INTERNAL_RETURN_QUERY_KEYS.has(normalizedKey) && !isSafeInternalNavigationValue(value)) continue;
+    output.append(key, value);
+  }
+}
+
+function canonicalSectionDestination(
+  section: CanonicalLegacySection,
+  { search, hash = '' }: LegacyMarketAnalysisRouteInput,
+) {
+  const output = new URLSearchParams();
+  appendSafeSectionContext(normalizedSearch(search), output);
+  return `${CANONICAL_SECTION_PATHS[section]}${querySuffix(output)}${preservedHash(hash)}`;
+}
+
+/** Maps direct legacy personal-tool aliases without relying on hidden tabs. */
+export function mapLegacyAiAnalystSectionRoute(
+  section: CanonicalLegacySection,
+  input: LegacyMarketAnalysisRouteInput,
+): string {
+  return canonicalSectionDestination(section, input);
+}
+
+/**
+ * Centralizes legacy route migration. Completed capabilities map directly to
+ * their canonical child routes; only trader tools without a data-only parity
+ * surface retain an explicit temporary compatibility intent.
  */
 export function mapLegacyMarketAnalysisRoute({ search, hash = '' }: LegacyMarketAnalysisRouteInput): string {
   const params = normalizedSearch(search);
@@ -155,33 +201,50 @@ export function mapLegacyMarketAnalysisRoute({ search, hash = '' }: LegacyMarket
   const hasTabParameter = Boolean(params.get('tab'));
   const tab = normalizeLegacyTab(params.get('tab')) ?? normalizeLegacyTab(hash);
 
-  if (symbol && ((!hasTabParameter && !hash) || tab === 'analyze')) {
+  if (symbol && (!hasTabParameter && !tab)) {
     const { output } = sharedAssetParams(params, symbol);
     appendSafeLegacyContext(params, output);
     return `/ai-analyst/analyze/${encodeURIComponent(symbol)}${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
   }
 
-  if (symbol && !hasTabParameter && !tab) {
+  if (symbol && (tab === 'analyze' || tab === 'technicalAnalysis' || tab === 'assetReport')) {
     const { output } = sharedAssetParams(params, symbol);
     appendSafeLegacyContext(params, output);
     return `/ai-analyst/analyze/${encodeURIComponent(symbol)}${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
   }
 
-  if (!symbol && !tab) {
+  if (tab === 'watchlist') return canonicalSectionDestination('watchlist', { search, hash: preservedMarketAnalysisHash(hash) });
+  if (tab === 'alerts') return canonicalSectionDestination('alerts', { search, hash: preservedMarketAnalysisHash(hash) });
+
+  const directTabDestinations: Partial<Record<NonNullable<typeof tab>, string>> = {
+    overview: '/ai-analyst/market-leadership',
+    analyze: '/ai-analyst/analyze',
+    technicalAnalysis: '/ai-analyst/analyze',
+    assetReport: '/ai-analyst/analyze',
+    economicCalendar: '/ai-analyst/calendar',
+    sessions: '/ai-analyst/markets/sessions',
+    newsSentiment: '/ai-analyst/news',
+    comparison: '/ai-analyst/compare',
+  };
+
+  if (tab && tab !== 'traderTools') {
     const output = new URLSearchParams();
-    appendSafeLegacyContext(params, output);
-    return `/ai-analyst/overview${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
+    appendSafeSectionContext(params, output);
+    return `${directTabDestinations[tab] ?? '/ai-analyst/market-leadership'}${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
   }
 
-  if (!symbol && tab === 'overview') {
+  if (!tab) {
     const output = new URLSearchParams();
-    appendSafeLegacyContext(params, output);
-    return `/ai-analyst/overview${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
+    appendSafeSectionContext(params, output);
+    return `/ai-analyst/market-leadership${querySuffix(output)}${preservedMarketAnalysisHash(hash)}`;
   }
 
+  // Trader tools have no equivalent public, data-only surface yet. Keep the
+  // compatibility intent explicit rather than redirecting users to an
+  // unrelated destination. The legacy workspace itself remains temporary.
   const output = new URLSearchParams();
   output.set('legacy', 'market');
-  output.set('tab', tab ?? 'overview');
+  output.set('tab', 'traderTools');
   if (symbol) {
     const asset = sharedAssetParams(params, symbol);
     output.set('symbol', asset.symbol);
@@ -199,6 +262,12 @@ export function mapLegacyMarketAgentRoute({ search, hash = '' }: LegacyMarketAna
     const asset = sharedAssetParams(params, symbol);
     for (const [key, value] of asset.output.entries()) output.set(key, value);
     output.set('symbol', symbol);
+  } else {
+    if (params.has('assetType')) output.set('assetType', normalizeAiAnalystAssetType(params.get('assetType')));
+    if (params.has('horizon') || params.has('range') || params.has('timeframe')) {
+      output.set('horizon', normalizeAiAnalystHorizon(params.get('horizon') ?? params.get('range') ?? params.get('timeframe')));
+    }
+    if (params.get('autoRun') === '1') output.set('autoRun', '1');
   }
   appendSafeLegacyContext(params, output);
   return `/ai-analyst/agent${querySuffix(output)}${preservedHash(hash)}`;

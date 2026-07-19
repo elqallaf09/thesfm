@@ -295,7 +295,7 @@ export function generateSmartNotifications(data: NotificationSourceData, lang: N
     if (!['triggered', 'active_triggered', 'met'].includes(status)) return;
     const symbol = firstText(row, ['symbol'], '');
     if (!symbol) return;
-    add({ id: makeId(['market-alert', row.id, status]), title: copy.marketTriggeredTitle, message: copy.marketTriggeredMessage(symbol), type: 'market', severity: 'warning', sourceModule: 'market', sourceId: row.id, actionUrl: '/ai-analyst/overview?legacy=market&tab=alerts', createdAt: row.created_at });
+    add({ id: makeId(['market-alert', row.id, status]), title: copy.marketTriggeredTitle, message: copy.marketTriggeredMessage(symbol), type: 'market', severity: 'warning', sourceModule: 'market', sourceId: row.id, actionUrl: '/ai-analyst/alerts', createdAt: row.created_at });
   });
 
   const feasibilityProjectIds = new Set((data.feasibilityStudies ?? []).map(row => row.project_id));
