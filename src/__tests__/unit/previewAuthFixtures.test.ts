@@ -43,6 +43,9 @@ describe('Preview-only authentication fixtures', () => {
     expect(authenticatedPreviewJob).toContain('Resolve active isolated Supabase Preview ref for exact SHA');
     expect(authenticatedPreviewJob).toContain("core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);");
     expect(authenticatedPreviewJob).not.toMatch(/SUPABASE_PREVIEW_URL:\s*https:\/\//);
+    expect(authenticatedPreviewJob.indexOf('actions/checkout@v4')).toBeLessThan(
+      authenticatedPreviewJob.indexOf('Resolve active isolated Supabase Preview ref for exact SHA'),
+    );
   });
 
   it('is idempotent, refuses real users, validates JWTs, and removes synthetic resources', () => {
@@ -67,6 +70,9 @@ describe('Preview-only authentication fixtures', () => {
     expect(provision).toBeLessThan(observability);
     expect(observability).toBeLessThan(remote);
     expect(remote).toBeLessThan(cleanup);
-    expect(workflow.slice(cleanup, cleanup + 140)).toContain('if: always()');
+    const cleanupBlock = workflow.slice(cleanup, cleanup + 420);
+    expect(cleanupBlock).toContain('if: always()');
+    expect(cleanupBlock).toContain('SUPABASE_PREVIEW_REF');
+    expect(cleanupBlock).toContain('no fixture cleanup was required');
   });
 });

@@ -56,7 +56,7 @@ describe('workspace registry validity', () => {
     expect(getWorkspaceEntryRoute('business-projects', { isAuthenticated: true })).toBe('/business-hub');
     expect(getWorkspaceEntryRoute('business-projects', { isAuthenticated: false })).toBe('/investment-companies');
     expect(getWorkspaceEntryRoute('personal-finance', { isAuthenticated: false })).toBe('/dashboard');
-    expect(getWorkspaceEntryRoute('markets-trading', { isAuthenticated: false })).toBe('/market-analysis');
+    expect(getWorkspaceEntryRoute('markets-trading', { isAuthenticated: false })).toBe('/ai-analyst/overview');
   });
 
   it('never repeats an identical route prefix across workspaces', () => {
@@ -80,6 +80,10 @@ describe('route-to-workspace resolution', () => {
       ['/expenses/monthly-subscriptions', 'personal-finance'],
       ['/charity-projects', 'personal-finance'],
       ['/reports-center', 'personal-finance'],
+      ['/ai-analyst', 'markets-trading'],
+      ['/ai-analyst/analyze/AAPL', 'markets-trading'],
+      ['/ai-analyst/history?view=accuracy', 'markets-trading'],
+      ['/symbol-details/AAPL', 'markets-trading'],
       ['/market-analysis', 'markets-trading'],
       ['/watchlist', 'markets-trading'],
       ['/thesfm-trader-own', 'markets-trading'],
@@ -122,6 +126,7 @@ describe('route-to-workspace resolution', () => {
 
   it('is query, hash, and trailing-slash independent', () => {
     expect(getWorkspaceForPathname('/market-analysis?tab=alerts')?.id).toBe('markets-trading');
+    expect(getWorkspaceForPathname('/ai-analyst/history?view=accuracy')?.id).toBe('markets-trading');
     expect(getWorkspaceForPathname('/charity-projects/?tab=reports')?.id).toBe('personal-finance');
     expect(getWorkspaceForPathname('/zakat#calculator')?.id).toBe('personal-finance');
   });

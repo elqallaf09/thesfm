@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, BrainCircuit, ChevronDown, Database, RefreshCw, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, BrainCircuit, CheckCircle2, ChevronDown, Database, RefreshCw, ShieldAlert } from 'lucide-react';
 import type {
   AnalysisResult,
   ConfidenceQuality,
@@ -58,6 +58,12 @@ const COPY = {
     changed: 'La lecture a changé après une évolution des preuves pondérées.', confidenceChanged: 'La confiance a changé avec la complétude ou la fraîcheur des preuves.', unchanged: 'Aucun changement significatif.',
   },
 } as const;
+
+const STATUS_COPY: Record<Locale, { title: string; available: string; factorUnavailable: string }> = {
+  ar: { title: 'حالة الذكاء المالي', available: 'تتوفر أدلة موثقة لهذه القراءة.', factorUnavailable: 'غير متاح' },
+  en: { title: 'Financial intelligence status', available: 'Verified evidence is available for this reading.', factorUnavailable: 'Unavailable' },
+  fr: { title: 'État de l’intelligence financière', available: 'Des preuves vérifiées sont disponibles pour cette lecture.', factorUnavailable: 'Indisponible' },
+};
 
 const FACTORS: Record<Locale, Record<IntelligenceFactorKey, string>> = {
   ar: { TECHNICAL: 'فني', FUNDAMENTAL: 'أساسي', SENTIMENT: 'المعنويات', NEWS: 'الأخبار', MACRO: 'الاقتصاد الكلي', MOMENTUM: 'الزخم', LIQUIDITY: 'السيولة', VOLATILITY: 'التذبذب', RISK: 'المخاطر', SHARIA: 'الحالة الشرعية' },
@@ -127,29 +133,95 @@ function errorMessage(code: string | null, copy: typeof COPY[Locale]) {
   return copy.error;
 }
 
+type IntelligencePanelProps = {
+  result: AnalysisResult | null;
+  loading: boolean;
+  errorCode: string | null;
+  onRetry: () => void;
+  emptyMessage?: string;
+  /** Lets the consolidated Analyst workspace render one status panel above the ledger. */
+  showStatus?: boolean;
+};
+
+export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, emptyMessage }: Omit<IntelligencePanelProps, 'showStatus'>) {
+  const { lang, dir } = useLanguage();
+  const locale = localeOf(lang);
+  const copy = COPY[locale];
+  const statusCopy = STATUS_COPY[locale];
+
+  if (loading) {
+    return (
+      <section className={`${styles.panel} ${styles.unifiedStatus}`} dir={dir} aria-live="polite" aria-busy="true" data-testid="intelligence-status-panel">
+        <div className={styles.state}><BrainCircuit aria-hidden="true" /><span>{copy.loading}</span></div>
+      </section>
+    );
+  }
+  if (errorCode || !result) {
+    return (
+      <section className={`${styles.panel} ${styles.unifiedStatus}`} dir={dir} role="alert" data-testid="intelligence-status-panel">
+        <div className={styles.state}>
+          <AlertTriangle aria-hidden="true" />
+          <span>{errorCode ? errorMessage(errorCode, copy) : (emptyMessage ?? copy.error)}</span>
+          <button type="button" onClick={onRetry}><RefreshCw aria-hidden="true" />{copy.retry}</button>
+        </div>
+      </section>
+    );
+  }
+
+  const entries: Array<{ key: string; tone: 'warning' | 'info'; text: string }> = [];
+  if (result.staleData) entries.push({ key: 'stale', tone: 'warning', text: copy.stale });
+  if (result.status === 'PARTIAL') entries.push({ key: 'partial', tone: 'info', text: copy.partial });
+  if (result.recommendation === 'INSUFFICIENT_DATA') entries.push({ key: 'insufficient', tone: 'warning', text: copy.insufficient });
+  if (result.conflictStatus !== 'NONE') entries.push({ key: 'conflict', tone: 'warning', text: copy.conflict });
+  if (!result.providerProvenance.selectedProvider) entries.push({ key: 'provider', tone: 'warning', text: copy.providerUnavailable });
+  result.factors
+    .filter(factor => factor.availability === 'UNAVAILABLE')
+    .forEach(factor => entries.push({
+      key: `factor-${factor.factor}`,
+      tone: 'info',
+      text: `${FACTORS[locale][factor.factor]}: ${statusCopy.factorUnavailable}`,
+    }));
+
+  return (
+    <section className={`${styles.panel} ${styles.unifiedStatus}`} dir={dir} aria-labelledby="intelligence-status-title" data-testid="intelligence-status-panel">
+      <header className={styles.statusHeader}>
+        <div>
+          <span id="intelligence-status-title"><Database size={16} aria-hidden="true" />{statusCopy.title}</span>
+          <small>{entries.length ? copy.subtitle : statusCopy.available}</small>
+        </div>
+        <span className={entries.length ? styles.statusDegraded : styles.statusAvailable}>
+          {entries.length ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
+          {entries.length ? copy.partial : statusCopy.available}
+        </span>
+      </header>
+      {entries.length ? (
+        <ul className={styles.statusList}>
+          {entries.map(entry => <li className={entry.tone === 'warning' ? styles.warning : styles.info} key={entry.key}>{entry.text}</li>)}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
 export function IntelligencePanel({
   result,
   loading,
   errorCode,
   onRetry,
-}: {
-  result: AnalysisResult | null;
-  loading: boolean;
-  errorCode: string | null;
-  onRetry: () => void;
-}) {
+  showStatus = true,
+}: IntelligencePanelProps) {
   const { lang, dir } = useLanguage();
   const locale = localeOf(lang);
   const copy = COPY[locale];
 
-  if (loading) {
+  if (loading && showStatus) {
     return (
       <section className={styles.panel} dir={dir} aria-live="polite" aria-busy="true">
         <div className={styles.state}><BrainCircuit aria-hidden="true" /><span>{copy.loading}</span></div>
       </section>
     );
   }
-  if (errorCode || !result) {
+  if ((errorCode || !result) && showStatus) {
     return (
       <section className={styles.panel} dir={dir} role="alert">
         <div className={styles.state}>
@@ -160,6 +232,8 @@ export function IntelligencePanel({
       </section>
     );
   }
+
+  if (!result) return null;
 
   const recommendationTone = result.recommendation === 'BUY' ? styles.positive
     : result.recommendation === 'SELL' ? styles.negative
@@ -207,13 +281,13 @@ export function IntelligencePanel({
         <span dir="ltr">{result.asset.quoteCurrency ?? copy.unavailable}</span>
       </div>
 
-      <div className={styles.alerts}>
+      {showStatus ? <div className={styles.alerts}>
         {result.staleData ? <p className={styles.warning}><AlertTriangle aria-hidden="true" />{copy.stale}</p> : null}
         {result.status === 'PARTIAL' ? <p className={styles.info}><Database aria-hidden="true" />{copy.partial}</p> : null}
         {result.recommendation === 'INSUFFICIENT_DATA' ? <p className={styles.warning}><ShieldAlert aria-hidden="true" />{copy.insufficient}</p> : null}
         {result.conflictStatus !== 'NONE' ? <p className={styles.warning}><AlertTriangle aria-hidden="true" />{copy.conflict}</p> : null}
         {!result.providerProvenance.selectedProvider ? <p className={styles.warning}><Database aria-hidden="true" />{copy.providerUnavailable}</p> : null}
-      </div>
+      </div> : null}
 
       <div className={styles.metrics}>
         <div><span>{copy.confidence}</span><strong dir="ltr">{number(result.confidence, 0)}%</strong><small>{copy.confidenceNote}</small></div>

@@ -148,15 +148,15 @@ async function enterGuestWorkspace(page: Page) {
     .toBe(true);
 }
 
-async function openMarketCommandCenter(page: Page, path = '/market-analysis') {
+async function openMarketCommandCenter(page: Page, path = '/ai-analyst/overview?legacy=market&tab=overview') {
   const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
-  await expect(page).toHaveURL(new RegExp(`/market-analysis(?:[?#]|$)`));
+  await expect(page).toHaveURL(new RegExp(`/ai-analyst/overview(?:[?#]|$)`));
   await expect(page.locator('#market-command-center-title:visible')).toBeVisible({ timeout: 45_000 });
   await expect(page.locator('nav[data-command-group][data-active-tab]')).toBeVisible();
 }
 
-async function prepareGuestMarket(page: Page, path = '/market-analysis') {
+async function prepareGuestMarket(page: Page, path = '/ai-analyst/overview?legacy=market&tab=overview') {
   const requests = await stubMarketApis(page);
   await enterGuestWorkspace(page);
   await openMarketCommandCenter(page, path);
@@ -286,8 +286,8 @@ test.describe('Phase 4.1A Market Command Center foundation', () => {
     expect(dark.indicatorBackground).not.toBe(light.indicatorBackground);
   });
 
-  test('canonicalizes legacy tab query and hash URLs without losing unrelated URL state', async ({ page }) => {
-    await prepareGuestMarket(page, '/market-analysis?tab=tools&symbol=AAPL#coverage');
+  test('retains explicit compatibility tabs while sending bare legacy symbol analysis to the canonical route', async ({ page }) => {
+    await prepareGuestMarket(page, '/ai-analyst/overview?legacy=market&tab=traderTools&symbol=AAPL#coverage');
 
     await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('traderTools');
     expect(new URL(page.url()).searchParams.get('symbol')).toBe('AAPL');
@@ -297,26 +297,21 @@ test.describe('Phase 4.1A Market Command Center foundation', () => {
     await expect(navigation).toHaveAttribute('data-active-tab', 'traderTools');
 
     for (const tab of ['economicCalendar', 'technicalAnalysis', 'newsSentiment'] as const) {
-      await openMarketCommandCenter(page, `/market-analysis?symbol=AAPL&tab=${tab}`);
+      await openMarketCommandCenter(page, `/ai-analyst/overview?legacy=market&symbol=AAPL&tab=${tab}`);
       await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe(tab);
       expect(new URL(page.url()).searchParams.get('symbol')).toBe('AAPL');
       await expect(navigation).toHaveAttribute('data-active-tab', tab);
     }
 
-    await openMarketCommandCenter(page, '/market-analysis?symbol=AAPL#watchlist');
-    await expect.poll(() => ({
-      tab: new URL(page.url()).searchParams.get('tab'),
-      hash: new URL(page.url()).hash,
-    })).toEqual({ tab: 'watchlist', hash: '' });
+    await openMarketCommandCenter(page, '/ai-analyst/overview?legacy=market&symbol=AAPL&tab=watchlist');
+    await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('watchlist');
     expect(new URL(page.url()).searchParams.get('symbol')).toBe('AAPL');
     await expect(navigation).toHaveAttribute('data-command-group', 'watchlistAlerts');
     await expect(navigation).toHaveAttribute('data-active-tab', 'watchlist');
 
-    await openMarketCommandCenter(page, '/market-analysis?symbol=MSFT');
-    await expect.poll(() => new URL(page.url()).searchParams.get('tab')).toBe('analyze');
-    expect(new URL(page.url()).searchParams.get('symbol')).toBe('MSFT');
-    await expect(navigation).toHaveAttribute('data-command-group', 'analyze');
-    await expect(navigation).toHaveAttribute('data-active-tab', 'analyze');
+    await page.goto('/market-analysis?symbol=MSFT', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/ai-analyst\/analyze\/MSFT\?assetType=STOCK&horizon=SWING/);
+    await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
   });
 
   test('keeps Arabic RTL and English/French LTR command navigation coherent', async ({ page }) => {

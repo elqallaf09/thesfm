@@ -241,8 +241,8 @@ test.describe('launch smoke coverage', () => {
     expect(bodyText).not.toMatch(/sk_live|sk_test|whsec_|stack|ECONNREFUSED/i);
   });
 
-  test('market-analysis page loads', async ({ page }) => {
-    await expectUsablePage(page, '/market-analysis');
+  test('AI Analyst overview loads', async ({ page }) => {
+    await expectUsablePage(page, '/ai-analyst/overview');
   });
 
   test('Arabic RTL and English LTR basics are applied', async ({ page }) => {
@@ -260,7 +260,7 @@ test.describe('launch smoke coverage', () => {
 
   test('mobile viewport navigation and sidebar basics do not overflow', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'mobile viewport coverage runs in the mobile project');
-    await expectUsablePage(page, '/market-analysis');
+    await expectUsablePage(page, '/ai-analyst/overview');
     const navTrigger = page.locator('button[aria-label*="menu" i], button[aria-label*="القائمة"], button:has-text("☰")').first();
     if (await navTrigger.isVisible().catch(() => false)) {
       await navTrigger.click();

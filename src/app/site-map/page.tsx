@@ -214,7 +214,7 @@ const PURPOSE_KEY: Record<string, keyof typeof TEXT.ar> = {
   'smart-assistant': 'smartAssistantDesc',
   zakat: 'zakatDesc',
   invest: 'investDesc',
-  'market-analysis': 'marketDesc',
+  'ai-analyst': 'marketDesc',
   projects: 'projectsDesc',
   'business-hub': 'businessDesc',
   'investment-offers': 'investmentOffersDesc',
@@ -244,7 +244,7 @@ const FEATURED_ITEMS = [
   { id: 'income', href: '/income', icon: Wallet, labelKey: 'nav_income' as TranslationKey, purposeKey: 'incomeDesc' as const },
   { id: 'expenses', href: '/expenses', icon: ReceiptText, labelKey: 'nav_expenses' as TranslationKey, purposeKey: 'expensesDesc' as const },
   { id: 'goals', href: '/goals', icon: Target, labelKey: 'nav_goals' as TranslationKey, purposeKey: 'goalsDesc' as const },
-  { id: 'market-analysis', href: '/market-analysis', icon: BarChart3, labelKey: 'nav_market_analysis' as TranslationKey, purposeKey: 'marketDesc' as const },
+  { id: 'ai-analyst', href: '/ai-analyst/overview', icon: BarChart3, labelKey: 'nav_ai_analyst' as TranslationKey, purposeKey: 'marketDesc' as const },
   { id: 'reports-center', href: '/reports-center', icon: BarChart3, labelKey: 'nav_reports_center' as TranslationKey, purposeKey: 'reportsDesc' as const },
 ] as const;
 

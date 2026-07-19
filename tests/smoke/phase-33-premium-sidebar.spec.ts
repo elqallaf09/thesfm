@@ -37,12 +37,14 @@ test.describe('Phase 3.3 premium desktop sidebar', () => {
     const marketsTab = page.locator('[data-workspace-id="markets-trading"]');
     await expect(marketsTab).toBeVisible();
     await marketsTab.click();
-    await page.waitForURL(/\/market-analysis(?:\?|$)/);
+    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
 
     const sidebar = page.locator('aside.sfm-shared-sidebar');
     await expect(sidebar).toBeVisible();
     await expect(sidebar.locator('[aria-current="page"]')).toHaveCount(1);
-    await expect(sidebar.locator('[aria-current="page"]')).toContainText('Market Analysis');
+    await expect(sidebar.locator('[aria-current="page"]')).toContainText('SFM Smart Analyst');
+    await expect(sidebar.getByRole('link', { name: 'Market Analysis' })).toHaveCount(0);
+    await expect(sidebar.getByRole('link', { name: 'Market Agent' })).toHaveCount(0);
     await expect(sidebar.locator('.sfm-workspace-navigation')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^(Basic View|Advanced View)$/i })).toHaveCount(0);
 
@@ -166,7 +168,7 @@ test.describe('Account section stays collapsed until explicitly opened', () => {
     await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
     await expect(sidebar.getByRole('link', { name: 'Profile' })).toHaveCount(0);
 
-    for (const route of ['/market-analysis', '/dividend-stocks', '/dashboard']) {
+    for (const route of ['/ai-analyst/overview', '/dividend-stocks', '/dashboard']) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
       await expect(accountToggle).toHaveAttribute('aria-expanded', 'false');
       await expect(sidebar.getByRole('link', { name: 'Profile' })).toHaveCount(0);

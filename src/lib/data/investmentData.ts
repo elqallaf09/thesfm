@@ -23,5 +23,7 @@ export function investmentSymbol(row: any) {
 }
 
 export function marketAnalysisUrl(symbol: string) {
-  return symbol ? `/market-analysis?symbol=${encodeURIComponent(symbol)}` : '/market-analysis';
+  return symbol
+    ? `/ai-analyst/analyze/${encodeURIComponent(symbol)}?assetType=STOCK&horizon=SWING`
+    : '/ai-analyst/overview';
 }

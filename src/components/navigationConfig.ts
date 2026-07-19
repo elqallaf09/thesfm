@@ -5,7 +5,7 @@ import {
   BarChart3,
   Bell,
   BookOpen,
-  Bot,
+  BrainCircuit,
   BriefcaseBusiness,
   Building2,
   Calculator,
@@ -150,8 +150,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_invest_market',
     items: [
       { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
-      { id: 'market-analysis', icon: LineChart, href: '/market-analysis', labelKey: 'nav_market_analysis' },
-      { id: 'market-agent', icon: Bot, href: '/market-agent', labelKey: 'nav_market_agent' },
+      { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
       { id: 'smart-trading-terminal', icon: Terminal, href: '/thesfm-trader-own', labelKey: 'nav_smart_trading_terminal', adminOnly: true, superAdminOnly: true },
     ],
   },

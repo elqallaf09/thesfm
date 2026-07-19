@@ -74,7 +74,7 @@ describe('Phase 3.3 workspace-navigation architecture', () => {
     for (const [source, expected] of [
       ['/dashboard', 'home'],
       ['/expenses/monthly-subscriptions', 'monthly-subscriptions'],
-      ['/market-analysis', 'market-analysis'],
+      ['/ai-analyst/overview', 'ai-analyst'],
       ['/energy-stocks', 'energy-stocks'],
       ['/security', 'security'],
       ['/#faq', 'support-faq'],
@@ -83,6 +83,19 @@ describe('Phase 3.3 workspace-navigation architecture', () => {
     }
     expect(sidebar).toContain('aria-current={selected ? \'page\' : undefined}');
     expect(mobile).toContain("'aria-current': selected ? 'page' as const : undefined");
+  });
+
+  it('keeps one unified AI analyst entry in the markets sidebar', () => {
+    const marketItems = NAV_GROUPS.find(group => group.id === 'investment-market')?.items ?? [];
+    expect(marketItems.filter(item => item.id === 'ai-analyst')).toEqual([
+      expect.objectContaining({ href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' }),
+    ]);
+    expect(marketItems.some(item => item.id === 'market-analysis' || item.id === 'market-agent')).toBe(false);
+    expect(TR_NAV.nav_ai_analyst).toEqual({
+      ar: 'إس إف إم المحلل الذكي',
+      en: 'SFM Smart Analyst',
+      fr: 'Analyste intelligent SFM',
+    });
   });
 
   it('continues to filter Administration and super-admin-only navigation', () => {

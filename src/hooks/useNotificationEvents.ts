@@ -97,7 +97,9 @@ function normalizeSignalNotification(row: Record<string, any>): SmartNotificatio
     severity,
     sourceModule: 'signal',
     sourceId: String(row.signal_id ?? row.id ?? ''),
-    actionUrl: symbol ? `/market-analysis?symbol=${encodeURIComponent(symbol)}` : '/market-analysis',
+    actionUrl: symbol
+      ? `/ai-analyst/analyze/${encodeURIComponent(symbol)}?assetType=STOCK&horizon=SWING`
+      : '/ai-analyst/overview',
     status: row.read_at ? 'read' : 'unread',
     dueDate: null,
     createdAt: row.created_at ?? row.sent_at ?? null,

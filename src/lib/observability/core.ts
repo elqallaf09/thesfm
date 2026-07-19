@@ -76,6 +76,7 @@ const DYNAMIC_PARENTS: Record<string, string> = {
   'ai-analysis': '[market]',
   markets: '[market]',
   'market-analysis': '[market]',
+  analyze: '[symbol]',
   'company-listings': '[id]',
   results: '[resultId]',
   jobs: '[jobId]',

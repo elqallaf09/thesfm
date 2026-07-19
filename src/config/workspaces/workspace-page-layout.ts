@@ -17,6 +17,8 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   // Dense dashboards, analytics, financial tables, and the trading terminal.
   { prefix: '/thesfm-trader-own', variant: 'full', description: 'Trading terminal and dense market tools' },
   { prefix: '/sfm-admin-control', variant: 'full', description: 'Administration dashboards and operational tables' },
+  { prefix: '/ai-analyst', variant: 'full', description: 'Unified financial intelligence workspace' },
+  { prefix: '/symbol-details', variant: 'full', description: 'Legacy AI analyst symbol redirect' },
   { prefix: '/market-analysis', variant: 'full', description: 'Market analysis workspace' },
   { prefix: '/market-agent', variant: 'full', description: 'Market research assistant' },
   { prefix: '/market-watchlist', variant: 'full', description: 'Market watchlist redirect to the analysis workspace' },

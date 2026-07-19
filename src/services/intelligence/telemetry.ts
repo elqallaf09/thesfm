@@ -33,7 +33,9 @@ export class IntelligenceTelemetryCollector implements IntelligenceTelemetry {
       | '/api/intelligence/latest'
       | '/api/intelligence/timeline'
       | '/api/intelligence/outcomes/latest'
-      | '/api/intelligence/outcomes/evaluate';
+      | '/api/intelligence/outcomes/evaluate'
+      | '/api/intelligence/recent'
+      | '/api/intelligence/accuracy';
   }) {}
 
   record(event: IntelligenceTelemetryEvent) {
