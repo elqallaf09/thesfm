@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { isEmail } from '@/lib/authSecurity';
@@ -120,6 +120,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+
+    const commitInitialAuthState = (nextSession: Session | null, guestMode: boolean) => {
+      if (!mounted) return;
+      authInitializationRef.current = false;
+      // Resolving a persisted session can update every auth consumer at once.
+      // Keep that initial, non-interactive render interruptible so hydration is
+      // not followed by another monolithic main-thread task.
+      startTransition(() => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        setIsGuest(!nextSession && guestMode);
+        setLoading(false);
+      });
+    };
+
     supabase.auth.getSession()
       .then(async ({ data }) => {
         if (!mounted) return;
@@ -129,23 +144,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         if (data.session && !sync.ok && sync.code === 'UNAUTHORIZED') {
           await supabase.auth.signOut({ scope: 'local' });
-          setSession(null);
-          setUser(null);
-          setIsGuest(guestMode);
+          commitInitialAuthState(null, guestMode);
           syncGuestCookie(guestMode);
           return;
         }
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        setIsGuest(!data.session && guestMode);
+        commitInitialAuthState(data.session, guestMode);
         syncGuestCookie(!data.session && guestMode);
       })
       .catch(error => {
         if (mounted) {
           const guestMode = getStoredGuestMode();
-          setSession(null);
-          setUser(null);
-          setIsGuest(guestMode);
+          commitInitialAuthState(null, guestMode);
           syncGuestCookie(guestMode);
         }
         if (process.env.NODE_ENV === 'development') {
@@ -153,10 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             message: error instanceof Error ? error.message : String(error),
           });
         }
-      })
-      .finally(() => {
-        authInitializationRef.current = false;
-        if (mounted) setLoading(false);
       });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {

@@ -6,7 +6,8 @@ import { normalizeDigits } from "@/lib/locale";
 const NON_LATIN_NUMBER_CHARS = /[\u0660-\u0669\u06F0-\u06F9\u066A\u066B\u066C\u061C\u200E\u200F]/;
 const NORMALIZED_ATTRIBUTES = ["placeholder", "title", "aria-label", "aria-valuetext", "alt"];
 const SKIPPED_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEMPLATE"]);
-const MAX_NODES_PER_SLICE = 80;
+const MAX_NODES_PER_SLICE = 16;
+const MAX_SLICE_DURATION_MS = 4;
 
 function hasNonLatinNumberChars(value: string) {
   return NON_LATIN_NUMBER_CHARS.test(value);
@@ -93,8 +94,12 @@ export function useLatinDigitNormalizer() {
       idleHandle = null;
       timeoutHandle = null;
       let processed = 0;
+      const sliceStartedAt = window.performance.now();
       while (queueIndex < queuedNodes.length && processed < MAX_NODES_PER_SLICE) {
-        if (processed >= 8 && deadline && deadline.timeRemaining() <= 1) break;
+        if (processed >= 1 && (
+          window.performance.now() - sliceStartedAt >= MAX_SLICE_DURATION_MS
+          || (deadline && deadline.timeRemaining() <= 1)
+        )) break;
         const node = queuedNodes[queueIndex++];
         queuedSet.delete(node);
         processed += 1;
