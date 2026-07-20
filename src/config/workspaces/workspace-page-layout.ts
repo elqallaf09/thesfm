@@ -18,6 +18,7 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/thesfm-trader-own', variant: 'full', description: 'Trading terminal and dense market tools' },
   { prefix: '/sfm-admin-control', variant: 'full', description: 'Administration dashboards and operational tables' },
   { prefix: '/ai-analyst', variant: 'full', description: 'Unified financial intelligence workspace' },
+  { prefix: '/investments', variant: 'full', description: 'Unified investments ownership and valuation center' },
   { prefix: '/symbol-details', variant: 'full', description: 'Legacy AI analyst symbol redirect' },
   { prefix: '/market-analysis', variant: 'full', description: 'Market analysis workspace' },
   { prefix: '/market-agent', variant: 'full', description: 'Market research assistant' },

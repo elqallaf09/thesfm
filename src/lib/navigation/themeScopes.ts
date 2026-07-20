@@ -43,6 +43,7 @@ export const THEME_SCOPE_ROUTES: Record<ThemeScope, readonly string[]> = {
     '/watchlist',
     '/thesfm-trader-own',
     '/invest',
+    '/investments',
     '/banking-stocks',
     '/cyclical-stocks',
     '/defensive-stocks',

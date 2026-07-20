@@ -36,6 +36,7 @@ const privateRoutes = [
   '/debts',
   '/projects',
   '/invest',
+  '/investments',
   '/savings',
   '/investment-offers',
   '/market-alerts',
