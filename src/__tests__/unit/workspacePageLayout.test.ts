@@ -93,7 +93,7 @@ describe('workspace page layout policy', () => {
     expect(source).toContain('data-workspace-shell="true"');
     expect(source).toContain('<WorkspacePageContainer');
     expect(source).toContain('<Sidebar />');
-    expect(source).toContain('grid-template-columns: var(--sidebar-w) minmax(0, 1fr)');
+    expect(source).toContain('grid-template-columns: minmax(0, 1fr) var(--app-sidebar-width)');
     expect(source).not.toMatch(/100vw|calc\(100vw|translateX\(/);
   });
 

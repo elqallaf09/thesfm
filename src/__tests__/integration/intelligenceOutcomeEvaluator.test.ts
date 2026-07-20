@@ -78,7 +78,8 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
       method: null,
       reasonCode: 'CALCULATION_NOT_SUPPORTED',
     },
-    targets: [],
+    marketPrice: { available: true, value: 150, currency: 'USD', observedAt: '2025-01-01T00:00:00.000Z', source: 'test-provider', dataStatus: 'LIVE' },
+    targets: { available: false, lower: null, upper: null, currency: 'USD', source: null, dataAsOf: null, method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
     stopLossContext: {
       available: false,
       value: null,
@@ -130,6 +131,7 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
       materialFactorKeys: [],
     },
     previousAnalysis: null,
+    persistenceStatus: 'PERSISTED',
     ...overrides,
   };
 }

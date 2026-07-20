@@ -211,6 +211,41 @@ export type UnavailablePriceContext = {
   reasonCode: 'CALCULATION_NOT_SUPPORTED';
 };
 
+export type VerifiedMarketPriceContext = {
+  available: true;
+  value: number;
+  currency: string | null;
+  observedAt: string | null;
+  source: string;
+  dataStatus: 'LIVE' | 'DELAYED' | 'CACHED';
+};
+
+export type MarketPriceContext = VerifiedMarketPriceContext | UnavailablePriceContext;
+
+export type SourceDerivedTargetRange = {
+  available: true;
+  lower: number;
+  upper: number;
+  currency: string | null;
+  source: string;
+  dataAsOf: string;
+  method: 'RECENT_OHLC_RANGE';
+};
+
+export type UnavailableTargetRange = {
+  available: false;
+  lower: null;
+  upper: null;
+  currency: string | null;
+  source: null;
+  dataAsOf: null;
+  method: null;
+  reasonCode: 'CALCULATION_NOT_SUPPORTED' | 'INSUFFICIENT_MARKET_DATA' | 'STALE_DATA';
+};
+
+export type AnalysisTargetRange = SourceDerivedTargetRange | UnavailableTargetRange;
+export type AnalysisPersistenceStatus = 'PERSISTED' | 'FAILED' | 'NOT_ATTEMPTED';
+
 export type AnalysisResult = {
   analysisId: string;
   correlationId: string;
@@ -228,8 +263,11 @@ export type AnalysisResult = {
   confidenceCalculation: ConfidenceCalculation;
   risk: IntelligenceRisk;
   horizon: IntelligenceHorizon;
+  /** Current quote carried directly from a verified market-data snapshot. */
+  marketPrice: MarketPriceContext;
   entryContext: UnavailablePriceContext;
-  targets: [];
+  /** Deterministic range derived from verified OHLC, never a fabricated target. */
+  targets: AnalysisTargetRange;
   stopLossContext: UnavailablePriceContext;
   factors: FactorResult[];
   evidence: IntelligenceEvidence[];
@@ -245,6 +283,7 @@ export type AnalysisResult = {
   explanation: StructuredExplanation;
   recommendationDecision: RecommendationDecision;
   previousAnalysis: PreviousAnalysisSummary | null;
+  persistenceStatus: AnalysisPersistenceStatus;
 };
 
 export type NormalizedIntelligenceCandle = {
@@ -270,6 +309,10 @@ export type VerifiedIntelligenceSnapshot = {
     change: number | null;
     changePercent: number | null;
     volume: number | null;
+  };
+  levels: {
+    support: number | null;
+    resistance: number | null;
   };
   candles: NormalizedIntelligenceCandle[];
   fundamentals: Record<string, unknown> | null;

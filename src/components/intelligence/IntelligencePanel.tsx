@@ -13,6 +13,7 @@ import type {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { useLanguage } from '@/hooks/useLanguage';
 import { marketAssetTypeFromIntelligence } from '@/lib/intelligence/assetTypes';
+import { intelligencePresentation, intelligenceStateFromError, intelligenceStateFromResult } from '@/lib/intelligence/presentation';
 import styles from './IntelligencePanel.module.css';
 
 type Locale = 'ar' | 'en' | 'fr';
@@ -27,7 +28,8 @@ const COPY = {
     quality: 'جودة الأدلة', risk: 'المخاطر', horizon: 'الأفق', generated: 'وقت التحليل', dataAsOf: 'البيانات حتى', freshness: 'الحداثة',
     factors: 'تفصيل العوامل', evidence: 'الأدلة المؤثرة', supporting: 'عوامل داعمة', opposing: 'عوامل معاكسة', limitations: 'القيود',
     source: 'المصدر', attempts: 'محاولات المزود', explanation: 'التفسير والمصدر وشروط الإبطال', reason: 'سبب القراءة', invalidation: 'ما الذي قد يبطل القراءة',
-    targetsUnavailable: 'أسعار الدخول والأهداف ووقف الخسارة غير متاحة لأن طريقة حساب موثقة غير مدعومة في هذه المرحلة.',
+    targetsUnavailable: 'لا يتوفر نطاق مستهدف مشتق من المصدر لأن بيانات السوق غير كافية أو غير حديثة.',
+    currentPrice: 'السعر الحالي', targetRange: 'النطاق المستهدف', sourceFreshness: 'المصدر والحداثة', persistenceFailed: 'عُرض التحليل، لكن تعذر حفظه في السجل. أعد المحاولة لاحقاً.',
     noEvidence: 'لا توجد أدلة موثقة متاحة لهذا القسم.', unavailable: 'غير متاح', noPrevious: 'لا يوجد تحليل سابق للمقارنة.', previous: 'التحليل السابق',
     changed: 'تغيرت القراءة بعد تغير الأدلة الموزونة.', confidenceChanged: 'تغير مستوى الثقة مع اكتمال الأدلة أو حداثتها.', unchanged: 'لا يوجد تغير جوهري.',
   },
@@ -40,7 +42,8 @@ const COPY = {
     quality: 'Evidence quality', risk: 'Risk', horizon: 'Horizon', generated: 'Generated', dataAsOf: 'Data as of', freshness: 'Freshness',
     factors: 'Factor breakdown', evidence: 'Material evidence', supporting: 'Supporting factors', opposing: 'Opposing factors', limitations: 'Limitations',
     source: 'Source', attempts: 'Provider attempts', explanation: 'Explanation, provenance, and invalidation', reason: 'Reason for reading', invalidation: 'What would invalidate it',
-    targetsUnavailable: 'Entry prices, targets, and stop-loss values are unavailable because no documented calculation method is supported in this phase.',
+    targetsUnavailable: 'No source-derived target range is available because market data is insufficient or not fresh.',
+    currentPrice: 'Current price', targetRange: 'Target range', sourceFreshness: 'Source and freshness', persistenceFailed: 'The analysis is shown, but it could not be saved to history. Try again later.',
     noEvidence: 'No verified evidence is available for this section.', unavailable: 'Unavailable', noPrevious: 'No previous analysis is available for comparison.', previous: 'Previous analysis',
     changed: 'The reading changed after the weighted evidence changed.', confidenceChanged: 'Confidence changed with evidence completeness or freshness.', unchanged: 'No material change.',
   },
@@ -53,7 +56,8 @@ const COPY = {
     quality: 'Qualité des preuves', risk: 'Risque', horizon: 'Horizon', generated: 'Générée le', dataAsOf: 'Données au', freshness: 'Fraîcheur',
     factors: 'Détail des facteurs', evidence: 'Preuves déterminantes', supporting: 'Facteurs favorables', opposing: 'Facteurs opposés', limitations: 'Limites',
     source: 'Source', attempts: 'Tentatives fournisseur', explanation: 'Explication, provenance et invalidation', reason: 'Raison de la lecture', invalidation: 'Ce qui invaliderait la lecture',
-    targetsUnavailable: 'Les prix d’entrée, objectifs et niveaux stop-loss sont indisponibles, faute de méthode de calcul documentée prise en charge durant cette phase.',
+    targetsUnavailable: 'Aucune plage cible dérivée de la source n’est disponible, faute de données de marché suffisantes ou récentes.',
+    currentPrice: 'Cours actuel', targetRange: 'Plage cible', sourceFreshness: 'Source et fraîcheur', persistenceFailed: 'L’analyse est affichée, mais son enregistrement dans l’historique a échoué. Réessayez plus tard.',
     noEvidence: 'Aucune preuve vérifiée n’est disponible pour cette section.', unavailable: 'Indisponible', noPrevious: 'Aucune analyse antérieure n’est disponible pour comparaison.', previous: 'Analyse précédente',
     changed: 'La lecture a changé après une évolution des preuves pondérées.', confidenceChanged: 'La confiance a changé avec la complétude ou la fraîcheur des preuves.', unchanged: 'Aucun changement significatif.',
   },
@@ -127,6 +131,11 @@ function evidenceValue(value: string | number | boolean | null, unit: string | n
   return `${rendered}${unit ? ` ${unit}` : ''}`;
 }
 
+function marketPrice(value: number | null, currency: string | null, unavailable: string) {
+  if (value === null || !Number.isFinite(value)) return unavailable;
+  return `${number(value, 4)}${currency ? ` ${currency}` : ''}`;
+}
+
 function errorMessage(code: string | null, copy: typeof COPY[Locale]) {
   if (code === 'UNSUPPORTED_ASSET' || code === 'INVALID_ASSET') return copy.unsupported;
   if (code === 'PROVIDER_UNAVAILABLE' || code === 'PROVIDER_TIMEOUT') return copy.providerUnavailable;
@@ -157,12 +166,16 @@ export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, e
     );
   }
   if (errorCode || !result) {
+    const presentation = intelligencePresentation(
+      errorCode ? intelligenceStateFromError({ code: errorCode }) : intelligenceStateFromResult(null),
+      locale === 'ar' ? 'ar' : 'en',
+    );
     return (
       <section className={`${styles.panel} ${styles.unifiedStatus}`} dir={dir} role="alert" data-testid="intelligence-status-panel">
         <div className={styles.state}>
           <AlertTriangle aria-hidden="true" />
-          <span>{errorCode ? errorMessage(errorCode, copy) : (emptyMessage ?? copy.error)}</span>
-          <button type="button" onClick={onRetry}><RefreshCw aria-hidden="true" />{copy.retry}</button>
+          <div><strong>{presentation.title}</strong><span>{errorCode ? presentation.description : (emptyMessage ?? presentation.description)}</span></div>
+          <button type="button" onClick={onRetry}><RefreshCw aria-hidden="true" />{presentation.action}</button>
         </div>
       </section>
     );
@@ -174,6 +187,7 @@ export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, e
   if (result.recommendation === 'INSUFFICIENT_DATA') entries.push({ key: 'insufficient', tone: 'warning', text: copy.insufficient });
   if (result.conflictStatus !== 'NONE') entries.push({ key: 'conflict', tone: 'warning', text: copy.conflict });
   if (!result.providerProvenance.selectedProvider) entries.push({ key: 'provider', tone: 'warning', text: copy.providerUnavailable });
+  if (result.persistenceStatus === 'FAILED') entries.push({ key: 'persistence', tone: 'warning', text: copy.persistenceFailed });
   result.factors
     .filter(factor => factor.availability === 'UNAVAILABLE')
     .forEach(factor => entries.push({
@@ -290,6 +304,8 @@ export function IntelligencePanel({
       </div> : null}
 
       <div className={styles.metrics}>
+        <div><span>{copy.currentPrice}</span><strong dir="ltr">{result.marketPrice.available ? marketPrice(result.marketPrice.value, result.marketPrice.currency, copy.unavailable) : copy.unavailable}</strong><small>{result.marketPrice.available ? result.marketPrice.source : copy.unavailable}</small></div>
+        <div><span>{copy.targetRange}</span><strong dir="ltr">{result.targets.available ? `${marketPrice(result.targets.lower, result.targets.currency, copy.unavailable)} – ${marketPrice(result.targets.upper, result.targets.currency, copy.unavailable)}` : copy.unavailable}</strong><small>{result.targets.available ? result.targets.method : copy.targetsUnavailable}</small></div>
         <div><span>{copy.confidence}</span><strong dir="ltr">{number(result.confidence, 0)}%</strong><small>{copy.confidenceNote}</small></div>
         <div><span>{copy.quality}</span><strong>{ENUM_LABELS.quality[locale][result.confidenceQuality]}</strong></div>
         <div><span>{copy.risk}</span><strong>{ENUM_LABELS.risk[locale][result.risk]}</strong></div>
@@ -301,7 +317,7 @@ export function IntelligencePanel({
       <div className={styles.factorSection}>
         <div className={styles.sectionHeading}>
           <h3>{copy.factors}</h3>
-          <span>{copy.freshness}: {STATE_LABELS[locale][result.freshness.state]}</span>
+          <span>{copy.sourceFreshness}: {result.providerProvenance.selectedProvider ?? copy.unavailable} · {STATE_LABELS[locale][result.freshness.state]}</span>
         </div>
         <div className={styles.factorGrid}>
           {result.factors.map(factor => (
@@ -345,7 +361,7 @@ export function IntelligencePanel({
             <h4>{copy.limitations}</h4>
             <ul>
               {unavailableFactors.map(factor => <li key={factor.factor}>{FACTORS[locale][factor.factor]}: {copy.unavailable}</li>)}
-              <li>{copy.targetsUnavailable}</li>
+              {!result.targets.available ? <li>{copy.targetsUnavailable}</li> : null}
             </ul>
           </section>
           <section>

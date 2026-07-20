@@ -113,8 +113,9 @@
   --control-h-sm: 36px;
   --control-h: 44px;
   --control-h-lg: 48px;
-  --sidebar-w: 240px;
-  --sidebar-w-collapsed: 72px;
+  /* Canonical occupied inline size for the desktop application sidebar. */
+  --app-sidebar-width: 240px;
+  --app-sidebar-width-collapsed: 72px;
   --sidebar-width-icon: 3rem;
   --topbar-h: 64px;
   --global-header-height: 64px;

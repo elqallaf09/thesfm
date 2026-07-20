@@ -49,6 +49,7 @@ function snapshot(provider = 'verified-provider', now = Date.parse('2026-07-19T0
     operationalReliability: 1,
     reportedRiskLevel: 'MEDIUM',
     quote: { price: 150, change: 1, changePercent: 0.67, volume: 1_500_000 },
+    levels: { support: 120, resistance: 160 },
     candles: Array.from({ length: 80 }, (_, index) => ({
       at: new Date(candleStart + index * 86_400_000).toISOString(),
       open: 100 + index * 0.6,
@@ -114,7 +115,8 @@ describe('intelligence orchestrator', () => {
     expect(result.providerProvenance.selectedProvider).toBe('verified-provider');
     expect(result.status).toBe('COMPLETE');
     expect(result.confidenceCalculation.methodologyVersion).toBe('deterministic-confidence-v1');
-    expect(result.targets).toEqual([]);
+    expect(result.targets).toMatchObject({ available: true, method: 'RECENT_OHLC_RANGE' });
+    expect(result.marketPrice).toMatchObject({ available: true, value: 150 });
     expect(result.entryContext.available).toBe(false);
     expect(store.all()).toHaveLength(1);
     expect(telemetry.events.map(event => event.name)).toEqual(expect.arrayContaining([
@@ -246,7 +248,7 @@ describe('intelligence orchestrator', () => {
     expect(otherUserLatest?.scope).toBe('SHARED');
   });
 
-  it('never promotes a private row into the shared latest endpoint or shared cache', async () => {
+  it('returns a private cached result only to its owner', async () => {
     const store = new MemoryIntelligenceAnalysisStore();
     const source = successfulProvider();
     const seedOrchestrator = orchestratorFor({ providers: [source.provider] });
@@ -265,7 +267,7 @@ describe('intelligence orchestrator', () => {
       userId: '00000000-0000-4000-8000-000000000001',
     });
 
-    expect(latest?.scope).toBe('SHARED');
-    expect(latest?.analysisId).toBe(shared.analysisId);
+    expect(latest?.scope).toBe('PRIVATE');
+    expect(latest?.analysisId).toBe('00000000-0000-4000-8000-000000000098');
   });
 });

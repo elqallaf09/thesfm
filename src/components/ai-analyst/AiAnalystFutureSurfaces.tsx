@@ -1,27 +1,11 @@
 'use client';
 
-import { Bot, GitCompareArrows, Route, ScanSearch, ShieldAlert, Sparkles } from 'lucide-react';
+import { Bot, GitCompareArrows, ShieldAlert, Sparkles } from 'lucide-react';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
 import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
-
-function ReservedCard({ icon: Icon, title, body, status }: {
-  icon: typeof Bot;
-  title: string;
-  body: string;
-  status: string;
-}) {
-  return (
-    <article className={`${styles.card} ${styles.placeholderCard}`}>
-      <Icon size={20} aria-hidden="true" className={styles.placeholderIcon} />
-      <h2>{title}</h2>
-      <p>{body}</p>
-      <span className={styles.statusPill} data-tone="unknown">{status}</span>
-    </article>
-  );
-}
 
 export function AiAnalystAgent({
   initialSymbol,
@@ -78,8 +62,6 @@ export function AiAnalystCompare() {
         <p>{copy.compare.openTimeline}</p>
         <span className={styles.statusPill} data-tone="available">{copy.compare.active}</span>
       </article>
-      <ReservedCard icon={Bot} title={copy.compare.openAi} body={copy.compare.unavailableBody} status={copy.compare.unavailable} />
-      <ReservedCard icon={Bot} title={copy.compare.futureLocal} body={copy.compare.unavailableBody} status={copy.compare.unavailable} />
     </div>
   );
 }
@@ -98,11 +80,8 @@ export function AiAnalystOpportunities() {
           </div>
           <Sparkles aria-hidden="true" className={styles.placeholderIcon} />
         </header>
+        <p className={styles.mutedText}>{copy.future.reserved}</p>
       </section>
-      <ReservedCard icon={Route} title={copy.future.arbitrage} body={copy.future.body} status={copy.future.reserved} />
-      <ReservedCard icon={ScanSearch} title={copy.future.scanner} body={copy.future.body} status={copy.future.reserved} />
-      <ReservedCard icon={GitCompareArrows} title={copy.future.routeAnimation} body={copy.future.body} status={copy.future.reserved} />
-      <ReservedCard icon={Bot} title={copy.future.smartAlerts} body={copy.future.body} status={copy.future.reserved} />
     </div>
   );
 }

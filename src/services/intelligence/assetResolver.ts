@@ -17,7 +17,7 @@ export async function resolveCanonicalIntelligenceAsset(input: {
   quoteCurrency?: string | null;
 }): Promise<CanonicalAssetIdentity> {
   const resolved = await resolveMarketSymbol(input.symbol, marketAssetTypeFromIntelligence(input.assetType));
-  if (!resolved.ok) throw new IntelligenceError('INVALID_ASSET', false);
+  if (!resolved.ok) throw new IntelligenceError('INVALID_SYMBOL', false);
   const resolvedType = intelligenceAssetTypeFromMarket(resolved.asset.assetType);
   if (resolvedType !== input.assetType) throw new IntelligenceError('UNSUPPORTED_ASSET', false);
 

@@ -22,6 +22,7 @@ import { buildStructuredExplanation } from '@/lib/intelligence/explainability';
 import { runIntelligenceFactors } from '@/lib/intelligence/factors';
 import { calculateFreshness, expirationFrom, freshnessThresholdSeconds } from '@/lib/intelligence/freshness';
 import { determineRecommendation } from '@/lib/intelligence/recommendation';
+import { intelligenceCacheScopeKey, intelligenceScopeForUser } from '@/lib/intelligence/cache';
 import { ExistingMarketDataIntelligenceProvider } from '@/providers/intelligence/existingMarketDataProvider';
 import { resolveCanonicalIntelligenceAsset } from './assetResolver';
 import { asIntelligenceError, IntelligenceError } from './errors';
@@ -55,9 +56,12 @@ const defaultDependencies: OrchestratorDependencies = {
 
 function cacheKey(request: AnalysisRequest, asset: CanonicalAssetIdentity, modules: IntelligenceFactorKey[]) {
   return [
-    asset.assetType,
-    asset.canonicalSymbol,
-    request.horizon,
+    intelligenceCacheScopeKey({
+      asset,
+      horizon: request.horizon,
+      scope: intelligenceScopeForUser(request.userId),
+      userId: request.userId,
+    }),
     [...modules].sort().join(','),
     INTELLIGENCE_WEIGHTING_VERSION,
   ].join(':');
@@ -81,6 +85,60 @@ function unavailablePriceContext(currency: string | null): AnalysisResult['entry
     currency,
     method: null,
     reasonCode: 'CALCULATION_NOT_SUPPORTED',
+  };
+}
+
+function unavailableTargetRange(
+  currency: string | null,
+  reasonCode: 'CALCULATION_NOT_SUPPORTED' | 'INSUFFICIENT_MARKET_DATA' | 'STALE_DATA',
+): Extract<AnalysisResult['targets'], { available: false }> {
+  return { available: false, lower: null, upper: null, currency, source: null, dataAsOf: null, method: null, reasonCode };
+}
+
+function verifiedMarketPrice(snapshot: VerifiedIntelligenceSnapshot): AnalysisResult['marketPrice'] {
+  return {
+    available: true,
+    value: snapshot.quote.price,
+    currency: snapshot.asset.quoteCurrency,
+    observedAt: snapshot.dataAsOf,
+    source: snapshot.provider,
+    dataStatus: snapshot.dataStatus === 'UNAVAILABLE' ? 'CACHED' : snapshot.dataStatus,
+  };
+}
+
+function sourceDerivedTargetRange(input: {
+  snapshot: VerifiedIntelligenceSnapshot | null;
+  recommendation: AnalysisResult['recommendation'];
+  freshness: AnalysisResult['freshness'];
+}): AnalysisResult['targets'] {
+  if (!input.snapshot || input.freshness.state !== 'FRESH') {
+    return unavailableTargetRange(input.snapshot?.asset.quoteCurrency ?? null, 'STALE_DATA');
+  }
+  if (input.recommendation === 'INSUFFICIENT_DATA' || input.snapshot.dataStatus !== 'LIVE') {
+    return unavailableTargetRange(input.snapshot.asset.quoteCurrency, 'INSUFFICIENT_MARKET_DATA');
+  }
+  const sample = input.snapshot.candles.slice(-40);
+  const lows = sample.map(candle => candle.low ?? candle.close).filter(value => Number.isFinite(value) && value > 0);
+  const highs = sample.map(candle => candle.high ?? candle.close).filter(value => Number.isFinite(value) && value > 0);
+  if (sample.length < 20 || !lows.length || !highs.length) {
+    return unavailableTargetRange(input.snapshot.asset.quoteCurrency, 'INSUFFICIENT_MARKET_DATA');
+  }
+  const support = Math.min(...lows);
+  const resistance = Math.max(...highs);
+  if (!Number.isFinite(support) || !Number.isFinite(resistance) || support <= 0 || resistance <= support) {
+    return unavailableTargetRange(input.snapshot.asset.quoteCurrency, 'INSUFFICIENT_MARKET_DATA');
+  }
+  const price = input.snapshot.quote.price;
+  const lower = input.recommendation === 'BUY' ? Math.min(price, resistance) : support;
+  const upper = input.recommendation === 'SELL' ? Math.max(price, support) : resistance;
+  return {
+    available: true,
+    lower: Math.min(lower, upper),
+    upper: Math.max(lower, upper),
+    currency: input.snapshot.asset.quoteCurrency,
+    source: input.snapshot.provider,
+    dataAsOf: input.snapshot.dataAsOf ?? input.snapshot.receivedAt,
+    method: 'RECENT_OHLC_RANGE',
   };
 }
 
@@ -143,14 +201,22 @@ export class IntelligenceOrchestrator {
 
   async latest(request: AnalysisRequest) {
     const asset = await this.dependencies.resolveAsset(request.asset);
-    const key = `${asset.assetType}:${asset.canonicalSymbol}:${request.horizon}`;
+    const now = this.dependencies.now();
+    const privateScope = intelligenceCacheScopeKey({ asset, horizon: request.horizon, scope: 'PRIVATE', userId: request.userId });
+    const sharedScope = intelligenceCacheScopeKey({ asset, horizon: request.horizon, scope: 'SHARED', userId: null });
     const memory = [...this.cache.values()]
       .map(entry => entry.result)
-      .filter(result => `${result.asset.assetType}:${result.asset.canonicalSymbol}:${result.horizon}` === key)
+      .filter(result => {
+        const scope = intelligenceCacheScopeKey({ asset: result.asset, horizon: result.horizon, scope: result.scope, userId: result.scope === 'PRIVATE' ? request.userId : null });
+        return result.horizon === request.horizon
+          && !result.staleData
+          && Date.parse(result.expiresAt) > now
+          && (scope === privateScope || scope === sharedScope);
+      })
       .sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt))[0];
-    // Phase 6.1 endpoints expose only shared market intelligence. Keeping this
-    // lookup shared-only prevents a future private row from entering a shared cache.
-    return memory ?? this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: null });
+    if (memory) return memory;
+    const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
+    return stored && !stored.staleData && Date.parse(stored.expiresAt) > now ? stored : null;
   }
 
   async analyze(request: AnalysisRequest, telemetry: IntelligenceTelemetry): Promise<AnalysisResult> {
@@ -176,7 +242,7 @@ export class IntelligenceOrchestrator {
       }
       telemetry.record({ name: 'intelligence_cache_miss', cacheStatus: 'miss' });
 
-      const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: null });
+      const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
       if (stored && Date.parse(stored.expiresAt) > now && !stored.staleData) {
         this.cache.set(key, { result: stored, expiresAt: Date.parse(stored.expiresAt) });
         telemetry.record({ name: 'intelligence_cache_hit', cacheStatus: 'hit' });
@@ -199,7 +265,9 @@ export class IntelligenceOrchestrator {
     this.inFlight.set(key, task);
     try {
       const result = await task;
-      this.cache.set(key, { result, expiresAt: Date.parse(result.expiresAt) });
+      if (!result.staleData && result.persistenceStatus === 'PERSISTED') {
+        this.cache.set(key, { result, expiresAt: Date.parse(result.expiresAt) });
+      }
       telemetry.record({ name: 'intelligence_end_to_end_latency', value: this.dependencies.now() - startedAt });
       await telemetry.flush();
       return result;
@@ -215,7 +283,7 @@ export class IntelligenceOrchestrator {
     telemetry: IntelligenceTelemetry,
   ): Promise<AnalysisResult> {
     const config = getIntelligenceMethodologyConfig(asset.assetType, request.horizon);
-    const previous = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: null });
+    const previous = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
     const attempts: ProviderAttempt[] = [];
     let snapshot: VerifiedIntelligenceSnapshot | null = null;
 
@@ -320,9 +388,18 @@ export class IntelligenceOrchestrator {
       telemetry.record({ name: 'intelligence_factor_unavailable', failureClass: factor.failureReason, count: 1, supportState: 'unsupported' });
     }
 
+    const calculatedOverallFreshness = calculateFreshness({
+      observedAt: dataAsOf,
+      thresholdSeconds,
+      providerState: snapshot?.dataStatus ?? (previous ? 'CACHED' : 'UNAVAILABLE'),
+      now: this.dependencies.now(),
+    });
+    const overallFreshness = !snapshot && previous
+      ? { ...calculatedOverallFreshness, state: 'STALE' as const }
+      : calculatedOverallFreshness;
     const confidence = calculateDeterministicConfidence(factors, config);
     telemetry.record({ name: 'intelligence_confidence_calculated', value: confidence.confidence });
-    const recommendation = determineRecommendation({
+    const calculatedRecommendation = determineRecommendation({
       factors,
       config,
       confidence: confidence.confidence,
@@ -331,6 +408,20 @@ export class IntelligenceOrchestrator {
       compositeScore: confidence.compositeScore,
       minimumEvidenceMet: confidence.calculation.minimumEvidenceMet,
     });
+    const sourceIsSufficient = Boolean(snapshot)
+      && snapshot?.dataStatus === 'LIVE'
+      && overallFreshness.state === 'FRESH'
+      && confidence.calculation.minimumEvidenceMet;
+    const recommendation = sourceIsSufficient
+      ? calculatedRecommendation
+      : {
+        ...calculatedRecommendation,
+        recommendation: 'INSUFFICIENT_DATA' as const,
+        decision: {
+          ...calculatedRecommendation.decision,
+          reasonCode: !snapshot ? 'PROVIDER_UNAVAILABLE' : overallFreshness.state !== 'FRESH' ? 'STALE_OR_DELAYED_DATA' : 'INSUFFICIENT_MARKET_DATA',
+        },
+      };
     telemetry.record({ name: 'intelligence_recommendation_generated', value: Math.abs(confidence.compositeScore) });
     if (recommendation.recommendation === 'INSUFFICIENT_DATA') {
       telemetry.record({ name: 'intelligence_insufficient_data_result' });
@@ -344,15 +435,6 @@ export class IntelligenceOrchestrator {
       risk: recommendation.risk,
       confidencePenalties: confidence.calculation.penalties,
     });
-    const calculatedOverallFreshness = calculateFreshness({
-      observedAt: dataAsOf,
-      thresholdSeconds,
-      providerState: snapshot?.dataStatus ?? (previous ? 'CACHED' : 'UNAVAILABLE'),
-      now: this.dependencies.now(),
-    });
-    const overallFreshness = !snapshot && previous
-      ? { ...calculatedOverallFreshness, state: 'STALE' as const }
-      : calculatedOverallFreshness;
     const status: AnalysisResult['status'] = recommendation.recommendation === 'INSUFFICIENT_DATA'
       ? 'INSUFFICIENT_DATA'
       : factors.some(factor => factor.availability !== 'AVAILABLE') || overallFreshness.state !== 'FRESH'
@@ -363,7 +445,7 @@ export class IntelligenceOrchestrator {
       analysisId: this.dependencies.createId(),
       correlationId: request.correlationId,
       status,
-      scope: 'SHARED',
+      scope: intelligenceScopeForUser(request.userId),
       requestSource: request.source,
       asset: selectedAsset,
       generatedAt,
@@ -376,8 +458,9 @@ export class IntelligenceOrchestrator {
       confidenceCalculation: confidence.calculation,
       risk: recommendation.risk,
       horizon: request.horizon,
+      marketPrice: snapshot ? verifiedMarketPrice(snapshot) : unavailablePriceContext(selectedAsset.quoteCurrency),
       entryContext: unavailablePriceContext(selectedAsset.quoteCurrency),
-      targets: [],
+      targets: sourceDerivedTargetRange({ snapshot, recommendation: recommendation.recommendation, freshness: overallFreshness }),
       stopLossContext: unavailablePriceContext(selectedAsset.quoteCurrency),
       factors,
       evidence: factors.flatMap(factor => factor.evidence),
@@ -393,11 +476,18 @@ export class IntelligenceOrchestrator {
       explanation,
       recommendationDecision: recommendation.decision,
       previousAnalysis: previousSummary(previous, recommendation.recommendation, confidence.confidence),
+      persistenceStatus: 'NOT_ATTEMPTED',
     };
 
-    const persisted = await this.dependencies.store.save(result, request.userId);
-    if (persisted) telemetry.record({ name: 'intelligence_analysis_persisted' });
-    return result;
+    // A stale fallback or a failed provider call must never replace the last
+    // valid immutable analysis row.
+    if (!snapshot) return result;
+    const persisted = await this.dependencies.store.save({ ...result, persistenceStatus: 'PERSISTED' }, request.userId);
+    if (persisted) {
+      telemetry.record({ name: 'intelligence_analysis_persisted' });
+      return { ...result, persistenceStatus: 'PERSISTED' };
+    }
+    return { ...result, persistenceStatus: 'FAILED' };
   }
 }
 
