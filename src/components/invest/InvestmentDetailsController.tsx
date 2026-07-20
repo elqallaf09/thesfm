@@ -5,8 +5,10 @@ import { forwardRef, memo, startTransition, useCallback, useEffect, useImperativ
 import type { ComponentProps } from 'react';
 import type { Investment } from '@/types/investment';
 
+const loadInvestmentDetailDrawer = () => import('./InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer);
+
 const InvestmentDetailDrawer = dynamic(
-  () => import('./InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer),
+  loadInvestmentDetailDrawer,
   { ssr: false },
 );
 
@@ -61,6 +63,27 @@ export const InvestmentDetailsController = memo(forwardRef<InvestmentDetailsCont
       setInvestment(current => current?.id === item.id ? item : current);
     },
   }), [cancelDetailsReveal]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const warmDrawer = () => {
+      if (!cancelled) void loadInvestmentDetailDrawer();
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(warmDrawer, { timeout: 1200 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(handle);
+      };
+    }
+
+    const handle = window.setTimeout(warmDrawer, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, []);
 
   useEffect(() => () => cancelDetailsReveal(), [cancelDetailsReveal]);
 

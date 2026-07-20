@@ -148,7 +148,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     id: 'investment-market',
     labelKey: 'nav_group_invest_market',
     items: [
-      { id: 'invest', icon: TrendingUp, href: '/invest', labelKey: 'nav_invest' },
+      { id: 'invest', icon: TrendingUp, href: '/investments', labelKey: 'nav_invest' },
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
     ],
   },
