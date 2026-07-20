@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getClientIp, checkRateLimit, rateLimitRequest } from '@/lib/server/rateLimiter';
+import { getClientIp, checkRateLimit, checkRateLimitWithMetadata, rateLimitRequest } from '@/lib/server/rateLimiter';
 
 // ─── getClientIp ────────────────────────────────────────────────────────────
 
@@ -47,6 +47,14 @@ describe('checkRateLimit()', () => {
     checkRateLimit(ip, cfg);
     checkRateLimit(ip, cfg);
     expect(checkRateLimit(ip, cfg)).toBe(false);
+  });
+
+  it('returns a server-owned retry window when a request is blocked', () => {
+    const cfg = { max: 1, windowMs: 30_000, prefix: 'metadata' };
+    expect(checkRateLimitWithMetadata(ip, cfg).allowed).toBe(true);
+    const limited = checkRateLimitWithMetadata(ip, cfg);
+    expect(limited).toMatchObject({ allowed: false, retryAfterSeconds: 30 });
+    expect(limited.resetAt).toBeGreaterThan(Date.now());
   });
 
   it('resets counter after window expires', () => {

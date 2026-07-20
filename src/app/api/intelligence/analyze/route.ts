@@ -9,7 +9,7 @@ import {
   readBoundedJson,
 } from '@/lib/intelligence/api';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
-import { checkRateLimit, getClientIp } from '@/lib/server/rateLimiter';
+import { checkRateLimitWithMetadata, getClientIp } from '@/lib/server/rateLimiter';
 import { intelligenceOrchestrator } from '@/services/intelligence/orchestrator';
 import { IntelligenceTelemetryCollector } from '@/services/intelligence/telemetry';
 
@@ -39,22 +39,28 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request).catch(() => null);
   const authenticated = Boolean(user?.id);
   const identity = authenticated ? `user:${user!.id}` : `ip:${getClientIp(request)}`;
-  if (!checkRateLimit(identity, {
+  const generalLimit = checkRateLimitWithMetadata(identity, {
     max: authenticated ? 30 : 8,
     windowMs: 60_000,
     prefix: 'intelligence-analyze',
-  })) {
-    return intelligenceErrorResponse({ code: 'RATE_LIMITED', correlationId, retryable: true });
+  });
+  if (!generalLimit.allowed) {
+    return intelligenceErrorResponse({
+      code: 'APPLICATION_RATE_LIMITED', correlationId, retryable: true, retryAfterSeconds: generalLimit.retryAfterSeconds,
+    });
   }
   if (parsed.data.forceRefresh && !authenticated) {
-    return intelligenceErrorResponse({ code: 'FORCE_REFRESH_FORBIDDEN', correlationId });
+    return intelligenceErrorResponse({ code: 'UNAUTHENTICATED', correlationId });
   }
-  if (parsed.data.forceRefresh && !checkRateLimit(identity, {
+  const forceLimit = parsed.data.forceRefresh ? checkRateLimitWithMetadata(identity, {
     max: 6,
     windowMs: 60_000,
     prefix: 'intelligence-force-refresh',
-  })) {
-    return intelligenceErrorResponse({ code: 'RATE_LIMITED', correlationId, retryable: true });
+  }) : null;
+  if (forceLimit && !forceLimit.allowed) {
+    return intelligenceErrorResponse({
+      code: 'APPLICATION_RATE_LIMITED', correlationId, retryable: true, retryAfterSeconds: forceLimit.retryAfterSeconds,
+    });
   }
 
   const analysisRequest: AnalysisRequest = {

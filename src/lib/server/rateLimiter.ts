@@ -45,6 +45,12 @@ export interface RateLimitConfig {
   prefix?: string;
 }
 
+export type RateLimitResult = {
+  allowed: boolean;
+  retryAfterSeconds: number;
+  resetAt: number;
+};
+
 /**
  * Extracts the best-effort client IP from a Request.
  * Falls back to 'unknown' if no IP headers are present (e.g. local dev).
@@ -65,6 +71,17 @@ export function checkRateLimit(
   ip: string,
   config: RateLimitConfig = {},
 ): boolean {
+  return checkRateLimitWithMetadata(ip, config).allowed;
+}
+
+/**
+ * Server-side limit decision with a safe retry window for API responses. The
+ * decision remains authoritative at the route; client controls are cosmetic.
+ */
+export function checkRateLimitWithMetadata(
+  ip: string,
+  config: RateLimitConfig = {},
+): RateLimitResult {
   const { max = 60, windowMs = 60_000, prefix = '' } = config;
   const key = prefix ? `${prefix}:${ip}` : ip;
   const now = Date.now();
@@ -73,12 +90,14 @@ export function checkRateLimit(
   if (!entry || entry.resetAt <= now) {
     if (entry) store.delete(key);
     ensureStoreCapacity(now);
-    store.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
+    const resetAt = now + windowMs;
+    store.set(key, { count: 1, resetAt });
+    return { allowed: true, retryAfterSeconds: Math.ceil(windowMs / 1000), resetAt };
   }
-  if (entry.count >= max) return false;
+  const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+  if (entry.count >= max) return { allowed: false, retryAfterSeconds, resetAt: entry.resetAt };
   entry.count += 1;
-  return true;
+  return { allowed: true, retryAfterSeconds, resetAt: entry.resetAt };
 }
 
 /**

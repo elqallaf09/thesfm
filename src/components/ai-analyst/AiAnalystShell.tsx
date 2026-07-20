@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BrainCircuit, ChevronDown, Menu, X } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
+import { isAiAnalystFeatureEnabled } from '@/lib/ai-analyst/features';
 import {
   AI_ANALYST_COPY,
   aiAnalystLocale,
@@ -79,6 +80,20 @@ function isActive(item: NavigationItem, activeTab: AiAnalystTab) {
   return (item.activeTabs ?? [item.key]).includes(activeTab);
 }
 
+function visibleNavigationGroups(): NavigationGroup[] {
+  return AI_ANALYST_NAVIGATION_GROUPS
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => {
+        if (item.key === 'marketMap') return isAiAnalystFeatureEnabled('marketMap');
+        if (item.key === 'future') return isAiAnalystFeatureEnabled('futureTools');
+        return true;
+      }),
+    }))
+    .filter(group => group.items.length > 0)
+    .map(group => ({ ...group, items: [...group.items] }));
+}
+
 function NavigationLinks({
   group,
   activeTab,
@@ -118,6 +133,7 @@ export function AiAnalystShell({ activeTab, children }: { activeTab: AiAnalystTa
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale];
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const navigationGroups = visibleNavigationGroups();
 
   useEffect(() => {
     if (!mobileNavigationOpen) return;
@@ -145,7 +161,7 @@ export function AiAnalystShell({ activeTab, children }: { activeTab: AiAnalystTa
         </div>
       </header>
       <nav className={styles.workspaceNavigation} aria-label={copy.navigation.label} data-testid="ai-analyst-tabs">
-        {AI_ANALYST_NAVIGATION_GROUPS.map(group => (
+        {navigationGroups.map(group => (
           <section className={styles.navigationGroup} key={group.key} aria-labelledby={`ai-analyst-nav-${group.key}`}>
             <h2 id={`ai-analyst-nav-${group.key}`} className={styles.navigationGroupTitle}>{copy.navigation.groups[group.key]}</h2>
             <NavigationLinks group={group} activeTab={activeTab} />
@@ -188,7 +204,7 @@ export function AiAnalystShell({ activeTab, children }: { activeTab: AiAnalystTa
               </button>
             </div>
             <div className={styles.mobileNavigationGroups}>
-              {AI_ANALYST_NAVIGATION_GROUPS.map(group => (
+              {navigationGroups.map(group => (
                 <details key={group.key} className={styles.mobileNavigationGroup} open={group.items.some(item => isActive(item, activeTab))}>
                   <summary>
                     <span>{copy.navigation.groups[group.key]}</span>

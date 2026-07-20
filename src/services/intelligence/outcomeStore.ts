@@ -18,6 +18,7 @@ import {
   INTELLIGENCE_CALIBRATION_METHODOLOGY_VERSION,
 } from '@/lib/intelligence/outcomePolicy';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { IntelligenceError } from './errors';
 
 export type StoredIntelligenceAnalysis = {
   result: AnalysisResult;
@@ -414,13 +415,12 @@ const OUTCOME_SELECT = [
 
 const ANALYSIS_SELECT = 'id,user_id,scope,canonical_symbol,asset_type,horizon,generated_at,created_at,result_snapshot';
 
-function allowedScopeFilter<T extends { or: (filters: string) => T; eq: (column: string, value: unknown) => T }>(
+function ownedPrivateScopeFilter<T extends { eq: (column: string, value: unknown) => T }>(
   builder: T,
   userId: string | null,
 ) {
-  return userId
-    ? builder.or(`scope.eq.shared,and(scope.eq.private,user_id.eq.${userId})`)
-    : builder.eq('scope', 'shared');
+  if (!userId) throw new IntelligenceError('UNAUTHENTICATED', false);
+  return builder.eq('scope', 'private').eq('user_id', userId);
 }
 
 export class SupabaseIntelligenceOutcomeStore implements IntelligenceOutcomeStore {
@@ -543,22 +543,20 @@ export class SupabaseIntelligenceOutcomeStore implements IntelligenceOutcomeStor
 
   async getAccessibleAnalysis(analysisId: string, userId: string | null) {
     const admin = createServerSupabaseAdmin();
-    if (!admin) return null;
+    if (!admin) throw new IntelligenceError('DATABASE_ERROR', true);
     let builder = admin
       .from('intelligence_analyses')
       .select(ANALYSIS_SELECT)
       .eq('id', analysisId);
-    builder = allowedScopeFilter(builder, userId);
+    builder = ownedPrivateScopeFilter(builder, userId);
     const { data, error } = await builder.maybeSingle();
-    if (error && error.code !== 'PGRST116' && process.env.NODE_ENV !== 'production') {
-      console.warn('[intelligence-outcome-store] accessible analysis lookup skipped', { code: error.code });
-    }
+    if (error && error.code !== 'PGRST116') throw new IntelligenceError('DATABASE_ERROR', true);
     return mapStoredAnalysis(data);
   }
 
   async listTimeline(query: IntelligenceTimelineStoreQuery): Promise<IntelligenceTimelineStoreResult> {
     const admin = createServerSupabaseAdmin();
-    if (!admin) return { analyses: [], outcomes: new Map(), nextCursor: null };
+    if (!admin) throw new IntelligenceError('DATABASE_ERROR', true);
     const limit = Math.max(1, Math.min(query.limit, 50));
     let builder = admin
       .from('intelligence_analyses')
@@ -566,29 +564,25 @@ export class SupabaseIntelligenceOutcomeStore implements IntelligenceOutcomeStor
       .eq('canonical_symbol', query.asset.canonicalSymbol)
       .eq('asset_type', query.asset.assetType)
       .eq('horizon', query.horizon);
-    builder = allowedScopeFilter(builder, query.userId);
+    builder = ownedPrivateScopeFilter(builder, query.userId);
     if (query.from) builder = builder.gte('generated_at', query.from);
     if (query.to) builder = builder.lte('generated_at', query.to);
     if (query.cursor) builder = builder.lt('generated_at', query.cursor);
     const { data, error } = await builder
       .order('generated_at', { ascending: false })
       .limit(limit + 1);
-    if (error) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[intelligence-outcome-store] timeline lookup skipped', { code: error.code });
-      }
-      return { analyses: [], outcomes: new Map(), nextCursor: null };
-    }
+    if (error) throw new IntelligenceError('DATABASE_ERROR', true);
     const rows = (data ?? []).map(mapStoredAnalysis).filter((row): row is StoredIntelligenceAnalysis => row !== null);
     const hasMore = rows.length > limit;
     const analyses = rows.slice(0, limit);
     const ids = analyses.map(analysis => analysis.result.analysisId);
     const outcomes = new Map<string, IntelligenceAnalysisOutcome>();
     if (ids.length) {
-      const { data: outcomeRows } = await admin
+      const { data: outcomeRows, error: outcomesError } = await admin
         .from('intelligence_analysis_outcomes')
         .select(OUTCOME_SELECT)
         .in('analysis_id', ids);
+      if (outcomesError) throw new IntelligenceError('DATABASE_ERROR', true);
       for (const row of outcomeRows ?? []) {
         const outcome = mapOutcome(row);
         if (outcome) outcomes.set(outcome.analysisId, outcome);
@@ -674,7 +668,7 @@ export class MemoryIntelligenceOutcomeStore implements IntelligenceOutcomeStore 
   async getAccessibleAnalysis(analysisId: string, userId: string | null) {
     const analysis = this.analyses.get(analysisId);
     if (!analysis) return null;
-    if (analysis.result.scope === 'PRIVATE' && analysis.userId !== userId) return null;
+    if (!userId || analysis.result.scope !== 'PRIVATE' || analysis.userId !== userId) return null;
     return structuredClone(analysis);
   }
 
@@ -686,7 +680,7 @@ export class MemoryIntelligenceOutcomeStore implements IntelligenceOutcomeStore 
       .filter(analysis => analysis.result.asset.canonicalSymbol === query.asset.canonicalSymbol)
       .filter(analysis => analysis.result.asset.assetType === query.asset.assetType)
       .filter(analysis => analysis.result.horizon === query.horizon)
-      .filter(analysis => analysis.result.scope === 'SHARED' || analysis.userId === query.userId)
+      .filter(analysis => Boolean(query.userId) && analysis.result.scope === 'PRIVATE' && analysis.userId === query.userId)
       .filter(analysis => {
         const at = Date.parse(analysis.result.generatedAt);
         return at >= from && at <= to && at < cursor;

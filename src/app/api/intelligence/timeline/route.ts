@@ -7,7 +7,7 @@ import {
   mappedIntelligenceErrorResponse,
 } from '@/lib/intelligence/api';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
-import { checkRateLimit, getClientIp } from '@/lib/server/rateLimiter';
+import { checkRateLimitWithMetadata, getClientIp } from '@/lib/server/rateLimiter';
 import { resolveCanonicalIntelligenceAsset } from '@/services/intelligence/assetResolver';
 import { IntelligenceTelemetryCollector } from '@/services/intelligence/telemetry';
 import { intelligenceTimelineService } from '@/services/intelligence/timeline';
@@ -40,20 +40,23 @@ export async function GET(request: NextRequest) {
 
   const user = await getCurrentUserFromRequest(request).catch(() => null);
   const authenticated = Boolean(user?.id);
+  if (!authenticated) return intelligenceErrorResponse({ code: 'UNAUTHENTICATED', correlationId });
   const identity = authenticated ? `user:${user!.id}` : `ip:${getClientIp(request)}`;
-  if (!checkRateLimit(identity, {
-    max: authenticated ? 120 : 60,
+  const timelineLimit = checkRateLimitWithMetadata(identity, {
+    max: 120,
     windowMs: 60_000,
     prefix: 'intelligence-timeline',
-  })) {
-    return intelligenceErrorResponse({ code: 'RATE_LIMITED', correlationId, retryable: true });
+  });
+  if (!timelineLimit.allowed) {
+    return intelligenceErrorResponse({ code: 'APPLICATION_RATE_LIMITED', correlationId, retryable: true, retryAfterSeconds: timelineLimit.retryAfterSeconds });
   }
-  if (parsed.data.analysisId && !checkRateLimit(identity, {
-    max: authenticated ? 30 : 12,
+  const comparisonLimit = parsed.data.analysisId ? checkRateLimitWithMetadata(identity, {
+    max: 30,
     windowMs: 60_000,
     prefix: 'intelligence-timeline-comparison',
-  })) {
-    return intelligenceErrorResponse({ code: 'RATE_LIMITED', correlationId, retryable: true });
+  }) : null;
+  if (comparisonLimit && !comparisonLimit.allowed) {
+    return intelligenceErrorResponse({ code: 'APPLICATION_RATE_LIMITED', correlationId, retryable: true, retryAfterSeconds: comparisonLimit.retryAfterSeconds });
   }
 
   const telemetry = new IntelligenceTelemetryCollector({

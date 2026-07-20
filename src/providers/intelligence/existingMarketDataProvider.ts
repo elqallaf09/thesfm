@@ -123,6 +123,10 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
         changePercent: finite(result.quote?.changePercent ?? result.changePercent),
         volume: finite(result.quote && 'volume' in result.quote ? result.quote.volume : null),
       },
+      levels: {
+        support: result.fallback === true ? null : finite(result.levels?.support),
+        resistance: result.fallback === true ? null : finite(result.levels?.resistance),
+      },
       candles,
       fundamentals: result.fundamentalsAvailable === false ? null : result.fundamentals ?? null,
       fundamentalsSource: result.fundamentalsAvailable === false ? null : result.fundamentalsSource ?? provider,

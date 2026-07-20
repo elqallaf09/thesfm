@@ -4,6 +4,7 @@ import type {
   IntelligenceHorizon,
 } from '@/domain/intelligence/contracts';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { intelligenceCacheRecordKey, intelligenceCacheScopeKey } from '@/lib/intelligence/cache';
 import { pendingOutcomeInsertRow } from './outcomeStore';
 
 export type LatestAnalysisQuery = {
@@ -27,34 +28,65 @@ function isAnalysisResult(value: unknown): value is AnalysisResult {
     && ['BUY', 'SELL', 'WAIT', 'INSUFFICIENT_DATA'].includes(String(result.recommendation));
 }
 
+/**
+ * Immutable rows from the first intelligence release predate the explicit
+ * quote/target/persistence fields. Keep them readable without representing a
+ * missing value as a current market value or target.
+ */
+function normalizeStoredAnalysis(value: unknown): AnalysisResult | null {
+  if (!isAnalysisResult(value)) return null;
+  const result = value as AnalysisResult & Partial<Pick<AnalysisResult, 'marketPrice' | 'targets' | 'persistenceStatus'>>;
+  const currency = result.asset.quoteCurrency;
+  const marketPrice = result.marketPrice && typeof result.marketPrice === 'object' && 'available' in result.marketPrice
+    ? result.marketPrice
+    : { available: false as const, value: null, currency, method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' as const };
+  const targets = result.targets && typeof result.targets === 'object' && 'available' in result.targets && !Array.isArray(result.targets)
+    ? result.targets
+    : {
+      available: false as const,
+      lower: null,
+      upper: null,
+      currency,
+      source: null,
+      dataAsOf: null,
+      method: null,
+      reasonCode: 'CALCULATION_NOT_SUPPORTED' as const,
+    };
+  return {
+    ...result,
+    marketPrice,
+    targets,
+    persistenceStatus: result.persistenceStatus ?? 'PERSISTED',
+  };
+}
+
 export class SupabaseIntelligenceAnalysisStore implements IntelligenceAnalysisStore {
   async getLatest(query: LatestAnalysisQuery): Promise<AnalysisResult | null> {
     const admin = createServerSupabaseAdmin();
     if (!admin) return null;
-
-    let builder = admin
-      .from('intelligence_analyses')
-      .select('result_snapshot')
-      .eq('canonical_symbol', query.asset.canonicalSymbol)
-      .eq('asset_type', query.asset.assetType)
-      .eq('horizon', query.horizon);
-
-    builder = query.userId
-      ? builder.or(`scope.eq.shared,and(scope.eq.private,user_id.eq.${query.userId})`)
-      : builder.eq('scope', 'shared');
-
-    const { data, error } = await builder
-      .order('generated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error || !data) {
-      if (error && process.env.NODE_ENV !== 'production') {
-        console.warn('[intelligence-store] latest lookup skipped', { code: error.code });
+    const scopes = query.userId
+      ? [
+        intelligenceCacheScopeKey({ asset: query.asset, horizon: query.horizon, scope: 'PRIVATE', userId: query.userId }),
+        intelligenceCacheScopeKey({ asset: query.asset, horizon: query.horizon, scope: 'SHARED', userId: null }),
+      ]
+      : [intelligenceCacheScopeKey({ asset: query.asset, horizon: query.horizon, scope: 'SHARED', userId: null })];
+    for (const cacheScopeKey of scopes) {
+      const { data, error } = await admin
+        .from('intelligence_analyses')
+        .select('result_snapshot')
+        .eq('cache_scope_key', cacheScopeKey)
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        if (process.env.NODE_ENV !== 'production') console.warn('[intelligence-store] latest lookup skipped', { code: error.code });
+        return null;
       }
-      return null;
+      const snapshot = (data as { result_snapshot?: unknown } | null)?.result_snapshot;
+      const normalized = normalizeStoredAnalysis(snapshot);
+      if (normalized) return normalized;
     }
-    const snapshot = (data as { result_snapshot?: unknown }).result_snapshot;
-    return isAnalysisResult(snapshot) ? snapshot : null;
+    return null;
   }
 
   async save(result: AnalysisResult, userId: string | null): Promise<boolean> {
@@ -96,6 +128,8 @@ export class SupabaseIntelligenceAnalysisStore implements IntelligenceAnalysisSt
       status: result.status.toLowerCase(),
       request_source: result.requestSource.toLowerCase(),
       result_snapshot: result,
+      cache_scope_key: intelligenceCacheScopeKey({ asset: result.asset, horizon: result.horizon, scope: result.scope, userId: privateScope ? userId : null }),
+      cache_key: intelligenceCacheRecordKey(result, privateScope ? userId : null),
     };
     const { error } = await admin.from('intelligence_analyses').insert(row);
     if (error) {
@@ -123,14 +157,24 @@ export class MemoryIntelligenceAnalysisStore implements IntelligenceAnalysisStor
   private readonly rows: Array<{ result: AnalysisResult; userId: string | null }> = [];
 
   async getLatest(query: LatestAnalysisQuery) {
-    return this.rows
-      .filter(row => row.result.asset.canonicalSymbol === query.asset.canonicalSymbol)
-      .filter(row => row.result.asset.assetType === query.asset.assetType)
-      .filter(row => row.result.horizon === query.horizon)
-      .filter(row => row.result.scope === 'SHARED' || (
-        row.result.scope === 'PRIVATE' && Boolean(query.userId && row.userId === query.userId)
-      ))
-      .sort((left, right) => Date.parse(right.result.generatedAt) - Date.parse(left.result.generatedAt))[0]?.result ?? null;
+    const scopes = query.userId
+      ? [
+        intelligenceCacheScopeKey({ asset: query.asset, horizon: query.horizon, scope: 'PRIVATE', userId: query.userId }),
+        intelligenceCacheScopeKey({ asset: query.asset, horizon: query.horizon, scope: 'SHARED', userId: null }),
+      ]
+      : [intelligenceCacheScopeKey({ asset: query.asset, horizon: query.horizon, scope: 'SHARED', userId: null })];
+    for (const scope of scopes) {
+      const row = this.rows
+        .filter(candidate => intelligenceCacheScopeKey({
+          asset: candidate.result.asset,
+          horizon: candidate.result.horizon,
+          scope: candidate.result.scope,
+          userId: candidate.result.scope === 'PRIVATE' ? candidate.userId : null,
+        }) === scope)
+        .sort((left, right) => Date.parse(right.result.generatedAt) - Date.parse(left.result.generatedAt))[0];
+      if (row) return structuredClone(row.result);
+    }
+    return null;
   }
 
   async save(result: AnalysisResult, userId: string | null) {

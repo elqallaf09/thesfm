@@ -8,7 +8,7 @@ import {
   mappedIntelligenceErrorResponse,
 } from '@/lib/intelligence/api';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
-import { checkRateLimit, getClientIp } from '@/lib/server/rateLimiter';
+import { checkRateLimitWithMetadata, getClientIp } from '@/lib/server/rateLimiter';
 import { intelligenceOrchestrator } from '@/services/intelligence/orchestrator';
 import { IntelligenceTelemetryCollector } from '@/services/intelligence/telemetry';
 
@@ -34,12 +34,13 @@ export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request).catch(() => null);
   const authenticated = Boolean(user?.id);
   const identity = authenticated ? `user:${user!.id}` : `ip:${getClientIp(request)}`;
-  if (!checkRateLimit(identity, {
+  const rateLimit = checkRateLimitWithMetadata(identity, {
     max: authenticated ? 120 : 60,
     windowMs: 60_000,
     prefix: 'intelligence-latest',
-  })) {
-    return intelligenceErrorResponse({ code: 'RATE_LIMITED', correlationId, retryable: true });
+  });
+  if (!rateLimit.allowed) {
+    return intelligenceErrorResponse({ code: 'APPLICATION_RATE_LIMITED', correlationId, retryable: true, retryAfterSeconds: rateLimit.retryAfterSeconds });
   }
 
   const analysisRequest: AnalysisRequest = {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     telemetry.record({ name: stored ? 'intelligence_latest_found' : 'intelligence_latest_not_found' });
     await telemetry.flush();
     if (!stored) {
-      return intelligenceErrorResponse({ code: 'ANALYSIS_NOT_FOUND', correlationId });
+      return intelligenceErrorResponse({ code: 'NO_SAVED_ANALYSIS', correlationId });
     }
     const result = { ...stored, correlationId };
     return NextResponse.json({ ok: true, result, correlationId }, {
