@@ -35,3 +35,9 @@ There are no database triggers, compatibility writes, or synchronization jobs in
 - Currency totals exclude values whose conversion is unavailable or stale. Missing values are not converted to zero.
 - Asset cards reuse `AssetAvatar` and its Phase 6.3 negative logo-failure cache. The secondary ownership identity remains separate through `PlatformIdentity`.
 - The sole Investments intelligence action is the canonical `/ai-analyst/analyze/[symbol]` handoff. Private assets retain a safe internal identifier and render a truthful unavailable state rather than a fabricated market analysis.
+
+## Deferred infrastructure validation — July 23, 2026
+
+**Deferred until July 23, 2026:** Provision an authenticated isolated Supabase Preview branch and validate the clean migration chain, RLS matrix, storage policies, document lifecycle, cross-user denial, reconciliation, rollback/reapply behavior, and zero-resource cleanup audit.
+
+The migration, schema, RLS, storage-policy, and backfill proposal remain unchanged by the focused client-performance stabilization. No migration has been applied and no shared or Production Supabase environment is a substitute for this validation.
