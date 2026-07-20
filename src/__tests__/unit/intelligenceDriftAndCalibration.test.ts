@@ -41,7 +41,8 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
     risk: 'LOW',
     horizon: 'SWING',
     entryContext: { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
-    targets: [],
+    marketPrice: { available: true, value: 150, currency: 'USD', observedAt: '2025-01-01T00:00:00.000Z', source: 'test-provider', dataStatus: 'LIVE' },
+    targets: { available: false, lower: null, upper: null, currency: 'USD', source: null, dataAsOf: null, method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
     stopLossContext: { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
     factors: [factor('TECHNICAL', 45), factor('FUNDAMENTAL', 10), factor('MOMENTUM', 30), factor('VOLATILITY', 8)],
     evidence: [],
@@ -57,6 +58,7 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
     explanation: { supportingFactors: [], opposingFactors: [], limitationCodes: [], riskCodes: [], recommendationReasonCode: 'TEST', confidenceReasonCodes: [], invalidationConditions: [] },
     recommendationDecision: { policyVersion: 'recommendation-policy-v1', compositeScore: 30, buyThreshold: 28, sellThreshold: -28, minimumDirectionalConfidence: 55, reasonCode: 'TEST', materialFactorKeys: [] },
     previousAnalysis: null,
+    persistenceStatus: 'PERSISTED',
     ...overrides,
   };
 }

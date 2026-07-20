@@ -30,6 +30,7 @@ function snapshot(): VerifiedIntelligenceSnapshot {
     operationalReliability: 1,
     reportedRiskLevel: 'MEDIUM',
     quote: { price: 150, change: 1, changePercent: 0.67, volume: 1_500_000 },
+    levels: { support: 120, resistance: 160 },
     candles: Array.from({ length: 80 }, (_, index) => ({
       at: new Date(start + index * 86_400_000).toISOString(),
       open: 100 + index * 0.6,

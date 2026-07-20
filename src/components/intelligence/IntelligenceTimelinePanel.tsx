@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import Link from 'next/link';
 import { AlertTriangle, ChevronDown, Clock3, GitCompareArrows, History, RefreshCw } from 'lucide-react';
 import type { AnalysisResult, IntelligenceFactorKey, IntelligenceRecommendation, IntelligenceRisk } from '@/domain/intelligence/contracts';
 import type {
@@ -11,6 +12,8 @@ import type {
   IntelligenceTimelineItem,
 } from '@/domain/intelligence/outcomes';
 import { useLanguage } from '@/hooks/useLanguage';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
+import { intelligencePresentation, intelligenceStateFromError } from '@/lib/intelligence/presentation';
 import styles from './IntelligenceTimelinePanel.module.css';
 
 type Locale = 'ar' | 'en' | 'fr';
@@ -318,7 +321,7 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [comparison, setComparison] = useState<IntelligenceTimelineComparison | null>(null);
@@ -343,7 +346,11 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
       signal,
     });
     const payload = await response.json().catch(() => ({})) as TimelineResponse;
-    if (!response.ok || payload.ok !== true || !payload.timeline) throw new Error('TIMELINE_UNAVAILABLE');
+    if (!response.ok || payload.ok !== true || !payload.timeline) {
+      const error = new Error(typeof payload.error?.code === 'string' ? payload.error.code : 'DATABASE_ERROR');
+      error.name = `HTTP_${response.status || 0}`;
+      throw error;
+    }
     return payload.timeline;
   }, []);
 
@@ -351,7 +358,7 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
     const controller = new AbortController();
     let active = true;
     setLoading(true);
-    setError(false);
+    setErrorCode(null);
     setItems([]);
     setNextCursor(null);
     setSelectedIds([]);
@@ -366,7 +373,7 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
       })
       .catch(requestError => {
         if (!active || (requestError instanceof DOMException && requestError.name === 'AbortError')) return;
-        setError(true);
+        setErrorCode(requestError instanceof Error ? requestError.message : 'NETWORK_ERROR');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -413,7 +420,7 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
       setItems(current => uniqueItems([...current, ...nextItems]));
       setNextCursor(typeof timeline.nextCursor === 'string' && timeline.nextCursor ? timeline.nextCursor : null);
     } catch {
-      setError(true);
+      setErrorCode('NETWORK_ERROR');
     } finally {
       setLoadingMore(false);
     }
@@ -449,15 +456,23 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
     );
   }
 
-  if (error && items.length === 0) {
+  if (errorCode && items.length === 0) {
+    const state = intelligenceStateFromError({ code: errorCode });
+    const presentation = intelligencePresentation(state, locale === 'ar' ? 'ar' : 'en');
     return (
       <section className={styles.panel} dir={dir} aria-labelledby={`${timelineId}-title`} data-testid="intelligence-timeline">
         <div className={styles.state} role="alert">
           <AlertTriangle aria-hidden="true" />
-          <span id={`${timelineId}-title`}>{copy.unavailable}</span>
-          <button type="button" onClick={() => setReloadToken(value => value + 1)}>
-            <RefreshCw aria-hidden="true" />{copy.retry}
-          </button>
+          <div><strong id={`${timelineId}-title`}>{presentation.title}</strong><span>{presentation.description}</span></div>
+          {state === 'unauthenticated' ? (
+            <Link className={styles.stateAction} href={loginHrefForCurrentLocation('/ai-analyst/history')}>
+              {presentation.action}
+            </Link>
+          ) : (
+            <button type="button" onClick={() => setReloadToken(value => value + 1)}>
+              <RefreshCw aria-hidden="true" />{presentation.action}
+            </button>
+          )}
         </div>
       </section>
     );
@@ -539,7 +554,7 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
             })}
           </div>
 
-          {error ? <p className={styles.inlineError} role="status"><AlertTriangle aria-hidden="true" />{copy.unavailable}</p> : null}
+          {errorCode ? <p className={styles.inlineError} role="status"><AlertTriangle aria-hidden="true" />{intelligencePresentation(intelligenceStateFromError({ code: errorCode }), locale === 'ar' ? 'ar' : 'en').description}</p> : null}
           {nextCursor ? (
             <div className={styles.loadMore}>
               <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>

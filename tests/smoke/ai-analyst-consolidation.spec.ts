@@ -188,7 +188,6 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
       ['/ai-analyst/market-leadership', 'market-leadership'],
       ['/ai-analyst/markets', 'market-explorer'],
       ['/ai-analyst/markets/sessions', 'market-sessions'],
-      ['/ai-analyst/markets?view=map', 'market-map'],
       ['/ai-analyst/news', 'market-news'],
       ['/ai-analyst/calendar', 'economic-calendar'],
       ['/ai-analyst/education', 'education'],
@@ -201,12 +200,17 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     for (const [route, heading] of [
       ['/ai-analyst/compare', 'Analysis comparison'],
       ['/ai-analyst/agent', 'Smart market agent'],
-      ['/ai-analyst/opportunities', 'Future opportunities'],
     ] as const) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
       await expect(page.getByRole('heading', { name: heading })).toBeVisible();
     }
+
+    await page.goto('/ai-analyst/markets?view=map', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/ai-analyst\/markets(?:\?|$)/);
+    await expect(page.locator('[data-ai-analyst-surface="market-explorer"]')).toBeVisible();
+    await page.goto('/ai-analyst/opportunities', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
 
     for (const surface of ['history', 'watchlist', 'portfolio', 'alerts', 'recommendations', 'tradePerformance', 'settings']) {
       const route = surface === 'history'
@@ -273,7 +277,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     const mobileNavigation = page.getByTestId('ai-analyst-mobile-navigation');
     await expect(mobileNavigation).toBeVisible();
     await expect(mobileNavigation.locator('details')).toHaveCount(5);
-    await expect(mobileNavigation.getByRole('link', { name: 'Future opportunities' })).toHaveAttribute('href', '/ai-analyst/opportunities');
+    await expect(mobileNavigation.getByRole('link', { name: 'Future opportunities' })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(mobileNavigation).toHaveCount(0);
 

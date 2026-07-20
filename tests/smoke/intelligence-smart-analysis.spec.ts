@@ -101,8 +101,13 @@ function intelligenceResult(state: 'partial' | 'insufficient' | 'stale' = 'parti
     confidenceCalculation: { methodologyVersion: 'deterministic-confidence-v1', weightingVersion: 'asset-horizon-weights-v1', appliedWeights: { TECHNICAL: 0.4, MOMENTUM: 0.3, RISK: 0.3 }, components: { coverage: insufficient ? 0 : 75, freshness: stale ? 20 : 100, consistency: 80, operationalReliability: 100, signalClarity: 40 }, penalties: stale ? [{ code: 'STALE_DATA', points: 24 }] : [], minimumEvidenceMet: !insufficient, availableDirectionalFactors: insufficient ? 0 : 3 },
     risk: insufficient ? 'UNAVAILABLE' : 'MEDIUM',
     horizon: 'SWING',
+    marketPrice: insufficient
+      ? { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' }
+      : { available: true, value: 150, currency: 'USD', observedAt: now, source: 'verified-e2e-provider', dataStatus: 'LIVE' },
     entryContext: { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
-    targets: [],
+    targets: insufficient
+      ? { available: false, lower: null, upper: null, currency: 'USD', source: null, dataAsOf: null, method: null, reasonCode: 'INSUFFICIENT_MARKET_DATA' }
+      : { available: true, lower: 145, upper: 155, currency: 'USD', source: 'verified-e2e-provider', dataAsOf: now, method: 'RECENT_OHLC_RANGE' },
     stopLossContext: { available: false, value: null, currency: 'USD', method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
     factors,
     evidence: factors.flatMap(item => item.evidence),
@@ -118,6 +123,7 @@ function intelligenceResult(state: 'partial' | 'insufficient' | 'stale' = 'parti
     explanation: { supportingFactors: insufficient ? [] : ['TECHNICAL', 'MOMENTUM'], opposingFactors: insufficient ? [] : ['RISK'], limitationCodes: [], riskCodes: [], recommendationReasonCode: insufficient ? 'MINIMUM_EVIDENCE_NOT_MET' : 'SCORE_WITHIN_WAIT_BAND', confidenceReasonCodes: stale ? ['STALE_DATA'] : [], invalidationConditions: [{ code: 'DATA_STALENESS', factor: null, detailKey: 'intelligence_invalidation_data_stale' }, { code: 'RISK_ESCALATION', factor: 'RISK', detailKey: 'intelligence_invalidation_risk_escalation' }] },
     recommendationDecision: { policyVersion: 'recommendation-policy-v1', compositeScore: insufficient ? 0 : 12, buyThreshold: 28, sellThreshold: -28, minimumDirectionalConfidence: 55, reasonCode: insufficient ? 'MINIMUM_EVIDENCE_NOT_MET' : 'SCORE_WITHIN_WAIT_BAND', materialFactorKeys: insufficient ? [] : ['TECHNICAL', 'MOMENTUM', 'RISK'] },
     previousAnalysis: null,
+    persistenceStatus: 'PERSISTED',
   };
 }
 
@@ -287,15 +293,18 @@ test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 test.setTimeout(120_000);
 
 test.describe('Phase 6.1 intelligence panel', () => {
-  test('renders the canonical structured result with evidence and no generated price levels', async ({ page }) => {
+  test('renders source-backed current price and target range with evidence', async ({ page }) => {
     const panel = await openAnalysis(page, 'partial');
     const status = page.getByTestId('intelligence-status-panel');
     await expect(panel.getByText('Analysis confidence')).toBeVisible();
     await expect(panel.getByText('64%')).toBeVisible();
     await expect(status.getByRole('listitem').filter({ hasText: 'This analysis is partial' })).toBeVisible();
     await panel.locator('summary').click();
-    await expect(panel.getByText('Entry prices, targets, and stop-loss values are unavailable', { exact: false })).toBeVisible();
-    await expect(panel.getByText('verified-e2e-provider', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Current price', { exact: true })).toBeVisible();
+    await expect(panel.getByText('150 USD', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Target range', { exact: true })).toBeVisible();
+    await expect(panel.getByText('RECENT_OHLC_RANGE', { exact: true })).toBeVisible();
+    await expect(panel.getByText('verified-e2e-provider', { exact: true }).first()).toBeVisible();
   });
 
   test('renders insufficient-data and stale states truthfully', async ({ page }) => {
@@ -344,6 +353,59 @@ test.describe('Phase 6.1 intelligence panel', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(4);
+  });
+
+  test('uses the desktop sidebar layout track without clipping at every supported viewport', async ({ page }) => {
+    const panel = await openAnalysis(page, 'partial');
+    const viewports = [
+      { width: 1920, height: 1080 },
+      { width: 1440, height: 900 },
+      { width: 1366, height: 768 },
+      { width: 1280, height: 720 },
+      { width: 1024, height: 768 },
+      { width: 768, height: 1024 },
+      { width: 430, height: 932 },
+      { width: 390, height: 844 },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await expect(panel).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth === document.documentElement.clientWidth)).toBe(true);
+
+      const geometry = await page.evaluate(() => {
+        const rect = (selector: string) => document.querySelector(selector)?.getBoundingClientRect() ?? null;
+        const sidebar = rect('aside.sfm-shared-sidebar');
+        const heading = rect('#ai-analyst-title');
+        const action = rect('[data-testid="ai-analyst-workspace"] button');
+        const result = rect('[data-testid="ai-analyst-canonical-result"]');
+        const overlaps = (a: DOMRect | null, b: DOMRect | null) => Boolean(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+        return { sidebar, heading, action, result, headingOverlaps: overlaps(sidebar, heading), actionOverlaps: overlaps(sidebar, action), resultOverlaps: overlaps(sidebar, result) };
+      });
+      expect(geometry.heading).not.toBeNull();
+      expect(geometry.action).not.toBeNull();
+      expect(geometry.result).not.toBeNull();
+      if (geometry.sidebar && geometry.sidebar.width > 0) {
+        expect(geometry.headingOverlaps).toBe(false);
+        expect(geometry.actionOverlaps).toBe(false);
+        expect(geometry.resultOverlaps).toBe(false);
+      }
+    }
+  });
+
+  test('generates a missing reading from the normal request path and gives guests a sign-in refresh action', async ({ page }) => {
+    await stubApis(page, 'partial');
+    await enterGuest(page);
+    let analyzeRequests = 0;
+    await page.unroute('**/api/intelligence/analyze');
+    await page.route('**/api/intelligence/analyze', route => {
+      analyzeRequests += 1;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: intelligenceResult('partial'), correlationId: 'e2e-correlation' }) });
+    });
+    await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('ai-analyst-canonical-result')).toBeVisible();
+    expect(analyzeRequests).toBe(1);
+    await expect(page.getByRole('link', { name: 'Sign in to refresh analysis' })).toHaveAttribute('href', /\/login\?next=/);
   });
 
   test('renders the historical timeline, pending/evaluated outcomes, and a deterministic comparison', async ({ page }) => {
