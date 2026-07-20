@@ -145,10 +145,10 @@ export function Sidebar() {
 
   useEffect(() => {
     const root = document.documentElement;
-    previousSidebarWidth.current = root.style.getPropertyValue('--sidebar-w') || null;
+    previousSidebarWidth.current = root.style.getPropertyValue('--app-sidebar-width') || null;
     return () => {
-      if (previousSidebarWidth.current) root.style.setProperty('--sidebar-w', previousSidebarWidth.current);
-      else root.style.removeProperty('--sidebar-w');
+      if (previousSidebarWidth.current) root.style.setProperty('--app-sidebar-width', previousSidebarWidth.current);
+      else root.style.removeProperty('--app-sidebar-width');
     };
   }, []);
 
@@ -157,13 +157,13 @@ export function Sidebar() {
     const desktop = window.matchMedia('(min-width: 768px)');
     const applyWidth = () => {
       if (!desktop.matches) {
-        if (previousSidebarWidth.current) root.style.setProperty('--sidebar-w', previousSidebarWidth.current);
-        else root.style.removeProperty('--sidebar-w');
+        if (previousSidebarWidth.current) root.style.setProperty('--app-sidebar-width', previousSidebarWidth.current);
+        else root.style.removeProperty('--app-sidebar-width');
         return;
       }
-      if (collapsed) root.style.setProperty('--sidebar-w', '72px');
-      else if (previousSidebarWidth.current) root.style.setProperty('--sidebar-w', previousSidebarWidth.current);
-      else root.style.removeProperty('--sidebar-w');
+      if (collapsed) root.style.setProperty('--app-sidebar-width', 'var(--app-sidebar-width-collapsed)');
+      else if (previousSidebarWidth.current) root.style.setProperty('--app-sidebar-width', previousSidebarWidth.current);
+      else root.style.removeProperty('--app-sidebar-width');
     };
     applyWidth();
     desktop.addEventListener('change', applyWidth);
@@ -343,8 +343,8 @@ export function Sidebar() {
         </Link>
         <style>{`
           .sfm-shared-sidebar{
-            width:var(--sidebar-w);height:calc(100dvh - var(--app-header-height) - var(--space-2));max-height:calc(100dvh - var(--app-header-height) - var(--space-2));min-height:0;
-            position:sticky;inset-block-start:var(--app-header-height);inset-inline-start:0;align-self:start;z-index:var(--z-sidebar, 50);display:flex;flex-direction:column;
+            inline-size:var(--app-sidebar-width);max-inline-size:100%;height:calc(100dvh - var(--app-header-height) - var(--space-2));max-height:calc(100dvh - var(--app-header-height) - var(--space-2));min-height:0;
+            position:sticky;inset-block-start:var(--app-header-height);align-self:start;z-index:var(--z-sidebar, 50);display:flex;flex-direction:column;
             margin-block:var(--space-2);overflow:visible;isolation:isolate;
             background-color:var(--sidebar-glass-bg-fallback);background-image:var(--sidebar-glass-bg);color:var(--sidebar-item-text);
             border:1px solid var(--sidebar-glass-border);border-radius:var(--radius-panel);box-shadow:var(--sidebar-glass-shadow),var(--sidebar-glass-inner-shadow);
@@ -353,7 +353,7 @@ export function Sidebar() {
           }
           .sfm-shared-sidebar::before{content:"";position:absolute;z-index:-1;inset-block-start:1px;inset-inline:1px;height:42%;border-radius:var(--radius-sidebar-reflection);background:var(--sidebar-glass-reflection);opacity:.82;pointer-events:none}
           .sfm-shared-sidebar::after{content:"";position:absolute;z-index:4;inset:1px;border:1px solid var(--sidebar-glass-border-highlight);border-block-end-color:transparent;border-radius:var(--radius-sidebar-inner-edge);box-shadow:var(--sidebar-inner-edge-shadow);opacity:.58;pointer-events:none}
-          .sfm-shared-sidebar[data-collapsed="true"]{width:var(--sidebar-w-collapsed)}
+          .sfm-shared-sidebar[data-collapsed="true"]{inline-size:var(--app-sidebar-width-collapsed)}
           .sfm-sidebar-brand{position:relative;z-index:1;min-height:62px;display:flex;align-items:center;gap:9px;margin:7px 7px 0;padding:7px 8px;border:1px solid color-mix(in srgb,var(--sidebar-glass-border) 72%,transparent);border-radius:var(--radius-card);background:var(--sidebar-glass-bg-elevated);box-shadow:var(--sidebar-brand-shadow);color:var(--sidebar-item-text);text-decoration:none;flex:0 0 auto}
           .sfm-sidebar-brand-mark{width:42px;height:42px;display:grid;place-items:center;flex:0 0 42px;border:1px solid color-mix(in srgb,var(--sidebar-search-border) 74%,transparent);border-radius:var(--radius-control);background:var(--sidebar-search-bg);box-shadow:var(--sidebar-item-shadow)}
           .sfm-sidebar-brand img{width:34px;height:34px}

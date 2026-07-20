@@ -187,7 +187,7 @@ describe('workspace navigation direction and presentation contract', () => {
     expect(workspaceShell).toContain('@media (max-width: 767px)');
     expect(workspaceShell).not.toContain('@media (max-width: 1024px)');
     expect(globals).toContain('@media (min-width:768px) and (max-width:1024px)');
-    expect(globals).toContain(':root{--sidebar-w:220px}');
+    expect(globals).toContain(':root{--app-sidebar-width:220px}');
     expect(globals).toContain('@media (min-width: 768px) and (max-width: 1024px)');
   });
 
