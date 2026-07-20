@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { BellRing, ChartNoAxesCombined, History, Landmark, LineChart, Sparkles, TrendingUp } from 'lucide-react';
+import { ChartNoAxesCombined, History, Landmark, LineChart, Sparkles, TrendingUp } from 'lucide-react';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
@@ -122,12 +122,6 @@ function OverviewSurface() {
         title={copy.overview.changes}
         body={copy.overview.changesBody}
         action={{ href: '/ai-analyst/history?view=timeline', label: copy.overview.openHistory }}
-      />
-      <PlaceholderCard
-        icon={BellRing}
-        title={copy.overview.alerts}
-        body={copy.overview.alertsBody}
-        action={{ href: '/ai-analyst/alerts', label: copy.navigation.items.alerts }}
       />
       <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="ai-analyst-overview-next-title">
         <header className={styles.cardHeader}>

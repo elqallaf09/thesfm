@@ -8,7 +8,8 @@ import type { AnalysisResult, IntelligenceAssetType, IntelligenceHorizon } from 
 import { IntelligencePanel, IntelligenceStatusPanel } from '@/components/intelligence/IntelligencePanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale } from './copy';
+import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
+import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
 function DeferredLoading({ surface }: { surface: 'chart' | 'timeline' | 'history' }) {
@@ -46,7 +47,7 @@ export function AiAnalystAnalysis({
   symbol,
   assetType,
   horizon,
-  autoRun,
+  autoRun: _autoRun,
 }: {
   symbol: string;
   assetType: IntelligenceAssetType;
@@ -60,15 +61,19 @@ export function AiAnalystAnalysis({
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [empty, setEmpty] = useState(false);
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState<number | null>(null);
   const [chartOpen, setChartOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [accuracyOpen, setAccuracyOpen] = useState(false);
 
   const requestAnalysis = useCallback(async (forceRefresh = false) => {
+    if (forceRefresh && (!user || isGuest)) {
+      setErrorCode('UNAUTHENTICATED');
+      return;
+    }
     setLoading(true);
     setErrorCode(null);
-    setEmpty(false);
+    setRetryAfterSeconds(null);
     try {
       const response = await fetch('/api/intelligence/analyze', {
         method: 'POST',
@@ -86,13 +91,13 @@ export function AiAnalystAnalysis({
       const payload = await response.json().catch(() => ({})) as IntelligenceResponse;
       if (!response.ok || payload.ok !== true || !payload.result) {
         setErrorCode(errorCodeFrom(payload));
-        setResult(null);
+        const retryAfter = Number(response.headers.get('retry-after'));
+        setRetryAfterSeconds(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
         return;
       }
       setResult(payload.result);
     } catch {
-      setErrorCode('PROVIDER_UNAVAILABLE');
-      setResult(null);
+      setErrorCode('NETWORK_ERROR');
     } finally {
       setLoading(false);
     }
@@ -104,7 +109,7 @@ export function AiAnalystAnalysis({
     async function loadLatest() {
       setLoading(true);
       setErrorCode(null);
-      setEmpty(false);
+      setRetryAfterSeconds(null);
       const params = new URLSearchParams({ symbol, assetType, horizon, locale });
       try {
         const response = await fetch(`/api/intelligence/latest?${params.toString()}`, {
@@ -118,30 +123,32 @@ export function AiAnalystAnalysis({
           setResult(payload.result);
           return;
         }
-        if (response.status === 404 && autoRun) {
+        if (response.status === 404) {
           await requestAnalysis(false);
           return;
         }
-        if (response.status === 404) {
-          setEmpty(true);
-          return;
-        }
         setErrorCode(errorCodeFrom(payload));
+        const retryAfter = Number(response.headers.get('retry-after'));
+        setRetryAfterSeconds(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
       } catch (error) {
         if (!active || (error instanceof DOMException && error.name === 'AbortError')) return;
-        setErrorCode('PROVIDER_UNAVAILABLE');
+        setErrorCode('NETWORK_ERROR');
       } finally {
         if (active) setLoading(false);
       }
     }
     void loadLatest();
     return () => { active = false; controller.abort(); };
-  }, [assetType, autoRun, horizon, locale, requestAnalysis, symbol]);
+  }, [assetType, horizon, locale, requestAnalysis, symbol]);
 
   const historyHref = useMemo(() => {
     const params = new URLSearchParams({ symbol, assetType, horizon, view: 'timeline' });
     return `/ai-analyst/history?${params.toString()}`;
   }, [assetType, horizon, symbol]);
+  const signInHref = useMemo(() => loginHrefForCurrentLocation(`/ai-analyst/analyze/${encodeURIComponent(symbol)}`), [symbol]);
+  const retryMessage = retryAfterSeconds && errorCode
+    ? `${copy.analysis.retryAvailable} ${retryAfterSeconds}s`
+    : null;
 
   return (
     <div className={styles.grid}>
@@ -154,17 +161,19 @@ export function AiAnalystAnalysis({
           </div>
           <span className={styles.metricPill}>{HORIZON_LABELS[locale][horizon]}</span>
         </header>
-        <div className={styles.statusRail}><BarChart3 size={16} aria-hidden="true" />{copy.analysis.refreshHint}</div>
+        <div className={styles.statusRail}><BarChart3 size={16} aria-hidden="true" />{copy.analysis.disclaimer}</div>
         <div className={styles.cardHeader}>
           <button className={styles.primaryAction} type="button" disabled={loading} onClick={() => void requestAnalysis(false)}>
-            <RefreshCw size={16} aria-hidden="true" />{copy.analysis.run}
+            <RefreshCw size={16} aria-hidden="true" />{result ? copy.analysis.normalRefresh : copy.analysis.run}
           </button>
           {user && !isGuest ? (
             <button className={styles.secondaryAction} type="button" disabled={loading} onClick={() => void requestAnalysis(true)}>
               <RefreshCw size={16} aria-hidden="true" />{copy.analysis.refresh}
             </button>
-          ) : null}
+          ) : <Link className={styles.secondaryAction} href={signInHref}>{copy.analysis.signInRefresh}</Link>}
         </div>
+        {result ? <p className={styles.mutedText}>{copy.analysis.lastRefresh}: <span dir="ltr">{aiAnalystTimestamp(locale, result.generatedAt)}</span></p> : null}
+        {retryMessage ? <p className={styles.statusRail} role="status">{retryMessage}</p> : null}
       </section>
 
       <div className={styles.spanFull}>
@@ -172,7 +181,7 @@ export function AiAnalystAnalysis({
           result={result}
           loading={loading}
           errorCode={errorCode}
-          emptyMessage={empty ? copy.analysis.noLatest : copy.analysis.unavailable}
+          emptyMessage={copy.analysis.noLatest}
           onRetry={() => void requestAnalysis(false)}
         />
       </div>
