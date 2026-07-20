@@ -364,8 +364,8 @@ export function AppHeader() {
           }
 
           .sfm-global-header {
-            width: 100%;
-            max-width: 100vw;
+            inline-size: 100%;
+            max-inline-size: 100%;
             grid-template-columns: minmax(0, 1fr) auto;
             overflow-x: clip;
             margin: 0;
@@ -378,8 +378,8 @@ export function AppHeader() {
           }
 
           .sfm-global-workspaces {
-            width: calc(100vw - 24px);
-            max-width: calc(100vw - 24px);
+            inline-size: calc(100% - 24px);
+            max-inline-size: calc(100% - 24px);
           }
 
           .sfm-global-actions {
