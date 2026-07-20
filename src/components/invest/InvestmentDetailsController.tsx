@@ -63,16 +63,28 @@ export const InvestmentDetailsController = memo(forwardRef<InvestmentDetailsCont
     },
   }), [cancelDetailsReveal]);
 
-  useEffect(() => () => cancelDetailsReveal(), [cancelDetailsReveal]);
-
   useEffect(() => {
-    // The drawer's code-split chunk otherwise loads on first open, so its
-    // fetch+parse+eval cost lands entirely inside that click's presentation
-    // delay. Warming it once the list has mounted moves that cost off the
-    // interaction's critical path; it's the same module `dynamic()` above
-    // loads, so this primes its cache rather than fetching it twice.
-    void loadInvestmentDetailDrawer();
+    let cancelled = false;
+    const warmDrawer = () => {
+      if (!cancelled) void loadInvestmentDetailDrawer();
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(warmDrawer, { timeout: 1200 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(handle);
+      };
+    }
+
+    const handle = window.setTimeout(warmDrawer, 250);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
   }, []);
+
+  useEffect(() => () => cancelDetailsReveal(), [cancelDetailsReveal]);
 
   useEffect(() => {
     if (investment || !triggerRef.current) return;
