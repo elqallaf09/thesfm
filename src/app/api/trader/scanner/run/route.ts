@@ -24,28 +24,53 @@ function hasCronSecret(request: NextRequest) {
 }
 
 async function buildScanResponse(filters: ScannerFilters, force: boolean) {
-  const { results, run } = await triggerScan(filters, { force });
-  const filtered = filterResults(results, filters);
-  const recommendations = filterTraderRecommendationsBySharia(filtered.map(toTraderRecommendation), filters.shariaStatus);
+  try {
+    const { results, run } = await triggerScan(filters, { force });
+    const filtered = filterResults(results, filters);
+    const recommendations = filterTraderRecommendationsBySharia(filtered.map(toTraderRecommendation), filters.shariaStatus);
 
-  return NextResponse.json({
-    ok: run.status !== 'failed',
-    status: run.status,
-    runId: run.runId,
-    processed: run.processed,
-    remaining: run.remaining,
-    succeeded: run.succeeded,
-    skipped: run.skipped,
-    failed: run.failed,
-    durationMs: run.durationMs,
-    nextCursor: run.nextCursor,
-    generatedAt: new Date().toISOString(),
-    summary: traderRecommendationSummary(recommendations),
-    recommendations,
-    results: recommendations,
-  }, {
-    headers: { 'Cache-Control': 'no-store' },
-  });
+    return NextResponse.json({
+      ok: run.status !== 'failed',
+      status: run.status,
+      runId: run.runId,
+      processed: run.processed,
+      remaining: run.remaining,
+      succeeded: run.succeeded,
+      skipped: run.skipped,
+      failed: run.failed,
+      durationMs: run.durationMs,
+      nextCursor: run.nextCursor,
+      generatedAt: new Date().toISOString(),
+      summary: traderRecommendationSummary(recommendations),
+      recommendations,
+      results: recommendations,
+    }, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  } catch {
+    // triggerScan already converts scan failures into a "failed" status without
+    // throwing; this only guards against a truly unexpected exception so the
+    // route always returns a valid JSON response instead of a raw 500/504.
+    return NextResponse.json({
+      ok: false,
+      status: 'failed',
+      runId: null,
+      processed: 0,
+      remaining: 0,
+      succeeded: 0,
+      skipped: 0,
+      failed: 0,
+      durationMs: 0,
+      nextCursor: null,
+      generatedAt: new Date().toISOString(),
+      summary: null,
+      recommendations: [],
+      results: [],
+    }, {
+      status: 200,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
 }
 
 export async function POST(request: NextRequest) {

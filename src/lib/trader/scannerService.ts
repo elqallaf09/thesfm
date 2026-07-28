@@ -58,8 +58,8 @@ type PersistedCursor = {
 };
 
 type AssetOutcome =
-  | { ok: true; symbol: string; result: StockAnalysisResult }
-  | { ok: false; symbol: string; reason: string };
+  | { ok: true; symbol: string; result: StockAnalysisResult; cacheHit: boolean }
+  | { ok: false; symbol: string; reason: string; cacheHit: boolean };
 
 type ScanCache = {
   results: StockAnalysisResult[];
@@ -147,13 +147,14 @@ async function analyzeAssetOnce(asset: TradableAsset): Promise<AssetOutcome> {
 
   const quote = toMarketQuote(asset, quoteResult);
   const candles = toCandles(historyResult);
+  const cacheHit = historyResult.success ? historyResult.cached === true : false;
   if (!quote) {
-    return { ok: false, symbol: asset.symbol, reason: quoteResult.unavailableReason || 'quote_unavailable' };
+    return { ok: false, symbol: asset.symbol, reason: quoteResult.unavailableReason || 'quote_unavailable', cacheHit };
   }
   if (candles.length < 30) {
-    return { ok: false, symbol: asset.symbol, reason: historyResult.success ? 'insufficient_history' : historyResult.unavailableReason };
+    return { ok: false, symbol: asset.symbol, reason: historyResult.success ? 'insufficient_history' : historyResult.unavailableReason, cacheHit };
   }
-  return { ok: true, symbol: asset.symbol, result: analyzeStock({ asset, quote, candles }) };
+  return { ok: true, symbol: asset.symbol, result: analyzeStock({ asset, quote, candles }), cacheHit };
 }
 
 async function persistScan(input: {
@@ -280,7 +281,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
 
   const deadline = createDeadline(SCANNER_TIME_BUDGET_MS);
   const breaker = new ScanCircuitBreaker();
-  const metrics = { auth: 0, notFound: 0, rateLimit: 0, transient: 0, noData: 0, retries: 0 };
+  const metrics = { auth: 0, notFound: 0, rateLimit: 0, transient: 0, noData: 0, retries: 0, cacheHits: 0 };
 
   const { results: outcomes, processedCount: attemptedCount, stopped } = await runWithConcurrency<TradableAsset, AssetOutcome>(
     slice,
@@ -299,6 +300,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
         },
       );
 
+      if (outcome.cacheHit) metrics.cacheHits += 1;
       if (outcome.ok) {
         breaker.record(false);
       } else {
@@ -392,6 +394,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
     transientFailures: metrics.transient,
     noDataFailures: metrics.noData,
     retries: metrics.retries,
+    cacheHits: metrics.cacheHits,
     concurrency: SCANNER_CONCURRENCY,
     deadlineHit: stopped && !breakerOpen,
     circuitBreakerState: breaker.state(),
@@ -478,11 +481,20 @@ export async function triggerScan(
       return { results: cache.results, run };
     } catch (error) {
       cache.status = { ...cache.status, running: false, lastErrorCode: 'SCAN_EXECUTION_FAILED' };
+      // Recording the failure must never itself become an unhandled rejection —
+      // that would defeat the point of this catch block (a graceful "failed"
+      // result instead of a thrown exception reaching the route).
       await persistFailedRun({
         runId,
         market,
         startedAtIso: new Date().toISOString(),
         message: error instanceof Error ? error.message : 'unknown',
+      }).catch((persistError) => {
+        logReliabilityEvent('warn', 'trader_scanner.failed_run_persistence_failed', {
+          runId,
+          market,
+          message: persistError instanceof Error ? persistError.message : 'unknown',
+        });
       });
       return {
         results: cache.results,

@@ -293,6 +293,76 @@ describe('triggerScan overlapping-run protection', () => {
   });
 });
 
+describe('triggerScan observability', () => {
+  it('reports cacheHits in the structured run-completed log when the history provider serves a cached response', async () => {
+    getUsStockUniverse.mockReturnValue([asset('CACHED1'), asset('FRESH1')]);
+    fetchYahooHistory.mockImplementation(async (providerSymbol: string) => {
+      if (providerSymbol === 'CACHED1') {
+        return { success: true, history: fakeCandles(), cached: true, cacheAgeSeconds: 42 };
+      }
+      return { success: true, history: fakeCandles() };
+    });
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 10, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true });
+
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    await triggerScan({ market: 'US' }, { force: true });
+
+    const logCall = infoSpy.mock.calls.find((call) => String(call[0]).includes('trader_scanner.run_completed'));
+    expect(logCall).toBeDefined();
+    const logged = JSON.parse(String(logCall?.[0]));
+    expect(logged.cacheHits).toBe(1);
+  });
+});
+
+describe('triggerScan failure recovery', () => {
+  it('resolves with status "failed" and releases the lock when the run throws unexpectedly', async () => {
+    getUsStockUniverse.mockImplementation(() => {
+      throw new Error('simulated catastrophic failure building the universe');
+    });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    const { run } = await triggerScan({ market: 'US' }, { force: true });
+
+    expect(run.status).toBe('failed');
+    expect(releaseScanLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('still resolves gracefully (never an unhandled rejection) when persisting the failure itself also throws', async () => {
+    getUsStockUniverse.mockImplementation(() => {
+      throw new Error('simulated catastrophic failure building the universe');
+    });
+    createServerSupabaseAdmin.mockReturnValue({
+      from: () => {
+        throw new Error('simulated Supabase client failure while recording the failed run');
+      },
+    });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    const { run } = await triggerScan({ market: 'US' }, { force: true });
+
+    expect(run.status).toBe('failed');
+    expect(releaseScanLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not leave the scanner permanently locked after a failed run', async () => {
+    getUsStockUniverse.mockImplementationOnce(() => {
+      throw new Error('simulated catastrophic failure building the universe');
+    });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    const first = await triggerScan({ market: 'US' }, { force: true });
+    expect(first.run.status).toBe('failed');
+
+    getUsStockUniverse.mockReturnValue([asset('RECOVERED')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 10, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true });
+
+    const second = await triggerScan({ market: 'US' }, { force: true });
+    expect(second.run.status).not.toBe('already_running');
+  });
+});
+
 describe('triggerScan database idempotency', () => {
   it('upserts scan runs and results (never a plain insert that would duplicate on retry)', async () => {
     getUsStockUniverse.mockReturnValue([asset('ONE')]);
