@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { BarChart3, ChevronDown, History, RefreshCw } from 'lucide-react';
@@ -103,6 +103,16 @@ export function AiAnalystAnalysis({
     }
   }, [assetType, horizon, isGuest, locale, symbol, user]);
 
+  // requestAnalysis is recreated whenever auth state resolves (user/isGuest
+  // settle asynchronously after mount). The initial-load effect below must
+  // not re-run on that identity change alone — it should only re-fetch when
+  // the asset/horizon/locale actually change — so it reads requestAnalysis
+  // through a ref rather than depending on the callback directly.
+  const requestAnalysisRef = useRef(requestAnalysis);
+  useEffect(() => {
+    requestAnalysisRef.current = requestAnalysis;
+  }, [requestAnalysis]);
+
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
@@ -124,7 +134,7 @@ export function AiAnalystAnalysis({
           return;
         }
         if (response.status === 404) {
-          await requestAnalysis(false);
+          await requestAnalysisRef.current(false);
           return;
         }
         setErrorCode(errorCodeFrom(payload));
@@ -139,7 +149,7 @@ export function AiAnalystAnalysis({
     }
     void loadLatest();
     return () => { active = false; controller.abort(); };
-  }, [assetType, horizon, locale, requestAnalysis, symbol]);
+  }, [assetType, horizon, locale, symbol]);
 
   const historyHref = useMemo(() => {
     const params = new URLSearchParams({ symbol, assetType, horizon, view: 'timeline' });

@@ -20,10 +20,16 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="sfm-app-layout" data-workspace-shell="true">
+      {/* The header (and the portal-free mobile drawer it renders) must stay
+          a sibling of .sfm-app-shell-grid, not a row inside it: nesting the
+          sticky header inside the grid breaks position: sticky (the header's
+          block container becomes tightly fit to its own content, with no
+          room to move within the grid item) and makes the grid's own
+          bounding box start at the header's top instead of its bottom. It
+          also lets protectBackground (MobileMenu) apply `inert` to the whole
+          .sfm-app-shell-grid as one clean sibling while the drawer is open. */}
+      <AppHeader />
       <div className="sfm-app-shell-grid">
-        <div className="sfm-app-header-slot">
-          <AppHeader />
-        </div>
         <div className="sfm-app-sidebar-slot" dir={dir} aria-hidden="false">
           {!isMobile && (
             <Sidebar />
@@ -54,19 +60,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           display: grid;
           /* Keep the occupied sidebar in the grid instead of offsetting pages. */
           grid-template-columns: minmax(0, 1fr) var(--app-sidebar-width);
-          grid-template-rows: auto minmax(0, 1fr);
-          grid-template-areas:
-            'header sidebar'
-            'main sidebar';
+          grid-template-areas: 'main sidebar';
           align-items: start;
           min-height: calc(100dvh - var(--app-header-height));
           transition: grid-template-columns var(--duration-fast) var(--ease);
           direction: ltr;
-        }
-
-        .sfm-app-header-slot {
-          grid-area: header;
-          min-width: 0;
         }
 
         .sfm-app-sidebar-slot {
@@ -85,19 +83,12 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
         @media (max-width: 767px) {
           .sfm-app-shell-grid {
             grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: auto minmax(0, 1fr);
-            grid-template-areas:
-              'header'
-              'main';
+            grid-template-areas: 'main';
             min-height: calc(100dvh - var(--app-header-height));
           }
 
           .sfm-app-sidebar-slot {
             display: none;
-          }
-
-          .sfm-app-main {
-            grid-area: main;
           }
         }
 
