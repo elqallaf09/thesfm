@@ -158,4 +158,19 @@ export type ScannerFilters = {
   timeHorizon?: Exclude<TimeHorizon, null> | 'all';
   shariaStatus?: 'compliant' | 'non_compliant' | 'needs_review' | 'unclassified' | 'all';
   symbols?: string[];
+  cursor?: number;
+};
+
+export type ScanRunStatus = 'completed' | 'partial' | 'already_running' | 'failed';
+
+export type ScanRunSummary = {
+  status: ScanRunStatus;
+  runId: string;
+  processed: number;
+  remaining: number;
+  succeeded: number;
+  skipped: number;
+  failed: number;
+  durationMs: number;
+  nextCursor: number | null;
 };
