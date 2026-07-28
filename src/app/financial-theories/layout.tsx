@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { pageMetadata } from '@/lib/seo';
+import './financial-theories.css';
 
 export function generateMetadata() {
   return pageMetadata({
