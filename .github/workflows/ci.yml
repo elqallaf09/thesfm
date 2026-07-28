@@ -96,6 +96,56 @@ jobs:
           name: coverage
           path: coverage/
 
+  # Proves the full supabase/migrations chain applies cleanly, exactly once,
+  # against a genuinely empty disposable Postgres instance. This is
+  # deliberately independent of Supabase's own external branch-provisioning
+  # integration (the "Supabase Preview" GitHub check) — it never replays the
+  # chain a second time against an already-migrated database, since historical
+  # apply-once migration files are not required to be idempotent against a
+  # pre-populated schema. See docs/infra/supabase-preview-ci.md for the full
+  # root-cause writeup.
+  migrations-clean-chain:
+    name: CI/Supabase migrations (clean chain)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install postgresql-client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+      - name: Bootstrap minimal Supabase-managed schema stand-ins
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f .github/scripts/bootstrap-supabase-stubs.sql
+      - name: Apply the full migration chain once against a fresh database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          count=0
+          for f in supabase/migrations/*.sql; do
+            echo "Applying: $f"
+            psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$f"
+            count=$((count + 1))
+          done
+          echo "Applied $count migrations successfully against a fresh database."
+          {
+            echo "### Supabase migrations — clean chain"
+            echo ""
+            echo "Applied all $count files in \`supabase/migrations/\` once, in order, against a genuinely empty Postgres 17 database. No second replay is performed — historical apply-once migration files are not required to be idempotent against an already-populated schema."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build:
     name: CI/Production build
     runs-on: ubuntu-latest
