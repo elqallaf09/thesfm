@@ -79,6 +79,39 @@ describe('AI Analyst workspace consolidation', () => {
     expect(source('src/components/ai-analyst/AiAnalystOverview.tsx')).not.toContain('ProviderHealthPanel');
   });
 
+  it('keeps first-paint provider commits streaming-safe so one workspace tree survives hydration', () => {
+    // A client state update that lands while server HTML segments are still
+    // streaming forces the pending route Suspense boundary to client-render;
+    // the late server segment is then orphaned in the DOM, and two
+    // <main data-testid="ai-analyst-workspace"> elements (one per locale
+    // direction) exist simultaneously. Every first-paint storage/viewport
+    // sync in the providers above the route boundary must wait for the
+    // stream to settle and commit at transition priority.
+    for (const file of [
+      'src/components/LanguageProvider.tsx',
+      'src/components/PublicLanguageProvider.tsx',
+      'src/lib/useCurrency.tsx',
+      'src/hooks/useDensity.tsx',
+      'src/hooks/use-mobile.tsx',
+      'src/hooks/useAuth.tsx',
+    ]) {
+      const provider = source(file);
+      expect(provider, `${file} must import startTransition`).toMatch(/\bstartTransition\b/);
+      expect(provider, `${file} must defer first-paint commits until the stream settles`)
+        .toMatch(/\bcommitWhenStreamSettled\b/);
+      expect(provider, `${file} must not set locale/preference state synchronously from its mount sync effect`)
+        .not.toMatch(/useEffect\(\(\) => \{\n\s*set[A-Z]\w*State?\(read/);
+    }
+    const scheduler = source('src/lib/runtime/streamingHydration.ts');
+    expect(scheduler).toContain('template[id^="B:"]');
+    // DOMContentLoaded marks the closed HTML stream; the load event must not
+    // be the gate because a slow image or beacon would freeze the commits.
+    expect(scheduler).toContain("document.readyState !== 'loading'");
+    expect(scheduler).not.toMatch(/addEventListener\('load'/);
+    const shell = source('src/components/ai-analyst/AiAnalystShell.tsx');
+    expect(shell.match(/data-testid="ai-analyst-workspace"/g)).toHaveLength(1);
+  });
+
   it('uses sign-in gates for every personal workspace page instead of protecting the public shell', () => {
     for (const route of [
       'history', 'path', 'watchlist', 'portfolio', 'alerts', 'recommendations', 'trade-performance', 'settings',

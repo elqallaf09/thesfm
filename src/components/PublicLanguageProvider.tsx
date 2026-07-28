@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { TR_AUTH } from '@/lib/translations/auth';
 import { TR_COMMON } from '@/lib/translations/common';
 import { TR_NAV } from '@/lib/translations/nav';
 import { trackEvent } from '@/lib/analytics';
+import { commitWhenStreamSettled } from '@/lib/runtime/streamingHydration';
 import { LanguageContext } from '@/components/LanguageContext';
 
 const STORAGE_KEY = 'sfm_lang';
@@ -32,30 +33,50 @@ function readStoredLang(): Lang {
 
 export function PublicLanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('ar');
+  const pendingLangRef = useRef<Lang | null>(null);
+  const cancelPendingCommitRef = useRef<(() => void) | null>(null);
+
+  // Committing a locale while the server HTML is still streaming forces the
+  // pending Suspense segments to client-render and orphans their late server
+  // trees (duplicate workspace <main> elements). Every locale state commit
+  // therefore waits for the stream to settle, then applies the latest value
+  // at transition priority so already-arrived boundaries hydrate first.
+  const commitLang = useCallback((nextLang: Lang) => {
+    pendingLangRef.current = nextLang;
+    cancelPendingCommitRef.current?.();
+    cancelPendingCommitRef.current = commitWhenStreamSettled(() => {
+      cancelPendingCommitRef.current = null;
+      const settledLang = pendingLangRef.current;
+      if (settledLang === null) return;
+      startTransition(() => setLangState(settledLang));
+    });
+  }, []);
 
   useEffect(() => {
-    setLangState(readStoredLang());
+    commitLang(readStoredLang());
     const syncLang = (event?: Event) => {
       const customLang = event instanceof CustomEvent ? event.detail?.lang : undefined;
-      setLangState(isLang(customLang) ? customLang : readStoredLang());
+      commitLang(isLang(customLang) ? customLang : readStoredLang());
     };
     window.addEventListener(LANG_EVENT, syncLang as EventListener);
     window.addEventListener('storage', syncLang);
     return () => {
       window.removeEventListener(LANG_EVENT, syncLang as EventListener);
       window.removeEventListener('storage', syncLang);
+      cancelPendingCommitRef.current?.();
+      cancelPendingCommitRef.current = null;
     };
-  }, []);
+  }, [commitLang]);
 
   const setLang = useCallback((nextLang: Lang) => {
     if (!isLang(nextLang)) return;
-    setLangState(nextLang);
+    commitLang(nextLang);
     void trackEvent('change_language', { language: nextLang, metadata: { language: nextLang } });
     try {
       localStorage.setItem(STORAGE_KEY, nextLang);
       window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: nextLang } }));
     } catch {}
-  }, []);
+  }, [commitLang]);
 
   useEffect(() => {
     const dir = lang === 'ar' ? 'rtl' : 'ltr';

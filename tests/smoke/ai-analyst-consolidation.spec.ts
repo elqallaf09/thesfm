@@ -195,6 +195,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     ] as const) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expect(page.getByTestId('ai-analyst-workspace')).toHaveCount(1);
       await expect(page.locator(`[data-ai-analyst-surface="${marker}"]`)).toBeVisible();
     }
 
@@ -214,8 +215,61 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
         : `/ai-analyst/${surface === 'tradePerformance' ? 'trade-performance' : surface}`;
       await page.goto(route, { waitUntil: 'domcontentloaded' });
       await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expect(page.getByTestId('ai-analyst-workspace')).toHaveCount(1);
       await expect(page.getByTestId(`ai-analyst-${surface}-locked`)).toBeVisible();
     }
+  });
+
+  test('keeps exactly one authoritative workspace tree across locales, navigation, and refresh', async ({ page, isMobile }) => {
+    await stubAnalystReads(page);
+    await enterGuest(page);
+    await page.goto('/ai-analyst/overview', { waitUntil: 'domcontentloaded' });
+
+    const workspace = page.getByTestId('ai-analyst-workspace');
+    const workspaceMain = page.locator('main[data-testid="ai-analyst-workspace"]');
+    await expect(workspace).toBeVisible();
+    await expect(workspaceMain).toHaveCount(1);
+
+    for (const [locale, dir, staleDir] of [
+      ['ar', 'rtl', 'ltr'],
+      ['en', 'ltr', 'rtl'],
+      ['fr', 'ltr', 'rtl'],
+    ] as const) {
+      await page.evaluate(nextLanguage => {
+        localStorage.setItem('sfm_lang', nextLanguage);
+        window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang: nextLanguage } }));
+      }, locale);
+      await expect.poll(() => workspace.getAttribute('dir')).toBe(dir);
+      await expect(workspaceMain).toHaveCount(1);
+      await expect(page.locator(`main[data-testid="ai-analyst-workspace"][dir="${staleDir}"]`)).toHaveCount(0);
+      await expect(workspace).toBeVisible();
+    }
+
+    // Authenticated client-side navigation preserves the active locale in one tree.
+    const navigationScope = isMobile
+      ? page.getByTestId('ai-analyst-mobile-navigation')
+      : page.getByTestId('ai-analyst-tabs');
+    if (isMobile) {
+      await page.locator('button[aria-controls="ai-analyst-mobile-navigation"]').click();
+      // Only the active group is expanded by default in the mobile drawer.
+      await navigationScope
+        .locator('details')
+        .filter({ has: page.locator('a[href="/ai-analyst/markets"]') })
+        .locator('summary')
+        .click();
+    }
+    await navigationScope.locator('a[href="/ai-analyst/markets"]').click();
+    await page.waitForURL(/\/ai-analyst\/markets(?:\?|$)/);
+    await expect(page.locator('[data-ai-analyst-surface="market-explorer"]')).toBeVisible();
+    await expect(workspaceMain).toHaveCount(1);
+    await expect.poll(() => workspace.getAttribute('dir')).toBe('ltr');
+
+    // A refresh under a non-default locale must not leave a second (stale RTL) tree.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(workspace).toBeVisible();
+    await expect.poll(() => workspace.getAttribute('dir')).toBe('ltr');
+    await expect(workspaceMain).toHaveCount(1);
+    await expect(page.locator('main[data-testid="ai-analyst-workspace"][dir="rtl"]')).toHaveCount(0);
   });
 
   test('keeps one canonical AI Analyst entry across desktop and mobile navigation in every locale', async ({ page, isMobile }) => {

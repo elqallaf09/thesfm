@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { commitWhenStreamSettled } from '@/lib/runtime/streamingHydration';
 import { DEFAULT_CURRENCY } from './currencies';
 
 interface CurrencyContextValue {
@@ -18,13 +19,20 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState(DEFAULT_CURRENCY);
 
   useEffect(() => {
+    let stored: string | undefined;
     try {
       const direct = localStorage.getItem('sfm_currency');
-      if (direct) { setCurrencyState(direct); return; }
       const settings = JSON.parse(localStorage.getItem('sfm_settings') || '{}') as { currency?: string; finance?: { currency?: string } };
-      if (settings?.currency) setCurrencyState(settings.currency);
-      else if (settings?.finance?.currency) setCurrencyState(settings.finance.currency);
+      stored = direct || settings?.currency || settings?.finance?.currency || undefined;
     } catch {}
+    if (!stored || stored === DEFAULT_CURRENCY) return;
+    const storedCurrency = stored;
+    // The first-paint sync must not land while server HTML segments are still
+    // streaming (it would force pending Suspense boundaries to client-render
+    // and orphan their late server trees), and stays a transition afterwards.
+    return commitWhenStreamSettled(() => {
+      startTransition(() => setCurrencyState(storedCurrency));
+    });
   }, []);
 
   const setCurrency = useCallback((code: string) => {

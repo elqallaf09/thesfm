@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -9,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname } from 'next/navigation';
+import { commitWhenStreamSettled } from '@/lib/runtime/streamingHydration';
 import {
   applyDensityAttribute,
   DEFAULT_DENSITY,
@@ -43,13 +45,23 @@ export function DensityProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setPreference(readStoredDensityPreference());
     const media = window.matchMedia(DENSITY_DESKTOP_QUERY);
-    setIsDesktop(media.matches);
+    // The first-paint sync must not land while server HTML segments are still
+    // streaming (it would force pending Suspense boundaries to client-render
+    // and orphan their late server trees), and stays a transition afterwards.
+    const cancelCommit = commitWhenStreamSettled(() => {
+      startTransition(() => {
+        setPreference(readStoredDensityPreference());
+        setIsDesktop(media.matches);
+        setMounted(true);
+      });
+    });
     const onChange = (event: MediaQueryListEvent) => setIsDesktop(event.matches);
     media.addEventListener('change', onChange);
-    setMounted(true);
-    return () => media.removeEventListener('change', onChange);
+    return () => {
+      cancelCommit();
+      media.removeEventListener('change', onChange);
+    };
   }, []);
 
   const density = mounted

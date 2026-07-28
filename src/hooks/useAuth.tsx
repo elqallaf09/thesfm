@@ -6,6 +6,7 @@ import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
 import { activateGuestServerSession, syncServerAuthSession } from '@/lib/auth/clientSession';
+import { commitWhenStreamSettled } from '@/lib/runtime/streamingHydration';
 
 interface AuthContextValue {
   user: User | null;
@@ -125,13 +126,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       authInitializationRef.current = false;
       // Resolving a persisted session can update every auth consumer at once.
-      // Keep that initial, non-interactive render interruptible so hydration is
-      // not followed by another monolithic main-thread task.
-      startTransition(() => {
-        setSession(nextSession);
-        setUser(nextSession?.user ?? null);
-        setIsGuest(!nextSession && guestMode);
-        setLoading(false);
+      // Committing it while the server HTML is still streaming would force
+      // pending Suspense segments to client-render and orphan their late
+      // server trees, so the commit waits for the stream to settle and then
+      // runs as an interruptible transition.
+      commitWhenStreamSettled(() => {
+        if (!mounted) return;
+        startTransition(() => {
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          setIsGuest(!nextSession && guestMode);
+          setLoading(false);
+        });
       });
     };
 
@@ -174,14 +180,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // DELETE must not race it and clear the freshly issued guest cookie.
       if (event === 'SIGNED_OUT' && guestActivationInFlight) return;
       if (nextSession) clearStoredGuestMode();
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
       const guestMode = getStoredGuestMode();
-      setIsGuest(!nextSession && guestMode);
       syncGuestCookie(!nextSession && guestMode);
       if (nextSession) void syncServerAuthSession(nextSession);
       else if (event === 'SIGNED_OUT') void syncServerAuthSession(null);
-      setLoading(false);
+      // Same streaming rule as the initial restore: state commits must not
+      // land while server HTML segments are still pending.
+      commitWhenStreamSettled(() => {
+        if (!mounted) return;
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        setIsGuest(!nextSession && guestMode);
+        setLoading(false);
+      });
     });
 
     return () => {

@@ -1,5 +1,7 @@
 import * as React from "react"
 
+import { commitWhenStreamSettled } from "@/lib/runtime/streamingHydration"
+
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
@@ -17,8 +19,18 @@ export function useIsMobile() {
     }
 
     mql.addEventListener("change", onChange)
-    setIsMobile(mql.matches)
-    return () => mql.removeEventListener("change", onChange)
+    // The first-paint sync must not land while server HTML segments are still
+    // streaming: this hook renders above the route Suspense boundary, and an
+    // early commit would force pending segments to client-render and orphan
+    // their late server trees. The mobile media query already hides the
+    // desktop rail visually until this commit runs.
+    const cancelCommit = commitWhenStreamSettled(() => {
+      React.startTransition(() => setIsMobile(mql.matches))
+    })
+    return () => {
+      cancelCommit()
+      mql.removeEventListener("change", onChange)
+    }
   }, [])
 
   return isMobile
