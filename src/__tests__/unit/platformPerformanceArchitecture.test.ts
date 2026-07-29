@@ -56,6 +56,11 @@ describe('platform performance architecture', () => {
     expect(layout).not.toContain("weight: ['300'");
     expect(packageJson.scripts['check:performance-budget']).toBe('node scripts/check-performance-budget.mjs');
     expect(workflow).toContain('pnpm check:performance-budget');
-    expect(lighthouse.ci.collect.numberOfRuns).toBe(3);
+    // 5 runs (not 3): CI's Lighthouse job showed extreme run-to-run TBT and
+    // performance-score variance in a single 3-run session against one
+    // long-lived `next start` process (consistent with Node JIT/module
+    // warmup on the first run) — a larger sample makes the median-based
+    // assertion far less sensitive to one cold or contended run.
+    expect(lighthouse.ci.collect.numberOfRuns).toBe(5);
   });
 });
