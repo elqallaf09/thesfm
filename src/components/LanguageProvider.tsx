@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Lang } from '@/lib/translations';
 import { t as translate, TR } from '@/lib/translations';
 import { trackEvent } from '@/lib/analytics';
+import { deferUntilStreamSettled } from '@/lib/runtime/deferUntilStreamSettled';
 import {
   LanguageContext,
   useLang,
@@ -32,7 +33,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>('ar');
 
   useEffect(() => {
-    setLangState(readStoredLang());
+    // Deferred (not a plain synchronous call): committing this correction
+    // while the route segment is still streaming can force React to abandon
+    // hydrating it, orphaning the server-streamed markup that arrives
+    // afterwards alongside the client-rendered replacement. See
+    // deferUntilStreamSettled's docstring for the full mechanism.
+    const cancelInitialSync = deferUntilStreamSettled(() => {
+      setLangState(readStoredLang());
+    });
 
     const syncLang = (event?: Event) => {
       const customLang = event instanceof CustomEvent ? event.detail?.lang : undefined;
@@ -42,6 +50,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener(LANG_EVENT, syncLang as EventListener);
     window.addEventListener('storage', syncLang);
     return () => {
+      cancelInitialSync();
       window.removeEventListener(LANG_EVENT, syncLang as EventListener);
       window.removeEventListener('storage', syncLang);
     };
