@@ -6,7 +6,7 @@
       "url": [
         "http://127.0.0.1:3100/"
       ],
-      "numberOfRuns": 3,
+      "numberOfRuns": 5,
       "settings": {
         "chromeFlags": "--no-sandbox"
       }

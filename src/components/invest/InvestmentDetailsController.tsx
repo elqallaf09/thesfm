@@ -50,11 +50,13 @@ export const InvestmentDetailsController = memo(forwardRef<InvestmentDetailsCont
       triggerRef.current = trigger;
       setDetailsReady(false);
       setInvestment(item);
+      // One frame is enough to let the empty drawer shell and backdrop paint
+      // before the (heavier) populated content commits, avoiding jank from
+      // both landing in the same frame; a second frame here only doubled the
+      // guaranteed minimum reveal latency without buying additional safety.
       revealFrameRef.current = window.requestAnimationFrame(() => {
-        revealFrameRef.current = window.requestAnimationFrame(() => {
-          revealFrameRef.current = null;
-          startTransition(() => setDetailsReady(true));
-        });
+        revealFrameRef.current = null;
+        startTransition(() => setDetailsReady(true));
       });
     },
     update(item) {
