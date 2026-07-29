@@ -23,6 +23,12 @@ const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   display: 'swap',
+  // Not referenced by the public landing page (only by authenticated
+  // workspace tables/charts showing tabular financial figures) — no need to
+  // eagerly preload it as a high-priority request on every page, including
+  // the marketing homepage. `display: swap` above already ensures a correct,
+  // non-blocking fallback-then-swap once a page that does use it requests it.
+  preload: false,
 });
 
 export function generateMetadata(): Metadata {
