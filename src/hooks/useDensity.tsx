@@ -46,9 +46,9 @@ export function DensityProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const media = window.matchMedia(DENSITY_DESKTOP_QUERY);
-    // The first-paint sync must not land while server HTML segments are still
-    // streaming (it would force pending Suspense boundaries to client-render
-    // and orphan their late server trees), and stays a transition afterwards.
+    // The first-paint sync must not land while a route Suspense segment is
+    // still dehydrated (see streamingHydration.ts), and stays a transition
+    // afterwards.
     const cancelCommit = commitWhenStreamSettled(() => {
       startTransition(() => {
         setPreference(readStoredDensityPreference());

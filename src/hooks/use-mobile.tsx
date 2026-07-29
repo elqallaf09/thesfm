@@ -19,11 +19,8 @@ export function useIsMobile() {
     }
 
     mql.addEventListener("change", onChange)
-    // The first-paint sync must not land while server HTML segments are still
-    // streaming: this hook renders above the route Suspense boundary, and an
-    // early commit would force pending segments to client-render and orphan
-    // their late server trees. The mobile media query already hides the
-    // desktop rail visually until this commit runs.
+    // The first-paint sync must not land while a route Suspense segment is
+    // still dehydrated (see streamingHydration.ts).
     const cancelCommit = commitWhenStreamSettled(() => {
       React.startTransition(() => setIsMobile(mql.matches))
     })

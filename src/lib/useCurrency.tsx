@@ -27,9 +27,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     } catch {}
     if (!stored || stored === DEFAULT_CURRENCY) return;
     const storedCurrency = stored;
-    // The first-paint sync must not land while server HTML segments are still
-    // streaming (it would force pending Suspense boundaries to client-render
-    // and orphan their late server trees), and stays a transition afterwards.
+    // The first-paint sync must not land while a route Suspense segment is
+    // still dehydrated (see streamingHydration.ts), and stays a transition
+    // afterwards.
     return commitWhenStreamSettled(() => {
       startTransition(() => setCurrencyState(storedCurrency));
     });

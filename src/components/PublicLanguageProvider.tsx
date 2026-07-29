@@ -36,11 +36,7 @@ export function PublicLanguageProvider({ children }: { children: React.ReactNode
   const pendingLangRef = useRef<Lang | null>(null);
   const cancelPendingCommitRef = useRef<(() => void) | null>(null);
 
-  // Committing a locale while the server HTML is still streaming forces the
-  // pending Suspense segments to client-render and orphans their late server
-  // trees (duplicate workspace <main> elements). Every locale state commit
-  // therefore waits for the stream to settle, then applies the latest value
-  // at transition priority so already-arrived boundaries hydrate first.
+  // Same streaming-safe commit rule as LanguageProvider.tsx.
   const commitLang = useCallback((nextLang: Lang) => {
     pendingLangRef.current = nextLang;
     cancelPendingCommitRef.current?.();

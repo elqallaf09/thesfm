@@ -80,13 +80,35 @@ describe('AI Analyst workspace consolidation', () => {
   });
 
   it('keeps first-paint provider commits streaming-safe so one workspace tree survives hydration', () => {
-    // A client state update that lands while server HTML segments are still
-    // streaming forces the pending route Suspense boundary to client-render;
-    // the late server segment is then orphaned in the DOM, and two
+    // A synchronous client state update that lands while a route Suspense
+    // boundary is still hydrating forces React to abandon hydration for that
+    // boundary and client-render it instead; the late-arriving server
+    // segment is then orphaned in the DOM, producing two
     // <main data-testid="ai-analyst-workspace"> elements (one per locale
-    // direction) exist simultaneously. Every first-paint storage/viewport
-    // sync in the providers above the route boundary must wait for the
-    // stream to settle and commit at transition priority.
+    // direction) simultaneously.
+    //
+    // All six first-paint provider syncs need the guard, not a subset:
+    // gating only locale + auth (on the theory that currency/density/mobile
+    // are "lower stakes") measured the SAME reproduction rate as no guard at
+    // all — the shared route Suspense boundary bails on whichever provider
+    // happens to commit first while it's dehydrated, so any ungated one is
+    // a full-strength weak link, not a partial one.
+    //
+    // Two other approaches did not hold up:
+    // - A cookie mirror of the locale, read server-side so <html lang/dir>
+    //   and the providers' initial state matched the visitor's actual
+    //   preference from the first byte, removed the need for a correction
+    //   in the common case — but reading a cookie in the root layout forces
+    //   the entire app into dynamic rendering, which broke metadata
+    //   streaming (the <meta name="description"> tag started landing in
+    //   <body> instead of <head>, failing Lighthouse SEO).
+    // - Gating all six independently (six separate DOMContentLoaded
+    //   listeners and poll loops, each firing its own startTransition) is
+    //   what caused the original Lighthouse TBT regression: six separate
+    //   correction commits landing in quick succession is more work than
+    //   one. commitWhenStreamSettled now shares a single subscription
+    //   across every caller, so all six corrections fire together in one
+    //   batch instead of six.
     for (const file of [
       'src/components/LanguageProvider.tsx',
       'src/components/PublicLanguageProvider.tsx',
@@ -97,17 +119,22 @@ describe('AI Analyst workspace consolidation', () => {
     ]) {
       const provider = source(file);
       expect(provider, `${file} must import startTransition`).toMatch(/\bstartTransition\b/);
-      expect(provider, `${file} must defer first-paint commits until the stream settles`)
+      expect(provider, `${file} must defer its first-paint commit until the stream settles`)
         .toMatch(/\bcommitWhenStreamSettled\b/);
       expect(provider, `${file} must not set locale/preference state synchronously from its mount sync effect`)
         .not.toMatch(/useEffect\(\(\) => \{\n\s*set[A-Z]\w*State?\(read/);
     }
     const scheduler = source('src/lib/runtime/streamingHydration.ts');
+    expect(scheduler, 'the scheduler must share one subscription across every caller instead of one per provider')
+      .toMatch(/callbacks/);
     expect(scheduler).toContain('template[id^="B:"]');
     // DOMContentLoaded marks the closed HTML stream; the load event must not
     // be the gate because a slow image or beacon would freeze the commits.
     expect(scheduler).toContain("document.readyState !== 'loading'");
     expect(scheduler).not.toMatch(/addEventListener\('load'/);
+    const layout = source('src/app/layout.tsx');
+    expect(layout, 'root layout must stay a plain sync function — reading cookies() here forces dynamic rendering app-wide and breaks metadata streaming')
+      .toMatch(/export default function RootLayout/);
     const shell = source('src/components/ai-analyst/AiAnalystShell.tsx');
     expect(shell.match(/data-testid="ai-analyst-workspace"/g)).toHaveLength(1);
   });

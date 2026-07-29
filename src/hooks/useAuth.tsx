@@ -125,11 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const commitInitialAuthState = (nextSession: Session | null, guestMode: boolean) => {
       if (!mounted) return;
       authInitializationRef.current = false;
-      // Resolving a persisted session can update every auth consumer at once.
-      // Committing it while the server HTML is still streaming would force
-      // pending Suspense segments to client-render and orphan their late
-      // server trees, so the commit waits for the stream to settle and then
-      // runs as an interruptible transition.
+      // getSession()'s resolution always changes `loading` to false, even
+      // for a returning guest whose isGuest value doesn't otherwise change —
+      // this is a real, unavoidable async check with no cheaper way to
+      // predict the outcome up front. This commit waits for any pending
+      // Suspense segment to settle before landing, so it can't force one to
+      // abandon hydration and orphan its server tree; the interruptible
+      // transition still applies once it lands so it doesn't block a
+      // monolithic main-thread task either.
       commitWhenStreamSettled(() => {
         if (!mounted) return;
         startTransition(() => {
@@ -184,14 +187,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       syncGuestCookie(!nextSession && guestMode);
       if (nextSession) void syncServerAuthSession(nextSession);
       else if (event === 'SIGNED_OUT') void syncServerAuthSession(null);
-      // Same streaming rule as the initial restore: state commits must not
-      // land while server HTML segments are still pending.
+      // Same streaming-safe commit rule as the initial restore.
       commitWhenStreamSettled(() => {
         if (!mounted) return;
-        setSession(nextSession);
-        setUser(nextSession?.user ?? null);
-        setIsGuest(!nextSession && guestMode);
-        setLoading(false);
+        startTransition(() => {
+          setSession(nextSession);
+          setUser(nextSession?.user ?? null);
+          setIsGuest(!nextSession && guestMode);
+          setLoading(false);
+        });
       });
     });
 
