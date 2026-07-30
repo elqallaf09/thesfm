@@ -22,9 +22,13 @@
 // Output is a plan only. A human reviews it and runs the printed
 // `supabase migration repair` commands themselves.
 
-import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+
+// Overridable only so tests can point this at a local mock HTTP server that
+// stands in for the Supabase Management API. In real usage this is always
+// the real API — never set this env var outside of tests.
+const MANAGEMENT_API_BASE = process.env.SUPABASE_MANAGEMENT_API_BASE_URL || 'https://api.supabase.com';
 
 const [, , previewRef, ...versions] = process.argv;
 
@@ -64,58 +68,112 @@ function findMigrationFile(version) {
   return join(dir, match);
 }
 
-function queryRemote(sql) {
-  // Uses the Supabase Management API's SQL execution endpoint via the CLI,
-  // which is already authenticated with SUPABASE_ACCESS_TOKEN.
-  const out = execFileSync('supabase', ['db', 'execute', '--project-ref', previewRef, '--sql', sql], {
-    encoding: 'utf8',
-    env: { ...process.env },
-  });
-  return out;
+class SupabaseQueryError extends Error {}
+
+function escapeLiteral(value) {
+  return value.replace(/'/g, "''");
 }
 
-const plan = [];
+// Runs a single read-only SELECT against the target via the Supabase
+// Management API's dedicated read-only query endpoint (a supabase_read_only_user
+// role that cannot write). Returns the parsed array of result rows.
+//
+// Fails closed: any network error, non-success HTTP status, or response that
+// isn't the JSON array shape this endpoint documents throws SupabaseQueryError
+// instead of returning a result — callers must never interpret a failure to
+// verify as proof that an object is absent.
+async function queryRemote(sql, { fetchImpl = fetch } = {}) {
+  const url = `${MANAGEMENT_API_BASE}/v1/projects/${previewRef}/database/query/read-only`;
 
-for (const version of versions) {
-  const filePath = findMigrationFile(version);
-  const sql = readFileSync(filePath, 'utf8');
-  const { tables, indexes } = extractExpectedObjects(sql);
-
-  if (tables.length === 0 && indexes.length === 0) {
-    console.log(`[${version}] No table/index CREATE statements detected — this tool does not have enough signal to prove equivalence. Skipping (not proposed for reconciliation).`);
-    continue;
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: sql }),
+    });
+  } catch (networkError) {
+    throw new SupabaseQueryError(`Could not reach the Supabase Management API: ${networkError.message}`);
   }
 
-  console.log(`[${version}] Expecting tables: [${tables.join(', ') || 'none'}], indexes: [${indexes.join(', ') || 'none'}]`);
-
-  const missing = [];
-  for (const table of tables) {
-    const result = queryRemote(`select 1 from information_schema.tables where table_schema='public' and table_name='${table}';`);
-    if (!result.includes('1')) missing.push(`table public.${table}`);
-  }
-  for (const index of indexes) {
-    const result = queryRemote(`select 1 from pg_indexes where schemaname='public' and indexname='${index}';`);
-    if (!result.includes('1')) missing.push(`index public.${index}`);
+  if (response.status !== 201) {
+    throw new SupabaseQueryError(`Supabase Management API read-only query returned HTTP ${response.status}.`);
   }
 
-  if (missing.length > 0) {
-    console.log(`[${version}] NOT proven equivalent — missing on target: ${missing.join(', ')}. Not proposed for reconciliation.\n`);
-    continue;
+  let rows;
+  try {
+    rows = await response.json();
+  } catch {
+    throw new SupabaseQueryError('Supabase Management API read-only query response was not valid JSON.');
   }
 
-  console.log(`[${version}] All expected objects exist on the target. Proposing reconciliation.\n`);
-  plan.push(version);
+  if (!Array.isArray(rows)) {
+    throw new SupabaseQueryError('Supabase Management API read-only query returned an unexpected (non-array) response shape.');
+  }
+
+  return rows;
 }
 
-console.log('=== Reconciliation plan ===');
-if (plan.length === 0) {
-  console.log('No candidate versions were proven equivalent. Nothing to reconcile.');
-  process.exit(0);
+async function main() {
+  const plan = [];
+
+  for (const version of versions) {
+    const filePath = findMigrationFile(version);
+    const sql = readFileSync(filePath, 'utf8');
+    const { tables, indexes } = extractExpectedObjects(sql);
+
+    if (tables.length === 0 && indexes.length === 0) {
+      console.log(`[${version}] No table/index CREATE statements detected — this tool does not have enough signal to prove equivalence. Skipping (not proposed for reconciliation).`);
+      continue;
+    }
+
+    console.log(`[${version}] Expecting tables: [${tables.join(', ') || 'none'}], indexes: [${indexes.join(', ') || 'none'}]`);
+
+    const missing = [];
+    try {
+      for (const table of tables) {
+        const rows = await queryRemote(
+          `select 1 as found from information_schema.tables where table_schema = 'public' and table_name = '${escapeLiteral(table)}';`
+        );
+        if (rows.length === 0) missing.push(`table public.${table}`);
+      }
+      for (const index of indexes) {
+        const rows = await queryRemote(
+          `select 1 as found from pg_catalog.pg_indexes where schemaname = 'public' and indexname = '${escapeLiteral(index)}';`
+        );
+        if (rows.length === 0) missing.push(`index public.${index}`);
+      }
+    } catch (error) {
+      // An API/network/shape failure is not the same as a proven absence.
+      // Fail closed: abort the whole run rather than risk this version being
+      // silently (and wrongly) reported as either proposed or not proposed.
+      fail(`Could not verify version ${version} against the target — refusing to propose any reconciliation. ${error.message}`);
+    }
+
+    if (missing.length > 0) {
+      console.log(`[${version}] NOT proven equivalent — missing on target: ${missing.join(', ')}. Not proposed for reconciliation.\n`);
+      continue;
+    }
+
+    console.log(`[${version}] All expected objects exist on the target. Proposing reconciliation.\n`);
+    plan.push(version);
+  }
+
+  console.log('=== Reconciliation plan ===');
+  if (plan.length === 0) {
+    console.log('No candidate versions were proven equivalent. Nothing to reconcile.');
+    return;
+  }
+
+  console.log('The following versions had every expected schema object confirmed present on the target.');
+  console.log('Review each one, then run manually if you agree:\n');
+  for (const version of plan) {
+    console.log(`  supabase migration repair --status applied ${version} --project-ref ${previewRef}`);
+  }
+  console.log('\nThis script has not executed any of the above. Nothing was written to the target database.');
 }
 
-console.log('The following versions had every expected schema object confirmed present on the target.');
-console.log('Review each one, then run manually if you agree:\n');
-for (const version of plan) {
-  console.log(`  supabase migration repair --status applied ${version} --project-ref ${previewRef}`);
-}
-console.log('\nThis script has not executed any of the above. Nothing was written to the target database.');
+main();
