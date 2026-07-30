@@ -5,10 +5,9 @@ import { forwardRef, memo, startTransition, useCallback, useEffect, useImperativ
 import type { ComponentProps } from 'react';
 import type { Investment } from '@/types/investment';
 
-const InvestmentDetailDrawer = dynamic(
-  () => import('./InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer),
-  { ssr: false },
-);
+const loadInvestmentDetailDrawer = () => import('./InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer);
+
+const InvestmentDetailDrawer = dynamic(loadInvestmentDetailDrawer, { ssr: false });
 
 type DrawerProps = ComponentProps<typeof InvestmentDetailDrawer>;
 
@@ -65,6 +64,15 @@ export const InvestmentDetailsController = memo(forwardRef<InvestmentDetailsCont
   }), [cancelDetailsReveal]);
 
   useEffect(() => () => cancelDetailsReveal(), [cancelDetailsReveal]);
+
+  useEffect(() => {
+    // The drawer's code-split chunk otherwise loads on first open, so its
+    // fetch+parse+eval cost lands entirely inside that click's presentation
+    // delay. Warming it once the list has mounted moves that cost off the
+    // interaction's critical path; it's the same module `dynamic()` above
+    // loads, so this primes its cache rather than fetching it twice.
+    void loadInvestmentDetailDrawer();
+  }, []);
 
   useEffect(() => {
     if (investment || !triggerRef.current) return;
