@@ -859,14 +859,14 @@ export default function PublicLandingPage() {
             );
           })}
           <div className="mobile-menu-ctas">
-            <Link href={appHref} className="sfm-button-primary" onClick={() => setMenuOpen(false)}>{primaryLabel}</Link>
+            <Link href={appHref} prefetch={false} className="sfm-button-primary" onClick={() => setMenuOpen(false)}>{primaryLabel}</Link>
           </div>
         </div>
 
         <div className="landing-actions">
           <LanguageSwitcher variant="gold" compact />
           <ThemeToggle />
-          <Link href={appHref} className="nav-primary sfm-button-primary">{primaryLabel}</Link>
+          <Link href={appHref} prefetch={false} className="nav-primary sfm-button-primary">{primaryLabel}</Link>
           <button
             type="button"
             className="mobile-menu-button sfm-button-secondary"
@@ -885,7 +885,7 @@ export default function PublicLandingPage() {
           <h1>{text.heroTitle}</h1>
           <p>{text.heroSubtitle}</p>
           <div className="hero-buttons">
-            <Link href={appHref} className="primary-cta sfm-button-primary">{primaryLabel}</Link>
+            <Link href={appHref} prefetch={false} className="primary-cta sfm-button-primary">{primaryLabel}</Link>
             <a href="#features" className="secondary-cta sfm-button-secondary">{text.viewFeatures}</a>
           </div>
         </div>
@@ -1093,7 +1093,7 @@ export default function PublicLandingPage() {
       <section className="final-cta">
         <h2>{text.finalTitle}</h2>
         <p>{text.finalSubtitle}</p>
-        <Link href={appHref} className="sfm-button-primary">{primaryLabel}</Link>
+        <Link href={appHref} prefetch={false} className="sfm-button-primary">{primaryLabel}</Link>
       </section>
 
       <footer className="landing-footer">

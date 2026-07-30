@@ -2,10 +2,26 @@
 
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase, supabaseConfigError } from '@/integrations/supabase/client';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
 import { activateGuestServerSession, syncServerAuthSession } from '@/lib/auth/clientSession';
+
+// The Supabase browser SDK is a large dependency that most of this module only
+// needs after the initial paint (session restore, sign-in/out). Loading it via
+// a cached dynamic import keeps it out of the synchronously-evaluated bundle on
+// every page — including the anonymous landing page — instead of a static
+// top-level import. This is the same singleton client every time; the promise
+// cache guarantees the module (and therefore createClient) only runs once.
+type SupabaseClientModule = typeof import('@/integrations/supabase/client');
+
+let supabaseModulePromise: Promise<SupabaseClientModule> | null = null;
+
+function loadSupabaseModule(): Promise<SupabaseClientModule> {
+  if (!supabaseModulePromise) {
+    supabaseModulePromise = import('@/integrations/supabase/client');
+  }
+  return supabaseModulePromise;
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -98,7 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const continueAsGuest = useCallback(() => {
     if (guestActivationInFlight) return guestActivationInFlight;
     const activation = (async () => {
-      if (session) await supabase.auth.signOut({ scope: 'local' });
+      if (session) {
+        const { supabase } = await loadSupabaseModule();
+        await supabase.auth.signOut({ scope: 'local' });
+      }
       const stored = setStoredGuestMode();
       const sync = await activateGuestServerSession();
       // Mirror the server cookie in the browser as well. This keeps production HTTPS secure,
@@ -120,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe: (() => void) | null = null;
 
     const commitInitialAuthState = (nextSession: Session | null, guestMode: boolean) => {
       if (!mounted) return;
@@ -135,58 +155,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    supabase.auth.getSession()
-      .then(async ({ data }) => {
-        if (!mounted) return;
-        const guestMode = getStoredGuestMode();
-        if (data.session) clearStoredGuestMode();
-        const sync = data.session ? await syncServerAuthSession(data.session) : { ok: true as const };
-        if (!mounted) return;
-        if (data.session && !sync.ok && sync.code === 'UNAUTHORIZED') {
-          await supabase.auth.signOut({ scope: 'local' });
-          commitInitialAuthState(null, guestMode);
-          syncGuestCookie(guestMode);
-          return;
-        }
-        commitInitialAuthState(data.session, guestMode);
-        syncGuestCookie(!data.session && guestMode);
-      })
-      .catch(error => {
-        if (mounted) {
+    loadSupabaseModule().then(({ supabase }) => {
+      // The dynamic import can resolve after this effect has already been
+      // cleaned up (fast unmount, route change, Strict Mode's mount->cleanup
+      // cycle). Never register the auth listener in that case.
+      if (!mounted) return;
+
+      supabase.auth.getSession()
+        .then(async ({ data }) => {
+          if (!mounted) return;
           const guestMode = getStoredGuestMode();
-          commitInitialAuthState(null, guestMode);
-          syncGuestCookie(guestMode);
-        }
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[auth] failed to load initial session', {
-            message: error instanceof Error ? error.message : String(error),
-          });
-        }
+          if (data.session) clearStoredGuestMode();
+          const sync = data.session ? await syncServerAuthSession(data.session) : { ok: true as const };
+          if (!mounted) return;
+          if (data.session && !sync.ok && sync.code === 'UNAUTHORIZED') {
+            await supabase.auth.signOut({ scope: 'local' });
+            commitInitialAuthState(null, guestMode);
+            syncGuestCookie(guestMode);
+            return;
+          }
+          commitInitialAuthState(data.session, guestMode);
+          syncGuestCookie(!data.session && guestMode);
+        })
+        .catch(error => {
+          if (mounted) {
+            const guestMode = getStoredGuestMode();
+            commitInitialAuthState(null, guestMode);
+            syncGuestCookie(guestMode);
+          }
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[auth] failed to load initial session', {
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+        // getSession performs the authoritative initial restore and server-cookie verification.
+        // Ignoring overlapping INITIAL_SESSION/TOKEN_REFRESHED callbacks prevents auth UI from
+        // rendering before that verification settles.
+        if (authInitializationRef.current) return;
+        // Local sign-out is part of the authenticated-to-guest handoff. The guest
+        // activation request owns cookie replacement, so a concurrent signed-out
+        // DELETE must not race it and clear the freshly issued guest cookie.
+        if (event === 'SIGNED_OUT' && guestActivationInFlight) return;
+        if (nextSession) clearStoredGuestMode();
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        const guestMode = getStoredGuestMode();
+        setIsGuest(!nextSession && guestMode);
+        syncGuestCookie(!nextSession && guestMode);
+        if (nextSession) void syncServerAuthSession(nextSession);
+        else if (event === 'SIGNED_OUT') void syncServerAuthSession(null);
+        setLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      // getSession performs the authoritative initial restore and server-cookie verification.
-      // Ignoring overlapping INITIAL_SESSION/TOKEN_REFRESHED callbacks prevents auth UI from
-      // rendering before that verification settles.
-      if (authInitializationRef.current) return;
-      // Local sign-out is part of the authenticated-to-guest handoff. The guest
-      // activation request owns cookie replacement, so a concurrent signed-out
-      // DELETE must not race it and clear the freshly issued guest cookie.
-      if (event === 'SIGNED_OUT' && guestActivationInFlight) return;
-      if (nextSession) clearStoredGuestMode();
-      setSession(nextSession);
-      setUser(nextSession?.user ?? null);
-      const guestMode = getStoredGuestMode();
-      setIsGuest(!nextSession && guestMode);
-      syncGuestCookie(!nextSession && guestMode);
-      if (nextSession) void syncServerAuthSession(nextSession);
-      else if (event === 'SIGNED_OUT') void syncServerAuthSession(null);
-      setLoading(false);
+      unsubscribe = () => subscription.unsubscribe();
     });
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
@@ -198,6 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     continueAsGuest,
     signIn: async (username: string, password: string) => {
       try {
+        const { supabase, supabaseConfigError } = await loadSupabaseModule();
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const identifier = username.trim();
         const currentSession = (await supabase.auth.getSession()).data.session;
@@ -275,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp: async (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => {
       const cleanUsername = username.trim().toLowerCase();
       try {
+        const { supabase, supabaseConfigError } = await loadSupabaseModule();
         if (supabaseConfigError) return { error: new Error(supabaseConfigError) };
         const cleanEmail = email.trim().toLowerCase();
         const cleanPassword = password.trim();
@@ -349,6 +380,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signOut: async () => {
       void trackEvent('logout', { module: 'auth' });
+      const { supabase } = await loadSupabaseModule();
       await supabase.auth.signOut();
       clearStoredGuestMode();
       syncGuestCookie(false);
