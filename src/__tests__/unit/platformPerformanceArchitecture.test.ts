@@ -12,8 +12,11 @@ describe('platform performance architecture', () => {
     const appLayout = read('src/components/AppLayout.tsx');
 
     expect(layout).toContain('<AdaptiveLanguageProvider>');
-    expect(adaptiveLanguage).toContain('const WorkspaceLanguageProvider = dynamic(');
-    expect(adaptiveLanguage).toContain("import('@/components/LanguageProvider')");
+    expect(adaptiveLanguage).toContain('const PersonalFinanceLanguageProvider = dynamic(');
+    expect(adaptiveLanguage).toContain("import('@/components/language/MarketsTradingLanguageProvider')");
+    expect(adaptiveLanguage).toContain("import('@/components/language/BusinessProjectsLanguageProvider')");
+    expect(adaptiveLanguage).toContain("import('@/components/language/AdministrationLanguageProvider')");
+    expect(read('src/components/LanguageProvider.tsx')).not.toContain("from '@/lib/translations'");
     expect(publicLanguage).not.toContain('import { t as translate, TR }');
     expect(publicLanguage).toContain('TR_AUTH');
     expect(publicLanguage).toContain('TR_COMMON');

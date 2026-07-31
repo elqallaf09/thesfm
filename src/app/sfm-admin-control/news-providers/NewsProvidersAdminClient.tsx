@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, Clock3, DatabaseZap, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { useLanguage } from '@/hooks/useLanguage';
-import { t, type Lang } from '@/lib/translations';
+import { TR_ADMIN } from '@/lib/translations/admin';
+import { translateFromDictionary, type Lang } from '@/lib/translations/types';
 
 type ProviderStatus = {
   providerId: string;
@@ -63,12 +64,12 @@ const STATUS_VALUES = new Set([
 
 function sourceLabel(sourceType: string, language: Lang) {
   const value = SOURCE_TYPES.has(sourceType) ? sourceType : 'other';
-  return t(`admin_news_source_${value}`, language);
+  return translateFromDictionary(TR_ADMIN, `admin_news_source_${value}`, language);
 }
 
 function statusLabel(status: string | null | undefined, language: Lang, fallback: string) {
   if (!status || !STATUS_VALUES.has(status)) return fallback;
-  return t(`admin_news_status_${status}`, language);
+  return translateFromDictionary(TR_ADMIN, `admin_news_status_${status}`, language);
 }
 
 function dateText(value: string | null | undefined, locale: string, fallback: string) {
@@ -84,40 +85,40 @@ export default function NewsProvidersAdminClient() {
   const { lang, dir } = useLanguage();
   const language = (lang === 'ar' || lang === 'fr' ? lang : 'en') as Lang;
   const text = useMemo(() => ({
-    title: t('admin_news_providers_title', language),
-    subtitle: t('admin_news_providers_subtitle', language),
-    refresh: t('admin_news_providers_refresh', language),
-    refreshing: t('admin_news_providers_refreshing', language),
-    updated: t('admin_news_providers_updated', language),
-    total: t('admin_news_providers_total', language),
-    enabled: t('admin_news_providers_enabled', language),
-    healthy: t('admin_news_providers_healthy', language),
-    attention: t('admin_news_providers_attention', language),
-    partial: t('admin_news_providers_partial', language),
-    unavailable: t('admin_news_providers_unavailable', language),
-    empty: t('admin_news_providers_empty', language),
-    official: t('admin_news_providers_official', language),
-    active: t('admin_news_providers_active', language),
-    disabled: t('admin_news_providers_disabled', language),
-    reliability: t('admin_news_providers_reliability', language),
-    priority: t('admin_news_providers_priority', language),
-    markets: t('admin_news_providers_markets', language),
-    allMarkets: t('admin_news_providers_all_markets', language),
-    lastSuccess: t('admin_news_providers_last_success', language),
-    lastFailure: t('admin_news_providers_last_failure', language),
-    averageLatency: t('admin_news_providers_average_latency', language),
-    failureCount: t('admin_news_providers_failure_count', language),
-    rateLimit: t('admin_news_providers_rate_limit', language),
-    disabledUntil: t('admin_news_providers_disabled_until', language),
-    latestError: t('admin_news_providers_latest_error', language),
-    latestRun: t('admin_news_providers_latest_run', language),
-    fetched: t('admin_news_providers_fetched', language),
-    rejected: t('admin_news_providers_rejected', language),
-    deduplicated: t('admin_news_providers_deduplicated', language),
-    saved: t('admin_news_providers_saved', language),
-    unknown: t('admin_news_providers_unknown', language),
-    never: t('admin_news_providers_never', language),
-    milliseconds: t('admin_news_providers_milliseconds', language),
+    title: translateFromDictionary(TR_ADMIN, 'admin_news_providers_title', language),
+    subtitle: translateFromDictionary(TR_ADMIN, 'admin_news_providers_subtitle', language),
+    refresh: translateFromDictionary(TR_ADMIN, 'admin_news_providers_refresh', language),
+    refreshing: translateFromDictionary(TR_ADMIN, 'admin_news_providers_refreshing', language),
+    updated: translateFromDictionary(TR_ADMIN, 'admin_news_providers_updated', language),
+    total: translateFromDictionary(TR_ADMIN, 'admin_news_providers_total', language),
+    enabled: translateFromDictionary(TR_ADMIN, 'admin_news_providers_enabled', language),
+    healthy: translateFromDictionary(TR_ADMIN, 'admin_news_providers_healthy', language),
+    attention: translateFromDictionary(TR_ADMIN, 'admin_news_providers_attention', language),
+    partial: translateFromDictionary(TR_ADMIN, 'admin_news_providers_partial', language),
+    unavailable: translateFromDictionary(TR_ADMIN, 'admin_news_providers_unavailable', language),
+    empty: translateFromDictionary(TR_ADMIN, 'admin_news_providers_empty', language),
+    official: translateFromDictionary(TR_ADMIN, 'admin_news_providers_official', language),
+    active: translateFromDictionary(TR_ADMIN, 'admin_news_providers_active', language),
+    disabled: translateFromDictionary(TR_ADMIN, 'admin_news_providers_disabled', language),
+    reliability: translateFromDictionary(TR_ADMIN, 'admin_news_providers_reliability', language),
+    priority: translateFromDictionary(TR_ADMIN, 'admin_news_providers_priority', language),
+    markets: translateFromDictionary(TR_ADMIN, 'admin_news_providers_markets', language),
+    allMarkets: translateFromDictionary(TR_ADMIN, 'admin_news_providers_all_markets', language),
+    lastSuccess: translateFromDictionary(TR_ADMIN, 'admin_news_providers_last_success', language),
+    lastFailure: translateFromDictionary(TR_ADMIN, 'admin_news_providers_last_failure', language),
+    averageLatency: translateFromDictionary(TR_ADMIN, 'admin_news_providers_average_latency', language),
+    failureCount: translateFromDictionary(TR_ADMIN, 'admin_news_providers_failure_count', language),
+    rateLimit: translateFromDictionary(TR_ADMIN, 'admin_news_providers_rate_limit', language),
+    disabledUntil: translateFromDictionary(TR_ADMIN, 'admin_news_providers_disabled_until', language),
+    latestError: translateFromDictionary(TR_ADMIN, 'admin_news_providers_latest_error', language),
+    latestRun: translateFromDictionary(TR_ADMIN, 'admin_news_providers_latest_run', language),
+    fetched: translateFromDictionary(TR_ADMIN, 'admin_news_providers_fetched', language),
+    rejected: translateFromDictionary(TR_ADMIN, 'admin_news_providers_rejected', language),
+    deduplicated: translateFromDictionary(TR_ADMIN, 'admin_news_providers_deduplicated', language),
+    saved: translateFromDictionary(TR_ADMIN, 'admin_news_providers_saved', language),
+    unknown: translateFromDictionary(TR_ADMIN, 'admin_news_providers_unknown', language),
+    never: translateFromDictionary(TR_ADMIN, 'admin_news_providers_never', language),
+    milliseconds: translateFromDictionary(TR_ADMIN, 'admin_news_providers_milliseconds', language),
   }), [language]);
   const locale = language === 'ar' ? 'ar-KW-u-nu-latn' : language === 'fr' ? 'fr-FR' : 'en-US';
   const [data, setData] = useState<StatusResponse | null>(null);

@@ -1,4 +1,4 @@
-import { TR } from '@/lib/translations';
+import type { TR } from '@/lib/translations';
 
 type TranslationKey = keyof typeof TR;
 

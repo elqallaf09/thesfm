@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { COMPANY_CATEGORY_CONFIGS, isCompanyCategory } from '@/lib/companyListings';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
-import { TR } from '@/lib/translations';
+import type { TR } from '@/lib/translations';
 
 type TranslationKey = keyof typeof TR;
 
