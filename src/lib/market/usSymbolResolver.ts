@@ -1,5 +1,5 @@
-import staticUsSymbols from '@/data/us-symbols.json';
 import { normalizeAssetType, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
+import { getBundledUsSymbolCatalog } from '@/lib/server/usSymbolCatalog';
 
 type USSymbolRecord = MarketSearchItem & {
   providerSymbol: string;
@@ -123,8 +123,9 @@ function dedupe(rows: USSymbolRecord[]) {
   ).sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
-function staticUniverse() {
-  return (staticUsSymbols as USSymbolRecord[]).map(withCanonicalUsSymbolOverride);
+async function staticUniverse() {
+  const catalog = await getBundledUsSymbolCatalog();
+  return (catalog.rows as USSymbolRecord[]).map(withCanonicalUsSymbolOverride);
 }
 
 export async function getUSSymbolUniverse() {
@@ -149,7 +150,7 @@ export async function getUSSymbolUniverse() {
         message: error instanceof Error ? error.message : String(error),
       });
     }
-    cachedUniverse = { rows: staticUniverse(), source: 'static', expiresAt: now + US_SYMBOL_CACHE_MS };
+    cachedUniverse = { rows: await staticUniverse(), source: 'static', expiresAt: now + US_SYMBOL_CACHE_MS };
     return cachedUniverse;
   }
 }

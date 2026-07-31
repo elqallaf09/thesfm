@@ -1,6 +1,6 @@
 import { normalizeAssetType, validateSymbol, type MarketAssetType } from '@/lib/market/marketService';
 import { getCompanyProfileWithFallback, getLogoWithFallback, type NormalizedCompanyProfile } from '@/lib/market/marketDataProviders';
-import staticUsSymbols from '@/data/us-symbols.json';
+import { findBundledUsSymbol, type BundledUsSymbolRow } from '@/lib/server/usSymbolCatalog';
 
 export type AssetProfileHolding = {
   symbol?: string;
@@ -112,8 +112,6 @@ type FetchAssetProfileInput = {
 const PROFILE_REVALIDATE_SECONDS = 3600;
 const USER_AGENT = 'THE-SFM/1.0 (+https://www.the-sfm.com)';
 const SEC_USER_AGENT = process.env.SEC_USER_AGENT || 'THE-SFM admin@the-sfm.com';
-const staticUsSymbolRows = staticUsSymbols as Array<Record<string, unknown>>;
-
 function devLog(message: string, meta: Record<string, unknown>) {
   if (process.env.DEBUG_MARKET_DATA === 'true') {
     console.info(message, meta);
@@ -488,12 +486,7 @@ function profileFromNormalizedProvider(data: NormalizedCompanyProfile): AssetPro
   });
 }
 
-function profileFromDirectory(symbol: string, providerSymbol: string, input: FetchAssetProfileInput): AssetProfile {
-  const row = staticUsSymbolRows.find(item => {
-    const itemSymbol = String(item.symbol ?? '').toUpperCase();
-    const itemProviderSymbol = String(item.providerSymbol ?? '').toUpperCase();
-    return itemSymbol === symbol.toUpperCase() || itemProviderSymbol === providerSymbol.toUpperCase();
-  });
+function profileFromDirectory(symbol: string, row: BundledUsSymbolRow | null, input: FetchAssetProfileInput): AssetProfile {
   return compactProfile({
     name: stringOrUndefined(input.name) ?? stringOrUndefined(row?.name),
     ticker: symbol,
@@ -634,7 +627,8 @@ export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<
 
   const providersTried: string[] = [];
   let source = 'Symbol directory';
-  let profile: AssetProfile = profileFromDirectory(symbol, providerSymbol, input);
+  const directoryRow = await findBundledUsSymbol(symbol, providerSymbol);
+  let profile: AssetProfile = profileFromDirectory(symbol, directoryRow, input);
   let secShareCount: number | undefined;
   let latestChartPrice: number | undefined;
 

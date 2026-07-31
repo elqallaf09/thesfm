@@ -1,4 +1,3 @@
-import staticUsSymbols from '@/data/us-symbols.json';
 import legacyMarketSymbols from '@/data/market-symbols.json';
 import boursaKuwaitSymbols from '@/data/market-symbols/boursa-kuwait.json';
 import cryptoSymbols from '@/data/market-symbols/crypto.json';
@@ -36,6 +35,7 @@ import {
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
 import { getOpenbbConfiguredStatus } from '@/lib/trader/providers/openbb';
+import { getBundledUsSymbolCatalog } from '@/lib/server/usSymbolCatalog';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
 export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'openbb' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack';
@@ -279,7 +279,6 @@ const SEED_SYMBOL_NAMES: Record<string, string> = {
 };
 
 const STATIC_SOURCE_RECORDS: Array<{ records: RawSymbolRecord[]; source: 'bundled' | 'seed' }> = [
-  { records: staticUsSymbols as RawSymbolRecord[], source: 'bundled' },
   { records: legacyMarketSymbols as RawSymbolRecord[], source: 'bundled' },
   { records: boursaKuwaitSymbols as RawSymbolRecord[], source: 'bundled' },
   { records: cryptoSymbols as RawSymbolRecord[], source: 'bundled' },
@@ -1086,6 +1085,8 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
 
   const bySymbol = new Map<string, TraderCatalogSymbol>();
   seedRecords().forEach(record => addRecord(bySymbol, record));
+  const bundledUsSymbols = await getBundledUsSymbolCatalog();
+  bundledUsSymbols.rows.forEach(record => addRecord(bySymbol, normalizeRecord(record, 'bundled')));
   for (const group of STATIC_SOURCE_RECORDS) {
     group.records.forEach(record => addRecord(bySymbol, normalizeRecord(record, group.source)));
   }

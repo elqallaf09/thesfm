@@ -58,4 +58,20 @@ describe('platform performance architecture', () => {
     expect(workflow).toContain('pnpm check:performance-budget');
     expect(lighthouse.ci.collect.numberOfRuns).toBe(3);
   });
+
+  it('loads the bundled US symbol directory through one lazy server catalog', () => {
+    const catalog = read('src/lib/server/usSymbolCatalog.ts');
+    const consumers = [
+      'src/lib/trader/marketCatalog.ts',
+      'src/lib/trader/usStockUniverse.ts',
+      'src/lib/market/symbolResolver.ts',
+      'src/lib/market/usSymbolResolver.ts',
+      'src/lib/market/fetchAssetProfile.ts',
+    ].map(read).join('\n');
+
+    expect(catalog).toContain("import 'server-only'");
+    expect(catalog).toContain("await import('@/data/us-symbols.json')");
+    expect(catalog).toContain('catalogPromise ??= loadCatalog()');
+    expect(consumers).not.toContain("from '@/data/us-symbols.json'");
+  });
 });
