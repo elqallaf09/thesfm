@@ -16,7 +16,6 @@ import {
   FolderKanban,
   HandHeart,
   Instagram,
-  Landmark,
   LineChart,
   Menu,
   PiggyBank,
@@ -24,20 +23,18 @@ import {
   ReceiptText,
   ShieldCheck,
   Sparkles,
-  Target,
   TrendingUp,
   Wallet,
   X,
-  Zap,
   type LucideIcon,
 } from 'lucide-react';
 
-import { flattenNavigationItems } from '@/components/navigationConfig';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { INSTAGRAM_ARIA_LABEL, INSTAGRAM_URL, SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
+import { landingNavigation, type LandingNavigationId } from '@/lib/landingNavigation';
 import { TR_NAV } from '@/lib/translations/nav';
 
 type Lang = 'ar' | 'en' | 'fr';
@@ -496,9 +493,10 @@ const featureItems = [
 
 type ToolCategory = 'all' | 'personal' | 'ai' | 'business' | 'charity' | 'security';
 type ToolBadge = 'smart' | 'new' | 'core';
+
 type LandingToolItem = {
   id?: string;
-  navId: string;
+  navId: LandingNavigationId;
   icon?: LucideIcon;
   category: Exclude<ToolCategory, 'all'>;
   badge?: ToolBadge;
@@ -654,19 +652,17 @@ export default function PublicLandingPage() {
   const appHref = session ? '/dashboard' : '/login';
   const primaryLabel = session ? text.openDashboard : text.start;
   const aboutLabel = lang === 'ar' ? 'من نحن' : lang === 'fr' ? 'À propos' : 'About';
-  const navigationItems = useMemo(() => new Map(flattenNavigationItems().map(item => [item.id, item])), []);
   const tools = useMemo(() => landingToolCatalog.map(item => {
-    const navItem = navigationItems.get(item.navId);
-    const Icon = item.icon || navItem?.icon || Zap;
-    const href = navItem?.href || '/dashboard';
+    const navItem = landingNavigation[item.navId];
+    const Icon = item.icon || navItem.icon;
     return {
       ...item,
       Icon,
-      href,
-      titleText: item.title ? pickOne(item.title, lang as Lang) : navItem ? pickTranslation(navItem.labelKey, lang as Lang) : item.navId,
+      href: navItem.href,
+      titleText: item.title ? pickOne(item.title, lang as Lang) : pickTranslation(navItem.labelKey, lang as Lang),
       descriptionText: pickOne(item.description, lang as Lang),
     };
-  }), [lang, navigationItems]);
+  }), [lang]);
   const visibleTools = useMemo(
     () => activeToolCategory === 'all' ? tools : tools.filter(item => item.category === activeToolCategory),
     [activeToolCategory, tools],
@@ -768,11 +764,6 @@ export default function PublicLandingPage() {
     if (planKey === 'free') return text.pricingFreePrice;
     if (planKey === 'company') return text.pricingCompanyPrice;
     return billingInterval === 'yearly' ? text.pricingPremiumYearlyPrice : text.pricingPremiumMonthlyPrice;
-  }
-
-  function intervalForPlan(planKey: PricingPlanKey) {
-    if (planKey === 'company') return 'yearly' as const;
-    return billingInterval;
   }
 
   function handleFreePlan() {

@@ -100,6 +100,16 @@ describe('unified Today operational workflow', () => {
     ]);
   });
 
+  it('keeps the public landing page independent from the authenticated navigation bundle', () => {
+    const landing = read('src/app/page.tsx');
+
+    expect(landing).not.toContain("from '@/components/navigationConfig'");
+    expect(landing).not.toContain('flattenNavigationItems');
+    const landingNavigation = read('src/lib/landingNavigation.ts');
+    expect(landingNavigation).toContain("expenses: { href: '/expenses'");
+    expect(landingNavigation).toContain("notif: { href: '/notifications'");
+  });
+
   it('deduplicates route-to-route data loading with short-lived shared caches', () => {
     expect(read('src/hooks/useSmartTasks.ts')).toContain('SMART_TASK_CACHE_TTL_MS');
     expect(read('src/hooks/useNotificationEvents.ts')).toContain('CACHE_TTL_MS');
