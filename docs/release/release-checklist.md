@@ -26,6 +26,7 @@ record. Do not mark an unavailable control as passed.
 - [ ] Forward migration, compatibility with the previous app version, and recovery steps are documented.
 - [ ] A restorable backup exists for destructive or irreversible data changes.
 - [ ] Provider degradation, empty data, rate limiting, and retry behavior were exercised where relevant.
+- [ ] Generated screenshots and logs are attached to the release record or CI artifact storage, not committed to Git.
 
 ## 4. User experience
 
