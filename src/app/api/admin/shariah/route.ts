@@ -1,17 +1,10 @@
-import { NextResponse } from 'next/server';
 import { normalizeAssetType } from '@/lib/market/marketService';
 import { normalizeShariahStatus, SHARIAH_STATUSES, type ShariahStatus } from '@/lib/market/shariah-screening';
 import { computeShariahCounts } from '@/lib/market/shariahAdminCatalog';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute, type AdminApiContext } from '@/lib/server/adminApiRoute';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function adminJson(payload: Record<string, unknown>, init?: ResponseInit) {
-  const headers = new Headers(init?.headers);
-  headers.set('Cache-Control', 'no-store');
-  return NextResponse.json(payload, { ...init, headers });
-}
 
 function cleanText(value: unknown, max = 500) {
   return String(value ?? '').trim().slice(0, max);
@@ -35,10 +28,10 @@ function reviewedAtValue(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-export async function GET(request: Request) {
-  const auth = await requireAdminApiAccess(request, 'admin_dashboard');
-  if (!auth.ok) return adminJson({ ok: false, code: auth.code }, { status: auth.status });
-
+export const GET = createAdminApiRoute({
+  permission: 'admin_dashboard',
+  rateLimit: { max: 60, windowMs: 60_000, prefix: 'admin-shariah-read' },
+}, async ({ request, auth, json }) => {
   const { searchParams } = new URL(request.url);
   const q = cleanText(searchParams.get('q') ?? searchParams.get('query'), 80);
   const limit = cleanLimit(searchParams.get('limit'));
@@ -59,26 +52,24 @@ export async function GET(request: Request) {
     computeShariahCounts(auth.admin),
   ]);
   if (error) {
-    return adminJson({ ok: false, code: 'LOAD_FAILED', message: error.message }, { status: 500 });
+    console.error('[admin-shariah] load failed', { code: error.code, message: error.message });
+    return json({ ok: false, code: 'LOAD_FAILED' }, { status: 500 });
   }
 
-  return adminJson({ ok: true, items: data ?? [], counts });
-}
+  return json({ ok: true, items: data ?? [], counts });
+});
 
-async function saveOverride(request: Request) {
-  const auth = await requireAdminApiAccess(request, 'admin_dashboard');
-  if (!auth.ok) return adminJson({ ok: false, code: auth.code }, { status: auth.status });
-
+async function saveOverride({ request, auth, json }: AdminApiContext) {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-  if (!body) return adminJson({ ok: false, code: 'INVALID_JSON' }, { status: 400 });
+  if (!body) return json({ ok: false, code: 'INVALID_JSON' }, { status: 400 });
 
   const symbol = cleanText(body.symbol, 32).toUpperCase();
   const exchange = cleanText(body.exchange, 64) || null;
   const status = validateStatus(body.status ?? body.shariahStatus ?? body.shariah_status);
   const reviewedAt = reviewedAtValue(body.reviewedAt ?? body.shariahLastReviewedAt ?? body.shariah_last_reviewed_at);
-  if (!symbol) return adminJson({ ok: false, code: 'SYMBOL_REQUIRED' }, { status: 400 });
-  if (!status) return adminJson({ ok: false, code: 'INVALID_STATUS' }, { status: 400 });
-  if (!reviewedAt) return adminJson({ ok: false, code: 'INVALID_REVIEW_DATE' }, { status: 400 });
+  if (!symbol) return json({ ok: false, code: 'SYMBOL_REQUIRED' }, { status: 400 });
+  if (!status) return json({ ok: false, code: 'INVALID_STATUS' }, { status: 400 });
+  if (!reviewedAt) return json({ ok: false, code: 'INVALID_REVIEW_DATE' }, { status: 400 });
 
   const reviewedBy = cleanText(body.reviewedBy ?? body.shariahReviewedBy, 160)
     || auth.access.email
@@ -108,7 +99,8 @@ async function saveOverride(request: Request) {
   if (exchange) lookup = lookup.eq('exchange', exchange);
   const existing = await lookup.maybeSingle();
   if (existing.error && existing.error.code !== 'PGRST116') {
-    return adminJson({ ok: false, code: 'LOOKUP_FAILED', message: existing.error.message }, { status: 500 });
+    console.error('[admin-shariah] lookup failed', { code: existing.error.code, message: existing.error.message });
+    return json({ ok: false, code: 'LOOKUP_FAILED' }, { status: 500 });
   }
 
   const patch = {
@@ -147,16 +139,17 @@ async function saveOverride(request: Request) {
         .single();
 
   if (result.error) {
-    return adminJson({ ok: false, code: 'SAVE_FAILED', message: result.error.message }, { status: 500 });
+    console.error('[admin-shariah] save failed', { code: result.error.code, message: result.error.message });
+    return json({ ok: false, code: 'SAVE_FAILED' }, { status: 500 });
   }
 
-  return adminJson({ ok: true, item: result.data });
+  return json({ ok: true, item: result.data });
 }
 
-export async function POST(request: Request) {
-  return saveOverride(request);
-}
+const writeOptions = {
+  permission: 'admin_dashboard' as const,
+  rateLimit: { max: 30, windowMs: 60_000, prefix: 'admin-shariah-write' },
+};
 
-export async function PATCH(request: Request) {
-  return saveOverride(request);
-}
+export const POST = createAdminApiRoute(writeOptions, saveOverride);
+export const PATCH = createAdminApiRoute(writeOptions, saveOverride);

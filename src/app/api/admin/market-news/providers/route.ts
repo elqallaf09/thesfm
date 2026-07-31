@@ -1,26 +1,14 @@
-import { NextResponse } from 'next/server';
 import { getMarketNewsAdminProviderStatus } from '@/lib/market-news/persistence';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function adminJson(payload: Record<string, unknown>, status = 200) {
-  return NextResponse.json(payload, {
-    status,
-    headers: {
-      'Cache-Control': 'private, no-store, max-age=0',
-      Pragma: 'no-cache',
-      Vary: 'Cookie, Authorization',
-    },
-  });
-}
-
-export async function GET(request: Request) {
-  const auth = await requireAdminApiAccess(request, 'admin_dashboard');
-  if (!auth.ok) return adminJson({ ok: false, code: auth.code }, auth.status);
-
+export const GET = createAdminApiRoute({
+  permission: 'admin_dashboard',
+  rateLimit: { max: 60, windowMs: 60_000, prefix: 'admin-market-news-providers' },
+}, async ({ auth, json }) => {
   const result = await getMarketNewsAdminProviderStatus(auth.admin);
   const summary = result.providers.reduce((counts, provider) => {
     counts.total += 1;
@@ -33,7 +21,7 @@ export async function GET(request: Request) {
   // Additive-only field — the new unified market-state view; existing consumers can ignore it.
   const state = await getMarketSystemState();
 
-  return adminJson({
+  return json({
     ok: true,
     available: result.available,
     code: result.available ? null : 'MARKET_NEWS_STATUS_PARTIAL',
@@ -42,4 +30,4 @@ export async function GET(request: Request) {
     summary,
     state,
   });
-}
+});
