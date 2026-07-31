@@ -82,6 +82,7 @@ jobs:
     name: Validate required secrets (names only, fail closed)
     needs: [resolve-target]
     runs-on: ubuntu-latest
+    environment: Preview
     timeout-minutes: 2
     env:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
