@@ -1,8 +1,8 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "pnpm exec next start --hostname 127.0.0.1 --port 3100",
-      "startServerReadyPattern": "Ready",
+      "startServerCommand": "node scripts/lighthouse-server.mjs",
+      "startServerReadyPattern": "LHCI_SERVER_WARM_READY",
       "url": [
         "http://127.0.0.1:3100/"
       ],
