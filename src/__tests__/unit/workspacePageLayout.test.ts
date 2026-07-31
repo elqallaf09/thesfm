@@ -165,7 +165,7 @@ describe('workspace page layout policy', () => {
   });
 
   it('keeps Market Analysis full-width without route-owned shell geometry', () => {
-    const source = readFileSync(resolve(root, 'src/app/market-analysis/page.tsx'), 'utf8');
+    const source = readFileSync(resolve(root, 'src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx'), 'utf8');
     expect(source).toContain('variant="full"');
     expect(source).not.toMatch(/<Sidebar\b|from ['"]@\/components\/Sidebar['"]/);
     expect(source).not.toMatch(/calc\(\s*100vw|--sidebar-(?:w|width)/);

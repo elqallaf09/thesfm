@@ -14,7 +14,7 @@ import styles from './AiAnalystWorkspace.module.css';
 // surface while its remaining non-decision tools complete route-by-route parity.
 // It is intentionally not linked from the global or grouped AI Analyst navigation.
 const LegacyMarketAnalysisWorkspace = dynamic(
-  () => import('@/app/market-analysis/page'),
+  () => import('@/components/market-analysis/LegacyMarketAnalysisWorkspace'),
   { ssr: false },
 );
 

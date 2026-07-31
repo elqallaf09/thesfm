@@ -244,7 +244,7 @@ describe('market command center presentation and loading contracts', () => {
   const commandOverviewSource = read('src/components/market-analysis/MarketCommandOverview.tsx');
   const commandStatusSource = read('src/components/market-analysis/MarketCommandCenterStatus.tsx');
   const sessionsSource = read('src/components/market-analysis/TradingSessionsPanel.tsx');
-  const pageSource = read('src/app/market-analysis/page.tsx');
+  const pageSource = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
 
   it('keeps overview data caller-owned and never fabricates or fetches presentation values', () => {
     expect(overviewSource).toMatch(/state:\s*'available';\s*count:\s*number;/);

@@ -48,7 +48,7 @@ describe('Phase 3.4 React Trader presentation contracts', () => {
   });
 
   it('keeps symbol, asset type, timeframe, and Analyze in one responsive toolbar', () => {
-    const marketPage = read('src/app/market-analysis/page.tsx');
+    const marketPage = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
     const commandBar = read('src/components/market-analysis/MarketCommandBar.tsx');
     const commandBarStyles = read('src/components/market-analysis/MarketCommandBar.module.css');
     const symbolIndex = commandBar.indexOf('htmlFor="market-asset-search"');
@@ -71,7 +71,7 @@ describe('Phase 3.4 React Trader presentation contracts', () => {
   });
 
   it('renders score status text and meter semantics so color is not the only indicator', () => {
-    const marketPage = read('src/app/market-analysis/page.tsx');
+    const marketPage = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
 
     expect(marketPage).toContain('analysisConfidenceStatus');
     expect(marketPage).toContain('role="meter"');
@@ -82,7 +82,7 @@ describe('Phase 3.4 React Trader presentation contracts', () => {
 
   it('keeps unavailable calendar states compact, diagnostic, and fail-closed for administrators', () => {
     const calendar = read('src/components/market-analysis/EconomicCalendarPanel.tsx');
-    const marketPage = read('src/app/market-analysis/page.tsx');
+    const marketPage = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
     const diagnosticsPage = read('src/app/sfm-admin-control/market-diagnostics/page.tsx');
 
     for (const contract of [

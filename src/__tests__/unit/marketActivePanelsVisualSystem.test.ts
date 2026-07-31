@@ -13,7 +13,7 @@ const panelFiles = [
 
 const panels = panelFiles.map(file => ({ file, source: read(file) }));
 const combinedPanels = panels.map(panel => panel.source).join('\n');
-const marketPage = read('src/app/market-analysis/page.tsx');
+const marketPage = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
 
 describe('active Market Analysis panels visual-system contract', () => {
   it('keeps every production panel on centralized tokens without a local palette', () => {
