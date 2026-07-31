@@ -1,6 +1,6 @@
 const INTERNAL_ORIGIN = 'https://the-sfm.invalid';
 
-export const DEFAULT_AUTH_DESTINATION = '/dashboard';
+export const DEFAULT_AUTH_DESTINATION = '/today';
 
 function internalUrl(value: string | null | undefined): URL | null {
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return null;

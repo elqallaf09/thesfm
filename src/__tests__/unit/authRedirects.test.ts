@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  DEFAULT_AUTH_DESTINATION,
   loginHrefForDestination,
   mergeClientHash,
   requestDestination,
@@ -43,6 +44,24 @@ describe('authentication deep-link redirects', () => {
     expect(location.searchParams.get('next')).toBe(protectedPath);
     expect(location.search).toBe(`?next=${encodeURIComponent(protectedPath)}`);
     expect(requestDestination('/settings', protectedPath.slice('/settings'.length))).toBe(protectedPath);
+  });
+
+  it('uses Today as the authenticated default and keeps incomplete onboarding guarded', async () => {
+    expect(DEFAULT_AUTH_DESTINATION).toBe('/today');
+
+    vi.mocked(inspectSessionSecurity).mockResolvedValue(authenticatedSession);
+    const loginResponse = await middleware(new NextRequest(
+      'https://www.the-sfm.com/login',
+      { headers: { cookie: 'sfm_access_token=test-token' } },
+    ));
+    expect(new URL(loginResponse.headers.get('location') ?? '').pathname).toBe('/today');
+
+    vi.mocked(inspectSessionSecurity).mockResolvedValue({ ...authenticatedSession, onboardingComplete: false });
+    const todayResponse = await middleware(new NextRequest(
+      'https://www.the-sfm.com/today',
+      { headers: { cookie: 'sfm_access_token=test-token' } },
+    ));
+    expect(new URL(todayResponse.headers.get('location') ?? '').pathname).toBe('/onboarding');
   });
 
   it('renders every AI Analyst page route without requiring sfm_guest or a session', async () => {

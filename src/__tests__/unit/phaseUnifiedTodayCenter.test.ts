@@ -72,8 +72,8 @@ describe('unified Today operational workflow', () => {
     const today = navigation.indexOf("id: 'today'");
     const reports = navigation.indexOf("id: 'reports-center'");
     const tasks = navigation.indexOf("id: 'tasks'");
-    expect(home).toBeLessThan(today);
-    expect(today).toBeLessThan(reports);
+    expect(today).toBeLessThan(home);
+    expect(home).toBeLessThan(reports);
     expect(reports).toBeLessThan(tasks);
     expect(navigation).not.toContain("id: 'notif'");
     expect(read('src/components/AppHeader.tsx')).toContain('className="sfm-global-notifications"');

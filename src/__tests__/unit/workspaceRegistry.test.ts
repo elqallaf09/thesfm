@@ -55,6 +55,7 @@ describe('workspace registry validity', () => {
   it('uses the public company directory only for guest Business & Projects entry', () => {
     expect(getWorkspaceEntryRoute('business-projects', { isAuthenticated: true })).toBe('/business-hub');
     expect(getWorkspaceEntryRoute('business-projects', { isAuthenticated: false })).toBe('/investment-companies');
+    expect(getWorkspaceEntryRoute('personal-finance', { isAuthenticated: true })).toBe('/today');
     expect(getWorkspaceEntryRoute('personal-finance', { isAuthenticated: false })).toBe('/dashboard');
     expect(getWorkspaceEntryRoute('markets-trading', { isAuthenticated: false })).toBe('/ai-analyst/overview');
   });

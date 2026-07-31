@@ -55,11 +55,16 @@ This document maps the main product routes after the navigation cleanup. Public 
 
 ## Workspace Navigation
 
+Authenticated users enter Personal Finance through `/today`, the operational
+surface for current priorities and actions. Guest sessions keep `/dashboard`
+as their entry because Today requires an authenticated account. The dashboard,
+Tasks, Documents, and Reports remain available as deeper views.
+
 The primary workspaces are ordered consistently as Personal Finance, Markets & Trading,
 Business & Projects, and Administration. Administration is available only to authorized
 administrators. The Account group is shared at the bottom of every workspace.
 
-- Personal Finance: home and daily controls, personal finance, financial intelligence, zakat, and charity.
+- Personal Finance: Today first, then the dashboard and deeper personal-finance, financial-intelligence, zakat, and charity tools.
 - Markets & Trading: investments, market analysis, the market agent, and market news.
 - Business & Projects: projects, the Business Hub, investment offers, business operations, clients and subscriptions, company management and submission, and company services.
 - Administration: permission-filtered platform administration tools.

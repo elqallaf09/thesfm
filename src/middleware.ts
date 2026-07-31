@@ -189,10 +189,9 @@ export async function middleware(request: NextRequest) {
       applyInternalDestination(protectedTargetUrl, nextPath);
       return withSecurityHeaders(NextResponse.redirect(protectedTargetUrl));
     }
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = '/dashboard';
-    dashboardUrl.search = '';
-    return withSecurityHeaders(NextResponse.redirect(dashboardUrl));
+    const defaultUrl = request.nextUrl.clone();
+    applyInternalDestination(defaultUrl, DEFAULT_AUTH_DESTINATION);
+    return withSecurityHeaders(NextResponse.redirect(defaultUrl));
   }
 
   if (session.status === 'unauthenticated') {
@@ -214,7 +213,7 @@ export async function middleware(request: NextRequest) {
     applyInternalDestination(targetUrl, target);
     return withSecurityHeaders(NextResponse.redirect(targetUrl));
   }
-  if (pathname === '/dashboard' && !session.onboardingComplete) {
+  if ((pathname === '/dashboard' || pathname === DEFAULT_AUTH_DESTINATION) && !session.onboardingComplete) {
     const onboardingUrl = request.nextUrl.clone();
     onboardingUrl.pathname = '/onboarding';
     onboardingUrl.search = '';

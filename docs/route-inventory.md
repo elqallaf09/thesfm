@@ -79,7 +79,7 @@ These routes do not trigger the authenticated-page branch in `src/middleware.ts`
 
 ### Middleware protected (88)
 
-Unauthenticated requests redirect to `/login?next=<path>`. Authenticated sessions with an unmet MFA requirement redirect to the applicable MFA flow. `/dashboard` redirects an authenticated user with incomplete onboarding to `/onboarding`.
+Unauthenticated requests redirect to `/login?next=<path>`. Authenticated sessions with an unmet MFA requirement redirect to the applicable MFA flow. Login without an explicit safe destination opens `/today`; both `/today` and `/dashboard` redirect an authenticated user with incomplete onboarding to `/onboarding`.
 
 - `/ai`
 - `/business`
