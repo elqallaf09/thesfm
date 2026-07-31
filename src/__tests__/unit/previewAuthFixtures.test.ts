@@ -42,6 +42,10 @@ describe('Preview-only authentication fixtures', () => {
     expect(authenticatedPreviewJob).toContain('checks: read');
     expect(authenticatedPreviewJob).toContain('Resolve active isolated Supabase Preview ref for exact SHA');
     expect(authenticatedPreviewJob).toContain("core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);");
+    expect(authenticatedPreviewJob).toContain("check.status === 'completed' && check.conclusion === 'skipped'");
+    expect(authenticatedPreviewJob).toContain("core.setOutput('available', 'false')");
+    expect(authenticatedPreviewJob).toContain("core.setOutput('available', 'true')");
+    expect(authenticatedPreviewJob).toContain("if: steps.supabase-preview.outputs.available == 'true'");
     expect(authenticatedPreviewJob).not.toMatch(/SUPABASE_PREVIEW_URL:\s*https:\/\//);
     expect(authenticatedPreviewJob.indexOf('actions/checkout@v4')).toBeLessThan(
       authenticatedPreviewJob.indexOf('Resolve active isolated Supabase Preview ref for exact SHA'),
