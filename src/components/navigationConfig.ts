@@ -104,12 +104,26 @@ export const NAV_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'today', icon: CalendarDays, href: '/today', labelKey: 'nav_today' },
       { id: 'home', icon: LayoutDashboard, href: '/dashboard', labelKey: 'nav_home' },
-      { id: 'reports-center', icon: FileBarChart, href: '/reports-center', labelKey: 'nav_reports_center' },
       { id: 'decisions', icon: Scale, href: '/decisions', labelKey: 'nav_decisions' },
-      { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories' },
-      { id: 'ebooks', icon: Library, href: '/ebooks', labelKey: 'nav_ebooks' },
-      { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center' },
-      { id: 'tasks', icon: ListChecks, href: '/tasks', labelKey: 'nav_tasks' },
+      {
+        id: 'work-management',
+        icon: ListChecks,
+        labelKey: 'nav_work_management',
+        children: [
+          { id: 'reports-center', icon: FileBarChart, href: '/reports-center', labelKey: 'nav_reports_center' },
+          { id: 'documents-center', icon: Files, href: '/documents', labelKey: 'nav_documents_center' },
+          { id: 'tasks', icon: ListChecks, href: '/tasks', labelKey: 'nav_tasks' },
+        ],
+      },
+      {
+        id: 'learning-resources',
+        icon: BookOpen,
+        labelKey: 'nav_learning_resources',
+        children: [
+          { id: 'financial-theories', icon: BookOpen, href: '/financial-theories', labelKey: 'nav_financial_theories' },
+          { id: 'ebooks', icon: Library, href: '/ebooks', labelKey: 'nav_ebooks' },
+        ],
+      },
     ],
   },
   {

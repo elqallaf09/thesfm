@@ -58,7 +58,10 @@ This document maps the main product routes after the navigation cleanup. Public 
 Authenticated users enter Personal Finance through `/today`, the operational
 surface for current priorities and actions. Guest sessions keep `/dashboard`
 as their entry because Today requires an authenticated account. The dashboard,
-Tasks, Documents, and Reports remain available as deeper views.
+Tasks, Documents, and Reports remain available as deeper views. The primary
+group exposes five choices: Today, Dashboard, Decisions, Work Management, and
+Learning & Resources. Work Management contains Reports, Documents, and Tasks;
+Learning & Resources contains Financial Theories and E-Books.
 
 The primary workspaces are ordered consistently as Personal Finance, Markets & Trading,
 Business & Projects, and Administration. Administration is available only to authorized
