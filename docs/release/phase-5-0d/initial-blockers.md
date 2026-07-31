@@ -64,6 +64,6 @@ No Production data, deployment, environment value, migration, tag, or release st
 
 - Complete filesystem/runtime route inventory: `route-inventory.csv`
 - Vercel environment-name matrix: `environment-matrix.md`
-- Baseline screenshots: `artifacts/release/phase-5-0d/baseline/`
+- Baseline screenshots were historical generated output and are no longer committed. Regenerate current evidence with `pnpm qa:visual` and retain it in the release record or CI artifact storage.
 - Database and backup report: `database-readiness.md`
 - Final consolidated verdict: `release-report.md`

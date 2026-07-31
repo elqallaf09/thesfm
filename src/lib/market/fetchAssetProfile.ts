@@ -630,7 +630,6 @@ export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<
   const directoryRow = await findBundledUsSymbol(symbol, providerSymbol);
   let profile: AssetProfile = profileFromDirectory(symbol, directoryRow, input);
   let secShareCount: number | undefined;
-  let latestChartPrice: number | undefined;
 
   devLog('[AssetProfile] Fetch start', {
     requestedSymbol: input.symbol,
@@ -687,7 +686,7 @@ export async function fetchAssetProfile(input: FetchAssetProfileInput): Promise<
   const summary = yahooSummary.status === 'fulfilled' ? yahooSummary.value : null;
   const quote = yahooQuote.status === 'fulfilled' ? yahooQuote.value : null;
   const chart = yahooChart.status === 'fulfilled' ? yahooChart.value : null;
-  latestChartPrice = pickNumber(chart, ['regularMarketPrice']);
+  const latestChartPrice = pickNumber(chart, ['regularMarketPrice']);
   const yahooHasData = Boolean(summary || quote || chart);
   const yahooProfile = yahooHasData ? profileFromYahoo(summary, quote, chart, {
     symbol,

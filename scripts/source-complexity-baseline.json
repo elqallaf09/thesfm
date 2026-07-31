@@ -1,0 +1,387 @@
+{
+  "version": 1,
+  "warningLines": 500,
+  "maxNewFileLines": 900,
+  "files": {
+    "src/app/(auth)/login/page.tsx": {
+      "lines": 1431
+    },
+    "src/app/about/page.tsx": {
+      "lines": 1087
+    },
+    "src/app/ai/page.tsx": {
+      "lines": 974,
+      "important": 1
+    },
+    "src/app/api/business/subscriptions/reminders/route.ts": {
+      "lines": 1894
+    },
+    "src/app/api/market/sentiment/route.ts": {
+      "lines": 1105
+    },
+    "src/app/api/receipts/scan/route.ts": {
+      "lines": 1637
+    },
+    "src/app/business-hub/_lib.ts": {
+      "lines": 2295
+    },
+    "src/app/business-hub/_styles.ts": {
+      "lines": 1567,
+      "important": 4
+    },
+    "src/app/business-hub/page.tsx": {
+      "lines": 1705
+    },
+    "src/app/business-operations/page.tsx": {
+      "lines": 1110
+    },
+    "src/app/charity-projects/_styles.tsx": {
+      "lines": 1928,
+      "important": 21
+    },
+    "src/app/charity-projects/_text.ts": {
+      "lines": 1429
+    },
+    "src/app/charity-projects/page.tsx": {
+      "lines": 2495
+    },
+    "src/app/charity-projects/report/page.tsx": {
+      "important": 41
+    },
+    "src/app/charity/charity.module.css": {
+      "lines": 1650,
+      "important": 7
+    },
+    "src/app/contact/page.tsx": {
+      "lines": 1086
+    },
+    "src/app/dashboard/dashboard.module.css": {
+      "lines": 969,
+      "important": 9
+    },
+    "src/app/debts/_components.tsx": {
+      "lines": 1869
+    },
+    "src/app/debts/page.tsx": {
+      "lines": 992
+    },
+    "src/app/documents/page.tsx": {
+      "lines": 1185
+    },
+    "src/app/ebooks/page.tsx": {
+      "lines": 1208
+    },
+    "src/app/education/expenses/page.tsx": {
+      "important": 3
+    },
+    "src/app/education/investments/page.tsx": {
+      "important": 1
+    },
+    "src/app/education/savings/page.tsx": {
+      "important": 1
+    },
+    "src/app/expenses/monthly-subscriptions/page.tsx": {
+      "lines": 1529,
+      "important": 3
+    },
+    "src/app/financial-theories/_components.tsx": {
+      "lines": 922
+    },
+    "src/app/financial-theories/financial-theories.css": {
+      "lines": 1835,
+      "important": 26
+    },
+    "src/app/globals.css": {
+      "lines": 6836,
+      "important": 719
+    },
+    "src/app/income/page.tsx": {
+      "lines": 1884
+    },
+    "src/app/invest/invest.css": {
+      "lines": 2958,
+      "important": 16
+    },
+    "src/app/invest/page.tsx": {
+      "lines": 1498
+    },
+    "src/app/investment-offers/_text.ts": {
+      "lines": 1007
+    },
+    "src/app/investment-offers/investor.module.css": {
+      "important": 4
+    },
+    "src/app/khums/page.tsx": {
+      "lines": 1578,
+      "important": 9
+    },
+    "src/app/market-agent/page.tsx": {
+      "lines": 2231
+    },
+    "src/app/page.tsx": {
+      "lines": 2277,
+      "important": 3
+    },
+    "src/app/privacy/page.tsx": {
+      "important": 1
+    },
+    "src/app/profile/page.tsx": {
+      "lines": 2805,
+      "important": 5
+    },
+    "src/app/projects/[id]/_styles.tsx": {
+      "important": 5
+    },
+    "src/app/projects/page.tsx": {
+      "important": 14
+    },
+    "src/app/reports-center/page.tsx": {
+      "lines": 3992,
+      "important": 65
+    },
+    "src/app/sales/page.tsx": {
+      "important": 1
+    },
+    "src/app/security/page.tsx": {
+      "lines": 1010
+    },
+    "src/app/setup/page.tsx": {
+      "lines": 2255,
+      "important": 1
+    },
+    "src/app/sfm-admin-control/admin-permissions/AdminPermissionsClient.tsx": {
+      "important": 2
+    },
+    "src/app/sfm-admin-control/AdminAnalyticsClient.tsx": {
+      "lines": 1044,
+      "important": 3
+    },
+    "src/app/sfm-admin-control/companies/CompanyAdminClient.tsx": {
+      "lines": 988,
+      "important": 3
+    },
+    "src/app/sfm-admin-control/instagram-automation/InstagramAutomationClient.tsx": {
+      "lines": 1211,
+      "important": 3
+    },
+    "src/app/sfm-admin-control/news-providers/NewsProvidersAdminClient.tsx": {
+      "important": 3
+    },
+    "src/app/site-map/page.tsx": {
+      "lines": 1139,
+      "important": 9
+    },
+    "src/app/today/page.tsx": {
+      "important": 14
+    },
+    "src/app/zakat/page.tsx": {
+      "lines": 1452,
+      "important": 10
+    },
+    "src/components/AppHeader.tsx": {
+      "important": 2
+    },
+    "src/components/banking-stocks/BankNewsPage.tsx": {
+      "lines": 3743,
+      "important": 10
+    },
+    "src/components/business-subscriptions/SubscriptionManagerPage.tsx": {
+      "lines": 3571
+    },
+    "src/components/business/BusinessRecordsModulePage.tsx": {
+      "lines": 2054
+    },
+    "src/components/company-listings/CompanyCategoryPage.tsx": {
+      "lines": 1369,
+      "important": 5
+    },
+    "src/components/company-listings/CompanyDetailsPage.tsx": {
+      "lines": 1641,
+      "important": 1
+    },
+    "src/components/company-listings/CompanySubmitForm.tsx": {
+      "lines": 990
+    },
+    "src/components/crypto-news/CryptoNewsPage.tsx": {
+      "lines": 1837
+    },
+    "src/components/cyclical-stocks/CyclicalStocksNewsPage.tsx": {
+      "lines": 4172,
+      "important": 7
+    },
+    "src/components/defensive-stocks/DefensiveStocksNewsPage.tsx": {
+      "lines": 1789
+    },
+    "src/components/dividend-stocks/DividendStocksNewsPage.tsx": {
+      "lines": 4755,
+      "important": 3
+    },
+    "src/components/energy-stocks/EnergyNewsPage.tsx": {
+      "lines": 2931
+    },
+    "src/components/europe-news/EuropeNewsPage.tsx": {
+      "important": 1
+    },
+    "src/components/finance/_helpers.ts": {
+      "important": 33
+    },
+    "src/components/finance/NotificationsPage.tsx": {
+      "important": 1
+    },
+    "src/components/finance/RouteDashboardPage.tsx": {
+      "lines": 3370
+    },
+    "src/components/growth-stocks/GrowthStocksNewsPage.tsx": {
+      "lines": 4499,
+      "important": 4
+    },
+    "src/components/gulf-news/GulfNewsPage.tsx": {
+      "important": 9
+    },
+    "src/components/intelligence/IntelligenceTimelinePanel.module.css": {
+      "important": 2
+    },
+    "src/components/invest/InvestmentFormModal.tsx": {
+      "lines": 1743
+    },
+    "src/components/layout/PageTabs.tsx": {
+      "important": 1
+    },
+    "src/components/market-analysis/EconomicCalendarPanel.tsx": {
+      "lines": 1086
+    },
+    "src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx": {
+      "lines": 4543,
+      "important": 806
+    },
+    "src/components/market-analysis/market-page.css": {
+      "lines": 2023,
+      "important": 138
+    },
+    "src/components/market-analysis/MarketBaseStyles.tsx": {
+      "lines": 972,
+      "important": 21
+    },
+    "src/components/market-analysis/MarketChartStyles.tsx": {
+      "lines": 918,
+      "important": 24
+    },
+    "src/components/market-analysis/MarketTraderStyles.tsx": {
+      "lines": 1417,
+      "important": 90
+    },
+    "src/components/market-analysis/NewsSentimentPanel.tsx": {
+      "lines": 1869,
+      "important": 6
+    },
+    "src/components/market-analysis/TechnicalAnalysisPanel.tsx": {
+      "lines": 1241
+    },
+    "src/components/market-analysis/TraderToolsDashboard.tsx": {
+      "lines": 2166,
+      "important": 7
+    },
+    "src/components/market-analysis/utils.ts": {
+      "lines": 1210
+    },
+    "src/components/market-news/MarketMoversCard.tsx": {
+      "important": 1
+    },
+    "src/components/MobileMenu.tsx": {
+      "important": 23
+    },
+    "src/components/projects/ProjectFinancialModelTab.tsx": {
+      "lines": 1277
+    },
+    "src/components/projects/ProjectPitchDeckTab.tsx": {
+      "important": 9
+    },
+    "src/components/shariah-stocks/ShariahStocksNewsPage.module.css": {
+      "lines": 1521,
+      "important": 1
+    },
+    "src/components/shariah-stocks/ShariahStocksNewsPage.tsx": {
+      "lines": 2549
+    },
+    "src/components/shariah-stocks/ShariaResearchPage.module.css": {
+      "important": 9
+    },
+    "src/components/Sidebar.tsx": {
+      "important": 2
+    },
+    "src/components/stock-categories/StockCategoryNewsPage.tsx": {
+      "lines": 1172
+    },
+    "src/components/tech-news/TechNewsPage.tsx": {
+      "lines": 1968
+    },
+    "src/components/ui/LanguageSwitcher.tsx": {
+      "important": 4
+    },
+    "src/integrations/supabase/types.ts": {
+      "lines": 2178
+    },
+    "src/lib/businessOperations.ts": {
+      "lines": 991
+    },
+    "src/lib/financial-theories.ts": {
+      "lines": 1489
+    },
+    "src/lib/investments/investmentUtils.ts": {
+      "lines": 1079
+    },
+    "src/lib/market-news/persistence.ts": {
+      "lines": 1001
+    },
+    "src/lib/market/marketDataProvider.ts": {
+      "lines": 1367
+    },
+    "src/lib/market/marketDataProviders.ts": {
+      "lines": 1292
+    },
+    "src/lib/market/providers/myfxbook.ts": {
+      "lines": 1249
+    },
+    "src/lib/market/signalEngine.ts": {
+      "lines": 902
+    },
+    "src/lib/routeDashboard/helpers.ts": {
+      "lines": 1355
+    },
+    "src/lib/tasks/generateSmartTasks.ts": {
+      "lines": 976
+    },
+    "src/lib/trader/marketCatalog.ts": {
+      "lines": 1579
+    },
+    "src/lib/trader/marketQuotes.ts": {
+      "lines": 1897
+    },
+    "src/lib/trader/recommendationEngine.ts": {
+      "lines": 1050
+    },
+    "src/lib/translations/market.ts": {
+      "lines": 1346
+    },
+    "src/styles/density.css": {
+      "important": 2
+    },
+    "src/styles/scopes.css": {
+      "important": 2
+    },
+    "src/trader-app/public/app.js": {
+      "lines": 7719,
+      "important": 1
+    },
+    "src/trader-app/public/cinema.css": {
+      "lines": 14000,
+      "important": 1386
+    },
+    "src/trader-app/public/detail.css": {
+      "important": 17
+    },
+    "src/trader-app/public/detail.js": {
+      "lines": 1841
+    }
+  }
+}

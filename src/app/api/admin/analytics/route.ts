@@ -292,7 +292,7 @@ async function loadAnalyticsRows(
 ): Promise<AnalyticsLoadResult> {
   if (!admin) return { rows: [], source: 'none', code: 'ANALYTICS_SERVICE_NOT_CONFIGURED' };
 
-  let siteQuery = admin
+  const siteQuery = admin
     .from('site_events')
     .select('*')
     .gte('created_at', from.toISOString())
@@ -309,7 +309,7 @@ async function loadAnalyticsRows(
   }
   if (!schemaRelatedError(siteResult.error)) return { rows: [] as AnalyticsRow[], source: 'site_events', error: siteResult.error.message };
 
-  let legacyQuery = admin
+  const legacyQuery = admin
     .from('analytics_events')
     .select('*')
     .gte('created_at', from.toISOString())

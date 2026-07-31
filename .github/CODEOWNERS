@@ -1,0 +1,13 @@
+# Default ownership. GitHub branch protection should require this owner's review.
+* @elqallaf09
+
+# Security, deployment, and data boundaries.
+/.github/** @elqallaf09
+/src/app/api/** @elqallaf09
+/src/lib/server/** @elqallaf09
+/src/lib/auth/** @elqallaf09
+/src/integrations/supabase/** @elqallaf09
+/supabase/migrations/** @elqallaf09
+/src/app/thesfm-trader-own/** @elqallaf09
+/src/lib/trader/** @elqallaf09
+/src/trader-app/** @elqallaf09

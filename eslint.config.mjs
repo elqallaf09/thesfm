@@ -20,10 +20,13 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
-      "@typescript-eslint/no-unused-vars": "off",
+      // Existing warnings are ratcheted by package.json's max-warnings limit.
+      // Keep them enabled so editors and CI reject growth without forcing an
+      // unsafe repository-wide mechanical rewrite in one release.
+      "@typescript-eslint/no-unused-vars": "warn",
       "react/no-unescaped-entities": "off",
-      "prefer-const": "off",
-      "@typescript-eslint/no-explicit-any": "off",
+      "prefer-const": "error",
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
 ];

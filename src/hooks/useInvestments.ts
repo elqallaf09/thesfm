@@ -19,7 +19,6 @@ import {
 } from '@/lib/investments/investmentUtils';
 
 const DEBUG_INVESTMENTS = process.env.NODE_ENV === 'development';
-let hasLoggedInvestmentDebug = false;
 
 export function useInvestments() {
   const { user, isGuest, loading } = useAuth();

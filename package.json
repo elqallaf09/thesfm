@@ -9,12 +9,14 @@
     "build": "node scripts/clean-next-build.mjs && next build",
     "start": "next start",
     "check:i18n": "node scripts/check-translations.mjs",
+    "check:maintainability": "node scripts/check-source-complexity.mjs",
+    "check:repo-hygiene": "node scripts/check-repository-hygiene.mjs",
     "check:visual-system": "node scripts/check-visual-system.mjs",
     "check:prod-endpoints": "node scripts/check-production-endpoints.mjs",
     "check:public-env": "node scripts/check-public-env.mjs",
-    "check:launch": "pnpm exec tsc --noEmit --pretty false && pnpm lint && pnpm check:i18n && pnpm check:visual-system && pnpm check:prod-endpoints && pnpm check:public-env && pnpm test:run && pnpm build && pnpm check:performance-budget",
+    "check:launch": "pnpm exec tsc --noEmit --pretty false && pnpm lint && pnpm check:i18n && pnpm check:maintainability && pnpm check:repo-hygiene && pnpm check:visual-system && pnpm check:prod-endpoints && pnpm check:public-env && pnpm test:run && pnpm build && pnpm check:performance-budget",
     "check:performance-budget": "node scripts/check-performance-budget.mjs",
-    "lint": "eslint .",
+    "lint": "node scripts/check-eslint.mjs",
     "typecheck": "tsc --noEmit --pretty false",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",
     "symbols:sync:kw": "node scripts/sync-market-symbols.mjs --only=boursa-kuwait",
@@ -28,7 +30,7 @@
     "test:ui": "vitest --ui",
     "preview": "next start",
     "preview:test": "next start",
-    "qa:visual": "node artifacts/qa-full-capture.cjs"
+    "qa:visual": "node scripts/qa-full-capture.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

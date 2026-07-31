@@ -1,6 +1,6 @@
 # Workspace architecture (phase 3)
 
-Snapshot date: 2026-07-12
+Snapshot date: 2026-07-31
 
 ## Model
 
@@ -12,7 +12,7 @@ stays exactly where phase 2.10 put it (`src/middleware.ts` for pages,
 
 | Workspace | id | Default route | Arabic label |
 | --- | --- | --- | --- |
-| Personal Finance | `personal-finance` | `/dashboard` | الإدارة المالية |
+| Personal Finance | `personal-finance` | `/today` for authenticated users; `/dashboard` for guests | الإدارة المالية |
 | Markets & Trading | `markets-trading` | `/market-analysis` | الأسواق والتداول |
 | Business & Projects | `business-projects` | `/business-hub` (`/investment-companies` for guests) | الأعمال والمشاريع |
 | Administration | `administration` | `/sfm-admin-control` | الإدارة |

@@ -72,6 +72,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:prod-endpoints
       - run: pnpm check:public-env
+      - run: pnpm check:maintainability
+        name: Prevent source complexity and CSS debt regressions
+      - run: pnpm check:repo-hygiene
+        name: Reject generated and oversized tracked files
 
   test:
     name: CI/Unit & Integration tests

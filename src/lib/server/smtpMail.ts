@@ -105,17 +105,16 @@ function createSmtpReader(socket: net.Socket | tls.TLSSocket) {
 
   return function readResponse(timeoutMs = 15000) {
     return new Promise<string>((resolve, reject) => {
-      let wrapped: (response: string) => void;
+      const wrapped = (response: string) => {
+        clearTimeout(timer);
+        resolve(response);
+      };
       const timer = setTimeout(() => {
         const index = waiters.indexOf(wrapped);
         if (index >= 0) waiters.splice(index, 1);
         reject(new SmtpMailError('SMTP response timed out'));
       }, timeoutMs);
 
-      wrapped = (response: string) => {
-        clearTimeout(timer);
-        resolve(response);
-      };
       waiters.push(wrapped);
       flush();
     });
