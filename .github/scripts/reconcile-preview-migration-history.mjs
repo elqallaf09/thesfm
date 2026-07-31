@@ -1,0 +1,179 @@
+#!/usr/bin/env node
+// Preview-only migration-history reconciliation tool.
+//
+// Purpose: when an isolated Supabase Preview branch's *schema* already
+// matches what a given local migration file would produce, but that
+// version is missing from the branch's supabase_migrations.schema_migrations
+// table, this script proves (does not assume) that the branch's live schema
+// objects match what the migration would have created, and only then
+// prints a `supabase migration repair --status applied <version>` command
+// for a human to review and run. It never runs that command itself, and it
+// never marks a migration as applied merely to silence an error.
+//
+// Requirements: SUPABASE_ACCESS_TOKEN, a target project ref, and this
+// script running only against a resolved Preview ref (never Production —
+// enforced below by a hard-coded comparison against SUPABASE_PRODUCTION_REF).
+//
+// Usage (dry-run only — this script never writes anything):
+//   SUPABASE_ACCESS_TOKEN=... \
+//   SUPABASE_PRODUCTION_REF=... \
+//   node .github/scripts/reconcile-preview-migration-history.mjs <preview-project-ref> <migration-version...>
+//
+// Output is a plan only. A human reviews it and runs the printed
+// `supabase migration repair` commands themselves.
+
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Overridable only so tests can point this at a local mock HTTP server that
+// stands in for the Supabase Management API. In real usage this is always
+// the real API — never set this env var outside of tests.
+const MANAGEMENT_API_BASE = process.env.SUPABASE_MANAGEMENT_API_BASE_URL || 'https://api.supabase.com';
+
+const [, , previewRef, ...versions] = process.argv;
+
+function fail(message) {
+  console.error(`ERROR: ${message}`);
+  process.exit(1);
+}
+
+if (!previewRef) fail('Usage: reconcile-preview-migration-history.mjs <preview-project-ref> <migration-version...>');
+if (versions.length === 0) fail('Provide at least one candidate migration version (the numeric/timestamp prefix of a migration filename).');
+
+const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+const productionRef = process.env.SUPABASE_PRODUCTION_REF;
+if (!accessToken) fail('SUPABASE_ACCESS_TOKEN is not set. This is a Management API token distinct from the Data API service-role key.');
+if (!productionRef) fail('SUPABASE_PRODUCTION_REF is not set — refusing to run without a way to prove the target is not Production.');
+if (!/^[a-z0-9]{20}$/.test(previewRef)) fail('The preview project ref does not look like a valid Supabase project ref.');
+if (previewRef === productionRef) fail('The target ref equals SUPABASE_PRODUCTION_REF. Refusing to run against Production.');
+
+console.log(`Target project ref: ${previewRef} (confirmed not equal to SUPABASE_PRODUCTION_REF)`);
+console.log(`Candidate versions to check: ${versions.join(', ')}\n`);
+
+// Extract the schema objects (tables, indexes) a migration file's CREATE
+// statements would produce. This is a structural heuristic, not a full SQL
+// parser — it is deliberately conservative: anything it cannot confidently
+// classify is left out of the "proven" set, which only makes the tool more
+// cautious (never a false "proven equivalent").
+function extractExpectedObjects(sql) {
+  const tables = [...sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)].map((m) => m[1]);
+  const indexes = [...sql.matchAll(/create\s+(?:unique\s+)?index\s+(?:if\s+not\s+exists\s+)?"?(\w+)"?/gi)].map((m) => m[1]);
+  return { tables, indexes };
+}
+
+function findMigrationFile(version) {
+  const dir = join(process.cwd(), 'supabase', 'migrations');
+  const match = readdirSync(dir).find((f) => f.startsWith(version));
+  if (!match) fail(`No local migration file starts with version ${version}.`);
+  return join(dir, match);
+}
+
+class SupabaseQueryError extends Error {}
+
+function escapeLiteral(value) {
+  return value.replace(/'/g, "''");
+}
+
+// Runs a single read-only SELECT against the target via the Supabase
+// Management API's dedicated read-only query endpoint (a supabase_read_only_user
+// role that cannot write). Returns the parsed array of result rows.
+//
+// Fails closed: any network error, non-success HTTP status, or response that
+// isn't the JSON array shape this endpoint documents throws SupabaseQueryError
+// instead of returning a result — callers must never interpret a failure to
+// verify as proof that an object is absent.
+async function queryRemote(sql, { fetchImpl = fetch } = {}) {
+  const url = `${MANAGEMENT_API_BASE}/v1/projects/${previewRef}/database/query/read-only`;
+
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: sql }),
+    });
+  } catch (networkError) {
+    throw new SupabaseQueryError(`Could not reach the Supabase Management API: ${networkError.message}`);
+  }
+
+  if (response.status !== 201) {
+    throw new SupabaseQueryError(`Supabase Management API read-only query returned HTTP ${response.status}.`);
+  }
+
+  let rows;
+  try {
+    rows = await response.json();
+  } catch {
+    throw new SupabaseQueryError('Supabase Management API read-only query response was not valid JSON.');
+  }
+
+  if (!Array.isArray(rows)) {
+    throw new SupabaseQueryError('Supabase Management API read-only query returned an unexpected (non-array) response shape.');
+  }
+
+  return rows;
+}
+
+async function main() {
+  const plan = [];
+
+  for (const version of versions) {
+    const filePath = findMigrationFile(version);
+    const sql = readFileSync(filePath, 'utf8');
+    const { tables, indexes } = extractExpectedObjects(sql);
+
+    if (tables.length === 0 && indexes.length === 0) {
+      console.log(`[${version}] No table/index CREATE statements detected — this tool does not have enough signal to prove equivalence. Skipping (not proposed for reconciliation).`);
+      continue;
+    }
+
+    console.log(`[${version}] Expecting tables: [${tables.join(', ') || 'none'}], indexes: [${indexes.join(', ') || 'none'}]`);
+
+    const missing = [];
+    try {
+      for (const table of tables) {
+        const rows = await queryRemote(
+          `select 1 as found from information_schema.tables where table_schema = 'public' and table_name = '${escapeLiteral(table)}';`
+        );
+        if (rows.length === 0) missing.push(`table public.${table}`);
+      }
+      for (const index of indexes) {
+        const rows = await queryRemote(
+          `select 1 as found from pg_catalog.pg_indexes where schemaname = 'public' and indexname = '${escapeLiteral(index)}';`
+        );
+        if (rows.length === 0) missing.push(`index public.${index}`);
+      }
+    } catch (error) {
+      // An API/network/shape failure is not the same as a proven absence.
+      // Fail closed: abort the whole run rather than risk this version being
+      // silently (and wrongly) reported as either proposed or not proposed.
+      fail(`Could not verify version ${version} against the target — refusing to propose any reconciliation. ${error.message}`);
+    }
+
+    if (missing.length > 0) {
+      console.log(`[${version}] NOT proven equivalent — missing on target: ${missing.join(', ')}. Not proposed for reconciliation.\n`);
+      continue;
+    }
+
+    console.log(`[${version}] All expected objects exist on the target. Proposing reconciliation.\n`);
+    plan.push(version);
+  }
+
+  console.log('=== Reconciliation plan ===');
+  if (plan.length === 0) {
+    console.log('No candidate versions were proven equivalent. Nothing to reconcile.');
+    return;
+  }
+
+  console.log('The following versions had every expected schema object confirmed present on the target.');
+  console.log('Review each one, then run manually if you agree:\n');
+  for (const version of plan) {
+    console.log(`  supabase migration repair --status applied ${version} --project-ref ${previewRef}`);
+  }
+  console.log('\nThis script has not executed any of the above. Nothing was written to the target database.');
+}
+
+main();
