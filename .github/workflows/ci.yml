@@ -422,6 +422,14 @@ jobs:
               const previews = data.check_runs.filter(check =>
                 check.name === 'Supabase Preview' && check.app?.slug === 'supabase',
               );
+              const skipped = previews.find(check =>
+                check.status === 'completed' && check.conclusion === 'skipped',
+              );
+              if (skipped) {
+                core.setOutput('available', 'false');
+                core.notice('Supabase Preview was skipped for this SHA; authenticated Preview smoke is not applicable.');
+                return;
+              }
               const terminalFailure = previews.find(check =>
                 check.status === 'completed' && check.conclusion !== 'success',
               );
@@ -470,6 +478,7 @@ jobs:
                 const previewUrl = `https://${previewRef}.supabase.co`;
                 core.setOutput('ref', previewRef);
                 core.setOutput('url', previewUrl);
+                core.setOutput('available', 'true');
                 core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);
                 core.exportVariable('SUPABASE_PREVIEW_URL', previewUrl);
                 core.info(`Resolved isolated Supabase Preview ref ${previewRef} for exact SHA ${sha}.`);
@@ -480,7 +489,12 @@ jobs:
             }
             core.setFailed('No READY isolated Supabase Preview check appeared for the exact committed SHA.');
 
+      - name: Record unavailable authenticated Preview target
+        if: steps.supabase-preview.outputs.available != 'true'
+        run: echo 'Authenticated Preview smoke skipped because no isolated Supabase Preview exists for this SHA.'
+
       - name: Validate resolved isolated Supabase Preview target
+        if: steps.supabase-preview.outputs.available == 'true'
         shell: bash
         run: |
           if [[ ! "$SUPABASE_PREVIEW_REF" =~ ^[a-z0-9]{20}$ ]]; then
@@ -498,6 +512,7 @@ jobs:
           fi
 
       - name: Resolve READY Vercel Preview for exact SHA
+        if: steps.supabase-preview.outputs.available == 'true'
         id: preview
         uses: actions/github-script@v7
         with:
@@ -547,23 +562,29 @@ jobs:
             core.setFailed('No READY Vercel Preview deployment appeared for the exact committed SHA.');
 
       - uses: pnpm/action-setup@v4
+        if: steps.supabase-preview.outputs.available == 'true'
         with:
           version: 11.1.3
 
       - uses: actions/setup-node@v4
+        if: steps.supabase-preview.outputs.available == 'true'
         with:
           node-version: 22.13.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+        if: steps.supabase-preview.outputs.available == 'true'
 
       - run: pnpm exec playwright install --with-deps chromium webkit
+        if: steps.supabase-preview.outputs.available == 'true'
 
       - name: Provision isolated Preview auth fixtures
+        if: steps.supabase-preview.outputs.available == 'true'
         run: node tests/smoke/preview-auth-fixtures.mjs provision
 
       - name: Validate authenticated request-to-row observability and isolation
+        if: steps.supabase-preview.outputs.available == 'true'
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
           SFM_PREVIEW_OBSERVABILITY_QA: '1'
@@ -574,6 +595,7 @@ jobs:
           tests/smoke/observability-preview.spec.ts
 
       - name: Run complete authenticated remote smoke suite
+        if: steps.supabase-preview.outputs.available == 'true'
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
         run: pnpm exec playwright test --config=playwright.preview.config.ts
