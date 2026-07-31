@@ -38,6 +38,12 @@ async function enterGuest(page: Page) {
   await page.waitForURL(/\/dashboard(?:\?|$)/);
 }
 
+async function expectSingleAnalystWorkspace(page: Page) {
+  const workspace = page.getByTestId('ai-analyst-workspace');
+  await expect(workspace).toHaveCount(1);
+  await expect(workspace).toBeVisible();
+}
+
 async function stubAnalystReads(page: Page) {
   await page.route('**/api/intelligence/recent**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, recent: { items: [] } }),
@@ -152,7 +158,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
 
     await page.goto('/market-analysis', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(/\/ai-analyst\/market-leadership(?:\?|$)/);
-    await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+    await expectSingleAnalystWorkspace(page);
 
     const sidebar = page.locator('aside.sfm-shared-sidebar');
     if (await sidebar.count()) {
@@ -173,7 +179,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     await page.goto('/symbol-details/AAPL?filters=top-movers&return=%2Fwatchlist%3Fsort%3Dnewest#details', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(url => `${url.pathname}${url.search}${url.hash}`
       === '/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&filters=top-movers&return=%2Fwatchlist%3Fsort%3Dnewest#details');
-    await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+    await expectSingleAnalystWorkspace(page);
   });
 
   test('keeps public market surfaces truthful and gates personal capabilities without hiding the workspace', async ({ page }) => {
@@ -194,7 +200,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
       ['/ai-analyst/education', 'education'],
     ] as const) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expectSingleAnalystWorkspace(page);
       await expect(page.locator(`[data-ai-analyst-surface="${marker}"]`)).toBeVisible();
     }
 
@@ -204,7 +210,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
       ['/ai-analyst/opportunities', 'Future opportunities'],
     ] as const) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expectSingleAnalystWorkspace(page);
       await expect(page.getByRole('heading', { name: heading })).toBeVisible();
     }
 
@@ -213,7 +219,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
         ? '/ai-analyst/history?view=accuracy'
         : `/ai-analyst/${surface === 'tradePerformance' ? 'trade-performance' : surface}`;
       await page.goto(route, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByTestId('ai-analyst-workspace')).toBeVisible();
+      await expectSingleAnalystWorkspace(page);
       await expect(page.getByTestId(`ai-analyst-${surface}-locked`)).toBeVisible();
     }
   });

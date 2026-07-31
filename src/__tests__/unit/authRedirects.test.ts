@@ -46,7 +46,7 @@ describe('authentication deep-link redirects', () => {
     expect(requestDestination('/settings', protectedPath.slice('/settings'.length))).toBe(protectedPath);
   });
 
-  it('uses Today as the authenticated default and keeps incomplete onboarding guarded', async () => {
+  it('uses Today as the authenticated default while keeping Dashboard onboarding guarded', async () => {
     expect(DEFAULT_AUTH_DESTINATION).toBe('/today');
 
     vi.mocked(inspectSessionSecurity).mockResolvedValue(authenticatedSession);
@@ -61,7 +61,14 @@ describe('authentication deep-link redirects', () => {
       'https://www.the-sfm.com/today',
       { headers: { cookie: 'sfm_access_token=test-token' } },
     ));
-    expect(new URL(todayResponse.headers.get('location') ?? '').pathname).toBe('/onboarding');
+    expect(todayResponse.status).toBe(200);
+    expect(todayResponse.headers.get('location')).toBeNull();
+
+    const dashboardResponse = await middleware(new NextRequest(
+      'https://www.the-sfm.com/dashboard',
+      { headers: { cookie: 'sfm_access_token=test-token' } },
+    ));
+    expect(new URL(dashboardResponse.headers.get('location') ?? '').pathname).toBe('/onboarding');
   });
 
   it('renders every AI Analyst page route without requiring sfm_guest or a session', async () => {

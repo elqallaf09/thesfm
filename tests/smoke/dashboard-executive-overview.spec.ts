@@ -100,7 +100,7 @@ async function installDashboardFixture(page: Page, options: { empty?: boolean; f
 }
 
 async function authenticateFixture(page: Page) {
-  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.goto('/login?next=%2Fdashboard', { waitUntil: 'domcontentloaded' });
   await allowDashboardFixtureThroughMiddleware(page);
   const loginInput = page.locator('input[type="email"], input[autocomplete="username"], input[name="email"], input[name="username"]').first();
   const passwordInput = page.locator('input[type="password"]').first();

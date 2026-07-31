@@ -213,7 +213,7 @@ export async function middleware(request: NextRequest) {
     applyInternalDestination(targetUrl, target);
     return withSecurityHeaders(NextResponse.redirect(targetUrl));
   }
-  if ((pathname === '/dashboard' || pathname === DEFAULT_AUTH_DESTINATION) && !session.onboardingComplete) {
+  if (pathname === '/dashboard' && !session.onboardingComplete) {
     const onboardingUrl = request.nextUrl.clone();
     onboardingUrl.pathname = '/onboarding';
     onboardingUrl.search = '';
