@@ -196,7 +196,7 @@ async function runScanInternal(filters: ScannerFilters = { market: 'US' }) {
     lastErrorCode: null,
   };
 
-  const universe = getUsStockUniverse(filters.symbols);
+  const universe = await getUsStockUniverse(filters.symbols);
   const results: StockAnalysisResult[] = [];
   let failedAssets = 0;
 

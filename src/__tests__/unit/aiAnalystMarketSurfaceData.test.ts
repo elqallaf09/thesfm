@@ -133,3 +133,22 @@ describe('AI Analyst market-surface composition boundary', () => {
     expect(source).not.toMatch(/\/api\/recommendations\b|\/api\/market\/signals\b|recommendationEngine|riskScore|targetPrice|stopLoss/i);
   });
 });
+
+describe('legacy market workspace loading boundary', () => {
+  const route = read('src/app/market-analysis/page.tsx');
+  const overview = read('src/components/ai-analyst/AiAnalystOverview.tsx');
+  const legacyWorkspace = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
+  const legacyImport = "import('@/components/market-analysis/LegacyMarketAnalysisWorkspace')";
+
+  it('keeps the redirect route small and defers the compatibility workspace', () => {
+    expect(route).toContain("<LegacyRouteRedirect kind=\"market-analysis\" />");
+    expect(route.length).toBeLessThan(5_000);
+    expect(route).not.toMatch(/LegacyMarketAnalysisWorkspace|useAuth|fetchJsonWithTimeout|MarketCommandNavigation/);
+  });
+
+  it('loads the compatibility workspace directly only from the explicit adapter', () => {
+    expect(overview).toContain(legacyImport);
+    expect(legacyWorkspace).toContain('export default function LegacyMarketAnalysisWorkspace()');
+    expect(legacyWorkspace).not.toContain('LegacyRouteRedirect');
+  });
+});

@@ -188,7 +188,7 @@ function recurrenceCount(row: FinancialRow, startKeys: string[], endKeys: string
 
   if (rowFrequency === 'daily') return activeDaysInMonth(row, startKeys, endKeys, now);
   if (rowFrequency === 'weekly') {
-    let cursor = new Date(startsAt);
+    const cursor = new Date(startsAt);
     let guard = 0;
     while (cursor < range.start && guard < 540) {
       cursor.setDate(cursor.getDate() + 7);

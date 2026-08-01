@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Construction } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { TR } from '@/lib/translations';
+import type { TR } from '@/lib/translations';
 
 type TranslationKey = keyof typeof TR;
 

@@ -18,6 +18,10 @@ const accessFrameSource = readFileSync(
   resolve(root, 'src/app/thesfm-trader-own/layout.tsx'),
   'utf8',
 );
+const routeStageSource = readFileSync(
+  resolve(root, 'src/app/thesfm-trader-own/TraderRouteStage.tsx'),
+  'utf8',
+);
 const rootLayoutSource = readFileSync(resolve(root, 'src/app/layout.tsx'), 'utf8');
 const traderAssetRouteSource = readFileSync(
   resolve(root, 'src/app/thesfm-trader-own/app/[[...path]]/route.ts'),
@@ -70,7 +74,9 @@ describe('Trader host theme bridge', () => {
   it('keeps the server authorization gate and iframe URL stable across theme changes', () => {
     expect(accessFrameSource).toContain('const access = await getTraderAccess()');
     expect(accessFrameSource).toContain('redirect(`/login?next=${encodeURIComponent(TRADER_PUBLIC_BASE_PATH)}`)');
-    expect(accessFrameSource).toContain('<TraderShellPage />');
+    expect(accessFrameSource).toContain('<TraderRouteStage');
+    expect(routeStageSource).toContain('<TraderShellPage />');
+    expect(routeStageSource).toContain("pathname === NATIVE_EDUCATION_PATH");
     expect(frameSource).toContain('export default function TraderShellPage()');
     expect(frameSource).toContain('const [initialSrc] = useState');
     expect(frameSource).not.toMatch(/setSrc|theme=.*src|key=.*theme/);

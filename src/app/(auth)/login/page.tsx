@@ -7,7 +7,6 @@ import type { ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AtSign,
-  ChevronLeft,
   Eye,
   EyeOff,
   Globe2,
@@ -795,9 +794,9 @@ function LoginContent() {
         console.error('[auth] login error', error);
         setMessage({ type: 'error', text: error });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[auth] login error', error);
-      setMessage({ type: 'error', text: error?.message || text.errorRegister });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : text.errorRegister });
     } finally {
       if (!redirectingRef.current) setSubmitting(false);
     }

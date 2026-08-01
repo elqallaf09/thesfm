@@ -1,4 +1,5 @@
-import { requireSuperAdminApiAccess, type AdminRoleRow } from '@/lib/server/adminAccess';
+import type { AdminRoleRow } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import {
   adminJson,
   logAdminAudit,
@@ -10,10 +11,7 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
-  const auth = await requireSuperAdminApiAccess(request);
-  if (!auth.ok) return adminJson({ ok: false, code: auth.code }, { status: auth.status });
-
+export const POST = createAdminApiRoute({ access: 'super-admin' }, async ({ request, auth }) => {
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!payload) return adminJson({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
 
@@ -50,4 +48,4 @@ export async function POST(request: Request) {
   });
 
   return adminJson({ ok: true, role: roleSnapshot(role) });
-}
+});

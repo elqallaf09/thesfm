@@ -21,6 +21,8 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_home:       { ar:'الصفحة الرئيسية', en:'Home Page', fr:"Page d'accueil" },
   nav_decisions: { ar:'محلل القرارات', en:'Decision Analyzer', fr:'Analyseur de décisions' },
   nav_today: { ar:'مركز اليوم', en:'Today Center', fr:'Centre du jour' },
+  nav_work_management: { ar:'إدارة العمل', en:'Work Management', fr:'Gestion du travail' },
+  nav_learning_resources: { ar:'التعلّم والمراجع', en:'Learning & Resources', fr:'Apprentissage et ressources' },
   nav_financial_theories: { ar:'النظريات المالية', en:'Financial Theories', fr:'Théories financières' },
   nav_ebooks: { ar:'كتب إلكترونية', en:'E-Books', fr:'Livres électroniques' },
   nav_tasks: { ar:'مركز المهام', en:'Tasks Center', fr:'Centre des tâches' },

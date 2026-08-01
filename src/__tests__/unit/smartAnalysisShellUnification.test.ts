@@ -14,7 +14,6 @@ import {
 } from '@/config/workspaces/workspace-navigation';
 import { findSelectedNavigationItemId } from '@/lib/navigation/workspaceNavigationState';
 import {
-  TRADER_PUBLIC_BASE_PATH,
   TRADER_ROUTE_CHANGE_MESSAGE_TYPE,
   TRADER_ROUTE_MESSAGE_VERSION,
   TRADER_ROUTE_SET_MESSAGE_TYPE,
@@ -28,6 +27,7 @@ import { TR } from '@/lib/translations';
 const root = process.cwd();
 const shellPageSource = readFileSync(resolve(root, 'src/app/thesfm-trader-own/TraderShellPage.tsx'), 'utf8');
 const traderLayoutSource = readFileSync(resolve(root, 'src/app/thesfm-trader-own/layout.tsx'), 'utf8');
+const traderRouteStageSource = readFileSync(resolve(root, 'src/app/thesfm-trader-own/TraderRouteStage.tsx'), 'utf8');
 const sidebarSource = readFileSync(resolve(root, 'src/components/Sidebar.tsx'), 'utf8');
 const mobileMenuSource = readFileSync(resolve(root, 'src/components/MobileMenu.tsx'), 'utf8');
 const terminalHtmlSource = readFileSync(resolve(root, 'src/trader-app/public/index.html'), 'utf8');
@@ -218,10 +218,12 @@ describe('Route bridge keeps the shell URL and the terminal in lock-step', () =>
     }
   });
 
-  it('keeps the iframe persistent in the segment layout with URL-anchor pages', () => {
-    expect(traderLayoutSource).toContain('<TraderShellPage />');
+  it('keeps the iframe persistent for legacy URL-anchor pages and supports native canaries', () => {
+    expect(traderLayoutSource).toContain('<TraderRouteStage');
     expect(traderLayoutSource).toContain('{children}');
     expect(traderLayoutSource).toContain('const access = await getTraderAccess()');
+    expect(traderRouteStageSource).toContain('<TraderShellPage />');
+    expect(traderRouteStageSource).toContain('nativeEducationEnabled');
     expect(shellPageSource).toContain('const [initialSrc] = useState');
     // Internal navigation must not reload the frame: the parent pushes the
     // route as a message, never as a new src.

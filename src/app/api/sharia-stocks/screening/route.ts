@@ -1,4 +1,3 @@
-import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { NextResponse } from 'next/server';
 import {
   getShariahScreeningCounts,

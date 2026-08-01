@@ -1,0 +1,194 @@
+name: Authenticated Preview Validate
+
+on:
+  workflow_call:
+    inputs:
+      target_sha:
+        required: true
+        type: string
+      preview_ref:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: "Exact 40-character commit SHA to validate."
+        required: true
+        type: string
+      preview_ref:
+        description: "Isolated Supabase Preview project ref. Production is rejected."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: authenticated-preview-validate-${{ inputs.target_sha }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate authenticated isolated Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: Preview
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      E2E_EXPECTED_DEPLOYMENT_SHA: ${{ inputs.target_sha }}
+      INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}
+      PLAYWRIGHT_NO_COPY_PROMPT: "1"
+    steps:
+      - name: Validate fail-closed target and required capabilities
+        shell: bash
+        run: |
+          missing=()
+          for name in \
+            SUPABASE_ACCESS_TOKEN \
+            SUPABASE_PRODUCTION_REF \
+            VERCEL_AUTOMATION_BYPASS_SECRET \
+            SUPER_ADMIN_EMAILS \
+            E2E_USER_EMAIL \
+            E2E_USER_PASSWORD \
+            E2E_ADMIN_EMAIL \
+            E2E_ADMIN_PASSWORD \
+            E2E_EXPECTED_DEPLOYMENT_SHA \
+            INPUT_PREVIEW_REF
+          do
+            value="${!name:-}"
+            [[ -n "${value//[[:space:]]/}" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required Preview capability: %s\n' "${missing[@]}" >&2
+            exit 1
+          fi
+          [[ "$E2E_EXPECTED_DEPLOYMENT_SHA" =~ ^[0-9a-f]{40}$ ]] \
+            || { echo 'target_sha must be a full commit SHA.' >&2; exit 1; }
+          [[ "$INPUT_PREVIEW_REF" =~ ^[a-z0-9]{20}$ ]] \
+            || { echo 'preview_ref must be a valid Supabase project ref.' >&2; exit 1; }
+          [[ "$SUPABASE_PRODUCTION_REF" =~ ^[a-z0-9]{20}$ ]] \
+            || { echo 'SUPABASE_PRODUCTION_REF is missing or invalid.' >&2; exit 1; }
+          [[ "$INPUT_PREVIEW_REF" != "$SUPABASE_PRODUCTION_REF" ]] \
+            || { echo 'Refusing to target Production.' >&2; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_sha }}
+
+      - name: Resolve and mask isolated Supabase credentials
+        shell: bash
+        run: |
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+          curl --fail --silent --show-error \
+            "https://api.supabase.com/v1/projects/${INPUT_PREVIEW_REF}/api-keys?reveal=true" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --output "$response_file"
+
+          public_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "publishable")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "anon")][0].api_key // empty' "$response_file")"
+          service_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "secret")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "service_role")][0].api_key // empty' "$response_file")"
+          [[ -n "$public_key" ]] || { echo 'No active Preview public key was returned.' >&2; exit 1; }
+          [[ -n "$service_key" ]] || { echo 'No active Preview service key was returned.' >&2; exit 1; }
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$service_key"
+          printf 'NEXT_PUBLIC_SUPABASE_URL=https://%s.supabase.co\n' "$INPUT_PREVIEW_REF" >> "$GITHUB_ENV"
+          printf 'NEXT_PUBLIC_SUPABASE_ANON_KEY=%s\n' "$public_key" >> "$GITHUB_ENV"
+          printf 'SUPABASE_PREVIEW_REF=%s\n' "$INPUT_PREVIEW_REF" >> "$GITHUB_ENV"
+          printf 'SUPABASE_PREVIEW_URL=https://%s.supabase.co\n' "$INPUT_PREVIEW_REF" >> "$GITHUB_ENV"
+          printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$service_key" >> "$GITHUB_ENV"
+
+      - name: Resolve READY Vercel Preview for exact SHA
+        id: preview
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const sha = process.env.E2E_EXPECTED_DEPLOYMENT_SHA;
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const deployments = await github.paginate(github.rest.repos.listDeployments, {
+                ...context.repo,
+                sha,
+                environment: 'Preview',
+                per_page: 100,
+              });
+              for (const deployment of deployments.sort(
+                (left, right) => Date.parse(right.created_at) - Date.parse(left.created_at),
+              )) {
+                if (deployment.sha !== sha || deployment.environment !== 'Preview') continue;
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  ...context.repo,
+                  deployment_id: deployment.id,
+                  per_page: 100,
+                });
+                const ready = statuses.find(status => status.state === 'success');
+                if (!ready) continue;
+                const candidate = ready.environment_url || ready.target_url;
+                let target;
+                try {
+                  target = new URL(candidate);
+                } catch {
+                  continue;
+                }
+                if (target.protocol !== 'https:' || !target.hostname.endsWith('.vercel.app')) continue;
+                core.setOutput('url', target.origin);
+                core.info(`Resolved READY Vercel Preview for exact SHA ${sha}.`);
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed(`No READY Vercel Preview was found for exact SHA ${sha}.`);
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium webkit
+
+      - name: Provision isolated Preview auth fixtures
+        run: node tests/smoke/preview-auth-fixtures.mjs provision
+
+      - name: Validate authenticated request-to-row observability and isolation
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+          SFM_PREVIEW_OBSERVABILITY_QA: "1"
+        run: >-
+          pnpm exec playwright test
+          --config=playwright.preview.config.ts
+          --project=chromium-desktop
+          tests/smoke/observability-preview.spec.ts
+
+      - name: Run complete authenticated remote smoke suite
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+        run: pnpm exec playwright test --config=playwright.preview.config.ts
+
+      - name: Cleanup isolated Preview auth fixtures
+        if: always()
+        run: node tests/smoke/preview-auth-fixtures.mjs cleanup
+
+      - name: Publish validation summary
+        if: success()
+        run: |
+          {
+            echo '### Authenticated isolated Preview validation'
+            echo
+            echo "- Exact commit: \`$E2E_EXPECTED_DEPLOYMENT_SHA\`"
+            echo "- Supabase target: isolated Preview (verified not Production)"
+            echo "- Vercel target: ${{ steps.preview.outputs.url }}"
+            echo '- Authenticated observability and full remote smoke suites passed.'
+          } >> "$GITHUB_STEP_SUMMARY"

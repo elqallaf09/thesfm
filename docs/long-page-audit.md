@@ -1,6 +1,6 @@
 # The SFM long-page audit
 
-Audit date: 2026-07-11. Complexity is based on source size, section count, data density, and estimated rendered height. Recommendations preserve existing data and business logic.
+Audit date: 2026-07-11. Follow-up status: 2026-07-31. Complexity is based on source size, section count, data density, and estimated rendered height. Recommendations preserve existing data and business logic.
 
 | Route | Page | Current major sections | Complexity | Recommended structure | Pattern |
 |---|---|---|---|---|---|
@@ -33,9 +33,9 @@ Audit date: 2026-07-11. Complexity is based on source size, section count, data 
 
 ## Shared findings
 
-- `PageTabs` already supplies mobile horizontal scrolling and 44px targets, but needs roving focus, Arrow/Home/End navigation, stable tab/panel IDs, active-tab scrolling and URL integration at page level.
+- `PageTabs` now supplies mobile horizontal scrolling, 44px targets, roving focus, Arrow/Home/End navigation, stable tab/panel IDs, active-tab scrolling, RTL behavior, and the mobile select fallback. URL integration remains a page-level concern.
 - Existing Radix tabs, accordion and collapsible primitives are sufficient; no new UI dependency is needed.
 - Market Analysis and the project workspace already dynamically import heavy views. The same conditional-mount rule should be retained.
 - Operations Center already shares and deduplicates one polled snapshot across tabs; it is the reference pattern for diagnostics.
-- The legacy Trader iframe currently hydrates unrelated datasets on every route. Route-gating those requests is a safe frontend performance improvement that does not change provider priority or calculations.
+- The legacy Trader iframe now route-gates dataset hydration. Further work follows the incremental containment and migration decision in `docs/adr/0001-trader-terminal-boundary.md`.
 - Investor Offers has no investor-activity source, Reports has no persisted archive/AI history, and Documents has no reliable archive/AI classification. Empty peer views must not be invented.

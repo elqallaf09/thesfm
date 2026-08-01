@@ -1,64 +1,59 @@
-# Zoer Next.js Template
+# THE SFM repository guide
 
-Production-ready full-stack Next.js application integrated with Supabase, TailwindCSS 4, and Radix UI.
+THE SFM is a multilingual financial workspace built with Next.js 15, React 19,
+TypeScript, Tailwind CSS 4, and Supabase. Use pnpm 11.1.3 (the version pinned in
+`package.json`) and Node.js 22.13.0 (the CI version).
 
-Although this is a Next.js template, only create API routes when necessary. Prioritize implementing sensitive operations on the server-side, such as private key management and API calls requiring authentication credentials.
+## Safety and architecture
 
-## Tech Stack
+- Keep credentials, provider keys, service-role operations, and authorization
+  checks on the server. Never expose a Supabase service-role key through a
+  `NEXT_PUBLIC_*` variable.
+- Browser access to Supabase must respect RLS. Server-only administrative
+  operations live under `src/lib/server` and API routes must use the shared
+  route policy where one exists.
+- Preserve the protected boundary around `/thesfm-trader-own`. Changes to its
+  iframe bridge or static asset server must follow
+  `docs/adr/0001-trader-terminal-boundary.md`.
+- Treat `supabase/migrations` as an append-only history. Validate the complete
+  clean migration chain; do not edit an applied migration to repair drift.
+- Keep Arabic, English, and French translation keys aligned. Arabic and RTL
+  behavior are release requirements, not optional polish.
 
-- **PNPM**: Package manager
-- **Frontend**: React 18 + Next.js + TypeScript + TailwindCSS 4
-- **Backend**: Next.js server-side routing (App Router)
-- **UI**: Radix UI + TailwindCSS 4 + Lucide React
-- **Database**: Supabase
+## Required checks
 
-## Key Features
+Run the smallest relevant checks while developing, then run these before a
+release-ready pull request:
 
-### Supabase Integration (Partial)
-
-**Architecture**: 
-This template includes the `@supabase/supabase-js` SDK, but the server-side implementation is not from Supabase. Zoer has implemented partial functionality. **Available Server Features**:
-1. `from` table queries
-2. Login
-3. Register  
-4. Password reset
-
-**Supabase**:
-- **Location**: `src/integrations/supabase/`
-- **Configuration**:
-  - `client.ts` - Exports `supabase` for client-side use, respects RLS policies
-  - `server.ts` - Exports `supabaseAdmin` for server-side use, bypasses RLS policies
-  - `types.ts` - TypeScript type definitions for Supabase tables
-
-#### Existing API Routes
-- `GET /api/health` - Health check endpoint
-
-## Adding Features
-
-### Create New API Route
-
-1. Create a folder in `src/app/api/` directory, for example `src/app/api/users/`
-2. Create a `route.ts` file to handle requests
-
-```typescript
-// src/app/api/users/route.ts
-export async function GET(request: Request) {
-  return Response.json({ message: "Hello" })
-}
+```text
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm lint
+pnpm check:i18n
+pnpm check:maintainability
+pnpm test:run
+pnpm build
+pnpm check:performance-budget
 ```
 
-3. Route is automatically registered as `/api/users`
+The production build requires the public Supabase variables documented in the
+release checklist. Follow `docs/release/release-checklist.md` for canary,
+telemetry, migration, and rollback evidence.
 
-### Create New Page
+## Change discipline
 
-1. Create a new folder in `src/app/` directory, for example `src/app/dashboard/`
-2. Create a `page.tsx` file
-
-```typescript
-// src/app/dashboard/page.tsx
-export default function Dashboard() {
-  return <div>Dashboard Page</div>
-}
-```
-
-3. Route is automatically registered as `/dashboard`
+- Prefer focused modules over adding more code to a grandfathered oversized
+  file. The maintainability guard blocks new files above 900 lines, growth of
+  existing oversized files, and new `!important` debt.
+- Treat `scripts/eslint-debt-baseline.json` as a debt ratchet. Lower a rule's
+  allowance whenever unused variables or explicit `any` warnings are removed;
+  never raise it to accommodate new warnings.
+- Add or update tests for authorization, data transformations, navigation, and
+  bridge contracts.
+- Do not weaken security, accessibility, performance, or migration checks to
+  make CI pass. Record a time-bounded exception in the pull request if a check
+  cannot be satisfied.
+- Do not commit generated build output, browser recordings, local databases,
+  provider payloads, or credentials.
+- Keep generated QA evidence in CI or release artifacts, not Git. The repository
+  hygiene guard rejects generated paths and tracked files above 5 MiB.

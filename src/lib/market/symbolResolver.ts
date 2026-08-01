@@ -1,4 +1,3 @@
-import staticUsSymbols from '@/data/us-symbols.json';
 import {
   marketSymbolSuggestions,
   normalizeAssetType,
@@ -13,6 +12,7 @@ import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { providerAliasToMarketSearchItem, resolveProviderSymbolAlias } from '@/lib/market/providerSymbolAliases';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import symbolDirectory from '../../data/market-symbols.json';
+import { getBundledUsSymbolCatalog, type BundledUsSymbolRow } from '@/lib/server/usSymbolCatalog';
 
 export type MarketApiErrorCode = 'INVALID_SYMBOL' | 'NO_DATA' | 'PROVIDER_DOWN' | 'TIMEOUT' | 'RATE_LIMIT';
 
@@ -381,9 +381,9 @@ function exactDirectoryItem(query: string, assetType?: MarketAssetType) {
         || compactText(item.name) === compact));
 }
 
-function exactStaticUsItem(query: string, assetType?: MarketAssetType) {
+function exactStaticUsItem(rows: readonly BundledUsSymbolRow[], query: string, assetType?: MarketAssetType) {
   const compact = compactText(query);
-  return (staticUsSymbols as MarketSearchItem[])
+  return (rows as MarketSearchItem[])
     .find(item => matchesAssetType(item, assetType)
       && (compactText(item.symbol) === compact
         || compactText(item.providerSymbol) === compact));
@@ -461,9 +461,9 @@ function exchangeSuffixItem(query: string, assetType?: MarketAssetType): MarketS
   };
 }
 
-function stringsToItems(symbols: string[], assetType?: MarketAssetType) {
+function stringsToItems(rows: readonly BundledUsSymbolRow[], symbols: string[], assetType?: MarketAssetType) {
   return symbols
-    .map(symbol => exactAlias(symbol, assetType) ? aliasToItem(exactAlias(symbol, assetType)!) : exactDirectoryItem(symbol, assetType) ?? exactStaticUsItem(symbol, assetType) ?? null)
+    .map(symbol => exactAlias(symbol, assetType) ? aliasToItem(exactAlias(symbol, assetType)!) : exactDirectoryItem(symbol, assetType) ?? exactStaticUsItem(rows, symbol, assetType) ?? null)
     .filter((item): item is MarketSearchItem => Boolean(item));
 }
 
@@ -539,7 +539,8 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
   const exactDirectory = exactDirectoryItem(query, assetType);
   if (exactDirectory) return { ok: true, asset: resolveFromItem(exactDirectory, 'exact_symbol'), suggestions: [exactDirectory] };
 
-  const exactStatic = exactStaticUsItem(query, assetType);
+  const bundledUsSymbols = await getBundledUsSymbolCatalog();
+  const exactStatic = exactStaticUsItem(bundledUsSymbols.rows, query, assetType);
   if (exactStatic) return { ok: true, asset: resolveFromItem(exactStatic, 'exact_symbol'), suggestions: [exactStatic] };
 
   const assetAliases = dedupe(assetAliasItems(query, assetType));
@@ -569,7 +570,7 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
   const searchSuggestions = dedupe([
     ...fuzzyAliasSuggestions(query, assetType),
     ...(usResults.results ?? []),
-    ...stringsToItems(marketSymbolSuggestions(query), assetType),
+    ...stringsToItems(bundledUsSymbols.rows, marketSymbolSuggestions(query), assetType),
   ]);
 
   const normalizedQuery = normalizeText(query);

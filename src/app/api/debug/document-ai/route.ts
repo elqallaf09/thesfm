@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import {
   getGoogleClientDiagnostic,
   getGoogleReceiptConfig,
@@ -10,29 +9,16 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'production') {
-    const auth = await requireAdminApiAccess(request, 'admin_dashboard').catch(() => null);
-    if (!auth) {
-      return NextResponse.json({ ok: false, code: 'ADMIN_AUTH_CHECK_FAILED' }, { status: 503 });
-    }
-    if (!auth.ok) {
-      return NextResponse.json({ ok: false, code: auth.code }, {
-        status: auth.status,
-        headers: { 'Cache-Control': 'private, no-store' },
-      });
-    }
-  }
-
+export const GET = createAdminApiRoute({ permission: 'admin_dashboard' }, async ({ request, json }) => {
   const status = getReceiptProviderStatus();
   const parsedCredentials = parseGoogleCredentialsJson(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
   const { config } = getGoogleReceiptConfig();
-  const shouldTestProcessor = request.nextUrl.searchParams.get('test') === 'processor';
+  const shouldTestProcessor = new URL(request.url).searchParams.get('test') === 'processor';
   const processorDiagnostic = shouldTestProcessor
     ? await getGoogleClientDiagnostic('google-metadata')
     : await getGoogleClientDiagnostic();
 
-  return NextResponse.json({
+  return json({
     runtime: 'nodejs',
     env: {
       hasProjectId: status.google.hasProjectId,
@@ -65,9 +51,5 @@ export async function GET(request: NextRequest) {
         googleReason: processorDiagnostic.googleReason,
       } : {}),
     },
-  }, {
-    headers: {
-      'Cache-Control': 'no-store',
-    },
   });
-}
+});

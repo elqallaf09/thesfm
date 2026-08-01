@@ -7,7 +7,7 @@ const root = process.cwd();
 const read = (file: string) => readFileSync(join(root, file), 'utf8');
 
 const signalPanel = read('src/components/market/MarketSignalPanel.tsx');
-const marketAnalysis = read('src/app/market-analysis/page.tsx');
+const marketAnalysis = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
 const appModal = read('src/components/ui/AppModal.tsx');
 const traderApp = read('src/trader-app/public/app.js');
 const traderHtml = read('src/trader-app/public/index.html');

@@ -1,5 +1,6 @@
 import { Briefcase, CandlestickChart, ShieldCheck, Wallet } from 'lucide-react';
 import type { WorkspaceDefinition, WorkspaceId } from './workspace-types';
+import { WORKSPACE_ROUTE_PREFIXES } from './workspace-route-index';
 
 /**
  * The single source of truth for workspace definitions (phase 3).
@@ -27,15 +28,9 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
       fr: 'Vos revenus, dépenses, objectifs et rapports financiers personnels.',
     },
     icon: Wallet,
-    defaultRoute: '/dashboard',
-    routePrefixes: [
-      '/dashboard', '/decisions', '/today', '/tasks',
-      '/income', '/expenses', '/debts', '/savings', '/goals',
-      '/reports', '/reports-center', '/documents', '/notifications', '/notif',
-      '/zakat', '/khums', '/charity', '/charity-projects',
-      '/ai', '/financial-theories', '/ebooks', '/education',
-      '/profile', '/security', '/settings',
-    ],
+    defaultRoute: '/today',
+    guestDefaultRoute: '/dashboard',
+    routePrefixes: WORKSPACE_ROUTE_PREFIXES['personal-finance'],
     navGroupIds: ['main', 'personal-finance', 'financial-intelligence', 'charity'],
     access: { authenticationRequired: true, guestAllowed: true },
     enabled: true,
@@ -50,14 +45,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
     },
     icon: CandlestickChart,
     defaultRoute: '/ai-analyst/overview',
-    routePrefixes: [
-      '/ai-analyst', '/symbol-details',
-      '/market-analysis', '/market-agent', '/market-alerts', '/market-watchlist',
-      '/watchlist', '/alerts', '/invest', '/thesfm-trader-own',
-      '/tech-news', '/europe-news', '/gulf-news', '/crypto-news',
-      '/energy-stocks', '/banking-stocks', '/sharia-stocks', '/growth-stocks',
-      '/defensive-stocks', '/cyclical-stocks', '/dividend-stocks',
-    ],
+    routePrefixes: WORKSPACE_ROUTE_PREFIXES['markets-trading'],
     navGroupIds: [
       'investment-market', 'market-news',
       // SFM Smart Analyzer contextual groups (render only inside /thesfm-trader-own).
@@ -77,15 +65,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
     icon: Briefcase,
     defaultRoute: '/business-hub',
     guestDefaultRoute: '/investment-companies',
-    routePrefixes: [
-      '/projects', '/business', '/business-hub', '/business-operations',
-      '/investment-offers', '/investor',
-      '/invoices', '/employees', '/sales', '/customers', '/suppliers',
-      '/operating-expenses',
-      '/investment-companies', '/trading-companies', '/accounting-companies',
-      '/feasibility-companies', '/financial-consulting-companies',
-      '/services', '/companies', '/company-listing', '/profile/companies',
-    ],
+    routePrefixes: WORKSPACE_ROUTE_PREFIXES['business-projects'],
     navGroupIds: ['business-projects', 'services'],
     access: { authenticationRequired: true, guestAllowed: true },
     enabled: true,
@@ -100,7 +80,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = [
     },
     icon: ShieldCheck,
     defaultRoute: '/sfm-admin-control',
-    routePrefixes: ['/sfm-admin-control'],
+    routePrefixes: WORKSPACE_ROUTE_PREFIXES.administration,
     navGroupIds: ['admin'],
     access: { authenticationRequired: true, adminRequired: true },
     enabled: true,

@@ -158,7 +158,7 @@ Associated CSS budgets all pass. The largest route first-load bundle observed in
 - The failing history/cache scenario kept every navigation, hydration, and request-count assertion. Its hosted-runner budget was increased from 60 to 120 seconds, matching other long terminal scenarios. Current-head focused validation passed 25 consecutive scenario repetitions across desktop Chromium, mobile Chromium, and mobile WebKit.
 - An initial local full-smoke command omitted the CI-only dashboard fixture environment and therefore reported nine expected fixture-auth configuration timeouts plus one transient tooltip assertion (188 pass/89 skip/10 fail). Under the complete safe synthetic dashboard configuration, all three dashboard cases passed; the tooltip scenario passed on repeat. These are not represented as live-account E2E evidence.
 - Final-head CI must pass the browser job before any approval. Supabase Preview is expected to remain failed until the clean migration chain is repaired; that failure is a release blocker, not an allowed CI exception.
-- Production screenshot set is committed under `artifacts/release/phase-5-0d/baseline/`. It contains 12 requested baseline views. Authenticated/dashboard screenshots are guest/auth-wall evidence where credentials were unavailable and are labeled accordingly.
+- The 12-view screenshot set was produced during this historical phase, but generated `artifacts/` output is no longer committed. Regenerate current evidence with `pnpm qa:visual` and attach it to the release record or CI artifact storage; authenticated/dashboard captures require isolated credentials.
 
 ## Exact changed files and migrations
 

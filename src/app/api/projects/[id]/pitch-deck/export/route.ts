@@ -642,9 +642,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const buffer = await buildPitchDeckPowerPoint(deck, source);
+  const responseBytes = new Uint8Array(buffer);
   const filename = safeFilename(deck.projectName);
 
-  return new NextResponse(buffer, {
+  return new NextResponse(responseBytes, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`,

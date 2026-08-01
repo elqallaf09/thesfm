@@ -112,7 +112,7 @@ describe('legacy workspace tab deep links', () => {
 
   it('configures both pages to use shared legacy hash normalization', () => {
     const root = process.cwd();
-    const marketPage = readFileSync(join(root, 'src/app/market-analysis/page.tsx'), 'utf8');
+    const marketPage = readFileSync(join(root, 'src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx'), 'utf8');
     const businessPage = readFileSync(join(root, 'src/app/business-hub/page.tsx'), 'utf8');
     const hook = readFileSync(join(root, 'src/hooks/useUrlTabState.ts'), 'utf8');
 

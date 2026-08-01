@@ -1,15 +1,5 @@
-import usSymbols from '@/data/us-symbols.json';
+import { getBundledUsSymbolCatalog, type BundledUsSymbolRow } from '@/lib/server/usSymbolCatalog';
 import type { TradableAsset } from '@/lib/trader/types';
-
-type SymbolDirectoryRow = {
-  symbol?: string;
-  providerSymbol?: string;
-  name?: string;
-  assetType?: string;
-  exchange?: string | null;
-  country?: string | null;
-  currency?: string | null;
-};
 
 const US_UNIVERSE_SYMBOLS = [
   'AAPL',
@@ -80,13 +70,7 @@ const INDUSTRY_BY_SYMBOL: Record<string, string> = {
   BAC: 'Banking',
 };
 
-const directory = new Map(
-  (usSymbols as SymbolDirectoryRow[])
-    .filter((row) => row.symbol && row.country === 'US')
-    .map((row) => [String(row.symbol).toUpperCase(), row]),
-);
-
-function normalizeAsset(symbol: string): TradableAsset {
+function normalizeAsset(symbol: string, directory: ReadonlyMap<string, BundledUsSymbolRow>): TradableAsset {
   const directoryRow = directory.get(symbol);
   return {
     symbol,
@@ -102,10 +86,13 @@ function normalizeAsset(symbol: string): TradableAsset {
   };
 }
 
-export function getUsStockUniverse(symbols?: string[]) {
+export async function getUsStockUniverse(symbols?: string[]) {
+  const catalog = await getBundledUsSymbolCatalog();
   const requested = Array.isArray(symbols) && symbols.length > 0
     ? symbols
-    : Array.from(directory.keys());
+    : Array.from(catalog.bySymbol.entries())
+        .filter(([, row]) => row.country === 'US')
+        .map(([symbol]) => symbol);
   const seen = new Set<string>();
 
   return requested
@@ -116,5 +103,5 @@ export function getUsStockUniverse(symbols?: string[]) {
       seen.add(symbol);
       return true;
     })
-    .map(normalizeAsset);
+    .map(symbol => normalizeAsset(symbol, catalog.bySymbol));
 }

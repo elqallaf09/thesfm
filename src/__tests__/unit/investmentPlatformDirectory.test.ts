@@ -30,6 +30,7 @@ const translations = readSource('src/lib/translations/invest.ts');
 const reports = readSource('src/app/reports-center/page.tsx');
 const publicApi = readSource('src/app/api/investment-platforms/route.ts');
 const adminApi = readSource('src/app/api/admin/investment-platforms/route.ts');
+const adminApiPolicy = readSource('src/lib/server/adminApiRoute.ts');
 
 const input: InvestmentInput = {
   name: 'XTB holding',
@@ -196,7 +197,9 @@ describe('platform directory API privacy and authorization', () => {
   });
 
   it('requires server-side administrator permission for every moderation action', () => {
-    expect((adminApi.match(/requireAdminApiAccess\(request, 'company_reviews'\)/g) ?? [])).toHaveLength(2);
+    expect((adminApi.match(/permission: 'company_reviews'/g) ?? [])).toHaveLength(2);
+    expect((adminApi.match(/createAdminApiRoute\(/g) ?? [])).toHaveLength(2);
+    expect(adminApiPolicy).toContain('requireAdminApiAccess(request, options.permission)');
     expect(adminApi).toContain(".rpc('merge_investment_platforms'");
     expect(adminApi).not.toMatch(/SUPABASE_SERVICE_ROLE_KEY|DATABASE_SERVICE_ROLE_KEY/);
   });

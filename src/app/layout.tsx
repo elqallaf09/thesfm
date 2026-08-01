@@ -8,8 +8,10 @@ import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
 import { DeferredGlobalUtilities } from '@/components/DeferredGlobalUtilities';
 import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
+import { WebVitalsReporter } from '@/components/observability/WebVitalsReporter';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
+import './workspace-chrome-critical.css';
 
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
   variable: '--font-ibm-plex-sans-arabic',
@@ -64,6 +66,7 @@ export default function RootLayout({
           <DensityProvider>
             <AuthProvider>
               <AdaptiveLanguageProvider>
+                <WebVitalsReporter />
                 <LocalizedSkipLink />
                 <CurrencyProvider>
                   <AppLayout>{children}</AppLayout>

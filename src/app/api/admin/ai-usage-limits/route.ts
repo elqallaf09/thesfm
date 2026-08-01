@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { AI_USAGE_FEATURES, isAiUsageFeature, type AiUsageFeature } from '@/lib/server/aiUsage';
 
 export const runtime = 'nodejs';
@@ -9,16 +9,6 @@ type AdminUserLookup = {
   id: string;
   email?: string;
 };
-
-function json(data: unknown, init?: ResponseInit) {
-  return NextResponse.json(data, {
-    ...init,
-    headers: {
-      'Cache-Control': 'private, no-store',
-      ...(init?.headers ?? {}),
-    },
-  });
-}
 
 function cleanString(value: unknown, maxLength = 500) {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
@@ -32,11 +22,6 @@ function cleanEmail(value: unknown) {
 function cleanDailyLimit(value: unknown) {
   const number = typeof value === 'number' ? value : Number(cleanString(value, 32));
   return Number.isFinite(number) && number >= 0 ? Math.floor(number) : null;
-}
-
-async function requireAdmin(request: NextRequest) {
-  const auth = await requireAdminApiAccess(request, 'users_management');
-  return auth.ok ? auth : null;
 }
 
 async function findUserByEmail(admin: NonNullable<ReturnType<typeof createServerSupabaseAdmin>>, email: string): Promise<AdminUserLookup | null> {
@@ -62,9 +47,10 @@ async function resolveTargetUser(
   return findUserByEmail(admin, email);
 }
 
-export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+export const POST = createAdminApiRoute({
+  permission: 'users_management',
+  rateLimit: { max: 20, windowMs: 60_000, prefix: 'admin-ai-usage-limits-write' },
+}, async ({ request, auth, json }) => {
   const admin = auth.admin;
 
   const payload = await request.json().catch(() => null) as Record<string, unknown> | null;
@@ -108,11 +94,12 @@ export async function POST(request: NextRequest) {
     user: targetUser,
     limit: data,
   });
-}
+});
 
-export async function GET(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth) return json({ ok: false, code: 'FORBIDDEN' }, { status: 403 });
+export const GET = createAdminApiRoute({
+  permission: 'users_management',
+  rateLimit: { max: 60, windowMs: 60_000, prefix: 'admin-ai-usage-limits-read' },
+}, async ({ request, auth, json }) => {
   const admin = auth.admin;
 
   const url = new URL(request.url);
@@ -139,4 +126,4 @@ export async function GET(request: NextRequest) {
     limits: limits ?? [],
     events: events ?? [],
   });
-}
+});

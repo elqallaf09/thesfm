@@ -17,15 +17,16 @@ describe('operational API production guards', () => {
   it('keeps provider GET read-only and moves mutations behind authenticated admin POST', () => {
     const getHandler = providerRoute.slice(
       providerRoute.indexOf('export async function GET'),
-      providerRoute.indexOf('export async function POST'),
+      providerRoute.indexOf('export const POST'),
     );
-    const postHandler = providerRoute.slice(providerRoute.indexOf('export async function POST'));
+    const postHandler = providerRoute.slice(providerRoute.indexOf('export const POST'));
 
     expect(getHandler).toContain('MUTATION_REQUIRES_AUTHENTICATED_POST');
     expect(getHandler).toContain('rateLimitRequest');
     expect(getHandler).not.toContain('resetFmpRateLimitCooldown()');
     expect(getHandler).not.toContain('clearTraderQuoteCache()');
-    expect(postHandler).toContain("requireAdminApiAccess(request, 'admin_dashboard')");
+    expect(postHandler).toContain("permission: 'admin_dashboard'");
+    expect(postHandler).toContain('createAdminApiRoute');
     expect(postHandler).toContain('resetFmpRateLimitCooldown()');
     expect(postHandler).toContain('clearTraderQuoteCache()');
     expect(providerRoute).not.toContain('ADMIN_DIAGNOSTICS_TOKEN');
@@ -47,10 +48,11 @@ describe('operational API production guards', () => {
     expect(databaseHealthRoute).toContain("code: 'DATABASE_HEALTH_CHECK_FAILED'");
   });
 
-  it('requires authenticated admin access for production debug routes', () => {
+  it('requires authenticated admin access for debug routes in every environment', () => {
     for (const route of [documentDebugRoute, receiptDebugRoute]) {
-      expect(route).toContain("process.env.NODE_ENV === 'production'");
-      expect(route).toContain("requireAdminApiAccess(request, 'admin_dashboard')");
+      expect(route).toContain('createAdminApiRoute');
+      expect(route).toContain("permission: 'admin_dashboard'");
+      expect(route).not.toContain("process.env.NODE_ENV === 'production'");
       expect(route).not.toContain('MARKET_PROVIDER_HEALTH_TOKEN');
       expect(route).not.toContain("searchParams.get('token')");
       expect(route).not.toContain('isValidAdminAccessCode');

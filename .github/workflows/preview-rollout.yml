@@ -1,0 +1,163 @@
+name: Isolated Preview Rollout
+
+on:
+  workflow_call:
+    inputs:
+      preview_ref:
+        required: true
+        type: string
+      git_branch:
+        required: true
+        type: string
+      deployment_id:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      preview_ref:
+        description: "Isolated Supabase Preview project ref. Production is rejected."
+        required: true
+        type: string
+      git_branch:
+        description: "Git branch receiving branch-scoped Vercel Preview variables."
+        required: true
+        type: string
+      deployment_id:
+        description: "Existing READY Vercel Preview deployment to rebuild after configuration."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: isolated-preview-rollout-${{ inputs.git_branch }}
+  cancel-in-progress: false
+
+jobs:
+  rollout:
+    name: Configure and redeploy isolated Preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: Preview
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: prj_AumPZoHxwpIUVJID2gQBx30ZmciV
+      VERCEL_TEAM_SLUG: mohammed-alqallaf-s-projects
+      VERCEL_TELEMETRY_DISABLED: "1"
+      INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}
+      INPUT_GIT_BRANCH: ${{ inputs.git_branch }}
+      INPUT_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+    steps:
+      - name: Validate fail-closed Preview identity
+        shell: bash
+        run: |
+          preview_ref="$INPUT_PREVIEW_REF"
+          git_branch="$INPUT_GIT_BRANCH"
+          deployment_id="$INPUT_DEPLOYMENT_ID"
+
+          [[ "$preview_ref" =~ ^[a-z0-9]{20}$ ]] || { echo 'Invalid Supabase Preview ref.' >&2; exit 1; }
+          [[ "$SUPABASE_PRODUCTION_REF" =~ ^[a-z0-9]{20}$ ]] || { echo 'Missing or invalid Production ref guard.' >&2; exit 1; }
+          [[ "$preview_ref" != "$SUPABASE_PRODUCTION_REF" ]] || { echo 'Refusing to target Production.' >&2; exit 1; }
+          [[ "$git_branch" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo 'Invalid Git branch.' >&2; exit 1; }
+          [[ "$deployment_id" =~ ^dpl_[A-Za-z0-9]+$ ]] || { echo 'Invalid Vercel deployment id.' >&2; exit 1; }
+          [[ -n "${SUPABASE_ACCESS_TOKEN:-}" ]] || { echo 'SUPABASE_ACCESS_TOKEN is required.' >&2; exit 1; }
+          [[ -n "${VERCEL_TOKEN:-}" ]] || { echo 'VERCEL_TOKEN is required.' >&2; exit 1; }
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+
+      - name: Resolve and mask isolated Supabase credentials
+        shell: bash
+        run: |
+          preview_ref="$INPUT_PREVIEW_REF"
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          curl --fail --silent --show-error \
+            "https://api.supabase.com/v1/projects/${preview_ref}/api-keys?reveal=true" \
+            --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            --output "$response_file"
+
+          public_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "publishable")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "anon")][0].api_key // empty' "$response_file")"
+          service_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "secret")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "service_role")][0].api_key // empty' "$response_file")"
+
+          [[ -n "$public_key" ]] || { echo 'No active publishable/anon key was returned for Preview.' >&2; exit 1; }
+          [[ -n "$service_key" ]] || { echo 'No active secret/service_role key was returned for Preview.' >&2; exit 1; }
+          echo "::add-mask::$public_key"
+          echo "::add-mask::$service_key"
+          printf 'PREVIEW_PUBLIC_KEY=%s\n' "$public_key" >> "$GITHUB_ENV"
+          printf 'PREVIEW_SERVICE_KEY=%s\n' "$service_key" >> "$GITHUB_ENV"
+
+      - name: Configure branch-scoped Vercel Preview variables
+        shell: bash
+        run: |
+          branch="$INPUT_GIT_BRANCH"
+          preview_url="https://${INPUT_PREVIEW_REF}.supabase.co"
+          vercel_cmd=(pnpm dlx vercel@58.4.4 env add)
+          common=(preview "$branch" --force --yes --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_TEAM_SLUG")
+
+          add_config() { printf '%s' "$2" | "${vercel_cmd[@]}" "$1" "${common[@]}" --no-sensitive; }
+          add_secret() { printf '%s' "$2" | "${vercel_cmd[@]}" "$1" "${common[@]}" --sensitive; }
+
+          add_config NEXT_PUBLIC_SUPABASE_URL "$preview_url"
+          add_config NEXT_PUBLIC_SUPABASE_ANON_KEY "$PREVIEW_PUBLIC_KEY"
+          add_config NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY "$PREVIEW_PUBLIC_KEY"
+          add_secret SUPABASE_SERVICE_ROLE_KEY "$PREVIEW_SERVICE_KEY"
+          add_secret DATABASE_SERVICE_ROLE_KEY "$PREVIEW_SERVICE_KEY"
+          add_config NEXT_PUBLIC_OBSERVABILITY_ENABLED true
+          add_config NEXT_PUBLIC_OBSERVABILITY_SAMPLE_RATE 0.1
+          add_config TRADER_NATIVE_EDUCATION_ENABLED true
+
+      - name: Verify variable names and branch scope without values
+        shell: bash
+        run: |
+          branch="$INPUT_GIT_BRANCH"
+          pnpm dlx vercel@58.4.4 env ls preview "$branch" \
+            --json --project "$VERCEL_PROJECT_ID" --scope "$VERCEL_TEAM_SLUG" > preview-env.json
+          for name in \
+            NEXT_PUBLIC_SUPABASE_URL \
+            NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
+            SUPABASE_SERVICE_ROLE_KEY \
+            DATABASE_SERVICE_ROLE_KEY \
+            NEXT_PUBLIC_OBSERVABILITY_ENABLED \
+            NEXT_PUBLIC_OBSERVABILITY_SAMPLE_RATE \
+            TRADER_NATIVE_EDUCATION_ENABLED
+          do
+            jq -e --arg name "$name" '.. | objects | select(.key? == $name or .name? == $name)' preview-env.json >/dev/null \
+              || { echo "Missing branch-scoped variable: $name" >&2; exit 1; }
+          done
+          echo 'All required branch-scoped Preview variable names are present; values were not printed.'
+
+      - name: Rebuild the exact Vercel Preview deployment
+        id: redeploy
+        shell: bash
+        run: |
+          pnpm dlx vercel@58.4.4 redeploy "$INPUT_DEPLOYMENT_ID" \
+            --target preview --scope "$VERCEL_TEAM_SLUG" > deployment-url.txt
+          deployment_url="$(tail -n 1 deployment-url.txt | tr -d '\r')"
+          [[ "$deployment_url" =~ ^https://[^/]+\.vercel\.app$ ]] || { echo 'Vercel did not return a valid Preview URL.' >&2; exit 1; }
+          echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+          echo "Preview redeployed successfully: $deployment_url"
+
+      - name: Publish rollout summary
+        shell: bash
+        run: |
+          {
+            echo '### Isolated Preview rollout'
+            echo
+            echo "- Supabase ref: \`$INPUT_PREVIEW_REF\` (verified not Production)"
+            echo "- Vercel branch scope: \`$INPUT_GIT_BRANCH\`"
+            echo "- Source deployment: \`$INPUT_DEPLOYMENT_ID\`"
+            echo "- Redeployed URL: ${{ steps.redeploy.outputs.url }}"
+            echo '- Observability: enabled at 10% sampling'
+            echo '- Native Trader education: enabled'
+          } >> "$GITHUB_STEP_SUMMARY"

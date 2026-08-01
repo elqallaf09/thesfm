@@ -18,7 +18,6 @@ import {
 } from '@/lib/server/companyListingHelpers';
 import {
   normalizeCompanyCategory,
-  normalizeCompanyStatus,
   splitServices,
   type CompanyListing,
   type CompanyStatus,

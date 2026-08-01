@@ -7,9 +7,9 @@
 
 ═══════════════════════════════════════════════════════ */
 
-export type Lang = 'ar' | 'en' | 'fr';
+import type { Lang, TranslationEntry } from './translations/types';
 
-type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
+export type { Lang, TranslationDictionary, TranslationEntry } from './translations/types';
 
 import { TR_ADMIN } from './translations/admin';
 import { TR_AI } from './translations/ai';

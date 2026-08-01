@@ -21,6 +21,28 @@ on:
         description: "Exact commit SHA to validate. Mutually exclusive with target_pr."
         required: false
         type: string
+      preview_ref:
+        description: "Optional explicit isolated Supabase Preview project ref when the GitHub integration check is unavailable."
+        required: false
+        type: string
+      activate_rollout:
+        description: "After migrations pass, configure and redeploy the isolated Vercel Preview."
+        required: false
+        default: false
+        type: boolean
+      git_branch:
+        description: "Vercel Preview branch scope; required when activate_rollout is true."
+        required: false
+        type: string
+      deployment_id:
+        description: "Existing READY Vercel Preview deployment id; required when activate_rollout is true."
+        required: false
+        type: string
+      run_authenticated_smoke:
+        description: "Run fail-closed authenticated tests against the exact-SHA isolated Preview."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -43,7 +65,7 @@ jobs:
     steps:
       - name: Resolve exact target SHA
         id: resolve
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const targetPr = `${{ inputs.target_pr }}`.trim();
@@ -161,14 +183,24 @@ jobs:
 
       - name: Resolve the isolated Supabase Preview ref for this exact SHA
         id: preview-ref
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const sha = '${{ needs.resolve-target.outputs.sha }}';
+            const explicitRef = `${{ inputs.preview_ref }}`.trim();
+            if (explicitRef) {
+              if (!/^[a-z0-9]{20}$/.test(explicitRef)) {
+                core.setFailed('preview_ref must be a 20-character lowercase Supabase project ref.');
+                return;
+              }
+              core.setOutput('ref', explicitRef);
+              core.info(`Using the explicitly supplied isolated Preview ref ${explicitRef} for ${sha}.`);
+              return;
+            }
             const { data } = await github.rest.checks.listForRef({ ...context.repo, ref: sha, per_page: 100 });
             const preview = data.check_runs.find(c => c.name === 'Supabase Preview' && c.app?.slug === 'supabase');
             if (!preview || preview.conclusion !== 'success') {
-              core.setFailed(`No successful "Supabase Preview" branch exists for ${sha} (status: ${preview?.conclusion ?? 'none'}). This job validates an existing branch's migration state — it does not provision one. See docs/infra/supabase-preview-ci.md.`);
+              core.setFailed(`No successful "Supabase Preview" branch exists for ${sha} (status: ${preview?.conclusion ?? 'none'}). Supply preview_ref for an existing isolated branch, or see docs/infra/supabase-preview-ci.md.`);
               return;
             }
             const url = new URL(preview.details_url);
@@ -223,9 +255,30 @@ jobs:
           fi
           echo "Migration history is consistent: every local migration version is recorded as applied."
 
+  rollout:
+    name: Activate isolated Vercel Preview
+    if: inputs.activate_rollout
+    needs: [snapshot-upgrade]
+    uses: ./.github/workflows/preview-rollout.yml
+    with:
+      preview_ref: ${{ inputs.preview_ref }}
+      git_branch: ${{ inputs.git_branch }}
+      deployment_id: ${{ inputs.deployment_id }}
+    secrets: inherit
+
+  authenticated-preview:
+    name: Run authenticated isolated Preview validation
+    if: inputs.run_authenticated_smoke && needs.snapshot-upgrade.result == 'success'
+    needs: [resolve-target, snapshot-upgrade]
+    uses: ./.github/workflows/authenticated-preview-validate.yml
+    with:
+      target_sha: ${{ needs.resolve-target.outputs.sha }}
+      preview_ref: ${{ inputs.preview_ref }}
+    secrets: inherit
+
   cleanup:
     name: Cleanup workflow-owned Preview fixtures
-    needs: [resolve-target, snapshot-upgrade]
+    needs: [resolve-target, snapshot-upgrade, rollout, authenticated-preview]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5

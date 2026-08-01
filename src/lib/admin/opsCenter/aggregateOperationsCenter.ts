@@ -177,7 +177,7 @@ function bucketShariahJobs(jobs: ShariahJobRow[]): JobSourceStats {
 }
 
 function bucketMarketNewsFetchLogs(logs: FetchLogRow[]): JobSourceStats {
-  let queued = 0;
+  const queued = 0;
   let running = 0;
   let succeeded = 0;
   let failed = 0;

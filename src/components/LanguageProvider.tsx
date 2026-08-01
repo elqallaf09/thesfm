@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Lang } from '@/lib/translations';
-import { t as translate, TR } from '@/lib/translations';
+import { translateFromDictionary, type Lang, type TranslationDictionary } from '@/lib/translations/types';
 import { trackEvent } from '@/lib/analytics';
 import { deferUntilStreamSettled } from '@/lib/runtime/deferUntilStreamSettled';
 import {
@@ -13,6 +12,7 @@ import {
 
 const STORAGE_KEY = 'sfm_lang';
 const LANG_EVENT = 'sfm-language-change';
+let lastKnownLang: Lang = 'ar';
 
 function isLang(value: unknown): value is Lang {
   return value === 'ar' || value === 'en' || value === 'fr';
@@ -29,8 +29,18 @@ function readStoredLang(): Lang {
   }
 }
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>('ar');
+export function LanguageProvider({
+  children,
+  translations,
+}: {
+  children: React.ReactNode;
+  translations: TranslationDictionary;
+}) {
+  const [lang, setLangState] = useState<Lang>(() => lastKnownLang);
+  const commitLang = useCallback((nextLang: Lang) => {
+    lastKnownLang = nextLang;
+    setLangState(nextLang);
+  }, []);
 
   useEffect(() => {
     // Deferred (not a plain synchronous call): committing this correction
@@ -39,12 +49,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     // afterwards alongside the client-rendered replacement. See
     // deferUntilStreamSettled's docstring for the full mechanism.
     const cancelInitialSync = deferUntilStreamSettled(() => {
-      setLangState(readStoredLang());
+      commitLang(readStoredLang());
     });
 
     const syncLang = (event?: Event) => {
       const customLang = event instanceof CustomEvent ? event.detail?.lang : undefined;
-      setLangState(isLang(customLang) ? customLang : readStoredLang());
+      commitLang(isLang(customLang) ? customLang : readStoredLang());
     };
 
     window.addEventListener(LANG_EVENT, syncLang as EventListener);
@@ -54,17 +64,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener(LANG_EVENT, syncLang as EventListener);
       window.removeEventListener('storage', syncLang);
     };
-  }, []);
+  }, [commitLang]);
 
   const setLang = useCallback((l: Lang) => {
     if (!isLang(l)) return;
-    setLangState(l);
+    commitLang(l);
     void trackEvent('change_language', { language: l, metadata: { language: l } });
     try {
       localStorage.setItem(STORAGE_KEY, l);
       window.dispatchEvent(new CustomEvent(LANG_EVENT, { detail: { lang: l } }));
     } catch {}
-  }, []);
+  }, [commitLang]);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -88,7 +98,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lang]);
 
-  const tFn = useCallback((key: keyof typeof TR) => translate(key, lang), [lang]);
+  const tFn = useCallback((key: string) => translateFromDictionary(translations, key, lang), [lang, translations]);
 
   const value = useMemo<LanguageContextValue>(() => ({
     lang,

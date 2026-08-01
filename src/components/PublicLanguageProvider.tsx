@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Lang } from '@/lib/translations';
+import type { Lang } from '@/lib/translations/types';
 import { TR_AUTH } from '@/lib/translations/auth';
 import { TR_COMMON } from '@/lib/translations/common';
 import { TR_NAV } from '@/lib/translations/nav';

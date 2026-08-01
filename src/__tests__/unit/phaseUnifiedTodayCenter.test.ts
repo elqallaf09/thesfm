@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NAV_GROUPS } from '@/components/navigationConfig';
 import { generateSmartTasks } from '@/lib/tasks/generateSmartTasks';
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
@@ -72,11 +73,41 @@ describe('unified Today operational workflow', () => {
     const today = navigation.indexOf("id: 'today'");
     const reports = navigation.indexOf("id: 'reports-center'");
     const tasks = navigation.indexOf("id: 'tasks'");
-    expect(home).toBeLessThan(today);
-    expect(today).toBeLessThan(reports);
+    expect(today).toBeLessThan(home);
+    expect(home).toBeLessThan(reports);
     expect(reports).toBeLessThan(tasks);
     expect(navigation).not.toContain("id: 'notif'");
     expect(read('src/components/AppHeader.tsx')).toContain('className="sfm-global-notifications"');
+  });
+
+  it('keeps the primary navigation concise while preserving advanced routes', () => {
+    const main = NAV_GROUPS.find(group => group.id === 'main');
+    expect(main?.items.map(item => item.id)).toEqual([
+      'today',
+      'home',
+      'decisions',
+      'work-management',
+      'learning-resources',
+    ]);
+    expect(main?.items.find(item => item.id === 'work-management')?.children?.map(item => item.href)).toEqual([
+      '/reports-center',
+      '/documents',
+      '/tasks',
+    ]);
+    expect(main?.items.find(item => item.id === 'learning-resources')?.children?.map(item => item.href)).toEqual([
+      '/financial-theories',
+      '/ebooks',
+    ]);
+  });
+
+  it('keeps the public landing page independent from the authenticated navigation bundle', () => {
+    const landing = read('src/app/page.tsx');
+
+    expect(landing).not.toContain("from '@/components/navigationConfig'");
+    expect(landing).not.toContain('flattenNavigationItems');
+    const landingNavigation = read('src/lib/landingNavigation.ts');
+    expect(landingNavigation).toContain("expenses: { href: '/expenses'");
+    expect(landingNavigation).toContain("notif: { href: '/notifications'");
   });
 
   it('deduplicates route-to-route data loading with short-lived shared caches', () => {

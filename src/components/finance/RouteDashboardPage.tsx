@@ -441,7 +441,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       });
       const expensesQuery = async () => {
         const baseCurrentQuery = () => {
-          let query = supabase.from('expense_items').select('*').eq('user_id', user.id);
+          const query = supabase.from('expense_items').select('*').eq('user_id', user.id);
           return query.order('date', { ascending: false }).order('created_at', { ascending: false });
         };
         const currentSchema = await safeQuery<SmartExpense>(

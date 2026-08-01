@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getTraderAccess } from '@/lib/server/traderAccess';
 import { TRADER_PUBLIC_BASE_PATH } from '@/lib/trader/routeBridge';
 import TraderAccessGate from './TraderAccessGate';
-import TraderShellPage from './TraderShellPage';
+import TraderRouteStage from './TraderRouteStage';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +39,8 @@ export default async function TheSfmTraderOwnLayout({ children }: { children: Re
   }
 
   return (
-    <>
-      <TraderShellPage />
+    <TraderRouteStage nativeEducationEnabled={process.env.TRADER_NATIVE_EDUCATION_ENABLED === 'true'}>
       {children}
-    </>
+    </TraderRouteStage>
   );
 }

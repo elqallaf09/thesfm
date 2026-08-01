@@ -3,6 +3,7 @@ import { adminJson } from '@/lib/server/adminRoleManagement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// ADMIN_API_POLICY_EXCEPTION: admin-self-inspection
 
 export async function GET(request: Request) {
   const user = await getCurrentUserFromRequest(request);

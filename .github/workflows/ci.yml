@@ -72,6 +72,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:prod-endpoints
       - run: pnpm check:public-env
+      - run: pnpm check:api-policy
+        name: Enforce the shared administrative API policy
+      - run: pnpm check:maintainability
+        name: Prevent source complexity and CSS debt regressions
+      - run: pnpm check:repo-hygiene
+        name: Reject generated and oversized tracked files
 
   test:
     name: CI/Unit & Integration tests
@@ -277,6 +283,20 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
       - run: pnpm test:performance
         name: Playwright platform performance regression suite
+        env:
+          PLAYWRIGHT_NO_COPY_PROMPT: '1'
+          PLAYWRIGHT_HTTPS_LOOPBACK: '1'
+          PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
+          PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
       - name: Remove Playwright DOM error contexts
         if: ${{ !cancelled() }}
         shell: bash
@@ -303,7 +323,6 @@ jobs:
     name: CI/Lighthouse advisory
     runs-on: ubuntu-latest
     needs: [build]
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -321,6 +340,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
       - name: Run Lighthouse CI
+        continue-on-error: true
         uses: treosh/lighthouse-ci-action@v11
         with:
           configPath: .lighthouserc.json
@@ -418,7 +438,7 @@ jobs:
 
       - name: Resolve active isolated Supabase Preview ref for exact SHA
         id: supabase-preview
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const sha = context.payload.pull_request.head.sha;
@@ -438,6 +458,14 @@ jobs:
               const previews = data.check_runs.filter(check =>
                 check.name === 'Supabase Preview' && check.app?.slug === 'supabase',
               );
+              const skipped = previews.find(check =>
+                check.status === 'completed' && check.conclusion === 'skipped',
+              );
+              if (skipped) {
+                core.setOutput('available', 'false');
+                core.notice('Supabase Preview was skipped for this SHA; authenticated Preview smoke is not applicable.');
+                return;
+              }
               const terminalFailure = previews.find(check =>
                 check.status === 'completed' && check.conclusion !== 'success',
               );
@@ -486,6 +514,7 @@ jobs:
                 const previewUrl = `https://${previewRef}.supabase.co`;
                 core.setOutput('ref', previewRef);
                 core.setOutput('url', previewUrl);
+                core.setOutput('available', 'true');
                 core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);
                 core.exportVariable('SUPABASE_PREVIEW_URL', previewUrl);
                 core.info(`Resolved isolated Supabase Preview ref ${previewRef} for exact SHA ${sha}.`);
@@ -496,7 +525,12 @@ jobs:
             }
             core.setFailed('No READY isolated Supabase Preview check appeared for the exact committed SHA.');
 
+      - name: Record unavailable authenticated Preview target
+        if: steps.supabase-preview.outputs.available != 'true'
+        run: echo 'Authenticated Preview smoke skipped because no isolated Supabase Preview exists for this SHA.'
+
       - name: Validate resolved isolated Supabase Preview target
+        if: steps.supabase-preview.outputs.available == 'true'
         shell: bash
         run: |
           if [[ ! "$SUPABASE_PREVIEW_REF" =~ ^[a-z0-9]{20}$ ]]; then
@@ -514,8 +548,9 @@ jobs:
           fi
 
       - name: Resolve READY Vercel Preview for exact SHA
+        if: steps.supabase-preview.outputs.available == 'true'
         id: preview
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const sha = context.payload.pull_request.head.sha;
@@ -563,23 +598,29 @@ jobs:
             core.setFailed('No READY Vercel Preview deployment appeared for the exact committed SHA.');
 
       - uses: pnpm/action-setup@v4
+        if: steps.supabase-preview.outputs.available == 'true'
         with:
           version: 11.1.3
 
       - uses: actions/setup-node@v4
+        if: steps.supabase-preview.outputs.available == 'true'
         with:
           node-version: 22.13.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+        if: steps.supabase-preview.outputs.available == 'true'
 
       - run: pnpm exec playwright install --with-deps chromium webkit
+        if: steps.supabase-preview.outputs.available == 'true'
 
       - name: Provision isolated Preview auth fixtures
+        if: steps.supabase-preview.outputs.available == 'true'
         run: node tests/smoke/preview-auth-fixtures.mjs provision
 
       - name: Validate authenticated request-to-row observability and isolation
+        if: steps.supabase-preview.outputs.available == 'true'
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
           SFM_PREVIEW_OBSERVABILITY_QA: '1'
@@ -590,6 +631,7 @@ jobs:
           tests/smoke/observability-preview.spec.ts
 
       - name: Run complete authenticated remote smoke suite
+        if: steps.supabase-preview.outputs.available == 'true'
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
         run: pnpm exec playwright test --config=playwright.preview.config.ts

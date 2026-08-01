@@ -6,6 +6,7 @@ import { requireAdminApiAccess } from '@/lib/server/adminAccess';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+// ADMIN_API_POLICY_EXCEPTION: cron-or-admin-news-ingest
 
 function configuredSecret() {
   const value = process.env.CRON_SECRET?.trim() ?? '';

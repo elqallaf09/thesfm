@@ -8,7 +8,7 @@ import { TR } from '@/lib/translations';
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 
 const traderTools = read('src/components/market-analysis/TraderToolsDashboard.tsx');
-const marketPage = read('src/app/market-analysis/page.tsx');
+const marketPage = read('src/components/market-analysis/LegacyMarketAnalysisWorkspace.tsx');
 const marketCommandCenter = read('src/components/market-analysis/marketCommandCenter.ts');
 const marketTraderStyles = read('src/components/market-analysis/MarketTraderStyles.tsx');
 const marketBaseStyles = read('src/components/market-analysis/MarketBaseStyles.tsx');

@@ -99,6 +99,9 @@ likely already deployed through the normal merge-to-`main` pipeline.
    arbitrary already-open PR (by number) or exact commit SHA, without
    needing a new commit on that PR. It:
    - Resolves the exact target SHA.
+   - Accepts an optional explicit `preview_ref` for an already-created isolated
+     Supabase branch when the external GitHub integration check is unavailable;
+     the workflow still fails closed if that ref matches Production.
    - **Fails closed** (not silently skips) if any of the following required
      secrets/variables are absent, naming each one explicitly: `CRON_SECRET`
      (as a GitHub Actions secret — see below), `VERCEL_AUTOMATION_BYPASS_SECRET`,
@@ -114,7 +117,15 @@ likely already deployed through the normal merge-to-`main` pipeline.
    - Cleanup runs with `if: always()`.
    - Uses a `concurrency` group keyed by target PR/SHA.
 
-3. **`.github/scripts/reconcile-preview-migration-history.mjs`** — a
+3. **`Isolated Preview Rollout`** (`.github/workflows/preview-rollout.yml`)
+   — a manual, fail-closed rollout workflow used only after migration
+   validation succeeds. It retrieves the selected Preview project's API keys
+   inside GitHub Actions, masks them before use, writes Supabase and feature
+   variables only to the selected Vercel Preview branch, verifies variable
+   names without printing values, and rebuilds an exact READY deployment. It
+   rejects a Supabase ref equal to `SUPABASE_PRODUCTION_REF`.
+
+4. **`.github/scripts/reconcile-preview-migration-history.mjs`** — a
    standalone, human-run, dry-run-only tool for the narrow case where a
    Preview branch's live schema already matches what a given migration
    file would produce, but that version is missing from
@@ -127,32 +138,20 @@ likely already deployed through the normal merge-to-`main` pipeline.
    executed against a real Supabase project** — see "Known limitations"
    below.
 
-## Known limitations (honest status)
+## Verified status and remaining limitations
 
-- **`SUPABASE_ACCESS_TOKEN` does not exist as a secret in this repository**
-  (confirmed via `gh secret list`). This is the Supabase Management API
-  token required for `supabase link`/`migration list`/`db push`/
-  `migration repair` — distinct from `SUPABASE_PREVIEW_SERVICE_ROLE_KEY`
-  and `SUPABASE_SERVICE_ROLE_KEY`, which are Data API keys and cannot
-  perform branch/migration management. Without it, the `snapshot-upgrade`
-  job and the reconciliation script are **implemented but untested against
-  a real Supabase project**. They are written against officially
-  documented Supabase CLI behavior and fail closed rather than silently
-  pass, but "the code is correct" is not the same claim as "this job has
-  been proven to work" — it has not, and should not be treated as such
-  until someone with the token runs it once and confirms.
-- **`VERCEL_TOKEN` does not exist** anywhere in this repository. Reading
-  function logs, duration, and CPU metrics for a specific Preview
-  deployment requires it; this remains unimplemented pending that
-  credential.
-- **`CRON_SECRET` is configured in Vercel's environment but is not mirrored
-  as a GitHub Actions secret.** A workflow cannot read a Vercel project
-  environment variable directly — for CI to make an authenticated request
-  to `/api/trader/scanner/run`, the same value needs to also exist as a
-  GitHub Actions secret (ideally scoped to the `Preview` environment).
-- **Issue 1 above (branch association) cannot be fixed from this
-  repository at all** — it requires Supabase dashboard/account-level
-  action.
+- `SUPABASE_ACCESS_TOKEN` and `VERCEL_TOKEN` are configured in the GitHub
+  `Preview` environment (names/presence only; values are never printed).
+- On 2026-08-01, run `30695563497` applied and re-verified all 133 migrations
+  against isolated project `efyibkhjlqhvrmbrnuax`; every job completed
+  successfully. This proves the snapshot-upgrade path against a real branch.
+- `CRON_SECRET`, `VERCEL_AUTOMATION_BYPASS_SECRET`, and the remaining
+  authenticated-smoke credentials are present in the GitHub `Preview`
+  environment; run `30695563497` passed the workflow's fail-closed
+  names-only capability check.
+- Supabase's automatic GitHub check still does not reliably associate this
+  PR with its branch. The manual workflow's explicit `preview_ref` input is
+  the audited fallback until that account-level integration is repaired.
 
 ## Rollback
 

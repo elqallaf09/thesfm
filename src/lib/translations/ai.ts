@@ -54,7 +54,6 @@ export const TR_AI: Record<string, TranslationEntry> = {
   wakeel_below_nisab: { ar:'الوعاء أقل من النصاب؛ لا تجب الزكاة.', en:'The base is below Nisab; Zakat is not due.', fr:'L’assiette est inférieure au Nisab ; la Zakat n’est pas due.' },
   wakeel_finance_note: { ar:'عدّل الأرقام لتطابق وضعك. يمكن لوكيل جلب سعر الذهب الحالي لتقدير النصاب.', en:'Adjust the figures to match your situation. Wakeel can retrieve the current gold price to estimate Nisab.', fr:'Ajustez les chiffres à votre situation. Wakeel peut obtenir le cours actuel de l’or pour estimer le Nisab.' },
   wakeel_done: { ar:'تم', en:'Done', fr:'Terminé' },
-  ai_manager:     { ar:'المدير المالي الذكي', en:'AI Finance Manager', fr:'Gestionnaire financier IA' },
   ai_active:      { ar:'نشط',             en:'Active', fr:'Actif' },
   ai_working:     { ar:'يعمل حالياً لتحسين وضعك المالي', en:'Currently optimizing your financial health', fr:'Optimisation de votre santé financière en cours' },
   ai_insights_title: { ar:'رؤية المدير المالي الذكي', en:'AI Financial Manager Insights', fr:'Insights du Gestionnaire Financier IA' },
