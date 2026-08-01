@@ -91,6 +91,9 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
       - uses: actions/setup-node@v5
         with:
           node-version: 22.13.0
@@ -268,6 +271,10 @@ jobs:
             core.setOutput('ref', match[1]);
             core.info(`Reusing externally-resolved Preview ref ${match[1]}.`);
 
+      - uses: pnpm/action-setup@v6
+        if: steps.explicit.outputs.ref == '' && steps.external.outputs.ref == ''
+        with:
+          version: 11.1.3
       - uses: actions/setup-node@v5
         if: steps.explicit.outputs.ref == '' && steps.external.outputs.ref == ''
         with:
