@@ -202,7 +202,9 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     ] as const) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
       await expectSingleAnalystWorkspace(page);
-      await expect(page.locator(`[data-ai-analyst-surface="${marker}"]`)).toBeVisible();
+      const surface = page.locator(`[data-ai-analyst-surface="${marker}"]`);
+      await expect(surface).toHaveCount(1);
+      await expect(surface).toBeVisible();
     }
 
     for (const [route, heading] of [

@@ -104,8 +104,7 @@ describe('Phase 3.2 workspace width and layout consistency', () => {
     expect(resolveWorkspacePageContainerVariant('/ebooks')).toBe('wide');
     expect(tokens).toMatch(/--workspace-page-max-reading:\s*52rem;/);
     expect(containerStyles).toContain('max-inline-size: var(--workspace-page-max-reading)');
-    expect(tokens).toContain('--app-sidebar-width: 240px;');
-    expect(workspaceShell).toContain('grid-template-columns: minmax(0, 1fr) var(--app-sidebar-width)');
+    expect(workspaceShell).toContain('grid-template-columns: var(--sidebar-w) minmax(0, 1fr)');
     expect(workspaceShell).not.toMatch(/100vw|calc\(\s*100vw|translateX\(/);
 
     for (const legalPage of ['src/app/terms/page.tsx', 'src/app/privacy/page.tsx']) {
