@@ -38,6 +38,11 @@ on:
         description: "Existing READY Vercel Preview deployment id; required when activate_rollout is true."
         required: false
         type: string
+      run_authenticated_smoke:
+        description: "Run fail-closed authenticated tests against the exact-SHA isolated Preview."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -261,9 +266,19 @@ jobs:
       deployment_id: ${{ inputs.deployment_id }}
     secrets: inherit
 
+  authenticated-preview:
+    name: Run authenticated isolated Preview validation
+    if: inputs.run_authenticated_smoke && needs.snapshot-upgrade.result == 'success'
+    needs: [resolve-target, snapshot-upgrade]
+    uses: ./.github/workflows/authenticated-preview-validate.yml
+    with:
+      target_sha: ${{ needs.resolve-target.outputs.sha }}
+      preview_ref: ${{ inputs.preview_ref }}
+    secrets: inherit
+
   cleanup:
     name: Cleanup workflow-owned Preview fixtures
-    needs: [resolve-target, snapshot-upgrade, rollout]
+    needs: [resolve-target, snapshot-upgrade, rollout, authenticated-preview]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
