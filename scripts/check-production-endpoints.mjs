@@ -19,6 +19,12 @@ const SCAN_ROOTS = [
 
 const ALLOWED_FILES = new Set([
   path.normalize('src/lib/server/imageUrlResolver.ts'),
+  // Supabase Preview Validate starts an ephemeral `next start` server on
+  // 127.0.0.1 to run the live scanner-validation matrix inside its own
+  // isolated CI runner sandbox. It never runs, and is never reachable, in
+  // Production or any Preview deployment — it exists only for the duration
+  // of that one workflow job.
+  path.normalize('.github/workflows/supabase-preview-validate.yml'),
 ]);
 
 const ALLOWED_PATH_PARTS = [
