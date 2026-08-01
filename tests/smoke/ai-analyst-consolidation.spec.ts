@@ -39,9 +39,11 @@ async function enterGuest(page: Page) {
 }
 
 async function expectSingleAnalystWorkspace(page: Page) {
-  const workspace = page.getByTestId('ai-analyst-workspace');
-  await expect(workspace).toHaveCount(1);
-  await expect(workspace).toBeVisible();
+  const workspaces = page.getByTestId('ai-analyst-workspace');
+  const visibleWorkspace = workspaces.filter({ visible: true });
+  await expect(visibleWorkspace).toHaveCount(1);
+  await expect(visibleWorkspace).toBeVisible();
+  await expect(workspaces).toHaveCount(1);
 }
 
 async function stubAnalystReads(page: Page) {
