@@ -17,6 +17,9 @@ export default defineConfig({
   // Performance budgets must run without other browser projects competing for
   // the same production server and CPU during a throttled interaction trace.
   workers: 1,
+  // Shared GitHub runners occasionally add presentation delay without app-side
+  // long tasks. Require a second failing trace before rejecting the change.
+  retries: process.env.CI ? 1 : 0,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report/performance', open: 'never' }]],
   use: {
     baseURL,

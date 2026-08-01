@@ -161,7 +161,8 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
     expect(sidebar).toContain('className="sfm-shared-utilities"');
     expect(sidebar).toMatch(/<nav\r?\n\s+className="sfm-shared-utilities"/);
     expect(sidebar).toContain('max-height:min(40dvh,340px)');
-    expect(sidebar).toContain('target.scrollIntoView');
+    expect(sidebar).toContain('useLayoutEffect(() =>');
+    expect(sidebar).toContain('scroll.scrollTop += itemRect.bottom - scrollRect.bottom');
     expect(mobile).toContain('className="sfm-mobile-utilities"');
     expect(mobile).toContain('className="sfm-mobile-utility-nav"');
     expect(mobile).toContain('@media(max-height:620px)');
