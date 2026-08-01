@@ -467,12 +467,12 @@ jobs:
               const previews = data.check_runs.filter(check =>
                 check.name === 'Supabase Preview' && check.app?.slug === 'supabase',
               );
-              const skipped = previews.find(check =>
-                check.status === 'completed' && check.conclusion === 'skipped',
+              const unavailable = previews.find(check =>
+                check.status === 'completed' && ['skipped', 'cancelled'].includes(check.conclusion),
               );
-              if (skipped) {
+              if (unavailable) {
                 core.setOutput('available', 'false');
-                core.notice('Supabase Preview was skipped for this SHA; authenticated Preview smoke is not applicable.');
+                core.notice(`Supabase Preview was ${unavailable.conclusion} for this SHA; authenticated Preview smoke is not applicable.`);
                 return;
               }
               const terminalFailure = previews.find(check =>
