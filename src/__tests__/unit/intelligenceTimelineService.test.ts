@@ -90,7 +90,8 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
       method: null,
       reasonCode: 'CALCULATION_NOT_SUPPORTED',
     },
-    targets: [],
+    marketPrice: { available: true, value: 150, currency: 'USD', observedAt: '2025-01-01T00:00:00.000Z', source: 'provider-a', dataStatus: 'LIVE' },
+    targets: { available: false, lower: null, upper: null, currency: 'USD', source: null, dataAsOf: null, method: null, reasonCode: 'CALCULATION_NOT_SUPPORTED' },
     stopLossContext: {
       available: false,
       value: null,
@@ -142,6 +143,7 @@ function analysis(overrides: Partial<AnalysisResult> = {}): AnalysisResult {
       materialFactorKeys: [],
     },
     previousAnalysis: null,
+    persistenceStatus: 'PERSISTED',
     ...overrides,
   };
 }
@@ -169,13 +171,15 @@ function timelineQuery(userId: string | null, overrides: Partial<{
 }
 
 describe('intelligence timeline service', () => {
-  it('paginates only analyses visible to the caller and keeps private history isolated', async () => {
+  it('paginates only the authenticated owner history and keeps it isolated', async () => {
     const sharedOld = analysis({
       analysisId: '20000000-0000-4000-8000-000000000010',
+      scope: 'PRIVATE',
       generatedAt: '2025-01-01T00:00:00.000Z',
     });
     const sharedNew = analysis({
       analysisId: '20000000-0000-4000-8000-000000000011',
+      scope: 'PRIVATE',
       generatedAt: '2025-01-03T00:00:00.000Z',
     });
     const ownerPrivate = analysis({
@@ -189,21 +193,21 @@ describe('intelligence timeline service', () => {
       generatedAt: '2025-01-05T00:00:00.000Z',
     });
     const store = new MemoryIntelligenceOutcomeStore([
-      stored(sharedOld),
-      stored(sharedNew),
+      stored(sharedOld, OWNER),
+      stored(sharedNew, OWNER),
       stored(ownerPrivate, OWNER),
       stored(otherPrivate, OTHER_USER),
     ]);
     const subject = new IntelligenceTimelineService(store);
 
-    const anonymous = await subject.getTimeline(timelineQuery(null, { limit: 1 }));
-    expect(anonymous.items.map(item => item.analysisId)).toEqual([sharedNew.analysisId]);
-    expect(anonymous.nextCursor).toBe(sharedNew.generatedAt);
-    const anonymousSecondPage = await subject.getTimeline(timelineQuery(null, {
+    const ownerFirstPage = await subject.getTimeline(timelineQuery(OWNER, { limit: 1 }));
+    expect(ownerFirstPage.items.map(item => item.analysisId)).toEqual([ownerPrivate.analysisId]);
+    expect(ownerFirstPage.nextCursor).toBe(ownerPrivate.generatedAt);
+    const ownerSecondPage = await subject.getTimeline(timelineQuery(OWNER, {
       limit: 1,
-      cursor: anonymous.nextCursor,
+      cursor: ownerFirstPage.nextCursor,
     }));
-    expect(anonymousSecondPage.items.map(item => item.analysisId)).toEqual([sharedOld.analysisId]);
+    expect(ownerSecondPage.items.map(item => item.analysisId)).toEqual([sharedNew.analysisId]);
 
     const owner = await subject.getTimeline(timelineQuery(OWNER));
     expect(owner.items.map(item => item.analysisId)).toEqual([
@@ -214,8 +218,6 @@ describe('intelligence timeline service', () => {
     const otherUser = await subject.getTimeline(timelineQuery(OTHER_USER));
     expect(otherUser.items.map(item => item.analysisId)).toEqual([
       otherPrivate.analysisId,
-      sharedNew.analysisId,
-      sharedOld.analysisId,
     ]);
     expect(otherUser.items.map(item => item.analysisId)).not.toContain(ownerPrivate.analysisId);
   });
@@ -223,11 +225,13 @@ describe('intelligence timeline service', () => {
   it('returns structured deterministic drift and an explicit pending outcome state', async () => {
     const previous = analysis({
       analysisId: '20000000-0000-4000-8000-000000000020',
+      scope: 'PRIVATE',
       generatedAt: '2025-01-01T00:00:00.000Z',
       factors: [factor('TECHNICAL', 50), factor('FUNDAMENTAL', 5)],
     });
     const current = analysis({
       analysisId: '20000000-0000-4000-8000-000000000021',
+      scope: 'PRIVATE',
       generatedAt: '2025-01-02T00:00:00.000Z',
       recommendation: 'WAIT',
       confidence: 53,
@@ -239,11 +243,11 @@ describe('intelligence timeline service', () => {
       dataCompleteness: { ...previous.dataCompleteness, percentage: 70 },
     });
     const subject = new IntelligenceTimelineService(new MemoryIntelligenceOutcomeStore([
-      stored(previous),
-      stored(current),
+      stored(previous, OWNER),
+      stored(current, OWNER),
     ]));
 
-    const timeline = await subject.getTimeline(timelineQuery(null));
+    const timeline = await subject.getTimeline(timelineQuery(OWNER));
     const latest = timeline.items[0]!;
 
     expect(latest.outcomeStatus).toBe('PENDING');
@@ -264,6 +268,7 @@ describe('intelligence timeline service', () => {
   it('authorizes comparisons against both parent analyses and rejects cross-user or mismatched comparisons', async () => {
     const shared = analysis({
       analysisId: '20000000-0000-4000-8000-000000000030',
+      scope: 'PRIVATE',
       generatedAt: '2025-01-01T00:00:00.000Z',
     });
     const ownerPrivate = analysis({
@@ -274,12 +279,13 @@ describe('intelligence timeline service', () => {
     });
     const wrongAsset = analysis({
       analysisId: '20000000-0000-4000-8000-000000000032',
+      scope: 'PRIVATE',
       asset: { ...shared.asset, canonicalSymbol: 'OTHER', providerSymbol: 'OTHER', displaySymbol: 'OTHER' },
     });
     const subject = new IntelligenceTimelineService(new MemoryIntelligenceOutcomeStore([
-      stored(shared),
+      stored(shared, OWNER),
       stored(ownerPrivate, OWNER),
-      stored(wrongAsset),
+      stored(wrongAsset, OWNER),
     ]));
 
     const ownerComparison = await subject.compare({
@@ -305,7 +311,7 @@ describe('intelligence timeline service', () => {
     await expect(subject.compare({
       leftAnalysisId: wrongAsset.analysisId,
       rightAnalysisId: shared.analysisId,
-      userId: null,
+      userId: OWNER,
       asset: ASSET_QUERY,
       horizon: 'SWING',
     })).resolves.toBeNull();

@@ -6,17 +6,29 @@ import { asIntelligenceError, type IntelligenceErrorCode } from '@/services/inte
 export type IntelligenceApiErrorCode = IntelligenceErrorCode
   | 'INVALID_REQUEST'
   | 'FORCE_REFRESH_FORBIDDEN'
-  | 'RATE_LIMITED';
+  | 'RATE_LIMITED'
+  | 'APPLICATION_RATE_LIMITED';
 
 const STATUS_BY_CODE: Record<IntelligenceApiErrorCode, number> = {
   INVALID_REQUEST: 400,
+  UNAUTHENTICATED: 401,
+  UNAUTHORIZED: 403,
+  INVALID_SYMBOL: 400,
   INVALID_ASSET: 404,
   UNSUPPORTED_ASSET: 422,
+  INSUFFICIENT_MARKET_DATA: 422,
+  STALE_DATA: 409,
   FORCE_REFRESH_FORBIDDEN: 403,
   RATE_LIMITED: 429,
+  APPLICATION_RATE_LIMITED: 429,
   PROVIDER_TIMEOUT: 503,
   PROVIDER_UNAVAILABLE: 503,
+  PROVIDER_RATE_LIMITED: 429,
   ANALYSIS_NOT_FOUND: 404,
+  NO_SAVED_ANALYSIS: 404,
+  DATABASE_ERROR: 503,
+  ANALYSIS_GENERATION_FAILED: 500,
+  NETWORK_ERROR: 503,
   PERSISTENCE_UNAVAILABLE: 503,
   INTERNAL_ERROR: 500,
 };
@@ -30,6 +42,7 @@ export function intelligenceErrorResponse(input: {
   code: IntelligenceApiErrorCode;
   correlationId: string;
   retryable?: boolean;
+  retryAfterSeconds?: number;
   status?: number;
   validation?: ZodError['issues'];
 }) {
@@ -51,7 +64,9 @@ export function intelligenceErrorResponse(input: {
     headers: {
       ...INTELLIGENCE_RESPONSE_HEADERS,
       'X-Correlation-ID': input.correlationId,
-      ...(input.code === 'RATE_LIMITED' ? { 'Retry-After': '60' } : {}),
+      ...((input.code === 'RATE_LIMITED' || input.code === 'APPLICATION_RATE_LIMITED' || input.code === 'PROVIDER_RATE_LIMITED')
+        ? { 'Retry-After': String(Math.max(1, input.retryAfterSeconds ?? 60)) }
+        : {}),
     },
   });
 }

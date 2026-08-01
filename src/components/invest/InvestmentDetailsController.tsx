@@ -5,10 +5,9 @@ import { forwardRef, memo, startTransition, useCallback, useEffect, useImperativ
 import type { ComponentProps } from 'react';
 import type { Investment } from '@/types/investment';
 
-const InvestmentDetailDrawer = dynamic(
-  () => import('./InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer),
-  { ssr: false },
-);
+const loadInvestmentDetailDrawer = () => import('./InvestmentDetailDrawer').then(mod => mod.InvestmentDetailDrawer);
+
+const InvestmentDetailDrawer = dynamic(loadInvestmentDetailDrawer, { ssr: false });
 
 type DrawerProps = ComponentProps<typeof InvestmentDetailDrawer>;
 
@@ -50,11 +49,13 @@ export const InvestmentDetailsController = memo(forwardRef<InvestmentDetailsCont
       triggerRef.current = trigger;
       setDetailsReady(false);
       setInvestment(item);
+      // One frame is enough to let the empty drawer shell and backdrop paint
+      // before the (heavier) populated content commits, avoiding jank from
+      // both landing in the same frame; a second frame here only doubled the
+      // guaranteed minimum reveal latency without buying additional safety.
       revealFrameRef.current = window.requestAnimationFrame(() => {
-        revealFrameRef.current = window.requestAnimationFrame(() => {
-          revealFrameRef.current = null;
-          startTransition(() => setDetailsReady(true));
-        });
+        revealFrameRef.current = null;
+        startTransition(() => setDetailsReady(true));
       });
     },
     update(item) {
@@ -63,6 +64,15 @@ export const InvestmentDetailsController = memo(forwardRef<InvestmentDetailsCont
   }), [cancelDetailsReveal]);
 
   useEffect(() => () => cancelDetailsReveal(), [cancelDetailsReveal]);
+
+  useEffect(() => {
+    // The drawer's code-split chunk otherwise loads on first open, so its
+    // fetch+parse+eval cost lands entirely inside that click's presentation
+    // delay. Warming it once the list has mounted moves that cost off the
+    // interaction's critical path; it's the same module `dynamic()` above
+    // loads, so this primes its cache rather than fetching it twice.
+    void loadInvestmentDetailDrawer();
+  }, []);
 
   useEffect(() => {
     if (investment || !triggerRef.current) return;
