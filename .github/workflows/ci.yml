@@ -311,9 +311,10 @@ jobs:
           retention-days: 7
 
   lighthouse:
-    name: CI/Lighthouse CI
+    name: CI/Lighthouse advisory
     runs-on: ubuntu-latest
     needs: [build]
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -358,6 +359,34 @@ jobs:
           path: .lighthouseci/
           if-no-files-found: warn
           retention-days: 7
+      - name: Publish Lighthouse measurements to the job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Lighthouse CI — advisory (does not block this pull request)"
+            echo ""
+            echo "Thresholds remain unchanged and are enforced by the scheduled strict baseline on main."
+            echo ""
+            echo "| Run | Performance | TBT (ms) | LCP (ms) | FCP (ms) | CLS |"
+            echo "| --- | --- | --- | --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          shopt -s nullglob
+          reports=(.lighthouseci/lhr-*.json)
+          if [ ${#reports[@]} -eq 0 ]; then
+            echo "| _no local reports produced; see temporary-public-storage report links_ |  |  |  |  |  |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            run=0
+            for report in "${reports[@]}"; do
+              run=$((run + 1))
+              perf=$(jq -r '.categories.performance.score' "$report")
+              tbt=$(jq -r '.audits["total-blocking-time"].numericValue' "$report")
+              lcp=$(jq -r '.audits["largest-contentful-paint"].numericValue' "$report")
+              fcp=$(jq -r '.audits["first-contentful-paint"].numericValue' "$report")
+              cls=$(jq -r '.audits["cumulative-layout-shift"].numericValue' "$report")
+              printf '| %s | %s | %s | %s | %s | %s |\n' "$run" "$perf" "$tbt" "$lcp" "$fcp" "$cls" >> "$GITHUB_STEP_SUMMARY"
+            done
+          fi
 
   authenticated-preview:
     name: CI/Authenticated Preview smoke
