@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { aggregateObservability, type ObservabilityRow } from '@/lib/observability/dashboard';
 
 export const runtime = 'nodejs';
@@ -7,9 +6,10 @@ export const dynamic = 'force-dynamic';
 
 const SELECT_COLUMNS = 'event_type,metric_name,metric_value,rating,route_template,browser_family,device_class,network_class,deployment_sha,environment,occurred_at,status_class,provider,fallback_used,failure_class,cache_status,error_signature,is_proxy';
 
-export async function GET(request: Request) {
-  const auth = await requireAdminApiAccess(request, 'admin_dashboard');
-  if (!auth.ok) return NextResponse.json({ code: auth.code }, { status: auth.status });
+export const GET = createAdminApiRoute({
+  permission: 'admin_dashboard',
+  rateLimit: { max: 30, windowMs: 60_000, prefix: 'admin-observability' },
+}, async ({ request, auth, json }) => {
   const url = new URL(request.url);
   const environment = url.searchParams.get('environment') === 'preview' ? 'preview' : 'production';
   const hours = url.searchParams.get('range') === '7d' ? 24 * 7 : url.searchParams.get('range') === '48h' ? 48 : 24;
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   if (error) {
     const missing = error.code === '42P01' || error.code === 'PGRST205';
     if (!missing) console.error('[admin-observability] load failed', { code: error.code });
-    return NextResponse.json({ ok: true, hasData: false, configured: !missing, environment, rangeHours: hours, sampleCount: 0, generatedAt: new Date().toISOString(), vitals: [], routes: [], errors: [], apis: [], providers: [], deployments: [], deploymentComparison: [], distributions: { browsers: [], devices: [], networks: [] }, alerts: [] });
+    return json({ ok: true, hasData: false, configured: !missing, environment, rangeHours: hours, sampleCount: 0, generatedAt: new Date().toISOString(), vitals: [], routes: [], errors: [], apis: [], providers: [], deployments: [], deploymentComparison: [], distributions: { browsers: [], devices: [], networks: [] }, alerts: [] });
   }
   const rows = (data ?? []) as unknown as ObservabilityRow[];
   const [{ data: alerts }, { data: fingerprints }] = await Promise.all([
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     browsers: [row.browser_family],
     deployments: [row.deployment_sha],
   }));
-  return NextResponse.json({
+  return json({
     ok: true,
     hasData: rows.length > 0,
     configured: true,
@@ -58,5 +58,5 @@ export async function GET(request: Request) {
     ...aggregated,
     errors: retainedErrors.length ? retainedErrors : aggregated.errors,
     alerts: alerts ?? [],
-  }, { headers: { 'Cache-Control': 'private, no-store' } });
-}
+  });
+});
