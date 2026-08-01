@@ -25,6 +25,19 @@ on:
         description: "Optional explicit isolated Supabase Preview project ref when the GitHub integration check is unavailable."
         required: false
         type: string
+      activate_rollout:
+        description: "After migrations pass, configure and redeploy the isolated Vercel Preview."
+        required: false
+        default: false
+        type: boolean
+      git_branch:
+        description: "Vercel Preview branch scope; required when activate_rollout is true."
+        required: false
+        type: string
+      deployment_id:
+        description: "Existing READY Vercel Preview deployment id; required when activate_rollout is true."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -237,9 +250,20 @@ jobs:
           fi
           echo "Migration history is consistent: every local migration version is recorded as applied."
 
+  rollout:
+    name: Activate isolated Vercel Preview
+    if: inputs.activate_rollout
+    needs: [snapshot-upgrade]
+    uses: ./.github/workflows/preview-rollout.yml
+    with:
+      preview_ref: ${{ inputs.preview_ref }}
+      git_branch: ${{ inputs.git_branch }}
+      deployment_id: ${{ inputs.deployment_id }}
+    secrets: inherit
+
   cleanup:
     name: Cleanup workflow-owned Preview fixtures
-    needs: [resolve-target, snapshot-upgrade]
+    needs: [resolve-target, snapshot-upgrade, rollout]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
