@@ -47,7 +47,6 @@ export function AiAnalystAnalysis({
   symbol,
   assetType,
   horizon,
-  autoRun: _autoRun,
 }: {
   symbol: string;
   assetType: IntelligenceAssetType;
