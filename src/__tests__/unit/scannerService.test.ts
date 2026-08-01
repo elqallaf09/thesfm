@@ -379,6 +379,10 @@ describe('triggerScan force-cooldown vs distributed-lock ordering', () => {
     fetchYahooNormalizedQuote.mockClear();
     const second = await triggerScan({ market: 'US' }, { force: true });
 
+    // Confirms this really was the cooldown-cached short-circuit (processed:
+    // 0, per cachedRunSummary) rather than an accidental real second scan.
+    expect(second.run.status).toBe('completed');
+    expect(second.run.processed).toBe(0);
     expect(fetchYahooNormalizedQuote).not.toHaveBeenCalled();
     expect(releaseScanLock).toHaveBeenCalledTimes(1);
     const secondRunId = acquireScanLock.mock.calls[acquireScanLock.mock.calls.length - 1][1];
