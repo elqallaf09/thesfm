@@ -5,6 +5,8 @@
 -- read switch -> legacy retirement.  The legacy investment_items table is not
 -- altered or removed here, and every copied position retains its legacy UUID.
 
+begin;
+
 create table if not exists public.investment_asset_catalog (
   id uuid primary key default gen_random_uuid(),
   asset_type text not null,
@@ -242,16 +244,32 @@ create index if not exists investment_positions_user_type_idx
   on public.investment_positions (user_id, asset_type);
 create index if not exists investment_positions_catalog_asset_idx
   on public.investment_positions (catalog_asset_id) where catalog_asset_id is not null;
+create index if not exists investment_positions_purchase_platform_idx
+  on public.investment_positions (purchase_platform_id) where purchase_platform_id is not null;
 create index if not exists investment_position_migration_checks_user_state_idx
   on public.investment_position_migration_checks (user_id, verification_state);
+create index if not exists investment_position_migration_checks_verified_by_idx
+  on public.investment_position_migration_checks (verified_by) where verified_by is not null;
 create index if not exists investment_valuations_position_valued_idx
   on public.investment_valuations (position_id, valued_at desc nulls last);
+create index if not exists investment_valuations_user_position_idx
+  on public.investment_valuations (user_id, position_id);
 create index if not exists investment_transactions_position_occurred_idx
   on public.investment_transactions (position_id, occurred_on desc nulls last);
+create index if not exists investment_transactions_user_position_idx
+  on public.investment_transactions (user_id, position_id);
+create index if not exists investment_property_details_user_idx
+  on public.investment_property_details (user_id);
 create index if not exists investment_ownership_sources_position_idx
   on public.investment_ownership_sources (position_id, is_primary desc);
+create index if not exists investment_ownership_sources_user_idx
+  on public.investment_ownership_sources (user_id);
+create index if not exists investment_ownership_sources_platform_idx
+  on public.investment_ownership_sources (platform_id) where platform_id is not null;
 create index if not exists investment_documents_user_position_uploaded_idx
   on public.investment_documents (user_id, position_id, uploaded_at desc);
+create index if not exists investment_documents_position_idx
+  on public.investment_documents (position_id);
 
 alter table public.investment_asset_catalog enable row level security;
 alter table public.investment_positions enable row level security;
@@ -501,3 +519,5 @@ comment on table public.investment_documents is
   'Private position documents (deeds, contracts, reports, statements and evidence). Deliberately separate from project and Investment Offers documents.';
 
 notify pgrst, 'reload schema';
+
+commit;
