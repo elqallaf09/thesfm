@@ -11,7 +11,6 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
-  CircleDollarSign,
   ClipboardList,
   CreditCard,
   FileText,

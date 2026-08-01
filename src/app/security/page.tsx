@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
-import Image from 'next/image';
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import {
   Activity,
@@ -16,7 +15,6 @@ import {
   HelpCircle,
   KeyRound,
   Laptop,
-  LockKeyhole,
   Mail,
   QrCode,
   Shield,
@@ -30,394 +28,23 @@ import { PageHero } from '@/components/layout/PageHero';
 import { AppCard } from '@/components/layout/AppCard';
 import { ActionRow } from '@/components/layout/ActionRow';
 import { useAuth } from '@/hooks/useAuth';
-import { normalizeDigits } from '@/lib/locale';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_ARIA_LABEL, SUPPORT_EMAIL_MAILTO, SUPPORT_EMAIL_SUPPORT_MAILTO } from '@/lib/constants/contact';
+import {
+  TEXT,
+  detectDeviceLabel,
+  formatDate,
+  qrImageSource,
+  scoreLabel,
+  type Lang,
+  type SecurityProfile,
+  type TotpEnrollment,
+  type TotpFactor,
+} from './_content';
+import { ComingSoonRow, SecuritySection, SecurityStyles } from './_presentation';
+import { SecurityModals } from './_modals';
 
-type Lang = 'ar' | 'en' | 'fr';
-
-type SecurityProfile = {
-  id: string;
-  username: string | null;
-  display_name: string | null;
-  email: string | null;
-  phone_number: string | null;
-  security_question: string | null;
-  security_question_2: string | null;
-  security_question_3: string | null;
-  email_2fa_enabled: boolean | null;
-  email_2fa_enabled_at: string | null;
-  updated_at: string | null;
-  created_at: string | null;
-};
-
-type TotpFactor = {
-  id: string;
-  friendly_name?: string | null;
-  factor_type?: string;
-  status?: string;
-  created_at?: string;
-  updated_at?: string;
-};
-
-type TotpEnrollment = {
-  factorId: string;
-  qr: string;
-  secret: string;
-  code: string;
-  loading: boolean;
-  error: string;
-};
-
-const TEXT = {
-  ar: {
-    title: 'الأمان والخصوصية',
-    subtitle: 'مركز واضح لإدارة حماية حسابك، فهم استخدام بياناتك، والوصول إلى ضوابط الخصوصية المهمة في THE SFM.',
-    eyebrow: 'ثقة مالية وحماية عملية',
-    openProfile: 'فتح الملف الشخصي',
-    scoreTitle: 'مستوى أمان الحساب',
-    strong: 'قوي',
-    medium: 'متوسط',
-    needsWork: 'يحتاج تحسين',
-    good: 'جيد',
-    emailVerified: 'البريد الإلكتروني مؤكد',
-    emailNotVerified: 'البريد الإلكتروني غير مؤكد',
-    twoFactor: 'المصادقة الثنائية',
-    enabled: 'مفعّل',
-    disabled: 'غير مفعّل',
-    soon: 'قريبًا',
-    passwordStrength: 'قوة كلمة المرور',
-    lastLogin: 'آخر تسجيل دخول',
-    devicesCount: 'عدد الأجهزة المتصلة',
-    unknown: 'غير متوفر',
-    accountProtection: 'حماية الحساب',
-    accountProtectionDesc: 'أكمل عناصر الحماية الأساسية لتقليل مخاطر الوصول غير المصرح به.',
-    email2fa: 'التحقق الثنائي عبر البريد',
-    email2faDesc: 'طبقة تحقق إضافية عبر رمز يتم إرساله إلى بريدك الإلكتروني.',
-    app2fa: 'تطبيق المصادقة',
-    app2faDesc: 'استخدم Google Authenticator أو Microsoft Authenticator لتأمين حسابك.',
-    backupCodes: 'رموز الاسترداد',
-    backupCodesDesc: 'سيتم توفير رموز احتياطية لاستعادة الدخول في حال فقدان الوصول إلى جهاز المصادقة.',
-    enabledAt: 'تاريخ التفعيل',
-    lastEnabled: 'آخر تفعيل',
-    enable: 'تفعيل',
-    disable: 'إيقاف',
-    enable2fa: 'تفعيل التحقق الثنائي',
-    disable2fa: 'إيقاف التحقق الثنائي',
-    manageInProfile: 'إدارة التحقق من الملف الشخصي',
-    setupAuthenticator: 'تفعيل تطبيق المصادقة',
-    scanQr: 'امسح رمز QR باستخدام تطبيق المصادقة، أو أدخل المفتاح اليدوي عند الحاجة.',
-    manualSecret: 'المفتاح اليدوي',
-    enterAuthenticatorCode: 'أدخل رمز التطبيق المكوّن من 6 أرقام',
-    verifyAndEnable: 'تحقق وفعّل',
-    enabling: 'جاري التفعيل...',
-    mfaEnabledSuccess: 'تم تفعيل المصادقة الثنائية بنجاح',
-    mfaDisabledSuccess: 'تم إيقاف المصادقة الثنائية',
-    mfaLoadError: 'تعذر تحميل عوامل المصادقة الثنائية.',
-    mfaEnrollError: 'تعذر بدء تفعيل تطبيق المصادقة.',
-    mfaVerifyError: 'رمز المصادقة غير صحيح أو انتهت صلاحيته.',
-    disableMfaTitle: 'هل تريد إيقاف المصادقة الثنائية؟',
-    disableMfaText: 'سيؤدي ذلك إلى إزالة حماية تطبيق المصادقة من حسابك.',
-    confirmDisable: 'تأكيد الإيقاف',
-    devices: 'الأجهزة والجلسات',
-    currentDevice: 'الجهاز الحالي',
-    currentSession: 'الجلسة الحالية',
-    browserDevice: 'المتصفح / الجهاز',
-    ipLocation: 'عنوان IP / الموقع',
-    sessionsSoon: 'إدارة الأجهزة قادمة قريبًا',
-    signOutAll: 'تسجيل الخروج من كل الأجهزة',
-    activityLog: 'سجل النشاط الأمني',
-    noActivity: 'لا يوجد نشاط أمني حديث',
-    newLogin: 'تسجيل دخول جديد',
-    passwordChange: 'تغيير كلمة المرور',
-    emailUpdate: 'تحديث البريد الإلكتروني',
-    twoFactorEnabled: 'تفعيل المصادقة الثنائية',
-    privacyUpdate: 'تحديث إعدادات الخصوصية',
-    dataDeleted: 'حذف بيانات',
-    dataUsage: 'استخدام بياناتك',
-    dataUsageIntro: 'نستخدم بياناتك فقط لتشغيل التجربة المالية داخل حسابك، مثل:',
-    noDataSale: 'لا نبيع بياناتك، ولا نشاركها مع أطراف خارجية لأغراض إعلانية.',
-    incomeAnalysis: 'تحليل الدخل',
-    expenseAnalysis: 'تحليل المصروفات',
-    reports: 'بناء التقارير',
-    smartRecommendations: 'تحسين التوصيات الذكية',
-    goals: 'متابعة الأهداف المالية',
-    zakat: 'حساب الزكاة والأعمال الخيرية عند تفعيلها',
-    exportDelete: 'تصدير البيانات والحذف',
-    exportDeleteDesc: 'تحكم في نسخة بياناتك وطلبات الحذف الحساسة من مكان واحد.',
-    downloadData: 'تحميل نسخة من بياناتي',
-    deleteAnalytics: 'حذف بيانات التحليلات',
-    deleteAccount: 'حذف الحساب نهائيًا',
-    analyticsSoon: 'حذف بيانات التحليلات يحتاج مسار خادم آمن وسيتم توفيره قريبًا.',
-    deleteAccountNote: 'حذف الحساب النهائي يتطلب تأكيدًا صريحًا لحماية المستخدم من الحذف غير المقصود.',
-    deleteModalTitle: 'تأكيد حذف الحساب',
-    deleteModalText: 'هذا الإجراء سيحذف بياناتك نهائيًا ولا يمكن التراجع عنه.',
-    deletePhrase: 'حذف حسابي',
-    typePhrase: 'اكتب: حذف حسابي',
-    confirmDelete: 'تأكيد طلب حذف الحساب',
-    cancel: 'إلغاء',
-    deleteRequestPrepared: 'تم تجهيز طلب حذف الحساب. يرجى إرساله لفريق الدعم لإتمام التحقق الآمن.',
-    exportSuccess: 'تم تحميل نسخة بياناتك.',
-    privacyFaq: 'سياسة الخصوصية',
-    contactPrivacy: 'التواصل بخصوص الخصوصية',
-    supportDesc: 'لأي سؤال متعلق بالأمان أو الخصوصية أو طلبات البيانات، تواصل معنا عبر:',
-    loading: 'جاري تحميل إعدادات الأمان...',
-    loadError: 'تعذر تحميل بيانات الأمان حاليًا.',
-    retry: 'إعادة المحاولة',
-    questions: [
-      ['ما البيانات التي نجمعها؟', 'نجمع بيانات الحساب الأساسية والبيانات المالية التي تدخلها مثل الدخل، المصروفات، الأهداف، المشاريع، والزكاة عند استخدامها.'],
-      ['كيف نستخدم بياناتك؟', 'نستخدمها لتشغيل التحليلات، التقارير، التوصيات الذكية، ومتابعة خطتك المالية داخل حسابك.'],
-      ['هل يتم بيع بياناتي؟', 'لا. لا نبيع بياناتك ولا نشاركها لأغراض إعلانية.'],
-      ['كيف أحذف بياناتي؟', 'يمكنك طلب حذف الحساب أو بيانات محددة من قسم تصدير البيانات والحذف، وقد نطلب تحققًا إضافيًا لحماية الحساب.'],
-      ['كيف يتم تأمين الحساب؟', 'نعتمد جلسات مصادقة آمنة، سياسات وصول حسب المستخدم، وخيارات تحقق ثنائي عند تفعيلها.'],
-      ['كيف أتواصل بخصوص الخصوصية؟', `يمكنك التواصل عبر ${SUPPORT_EMAIL} لأي طلب خصوصية أو أمان.`],
-    ],
-  },
-  en: {
-    title: 'Security & Privacy',
-    subtitle: 'A clear hub for account protection, data usage, and privacy controls inside THE SFM.',
-    eyebrow: 'Financial trust and practical protection',
-    openProfile: 'Open Profile',
-    scoreTitle: 'Account Security Score',
-    strong: 'Strong',
-    medium: 'Medium',
-    needsWork: 'Needs improvement',
-    good: 'Good',
-    emailVerified: 'Email verified',
-    emailNotVerified: 'Email not verified',
-    twoFactor: 'Two-Factor Authentication',
-    enabled: 'Enabled',
-    disabled: 'Disabled',
-    soon: 'Coming soon',
-    passwordStrength: 'Password strength',
-    lastLogin: 'Last login',
-    devicesCount: 'Connected devices count',
-    unknown: 'Unavailable',
-    accountProtection: 'Account protection',
-    accountProtectionDesc: 'Complete core protection steps to reduce unauthorized access risk.',
-    email2fa: 'Email 2FA',
-    email2faDesc: 'An extra verification layer using a code sent to your email address.',
-    app2fa: 'Authenticator app 2FA',
-    app2faDesc: 'Use Google Authenticator or Microsoft Authenticator to secure your account.',
-    backupCodes: 'Backup codes',
-    backupCodesDesc: 'Backup codes will help recover access if you lose your authenticator device.',
-    enabledAt: 'Enabled at',
-    lastEnabled: 'Last enabled',
-    enable: 'Enable',
-    disable: 'Disable',
-    enable2fa: 'Enable two-factor authentication',
-    disable2fa: 'Disable two-factor authentication',
-    manageInProfile: 'Manage in Profile',
-    setupAuthenticator: 'Enable authenticator app',
-    scanQr: 'Scan the QR code with your authenticator app, or enter the manual key if needed.',
-    manualSecret: 'Manual secret',
-    enterAuthenticatorCode: 'Enter the 6-digit code from the app',
-    verifyAndEnable: 'Verify and enable',
-    enabling: 'Enabling...',
-    mfaEnabledSuccess: 'Two-factor authentication was enabled successfully',
-    mfaDisabledSuccess: 'Two-factor authentication was disabled',
-    mfaLoadError: 'Could not load MFA factors.',
-    mfaEnrollError: 'Could not start authenticator app setup.',
-    mfaVerifyError: 'The authentication code is invalid or expired.',
-    disableMfaTitle: 'Disable two-factor authentication?',
-    disableMfaText: 'This will remove authenticator app protection from your account.',
-    confirmDisable: 'Confirm disable',
-    devices: 'Devices & Sessions',
-    currentDevice: 'Current device',
-    currentSession: 'Current session',
-    browserDevice: 'Browser / device',
-    ipLocation: 'IP / location',
-    sessionsSoon: 'Device management is coming soon',
-    signOutAll: 'Sign out of all devices',
-    activityLog: 'Security Activity Log',
-    noActivity: 'No recent security activity',
-    newLogin: 'New login',
-    passwordChange: 'Password change',
-    emailUpdate: 'Email update',
-    twoFactorEnabled: 'Two-factor authentication enabled',
-    privacyUpdate: 'Privacy settings updated',
-    dataDeleted: 'Data deleted',
-    dataUsage: 'Data Usage',
-    dataUsageIntro: 'We use your data only to power the financial experience inside your account, such as:',
-    noDataSale: 'We do not sell your data or share it with external parties for advertising.',
-    incomeAnalysis: 'Income analysis',
-    expenseAnalysis: 'Expense analysis',
-    reports: 'Report generation',
-    smartRecommendations: 'Improving smart recommendations',
-    goals: 'Financial goal tracking',
-    zakat: 'Zakat and charity calculations when enabled',
-    exportDelete: 'Data Export & Deletion',
-    exportDeleteDesc: 'Control your data copy and sensitive deletion requests from one place.',
-    downloadData: 'Download My Data',
-    deleteAnalytics: 'Delete analytics data',
-    deleteAccount: 'Delete Account Permanently',
-    analyticsSoon: 'Analytics deletion requires a secure server flow and is coming soon.',
-    deleteAccountNote: 'Permanent deletion requires explicit confirmation to protect users from accidental deletion.',
-    deleteModalTitle: 'Confirm account deletion',
-    deleteModalText: 'This action will permanently delete your data and cannot be undone.',
-    deletePhrase: 'delete my account',
-    typePhrase: 'Type: delete my account',
-    confirmDelete: 'Confirm deletion request',
-    cancel: 'Cancel',
-    deleteRequestPrepared: 'Account deletion request prepared. Please send it to support to complete secure verification.',
-    exportSuccess: 'Your data copy has been downloaded.',
-    privacyFaq: 'Privacy Policy',
-    contactPrivacy: 'Privacy support contact',
-    supportDesc: 'For security, privacy, or data requests, contact us at:',
-    loading: 'Loading security settings...',
-    loadError: 'Could not load security data right now.',
-    retry: 'Retry',
-    questions: [
-      ['What data do we collect?', 'We collect core account data and financial data you enter, such as income, expenses, goals, projects, and zakat when used.'],
-      ['How do we use your data?', 'We use it to power analytics, reports, smart recommendations, and financial plan tracking inside your account.'],
-      ['Do you sell my data?', 'No. We do not sell your data or share it for advertising.'],
-      ['How do I delete my data?', 'You can request account or data deletion from the export and deletion section. Extra verification may be required.'],
-      ['How is the account secured?', 'We use authenticated sessions, user-scoped access policies, and two-factor options where enabled.'],
-      ['How do I contact privacy support?', `Contact ${SUPPORT_EMAIL} for privacy or security requests.`],
-    ],
-  },
-  fr: {
-    title: 'Sécurité et confidentialité',
-    subtitle: 'Un espace clair pour protéger le compte, comprendre l’usage des données et gérer les contrôles de confidentialité dans THE SFM.',
-    eyebrow: 'Confiance financière et protection pratique',
-    openProfile: 'Ouvrir le profil',
-    scoreTitle: 'Score de sécurité du compte',
-    strong: 'Fort',
-    medium: 'Moyen',
-    needsWork: 'À améliorer',
-    good: 'Bon',
-    emailVerified: 'E-mail vérifié',
-    emailNotVerified: 'E-mail non vérifié',
-    twoFactor: 'Authentification à deux facteurs',
-    enabled: 'Activé',
-    disabled: 'Désactivé',
-    soon: 'Bientôt',
-    passwordStrength: 'Force du mot de passe',
-    lastLogin: 'Dernière connexion',
-    devicesCount: 'Nombre d’appareils connectés',
-    unknown: 'Indisponible',
-    accountProtection: 'Protection du compte',
-    accountProtectionDesc: 'Complétez les protections essentielles pour réduire le risque d’accès non autorisé.',
-    email2fa: '2FA par e-mail',
-    email2faDesc: 'Une couche de vérification supplémentaire avec un code envoyé par e-mail.',
-    app2fa: 'Application d’authentification',
-    app2faDesc: 'Utilisez Google Authenticator ou Microsoft Authenticator pour sécuriser votre compte.',
-    backupCodes: 'Codes de secours',
-    backupCodesDesc: 'Des codes de secours permettront de récupérer l’accès si vous perdez votre appareil d’authentification.',
-    enabledAt: 'Activé le',
-    lastEnabled: 'Dernière activation',
-    enable: 'Activer',
-    disable: 'Désactiver',
-    enable2fa: 'Activer l’authentification à deux facteurs',
-    disable2fa: 'Désactiver l’authentification à deux facteurs',
-    manageInProfile: 'Gérer dans le profil',
-    setupAuthenticator: 'Activer l’application d’authentification',
-    scanQr: 'Scannez le QR code avec votre application, ou saisissez la clé manuelle si nécessaire.',
-    manualSecret: 'Clé manuelle',
-    enterAuthenticatorCode: 'Saisissez le code à 6 chiffres de l’application',
-    verifyAndEnable: 'Vérifier et activer',
-    enabling: 'Activation...',
-    mfaEnabledSuccess: 'L’authentification à deux facteurs a été activée',
-    mfaDisabledSuccess: 'L’authentification à deux facteurs a été désactivée',
-    mfaLoadError: 'Impossible de charger les facteurs MFA.',
-    mfaEnrollError: 'Impossible de démarrer la configuration.',
-    mfaVerifyError: 'Le code est invalide ou expiré.',
-    disableMfaTitle: 'Désactiver l’authentification à deux facteurs ?',
-    disableMfaText: 'Cela supprimera la protection par application d’authentification.',
-    confirmDisable: 'Confirmer la désactivation',
-    devices: 'Appareils et sessions',
-    currentDevice: 'Appareil actuel',
-    currentSession: 'Session actuelle',
-    browserDevice: 'Navigateur / appareil',
-    ipLocation: 'IP / localisation',
-    sessionsSoon: 'La gestion des appareils arrive bientôt',
-    signOutAll: 'Déconnecter tous les appareils',
-    activityLog: 'Journal d’activité de sécurité',
-    noActivity: 'Aucune activité de sécurité récente',
-    newLogin: 'Nouvelle connexion',
-    passwordChange: 'Changement de mot de passe',
-    emailUpdate: 'Mise à jour de l’e-mail',
-    twoFactorEnabled: 'Authentification à deux facteurs activée',
-    privacyUpdate: 'Paramètres de confidentialité mis à jour',
-    dataDeleted: 'Données supprimées',
-    dataUsage: 'Utilisation des données',
-    dataUsageIntro: 'Nous utilisons vos données uniquement pour alimenter l’expérience financière dans votre compte, comme :',
-    noDataSale: 'Nous ne vendons pas vos données et ne les partageons pas à des fins publicitaires.',
-    incomeAnalysis: 'Analyse des revenus',
-    expenseAnalysis: 'Analyse des dépenses',
-    reports: 'Création de rapports',
-    smartRecommendations: 'Amélioration des recommandations intelligentes',
-    goals: 'Suivi des objectifs financiers',
-    zakat: 'Calculs de zakat et charité lorsque activés',
-    exportDelete: 'Exportation et suppression des données',
-    exportDeleteDesc: 'Contrôlez la copie de vos données et les demandes sensibles de suppression.',
-    downloadData: 'Télécharger mes données',
-    deleteAnalytics: 'Supprimer les données d’analyse',
-    deleteAccount: 'Supprimer définitivement le compte',
-    analyticsSoon: 'La suppression des analyses nécessite un flux serveur sécurisé et arrive bientôt.',
-    deleteAccountNote: 'La suppression permanente exige une confirmation explicite pour éviter les suppressions accidentelles.',
-    deleteModalTitle: 'Confirmer la suppression du compte',
-    deleteModalText: 'Cette action supprimera définitivement vos données et ne peut pas être annulée.',
-    deletePhrase: 'supprimer mon compte',
-    typePhrase: 'Tapez : supprimer mon compte',
-    confirmDelete: 'Confirmer la demande',
-    cancel: 'Annuler',
-    deleteRequestPrepared: 'Demande de suppression préparée. Envoyez-la au support pour finaliser la vérification sécurisée.',
-    exportSuccess: 'Votre copie de données a été téléchargée.',
-    privacyFaq: 'Politique de confidentialité',
-    contactPrivacy: 'Contact confidentialité',
-    supportDesc: 'Pour toute demande de sécurité, confidentialité ou données, contactez-nous à :',
-    loading: 'Chargement des paramètres de sécurité...',
-    loadError: 'Impossible de charger les données de sécurité.',
-    retry: 'Réessayer',
-    questions: [
-      ['Quelles données collectons-nous ?', 'Nous collectons les données de compte et les données financières que vous saisissez : revenus, dépenses, objectifs, projets et zakat si utilisée.'],
-      ['Comment utilisons-nous vos données ?', 'Nous les utilisons pour les analyses, rapports, recommandations intelligentes et le suivi du plan financier dans votre compte.'],
-      ['Mes données sont-elles vendues ?', 'Non. Nous ne vendons pas vos données et ne les partageons pas à des fins publicitaires.'],
-      ['Comment supprimer mes données ?', 'Vous pouvez demander la suppression du compte ou de données depuis la section exportation et suppression. Une vérification peut être requise.'],
-      ['Comment le compte est-il sécurisé ?', 'Nous utilisons des sessions authentifiées, des politiques d’accès par utilisateur et des options 2FA lorsqu’elles sont activées.'],
-      ['Comment contacter le support confidentialité ?', `Contactez ${SUPPORT_EMAIL} pour les demandes de confidentialité ou sécurité.`],
-    ],
-  },
-} as const;
-
-function formatDate(value: string | null | undefined, fallback: string, lang: string) {
-  if (!value) return fallback;
-  try {
-    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-KW-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value));
-  } catch {
-    return fallback;
-  }
-}
-
-function detectDeviceLabel(lang: Lang) {
-  if (typeof navigator === 'undefined') return '';
-  const ua = navigator.userAgent;
-  const mobile = /Mobile|Android|iPhone|iPad/i.test(ua);
-  const browser = /Edg/i.test(ua) ? 'Edge' : /Chrome/i.test(ua) ? 'Chrome' : /Safari/i.test(ua) ? 'Safari' : /Firefox/i.test(ua) ? 'Firefox' : 'Browser';
-  const device = mobile
-    ? lang === 'ar' ? 'جهاز محمول' : lang === 'fr' ? 'Mobile' : 'Mobile'
-    : lang === 'ar' ? 'سطح المكتب' : lang === 'fr' ? 'Ordinateur' : 'Desktop';
-  return `${browser} • ${device}`;
-}
-
-function scoreLabel(score: number, text: typeof TEXT[Lang]) {
-  if (score >= 85) return text.strong;
-  if (score >= 65) return text.good;
-  if (score >= 45) return text.medium;
-  return text.needsWork;
-}
-
-function qrImageSource(qr: string) {
-  if (!qr) return '';
-  if (qr.startsWith('data:')) return qr;
-  if (qr.trim().startsWith('<svg')) return `data:image/svg+xml;utf8,${encodeURIComponent(qr)}`;
-  return qr;
-}
 
 export default function SecurityPage() {
   const { lang, dir } = useLanguage();
@@ -826,184 +453,24 @@ export default function SecurityPage() {
         </section>
       </DashboardPageShell>
 
-      {deleteOpen && (
-        <div className="security-modal-overlay" role="presentation" onMouseDown={() => setDeleteOpen(false)}>
-          <div className="security-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-title" onMouseDown={event => event.stopPropagation()}>
-            <div className="modal-icon danger"><Trash2 size={22} /></div>
-            <h2 id="delete-account-title">{text.deleteModalTitle}</h2>
-            <p>{text.deleteModalText}</p>
-            <label>
-              <span>{text.typePhrase}</span>
-              <input value={deletePhrase} onChange={event => setDeletePhrase(event.target.value)} autoFocus />
-            </label>
-            <div className="modal-actions">
-              <button type="button" className="ghost-action" onClick={() => setDeleteOpen(false)}>{text.cancel}</button>
-              <button type="button" className="danger-action" disabled={deletePhrase !== text.deletePhrase} onClick={prepareDeleteRequest}>{text.confirmDelete}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SecurityModals
+        text={text}
+        deleteOpen={deleteOpen}
+        deletePhrase={deletePhrase}
+        totpEnrollment={totpEnrollment}
+        disableTotpFactor={disableTotpFactor}
+        mfaLoading={mfaLoading}
+        onCloseDelete={() => setDeleteOpen(false)}
+        onDeletePhraseChange={setDeletePhrase}
+        onDeleteRequest={prepareDeleteRequest}
+        onCloseEnrollment={() => setTotpEnrollment(null)}
+        onEnrollmentChange={update => setTotpEnrollment(previous => previous ? update(previous) : previous)}
+        onVerifyEnrollment={() => void verifyTotpEnrollment()}
+        onCloseDisable={() => setDisableTotpFactor(null)}
+        onDisableTotp={() => void disableTotp()}
+      />
 
-      {totpEnrollment && (
-        <div className="security-modal-overlay" role="presentation" onMouseDown={() => setTotpEnrollment(null)}>
-          <div className="security-modal mfa-modal" role="dialog" aria-modal="true" aria-labelledby="totp-enroll-title" onMouseDown={event => event.stopPropagation()}>
-            <div className="modal-icon"><QrCode size={22} /></div>
-            <h2 id="totp-enroll-title">{text.setupAuthenticator}</h2>
-            <p>{text.scanQr}</p>
-            {totpEnrollment.qr && <Image className="totp-qr" src={totpEnrollment.qr} alt={text.setupAuthenticator} width={190} height={190} unoptimized />}
-            {totpEnrollment.secret && (
-              <div className="manual-secret">
-                <span>{text.manualSecret}</span>
-                <code>{totpEnrollment.secret}</code>
-              </div>
-            )}
-            <label>
-              <span>{text.enterAuthenticatorCode}</span>
-              <input
-                value={totpEnrollment.code}
-                onChange={event => setTotpEnrollment(prev => prev ? { ...prev, code: normalizeDigits(event.target.value).replace(/\D/g, '').slice(0, 6), error: '' } : prev)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                dir="ltr"
-                autoFocus
-              />
-            </label>
-            {totpEnrollment.error && <div className="message-inline danger">{totpEnrollment.error}</div>}
-            <div className="modal-actions">
-              <button type="button" className="ghost-action" onClick={() => setTotpEnrollment(null)} disabled={totpEnrollment.loading}>{text.cancel}</button>
-              <button type="button" className="solid-action" onClick={() => void verifyTotpEnrollment()} disabled={totpEnrollment.loading || totpEnrollment.code.length !== 6}>{totpEnrollment.loading ? text.enabling : text.verifyAndEnable}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {disableTotpFactor && (
-        <div className="security-modal-overlay" role="presentation" onMouseDown={() => setDisableTotpFactor(null)}>
-          <div className="security-modal" role="dialog" aria-modal="true" aria-labelledby="disable-totp-title" onMouseDown={event => event.stopPropagation()}>
-            <div className="modal-icon danger"><AlertTriangle size={22} /></div>
-            <h2 id="disable-totp-title">{text.disableMfaTitle}</h2>
-            <p>{text.disableMfaText}</p>
-            <div className="modal-actions">
-              <button type="button" className="ghost-action" onClick={() => setDisableTotpFactor(null)} disabled={mfaLoading}>{text.cancel}</button>
-              <button type="button" className="danger-action" onClick={() => void disableTotp()} disabled={mfaLoading}>{mfaLoading ? text.enabling : text.confirmDisable}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style jsx global>{`
-        .security-shell{min-height:100vh;background:var(--background);color:var(--foreground);font-family:var(--font-ui)}
-        .security-content{display:grid;gap:22px}
-        .sfm-primary-link,.ghost-action,.solid-action,.danger-action{min-height:var(--control-h);display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-pill);padding:0 16px;text-decoration:none;font:600 13px/1.4 var(--font-ui);cursor:pointer;transition:transform var(--duration-fast) var(--ease),box-shadow var(--duration-fast) var(--ease),background-color var(--duration-fast) var(--ease),border-color var(--duration-fast) var(--ease),color var(--duration-fast) var(--ease)}
-        .sfm-primary-link,.solid-action{border:1px solid var(--primary);background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-xs)}
-        .sfm-primary-link:hover,.solid-action:hover:not(:disabled){border-color:var(--primary-hover);background:var(--primary-hover);color:var(--primary-foreground);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
-        .ghost-action{border:1px solid var(--border-strong);background:var(--surface);color:var(--foreground-secondary)}
-        .ghost-action:hover:not(:disabled){border-color:color-mix(in srgb,var(--primary) 38%,var(--border));background:var(--surface-hover);color:var(--foreground)}
-        .ghost-action.danger{border-color:color-mix(in srgb,var(--danger) 36%,var(--border));background:var(--danger-soft);color:var(--danger)}
-        .danger-action{border:1px solid var(--danger);background:var(--danger);color:var(--danger-foreground)}
-        .ghost-action.danger:hover:not(:disabled),.danger-action:hover:not(:disabled){border-color:var(--danger);background:var(--danger);color:var(--danger-foreground)}
-        .sfm-primary-link:focus-visible,.ghost-action:focus-visible,.solid-action:focus-visible,.danger-action:focus-visible,.security-mail-link:focus-visible,.security-state button:focus-visible,.faq-list summary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
-        .sfm-primary-link:disabled,.ghost-action:disabled,.solid-action:disabled,.danger-action:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
-        .ghost-action.full{width:100%}
-        .security-toast,.security-state,.message-inline{border:1px solid color-mix(in srgb,var(--success) 32%,var(--border));background:var(--success-soft);color:var(--success);border-radius:var(--radius-card);padding:12px 14px;font-weight:600}
-        .message-inline.danger,.security-state.danger{border-color:color-mix(in srgb,var(--danger) 32%,var(--border));background:var(--danger-soft);color:var(--danger)}
-        .security-state{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .security-state button{border:1px solid color-mix(in srgb,var(--danger) 32%,var(--border));border-radius:var(--radius-pill);background:var(--surface);color:var(--danger);padding:8px 12px;font:600 13px/1.4 var(--font-ui);cursor:pointer}
-        .security-score-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:18px}
-        .security-score-card{display:flex;align-items:center;justify-content:space-between;gap:18px;background:var(--surface);color:var(--foreground);border-color:var(--border-strong);box-shadow:var(--shadow-card)}
-        .security-kicker{display:inline-flex;align-items:center;gap:8px;color:var(--primary-hover);font-weight:600}
-        .security-score-copy{flex:1;display:flex;flex-direction:column;min-width:0}
-        .security-score-copy h2{margin:10px 0 0;font-family:var(--font-data);font-size:56px;font-weight:700;line-height:1}
-        .security-score-copy p{margin:8px 0 0;color:var(--foreground-secondary);font-weight:500}
-        .score-ring{width:128px;height:128px;display:grid;place-items:center;position:relative;flex:0 0 auto}
-        .score-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
-        .score-ring circle{fill:none;stroke-width:10}
-        .score-ring-track{stroke:var(--surface-muted)}
-        .score-ring-value{stroke:var(--ring-color);stroke-linecap:round}
-        .score-ring-label{display:grid;place-items:center;gap:2px;position:relative;z-index:1}
-        .score-ring strong{font-family:var(--font-data);font-size:30px;font-weight:700;line-height:1}
-        .score-ring small{color:var(--foreground-muted);font-family:var(--font-data);font-size:12px;font-weight:500}
-        .security-checks-card h2,.security-section h2{margin:0;color:var(--foreground);font-size:20px;font-weight:600}
-        .security-checks-card p,.section-copy{margin:6px 0 0;color:var(--foreground-muted);font-weight:400;line-height:1.7}
-        .check-list{display:grid;gap:9px;margin-top:14px}
-        .check-row{display:flex;align-items:center;gap:9px;border:1px solid color-mix(in srgb,var(--warning) 30%,var(--border));background:var(--warning-soft);color:var(--warning);border-radius:var(--radius-control);padding:10px 12px;font-weight:600}
-        .check-row.done{border-color:color-mix(in srgb,var(--success) 30%,var(--border));background:var(--success-soft);color:var(--success)}
-        .security-main-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-        .security-section{display:grid;gap:14px}
-        .security-section.wide{grid-column:1/-1}
-        .section-head{display:flex;align-items:center;gap:10px}
-        .section-head span{width:42px;height:42px;display:grid;place-items:center;border-radius:var(--radius-card);background:var(--primary-soft);color:var(--primary)}
-        .control-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-panel);padding:14px}
-        .control-row strong,.device-card strong,.muted-panel strong,.activity-item strong{display:block;color:var(--foreground);font-size:15px;font-weight:600}
-        .control-row p,.device-card p,.muted-panel p,.activity-item p,.danger-note{margin:4px 0 0;color:var(--foreground-muted);font-weight:400;line-height:1.65}
-        .danger-note{color:var(--danger)}
-        .control-row small,.device-card small{display:block;margin-top:8px;color:var(--foreground-muted);font-weight:500}
-        .status-pill{display:inline-flex;width:max-content;margin-top:9px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);padding:5px 10px;font-weight:600;font-size:12px}
-        .status-pill.on{background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 32%,var(--border));color:var(--success)}
-        .coming-row,.muted-panel{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:12px}
-        .coming-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-        .coming-row h3{margin:0;color:var(--foreground);font-size:15px;font-weight:600}
-        .coming-row p{margin:4px 0 0;color:var(--foreground-muted);font-weight:400;line-height:1.6}
-        .soon-badge{border-radius:var(--radius-pill);background:var(--warning-soft);color:var(--warning);padding:5px 9px;font-weight:600;font-size:12px;white-space:nowrap}
-        .device-card{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;border:1px solid color-mix(in srgb,var(--info) 30%,var(--border));background:var(--info-soft);border-radius:var(--radius-panel);padding:14px}
-        .device-card>svg{color:var(--info)}
-        .activity-list{display:grid;gap:10px}
-        .activity-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:start}
-        .activity-item>span{width:34px;height:34px;display:grid;place-items:center;border-radius:var(--radius-control);background:var(--success-soft);color:var(--success)}
-        .empty-security{display:flex;align-items:center;gap:9px;color:var(--foreground-muted);font-weight:500;border:1px dashed var(--border-strong);border-radius:var(--radius-card);padding:16px}
-        .usage-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-        .usage-grid span{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-control);padding:11px 12px;color:var(--foreground);font-weight:500}
-        .usage-grid svg{color:var(--success)}
-        .no-sale{display:flex;align-items:center;gap:9px;border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));background:var(--success-soft);color:var(--success);border-radius:var(--radius-card);padding:13px;font-weight:600;line-height:1.6}
-        .faq-list{display:grid;gap:10px}
-        .faq-list details{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:13px}
-        .faq-list details[open]{border-color:color-mix(in srgb,var(--primary) 34%,var(--border));background:var(--primary-soft)}
-        .faq-list summary{cursor:pointer;color:var(--foreground);font-weight:600}
-        .faq-list p{margin:10px 0 0;color:var(--foreground-secondary);font-weight:400;line-height:1.8}
-        .security-mail-link{width:max-content;max-width:100%;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-pill);border:1px solid color-mix(in srgb,var(--primary) 32%,var(--border));background:var(--primary-soft);color:var(--primary-hover);padding:10px 14px;text-decoration:none;font:600 13px/1.4 var(--font-ui);overflow-wrap:anywhere}
-        .security-mail-link:hover{border-color:var(--primary);background:var(--primary);color:var(--primary-foreground)}
-        .security-modal-overlay{position:fixed;inset:0;z-index:90;background:var(--background-overlay);backdrop-filter:blur(8px);display:grid;place-items:center;padding:18px}
-        .security-modal{width:min(520px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--surface-elevated);border:1px solid var(--border);border-radius:var(--radius-panel);padding:22px;box-shadow:var(--shadow-popover);display:grid;gap:14px}
-        .security-modal.mfa-modal{width:min(620px,100%)}
-        .modal-icon{width:48px;height:48px;border-radius:var(--radius-card);display:grid;place-items:center;background:var(--info-soft);color:var(--info)}
-        .modal-icon.danger{background:var(--danger-soft);color:var(--danger)}
-        .security-modal h2{margin:0;color:var(--foreground);font-size:21px;font-weight:600}
-        .security-modal p{margin:0;color:var(--foreground-secondary);font-weight:400;line-height:1.7}
-        .security-modal label{display:grid;gap:8px;color:var(--foreground);font-weight:500}
-        .security-modal input{height:var(--control-h-lg);border-radius:var(--radius-control);border:1.5px solid var(--border-strong);background:var(--control-background);color:var(--foreground);padding:0 13px;font:500 14px/1.4 var(--font-ui);outline:0;text-align:center;letter-spacing:4px}
-        .security-modal input:focus{border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
-        .modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
-        .totp-qr{width:190px;height:190px;object-fit:contain;justify-self:center;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);padding:12px}
-        .manual-secret{display:grid;gap:7px;border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:12px}
-        .manual-secret span{font-weight:600;color:var(--foreground)}
-        .manual-secret code{direction:ltr;text-align:left;white-space:normal;overflow-wrap:anywhere;color:var(--accent-hover);font:600 13px/1.5 var(--font-data)}
-        @media(max-width:900px){.security-score-grid,.security-main-grid{grid-template-columns:1fr}.security-section.wide{grid-column:auto}.security-score-copy h2{font-size:44px}}
-        @media(max-width:640px){.security-score-card{display:grid}.score-ring{width:112px;height:112px}.control-row,.coming-row{display:grid}.sfm-primary-link,.ghost-action,.solid-action,.danger-action{width:100%}.modal-actions{display:grid;grid-template-columns:1fr}.security-content{gap:16px}}
-      `}</style>
-    </div>
-  );
-}
-
-function SecuritySection({ title, icon: Icon, children, wide = false }: { title: string; icon: LucideIcon; children: ReactNode; wide?: boolean }) {
-  return (
-    <AppCard className={`security-section${wide ? ' wide' : ''}`}>
-      <div className="section-head">
-        <span><Icon size={20} /></span>
-        <h2>{title}</h2>
-      </div>
-      {children}
-    </AppCard>
-  );
-}
-
-function ComingSoonRow({ title, body, label }: { title: string; body: string; label: string }) {
-  return (
-    <div className="coming-row">
-      <div>
-        <h3>{title}</h3>
-        <p>{body}</p>
-      </div>
-      <span className="soon-badge">{label}</span>
+      <SecurityStyles />
     </div>
   );
 }

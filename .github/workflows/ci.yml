@@ -72,6 +72,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:prod-endpoints
       - run: pnpm check:public-env
+      - run: pnpm check:api-policy
+        name: Enforce the shared administrative API policy
       - run: pnpm check:maintainability
         name: Prevent source complexity and CSS debt regressions
       - run: pnpm check:repo-hygiene

@@ -7,7 +7,6 @@ import {
   CircleDollarSign,
   FileText,
   Landmark,
-  Settings,
   Sparkles,
   Target,
   type LucideIcon,
@@ -27,6 +26,15 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 
 type CommandGroupId = 'pages' | 'records' | 'goals' | 'reports' | 'decisions' | 'settings';
+type CommandRecord = Record<string, unknown>;
+type DynamicCommandQuery = {
+  eq: (column: string, value: string) => DynamicCommandQuery;
+  order: (column: string, options: { ascending: boolean }) => DynamicCommandQuery;
+  limit: (count: number) => Promise<{ data: CommandRecord[] | null; error: unknown }>;
+};
+type DynamicCommandDatabase = {
+  from: (table: string) => { select: (columns: string) => DynamicCommandQuery };
+};
 
 type CommandResult = {
   id: string;
@@ -39,7 +47,7 @@ type CommandResult = {
   icon: LucideIcon;
 };
 
-function itemTitle(row: any, keys: string[], fallback: string) {
+function itemTitle(row: CommandRecord, keys: string[], fallback: string) {
   for (const key of keys) {
     const value = row?.[key];
     if (typeof value === 'string' && value.trim()) return value.trim();
@@ -47,14 +55,14 @@ function itemTitle(row: any, keys: string[], fallback: string) {
   return fallback;
 }
 
-function describeAmount(row: any) {
+function describeAmount(row: CommandRecord) {
   const amount = row?.amount ?? row?.target_amount ?? row?.current_value;
   const currency = row?.currency ? String(row.currency) : '';
   if (amount === null || amount === undefined || amount === '') return '';
   return `${currency} ${amount}`.trim();
 }
 
-function pageResults(items: NavigationItem[], t: (key: any) => string): CommandResult[] {
+function pageResults(items: NavigationItem[], t: (key: string) => string): CommandResult[] {
   return items
     .filter(item => item.href && !item.href.includes('#'))
     .map(item => ({
@@ -123,8 +131,8 @@ export function CommandMenu({
       return;
     }
 
-    const db = supabase as any;
-    const safeQuery = async (table: string, select: string, orderColumn = 'created_at') => {
+    const db = supabase as unknown as DynamicCommandDatabase;
+    const safeQuery = async (table: string, select: string, orderColumn = 'created_at'): Promise<CommandRecord[]> => {
       try {
         const result = await db.from(table).select(select).eq('user_id', user.id).order(orderColumn, { ascending: false }).limit(8);
         if (result.error) return [];
@@ -144,7 +152,7 @@ export function CommandMenu({
     ]);
 
     setDynamicResults([
-      ...goals.map((row: any) => ({
+      ...goals.map(row => ({
         id: `goal:${row.id}`,
         group: 'goals' as const,
         title: itemTitle(row, ['name', 'title', 'goal_name'], t('nav_goals')),
@@ -153,7 +161,7 @@ export function CommandMenu({
         keywords: ['goal', 'هدف', t('nav_goals'), itemTitle(row, ['name', 'title', 'goal_name'], '')],
         icon: Target,
       })),
-      ...income.map((row: any) => ({
+      ...income.map(row => ({
         id: `income:${row.id}`,
         group: 'records' as const,
         title: itemTitle(row, ['label', 'source_name'], t('nav_income')),
@@ -162,7 +170,7 @@ export function CommandMenu({
         keywords: ['income', 'دخل', t('nav_income'), itemTitle(row, ['label', 'source_name'], '')],
         icon: CircleDollarSign,
       })),
-      ...expenses.map((row: any) => ({
+      ...expenses.map(row => ({
         id: `expense:${row.id}`,
         group: 'records' as const,
         title: itemTitle(row, ['name'], t('nav_expenses')),
@@ -171,7 +179,7 @@ export function CommandMenu({
         keywords: ['expense', 'مصروف', 'المصاريف', t('nav_expenses'), itemTitle(row, ['name'], '')],
         icon: CircleDollarSign,
       })),
-      ...investments.map((row: any) => ({
+      ...investments.map(row => ({
         id: `investment:${row.id}`,
         group: 'records' as const,
         title: itemTitle(row, ['name', 'symbol'], t('nav_invest')),
@@ -180,7 +188,7 @@ export function CommandMenu({
         keywords: ['investment', 'استثمار', t('nav_invest'), itemTitle(row, ['name', 'symbol'], '')],
         icon: BarChart3,
       })),
-      ...decisions.map((row: any) => ({
+      ...decisions.map(row => ({
         id: `decision:${row.id}`,
         group: 'decisions' as const,
         title: itemTitle(row, ['title'], t('command_decisions')),
@@ -189,7 +197,7 @@ export function CommandMenu({
         keywords: ['decision', 'قرار', t('command_decisions'), itemTitle(row, ['title'], '')],
         icon: Landmark,
       })),
-      ...reports.map((row: any) => ({
+      ...reports.map(row => ({
         id: `report:${row.id}`,
         group: 'reports' as const,
         title: itemTitle(row, ['title'], t('nav_reports_center')),

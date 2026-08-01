@@ -53,6 +53,21 @@ is in progress:
 6. Remove the corresponding legacy view only after the success criteria hold;
    repeat until the terminal shell and static asset route can be deleted.
 
+## First native canary
+
+The low-coupling `/thesfm-trader-own/education` route is the first native
+Next.js candidate. `TRADER_NATIVE_EDUCATION_ENABLED=true` selects the native
+renderer after the existing server access gate. When the flag is absent or
+false, the same public URL immediately falls back to the persistent legacy
+iframe; no database rollback is required.
+
+The native renderer keeps the complete eleven-lesson curriculum in Arabic,
+English, and French, uses semantic disclosure controls for keyboard access,
+and contains no market or portfolio data. Preview verification and a monitored
+canary remain required before enabling the flag in Production. The legacy
+education renderer must remain until the per-route exit criteria below have
+passed and the owner records the agreed canary window in the rollout PR.
+
 ## Per-route exit criteria
 
 - no authorization or data-contract regression;

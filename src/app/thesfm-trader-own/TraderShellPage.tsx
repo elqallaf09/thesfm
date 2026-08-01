@@ -15,6 +15,19 @@ import {
   isTraderRouteChangeMessage,
   traderAppRouteFromPublicPath,
 } from '@/lib/trader/routeBridge';
+import { reportClientRumMetric } from '@/lib/observability/clientRum';
+
+const TRADER_READY_TIMEOUT_MS = 15_000;
+
+function traderStaticTransferBytes(frame: HTMLIFrameElement | null) {
+  let timeline: Performance;
+  try { timeline = frame?.contentWindow?.performance ?? performance; } catch { timeline = performance; }
+  return timeline.getEntriesByType('resource')
+    .filter(entry => {
+      try { return new URL(entry.name).pathname.startsWith('/thesfm-trader-own/app/'); } catch { return false; }
+    })
+    .reduce((total, entry) => total + ((entry as PerformanceResourceTiming).transferSize || 0), 0);
+}
 
 /**
  * Persistent SFM Smart Analyzer stage. Rendered once by the
@@ -28,9 +41,15 @@ export default function TraderShellPage() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const themeMessageRef = useRef<TraderThemeSetMessage | null>(null);
   const routeRef = useRef<string>('home');
+  const requestedAtRef = useRef<number | null>(null);
+  const readyReportedRef = useRef(false);
   const router = useRouter();
   const pathname = usePathname() || '/';
   const { theme, resolvedTheme } = useTheme();
+
+  if (typeof window !== 'undefined' && requestedAtRef.current === null) {
+    requestedAtRef.current = performance.now();
+  }
 
   // The iframe src is fixed at mount; later route changes travel as messages.
   const [initialSrc] = useState(() =>
@@ -65,12 +84,36 @@ export default function TraderShellPage() {
   }, [pathname, postCurrentRoute]);
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (readyReportedRef.current) return;
+      reportClientRumMetric({
+        id: 'err_trader_ready_timeout',
+        label: 'custom',
+        name: 'Trader-ready-timeout',
+        type: 'client_error',
+        value: 1,
+      });
+    }, TRADER_READY_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
     const handleTraderMessage = (event: MessageEvent<unknown>) => {
       const traderWindow = iframeRef.current?.contentWindow;
       if (!traderWindow) return;
       if (event.origin !== window.location.origin || event.source !== traderWindow) return;
 
       if (isTraderThemeReadyMessage(event.data)) {
+        if (!readyReportedRef.current) {
+          readyReportedRef.current = true;
+          reportClientRumMetric({
+            id: `trader_ready_${Date.now()}`,
+            label: 'custom',
+            name: 'Trader-ready',
+            type: 'route_transition',
+            value: Math.max(0, performance.now() - (requestedAtRef.current ?? performance.now())),
+          });
+        }
         postCurrentTheme();
         postCurrentRoute();
         return;
@@ -96,9 +139,31 @@ export default function TraderShellPage() {
         allow="microphone; clipboard-write"
         className="trader-shell-frame"
         onLoad={() => {
+          const loadDuration = Math.max(0, performance.now() - (requestedAtRef.current ?? performance.now()));
+          reportClientRumMetric({
+            id: `trader_load_${Date.now()}`,
+            label: 'custom',
+            name: 'Trader-iframe-load',
+            type: 'route_transition',
+            value: loadDuration,
+          });
+          window.setTimeout(() => reportClientRumMetric({
+            id: `trader_transfer_${Date.now()}`,
+            label: 'custom',
+            name: 'Trader-static-transfer-bytes',
+            type: 'route_transition',
+            value: traderStaticTransferBytes(iframeRef.current),
+          }), 0);
           postCurrentTheme();
           postCurrentRoute();
         }}
+        onError={() => reportClientRumMetric({
+          id: 'err_trader_iframe_load',
+          label: 'custom',
+          name: 'Trader-iframe-error',
+          type: 'client_error',
+          value: 1,
+        })}
       />
       <style>{`
         .trader-shell-page {

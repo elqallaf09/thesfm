@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -16,13 +16,9 @@ import {
   Plus,
   ReceiptText,
   RefreshCcw,
-  Snowflake,
-  Target,
   Trash2,
-  TrendingDown,
   WalletCards,
   X,
-  Zap,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -32,8 +28,8 @@ import { useCurrency } from '@/lib/useCurrency';
 
 import type { Lang, DebtRow, DebtPaymentRow, DebtForm, DebtStatus, InterestType } from './_types';
 import { TEXT } from './_text';
-import { SUPPORTED_CURRENCIES, DEFAULT_FORM, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, optionalNumber, cleanNumericInput, formatDateToYYYYMMDD, mapInterestTypeToDb, mapDebtStatusToDb, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, calculateDebtPayment, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails, debtAmortization, debtEffectiveMonthlyRate, isDebtActiveForCalculations } from './_utils';
-import { SummaryCard, DebtMetric, InsightRow, FormSectionTitle, RequiredMark, DebtInput, MoneyInput, SuffixInput, PayoffStrategiesPanel, DebtStyles } from './_components';
+import { SUPPORTED_CURRENCIES, createDefaultForm, tr as trFn, debtPaymentMonth, deriveFirstPaymentDate, toNumber, remainingForDebt, clampPaymentDay, addOneDebtMonth, debtFirstPaymentDate, debtSchedule, formatDate, calculateDebtPayment, estimatePayoffDateFromNextPayment, simulatePayoffStrategy, payloadFromForm, validateDebtForm, debtSaveErrorMessage, safeDebtSaveErrorDetails, debtAmortization, debtEffectiveMonthlyRate, isDebtActiveForCalculations } from './_utils';
+import { SummaryCard, DebtMetric, InsightRow, FormSectionTitle, DebtInput, MoneyInput, SuffixInput, PayoffStrategiesPanel, DebtStyles } from './_components';
 
 export default function DebtsPage() {
   const { user, session, loading: authLoading } = useAuth();
@@ -988,4 +984,3 @@ export default function DebtsPage() {
     </div>
   );
 }
-

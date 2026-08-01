@@ -1,13 +1,11 @@
-import { requireSuperAdminApiAccess, type AdminRoleRow } from '@/lib/server/adminAccess';
+import type { AdminRoleRow } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { adminJson, roleSnapshot } from '@/lib/server/adminRoleManagement';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  const auth = await requireSuperAdminApiAccess(request);
-  if (!auth.ok) return adminJson({ ok: false, code: auth.code }, { status: auth.status });
-
+export const GET = createAdminApiRoute({ access: 'super-admin' }, async ({ auth }) => {
   const { data, error } = await auth.admin
     .from('admin_roles')
     .select('id,user_id,email,display_name,role,permissions,is_active,created_by,created_at,updated_at')
@@ -22,4 +20,4 @@ export async function GET(request: Request) {
     ok: true,
     roles: (data ?? []).map(row => roleSnapshot(row as AdminRoleRow)).filter(Boolean),
   });
-}
+});

@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { normalizeCompanyCategory, normalizeCompanyStatus, splitServices } from '@/lib/companyListings';
 import { resolvePublicImageUrl } from '@/lib/server/imageUrlResolver';
 import {
@@ -46,16 +45,6 @@ type AdminCompanyPayload = {
   adminNotes?: unknown;
 };
 
-function json(data: unknown, init?: ResponseInit) {
-  return NextResponse.json(data, {
-    ...init,
-    headers: {
-      'Cache-Control': 'private, no-store',
-      ...(init?.headers ?? {}),
-    },
-  });
-}
-
 function hasInvalidOptionalUrl(value: unknown) {
   return cleanCompanyText(value, 500) !== '' && cleanCompanyUrl(value) === null;
 }
@@ -76,9 +65,7 @@ function coordinateOrNull(value: unknown, min: number, max: number) {
   return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : null;
 }
 
-export async function GET(request: NextRequest) {
-  const auth = await requireAdminApiAccess(request, 'company_reviews');
-  if (!auth.ok) return json({ ok: false, code: auth.code }, { status: auth.status });
+export const GET = createAdminApiRoute({ permission: 'company_reviews' }, async ({ auth, json }) => {
   const admin = auth.admin;
 
   const { data, error } = await admin
@@ -97,12 +84,9 @@ export async function GET(request: NextRequest) {
     ok: true,
     items: (data ?? []).map(row => normalizeCompanyListing(row as Record<string, unknown>)),
   });
-}
+});
 
-export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminApiAccess(request, 'company_reviews');
-  if (!auth.ok) return json({ ok: false, code: auth.code }, { status: auth.status });
-
+export const PATCH = createAdminApiRoute({ permission: 'company_reviews' }, async ({ request, auth, json }) => {
   let payload: { id?: unknown; status?: unknown };
   try {
     payload = await request.json() as { id?: unknown; status?: unknown };
@@ -133,11 +117,9 @@ export async function PATCH(request: NextRequest) {
   }
 
   return json({ ok: true });
-}
+});
 
-export async function POST(request: NextRequest) {
-  const auth = await requireAdminApiAccess(request, 'company_reviews');
-  if (!auth.ok) return json({ ok: false, code: auth.code }, { status: auth.status });
+export const POST = createAdminApiRoute({ permission: 'company_reviews' }, async ({ request, auth, json }) => {
   const user = auth.user;
 
   let payload: AdminCompanyPayload;
@@ -238,4 +220,4 @@ export async function POST(request: NextRequest) {
   }
 
   return json({ ok: true, item: normalizeCompanyListing(data as Record<string, unknown>) });
-}
+});

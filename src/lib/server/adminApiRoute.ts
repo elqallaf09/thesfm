@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import type { AdminPermission } from '@/lib/adminPermissions';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { requireAdminApiAccess, requireSuperAdminApiAccess } from '@/lib/server/adminAccess';
 import { rateLimitRequest, type RateLimitConfig } from '@/lib/server/rateLimiter';
 
 type AdminAuth = Extract<Awaited<ReturnType<typeof requireAdminApiAccess>>, { ok: true }>;
@@ -16,11 +16,13 @@ export type AdminApiContext = {
 };
 
 export type AdminApiRouteOptions = {
+  access?: 'admin' | 'super-admin';
   permission?: AdminPermission;
   rateLimit?: RateLimitConfig;
 };
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+const DEFAULT_RATE_LIMIT = { max: 90, windowMs: 60_000 } as const;
 
 function requestIdFor(request: Request) {
   const provided = request.headers.get('x-request-id')?.trim() ?? '';
@@ -50,17 +52,22 @@ export function createAdminApiRoute<TArgs extends unknown[] = []>(
   return async function adminApiRoute(request: Request, ...args: TArgs) {
     const requestId = requestIdFor(request);
     const json = createJsonResponder(requestId);
+    const pathname = new URL(request.url).pathname;
+    const rateLimit = options.rateLimit ?? {
+      ...DEFAULT_RATE_LIMIT,
+      prefix: `admin-api:${request.method}:${pathname}`,
+    };
 
-    if (options.rateLimit) {
-      const limited = rateLimitRequest(request, options.rateLimit);
-      if (limited) return finalizeAdminResponse(limited, requestId);
-    }
+    const limited = rateLimitRequest(request, rateLimit);
+    if (limited) return finalizeAdminResponse(limited, requestId);
 
     let auth: Awaited<ReturnType<typeof requireAdminApiAccess>>;
     try {
-      auth = await requireAdminApiAccess(request, options.permission);
+      auth = options.access === 'super-admin'
+        ? await requireSuperAdminApiAccess(request)
+        : await requireAdminApiAccess(request, options.permission);
     } catch {
-      console.error('[admin-api] access check failed safely', { requestId, path: new URL(request.url).pathname });
+      console.error('[admin-api] access check failed safely', { requestId, path: pathname });
       return json({ ok: false, code: 'SERVICE_NOT_CONFIGURED', requestId }, { status: 503 });
     }
 
@@ -72,7 +79,7 @@ export function createAdminApiRoute<TArgs extends unknown[] = []>(
       const response = await handler({ request, requestId, auth, json }, ...args);
       return finalizeAdminResponse(response, requestId);
     } catch {
-      console.error('[admin-api] handler failed safely', { requestId, path: new URL(request.url).pathname });
+      console.error('[admin-api] handler failed safely', { requestId, path: pathname });
       return json({ ok: false, code: 'INTERNAL_ERROR', requestId }, { status: 500 });
     }
   };

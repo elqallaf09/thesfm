@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,16 +22,6 @@ const FUNDING_TYPES = new Set([
   'strategic_partner',
   'other',
 ]);
-
-function json(data: unknown, init?: ResponseInit) {
-  return NextResponse.json(data, {
-    ...init,
-    headers: {
-      'Cache-Control': 'private, no-store',
-      ...(init?.headers ?? {}),
-    },
-  });
-}
 
 function cleanString(value: unknown, maxLength = 2000) {
   if (typeof value !== 'string') return '';
@@ -64,10 +53,7 @@ function normalizeUrl(value: unknown) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  const auth = await requireAdminApiAccess(request, 'business_management');
-  if (!auth.ok) return json({ ok: false, code: auth.code }, { status: auth.status });
-
+export const POST = createAdminApiRoute({ permission: 'business_management' }, async ({ request, auth, json }) => {
   let payload: Record<string, unknown>;
   try {
     payload = await request.json() as Record<string, unknown>;
@@ -124,4 +110,4 @@ export async function POST(request: NextRequest) {
   }
 
   return json({ ok: true, item: data });
-}
+});

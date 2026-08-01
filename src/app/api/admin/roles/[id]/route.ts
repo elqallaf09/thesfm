@@ -1,4 +1,5 @@
-import { requireSuperAdminApiAccess, type AdminRoleRow } from '@/lib/server/adminAccess';
+import { isSuperAdminEmail, type AdminRoleRow } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import {
   adminJson,
   logAdminAudit,
@@ -6,7 +7,6 @@ import {
   permissionsToJson,
   roleSnapshot,
 } from '@/lib/server/adminRoleManagement';
-import { isSuperAdminEmail } from '@/lib/server/adminAccess';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,10 +15,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function PATCH(request: Request, context: RouteContext) {
-  const auth = await requireSuperAdminApiAccess(request);
-  if (!auth.ok) return adminJson({ ok: false, code: auth.code }, { status: auth.status });
-
+export const PATCH = createAdminApiRoute<[RouteContext]>({ access: 'super-admin' }, async ({ request, auth }, context) => {
   const { id } = await context.params;
   if (!id) return adminJson({ ok: false, code: 'BAD_REQUEST' }, { status: 400 });
 
@@ -74,4 +71,4 @@ export async function PATCH(request: Request, context: RouteContext) {
   });
 
   return adminJson({ ok: true, role: roleSnapshot(updated) });
-}
+});

@@ -4,6 +4,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const read = (relativePath: string) => readFileSync(join(process.cwd(), relativePath), 'utf8');
+const readSurface = (relativePath: string) => relativePath === 'src/app/ebooks/page.tsx'
+  ? [relativePath, 'src/app/ebooks/_styles.tsx', 'src/app/ebooks/_detailStyles.tsx'].map(read).join('\n')
+  : read(relativePath);
 
 const publicAndEducationFiles = [
   'src/app/about/page.tsx',
@@ -32,7 +35,7 @@ const rawDepth = /border-radius\s*:\s*(?:[1-9]\d*(?:\.\d+)?|0?\.\d+)(?:px|rem)|b
 describe('public, education, and stock-news visual-system contract', () => {
   it('keeps the assigned production surfaces on centralized colors, type, and depth', () => {
     for (const relativePath of [...publicAndEducationFiles, ...stockNewsFiles]) {
-      const source = read(relativePath);
+      const source = readSurface(relativePath);
       expect(source, relativePath).not.toMatch(literalColour);
       expect(source, relativePath).not.toMatch(localGradient);
       expect(source, relativePath).not.toMatch(directFont);
@@ -51,7 +54,7 @@ describe('public, education, and stock-news visual-system contract', () => {
 
     expect(read('src/app/about/page.tsx')).toContain('background: var(--hero-gradient)');
     expect(read('src/app/contact/page.tsx')).toContain('background: var(--hero-gradient)');
-    expect(read('src/app/ebooks/page.tsx')).toContain('background: var(--hero-gradient)');
+    expect(readSurface('src/app/ebooks/page.tsx')).toContain('background: var(--hero-gradient)');
   });
 
   it('keeps listings wide and the individual ebook reader within the shared reading route', () => {
@@ -59,7 +62,7 @@ describe('public, education, and stock-news visual-system contract', () => {
       expect(read(relativePath), relativePath).toMatch(/WorkspacePageContainer[^>]+variant="wide"/);
     }
 
-    const listing = read('src/app/ebooks/page.tsx');
+    const listing = readSurface('src/app/ebooks/page.tsx');
     expect(listing).toContain('@media (min-width: 1500px)');
     expect(listing).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
 
@@ -79,7 +82,7 @@ describe('public, education, and stock-news visual-system contract', () => {
     }
 
     for (const relativePath of publicAndEducationFiles) {
-      expect(read(relativePath), relativePath).toContain(':focus-visible');
+      expect(readSurface(relativePath), relativePath).toContain(':focus-visible');
     }
   });
 

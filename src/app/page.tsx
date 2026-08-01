@@ -1735,10 +1735,10 @@ const landingStyles = `
   }
   .landing-ai-card {
     border-radius: var(--radius-panel);
-    background: var(--surface-elevated) !important;
+    background: var(--surface-elevated);
     color: var(--foreground);
-    border: 1px solid var(--border) !important;
-    box-shadow: var(--shadow-card) !important;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
     padding: 30px;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const securityPage = readFileSync(join(process.cwd(), 'src/app/security/page.tsx'), 'utf8');
+const securityPage = [
+  'src/app/security/page.tsx',
+  'src/app/security/_presentation.tsx',
+  'src/app/security/_modals.tsx',
+].map(path => readFileSync(join(process.cwd(), path), 'utf8')).join('\n');
 
 describe('security visual-system contract', () => {
   it('uses shared theme tokens without a page-owned palette or font stack', () => {

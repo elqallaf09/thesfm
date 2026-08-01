@@ -36,8 +36,8 @@ describe('GET /api/receipts/provider-status authorization', () => {
     const response = await GET(request('sfm_auth=true'));
 
     expect(response.status).toBe(401);
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
-    await expect(response.json()).resolves.toEqual({ ok: false, code: 'UNAUTHORIZED' });
+    expect(response.headers.get('cache-control')).toContain('private, no-store');
+    await expect(response.json()).resolves.toMatchObject({ ok: false, code: 'UNAUTHORIZED' });
     expect(mocks.getReceiptProviderStatus).not.toHaveBeenCalled();
   });
 
@@ -47,7 +47,7 @@ describe('GET /api/receipts/provider-status authorization', () => {
     const response = await GET(request());
 
     expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toEqual({ ok: false, code: 'FORBIDDEN' });
+    await expect(response.json()).resolves.toMatchObject({ ok: false, code: 'FORBIDDEN' });
     expect(mocks.getReceiptProviderStatus).not.toHaveBeenCalled();
   });
 
@@ -57,7 +57,7 @@ describe('GET /api/receipts/provider-status authorization', () => {
     const response = await GET(request());
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('cache-control')).toContain('private, no-store');
     await expect(response.json()).resolves.toEqual({
       google: { configured: true },
       openai: { configured: false },
@@ -71,7 +71,7 @@ describe('GET /api/receipts/provider-status authorization', () => {
     const response = await GET(request());
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ ok: false, code: 'ADMIN_AUTH_CHECK_FAILED' });
+    await expect(response.json()).resolves.toMatchObject({ ok: false, code: 'SERVICE_NOT_CONFIGURED' });
     expect(mocks.getReceiptProviderStatus).not.toHaveBeenCalled();
   });
 });

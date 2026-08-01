@@ -8,6 +8,7 @@ import { CurrencyProvider } from '@/lib/useCurrency';
 import { AppLayout } from '@/components/AppLayout';
 import { DeferredGlobalUtilities } from '@/components/DeferredGlobalUtilities';
 import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
+import { WebVitalsReporter } from '@/components/observability/WebVitalsReporter';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
 
@@ -64,6 +65,7 @@ export default function RootLayout({
           <DensityProvider>
             <AuthProvider>
               <AdaptiveLanguageProvider>
+                <WebVitalsReporter />
                 <LocalizedSkipLink />
                 <CurrencyProvider>
                   <AppLayout>{children}</AppLayout>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
@@ -507,36 +507,23 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
-  const limited = rateLimitRequest(request, {
-    max: 12,
-    windowMs: 60_000,
-    prefix: 'trader-provider-status-admin',
-  });
-  if (limited) return limited;
-
-  const auth = await requireAdminApiAccess(request, 'admin_dashboard').catch(() => null);
-  if (!auth) return providerStatusError();
-  if (!auth.ok) {
-    return NextResponse.json({ ok: false, code: auth.code }, {
-      status: auth.status,
-      headers: { 'Cache-Control': 'private, no-store' },
-    });
-  }
-
+export const POST = createAdminApiRoute({
+  permission: 'admin_dashboard',
+  rateLimit: { max: 12, windowMs: 60_000, prefix: 'trader-provider-status-admin' },
+}, async ({ request, json }) => {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) {
-    return NextResponse.json({ ok: false, code: 'INVALID_BODY' }, { status: 400 });
+    return json({ ok: false, code: 'INVALID_BODY' }, { status: 400 });
   }
 
   const action = typeof body.action === 'string' ? body.action : 'status';
   if (!ADMIN_ACTIONS.has(action)) {
-    return NextResponse.json({ ok: false, code: 'UNSUPPORTED_ACTION' }, { status: 400 });
+    return json({ ok: false, code: 'UNSUPPORTED_ACTION' }, { status: 400 });
   }
 
   const marketId = typeof body.market === 'string' ? body.market.trim().slice(0, 80) : null;
   if (action === 'discover' && !marketId) {
-    return NextResponse.json({ ok: false, code: 'MARKET_REQUIRED' }, { status: 400 });
+    return json({ ok: false, code: 'MARKET_REQUIRED' }, { status: 400 });
   }
 
   try {
@@ -556,4 +543,4 @@ export async function POST(request: Request) {
   } catch {
     return providerStatusError();
   }
-}
+});

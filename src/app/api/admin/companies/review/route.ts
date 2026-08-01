@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { isSmtpMailConfigured, sendSmtpMail } from '@/lib/server/smtpMail';
 import { STATIC_EMAIL_VISUAL_STYLES } from '@/styles/static-tokens';
 
@@ -38,8 +38,8 @@ const REVIEW_STATUS_COPY: Record<CompanyReviewStatus, { title: string; message: 
   },
 };
 
-function siteOrigin(req: NextRequest) {
-  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || req.nextUrl.origin;
+function siteOrigin(req: Request) {
+  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(req.url).origin;
 }
 
 function buildReviewMessage(status: CompanyReviewStatus, companyName: string, adminNotes?: string | null) {
@@ -63,7 +63,7 @@ function buildReviewEmailHtml(input: { title: string; companyName: string; messa
 }
 
 async function notifyCompanyOwner(input: {
-  req: NextRequest;
+  req: Request;
   supabase: NonNullable<ReturnType<typeof createServerSupabaseAdmin>>;
   company: { id: string; user_id: string | null; company_name: string; category: string | null; email: string | null };
   status: CompanyReviewStatus;
@@ -126,9 +126,7 @@ async function notifyCompanyOwner(input: {
   }
 }
 
-export async function POST(req: NextRequest) {
-  const auth = await requireAdminApiAccess(req, 'company_reviews');
-  if (!auth.ok) return NextResponse.json({ error: auth.code }, { status: auth.status });
+export const POST = createAdminApiRoute({ permission: 'company_reviews' }, async ({ request: req, auth, json }) => {
   const user = auth.user;
 
   const body = await req.json();
@@ -136,7 +134,7 @@ export async function POST(req: NextRequest) {
 
   const VALID_STATUSES: CompanyReviewStatus[] = ['approved', 'rejected', 'needs_changes', 'inactive', 'pending_review'];
   if (!companyId || !VALID_STATUSES.includes(status)) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    return json({ error: 'Invalid request' }, { status: 400 });
   }
 
   const supabase = auth.admin;
@@ -152,7 +150,7 @@ export async function POST(req: NextRequest) {
 
   if (companyError || !companyBeforeReview) {
     console.error('[AdminCompanies] company lookup error:', companyError);
-    return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    return json({ error: 'Company not found' }, { status: 404 });
   }
 
   const pendingUpdate = companyBeforeReview.pending_update && typeof companyBeforeReview.pending_update === 'object'
@@ -183,7 +181,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('[AdminCompanies] update error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return json({ error: 'COMPANY_REVIEW_UPDATE_FAILED' }, { status: 500 });
   }
 
   await notifyCompanyOwner({
@@ -200,5 +198,5 @@ export async function POST(req: NextRequest) {
     adminNotes: visibleReviewNote,
   });
 
-  return NextResponse.json({ ok: true });
-}
+  return json({ ok: true });
+});

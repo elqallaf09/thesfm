@@ -4,13 +4,13 @@
   "maxNewFileLines": 900,
   "files": {
     "src/app/(auth)/login/page.tsx": {
-      "lines": 1431
+      "lines": 1430
     },
     "src/app/about/page.tsx": {
       "lines": 1087
     },
     "src/app/ai/page.tsx": {
-      "lines": 974,
+      "lines": 972,
       "important": 1
     },
     "src/app/api/business/subscriptions/reminders/route.ts": {
@@ -63,13 +63,10 @@
       "lines": 1869
     },
     "src/app/debts/page.tsx": {
-      "lines": 992
+      "lines": 987
     },
     "src/app/documents/page.tsx": {
       "lines": 1185
-    },
-    "src/app/ebooks/page.tsx": {
-      "lines": 1208
     },
     "src/app/education/expenses/page.tsx": {
       "important": 3
@@ -119,14 +116,13 @@
       "lines": 2231
     },
     "src/app/page.tsx": {
-      "lines": 2277,
-      "important": 3
+      "lines": 2268
     },
     "src/app/privacy/page.tsx": {
       "important": 1
     },
     "src/app/profile/page.tsx": {
-      "lines": 2805,
+      "lines": 2799,
       "important": 5
     },
     "src/app/projects/[id]/_styles.tsx": {
@@ -142,11 +138,8 @@
     "src/app/sales/page.tsx": {
       "important": 1
     },
-    "src/app/security/page.tsx": {
-      "lines": 1010
-    },
     "src/app/setup/page.tsx": {
-      "lines": 2255,
+      "lines": 2235,
       "important": 1
     },
     "src/app/sfm-admin-control/admin-permissions/AdminPermissionsClient.tsx": {

@@ -1,29 +1,25 @@
 'use client';
 
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
   Banknote,
   BriefcaseBusiness,
-  ChevronDown,
   CheckCircle2,
   CircleDollarSign,
   Flag,
   HandHeart,
   LineChart,
-  ListChecks,
   Loader2,
   PiggyBank,
-  Plus,
   ReceiptText,
   ShieldCheck,
   Sparkles,
   Target,
   Wallet,
   X,
-  type LucideIcon,
 } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -47,6 +43,14 @@ import {
   SummaryCard,
   ToggleRow,
 } from '@/components/setup/SetupSubComponents';
+import {
+  EMPTY_EXISTING_DATA,
+  asSetupDatabase,
+  setupRow,
+  setupRows,
+  type ExistingSetupData,
+  type SetupRow,
+} from './_data';
 
 type Lang = 'ar' | 'en' | 'fr';
 type Step = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -69,26 +73,6 @@ type SetupSummary = {
   recommendedSavingPercent: number;
   monthlySavingSuggestion: number;
   firstGoalCompletionDate: string;
-};
-
-type ExistingSetupData = {
-  profile: any | null;
-  income: any[];
-  expenses: any[];
-  goals: any[];
-  savings: any[];
-  investments: any[];
-  projects: any[];
-};
-
-const EMPTY_EXISTING_DATA: ExistingSetupData = {
-  profile: null,
-  income: [],
-  expenses: [],
-  goals: [],
-  savings: [],
-  investments: [],
-  projects: [],
 };
 
 const COPY = {
@@ -715,7 +699,7 @@ function amountFrom(value: unknown) {
   return Number.isFinite(number) ? number : 0;
 }
 
-function amountFromAny(row: any, keys: string[]) {
+function amountFromAny(row: SetupRow, keys: string[]) {
   for (const key of keys) {
     const value = amountFrom(row?.[key]);
     if (value > 0) return value;
@@ -723,24 +707,25 @@ function amountFromAny(row: any, keys: string[]) {
   return 0;
 }
 
-function parseGoalNotes(row: any) {
+function parseGoalNotes(row: SetupRow): SetupRow {
   try {
-    return typeof row?.notes === 'string' ? JSON.parse(row.notes) : row?.notes || {};
+    const parsed = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as SetupRow : {};
   } catch {
     return {};
   }
 }
 
-function goalTargetAmount(row: any) {
+function goalTargetAmount(row: SetupRow) {
   return amountFrom(row?.amount ?? row?.target_amount);
 }
 
-function goalCurrentAmount(row: any) {
+function goalCurrentAmount(row: SetupRow) {
   const notes = parseGoalNotes(row);
   return amountFrom(row?.current_amount ?? notes.currentAmount);
 }
 
-function isAdditionalIncome(row: any) {
+function isAdditionalIncome(row: SetupRow) {
   const type = String(row?.income_type || row?.category || row?.type || '').trim().toLowerCase();
   const label = String(row?.source_name || row?.label || row?.name || '').trim().toLowerCase();
   if (amountFrom(row?.amount) <= 0) return false;
@@ -842,15 +827,17 @@ function formatSetupDate(value: string, lang: Lang) {
   }).format(date));
 }
 
-function rowCurrency(row: any, fallback = 'KWD') {
-  return String(row?.currency || row?.notes?.currency || fallback || 'KWD');
+function rowCurrency(row: SetupRow | null, fallback = 'KWD') {
+  if (!row) return fallback || 'KWD';
+  const notes = parseGoalNotes(row);
+  return String(row.currency || notes.currency || fallback || 'KWD');
 }
 
-function firstExistingIncome(rows: any[]) {
+function firstExistingIncome(rows: SetupRow[]) {
   return rows.find(row => amountFrom(row?.amount) > 0) ?? rows[0] ?? null;
 }
 
-function goalName(row: any) {
+function goalName(row: SetupRow) {
   return String(row?.goal || row?.name || row?.title || '').trim();
 }
 
@@ -866,7 +853,7 @@ export default function SetupPage() {
   const text = COPY[lang];
   const labels = OPTION_LABELS[lang];
   const { setCurrency: setGlobalCurrency } = useCurrency();
-  const db = supabase as any;
+  const db = asSetupDatabase(supabase);
 
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<Step>(0);
@@ -944,20 +931,22 @@ export default function SetupPage() {
       ]);
       if (cancelled) return;
       const nextExisting: ExistingSetupData = {
-        profile: profileRes.data ?? null,
-        income: incomeRes.data ?? [],
-        expenses: expensesRes.data ?? [],
-        goals: goalsRes.data ?? [],
-        savings: savingsRes.data ?? [],
-        investments: investmentsRes.data ?? [],
-        projects: projectsRes.data ?? [],
+        profile: setupRow(profileRes.data),
+        income: setupRows(incomeRes.data),
+        expenses: setupRows(expensesRes.data),
+        goals: setupRows(goalsRes.data),
+        savings: setupRows(savingsRes.data),
+        investments: setupRows(investmentsRes.data),
+        projects: setupRows(projectsRes.data),
       };
       setExistingData(nextExisting);
       if (nextExisting.profile?.onboarding_skipped === true) {
         router.replace('/dashboard');
         return;
       }
-      const currency = nextExisting.profile?.default_currency || nextExisting.profile?.preferred_currency || rowCurrency(firstExistingIncome(nextExisting.income), 'KWD');
+      const storedCurrency = [nextExisting.profile?.default_currency, nextExisting.profile?.preferred_currency]
+        .find((value): value is string => typeof value === 'string' && Boolean(value.trim()));
+      const currency = storedCurrency || rowCurrency(firstExistingIncome(nextExisting.income), 'KWD');
       setDefaultCurrency(currency);
       setIncome(prev => ({ ...prev, currency }));
       setSavings(prev => ({ ...prev, currency }));
@@ -976,12 +965,7 @@ export default function SetupPage() {
         }
         const existingGoal = nextExisting.goals[0];
         if (existingGoal) {
-          let notes: any = {};
-          try {
-            notes = typeof existingGoal.notes === 'string' ? JSON.parse(existingGoal.notes) : existingGoal.notes || {};
-          } catch {
-            notes = {};
-          }
+          const notes = parseGoalNotes(existingGoal);
           setGoal({
             name: goalName(existingGoal),
             targetAmount: String(existingGoal.amount ?? existingGoal.target_amount ?? ''),
@@ -1124,10 +1108,6 @@ export default function SetupPage() {
       }
     }
     return true;
-  }
-
-  function existingIncomeTotal() {
-    return existingData.income.reduce((total, row) => total + amountFrom(row.amount), 0);
   }
 
   function existingExpensesTotal() {

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 
 type AnalyticsRow = {
   id: string;
@@ -359,10 +359,7 @@ async function loadSessionRows(
   };
 }
 
-export async function GET(request: Request) {
-  const auth = await requireAdminApiAccess(request, 'admin_dashboard');
-  if (!auth.ok) return NextResponse.json({ error: auth.code.toLowerCase() }, { status: auth.status });
-
+const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, async ({ request, auth, json }) => {
   const url = new URL(request.url);
   const range = url.searchParams.get('range') || '30d';
   const moduleFilter = url.searchParams.get('module') || 'all';
@@ -373,7 +370,7 @@ export async function GET(request: Request) {
   const admin = auth.admin;
   if (!admin) {
     console.warn('[admin-analytics] service role is not configured; returning empty analytics payload');
-    return NextResponse.json(
+    return json(
       emptyAnalyticsPayload('none', from, to, { code: 'ANALYTICS_SERVICE_NOT_CONFIGURED', trackingEnabled: false }),
       { status: 200 },
     );
@@ -386,7 +383,7 @@ export async function GET(request: Request) {
   const effectiveSource = source === 'none' && sessionLoad.sessions.length ? 'site_sessions' : source;
   if (code === 'ANALYTICS_TABLES_MISSING' && sessionLoad.sessions.length === 0) {
     console.warn('[admin-analytics] analytics tables are missing; returning empty analytics payload');
-    return NextResponse.json(emptyAnalyticsPayload(source, from, to, { code }), { status: 200 });
+    return json(emptyAnalyticsPayload(source, from, to, { code }), { status: 200 });
   }
   if (code === 'ANALYTICS_TABLES_MISSING' && sessionLoad.sessions.length > 0) {
     console.warn('[admin-analytics] event analytics table is missing; continuing with session data only');
@@ -398,7 +395,7 @@ export async function GET(request: Request) {
   }
   if (error) {
     console.error('[admin-analytics] analytics load failed', { source, error });
-    return NextResponse.json({
+    return json({
       ok: false,
       success: false,
       code: 'ANALYTICS_LOAD_FAILED',
@@ -489,7 +486,7 @@ export async function GET(request: Request) {
     || sessions.some(session => new Date(session.last_seen_at ?? session.created_at ?? 0) >= last24Hours);
   const lastEventAt = rows[0]?.created_at ?? sessions[0]?.last_seen_at ?? sessions[0]?.created_at ?? null;
 
-  return NextResponse.json({
+  return json({
     ok: true,
     success: true,
     source: effectiveSource,
@@ -552,8 +549,7 @@ export async function GET(request: Request) {
     },
     hasData: rows.length > 0 || (canUseSessionStats && sessions.length > 0),
   });
-}
+});
 
-export async function POST(request: Request) {
-  return GET(request);
-}
+export const GET = analyticsRoute;
+export const POST = analyticsRoute;
