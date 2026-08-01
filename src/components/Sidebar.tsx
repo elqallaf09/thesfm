@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -132,13 +132,16 @@ export function Sidebar() {
     if (activeSupport) setSupportOpen(true);
   }, [activeSupport]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedItemId) return;
     const frame = window.requestAnimationFrame(() => {
-      const sidebar = navigationScrollRef.current?.closest<HTMLElement>('.sfm-shared-sidebar');
-      const target = sidebar?.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!target) return;
-      target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const scroll = navigationScrollRef.current;
+      const target = scroll?.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!scroll || !target) return;
+      const itemRect = target.getBoundingClientRect();
+      const scrollRect = scroll.getBoundingClientRect();
+      if (itemRect.top < scrollRect.top) scroll.scrollTop += itemRect.top - scrollRect.top;
+      else if (itemRect.bottom > scrollRect.bottom) scroll.scrollTop += itemRect.bottom - scrollRect.bottom;
     });
     return () => window.cancelAnimationFrame(frame);
   }, [collapsed, openGlobalGroupIds, openGroupIds, openItemIds, selectedItemId, supportOpen]);

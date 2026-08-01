@@ -211,7 +211,11 @@ test.describe('launch smoke coverage', () => {
         await expect(iframe).toHaveAttribute('src', stableFrameSrc ?? '/thesfm-trader-own/app/index.html?route=home');
 
         await page.waitForLoadState('load');
-        await page.reload({ waitUntil: 'load' });
+        await expect(async () => {
+          const reloadResponse = await page.reload({ waitUntil: 'domcontentloaded' });
+          expect(reloadResponse?.status() ?? 200).toBeLessThan(500);
+        }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 4_000] });
+        await page.waitForLoadState('load');
         const reloadedTraderShell = page.getByRole('main', { name: 'SFM Smart Analyzer' });
         await expect(reloadedTraderShell).toHaveCount(1);
         const reloadedIframe = reloadedTraderShell.locator(iframeSelector);
