@@ -459,10 +459,6 @@ export async function triggerScan(
     return { results: cache.results, run: cachedRunSummary('completed') };
   }
   if (activeScan) return activeScan;
-  if (force && cache.results.length && Date.now() - lastForcedScanAt < FORCE_SCAN_COOLDOWN_MS) {
-    return { results: cache.results, run: cachedRunSummary('completed') };
-  }
-  if (force) lastForcedScanAt = Date.now();
 
   const runId = randomUUID();
   const runPromise = (async () => {
@@ -477,6 +473,15 @@ export async function triggerScan(
     }
 
     try {
+      // A fresh pre-existing distributed lock (handled above) always takes
+      // precedence over this cooldown short-circuit -- it's only ever
+      // evaluated once this invocation has actually acquired the lock, so it
+      // can never mask a concurrent run as a plain cached "completed".
+      if (force && cache.results.length && Date.now() - lastForcedScanAt < FORCE_SCAN_COOLDOWN_MS) {
+        return { results: cache.results, run: cachedRunSummary('completed') };
+      }
+      if (force) lastForcedScanAt = Date.now();
+
       const run = await runScanInternal(filters, runId);
       return { results: cache.results, run };
     } catch (error) {

@@ -293,6 +293,123 @@ describe('triggerScan overlapping-run protection', () => {
   });
 });
 
+describe('triggerScan force-cooldown vs distributed-lock ordering', () => {
+  // A live validation run showed a second, forced scanner request return
+  // "completed" instead of "already_running" while a fresh distributed lock
+  // was genuinely held. Root cause: the force-cooldown cached-result
+  // short-circuit ran before acquireScanLock() was ever called, so it could
+  // return a stale "completed" without checking the lock at all. These
+  // tests pin the corrected ordering: the lock is always checked first.
+  it('a fresh distributed lock held by another run takes precedence over an active force-cooldown cached result', async () => {
+    getUsStockUniverse.mockReturnValue([asset('ONE')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 10, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true });
+
+    const { calls, admin } = recordingSupabaseAdmin();
+    createServerSupabaseAdmin.mockReturnValue(admin);
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+
+    // First call acquires the lock normally and completes a real scan, so
+    // cache.results is populated and the force-cooldown window is active.
+    const first = await triggerScan({ market: 'US' }, { force: true });
+    expect(first.run.status).toBe('completed');
+    expect(calls.filter((c) => c.table === 'trader_scan_runs')).toHaveLength(1);
+
+    // Second call, immediately after (still well inside the cooldown
+    // window): another process is genuinely holding the distributed lock.
+    fetchYahooNormalizedQuote.mockClear();
+    acquireScanLock.mockResolvedValueOnce({ acquired: false, existing: { runId: 'concurrent-holder', lockedAt: new Date().toISOString() } });
+    const second = await triggerScan({ market: 'US' }, { force: true });
+
+    expect(second.run.status).toBe('already_running');
+    expect(second.run.runId).toBe('concurrent-holder');
+    expect(fetchYahooNormalizedQuote).not.toHaveBeenCalled();
+    expect(calls.filter((c) => c.table === 'trader_scan_runs')).toHaveLength(1);
+  });
+
+  it('does not update lastForcedScanAt when returning already_running, so the cooldown window is never silently extended', async () => {
+    getUsStockUniverse.mockReturnValue([asset('ONE')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 10, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const t0 = Date.now();
+
+    const first = await triggerScan({ market: 'US' }, { force: true });
+    expect(first.run.status).toBe('completed');
+
+    vi.setSystemTime(t0 + 1000);
+    acquireScanLock.mockResolvedValueOnce({ acquired: false, existing: { runId: 'concurrent-holder', lockedAt: new Date().toISOString() } });
+    const second = await triggerScan({ market: 'US' }, { force: true });
+    expect(second.run.status).toBe('already_running');
+
+    // Just past the ORIGINAL 5-minute cooldown window measured from the
+    // first call's lastForcedScanAt. If the already_running return above had
+    // wrongly bumped lastForcedScanAt to t0+1000, the cooldown would still
+    // be active here and this call would short-circuit to a cached
+    // "completed" instead of actually scanning.
+    vi.setSystemTime(t0 + 5 * 60 * 1000 + 500);
+    fetchYahooNormalizedQuote.mockClear();
+    const third = await triggerScan({ market: 'US' }, { force: true });
+
+    vi.useRealTimers();
+
+    expect(fetchYahooNormalizedQuote).toHaveBeenCalledTimes(1);
+    // A cached-completed short-circuit always reports processed: 0
+    // (cachedRunSummary); a real scan of the 1-symbol universe reports 1 —
+    // this is the non-flaky way to prove an actual scan ran rather than
+    // asserting on durationMs, which can legitimately round to 0ms here.
+    expect(third.run.processed).toBe(1);
+  });
+
+  it('releases a lock acquired by the current invocation even when the cooldown short-circuits it to a cached result', async () => {
+    getUsStockUniverse.mockReturnValue([asset('ONE')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 10, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+
+    const first = await triggerScan({ market: 'US' }, { force: true });
+    expect(first.run.status).toBe('completed');
+
+    releaseScanLock.mockClear();
+    fetchYahooNormalizedQuote.mockClear();
+    const second = await triggerScan({ market: 'US' }, { force: true });
+
+    expect(fetchYahooNormalizedQuote).not.toHaveBeenCalled();
+    expect(releaseScanLock).toHaveBeenCalledTimes(1);
+    const secondRunId = acquireScanLock.mock.calls[acquireScanLock.mock.calls.length - 1][1];
+    expect(releaseScanLock).toHaveBeenCalledWith(expect.any(String), secondRunId);
+  });
+
+  it('still runs the scan when a previously stale lock is reclaimed outside the cooldown window', async () => {
+    getUsStockUniverse.mockReturnValue([asset('ONE')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 10, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const t0 = Date.now();
+
+    const first = await triggerScan({ market: 'US' }, { force: true });
+    expect(first.run.status).toBe('completed');
+
+    // Outside the cooldown window, a previously crashed run's stale lock is
+    // reclaimed (acquireScanLock still reports acquired: true) -- the scan
+    // must actually run, not be mistaken for an overlapping run.
+    vi.setSystemTime(t0 + 6 * 60 * 1000);
+    fetchYahooNormalizedQuote.mockClear();
+    const second = await triggerScan({ market: 'US' }, { force: true });
+    vi.useRealTimers();
+
+    expect(second.run.status).toBe('completed');
+    expect(fetchYahooNormalizedQuote).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('triggerScan observability', () => {
   it('reports cacheHits in the structured run-completed log when the history provider serves a cached response', async () => {
     getUsStockUniverse.mockReturnValue([asset('CACHED1'), asset('FRESH1')]);
