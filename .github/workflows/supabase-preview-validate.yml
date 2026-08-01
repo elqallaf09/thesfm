@@ -21,6 +21,10 @@ on:
         description: "Exact commit SHA to validate. Mutually exclusive with target_pr."
         required: false
         type: string
+      preview_ref:
+        description: "Optional explicit isolated Supabase Preview project ref when the GitHub integration check is unavailable."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -165,10 +169,20 @@ jobs:
         with:
           script: |
             const sha = '${{ needs.resolve-target.outputs.sha }}';
+            const explicitRef = `${{ inputs.preview_ref }}`.trim();
+            if (explicitRef) {
+              if (!/^[a-z0-9]{20}$/.test(explicitRef)) {
+                core.setFailed('preview_ref must be a 20-character lowercase Supabase project ref.');
+                return;
+              }
+              core.setOutput('ref', explicitRef);
+              core.info(`Using the explicitly supplied isolated Preview ref ${explicitRef} for ${sha}.`);
+              return;
+            }
             const { data } = await github.rest.checks.listForRef({ ...context.repo, ref: sha, per_page: 100 });
             const preview = data.check_runs.find(c => c.name === 'Supabase Preview' && c.app?.slug === 'supabase');
             if (!preview || preview.conclusion !== 'success') {
-              core.setFailed(`No successful "Supabase Preview" branch exists for ${sha} (status: ${preview?.conclusion ?? 'none'}). This job validates an existing branch's migration state — it does not provision one. See docs/infra/supabase-preview-ci.md.`);
+              core.setFailed(`No successful "Supabase Preview" branch exists for ${sha} (status: ${preview?.conclusion ?? 'none'}). Supply preview_ref for an existing isolated branch, or see docs/infra/supabase-preview-ci.md.`);
               return;
             }
             const url = new URL(preview.details_url);

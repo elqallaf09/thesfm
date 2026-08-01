@@ -99,6 +99,9 @@ likely already deployed through the normal merge-to-`main` pipeline.
    arbitrary already-open PR (by number) or exact commit SHA, without
    needing a new commit on that PR. It:
    - Resolves the exact target SHA.
+   - Accepts an optional explicit `preview_ref` for an already-created isolated
+     Supabase branch when the external GitHub integration check is unavailable;
+     the workflow still fails closed if that ref matches Production.
    - **Fails closed** (not silently skips) if any of the following required
      secrets/variables are absent, naming each one explicitly: `CRON_SECRET`
      (as a GitHub Actions secret — see below), `VERCEL_AUTOMATION_BYPASS_SECRET`,
