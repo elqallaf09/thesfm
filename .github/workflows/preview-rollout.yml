@@ -87,7 +87,10 @@ jobs:
             --output "$response_file"
 
           public_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "publishable")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "anon")][0].api_key // empty' "$response_file")"
-          service_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "secret")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "service_role")][0].api_key // empty' "$response_file")"
+          # The application still supplies this value in Authorization for
+          # service-role REST calls. Prefer the JWT-shaped legacy key and use
+          # a modern secret key only when no legacy service_role key exists.
+          service_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "legacy" and .name == "service_role")][0].api_key // [.[] | select(.disabled != true) | select(.type == "secret")][0].api_key // empty' "$response_file")"
 
           [[ -n "$public_key" ]] || { echo 'No active publishable/anon key was returned for Preview.' >&2; exit 1; }
           [[ -n "$service_key" ]] || { echo 'No active secret/service_role key was returned for Preview.' >&2; exit 1; }

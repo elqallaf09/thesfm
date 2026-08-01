@@ -7,6 +7,7 @@ const fixture = readSource('tests/smoke/preview-auth-fixtures.mjs');
 const observability = readSource('tests/smoke/observability-preview.spec.ts');
 const workflow = readSource('.github/workflows/ci.yml');
 const manualAuthenticatedPreviewWorkflow = readSource('.github/workflows/authenticated-preview-validate.yml');
+const previewRolloutWorkflow = readSource('.github/workflows/preview-rollout.yml');
 const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-preview:'));
 
 describe('Preview-only authentication fixtures', () => {
@@ -93,5 +94,8 @@ describe('Preview-only authentication fixtures', () => {
     expect(manualAuthenticatedPreviewWorkflow).toContain('workflow_dispatch:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('target_sha:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('preview_ref:');
+    const legacyBeforeSecret = 'select(.type == "legacy" and .name == "service_role")][0].api_key // [.[] | select(.disabled != true) | select(.type == "secret")';
+    expect(manualAuthenticatedPreviewWorkflow).toContain(legacyBeforeSecret);
+    expect(previewRolloutWorkflow).toContain(legacyBeforeSecret);
   });
 });

@@ -94,7 +94,10 @@ jobs:
             --output "$response_file"
 
           public_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "publishable")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "anon")][0].api_key // empty' "$response_file")"
-          service_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "secret")][0].api_key // [.[] | select(.disabled != true) | select(.type == "legacy" and .name == "service_role")][0].api_key // empty' "$response_file")"
+          # The authenticated probes send this value as a Bearer JWT. Prefer
+          # the legacy service_role JWT; modern sb_secret_* keys are valid API
+          # keys but are not JWTs and PostgREST rejects them in Authorization.
+          service_key="$(jq -r '[.[] | select(.disabled != true) | select(.type == "legacy" and .name == "service_role")][0].api_key // [.[] | select(.disabled != true) | select(.type == "secret")][0].api_key // empty' "$response_file")"
           [[ -n "$public_key" ]] || { echo 'No active Preview public key was returned.' >&2; exit 1; }
           [[ -n "$service_key" ]] || { echo 'No active Preview service key was returned.' >&2; exit 1; }
           echo "::add-mask::$public_key"
