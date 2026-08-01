@@ -1452,24 +1452,18 @@ export default function IncomePage() {
       setSaving(false);
     }
   }
-
   async function deleteIncome(row: IncomeRow) {
     try {
       if (isGuest || !user) {
         const next = rows.filter(item => item.id !== row.id);
-        localStorage.setItem('sfm_guest_income', JSON.stringify(next));
-        setRows(next);
+        localStorage.setItem('sfm_guest_income', JSON.stringify(next)); setRows(next);
       } else {
         const { error } = await supabase.from('monthly_income_sources').delete().eq('id', row.id).eq('user_id', user.id);
-        if (error) throw error;
-        setRows(previous => previous.filter(item => item.id !== row.id));
+        if (error) throw error; setRows(previous => previous.filter(item => item.id !== row.id));
       }
       showToast(tr('deleted', lang));
-    } catch {
-      showToast(tr('deleteFailed', lang));
-    }
+    } catch { showToast(tr('deleteFailed', lang)); }
   }
-
   async function confirmReceived(row: IncomeRow) {
     const confirmedAt = new Date().toISOString();
     const nextRow = { ...row, status: 'received', confirmed_at: confirmedAt, updated_at: confirmedAt };

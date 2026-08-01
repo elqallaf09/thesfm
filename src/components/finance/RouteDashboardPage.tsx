@@ -1253,11 +1253,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt <= EXPENSE_OPTIONAL_SAVE_COLUMNS.length; attempt += 1) {
-      const { error } = await supabase
-        .from('expense_items')
-        .update(nextPayload)
-        .eq('id', id)
-        .eq('user_id', user.id);
+      const { error } = await supabase.from('expense_items').update(nextPayload).eq('id', id).eq('user_id', user.id);
 
       if (!error) return;
 
