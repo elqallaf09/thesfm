@@ -1,0 +1,76 @@
+name: Lighthouse baseline
+
+# Strict, blocking companion to the advisory CI/Lighthouse advisory job in
+# ci.yml. Runs against the exact current main commit, on its own schedule,
+# away from the CPU contention that made per-PR Lighthouse unreliable on the
+# shared runner (see PR #68 and #58/#53 for the evidence). Thresholds are
+# identical to the PR-advisory job — nothing here is looser.
+#
+# Deliberately not triggered on push to main: ci.yml's advisory Lighthouse
+# job already runs on every push to main, so an additional push trigger here
+# would just duplicate that work without adding a stricter signal.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 3 * * *'
+
+concurrency:
+  group: lighthouse-baseline
+  cancel-in-progress: false
+
+jobs:
+  baseline:
+    name: Lighthouse baseline (main, strict)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+      - name: Run Lighthouse CI (strict baseline)
+        uses: treosh/lighthouse-ci-action@v11
+        with:
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+      - name: Publish Lighthouse baseline measurements to the job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Lighthouse baseline — main @ $(git rev-parse HEAD)"
+            echo ""
+            echo "This run is strict: a threshold violation fails the job. Thresholds: Performance >= 0.70, Accessibility >= 0.98, Best Practices >= 0.95, SEO >= 0.95, FCP <= 3000ms, LCP <= 7000ms, CLS <= 0.05, TBT <= 300ms."
+            echo ""
+            echo "| Run | Performance | TBT (ms) | LCP (ms) | FCP (ms) | CLS |"
+            echo "| --- | --- | --- | --- | --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          shopt -s nullglob
+          reports=(.lighthouseci/lhr-*.json)
+          if [ ${#reports[@]} -eq 0 ]; then
+            echo "| _no reports were produced — the server likely never became ready_ |  |  |  |  |  |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            run=0
+            for report in "${reports[@]}"; do
+              run=$((run + 1))
+              perf=$(jq -r '.categories.performance.score' "$report")
+              tbt=$(jq -r '.audits["total-blocking-time"].numericValue' "$report")
+              lcp=$(jq -r '.audits["largest-contentful-paint"].numericValue' "$report")
+              fcp=$(jq -r '.audits["first-contentful-paint"].numericValue' "$report")
+              cls=$(jq -r '.audits["cumulative-layout-shift"].numericValue' "$report")
+              printf '| %s | %s | %s | %s | %s | %s |\n' "$run" "$perf" "$tbt" "$lcp" "$fcp" "$cls" >> "$GITHUB_STEP_SUMMARY"
+            done
+          fi

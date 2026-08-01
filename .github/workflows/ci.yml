@@ -310,6 +310,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  # Advisory by design: the shared GitHub-hosted runner produces a severe,
+  # unpredictable first-Chrome-launch outlier that a deterministic server
+  # warmup wrapper could not eliminate across 3 consecutive real CI
+  # executions (see PR #68 for the full evidence). Thresholds are unchanged
+  # and every run's measurements are still reported honestly below — this
+  # job is simply no longer allowed to block merges on noise it cannot
+  # control. The strict, blocking signal now lives in the daily
+  # lighthouse-baseline.yml workflow, which runs against main on hardware
+  # that isn't contending with the rest of this job's own PR traffic.
   lighthouse:
     name: CI/Lighthouse advisory
     runs-on: ubuntu-latest
@@ -331,34 +340,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      # Identical application commits have produced both passing and failing
-      # Lighthouse results on GitHub-hosted runners (for example, 155-247 ms
-      # TBT versus 361-1594 ms). Keep every assertion unchanged, but allow one
-      # fresh collection when the first host sample is outside the budget. A
-      # real regression still fails the required check on the second attempt.
       - name: Run Lighthouse CI
-        id: lighthouse-primary
-        continue-on-error: true
         uses: treosh/lighthouse-ci-action@v11
         with:
           configPath: .lighthouserc.json
-          uploadArtifacts: false
+          uploadArtifacts: true
           temporaryPublicStorage: true
-      - name: Retry Lighthouse CI after transient runner variance
-        if: steps.lighthouse-primary.outcome == 'failure'
-        uses: treosh/lighthouse-ci-action@v11
-        with:
-          configPath: .lighthouserc.json
-          uploadArtifacts: false
-          temporaryPublicStorage: true
-      - name: Upload Lighthouse diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-results
-          path: .lighthouseci/
-          if-no-files-found: warn
-          retention-days: 7
       - name: Publish Lighthouse measurements to the job summary
         if: always()
         shell: bash
@@ -366,7 +353,7 @@ jobs:
           {
             echo "### Lighthouse CI — advisory (does not block this pull request)"
             echo ""
-            echo "Thresholds remain unchanged and are enforced by the scheduled strict baseline on main."
+            echo "Thresholds are unchanged from the required baseline: Performance >= 0.70, Accessibility >= 0.98, Best Practices >= 0.95, SEO >= 0.95, FCP <= 3000ms, LCP <= 7000ms, CLS <= 0.05, TBT <= 300ms."
             echo ""
             echo "| Run | Performance | TBT (ms) | LCP (ms) | FCP (ms) | CLS |"
             echo "| --- | --- | --- | --- | --- | --- |"
@@ -374,7 +361,7 @@ jobs:
           shopt -s nullglob
           reports=(.lighthouseci/lhr-*.json)
           if [ ${#reports[@]} -eq 0 ]; then
-            echo "| _no local reports produced; see temporary-public-storage report links_ |  |  |  |  |  |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| _no reports were produced — the server likely never became ready_ |  |  |  |  |  |" >> "$GITHUB_STEP_SUMMARY"
           else
             run=0
             for report in "${reports[@]}"; do
