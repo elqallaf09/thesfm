@@ -222,6 +222,7 @@ const TX: Record<string, Record<Lang, string>> = {
   requiredError: { ar: 'يرجى إكمال الحقول المطلوبة.', en: 'Please complete the required fields.', fr: 'Veuillez compléter les champs requis.' },
   saved: { ar: 'تمت إضافة الدخل بنجاح', en: 'Income added successfully', fr: 'Revenu ajouté avec succès' },
   deleted: { ar: 'تم حذف الدخل', en: 'Income deleted', fr: 'Revenu supprimé' },
+  deleteFailed: { ar: 'تعذر حذف الدخل حالياً', en: 'Income could not be deleted right now', fr: 'Impossible de supprimer le revenu pour le moment' },
   exportSoon: { ar: 'التصدير غير مفعّل في هذه المرحلة.', en: 'Export is not enabled in this phase.', fr: 'L’export n’est pas activé dans cette phase.' },
   insightDetails: { ar: 'تعتمد هذه البطاقة على السجلات المحفوظة فقط، وتظهر بيانات غير كافية عندما لا تتوفر أرقام حقيقية كافية.', en: 'This card uses saved records only and shows insufficient data when there are not enough real numbers.', fr: 'Cette carte utilise uniquement les enregistrements sauvegardés et affiche des données insuffisantes lorsque les chiffres réels manquent.' },
   monthCalculationMethod: { ar: 'طريقة احتساب هذا الشهر', en: 'This month calculation method', fr: 'Mode de calcul de ce mois' },
@@ -1451,19 +1452,18 @@ export default function IncomePage() {
       setSaving(false);
     }
   }
-
   async function deleteIncome(row: IncomeRow) {
-    if (isGuest || !user) {
-      const next = rows.filter(item => item.id !== row.id);
-      localStorage.setItem('sfm_guest_income', JSON.stringify(next));
-      setRows(next);
-    } else {
-      await supabase.from('monthly_income_sources').delete().eq('id', row.id).eq('user_id', user.id);
-      setRows(previous => previous.filter(item => item.id !== row.id));
-    }
-    showToast(tr('deleted', lang));
+    try {
+      if (isGuest || !user) {
+        const next = rows.filter(item => item.id !== row.id);
+        localStorage.setItem('sfm_guest_income', JSON.stringify(next)); setRows(next);
+      } else {
+        const { error } = await supabase.from('monthly_income_sources').delete().eq('id', row.id).eq('user_id', user.id);
+        if (error) throw error; setRows(previous => previous.filter(item => item.id !== row.id));
+      }
+      showToast(tr('deleted', lang));
+    } catch { showToast(tr('deleteFailed', lang)); }
   }
-
   async function confirmReceived(row: IncomeRow) {
     const confirmedAt = new Date().toISOString();
     const nextRow = { ...row, status: 'received', confirmed_at: confirmedAt, updated_at: confirmedAt };

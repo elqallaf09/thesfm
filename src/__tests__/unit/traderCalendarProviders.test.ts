@@ -153,7 +153,7 @@ describe('trader calendar providers', () => {
     expect(result.data.map(item => item.symbol)).toEqual(['MSFT']);
   });
 
-  it('treats a provider empty array as connected with no current events', async () => {
+  it('treats a provider empty array as a provider failure rather than successful connectivity', async () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
@@ -161,10 +161,66 @@ describe('trader calendar providers', () => {
 
     const result = await getTraderCalendar('dividends', query);
 
-    expect(result.status).toBe('success');
+    expect(result.status).toBe('provider_error');
     expect(result.provider).toBe('fmp');
     expect(result.data).toEqual([]);
-    expect(result.messageCode).toBe('dividends_calendar_no_events');
+    expect(result.messageCode).toBe('dividends_provider_returned_empty');
+    expect(result.failureReason).toBe('provider_returned_empty');
+  });
+
+  it('falls back when the primary provider returns an empty dataset', async () => {
+    clearProviderEnvs();
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        earningsCalendar: [{
+          symbol: 'MSFT',
+          date: '2026-07-20',
+          epsEstimate: 2.91,
+          revenueEstimate: 72000000000,
+        }],
+      }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getTraderCalendar('earnings', query);
+
+    expect(result.status).toBe('success');
+    expect(result.provider).toBe('finnhub');
+    expect(result.resultCount).toBe(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves last-known-good calendar data as stale when a refresh returns empty', async () => {
+    clearProviderEnvs();
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{
+        symbol: 'AAPL',
+        companyName: 'Apple Inc.',
+        date: '2026-07-15',
+        epsEstimated: 1.48,
+      }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const first = await getTraderCalendar('earnings', query);
+    const second = await getTraderCalendar('earnings', query);
+
+    expect(first.status).toBe('success');
+    expect(second).toMatchObject({
+      status: 'provider_error',
+      provider: 'fmp',
+      cached: true,
+      stale: true,
+      resultCount: 1,
+      messageCode: 'earnings_provider_returned_empty',
+      failureReason: 'provider_returned_empty',
+    });
+    expect(second.data[0]).toMatchObject({ symbol: 'AAPL', epsEstimate: 1.48 });
   });
 
   it('reports provider plan blocks without fabricated IPOs', async () => {
@@ -254,7 +310,7 @@ describe('trader calendar providers', () => {
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([
-      { symbol: 'AAPL', companyName: 'Apple Inc.', date: '2026-07-15' },
+      { symbol: 'AAPL', companyName: 'Apple Inc.', date: '2026-07-15', epsEstimated: 1.48 },
     ]), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 

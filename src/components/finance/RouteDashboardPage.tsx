@@ -1248,14 +1248,12 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   }
 
   async function updateExpenseItem(id: string, payload: Record<string, unknown>) {
+    if (!user) throw new Error(t('entry_auth_required'));
     let nextPayload = { ...payload };
     let lastError: unknown = null;
 
     for (let attempt = 0; attempt <= EXPENSE_OPTIONAL_SAVE_COLUMNS.length; attempt += 1) {
-      const { error } = await supabase
-        .from('expense_items')
-        .update(nextPayload)
-        .eq('id', id);
+      const { error } = await supabase.from('expense_items').update(nextPayload).eq('id', id).eq('user_id', user.id);
 
       if (!error) return;
 
@@ -1515,7 +1513,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
               category: entryForm.category || 'general',
               label: name,
               amount,
-            }).eq('id', id);
+            }).eq('id', id).eq('user_id', user.id);
             if (error) throw error;
             applyEntryToSnapshot(kind, { id, name, label: name, category: entryForm.category || 'general', amount }, mode);
           }
@@ -1675,7 +1673,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
             }
             applyEntryToSnapshot(kind, { id: created.id, name: created.name, amount: Number(created.amount) || amount, created_at: created.created_at }, mode);
           } else {
-            const { error } = await supabase.from(table).update({ name, amount }).eq('id', id);
+            const { error } = await supabase.from(table).update({ name, amount }).eq('id', id).eq('user_id', user.id);
             if (error) throw error;
             applyEntryToSnapshot(kind, { id, name, amount }, mode);
           }
@@ -1708,7 +1706,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
       } else {
         if (!user) throw new Error(t('entry_auth_required'));
         const table = kind === 'income' ? 'monthly_income_sources' : kind === 'expenses' ? 'expense_items' : kind === 'savings' ? 'savings_items' : 'investment_items';
-        const { error } = await supabase.from(table).delete().eq('id', confirmDelete.id);
+        const { error } = await supabase.from(table).delete().eq('id', confirmDelete.id).eq('user_id', user.id);
         if (error) throw error;
         if (kind === 'savings') {
           try {

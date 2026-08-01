@@ -122,7 +122,7 @@ async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSyst
 
   for (const [rawProvider, cap] of Object.entries(catalog.capabilityMatrix) as Array<[string, ProviderCapabilityLike]>) {
     const provider = normalizeMarketDataProviderName(rawProvider);
-    if (!provider) continue; // filters out vestigial 'openbb'
+    if (!provider) continue;
     for (const [flag, capabilityKey] of SUPPORT_FLAG_TO_CAPABILITY) {
       if (cap[flag]) cells.push(cellFromProviderCapability(provider, capabilityKey, cap));
     }

@@ -135,7 +135,7 @@ function RiskGauge({ value }: { value: number }) {
 ═══════════════════════════ */
 export default function ProjectsPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { lang, dir, t } = useLanguage();
   const pt = {
     title: `🚀 ${t('proj_title')}`,
@@ -151,6 +151,9 @@ export default function ProjectsPage() {
     currency: t('projects_currency'),
     noProjects: t('projects_empty_title'),
     noProjectsDesc: t('projects_empty_description'),
+    loadError: t('projects_load_error'),
+    retry: t('projects_retry'),
+    deleteError: t('projects_delete_error'),
     addFirst: t('projects_add_first'),
     viewDetails: t('projects_view_details'),
     expandProject: t('projects_expand'),
@@ -187,6 +190,8 @@ export default function ProjectsPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsLoadError, setProjectsLoadError] = useState('');
   const [activeTab, setActiveTab] = useState<ProjectsTab>('all');
   const formRef = useRef<HTMLDivElement>(null);
   const emojiTriggerRef = useRef<HTMLButtonElement>(null);
@@ -194,21 +199,30 @@ export default function ProjectsPage() {
 
   const loadProjects = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    if (data) setProjects(data.map((p: any) => ({
-      ...emptyForm, id: p.id, name: p.name, emoji: p.emoji || '🚀',
-      type: p.notes?.type || '', idea: p.notes?.idea || '',
-      capital: p.notes?.capital || '', expectedProfit: p.notes?.expectedProfit || '',
-      currentProfit: p.notes?.currentProfit || '', monthlyExpenses: p.notes?.monthlyExpenses || '',
-      monthlyRevenue: p.notes?.monthlyRevenue || '', startDate: p.notes?.startDate || '',
-      status: p.notes?.status || 'فكرة', riskLevel: p.notes?.riskLevel || 33,
-      needs: p.notes?.needs || [], goal: p.notes?.goal || '',
-      startTimeline: p.notes?.startTimeline || '', notes: p.notes?.notes || '',
-      progress: p.notes?.progress || emptyForm.progress,
-      feasibilityTypes: p.notes?.feasibility_types || p.notes?.feasibilityTypes || [],
-      analysis: p.notes?.analysis, expanded: false, createdAt: p.created_at,
-    })));
-  }, [user]);
+    setProjectsLoading(true);
+    setProjectsLoadError('');
+    try {
+      const { data, error } = await supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (error) throw error;
+      setProjects((data ?? []).map((p: any) => ({
+        ...emptyForm, id: p.id, name: p.name, emoji: p.emoji || '🚀',
+        type: p.notes?.type || '', idea: p.notes?.idea || '',
+        capital: p.notes?.capital || '', expectedProfit: p.notes?.expectedProfit || '',
+        currentProfit: p.notes?.currentProfit || '', monthlyExpenses: p.notes?.monthlyExpenses || '',
+        monthlyRevenue: p.notes?.monthlyRevenue || '', startDate: p.notes?.startDate || '',
+        status: p.notes?.status || 'فكرة', riskLevel: p.notes?.riskLevel || 33,
+        needs: p.notes?.needs || [], goal: p.notes?.goal || '',
+        startTimeline: p.notes?.startTimeline || '', notes: p.notes?.notes || '',
+        progress: p.notes?.progress || emptyForm.progress,
+        feasibilityTypes: p.notes?.feasibility_types || p.notes?.feasibilityTypes || [],
+        analysis: p.notes?.analysis, expanded: false, createdAt: p.created_at,
+      })));
+    } catch {
+      setProjectsLoadError(t('projects_load_error'));
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, [t, user]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setMounted(true), 60);
@@ -248,7 +262,7 @@ export default function ProjectsPage() {
       setAnalyzing(false);
       const notes = { ...form, feasibility_types: form.feasibilityTypes, analysis };
       if (editingId && user) {
-        const { data, error } = await supabase.from('projects').update({ name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, notes }).eq('id', editingId).select().single();
+        const { data, error } = await supabase.from('projects').update({ name: form.name, emoji: form.emoji, budget: form.capital, timeline: form.startTimeline, notes }).eq('id', editingId).eq('user_id', user.id).select().single();
         if (error) throw new Error(error.message);
         setProjects(prev => prev.map(p => p.id === editingId ? { ...form, id: data.id, analysis: analysis || p.analysis, expanded: p.expanded } : p));
         setEditingId(null);
@@ -267,7 +281,12 @@ export default function ProjectsPage() {
   };
 
   const removeProject = async (id: string) => {
-    if (user) await supabase.from('projects').delete().eq('id', id);
+    if (!user) return;
+    const { error } = await supabase.from('projects').delete().eq('id', id).eq('user_id', user.id);
+    if (error) {
+      alert(pt.deleteError);
+      return;
+    }
     setProjects(prev => prev.filter(p => p.id !== id));
   };
 
@@ -277,12 +296,20 @@ export default function ProjectsPage() {
   };
 
   const toggleProgress = async (projectId: string, stepId: string) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id !== projectId) return p;
-      const np = { ...p.progress, [stepId]: !p.progress[stepId] };
-      supabase.from('projects').update({ notes: { ...p, progress: np, analysis: p.analysis } }).eq('id', projectId);
-      return { ...p, progress: np };
-    }));
+    if (!user) return;
+    const project = projects.find(candidate => candidate.id === projectId);
+    if (!project) return;
+    const nextProgress = { ...project.progress, [stepId]: !project.progress[stepId] };
+    const { error } = await supabase
+      .from('projects')
+      .update({ notes: { ...project, progress: nextProgress, analysis: project.analysis } })
+      .eq('id', projectId)
+      .eq('user_id', user.id);
+    if (error) {
+      alert(t('projects_save_error'));
+      return;
+    }
+    setProjects(prev => prev.map(candidate => candidate.id === projectId ? { ...candidate, progress: nextProgress } : candidate));
   };
 
   const sendMessage = async () => {
@@ -604,8 +631,21 @@ export default function ProjectsPage() {
             </AppModal>
           )}
 
+          {(authLoading || projectsLoading) && !showForm && (
+            <div className="pc" role="status" aria-live="polite" style={{ ...S(60), padding: '34px', textAlign: 'center' }}>
+              <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', margin: '0 auto' }} />
+            </div>
+          )}
+
+          {projectsLoadError && !showForm && (
+            <div className="pc" role="alert" style={{ ...S(70), padding: '28px', textAlign: 'center' }}>
+              <p style={{ fontSize: '14px', color: 'var(--danger)', marginBottom: '16px', lineHeight: 1.7 }}>{projectsLoadError}</p>
+              <button className="pbtn pbtn-o" style={{ padding: '10px 20px', margin: '0 auto' }} onClick={() => void loadProjects()}>{pt.retry}</button>
+            </div>
+          )}
+
           {/* Empty state */}
-          {projects.length === 0 && !showForm && (
+          {!authLoading && !projectsLoading && !projectsLoadError && projects.length === 0 && !showForm && (
             <div className="pc" style={{ ...S(80), padding: '60px 40px', textAlign: 'center' }}>
               <div style={{ fontSize: '56px', marginBottom: '18px' }}>🚀</div>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--foreground)', marginBottom: '10px' }}>{pt.noProjects}</h3>
@@ -803,5 +843,3 @@ export default function ProjectsPage() {
     </div>
   </>);
 }
-
-
