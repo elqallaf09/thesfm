@@ -93,8 +93,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:run
-        name: vitest
+      - run: pnpm test:coverage
+        name: vitest with coverage
       - name: Upload coverage
         uses: actions/upload-artifact@v7
         if: always()
