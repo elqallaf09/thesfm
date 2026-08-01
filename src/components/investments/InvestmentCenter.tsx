@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, CircleAlert, FileText, FolderClock, Landmark, Plus, ShieldCheck, WalletCards } from 'lucide-react';
+import { ArrowUpRight, CircleAlert, FileText, FolderClock, Plus, ShieldCheck, WalletCards } from 'lucide-react';
 import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { PlatformIdentity } from '@/components/invest/PlatformIdentity';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
