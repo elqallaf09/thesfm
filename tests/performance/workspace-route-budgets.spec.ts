@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { userAuthStatePath } from '../smoke/auth-state';
 
 type WorkspacePerformanceMetrics = {
   cls: number;
@@ -12,7 +13,7 @@ const workspaceRoutes = [
   '/invest',
   '/business-hub',
   '/ai-analyst/overview',
-  '/market-analysis',
+  '/ai-analyst/market-leadership',
   '/reports-center',
 ] as const;
 
@@ -23,15 +24,7 @@ const projectLocale = {
 } as const;
 
 async function prepareWorkspaceSession(page: Page, locale: 'ar' | 'en' | 'fr') {
-  await page.context().addCookies([{
-    name: 'sfm_guest',
-    value: 'true',
-    url: 'http://127.0.0.1:3002',
-    sameSite: 'Lax',
-  }]);
   await page.addInitScript(value => {
-    localStorage.setItem('sfm_guest_mode', 'true');
-    localStorage.setItem('sfm_guest_started_at', new Date().toISOString());
     localStorage.setItem('sfm_lang', value);
     localStorage.setItem('the-sfm-theme', 'dark');
 
@@ -69,6 +62,8 @@ async function prepareWorkspaceSession(page: Page, locale: 'ar' | 'en' | 'fr') {
     }
   }, locale);
 }
+
+test.use({ storageState: userAuthStatePath });
 
 for (const route of workspaceRoutes) {
   test(`${route} stays inside the authenticated workspace route budget`, async ({ page }, testInfo) => {
