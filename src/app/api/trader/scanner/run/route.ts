@@ -6,9 +6,14 @@ import {
   toTraderRecommendation,
   traderRecommendationSummary,
 } from '@/lib/trader/apiFormat';
-import { filterResults, runScanner } from '@/lib/trader/scannerService';
+import { filterResults, triggerScan } from '@/lib/trader/scannerService';
+import type { ScannerFilters } from '@/lib/trader/types';
 
 export const dynamic = 'force-dynamic';
+// Vercel Pro plan maximum for this route. The scanner enforces its own
+// internal SCANNER_TIME_BUDGET_MS deadline well below this so it always
+// returns a truthful partial/completed response instead of a 504.
+export const maxDuration = 300;
 
 function hasCronSecret(request: NextRequest) {
   const configured = process.env.CRON_SECRET?.trim();
@@ -16,6 +21,56 @@ function hasCronSecret(request: NextRequest) {
   const authorization = request.headers.get('authorization') || '';
   const headerSecret = request.headers.get('x-cron-secret') || '';
   return authorization === `Bearer ${configured}` || headerSecret === configured;
+}
+
+async function buildScanResponse(filters: ScannerFilters, force: boolean) {
+  try {
+    const { results, run } = await triggerScan(filters, { force });
+    const filtered = filterResults(results, filters);
+    const recommendations = filterTraderRecommendationsBySharia(filtered.map(toTraderRecommendation), filters.shariaStatus);
+
+    return NextResponse.json({
+      ok: run.status !== 'failed',
+      status: run.status,
+      runId: run.runId,
+      processed: run.processed,
+      remaining: run.remaining,
+      succeeded: run.succeeded,
+      skipped: run.skipped,
+      failed: run.failed,
+      durationMs: run.durationMs,
+      nextCursor: run.nextCursor,
+      generatedAt: new Date().toISOString(),
+      summary: traderRecommendationSummary(recommendations),
+      recommendations,
+      results: recommendations,
+    }, {
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  } catch {
+    // triggerScan already converts scan failures into a "failed" status without
+    // throwing; this only guards against a truly unexpected exception so the
+    // route always returns a valid JSON response instead of a raw 500/504.
+    return NextResponse.json({
+      ok: false,
+      status: 'failed',
+      runId: null,
+      processed: 0,
+      remaining: 0,
+      succeeded: 0,
+      skipped: 0,
+      failed: 0,
+      durationMs: 0,
+      nextCursor: null,
+      generatedAt: new Date().toISOString(),
+      summary: null,
+      recommendations: [],
+      results: [],
+    }, {
+      status: 200,
+      headers: { 'Cache-Control': 'no-store' },
+    });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -39,20 +94,10 @@ export async function POST(request: NextRequest) {
   if (typeof body.shariaStatus === 'string') search.set('shariaStatus', body.shariaStatus);
   if (typeof body.minimumConfidence === 'number') search.set('minimumConfidence', String(body.minimumConfidence));
   if (Array.isArray(body.symbols)) search.set('symbols', body.symbols.join(','));
+  if (typeof body.cursor === 'number') search.set('cursor', String(body.cursor));
 
   const filters = parseScannerFilters(search);
-  const results = filterResults(await runScanner(filters, true), filters);
-  const recommendations = filterTraderRecommendationsBySharia(results.map(toTraderRecommendation), filters.shariaStatus);
-
-  return NextResponse.json({
-    ok: true,
-    generatedAt: new Date().toISOString(),
-    summary: traderRecommendationSummary(recommendations),
-    recommendations,
-    results: recommendations,
-  }, {
-    headers: { 'Cache-Control': 'no-store' },
-  });
+  return buildScanResponse(filters, true);
 }
 
 export async function GET(request: NextRequest) {
@@ -60,16 +105,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'cron_secret_required' }, { status: 403 });
   }
 
-  const results = await runScanner({ market: 'US' }, true);
-  const recommendations = results.map(toTraderRecommendation);
-
-  return NextResponse.json({
-    ok: true,
-    generatedAt: new Date().toISOString(),
-    summary: traderRecommendationSummary(recommendations),
-    recommendations,
-    results: recommendations,
-  }, {
-    headers: { 'Cache-Control': 'no-store' },
-  });
+  return buildScanResponse({ market: 'US' }, true);
 }

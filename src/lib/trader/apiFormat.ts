@@ -17,6 +17,7 @@ export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilte
     .map((symbol) => symbol.trim().toUpperCase())
     .filter(Boolean);
   const normalizedShariaStatus = normalizeShariaStatus(shariaStatus);
+  const cursorValue = Number(searchParams.get('cursor'));
 
   return {
     market: 'US',
@@ -28,6 +29,7 @@ export function parseScannerFilters(searchParams: URLSearchParams): ScannerFilte
     shariaStatus: shariaStatus === 'all' ? 'all' : normalizedShariaStatus,
     minimumConfidence: Number.isFinite(confidenceValue) && confidenceValue > 0 ? Math.min(95, Math.max(0, confidenceValue)) : undefined,
     symbols: symbols.length ? symbols : undefined,
+    cursor: Number.isFinite(cursorValue) && cursorValue >= 0 ? Math.floor(cursorValue) : undefined,
   };
 }
 
