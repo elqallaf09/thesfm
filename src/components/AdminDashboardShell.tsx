@@ -6,6 +6,7 @@ import { DashboardPageShell } from '@/components/DashboardPageShell';
 type AdminDashboardShellProps = {
   children: ReactNode;
   ariaLabel?: string;
+  dir?: 'ltr' | 'rtl';
   className?: string;
   contentClassName?: string;
   style?: CSSProperties;
@@ -15,6 +16,7 @@ type AdminDashboardShellProps = {
 export function AdminDashboardShell({
   children,
   ariaLabel,
+  dir,
   className,
   contentClassName,
   style,
@@ -24,6 +26,7 @@ export function AdminDashboardShell({
     <>
       <DashboardPageShell
         ariaLabel={ariaLabel}
+        dir={dir}
         className={className}
         contentClassName={contentClassName}
         style={style}
