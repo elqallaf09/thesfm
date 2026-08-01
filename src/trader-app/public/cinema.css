@@ -12556,8 +12556,7 @@ ul.command-deck-list li b.is-closed { color: var(--trader-neutral); }
   opacity: 0;
   pointer-events: none;
 }
-.detail-chart-point:hover + .detail-chart-value,
-.detail-chart-point:focus + .detail-chart-value { opacity: 1; }
+.detail-chart-point:hover + .detail-chart-value, .detail-chart-point:focus + .detail-chart-value { opacity: 1; }
 .detail-chart-axis { position: absolute; inset-inline: 10px; inset-block-end: 7px; z-index: 4; display: flex; justify-content: space-between; color: var(--trader-muted); font-size: 12px; pointer-events: none; }
 
 .symbol-quick-drawer { grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
