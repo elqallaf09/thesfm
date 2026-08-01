@@ -4,10 +4,7 @@
 @import "../styles/scopes.css";
 @import "../styles/density.css";
 @import "../components/market-analysis/market-page.css";
-/* invest.css and financial-theories.css are route-scoped (imported from
-   src/app/invest/layout.tsx and src/app/financial-theories/layout.tsx) so
-   their ~115KB combined source doesn't render-block routes that never use
-   those classes, including the public landing page. */
+/* Large route styles are imported by their layouts. */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
