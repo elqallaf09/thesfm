@@ -4,7 +4,7 @@ import { requireAdminApiAccess } from '@/lib/server/adminAccess';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const dynamic = 'force-dynamic';
-export const ADMIN_API_POLICY_EXCEPTION = 'public-health-admin-details';
+// ADMIN_API_POLICY_EXCEPTION: public-health-admin-details
 
 const TABLE_CHECKS = {
   profiles: 'profiles',

@@ -8,7 +8,7 @@ import {
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const ADMIN_API_POLICY_EXCEPTION = 'cron-or-admin-signal-refresh';
+// ADMIN_API_POLICY_EXCEPTION: cron-or-admin-signal-refresh
 
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {

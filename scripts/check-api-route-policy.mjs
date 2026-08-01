@@ -7,7 +7,7 @@ const root = process.cwd();
 const apiRoot = path.join(root, 'src/app/api');
 const factoryPattern = /createAdminApiRoute(?:<[^\n]+>)?\s*\(/;
 const manualAdminCheckPattern = /require(?:Super)?AdminApiAccess\s*\(/;
-const exceptionPattern = /export const ADMIN_API_POLICY_EXCEPTION = ['"]([^'"]+)['"]/;
+const exceptionPattern = /\/\/ ADMIN_API_POLICY_EXCEPTION: ([a-z0-9-]+)/;
 const allowedExceptions = new Map([
   ['src/app/api/admin/access/route.ts', 'admin-access-bootstrap'],
   ['src/app/api/admin/me/route.ts', 'admin-self-inspection'],
@@ -71,7 +71,7 @@ for (const [route, marker] of allowedExceptions) {
     continue;
   }
   const source = readFileSync(file, 'utf8');
-  if (!source.includes(`ADMIN_API_POLICY_EXCEPTION = '${marker}'`)) {
+  if (!source.includes(`// ADMIN_API_POLICY_EXCEPTION: ${marker}`)) {
     failures.push(`${route}: reviewed exception marker changed or was removed`);
   }
 }

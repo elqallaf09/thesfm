@@ -10,7 +10,7 @@ import {
   isValidAdminAccessCode,
 } from '@/lib/server/adminAccess';
 
-export const ADMIN_API_POLICY_EXCEPTION = 'admin-access-bootstrap';
+// ADMIN_API_POLICY_EXCEPTION: admin-access-bootstrap
 
 const attempts = new Map<string, { count: number; lockedUntil: number }>();
 const MAX_ATTEMPTS = 5;
