@@ -6,6 +6,7 @@ const readSource = (path: string) => readFileSync(join(process.cwd(), path), 'ut
 const fixture = readSource('tests/smoke/preview-auth-fixtures.mjs');
 const observability = readSource('tests/smoke/observability-preview.spec.ts');
 const workflow = readSource('.github/workflows/ci.yml');
+const manualAuthenticatedPreviewWorkflow = readSource('.github/workflows/authenticated-preview-validate.yml');
 const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-preview:'));
 
 describe('Preview-only authentication fixtures', () => {
@@ -78,5 +79,18 @@ describe('Preview-only authentication fixtures', () => {
     expect(cleanupBlock).toContain('if: always()');
     expect(cleanupBlock).toContain('SUPABASE_PREVIEW_REF');
     expect(cleanupBlock).toContain('no fixture cleanup was required');
+  });
+
+  it('keeps secret-backed browser checks away from Dependabot while retaining manual validation', () => {
+    const smokeJob = workflow.slice(workflow.indexOf('  smoke:'), workflow.indexOf('  lighthouse:'));
+    expect(smokeJob).toContain(
+      "if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'",
+    );
+    expect(authenticatedPreviewJob).toContain(
+      "if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'",
+    );
+    expect(manualAuthenticatedPreviewWorkflow).toContain('workflow_dispatch:');
+    expect(manualAuthenticatedPreviewWorkflow).toContain('target_sha:');
+    expect(manualAuthenticatedPreviewWorkflow).toContain('preview_ref:');
   });
 });

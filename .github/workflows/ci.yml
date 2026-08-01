@@ -176,6 +176,12 @@ jobs:
 
   smoke:
     name: CI/Playwright smoke tests
+    # Dependabot pull requests intentionally cannot access repository secrets.
+    # Keep the unprivileged build, lint, typecheck, unit, migration, and budget
+    # checks running, but route secret-backed browser validation through the
+    # manually dispatched authenticated-preview-validate.yml workflow after a
+    # maintainer has reviewed the dependency changes.
+    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -377,7 +383,10 @@ jobs:
 
   authenticated-preview:
     name: CI/Authenticated Preview smoke
-    if: github.event_name == 'pull_request'
+    # Never expose Preview credentials to an automated dependency PR. A
+    # maintainer can validate an approved exact SHA with the fail-closed manual
+    # authenticated-preview-validate.yml workflow instead.
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     needs: [typecheck, lint, i18n, launch-guards, test, build, smoke, lighthouse]
     runs-on: ubuntu-latest
     environment: Preview
