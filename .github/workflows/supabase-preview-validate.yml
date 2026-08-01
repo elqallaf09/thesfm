@@ -2,13 +2,35 @@ name: Supabase Preview Validate
 
 # On-demand, target-agnostic Preview validation. Unlike the required PR gates
 # in ci.yml, this workflow can validate an arbitrary already-open PR (by
-# number) without needing a new commit on that PR, and does not depend on the
-# external "Supabase Preview" GitHub check (Supabase's own branch-per-PR
-# integration), which is not reliable for this repository today — see
-# docs/infra/supabase-preview-ci.md for the full root-cause writeup.
+# number) without needing a new commit on that PR.
+#
+# Self-sufficient provisioning: this workflow does not require an external
+# dependency to resolve an isolated Preview branch. Resolution order:
+#   1) an explicit preview_ref input, when supplied (validated, never
+#      Production) — the audited fallback for when tier 2 is unavailable;
+#   2) a successful externally-resolved "Supabase Preview" GitHub check
+#      (Supabase's own branch-per-PR integration) for the exact target SHA,
+#      when one exists — see docs/infra/supabase-preview-ci.md ("Issue 1")
+#      for why this does not reliably associate a branch with most
+#      feature-branch PRs in this repository today;
+#   3) otherwise, create a workflow-owned, non-persistent, schema-only
+#      ephemeral branch via the Supabase Management API and wait for it to
+#      become healthy.
+#
+# A freshly workflow-created branch (tier 3) can exhibit a confirmed,
+# reproducible defect where the baseline migration is recorded as applied
+# while the tables it creates don't actually exist — see
+# docs/infra/supabase-preview-ci.md ("Issue 2, tier-3 manifestation") for the
+# live evidence and the bounded Management API materialization this workflow
+# uses to repair exactly that case, and only that case: it never writes to a
+# tier 1/2 (explicit or externally-managed) branch.
 #
 # This workflow deliberately fails closed rather than silently skipping when
 # a required credential is missing. See the "validate-required-secrets" job.
+# Every Supabase Preview credential (anon/service-role keys) this workflow
+# ever uses is resolved dynamically per-branch via the Management API and
+# masked immediately — no static SUPABASE_PREVIEW_SERVICE_ROLE_KEY secret is
+# required for any tier.
 
 on:
   workflow_dispatch:
@@ -22,7 +44,11 @@ on:
         required: false
         type: string
       preview_ref:
-        description: "Optional explicit isolated Supabase Preview project ref when the GitHub integration check is unavailable."
+        description: "Optional explicit isolated Supabase Preview project ref (tier 1). Production is rejected. When omitted, resolution falls through to the external Supabase Preview check, then a workflow-created ephemeral branch."
+        required: false
+        type: string
+      cleanup_branch_id:
+        description: "Escape hatch: delete this workflow-owned Supabase branch ID and exit, skipping validation entirely. Use when a run's own cleanup could not run (e.g. it failed before reaching Finalize)."
         required: false
         type: string
       activate_rollout:
@@ -51,12 +77,34 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: supabase-preview-validate-${{ inputs.target_pr || inputs.target_sha }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ inputs.target_pr || inputs.target_sha || inputs.cleanup_branch_id }}
+  cancel-in-progress: false
 
 jobs:
+  manual-branch-cleanup:
+    name: Manual orphaned-branch cleanup (escape hatch)
+    if: inputs.cleanup_branch_id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: Preview
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+      - name: Delete the specified orphaned branch
+        env:
+          CLEANUP_BRANCH_ID: ${{ inputs.cleanup_branch_id }}
+        run: node .github/scripts/supabase-branch.mjs delete --branch-id "$CLEANUP_BRANCH_ID"
+
   resolve-target:
     name: Resolve target PR / exact SHA
+    if: inputs.cleanup_branch_id == ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -68,8 +116,15 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const targetPr = `${{ inputs.target_pr }}`.trim();
-            const targetSha = `${{ inputs.target_sha }}`.trim();
+            // Read inputs from the trusted, already-parsed event payload
+            // object rather than template-interpolating them into this
+            // script's source text — the latter would let a crafted input
+            // value (e.g. containing a backtick or template-literal
+            // terminator) break out of the string and execute arbitrary JS
+            // with this step's github-script token, before any validation
+            // below ever runs.
+            const targetPr = String(context.payload.inputs?.target_pr ?? '').trim();
+            const targetSha = String(context.payload.inputs?.target_sha ?? '').trim();
             if (!targetPr && !targetSha) {
               core.setFailed('Provide either target_pr or target_sha.');
               return;
@@ -110,22 +165,17 @@ jobs:
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PREVIEW_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY }}
       SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - name: Check every capability this workflow needs, by name only
         shell: bash
         run: |
           missing=()
-          note() { echo "  - $1: $2"; }
 
-          [[ -z "${CRON_SECRET:-}" ]] && missing+=("CRON_SECRET (GitHub Actions secret) — required to authenticate the scanner-route request; the app's CRON_SECRET is currently only configured in Vercel's environment, not mirrored as a GitHub Actions secret")
+          [[ -z "${CRON_SECRET:-}" ]] && missing+=("CRON_SECRET (GitHub Actions secret) — required to authenticate the scanner-route request")
           [[ -z "${VERCEL_AUTOMATION_BYPASS_SECRET:-}" ]] && missing+=("VERCEL_AUTOMATION_BYPASS_SECRET — required to bypass Vercel Deployment Protection")
-          [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]] && missing+=("SUPABASE_ACCESS_TOKEN — a Supabase Management API personal/project access token, required for 'supabase link' and 'supabase migration list' against the Preview branch; distinct from SUPABASE_PREVIEW_SERVICE_ROLE_KEY, which is a Data API key and cannot perform branch/migration management")
-          [[ -z "${SUPABASE_PREVIEW_SERVICE_ROLE_KEY:-}" ]] && missing+=("SUPABASE_PREVIEW_SERVICE_ROLE_KEY — required to read/write trader_cache rows for the cursor/lock validation")
-          [[ -z "${SUPABASE_PRODUCTION_REF:-}" ]] && missing+=("SUPABASE_PRODUCTION_REF (repository variable) — required for the fail-closed non-Production identity assertion")
-          [[ -z "${VERCEL_TOKEN:-}" ]] && missing+=("VERCEL_TOKEN — a Vercel API token, required to read function logs/duration/CPU metrics for the exact Preview deployment; not currently configured anywhere in this repository")
+          [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]] && missing+=("SUPABASE_ACCESS_TOKEN — a Supabase Management API personal/project access token, required to link/migrate the resolved isolated branch, to fetch its anon/service-role keys dynamically for scanner validation (no static SUPABASE_PREVIEW_SERVICE_ROLE_KEY secret is used), and, when no explicit/external branch is available, to create/inspect/delete a workflow-owned one")
+          [[ -z "${SUPABASE_PRODUCTION_REF:-}" ]] && missing+=("SUPABASE_PRODUCTION_REF (repository variable) — required for every fail-closed non-Production identity assertion, and as the parent project when creating a workflow-owned branch")
 
           {
             echo "### Supabase Preview Validate — required secrets check"
@@ -144,6 +194,10 @@ jobs:
               echo "via workflow_dispatch. No downstream validation ran."
             else
               echo "**Result: all required secrets/variables present.** (names only checked; no values printed)"
+              echo ""
+              echo "Note: \`activate_rollout\`/\`run_authenticated_smoke\` need \`VERCEL_TOKEN\` and (for"
+              echo "authenticated smoke) E2E credentials — those optional reusable workflows check their"
+              echo "own required secrets independently and fail closed if invoked without them."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -152,24 +206,155 @@ jobs:
             for m in "${missing[@]}"; do
               echo "::error::  - $m"
             done
-            echo ""
-            echo "Manual configuration step: add each missing secret/variable in"
-            echo "  Settings > Secrets and variables > Actions (repo-level, or the 'Preview' environment)"
-            echo "for this repository, then re-run this workflow via workflow_dispatch."
             exit 1
           fi
 
           echo "All required secrets/variables are present (names only checked; values never printed)."
 
-  # The jobs below are intentionally NOT marked "needs: validate-required-secrets"
-  # with a soft dependency — they hard-depend on it so that a missing secret
-  # fails the whole run closed instead of silently skipping to a green
-  # checkmark. See validate-required-secrets above for exactly what is missing
-  # today in this repository.
+  # The jobs below are intentionally NOT marked with a soft dependency on
+  # validate-required-secrets — they hard-depend on it so that a missing
+  # secret fails the whole run closed instead of silently skipping to a
+  # green checkmark.
 
-  snapshot-upgrade:
-    name: Snapshot-upgrade migration validation (Section B)
+  provision-preview:
+    name: Isolated Preview provisioning
     needs: [resolve-target, validate-required-secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: Preview
+    outputs:
+      ref: ${{ steps.finalize.outputs.ref }}
+      source: ${{ steps.finalize.outputs.source }}
+      branch_id: ${{ steps.create.outputs.branch_id }}
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Step 1 — validate an explicit preview_ref override, when supplied
+        id: explicit
+        shell: bash
+        env:
+          # Passed via env, never interpolated directly into the script
+          # text below — the raw input must never reach a shell/JS
+          # expression position before it has been validated.
+          INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}
+        run: |
+          ref="$INPUT_PREVIEW_REF"
+          if [[ -z "$ref" ]]; then
+            echo "ref=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "$ref" =~ ^[a-z0-9]{20}$ ]]; then
+            echo "::error::preview_ref must be a 20-character lowercase Supabase project ref."
+            exit 1
+          fi
+          if [[ "$ref" == "${SUPABASE_PRODUCTION_REF}" ]]; then
+            echo "::error::preview_ref must not equal SUPABASE_PRODUCTION_REF."
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "Using the explicitly supplied isolated Preview ref $ref."
+
+      - name: Step 2 — check for a successful externally-resolved Preview branch
+        id: external
+        if: steps.explicit.outputs.ref == ''
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const sha = '${{ needs.resolve-target.outputs.sha }}';
+            const { data } = await github.rest.checks.listForRef({ ...context.repo, ref: sha, per_page: 100 });
+            const preview = data.check_runs.find(c => c.name === 'Supabase Preview' && c.app?.slug === 'supabase');
+            if (!preview || preview.conclusion !== 'success') {
+              core.info(`No successful external "Supabase Preview" branch for ${sha} (status: ${preview?.conclusion ?? 'none'}). Will create a workflow-owned branch instead.`);
+              core.setOutput('ref', '');
+              return;
+            }
+            let url;
+            try {
+              url = new URL(preview.details_url);
+            } catch {
+              core.setFailed('Successful external Supabase Preview check did not provide a valid dashboard URL.');
+              return;
+            }
+            const match = url.pathname.match(/^\/dashboard\/project\/([a-z0-9]{20})\/?$/);
+            if (!match) {
+              core.setFailed('Could not parse an isolated Supabase project ref from the external Preview check.');
+              return;
+            }
+            core.setOutput('ref', match[1]);
+            core.info(`Reusing externally-resolved Preview ref ${match[1]}.`);
+
+      - uses: pnpm/action-setup@v6
+        if: steps.explicit.outputs.ref == '' && steps.external.outputs.ref == ''
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v5
+        if: steps.explicit.outputs.ref == '' && steps.external.outputs.ref == ''
+        with:
+          node-version: 22.13.0
+
+      - name: Step 3 — create a workflow-owned ephemeral branch (no explicit/external branch found)
+        id: create
+        if: steps.explicit.outputs.ref == '' && steps.external.outputs.ref == ''
+        run: |
+          node .github/scripts/supabase-branch.mjs create \
+            --parent-ref "${SUPABASE_PRODUCTION_REF}" \
+            --pr-number "${{ needs.resolve-target.outputs.pr_number }}" \
+            --sha "${{ needs.resolve-target.outputs.sha }}" \
+            --production-ref "${SUPABASE_PRODUCTION_REF}"
+
+      - name: Wait for the workflow-owned branch to become healthy
+        if: steps.explicit.outputs.ref == '' && steps.external.outputs.ref == ''
+        run: |
+          node .github/scripts/supabase-branch.mjs wait-healthy \
+            --branch-id "${{ steps.create.outputs.branch_id }}" \
+            --timeout-ms 600000
+
+      - name: Finalize resolved ref and source
+        id: finalize
+        # Runs even if a preceding step failed/timed out — otherwise a
+        # workflow-created branch that never became healthy would leave this
+        # job's `source`/`ref` outputs empty, and the always-run cleanup job
+        # (which keys off those outputs) would never find and delete it.
+        # branch_id is only ever set once `create` itself succeeded,
+        # independent of finalize, so it is not affected by this bug — this
+        # fixes the `source`/`ref` side of the same class of problem.
+        if: always()
+        run: |
+          if [[ -n "${{ steps.explicit.outputs.ref }}" ]]; then
+            echo "ref=${{ steps.explicit.outputs.ref }}" >> "$GITHUB_OUTPUT"
+            echo "source=explicit_ref" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{ steps.external.outputs.ref }}" ]]; then
+            echo "ref=${{ steps.external.outputs.ref }}" >> "$GITHUB_OUTPUT"
+            echo "source=externally_reused" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{ steps.create.outputs.ref }}" ]]; then
+            echo "ref=${{ steps.create.outputs.ref }}" >> "$GITHUB_OUTPUT"
+            echo "source=workflow_created" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No Preview ref could be resolved (no valid explicit preview_ref, no successful external Supabase Preview check, and no workflow-created branch)."
+            exit 1
+          fi
+
+      - name: Fail-closed identity assertion — target must never be Production
+        if: always() && steps.finalize.outcome == 'success'
+        run: |
+          if [[ "${{ steps.finalize.outputs.ref }}" == "${SUPABASE_PRODUCTION_REF}" ]]; then
+            echo "::error::Resolved Preview ref matches SUPABASE_PRODUCTION_REF. Refusing to proceed."
+            exit 1
+          fi
+          {
+            echo "### Isolated Preview branch"
+            echo ""
+            echo "- Ref: \`${{ steps.finalize.outputs.ref }}\` (name only — never Production)"
+            echo "- Source: \`${{ steps.finalize.outputs.source }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Confirmed target ref ${{ steps.finalize.outputs.ref }} (source: ${{ steps.finalize.outputs.source }}) is not the Production ref."
+
+  migration-validation:
+    name: Migration validation
+    needs: [resolve-target, provision-preview]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: Preview
@@ -181,43 +366,15 @@ jobs:
         with:
           ref: ${{ needs.resolve-target.outputs.sha }}
 
-      - name: Resolve the isolated Supabase Preview ref for this exact SHA
-        id: preview-ref
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const sha = '${{ needs.resolve-target.outputs.sha }}';
-            const explicitRef = `${{ inputs.preview_ref }}`.trim();
-            if (explicitRef) {
-              if (!/^[a-z0-9]{20}$/.test(explicitRef)) {
-                core.setFailed('preview_ref must be a 20-character lowercase Supabase project ref.');
-                return;
-              }
-              core.setOutput('ref', explicitRef);
-              core.info(`Using the explicitly supplied isolated Preview ref ${explicitRef} for ${sha}.`);
-              return;
-            }
-            const { data } = await github.rest.checks.listForRef({ ...context.repo, ref: sha, per_page: 100 });
-            const preview = data.check_runs.find(c => c.name === 'Supabase Preview' && c.app?.slug === 'supabase');
-            if (!preview || preview.conclusion !== 'success') {
-              core.setFailed(`No successful "Supabase Preview" branch exists for ${sha} (status: ${preview?.conclusion ?? 'none'}). Supply preview_ref for an existing isolated branch, or see docs/infra/supabase-preview-ci.md.`);
-              return;
-            }
-            const url = new URL(preview.details_url);
-            const match = url.pathname.match(/^\/dashboard\/project\/([a-z0-9]{20})\/?$/);
-            if (!match) {
-              core.setFailed('Could not parse an isolated Supabase project ref from the Preview check.');
-              return;
-            }
-            core.setOutput('ref', match[1]);
-
-      - name: Fail-closed identity assertion — target must never be Production
+      # The target SHA (an arbitrary PR, possibly predating this workflow's
+      # own scripts) may not contain .github/scripts/*.mjs at all. Overlay
+      # this workflow's own copy from the ref it was actually dispatched
+      # from — the target's application code (supabase/migrations/, src/)
+      # is otherwise left untouched.
+      - name: Overlay this workflow's own infra scripts
         run: |
-          if [[ "${{ steps.preview-ref.outputs.ref }}" == "${SUPABASE_PRODUCTION_REF}" ]]; then
-            echo "::error::Resolved Preview ref matches SUPABASE_PRODUCTION_REF. Refusing to proceed."
-            exit 1
-          fi
-          echo "Confirmed target ref ${{ steps.preview-ref.outputs.ref }} is not the Production ref."
+          git fetch --depth=1 origin "${{ github.sha }}"
+          git checkout "${{ github.sha }}" -- .github/scripts
 
       - uses: pnpm/action-setup@v6
         with:
@@ -225,67 +382,378 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22.13.0
-      - name: Install the Supabase CLI
-        run: pnpm dlx supabase --version
 
-      - name: Link to the isolated Preview project (never Production)
-        run: pnpm dlx supabase link --project-ref "${{ steps.preview-ref.outputs.ref }}"
+      - name: Link to the isolated Preview branch (never Production)
+        run: pnpm dlx supabase link --project-ref "${{ needs.provision-preview.outputs.ref }}"
 
       - name: List local-vs-remote migration status
-        id: migration-list
         run: |
           pnpm dlx supabase migration list --linked > migration-status.txt
           cat migration-status.txt
 
+      # A live dispatch confirmed a real Supabase branch-provisioning defect,
+      # specific to freshly workflow-created (tier 3) branches — see
+      # docs/infra/supabase-preview-ci.md, "Issue 2, tier-3 manifestation": a
+      # freshly seeded branch can record the baseline migration
+      # (00000000000000) as applied in supabase_migrations.schema_migrations
+      # while the tables it creates (public.profiles and its twelve
+      # siblings) don't actually exist. This step detects exactly that
+      # mismatch — it does not touch anything.
+      - name: Check for a baseline schema/history mismatch
+        id: baseline-check
+        run: |
+          node .github/scripts/migration-baseline-check.mjs check-baseline \
+            --ref "${{ needs.provision-preview.outputs.ref }}" \
+            --migration-status-file migration-status.txt
+
+      - name: Partial baseline schema — fail closed, never auto-repaired
+        if: steps.baseline-check.outputs.baseline_state == 'partial'
+        run: |
+          echo "::error::This Preview branch's baseline migration (00000000000000) is recorded as applied, and SOME but not all of its expected tables exist. This is a partial, ambiguous state this workflow deliberately never attempts to automatically repair — it needs manual investigation, not a guess. See the 'Check for a baseline schema/history mismatch' step's log above for exactly which objects are present/missing."
+          exit 1
+
+      - name: Explicit/externally-managed branch with a fully-missing baseline must be recreated (fail closed)
+        if: steps.baseline-check.outputs.baseline_state == 'fully_missing' && needs.provision-preview.outputs.source != 'workflow_created'
+        run: |
+          echo "::error::This explicit/externally-managed Preview branch's baseline migration (00000000000000) is recorded as applied, but every required baseline object is missing. This workflow never writes to a branch it did not create itself (source: ${{ needs.provision-preview.outputs.source }}). The branch must be recreated (e.g. via the Supabase dashboard, its own provisioning integration, or omitting preview_ref to let this workflow create a fresh one), then re-run this workflow."
+          exit 1
+
+      # Only ever reached for a branch this exact run created (asserted
+      # again, explicitly, inside the script below) — never an
+      # explicit/externally-managed one, and never for a partial mismatch.
+      #
+      # `supabase db reset --linked` was tried first here and worked
+      # functionally — it correctly answered its own interactive
+      # confirmation prompt and began applying migrations — but was killed
+      # by a GitHub-hosted-runner SIGTERM ~20 seconds in, reproducibly,
+      # across multiple independent live dispatches with no competing run
+      # in this workflow's own concurrency group. Rather than keep retrying
+      # a command GitHub's own infrastructure kills, this materializes only
+      # the exact baseline migration file's SQL directly through the
+      # Supabase Management API's write-query endpoint instead — a single,
+      # fast, bounded write. `supabase db reset` is not used anywhere in
+      # this workflow. `migration repair` is not used anywhere in this
+      # workflow — migration-history rows are never written to directly.
+      - name: Materialize the baseline via the Management API (workflow-created disposable branch only)
+        if: steps.baseline-check.outputs.baseline_state == 'fully_missing' && needs.provision-preview.outputs.source == 'workflow_created'
+        run: |
+          node .github/scripts/migration-baseline-check.mjs materialize-baseline \
+            --ref "${{ needs.provision-preview.outputs.ref }}" \
+            --production-ref "${SUPABASE_PRODUCTION_REF}" \
+            --source "${{ needs.provision-preview.outputs.source }}" \
+            --branch-id "${{ needs.provision-preview.outputs.branch_id }}" \
+            --created-branch-id "${{ needs.provision-preview.outputs.branch_id }}" \
+            --persistent false \
+            --baseline-sql-file supabase/migrations/00000000000000_create_base_public_schema.sql \
+            --migration-status-file migration-status.txt
+
+          node .github/scripts/migration-baseline-check.mjs verify-post-materialization \
+            --ref "${{ needs.provision-preview.outputs.ref }}" \
+            --migration-status-file migration-status.txt
+
+          {
+            echo "### Migration validation (baseline materialization)"
+            echo ""
+            echo "Baseline schema/history mismatch detected on \`${{ needs.provision-preview.outputs.ref }}\` (name only): \`00000000000000\` was recorded as applied, but every required baseline object was missing."
+            echo "Materialized the exact baseline migration SQL once through the Management API write-query endpoint against this workflow-created disposable branch, and verified via pg_catalog (not information_schema): baseline recorded exactly once, every baseline table/function exists with the expected security/privilege configuration, and row level security is enabled on each table."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Apply only genuinely unapplied migration versions
+        if: steps.baseline-check.outputs.baseline_state == 'healthy' || steps.baseline-check.outputs.baseline_state == 'not_yet_applied' || (steps.baseline-check.outputs.baseline_state == 'fully_missing' && needs.provision-preview.outputs.source == 'workflow_created')
         run: |
           # `supabase db push` only applies local migrations that are not yet
           # present in the target's supabase_migrations.schema_migrations
-          # table — it never blindly replays the full directory. This is the
-          # mechanism, not a custom replay loop.
+          # table — it never blindly replays the full directory, and no
+          # migration is ever manually marked as applied.
           pnpm dlx supabase db push --linked
 
       - name: Re-verify clean status after push
+        if: steps.baseline-check.outputs.baseline_state == 'healthy' || steps.baseline-check.outputs.baseline_state == 'not_yet_applied' || (steps.baseline-check.outputs.baseline_state == 'fully_missing' && needs.provision-preview.outputs.source == 'workflow_created')
         run: |
           pnpm dlx supabase migration list --linked > migration-status-after.txt
-          if grep -qi "not applied\|missing" migration-status-after.txt; then
-            echo "::error::Migration history is still inconsistent after db push. Reporting and failing closed rather than guessing."
-            cat migration-status-after.txt
+
+          node .github/scripts/migration-baseline-check.mjs verify-migration-history-complete \
+            --migration-status-file migration-status-after.txt
+
+          {
+            echo "### Migration validation"
+            echo ""
+            echo "Every local migration version is recorded as applied against \`${{ needs.provision-preview.outputs.ref }}\` (name only)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  scanner-validation:
+    name: Scanner validation matrix
+    needs: [resolve-target, provision-preview, migration-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: Preview
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.resolve-target.outputs.sha }}
+
+      # See migration-validation's identical step: the target SHA may
+      # predate this workflow's own scripts entirely.
+      - name: Overlay this workflow's own infra scripts
+        run: |
+          git fetch --depth=1 origin "${{ github.sha }}"
+          git checkout "${{ github.sha }}" -- .github/scripts
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Retrieve and mask the isolated branch's own API keys
+        run: |
+          node .github/scripts/supabase-branch.mjs get-keys \
+            --ref "${{ needs.provision-preview.outputs.ref }}" \
+            --production-ref "${SUPABASE_PRODUCTION_REF}"
+
+      - name: Build in production mode against the isolated branch
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SUPABASE_BRANCH_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SUPABASE_BRANCH_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+          # Set here too, not just on the start step: a live dispatch showed
+          # the scanner processing the full ~12,675-symbol universe on a
+          # ~240s (the untouched default) budget instead of the small bounded
+          # slice below, consistent with scannerService.ts's module-level
+          # SCANNER_MAX_SLICE_SIZE/SCANNER_TIME_BUDGET_MS constants having
+          # been evaluated during `pnpm build` rather than at server start.
+          SCANNER_MAX_SLICE_SIZE: '5'
+          SCANNER_TIME_BUDGET_MS: '30000'
+          SCANNER_CONCURRENCY: '3'
+        run: pnpm build
+
+      - name: Start the production server against the isolated branch
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SUPABASE_BRANCH_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SUPABASE_BRANCH_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SUPABASE_BRANCH_SERVICE_ROLE_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+          # Deliberately small and bounded — this is a validation run, not a
+          # real scan of the full universe.
+          SCANNER_MAX_SLICE_SIZE: '5'
+          SCANNER_TIME_BUDGET_MS: '30000'
+          SCANNER_CONCURRENCY: '3'
+        run: |
+          nohup pnpm exec next start --hostname 127.0.0.1 --port 3100 > server.log 2>&1 &
+          echo $! > server.pid
+          for i in $(seq 1 60); do
+            if curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/ | grep -q '^[23]'; then
+              echo "Server is responsive after ${i} check(s)."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Server did not become responsive within 60s."
+          cat server.log
+          exit 1
+
+      - name: Run the scanner validation matrix
+        env:
+          SCANNER_BASE_URL: http://127.0.0.1:3100
+          SUPABASE_BRANCH_URL: ${{ env.SUPABASE_BRANCH_URL }}
+          SUPABASE_BRANCH_SERVICE_ROLE_KEY: ${{ env.SUPABASE_BRANCH_SERVICE_ROLE_KEY }}
+        run: node .github/scripts/scanner-validate.mjs
+
+      - name: Stop the production server
+        if: always()
+        run: |
+          if [[ -f server.pid ]]; then kill "$(cat server.pid)" 2>/dev/null || true; fi
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: scanner-validation-server-log-${{ github.run_id }}
+          path: server.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  vercel-evidence:
+    name: Vercel Preview deployment evidence
+    needs: [resolve-target, validate-required-secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: Preview
+    env:
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - name: Resolve READY Vercel Preview for exact SHA
+        id: preview
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const sha = '${{ needs.resolve-target.outputs.sha }}';
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const deployments = await github.paginate(github.rest.repos.listDeployments, {
+                ...context.repo,
+                sha,
+                environment: 'Preview',
+                per_page: 100,
+              });
+              const exact = deployments
+                .filter(d => d.sha === sha && d.ref === sha && d.environment === 'Preview')
+                .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+              for (const deployment of exact) {
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  ...context.repo,
+                  deployment_id: deployment.id,
+                  per_page: 100,
+                });
+                const latest = statuses[0];
+                if (!latest) continue;
+                if (['failure', 'error', 'inactive'].includes(latest.state)) {
+                  core.setFailed(`Exact-SHA Preview deployment entered ${latest.state}.`);
+                  return;
+                }
+                if (latest.state !== 'success') continue;
+                const candidate = latest.environment_url || latest.target_url;
+                let target;
+                try {
+                  target = new URL(candidate);
+                } catch {
+                  core.setFailed('Successful Preview deployment did not provide a valid URL.');
+                  return;
+                }
+                if (target.protocol !== 'https:' || !target.hostname.endsWith('.vercel.app')) {
+                  core.setFailed('Resolved deployment URL was not an HTTPS Vercel Preview URL.');
+                  return;
+                }
+                core.setOutput('url', target.origin);
+                core.setOutput('sha', sha);
+                core.info(`Resolved READY Vercel Preview ${target.origin} for exact SHA ${sha}.`);
+                return;
+              }
+              await new Promise(r => setTimeout(r, 15000));
+            }
+            core.setFailed('No READY Vercel Preview deployment appeared for the exact committed SHA.');
+
+      - name: Confirm Deployment Protection bypass and check for an obvious runtime exception on the homepage
+        run: |
+          status_code=$(curl -s -o /tmp/preview-body.html -w '%{http_code}' \
+            -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+            "${{ steps.preview.outputs.url }}/")
+          if [[ "$status_code" -ge 500 ]]; then
+            echo "::error::Deployment returned HTTP $status_code with the protection bypass header — possible runtime exception."
             exit 1
           fi
-          echo "Migration history is consistent: every local migration version is recorded as applied."
+          if [[ "$status_code" == "401" || "$status_code" == "403" ]]; then
+            echo "::error::Deployment Protection bypass did not work (HTTP $status_code)."
+            exit 1
+          fi
+          {
+            echo "### Vercel Preview deployment evidence"
+            echo ""
+            echo "- Deployment SHA matches target SHA: \`${{ steps.preview.outputs.sha }}\`"
+            echo "- Status: READY"
+            echo "- Deployment Protection bypass: confirmed working (HTTP $status_code on a passive homepage request)"
+            echo ""
+            echo "**Two honest limitations, not glossed over:**"
+            echo ""
+            echo "1. This workflow cannot currently prove which Supabase project ref the Vercel Preview deployment's"
+            echo "   own runtime environment variables point at (unless activate_rollout configured it in this same"
+            echo "   run). Because that identity cannot be proven in the default case, no state-changing scanner"
+            echo "   request was sent to this deployment — the stateful scanner validation (A-G) runs instead"
+            echo "   against an isolated local production server in the scanner-validation job, configured"
+            echo "   explicitly and exclusively with the resolved isolated branch's own credentials."
+            echo "2. \"No relevant runtime exception in the exact deployment logs\" is checked only via a passive"
+            echo "   homepage request returning a non-5xx status — this workflow does not call Vercel's runtime-logs"
+            echo "   API. Doing so needs the deployment's Vercel-internal ID and (for team-owned projects) a team"
+            echo "   ID, neither of which this workflow currently resolves with enough confidence to implement"
+            echo "   without risking a wrong, silently-passing check. Reported unverified rather than faked."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Vercel Preview evidence collected without sending any state-changing request."
 
   rollout:
     name: Activate isolated Vercel Preview
-    if: inputs.activate_rollout
-    needs: [snapshot-upgrade]
+    if: inputs.activate_rollout && needs.migration-validation.result == 'success'
+    needs: [provision-preview, migration-validation]
     uses: ./.github/workflows/preview-rollout.yml
     with:
-      preview_ref: ${{ inputs.preview_ref }}
+      preview_ref: ${{ needs.provision-preview.outputs.ref }}
       git_branch: ${{ inputs.git_branch }}
       deployment_id: ${{ inputs.deployment_id }}
     secrets: inherit
 
   authenticated-preview:
     name: Run authenticated isolated Preview validation
-    if: inputs.run_authenticated_smoke && needs.snapshot-upgrade.result == 'success'
-    needs: [resolve-target, snapshot-upgrade]
+    if: inputs.run_authenticated_smoke && needs.migration-validation.result == 'success'
+    needs: [resolve-target, provision-preview, migration-validation]
     uses: ./.github/workflows/authenticated-preview-validate.yml
     with:
       target_sha: ${{ needs.resolve-target.outputs.sha }}
-      preview_ref: ${{ inputs.preview_ref }}
+      preview_ref: ${{ needs.provision-preview.outputs.ref }}
     secrets: inherit
 
   cleanup:
     name: Cleanup workflow-owned Preview fixtures
-    needs: [resolve-target, snapshot-upgrade, rollout, authenticated-preview]
+    needs: [resolve-target, provision-preview, migration-validation, scanner-validation, vercel-evidence, rollout, authenticated-preview]
     if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    environment: Preview
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
     steps:
-      - name: No fixtures to clean in this run
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        if: needs.provision-preview.outputs.ref != ''
+
+      - name: Retrieve branch credentials for the cleanup safety net
+        if: needs.provision-preview.outputs.ref != ''
         run: |
-          echo "This workflow currently only validates migration history (Section B)."
-          echo "It creates no scanner cursor/lock test rows or other fixtures itself —"
-          echo "those are created by the scanner-specific validation steps, which are"
-          echo "blocked pending the missing secrets reported above."
+          node .github/scripts/supabase-branch.mjs get-keys \
+            --ref "${{ needs.provision-preview.outputs.ref }}" \
+            --production-ref "${SUPABASE_PRODUCTION_REF}"
+        continue-on-error: true
+
+      - name: Delete workflow-owned trader_cache rows and confirm zero remain (safety net; scanner-validate.mjs already cleans up its own)
+        if: needs.provision-preview.outputs.ref != '' && env.SUPABASE_BRANCH_URL != ''
+        env:
+          SUPABASE_BRANCH_URL: ${{ env.SUPABASE_BRANCH_URL }}
+          SUPABASE_BRANCH_SERVICE_ROLE_KEY: ${{ env.SUPABASE_BRANCH_SERVICE_ROLE_KEY }}
+        run: node .github/scripts/scanner-validate.mjs --cleanup-only
+
+      - name: Delete the workflow-owned branch, if this workflow created one
+        if: needs.provision-preview.outputs.source == 'workflow_created' && needs.provision-preview.outputs.branch_id != ''
+        run: |
+          node .github/scripts/supabase-branch.mjs delete --branch-id "${{ needs.provision-preview.outputs.branch_id }}"
+
+      - name: Report what was (and was not) deleted
+        run: |
+          {
+            echo "### Cleanup"
+            echo ""
+            if [[ "${{ needs.provision-preview.outputs.source }}" == "workflow_created" ]]; then
+              echo "- Workflow-owned branch deleted: \`${{ needs.provision-preview.outputs.branch_id }}\`"
+            elif [[ "${{ needs.provision-preview.outputs.source }}" == "externally_reused" || "${{ needs.provision-preview.outputs.source }}" == "explicit_ref" ]]; then
+              echo "- Explicit/externally-managed branch preserved (not deleted) — only workflow-owned rows were removed."
+            else
+              echo "- No branch was provisioned; nothing to clean up."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
