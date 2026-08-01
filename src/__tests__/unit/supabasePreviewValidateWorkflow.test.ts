@@ -99,6 +99,45 @@ describe('Supabase Preview Validate workflow preview-ref resolution order', () =
 // preview_ref input — otherwise activating rollout against an
 // externally-reused or workflow-created branch would silently target the
 // wrong (or an empty) project.
+// An automated security review found that raw workflow_dispatch inputs were
+// template-interpolated directly into `run:` shell text and a
+// `github-script` script body, before any validation ran — a crafted input
+// value could break out of the surrounding string and execute arbitrary
+// shell/JS with that step's own secrets/token. The fix routes every raw
+// input through `env:` (shell) or the trusted `context.payload.inputs`
+// object (github-script) instead of textual substitution into source code.
+describe('Supabase Preview Validate workflow input-injection hardening', () => {
+  it('never template-interpolates a raw workflow_dispatch input directly inside a run: shell body', () => {
+    // Only the concurrency `group:` (a YAML field GitHub Actions itself
+    // consumes, never executed as shell/JS) and `env:`/`with:` value
+    // assignments (safe — passed as literal data, not substituted into
+    // script source) may reference `${{ inputs.* }}`.
+    const lines = workflow.split('\n');
+    const offenders = lines.filter((line) => {
+      if (!line.includes('${{ inputs.')) return false;
+      const trimmed = line.trim();
+      if (trimmed.startsWith('group:')) return false; // concurrency group
+      if (/^[A-Z0-9_]+:\s*\$\{\{\s*inputs\./.test(trimmed)) return false; // env: KEY: ${{ inputs.x }}
+      if (/^[a-z_]+:\s*\$\{\{\s*inputs\./.test(trimmed)) return false; // with: key: ${{ inputs.x }}
+      return true;
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it('reads target_pr/target_sha from the trusted event payload, not interpolated into the script source', () => {
+    expect(workflow).toContain('context.payload.inputs?.target_pr');
+    expect(workflow).toContain('context.payload.inputs?.target_sha');
+    expect(workflow).not.toMatch(/`\$\{\{\s*inputs\.target_(pr|sha)\s*\}\}`/);
+  });
+
+  it('passes cleanup_branch_id and preview_ref through env, never inlined in the run: command text', () => {
+    expect(workflow).toContain('CLEANUP_BRANCH_ID: ${{ inputs.cleanup_branch_id }}');
+    expect(workflow).toContain('--branch-id "$CLEANUP_BRANCH_ID"');
+    expect(workflow).toContain('INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}');
+    expect(workflow).toContain('ref="$INPUT_PREVIEW_REF"');
+  });
+});
+
 describe('Supabase Preview Validate workflow optional rollout / authenticated-smoke wiring', () => {
   it('wires the rollout job to the resolved preview ref, not the raw input', () => {
     const rolloutJob = workflow.match(/\n {2}rollout:\n([\s\S]*?)(?:\n {2}\S)/)?.[1] ?? '';

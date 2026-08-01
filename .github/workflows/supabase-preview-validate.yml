@@ -97,7 +97,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22.13.0
-      - run: node .github/scripts/supabase-branch.mjs delete --branch-id "${{ inputs.cleanup_branch_id }}"
+      - name: Delete the specified orphaned branch
+        env:
+          CLEANUP_BRANCH_ID: ${{ inputs.cleanup_branch_id }}
+        run: node .github/scripts/supabase-branch.mjs delete --branch-id "$CLEANUP_BRANCH_ID"
 
   resolve-target:
     name: Resolve target PR / exact SHA
@@ -113,8 +116,15 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const targetPr = `${{ inputs.target_pr }}`.trim();
-            const targetSha = `${{ inputs.target_sha }}`.trim();
+            // Read inputs from the trusted, already-parsed event payload
+            // object rather than template-interpolating them into this
+            // script's source text — the latter would let a crafted input
+            // value (e.g. containing a backtick or template-literal
+            // terminator) break out of the string and execute arbitrary JS
+            // with this step's github-script token, before any validation
+            // below ever runs.
+            const targetPr = String(context.payload.inputs?.target_pr ?? '').trim();
+            const targetSha = String(context.payload.inputs?.target_sha ?? '').trim();
             if (!targetPr && !targetSha) {
               core.setFailed('Provide either target_pr or target_sha.');
               return;
@@ -225,8 +235,13 @@ jobs:
       - name: Step 1 — validate an explicit preview_ref override, when supplied
         id: explicit
         shell: bash
+        env:
+          # Passed via env, never interpolated directly into the script
+          # text below — the raw input must never reach a shell/JS
+          # expression position before it has been validated.
+          INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}
         run: |
-          ref="${{ inputs.preview_ref }}"
+          ref="$INPUT_PREVIEW_REF"
           if [[ -z "$ref" ]]; then
             echo "ref=" >> "$GITHUB_OUTPUT"
             exit 0
