@@ -23,7 +23,7 @@ jobs:
     name: Lighthouse baseline (main, strict)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
       - uses: pnpm/action-setup@v4

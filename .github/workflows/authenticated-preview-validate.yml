@@ -79,7 +79,7 @@ jobs:
           [[ "$INPUT_PREVIEW_REF" != "$SUPABASE_PRODUCTION_REF" ]] \
             || { echo 'Refusing to target Production.' >&2; exit 1; }
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.target_sha }}
 
