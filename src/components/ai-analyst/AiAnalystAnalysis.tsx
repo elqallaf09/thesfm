@@ -104,7 +104,6 @@ function MarketAiAnalystAnalysis({
   symbol,
   assetType,
   horizon,
-  autoRun,
 }: AiAnalystAnalysisProps) {
   const { lang } = useLanguage();
   const locale = aiAnalystLocale(lang);
