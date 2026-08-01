@@ -7,6 +7,7 @@ const fixture = readSource('tests/smoke/preview-auth-fixtures.mjs');
 const observability = readSource('tests/smoke/observability-preview.spec.ts');
 const workflow = readSource('.github/workflows/ci.yml');
 const manualAuthenticatedPreviewWorkflow = readSource('.github/workflows/authenticated-preview-validate.yml');
+const previewRolloutWorkflow = readSource('.github/workflows/preview-rollout.yml');
 const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-preview:'));
 
 describe('Preview-only authentication fixtures', () => {
@@ -43,12 +44,13 @@ describe('Preview-only authentication fixtures', () => {
     expect(authenticatedPreviewJob).toContain('checks: read');
     expect(authenticatedPreviewJob).toContain('Resolve active isolated Supabase Preview ref for exact SHA');
     expect(authenticatedPreviewJob).toContain("core.exportVariable('SUPABASE_PREVIEW_REF', previewRef);");
-    expect(authenticatedPreviewJob).toContain("check.status === 'completed' && check.conclusion === 'skipped'");
+    expect(authenticatedPreviewJob).toContain("['skipped', 'cancelled'].includes(check.conclusion)");
     expect(authenticatedPreviewJob).toContain("core.setOutput('available', 'false')");
     expect(authenticatedPreviewJob).toContain("core.setOutput('available', 'true')");
     expect(authenticatedPreviewJob).toContain("if: steps.supabase-preview.outputs.available == 'true'");
     expect(authenticatedPreviewJob).not.toMatch(/SUPABASE_PREVIEW_URL:\s*https:\/\//);
-    expect(authenticatedPreviewJob.indexOf('actions/checkout@v4')).toBeLessThan(
+    expect(authenticatedPreviewJob).toContain('actions/checkout@v7');
+    expect(authenticatedPreviewJob.indexOf('actions/checkout@v7')).toBeLessThan(
       authenticatedPreviewJob.indexOf('Resolve active isolated Supabase Preview ref for exact SHA'),
     );
   });
@@ -92,5 +94,8 @@ describe('Preview-only authentication fixtures', () => {
     expect(manualAuthenticatedPreviewWorkflow).toContain('workflow_dispatch:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('target_sha:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('preview_ref:');
+    const legacyBeforeSecret = 'select(.type == "legacy" and .name == "service_role")][0].api_key // [.[] | select(.disabled != true) | select(.type == "secret")';
+    expect(manualAuthenticatedPreviewWorkflow).toContain(legacyBeforeSecret);
+    expect(previewRolloutWorkflow).toContain(legacyBeforeSecret);
   });
 });
