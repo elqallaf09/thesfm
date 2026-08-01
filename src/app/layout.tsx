@@ -11,6 +11,7 @@ import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { WebVitalsReporter } from '@/components/observability/WebVitalsReporter';
 import { pageMetadata } from '@/lib/seo';
 import './globals.css';
+import './workspace-chrome-critical.css';
 
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
   variable: '--font-ibm-plex-sans-arabic',

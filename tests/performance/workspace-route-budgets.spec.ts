@@ -6,6 +6,15 @@ type WorkspacePerformanceMetrics = {
   lcp: number;
   longestTask: number;
   longTaskCount: number;
+  layoutShifts: Array<{
+    value: number;
+    startTime: number;
+    sources: Array<{
+      node: string;
+      previous: { x: number; y: number; width: number; height: number };
+      current: { x: number; y: number; width: number; height: number };
+    }>;
+  }>;
 };
 
 const workspaceRoutes = [
@@ -28,7 +37,13 @@ async function prepareWorkspaceSession(page: Page, locale: 'ar' | 'en' | 'fr') {
     localStorage.setItem('sfm_lang', value);
     localStorage.setItem('the-sfm-theme', 'dark');
 
-    const metrics: WorkspacePerformanceMetrics = { cls: 0, lcp: 0, longestTask: 0, longTaskCount: 0 };
+    const metrics: WorkspacePerformanceMetrics = {
+      cls: 0,
+      lcp: 0,
+      longestTask: 0,
+      longTaskCount: 0,
+      layoutShifts: [],
+    };
     Object.defineProperty(window, '__sfmWorkspacePerformance', { value: metrics, configurable: true });
 
     try {
@@ -42,8 +57,36 @@ async function prepareWorkspaceSession(page: Page, locale: 'ar' | 'en' | 'fr') {
     try {
       new PerformanceObserver(list => {
         for (const entry of list.getEntries()) {
-          const shift = entry as PerformanceEntry & { hadRecentInput?: boolean; value?: number };
-          if (!shift.hadRecentInput) metrics.cls += shift.value ?? 0;
+          const shift = entry as PerformanceEntry & {
+            hadRecentInput?: boolean;
+            value?: number;
+            sources?: Array<{
+              node?: Node | null;
+              previousRect?: DOMRectReadOnly;
+              currentRect?: DOMRectReadOnly;
+            }>;
+          };
+          if (shift.hadRecentInput) continue;
+          const value = shift.value ?? 0;
+          metrics.cls += value;
+          if (value <= 0 || metrics.layoutShifts.length >= 12) continue;
+          metrics.layoutShifts.push({
+            value,
+            startTime: shift.startTime,
+            sources: (shift.sources ?? []).slice(0, 5).map(source => {
+              const node = source.node instanceof Element ? source.node : null;
+              const nodeLabel = node
+                ? `${node.tagName.toLowerCase()}${node.id ? `#${node.id}` : ''}${Array.from(node.classList).slice(0, 2).map(name => `.${name}`).join('')}`
+                : 'unknown';
+              const previous = source.previousRect ?? new DOMRectReadOnly();
+              const current = source.currentRect ?? new DOMRectReadOnly();
+              return {
+                node: nodeLabel,
+                previous: { x: previous.x, y: previous.y, width: previous.width, height: previous.height },
+                current: { x: current.x, y: current.y, width: current.width, height: current.height },
+              };
+            }),
+          });
         }
       }).observe({ type: 'layout-shift', buffered: true });
     } catch {
@@ -94,17 +137,17 @@ for (const route of workspaceRoutes) {
       };
     });
 
+    await testInfo.attach(`workspace-performance-${route.slice(1).replaceAll('/', '-') || 'home'}`, {
+      body: JSON.stringify({ route, locale, project: testInfo.project.name, consoleProblems, ...profile }, null, 2),
+      contentType: 'application/json',
+    });
+
     expect(profile.horizontalOverflow, `${route} horizontal overflow`).toBeLessThanOrEqual(1);
     expect(profile.metrics.cls, `${route} CLS`).toBeLessThanOrEqual(0.05);
     if (profile.metrics.lcp > 0) expect(profile.metrics.lcp, `${route} LCP`).toBeLessThanOrEqual(8_000);
     if (testInfo.project.name.startsWith('chromium')) {
       expect(profile.metrics.longestTask, `${route} longest task`).toBeLessThanOrEqual(400);
     }
-
-    await testInfo.attach(`workspace-performance-${route.slice(1).replaceAll('/', '-') || 'home'}`, {
-      body: JSON.stringify({ route, locale, project: testInfo.project.name, consoleProblems, ...profile }, null, 2),
-      contentType: 'application/json',
-    });
   });
 }
 
