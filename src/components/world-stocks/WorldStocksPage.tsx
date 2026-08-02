@@ -1,12 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Clock3, Globe, RefreshCcw, Search, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowUp, Clock3, Globe, RefreshCcw, Search, TrendingDown, TrendingUp, X } from 'lucide-react';
+import Link from 'next/link';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { useLanguage } from '@/hooks/useLanguage';
 import { WORLD_STOCK_REGIONS } from '@/lib/world-stocks/regions';
-import type { WorldStock, WorldStockAssetType, WorldStockSearchResponse } from '@/lib/world-stocks/types';
+import type { WorldStock, WorldStockAssetType, WorldStockQuotesResponse, WorldStockSearchResponse } from '@/lib/world-stocks/types';
+import { sortWorldStocks, type WorldStockSort } from '@/lib/world-stocks/sort';
+import { WorldStocksAdvancedFilters } from './WorldStocksAdvancedFilters';
 import styles from './WorldStocksPage.module.css';
 
 const PAGE_SIZE = 25;
@@ -22,7 +25,6 @@ const COPY = {
     regionAll: 'كل الأسواق',
     resultsCount: '{count} شركة',
     priceUnavailable: 'السعر غير متاح',
-    quoteLoading: 'جارٍ التحميل...',
     noResults: 'لا توجد نتائج مطابقة',
     noResultsHint: 'جرّب تغيير البحث أو الفلاتر.',
     error: 'تعذر تحميل بيانات الأسهم العالمية حالياً.',
@@ -30,6 +32,23 @@ const COPY = {
     viewDetails: 'عرض التفاصيل',
     loadMore: 'تحميل المزيد',
     allLoaded: 'تم عرض جميع النتائج المتاحة',
+    colCompany: 'الشركة',
+    colMarket: 'السوق',
+    colPrice: 'السعر',
+    colChange: 'التغير',
+    filter: 'فلاتر متقدمة',
+    filterClose: 'إغلاق',
+    filterAssetType: 'نوع الأصل',
+    filterAssetTypeAll: 'الكل',
+    filterAssetTypeStock: 'سهم',
+    filterAssetTypeEtf: 'صندوق مؤشر',
+    filterSort: 'الترتيب',
+    filterSortName: 'الاسم',
+    filterSortSymbol: 'الرمز',
+    filterSortChangeDesc: 'الأعلى ارتفاعاً',
+    filterSortChangeAsc: 'الأعلى انخفاضاً',
+    filterClear: 'مسح الفلاتر',
+    activeFilters: 'الفلاتر النشطة',
   },
   en: {
     title: 'World Stocks Explorer',
@@ -40,7 +59,6 @@ const COPY = {
     regionAll: 'All markets',
     resultsCount: '{count} companies',
     priceUnavailable: 'Price unavailable',
-    quoteLoading: 'Loading...',
     noResults: 'No matching results',
     noResultsHint: 'Try changing the search or filters.',
     error: 'Could not load World Stocks data right now.',
@@ -48,6 +66,23 @@ const COPY = {
     viewDetails: 'View details',
     loadMore: 'Load more',
     allLoaded: 'All available results are shown',
+    colCompany: 'Company',
+    colMarket: 'Market',
+    colPrice: 'Price',
+    colChange: 'Change',
+    filter: 'Advanced filters',
+    filterClose: 'Close',
+    filterAssetType: 'Asset type',
+    filterAssetTypeAll: 'All',
+    filterAssetTypeStock: 'Stock',
+    filterAssetTypeEtf: 'ETF',
+    filterSort: 'Sort',
+    filterSortName: 'Name',
+    filterSortSymbol: 'Symbol',
+    filterSortChangeDesc: 'Highest gainers',
+    filterSortChangeAsc: 'Highest losers',
+    filterClear: 'Clear filters',
+    activeFilters: 'Active filters',
   },
   fr: {
     title: 'Explorateur des actions mondiales',
@@ -58,7 +93,6 @@ const COPY = {
     regionAll: 'Tous les marchés',
     resultsCount: '{count} entreprises',
     priceUnavailable: 'Prix indisponible',
-    quoteLoading: 'Chargement...',
     noResults: 'Aucun résultat correspondant',
     noResultsHint: 'Essayez de modifier la recherche ou les filtres.',
     error: 'Impossible de charger les données World Stocks pour le moment.',
@@ -66,6 +100,23 @@ const COPY = {
     viewDetails: 'Voir les détails',
     loadMore: 'Charger plus',
     allLoaded: 'Tous les résultats disponibles sont affichés',
+    colCompany: 'Entreprise',
+    colMarket: 'Marché',
+    colPrice: 'Prix',
+    colChange: 'Variation',
+    filter: 'Filtres avancés',
+    filterClose: 'Fermer',
+    filterAssetType: "Type d'actif",
+    filterAssetTypeAll: 'Tout',
+    filterAssetTypeStock: 'Action',
+    filterAssetTypeEtf: 'FNB',
+    filterSort: 'Tri',
+    filterSortName: 'Nom',
+    filterSortSymbol: 'Symbole',
+    filterSortChangeDesc: 'Plus forte hausse',
+    filterSortChangeAsc: 'Plus forte baisse',
+    filterClear: 'Effacer les filtres',
+    activeFilters: 'Filtres actifs',
   },
 } as const;
 
@@ -94,6 +145,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
+
 export function WorldStocksPage() {
   const { dir, lang } = useLanguage();
   const ui = copyFor(lang);
@@ -102,7 +154,8 @@ export function WorldStocksPage() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
   const [region, setRegion] = useState<string | null>(null);
-  const [assetType] = useState<WorldStockAssetType | null>(null);
+  const [assetType, setAssetType] = useState<WorldStockAssetType | null>(null);
+  const [sort, setSort] = useState<WorldStockSort>('name');
   const [page, setPage] = useState(1);
   const [results, setResults] = useState<WorldStock[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -111,6 +164,51 @@ export function WorldStocksPage() {
   const [error, setError] = useState('');
 
   const abortRef = useRef<AbortController | null>(null);
+  const quotesAbortRef = useRef<AbortController | null>(null);
+
+  const fetchQuotesForPage = useCallback(async (pageResults: WorldStock[]) => {
+    if (pageResults.length === 0) return;
+    quotesAbortRef.current?.abort();
+    const controller = new AbortController();
+    quotesAbortRef.current = controller;
+
+    try {
+      const response = await fetch('/api/world-stocks/quotes', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          symbols: pageResults.map(stock => ({
+            canonicalSymbol: stock.canonicalSymbol,
+            providerSymbol: stock.providerSymbol,
+            exchangeCode: stock.region,
+            assetType: stock.assetType,
+            currency: stock.currency,
+          })),
+        }),
+      });
+      const json = await response.json().catch(() => ({})) as WorldStockQuotesResponse;
+      if (!response.ok || !json.success) return;
+
+      setResults(previous => previous.map(stock => {
+        const quote = json.quotes[stock.canonicalSymbol];
+        if (!quote) return stock;
+        return {
+          ...stock,
+          price: quote.price,
+          change: quote.change,
+          changePercent: quote.changePercent,
+          currency: quote.currency ?? stock.currency,
+          quoteTimestamp: quote.quoteTimestamp,
+          delayed: quote.delayed,
+          dataSource: quote.dataSource,
+          quoteStatus: quote.status,
+        };
+      }));
+    } catch (quoteError) {
+      if (quoteError instanceof DOMException && quoteError.name === 'AbortError') return;
+    }
+  }, []);
 
   const load = useCallback(async (targetPage: number, append: boolean) => {
     abortRef.current?.abort();
@@ -137,6 +235,7 @@ export function WorldStocksPage() {
       setResults(previous => (append ? [...previous, ...json.results] : json.results));
       setTotalCount(json.totalCount);
       setHasMore(json.hasMore);
+      void fetchQuotesForPage(json.results);
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
       if (!append) setResults([]);
@@ -144,12 +243,15 @@ export function WorldStocksPage() {
     } finally {
       if (abortRef.current === controller) setLoading(false);
     }
-  }, [assetType, debouncedQuery, lang, region, ui.error]);
+  }, [assetType, debouncedQuery, fetchQuotesForPage, lang, region, ui.error]);
 
   useEffect(() => {
     setPage(1);
     void load(1, false);
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      quotesAbortRef.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, region, assetType, lang]);
 
@@ -157,6 +259,11 @@ export function WorldStocksPage() {
     const nextPage = page + 1;
     setPage(nextPage);
     void load(nextPage, true);
+  };
+
+  const clearFilters = () => {
+    setAssetType(null);
+    setSort('name');
   };
 
   const formatPrice = useMemo(() => (value: number | null, currency: string | null) => {
@@ -167,6 +274,13 @@ export function WorldStocksPage() {
       return `${currency} ${value.toFixed(2)}`;
     }
   }, [locale, ui.priceUnavailable]);
+
+  const formatChangePercent = (value: number | null) => {
+    if (value === null) return null;
+    return `${value >= 0 ? '+' : ''}${new Intl.NumberFormat(locale, { numberingSystem: 'latn', maximumFractionDigits: 2, minimumFractionDigits: 2 }).format(value)}%`;
+  };
+
+  const sortedResults = useMemo(() => sortWorldStocks(results, sort, locale), [results, sort, locale]);
 
   return (
     <DashboardPageShell ariaLabel={ui.title} className={styles.shell} dir={dir}>
@@ -213,6 +327,31 @@ export function WorldStocksPage() {
         ))}
       </div>
 
+      <div className={styles.filtersRow}>
+        <WorldStocksAdvancedFilters
+          assetType={assetType}
+          sort={sort}
+          labels={{
+            filter: ui.filter,
+            close: ui.filterClose,
+            assetType: ui.filterAssetType,
+            assetTypeAll: ui.filterAssetTypeAll,
+            assetTypeStock: ui.filterAssetTypeStock,
+            assetTypeEtf: ui.filterAssetTypeEtf,
+            sort: ui.filterSort,
+            sortName: ui.filterSortName,
+            sortSymbol: ui.filterSortSymbol,
+            sortChangeDesc: ui.filterSortChangeDesc,
+            sortChangeAsc: ui.filterSortChangeAsc,
+            clear: ui.filterClear,
+            activeFilters: ui.activeFilters,
+          }}
+          onAssetTypeChange={setAssetType}
+          onSortChange={setSort}
+          onClearFilters={clearFilters}
+        />
+      </div>
+
       {error ? (
         <section className={styles.state} role="alert">
           <AlertTriangle size={22} />
@@ -237,31 +376,109 @@ export function WorldStocksPage() {
             <span>{replaceCount(ui.resultsCount, totalCount)}</span>
           </div>
 
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    aria-sort={sort === 'name' ? 'ascending' : undefined}
+                    onClick={() => setSort('name')}
+                  >
+                    {ui.colCompany}
+                  </th>
+                  <th scope="col">{ui.colMarket}</th>
+                  <th scope="col" className={styles.numericCol}>{ui.colPrice}</th>
+                  <th
+                    scope="col"
+                    className={styles.numericCol}
+                    aria-sort={sort === 'change_desc' ? 'descending' : sort === 'change_asc' ? 'ascending' : undefined}
+                    onClick={() => setSort(sort === 'change_desc' ? 'change_asc' : 'change_desc')}
+                  >
+                    <button type="button" className={styles.sortHeaderBtn}>
+                      {ui.colChange}
+                      {sort === 'change_desc' ? <ArrowDown size={13} aria-hidden="true" /> : sort === 'change_asc' ? <ArrowUp size={13} aria-hidden="true" /> : null}
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedResults.map(stock => {
+                  const tone = stock.changePercent === null || stock.changePercent === 0 ? 'neutral' : stock.changePercent > 0 ? 'up' : 'down';
+                  const ChangeIcon = tone === 'up' ? TrendingUp : TrendingDown;
+                  return (
+                    <tr key={`${stock.region}:${stock.canonicalSymbol}`}>
+                      <td>
+                        <Link href={`/world-stocks/${encodeURIComponent(stock.canonicalSymbol)}?region=${encodeURIComponent(stock.region)}`} className={styles.rowLink}>
+                          <AssetIdentity variant="badge" symbol={stock.canonicalSymbol} name={stock.displayName} assetType={stock.assetType} size="sm" />
+                        </Link>
+                      </td>
+                      <td>
+                        <div className={styles.marketCell}>
+                          <span>{stock.exchangeName}</span>
+                          {stock.countryName ? <small>{stock.countryName}</small> : null}
+                        </div>
+                      </td>
+                      <td className={styles.numericCol}>
+                        {stock.quoteStatus === 'available' ? (
+                          <span dir="ltr">{formatPrice(stock.price, stock.currency)}</span>
+                        ) : (
+                          <span className={styles.priceUnavailable}>{ui.priceUnavailable}</span>
+                        )}
+                      </td>
+                      <td className={styles.numericCol}>
+                        {stock.quoteStatus === 'available' && stock.changePercent !== null ? (
+                          <span className={`${styles.change} ${styles[tone]}`} dir="ltr">
+                            <ChangeIcon size={13} aria-hidden="true" />
+                            {formatChangePercent(stock.changePercent)}
+                          </span>
+                        ) : (
+                          <span className={styles.priceUnavailable}>{ui.priceUnavailable}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
           <ul className={styles.resultsGrid}>
-            {results.map(stock => (
-              <li key={`${stock.region}:${stock.canonicalSymbol}`} className={styles.resultCard}>
-                <AssetIdentity
-                  variant="badge"
-                  symbol={stock.canonicalSymbol}
-                  name={stock.displayName}
-                  assetType={stock.assetType}
-                  exchange={stock.exchangeName}
-                  size="md"
-                  className={styles.resultIdentity}
-                />
-                <div className={styles.resultMeta}>
-                  <span>{stock.exchangeName}</span>
-                  {stock.countryName ? <span>{stock.countryName}</span> : null}
-                </div>
-                <div className={styles.resultPrice}>
-                  {stock.quoteStatus === 'available' ? (
-                    <strong dir="ltr">{formatPrice(stock.price, stock.currency)}</strong>
-                  ) : (
-                    <span className={styles.priceUnavailable}>{ui.priceUnavailable}</span>
-                  )}
-                </div>
-              </li>
-            ))}
+            {sortedResults.map(stock => {
+              const tone = stock.changePercent === null || stock.changePercent === 0 ? 'neutral' : stock.changePercent > 0 ? 'up' : 'down';
+              return (
+                <li key={`${stock.region}:${stock.canonicalSymbol}`} className={styles.resultCard}>
+                  <Link href={`/world-stocks/${encodeURIComponent(stock.canonicalSymbol)}?region=${encodeURIComponent(stock.region)}`} className={styles.cardLink} aria-label={`${ui.viewDetails}: ${stock.displayName}`}>
+                    <AssetIdentity
+                      variant="badge"
+                      symbol={stock.canonicalSymbol}
+                      name={stock.displayName}
+                      assetType={stock.assetType}
+                      size="md"
+                      className={styles.resultIdentity}
+                    />
+                    <div className={styles.resultMeta}>
+                      <span>{stock.exchangeName}</span>
+                      {stock.countryName ? <span>{stock.countryName}</span> : null}
+                    </div>
+                    <div className={styles.resultPrice}>
+                      {stock.quoteStatus === 'available' ? (
+                        <>
+                          <strong dir="ltr">{formatPrice(stock.price, stock.currency)}</strong>
+                          {stock.changePercent !== null ? (
+                            <span className={`${styles.change} ${styles[tone]}`} dir="ltr">
+                              {formatChangePercent(stock.changePercent)}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className={styles.priceUnavailable}>{ui.priceUnavailable}</span>
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           <div className={styles.loadMoreWrap}>
