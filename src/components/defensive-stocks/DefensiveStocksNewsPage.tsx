@@ -33,6 +33,7 @@ import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContain
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { canonicalExternalNewsUrl, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type HubTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -688,23 +689,12 @@ function normalizeTitle(value = '') {
     .trim();
 }
 
-function cleanUrl(value = '') {
-  try {
-    const url = new URL(value);
-    url.hash = '';
-    url.searchParams.sort();
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return value.trim();
-  }
-}
-
 function dedupeNews(items: DefensiveNewsItem[]) {
   const seen = new Set<string>();
   return items.filter(item => {
     const keys = [
       item.id,
-      cleanUrl(item.url),
+      canonicalExternalNewsUrl(item.url),
       normalizeTitle(item.title || item.headline || item.titleOriginal || ''),
     ].filter(Boolean);
     const duplicate = keys.some(key => seen.has(key));
@@ -1190,7 +1180,7 @@ function NewsCard({ item, locale, lang, text, variant = 'standard' }: {
   const tone = changeTone(item.changePercent);
   const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
   const hasOriginalToggle = Boolean(item.isTranslated && (item.titleOriginal || item.summaryOriginal));
-  const hasUrl = Boolean(item.url);
+  const articleUrl = safeExternalNewsUrl(item.url);
   const contentDir = showOriginal || !item.isTranslated ? 'auto' : lang === 'ar' ? 'rtl' : 'ltr';
 
   return (
@@ -1228,8 +1218,8 @@ function NewsCard({ item, locale, lang, text, variant = 'standard' }: {
             {showOriginal ? text.translationText : text.originalText}
           </button>
         ) : <span />}
-        {hasUrl ? (
-          <a href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`${text.readArticle}: ${title}`}>
+        {articleUrl ? (
+          <a href={articleUrl} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.readArticle}: ${title}`}>
             {text.readArticle}
             <ExternalLink size={14} />
           </a>
