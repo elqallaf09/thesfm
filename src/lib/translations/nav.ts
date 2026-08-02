@@ -32,6 +32,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_debts:      { ar:'الديون', en:'Debts', fr:'Dettes' },
   nav_monthly_subscriptions: { ar:'الاشتراكات الشهرية', en:'Monthly Subscriptions', fr:'Abonnements mensuels' },
   nav_invest:     { ar:'الاستثمارات', en:'Investments', fr:'Investissements' },
+  nav_world_stocks: { ar:'مستكشف الأسهم العالمية', en:'World Stocks Explorer', fr:'Explorateur des actions mondiales' },
   nav_market_analysis: { ar:'تحليلات السوق', en:'Market Analysis', fr:'Analyse du marché' },
   nav_market_agent: { ar:'وكيل تحليل الأسواق', en:'Market Agent', fr:'Agent de marché' },
   nav_ai_analyst: { ar:'إس إف إم المحلل الذكي', en:'SFM AI Analyst', fr:'Analyste IA SFM' },
