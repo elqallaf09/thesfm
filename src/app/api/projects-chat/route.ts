@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { ChatDomainMismatchError, assertChatDomain } from '@/lib/ai-analyst/marketChat';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+
+// This endpoint is projects-only. If a caller passes an explicit domain
+// that isn't "projects" (e.g. a market/finance request mistakenly routed
+// here), it fails closed rather than silently answering with this
+// hardcoded projects-planning system prompt — see
+// src/lib/ai-analyst/marketChat.ts for the paired assertion on the
+// market/finance side (/api/intelligence/chat).
+const PROJECTS_CHAT_DOMAINS = ['projects'] as const;
 
 type IncomingMessage = { role: 'user' | 'assistant' | 'system'; content: string };
 
@@ -48,7 +57,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json() as { messages?: unknown };
+    const body = await req.json() as { messages?: unknown; domain?: unknown };
+    try {
+      assertChatDomain(body.domain ?? 'projects', PROJECTS_CHAT_DOMAINS);
+    } catch (error) {
+      if (error instanceof ChatDomainMismatchError) {
+        return NextResponse.json({ ok: false, code: 'DOMAIN_MISMATCH' }, { status: 400 });
+      }
+      throw error;
+    }
     const messages = Array.isArray(body.messages) ? body.messages.filter(isIncomingMessage) : [];
     const anthropic = getProvider();
 
