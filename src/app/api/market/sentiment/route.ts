@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { cleanEnv, getMarketSentimentProviderConfig } from '@/lib/market/providerConfig';
 import {
   getMyfxbookSentiment,
@@ -13,14 +13,18 @@ import {
   type NormalizedSentimentRequest,
   type SentimentAssetType,
 } from '@/lib/market/sentimentRequest';
+import {
+  availableSentimentResponse as availableResponse,
+  maskProviderMessage,
+  sentimentLabel,
+  unavailableSentimentResponse as unavailableResponse,
+  type UnifiedSentimentCode,
+} from '@/lib/market/sentimentResponse';
 
 export const runtime = 'nodejs';
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
-const cacheHeaders = {
-  'Cache-Control': 'private, no-store',
-};
 const REQUEST_TIMEOUT_MS = 8000;
 
 type FinnhubSentimentEntry = {
@@ -48,25 +52,6 @@ type AlphaVantageArticle = {
 };
 
 type SentimentProvider = 'finnhub' | 'alphavantage';
-type UnifiedSentimentProvider = 'news' | 'myfxbook' | 'none';
-type SentimentLabel = 'bullish' | 'bearish' | 'neutral' | 'unavailable';
-type UnifiedSentimentCode =
-  | 'UNSUPPORTED_ASSET_TYPE'
-  | 'NO_DATA'
-  | 'NO_SENTIMENT_DATA'
-  | 'PROVIDER_DOWN'
-  | 'TIMEOUT'
-  | 'RATE_LIMIT'
-  | 'HTML_RESPONSE'
-  | 'CLOUDFLARE_BLOCKED'
-  | 'MISSING_CREDENTIALS'
-  | 'LOGIN_FAILED'
-  | 'LOGIN_REJECTED'
-  | 'INVALID_SESSION'
-  | 'NO_SESSION'
-  | 'INVALID_FOREX_PAIR'
-  | 'MISSING_PROVIDER'
-  | 'SYMBOL_REQUIRED';
 
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
@@ -78,25 +63,6 @@ function isTimeoutError(error: unknown) {
 
 function normalizeProviderEnv(value: string) {
   return value.trim().toLowerCase().replace(/[_\s-]+/g, '');
-}
-
-function getNewsSentimentProvider(): { provider: SentimentProvider; apiKey: string } | null {
-  const explicitProvider = normalizeProviderEnv(cleanEnv(process.env.MARKET_SENTIMENT_PROVIDER));
-  const marketSentimentApiKey = cleanEnv(process.env.MARKET_SENTIMENT_API_KEY);
-  const finnhubApiKey = cleanEnv(process.env.FINNHUB_API_KEY);
-  const alphaVantageApiKey = cleanEnv(process.env.ALPHA_VANTAGE_API_KEY);
-
-  if (explicitProvider === 'finnhub' && (marketSentimentApiKey || finnhubApiKey)) {
-    return { provider: 'finnhub', apiKey: marketSentimentApiKey || finnhubApiKey };
-  }
-
-  if (explicitProvider === 'alphavantage' && (marketSentimentApiKey || alphaVantageApiKey)) {
-    return { provider: 'alphavantage', apiKey: marketSentimentApiKey || alphaVantageApiKey };
-  }
-
-  if (finnhubApiKey) return { provider: 'finnhub', apiKey: finnhubApiKey };
-  if (alphaVantageApiKey) return { provider: 'alphavantage', apiKey: alphaVantageApiKey };
-  return null;
 }
 
 function getAllNewsProviders(): Array<{ provider: SentimentProvider; apiKey: string }> {
@@ -118,219 +84,6 @@ function getAllNewsProviders(): Array<{ provider: SentimentProvider; apiKey: str
   if (finnhubApiKey) providers.push({ provider: 'finnhub', apiKey: finnhubApiKey });
   if (alphaVantageApiKey) providers.push({ provider: 'alphavantage', apiKey: alphaVantageApiKey });
   return providers;
-}
-
-function sentimentLabel(buyPercent: number | null, sellPercent: number | null): SentimentLabel {
-  if (buyPercent === null || sellPercent === null) return 'unavailable';
-  if (Math.abs(buyPercent - sellPercent) < 5) return 'neutral';
-  return buyPercent > sellPercent ? 'bullish' : 'bearish';
-}
-
-function sentimentMessage(_assetType: SentimentAssetType, code: UnifiedSentimentCode) {
-  if (code === 'CLOUDFLARE_BLOCKED') return 'مزود Myfxbook رفض الاتصال من الخادم. قد يكون بسبب حماية Cloudflare أو قيود الحساب المجاني.';
-  if (code === 'HTML_RESPONSE') return 'أعاد Myfxbook صفحة HTML بدلاً من JSON. قد يكون الطلب مرفوضاً من بيئة الخادم أو يحتاج إعدادات اتصال مختلفة.';
-  if (code === 'MISSING_PROVIDER' || code === 'UNSUPPORTED_ASSET_TYPE') return 'لا يوجد مزود مشاعر موثوق مربوط حالياً لهذا النوع من الأصول.';
-  if (code === 'SYMBOL_REQUIRED') return 'اختر أصلاً قبل تحميل مشاعر السوق.';
-  if (code === 'MISSING_CREDENTIALS') return 'إعدادات مزود المشاعر غير مكتملة. يرجى إضافة بيانات Myfxbook في Environment Variables ثم إعادة النشر.';
-  if (code === 'LOGIN_REJECTED' || code === 'LOGIN_FAILED') return 'تم تأكيد أن بيانات الدخول تعمل من المتصفح، لكن Myfxbook رفض طلب الخادم. تحقق من إعدادات Vercel أو قيود الاتصال من المزود.';
-  if (code === 'RATE_LIMIT') return 'تم تجاوز حد طلبات مزود المشاعر مؤقتاً. يرجى المحاولة لاحقاً.';
-  if (code === 'TIMEOUT') return 'مزود Myfxbook بطيء حالياً أو لا يستجيب. حاول لاحقاً.';
-  if (code === 'INVALID_SESSION') return 'تم تسجيل الدخول إلى Myfxbook بنجاح، لكن تعذر جلب بيانات المشاعر. يرجى فحص طلب بيانات Community Outlook.';
-  if (code === 'NO_SESSION') return 'لم يتم استلام جلسة صالحة من Myfxbook. يرجى التحقق من الحساب وإعدادات المزود.';
-  if (code === 'PROVIDER_DOWN') return 'تعذر الاتصال بمزود المشاعر حالياً. يرجى المحاولة لاحقاً.';
-  if (
-    code === 'INVALID_FOREX_PAIR'
-    || code === 'NO_DATA'
-    || code === 'NO_SENTIMENT_DATA'
-    || code === 'UNSUPPORTED_ASSET_TYPE'
-    || code === 'MISSING_PROVIDER'
-  ) return 'لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook.';
-  return 'لا تتوفر بيانات مشاعر لهذا الأصل من Myfxbook.';
-}
-
-function extractPercent(item: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = item[key];
-    if (value === null || value === undefined || String(value).trim() === '') continue;
-    const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace('%', '').trim());
-    if (Number.isFinite(parsed)) return Math.max(0, Math.min(100, parsed));
-  }
-  return null;
-}
-
-function extractRawNumber(item: Record<string, unknown>, keys: string[]) {
-  for (const key of keys) {
-    const value = item[key];
-    if (value === null || value === undefined || String(value).trim() === '') continue;
-    const parsed = typeof value === 'number' ? value : Number(String(value ?? '').replace(/,/g, '').trim());
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
-}
-
-function primarySentimentValues(items: Array<Record<string, unknown>>) {
-  const first = items[0] ?? {};
-  const buyPercent = extractPercent(first, ['buyPercent', 'buyPercentage', 'buy', 'longPercentage']);
-  const sellPercent = extractPercent(first, ['sellPercent', 'sellPercentage', 'sell', 'shortPercentage']);
-  return { buyPercent, sellPercent };
-}
-
-function primaryLongShortValues(items: Array<Record<string, unknown>>) {
-  const first = items[0] ?? {};
-  const longPercent = extractPercent(first, ['longPercent', 'longPercentage', 'buyPercent', 'buyPercentage', 'buy']);
-  const shortPercent = extractPercent(first, ['shortPercent', 'shortPercentage', 'sellPercent', 'sellPercentage', 'sell']);
-  const longVolume = extractRawNumber(first, ['longVolume', 'longLots', 'buyVolume', 'buyLots']);
-  const shortVolume = extractRawNumber(first, ['shortVolume', 'shortLots', 'sellVolume', 'sellLots']);
-  const longPositions = extractRawNumber(first, ['longPositions', 'buyPositions', 'longPositionCount', 'buyPositionCount']);
-  const shortPositions = extractRawNumber(first, ['shortPositions', 'sellPositions', 'shortPositionCount', 'sellPositionCount']);
-  const positions = extractRawNumber(first, ['positions', 'totalPositions', 'positionCount', 'positionsCount'])
-    ?? (longPositions !== null || shortPositions !== null ? (longPositions ?? 0) + (shortPositions ?? 0) : null);
-  return { longPercent, shortPercent, longVolume, shortVolume, positions };
-}
-
-function unavailableResponse(input: {
-  code: UnifiedSentimentCode;
-  symbol: string;
-  assetType: SentimentAssetType;
-  provider?: UnifiedSentimentProvider;
-  legacyCode?: string;
-  message?: string;
-  providerMessage?: string | null;
-  providerStatus?: 'connected' | 'limited' | 'unavailable' | 'needs_setup' | 'timeout';
-  cacheStatus?: 'fresh' | 'stale' | 'miss';
-  lastCheckedAt?: string | null;
-  diagnostics?: Record<string, unknown>;
-  suggestions?: string[];
-}) {
-  const provider = input.provider ?? 'none';
-  const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
-  const providerStatus = input.providerStatus
-    ?? (input.code === 'MISSING_CREDENTIALS'
-      ? 'needs_setup'
-      : input.code === 'RATE_LIMIT'
-        ? 'limited'
-        : input.code === 'TIMEOUT'
-          ? 'timeout'
-          : 'unavailable');
-  const lastCheckedAt = input.lastCheckedAt ?? new Date().toISOString();
-  const diagnostics = input.diagnostics ?? null;
-  const communityOutlookStatus = typeof diagnostics?.communityOutlookStatus === 'string'
-    ? diagnostics.communityOutlookStatus
-    : typeof diagnostics?.sentimentStatus === 'string'
-      ? diagnostics.sentimentStatus
-      : provider === 'myfxbook'
-        ? (input.code === 'INVALID_SESSION' ? 'invalid_session_retry_failed' : 'provider_error')
-        : null;
-  const providerMessage = input.code === 'INVALID_SESSION'
-    ? null
-    : maskProviderMessage(input.providerMessage);
-  return NextResponse.json({
-    ok: false,
-    success: false,
-    code: input.code,
-    legacyCode: input.legacyCode ?? null,
-    symbol: input.symbol,
-    assetType: responseAssetType,
-    resolvedAssetType: input.assetType,
-    assetClass: responseAssetType,
-    provider,
-    source: provider === 'myfxbook' ? 'Myfxbook' : provider === 'news' ? 'News Sentiment' : null,
-    sentimentType: provider === 'myfxbook' ? 'long_short' : provider === 'news' ? 'news' : null,
-    sentimentAvailable: false,
-    longPercent: null,
-    shortPercent: null,
-    longVolume: null,
-    shortVolume: null,
-    positions: null,
-    buyPercent: null,
-    sellPercent: null,
-    sentimentLabel: 'unavailable' as SentimentLabel,
-    message: input.message ?? sentimentMessage(input.assetType, input.code),
-    providerMessage,
-    providerStatus,
-    cacheStatus: input.cacheStatus ?? 'miss',
-    cached: false,
-    stale: false,
-    diagnostics,
-    loginStatus: typeof diagnostics?.loginStatus === 'string' ? diagnostics.loginStatus : null,
-    sessionReceived: typeof diagnostics?.sessionReceived === 'boolean' ? diagnostics.sessionReceived : false,
-    sessionUsed: typeof diagnostics?.sessionUsed === 'boolean' ? diagnostics.sessionUsed : false,
-    sentimentStatus: communityOutlookStatus,
-    communityOutlookStatus,
-    diagnosticSource: typeof diagnostics?.source === 'string' ? diagnostics.source : null,
-    suggestions: input.suggestions ?? [],
-    items: [],
-    updatedAt: null,
-    updated_at: null,
-    lastCheckedAt,
-    checkedAt: lastCheckedAt,
-  }, { status: 200, headers: cacheHeaders });
-}
-
-function availableResponse(input: {
-  symbol: string;
-  assetType: SentimentAssetType;
-  provider: Exclude<UnifiedSentimentProvider, 'none'>;
-  source: string;
-  items: Array<Record<string, unknown>>;
-  updatedAt: string | null;
-  message?: string | null;
-  providerStatus?: 'connected' | 'limited' | 'unavailable' | 'timeout';
-  cacheStatus?: 'fresh' | 'stale';
-  lastCheckedAt?: string | null;
-  diagnostics?: Record<string, unknown>;
-}) {
-  const { buyPercent, sellPercent } = primarySentimentValues(input.items);
-  const { longPercent, shortPercent, longVolume, shortVolume, positions } = primaryLongShortValues(input.items);
-  const label = sentimentLabel(buyPercent, sellPercent);
-  const updatedAt = input.updatedAt ?? new Date().toISOString();
-  const lastCheckedAt = input.lastCheckedAt ?? updatedAt;
-  const responseAssetType = input.assetType === 'metals' ? 'metal' : input.assetType;
-  const diagnostics = input.diagnostics ?? null;
-  const communityOutlookStatus = typeof diagnostics?.communityOutlookStatus === 'string'
-    ? diagnostics.communityOutlookStatus
-    : typeof diagnostics?.sentimentStatus === 'string'
-      ? diagnostics.sentimentStatus
-      : 'success';
-
-  return NextResponse.json({
-    ok: true,
-    success: true,
-    code: null,
-    symbol: input.symbol,
-    assetType: responseAssetType,
-    resolvedAssetType: input.assetType,
-    assetClass: responseAssetType,
-    provider: input.provider,
-    source: input.source,
-    sentimentType: input.provider === 'myfxbook' ? 'long_short' : 'news',
-    sentimentAvailable: true,
-    longPercent,
-    shortPercent,
-    longVolume,
-    shortVolume,
-    positions,
-    buyPercent,
-    sellPercent,
-    sentimentLabel: label,
-    message: input.message ?? '',
-    providerStatus: input.providerStatus ?? 'connected',
-    cacheStatus: input.cacheStatus ?? 'fresh',
-    cached: input.cacheStatus === 'fresh',
-    stale: input.cacheStatus === 'stale',
-    diagnostics,
-    loginStatus: typeof diagnostics?.loginStatus === 'string' ? diagnostics.loginStatus : null,
-    sessionReceived: typeof diagnostics?.sessionReceived === 'boolean' ? diagnostics.sessionReceived : input.provider === 'myfxbook',
-    sessionUsed: typeof diagnostics?.sessionUsed === 'boolean' ? diagnostics.sessionUsed : input.provider === 'myfxbook',
-    sentimentStatus: communityOutlookStatus,
-    communityOutlookStatus,
-    diagnosticSource: typeof diagnostics?.source === 'string' ? diagnostics.source : null,
-    items: input.items,
-    updatedAt,
-    updated_at: updatedAt,
-    lastCheckedAt,
-    checkedAt: lastCheckedAt,
-  }, { status: 200, headers: cacheHeaders });
 }
 
 class MarketSentimentProviderError extends Error {
@@ -376,11 +129,6 @@ function logProviderError(provider: string | null, assetType: SentimentAssetType
     message: error instanceof Error ? error.message : String(error),
     code,
   });
-}
-
-function maskProviderMessage(message: string | null | undefined) {
-  if (!message) return null;
-  return message.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]');
 }
 
 function safeNumber(value: unknown) {
