@@ -33,6 +33,7 @@ import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContain
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type HubTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -689,13 +690,16 @@ function normalizeTitle(value = '') {
 }
 
 function cleanUrl(value = '') {
+  const safeUrl = safeExternalNewsUrl(value);
+  if (!safeUrl) return '';
+
   try {
-    const url = new URL(value);
+    const url = new URL(safeUrl);
     url.hash = '';
     url.searchParams.sort();
     return url.toString().replace(/\/$/, '');
   } catch {
-    return value.trim();
+    return '';
   }
 }
 
@@ -1190,7 +1194,7 @@ function NewsCard({ item, locale, lang, text, variant = 'standard' }: {
   const tone = changeTone(item.changePercent);
   const TrendIcon = tone === 'down' ? TrendingDown : TrendingUp;
   const hasOriginalToggle = Boolean(item.isTranslated && (item.titleOriginal || item.summaryOriginal));
-  const hasUrl = Boolean(item.url);
+  const articleUrl = safeExternalNewsUrl(item.url);
   const contentDir = showOriginal || !item.isTranslated ? 'auto' : lang === 'ar' ? 'rtl' : 'ltr';
 
   return (
@@ -1228,8 +1232,8 @@ function NewsCard({ item, locale, lang, text, variant = 'standard' }: {
             {showOriginal ? text.translationText : text.originalText}
           </button>
         ) : <span />}
-        {hasUrl ? (
-          <a href={item.url} target="_blank" rel="noopener noreferrer" aria-label={`${text.readArticle}: ${title}`}>
+        {articleUrl ? (
+          <a href={articleUrl} target="_blank" rel="noopener noreferrer nofollow" aria-label={`${text.readArticle}: ${title}`}>
             {text.readArticle}
             <ExternalLink size={14} />
           </a>
