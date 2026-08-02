@@ -21,6 +21,7 @@ import { TR_COMPANY } from './translations/company';
 import { TR_CRYPTO } from './translations/crypto';
 import { TR_DEFENSIVE } from './translations/defensive';
 import { TR_DASHBOARD } from './translations/dashboard';
+import { TR_GLOBAL_MARKETS } from './translations/global-markets';
 import { TR_GOALS } from './translations/goals';
 import { TR_INVEST } from './translations/invest';
 import { TR_INVESTMENT_OFFERS } from './translations/investment-offers';
@@ -46,6 +47,7 @@ export const TR: Record<string, TranslationEntry> = {
   ...TR_CRYPTO,
   ...TR_DEFENSIVE,
   ...TR_DASHBOARD,
+  ...TR_GLOBAL_MARKETS,
   ...TR_GOALS,
   ...TR_INVEST,
   ...TR_INVESTMENT_OFFERS,

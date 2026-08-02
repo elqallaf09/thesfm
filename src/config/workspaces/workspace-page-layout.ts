@@ -73,6 +73,7 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/cyclical-stocks', variant: 'wide', description: 'Market news and screening' },
   { prefix: '/dividend-stocks', variant: 'wide', description: 'Market news and screening' },
   { prefix: '/tech-news', variant: 'wide', description: 'News listing dashboard' },
+  { prefix: '/global-markets', variant: 'wide', description: 'Global market strips and explorer dashboard' },
   { prefix: '/europe-news', variant: 'wide', description: 'News listing dashboard' },
   { prefix: '/gulf-news', variant: 'wide', description: 'News listing dashboard' },
   { prefix: '/crypto-news', variant: 'wide', description: 'News listing dashboard' },
