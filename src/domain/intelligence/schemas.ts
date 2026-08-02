@@ -12,6 +12,25 @@ const symbolSchema = z.string()
   .regex(/^[A-Za-z0-9.^=:_/-]+$/, 'invalid_symbol')
   .refine(value => !value.includes('://') && !value.includes('//'), 'invalid_symbol');
 
+const chatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().trim().min(1).max(4_000),
+}).strict();
+
+export const intelligenceChatInputSchema = z.object({
+  domain: z.enum(['market', 'finance']),
+  messages: z.array(chatMessageSchema).min(1).max(40),
+  asset: z.object({
+    symbol: symbolSchema,
+    assetType: z.enum(INTELLIGENCE_ASSET_TYPES),
+  }).strict().nullable().optional(),
+  locale: z.enum(['ar', 'en', 'fr']).default('ar'),
+  sourceRoute: z.string().trim().min(1).max(200).optional(),
+  analysisId: z.string().uuid().nullable().optional(),
+}).strict();
+
+export type IntelligenceChatInput = z.infer<typeof intelligenceChatInputSchema>;
+
 export const analyzeIntelligenceInputSchema = z.object({
   asset: z.object({
     symbol: symbolSchema,

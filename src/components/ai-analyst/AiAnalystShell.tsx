@@ -33,6 +33,7 @@ export const AI_ANALYST_NAVIGATION_GROUPS = [
     items: [
       { key: 'overview', href: '/ai-analyst/overview' },
       { key: 'analysis', href: '/ai-analyst/analyze' },
+      { key: 'assistant', href: '/ai-analyst/assistant' },
       { key: 'compare', href: '/ai-analyst/compare' },
       { key: 'agent', href: '/ai-analyst/agent' },
       { key: 'path', href: '/ai-analyst/path', activeTabs: ['path', 'timeline'] },

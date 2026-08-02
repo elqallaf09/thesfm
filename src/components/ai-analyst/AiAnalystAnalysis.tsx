@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { BarChart3, ChevronDown, History, RefreshCw } from 'lucide-react';
+import { BarChart3, ChevronDown, History, MessageCircle, RefreshCw } from 'lucide-react';
 import type { AnalysisResult, IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
 import { IntelligencePanel, IntelligenceStatusPanel } from '@/components/intelligence/IntelligencePanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import type { InvestmentAnalysisContext } from '@/lib/investments/center';
+import { AssetTypeBadge } from './AssetTypeBadge';
 import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
@@ -206,6 +207,10 @@ function MarketAiAnalystAnalysis({
     const params = new URLSearchParams({ symbol, assetType, horizon, view: 'timeline' });
     return `/ai-analyst/history?${params.toString()}`;
   }, [assetType, horizon, symbol]);
+  const assistantHref = useMemo(() => {
+    const params = new URLSearchParams({ symbol, assetType });
+    return `/ai-analyst/assistant?${params.toString()}`;
+  }, [assetType, symbol]);
   const signInHref = useMemo(() => loginHrefForCurrentLocation(`/ai-analyst/analyze/${encodeURIComponent(symbol)}`), [symbol]);
   const retryMessage = retryAfterSeconds && errorCode
     ? `${copy.analysis.retryAvailable} ${retryAfterSeconds}s`
@@ -219,6 +224,7 @@ function MarketAiAnalystAnalysis({
             <p className={styles.sectionEyebrow}>{symbol}</p>
             <h2 id="ai-analyst-analysis-title">{copy.analysis.title}</h2>
             <p>{copy.analysis.sections}</p>
+            <AssetTypeBadge asset={result?.asset} loading={loading} errorCode={errorCode} />
           </div>
           <span className={styles.metricPill}>{HORIZON_LABELS[locale][horizon]}</span>
         </header>
@@ -231,7 +237,14 @@ function MarketAiAnalystAnalysis({
             <button className={styles.secondaryAction} type="button" disabled={loading} onClick={() => void requestAnalysis(true)}>
               <RefreshCw size={16} aria-hidden="true" />{copy.analysis.refresh}
             </button>
-          ) : <Link className={styles.secondaryAction} href={signInHref}>{copy.analysis.signInRefresh}</Link>}
+          ) : (
+            // loginHrefForCurrentLocation() returns a fixed fallback during
+            // SSR and the exact current URL (incl. query) once mounted
+            // client-side -- the same intentional SSR/client difference the
+            // root layout already suppresses for dir/lang.
+            <Link className={styles.secondaryAction} href={signInHref} suppressHydrationWarning>{copy.analysis.signInRefresh}</Link>
+          )}
+          <Link className={styles.linkAction} href={assistantHref}><MessageCircle size={16} aria-hidden="true" />{copy.chat.askAboutAsset}</Link>
         </div>
         {result ? <p className={styles.mutedText}>{copy.analysis.lastRefresh}: <span dir="ltr">{aiAnalystTimestamp(locale, result.generatedAt)}</span></p> : null}
         {retryMessage ? <p className={styles.statusRail} role="status">{retryMessage}</p> : null}
