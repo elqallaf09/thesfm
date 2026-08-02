@@ -10,7 +10,6 @@ type TechNewsHeaderProps = {
   articleUnitLabel: string;
   lastUpdatedLabel: string;
   marketUpdatedLabel: string;
-  sourceNote: string;
   dataStatusLabel: string;
   refreshing: boolean;
   onRefresh: () => void;
@@ -23,7 +22,6 @@ export function TechNewsHeader({
   articleUnitLabel,
   lastUpdatedLabel,
   marketUpdatedLabel,
-  sourceNote,
   dataStatusLabel,
   refreshing,
   onRefresh,
@@ -42,7 +40,6 @@ export function TechNewsHeader({
           </span>
           <h1>{title}</h1>
           <p>{subtitle}</p>
-          <small>{sourceNote}</small>
         </div>
       </div>
 

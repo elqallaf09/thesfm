@@ -10,8 +10,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import type { TechNewsItem } from '@/lib/market/fetchTechNews';
+import { isResolvedTicker } from '@/lib/tech-news/newsProcessing';
+import { TechNewsMediaFallback } from '@/components/tech-news/TechNewsMediaFallback';
 
-type TechNewsCardVariant = 'featured' | 'standard' | 'compact' | 'list';
+export type TechNewsCardVariant = 'lead' | 'secondary' | 'standard' | 'compact';
 
 type TechNewsCardProps = {
   item: TechNewsItem;
@@ -35,6 +37,13 @@ type TechNewsCardProps = {
   formatPrice: (value: number | null) => string;
 };
 
+const HAS_MEDIA_REGION: Record<TechNewsCardVariant, boolean> = {
+  lead: true,
+  secondary: true,
+  standard: false,
+  compact: false,
+};
+
 function changeClass(value: number | null) {
   if (value === null || value === 0) return 'neutral';
   return value > 0 ? 'up' : 'down';
@@ -50,10 +59,9 @@ function hasDifferentOriginal(item: TechNewsItem) {
   return Boolean(item.isTranslated && original && original !== title);
 }
 
-function imageStyle(imageUrl: string | null | undefined) {
+function realImageUrl(imageUrl: string | null | undefined) {
   const safeUrl = cleanText(imageUrl);
-  if (!safeUrl || !/^https?:\/\//i.test(safeUrl)) return undefined;
-  return { backgroundImage: `url("${safeUrl}")` };
+  return safeUrl && /^https?:\/\//i.test(safeUrl) ? safeUrl : null;
 }
 
 export function TechNewsCard({
@@ -66,20 +74,26 @@ export function TechNewsCard({
   const [showOriginal, setShowOriginal] = useState(false);
   const tone = changeClass(item.changePercent);
   const ChangeIcon = tone === 'down' ? TrendingDown : TrendingUp;
-  const hasPrice = item.price !== null;
+  const tickerResolved = isResolvedTicker(item.ticker);
+  const hasPrice = tickerResolved && item.price !== null;
   const canToggleOriginal = hasDifferentOriginal(item);
   const displayTitle = cleanText(showOriginal ? item.titleOriginal : item.title || item.headline) || cleanText(item.headline);
   const displaySummary = cleanText(showOriginal ? item.summaryOriginal : item.summary) || displayTitle;
   const contentDir = showOriginal ? 'ltr' : item.isTranslated && item.translatedTo === 'ar' ? 'rtl' : 'auto';
   const hasArticleUrl = Boolean(item.url);
-  const imageBackground = useMemo(() => imageStyle(item.image), [item.image]);
+  const image = useMemo(() => realImageUrl(item.image), [item.image]);
 
   return (
-    <article className={`tech-news-card ${variant}`} dir={contentDir}>
-      {variant === 'featured' ? (
-        <div className={`tech-news-card-media ${imageBackground ? 'has-image' : ''}`} style={imageBackground}>
-          <span dir="ltr">{item.ticker}</span>
-        </div>
+    <article className={`tech-news-card tech-news-card-${variant}`} dir={contentDir}>
+      {HAS_MEDIA_REGION[variant] ? (
+        image ? (
+          <div className="tech-news-card-media has-image">
+            {/* eslint-disable-next-line @next/next/no-img-element -- external provider image, not a first-party asset */}
+            <img src={image} alt="" loading="lazy" decoding="async" />
+          </div>
+        ) : (
+          <TechNewsMediaFallback className="tech-news-card-media" source={item.source} sector={item.sector} />
+        )
       ) : null}
 
       <div className="tech-news-card-body">
@@ -91,7 +105,7 @@ export function TechNewsCard({
               {formatDateTime(item.publishedAt)}
             </span>
           </div>
-          <div className="tech-news-symbol-chip" dir="ltr">{item.ticker}</div>
+          {tickerResolved ? <div className="tech-news-symbol-chip" dir="ltr">{item.ticker}</div> : null}
         </div>
 
         <div className="tech-news-title-stack">
@@ -113,7 +127,7 @@ export function TechNewsCard({
           )}
         </div>
 
-        <p dir={contentDir}>{displaySummary}</p>
+        {variant !== 'compact' ? <p dir={contentDir}>{displaySummary}</p> : null}
 
         <div className="tech-news-context-row">
           <span>{item.companyName}</span>
@@ -121,27 +135,29 @@ export function TechNewsCard({
           {item.isTranslated && canToggleOriginal ? <span>{labels.automatedTranslation}</span> : null}
         </div>
 
-        <div className="tech-news-stock-context" aria-label={labels.stockMove}>
-          <div>
-            <small>{labels.stockMove}</small>
-            <strong dir="ltr">{item.ticker}</strong>
+        {tickerResolved ? (
+          <div className="tech-news-stock-context" aria-label={labels.stockMove}>
+            <div>
+              <small>{labels.stockMove}</small>
+              <strong dir="ltr">{item.ticker}</strong>
+            </div>
+            {hasPrice ? (
+              <div className="tech-news-price-stack">
+                <b dir="ltr">{formatPrice(item.price)}</b>
+                {item.changePercent !== null ? (
+                  <span className={`tech-news-change ${tone}`}>
+                    <ChangeIcon size={15} />
+                    <span dir="ltr">{`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}</span>
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <div className="tech-news-price-stack unavailable">
+                <b>{labels.priceUnavailable}</b>
+              </div>
+            )}
           </div>
-          {hasPrice ? (
-            <div className="tech-news-price-stack">
-              <b dir="ltr">{formatPrice(item.price)}</b>
-              {item.changePercent !== null ? (
-                <span className={`tech-news-change ${tone}`}>
-                  <ChangeIcon size={15} />
-                  <span dir="ltr">{`${item.changePercent >= 0 ? '+' : ''}${item.changePercent.toFixed(2)}%`}</span>
-                </span>
-              ) : null}
-            </div>
-          ) : (
-            <div className="tech-news-price-stack unavailable">
-              <b>{labels.priceUnavailable}</b>
-            </div>
-          )}
-        </div>
+        ) : null}
       </div>
 
       <div className="tech-news-card-footer">
