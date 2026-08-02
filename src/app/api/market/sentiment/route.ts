@@ -8,6 +8,7 @@ import {
 } from '@/lib/market/providers/myfxbook';
 import {
   compactPairSymbol,
+  isForexPair,
   normalizeSentimentRequest,
   type NormalizedSentimentRequest,
   type SentimentAssetType,

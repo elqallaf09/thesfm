@@ -76,7 +76,7 @@ function isCryptoPair(value: unknown) {
   return compact.endsWith('USD') && COMMON_CRYPTO_CODES.has(compact.slice(0, -3));
 }
 
-function isForexPair(value: unknown) {
+export function isForexPair(value: unknown) {
   const compact = compactPairSymbol(value);
   if (!/^[A-Z]{6}$/.test(compact) || isMetalSymbol(value) || isCryptoPair(value)) return false;
   return COMMON_CURRENCY_CODES.has(compact.slice(0, 3)) && COMMON_CURRENCY_CODES.has(compact.slice(3, 6));
@@ -131,4 +131,3 @@ export function normalizeSentimentRequest(input: SentimentRequestInput): Normali
     requestedAssetType,
   };
 }
-

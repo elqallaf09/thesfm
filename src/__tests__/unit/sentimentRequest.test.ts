@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeSentimentRequest } from '@/lib/market/sentimentRequest';
+import { isForexPair, normalizeSentimentRequest } from '@/lib/market/sentimentRequest';
 
 describe('market sentiment request normalization', () => {
+  it.each([
+    ['EUR/USD', true],
+    ['USDJPY=X', true],
+    ['BTCUSD', false],
+    ['XAUUSD', false],
+    ['AAPL', false],
+  ])('identifies whether %s is a supported forex pair', (symbol, expected) => {
+    expect(isForexPair(symbol)).toBe(expected);
+  });
+
   it.each([
     ['EUR/USD', null, 'forex', 'EURUSD'],
     ['XAUUSD', null, 'metals', 'XAUUSD'],
@@ -57,4 +67,3 @@ describe('market sentiment request normalization', () => {
     });
   });
 });
-
