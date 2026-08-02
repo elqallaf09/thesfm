@@ -1,1 +1,21 @@
 *.pdf binary
+
+# Every text file in this repository's git history is already stored with
+# LF line endings (verified via `git cat-file -p` against committed blobs).
+# Without this rule, a contributor whose local `core.autocrlf` is `true`
+# (the Git for Windows default) gets those same LF blobs converted to CRLF
+# on checkout. That conversion is invisible for most source files, but it
+# silently breaks:
+#   - the `#!/usr/bin/env node` shebang line on `.github/scripts/*.mjs`
+#     scripts, which Vite/Vitest's SSR module transform cannot parse when
+#     it is CRLF-terminated (plain `node` tolerates it fine, which is why
+#     this class of failure is invisible outside the test runner);
+#   - `\n`-anchored regexes in `.test.ts` files that parse checked-out
+#     `.yml`/`.mjs` content (e.g. `src/__tests__/unit/
+#     supabasePreviewValidateWorkflow.test.ts` matching workflow-job
+#     boundaries in `.github/workflows/*.yml`).
+# Forcing LF on checkout, regardless of any individual contributor's local
+# `core.autocrlf`, removes the whole class of failure at its source instead
+# of working around it file-by-file. Git's own text/binary heuristic
+# (`text=auto`) still leaves genuinely binary assets alone.
+* text=auto eol=lf
