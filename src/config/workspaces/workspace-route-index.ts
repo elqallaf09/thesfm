@@ -12,7 +12,7 @@ export const WORKSPACE_ROUTE_PREFIXES = {
   'markets-trading': [
     '/ai-analyst', '/symbol-details',
     '/market-analysis', '/market-agent', '/market-alerts', '/market-watchlist',
-    '/watchlist', '/alerts', '/invest', '/investments', '/thesfm-trader-own',
+    '/watchlist', '/alerts', '/invest', '/investments', '/world-stocks', '/thesfm-trader-own',
     '/tech-news', '/europe-news', '/gulf-news', '/crypto-news',
     '/energy-stocks', '/banking-stocks', '/sharia-stocks', '/growth-stocks',
     '/defensive-stocks', '/cyclical-stocks', '/dividend-stocks',

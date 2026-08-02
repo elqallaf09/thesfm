@@ -24,6 +24,7 @@ import {
   FileText,
   Files,
   FolderKanban,
+  Globe,
   GraduationCap,
   HandCoins,
   HandHeart,
@@ -164,6 +165,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_invest_market',
     items: [
       { id: 'invest', icon: TrendingUp, href: '/investments', labelKey: 'nav_invest' },
+      { id: 'world-stocks', icon: Globe, href: '/world-stocks', labelKey: 'nav_world_stocks' },
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
     ],
   },

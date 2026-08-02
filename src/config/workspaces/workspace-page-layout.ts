@@ -19,6 +19,7 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/sfm-admin-control', variant: 'full', description: 'Administration dashboards and operational tables' },
   { prefix: '/ai-analyst', variant: 'full', description: 'Unified financial intelligence workspace' },
   { prefix: '/investments', variant: 'full', description: 'Unified investments ownership and valuation center' },
+  { prefix: '/world-stocks', variant: 'full', description: 'Global-equities discovery workspace' },
   { prefix: '/symbol-details', variant: 'full', description: 'Legacy AI analyst symbol redirect' },
   { prefix: '/market-analysis', variant: 'full', description: 'Market analysis workspace' },
   { prefix: '/market-agent', variant: 'full', description: 'Market research assistant' },
