@@ -6,7 +6,13 @@ import {
   resolveMyfxbookForexSymbol,
   resolveMyfxbookSymbol,
 } from '@/lib/market/providers/myfxbook';
-import { normalizeAssetType, type MarketAssetType } from '@/lib/market/marketService';
+import {
+  compactPairSymbol,
+  isForexPair,
+  normalizeSentimentRequest,
+  type NormalizedSentimentRequest,
+  type SentimentAssetType,
+} from '@/lib/market/sentimentRequest';
 
 export const runtime = 'nodejs';
 export const revalidate = 0;
@@ -43,7 +49,6 @@ type AlphaVantageArticle = {
 
 type SentimentProvider = 'finnhub' | 'alphavantage';
 type UnifiedSentimentProvider = 'news' | 'myfxbook' | 'none';
-type SentimentAssetType = 'forex' | 'metals' | 'crypto' | 'stock' | 'etf' | 'unsupported';
 type SentimentLabel = 'bullish' | 'bearish' | 'neutral' | 'unavailable';
 type UnifiedSentimentCode =
   | 'UNSUPPORTED_ASSET_TYPE'
@@ -63,184 +68,12 @@ type UnifiedSentimentCode =
   | 'MISSING_PROVIDER'
   | 'SYMBOL_REQUIRED';
 
-type NormalizedSentimentRequest = {
-  symbol: string;
-  displaySymbol: string;
-  providerSymbol: string;
-  assetType: SentimentAssetType;
-  requestedAssetType: MarketAssetType | null;
-};
-
-const COMMON_CURRENCY_CODES = new Set([
-  'USD',
-  'EUR',
-  'JPY',
-  'GBP',
-  'CHF',
-  'CAD',
-  'AUD',
-  'NZD',
-  'SEK',
-  'NOK',
-  'DKK',
-  'CNH',
-  'HKD',
-  'SGD',
-  'MXN',
-  'ZAR',
-  'TRY',
-  'PLN',
-]);
-
-const COMMON_CRYPTO_CODES = new Set([
-  'BTC',
-  'ETH',
-  'SOL',
-  'XRP',
-  'ADA',
-  'DOGE',
-  'BNB',
-  'LTC',
-  'BCH',
-  'DOT',
-  'AVAX',
-  'LINK',
-  'MATIC',
-]);
-
-const COMMON_ETFS = new Set([
-  'SPY',
-  'QQQ',
-  'DIA',
-  'IWM',
-  'VOO',
-  'VTI',
-  'IVV',
-  'VEA',
-  'VWO',
-  'GLD',
-  'SLV',
-  'TLT',
-  'HYG',
-  'EFA',
-  'EEM',
-  'ARKK',
-  'XLK',
-  'XLF',
-  'XLE',
-  'XLV',
-  'XLY',
-  'XLP',
-  'XLI',
-  'XLB',
-  'XLU',
-  'VNQ',
-]);
-
 function shouldDebug() {
   return process.env.NODE_ENV !== 'production' || process.env.DEBUG_MARKET_DATA === 'true';
 }
 
 function isTimeoutError(error: unknown) {
   return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
-}
-
-function compactSymbol(value: unknown) {
-  return String(value ?? '')
-    .trim()
-    .toUpperCase()
-    .replace(/=X$/, '')
-    .replace(/^(FX|FOREX|OANDA|TVC|NASDAQ|NYSE|AMEX|COINBASE):?/i, '')
-    .replace(/[\s/_-]+/g, '')
-    .replace(/[^A-Z0-9.]/g, '');
-}
-
-function compactPairSymbol(value: unknown) {
-  return compactSymbol(value).replace(/\./g, '');
-}
-
-function rawSymbolFromRequest(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
-  return params.get('symbol')
-    || params.get('providerSymbol')
-    || params.get('symbols')?.split(',')[0]
-    || '';
-}
-
-function rawProviderSymbolFromRequest(request: NextRequest) {
-  const params = request.nextUrl.searchParams;
-  return params.get('providerSymbol')
-    || params.get('symbol')
-    || params.get('symbols')?.split(',')[0]
-    || '';
-}
-
-function isForexPair(value: unknown) {
-  const compact = compactPairSymbol(value);
-  if (!/^[A-Z]{6}$/.test(compact)) return false;
-  if (isMetalSymbol(value) || isCryptoPair(value)) return false;
-  return COMMON_CURRENCY_CODES.has(compact.slice(0, 3)) && COMMON_CURRENCY_CODES.has(compact.slice(3, 6));
-}
-
-function isCryptoPair(value: unknown) {
-  const compact = compactPairSymbol(value);
-  if (!compact.endsWith('USD')) return false;
-  return COMMON_CRYPTO_CODES.has(compact.slice(0, -3));
-}
-
-function isMetalSymbol(value: unknown) {
-  const raw = String(value ?? '').trim().toUpperCase();
-  const compact = compactPairSymbol(value);
-  return ['GC=F', 'SI=F', 'XAU', 'XAG', 'GOLD', 'SILVER', 'XAUUSD', 'XAGUSD', 'XPTUSD', 'XPDUSD'].includes(raw)
-    || /^X(AU|AG|PT|PD)USD$/.test(compact);
-}
-
-function normalizeSentimentAssetType(assetTypeInput: unknown, symbolInput: unknown, providerSymbolInput: unknown): { assetType: SentimentAssetType; requestedAssetType: MarketAssetType | null } {
-  const rawAssetType = String(assetTypeInput ?? '').trim();
-  const normalizedRawAssetType = rawAssetType.toLowerCase().replace(/[_\s-]+/g, '');
-  if (['metal', 'metals', 'preciousmetal', 'preciousmetals'].includes(normalizedRawAssetType)) {
-    return { assetType: 'metals', requestedAssetType: null };
-  }
-  const requestedAssetType = rawAssetType && rawAssetType !== 'all' ? normalizeAssetType(rawAssetType) : null;
-  const symbol = symbolInput || providerSymbolInput;
-
-  if (requestedAssetType === 'forex') return { assetType: 'forex', requestedAssetType };
-  if (requestedAssetType === 'crypto') return { assetType: 'crypto', requestedAssetType };
-  if (requestedAssetType === 'gold' || requestedAssetType === 'commodity') return { assetType: 'metals', requestedAssetType };
-  if (requestedAssetType === 'stock') return { assetType: 'stock', requestedAssetType };
-  if (requestedAssetType === 'etf') return { assetType: 'etf', requestedAssetType };
-  if (requestedAssetType === 'index') return { assetType: 'unsupported', requestedAssetType };
-
-  if (isMetalSymbol(symbol)) return { assetType: 'metals', requestedAssetType };
-  if (isCryptoPair(symbol)) return { assetType: 'crypto', requestedAssetType };
-  if (isForexPair(symbol)) return { assetType: 'forex', requestedAssetType };
-  if (COMMON_ETFS.has(compactPairSymbol(symbol))) return { assetType: 'etf', requestedAssetType };
-  if (/^[A-Z]{1,5}(\.[A-Z])?$/.test(compactSymbol(symbol))) return { assetType: 'stock', requestedAssetType };
-  return { assetType: 'unsupported', requestedAssetType };
-}
-
-function normalizeRequest(request: NextRequest): NormalizedSentimentRequest {
-  const rawSymbol = rawSymbolFromRequest(request);
-  const rawProviderSymbol = rawProviderSymbolFromRequest(request);
-  const { assetType, requestedAssetType } = normalizeSentimentAssetType(
-    request.nextUrl.searchParams.get('assetType'),
-    rawSymbol,
-    rawProviderSymbol,
-  );
-  const symbolCompact = compactPairSymbol(rawSymbol);
-  const providerCompact = compactPairSymbol(rawProviderSymbol);
-  const fallbackSymbol = symbolCompact || providerCompact;
-  const symbol = assetType === 'stock' || assetType === 'etf'
-    ? (compactSymbol(rawSymbol).replace(/[^A-Z0-9.]/g, '') || compactSymbol(rawProviderSymbol).replace(/[^A-Z0-9.]/g, ''))
-    : fallbackSymbol;
-
-  return {
-    symbol,
-    displaySymbol: symbol || String(rawSymbol || rawProviderSymbol).trim().toUpperCase(),
-    providerSymbol: rawProviderSymbol.trim() || rawSymbol.trim(),
-    assetType,
-    requestedAssetType,
-  };
 }
 
 function normalizeProviderEnv(value: string) {
@@ -1057,7 +890,12 @@ async function handleNewsSentiment(requestMeta: NormalizedSentimentRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const requestMeta = normalizeRequest(request);
+  const requestMeta = normalizeSentimentRequest({
+    symbol: request.nextUrl.searchParams.get('symbol'),
+    providerSymbol: request.nextUrl.searchParams.get('providerSymbol'),
+    symbols: request.nextUrl.searchParams.get('symbols'),
+    assetType: request.nextUrl.searchParams.get('assetType'),
+  });
   const forceRefresh = request.nextUrl.searchParams.has('refresh')
     || request.nextUrl.searchParams.get('force') === 'true';
 
