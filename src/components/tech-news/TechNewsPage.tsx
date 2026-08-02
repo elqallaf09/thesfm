@@ -14,9 +14,8 @@ import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContain
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechNewsItem, TechNewsPayload } from '@/lib/market/fetchTechNews';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
-import { TechNewsCard } from '@/components/tech-news/TechNewsCard';
-import { TechNewsEvidence, type EvidenceLabels } from '@/components/tech-news/TechNewsEvidence';
-import { TechNewsFeaturedSection } from '@/components/tech-news/TechNewsFeaturedSection';
+import type { EvidenceLabels } from '@/components/tech-news/TechNewsEvidence';
+import { TechNewsUnifiedFeed } from '@/components/tech-news/TechNewsUnifiedFeed';
 import { TechNewsQuickFilters } from '@/components/tech-news/TechNewsQuickFilters';
 import { TechNewsAdvancedFilters } from '@/components/tech-news/TechNewsAdvancedFilters';
 import { TechNewsHeader } from '@/components/tech-news/TechNewsHeader';
@@ -53,6 +52,7 @@ type NewsDeliveryStatus = Pick<TechNewsPayload, 'partialFailure' | 'liveUpdatesA
 
 const NEWS_PAGE_SIZE = 9;
 const FEATURED_NEWS_COUNT = 3;
+const INITIAL_VISIBLE_NEWS_COUNT = NEWS_PAGE_SIZE + FEATURED_NEWS_COUNT;
 const TRACKED_SYMBOLS = ['NVDA', 'AAPL', 'MSFT', 'GOOGL', 'META', 'TSLA', 'AMD', 'INTC', 'ORCL', 'CRM', 'AVGO', 'NFLX'] as const;
 const INITIAL_NEWS_DELIVERY_STATUS: NewsDeliveryStatus = {
   partialFailure: false,
@@ -379,7 +379,7 @@ export function TechNewsPage() {
   const [timeFilter, setTimeFilter] = useState<TechNewsTimeFilter>('all');
   const [sort, setSort] = useState<TechNewsSort>('recent');
   const [viewMode, setViewMode] = useState<TechNewsViewMode>('grid');
-  const [visibleCount, setVisibleCount] = useState(NEWS_PAGE_SIZE);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NEWS_COUNT);
   const locale = localeFor(lang);
 
   const load = useCallback(async (showLoader = true, signal?: AbortSignal) => {
@@ -421,7 +421,7 @@ export function TechNewsPage() {
   }, [lang]);
 
   useEffect(() => {
-    setVisibleCount(NEWS_PAGE_SIZE);
+    setVisibleCount(INITIAL_VISIBLE_NEWS_COUNT);
   }, [category, impactFilter, lang, query, sort, sourceFilter, symbolFilter, timeFilter]);
 
   const dedupedItems = useMemo(() => dedupeNewsItems(items), [items]);
@@ -451,11 +451,8 @@ export function TechNewsPage() {
     return sortNewsItems(nextItems, sort, locale);
   }, [baseFilteredItems, category, locale, sort]);
 
-  const featuredItems = filteredItems.slice(0, FEATURED_NEWS_COUNT);
-  const featuredIds = new Set(featuredItems.map(item => item.id));
-  const regularItems = filteredItems.filter(item => !featuredIds.has(item.id));
-  const visibleNewsItems = regularItems.slice(0, visibleCount);
-  const hasMoreItems = visibleCount < regularItems.length;
+  const visibleNewsItems = filteredItems.slice(0, visibleCount);
+  const hasMoreItems = visibleCount < filteredItems.length;
 
   const mentionedTickers = useMemo(() => computeMentionedTickers(filteredItems), [filteredItems]);
   const sourceCounts = useMemo(() => computeSourceCounts(filteredItems), [filteredItems]);
@@ -575,21 +572,6 @@ export function TechNewsPage() {
           </section>
         ) : (
           <>
-            <TechNewsFeaturedSection
-              items={featuredItems}
-              labels={{
-                title: ui.featuredTitle,
-                lead: ui.featuredLead,
-                openArticle: ui.openArticle,
-                readMore: ui.readMore,
-                linkUnavailable: ui.linkUnavailable,
-              }}
-              cardLabels={cardLabels}
-              evidenceLabels={evidenceLabels}
-              formatDateTime={formatDateTime}
-              formatPrice={formatPrice}
-            />
-
             <TechNewsQuickFilters
               query={query}
               category={category}
@@ -646,84 +628,79 @@ export function TechNewsPage() {
                 ) : null}
               </section>
             ) : (
-              <section className="tech-news-layout" aria-label={ui.title}>
-                <div className="tech-news-content-column">
-                  <div className="tech-news-results-bar">
-                    <div>
-                      <span>{ui.resultsTitle}</span>
-                      <b>{replaceMany(ui.showing, { visible: featuredItems.length + visibleNewsItems.length, total: filteredItems.length })}</b>
-                    </div>
-                    <div className="tech-news-view-toggle" aria-label={ui.viewMode}>
-                      <button
-                        type="button"
-                        className={viewMode === 'grid' ? 'active' : ''}
-                        onClick={() => setViewMode('grid')}
-                        aria-pressed={viewMode === 'grid'}
-                      >
-                        <LayoutGrid size={15} />
-                        {ui.grid}
-                      </button>
-                      <button
-                        type="button"
-                        className={viewMode === 'list' ? 'active' : ''}
-                        onClick={() => setViewMode('list')}
-                        aria-pressed={viewMode === 'list'}
-                      >
-                        <List size={15} />
-                        {ui.list}
-                      </button>
-                    </div>
+              <>
+                <div className="tech-news-results-bar">
+                  <div>
+                    <span>{ui.resultsTitle}</span>
+                    <b>{replaceMany(ui.showing, { visible: visibleNewsItems.length, total: filteredItems.length })}</b>
                   </div>
-
-                  {visibleNewsItems.length > 0 ? (
-                    <section className={`tech-news-feed ${viewMode}`} aria-label={ui.resultsTitle}>
-                      {visibleNewsItems.map(item => (
-                        <div className="tech-news-evidence-card" key={item.id}>
-                          <TechNewsCard
-                            item={item}
-                            variant={viewMode === 'list' ? 'compact' : 'standard'}
-                            labels={cardLabels}
-                            formatDateTime={formatDateTime}
-                            formatPrice={formatPrice}
-                          />
-                          <TechNewsEvidence item={item} labels={evidenceLabels} />
-                        </div>
-                      ))}
-                    </section>
-                  ) : null}
-
-                  <div className="tech-news-load-more-wrap">
-                    {hasMoreItems ? (
-                      <button
-                        type="button"
-                        className="tech-news-load-more"
-                        onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}
-                      >
-                        {ui.loadMore}
-                      </button>
-                    ) : (
-                      <span>{ui.allLoaded}</span>
-                    )}
+                  <div className="tech-news-view-toggle" aria-label={ui.viewMode}>
+                    <button
+                      type="button"
+                      className={viewMode === 'grid' ? 'active' : ''}
+                      onClick={() => setViewMode('grid')}
+                      aria-pressed={viewMode === 'grid'}
+                    >
+                      <LayoutGrid size={15} />
+                      {ui.grid}
+                    </button>
+                    <button
+                      type="button"
+                      className={viewMode === 'list' ? 'active' : ''}
+                      onClick={() => setViewMode('list')}
+                      aria-pressed={viewMode === 'list'}
+                    >
+                      <List size={15} />
+                      {ui.list}
+                    </button>
                   </div>
                 </div>
 
-                <TechNewsSidePanel
-                  latestItems={filteredItems.slice(0, 6)}
-                  mentionedTickers={mentionedTickers}
-                  sourceCounts={sourceCounts}
-                  labels={{
-                    latest: ui.latest,
-                    mentioned: ui.mentioned,
-                    sources: ui.sources,
-                    articles: ui.articles,
-                    mentions: ui.mentions,
-                    source: ui.source,
-                    sourceTransparency: ui.sourceTransparency,
-                    sourceTransparencyText: ui.sourceTransparencyText,
-                  }}
-                  formatDateTime={formatDateTime}
-                />
-              </section>
+                <section className="tech-news-layout" aria-label={ui.title} data-testid="tech-news-feed-layout">
+                  <div className="tech-news-content-column">
+                    <TechNewsUnifiedFeed
+                      items={visibleNewsItems}
+                      viewMode={viewMode}
+                      label={ui.resultsTitle}
+                      cardLabels={cardLabels}
+                      evidenceLabels={evidenceLabels}
+                      formatDateTime={formatDateTime}
+                      formatPrice={formatPrice}
+                    />
+
+                    <div className="tech-news-load-more-wrap">
+                      {hasMoreItems ? (
+                        <button
+                          type="button"
+                          className="tech-news-load-more"
+                          onClick={() => setVisibleCount(count => count + NEWS_PAGE_SIZE)}
+                        >
+                          {ui.loadMore}
+                        </button>
+                      ) : (
+                        <span>{ui.allLoaded}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <TechNewsSidePanel
+                    latestItems={filteredItems.slice(0, 6)}
+                    mentionedTickers={mentionedTickers}
+                    sourceCounts={sourceCounts}
+                    labels={{
+                      latest: ui.latest,
+                      mentioned: ui.mentioned,
+                      sources: ui.sources,
+                      articles: ui.articles,
+                      mentions: ui.mentions,
+                      source: ui.source,
+                      sourceTransparency: ui.sourceTransparency,
+                      sourceTransparencyText: ui.sourceTransparencyText,
+                    }}
+                    formatDateTime={formatDateTime}
+                  />
+                </section>
+              </>
             )}
           </>
         )}
