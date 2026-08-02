@@ -29,7 +29,6 @@ import {
   Receipt,
   ReceiptText,
   RefreshCw,
-  Send,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -61,7 +60,7 @@ import { recordAccountActivity } from '@/lib/accountActivity';
 import type {
   PageKind, ExpensePageTab, ExpensePeriodPreset, ExpensePeriodState, ExpensePeriodRange,
   LangText, TranslateFn, MoneyItem, IncomeSource, EntryKind, EntryFormState, EntryRow,
-  GoalItem, GoalRow, GoalFormState, QueryResult, ChatMessage, DataErrorKind, DataLoadError,
+  GoalItem, GoalRow, GoalFormState, QueryResult, DataErrorKind, DataLoadError,
   DataResult, ReceiptItem, ReceiptAmountCandidate, AiExtractedData, ReceiptScanDebug,
   ReceiptScanApiResult, ReceiptScanApiPayload, SmartExpense, ExpenseFormState,
   ExpenseModalMode, PendingReceiptExpense, Snapshot, SectionCard, DebtSnapshotItem,
@@ -327,9 +326,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
 
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
   const [dataLoading, setDataLoading] = useState(true);
-  const [chatValue, setChatValue] = useState('');
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [chatLoading, setChatLoading] = useState(false);
   const [entryForm, setEntryForm] = useState<EntryFormState>(() => emptyEntryForm(currency || 'KWD'));
   const [entryMode, setEntryMode] = useState<'create' | 'edit'>('create');
   const [entryOpen, setEntryOpen] = useState(false);
@@ -2001,36 +1997,6 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     };
   }, [confirmDelete, entryOpen, goalDeleteTarget, goalEditOpen, receiptDetails]);
 
-  async function sendAiMessage() {
-    const content = chatValue.trim();
-    if (!content || chatLoading) return;
-
-    const nextHistory: ChatMessage[] = [...chatHistory, { role: 'user', content }];
-    setChatHistory(nextHistory);
-    setChatValue('');
-    setChatLoading(true);
-
-    try {
-      const response = await fetch('/api/projects-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextHistory }),
-      });
-      const result = await response.json() as { text?: string };
-      setChatHistory([...nextHistory, {
-        role: 'assistant',
-        content: result.text || t('ai_fallback'),
-      }]);
-    } catch {
-      setChatHistory([...nextHistory, {
-        role: 'assistant',
-        content: t('ai_unavailable'),
-      }]);
-    } finally {
-      setChatLoading(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="sfm-shell" dir={dir}>
@@ -2992,43 +2958,13 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
           </aside>
         </section>
 
-        {kind === 'ai' ? (
-          <section className="ai-panel">
-            <div>
-              <h3>{t('ask_assistant')}</h3>
-              <p>{t('ai_chat_hint')}</p>
-            </div>
-            <div className="chat-history">
-              {(chatHistory.length ? chatHistory : [{ role: 'assistant' as const, content: t('ai_welcome') }]).map((message, index) => (
-                <div key={`${message.role}-${index}`} className={message.role}>
-                  {message.content}
-                </div>
-              ))}
-            </div>
-            <div className="chat-box">
-              <input
-                id="ai-chat-input"
-                value={chatValue}
-                onChange={event => setChatValue(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter') void sendAiMessage();
-                }}
-                placeholder={t('ai_placeholder')}
-              />
-              <button aria-label={t('accessibility_send_message')} onClick={() => void sendAiMessage()} disabled={chatLoading}>
-                <Send size={18} />
-              </button>
-            </div>
-          </section>
-        ) : (
-          <section className="summary-band">
-            <LineChart size={20} />
-            <div>
-              <strong>{summaryTitle(kind, lang)}</strong>
-              <p>{summaryText(kind, data, lang, currency)}</p>
-            </div>
-          </section>
-        )}
+        <section className="summary-band">
+          <LineChart size={20} />
+          <div>
+            <strong>{summaryTitle(kind, lang)}</strong>
+            <p>{summaryText(kind, data, lang, currency)}</p>
+          </div>
+        </section>
 
         {savingsGuide && (
           <section className="savings-guide" aria-labelledby="savings-guide-title">
