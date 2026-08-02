@@ -157,24 +157,51 @@ async function useEnglish(page: Page) {
 }
 
 test.describe('Tech Market News redesigned experience', () => {
-  test('renders the new information order with one lead, secondary stories, and no duplicate news in the regular feed', async ({ page }) => {
+  test('renders every visible story in one feed after the search and filter controls without duplicates', async ({ page }) => {
     await useEnglish(page);
     await mockTechNews(page);
     await page.goto('/tech-news');
 
-    const featured = page.locator('.tech-news-featured');
-    await expect(featured).toBeVisible();
-    await expect(featured.locator('.tech-news-card-lead')).toHaveCount(1);
-    await expect(featured.locator('.tech-news-card-secondary')).toHaveCount(2);
+    const search = page.locator('.tech-news-search input');
+    const categories = page.getByRole('tablist', { name: 'News categories' });
+    const advancedFilters = page.getByRole('button', { name: /Advanced filters/ });
+    const feed = page.getByTestId('tech-news-unified-feed');
+    await expect(search).toBeVisible();
+    await expect(categories).toBeVisible();
+    await expect(advancedFilters).toBeVisible();
+    await expect(feed).toBeVisible();
+    await expect(page.locator('.tech-news-card')).toHaveCount(12);
+    await expect(feed.locator('.tech-news-card')).toHaveCount(12);
+    await expect(page.getByText('Showing 12 of 13')).toBeVisible();
+    await expect(feed.locator('.tech-news-card-lead')).toHaveCount(1);
+    await expect(feed.locator('.tech-news-card-secondary')).toHaveCount(2);
 
-    await expect(page.getByRole('tablist', { name: 'News categories' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Advanced filters/ })).toBeVisible();
+    const order = await page.evaluate(() => {
+      const searchNode = document.querySelector('.tech-news-quick-filters');
+      const filtersNode = document.querySelector('.tech-news-advanced-filters-trigger');
+      const feedNode = document.querySelector('[data-testid="tech-news-unified-feed"]');
+      if (!searchNode || !filtersNode || !feedNode) return [];
+      return [
+        Boolean(searchNode.compareDocumentPosition(filtersNode) & Node.DOCUMENT_POSITION_FOLLOWING),
+        Boolean(filtersNode.compareDocumentPosition(feedNode) & Node.DOCUMENT_POSITION_FOLLOWING),
+      ];
+    });
+    expect(order).toEqual([true, true]);
 
-    const feedHeadlines = await page.locator('.tech-news-feed .tech-news-card h2').allTextContents();
-    const featuredHeadlines = await featured.locator('h2').allTextContents();
-    for (const headline of featuredHeadlines) {
-      expect(feedHeadlines).not.toContain(headline);
-    }
+    const ids = await feed.locator('[data-news-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-news-id')));
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test('promotes the first filtered result to lead and keeps the next two as secondary stories', async ({ page }) => {
+    await useEnglish(page);
+    await mockTechNews(page);
+    await page.goto('/tech-news');
+
+    await page.locator('.tech-news-search input').fill('Apple');
+    const feed = page.getByTestId('tech-news-unified-feed');
+    await expect(feed.locator('.tech-news-card-lead h2')).toHaveText('Apple reports record quarterly earnings');
+    await expect(feed.locator('.tech-news-card-secondary')).toHaveCount(0);
+    await expect(feed.locator('[data-news-id]')).toHaveCount(1);
   });
 
   test('never fabricates a ticker or price for an unresolved symbol, and shows the real price for a resolved one', async ({ page }) => {
@@ -276,8 +303,47 @@ test.describe('Tech Market News redesigned experience', () => {
 
     const loadMore = page.getByRole('button', { name: 'Load more' });
     await expect(loadMore).toBeVisible();
+    await expect(page.getByTestId('tech-news-unified-feed').locator('[data-news-id]')).toHaveCount(12);
     await loadMore.click();
+    await expect(page.getByTestId('tech-news-unified-feed').locator('[data-news-id]')).toHaveCount(13);
     await expect(page.getByText('All available news are shown')).toBeVisible();
+  });
+
+  test('aligns the desktop side panel with the lead and moves all side content below the complete feed on mobile', async ({ page }) => {
+    await useEnglish(page);
+    await mockTechNews(page);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/tech-news');
+
+    await expect(page.getByTestId('tech-news-unified-feed')).toBeVisible();
+    await expect(page.locator('.tech-news-side-panel')).toBeVisible();
+    // Compare the natural grid positions rather than viewport coordinates:
+    // the side panel is sticky, so its bounding box may already be pinned below
+    // the global header when a browser restores scroll during navigation.
+    const desktopTops = await page.evaluate(() => {
+      const feedNode = document.querySelector<HTMLElement>('[data-testid="tech-news-unified-feed"]');
+      const sideNode = document.querySelector<HTMLElement>('.tech-news-side-panel');
+      return [feedNode?.offsetTop ?? null, sideNode?.offsetTop ?? null];
+    });
+    expect(desktopTops[0]).not.toBeNull();
+    expect(desktopTops[1]).not.toBeNull();
+    expect(Math.abs((desktopTops[0] ?? 0) - (desktopTops[1] ?? 0))).toBeLessThanOrEqual(1);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileOrder = await page.evaluate(() => {
+      const searchNode = document.querySelector('.tech-news-quick-filters');
+      const filtersNode = document.querySelector('.tech-news-advanced-filters-trigger');
+      const feedNode = document.querySelector('[data-testid="tech-news-unified-feed"]');
+      const loadMoreNode = document.querySelector('.tech-news-load-more-wrap');
+      const sideNode = document.querySelector('.tech-news-side-panel');
+      if (!searchNode || !filtersNode || !feedNode || !loadMoreNode || !sideNode) return [];
+      return [searchNode, filtersNode, feedNode, loadMoreNode, sideNode].map((node, index, nodes) => (
+        index === nodes.length - 1 || Boolean(node.compareDocumentPosition(nodes[index + 1]) & Node.DOCUMENT_POSITION_FOLLOWING)
+      ));
+    });
+    expect(mobileOrder).toEqual([true, true, true, true, true]);
+    const widths = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
   });
 
   test('shows a truthful empty state and provider-error state with retry', async ({ page }) => {
@@ -327,7 +393,7 @@ test.describe('Tech Market News redesigned experience', () => {
       if (request.url().includes('/api/tech-news')) requests.push(request.url());
     });
     await page.goto('/tech-news');
-    await expect(page.locator('.tech-news-featured')).toBeVisible();
+    await expect(page.getByTestId('tech-news-unified-feed')).toBeVisible();
     expect(requests).toHaveLength(1);
   });
 

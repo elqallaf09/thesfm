@@ -1,19 +1,15 @@
 'use client';
 
-// Card/media/evidence/featured-grid/main-layout/side-panel styles. Split out
+// Card/media/evidence/editorial-grid/main-layout/side-panel styles. Split out
 // of TechNewsPage.tsx alongside TechNewsLayoutStyles.tsx -- see that file's
 // header comment for why.
 export function TechNewsCardStyles() {
   return (
     <style jsx global>{`
-      .tech-news-featured{display:grid;gap:14px}
-      .tech-news-featured-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-      .tech-news-featured-head h2{margin:0;color:var(--foreground);font-size:19px;font-weight:600}
-      .tech-news-featured-head span{display:inline-flex;align-items:center;gap:7px;color:var(--accent);font-size:12px;font-weight:600}
-      .tech-news-featured-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,.85fr);gap:16px;align-items:stretch}
-      .tech-news-featured-side{display:grid;gap:12px;min-width:0}
+      .tech-news-editorial-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,.85fr);gap:16px;align-items:stretch;min-width:0}
+      .tech-news-secondary-stack{display:grid;gap:12px;min-width:0}
       .tech-news-evidence-card{display:grid;gap:8px;min-width:0;align-content:start}
-      .tech-news-featured-grid>.tech-news-evidence-card:first-child,.tech-news-evidence-card>.tech-news-card-lead{height:100%}
+      .tech-news-editorial-grid>.tech-news-evidence-card:first-child,.tech-news-evidence-card>.tech-news-card-lead{height:100%}
       .tech-news-evidence{display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);color:var(--foreground-muted);font-size:12px;line-height:1.45}
       .tech-news-evidence>svg{margin-top:2px;flex:none;color:var(--info)}
       .tech-news-evidence>div{display:grid;gap:2px;min-width:0}
@@ -78,10 +74,11 @@ export function TechNewsCardStyles() {
 
       .tech-news-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
       .tech-news-content-column{display:grid;gap:14px;min-width:0}
-      .tech-news-feed{display:grid;gap:14px}
-      .tech-news-feed.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      @media(min-width:1500px){.tech-news-feed.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-      .tech-news-feed.list{grid-template-columns:1fr}
+      .tech-news-feed{display:grid;gap:14px;min-width:0}
+      .tech-news-standard-results{display:grid;gap:14px;min-width:0}
+      .tech-news-standard-results.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      @media(min-width:1500px){.tech-news-standard-results.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      .tech-news-standard-results.list{grid-template-columns:1fr}
 
       .tech-news-side-panel{position:sticky;top:calc(var(--global-header-height) + 1rem);display:grid;gap:14px;min-width:0}
       .tech-side-card{display:grid;gap:12px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-panel);padding:15px;box-shadow:var(--shadow-card);min-width:0}
@@ -118,13 +115,13 @@ export function TechNewsCardStyles() {
         .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
       }
       @media(max-width:1024px){
-        .tech-news-featured-grid{grid-template-columns:1fr}
-        .tech-news-featured-side{grid-template-columns:repeat(2,minmax(0,1fr))}
+        .tech-news-editorial-grid{grid-template-columns:1fr}
+        .tech-news-secondary-stack{grid-template-columns:repeat(2,minmax(0,1fr))}
         .tech-news-side-panel{grid-template-columns:1fr}
       }
       @media(max-width:760px){
-        .tech-news-featured-side{grid-template-columns:1fr}
-        .tech-news-feed.grid{grid-template-columns:1fr}
+        .tech-news-secondary-stack{grid-template-columns:1fr}
+        .tech-news-standard-results.grid{grid-template-columns:1fr}
         .tech-news-card-footer{display:grid}
         .tech-news-read-link{width:100%}
         .tech-news-stock-context{display:grid}
