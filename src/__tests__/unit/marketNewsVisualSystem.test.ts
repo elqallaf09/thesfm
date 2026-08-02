@@ -12,6 +12,24 @@ const newsPages = [
   'src/components/crypto-news/CryptoNewsPage.tsx',
 ] as const;
 
+// TechNewsPage.tsx's page-chrome/card CSS was extracted into
+// TechNewsLayoutStyles.tsx and TechNewsCardStyles.tsx (see those files'
+// own header comments) so the page component itself stays focused on data
+// flow. The other three news pages have not been split this way, so this
+// is the one page whose "source" for a page-level style assertion is
+// spread across three files instead of one.
+const TECH_NEWS_STYLE_FILES = [
+  'src/components/tech-news/TechNewsLayoutStyles.tsx',
+  'src/components/tech-news/TechNewsCardStyles.tsx',
+] as const;
+
+const readPageSource = (relativePath: string) => {
+  if (relativePath === 'src/components/tech-news/TechNewsPage.tsx') {
+    return [relativePath, ...TECH_NEWS_STYLE_FILES].map(read).join('\n');
+  }
+  return read(relativePath);
+};
+
 const supportingComponents = [
   'src/components/stock-categories/CategoryStockTicker.tsx',
   'src/components/tech-news/TechNewsCard.tsx',
@@ -25,7 +43,7 @@ const rawDepth = /border-radius\s*:\s*(?:[1-9]\d*(?:\.\d+)?|0?\.\d+)(?:px|rem)|b
 describe('market news visual-system contract', () => {
   it('keeps market-news production surfaces on the centralized palette, type, and depth system', () => {
     for (const relativePath of [...newsPages, ...supportingComponents]) {
-      const source = read(relativePath);
+      const source = readPageSource(relativePath);
       expect(source, relativePath).not.toMatch(literalColour);
       expect(source, relativePath).not.toMatch(localGradient);
       expect(source, relativePath).not.toMatch(directFont);
@@ -39,7 +57,7 @@ describe('market news visual-system contract', () => {
 
   it('uses the wide shared container and responsive listing grids', () => {
     for (const relativePath of newsPages) {
-      const source = read(relativePath);
+      const source = readPageSource(relativePath);
       expect(source, relativePath).toMatch(/WorkspacePageContainer[^>]+variant="wide"/);
       expect(source, relativePath).toMatch(/<NewsPageShell[^>]+\bwide>/);
       expect(source, relativePath).toContain('@media(min-width:1500px)');
@@ -49,11 +67,11 @@ describe('market news visual-system contract', () => {
 
   it('reserves named gradients for the three branded heroes and shared loading states', () => {
     for (const relativePath of newsPages) {
-      expect(read(relativePath), relativePath).toContain('var(--skeleton-gradient)');
+      expect(readPageSource(relativePath), relativePath).toContain('var(--skeleton-gradient)');
     }
 
     for (const relativePath of newsPages.filter(path => !path.includes('europe-news'))) {
-      const source = read(relativePath);
+      const source = readPageSource(relativePath);
       expect(source, relativePath).toContain('var(--hero-gradient)');
       expect(source, relativePath).not.toMatch(/(?:button|card|panel)[^{}]*\{[^}]*background:\s*var\(--hero-gradient\)/i);
     }
@@ -63,7 +81,7 @@ describe('market news visual-system contract', () => {
 
   it('uses the data face only for market values and keeps keyboard focus visible', () => {
     for (const relativePath of newsPages) {
-      const source = read(relativePath);
+      const source = readPageSource(relativePath);
       expect(source, relativePath).toContain('var(--font-ui)');
       expect(source, relativePath).toContain('var(--font-data)');
       expect(source, relativePath).toContain(':focus-visible');
@@ -78,7 +96,9 @@ describe('market news visual-system contract', () => {
 
   it('keeps remote article art unmodified instead of rebuilding a local colour overlay', () => {
     const card = read('src/components/tech-news/TechNewsCard.tsx');
-    expect(card).toContain('return { backgroundImage: `url("${safeUrl}")` };');
+    // A verified article image renders as a real, unmodified <img>, never a
+    // CSS background-image with a colour/gradient overlay reconstructing it.
+    expect(card).toMatch(/<img\s+src=\{image\}/);
     expect(card).not.toContain('linear-gradient');
   });
 });

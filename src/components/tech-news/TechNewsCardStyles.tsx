@@ -33,7 +33,7 @@ export function TechNewsCardStyles() {
         background:var(--surface-muted);color:var(--foreground-muted);
       }
       .tech-news-media-fallback-icon{flex:0 0 auto;color:var(--accent)}
-      .tech-news-media-fallback-initials{font-family:var(--font-data);font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--foreground-secondary)}
+      .tech-news-media-fallback-initials{font-family:var(--font-data);font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--foreground-secondary)}
       .tech-news-card-media.has-image{position:relative;aspect-ratio:16/9;border-radius:var(--radius-card);overflow:hidden;background:var(--surface-muted)}
       .tech-news-card-media.has-image img{width:100%;height:100%;object-fit:cover;display:block}
 
