@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import type { InvestmentAnalysisContext } from '@/lib/investments/center';
+import { AssetTypeBadge } from './AssetTypeBadge';
 import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
@@ -219,6 +220,7 @@ function MarketAiAnalystAnalysis({
             <p className={styles.sectionEyebrow}>{symbol}</p>
             <h2 id="ai-analyst-analysis-title">{copy.analysis.title}</h2>
             <p>{copy.analysis.sections}</p>
+            <AssetTypeBadge asset={result?.asset} loading={loading} errorCode={errorCode} />
           </div>
           <span className={styles.metricPill}>{HORIZON_LABELS[locale][horizon]}</span>
         </header>

@@ -236,6 +236,43 @@
 .statusPill[data-tone='degraded'] { border-color: var(--warning); color: var(--warning); background: var(--warning-soft); }
 .statusPill[data-tone='unavailable'] { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 
+.assetTypeGroup {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.assetTypeInfoTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-block-size: 26px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding-inline: 8px;
+  background: transparent;
+  color: var(--foreground-secondary);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.assetTypeInfoTrigger:hover { border-color: var(--accent); color: var(--primary-hover); background: var(--accent-soft); }
+.assetTypeInfoTrigger:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-shadow); }
+
+.assetTypePopover {
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--popover-foreground);
+}
+
+.assetTypePopoverTitle {
+  font-weight: 700;
+  margin-block-end: 6px;
+}
+
 .pickerForm { display: grid; grid-template-columns: minmax(13rem, 1.45fr) minmax(9rem, .75fr) minmax(9rem, .75fr) auto; gap: 10px; align-items: end; }
 .field { display: grid; gap: 6px; min-width: 0; }
 .field label { color: var(--foreground-secondary); font-size: .76rem; font-weight: 700; }
