@@ -86,7 +86,15 @@ export function TechNewsAdvancedFilters({
       <button
         type="button"
         className="tech-news-advanced-filters-trigger"
-        onClick={() => setOpen(true)}
+        onClick={event => {
+          // Some engines (WebKit in particular) don't focus a <button> on a
+          // plain mouse click, only on keyboard activation. AppModal restores
+          // focus to whatever document.activeElement was when it opened, so
+          // without this the trigger never gets focus back after Escape closes
+          // the dialog in those engines.
+          event.currentTarget.focus();
+          setOpen(true);
+        }}
         aria-expanded={open}
       >
         <SlidersHorizontal size={15} />
