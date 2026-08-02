@@ -237,7 +237,13 @@ function MarketAiAnalystAnalysis({
             <button className={styles.secondaryAction} type="button" disabled={loading} onClick={() => void requestAnalysis(true)}>
               <RefreshCw size={16} aria-hidden="true" />{copy.analysis.refresh}
             </button>
-          ) : <Link className={styles.secondaryAction} href={signInHref}>{copy.analysis.signInRefresh}</Link>}
+          ) : (
+            // loginHrefForCurrentLocation() returns a fixed fallback during
+            // SSR and the exact current URL (incl. query) once mounted
+            // client-side -- the same intentional SSR/client difference the
+            // root layout already suppresses for dir/lang.
+            <Link className={styles.secondaryAction} href={signInHref} suppressHydrationWarning>{copy.analysis.signInRefresh}</Link>
+          )}
           <Link className={styles.linkAction} href={assistantHref}><MessageCircle size={16} aria-hidden="true" />{copy.chat.askAboutAsset}</Link>
         </div>
         {result ? <p className={styles.mutedText}>{copy.analysis.lastRefresh}: <span dir="ltr">{aiAnalystTimestamp(locale, result.generatedAt)}</span></p> : null}

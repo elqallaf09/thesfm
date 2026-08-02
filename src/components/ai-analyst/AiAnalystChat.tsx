@@ -130,7 +130,13 @@ export function AiAnalystChat({ symbol, assetType }: { symbol?: string; assetTyp
           </div>
         ) : (
           <div className={styles.statusRail} role="status">
-            {copy.signInRequired} <Link className={styles.linkAction} href={signInHref}>{copy.signIn}</Link>
+            {/* loginHrefForCurrentLocation() deliberately returns a fixed
+                fallback during SSR (no window) and the exact current
+                URL (incl. query) once mounted client-side, the same
+                intentional SSR/client difference the root layout already
+                suppresses for `dir`/`lang` — this link corrects itself the
+                moment React hydrates, before it is ever clickable. */}
+            {copy.signInRequired} <Link className={styles.linkAction} href={signInHref} suppressHydrationWarning>{copy.signIn}</Link>
           </div>
         )}
       </section>
