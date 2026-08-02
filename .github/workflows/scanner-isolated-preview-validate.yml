@@ -458,11 +458,14 @@ jobs:
           SCANNER_MAX_SLICE_SIZE: '5'
           SCANNER_TIME_BUDGET_MS: '30000'
           SCANNER_CONCURRENCY: '3'
+          SCANNER_HOST: 127.0.0.1
+          SCANNER_PORT: '3100'
         run: |
-          nohup pnpm exec next start --hostname 127.0.0.1 --port 3100 > server.log 2>&1 &
+          nohup pnpm exec next start --hostname "${SCANNER_HOST}" --port "${SCANNER_PORT}" > server.log 2>&1 &
           echo $! > server.pid
           for i in $(seq 1 60); do
-            if curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3100/ | grep -q '^[23]'; then
+            scanner_base_url="http://${SCANNER_HOST}:${SCANNER_PORT}"
+            if curl -s -o /dev/null -w '%{http_code}' "${scanner_base_url}/" | grep -q '^[23]'; then
               echo "Server is responsive after ${i} check(s)."
               exit 0
             fi
@@ -474,10 +477,11 @@ jobs:
 
       - name: Run the scanner validation matrix
         env:
-          SCANNER_BASE_URL: http://127.0.0.1:3100
+          SCANNER_HOST: 127.0.0.1
+          SCANNER_PORT: '3100'
           SUPABASE_BRANCH_URL: ${{ env.SUPABASE_BRANCH_URL }}
           SUPABASE_BRANCH_SERVICE_ROLE_KEY: ${{ env.SUPABASE_BRANCH_SERVICE_ROLE_KEY }}
-        run: node .github/scripts/scanner-validate.mjs
+        run: SCANNER_BASE_URL="http://${SCANNER_HOST}:${SCANNER_PORT}" node .github/scripts/scanner-validate.mjs
 
       - name: Stop the production server
         if: always()
