@@ -38,6 +38,7 @@ import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type GrowthTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -857,41 +858,6 @@ function getLang(lang: string): LangCode {
   return lang === 'en' || lang === 'fr' ? lang : 'ar';
 }
 
-function safeUrl(url: string | null | undefined) {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeTitle(value: string | null | undefined) {
-  return String(value ?? '')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
-function dedupeNews(items: GrowthNewsItem[]) {
-  const seen = new Set<string>();
-  const result: GrowthNewsItem[] = [];
-  for (const item of items) {
-    const canonical = safeUrl(item.url);
-    const titleKey = normalizeTitle(item.titleOriginal || item.title || item.headline);
-    const key = canonical ? `url:${canonical}` : item.id ? `id:${item.id}` : `${item.source}:${titleKey}`;
-    if (!titleKey && !canonical) continue;
-    if (seen.has(key) || seen.has(`title:${titleKey}`)) continue;
-    seen.add(key);
-    if (titleKey) seen.add(`title:${titleKey}`);
-    result.push(item);
-  }
-  return result;
-}
-
 function numberFormatter(lang: LangCode, options?: Intl.NumberFormatOptions) {
   return new Intl.NumberFormat(LOCALE_BY_LANG[lang], options);
 }
@@ -1453,7 +1419,7 @@ export function GrowthStocksNewsPage() {
   }, [tab]);
 
   const stockRows = useMemo(() => buildStockRows(ticker?.ok ? ticker.items : [], activeLang), [activeLang, ticker]);
-  const dedupedNews = useMemo(() => news?.success ? dedupeNews(news.items) : [], [news]);
+  const dedupedNews = useMemo(() => news?.success ? dedupeNewsItems(news.items) : [], [news]);
   const sectorStats = useMemo(() => buildSectorStats(stockRows, activeLang), [activeLang, stockRows]);
 
   const filteredStocks = useMemo(() => {
@@ -4219,7 +4185,7 @@ function FeaturedNews({ items, text, lang, originalVisibleIds, toggleOriginal }:
 }
 
 function NewsCard({ item, text, lang, showOriginal, toggleOriginal, lead }: { item: GrowthNewsItem; text: typeof COPY[LangCode]; lang: LangCode; showOriginal: boolean; toggleOriginal: () => void; lead?: boolean }) {
-  const url = safeUrl(item.url);
+  const url = safeExternalNewsUrl(item.url);
   const title = safeArticleTitle(item, showOriginal);
   const summary = safeArticleSummary(item, showOriginal);
   const sector = sectorLabel(classifyNewsSector(item), lang);
@@ -4254,7 +4220,7 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal, lead }: { it
 }
 
 function CompactNewsRow({ item, text, lang }: { item: GrowthNewsItem; text: typeof COPY[LangCode]; lang: LangCode }) {
-  const url = safeUrl(item.url);
+  const url = safeExternalNewsUrl(item.url);
   return (
     <article className="compact-row">
       <div className="article-meta">

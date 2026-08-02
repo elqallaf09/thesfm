@@ -35,6 +35,7 @@ import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
+import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type DividendTab = 'overview' | 'explorer' | 'featured' | 'calendar' | 'news' | 'education';
@@ -1061,41 +1062,6 @@ function formatRelative(value: string | null | undefined, lang: LangCode) {
   return rtf.format(Math.round(diffHours / 24), 'day');
 }
 
-function safeUrl(url: string | null | undefined) {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeTitle(value: string | null | undefined) {
-  return String(value ?? '')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
-function dedupeNews(items: DividendNewsItem[]) {
-  const seen = new Set<string>();
-  const result: DividendNewsItem[] = [];
-  for (const item of items) {
-    const url = safeUrl(item.url);
-    const title = normalizeTitle(item.titleOriginal || item.title || item.headline);
-    const key = url ? `url:${url}` : item.id ? `id:${item.id}` : `${item.source}:${title}`;
-    if (!url && !title) continue;
-    if (seen.has(key) || seen.has(`title:${title}`)) continue;
-    seen.add(key);
-    if (title) seen.add(`title:${title}`);
-    result.push(item);
-  }
-  return result;
-}
-
 function toneForChange(value: number | null | undefined): Tone {
   if (typeof value !== 'number' || !Number.isFinite(value)) return 'neutral';
   if (value > 0.15) return 'positive';
@@ -1541,7 +1507,7 @@ export function DividendStocksNewsPage() {
   const calendarMarkets = useMemo(() => calendar?.availableFilters?.markets ?? uniqueOptions(events.map(event => event.market)), [calendar, events]);
   const calendarSymbols = useMemo(() => calendar?.availableFilters?.symbols ?? uniqueOptions(events.map(event => event.symbol)), [calendar, events]);
   const calendarTypes = useMemo(() => calendar?.availableFilters?.types ?? uniqueOptions(events.map(event => event.type)), [calendar, events]);
-  const dedupedNews = useMemo(() => news?.success ? dedupeNews(news.items) : [], [news]);
+  const dedupedNews = useMemo(() => news?.success ? dedupeNewsItems(news.items) : [], [news]);
   const sources = useMemo(() => uniqueOptions(dedupedNews.map(item => item.source)), [dedupedNews]);
   const symbols = useMemo(() => uniqueOptions(dedupedNews.map(item => item.ticker?.toUpperCase())), [dedupedNews]);
 
@@ -3031,7 +2997,7 @@ function DividendEventEmptyState({
   );
 }
 function NewsCard({ item, text, lang, showOriginal, toggleOriginal }: { item: DividendNewsItem; text: typeof COPY[LangCode]; lang: LangCode; showOriginal: boolean; toggleOriginal: () => void }) {
-  const url = safeUrl(item.url);
+  const url = safeExternalNewsUrl(item.url);
   const title = safeArticleTitle(item, showOriginal);
   const summary = safeArticleSummary(item, showOriginal);
   const impact = newsImpact(item);
@@ -3078,7 +3044,7 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal }: { item: Di
 }
 
 function CompactNewsRow({ item, text, lang }: { item: DividendNewsItem; text: typeof COPY[LangCode]; lang: LangCode }) {
-  const url = safeUrl(item.url);
+  const url = safeExternalNewsUrl(item.url);
   const summary = safeArticleSummary(item, false);
   return (
     <article className="compact-row">
