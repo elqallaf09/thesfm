@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { BarChart3, ChevronDown, History, RefreshCw } from 'lucide-react';
+import { BarChart3, ChevronDown, History, MessageCircle, RefreshCw } from 'lucide-react';
 import type { AnalysisResult, IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
 import { IntelligencePanel, IntelligenceStatusPanel } from '@/components/intelligence/IntelligencePanel';
 import { useAuth } from '@/hooks/useAuth';
@@ -207,6 +207,10 @@ function MarketAiAnalystAnalysis({
     const params = new URLSearchParams({ symbol, assetType, horizon, view: 'timeline' });
     return `/ai-analyst/history?${params.toString()}`;
   }, [assetType, horizon, symbol]);
+  const assistantHref = useMemo(() => {
+    const params = new URLSearchParams({ symbol, assetType });
+    return `/ai-analyst/assistant?${params.toString()}`;
+  }, [assetType, symbol]);
   const signInHref = useMemo(() => loginHrefForCurrentLocation(`/ai-analyst/analyze/${encodeURIComponent(symbol)}`), [symbol]);
   const retryMessage = retryAfterSeconds && errorCode
     ? `${copy.analysis.retryAvailable} ${retryAfterSeconds}s`
@@ -234,6 +238,7 @@ function MarketAiAnalystAnalysis({
               <RefreshCw size={16} aria-hidden="true" />{copy.analysis.refresh}
             </button>
           ) : <Link className={styles.secondaryAction} href={signInHref}>{copy.analysis.signInRefresh}</Link>}
+          <Link className={styles.linkAction} href={assistantHref}><MessageCircle size={16} aria-hidden="true" />{copy.chat.askAboutAsset}</Link>
         </div>
         {result ? <p className={styles.mutedText}>{copy.analysis.lastRefresh}: <span dir="ltr">{aiAnalystTimestamp(locale, result.generatedAt)}</span></p> : null}
         {retryMessage ? <p className={styles.statusRail} role="status">{retryMessage}</p> : null}

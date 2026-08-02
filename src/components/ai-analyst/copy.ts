@@ -131,6 +131,7 @@ export const AI_ANALYST_COPY = {
       signInRequired: 'سجّل الدخول لبدء محادثة مع المساعد الذكي.',
       signIn: 'تسجيل الدخول',
       unresolvedAssetNotice: 'تعذّر التحقق من هذا الرمز، لذا سيطلب المساعد توضيحاً بدلاً من افتراض نوعه.',
+      askAboutAsset: 'اسأل المساعد عن هذا الأصل',
     },
     history: {
       title: 'مسار الذكاء والسجل',
@@ -283,6 +284,7 @@ export const AI_ANALYST_COPY = {
       signInRequired: 'Sign in to start a conversation with the AI Assistant.',
       signIn: 'Sign in',
       unresolvedAssetNotice: 'This symbol could not be verified, so the assistant will ask for clarification instead of assuming its type.',
+      askAboutAsset: 'Ask the Assistant about this asset',
     },
     history: {
       title: 'Intelligence timeline and history',
@@ -435,6 +437,7 @@ export const AI_ANALYST_COPY = {
       signInRequired: 'Connectez-vous pour démarrer une conversation avec l’Assistant IA.',
       signIn: 'Se connecter',
       unresolvedAssetNotice: 'Ce symbole n’a pas pu être vérifié ; l’assistant demandera donc une clarification plutôt que de supposer son type.',
+      askAboutAsset: 'Demander à l’Assistant à propos de cet actif',
     },
     history: {
       title: 'Chronologie et historique de l’intelligence',
