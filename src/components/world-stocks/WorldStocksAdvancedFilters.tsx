@@ -137,6 +137,9 @@ export function WorldStocksAdvancedFilters({
         .world-stocks-active-filters button b{min-width:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
         .world-stocks-active-filters button:hover,.world-stocks-active-filters button:focus-visible{outline:none;border-color:var(--primary);box-shadow:var(--focus-shadow)}
         .world-stocks-active-filters .world-stocks-clear-btn{background:transparent}
+        @media(max-width:760px){
+          .world-stocks-clear-btn,.world-stocks-active-filters button{min-height:44px}
+        }
       `}</style>
     </>
   );

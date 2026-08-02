@@ -383,9 +383,11 @@ export function WorldStocksPage() {
                   <th
                     scope="col"
                     aria-sort={sort === 'name' ? 'ascending' : undefined}
-                    onClick={() => setSort('name')}
                   >
-                    {ui.colCompany}
+                    <button type="button" className={styles.sortHeaderBtn} onClick={() => setSort('name')}>
+                      {ui.colCompany}
+                      {sort === 'name' ? <ArrowUp size={13} aria-hidden="true" /> : null}
+                    </button>
                   </th>
                   <th scope="col">{ui.colMarket}</th>
                   <th scope="col" className={styles.numericCol}>{ui.colPrice}</th>
@@ -393,9 +395,8 @@ export function WorldStocksPage() {
                     scope="col"
                     className={styles.numericCol}
                     aria-sort={sort === 'change_desc' ? 'descending' : sort === 'change_asc' ? 'ascending' : undefined}
-                    onClick={() => setSort(sort === 'change_desc' ? 'change_asc' : 'change_desc')}
                   >
-                    <button type="button" className={styles.sortHeaderBtn}>
+                    <button type="button" className={styles.sortHeaderBtn} onClick={() => setSort(sort === 'change_desc' ? 'change_asc' : 'change_desc')}>
                       {ui.colChange}
                       {sort === 'change_desc' ? <ArrowDown size={13} aria-hidden="true" /> : sort === 'change_asc' ? <ArrowUp size={13} aria-hidden="true" /> : null}
                     </button>

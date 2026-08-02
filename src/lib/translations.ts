@@ -34,7 +34,6 @@ import { TR_SETTINGS } from './translations/settings';
 import { TR_SHARIA_RESEARCH } from './translations/sharia-research';
 import { TR_STOCK } from './translations/stock';
 import { TR_TECH } from './translations/tech';
-import { TR_WORLD_STOCKS } from './translations/worldStocks';
 
 export const TR: Record<string, TranslationEntry> = {
   ...TR_ADMIN,
@@ -60,7 +59,6 @@ export const TR: Record<string, TranslationEntry> = {
   ...TR_SHARIA_RESEARCH,
   ...TR_STOCK,
   ...TR_TECH,
-  ...TR_WORLD_STOCKS,
 };
 
 export function t(key: keyof typeof TR, lang: Lang): string {

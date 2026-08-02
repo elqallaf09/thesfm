@@ -219,6 +219,11 @@ export function WorldStocksDetailPage({ symbol, region }: WorldStocksDetailPageP
       ) : stock ? (
         <>
           <header className={styles.header}>
+            {/* AssetIdentity renders the name visually inside its own badge
+                markup, not as a heading element -- this sr-only h1 gives the
+                page the one real heading the document outline needs without
+                visually duplicating the name already shown in the badge. */}
+            <h1 className={styles.srOnly}>{`${stock.displayName} (${stock.canonicalSymbol})`}</h1>
             <AssetIdentity variant="badge" symbol={stock.canonicalSymbol} name={stock.displayName} assetType={stock.assetType} size="lg" />
             <div className={styles.headerMeta}>
               <span>{stock.exchangeName}</span>
