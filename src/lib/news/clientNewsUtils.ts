@@ -18,6 +18,24 @@ export function safeExternalNewsUrl(url: string | null | undefined): string | nu
   }
 }
 
+// Canonical form of a safety-validated article URL for deduplication: no
+// fragment, sorted query params, no trailing slash. Returns '' (not null)
+// for an unsafe/malformed URL so callers can use it directly in a
+// `.filter(Boolean)` dedup-key list.
+export function canonicalExternalNewsUrl(url: string | null | undefined): string {
+  const safeUrl = safeExternalNewsUrl(url);
+  if (!safeUrl) return '';
+
+  try {
+    const parsed = new URL(safeUrl);
+    parsed.hash = '';
+    parsed.searchParams.sort();
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
 export function normalizeNewsTitle(value: string | null | undefined): string {
   return String(value ?? '')
     .toLowerCase()

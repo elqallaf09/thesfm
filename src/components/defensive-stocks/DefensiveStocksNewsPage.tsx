@@ -33,7 +33,7 @@ import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContain
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
-import { safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
+import { canonicalExternalNewsUrl, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type HubTab = 'overview' | 'stocks' | 'news' | 'sectors';
@@ -689,26 +689,12 @@ function normalizeTitle(value = '') {
     .trim();
 }
 
-function cleanUrl(value = '') {
-  const safeUrl = safeExternalNewsUrl(value);
-  if (!safeUrl) return '';
-
-  try {
-    const url = new URL(safeUrl);
-    url.hash = '';
-    url.searchParams.sort();
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return '';
-  }
-}
-
 function dedupeNews(items: DefensiveNewsItem[]) {
   const seen = new Set<string>();
   return items.filter(item => {
     const keys = [
       item.id,
-      cleanUrl(item.url),
+      canonicalExternalNewsUrl(item.url),
       normalizeTitle(item.title || item.headline || item.titleOriginal || ''),
     ].filter(Boolean);
     const duplicate = keys.some(key => seen.has(key));
