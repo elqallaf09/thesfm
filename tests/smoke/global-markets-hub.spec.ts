@@ -5,6 +5,8 @@ function stripsPayload(overrides: Record<string, unknown> = {}) {
     success: true,
     lastUpdated: new Date().toISOString(),
     prices: {
+      'NBK.KW': { symbol: 'NBK.KW', price: 1.02, change: 0.01, changePercent: 0.99, source: 'Yahoo Finance', delayed: true, available: true },
+      '2222.SR': { symbol: '2222.SR', price: 24.82, change: -0.1, changePercent: -0.40, source: 'Yahoo Finance', delayed: true, available: true },
       AAPL: { symbol: 'AAPL', price: 308.91, change: -24.52, changePercent: -7.35, source: 'Yahoo Finance', delayed: true, available: true },
       MSFT: { symbol: 'MSFT', price: 464.72, change: 13.62, changePercent: 3.02, source: 'Yahoo Finance', delayed: true, available: true },
       'GC=F': { symbol: 'GC=F', price: 4123.9, change: 16.8, changePercent: 0.41, source: 'Finnhub', delayed: true, available: true },
@@ -29,6 +31,10 @@ function newsPayload() {
         sourceName: 'Reuters',
         publishedAt: new Date().toISOString(),
         url: 'https://example.com/gm-story-1',
+        relatedSymbols: ['AAPL'],
+        exchangeCodes: ['NASDAQ'],
+        countryCodes: ['US'],
+        originalLanguage: 'en',
       },
     ],
     total: 1,
@@ -53,31 +59,16 @@ async function useEnglish(page: Page) {
 }
 
 test.describe('Global Markets Hub', () => {
-  test('renders every required country/exchange strip as its own separate section, with no combined labels', async ({ page }) => {
+  test('renders exactly the four persisted primary strips instead of stacking the full catalog', async ({ page }) => {
     await useEnglish(page);
     await mockGlobalMarkets(page);
     await page.goto('/global-markets');
 
     await expect(page.locator('.gm-strip-heading-label').last()).toBeVisible();
     const headings = await page.locator('.gm-strip-heading-label').allTextContents();
-    const expectedLabels = [
-      'United States — NASDAQ',
-      'United States — NYSE',
-      'Japan — Tokyo Stock Exchange',
-      'China — Shanghai Stock Exchange',
-      'China — Shenzhen Stock Exchange',
-      'Hong Kong — HKEX',
-      'India — National Stock Exchange (NSE)',
-      'India — Bombay Stock Exchange (BSE)',
-      'South Korea — Korea Exchange (KRX)',
-      'Canada — Toronto Stock Exchange (TSX)',
-      'Australia — ASX',
-      'Forex',
-      'Commodities & Metals',
-      'Crypto',
-      'Global Indices',
-    ];
+    const expectedLabels = ['Kuwait — Boursa Kuwait', 'Saudi Arabia — Tadawul', 'United States — NASDAQ', 'Forex'];
     expect(headings).toEqual(expectedLabels);
+    expect(headings).toHaveLength(4);
     expect(new Set(headings).size).toBe(headings.length);
   });
 
@@ -98,11 +89,11 @@ test.describe('Global Markets Hub', () => {
     await mockGlobalMarkets(page);
     await page.goto('/global-markets');
 
-    const jpmCard = page.locator('.gm-strip-item', { hasText: 'JPM' }).first();
-    await expect(jpmCard).toContainText('Unavailable');
+    const unresolvedCard = page.locator('.gm-strip-item', { hasText: 'KFH.KW' }).first();
+    await expect(unresolvedCard).toContainText('Unavailable');
 
     const forexCard = page.locator('.gm-strip-item', { hasText: 'EUR/USD' }).first();
-    await expect(forexCard).toContainText('Sector unavailable');
+    await expect(forexCard).toContainText('Forex');
   });
 
   test('renders each ticker track with continuous animation by default', async ({ page }) => {
@@ -148,11 +139,54 @@ test.describe('Global Markets Hub', () => {
   });
 
   test('renders correctly in Arabic RTL with no page-level horizontal overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await mockGlobalMarkets(page);
     await page.addInitScript(() => localStorage.setItem('sfm_lang', 'ar'));
     await page.goto('/global-markets');
 
     await expect(page.locator('.gm-shell[dir="rtl"]')).toBeVisible();
+    const widths = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
+  });
+
+  test('opens an accessible mobile picker, enforces 4/4, reorders, and persists after reload', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await useEnglish(page);
+    await mockGlobalMarkets(page);
+    await page.goto('/global-markets');
+
+    await expect(page.locator('.gm-selection')).toContainText('4 / 4');
+    await page.getByRole('button', { name: 'Customize markets' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Customize markets' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Selected markets: 4 / 4');
+
+    const before = await dialog.locator('.gm-picker-order li').allTextContents();
+    await dialog.getByRole('button', { name: /Move down: Kuwait/ }).click();
+    const after = await dialog.locator('.gm-picker-order li').allTextContents();
+    expect(after[0]).not.toBe(before[0]);
+    await dialog.getByRole('button', { name: /Save markets/ }).click();
+    await page.reload();
+    await expect(page.locator('.gm-strip-heading-label').first()).toContainText('Saudi Arabia');
+    await expect(page.locator('.gm-strip')).toHaveCount(4);
+  });
+
+  test('keeps compact strips within mobile dimensions and renders six initial news rows', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await useEnglish(page);
+    const news = newsPayload();
+    news.items = Array.from({ length: 12 }, (_, index) => ({ ...news.items[0], id: `story-${index}`, title: `Verified market story ${index}` }));
+    await mockGlobalMarkets(page, stripsPayload(), news);
+    await page.goto('/global-markets');
+
+    const box = await page.locator('.gm-strip-item').first().boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(128);
+    expect(box?.width).toBeLessThanOrEqual(150);
+    expect(box?.height).toBeGreaterThanOrEqual(64);
+    expect(box?.height).toBeLessThanOrEqual(76);
+    await expect(page.locator('.gm-news-list li')).toHaveCount(6);
+    await page.getByRole('button', { name: 'Load more' }).click();
+    await expect(page.locator('.gm-news-list li')).toHaveCount(12);
     const widths = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
   });
@@ -198,6 +232,8 @@ test.describe('Global Markets Hub', () => {
     await expect(page.locator('.gm-strip-heading-label').first()).toBeVisible();
     expect(stripsRequests).toHaveLength(1);
     expect(newsRequests).toHaveLength(1);
+    expect(stripsRequests[0]).toContain('ids=kuwait_boursa%2Csaudi_tadawul%2Cus_nasdaq%2Cforex');
+    expect(newsRequests[0]).toContain('marketIds=kuwait_boursa%2Csaudi_tadawul%2Cus_nasdaq%2Cforex');
   });
 
   test('navigation exposes Global Markets Hub, Tech Market News, and AI Analyst as three separate entries', async ({ page, isMobile }) => {
