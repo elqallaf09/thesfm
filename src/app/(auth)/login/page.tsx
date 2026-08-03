@@ -1078,7 +1078,7 @@ function LoginContent() {
             </button>
             <button
               type="button"
-              className="guest-action"
+              className="guest-action guest-btn"
               onClick={enterGuestMode}
               disabled={!hydrated || guestSubmitting || submitting || !!socialLoading}
               aria-busy={guestSubmitting}
