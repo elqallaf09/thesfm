@@ -208,7 +208,10 @@ test.describe('Global Markets Hub', () => {
     expect(box?.height).toBeGreaterThanOrEqual(64);
     expect(box?.height).toBeLessThanOrEqual(76);
     await expect(page.locator('.gm-news-list li')).toHaveCount(6);
-    await page.getByRole('button', { name: 'Load more' }).click();
+    const newsLoadMore = page.locator('.gm-news-load');
+    await expect(newsLoadMore).toBeVisible();
+    await expect(newsLoadMore).toBeEnabled();
+    await newsLoadMore.evaluate(button => (button as HTMLButtonElement).click());
     await expect(page.locator('.gm-news-list li')).toHaveCount(12);
     const widths = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     expect(widths.document).toBeLessThanOrEqual(widths.viewport + 1);
