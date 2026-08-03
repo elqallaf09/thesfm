@@ -4,7 +4,210 @@ Design-only pass on THE SFM's global header — workspace switcher + utility
 command cluster — plus a smaller earlier pass on high-traffic tab/filter
 patterns elsewhere. No business logic, routes, or copy changed.
 
-## Round 6 (current): consolidation first, then a mobile-verification breakthrough
+## Round 7 (current): freeze, audit, one final architecture
+
+Round 6 was rejected on sight, and the user stopped the incremental
+per-round tuning process entirely: "header too small, ordinary tab-like
+navigation, weak visual presence, excessive empty space on wide screens, no
+clear signature interaction." Instead of another round of value nudges, the
+instruction was to freeze PR #111, audit the full six-round diff, identify
+what's genuinely reusable vs. rejected experimentation, and land **one**
+consolidated final architecture — reported and approved as a plan before
+any further edits were made.
+
+### The audit's key finding: no leftover dead CSS from rounds 1–5
+
+Each round edited the same declarations in place rather than stacking
+parallel rule sets — there was no pile of old "Variant 03/04/05" CSS sitting
+unused in the tree to delete. The "six historical layers" existed in commit
+messages and in test/comment **narration** (`globalHeaderVariant03.test.ts`,
+comments citing "Variant 03/04/05/06" rejecting each other), not as live
+CSS. That narration is now gone — see "Test and comment consolidation"
+below.
+
+### The real bug: two competing render-blocking geometry copies, not one
+
+The audit turned up something round 6 missed entirely. There are (were)
+**three** places declaring the header's pre-paint geometry:
+
+1. `AppHeader.tsx`'s own `<style jsx global>` (the real, final, hydrated styles)
+2. `globals.css`'s "critical CSS" block (round 6 synced this to match #1)
+3. **`src/app/workspace-chrome-critical.css`** — a *separate* critical-CSS
+   file, imported in `layout.tsx`, that nobody had touched in six rounds. It
+   was still frozen at pre-round-1 values (3-column `auto`/`1fr`/`auto` grid,
+   14px gap, `var(--control-h)` switcher height) and, because it's imported
+   **after** `globals.css` in `layout.tsx`, it silently won the cascade over
+   both #1 and #2 for every matching selector at equal specificity.
+
+This means round 6's careful critical-CSS sync fix in `globals.css` was
+being shadowed the entire time by an even-staler, previously undiscovered
+duplicate — the pre-hydration paint was still using round-1-era geometry.
+Fixed by making `workspace-chrome-critical.css` the single owner: its header
+rules were resynced to the current values, and `globals.css`'s now fully
+redundant copy (`.sfm-global-header` + both breakpoints, ~87 lines) was
+**deleted outright** rather than kept in sync a second time. A new test
+(`workspaceChromeFirstPaint.test.ts`) now asserts `globals.css` never
+regains a competing `.sfm-global-header` rule, and cross-checks
+`workspace-chrome-critical.css`'s grid/height values against `AppHeader.tsx`
+numerically so this class of drift fails CI instead of shipping silently.
+
+This deletion is also where this round's real, measured CSS-byte reduction
+came from — see below.
+
+### The root cause of "insufficient presence" / "excessive empty space"
+
+`AppHeader.tsx`'s grid was:
+```
+grid-template-columns: minmax(240px, 1fr) auto minmax(360px, 1fr);
+```
+Brand (left) and the utility cluster (right) were both `1fr` — they grow to
+fill *any* leftover viewport width, even though neither's actual content (a
+36px logo + wordmark; a compact 5-icon cluster) ever needs more than a few
+hundred px. On a 1920px+ display, all the "extra" width became inert empty
+space flanking the logo and the icon cluster, while the workspace switcher
+(the `auto` center column) never grew at all. That's the mechanical cause
+of both complaints, and it survived five rounds of padding/height/colour
+tuning because no round had changed *which* column was flexible.
+
+**Fix:** the flexible track moved to the center column:
+```
+grid-template-columns: minmax(240px, max-content) minmax(0, 1fr) minmax(360px, max-content);
+```
+Brand and actions now size to their own content and stop stretching. All
+leftover width flows into the center column, where the switcher is already
+`justify-self: center` — leftover space now reads as normal centered
+breathing room around the switcher, not dead margins around unrelated
+content. Verified via direct DOM measurement at 1920px: header
+`marginLeft`/`marginRight` are both exactly `192px` (symmetric), confirming
+correct centering, not an accident of the eye.
+
+### One decisive dimensional pass (not another 2px nudge)
+
+Every value below is an edit to an already-existing declaration — no new
+selectors, no new properties:
+
+| Property | Round 6 | Round 7 |
+|---|---|---|
+| Header row height | 64px | **72px** |
+| Header outer cap (`max-width`) | 120rem / 1920px (never actually constrained a native 1920 display) | **96rem / 1536px** (verified: header measures exactly 1536px at a 1920px viewport, centered) |
+| Grid flanking columns | `1fr` (the actual bug, see above) | `max-content`, center gets `1fr` |
+| Workspace switcher height | 46px | **52px** |
+| Switcher item padding | 16px | **20px** |
+| Switcher item icon size | 18px | **20px** |
+| Switcher track contrast (light) | 4% foreground mix | **8%** |
+| Switcher frame shadow | `0 10px 24px -14px` | **`0 14px 32px -12px`** (more visible elevation) |
+| Mobile/tablet (≤1179px) fixed header height | 108px | **120px** (48px brand/actions row + 52px switcher row + 2×10px padding) |
+
+### Code and test consolidation
+
+- **Selector grouping**: the header's repeated 5-selector hover/idle rules
+  for the utility cluster (`sfm-command-trigger`, `sfm-language-trigger`,
+  `sfm-theme-toggle`, `sfm-density-toggle`, `sfm-user-chip`) are now grouped
+  with `:is(...)` once instead of repeated per rule — shorter source, same
+  behavior, entirely local to `AppHeader.tsx`'s own style block (does not
+  touch the five other components that own those class names elsewhere).
+- **Dead token cleanup**: removed `--global-header-height: 64px` from
+  `tokens.css` — traced the full cascade and confirmed it was always shadowed
+  by the critical-CSS files (both of which load after it), never once the
+  effective value on any route. Also removed a stale, functionless "Vercel
+  preview trigger: Variant 03 verified" comment.
+- **"Variant 03/04/05/06" narration removed** everywhere it appeared in
+  source comments (`AppHeader.tsx`, `WorkspaceSwitcher.tsx`, `themes.css`,
+  `tokens.css`) — replaced with plain rationale, since only one
+  implementation ships and the numbered-variant framing no longer describes
+  anything real in the tree.
+- **Test file consolidation**: `globalHeaderVariant03.test.ts` and
+  `workspaceSwitcherPremiumSegmentedControl.test.ts` are deleted. Their
+  non-redundant assertions were merged into `headerWorkspaceNavigation.test.ts`
+  and `workspaceSwitcherAffordance.test.ts` respectively (all numeric
+  assertions updated to the new values); assertions that duplicated existing
+  coverage were dropped rather than carried forward a third time. Net: 4
+  header/switcher-specific test files → 2, same or greater assertion
+  coverage, no "Variant N" naming left anywhere. `workspaceChromeFirstPaint.test.ts`
+  gained the two new cross-file sync/single-owner assertions described above.
+
+### Nothing was git-reverted
+
+Per the audit finding, there was no commit to revert — rounds 1–5's
+rejected visual attempts were already overwritten in place by later rounds
+and are not present in current file contents. This round's diff is edits to
+the already-consolidated implementation, plus the workspace-chrome-critical.css
+discovery and cleanup above.
+
+### Files retained exactly as-is
+
+Confirmed reusable and not touched this round: the sliding-indicator
+mechanism in `WorkspaceSwitcher.tsx` (refs, `useLayoutEffect`/`useEffect`,
+`ResizeObserver`, first-paint snap, RTL-safe `offsetLeft`/`offsetWidth`
+measurement); the route/accessibility contract (`aria-current`,
+`prefetch={false}`, no `useState`/`onClick`/`router.push`, hover/press via
+CSS `:has()`); the unrelated proven soft-tint tab/filter pattern in
+`employees/page.tsx`, `expenses/monthly-subscriptions/page.tsx`,
+`CompanyAdminClient.tsx`, `InstagramAutomationClient.tsx`,
+`DefensiveStocksNewsPage.tsx`, `ProjectFinancialModelTab.tsx`,
+`TechNewsLayoutStyles.tsx`; the Playwright real-device screenshot
+methodology.
+
+### CSS budget: a genuine, measured reduction this time
+
+Unlike every prior round, this one produced real headroom — not from value
+tuning (which nets to ~0 bytes by design) but from deleting the fully
+redundant `globals.css` critical-CSS block once `workspace-chrome-critical.css`
+became its sole replacement:
+
+| Route | Round 6 | Round 7 | Change |
+|---|---|---|---|
+| `/` initial CSS (gzip) | 65.4 / 65.4 KiB (exact ceiling) | **65.1 / 65.4 KiB** | −0.3 KiB, real headroom |
+| `/today` initial CSS (gzip) | 65.4 / 65.4 KiB | **65.1 / 65.4 KiB** | −0.3 KiB |
+| `/invest` initial CSS (gzip) | 65.4 / 65.4 KiB | **65.1 / 65.4 KiB** | −0.3 KiB |
+
+`globals.css` itself dropped from 6,836 to 6,750 lines. This is still far
+short of the earlier <62 KiB ask — that target was never realistic from
+inside header/workspace scope, as explained in round 6 — but it is the
+first round to produce a measured, non-zero reduction instead of a net-zero
+value swap.
+
+### Docs correction (round 6 was wrong about this)
+
+Round 6's writeup claimed the ultra-wide `max-width: 120rem` cap was
+"reverted." It wasn't — it remained live in `AppHeader.tsx` the entire time;
+only the (already redundant, now-deleted) `globals.css` critical-CSS mirror
+lost it. That statement in the old round-6 section below is incorrect and
+is preserved as-is for history, corrected here rather than edited in place.
+
+### Screenshots
+
+Captured with the same Playwright-direct-launch technique introduced in
+round 6 (bypasses the `claude-in-chrome` extension's non-functional
+`resize_window`), against the real production build at
+`/investment-companies`. `v6-final-*` renamed to `v6-rejected-*` for
+consistency with the established per-round convention.
+
+| File | Viewport | Verified |
+|---|---|---|
+| `v7-final-mobile-390-{ar,en}-{light,dark}.png` | 390×844 | `innerWidth`, `dir`, `lang`, `isDark`, switcher height (52px) all match |
+| `v7-final-tablet-768-ar-{light,dark}.png` | 768×1024 | same |
+| `v7-final-desktop-1440-ar-{light,dark}.png` | 1440×900 | header height 74px (72px content + 1px border ×2), no cap engaged (1440 < 1536) |
+| `v7-final-desktop-1920-ar-{light,dark}.png` | 1920×1080 | header capped at exactly 1536px, centered with symmetric 192px margins |
+
+### Validation
+
+Same full suite as every round: `lint`, `typecheck`, `check:i18n`,
+`check:visual-system`, `check:maintainability`, `check:repo-hygiene` — all
+pass. `pnpm test:run`: **252 files / 2078 tests pass** (down from 254/2082
+after the 2-file test consolidation above — no coverage lost, confirmed by
+review, several assertions actually strengthened). `pnpm build` succeeds;
+`check:performance-budget` — all 15 rows PASS, with `/`, `/today`, `/invest`
+now showing real headroom (65.1/65.4 KiB) instead of sitting exactly on the
+ceiling.
+
+### Status
+
+Draft, not merged. Waiting for visual approval of round 7.
+
+---
+
+## Round 6: consolidation first, then a mobile-verification breakthrough
 
 Round 5 was rejected: header felt small/weak, the "elevated dock" wasn't
 perceptible, and mobile/tablet had gone **three rounds unverified**. This
@@ -135,32 +338,41 @@ switcher with the active destination already scrolled into view. At 768px
 (below the 1179px breakpoint) it uses the existing stacked two-row tablet
 layout. No page-level horizontal overflow observed in any capture.
 
-## All screenshots
+## Round 6 screenshots (historical — superseded by round 7)
 
-All `v6-final-*` files are **Playwright captures of the real production
-build** (`pnpm build && pnpm start`, guest-accessible `/investment-companies`
-route) at genuine device viewports — not the extension tool, not a preview
+All `v6-rejected-*` files (renamed from `v6-final-*` once round 6 was
+rejected) are **Playwright captures of the real production build**
+(`pnpm build && pnpm start`, guest-accessible `/investment-companies` route)
+at genuine device viewports — not the extension tool, not a preview
 harness. `v4-*`/`v5-*` remain from earlier rounds for history; `v3-user-reference-*`
 are the user's own original screenshots.
 
 | File | Viewport | What it shows |
 |---|---|---|
-| `v6-final-mobile-390-{ar,en}-{light,dark}.png` | 390×844 | Real mobile, both directions, both themes |
-| `v6-final-tablet-768-ar-{light,dark}.png` | 768×1024 | Real tablet |
-| `v6-final-desktop-1440-ar-{light,dark}.png` | 1440×900 | Real desktop |
-| `v6-final-desktop-1920-ar-{light,dark}.png` | 1920×1080 | Real wide desktop |
+| `v6-rejected-mobile-390-{ar,en}-{light,dark}.png` | 390×844 | Real mobile, both directions, both themes |
+| `v6-rejected-tablet-768-ar-{light,dark}.png` | 768×1024 | Real tablet |
+| `v6-rejected-desktop-1440-ar-{light,dark}.png` | 1440×900 | Real desktop |
+| `v6-rejected-desktop-1920-ar-{light,dark}.png` | 1920×1080 | Real wide desktop |
 
-**Note on the 1920px composition:** the ultra-wide `max-width` cap built in
-round 4 was reverted this round (see CSS budget section above) to keep the
-build within budget — at 1920px the header now spans the full available
-width again rather than capping and centering. The three-zone grid's
-balanced `minmax()` zones still keep the switcher reasonably positioned
-(visible in the 1920px screenshots), but the "no excessive empty space at
-ultra-wide" property is weaker than round 4's now-reverted fix provided.
-This is a direct, disclosed trade-off of the budget constraint, not an
-oversight.
+**Correction (added in round 7):** the paragraph below, as originally
+written, claims the ultra-wide `max-width` cap was "reverted this round" —
+**that was incorrect.** The cap remained live in `AppHeader.tsx` the entire
+time; only the (already-redundant, later deleted) `globals.css` critical-CSS
+mirror lost it. Left as originally written for an accurate history of what
+was believed at the time; see the round 7 section above for the real
+explanation and the fix.
 
-## Validation
+> Note on the 1920px composition: the ultra-wide `max-width` cap built in
+> round 4 was reverted this round (see CSS budget section above) to keep the
+> build within budget — at 1920px the header now spans the full available
+> width again rather than capping and centering. The three-zone grid's
+> balanced `minmax()` zones still keep the switcher reasonably positioned
+> (visible in the 1920px screenshots), but the "no excessive empty space at
+> ultra-wide" property is weaker than round 4's now-reverted fix provided.
+> This is a direct, disclosed trade-off of the budget constraint, not an
+> oversight.
+
+## Round 6 validation (historical)
 
 - `lint`, `typecheck`, `check:i18n`, `check:visual-system`,
   `check:maintainability`, `check:repo-hygiene` — all pass
@@ -178,7 +390,7 @@ oversight.
   viewport/device coverage specifically — it is not a replacement for full
   auth-gated E2E coverage, which remains CI's responsibility.
 
-## Status
+## Round 6 status (historical, superseded)
 
-Draft, not merged. Waiting for visual approval of round 6, with the CSS
-budget and 1920px trade-off flagged above for an explicit decision.
+Round 6 was rejected. See the round 7 section at the top of this document
+for current status.
