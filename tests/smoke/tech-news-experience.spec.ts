@@ -409,7 +409,7 @@ test.describe('Tech Market News redesigned experience', () => {
     await useEnglish(page);
     await mockTechNews(page);
     await page.goto('/tech-news');
-    await expect(page.locator('.tech-news-featured')).toBeVisible();
+    await expect(page.getByTestId('tech-news-unified-feed')).toBeVisible();
 
     await expect(page.locator('.gm-strip')).toHaveCount(0);
     await expect(page.locator('.gm-strip-heading-label')).toHaveCount(0);
