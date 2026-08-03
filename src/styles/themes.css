@@ -322,6 +322,20 @@
   --hero-foreground-muted: #E7EAFB;
   --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
 
+  /* Premium authentication experience */
+  --auth-page-background: radial-gradient(circle at 18% 18%, rgba(0, 126, 255, 0.17), transparent 28%), radial-gradient(circle at 78% 84%, rgba(34, 211, 238, 0.12), transparent 25%), linear-gradient(145deg, #030915 0%, #071426 48%, #06101D 100%);
+  --auth-page-grid: linear-gradient(rgba(47, 214, 192, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(47, 214, 192, 0.025) 1px, transparent 1px);
+  --auth-showcase-background: linear-gradient(150deg, rgba(13, 35, 63, 0.96), rgba(4, 18, 35, 0.98));
+  --auth-showcase-decoration: radial-gradient(circle at 75% 28%, rgba(18, 137, 255, 0.22), transparent 30%), radial-gradient(circle at 15% 88%, rgba(34, 211, 238, 0.16), transparent 30%);
+  --auth-preview-background: linear-gradient(145deg, rgba(15, 39, 69, 0.82), rgba(5, 20, 38, 0.88));
+  --auth-allocation-chart: radial-gradient(circle at center, #0A1A2D 48%, transparent 49%), conic-gradient(#22D3EE 0 68%, #1687FF 68% 90%, #625CFF 90%);
+  --auth-form-background: color-mix(in srgb, var(--surface-elevated) 96%, #D9EAFF);
+  --auth-action-background: linear-gradient(100deg, #1058ED, #087CF0 48%, #13C9DC);
+  --auth-chart-accent: #22D3EE;
+  --auth-chart-fade: rgba(34, 211, 238, 0);
+  --auth-showcase-foreground: #E8EEF6;
+  --auth-showcase-muted: rgba(232, 238, 246, 0.66);
+
   /* Restrained, abstract per-category identity washes for the unified
      market-news pages. Each is derived only from existing semantic tokens
      via color-mix, so the identical formula in :root and .dark tracks each
@@ -681,6 +695,20 @@
   --hero-foreground: #FFFFFF;
   --hero-foreground-muted: #D6DCF5;
   --hero-gradient: linear-gradient(135deg, var(--hero-gradient-start), var(--hero-gradient-mid) 58%, var(--hero-gradient-end));
+
+  /* Premium authentication experience */
+  --auth-page-background: radial-gradient(circle at 18% 18%, rgba(0, 126, 255, 0.17), transparent 28%), radial-gradient(circle at 78% 84%, rgba(34, 211, 238, 0.12), transparent 25%), linear-gradient(145deg, #030915 0%, #071426 48%, #06101D 100%);
+  --auth-page-grid: linear-gradient(rgba(47, 214, 192, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(47, 214, 192, 0.025) 1px, transparent 1px);
+  --auth-showcase-background: linear-gradient(150deg, rgba(13, 35, 63, 0.96), rgba(4, 18, 35, 0.98));
+  --auth-showcase-decoration: radial-gradient(circle at 75% 28%, rgba(18, 137, 255, 0.22), transparent 30%), radial-gradient(circle at 15% 88%, rgba(34, 211, 238, 0.16), transparent 30%);
+  --auth-preview-background: linear-gradient(145deg, rgba(15, 39, 69, 0.82), rgba(5, 20, 38, 0.88));
+  --auth-allocation-chart: radial-gradient(circle at center, #0A1A2D 48%, transparent 49%), conic-gradient(#22D3EE 0 68%, #1687FF 68% 90%, #625CFF 90%);
+  --auth-form-background: linear-gradient(155deg, #11233A, #091729);
+  --auth-action-background: linear-gradient(100deg, #1058ED, #087CF0 48%, #13C9DC);
+  --auth-chart-accent: #22D3EE;
+  --auth-chart-fade: rgba(34, 211, 238, 0);
+  --auth-showcase-foreground: #E8EEF6;
+  --auth-showcase-muted: rgba(232, 238, 246, 0.66);
 
   /* Restrained, abstract per-category identity washes for the unified
      market-news pages. Identical formula to the :root declaration above;
