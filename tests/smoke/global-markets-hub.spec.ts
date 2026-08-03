@@ -191,7 +191,14 @@ test.describe('Global Markets Hub', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await useEnglish(page);
     const news = newsPayload();
-    news.items = Array.from({ length: 12 }, (_, index) => ({ ...news.items[0], id: `story-${index}`, title: `Verified market story ${index}` }));
+    news.items = Array.from({ length: 12 }, (_, index) => ({
+      ...news.items[0],
+      id: `story-${index}`,
+      title: `Verified market story ${index}`,
+      headline: `Verified market story ${index}`,
+      url: `https://example.com/verified-market-story-${index}`,
+    }));
+    news.total = news.items.length;
     await mockGlobalMarkets(page, stripsPayload(), news);
     await page.goto('/global-markets');
 
@@ -241,7 +248,8 @@ test.describe('Global Markets Hub', () => {
       loadButton.click();
       loadButton.click();
     });
-    await expect(explorer.locator('.gm-strip-item')).toHaveCount(24);
+    const expectedCount = await page.evaluate(() => (matchMedia('(max-width: 767px)').matches ? 18 : 24));
+    await expect(explorer.locator('.gm-strip-item')).toHaveCount(expectedCount);
     await page.waitForFunction(() => performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
     const measure = await page.evaluate(() => performance.getEntriesByName('gm-explorer-append', 'measure').at(-1)?.duration ?? null);
     expect(measure).not.toBeNull();
