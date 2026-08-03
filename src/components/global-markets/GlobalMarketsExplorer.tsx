@@ -71,6 +71,7 @@ function buildRows(lang: Lang): ExplorerRow[] {
 }
 
 export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplorerProps) {
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState('');
   const [country, setCountry] = useState('all');
   const [exchange, setExchange] = useState('all');
@@ -120,6 +121,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
 
   function updateFilter(setter: (value: string) => void, value: string) {
     setter(value);
+    if (value && value !== 'all') setExpanded(true);
     setVisibleCount(PAGE_SIZE);
   }
 
@@ -138,7 +140,11 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
         />
       </div>
 
-      <div className="gm-explorer-filters">
+      <button type="button" className="gm-explorer-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
+        {lang === 'ar' ? (expanded ? 'إخفاء مستكشف الأصول' : 'عرض مستكشف الأصول') : lang === 'fr' ? (expanded ? 'Masquer l’explorateur' : 'Afficher l’explorateur') : (expanded ? 'Hide asset explorer' : 'Browse all assets')}
+      </button>
+
+      {expanded ? <><div className="gm-explorer-filters">
         <label className="gm-explorer-filter">
           <span>{t('global_markets_filter_country', lang)}</span>
           <select value={country} onChange={event => updateFilter(setCountry, event.target.value)}>
@@ -208,6 +214,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
                     symbol: row.symbol,
                     name: row.name,
                     sector: row.sector,
+                    assetType: row.kind,
                     price: quote?.available ? quote.price : null,
                     currency: inferStripCurrency(row.symbol),
                     changePercent: quote?.available ? quote.changePercent : null,
@@ -230,7 +237,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
             <p className="gm-explorer-all-loaded" role="status">{t('global_markets_all_loaded', lang)}</p>
           )}
         </>
-      )}
+      )}</> : null}
 
       <style jsx>{`
         .gm-explorer {
@@ -304,6 +311,18 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           color: var(--foreground-secondary);
           font-size: 12.5px;
           font-weight: 600;
+          cursor: pointer;
+        }
+
+        .gm-explorer-toggle {
+          justify-self: start;
+          min-height: 44px;
+          padding: 0 16px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: var(--surface-muted);
+          color: var(--foreground);
+          font-weight: 650;
           cursor: pointer;
         }
 

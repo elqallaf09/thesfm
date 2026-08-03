@@ -205,6 +205,14 @@ export function GlobalMarketsLayoutStyles() {
       }
 
       @media (max-width: 640px) {
+        [dir] .gm-shell .gm-main { gap: 12px; }
+        .gm-header { padding: 11px 12px; }
+        .gm-header-icon { inline-size: 36px; block-size: 36px; }
+        .gm-header-copy p { display: none; }
+        .gm-header-updated { display: none; }
+        .gm-strips { gap: 9px; }
+        .gm-strips-skeleton { gap: 9px; }
+        .gm-strips-skeleton-row { min-height: 104px; }
         .gm-selection { align-items: stretch; flex-direction: column; }
         .gm-selection button { width: 100%; }
         .gm-picker-options { grid-template-columns: 1fr; }

@@ -2,7 +2,7 @@
 
 import { TrendingDown, TrendingUp } from 'lucide-react';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
-import type { GlobalMarketSector } from '@/lib/market/globalMarketStrips';
+import type { GlobalMarketSector, GlobalMarketStripKind } from '@/lib/market/globalMarketStrips';
 import { SECTOR_LABEL } from '@/lib/market/globalMarketStrips';
 import type { Lang } from '@/lib/translations';
 import { t } from '@/lib/translations';
@@ -11,6 +11,7 @@ export type MarketStripItemData = {
   symbol: string;
   name: string;
   sector?: GlobalMarketSector;
+  assetType?: GlobalMarketStripKind;
   price: number | null;
   currency: string | null;
   changePercent: number | null;
@@ -65,7 +66,16 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
     ? 'neutral'
     : item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'neutral';
   const TrendIcon = tone === 'up' ? TrendingUp : tone === 'down' ? TrendingDown : null;
-  const sectorLabel = item.sector ? SECTOR_LABEL[item.sector][lang] : t('global_markets_sector_unavailable', lang);
+  const assetTypeLabels: Record<GlobalMarketStripKind, Record<Lang, string>> = {
+    equity: { ar: 'سهم', en: 'Equity', fr: 'Action' },
+    forex: { ar: 'فوركس', en: 'Forex', fr: 'Forex' },
+    commodity: { ar: 'سلعة', en: 'Commodity', fr: 'Matière première' },
+    crypto: { ar: 'عملة رقمية', en: 'Crypto', fr: 'Crypto' },
+    index: { ar: 'مؤشر', en: 'Index', fr: 'Indice' },
+  };
+  const sectorLabel = item.sector
+    ? SECTOR_LABEL[item.sector][lang]
+    : item.assetType ? assetTypeLabels[item.assetType][lang] : '';
 
   return (
     <article className={`gm-strip-item is-${tone}`} dir="ltr">
@@ -90,7 +100,7 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
           {available && item.changePercent !== null ? formatPercent(item.changePercent, lang) : unavailableLabel}
         </em>
       </div>
-      <span className={`gm-strip-item-sector${item.sector ? '' : ' is-unavailable'}`} dir="auto">{sectorLabel}</span>
+      {sectorLabel ? <span className="gm-strip-item-sector" dir="auto">{sectorLabel}</span> : null}
 
       <style jsx>{`
         .gm-strip-item {
@@ -207,8 +217,18 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
 
         @media (max-width: 430px) {
           .gm-strip-item {
-            inline-size: min(140px, 100%);
-            padding: 6px 7px 7px;
+            inline-size: min(136px, 100%);
+            block-size: 74px;
+            gap: 2px;
+            padding: 5px 7px;
+          }
+          .gm-strip-item-name { font-size: 9.5px; }
+          .gm-strip-item-values { margin-top: 0; }
+          .gm-strip-item-sector { margin-top: 0; font-size: 9px; }
+          .gm-strip-item-change { padding: 1px 4px; }
+          .gm-strip-item-head :global(.gm-strip-item-logo) {
+            inline-size: 20px;
+            block-size: 20px;
           }
         }
       `}</style>

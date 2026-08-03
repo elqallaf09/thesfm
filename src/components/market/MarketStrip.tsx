@@ -39,6 +39,7 @@ export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
       symbol: config.symbol,
       name: lang === 'ar' ? config.nameAr : config.name,
       sector: config.sector,
+      assetType: strip.kind,
       price: quote?.available ? quote.price : null,
       currency: inferStripCurrency(config.symbol),
       changePercent: quote?.available ? quote.changePercent : null,
