@@ -226,33 +226,54 @@ export function AppHeader() {
           justify-self: center;
         }
 
+        /* One shared command-bar surface (same track language as the
+           workspace switcher) instead of five independently outlined
+           controls sitting next to each other. */
         .sfm-global-actions {
           grid-area: actions;
           min-width: 0;
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 7px;
+          gap: 2px;
+          padding: 2px;
+          border-radius: var(--radius-card);
+          background: var(--header-control-bg);
+          border: 1px solid var(--header-control-border);
+          box-shadow: var(--shadow-xs);
         }
 
         .sfm-global-header .sfm-command-trigger {
           width: min(190px, 14vw);
           min-width: 132px;
-          min-height: var(--control-h);
         }
 
+        .sfm-global-header .sfm-command-trigger,
         .sfm-global-header .sfm-language-trigger,
         .sfm-global-header .sfm-theme-toggle,
         .sfm-global-header .sfm-density-toggle,
-        .sfm-global-header .sfm-user-chip {
-          min-height: var(--control-h);
+        .sfm-global-header .sfm-user-chip,
+        .sfm-global-notifications {
+          min-height: 40px;
+          border-color: transparent;
+          background: transparent;
           box-shadow: none;
         }
 
+        .sfm-global-header .sfm-command-trigger:hover,
+        .sfm-global-header .sfm-language-trigger:hover,
+        .sfm-global-header .sfm-theme-toggle:hover,
+        .sfm-global-header .sfm-density-toggle:hover,
+        .sfm-global-header .sfm-user-chip:hover,
+        .sfm-global-header .sfm-user-chip[aria-expanded='true'],
+        .sfm-global-header .sfm-language-trigger[aria-expanded='true'],
+        .sfm-global-notifications:hover {
+          border-color: transparent;
+          background: var(--header-control-hover, var(--primary-soft));
+          color: var(--primary);
+        }
+
         .sfm-global-header .sfm-user-chip {
-          min-height: var(--control-h);
-          border-color: var(--header-control-border, var(--border-strong));
-          background: var(--header-control-bg, var(--surface));
           color: var(--foreground);
           font-family: var(--font-ui);
         }
@@ -266,36 +287,54 @@ export function AppHeader() {
           color: var(--foreground-muted);
         }
 
+        /* Consistent optical icon size across every utility control. */
+        .sfm-global-header .sfm-language-trigger svg:first-child {
+          width: 18px;
+          height: 18px;
+        }
+
         .sfm-global-notifications,
         .sfm-global-menu-button {
           position: relative;
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-          /* Variant 03: grouped utilities — subtle idle surface, no heavy per-control border. */
-          border: 1px solid var(--header-control-border, transparent);
           border-radius: var(--radius-control);
           display: grid;
           place-items: center;
-          background: var(--header-control-bg, var(--surface));
           color: var(--foreground-secondary);
           text-decoration: none;
           cursor: pointer;
           transition: background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform var(--duration-fast) ease-out;
         }
 
+        .sfm-global-notifications {
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
+        }
+
+        .sfm-global-menu-button {
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+          /* Variant 03: grouped utilities — subtle idle surface, no heavy per-control border. */
+          border: 1px solid var(--header-control-border, transparent);
+          background: var(--header-control-bg, var(--surface));
+        }
+
         .sfm-global-notifications:hover,
         .sfm-global-menu-button:hover {
-          border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-          background: var(--header-control-hover, var(--primary-soft));
           color: var(--primary);
           transform: translateY(-1px);
         }
 
+        .sfm-global-menu-button:hover {
+          border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+          background: var(--header-control-hover, var(--primary-soft));
+        }
+
         .sfm-global-bell-dot {
           position: absolute;
-          inset-block-start: 7px;
-          inset-inline-end: 7px;
+          inset-block-start: 5px;
+          inset-inline-end: 5px;
           width: 10px;
           height: 10px;
           border: 2px solid var(--surface-elevated);
@@ -315,8 +354,8 @@ export function AppHeader() {
 
         @media (max-width: 1499px) {
           .sfm-global-header .sfm-command-trigger {
-            width: 44px;
-            min-width: 44px;
+            width: 40px;
+            min-width: 40px;
             padding: 0;
             justify-content: center;
           }
@@ -342,8 +381,8 @@ export function AppHeader() {
             padding-block: 8px;
           }
 
-          .sfm-global-workspaces {
-            width: auto;
+          .sfm-workspace-navigation.sfm-global-workspaces {
+            width: 100%;
             min-width: 0;
             max-width: 100%;
             overflow: hidden;
@@ -351,6 +390,7 @@ export function AppHeader() {
           }
 
           .sfm-global-workspaces .sfm-workspace-tabs {
+            width: 100%;
             justify-content: flex-start;
           }
         }
@@ -384,6 +424,11 @@ export function AppHeader() {
 
           .sfm-global-actions {
             max-width: 44px;
+            padding: 0;
+            gap: 0;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
           }
 
           .sfm-global-actions > .sfm-command-trigger,
