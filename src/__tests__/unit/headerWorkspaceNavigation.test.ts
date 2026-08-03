@@ -7,6 +7,9 @@ const header = read('src/components/AppHeader.tsx');
 const switcher = read('src/components/WorkspaceSwitcher.tsx');
 const sidebar = read('src/components/Sidebar.tsx');
 const mobile = read('src/components/MobileMenu.tsx');
+const shell = read('src/components/WorkspaceShell.tsx');
+const tokens = read('src/styles/tokens.css');
+const themes = read('src/styles/themes.css');
 
 describe('global header workspace navigation contract', () => {
   it('renders workspace switching only in the sticky global header', () => {
@@ -38,7 +41,7 @@ describe('global header workspace navigation contract', () => {
     expect(switcher).toContain('className="sfm-workspace-label-full"');
     expect(switcher).not.toMatch(/MOBILE_WORKSPACE_LABELS|sfm-workspace-label-mobile/);
     expect(switcher).toContain("@media (max-width: 900px)");
-    expect(switcher).toContain('min-height: 46px');
+    expect(switcher).toContain('min-height: 52px');
     expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
     expect(switcher).toContain('overflow-x: auto');
     expect(header).not.toMatch(/\.sfm-global-menu-button\s*\{[^}]*(?:width|min-width|height):\s*40px/);
@@ -69,5 +72,51 @@ describe('global header workspace navigation contract', () => {
     expect(mobile).toContain('isVisibleFocusable(previouslyFocused)');
     expect(mobile).toContain('focusTarget?.focus({ preventScroll: true })');
     expect(mobile).toContain("aria-modal={open ? 'true' : undefined}");
+  });
+
+  it('defines the reserved-band and z-index layer tokens once in the foundation', () => {
+    for (const token of [
+      '--app-header-height',
+      '--app-header-inset-block',
+      '--app-header-inset-inline',
+      '--app-header-gap-block',
+      '--z-header',
+      '--z-sidebar',
+    ]) {
+      expect(tokens.includes(`${token}:`), token).toBe(true);
+    }
+  });
+
+  it('renders the header as a sticky, rounded, glowing floating card via tokens', () => {
+    expect(header).toContain('position: sticky');
+    expect(header).toContain('inset-block-start: var(--app-header-inset-block)');
+    expect(header).toContain('z-index: var(--z-header');
+    expect(header).toContain('border-radius: var(--radius-card)');
+    expect(header).toContain('background: var(--header-surface');
+    expect(header).toContain('box-shadow: var(--header-shadow), var(--header-edge-glow)');
+    // Floating margin uses the inset tokens on all sides.
+    expect(header).toContain('margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block)');
+    // Header surface + edge glow are themed for both light and dark.
+    expect(themes.match(/--header-surface:/g)).toHaveLength(2);
+    expect(themes.match(/--header-edge-glow:/g)).toHaveLength(2);
+  });
+
+  it('collapses to an edge-to-edge bar on mobile so it never overflows the viewport', () => {
+    expect(header).toMatch(/@media \(max-width: 767px\)/);
+    expect(header).toContain('--app-header-inset-block: 0px');
+    expect(header).toContain('border-radius: 0');
+  });
+
+  it('groups utility controls without heavy per-control borders', () => {
+    expect(header).toContain('border: 1px solid var(--header-control-border, transparent)');
+    expect(header).toContain('background: var(--header-control-bg');
+  });
+
+  it('reserves the full header band in the shell and offsets the sidebar below it', () => {
+    expect(shell).toContain('min-height: calc(100dvh - var(--app-header-height))');
+    expect(sidebar).toContain('inset-block-start:var(--app-header-height)');
+    expect(sidebar).toContain('z-index:var(--z-sidebar');
+    // Sidebar height also derives from the reserved band (no overlap with the header).
+    expect(sidebar).toContain('height:calc(100dvh - var(--app-header-height)');
   });
 });
