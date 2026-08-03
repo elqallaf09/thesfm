@@ -56,18 +56,30 @@ describe('global header — Variant 03 premium floating shell', () => {
   });
 });
 
-describe('workspace switcher — restrained active state (not an oversized solid block)', () => {
-  it('drives the active fill from a translucent primary mix in both theme scopes', () => {
-    const activeMatches = themes.match(/--workspace-switcher-item-active:\s*color-mix\(in srgb, var\(--primary\)/g);
-    expect(activeMatches).toHaveLength(2);
-    // The rejected "Variant 04" look reused the solid sidebar gradient — ensure the
-    // switcher no longer borrows it.
-    expect(themes).not.toContain('--workspace-switcher-item-active: var(--sidebar-item-bg-active)');
+describe('workspace switcher — Variant 06: one sliding indicator, not four bordered buttons', () => {
+  // Variant 03/04/05 each still rendered every item with its own visible
+  // border/fill (03 translucent, 04 a rejected solid sidebar gradient, 05
+  // merely muted the inactive ones) — reviewed and rejected as "still reads
+  // as ordinary bordered text buttons." Variant 06 replaces per-item
+  // surfaces entirely with one shared indicator element that slides behind
+  // the active item.
+  it('drives the indicator surface from a layered tonal gradient (still translucent, not a flat solid block) in both theme scopes', () => {
+    const surfaceMatches = themes.match(/--workspace-switcher-active-surface:\s*linear-gradient\(180deg, color-mix\(in srgb, var\(--primary\)/g);
+    expect(surfaceMatches).toHaveLength(2);
+    // The rejected "Variant 04" look reused the solid sidebar gradient — ensure
+    // the switcher still doesn't borrow it.
+    expect(themes).not.toContain('--workspace-switcher-active-surface: var(--sidebar-item-bg-active)');
+    // No per-item active fill/border tokens remain — only the shared indicator
+    // carries a surface now.
+    expect(themes).not.toMatch(/--workspace-switcher-item-active:/);
   });
 
-  it('keeps the subtle bottom indicator that marks the active workspace', () => {
-    expect(switcher).toContain(".sfm-workspace-tab[data-active='true']::after");
-    expect(themes.match(/--workspace-switcher-indicator:/g)).toHaveLength(2);
+  it('positions one shared sliding indicator instead of decorating every item', () => {
+    expect(switcher).toContain('className="sfm-workspace-indicator"');
+    expect(switcher).toContain('--indicator-x');
+    expect(switcher).toContain('--indicator-w');
+    expect(themes.match(/--workspace-switcher-item-border-active:/g)).toHaveLength(2);
+    expect(themes.match(/--workspace-switcher-shadow-active:/g)).toHaveLength(2);
   });
 
   it('defines header surface + edge glow tokens for both light and dark', () => {

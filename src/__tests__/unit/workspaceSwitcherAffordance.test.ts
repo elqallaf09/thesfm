@@ -12,28 +12,71 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(switcher).toContain('href={destination}');
     expect(switcher).toContain("aria-current={current ? 'page' : undefined}");
     expect(switcher).toContain('data-workspace-id={workspace.id}');
+    expect(switcher).toContain('prefetch={false}');
     expect(switcher).not.toMatch(/onClick=|router\.push|<button[^>]*>\s*<Link|<Link[^>]*>\s*<button/);
+    // No selected-workspace state: the active tab is derived from the
+    // pathname on every render, never stored in component state.
+    expect(switcher).not.toMatch(/useState/);
   });
 
-  it('uses tokenized button surfaces and a practical mobile touch target', () => {
+  it('renders one shared segmented track with a single sliding active-indicator layer', () => {
     expect(switcher).toContain('min-height: var(--control-h)');
-    expect(switcher).toContain('background: var(--workspace-switcher-item-bg)');
-    expect(switcher).toContain('border: 1px solid var(--workspace-switcher-item-border)');
-    expect(switcher).toContain('box-shadow: var(--workspace-switcher-shadow)');
+    expect(switcher).toContain('background: var(--workspace-switcher-bg)');
+    expect(switcher).toContain('box-shadow: var(--workspace-switcher-frame-shadow)');
     expect(switcher).toContain('cursor: pointer');
     expect(switcher).toContain('touch-action: manipulation');
     expect(switcher).toContain('overflow-x: auto');
     expect(switcher).toContain('scroll-snap-type: inline proximity');
+
+    // Exactly one indicator element, positioned behind the items (z-index 0
+    // vs. 1) and driven by JS-measured custom properties rather than a
+    // per-item border/fill — this is what makes it read as one segmented
+    // control instead of four independently bordered buttons.
+    expect(switcher.match(/sfm-workspace-indicator/g)?.length).toBeGreaterThanOrEqual(2); // ref'd span + its style rule
+    expect(switcher).toContain("ref={indicatorRef}");
+    expect(switcher).toContain('aria-hidden="true"');
+    expect(switcher).toContain('transform: translateX(var(--indicator-x, 0px))');
+    expect(switcher).toContain('width: var(--indicator-w, 0px)');
+    expect(switcher).toContain('background: var(--workspace-switcher-active-surface)');
+    expect(switcher).toContain('z-index: 0');
+    expect(switcher).toContain('z-index: 1');
+    expect(switcher).toContain('pointer-events: none');
+
+    // No individual item carries its own border, fill, or shadow — only the
+    // shared indicator does. (Items still resolve --workspace-switcher-item-bg,
+    // but that token is transparent — see the token contract test below.)
+    expect(switcher).not.toMatch(/\.sfm-workspace-tab\s*\{[^}]*\bborder:\s*1px solid var\(--workspace-switcher-item-border\)/);
+  });
+
+  it('measures the active item off physical offsetLeft/offsetWidth (RTL-safe without a dir branch)', () => {
+    expect(switcher).toContain('activeEl.offsetLeft');
+    expect(switcher).toContain('activeEl.offsetWidth');
+    // getBoundingClientRect + scrollLeft arithmetic is the classic RTL trap
+    // this component deliberately avoids.
+    expect(switcher).not.toContain('getBoundingClientRect');
   });
 
   it('defines hover, pressed, focus-visible, selected, reduced-motion, and disabled states', () => {
-    expect(switcher).toContain(".sfm-workspace-tab:hover:not([aria-disabled='true'])");
-    expect(switcher).toContain(".sfm-workspace-tab:active:not([aria-disabled='true'])");
+    expect(switcher).toContain(".sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true'])");
+    expect(switcher).toContain(".sfm-workspace-tab:active:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true'])");
     expect(switcher).toContain('.sfm-workspace-tab:focus-visible');
-    expect(switcher).toContain(".sfm-workspace-tab[data-active='true']::after");
+    expect(switcher).toContain(".sfm-workspace-tab[data-active='true']");
     expect(switcher).toContain(".sfm-workspace-tab[aria-disabled='true']");
     expect(switcher).toContain('@media (prefers-reduced-motion: reduce)');
-    expect(switcher).not.toMatch(/scale\s*\(/);
+    expect(switcher).toContain('.sfm-workspace-indicator');
+  });
+
+  it("keeps the active tab's own selected look stable while hovered/pressed (no reversion to the plain-hover tint)", () => {
+    // The plain hover/press background rules explicitly exclude the active
+    // item, so hovering/pressing the selected tab never paints a flat tint
+    // over the indicator sitting beneath it.
+    expect(switcher).toContain(":hover:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {");
+    expect(switcher).toContain(":active:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {");
+    // The indicator itself still responds to hover/press on the active tab,
+    // via a container-level :has() (no JS hover state, no scale() ban to
+    // work around — a tiny press-scale on the indicator is intentional here).
+    expect(switcher).toContain(":has(.sfm-workspace-tab[data-active='true']:hover");
+    expect(switcher).toContain(":has(.sfm-workspace-tab[data-active='true']:active");
   });
 
   it('provides the complete workspace token family in both theme scopes', () => {
@@ -43,13 +86,14 @@ describe('workspace switcher interaction affordance contract', () => {
       '--workspace-switcher-item-bg',
       '--workspace-switcher-item-hover',
       '--workspace-switcher-item-pressed',
-      '--workspace-switcher-item-active',
-      '--workspace-switcher-item-border',
       '--workspace-switcher-item-text',
       '--workspace-switcher-item-text-active',
       '--workspace-switcher-icon',
+      '--workspace-switcher-icon-active',
       '--workspace-switcher-focus',
-      '--workspace-switcher-shadow',
+      '--workspace-switcher-active-surface',
+      '--workspace-switcher-item-border-active',
+      '--workspace-switcher-shadow-active',
     ] as const;
 
     for (const token of requiredTokens) {

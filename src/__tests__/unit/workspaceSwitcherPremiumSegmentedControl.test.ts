@@ -22,41 +22,57 @@ function tokenValue(block: string, token: string) {
   return match[1].trim();
 }
 
-describe('workspace switcher — one segmented control, not four outlined buttons', () => {
-  it('gives inactive items no border, fill, or shadow of their own in both themes', () => {
+describe('workspace switcher — one sliding indicator, not four outlined buttons', () => {
+  it('gives every item no border, fill, or shadow of its own in either theme', () => {
     for (const block of [rootBlock, darkBlock]) {
       expect(tokenValue(block, '--workspace-switcher-item-bg')).toBe('transparent');
-      expect(tokenValue(block, '--workspace-switcher-item-border')).toBe('transparent');
-      expect(tokenValue(block, '--workspace-switcher-shadow')).toBe('none');
     }
+    // Items only ever set background-color/color in their own rules — border
+    // and box-shadow are not part of the per-item declaration at all anymore
+    // (the indicator owns them).
+    const tabBaseRule = switcher.match(/\.sfm-workspace-tab\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? '';
+    expect(tabBaseRule).not.toMatch(/\bborder:/);
+    expect(tabBaseRule).not.toMatch(/\bbox-shadow:/);
   });
 
-  it('mutes inactive icon/text so only the active item reads as selected', () => {
+  it('mutes inactive icon/text so only the active item under the indicator reads as selected', () => {
     for (const block of [rootBlock, darkBlock]) {
       expect(tokenValue(block, '--workspace-switcher-icon')).toBe('var(--foreground-muted)');
     }
   });
 
-  it('keeps the active fill translucent (Variant 03 contract) with a distinct border', () => {
+  it('keeps the indicator surface translucent/layered (Variant 03+ contract) with a distinct border', () => {
     for (const block of [rootBlock, darkBlock]) {
-      expect(tokenValue(block, '--workspace-switcher-item-active')).toMatch(/^color-mix\(in srgb, var\(--primary\)/);
+      expect(tokenValue(block, '--workspace-switcher-active-surface')).toMatch(/^linear-gradient\(180deg, color-mix\(in srgb, var\(--primary\)/);
       expect(tokenValue(block, '--workspace-switcher-item-border-active')).toMatch(/^color-mix\(in srgb, var\(--primary\)/);
     }
   });
 
-  it('preserves the active pill fill, border, and icon color while hovered (no reversion to the generic hover tint)', () => {
-    expect(switcher).toContain(
-      ".sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) {",
-    );
-    const activeHoverRule = switcher.match(
-      /\.sfm-workspace-tab\[data-active='true'\]:hover:not\(\[aria-disabled='true'\]\):not\(\[data-disabled='true'\]\) \{([\s\S]*?)\}/,
-    )?.[1] ?? '';
-    expect(activeHoverRule).toContain('background: var(--workspace-switcher-item-active-hover)');
-    expect(activeHoverRule).toContain('border-color: var(--workspace-switcher-item-border-active)');
-    expect(activeHoverRule).toContain('color: var(--workspace-switcher-item-text-active)');
+  it('positions the indicator from the active tab\'s own physical layout box (RTL-safe, no scroll-offset arithmetic)', () => {
+    expect(switcher).toContain('activeEl.offsetLeft');
+    expect(switcher).toContain('activeEl.offsetWidth');
+    expect(switcher).toContain("indicator.style.setProperty('--indicator-x'");
+    expect(switcher).toContain("indicator.style.setProperty('--indicator-w'");
+  });
 
-    expect(switcher).toContain(
-      ".sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) svg {",
-    );
+  it('snaps into place without animating on first paint, then animates on every subsequent move', () => {
+    expect(switcher).toContain('hasPositionedRef');
+    expect(switcher).toContain("indicator.style.transitionDuration = '0s'");
+  });
+
+  it('disables indicator movement under prefers-reduced-motion', () => {
+    const reducedMotionBlock = switcher.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\s*\}\n/)?.[1] ?? '';
+    expect(reducedMotionBlock).toContain('.sfm-workspace-indicator');
+  });
+
+  it('keeps the active item selected while hovered/pressed via a container-level :has(), not JS hover state', () => {
+    expect(switcher).not.toMatch(/onMouseEnter|onMouseLeave|onPointerEnter|onPointerLeave/);
+    expect(switcher).toContain(":has(.sfm-workspace-tab[data-active='true']:hover");
+    expect(switcher).toContain(":has(.sfm-workspace-tab[data-active='true']:active");
+  });
+
+  it('recomputes indicator position on container resize (reflow-safe for language/breakpoint width changes)', () => {
+    expect(switcher).toContain('ResizeObserver');
+    expect(switcher).toContain("window.addEventListener('resize', handleReflow)");
   });
 });
