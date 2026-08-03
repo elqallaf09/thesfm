@@ -89,7 +89,7 @@ export function AppHeader() {
     <>
       <header className="sfm-global-header" dir={dir}>
         <Link href="/dashboard" prefetch={false} className="sfm-global-brand" aria-label="THE SFM">
-          <Image src="/sfm-logo.png" alt="" width={34} height={34} priority className="sfm-brand-mark sfm-brand-mark--header" />
+          <Image src="/sfm-logo.png" alt="" width={36} height={36} priority className="sfm-brand-mark sfm-brand-mark--header" />
           <span className="sfm-global-brand-copy">
             <strong>THE SFM</strong>
             <span>{crumb}</span>
@@ -158,7 +158,7 @@ export function AppHeader() {
              inset-driven margin above still governs. */
           max-width: 120rem;
           margin-inline: auto;
-          padding: 8px clamp(18px, 1.6vw, 24px);
+          padding: 8px clamp(20px, 1.6vw, 24px);
           border: 1px solid var(--header-border);
           border-radius: var(--radius-card);
           background: var(--surface);
@@ -228,7 +228,7 @@ export function AppHeader() {
 
         .sfm-global-brand strong {
           color: var(--foreground);
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 600;
           letter-spacing: 0.01em;
           line-height: 1.35;
@@ -261,7 +261,7 @@ export function AppHeader() {
           align-items: center;
           justify-content: flex-end;
           gap: 2px;
-          padding: 2px;
+          padding: 1px;
           border-radius: var(--radius-card);
           background: var(--header-control-bg);
           border: 1px solid var(--header-control-border);
@@ -279,7 +279,6 @@ export function AppHeader() {
         .sfm-global-header .sfm-density-toggle,
         .sfm-global-header .sfm-user-chip,
         .sfm-global-notifications {
-          min-height: 40px;
           border-color: transparent;
           background: transparent;
           box-shadow: none;
@@ -338,9 +337,9 @@ export function AppHeader() {
         }
 
         .sfm-global-notifications {
-          width: 40px;
-          height: 40px;
-          min-width: 40px;
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
         }
 
         .sfm-global-menu-button {
@@ -365,8 +364,8 @@ export function AppHeader() {
 
         .sfm-global-bell-dot {
           position: absolute;
-          inset-block-start: 5px;
-          inset-inline-end: 5px;
+          inset-block-start: 7px;
+          inset-inline-end: 7px;
           width: 10px;
           height: 10px;
           border: 2px solid var(--surface-elevated);

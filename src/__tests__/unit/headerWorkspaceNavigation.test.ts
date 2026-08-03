@@ -38,7 +38,7 @@ describe('global header workspace navigation contract', () => {
     expect(switcher).toContain('className="sfm-workspace-label-full"');
     expect(switcher).not.toMatch(/MOBILE_WORKSPACE_LABELS|sfm-workspace-label-mobile/);
     expect(switcher).toContain("@media (max-width: 900px)");
-    expect(switcher).toContain('min-height: var(--control-h)');
+    expect(switcher).toContain('min-height: 46px');
     expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
     expect(switcher).toContain('overflow-x: auto');
     expect(header).not.toMatch(/\.sfm-global-menu-button\s*\{[^}]*(?:width|min-width|height):\s*40px/);

@@ -20,7 +20,10 @@ describe('workspace switcher interaction affordance contract', () => {
   });
 
   it('renders one shared segmented track with a single sliding active-indicator layer', () => {
-    expect(switcher).toContain('min-height: var(--control-h)');
+    // 46px: one step above the shared --control-h (44px) so the switcher, as
+    // the header's signature control, reads slightly more prominent than an
+    // ordinary form control — not the generic site-wide control height.
+    expect(switcher).toContain('min-height: 46px');
     expect(switcher).toContain('background: var(--workspace-switcher-bg)');
     expect(switcher).toContain('box-shadow: var(--workspace-switcher-frame-shadow)');
     expect(switcher).toContain('cursor: pointer');
