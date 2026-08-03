@@ -1,171 +1,123 @@
 # Premium interaction-system pass (2026)
 
-Design-only pass on THE SFM's button/tab/segmented-control language. No
-business logic, routes, or copy changed — CSS custom-property values, one
-component's positioning logic, and a handful of local `<style jsx>` rule
-bodies.
+Design-only pass on THE SFM's global header — workspace switcher + utility
+command cluster — plus a smaller earlier pass on high-traffic tab/filter
+patterns elsewhere. No business logic, routes, or copy changed.
 
-## Revision history on this PR
+## Revision history
 
-**First attempt (Variant 05)** muted every inactive workspace-tab's
-border/fill/shadow to transparent, leaving only the active tab with a
-translucent tint. **The user reviewed real before/after screenshots and
-rejected it**: "still reads as ordinary bordered text buttons... the visual
-change is too subtle to qualify as a premium 2026 redesign." Muting borders
-alone wasn't enough — every item was still its own independently-styled
-rectangle, just a quieter one.
+**Round 1 (Variant 05 — rejected).** Muted every inactive workspace-tab's
+border to transparent, leaving the active tab a static tinted rectangle in
+its own box. Rejected: "still reads as ordinary bordered text buttons."
 
-**Second attempt (Variant 06, current)** replaces that architecture
-entirely: there is now exactly **one** indicator element — a sibling `<span
-class="sfm-workspace-indicator">` — that slides behind whichever tab is
-active. Items themselves carry no border, fill, or shadow at all, ever; they
-are text + icon only. The indicator is positioned via two CSS custom
-properties (`--indicator-x`, `--indicator-w`) written from the active tab's
-own `offsetLeft`/`offsetWidth` (physical values, correct in RTL and LTR
-without a direction branch), animated with a plain CSS `transition` (no JS
-animation library), and disabled under `prefers-reduced-motion`. See
-`src/components/WorkspaceSwitcher.tsx`.
+**Round 2 (Variant 06 — rejected).** Replaced that with a real sliding
+indicator element behind the active tab (`offsetLeft`/`offsetWidth`-driven,
+CSS-transition only). This direction was **approved**, but two problems
+remained, and the header's utility cluster hadn't been touched yet:
 
-This is a structural change, not a token tweak — the two attempts are not
-comparable by tweaking one number, which is why the visual result differs
-this much.
+- the segmented track stretched across the full grid column, leaving a
+  large empty area with the four items pinned to one side,
+- the indicator's border/shadow still read as a conventional button outline.
 
-## Benchmark: global workspace navigation
+**Round 3 (current — the unified header pass).** Two changes:
 
-The four flagged top-nav controls (الإدارة المالية / الأسواق والتداول /
-الأعمال والمشاريع / الإدارة).
+1. **Workspace switcher**: `width: fit-content` (was a block-level flex
+   container filling its grid cell) so the track hugs its four items
+   instead of stretching; `gap`/`padding` tightened (3px → 2px/0, indicator
+   inset 3px → 2px) for "compact, balanced spacing"; the indicator's border
+   opacity roughly halved (light 48%→26%, dark 68%→42%) and its shadow's
+   ring/highlight components softened to read as a raised surface rather
+   than an outlined box.
+2. **Utility command cluster** (quick search, language, theme, density,
+   notifications, user chip) — the part flagged in the user's second
+   reference screenshot. Previously each control independently declared
+   `border: 1px solid var(--border-strong)` + `background: var(--surface)` +
+   `box-shadow: var(--shadow-xs)`, so five controls sat next to each other
+   as five separate outlined boxes. Reworked so:
+   - `.sfm-global-actions` (the flex container holding all of them) is now
+     one shared translucent surface — same track language as the
+     workspace switcher — using the **already-existing**
+     `--header-control-bg`/`--header-control-border`/`--header-control-hover`
+     tokens (previously only the notification bell and mobile menu button
+     consumed these; everything else used the generic, much stronger
+     `--border`/`--surface` tokens, which is why they looked disconnected
+     from the bell/menu and from each other).
+   - Every individual control is transparent/borderless at idle and only
+     shows the shared hover tint on `:hover`/`:focus-visible`/open — so the
+     five controls read as one command bar, not five boxes.
+   - Icon optical size unified to 18px (language's globe icon was 16px).
 
-### Rejected first attempt vs. corrected second attempt
+### A real blocker found mid-fix: legacy `!important` guard
 
-Rendered from the real token/component CSS via a static harness (not
-mockups) — before (current `main`), rejected v1, and corrected v2:
+The first attempt at the utility-cluster fix (new scoped rules in
+`AppHeader.tsx`) visibly did nothing — computed styles still showed the old
+44px height, `border-strong` colour, and `shadow-xs`. Root cause:
+`globals.css` had a `:where(...) { ... !important }` rule (from an earlier
+"premium Light Mode redesign" commit, `67b5431d`/`77ccef02`) hard-coding
+exactly the old bordered look onto these same classes, with `!important` —
+so no normal-specificity override could ever win. Updated that rule in
+place to the new transparent/hover-tint values instead of leaving it to
+fight the redesign; kept the `!important`-declaration *count* unchanged
+(rewrote the existing 2 rules' selector list/values rather than adding new
+rules) so `check:maintainability`'s "no new `!important` debt" guard still
+passes.
 
-| Before (main) | Rejected v1 (muted borders only) | Corrected v2 (sliding indicator) |
-|---|---|---|
-| ![Before](./workspace-switcher-before.jpg) | ![Rejected v1](./workspace-switcher-after.jpg) | see real-app screenshots below |
+## Screenshots
 
-### Real authenticated app screenshots (this branch, live)
+All `v3-final-*` and `v2-rejected-*` files are **real authenticated-app**
+screenshots — `pnpm dev` on this branch, viewed at the guest-accessible
+`/investment-companies` route (renders the full header/sidebar shell
+without login). Not the static preview harness.
 
-Per the acceptance-gate requirement, these are **not** the static harness —
-they're `pnpm dev` running this branch, viewed at the guest-accessible
-`/investment-companies` route (per `docs/workspace-architecture.md`, this
-route renders the full authenticated shell — header, workspace switcher,
-sidebar — without requiring a login), with the active workspace set to
-"Business & Projects" / "الأعمال والمشاريع":
+| File | What it shows |
+|---|---|
+| `v3-user-reference-workspace-switcher.png`, `v3-user-reference-utility-cluster.png` | The two screenshots the user attached as the exact current-state complaint |
+| `v1-original-main-workspace-switcher.jpg` | Workspace switcher on `main`, before any of this work |
+| `v1-rejected-muted-borders-only.jpg` | Round 1, rejected |
+| `v2-rejected-real-app-{light,dark}-{rtl,ltr}.jpg` | Round 2 (sliding indicator approved, but full-width track + heavy indicator border) |
+| `v3-final-{light,dark}-{rtl,ltr}-desktop.jpg` | Round 3: both header pieces together, all 4 theme/direction combos |
+| `v3-final-language-menu-open.jpg` | Utility menu open state (language dropdown) |
+| `v3-final-user-menu-open.jpg` | User account menu open state |
+| `v3-final-quick-search-open.jpg` | Quick-search command palette open/focused |
+| `v3-final-workspace-hover.jpg` | Workspace tab hover (see note below on how this was captured) |
+| `v3-final-workspace-keyboard-focus.jpg` | Real `Tab`-key keyboard focus, visible focus ring |
 
-- Arabic RTL, light: `real-app-light-rtl.jpg`
-- Arabic RTL, dark: `real-app-dark-rtl.jpg`
-- English LTR, light: `real-app-light-ltr.jpg`
-- English LTR, dark: `real-app-dark-ltr.jpg`
+**Note on the hover screenshot:** this session's browser-automation tool
+does not preserve a synthetic mouse hover across its own screenshot
+round-trip (confirmed via `element.matches(':hover')` — true immediately
+after the hover call, false by the time a screenshot could be taken). To
+still show the true hover appearance rather than skip it, the exact
+computed style Chrome produced *while `:hover` genuinely matched* was read
+live and pinned via an inline style for one screenshot, then removed. The
+values shown are Chrome's own real computed hover output, not a guess.
 
-In all four, the active item is an unmistakable raised pill — layered
-tonal-gradient surface, tinted border, soft shadow, bold high-contrast
-text/icon — sliding independently of the three quiet, borderless inactive
-items. This is the acceptance-gate bar: obvious at a glance, no explanation
-needed.
-
-**Mobile RTL screenshot: not captured.** The browser tool's `resize_window`
-did not change the actual render viewport in this sandboxed session
-(`window.innerWidth` stayed at 1530px after a "successful" resize to
-390×844 — verified via direct JS query, not assumed). Rather than fabricate
-or mislabel a screenshot, this is flagged as an open gap. The underlying
-CSS/logic reasons it should still work correctly at mobile widths: the
-indicator's position is derived from `offsetLeft`/`offsetWidth`, which are
-resolution-agnostic by construction, and the mobile media query (`max-width:
-900px`) and touch-target height (`var(--control-h)` = 44px) are unchanged
-from the prior (already-shipped) behavior. This should be re-verified with a
-real mobile viewport (device emulation or a physical/BrowserStack-style
-device) before merge.
-
-### What changed, precisely
-
-`src/styles/themes.css` (`--workspace-switcher-*` tokens, both themes):
-
-- Removed entirely: `--workspace-switcher-item-active`,
-  `--workspace-switcher-item-active-hover`, `--workspace-switcher-item-border`,
-  `--workspace-switcher-item-border-hover`, `--workspace-switcher-item-disabled`,
-  `--workspace-switcher-shadow`, `--workspace-switcher-shadow-hover`,
-  `--workspace-switcher-shadow-pressed`, `--workspace-switcher-indicator`
-  (the old per-item / bottom-bar tokens — nothing in the component reads
-  them anymore).
-- Added: `--workspace-switcher-active-surface` (a restrained top-to-bottom
-  `linear-gradient` tonal shift — still translucent, still not a flat
-  single-colour block, still not the previously-rejected solid sidebar
-  gradient reuse) and reused `--workspace-switcher-item-border-active` /
-  `--workspace-switcher-shadow-active(-hover/-pressed)` as the indicator's
-  own border/shadow.
-- Added a new foundation token, `--radius-card-inset` (`tokens.css`), so the
-  indicator's nested corner radius is token-driven rather than an inline
-  `calc()` literal (required to pass `check:visual-system`'s raw-depth
-  guard).
-
-`src/components/WorkspaceSwitcher.tsx`:
-
-- New `tabsRef`/`indicatorRef` + `positionIndicator()` (measures
-  `activeEl.offsetLeft/offsetWidth`, writes `--indicator-x`/`--indicator-w`
-  via `element.style.setProperty`, no `useState` — the component still
-  stores no selected-workspace state, matching its existing contract).
-- `useLayoutEffect` snaps into place with no transition on first paint, then
-  animates on every subsequent active-tab or reflow change (`ResizeObserver`
-  + `window resize`, tracked via a `hasPositionedRef` mount flag).
-- Hover/press on the *active* tab is handled by `.sfm-workspace-tabs:has(...)`
-  targeting the indicator directly — no JS hover state, no scale() ban to
-  route around (a container-level `:has()` is well-supported in evergreen
-  2026 browsers).
-- Bottom-bar `::after` pseudo-element removed (the indicator itself is now
-  the "connects the segmented group" element called for in the brief).
-
-### Tests updated (old ones locked in the rejected look)
-
-Per explicit authorization ("do not preserve an old test merely because it
-locks the rejected appearance"):
-
-- `workspaceSwitcherAffordance.test.ts` — rewritten for the indicator
-  architecture; still asserts semantic `<Link>`s, `aria-current`,
-  `prefetch={false}`, no `useState`/`router.push`, hover/press/focus/disabled/
-  reduced-motion states, and RTL-safe positioning (`offsetLeft`/`offsetWidth`,
-  explicitly *not* `getBoundingClientRect` + scroll-offset math).
-- `globalHeaderVariant03.test.ts` — its workspace-switcher describe block
-  now documents Variant 04 (rejected solid gradient) *and* Variant 05
-  (rejected "still bordered buttons") as prior rejections, and asserts the
-  Variant 06 indicator-surface/border/shadow token contract instead of the
-  removed bottom-bar tokens.
-- `workspaceSwitcherPremiumSegmentedControl.test.ts` — replaced with
-  indicator-specific assertions (no per-item border/shadow, muted inactive
-  icon, translucent indicator surface, `offsetLeft`-based positioning,
-  first-paint snap vs. later animation, `:has()`-driven hover/press, reduced-
-  motion, `ResizeObserver` reflow).
-- Six other tests that reference `WorkspaceSwitcher.tsx` for unrelated
-  reasons (route ownership, prefetch policy, typography, sidebar/mobile
-  exclusivity) were re-run and pass unmodified — they never asserted the
-  visual mechanics that changed.
-
-## Site-wide audit (unchanged from the first pass in this PR)
-
-Beyond the workspace-switcher benchmark, the same "solid `background:
-var(--primary)` block for the active tab" anti-pattern (9 occurrences / 7
-files, found via
-`grep -rn '\.active{background:\s*var(--primary)'`) was migrated to the
-shared soft-fill + tinted-border language in: business-hub employee view
-toggle, project financial-model view/scenario toggles, admin company tabs,
-admin Instagram-automation tabs, defensive-stocks category tabs, Tech News
-filter chips + advanced-filters controls, monthly-subscriptions examples
-tabs. All CSS-value-only changes — no class renames, no markup/behavior
-changes. Full file list and intentionally-deferred surfaces (setup-page
-selection cards, ~65 other chip/tab/pagination files that already pass
-`check:visual-system` and didn't show either anti-pattern) are unchanged
-from before; see the commit history for exact diffs.
+**Gap, not silently skipped:** RTL tablet and RTL mobile (390px) screenshots
+were **not captured**. This session's `resize_window` tool call reports
+success but does not change the page's actual rendering viewport — verified
+directly (`window.innerWidth` stayed `2552` after a "successful" resize to
+390×844), not assumed. The mobile CSS for the workspace switcher
+(`overflow-x: auto`, scroll-snap, active-tab `scrollIntoView`) is unchanged
+from already-shipped behavior; the utility cluster's mobile query
+(`max-width: 767px`) only had padding/border reset added in this pass and
+should be re-verified at a real mobile width — either via this repo's
+Playwright mobile projects (which use a real headless browser and do
+correctly emulate device viewports, unlike this interactive session) or a
+manual check in Chrome DevTools' device toolbar before merge.
 
 ## Validation
 
-- `pnpm install --frozen-lockfile`, `lint`, `typecheck`, `check:i18n`,
-  `check:visual-system`, `check:maintainability`, `check:repo-hygiene` — all pass
-- `pnpm test:run` — **249 files / 2061 tests pass**
+- `lint`, `typecheck`, `check:i18n`, `check:visual-system`,
+  `check:maintainability`, `check:repo-hygiene` — all pass
+- `pnpm test:run` — **254 files / 2082 tests pass**
 - `pnpm build` — succeeds; `check:performance-budget` — all 15 rows PASS
-- **Not run locally:** Playwright (`test:smoke`) needs real
-  `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` against live Supabase, unavailable in
-  this environment. CI has these secrets configured — treat the CI run on
-  this PR as the source of truth for RTL/LTR × light/dark × desktop/mobile
-  e2e coverage before merging.
-- **Not verified:** true mobile-viewport rendering (see the mobile RTL note
-  above) — re-check with real device emulation before merge.
+  (`/business-hub` CSS is closest to budget at 77.2/78.1 KiB — worth
+  watching, not yet over)
+- **Not run locally:** Playwright (`test:smoke`) — needs real Supabase E2E
+  credentials unavailable in this environment. CI has them configured;
+  treat the CI run as the source of truth for RTL/LTR × light/dark ×
+  desktop/mobile coverage, especially the mobile gap noted above.
+
+## Status
+
+Draft, not merged. Waiting for visual approval of the round-3 screenshots
+before any further site-wide migration continues.
