@@ -4,7 +4,157 @@ Design-only pass on THE SFM's global header — workspace switcher + utility
 command cluster — plus a smaller earlier pass on high-traffic tab/filter
 patterns elsewhere. No business logic, routes, or copy changed.
 
-## Round 7 (current): freeze, audit, one final architecture
+## Round 8 (current): component decomposition + a real material change
+
+Round 7 was technically sound but rejected again on visual grounds: the
+active workspace state still read as "a purple pill," the header still felt
+compressed for "premium institutional fintech," and mobile had specific,
+named defects (clipped edge labels, no scroll affordance, active item not
+guaranteed fully visible). The user stopped accepting incremental tuning
+entirely and asked for a decomposed, named component architecture and a
+genuinely different material treatment for the active state — reported and
+approved as a plan before any code was touched (see the round 8 plan
+discussion; summarized here).
+
+### The hard constraint that shaped the architecture
+
+`AppHeader.tsx` and `WorkspaceSwitcher.tsx` are read by **19 other test
+files** across unrelated historical feature work, many asserting exact
+literal JSX strings against their content (e.g. `expect(header).toContain('<DensityToggle />')`,
+`expect(header).toContain('<UserChip />')`). A full rename/relocation would
+force edits across all of them for zero visual benefit. Resolution:
+
+- `AppHeader.tsx` and `WorkspaceSwitcher.tsx` **keep their names, locations,
+  and exported symbols** — `WorkspaceShell.tsx`'s import
+  (`import { AppHeader } from '@/components/AppHeader'`) is untouched, and
+  the components' rendered output is unchanged.
+- New, genuinely separate, individually named files now live in
+  `src/components/header/`: `BrandLockup.tsx`, `CommandCluster.tsx`,
+  `CommandSearchTrigger.tsx`, `HeaderIconAction.tsx`, `AccountMenuTrigger.tsx`,
+  `WorkspaceActiveIndicator.tsx`, `MobileWorkspaceRail.tsx`. `AppHeader.tsx`
+  composes them under an internal `GlobalHeaderDock` function (real, named,
+  not a separate file — its content is what several of the 19 legacy tests
+  key off by path).
+- `WorkspaceNavigation` (requested name) is satisfied by the existing
+  `WorkspaceSwitcher` export — `workspaceSwitcherRender.test.tsx` imports
+  and renders it directly by that name, so it wasn't renamed.
+- `MobileHeader` is implemented as responsive CSS states of the same DOM
+  tree (the established pattern for all eight rounds), not a second,
+  viewport-conditionally-mounted component — avoids hydration-mismatch risk
+  for no behavioral gain.
+- Mid-implementation, extracting `CommandCluster` *did* turn out to require
+  touching 5 of those 19 legacy files after all (`accessibilityContracts`,
+  `densityMode`, `phase31GlobalControlsTypography`, `phaseUnifiedTodayCenter`,
+  `workspaceNavigationState`) — each had a literal-string assertion that
+  moved with the JSX (e.g. `<UserChip />` now lives in
+  `header/AccountMenuTrigger.tsx`, not `AppHeader.tsx`). This is a deviation
+  from the original plan's "not touched" claim, discovered only once the
+  literal strings were checked one by one; each edit repoints the assertion
+  to its new, correct location without weakening what it actually verifies —
+  disclosed here rather than glossed over.
+
+### New visual direction: THE SFM's own teal, not the app's everyday indigo
+
+THE SFM already defines a real brand teal token, `--accent` (`#0B7C72`
+light / `#5EEAD4` dark, in `themes.css`), previously used only for minor
+icon-badge accents. The active workspace state now uses it instead of
+`--primary` (the indigo used for buttons/links/focus rings everywhere else
+in the app) — a distinctive, on-brand moment instead of the generic color
+that read as "purple" for three straight rounds:
+
+- Active surface: `color-mix(in srgb, var(--accent) 18%, var(--surface-elevated))`
+  — a **solid** mixed tone, not a light gradient tint.
+- Border: `color-mix(in srgb, var(--accent) 34%, transparent)`.
+- Icon (active): `var(--accent)` directly — a real colour-blocked icon.
+- Text (active): stays `var(--foreground)` — a strong neutral, not
+  accent-tinted, so the selected state is recognizable in grayscale from
+  fill + border + bold weight alone, with colour as a bonus signal.
+- Shadow strengthened for genuine floating elevation
+  (`0 8px 20px -8px …accent 30%…`, light; proportionally stronger in dark).
+
+Visible in `v8-final-compare-active-indicator.png`: round 7's pale
+indigo/purple pill directly beside round 8's teal-bordered, solid-fill
+active state.
+
+### Command cluster
+
+- The `<kbd>Ctrl K</kbd>` shortcut badge is now unconditionally hidden in
+  the header context (was previously only hidden below 1499px) —
+  `CommandMenuButton.tsx` itself is unchanged, so its other call site (the
+  sidebar search box) keeps the badge.
+- `HeaderIconAction.tsx` extracts the previously hand-rolled notifications
+  bell markup into a small, reusable, shared presentational contract.
+- "Fullscreen" in the requested control list maps to the existing
+  `DensityToggle` (`Maximize2`/`Minimize2` icons — visually reads as
+  expand/fullscreen, functionally toggles UI density). No functional change
+  made — real fullscreen behaviour would be outside this design-only pass's
+  scope; documented here so the mapping is explicit.
+- Icon sizing (18px) and utility control sizing (44px) were already within
+  spec from round 6 — unchanged.
+
+### Mobile: the three specific, named defects
+
+- **Safe padding**: `.sfm-workspace-tabs` had `padding: 0` — the likely
+  literal cause of "labels clipped at the viewport edge." Now
+  `padding-inline: 16px`.
+- **Edge scroll affordance**: a symmetric `mask-image` fade on both rail
+  edges (works identically in RTL/LTR since both edges fade regardless of
+  reading direction) — a new token, `--workspace-switcher-rail-fade`, in
+  `themes.css` (the only file gradients are permitted in; referenced via
+  `var()` so no literal gradient string exists outside that foundation file).
+- **Full visibility on activation**: `scrollIntoView({ inline: 'nearest' })`
+  → `{ inline: 'center' }` — `'nearest'` only scrolls the minimum distance,
+  which could leave the active item flush against an edge.
+- **Snap**: `scroll-snap-type: inline proximity` → `inline mandatory`,
+  `scroll-snap-align: nearest` → `center`.
+- Verified via real DOM measurement at first/middle/last active destination
+  (see evidence below) — no clipping at either rail end in any case.
+
+### CSS: a measured, if modest, selector reduction
+
+Counted `{` rule-openings inside `AppHeader.tsx` + `WorkspaceSwitcher.tsx`'s
+style blocks before/after this round: **76 → 74**. The reduction comes from
+removing the breakpoint-scoped kbd-hiding rule in favor of one unconditional
+rule, plus the `themes.css` active-surface recipe moving from a two-stop
+gradient to a single `color-mix()` value. `check:performance-budget` holds
+exactly at round 7's 65.1/65.4 KiB on `/`, `/today`, `/invest` — no budget
+increase despite the new mask-fade token and the component split (styled-jsx
+declarations were kept centralized in `AppHeader.tsx`/`WorkspaceSwitcher.tsx`
+rather than duplicated per new sub-component file, which is what would have
+cost real bytes).
+
+### Evidence (real production build, same Playwright-direct technique)
+
+All screenshots below are `v8-final-*` in `docs/premium-interaction-system/`.
+`v7-final-*` renamed to `v7-rejected-*`.
+
+| File | What it shows |
+|---|---|
+| `desktop-1440-ar-{light,dark}` / `desktop-1920-ar-{light,dark}` / `desktop-1440-en-{light,dark}` / `tablet-768-ar-{light,dark}` / `mobile-390-ar-{light,dark}` | The 10 standard viewport/theme combinations |
+| `mobile-active-first` / `-middle` / `-last` | Mobile with the first, middle, and last workspace destination active (personal-finance/markets-trading/business-projects, via `/financial-theories`, `/market-analysis`, `/investment-companies`) — DOM-measured: none clipped, all fully within `[0, 390]` viewport bounds |
+| `search-open` / `language-menu-open` / `account-menu-open` | Interaction states, desktop 1920 AR light |
+| `keyboard-focus-active-tab` | `.focus()` on the active workspace tab — visible focus ring |
+| `compare-active-indicator` | Round 7 (rejected, pale indigo) vs round 8 (current, teal) active state, side by side |
+
+### Validation
+
+`lint`, `typecheck`, `check:i18n`, `check:visual-system`,
+`check:maintainability`, `check:repo-hygiene` all pass. `pnpm test:run`:
+**252 files / 2078 tests pass** (0 regressions — the 5 legacy files touched
+for the `CommandCluster` extraction were updated to point at the new file
+locations, not weakened; every other assertion in this PR's own
+`workspaceSwitcherAffordance.test.ts`/`headerWorkspaceNavigation.test.ts`
+updated for the new snap/padding/active-surface values). `pnpm build`
+succeeds; `check:performance-budget` holds at 65.1/65.4 KiB, matching round
+7, no increase.
+
+### Status
+
+Draft, not merged. Waiting for visual approval of round 8.
+
+---
+
+## Round 7: freeze, audit, one final architecture
 
 Round 6 was rejected on sight, and the user stopped the incremental
 per-round tuning process entirely: "header too small, ordinary tab-like
@@ -185,12 +335,12 @@ consistency with the established per-round convention.
 
 | File | Viewport | Verified |
 |---|---|---|
-| `v7-final-mobile-390-{ar,en}-{light,dark}.png` | 390×844 | `innerWidth`, `dir`, `lang`, `isDark`, switcher height (52px) all match |
-| `v7-final-tablet-768-ar-{light,dark}.png` | 768×1024 | same |
-| `v7-final-desktop-1440-ar-{light,dark}.png` | 1440×900 | header height 74px (72px content + 1px border ×2), no cap engaged (1440 < 1536) |
-| `v7-final-desktop-1920-ar-{light,dark}.png` | 1920×1080 | header capped at exactly 1536px, centered with symmetric 192px margins |
+| `v7-rejected-mobile-390-{ar,en}-{light,dark}.png` | 390×844 | `innerWidth`, `dir`, `lang`, `isDark`, switcher height (52px) all match |
+| `v7-rejected-tablet-768-ar-{light,dark}.png` | 768×1024 | same |
+| `v7-rejected-desktop-1440-ar-{light,dark}.png` | 1440×900 | header height 74px (72px content + 1px border ×2), no cap engaged (1440 < 1536) |
+| `v7-rejected-desktop-1920-ar-{light,dark}.png` | 1920×1080 | header capped at exactly 1536px, centered with symmetric 192px margins |
 
-### Validation
+### Validation (round 7, historical)
 
 Same full suite as every round: `lint`, `typecheck`, `check:i18n`,
 `check:visual-system`, `check:maintainability`, `check:repo-hygiene` — all
@@ -201,9 +351,10 @@ review, several assertions actually strengthened). `pnpm build` succeeds;
 now showing real headroom (65.1/65.4 KiB) instead of sitting exactly on the
 ceiling.
 
-### Status
+### Round 7 status (historical, superseded)
 
-Draft, not merged. Waiting for visual approval of round 7.
+Round 7 was rejected. See the round 8 section at the top of this document
+for current status.
 
 ---
 
