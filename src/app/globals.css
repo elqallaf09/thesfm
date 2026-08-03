@@ -6249,16 +6249,16 @@ body :is(
   color: var(--foreground-secondary) !important;
 }
 
-:where(.sfm-global-menu-button, .sfm-global-actions .sfm-command-trigger.compact, .sfm-global-actions .sfm-language-trigger, .sfm-global-actions .sfm-theme-toggle) {
-  border-color: var(--border-strong) !important;
-  background: var(--surface) !important;
+:where(.sfm-global-actions .sfm-command-trigger.compact, .sfm-global-actions .sfm-language-trigger, .sfm-global-actions .sfm-theme-toggle, .sfm-global-actions .sfm-density-toggle, .sfm-global-actions .sfm-user-chip, .sfm-global-notifications) {
+  border-color: transparent !important;
+  background: transparent !important;
   color: var(--foreground) !important;
-  box-shadow: var(--shadow-xs) !important;
+  box-shadow: none !important;
 }
 
-:where(.sfm-global-menu-button, .sfm-global-actions .sfm-command-trigger.compact, .sfm-global-actions .sfm-language-trigger, .sfm-global-actions .sfm-theme-toggle):is(:hover, :focus-visible) {
-  border-color: color-mix(in srgb, var(--primary) 38%, var(--border)) !important;
-  background: var(--surface-hover) !important;
+:where(.sfm-global-actions .sfm-command-trigger.compact, .sfm-global-actions .sfm-language-trigger, .sfm-global-actions .sfm-theme-toggle, .sfm-global-actions .sfm-density-toggle, .sfm-global-actions .sfm-user-chip, .sfm-global-notifications):is(:hover, :focus-visible) {
+  border-color: transparent !important;
+  background: var(--header-control-hover, var(--primary-soft)) !important;
   color: var(--primary) !important;
 }
 
