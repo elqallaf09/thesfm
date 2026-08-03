@@ -38,7 +38,7 @@ export function AuthThemeControl() {
       <style jsx>{`
         .auth-theme-control{min-height:44px;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border:1px solid var(--border-strong);border-radius:var(--radius-pill);background:var(--surface);box-shadow:var(--shadow-xs)}
         button{inline-size:38px;block-size:36px;display:grid;place-items:center;border:0;border-radius:var(--radius-pill);background:transparent;color:var(--foreground-muted);cursor:pointer}
-        button[data-active="true"]{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-sm)}
+        button[data-active="true"]{background:var(--info);color:var(--info-foreground);box-shadow:var(--shadow-sm)}
         button:focus-visible{outline:3px solid color-mix(in srgb,var(--focus-ring) 35%,transparent);outline-offset:2px}
       `}</style>
     </div>
