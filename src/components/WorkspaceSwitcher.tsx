@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -32,6 +32,13 @@ type WorkspaceSwitcherProps = {
  *
  * This component deliberately stores no selected workspace state. Direct links,
  * refresh, and browser history all derive the selected tab from the pathname.
+ *
+ * The active item is marked by one sliding indicator surface (a sibling
+ * element positioned via the --indicator-x/--indicator-w custom properties,
+ * measured off the active tab's own offsetLeft/offsetWidth — physical values
+ * the browser reports identically in RTL and LTR) instead of every item
+ * carrying its own border/fill. This reads as one segmented control with a
+ * moving selection, not four independent outlined buttons.
  */
 export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwitcherProps) {
   const pathname = usePathname() || '/';
@@ -39,10 +46,52 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
   const { lang, dir } = useLanguage();
   const locale = lang === 'en' || lang === 'fr' ? lang : 'ar';
   const activeLinkRef = useRef<HTMLAnchorElement | null>(null);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+  const indicatorRef = useRef<HTMLSpanElement | null>(null);
+  const hasPositionedRef = useRef(false);
 
   const administrationEntryRoute = getFirstAccessibleAdminRoute(adminAccess);
   const active = resolveActiveWorkspace(pathname);
   const workspaces = availableWorkspaces({ isAdmin: Boolean(administrationEntryRoute) });
+
+  const positionIndicator = useCallback((animate: boolean) => {
+    const activeEl = activeLinkRef.current;
+    const indicator = indicatorRef.current;
+    if (!activeEl || !indicator) return;
+
+    if (!animate) indicator.style.transitionDuration = '0s';
+    indicator.style.setProperty('--indicator-x', `${activeEl.offsetLeft}px`);
+    indicator.style.setProperty('--indicator-w', `${activeEl.offsetWidth}px`);
+    indicator.style.opacity = '1';
+    if (!animate) {
+      // Force layout so the temporary transition override is committed before
+      // it's cleared, otherwise the browser can coalesce both writes and the
+      // very next (animated) update inherits the disabled transition.
+      void indicator.offsetWidth;
+      indicator.style.transitionDuration = '';
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    positionIndicator(hasPositionedRef.current);
+    hasPositionedRef.current = true;
+  }, [active.id, locale, dir, positionIndicator]);
+
+  useEffect(() => {
+    const container = tabsRef.current;
+    if (!container) return undefined;
+    const handleReflow = () => positionIndicator(true);
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(handleReflow);
+      observer.observe(container);
+    }
+    window.addEventListener('resize', handleReflow);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', handleReflow);
+    };
+  }, [positionIndicator]);
 
   useEffect(() => {
     const activeLink = activeLinkRef.current;
@@ -59,7 +108,8 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
       aria-label={WORKSPACE_NAV_COPY[locale].label}
       dir={dir}
     >
-      <div className="sfm-workspace-tabs">
+      <div className="sfm-workspace-tabs" ref={tabsRef}>
+        <span className="sfm-workspace-indicator" ref={indicatorRef} aria-hidden="true" />
         {workspaces.map(workspace => {
           const Icon = workspace.icon;
           const current = workspace.id === active.id;
@@ -78,7 +128,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
               data-active={current ? 'true' : 'false'}
               aria-current={current ? 'page' : undefined}
             >
-              <Icon size={17} aria-hidden="true" />
+              <Icon size={16} aria-hidden="true" />
               <span className="sfm-workspace-label-full">{workspace.labels[locale]}</span>
             </Link>
           );
@@ -94,15 +144,17 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         }
 
         .sfm-workspace-tabs {
+          position: relative;
           min-width: 0;
           min-height: var(--control-h);
           display: flex;
           align-items: stretch;
-          gap: 5px;
+          gap: 3px;
+          padding: 3px;
           overflow-x: auto;
           overflow-y: hidden;
           overscroll-behavior-inline: contain;
-          border-radius: var(--radius-control);
+          border-radius: var(--radius-card);
           background: var(--workspace-switcher-bg);
           box-shadow: var(--workspace-switcher-frame-shadow);
           scrollbar-width: none;
@@ -115,20 +167,40 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           display: none;
         }
 
+        .sfm-workspace-indicator {
+          position: absolute;
+          inset-block: 3px;
+          left: 0;
+          width: var(--indicator-w, 0px);
+          transform: translateX(var(--indicator-x, 0px)) scale(var(--indicator-scale, 1));
+          border-radius: var(--radius-card-inset);
+          background: var(--workspace-switcher-active-surface);
+          border: 1px solid var(--workspace-switcher-item-border-active);
+          box-shadow: var(--workspace-switcher-shadow-active);
+          opacity: 0;
+          z-index: 0;
+          pointer-events: none;
+          transition:
+            transform var(--duration) var(--ease),
+            width var(--duration) var(--ease),
+            box-shadow var(--duration-fast) ease-out,
+            opacity var(--duration-fast) ease-out;
+          will-change: transform, width;
+        }
+
         .sfm-workspace-tab {
           position: relative;
+          z-index: 1;
           min-width: max-content;
           min-height: var(--control-h);
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 7px;
-          padding: 0 12px;
-          border: 1px solid var(--workspace-switcher-item-border);
-          border-radius: var(--radius-control);
+          padding: 0 14px;
+          border-radius: var(--radius-card-inset);
           background: var(--workspace-switcher-item-bg);
           color: var(--workspace-switcher-item-text);
-          box-shadow: var(--workspace-switcher-shadow);
           text-decoration: none;
           white-space: nowrap;
           font-size: var(--type-navigation-size);
@@ -138,10 +210,8 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           touch-action: manipulation;
           cursor: pointer;
           transition:
-            background-color var(--duration-fast) ease-out,
             color var(--duration-fast) ease-out,
-            border-color var(--duration-fast) ease-out,
-            box-shadow var(--duration-fast) ease-out,
+            background-color var(--duration-fast) ease-out,
             transform var(--duration-fast) ease-out;
           -webkit-tap-highlight-color: transparent;
         }
@@ -153,81 +223,51 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         }
 
         .sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true']) {
-          border-color: var(--workspace-switcher-item-border-hover);
-          background: var(--workspace-switcher-item-hover);
-          color: var(--workspace-switcher-item-text);
-          box-shadow: var(--workspace-switcher-shadow-hover);
+          transform: translateY(-1px);
         }
 
-        .sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true']) svg {
+        .sfm-workspace-tab:hover:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {
+          background: var(--workspace-switcher-item-hover);
+        }
+
+        .sfm-workspace-tab:hover:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) svg {
           color: var(--workspace-switcher-icon-hover);
         }
 
         .sfm-workspace-tab:focus-visible {
-          z-index: 1;
+          z-index: 2;
           outline: 3px solid var(--workspace-switcher-focus);
           outline-offset: -3px;
-          box-shadow: var(--focus-shadow), var(--workspace-switcher-shadow-hover);
+          box-shadow: var(--focus-shadow);
         }
 
         .sfm-workspace-tab[data-active='true'] {
-          border-color: var(--workspace-switcher-item-border-active);
-          background: var(--workspace-switcher-item-active);
           color: var(--workspace-switcher-item-text-active);
-          box-shadow: var(--workspace-switcher-shadow-active);
           font-weight: var(--type-navigation-active-weight);
-        }
-
-        .sfm-workspace-tab[data-active='true']::after {
-          content: '';
-          position: absolute;
-          inset-inline: 11px;
-          inset-block-end: 4px;
-          height: 2px;
-          border-radius: var(--radius-pill);
-          background: var(--workspace-switcher-indicator);
-          opacity: 0.9;
         }
 
         .sfm-workspace-tab[data-active='true'] svg {
           color: var(--workspace-switcher-icon-active);
         }
 
-        .sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) {
-          border-color: var(--workspace-switcher-item-border-active);
-          background: var(--workspace-switcher-item-active-hover);
-          color: var(--workspace-switcher-item-text-active);
+        .sfm-workspace-tabs:has(.sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true'])) .sfm-workspace-indicator {
           box-shadow: var(--workspace-switcher-shadow-active-hover);
         }
 
-        .sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) svg {
-          color: var(--workspace-switcher-icon-active);
-        }
-
-        .sfm-workspace-tab[data-active='true']:focus-visible {
-          box-shadow: var(--focus-shadow), var(--workspace-switcher-shadow-active);
-        }
-
-        .sfm-workspace-tab:active:not([aria-disabled='true']):not([data-disabled='true']) {
-          border-color: var(--workspace-switcher-item-border-hover);
+        .sfm-workspace-tab:active:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {
           background: var(--workspace-switcher-item-pressed);
-          box-shadow: var(--workspace-switcher-shadow-pressed);
-          transform: translateY(1px);
+          transform: translateY(0);
         }
 
-        .sfm-workspace-tab[data-active='true']:active:not([aria-disabled='true']):not([data-disabled='true']) {
-          border-color: var(--workspace-switcher-item-border-active);
-          background: var(--workspace-switcher-item-active);
+        .sfm-workspace-tabs:has(.sfm-workspace-tab[data-active='true']:active:not([aria-disabled='true']):not([data-disabled='true'])) .sfm-workspace-indicator {
+          --indicator-scale: 0.97;
           box-shadow: var(--workspace-switcher-shadow-active-pressed);
         }
 
         .sfm-workspace-tab[aria-disabled='true'],
         .sfm-workspace-tab[data-disabled='true'] {
-          border-color: var(--workspace-switcher-border);
-          background: var(--workspace-switcher-item-disabled);
           color: var(--workspace-switcher-item-text-disabled);
-          box-shadow: none;
-          opacity: 0.72;
+          opacity: 0.6;
           cursor: not-allowed;
         }
 
@@ -245,11 +285,9 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .sfm-workspace-tab {
-            transition: none;
-          }
-
-          .sfm-workspace-tab svg {
+          .sfm-workspace-tab,
+          .sfm-workspace-tab svg,
+          .sfm-workspace-indicator {
             transition: none;
           }
         }
