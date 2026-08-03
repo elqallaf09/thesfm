@@ -81,7 +81,7 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
       await expect(page.locator('.tasks-toolbar [role="tablist"]')).toBeVisible();
 
       await page.goto('/notifications', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('.notif-page')).toBeVisible();
+      await expect(page.locator('.notif-page:visible')).toBeVisible();
       await expect(page.locator('.notification-list')).toBeVisible();
       await expectNoHorizontalOverflow(page);
 

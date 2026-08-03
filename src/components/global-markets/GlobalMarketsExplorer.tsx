@@ -188,11 +188,11 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
     performance.clearMarks('gm-explorer-append-start');
     performance.clearMarks('gm-explorer-append-end');
     performance.clearMeasures('gm-explorer-append');
-    performance.mark('gm-explorer-append-start');
     setAppending(true);
     appendFrameRef.current = requestAnimationFrame(() => {
       appendFrameRef.current = null;
       appendTransitionStartedRef.current = true;
+      performance.mark('gm-explorer-append-start');
       startTransition(() => {
         setVisibleCount(count => nextExplorerVisibleCount(count, filteredRows.length, isMobile));
       });
@@ -204,10 +204,8 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
     appendLockedRef.current = false;
     appendTransitionStartedRef.current = false;
     setAppending(false);
-    requestAnimationFrame(() => {
-      performance.mark('gm-explorer-append-end');
-      performance.measure('gm-explorer-append', 'gm-explorer-append-start', 'gm-explorer-append-end');
-    });
+    performance.mark('gm-explorer-append-end');
+    performance.measure('gm-explorer-append', 'gm-explorer-append-start', 'gm-explorer-append-end');
   }, [appending, isPending, visibleCount]);
 
   const appendBusy = appending || isPending;
