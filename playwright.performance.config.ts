@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
-const baseURL = httpsLoopback ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3002';
+const externalBaseURL = process.env.E2E_BASE_URL;
+const baseURL = externalBaseURL || (httpsLoopback ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3002');
 const webServerCommand = httpsLoopback
   ? 'node scripts/playwright-https-proxy.mjs'
   : 'pnpm exec next start --hostname 127.0.0.1 --port 3002';
@@ -28,7 +29,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  webServer: {
+  webServer: externalBaseURL ? undefined : {
     command: webServerCommand,
     url: baseURL,
     ignoreHTTPSErrors: httpsLoopback,
