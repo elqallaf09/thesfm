@@ -137,6 +137,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
       <style jsx global>{`
         .sfm-workspace-navigation {
+          width: fit-content;
           min-width: 0;
           max-width: 100%;
           overflow: hidden;
@@ -145,12 +146,14 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
         .sfm-workspace-tabs {
           position: relative;
+          width: fit-content;
           min-width: 0;
+          max-width: 100%;
           min-height: var(--control-h);
           display: flex;
           align-items: stretch;
-          gap: 3px;
-          padding: 3px;
+          gap: 2px;
+          padding: 0;
           overflow-x: auto;
           overflow-y: hidden;
           overscroll-behavior-inline: contain;
@@ -169,7 +172,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
         .sfm-workspace-indicator {
           position: absolute;
-          inset-block: 3px;
+          inset-block: 2px;
           left: 0;
           width: var(--indicator-w, 0px);
           transform: translateX(var(--indicator-x, 0px)) scale(var(--indicator-scale, 1));

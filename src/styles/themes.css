@@ -168,9 +168,9 @@
   /* The sliding indicator's own surface: a restrained top-to-bottom tonal
      shift (not a flat single-colour block, not a loud brand gradient). */
   --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, var(--surface)), color-mix(in srgb, var(--primary) 11%, var(--surface)));
-  --workspace-switcher-item-border-active: color-mix(in srgb, var(--primary) 48%, transparent);
-  --workspace-switcher-shadow-active: inset 0 1px 0 color-mix(in srgb, var(--surface) 75%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--primary) 24%, transparent), 0 4px 14px -5px color-mix(in srgb, var(--primary) 28%, transparent);
-  --workspace-switcher-shadow-active-hover: inset 0 1px 0 color-mix(in srgb, var(--surface) 82%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent), 0 8px 20px -6px color-mix(in srgb, var(--primary) 32%, transparent);
+  --workspace-switcher-item-border-active: color-mix(in srgb, var(--primary) 26%, transparent);
+  --workspace-switcher-shadow-active: inset 0 1px 0 color-mix(in srgb, var(--surface) 82%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--primary) 16%, transparent), 0 3px 10px -5px color-mix(in srgb, var(--primary) 20%, transparent);
+  --workspace-switcher-shadow-active-hover: inset 0 1px 0 color-mix(in srgb, var(--surface) 88%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent), 0 6px 16px -6px color-mix(in srgb, var(--primary) 24%, transparent);
   --workspace-switcher-shadow-active-pressed: inset 0 2px 5px color-mix(in srgb, var(--shadow-color) 24%, transparent), 0 2px 8px color-mix(in srgb, var(--primary) 22%, transparent);
   --navigation-hover: #ECEDFB;
   --navigation-active: #E7E9FC;
@@ -522,9 +522,9 @@
   /* Dark: a visibly layered navy/indigo surface so the active item separates
      from both the track and the navy header — still translucent, not solid. */
   --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 44%, transparent), color-mix(in srgb, var(--primary) 28%, transparent));
-  --workspace-switcher-item-border-active: color-mix(in srgb, var(--primary) 68%, transparent);
-  --workspace-switcher-shadow-active: inset 0 1px 0 rgba(199, 210, 254, 0.18), inset 0 0 0 1px color-mix(in srgb, var(--primary) 54%, transparent), 0 6px 18px -6px rgba(79, 124, 255, 0.38);
-  --workspace-switcher-shadow-active-hover: inset 0 1px 0 rgba(199, 210, 254, 0.24), inset 0 0 0 1px color-mix(in srgb, var(--primary) 64%, transparent), 0 10px 24px -8px rgba(79, 124, 255, 0.46);
+  --workspace-switcher-item-border-active: color-mix(in srgb, var(--primary) 42%, transparent);
+  --workspace-switcher-shadow-active: inset 0 1px 0 rgba(199, 210, 254, 0.24), inset 0 0 0 1px color-mix(in srgb, var(--primary) 36%, transparent), 0 4px 12px -6px rgba(79, 124, 255, 0.3);
+  --workspace-switcher-shadow-active-hover: inset 0 1px 0 rgba(199, 210, 254, 0.3), inset 0 0 0 1px color-mix(in srgb, var(--primary) 44%, transparent), 0 8px 18px -8px rgba(79, 124, 255, 0.36);
   --workspace-switcher-shadow-active-pressed: inset 0 2px 6px color-mix(in srgb, var(--shadow-color) 48%, transparent), 0 2px 8px color-mix(in srgb, var(--primary) 24%, transparent);
   --navigation-hover: #182452;
   --navigation-active: #222A5E;
