@@ -13,6 +13,40 @@ export type MarketNewsMetadata = {
   assetTypes?: string[];
 };
 
+export type MarketNewsRegion = 'gulf' | 'arab' | 'middle_east' | 'china_hongkong' | 'asia' | 'north_america' | 'global';
+
+const REGION_COUNTRIES: Record<Exclude<MarketNewsRegion, 'global'>, Set<string>> = {
+  gulf: new Set(['KW', 'SA', 'AE', 'QA', 'BH', 'OM']),
+  arab: new Set(['KW', 'SA', 'AE', 'QA', 'BH', 'OM', 'EG', 'JO', 'MA']),
+  middle_east: new Set(['KW', 'SA', 'AE', 'QA', 'BH', 'OM', 'EG', 'JO']),
+  china_hongkong: new Set(['CN', 'HK']),
+  asia: new Set(['CN', 'HK', 'JP', 'IN', 'KR']),
+  north_america: new Set(['US', 'CA']),
+};
+
+export function parseMarketNewsRegions(values: string[]): MarketNewsRegion[] {
+  const allowed = new Set<MarketNewsRegion>(['gulf', 'arab', 'middle_east', 'china_hongkong', 'asia', 'north_america', 'global']);
+  const regions = [...new Set(values.map(value => value.trim().toLowerCase()).filter(Boolean))] as MarketNewsRegion[];
+  if (regions.some(region => !allowed.has(region))) throw new Error('invalid_news_region');
+  return regions;
+}
+
+export function storyMatchesNewsRegions(story: MarketNewsMetadata, regions: MarketNewsRegion[]) {
+  if (regions.length === 0 || regions.includes('global')) return true;
+  const countries = normalized(story.countries);
+  return regions.some(region => region !== 'global' && [...countries].some(country => REGION_COUNTRIES[region].has(country)));
+}
+
+export function sourceRegionForCountries(values: string[] | undefined): MarketNewsRegion | null {
+  const countries = normalized(values);
+  if ([...countries].some(country => REGION_COUNTRIES.gulf.has(country))) return 'gulf';
+  if ([...countries].some(country => REGION_COUNTRIES.arab.has(country))) return 'arab';
+  if ([...countries].some(country => REGION_COUNTRIES.china_hongkong.has(country))) return 'china_hongkong';
+  if ([...countries].some(country => REGION_COUNTRIES.asia.has(country))) return 'asia';
+  if ([...countries].some(country => REGION_COUNTRIES.north_america.has(country))) return 'north_america';
+  return null;
+}
+
 const STRIP_BY_ID = new Map(GLOBAL_MARKET_STRIPS.map(strip => [strip.id, strip]));
 
 function assetTypeFor(kind: GlobalMarketStripKind) {

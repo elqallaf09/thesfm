@@ -25,6 +25,29 @@ type MarketStripsResponse = {
   error: string;
 };
 
+const STRIP_CACHE_TTL = 5 * 60_000;
+const STRIP_SESSION_KEY = 'sfm.globalMarkets.stripCache.v1';
+const stripCache = new Map<string, { at: number; data: Extract<MarketStripsResponse, { success: true }> }>();
+
+function readStripCache(key: string) {
+  const memory = stripCache.get(key);
+  if (memory && Date.now() - memory.at < STRIP_CACHE_TTL) return memory.data;
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(STRIP_SESSION_KEY) ?? 'null') as { key: string; at: number; data: Extract<MarketStripsResponse, { success: true }> } | null;
+    if (stored?.key === key && Date.now() - stored.at < STRIP_CACHE_TTL && stored.data.success) {
+      stripCache.set(key, { at: stored.at, data: stored.data });
+      return stored.data;
+    }
+  } catch { /* A corrupt cache must never block live data. */ }
+  return null;
+}
+
+function writeStripCache(key: string, data: Extract<MarketStripsResponse, { success: true }>) {
+  const entry = { at: Date.now(), data };
+  stripCache.set(key, entry);
+  try { sessionStorage.setItem(STRIP_SESSION_KEY, JSON.stringify({ key, ...entry })); } catch { /* Storage may be unavailable. */ }
+}
+
 function localeFor(lang: string) {
   return lang === 'ar' ? 'ar-SA-u-nu-latn' : lang === 'fr' ? 'fr-FR' : 'en-US';
 }
@@ -48,7 +71,16 @@ export function GlobalMarketsPage() {
   const customizeLabel = lang === 'ar' ? 'تخصيص الأسواق' : lang === 'fr' ? 'Personnaliser les marchés' : 'Customize markets';
   const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
 
-  const load = useCallback(async (showLoader: boolean, idsKey: string, signal?: AbortSignal) => {
+  const load = useCallback(async (showLoader: boolean, idsKey: string, signal?: AbortSignal, bypassCache = false) => {
+    const cached = bypassCache ? null : readStripCache(idsKey);
+    if (cached) {
+      setPrices(cached.prices);
+      setLastUpdated(cached.lastUpdated);
+      setLoading(false);
+      setError(false);
+      hasLoadedRef.current = true;
+      return;
+    }
     if (showLoader) setLoading(true);
     else setRefreshing(true);
     setError(false);
@@ -56,6 +88,7 @@ export function GlobalMarketsPage() {
       const response = await fetch(`/api/market-strips?ids=${encodeURIComponent(idsKey)}`, { signal });
       const json = await response.json() as MarketStripsResponse;
       if (!json.success) throw new Error(json.error);
+      writeStripCache(idsKey, json);
       setPrices(json.prices);
       setLastUpdated(json.lastUpdated);
       hasLoadedRef.current = true;
@@ -98,7 +131,7 @@ export function GlobalMarketsPage() {
             <button
               type="button"
               className="gm-header-refresh"
-              onClick={() => void load(false, selectedIdsKey)}
+              onClick={() => void load(false, selectedIdsKey, undefined, true)}
               disabled={refreshing}
               aria-label={t('global_markets_last_updated', lang)}
             >

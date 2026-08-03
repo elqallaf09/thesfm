@@ -16,6 +16,9 @@ import { checkRateLimit, getClientIp, rateLimitRequest } from '@/lib/server/rate
 import {
   matchingMarketIds,
   parseMarketNewsIds,
+  parseMarketNewsRegions,
+  sourceRegionForCountries,
+  storyMatchesNewsRegions,
   storyMatchesSelectedMarkets,
 } from '@/lib/market/globalMarketNews';
 import type { GlobalMarketStripId } from '@/lib/market/globalMarketStrips';
@@ -101,6 +104,21 @@ function parseBoolean(value: string | null) {
   return value === '1' || value === 'true' || value === 'yes';
 }
 
+function overlaps(actual: string[] | undefined, expected: string[] | undefined, upper = true) {
+  if (!expected?.length) return true;
+  const normalized = new Set((actual ?? []).map(value => upper ? value.toUpperCase() : value.toLowerCase()));
+  return expected.some(value => normalized.has(upper ? value.toUpperCase() : value.toLowerCase()));
+}
+
+function matchesExplicitFilters(story: ConsolidatedNewsStory, params: NewsFetchParams) {
+  return overlaps(story.symbols, params.symbols)
+    && overlaps(story.exchangeCodes, params.exchangeCodes)
+    && overlaps(story.countries, params.countries)
+    && overlaps(story.assetTypes, params.assetTypes, false)
+    && overlaps([story.originalLanguage], params.languages, false)
+    && overlaps([story.sourceName], params.sourceNames, false);
+}
+
 function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>, selectedMarketIds: GlobalMarketStripId[] = []) {
   const supportingSources = Array.isArray(story.supportingSources)
     ? story.supportingSources.map(source => {
@@ -147,7 +165,7 @@ function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>, selec
     relatedCompanies: story.companyNames,
     countryCodes: story.countries,
     marketIds: matchingMarketIds(story, selectedMarketIds),
-    sourceRegion: null,
+    sourceRegion: sourceRegionForCountries(story.countries),
     translated: Boolean(story.originalLanguage && story.originalLanguage !== story.language),
     companyNames: story.companyNames,
     assetTypes: story.assetTypes,
@@ -237,8 +255,10 @@ export async function GET(request: NextRequest) {
   const commodities = list(searchParams, ['commodity', 'commodities'], 60);
   const companyNames = list(searchParams, ['company', 'companyName'], 100);
   let selectedMarketIds: GlobalMarketStripId[] = [];
+  let newsRegions;
   try {
     selectedMarketIds = parseMarketNewsIds(list(searchParams, ['marketId', 'marketIds'], 64));
+    newsRegions = parseMarketNewsRegions(list(searchParams, ['newsRegion', 'newsRegions'], 32));
   } catch {
     return invalidRequest();
   }
@@ -248,8 +268,8 @@ export async function GET(request: NextRequest) {
     query: effectiveQuery || undefined,
     symbols,
     companyNames,
-    marketCodes: list(searchParams, ['market', 'markets', 'marketCode', 'selectedMarket'], 40),
-    exchangeCodes: list(searchParams, ['exchange', 'exchanges', 'exchangeCode'], 40),
+    marketCodes: list(searchParams, ['market', 'markets', 'marketCode', 'marketCodes', 'selectedMarket'], 40),
+    exchangeCodes: list(searchParams, ['exchange', 'exchanges', 'exchangeCode', 'exchangeCodes'], 40),
     countries: list(searchParams, ['country', 'countries'], 40),
     sectors: list(searchParams, ['sector', 'sectors'], 60),
     industries: list(searchParams, ['industry', 'industries'], 60),
@@ -262,7 +282,7 @@ export async function GET(request: NextRequest) {
     eventTypes,
     sourceTypes,
     sourceIds: list(searchParams, ['sourceId', 'sourceIds'], 100),
-    sourceNames: list(searchParams, ['source', 'sourceName', 'sourceNames'], 160),
+    sourceNames: list(searchParams, ['source', 'sources', 'sourceName', 'sourceNames'], 160),
     verificationStatuses,
     impactLevels,
     sentiments,
@@ -282,9 +302,16 @@ export async function GET(request: NextRequest) {
     sort: parseSort(searchParams.get('sort')),
     forceExternal: refreshRequested,
   });
-  const selectedStories = selectedMarketIds.length
-    ? result.stories.filter(story => storyMatchesSelectedMarkets(story, selectedMarketIds))
-    : result.stories;
+  const explicitlyFilteredStories = result.stories.filter(story => matchesExplicitFilters(story, params));
+  const marketSelectedStories = selectedMarketIds.length
+    ? explicitlyFilteredStories.filter(story => storyMatchesSelectedMarkets(story, selectedMarketIds))
+    : explicitlyFilteredStories;
+  const selectedStories = newsRegions.length
+    ? marketSelectedStories.filter(story => storyMatchesNewsRegions(story, newsRegions))
+    : marketSelectedStories;
+  const hasStrictPostFilter = selectedMarketIds.length > 0 || newsRegions.length > 0
+    || Boolean(params.symbols?.length || params.exchangeCodes?.length || params.countries?.length
+      || params.assetTypes?.length || params.languages?.length || params.sourceNames?.length);
   const stories = await translatedStories(selectedStories as Array<ConsolidatedNewsStory & Record<string, unknown>>, language);
   const items = stories.map(story => toUiStory(story, selectedMarketIds));
   const unavailable = !result.liveUpdatesAvailable && !result.storedFallbackUsed && items.length === 0;
@@ -305,7 +332,7 @@ export async function GET(request: NextRequest) {
     provider: 'multi-source',
     items,
     stories: items,
-    total: selectedMarketIds.length ? items.length : result.total,
+    total: hasStrictPostFilter ? items.length : result.total,
     page: result.page,
     pageSize: result.pageSize,
     totalPages: result.totalPages,
@@ -314,7 +341,7 @@ export async function GET(request: NextRequest) {
     requestedMarketIds: selectedMarketIds,
     coverage: {
       strictMarketMetadata: selectedMarketIds.length > 0,
-      availableFilters: ['marketIds', 'countries', 'exchanges', 'symbols', 'sourceLanguages', 'sources', 'assetTypes', 'dateRange', 'sort'],
+      availableFilters: ['marketIds', 'countries', 'exchanges', 'symbols', 'newsRegions', 'sourceLanguages', 'sources', 'assetTypes', 'dateRange', 'sort'],
     },
     providerCoverage: result.providerCoverage,
     partialFailure: result.partialFailure,

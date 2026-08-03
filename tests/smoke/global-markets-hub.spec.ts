@@ -267,6 +267,40 @@ test.describe('Global Markets Hub', () => {
     await expect(newsSection).toContainText('Federal Reserve holds interest rates steady');
   });
 
+  test('manual news customization is selection-driven and targets verified markets and companies', async ({ page }) => {
+    await useEnglish(page);
+    const newsRequests: string[] = [];
+    await mockGlobalMarkets(page);
+    page.on('request', request => {
+      if (request.url().includes('/api/market-news')) newsRequests.push(request.url());
+    });
+    await page.goto('/global-markets');
+
+    await page.getByRole('button', { name: 'Manual customization' }).click();
+    const filters = page.locator('.gm-news-filter-panel');
+    await expect(filters).toBeVisible();
+    await expect(filters.locator(':scope > input')).toHaveCount(0);
+    await expect(filters.locator('input[type="search"]')).toHaveCount(4);
+
+    const country = filters.locator('.gm-news-select', { hasText: 'Countries' });
+    await country.locator('summary').click();
+    await country.getByText('Kuwait', { exact: true }).click();
+    await country.locator('summary').click();
+
+    const company = filters.locator('.gm-news-select', { hasText: 'Companies & symbols' });
+    await company.locator('summary').click();
+    await company.locator('input[type="search"]').fill('Apple');
+    await company.getByText(/Apple · AAPL/).click();
+    await company.locator('summary').click();
+
+    await expect(filters.locator('.gm-news-filter-tokens')).toContainText('Kuwait');
+    await expect(filters.locator('.gm-news-filter-tokens')).toContainText('AAPL');
+    await filters.getByRole('button', { name: /Apply filters/ }).click();
+
+    await expect.poll(() => newsRequests.at(-1) ?? '').toContain('countries=KW');
+    expect(newsRequests.at(-1)).toContain('symbols=AAPL');
+  });
+
   test('makes exactly one request each to market-strips and market-news, with no duplicate after hydration', async ({ page }) => {
     await mockGlobalMarkets(page);
     const stripsRequests: string[] = [];
