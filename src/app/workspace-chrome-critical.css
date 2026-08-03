@@ -9,7 +9,7 @@
  */
 
 :root {
-  --global-header-height: 64px;
+  --global-header-height: 72px;
 }
 
 .sfm-global-header {
@@ -20,12 +20,14 @@
   min-width: 0;
   min-height: var(--global-header-height);
   display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(240px, max-content) minmax(0, 1fr) minmax(360px, max-content);
   grid-template-areas: 'brand workspaces actions';
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-  padding: 8px clamp(12px, 1.5vw, 22px);
+  max-width: 96rem;
+  margin-inline: auto;
+  padding: 10px clamp(20px, 1.6vw, 24px);
   box-sizing: border-box;
 }
 
@@ -82,7 +84,7 @@
 
 .sfm-workspace-tabs {
   min-width: 0;
-  min-height: var(--control-h);
+  min-height: 52px;
   display: flex;
   align-items: stretch;
   gap: 5px;
@@ -93,7 +95,7 @@
 .sfm-workspace-tab {
   position: relative;
   min-width: max-content;
-  min-height: var(--control-h);
+  min-height: 52px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -397,7 +399,7 @@
 
 @media (max-width: 1179px) {
   :root {
-    --global-header-height: 108px;
+    --global-header-height: 120px;
   }
 
   .sfm-global-header {
@@ -405,9 +407,9 @@
     grid-template-areas:
       'brand actions'
       'workspaces workspaces';
-    grid-template-rows: 48px 44px;
+    grid-template-rows: 48px 52px;
     row-gap: 0;
-    padding-block: 8px;
+    padding-block: 10px;
   }
 
   .sfm-global-workspaces {

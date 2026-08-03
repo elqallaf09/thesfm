@@ -121,16 +121,17 @@
   --sidebar-w-collapsed: 72px;
   --sidebar-width-icon: 3rem;
   --topbar-h: 64px;
-  --global-header-height: 64px;
 
   /*
-   * Variant 03 floating global header geometry.
-   * The header is a rounded, inset "card" that stays sticky. Consumers of the
-   * shell (sidebar offset, content min-height) must reserve the FULL occupied
-   * band — content height plus the top inset and the bottom gap — via
-   * --app-header-height, not the bare content height. The calc references the
-   * live --global-header-height so the responsive two-row override recomputes
-   * automatically.
+   * Floating global header geometry. The header is a rounded, inset "card"
+   * that stays sticky. Consumers of the shell (sidebar offset, content
+   * min-height) must reserve the FULL occupied band — content height plus
+   * the top inset and the bottom gap — via --app-header-height, not the bare
+   * content height. The calc references --global-header-height, which this
+   * file does not itself declare a default for: it's set once, canonically,
+   * in workspace-chrome-critical.css (imported on every route) and again in
+   * AppHeader.tsx's own styled-jsx once that component hydrates. The calc
+   * below picks up whichever of those is currently in scope.
    */
   --app-header-inset-block: 10px;
   --app-header-inset-inline: clamp(10px, 1.4vw, 18px);
@@ -194,5 +195,3 @@
   --sidebar-mobile-glass-filter: blur(14px) saturate(118%);
   --sidebar-item-hover-lift: -1px;
 }
-
-/* Vercel preview trigger: Variant 03 verified */
