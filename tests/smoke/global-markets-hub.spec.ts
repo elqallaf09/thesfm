@@ -73,11 +73,13 @@ test.describe('Global Markets Hub', () => {
     });
 
     await page.goto('/global-markets');
-    await expect(page.locator('.gm-strip-skeleton').first()).toBeVisible();
-    await expect(page.locator('.gm-news-skeleton')).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath('global-markets-staged-loading.png'), fullPage: true });
-
-    releaseRequests();
+    try {
+      await expect(page.locator('.gm-strips-skeleton-row').first()).toBeVisible();
+      await expect(page.locator('.gm-news-skeleton')).toBeVisible();
+      await page.screenshot({ path: testInfo.outputPath('global-markets-staged-loading.png'), fullPage: true });
+    } finally {
+      releaseRequests();
+    }
     await expect(page.locator('.gm-strip-heading-label').last()).toBeVisible();
     await expect(page.locator('.gm-news-list')).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath('global-markets-editorial-news.png'), fullPage: true });
@@ -308,14 +310,14 @@ test.describe('Global Markets Hub', () => {
 
     const country = filters.locator('.gm-news-select', { hasText: 'Countries' });
     await country.locator('summary').click();
-    await country.getByText('Kuwait', { exact: true }).click();
-    await country.locator('summary').click();
+    await country.getByRole('checkbox', { name: 'Kuwait' }).check({ force: true });
+    await country.evaluate(element => { (element as HTMLDetailsElement).open = false; });
 
     const company = filters.locator('.gm-news-select', { hasText: 'Companies & symbols' });
     await company.locator('summary').click();
     await company.locator('input[type="search"]').fill('Apple');
-    await company.getByText(/Apple · AAPL/).click();
-    await company.locator('summary').click();
+    await company.getByRole('checkbox', { name: /Apple · AAPL/ }).check({ force: true });
+    await company.evaluate(element => { (element as HTMLDetailsElement).open = false; });
 
     await expect(filters.locator('.gm-news-filter-tokens')).toContainText('Kuwait');
     await expect(filters.locator('.gm-news-filter-tokens')).toContainText('AAPL');
