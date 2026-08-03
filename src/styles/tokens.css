@@ -103,6 +103,10 @@
   --radius-pill: 999px;
   --radius-circle: 50%;
   --radius-chat-incoming: var(--radius-panel) var(--radius-panel) var(--radius-panel) var(--radius-xs);
+  /* Nested-pill radius for a control inset inside a --radius-card track
+     (e.g. the workspace-switcher sliding indicator/tabs), so the inner
+     corner reads concentric with the outer one instead of colliding. */
+  --radius-card-inset: calc(var(--radius-card) - 5px);
   --radius-chat-outgoing: var(--radius-panel) var(--radius-panel) var(--radius-xs) var(--radius-panel);
 
   /* Shared layout rhythm consumed by application shells and page grids. */
