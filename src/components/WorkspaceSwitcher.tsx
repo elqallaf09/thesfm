@@ -128,7 +128,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
               data-active={current ? 'true' : 'false'}
               aria-current={current ? 'page' : undefined}
             >
-              <Icon size={18} aria-hidden="true" />
+              <Icon size={20} aria-hidden="true" />
               <span className="sfm-workspace-label-full">{workspace.labels[locale]}</span>
             </Link>
           );
@@ -149,7 +149,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           width: fit-content;
           min-width: 0;
           max-width: 100%;
-          min-height: 46px;
+          min-height: 52px;
           display: flex;
           align-items: stretch;
           gap: 2px;
@@ -198,12 +198,12 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           position: relative;
           z-index: 1;
           min-width: max-content;
-          min-height: 46px;
+          min-height: 52px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 7px;
-          padding: 0 16px;
+          padding: 0 20px;
           border-radius: var(--radius-panel-inset);
           background: var(--workspace-switcher-item-bg);
           color: var(--workspace-switcher-item-text);
@@ -284,7 +284,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
         @media (max-width: 900px) {
           .sfm-workspace-tab {
-            min-height: 46px;
+            min-height: 52px;
             padding-inline: 13px;
             font-size: var(--type-navigation-size);
           }

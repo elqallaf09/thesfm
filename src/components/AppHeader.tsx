@@ -132,7 +132,7 @@ export function AppHeader() {
 
       <style jsx global>{`
         :root {
-          --global-header-height: 64px;
+          --global-header-height: 72px;
         }
 
         .sfm-global-header {
@@ -143,22 +143,26 @@ export function AppHeader() {
           min-width: 0;
           min-height: var(--global-header-height);
           display: grid;
-          /* Three balanced zones (brand / workspace switcher / utilities) so
-             the switcher reads as centered in the header, not merely
-             centered in whatever space happens to be left over between two
-             differently-sized outer zones. */
-          grid-template-columns: minmax(240px, 1fr) auto minmax(360px, 1fr);
+          /* Brand and the utility cluster size to their own content instead
+             of flex-growing — a fixed grid where the outer zones are 1fr
+             stretches empty space around a small logo/icon cluster on wide
+             screens while the switcher (the actual signature control) never
+             grows. Giving the center column the flexible track means any
+             leftover width becomes centered breathing room around the
+             switcher, not dead margins flanking unrelated content. */
+          grid-template-columns: minmax(240px, max-content) minmax(0, 1fr) minmax(360px, max-content);
           grid-template-areas: 'brand workspaces actions';
           align-items: center;
           gap: 16px;
-          /* Variant 03: an inset floating panel that stays sticky. */
+          /* An inset floating panel that stays sticky. */
           margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-          /* Ultra-wide screens: cap and center instead of stretching the
-             three zones indefinitely apart. No-op below ~1920px, where the
-             inset-driven margin above still governs. */
-          max-width: 120rem;
+          /* Caps the header on wide/ultra-wide monitors instead of letting it
+             stretch edge to edge; 96rem is the actual constraint (the prior
+             120rem cap only ever activated above 1920px, i.e. never on a
+             standard 1920 display). */
+          max-width: 96rem;
           margin-inline: auto;
-          padding: 8px clamp(20px, 1.6vw, 24px);
+          padding: 10px clamp(20px, 1.6vw, 24px);
           border: 1px solid var(--header-border);
           border-radius: var(--radius-card);
           background: var(--surface);
@@ -273,11 +277,7 @@ export function AppHeader() {
           min-width: 132px;
         }
 
-        .sfm-global-header .sfm-command-trigger,
-        .sfm-global-header .sfm-language-trigger,
-        .sfm-global-header .sfm-theme-toggle,
-        .sfm-global-header .sfm-density-toggle,
-        .sfm-global-header .sfm-user-chip,
+        .sfm-global-header :is(.sfm-command-trigger, .sfm-language-trigger, .sfm-theme-toggle, .sfm-density-toggle, .sfm-user-chip),
         .sfm-global-notifications {
           border-color: transparent;
           background: transparent;
@@ -291,13 +291,8 @@ export function AppHeader() {
           background: var(--surface-muted);
         }
 
-        .sfm-global-header .sfm-command-trigger:hover,
-        .sfm-global-header .sfm-language-trigger:hover,
-        .sfm-global-header .sfm-theme-toggle:hover,
-        .sfm-global-header .sfm-density-toggle:hover,
-        .sfm-global-header .sfm-user-chip:hover,
-        .sfm-global-header .sfm-user-chip[aria-expanded='true'],
-        .sfm-global-header .sfm-language-trigger[aria-expanded='true'],
+        .sfm-global-header :is(.sfm-command-trigger, .sfm-language-trigger, .sfm-theme-toggle, .sfm-density-toggle, .sfm-user-chip):hover,
+        .sfm-global-header :is(.sfm-user-chip, .sfm-language-trigger)[aria-expanded='true'],
         .sfm-global-notifications:hover {
           border-color: transparent;
           background: var(--header-control-hover, var(--primary-soft));
@@ -346,7 +341,7 @@ export function AppHeader() {
           width: 44px;
           height: 44px;
           min-width: 44px;
-          /* Variant 03: grouped utilities — subtle idle surface, no heavy per-control border. */
+          /* Grouped utilities — subtle idle surface, no heavy per-control border. */
           border: 1px solid var(--header-control-border, transparent);
           background: var(--header-control-bg, var(--surface));
         }
@@ -399,7 +394,9 @@ export function AppHeader() {
 
         @media (max-width: 1179px) {
           :root {
-            --global-header-height: 108px;
+            /* 48px brand/actions row + 52px workspace-switcher row (matching
+               its own min-height below) + 2 * 10px padding-block. */
+            --global-header-height: 120px;
           }
 
           .sfm-global-header {
@@ -407,9 +404,9 @@ export function AppHeader() {
             grid-template-areas:
               'brand actions'
               'workspaces workspaces';
-            grid-template-rows: 48px 44px;
+            grid-template-rows: 48px 52px;
             row-gap: 0;
-            padding-block: 8px;
+            padding-block: 10px;
           }
 
           .sfm-workspace-navigation.sfm-global-workspaces {

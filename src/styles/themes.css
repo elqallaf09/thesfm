@@ -140,7 +140,7 @@
   --sidebar-search-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76), inset 0 -1px 0 rgba(96, 104, 170, 0.1), 0 5px 14px rgba(48, 53, 120, 0.08);
   --sidebar-footer-bg: linear-gradient(150deg, color-mix(in srgb, #FFFFFF 66%, transparent), color-mix(in srgb, #EAECFC 54%, transparent));
   --sidebar-active-indicator: #C7D2FE;
-  /* Global header glass + Variant 03 floating container */
+  /* Global header glass + floating container */
   --header-glass-bg: color-mix(in srgb, var(--surface) 86%, transparent);
   --header-surface: linear-gradient(180deg, color-mix(in srgb, var(--surface) 96%, transparent), color-mix(in srgb, var(--surface-secondary) 92%, transparent));
   --header-shadow: 0 18px 40px -26px rgba(20, 24, 58, 0.28), 0 2px 6px rgba(20, 24, 58, 0.05);
@@ -148,14 +148,15 @@
   --header-control-bg: color-mix(in srgb, var(--surface) 72%, transparent);
   --header-control-border: color-mix(in srgb, var(--border-strong) 15%, transparent);
   --header-control-hover: var(--primary-soft);
-  /* Global workspace switcher — Variant 06: a single sliding indicator surface
-     (positioned by JS via --indicator-x/--indicator-w, see WorkspaceSwitcher.tsx)
-     moves behind whichever item is active, instead of every item owning a
-     border/fill. Only the indicator carries visual weight; items are text + icon. */
-  /* Deliberately deeper than the header's own glass surface so the switcher
-     reads as an elevated dock resting on top of the header, not a zone
+  /* Global workspace switcher: one sliding indicator surface (positioned by
+     JS via --indicator-x/--indicator-w, see WorkspaceSwitcher.tsx) moves
+     behind whichever item is active, instead of every item owning a
+     border/fill. Only the indicator carries visual weight; items are text +
+     icon. The track itself is mixed noticeably darker than the header's own
+     glass surface and carries a visible outer shadow, so the switcher reads
+     as an elevated dock resting on top of the header rather than a zone
      flush with it — this is the header's signature control. */
-  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 96%, var(--foreground) 4%);
+  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 92%, var(--foreground) 8%);
   --workspace-switcher-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
   --workspace-switcher-item-bg: transparent;
   --workspace-switcher-item-hover: color-mix(in srgb, var(--primary-soft) 62%, transparent);
@@ -167,7 +168,7 @@
   --workspace-switcher-icon-hover: var(--sidebar-icon-hover);
   --workspace-switcher-icon-active: var(--primary);
   --workspace-switcher-focus: var(--focus-ring);
-  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 10px 24px -14px color-mix(in srgb, var(--shadow-color) 32%, transparent);
+  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 14px 32px -12px color-mix(in srgb, var(--shadow-color) 32%, transparent);
   /* The sliding indicator's own surface: a restrained top-to-bottom tonal
      shift (not a flat single-colour block, not a loud brand gradient). */
   --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, var(--surface)), color-mix(in srgb, var(--primary) 11%, var(--surface)));
@@ -503,7 +504,7 @@
   --sidebar-search-shadow: inset 0 1px 0 rgba(208, 226, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.32), 0 6px 16px rgba(0, 6, 22, 0.3);
   --sidebar-footer-bg: linear-gradient(150deg, rgba(25, 34, 86, 0.52), rgba(9, 16, 44, 0.7));
   --sidebar-active-indicator: #C7D2FE;
-  /* Global header glass + Variant 03 floating navy container */
+  /* Global header glass + floating navy container */
   --header-glass-bg: color-mix(in srgb, var(--surface) 82%, transparent);
   --header-surface: linear-gradient(180deg, color-mix(in srgb, var(--surface-elevated) 92%, transparent), color-mix(in srgb, var(--surface) 90%, transparent));
   --header-shadow: 0 22px 48px -28px rgba(3, 8, 34, 0.72), 0 2px 8px rgba(3, 8, 34, 0.4);
@@ -511,9 +512,9 @@
   --header-control-bg: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
   --header-control-border: color-mix(in srgb, var(--border-strong) 22%, transparent);
   --header-control-hover: var(--primary-soft);
-  /* Global workspace switcher — Variant 06, see :root for rationale. */
+  /* Global workspace switcher — see :root for the sliding-indicator rationale. */
   /* Deliberately deeper than the header's own glass surface — see :root. */
-  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 90%, var(--shadow-color) 10%);
+  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 86%, var(--shadow-color) 14%);
   --workspace-switcher-border: color-mix(in srgb, var(--border-strong) 52%, transparent);
   --workspace-switcher-item-bg: transparent;
   --workspace-switcher-item-hover: color-mix(in srgb, var(--primary-soft) 72%, transparent);
@@ -525,7 +526,7 @@
   --workspace-switcher-icon-hover: var(--sidebar-icon-hover);
   --workspace-switcher-icon-active: #FFFFFF;
   --workspace-switcher-focus: var(--focus-ring);
-  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 7%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 14px 30px -14px rgba(2, 4, 16, 0.55);
+  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 7%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 18px 36px -12px rgba(2, 4, 16, 0.55);
   /* Dark: a visibly layered navy/indigo surface so the active item separates
      from both the track and the navy header — still translucent, not solid. */
   --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 44%, transparent), color-mix(in srgb, var(--primary) 28%, transparent));
