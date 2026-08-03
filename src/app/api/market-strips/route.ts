@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
+import type { GlobalMarketStripId } from '@/lib/market/globalMarketStrips';
 import {
-  GLOBAL_MARKET_STRIPS,
-  type GlobalMarketStripId,
-} from '@/lib/market/globalMarketStrips';
+  parseRequestedStripIds,
+  selectedStripSucceeded,
+  symbolsForSelectedStrips,
+} from '@/lib/market/marketStripSelection';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
@@ -19,28 +21,6 @@ export type MarketStripsResponse = {
   success: false;
   error: string;
 };
-
-const MARKET_STRIP_BY_ID = new Map(GLOBAL_MARKET_STRIPS.map(strip => [strip.id, strip]));
-const MAX_SELECTED_STRIPS = 4;
-
-export function parseRequestedStripIds(url: URL): GlobalMarketStripId[] {
-  const candidates = url.searchParams.getAll('ids').flatMap(value => value.split(','));
-  const normalized = [...new Set(candidates.map(value => value.trim()).filter(Boolean))];
-  if (normalized.length < 1 || normalized.length > MAX_SELECTED_STRIPS) {
-    throw new Error('invalid_strip_count');
-  }
-  if (normalized.some(id => !MARKET_STRIP_BY_ID.has(id as GlobalMarketStripId))) {
-    throw new Error('unknown_strip_id');
-  }
-  if (normalized.some(id => MARKET_STRIP_BY_ID.get(id as GlobalMarketStripId)?.items.length === 0)) {
-    throw new Error('strip_coverage_unavailable');
-  }
-  return normalized as GlobalMarketStripId[];
-}
-
-export function symbolsForSelectedStrips(ids: GlobalMarketStripId[]): string[] {
-  return [...new Set(ids.flatMap(id => MARKET_STRIP_BY_ID.get(id)?.items.map(item => item.symbol) ?? []))];
-}
 
 export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { max: 60, prefix: 'market-strips' });
@@ -77,15 +57,13 @@ export async function GET(request: Request) {
         unavailableReason: 'price_not_fetched',
       };
     }
+    const availableSymbols = new Set(symbols.filter(symbol => prices[symbol]?.available));
 
     return NextResponse.json({
       success: true,
       lastUpdated: new Date().toISOString(),
       requestedIds,
-      strips: requestedIds.map(id => ({
-        id,
-        success: (MARKET_STRIP_BY_ID.get(id)?.items ?? []).some(item => prices[item.symbol]?.available),
-      })),
+      strips: requestedIds.map(id => ({ id, success: selectedStripSucceeded(id, availableSymbols) })),
       prices,
     } satisfies MarketStripsResponse, {
       headers: { 'cache-control': 'public, s-maxage=300, stale-while-revalidate=600' },

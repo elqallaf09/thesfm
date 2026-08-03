@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseRequestedStripIds,
   symbolsForSelectedStrips,
-} from '@/app/api/market-strips/route';
+} from '@/lib/market/marketStripSelection';
 
 function url(ids: string) {
   return new URL(`https://the-sfm.com/api/market-strips?ids=${encodeURIComponent(ids)}`);
