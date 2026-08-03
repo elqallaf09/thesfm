@@ -56,29 +56,36 @@ const traderVectorUnitAllowlist = [
 
 describe('Phase 3.1 global-controls contract', () => {
   it('keeps authenticated language and account controls in one adaptive header path', () => {
+    // AppHeader.tsx composes CommandCluster (which renders LanguageSwitcher
+    // directly) and AccountMenuTrigger (a thin wrapper around UserChip) —
+    // the header's own text no longer contains these tags directly, but
+    // exactly one path through its composition still renders each.
     const appHeader = read('src/components/AppHeader.tsx');
+    const commandCluster = read('src/components/header/CommandCluster.tsx');
+    const accountMenuTrigger = read('src/components/header/AccountMenuTrigger.tsx');
     const mobileMenu = read('src/components/MobileMenu.tsx');
 
-    expect(renderCount(appHeader, 'LanguageSwitcher')).toBe(1);
-    expect(renderCount(appHeader, 'UserChip')).toBe(1);
+    expect(renderCount(commandCluster, 'LanguageSwitcher')).toBe(1);
+    expect(renderCount(accountMenuTrigger, 'UserChip')).toBe(1);
     expect(renderCount(mobileMenu, 'LanguageSwitcher')).toBe(1);
     expect(renderCount(mobileMenu, 'UserChip')).toBe(1);
+    expect(appHeader).toContain('<CommandCluster');
     expect(appHeader).toContain('{mobileMenuMounted && <MobileMenu open={open}');
 
     const userChipRenderers = [...appFiles, ...componentFiles]
       .filter(file => renderCount(read(file), 'UserChip') > 0);
     expect(userChipRenderers).toEqual([
-      'src/components/AppHeader.tsx',
       'src/components/MobileMenu.tsx',
-    ]);
+      'src/components/header/AccountMenuTrigger.tsx',
+    ].sort());
 
     const componentLanguageRenderers = componentFiles
       .filter(file => renderCount(read(file), 'LanguageSwitcher') > 0);
     expect(componentLanguageRenderers).toEqual([
-      'src/components/AppHeader.tsx',
       'src/components/MobileMenu.tsx',
       'src/components/WisdomTicker.tsx',
       'src/components/auth/AuthForm.tsx',
+      'src/components/header/CommandCluster.tsx',
       'src/components/ui/LanguageSwitcher.tsx',
     ].sort());
   });

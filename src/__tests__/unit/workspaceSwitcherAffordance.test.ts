@@ -45,7 +45,7 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(switcher).toContain('cursor: pointer');
     expect(switcher).toContain('touch-action: manipulation');
     expect(switcher).toContain('overflow-x: auto');
-    expect(switcher).toContain('scroll-snap-type: inline proximity');
+    expect(switcher).toContain('scroll-snap-type: inline mandatory');
 
     // Exactly one indicator element, positioned behind the items (z-index 0
     // vs. 1) and driven by JS-measured custom properties rather than a
@@ -80,12 +80,18 @@ describe('workspace switcher interaction affordance contract', () => {
     }
   });
 
-  it('keeps the indicator surface translucent/layered (not a flat solid block) with a distinct border, in both theme scopes', () => {
+  it('drives the active state from THE SFM\'s teal brand accent, not the indigo used everywhere else, with real material contrast', () => {
     for (const block of [rootBlock, darkBlock]) {
-      expect(tokenValue(block, '--workspace-switcher-active-surface')).toMatch(/^linear-gradient\(180deg, color-mix\(in srgb, var\(--primary\)/);
-      expect(tokenValue(block, '--workspace-switcher-item-border-active')).toMatch(/^color-mix\(in srgb, var\(--primary\)/);
+      // A solid color-mix tone against the elevated surface, not a light
+      // tint/gradient — genuine contrast, not just a colour hint.
+      expect(tokenValue(block, '--workspace-switcher-active-surface')).toMatch(/^color-mix\(in srgb, var\(--accent\)/);
+      expect(tokenValue(block, '--workspace-switcher-item-border-active')).toMatch(/^color-mix\(in srgb, var\(--accent\)/);
+      expect(tokenValue(block, '--workspace-switcher-icon-active')).toBe('var(--accent)');
     }
     expect(themes).not.toContain('--workspace-switcher-active-surface: var(--sidebar-item-bg-active)');
+    // Active text stays a strong neutral (grayscale-recognizable via
+    // fill+border+weight) rather than accent- or primary-tinted.
+    expect(tokenValue(rootBlock, '--workspace-switcher-item-text-active')).toBe('var(--foreground)');
   });
 
   it('measures the active item off physical offsetLeft/offsetWidth (RTL-safe without a dir branch)', () => {

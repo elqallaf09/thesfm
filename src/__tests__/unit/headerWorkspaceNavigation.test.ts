@@ -10,6 +10,7 @@ const mobile = read('src/components/MobileMenu.tsx');
 const shell = read('src/components/WorkspaceShell.tsx');
 const tokens = read('src/styles/tokens.css');
 const themes = read('src/styles/themes.css');
+const commandCluster = read('src/components/header/CommandCluster.tsx');
 
 describe('global header workspace navigation contract', () => {
   it('renders workspace switching only in the sticky global header', () => {
@@ -42,23 +43,34 @@ describe('global header workspace navigation contract', () => {
     expect(switcher).not.toMatch(/MOBILE_WORKSPACE_LABELS|sfm-workspace-label-mobile/);
     expect(switcher).toContain("@media (max-width: 900px)");
     expect(switcher).toContain('min-height: 52px');
-    expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
+    // 'center' (not 'nearest') guarantees the active destination clears both
+    // rail edges with margin instead of landing flush against one.
+    expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'center' })");
     expect(switcher).toContain('overflow-x: auto');
     expect(header).not.toMatch(/\.sfm-global-menu-button\s*\{[^}]*(?:width|min-width|height):\s*40px/);
   });
 
   it('keeps the required global controls in a predictable header order', () => {
-    const brandIndex = header.indexOf('className="sfm-global-brand"');
+    // Top-level composition: brand, workspace navigation, command cluster.
+    const brandIndex = header.indexOf('<BrandLockup');
     const workspaceIndex = header.indexOf('<WorkspaceSwitcher');
-    const searchIndex = header.indexOf("<CommandMenuButton aria-label={t('command_open')} />");
-    const languageIndex = header.indexOf('<LanguageSwitcher');
-    const themeIndex = header.indexOf('<ThemeToggle />');
-    const notificationsIndex = header.indexOf('className="sfm-global-notifications"');
-    const accountIndex = header.indexOf('<UserChip />');
+    const commandClusterIndex = header.indexOf('<CommandCluster');
 
-    expect([brandIndex, workspaceIndex, searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])
-      .toEqual([...new Set([brandIndex, workspaceIndex, searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])].sort((a, b) => a - b));
+    expect([brandIndex, workspaceIndex, commandClusterIndex])
+      .toEqual([...new Set([brandIndex, workspaceIndex, commandClusterIndex])].sort((a, b) => a - b));
     expect(brandIndex).toBeGreaterThanOrEqual(0);
+
+    // Command cluster's own internal order: search anchors it, followed by
+    // language/theme/density and the account/notifications entry points.
+    const searchIndex = commandCluster.indexOf('<CommandSearchTrigger');
+    const languageIndex = commandCluster.indexOf('<LanguageSwitcher');
+    const themeIndex = commandCluster.indexOf('<ThemeToggle />');
+    const notificationsIndex = commandCluster.indexOf('<HeaderIconAction');
+    const accountIndex = commandCluster.indexOf('<AccountMenuTrigger');
+
+    expect([searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])
+      .toEqual([...new Set([searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])].sort((a, b) => a - b));
+    expect(searchIndex).toBeGreaterThanOrEqual(0);
   });
 
   it('keeps the mobile drawer modal lifecycle keyboard- and focus-safe', () => {
