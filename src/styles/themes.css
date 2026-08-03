@@ -156,26 +156,38 @@
      glass surface and carries a visible outer shadow, so the switcher reads
      as an elevated dock resting on top of the header rather than a zone
      flush with it — this is the header's signature control. */
+  /* Alpha mask, not a themed color — identical in both scopes, declared
+     once here since gradient values are only permitted in this foundation
+     file. Fades both rail edges to hint horizontal scrollability. */
+  --workspace-switcher-rail-fade: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
   --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 92%, var(--foreground) 8%);
   --workspace-switcher-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
   --workspace-switcher-item-bg: transparent;
   --workspace-switcher-item-hover: color-mix(in srgb, var(--primary-soft) 62%, transparent);
   --workspace-switcher-item-pressed: color-mix(in srgb, var(--primary-soft) 84%, transparent);
   --workspace-switcher-item-text: var(--foreground-secondary);
-  --workspace-switcher-item-text-active: var(--primary-active);
+  /* Active text stays a strong neutral rather than tinted — the selected
+     destination reads as selected from surface fill + border + bold weight
+     alone (recognizable in grayscale), with the brand accent carried by the
+     icon and border instead of washing over the label. */
+  --workspace-switcher-item-text-active: var(--foreground);
   --workspace-switcher-item-text-disabled: var(--foreground-muted);
   --workspace-switcher-icon: var(--foreground-muted);
   --workspace-switcher-icon-hover: var(--sidebar-icon-hover);
-  --workspace-switcher-icon-active: var(--primary);
+  /* THE SFM's own teal brand accent (--accent), not the indigo --primary
+     used everywhere else in the app (buttons, links, focus rings) — this is
+     the header's one distinctive, unmistakably-branded moment. */
+  --workspace-switcher-icon-active: var(--accent);
   --workspace-switcher-focus: var(--focus-ring);
   --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 14px 32px -12px color-mix(in srgb, var(--shadow-color) 32%, transparent);
-  /* The sliding indicator's own surface: a restrained top-to-bottom tonal
-     shift (not a flat single-colour block, not a loud brand gradient). */
-  --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, var(--surface)), color-mix(in srgb, var(--primary) 11%, var(--surface)));
-  --workspace-switcher-item-border-active: color-mix(in srgb, var(--primary) 18%, transparent);
-  --workspace-switcher-shadow-active: inset 0 1px 0 color-mix(in srgb, var(--surface) 86%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent), 0 2px 8px -5px color-mix(in srgb, var(--primary) 14%, transparent);
-  --workspace-switcher-shadow-active-hover: inset 0 1px 0 color-mix(in srgb, var(--surface) 88%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--primary) 22%, transparent), 0 6px 16px -6px color-mix(in srgb, var(--primary) 24%, transparent);
-  --workspace-switcher-shadow-active-pressed: inset 0 2px 5px color-mix(in srgb, var(--shadow-color) 24%, transparent), 0 2px 8px color-mix(in srgb, var(--primary) 22%, transparent);
+  /* The sliding indicator's own surface: a solid, real-contrast teal mix
+     against the elevated surface (not a light purple tint) — genuine
+     material separation from the track, not just a colour hint. */
+  --workspace-switcher-active-surface: color-mix(in srgb, var(--accent) 18%, var(--surface-elevated));
+  --workspace-switcher-item-border-active: color-mix(in srgb, var(--accent) 34%, transparent);
+  --workspace-switcher-shadow-active: inset 0 1px 0 color-mix(in srgb, white 55%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent), 0 8px 20px -8px color-mix(in srgb, var(--accent) 30%, transparent);
+  --workspace-switcher-shadow-active-hover: inset 0 1px 0 color-mix(in srgb, white 60%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 38%, transparent);
+  --workspace-switcher-shadow-active-pressed: inset 0 2px 5px color-mix(in srgb, var(--shadow-color) 24%, transparent), 0 2px 8px color-mix(in srgb, var(--accent) 26%, transparent);
   --navigation-hover: #ECEDFB;
   --navigation-active: #E7E9FC;
   --navigation-active-foreground: #4338CA;
@@ -524,16 +536,19 @@
   --workspace-switcher-item-text-disabled: var(--foreground-muted);
   --workspace-switcher-icon: var(--foreground-muted);
   --workspace-switcher-icon-hover: var(--sidebar-icon-hover);
-  --workspace-switcher-icon-active: #FFFFFF;
+  /* THE SFM's own bright teal brand accent (--accent), not the indigo
+     --primary used everywhere else — see :root for the rationale. */
+  --workspace-switcher-icon-active: var(--accent);
   --workspace-switcher-focus: var(--focus-ring);
   --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 7%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 18px 36px -12px rgba(2, 4, 16, 0.55);
-  /* Dark: a visibly layered navy/indigo surface so the active item separates
-     from both the track and the navy header — still translucent, not solid. */
-  --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 44%, transparent), color-mix(in srgb, var(--primary) 28%, transparent));
-  --workspace-switcher-item-border-active: color-mix(in srgb, var(--primary) 30%, transparent);
-  --workspace-switcher-shadow-active: inset 0 1px 0 rgba(199, 210, 254, 0.3), inset 0 0 0 1px color-mix(in srgb, var(--primary) 26%, transparent), 0 3px 10px -6px rgba(79, 124, 255, 0.22);
-  --workspace-switcher-shadow-active-hover: inset 0 1px 0 rgba(199, 210, 254, 0.3), inset 0 0 0 1px color-mix(in srgb, var(--primary) 44%, transparent), 0 8px 18px -8px rgba(79, 124, 255, 0.36);
-  --workspace-switcher-shadow-active-pressed: inset 0 2px 6px color-mix(in srgb, var(--shadow-color) 48%, transparent), 0 2px 8px color-mix(in srgb, var(--primary) 24%, transparent);
+  /* Dark: a visibly layered teal-tinted surface so the active item separates
+     from both the track and the navy header — solid mixed tone, not a
+     translucent gradient. */
+  --workspace-switcher-active-surface: color-mix(in srgb, var(--accent) 22%, var(--surface-elevated));
+  --workspace-switcher-item-border-active: color-mix(in srgb, var(--accent) 40%, transparent);
+  --workspace-switcher-shadow-active: inset 0 1px 0 rgba(199, 210, 254, 0.3), inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent), 0 8px 20px -8px color-mix(in srgb, var(--accent) 34%, transparent);
+  --workspace-switcher-shadow-active-hover: inset 0 1px 0 rgba(199, 210, 254, 0.3), inset 0 0 0 1px color-mix(in srgb, var(--accent) 48%, transparent), 0 10px 24px -8px color-mix(in srgb, var(--accent) 42%, transparent);
+  --workspace-switcher-shadow-active-pressed: inset 0 2px 6px color-mix(in srgb, var(--shadow-color) 48%, transparent), 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent);
   --navigation-hover: #182452;
   --navigation-active: #222A5E;
   --navigation-active-foreground: #C7D2FE;

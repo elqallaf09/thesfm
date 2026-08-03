@@ -2,133 +2,36 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Bell, Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
-import { CommandMenuButton } from '@/components/CommandMenuButton';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { DensityToggle } from '@/components/DensityToggle';
-import { UserChip } from '@/components/UserChip';
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
+import { BrandLockup } from '@/components/header/BrandLockup';
+import { CommandCluster } from '@/components/header/CommandCluster';
 import { flattenNavigationItems, isNavigationItemActive } from '@/components/navigationConfig';
 
 const MobileMenu = dynamic(() => import('@/components/MobileMenu').then(mod => mod.MobileMenu), {
   ssr: false,
 });
 
-export function AppHeader() {
-  const pathname = usePathname() || '/';
-  const { dir, t } = useLanguage();
-  const { user } = useAuth();
-  const { access: adminAccess } = useAdminAccess(user?.id);
-  const unreadNotifications = useUnreadNotifications(user?.id);
-  const [open, setOpen] = useState(false);
-  const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
-  const [mobileMenuReady, setMobileMenuReady] = useState(false);
-  const [effectivePathname, setEffectivePathname] = useState(pathname);
-  const openingFrameRef = useRef<number | null>(null);
-  const closingTimerRef = useRef<number | null>(null);
+type GlobalHeaderDockProps = {
+  dir: 'ltr' | 'rtl';
+  children: React.ReactNode;
+};
 
-  const openMobileMenu = useCallback(() => {
-    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
-    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
-    setMobileMenuMounted(true);
-    openingFrameRef.current = window.requestAnimationFrame(() => {
-      openingFrameRef.current = window.requestAnimationFrame(() => setOpen(true));
-    });
-  }, []);
-
-  const closeMobileMenu = useCallback(() => {
-    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
-    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
-    setOpen(false);
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    closingTimerRef.current = window.setTimeout(
-      () => {
-        closingTimerRef.current = null;
-        setMobileMenuMounted(false);
-      },
-      reducedMotion ? 0 : 200,
-    );
-  }, []);
-
-  useEffect(() => () => {
-    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
-    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
-  }, []);
-
-  useEffect(() => {
-    setMobileMenuReady(true);
-  }, []);
-
-  useEffect(() => {
-    const nextPath = typeof window === 'undefined'
-      ? null
-      : new URLSearchParams(window.location.search).get('next');
-    setEffectivePathname(pathname === '/login' && nextPath?.startsWith('/') ? nextPath : pathname);
-  }, [pathname]);
-
-  const activeItem = useMemo(
-    () => flattenNavigationItems()
-      .filter(item => item.href && !item.href.includes('#'))
-      .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0))
-      .find(item => isNavigationItemActive(effectivePathname, item.href)),
-    [effectivePathname],
-  );
-
-  const title = activeItem ? t(activeItem.labelKey) : 'THE SFM';
-  const crumb = effectivePathname === '/dashboard' ? t('ai_manager') : title;
-
+/**
+ * The outer elevated-dock shell: one sticky, capped, centered floating card
+ * with a three-zone grid (brand / workspace navigation / command cluster).
+ * Owns the header's consolidated stylesheet — the zones it composes
+ * (BrandLockup, WorkspaceSwitcher, CommandCluster) are structural, not each
+ * carrying their own generation of local overrides.
+ */
+function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
   return (
-    <>
-      <header className="sfm-global-header" dir={dir}>
-        <Link href="/dashboard" prefetch={false} className="sfm-global-brand" aria-label="THE SFM">
-          <Image src="/sfm-logo.png" alt="" width={36} height={36} priority className="sfm-brand-mark sfm-brand-mark--header" />
-          <span className="sfm-global-brand-copy">
-            <strong>THE SFM</strong>
-            <span>{crumb}</span>
-          </span>
-        </Link>
-
-        <WorkspaceSwitcher adminAccess={adminAccess} className="sfm-global-workspaces" />
-
-        <div className="sfm-global-actions">
-          <CommandMenuButton aria-label={t('command_open')} />
-          <LanguageSwitcher variant="light" compact />
-          <ThemeToggle />
-          <DensityToggle />
-          <Link
-            href="/notifications"
-            prefetch={false}
-            className="sfm-global-notifications"
-            aria-label={unreadNotifications > 0 ? `${t('nav_notif')} (${unreadNotifications})` : t('nav_notif')}
-            title={t('nav_notif')}
-          >
-            <Bell size={18} aria-hidden="true" />
-            {unreadNotifications > 0 ? <span className="sfm-global-bell-dot" aria-hidden="true" /> : null}
-          </Link>
-          <UserChip />
-          <button
-            type="button"
-            className="sfm-global-menu-button"
-            aria-label={t('nav_open_menu')}
-            aria-expanded={open}
-            aria-controls="sfm-mobile-menu"
-            disabled={!mobileMenuReady}
-            onClick={openMobileMenu}
-          >
-            <Menu size={22} aria-hidden="true" />
-          </button>
-        </div>
-      </header>
-
-      {mobileMenuMounted && <MobileMenu open={open} onClose={closeMobileMenu} />}
+    <header className="sfm-global-header" dir={dir}>
+      {children}
 
       <style jsx global>{`
         :root {
@@ -291,6 +194,14 @@ export function AppHeader() {
           background: var(--surface-muted);
         }
 
+        /* No shortcut badge in the header context — it reads as tiny/noisy
+           at this density. CommandMenuButton's other call site (the sidebar
+           search box) keeps its own kbd hint; this is a header-scoped
+           override only. */
+        .sfm-global-header .sfm-command-trigger kbd {
+          display: none;
+        }
+
         .sfm-global-header :is(.sfm-command-trigger, .sfm-language-trigger, .sfm-theme-toggle, .sfm-density-toggle, .sfm-user-chip):hover,
         .sfm-global-header :is(.sfm-user-chip, .sfm-language-trigger)[aria-expanded='true'],
         .sfm-global-notifications:hover {
@@ -376,20 +287,6 @@ export function AppHeader() {
 
         .sfm-global-menu-button {
           display: none;
-        }
-
-        @media (max-width: 1499px) {
-          .sfm-global-header .sfm-command-trigger {
-            width: 40px;
-            min-width: 40px;
-            padding: 0;
-            justify-content: center;
-          }
-
-          .sfm-global-header .sfm-command-trigger span,
-          .sfm-global-header .sfm-command-trigger kbd {
-            display: none;
-          }
         }
 
         @media (max-width: 1179px) {
@@ -509,6 +406,92 @@ export function AppHeader() {
           }
         }
       `}</style>
+    </header>
+  );
+}
+
+export function AppHeader() {
+  const pathname = usePathname() || '/';
+  const { dir, t } = useLanguage();
+  const { user } = useAuth();
+  const { access: adminAccess } = useAdminAccess(user?.id);
+  const unreadNotifications = useUnreadNotifications(user?.id);
+  const [open, setOpen] = useState(false);
+  const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
+  const [mobileMenuReady, setMobileMenuReady] = useState(false);
+  const [effectivePathname, setEffectivePathname] = useState(pathname);
+  const openingFrameRef = useRef<number | null>(null);
+  const closingTimerRef = useRef<number | null>(null);
+
+  const openMobileMenu = useCallback(() => {
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    setMobileMenuMounted(true);
+    openingFrameRef.current = window.requestAnimationFrame(() => {
+      openingFrameRef.current = window.requestAnimationFrame(() => setOpen(true));
+    });
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+    setOpen(false);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    closingTimerRef.current = window.setTimeout(
+      () => {
+        closingTimerRef.current = null;
+        setMobileMenuMounted(false);
+      },
+      reducedMotion ? 0 : 200,
+    );
+  }, []);
+
+  useEffect(() => () => {
+    if (openingFrameRef.current !== null) window.cancelAnimationFrame(openingFrameRef.current);
+    if (closingTimerRef.current !== null) window.clearTimeout(closingTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    setMobileMenuReady(true);
+  }, []);
+
+  useEffect(() => {
+    const nextPath = typeof window === 'undefined'
+      ? null
+      : new URLSearchParams(window.location.search).get('next');
+    setEffectivePathname(pathname === '/login' && nextPath?.startsWith('/') ? nextPath : pathname);
+  }, [pathname]);
+
+  const activeItem = useMemo(
+    () => flattenNavigationItems()
+      .filter(item => item.href && !item.href.includes('#'))
+      .sort((a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0))
+      .find(item => isNavigationItemActive(effectivePathname, item.href)),
+    [effectivePathname],
+  );
+
+  const title = activeItem ? t(activeItem.labelKey) : 'THE SFM';
+  const crumb = effectivePathname === '/dashboard' ? t('ai_manager') : title;
+
+  return (
+    <>
+      <GlobalHeaderDock dir={dir}>
+        <BrandLockup crumb={crumb} />
+
+        <WorkspaceSwitcher adminAccess={adminAccess} className="sfm-global-workspaces" />
+
+        <CommandCluster
+          commandLabel={t('command_open')}
+          notificationsLabel={unreadNotifications > 0 ? `${t('nav_notif')} (${unreadNotifications})` : t('nav_notif')}
+          notificationsHasUnread={unreadNotifications > 0}
+          menuOpen={open}
+          menuReady={mobileMenuReady}
+          menuLabel={t('nav_open_menu')}
+          onOpenMenu={openMobileMenu}
+        />
+      </GlobalHeaderDock>
+
+      {mobileMenuMounted && <MobileMenu open={open} onClose={closeMobileMenu} />}
     </>
   );
 }

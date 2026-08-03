@@ -14,6 +14,8 @@ import {
 } from '@/components/navigationConfig';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
+import { WorkspaceActiveIndicator } from '@/components/header/WorkspaceActiveIndicator';
+import { MobileWorkspaceRail } from '@/components/header/MobileWorkspaceRail';
 
 const WORKSPACE_NAV_COPY = {
   ar: { label: 'مساحات العمل' },
@@ -97,7 +99,10 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
     const activeLink = activeLinkRef.current;
     if (!activeLink) return;
     const frame = window.requestAnimationFrame(() => {
-      activeLink.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      // 'center' (not 'nearest') guarantees the active destination clears
+      // both rail edges with margin — 'nearest' only scrolls the minimum
+      // distance needed, which can leave it flush against an edge.
+      activeLink.scrollIntoView({ block: 'nearest', inline: 'center' });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [active.id, pathname]);
@@ -108,8 +113,8 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
       aria-label={WORKSPACE_NAV_COPY[locale].label}
       dir={dir}
     >
-      <div className="sfm-workspace-tabs" ref={tabsRef}>
-        <span className="sfm-workspace-indicator" ref={indicatorRef} aria-hidden="true" />
+      <MobileWorkspaceRail ref={tabsRef}>
+        <WorkspaceActiveIndicator ref={indicatorRef} />
         {workspaces.map(workspace => {
           const Icon = workspace.icon;
           const current = workspace.id === active.id;
@@ -133,7 +138,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
             </Link>
           );
         })}
-      </div>
+      </MobileWorkspaceRail>
 
       <style jsx global>{`
         .sfm-workspace-navigation {
@@ -153,7 +158,10 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           display: flex;
           align-items: stretch;
           gap: 2px;
-          padding: 0;
+          /* Safe padding so the first/last destination never sits flush
+             against the rail edge — this is what was read as "clipped"
+             labels on narrow viewports. */
+          padding-inline: 16px;
           overflow-x: auto;
           overflow-y: hidden;
           overscroll-behavior-inline: contain;
@@ -164,9 +172,14 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           background: var(--workspace-switcher-bg);
           box-shadow: var(--workspace-switcher-frame-shadow);
           scrollbar-width: none;
-          scroll-padding-inline: 10px;
-          scroll-snap-type: inline proximity;
+          scroll-padding-inline: 16px;
+          scroll-snap-type: inline mandatory;
           -webkit-overflow-scrolling: touch;
+          /* Edge-fade scroll affordance: symmetric on both ends regardless
+             of RTL/LTR, since both rail edges should read as scrollable
+             whichever direction the content flows. */
+          -webkit-mask-image: var(--workspace-switcher-rail-fade);
+          mask-image: var(--workspace-switcher-rail-fade);
         }
 
         .sfm-workspace-tabs::-webkit-scrollbar {
@@ -212,7 +225,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           font-size: var(--type-navigation-size);
           font-weight: var(--type-navigation-weight);
           line-height: var(--type-navigation-leading);
-          scroll-snap-align: nearest;
+          scroll-snap-align: center;
           touch-action: manipulation;
           cursor: pointer;
           transition:
