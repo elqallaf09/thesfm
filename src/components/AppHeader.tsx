@@ -143,13 +143,22 @@ export function AppHeader() {
           min-width: 0;
           min-height: var(--global-header-height);
           display: grid;
-          grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
+          /* Three balanced zones (brand / workspace switcher / utilities) so
+             the switcher reads as centered in the header, not merely
+             centered in whatever space happens to be left over between two
+             differently-sized outer zones. */
+          grid-template-columns: minmax(220px, 1fr) auto minmax(320px, 1fr);
           grid-template-areas: 'brand workspaces actions';
           align-items: center;
-          gap: 14px;
+          gap: 16px;
           /* Variant 03: an inset floating panel that stays sticky. */
           margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-          padding: 8px clamp(12px, 1.5vw, 22px);
+          /* Ultra-wide screens: cap and center instead of stretching the
+             three zones indefinitely apart. No-op below ~1920px, where the
+             inset-driven margin above still governs. */
+          max-width: 120rem;
+          margin-inline: auto;
+          padding: 8px clamp(18px, 1.6vw, 24px);
           border: 1px solid var(--header-border);
           border-radius: var(--radius-card);
           background: var(--surface);
@@ -177,10 +186,14 @@ export function AppHeader() {
 
         .sfm-global-brand {
           grid-area: brand;
+          justify-self: start;
           min-width: 0;
           display: flex;
           align-items: center;
           gap: 9px;
+          padding-inline-end: 16px;
+          margin-inline-end: 2px;
+          border-inline-end: 1px solid var(--header-border);
           border-radius: var(--radius-control);
           color: var(--foreground);
           text-decoration: none;
@@ -258,6 +271,13 @@ export function AppHeader() {
           border-color: transparent;
           background: transparent;
           box-shadow: none;
+        }
+
+        /* Quick search is the visual anchor of the cluster: a persistent
+           soft tonal surface, while every icon-only toggle beside it stays
+           fully quiet until hovered. */
+        .sfm-global-header .sfm-command-trigger:not(.compact) {
+          background: var(--surface-muted);
         }
 
         .sfm-global-header .sfm-command-trigger:hover,
