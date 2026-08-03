@@ -152,7 +152,10 @@
      (positioned by JS via --indicator-x/--indicator-w, see WorkspaceSwitcher.tsx)
      moves behind whichever item is active, instead of every item owning a
      border/fill. Only the indicator carries visual weight; items are text + icon. */
-  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 92%, transparent);
+  /* Deliberately deeper than the header's own glass surface so the switcher
+     reads as an elevated dock resting on top of the header, not a zone
+     flush with it — this is the header's signature control. */
+  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 96%, var(--foreground) 4%);
   --workspace-switcher-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
   --workspace-switcher-item-bg: transparent;
   --workspace-switcher-item-hover: color-mix(in srgb, var(--primary-soft) 62%, transparent);
@@ -164,7 +167,7 @@
   --workspace-switcher-icon-hover: var(--sidebar-icon-hover);
   --workspace-switcher-icon-active: var(--primary);
   --workspace-switcher-focus: var(--focus-ring);
-  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), inset 0 0 0 1px var(--workspace-switcher-border);
+  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 10px 24px -14px color-mix(in srgb, var(--shadow-color) 32%, transparent);
   /* The sliding indicator's own surface: a restrained top-to-bottom tonal
      shift (not a flat single-colour block, not a loud brand gradient). */
   --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 20%, var(--surface)), color-mix(in srgb, var(--primary) 11%, var(--surface)));
@@ -177,6 +180,9 @@
   --navigation-active-foreground: #4338CA;
   --header-border: #EDEEF8;
   --footer-border: #E9EBF7;
+  /* Soft top/bottom-fading divider between the brand lockup and the
+     workspace navigation zone — a tonal transition rather than a hard rule. */
+  --header-brand-divider: linear-gradient(to bottom, transparent, var(--header-border) 25%, var(--header-border) 75%, transparent);
 
   /* Buttons */
   --button-primary-background: #4F46E5;
@@ -506,7 +512,8 @@
   --header-control-border: color-mix(in srgb, var(--border-strong) 22%, transparent);
   --header-control-hover: var(--primary-soft);
   /* Global workspace switcher — Variant 06, see :root for rationale. */
-  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 84%, transparent);
+  /* Deliberately deeper than the header's own glass surface — see :root. */
+  --workspace-switcher-bg: color-mix(in srgb, var(--surface-secondary) 90%, var(--shadow-color) 10%);
   --workspace-switcher-border: color-mix(in srgb, var(--border-strong) 52%, transparent);
   --workspace-switcher-item-bg: transparent;
   --workspace-switcher-item-hover: color-mix(in srgb, var(--primary-soft) 72%, transparent);
@@ -518,7 +525,7 @@
   --workspace-switcher-icon-hover: var(--sidebar-icon-hover);
   --workspace-switcher-icon-active: #FFFFFF;
   --workspace-switcher-focus: var(--focus-ring);
-  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 7%, transparent), inset 0 0 0 1px var(--workspace-switcher-border);
+  --workspace-switcher-frame-shadow: inset 0 1px 0 color-mix(in srgb, var(--foreground) 7%, transparent), inset 0 0 0 1px var(--workspace-switcher-border), 0 14px 30px -14px rgba(2, 4, 16, 0.55);
   /* Dark: a visibly layered navy/indigo surface so the active item separates
      from both the track and the navy header — still translucent, not solid. */
   --workspace-switcher-active-surface: linear-gradient(180deg, color-mix(in srgb, var(--primary) 44%, transparent), color-mix(in srgb, var(--primary) 28%, transparent));
@@ -531,6 +538,7 @@
   --navigation-active-foreground: #C7D2FE;
   --header-border: #1F2850;
   --footer-border: #1F2850;
+  --header-brand-divider: linear-gradient(to bottom, transparent, var(--header-border) 25%, var(--header-border) 75%, transparent);
 
   /* Buttons */
   --button-primary-background: #818CF8;

@@ -157,7 +157,10 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           overflow-x: auto;
           overflow-y: hidden;
           overscroll-behavior-inline: contain;
-          border-radius: var(--radius-card);
+          /* One size step above the header's own card radius — the
+             switcher is a distinct elevated dock, not a zone flush with
+             the header surface around it. */
+          border-radius: var(--radius-panel);
           background: var(--workspace-switcher-bg);
           box-shadow: var(--workspace-switcher-frame-shadow);
           scrollbar-width: none;
@@ -176,7 +179,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           left: 0;
           width: var(--indicator-w, 0px);
           transform: translateX(var(--indicator-x, 0px)) scale(var(--indicator-scale, 1));
-          border-radius: var(--radius-card-inset);
+          border-radius: var(--radius-panel-inset);
           background: var(--workspace-switcher-active-surface);
           border: 1px solid var(--workspace-switcher-item-border-active);
           box-shadow: var(--workspace-switcher-shadow-active);
@@ -201,7 +204,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           justify-content: center;
           gap: 7px;
           padding: 0 14px;
-          border-radius: var(--radius-card-inset);
+          border-radius: var(--radius-panel-inset);
           background: var(--workspace-switcher-item-bg);
           color: var(--workspace-switcher-item-text);
           text-decoration: none;

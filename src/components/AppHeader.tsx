@@ -147,7 +147,7 @@ export function AppHeader() {
              the switcher reads as centered in the header, not merely
              centered in whatever space happens to be left over between two
              differently-sized outer zones. */
-          grid-template-columns: minmax(220px, 1fr) auto minmax(320px, 1fr);
+          grid-template-columns: minmax(240px, 1fr) auto minmax(360px, 1fr);
           grid-template-areas: 'brand workspaces actions';
           align-items: center;
           gap: 16px;
@@ -185,18 +185,29 @@ export function AppHeader() {
         }
 
         .sfm-global-brand {
+          position: relative;
           grid-area: brand;
           justify-self: start;
           min-width: 0;
           display: flex;
           align-items: center;
-          gap: 9px;
-          padding-inline-end: 16px;
-          margin-inline-end: 2px;
-          border-inline-end: 1px solid var(--header-border);
+          gap: 10px;
+          padding-inline-end: 18px;
+          margin-inline-end: 4px;
           border-radius: var(--radius-control);
           color: var(--foreground);
           text-decoration: none;
+        }
+
+        /* Soft top/bottom-fading divider instead of a hard rule — a tonal
+           transition into the workspace navigation zone. */
+        .sfm-global-brand::after {
+          content: '';
+          position: absolute;
+          inset-inline-end: 0;
+          inset-block: 4px;
+          width: 1px;
+          background: var(--header-brand-divider);
         }
 
         .sfm-global-brand:focus-visible {
@@ -219,6 +230,7 @@ export function AppHeader() {
           color: var(--foreground);
           font-size: 15px;
           font-weight: 600;
+          letter-spacing: 0.01em;
           line-height: 1.35;
           white-space: nowrap;
         }
