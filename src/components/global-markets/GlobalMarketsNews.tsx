@@ -116,6 +116,7 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips }: Props) {
   const [partial, setPartial] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
   const hasItemsRef = useRef(false);
+  const requestSequenceRef = useRef(0);
   const selectedKey = selectedStrips.map(strip => strip.id).join(',');
   const stripsById = useMemo(() => new Map(selectedStrips.map(strip => [strip.id, strip])), [selectedStrips]);
 
@@ -127,6 +128,7 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips }: Props) {
   }, [filters, lang, mode, selectedKey]);
 
   useEffect(() => {
+    const requestSequence = ++requestSequenceRef.current;
     const controller = new AbortController();
     const cached = readNewsCache(requestUrl);
     if (cached) {
@@ -138,14 +140,19 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips }: Props) {
     if (hasItemsRef.current) setRefreshing(true); else setLoading(true);
     setError(false); setVisibleCount(6);
     void fetchNews(requestUrl, controller.signal).then(json => {
+      if (requestSequence !== requestSequenceRef.current) return;
       const nextItems = json.items ?? [];
       hasItemsRef.current = nextItems.length > 0;
       setItems(nextItems); setPartial(json.partialFailure === true);
     }).catch(fetchError => {
       if (fetchError instanceof DOMException && fetchError.name === 'AbortError') return;
+      if (requestSequence !== requestSequenceRef.current) return;
       if (!hasItemsRef.current) setItems([]);
       setError(true);
-    }).finally(() => { setLoading(false); setRefreshing(false); });
+    }).finally(() => {
+      if (requestSequence !== requestSequenceRef.current) return;
+      setLoading(false); setRefreshing(false);
+    });
     return () => controller.abort();
   }, [requestUrl]); // Keep the last visible result set while a replacement request is in flight.
 
