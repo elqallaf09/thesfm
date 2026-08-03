@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Globe2, RefreshCcw, Settings2 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -18,6 +18,7 @@ import { t } from '@/lib/translations';
 type MarketStripsResponse = {
   success: true;
   lastUpdated: string;
+  requestedIds: string[];
   prices: Record<string, TechStockPrice>;
 } | {
   success: false;
@@ -35,26 +36,29 @@ export function GlobalMarketsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { selectedIds, setSelectedIds, restoreDefaults, hydrated } = useGlobalMarketSelection();
-  const selectedStrips = selectedIds.flatMap(id => {
+  const selectedStrips = useMemo(() => selectedIds.flatMap(id => {
     const strip = GLOBAL_MARKET_STRIPS.find(candidate => candidate.id === id);
     return strip ? [strip] : [];
-  });
+  }), [selectedIds]);
+  const selectedIdsKey = selectedIds.join(',');
 
   const customizeLabel = lang === 'ar' ? 'تخصيص الأسواق' : lang === 'fr' ? 'Personnaliser les marchés' : 'Customize markets';
   const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
 
-  const load = async (showLoader: boolean, signal?: AbortSignal) => {
+  const load = useCallback(async (showLoader: boolean, idsKey: string, signal?: AbortSignal) => {
     if (showLoader) setLoading(true);
     else setRefreshing(true);
     setError(false);
     try {
-      const response = await fetch('/api/market-strips', { signal });
+      const response = await fetch(`/api/market-strips?ids=${encodeURIComponent(idsKey)}`, { signal });
       const json = await response.json() as MarketStripsResponse;
       if (!json.success) throw new Error(json.error);
       setPrices(json.prices);
       setLastUpdated(json.lastUpdated);
+      hasLoadedRef.current = true;
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
       setError(true);
@@ -62,15 +66,14 @@ export function GlobalMarketsPage() {
       if (showLoader) setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     const controller = new AbortController();
-    void load(true, controller.signal);
+    void load(!hasLoadedRef.current, selectedIdsKey, controller.signal);
     return () => controller.abort();
-    // Fetch exactly once on mount -- prices are refreshed via manual refresh only,
-    // never re-fetched as a side effect of a language switch or re-render.
-  }, []);
+  }, [hydrated, load, selectedIdsKey]);
 
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(localeFor(lang), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdated))
@@ -95,7 +98,7 @@ export function GlobalMarketsPage() {
             <button
               type="button"
               className="gm-header-refresh"
-              onClick={() => void load(false)}
+              onClick={() => void load(false, selectedIdsKey)}
               disabled={refreshing}
               aria-label={t('global_markets_last_updated', lang)}
             >
