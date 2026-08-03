@@ -13,6 +13,12 @@ import type {
 import { EXPECTED_IMPACTS, FINANCIAL_ASSET_TYPES, NEWS_SENTIMENTS, VERIFICATION_STATUSES } from '@/lib/market-news/types';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
 import { checkRateLimit, getClientIp, rateLimitRequest } from '@/lib/server/rateLimiter';
+import {
+  matchingMarketIds,
+  parseMarketNewsIds,
+  storyMatchesSelectedMarkets,
+} from '@/lib/market/globalMarketNews';
+import type { GlobalMarketStripId } from '@/lib/market/globalMarketStrips';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +101,7 @@ function parseBoolean(value: string | null) {
   return value === '1' || value === 'true' || value === 'yes';
 }
 
-function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>) {
+function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>, selectedMarketIds: GlobalMarketStripId[] = []) {
   const supportingSources = Array.isArray(story.supportingSources)
     ? story.supportingSources.map(source => {
       const row = source as Record<string, unknown>;
@@ -138,6 +144,11 @@ function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>) {
     industries: story.industries,
     symbols: story.symbols,
     relatedSymbols: story.symbols,
+    relatedCompanies: story.companyNames,
+    countryCodes: story.countries,
+    marketIds: matchingMarketIds(story, selectedMarketIds),
+    sourceRegion: null,
+    translated: Boolean(story.originalLanguage && story.originalLanguage !== story.language),
     companyNames: story.companyNames,
     assetTypes: story.assetTypes,
     currencies: story.currencies,
@@ -225,6 +236,12 @@ export async function GET(request: NextRequest) {
   const indexCodes = list(searchParams, ['index', 'indexCode', 'indexCodes'], 32);
   const commodities = list(searchParams, ['commodity', 'commodities'], 60);
   const companyNames = list(searchParams, ['company', 'companyName'], 100);
+  let selectedMarketIds: GlobalMarketStripId[] = [];
+  try {
+    selectedMarketIds = parseMarketNewsIds(list(searchParams, ['marketId', 'marketIds'], 64));
+  } catch {
+    return invalidRequest();
+  }
   const effectiveQuery = [query, ...companyNames, ...isins, ...indexCodes, ...commodities].filter(Boolean).join(' ').slice(0, MAX_QUERY_LENGTH);
 
   const params: NewsFetchParams = {
@@ -265,8 +282,11 @@ export async function GET(request: NextRequest) {
     sort: parseSort(searchParams.get('sort')),
     forceExternal: refreshRequested,
   });
-  const stories = await translatedStories(result.stories as Array<ConsolidatedNewsStory & Record<string, unknown>>, language);
-  const items = stories.map(toUiStory);
+  const selectedStories = selectedMarketIds.length
+    ? result.stories.filter(story => storyMatchesSelectedMarkets(story, selectedMarketIds))
+    : result.stories;
+  const stories = await translatedStories(selectedStories as Array<ConsolidatedNewsStory & Record<string, unknown>>, language);
+  const items = stories.map(story => toUiStory(story, selectedMarketIds));
   const unavailable = !result.liveUpdatesAvailable && !result.storedFallbackUsed && items.length === 0;
   const code = unavailable
     ? 'MARKET_NEWS_LIVE_UNAVAILABLE'
@@ -285,12 +305,17 @@ export async function GET(request: NextRequest) {
     provider: 'multi-source',
     items,
     stories: items,
-    total: result.total,
+    total: selectedMarketIds.length ? items.length : result.total,
     page: result.page,
     pageSize: result.pageSize,
     totalPages: result.totalPages,
     filters: result.appliedFilters,
     appliedFilters: result.appliedFilters,
+    requestedMarketIds: selectedMarketIds,
+    coverage: {
+      strictMarketMetadata: selectedMarketIds.length > 0,
+      availableFilters: ['marketIds', 'countries', 'exchanges', 'symbols', 'sourceLanguages', 'sources', 'assetTypes', 'dateRange', 'sort'],
+    },
     providerCoverage: result.providerCoverage,
     partialFailure: result.partialFailure,
     liveUpdatesAvailable: result.liveUpdatesAvailable,

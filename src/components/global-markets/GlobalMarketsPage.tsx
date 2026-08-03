@@ -140,7 +140,7 @@ export function GlobalMarketsPage() {
 
         <GlobalMarketsExplorer prices={prices} lang={lang} dir={dir} />
 
-        <GlobalMarketsNews lang={lang} dir={dir} />
+        <GlobalMarketsNews lang={lang} dir={dir} selectedStrips={selectedStrips} />
 
         <p className="gm-disclaimer" dir="auto">{t('global_markets_disclaimer', lang)}</p>
       </WorkspacePageContainer>
