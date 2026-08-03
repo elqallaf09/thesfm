@@ -404,4 +404,17 @@ test.describe('Tech Market News redesigned experience', () => {
     const track = page.locator('.tech-ticker-track').first();
     await expect(track).toHaveCSS('animation-name', 'none');
   });
+
+  test('never renders the Global Markets Hub country/exchange strips -- that experience lives only on /global-markets', async ({ page }) => {
+    await useEnglish(page);
+    await mockTechNews(page);
+    await page.goto('/tech-news');
+    await expect(page.getByTestId('tech-news-unified-feed')).toBeVisible();
+
+    await expect(page.locator('.gm-strip')).toHaveCount(0);
+    await expect(page.locator('.gm-strip-heading-label')).toHaveCount(0);
+    for (const label of ['China — Shanghai Stock Exchange', 'Japan — Tokyo Stock Exchange', 'Forex', 'Global Indices']) {
+      await expect(page.getByText(label, { exact: true })).toHaveCount(0);
+    }
+  });
 });

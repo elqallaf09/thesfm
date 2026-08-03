@@ -131,6 +131,21 @@ export function MarketTickerStrip({
           {emptyState}
         </div>
       ) : null}
+
+      {/* While paused (hover/focus/active), the strip becomes manually
+          drag-scrollable so a user can inspect items that are mid-loop. It
+          stays overflow:hidden the rest of the time so the seamless
+          duplicate-set loop never shows a manual scroll offset once motion
+          resumes. */}
+      <style jsx global>{`
+        .market-ticker-strip[data-market-ticker='true']:hover > .market-ticker-viewport,
+        .market-ticker-strip[data-market-ticker='true']:focus-within > .market-ticker-viewport,
+        .market-ticker-strip[data-market-ticker='true']:active > .market-ticker-viewport,
+        .market-ticker-strip[data-market-ticker='true'].is-paused > .market-ticker-viewport {
+          overflow-x: auto;
+          touch-action: pan-x;
+        }
+      `}</style>
     </section>
   );
 }
