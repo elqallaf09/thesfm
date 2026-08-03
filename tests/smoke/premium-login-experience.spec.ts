@@ -14,7 +14,8 @@ test.describe('premium login experience', () => {
     await page.goto('/login');
 
     await expect(page.getByRole('heading', { level: 1, name: 'مرحباً بعودتك' })).toBeVisible();
-    await expect(page.locator('img[src="/brand/sfm-original-logo.png"]')).toHaveCount(2);
+    await expect(page.locator('.showcase-brand img')).toHaveCount(1);
+    await expect(page.locator('.brand img[alt="THE SFM"]')).toHaveCount(1);
     await expect(page.getByRole('button', { name: 'متابعة كضيف' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'تسجيل الدخول عبر Google' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'إنشاء حساب جديد' })).toBeVisible();
@@ -30,7 +31,7 @@ test.describe('premium login experience', () => {
     await useArabic(page);
     await page.goto('/login');
     await page.getByRole('button', { name: 'تسجيل الدخول', exact: true }).click();
-    await expect(page.getByRole('alert')).toContainText('أكمل كل الحقول المطلوبة');
+    await expect(page.locator('.auth-msg[role="alert"]')).toContainText('أكمل كل الحقول المطلوبة');
     await page.screenshot({ path: testInfo.outputPath(`premium-login-validation-${testInfo.project.name}.png`), fullPage: true });
 
     const identifier = page.getByLabel(/اسم المستخدم أو البريد الإلكتروني/);
