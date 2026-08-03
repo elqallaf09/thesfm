@@ -17,7 +17,10 @@ describe('global market preferences', () => {
   });
 
   it('replaces one selected strip', () => {
-    expect(replaceSelectedMarket(DEFAULT_GLOBAL_MARKET_STRIPS, 'us_nyse', 'crypto')).toContain('crypto');
+    const replaced = replaceSelectedMarket(DEFAULT_GLOBAL_MARKET_STRIPS, 'us_nasdaq', 'crypto');
+    expect(replaced).toContain('crypto');
+    expect(replaced).not.toContain('us_nasdaq');
+    expect(replaced).toHaveLength(4);
   });
 
   it('persists ordering through normalization', () => {

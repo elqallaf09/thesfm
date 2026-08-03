@@ -21,6 +21,7 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
     body: JSON.stringify({ success: true, items: [], total: 0 }),
   }));
 
+  if (process.env.E2E_BOOTSTRAP_URL) await page.goto(process.env.E2E_BOOTSTRAP_URL);
   await page.goto('/global-markets');
   const explorer = page.locator('.gm-explorer');
   await explorer.getByRole('button', { name: 'عرض مستكشف الأصول' }).click();
