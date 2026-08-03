@@ -181,11 +181,12 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         .sfm-workspace-tab[data-active='true']::after {
           content: '';
           position: absolute;
-          inset-inline: 9px;
-          inset-block-end: 3px;
-          height: 3px;
+          inset-inline: 11px;
+          inset-block-end: 4px;
+          height: 2px;
           border-radius: var(--radius-pill);
           background: var(--workspace-switcher-indicator);
+          opacity: 0.9;
         }
 
         .sfm-workspace-tab[data-active='true'] svg {
@@ -193,7 +194,14 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         }
 
         .sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) {
+          border-color: var(--workspace-switcher-item-border-active);
+          background: var(--workspace-switcher-item-active-hover);
+          color: var(--workspace-switcher-item-text-active);
           box-shadow: var(--workspace-switcher-shadow-active-hover);
+        }
+
+        .sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true']) svg {
+          color: var(--workspace-switcher-icon-active);
         }
 
         .sfm-workspace-tab[data-active='true']:focus-visible {
