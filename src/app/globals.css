@@ -24,12 +24,12 @@
   min-width: 0;
   min-height: var(--global-header-height);
   display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(240px, 1fr) auto minmax(360px, 1fr);
   grid-template-areas: 'brand workspaces actions';
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-  padding: 8px clamp(12px, 1.5vw, 22px);
+  padding: 8px clamp(20px, 1.6vw, 24px);
   border: 1px solid transparent;
   border-radius: var(--radius-card);
 }
