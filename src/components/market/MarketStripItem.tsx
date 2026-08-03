@@ -28,18 +28,30 @@ function localeWithLatinDigits(lang: Lang) {
   return `${base}-u-nu-latn`;
 }
 
+const NUMBER_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
+function cachedNumberFormatter(key: string, options: Intl.NumberFormatOptions) {
+  const existing = NUMBER_FORMATTERS.get(key);
+  if (existing) return existing;
+  const formatter = new Intl.NumberFormat(key.split('|')[0], options);
+  NUMBER_FORMATTERS.set(key, formatter);
+  return formatter;
+}
+
 function formatValue(value: number, currency: string | null, lang: Lang) {
   if (!currency) {
     // Forex rates and index points are not "an amount of a currency" --
     // render the bare formatted number so a EUR/USD rate never gets
     // stamped with a misleading currency symbol.
-    return new Intl.NumberFormat(localeWithLatinDigits(lang), {
+    const locale = localeWithLatinDigits(lang);
+    return cachedNumberFormatter(`${locale}|number|${value >= 100 ? 'large' : 'small'}`, {
       numberingSystem: 'latn',
       maximumFractionDigits: value >= 100 ? 2 : 4,
     }).format(value);
   }
   try {
-    return new Intl.NumberFormat(localeWithLatinDigits(lang), {
+    const locale = localeWithLatinDigits(lang);
+    return cachedNumberFormatter(`${locale}|currency|${currency}|${value >= 100 ? 'large' : 'small'}`, {
       style: 'currency',
       currency,
       numberingSystem: 'latn',
@@ -51,7 +63,8 @@ function formatValue(value: number, currency: string | null, lang: Lang) {
 }
 
 function formatPercent(value: number, lang: Lang) {
-  const formatted = new Intl.NumberFormat(localeWithLatinDigits(lang), {
+  const locale = localeWithLatinDigits(lang);
+  const formatted = cachedNumberFormatter(`${locale}|percent`, {
     numberingSystem: 'latn',
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,

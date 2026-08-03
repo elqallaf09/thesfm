@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { Search } from 'lucide-react';
 import { MarketStripItem } from '@/components/market/MarketStripItem';
 import {
@@ -13,6 +13,10 @@ import {
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import type { Lang } from '@/lib/translations';
 import { t } from '@/lib/translations';
+import {
+  GLOBAL_MARKETS_EXPLORER_PAGE_SIZE,
+  nextExplorerVisibleCount,
+} from '@/lib/market/globalMarketsPagination';
 
 type GlobalMarketsExplorerProps = {
   prices: Record<string, TechStockPrice> | null;
@@ -29,9 +33,11 @@ type ExplorerRow = {
   stripId: string;
   stripLabel: string;
   kind: GlobalMarketStripKind;
+  currency: string | null;
 };
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = GLOBAL_MARKETS_EXPLORER_PAGE_SIZE;
+const SECTOR_OPTIONS = Object.keys(SECTOR_LABEL) as GlobalMarketSector[];
 const ASSET_TYPE_LABEL_KEY: Record<GlobalMarketStripKind, string> = {
   equity: 'global_markets_asset_type_equity',
   forex: 'global_markets_asset_type_forex',
@@ -65,10 +71,41 @@ function buildRows(lang: Lang): ExplorerRow[] {
         stripId: strip.id,
         stripLabel,
         kind: strip.kind,
+        currency: inferStripCurrency(item.symbol),
       };
     });
   });
 }
+
+type ExplorerItemProps = {
+  symbol: string;
+  name: string;
+  sector?: GlobalMarketSector;
+  assetType: GlobalMarketStripKind;
+  price: number | null;
+  currency: string | null;
+  changePercent: number | null;
+  available: boolean;
+  lang: Lang;
+};
+
+export const GlobalMarketsExplorerItem = memo(function GlobalMarketsExplorerItem(props: ExplorerItemProps) {
+  return (
+    <MarketStripItem
+      lang={props.lang}
+      item={{
+        symbol: props.symbol,
+        name: props.name,
+        sector: props.sector,
+        assetType: props.assetType,
+        price: props.price,
+        currency: props.currency,
+        changePercent: props.changePercent,
+        available: props.available,
+      }}
+    />
+  );
+});
 
 export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplorerProps) {
   const [expanded, setExpanded] = useState(false);
@@ -78,6 +115,13 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
   const [sector, setSector] = useState('all');
   const [assetType, setAssetType] = useState('all');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [appending, setAppending] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const appendLockedRef = useRef(false);
+  const appendTransitionStartedRef = useRef(false);
+  const appendFrameRef = useRef<number | null>(null);
+  const deferredQuery = useDeferredValue(query);
 
   const rows = useMemo(() => buildRows(lang), [lang]);
 
@@ -93,10 +137,8 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
     }))
   ), [lang]);
 
-  const sectorOptions = Object.keys(SECTOR_LABEL) as GlobalMarketSector[];
-
   const filteredRows = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = deferredQuery.trim().toLowerCase();
     return rows.filter(row => {
       if (country !== 'all' && row.countryCode !== country) return false;
       if (exchange !== 'all' && row.stripId !== exchange) return false;
@@ -105,10 +147,25 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
       if (normalizedQuery && !row.searchText.includes(normalizedQuery)) return false;
       return true;
     });
-  }, [rows, query, country, exchange, sector, assetType]);
+  }, [rows, deferredQuery, country, exchange, sector, assetType]);
 
-  const visibleRows = filteredRows.slice(0, visibleCount);
+  const visibleRows = useMemo(
+    () => filteredRows.slice(0, visibleCount),
+    [filteredRows, visibleCount],
+  );
   const hasMore = visibleCount < filteredRows.length;
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => () => {
+    if (appendFrameRef.current !== null) cancelAnimationFrame(appendFrameRef.current);
+  }, []);
 
   function resetFilters() {
     setQuery('');
@@ -124,6 +181,36 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
     if (value && value !== 'all') setExpanded(true);
     setVisibleCount(PAGE_SIZE);
   }
+
+  function appendResults() {
+    if (appendLockedRef.current || !hasMore) return;
+    appendLockedRef.current = true;
+    performance.clearMarks('gm-explorer-append-start');
+    performance.clearMarks('gm-explorer-append-end');
+    performance.clearMeasures('gm-explorer-append');
+    performance.mark('gm-explorer-append-start');
+    setAppending(true);
+    appendFrameRef.current = requestAnimationFrame(() => {
+      appendFrameRef.current = null;
+      appendTransitionStartedRef.current = true;
+      startTransition(() => {
+        setVisibleCount(count => nextExplorerVisibleCount(count, filteredRows.length, isMobile));
+      });
+    });
+  }
+
+  useEffect(() => {
+    if (!appending || !appendTransitionStartedRef.current || isPending) return;
+    appendLockedRef.current = false;
+    appendTransitionStartedRef.current = false;
+    setAppending(false);
+    requestAnimationFrame(() => {
+      performance.mark('gm-explorer-append-end');
+      performance.measure('gm-explorer-append', 'gm-explorer-append-start', 'gm-explorer-append-end');
+    });
+  }, [appending, isPending, visibleCount]);
+
+  const appendBusy = appending || isPending;
 
   return (
     <section className="gm-explorer" aria-labelledby="gm-explorer-heading" dir={dir}>
@@ -169,7 +256,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           <span>{t('global_markets_filter_sector', lang)}</span>
           <select value={sector} onChange={event => updateFilter(setSector, event.target.value)}>
             <option value="all">{t('global_markets_filter_all', lang)}</option>
-            {sectorOptions.map(option => (
+            {SECTOR_OPTIONS.map(option => (
               <option key={option} value={option}>{SECTOR_LABEL[option][lang]}</option>
             ))}
           </select>
@@ -207,19 +294,17 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
             {visibleRows.map(row => {
               const quote = prices?.[row.symbol] ?? null;
               return (
-                <MarketStripItem
+                <GlobalMarketsExplorerItem
                   key={`${row.stripId}-${row.symbol}`}
                   lang={lang}
-                  item={{
-                    symbol: row.symbol,
-                    name: row.name,
-                    sector: row.sector,
-                    assetType: row.kind,
-                    price: quote?.available ? quote.price : null,
-                    currency: inferStripCurrency(row.symbol),
-                    changePercent: quote?.available ? quote.changePercent : null,
-                    available: Boolean(quote?.available),
-                  }}
+                  symbol={row.symbol}
+                  name={row.name}
+                  sector={row.sector}
+                  assetType={row.kind}
+                  price={quote?.available ? quote.price : null}
+                  currency={row.currency}
+                  changePercent={quote?.available ? quote.changePercent : null}
+                  available={Boolean(quote?.available)}
                 />
               );
             })}
@@ -229,9 +314,12 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
             <button
               type="button"
               className="gm-explorer-load-more"
-              onClick={() => setVisibleCount(count => count + PAGE_SIZE)}
+              onClick={appendResults}
+              disabled={appendBusy}
+              aria-busy={appendBusy}
             >
-              {t('global_markets_load_more', lang)}
+              <span className="gm-explorer-load-label">{t('global_markets_load_more', lang)}</span>
+              <span className="gm-explorer-load-status" aria-live="polite">{appendBusy ? (lang === 'ar' ? 'جارٍ التحميل' : lang === 'fr' ? 'Chargement' : 'Loading') : ''}</span>
             </button>
           ) : (
             <p className="gm-explorer-all-loaded" role="status">{t('global_markets_all_loaded', lang)}</p>
@@ -344,6 +432,11 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           max-inline-size: 100%;
         }
 
+        .gm-explorer-grid > :global(*) {
+          content-visibility: auto;
+          contain-intrinsic-size: 150px 92px;
+        }
+
         .gm-explorer-load-more {
           justify-self: center;
           min-height: 40px;
@@ -355,6 +448,21 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
+          min-width: 150px;
+          position: relative;
+        }
+
+        .gm-explorer-load-more:disabled { cursor: wait; opacity: .72; }
+        .gm-explorer-load-label { visibility: visible; }
+        .gm-explorer-load-status {
+          position: absolute;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          visibility: hidden;
+        }
+        .gm-explorer-load-more[aria-busy='true'] .gm-explorer-load-label { visibility: hidden; }
+        .gm-explorer-load-more[aria-busy='true'] .gm-explorer-load-status { visibility: visible; }
         }
 
         .gm-explorer-all-loaded {

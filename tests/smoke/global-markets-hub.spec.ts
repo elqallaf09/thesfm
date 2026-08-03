@@ -213,6 +213,7 @@ test.describe('Global Markets Hub', () => {
     await page.goto('/global-markets');
 
     const explorer = page.locator('.gm-explorer');
+    await explorer.getByRole('button', { name: 'Browse all assets' }).click();
     await expect(explorer.getByPlaceholder(/Search by stock/i)).toBeVisible();
     await expect(explorer.getByLabel('Country')).toBeVisible();
     await expect(explorer.getByLabel('Exchange')).toBeVisible();
@@ -225,6 +226,25 @@ test.describe('Global Markets Hub', () => {
     await explorer.getByPlaceholder(/Search by stock/i).fill('AAPL');
     await expect(explorer.locator('.gm-strip-item')).toHaveCount(1);
     await expect(explorer.locator('.gm-strip-item')).toContainText('AAPL');
+  });
+
+  test('explorer Load More exposes a busy state and blocks duplicate rapid appends', async ({ page }) => {
+    await useEnglish(page);
+    await mockGlobalMarkets(page);
+    await page.goto('/global-markets');
+    const explorer = page.locator('.gm-explorer');
+    await explorer.getByRole('button', { name: 'Browse all assets' }).click();
+    await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
+    const loadMore = explorer.getByRole('button', { name: /Load more/ });
+    await loadMore.evaluate(button => {
+      const loadButton = button as HTMLButtonElement;
+      loadButton.click();
+      loadButton.click();
+    });
+    await expect(explorer.locator('.gm-strip-item')).toHaveCount(24);
+    await page.waitForFunction(() => performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
+    const measure = await page.evaluate(() => performance.getEntriesByName('gm-explorer-append', 'measure').at(-1)?.duration ?? null);
+    expect(measure).not.toBeNull();
   });
 
   test('the lower news section shows broad market news distinct from the Tech News feed', async ({ page }) => {
