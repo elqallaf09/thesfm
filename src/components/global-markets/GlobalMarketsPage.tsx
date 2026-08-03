@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { AlertTriangle, Globe2, RefreshCcw } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AlertTriangle, Globe2, RefreshCcw, Settings2 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MarketStrip } from '@/components/market/MarketStrip';
@@ -9,12 +9,16 @@ import { GlobalMarketsExplorer } from '@/components/global-markets/GlobalMarkets
 import { GlobalMarketsNews } from '@/components/global-markets/GlobalMarketsNews';
 import { GlobalMarketsLayoutStyles } from '@/components/global-markets/GlobalMarketsLayoutStyles';
 import { GLOBAL_MARKET_STRIPS } from '@/lib/market/globalMarketStrips';
+import { GlobalMarketsPicker } from '@/components/global-markets/GlobalMarketsPicker';
+import { useGlobalMarketSelection } from '@/hooks/useGlobalMarketSelection';
+import { GLOBAL_MARKETS_SELECTION_SIZE } from '@/lib/market/globalMarketPreferences';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { t } from '@/lib/translations';
 
 type MarketStripsResponse = {
   success: true;
   lastUpdated: string;
+  requestedIds: string[];
   prices: Record<string, TechStockPrice>;
 } | {
   success: false;
@@ -32,17 +36,29 @@ export function GlobalMarketsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const hasLoadedRef = useRef(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { selectedIds, setSelectedIds, restoreDefaults, hydrated } = useGlobalMarketSelection();
+  const selectedStrips = useMemo(() => selectedIds.flatMap(id => {
+    const strip = GLOBAL_MARKET_STRIPS.find(candidate => candidate.id === id);
+    return strip ? [strip] : [];
+  }), [selectedIds]);
+  const selectedIdsKey = selectedIds.join(',');
 
-  const load = async (showLoader: boolean, signal?: AbortSignal) => {
+  const customizeLabel = lang === 'ar' ? 'تخصيص الأسواق' : lang === 'fr' ? 'Personnaliser les marchés' : 'Customize markets';
+  const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
+
+  const load = useCallback(async (showLoader: boolean, idsKey: string, signal?: AbortSignal) => {
     if (showLoader) setLoading(true);
     else setRefreshing(true);
     setError(false);
     try {
-      const response = await fetch('/api/market-strips', { signal });
+      const response = await fetch(`/api/market-strips?ids=${encodeURIComponent(idsKey)}`, { signal });
       const json = await response.json() as MarketStripsResponse;
       if (!json.success) throw new Error(json.error);
       setPrices(json.prices);
       setLastUpdated(json.lastUpdated);
+      hasLoadedRef.current = true;
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
       setError(true);
@@ -50,15 +66,14 @@ export function GlobalMarketsPage() {
       if (showLoader) setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     const controller = new AbortController();
-    void load(true, controller.signal);
+    void load(!hasLoadedRef.current, selectedIdsKey, controller.signal);
     return () => controller.abort();
-    // Fetch exactly once on mount -- prices are refreshed via manual refresh only,
-    // never re-fetched as a side effect of a language switch or re-render.
-  }, []);
+  }, [hydrated, load, selectedIdsKey]);
 
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(localeFor(lang), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdated))
@@ -83,7 +98,7 @@ export function GlobalMarketsPage() {
             <button
               type="button"
               className="gm-header-refresh"
-              onClick={() => void load(false)}
+              onClick={() => void load(false, selectedIdsKey)}
               disabled={refreshing}
               aria-label={t('global_markets_last_updated', lang)}
             >
@@ -99,15 +114,25 @@ export function GlobalMarketsPage() {
           </div>
         ) : null}
 
+        <section className="gm-selection" aria-label={selectedLabel}>
+          <div>
+            <strong>{selectedLabel}: {selectedIds.length} / {GLOBAL_MARKETS_SELECTION_SIZE}</strong>
+            <span>{selectedStrips.map(strip => lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn).join(' · ')}</span>
+          </div>
+          <button type="button" onClick={() => setPickerOpen(true)}>
+            <Settings2 size={17} aria-hidden="true" /> {customizeLabel}
+          </button>
+        </section>
+
         <section className="gm-strips" aria-label={t('global_markets_strips_heading', lang)}>
           {loading ? (
             <div className="gm-strips-skeleton" role="status">
-              {Array.from({ length: 6 }).map((_, index) => (
+              {Array.from({ length: GLOBAL_MARKETS_SELECTION_SIZE }).map((_, index) => (
                 <div className="gm-strips-skeleton-row" key={index} />
               ))}
             </div>
           ) : (
-            GLOBAL_MARKET_STRIPS.map(strip => (
+            selectedStrips.map(strip => (
               <MarketStrip key={strip.id} strip={strip} prices={prices} lang={lang} dir={dir} />
             ))
           )}
@@ -115,10 +140,20 @@ export function GlobalMarketsPage() {
 
         <GlobalMarketsExplorer prices={prices} lang={lang} dir={dir} />
 
-        <GlobalMarketsNews lang={lang} dir={dir} />
+        <GlobalMarketsNews lang={lang} dir={dir} selectedStrips={selectedStrips} />
 
         <p className="gm-disclaimer" dir="auto">{t('global_markets_disclaimer', lang)}</p>
       </WorkspacePageContainer>
+      {hydrated ? (
+        <GlobalMarketsPicker
+          open={pickerOpen}
+          lang={lang}
+          selectedIds={selectedIds}
+          onClose={() => setPickerOpen(false)}
+          onSave={setSelectedIds}
+          onRestoreDefaults={() => { restoreDefaults(); setPickerOpen(false); }}
+        />
+      ) : null}
     </div>
   );
 }

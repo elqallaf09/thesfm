@@ -2,16 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { GLOBAL_MARKET_STRIPS, allGlobalMarketStripSymbols, inferStripCurrency } from '@/lib/market/globalMarketStrips';
 
 describe('GLOBAL_MARKET_STRIPS', () => {
-  it('never includes a European or Gulf/GCC exchange group', () => {
+  it('never collapses countries or exchanges into a synthetic regional group', () => {
     const ids = GLOBAL_MARKET_STRIPS.map(strip => strip.id);
-    const labels = GLOBAL_MARKET_STRIPS.map(strip => `${strip.labelAr} ${strip.labelEn} ${strip.labelFr}`).join(' ').toLowerCase();
 
     for (const forbiddenId of ['europe', 'eu', 'gcc', 'gulf', 'khaleej']) {
       expect(ids.some(id => id.includes(forbiddenId))).toBe(false);
     }
-    for (const forbiddenTerm of ['europe', 'أوروب', 'gulf', 'خليج', 'gcc', 'tadawul', 'تداول', 'saudi', 'سعودي', 'dfm', 'دبي المالي']) {
-      expect(labels).not.toContain(forbiddenTerm.toLowerCase());
-    }
+    expect(ids).toContain('saudi_tadawul');
+    expect(ids).toContain('uae_dfm');
+    expect(ids).toContain('uae_adx');
   });
 
   it('includes exactly the required country/exchange groups plus forex, commodities, crypto, and global indices', () => {
@@ -65,9 +64,13 @@ describe('GLOBAL_MARKET_STRIPS', () => {
     }
   });
 
-  it('gives every strip a non-empty item list with a real symbol and a name in every supported locale', () => {
+  it('uses real localized items for supported strips and an explicit unavailable state otherwise', () => {
     for (const strip of GLOBAL_MARKET_STRIPS) {
-      expect(strip.items.length).toBeGreaterThan(0);
+      if (strip.items.length === 0) {
+        expect(strip.unavailableReason).toBe('coverage_unavailable');
+        continue;
+      }
+      expect(strip.unavailableReason).toBeUndefined();
       for (const item of strip.items) {
         expect(item.symbol.trim()).not.toBe('');
         expect(item.name.trim()).not.toBe('');

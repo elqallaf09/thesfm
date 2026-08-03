@@ -117,6 +117,53 @@ export function GlobalMarketsLayoutStyles() {
         font-weight: 600;
       }
 
+      .gm-selection {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+      }
+
+      .gm-selection > div { display: grid; gap: 4px; min-width: 0; }
+      .gm-selection strong { font-size: 13px; color: var(--foreground); }
+      .gm-selection span { overflow: hidden; color: var(--foreground-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+      .gm-selection button, .gm-picker-save, .gm-picker-restore {
+        min-height: 44px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-control);
+        padding: 0 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        background: var(--surface-muted);
+        color: var(--foreground);
+        font-weight: 650;
+        cursor: pointer;
+      }
+
+      .gm-picker-body { display: grid; gap: 14px; }
+      .gm-picker-search { min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); }
+      .gm-picker-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--foreground); }
+      .gm-picker-count { margin: 0; font-weight: 700; }
+      .gm-picker-order { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+      .gm-picker-order li { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); }
+      .gm-picker-order-actions { display: flex; gap: 6px; }
+      .gm-picker-order-actions button { inline-size: 44px; block-size: 44px; display: grid; place-items: center; border: 0; border-radius: var(--radius-control); background: var(--surface-muted); color: var(--foreground); }
+      .gm-picker-order-actions button:disabled { opacity: .35; }
+      .gm-picker-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .gm-picker-option { min-height: 48px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); cursor: pointer; }
+      .gm-picker-option input { inline-size: 20px; block-size: 20px; }
+      .gm-picker-option small { grid-column: 2; color: var(--foreground-muted); }
+      .gm-picker-option.is-disabled { opacity: .62; cursor: not-allowed; }
+      .gm-picker-footer { width: 100%; display: flex; justify-content: space-between; gap: 10px; }
+      .gm-picker-save { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
+      .gm-picker-save:disabled { opacity: .5; cursor: not-allowed; }
+
       .gm-strips {
         display: grid;
         gap: 14px;
@@ -155,6 +202,24 @@ export function GlobalMarketsLayoutStyles() {
         .gm-strips-skeleton-row {
           animation: none;
         }
+      }
+
+      @media (max-width: 640px) {
+        [dir] .gm-shell .gm-main { gap: 12px; }
+        .gm-header { padding: 11px 12px; }
+        .gm-header-icon { inline-size: 36px; block-size: 36px; }
+        .gm-header-copy p { display: none; }
+        .gm-header-updated { display: none; }
+        .gm-strips { gap: 9px; }
+        .gm-strips-skeleton { gap: 9px; }
+        .gm-strips-skeleton-row { min-height: 104px; }
+        .gm-selection { align-items: stretch; flex-direction: column; }
+        .gm-selection button { width: 100%; }
+        .gm-picker-options { grid-template-columns: 1fr; }
+        .gm-picker-footer { flex-direction: column-reverse; }
+        .gm-picker-footer > button { width: 100%; }
+        .sfm-modal-overlay:has(.gm-picker) { --sfm-modal-align: flex-end; --sfm-modal-padding: 0; }
+        .gm-picker { --sfm-modal-responsive-width: 100%; width: 100%; max-height: 88dvh; border-end-start-radius: 0; border-end-end-radius: 0; }
       }
     `}</style>
   );

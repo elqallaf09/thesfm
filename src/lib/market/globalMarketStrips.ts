@@ -22,6 +22,16 @@
  */
 
 export type GlobalMarketStripId =
+  | 'kuwait_boursa'
+  | 'saudi_tadawul'
+  | 'uae_dfm'
+  | 'uae_adx'
+  | 'qatar_qse'
+  | 'bahrain_bourse'
+  | 'oman_msx'
+  | 'egypt_egx'
+  | 'jordan_ase'
+  | 'morocco_cse'
   | 'us_nasdaq'
   | 'us_nyse'
   | 'japan_tse'
@@ -73,6 +83,9 @@ export type GlobalMarketStripConfig = {
   labelAr: string;
   labelEn: string;
   labelFr: string;
+  exchangeCode?: string;
+  newsRegion?: 'gulf' | 'arab' | 'middle_east' | 'china_hongkong' | 'asia' | 'north_america' | 'global';
+  unavailableReason?: 'coverage_unavailable';
   items: GlobalMarketStripItemConfig[];
 };
 
@@ -95,6 +108,86 @@ export const SECTOR_LABEL: Record<GlobalMarketSector, { ar: string; en: string; 
 };
 
 export const GLOBAL_MARKET_STRIPS: GlobalMarketStripConfig[] = [
+  {
+    id: 'kuwait_boursa', kind: 'equity', countryCode: 'KW', exchangeCode: 'BOURSA_KUWAIT', newsRegion: 'gulf',
+    labelAr: 'الكويت — بورصة الكويت', labelEn: 'Kuwait — Boursa Kuwait', labelFr: 'Koweït — Bourse du Koweït',
+    items: [
+      { symbol: 'KFH.KW', name: 'Kuwait Finance House', nameAr: 'بيت التمويل الكويتي', sector: 'bank' },
+      { symbol: 'NBK.KW', name: 'National Bank of Kuwait', nameAr: 'بنك الكويت الوطني', sector: 'bank' },
+      { symbol: 'ZAIN.KW', name: 'Zain', nameAr: 'زين', sector: 'telecom' },
+      { symbol: 'MABANEE.KW', name: 'Mabanee', nameAr: 'المباني', sector: 'real_estate' },
+      { symbol: 'AGLTY.KW', name: 'Agility', nameAr: 'أجيليتي', sector: 'transportation' },
+      { symbol: 'MEZZAN.KW', name: 'Mezzan Holding', nameAr: 'ميزان القابضة', sector: 'consumer_goods' },
+    ],
+  },
+  {
+    id: 'saudi_tadawul', kind: 'equity', countryCode: 'SA', exchangeCode: 'TADAWUL', newsRegion: 'gulf',
+    labelAr: 'السعودية — تداول', labelEn: 'Saudi Arabia — Tadawul', labelFr: 'Arabie saoudite — Tadawul',
+    items: [
+      { symbol: '2222.SR', name: 'Saudi Aramco', nameAr: 'أرامكو السعودية', sector: 'energy' },
+      { symbol: '1120.SR', name: 'Al Rajhi Bank', nameAr: 'مصرف الراجحي', sector: 'bank' },
+      { symbol: '1180.SR', name: 'Saudi National Bank', nameAr: 'البنك الأهلي السعودي', sector: 'bank' },
+      { symbol: '2010.SR', name: 'SABIC', nameAr: 'سابك', sector: 'industrials' },
+      { symbol: '7010.SR', name: 'stc', nameAr: 'إس تي سي', sector: 'telecom' },
+      { symbol: '1211.SR', name: 'Maaden', nameAr: 'معادن', sector: 'industrials' },
+    ],
+  },
+  {
+    id: 'uae_dfm', kind: 'equity', countryCode: 'AE', exchangeCode: 'DFM', newsRegion: 'gulf',
+    labelAr: 'الإمارات — سوق دبي المالي', labelEn: 'UAE — Dubai Financial Market', labelFr: 'Émirats arabes unis — Marché financier de Dubaï',
+    items: [
+      { symbol: 'EMAAR.DU', name: 'Emaar Properties', nameAr: 'إعمار العقارية', sector: 'real_estate' },
+      { symbol: 'DIB.DU', name: 'Dubai Islamic Bank', nameAr: 'بنك دبي الإسلامي', sector: 'bank' },
+      { symbol: 'EMIRATESNBD.DU', name: 'Emirates NBD', nameAr: 'الإمارات دبي الوطني', sector: 'bank' },
+      { symbol: 'DEWA.AE', name: 'DEWA', nameAr: 'ديوا', sector: 'energy' },
+      { symbol: 'SALIK.AE', name: 'Salik', nameAr: 'سالك', sector: 'transportation' },
+      { symbol: 'AIRARABIA.AE', name: 'Air Arabia', nameAr: 'العربية للطيران', sector: 'transportation' },
+    ],
+  },
+  {
+    id: 'uae_adx', kind: 'equity', countryCode: 'AE', exchangeCode: 'ADX', newsRegion: 'gulf',
+    labelAr: 'الإمارات — سوق أبوظبي للأوراق المالية', labelEn: 'UAE — Abu Dhabi Securities Exchange', labelFr: 'Émirats arabes unis — Bourse d’Abou Dhabi',
+    items: [
+      { symbol: 'FAB.AE', name: 'First Abu Dhabi Bank', nameAr: 'بنك أبوظبي الأول', sector: 'bank' },
+      { symbol: 'ADCB.AE', name: 'Abu Dhabi Commercial Bank', nameAr: 'بنك أبوظبي التجاري', sector: 'bank' },
+      { symbol: 'ALDAR.AE', name: 'Aldar Properties', nameAr: 'الدار العقارية', sector: 'real_estate' },
+      { symbol: 'ADNOCGAS.AD', name: 'ADNOC Gas', nameAr: 'أدنوك للغاز', sector: 'energy' },
+      { symbol: 'ADNOCDRILL.AD', name: 'ADNOC Drilling', nameAr: 'أدنوك للحفر', sector: 'energy' },
+    ],
+  },
+  {
+    id: 'qatar_qse', kind: 'equity', countryCode: 'QA', exchangeCode: 'QSE', newsRegion: 'gulf',
+    labelAr: 'قطر — بورصة قطر', labelEn: 'Qatar — Qatar Stock Exchange', labelFr: 'Qatar — Bourse du Qatar',
+    items: [
+      { symbol: 'QNBK.QA', name: 'QNB Group', nameAr: 'مجموعة بنك قطر الوطني', sector: 'bank' },
+      { symbol: 'QIBK.QA', name: 'Qatar Islamic Bank', nameAr: 'مصرف قطر الإسلامي', sector: 'bank' },
+      { symbol: 'IQCD.QA', name: 'Industries Qatar', nameAr: 'صناعات قطر', sector: 'industrials' },
+      { symbol: 'ORDS.QA', name: 'Ooredoo', nameAr: 'أريد', sector: 'telecom' },
+    ],
+  },
+  {
+    id: 'bahrain_bourse', kind: 'equity', countryCode: 'BH', exchangeCode: 'BAHRAIN', newsRegion: 'gulf',
+    labelAr: 'البحرين — بورصة البحرين', labelEn: 'Bahrain — Bahrain Bourse', labelFr: 'Bahreïn — Bourse de Bahreïn',
+    items: [
+      { symbol: 'NBB.BH', name: 'National Bank of Bahrain', nameAr: 'بنك البحرين الوطني', sector: 'bank' },
+      { symbol: 'BBK.BH', name: 'Bank of Bahrain and Kuwait', nameAr: 'بنك البحرين والكويت', sector: 'bank' },
+      { symbol: 'BATELCO.BH', name: 'Batelco', nameAr: 'بتلكو', sector: 'telecom' },
+      { symbol: 'ALBH.BH', name: 'Aluminium Bahrain', nameAr: 'ألمنيوم البحرين', sector: 'industrials' },
+    ],
+  },
+  {
+    id: 'oman_msx', kind: 'equity', countryCode: 'OM', exchangeCode: 'MSX', newsRegion: 'gulf',
+    labelAr: 'عُمان — بورصة مسقط', labelEn: 'Oman — Muscat Stock Exchange', labelFr: 'Oman — Bourse de Mascate',
+    items: [
+      { symbol: 'BKMB.OM', name: 'Bank Muscat', nameAr: 'بنك مسقط', sector: 'bank' },
+      { symbol: 'NBOB.OM', name: 'National Bank of Oman', nameAr: 'البنك الوطني العماني', sector: 'bank' },
+      { symbol: 'ORED.OM', name: 'Ooredoo Oman', nameAr: 'أوريدو عُمان', sector: 'telecom' },
+      { symbol: 'OQGN.OM', name: 'OQ Gas Networks', nameAr: 'أوكيو لشبكات الغاز', sector: 'energy' },
+    ],
+  },
+  { id: 'egypt_egx', kind: 'equity', countryCode: 'EG', exchangeCode: 'EGX', newsRegion: 'arab', labelAr: 'مصر — البورصة المصرية', labelEn: 'Egypt — Egyptian Exchange', labelFr: 'Égypte — Bourse égyptienne', unavailableReason: 'coverage_unavailable', items: [] },
+  { id: 'jordan_ase', kind: 'equity', countryCode: 'JO', exchangeCode: 'ASE', newsRegion: 'arab', labelAr: 'الأردن — بورصة عمّان', labelEn: 'Jordan — Amman Stock Exchange', labelFr: 'Jordanie — Bourse d’Amman', unavailableReason: 'coverage_unavailable', items: [] },
+  { id: 'morocco_cse', kind: 'equity', countryCode: 'MA', exchangeCode: 'CSE', newsRegion: 'arab', labelAr: 'المغرب — بورصة الدار البيضاء', labelEn: 'Morocco — Casablanca Stock Exchange', labelFr: 'Maroc — Bourse de Casablanca', unavailableReason: 'coverage_unavailable', items: [] },
   {
     id: 'us_nasdaq',
     kind: 'equity',
@@ -355,6 +448,12 @@ export function allGlobalMarketStripSymbols(): string[] {
 // price as USD regardless of what exchange it actually quotes on would be
 // the truthfulness problem.
 const SUFFIX_CURRENCY: Array<[RegExp, string]> = [
+  [/\.KW$/, 'KWD'],
+  [/\.SR$/, 'SAR'],
+  [/\.(?:AE|DU|AD)$/, 'AED'],
+  [/\.QA$/, 'QAR'],
+  [/\.BH$/, 'BHD'],
+  [/\.OM$/, 'OMR'],
   [/\.T$/, 'JPY'],
   [/\.SS$/, 'CNY'],
   [/\.SZ$/, 'CNY'],
