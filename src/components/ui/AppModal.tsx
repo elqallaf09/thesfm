@@ -174,9 +174,9 @@ export function AppModal({
     margin: 0,
     transform: 'none',
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'var(--sfm-modal-align, center)',
     justifyContent: 'center',
-    padding: 'clamp(12px, 2vw, 24px)',
+    padding: 'var(--sfm-modal-padding, clamp(12px, 2vw, 24px))',
     overflow: 'hidden',
     isolation: 'isolate',
     background: 'var(--background-overlay)',
@@ -184,7 +184,9 @@ export function AppModal({
     WebkitBackdropFilter: 'blur(6px)',
   };
   const panelStyle = {
-    '--sfm-modal-width': WIDTHS[size],
+    '--sfm-modal-width': className.includes('gm-picker')
+      ? `var(--sfm-modal-responsive-width, ${WIDTHS[size]})`
+      : WIDTHS[size],
     position: 'relative',
     zIndex: 9999,
     margin: 0,

@@ -218,8 +218,8 @@ export function GlobalMarketsLayoutStyles() {
         .gm-picker-options { grid-template-columns: 1fr; }
         .gm-picker-footer { flex-direction: column-reverse; }
         .gm-picker-footer > button { width: 100%; }
-        .sfm-modal-overlay:has(.gm-picker) { align-items: flex-end !important; padding: 0 !important; }
-        .gm-picker { width: 100% !important; max-height: 88dvh !important; border-end-start-radius: 0 !important; border-end-end-radius: 0 !important; }
+        .sfm-modal-overlay:has(.gm-picker) { --sfm-modal-align: flex-end; --sfm-modal-padding: 0; }
+        .gm-picker { --sfm-modal-responsive-width: 100%; width: 100%; max-height: 88dvh; border-end-start-radius: 0; border-end-end-radius: 0; }
       }
     `}</style>
   );
