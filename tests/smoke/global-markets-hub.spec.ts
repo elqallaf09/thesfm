@@ -107,6 +107,22 @@ test.describe('Global Markets Hub', () => {
     expect(animationName).not.toBe('none');
   });
 
+  test('normalizes visibly different strips to the same rendered pixels per second', async ({ page }) => {
+    await useEnglish(page);
+    await mockGlobalMarkets(page);
+    await page.goto('/global-markets');
+    const tracks = page.locator('.gm-strip .market-ticker-track');
+    await expect(tracks.first()).toHaveAttribute('data-loop-distance', /\d/);
+    const velocities = await tracks.evaluateAll(elements => elements.slice(0, 3).map(element => {
+      const primary = element.querySelector<HTMLElement>('[data-ticker-set="primary"]');
+      const durationText = getComputedStyle(element).animationDuration;
+      const duration = Number.parseFloat(durationText) * (durationText.endsWith('ms') ? 0.001 : 1);
+      return (primary?.getBoundingClientRect().width ?? 0) / duration;
+    }));
+    expect(velocities.length).toBeGreaterThan(1);
+    for (const velocity of velocities) expect(Math.abs(velocity - velocities[0])).toBeLessThan(0.2);
+  });
+
   test('pauses ticker animation on hover', async ({ page }) => {
     await useEnglish(page);
     await mockGlobalMarkets(page);

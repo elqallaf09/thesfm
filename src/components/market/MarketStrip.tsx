@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
-import { MarketTickerStrip } from '@/components/market/MarketTickerStrip';
+import { MARKET_TICKER_PIXELS_PER_SECOND, MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { MarketStripItem } from '@/components/market/MarketStripItem';
 import { MarketStripControls } from '@/components/market/MarketStripControls';
 import { MarketDataStatus, type MarketDataStatusTone } from '@/components/market/MarketDataStatus';
@@ -59,7 +59,7 @@ export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
         <MarketTickerStrip
           ariaLabel={label}
           direction={dir}
-          durationSeconds={Math.max(24, strip.items.length * 5)}
+          pixelsPerSecond={MARKET_TICKER_PIXELS_PER_SECOND}
           minimumItems={12}
           status={<MarketStripControls containerRef={containerRef} dir={dir} lang={lang} />}
           emptyState={<div className="gm-strip-empty">{t('global_markets_strip_unavailable', lang)}</div>}

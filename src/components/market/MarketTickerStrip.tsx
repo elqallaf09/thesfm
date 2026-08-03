@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, cloneElement, isValidElement, useEffect, useState } from 'react';
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 type TickerDirection = 'ltr' | 'rtl';
@@ -13,11 +13,34 @@ type MarketTickerStripProps = {
   setClassName?: string;
   direction?: TickerDirection;
   durationSeconds?: number;
+  pixelsPerSecond?: number;
   minimumItems?: number;
   emptyState?: ReactNode;
   status?: ReactNode;
   children: ReactNode;
 };
+
+export const MARKET_TICKER_PIXELS_PER_SECOND = 30;
+const WIDTH_CHANGE_TOLERANCE_PX = 0.5;
+
+export function tickerDurationSeconds(loopDistancePixels: number, pixelsPerSecond: number) {
+  if (!Number.isFinite(loopDistancePixels) || loopDistancePixels <= 0 || !Number.isFinite(pixelsPerSecond) || pixelsPerSecond <= 0) return null;
+  return loopDistancePixels / pixelsPerSecond;
+}
+
+export function hasMaterialTickerWidthChange(previous: number, next: number) {
+  return Math.abs(previous - next) >= WIDTH_CHANGE_TOLERANCE_PX;
+}
+
+export function observeTickerGeometry(
+  targets: Element[],
+  onResize: ResizeObserverCallback,
+  Observer: typeof ResizeObserver = ResizeObserver,
+) {
+  const observer = new Observer(onResize);
+  targets.forEach(target => observer.observe(target));
+  return () => observer.disconnect();
+}
 
 function joinClasses(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -47,6 +70,7 @@ export function MarketTickerStrip({
   setClassName,
   direction,
   durationSeconds = 44,
+  pixelsPerSecond,
   minimumItems = 10,
   emptyState,
   status,
@@ -54,15 +78,22 @@ export function MarketTickerStrip({
 }: MarketTickerStripProps) {
   const [paused, setPaused] = useState(false);
   const [resolvedDirection, setResolvedDirection] = useState<TickerDirection>(direction ?? 'ltr');
+  const [loopDistance, setLoopDistance] = useState(0);
+  const primarySetRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const tickerItems = Children.toArray(children);
   const hasTickerItems = tickerItems.length > 0;
   const repeatCount = tickerItems.length > 0 ? Math.max(2, Math.ceil(minimumItems / tickerItems.length)) : 1;
   const animationName = resolvedDirection === 'rtl' ? 'sfmMarketTickerScrollRtl' : 'sfmMarketTickerScrollLtr';
+  const measuredDuration = pixelsPerSecond ? tickerDurationSeconds(loopDistance, pixelsPerSecond) : durationSeconds;
   const style = {
-    '--market-ticker-duration': `${durationSeconds}s`,
+    '--market-ticker-duration': measuredDuration ? `${measuredDuration}s` : undefined,
   } as CSSProperties;
   const trackStyle = {
-    animation: `${animationName} var(--market-ticker-duration) linear infinite`,
+    animationName: measuredDuration ? animationName : 'none',
+    animationDuration: measuredDuration ? 'var(--market-ticker-duration)' : undefined,
+    animationTimingFunction: 'linear',
+    animationIterationCount: 'infinite',
     ...(paused ? { animationPlayState: 'paused' } : {}),
   } as CSSProperties;
   const renderSet = (setKey: string, hiddenSet: boolean) =>
@@ -75,6 +106,21 @@ export function MarketTickerStrip({
         ),
       ),
     );
+
+  const measureLoopDistance = useCallback(() => {
+    if (!pixelsPerSecond) return;
+    const width = primarySetRef.current?.getBoundingClientRect().width ?? 0;
+    if (width <= 0) return;
+    setLoopDistance(previous => hasMaterialTickerWidthChange(previous, width) ? width : previous);
+  }, [pixelsPerSecond]);
+
+  useEffect(() => {
+    if (!pixelsPerSecond || !primarySetRef.current || !viewportRef.current || typeof ResizeObserver === 'undefined') return;
+    measureLoopDistance();
+    const cleanup = observeTickerGeometry([primarySetRef.current, viewportRef.current], measureLoopDistance);
+    void document.fonts?.ready.then(measureLoopDistance);
+    return cleanup;
+  }, [measureLoopDistance, pixelsPerSecond, tickerItems.length]);
 
   useEffect(() => {
     if (direction) {
@@ -116,12 +162,12 @@ export function MarketTickerStrip({
     >
       {status}
       {hasTickerItems ? (
-        <div className={joinClasses('market-ticker-viewport', viewportClassName)}>
-          <div className={joinClasses('market-ticker-track', trackClassName)} style={trackStyle}>
-            <div className={joinClasses('market-ticker-set', setClassName)} role="list">
+        <div ref={viewportRef} className={joinClasses('market-ticker-viewport', viewportClassName)}>
+          <div className={joinClasses('market-ticker-track', trackClassName)} style={trackStyle} data-loop-distance={loopDistance || undefined} data-pixels-per-second={pixelsPerSecond}>
+            <div ref={primarySetRef} className={joinClasses('market-ticker-set', setClassName)} role="list" data-ticker-set="primary">
               {renderSet('primary', false)}
             </div>
-            <div className={joinClasses('market-ticker-set', setClassName)} aria-hidden="true">
+            <div className={joinClasses('market-ticker-set', setClassName)} aria-hidden="true" data-ticker-set="duplicate">
               {renderSet('duplicate', true)}
             </div>
           </div>
