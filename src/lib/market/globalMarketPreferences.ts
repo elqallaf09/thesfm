@@ -7,10 +7,10 @@ export const GLOBAL_MARKETS_PREFERENCE_KEY = 'sfm.globalMarkets.selectedStrips.v
 export const GLOBAL_MARKETS_SELECTION_SIZE = 4;
 
 export const DEFAULT_GLOBAL_MARKET_STRIPS: GlobalMarketStripId[] = [
+  'kuwait_boursa',
+  'saudi_tadawul',
   'us_nasdaq',
-  'us_nyse',
   'forex',
-  'global_indices',
 ];
 
 const AVAILABLE_IDS = new Set(
