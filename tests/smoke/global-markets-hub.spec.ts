@@ -59,6 +59,30 @@ async function useEnglish(page: Page) {
 }
 
 test.describe('Global Markets Hub', () => {
+  test('renders a stable staged-loading shell before market and news data resolve', async ({ page }, testInfo) => {
+    await useEnglish(page);
+    let releaseRequests!: () => void;
+    const requestGate = new Promise<void>(resolve => { releaseRequests = resolve; });
+    await page.route('**/api/market-strips**', async route => {
+      await requestGate;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(stripsPayload()) });
+    });
+    await page.route('**/api/market-news**', async route => {
+      await requestGate;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(newsPayload()) });
+    });
+
+    await page.goto('/global-markets');
+    await expect(page.locator('.gm-strip-skeleton').first()).toBeVisible();
+    await expect(page.locator('.gm-news-skeleton')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('global-markets-staged-loading.png'), fullPage: true });
+
+    releaseRequests();
+    await expect(page.locator('.gm-strip-heading-label').last()).toBeVisible();
+    await expect(page.locator('.gm-news-list')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('global-markets-editorial-news.png'), fullPage: true });
+  });
+
   test('renders exactly the four persisted primary strips instead of stacking the full catalog', async ({ page }) => {
     await useEnglish(page);
     await mockGlobalMarkets(page);
@@ -267,7 +291,7 @@ test.describe('Global Markets Hub', () => {
     await expect(newsSection).toContainText('Federal Reserve holds interest rates steady');
   });
 
-  test('manual news customization is selection-driven and targets verified markets and companies', async ({ page }) => {
+  test('manual news customization is selection-driven and targets verified markets and companies', async ({ page }, testInfo) => {
     await useEnglish(page);
     const newsRequests: string[] = [];
     await mockGlobalMarkets(page);
@@ -295,6 +319,7 @@ test.describe('Global Markets Hub', () => {
 
     await expect(filters.locator('.gm-news-filter-tokens')).toContainText('Kuwait');
     await expect(filters.locator('.gm-news-filter-tokens')).toContainText('AAPL');
+    await page.screenshot({ path: testInfo.outputPath('global-markets-selection-filters.png'), fullPage: true });
     await filters.getByRole('button', { name: /Apply filters/ }).click();
 
     await expect.poll(() => newsRequests.at(-1) ?? '').toContain('countries=KW');
