@@ -4,7 +4,129 @@ Design-only pass on THE SFM's global header — workspace switcher + utility
 command cluster — plus a smaller earlier pass on high-traffic tab/filter
 patterns elsewhere. No business logic, routes, or copy changed.
 
-## Round 8 (current): component decomposition + a real material change
+## Round 9 (current): decision gate — Variant A, Institutional Fintech Dock, implemented
+
+Round 8 was technically clean but still unapproved on visual grounds, and the
+PR had grown to 28 commits / 103 files. The user called a stop to further
+coding and asked for a **visual decision gate** first: three materially
+different, high-fidelity header concepts (real logo, real Arabic labels/
+icons, real theme colors), rendered as actual mockups — not implemented in
+the app, not described in prose — for a side-by-side comparison before any
+more production code changed.
+
+### The decision gate
+
+Three standalone HTML mockups were built entirely outside the app (new files
+in a session scratch directory, zero production code touched), using the
+real `sfm-logo.png`, the exact Arabic workspace labels and lucide-react icon
+path data pulled directly from `node_modules`, and the app's own real
+`themes.css` color values — then screenshotted with the same Playwright
+technique used for every round's evidence:
+
+- **A — Institutional Fintech Dock**: solid navy bar in both themes, compact
+  teal underline on the active tab, ghost-icon command cluster.
+- **B — Modern Floating Workspace Rail**: the workspace rail as a visibly
+  separate elevated pill overlapping the header's bottom edge, active item a
+  raised teal card with real shadow/lift.
+- **C — Minimal Executive Header**: no container around the workspace nav at
+  all, larger type, generous spacing, a single thin teal underline.
+
+Published as a comparison page; the user picked **A**.
+
+### Implementing Variant A for real
+
+This is a genuine structural pivot, not another value-tuning pass:
+
+- **Header surface**: `.sfm-global-header` moved from a translucent,
+  backdrop-blurred, rounded, inset floating card to a **solid navy bar,
+  identical treatment in both light and dark theme** (`#0B1334` light /
+  `#080D26` dark — deliberately even deeper than dark mode's own page
+  background so the header still reads as a distinct strip). Flush,
+  full-width, `border-radius: 0`, no shadow, no backdrop-filter, one 2px
+  `var(--accent)` bottom border instead of a full border. The old
+  ultra-wide `max-width` cap is gone — the dock is edge-to-edge at every
+  size now, matching the approved mockup exactly.
+- **New token family**: `--header-dock-bg/-text/-text-muted/-text-subtle/
+  -icon/-hover-bg/-search-bg/-search-border/-control-divider`, defined
+  identically in both theme scopes in `themes.css` (the header no longer
+  tracks the page's light/dark theme — it's always navy, so its content
+  needs theme-invariant light tokens instead of the normal `--foreground`
+  family, which flips per theme).
+- **Active workspace state**: the sliding indicator (kept from round 8 —
+  proven, tested, RTL-safe positioning math, unchanged) is restyled from a
+  filled elevated chip to a **slim 2px underline** anchored to the bottom of
+  the tab, colored `var(--accent)`. No track/pill surface behind the tabs at
+  all — items sit flush on the navy dock. Height 44px (down from 52px),
+  matching `--control-h` — "compact," not another size escalation.
+  `scroll-snap-type` and the reduced-motion query carry over unchanged from
+  round 8's real mobile fixes.
+- **Command cluster**: the shared chip/box background is gone — every
+  control (search, language, theme, density, notifications, account) is a
+  ghost element, transparent until hovered, hover = teal tint. Quick Search
+  keeps one persistent slim surface (`--header-dock-search-bg`) as the
+  cluster's anchor. Icon sizes trimmed slightly (language 18→16px, bell
+  18→17px) to match the more restrained institutional density.
+- **Dead-token cleanup**: `--header-glass-bg`, `--header-shadow`,
+  `--header-edge-glow`, `--header-control-bg`, `--header-control-border`,
+  `--header-border`, and the four now-pointless indicator surface/border/
+  shadow tokens (`--workspace-switcher-item-border-active` and its three
+  `-shadow-active*` siblings) are removed — traced and confirmed unused
+  after the rewrite, not guessed.
+
+### A real bug found only by checking the rendered page, not the source
+
+After the first implementation pass, every test passed and the source read
+correctly — but a screenshot showed the header rendering **translucent
+white-on-94%-opacity, not navy**. Root cause: a pre-existing `:where(.sfm-
+global-header, .sfm-topbar) { background: ... !important; ... }` guard rule
+in `globals.css` (the same class of bug fixed once before, in round 4 —
+`:where()` has zero specificity, but `!important` inside it still wins over
+normal-specificity rules) was force-overriding the new navy background back
+to the old translucent value. Fixed by updating the guard's values to match
+the new tokens rather than removing it (same resolution round 4 used).
+`.sfm-topbar` was confirmed unused anywhere in the codebase before touching
+it, so the fix is scoped only to the real header. This was caught by DOM-
+measuring the actual rendered `background-color`, not by reading the CSS
+source — the same "prove it, don't assume" discipline this PR has used
+since round 1.
+
+### CSS: real reduction, not just neutral
+
+`check:performance-budget`: **64.5/65.4 KiB** on `/`, `/today`, `/invest` —
+down from round 8's 65.1 KiB. The simplifications (no more backdrop-filter,
+no more shadow/glow tokens, no more `:has()` hover-strengthening rules, no
+more shared-chip background) genuinely shrank the stylesheet, on top of
+landing the approved visual direction.
+
+### Validation
+
+`lint`, `typecheck`, `check:i18n`, `check:visual-system`,
+`check:maintainability`, `check:repo-hygiene` all pass. `pnpm test:run`:
+**252 files / 2078 tests pass** — this PR's own `headerWorkspaceNavigation.test.ts`
+and `workspaceSwitcherAffordance.test.ts` rewritten for the new flush/
+underline design (not weakened — the "floating card" assertions correctly
+became "flush navy dock" assertions), and one external cross-cutting file
+(`visualSystemTokens.test.ts`) had its 2 literal token-string checks
+repointed to the new (equally semantic) token names it now finds. `pnpm build`
+succeeds; `check:performance-budget` improves to 64.5/65.4 KiB.
+
+### Evidence
+
+17 new `v9-final-*` screenshots: the 10 standard viewport/theme
+combinations, 3 close-ups (header, active-tab underline, command cluster),
+and 4 interaction states (search/language-menu/account-menu open, keyboard
+focus). All DOM-measured: header background exactly `#0B1334`/`#080D26` per
+theme, zero horizontal overflow, active tab fully within viewport bounds at
+every size. `v8-final-*` renamed to `v8-rejected-*`.
+
+### Status
+
+Draft, not merged. Waiting for visual approval of round 9 (Variant A,
+implemented).
+
+---
+
+## Round 8: component decomposition + a real material change
 
 Round 7 was technically sound but rejected again on visual grounds: the
 active workspace state still read as "a purple pill," the header still felt
