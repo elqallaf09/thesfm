@@ -226,10 +226,16 @@ test.describe('mobile workspace switcher affordance', () => {
       if (frame === page.mainFrame()) navigations.push(new URL(frame.url()).pathname);
     });
 
+    // locator.click({ position }) (not a raw page.mouse.click at
+    // pre-computed page coordinates) - Playwright re-checks the element is
+    // still stable/visible/unobscured immediately before dispatching and
+    // auto-retries if not, which a stale boundingBox() snapshot can't do.
+    // position stays near the inline-end edge to keep testing "the full
+    // link area is clickable", not just its center.
     const marketTab = page.locator('[data-workspace-id="markets-trading"]');
     const marketBox = await marketTab.boundingBox();
     expect(marketBox).not.toBeNull();
-    await page.mouse.click(marketBox!.x + 2, marketBox!.y + marketBox!.height / 2);
+    await marketTab.click({ position: { x: 2, y: marketBox!.height / 2 } });
     // 'commit' (not the default 'load') - next/link performs a client-side
     // history transition, which never fires a browser 'load' event, so the
     // default waitUntil can hang indefinitely on an otherwise-successful
@@ -241,7 +247,7 @@ test.describe('mobile workspace switcher affordance', () => {
     const businessTab = page.locator('[data-workspace-id="business-projects"]');
     const businessBox = await businessTab.boundingBox();
     expect(businessBox).not.toBeNull();
-    await page.mouse.click(businessBox!.x + businessBox!.width - 2, businessBox!.y + businessBox!.height / 2);
+    await businessTab.click({ position: { x: businessBox!.width - 2, y: businessBox!.height / 2 } });
     await page.waitForURL(/\/investment-companies(?:\?|$)/, { waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-id="business-projects"]')).toHaveAttribute('aria-current', 'page');
     expect(navigations.filter(path => path === '/investment-companies')).toHaveLength(1);
