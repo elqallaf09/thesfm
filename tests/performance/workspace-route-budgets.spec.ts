@@ -201,16 +201,27 @@ for (const { locale, theme } of brandStabilityCases) {
 
     // First readable snapshot: right after the DOM parses, before the page
     // has had time to settle (fonts, async profile fetch, etc.).
+    // DIAGNOSTIC (throwaway bisect branch): summarize .sfm-global-actions'
+    // actual children (tag/class/text), not just its bounding width, to see
+    // exactly what's appearing/disappearing/resizing.
     const firstPaint = await page.evaluate(() => {
       const brandCopy = document.querySelector('.sfm-global-brand-copy');
       const strong = brandCopy?.querySelector('strong');
       const span = brandCopy?.querySelector('span');
+      const actionsChildren = Array.from(document.querySelectorAll('.sfm-global-actions > *')).map(el => ({
+        tag: el.tagName.toLowerCase(),
+        cls: el.className.toString().slice(0, 60),
+        text: (el.textContent ?? '').trim().slice(0, 30),
+        width: el.getBoundingClientRect().width,
+      }));
       return {
         brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
         workspaceLeft: document.querySelector('.sfm-workspace-navigation')?.getBoundingClientRect().left ?? 0,
         brandName: strong?.textContent ?? '',
         crumbText: span?.textContent ?? '',
+        actionsChildren,
+        tabCount: document.querySelectorAll('.sfm-workspace-tab').length,
       };
     });
 
@@ -221,12 +232,20 @@ for (const { locale, theme } of brandStabilityCases) {
       const brandCopy = document.querySelector('.sfm-global-brand-copy');
       const strong = brandCopy?.querySelector('strong');
       const span = brandCopy?.querySelector('span');
+      const actionsChildren = Array.from(document.querySelectorAll('.sfm-global-actions > *')).map(el => ({
+        tag: el.tagName.toLowerCase(),
+        cls: el.className.toString().slice(0, 60),
+        text: (el.textContent ?? '').trim().slice(0, 30),
+        width: el.getBoundingClientRect().width,
+      }));
       return {
         brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
         workspaceLeft: document.querySelector('.sfm-workspace-navigation')?.getBoundingClientRect().left ?? 0,
         brandName: strong?.textContent ?? '',
         crumbText: span?.textContent ?? '',
+        actionsChildren,
+        tabCount: document.querySelectorAll('.sfm-workspace-tab').length,
         cls: (window as typeof window & { __sfmWorkspacePerformance: WorkspacePerformanceMetrics }).__sfmWorkspacePerformance.cls,
       };
     });
@@ -238,6 +257,14 @@ for (const { locale, theme } of brandStabilityCases) {
     // that later swaps to a narrower (or wider) resolved string.
     expect(settled.brandName, 'brand name must match between SSR and hydrated render').toBe(ssrBrandName);
     expect(settled.crumbText, 'crumb text must match between SSR and hydrated render').toBe(ssrCrumbText);
+
+    // DIAGNOSTIC ONLY (throwaway bisect branch): print unconditionally.
+    console.log(`DIAG-CHILDREN ${locale}/${theme}: ${JSON.stringify({
+      firstPaintTabCount: firstPaint.tabCount,
+      settledTabCount: settled.tabCount,
+      firstPaintActionsChildren: firstPaint.actionsChildren,
+      settledActionsChildren: settled.actionsChildren,
+    })}`);
 
     // A few px of tolerance absorbs legitimate sub-pixel rendering variance
     // (font hinting, etc.) - the regression this guards against was a

@@ -292,7 +292,7 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
       # BISECT HARNESS: scoped to the two failing CLS routes on one project
       # so the diagnostic run finishes in minutes. Must never be merged.
-      - run: pnpm exec playwright test --config=playwright.performance.config.ts tests/performance/workspace-route-budgets.spec.ts --project=chromium-desktop -g "invest|market-leadership"
+      - run: pnpm exec playwright test --config=playwright.performance.config.ts tests/performance/workspace-route-budgets.spec.ts --project=chromium-desktop -g "geometrically stable"
         name: Playwright platform performance regression suite
         env:
           PLAYWRIGHT_NO_COPY_PROMPT: '1'
