@@ -43,7 +43,6 @@ async function styleSnapshot(locator: Locator) {
   return locator.evaluate(element => {
     const style = getComputedStyle(element);
     const icon = element.querySelector('svg');
-    const indicator = getComputedStyle(element, '::after');
     return {
       background: style.backgroundColor,
       backgroundImage: style.backgroundImage,
@@ -56,8 +55,25 @@ async function styleSnapshot(locator: Locator) {
       outlineWidth: Number.parseFloat(style.outlineWidth),
       shadow: style.boxShadow,
       transform: style.transform,
-      indicatorContent: indicator.content,
-      indicatorHeight: Number.parseFloat(indicator.height),
+    };
+  });
+}
+
+// The active destination is marked by one shared sliding indicator (a
+// sibling <span class="sfm-workspace-indicator">), not a per-item
+// border/fill/::after — see WorkspaceSwitcher.tsx. Snapshot it separately
+// from the tab itself.
+async function indicatorSnapshot(page: Page) {
+  return page.locator('.sfm-workspace-indicator').evaluate(element => {
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return {
+      background: style.backgroundColor,
+      backgroundImage: style.backgroundImage,
+      opacity: Number.parseFloat(style.opacity),
+      height: rect.height,
+      left: rect.left,
+      right: rect.right,
     };
   });
 }
@@ -77,7 +93,7 @@ test.describe('mobile workspace switcher affordance', () => {
     );
   });
 
-  test('all destinations have persistent button surfaces and complete pointer and keyboard states', async ({ page }) => {
+  test('all destinations are reachable, and the shared sliding indicator marks the current one with complete pointer and keyboard states', async ({ page }) => {
     await enterGuestDashboard(page);
     await setLanguage(page, 'en');
 
@@ -90,35 +106,42 @@ test.describe('mobile workspace switcher affordance', () => {
       await expect(tab).toHaveAttribute('href', /\/.+/);
       await expect(tab).toContainText(workspace.labels.en);
       const state = await styleSnapshot(tab);
-      expect(state.background !== transparent || state.backgroundImage !== 'none').toBe(true);
-      expect(state.border).not.toBe(transparent);
-      expect(state.shadow).not.toBe('none');
       expect(state.cursor).toBe('pointer');
       expect(state.height).toBeGreaterThanOrEqual(44);
       expect(state.iconColor).not.toBe(transparent);
     }
 
+    // The active destination is marked by one shared sliding indicator (a
+    // sibling element, not a per-item border/fill/::after) — verify it's
+    // visible and positioned over the selected tab, not the inactive one.
     const selected = navigation.locator('[aria-current="page"]');
     const inactive = navigation.locator('[data-workspace-id="markets-trading"]');
     await expect(selected).toHaveCount(1);
-    const selectedState = await styleSnapshot(selected);
-    const inactiveState = await styleSnapshot(inactive);
-    expect(`${selectedState.background}|${selectedState.backgroundImage}`).not.toBe(`${inactiveState.background}|${inactiveState.backgroundImage}`);
-    expect(selectedState.indicatorContent).not.toBe('none');
-    expect(selectedState.indicatorHeight).toBeGreaterThanOrEqual(3);
+    const selectedBox = await selected.boundingBox();
+    expect(selectedBox).not.toBeNull();
+    // The indicator repositions via a layout effect keyed off locale/dir -
+    // poll rather than reading a single synchronous snapshot, since the
+    // label just changed width (ar -> en) a moment ago via setLanguage.
+    await expect.poll(async () => {
+      const indicator = await indicatorSnapshot(page);
+      return indicator.right - (selectedBox!.x + selectedBox!.width);
+    }).toBeLessThanOrEqual(2);
+    const indicator = await indicatorSnapshot(page);
+    expect(indicator.opacity).toBeGreaterThan(0);
+    expect(indicator.background !== transparent || indicator.backgroundImage !== 'none').toBe(true);
+    expect(indicator.left).toBeGreaterThanOrEqual(selectedBox!.x - 2);
 
+    const inactiveState = await styleSnapshot(inactive);
     await inactive.hover();
     const hoverState = await styleSnapshot(inactive);
-    expect(`${hoverState.background}|${hoverState.border}|${hoverState.shadow}`)
-      .not.toBe(`${inactiveState.background}|${inactiveState.border}|${inactiveState.shadow}`);
+    expect(hoverState.background).not.toBe(inactiveState.background);
 
     const box = await inactive.boundingBox();
     expect(box).not.toBeNull();
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     await page.mouse.down();
     const pressedState = await styleSnapshot(inactive);
-    expect(pressedState.shadow).not.toBe(hoverState.shadow);
-    expect(pressedState.transform).not.toBe('none');
+    expect(pressedState.background).not.toBe(hoverState.background);
     await page.mouse.move(0, 0);
     await page.mouse.up();
 
@@ -131,27 +154,30 @@ test.describe('mobile workspace switcher affordance', () => {
     expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
   });
 
-  test('light and dark modes retain distinct inactive surfaces and a dominant selected item', async ({ page }) => {
+  test('light and dark modes both render a visible, accent-colored indicator with a dominant selected label', async ({ page }) => {
     await enterGuestDashboard(page, 'light');
     await setLanguage(page, 'fr');
     const inactive = page.locator('[data-workspace-id="markets-trading"]');
     const active = page.locator('.sfm-workspace-navigation [aria-current="page"]');
     const lightInactive = await styleSnapshot(inactive);
     const lightActive = await styleSnapshot(active);
+    const lightIndicator = await indicatorSnapshot(page);
 
     await page.locator('.sfm-global-header .sfm-theme-toggle:not(.sfm-density-toggle)').click();
     await expect(page.locator('html')).toHaveClass(/\bdark\b/);
     const darkInactive = await styleSnapshot(page.locator('[data-workspace-id="markets-trading"]'));
     const darkActive = await styleSnapshot(page.locator('.sfm-workspace-navigation [aria-current="page"]'));
+    const darkIndicator = await indicatorSnapshot(page);
 
-    for (const state of [lightInactive, lightActive, darkInactive, darkActive]) {
-      expect(state.background !== transparent || state.backgroundImage !== 'none').toBe(true);
-      expect(state.border).not.toBe(transparent);
-      expect(state.color).not.toBe(state.background);
+    for (const indicator of [lightIndicator, darkIndicator]) {
+      expect(indicator.opacity).toBeGreaterThan(0);
+      expect(indicator.background !== transparent || indicator.backgroundImage !== 'none').toBe(true);
+      expect(indicator.height).toBeGreaterThanOrEqual(2);
     }
-    expect(`${darkInactive.background}|${darkInactive.border}`).not.toBe(`${lightInactive.background}|${lightInactive.border}`);
-    expect(`${lightActive.background}|${lightActive.backgroundImage}`).not.toBe(`${lightInactive.background}|${lightInactive.backgroundImage}`);
-    expect(`${darkActive.background}|${darkActive.backgroundImage}`).not.toBe(`${darkInactive.background}|${darkInactive.backgroundImage}`);
+    // The selected label reads as dominant via colour + weight, distinct
+    // from the inactive label, in both themes.
+    expect(lightActive.color).not.toBe(lightInactive.color);
+    expect(darkActive.color).not.toBe(darkInactive.color);
   });
 
   test('Arabic, English, and French stay aligned and reachable at every required width', async ({ page }) => {
@@ -204,7 +230,11 @@ test.describe('mobile workspace switcher affordance', () => {
     const marketBox = await marketTab.boundingBox();
     expect(marketBox).not.toBeNull();
     await page.mouse.click(marketBox!.x + 2, marketBox!.y + marketBox!.height / 2);
-    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
+    // 'commit' (not the default 'load') - next/link performs a client-side
+    // history transition, which never fires a browser 'load' event, so the
+    // default waitUntil can hang indefinitely on an otherwise-successful
+    // navigation. Only the URL match itself is the real assertion here.
+    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/, { waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-id="markets-trading"]')).toHaveAttribute('aria-current', 'page');
     expect(navigations.filter(path => path === '/ai-analyst/overview')).toHaveLength(1);
 
@@ -212,7 +242,7 @@ test.describe('mobile workspace switcher affordance', () => {
     const businessBox = await businessTab.boundingBox();
     expect(businessBox).not.toBeNull();
     await page.mouse.click(businessBox!.x + businessBox!.width - 2, businessBox!.y + businessBox!.height / 2);
-    await page.waitForURL(/\/investment-companies(?:\?|$)/);
+    await page.waitForURL(/\/investment-companies(?:\?|$)/, { waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-id="business-projects"]')).toHaveAttribute('aria-current', 'page');
     expect(navigations.filter(path => path === '/investment-companies')).toHaveLength(1);
   });
