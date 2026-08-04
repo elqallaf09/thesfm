@@ -225,6 +225,11 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         .sfm-global-header .sfm-user-identity {
           flex: 0 0 118px;
           min-width: 118px;
+          /* Without overflow set here (not just on the nested .sfm-user-name),
+             the flex item's automatic minimum size stays content-based per
+             spec - flex-shrink: 0 then can't stop a long unbroken name from
+             forcing the box wider than the 118px basis above. */
+          overflow: hidden;
         }
 
         .sfm-global-header .sfm-user-chevron {
