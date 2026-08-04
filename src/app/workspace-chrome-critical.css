@@ -141,6 +141,25 @@
   white-space: nowrap;
 }
 
+/* Must match AppHeader.tsx's own .sfm-global-header .sfm-command-trigger
+   rule exactly - see the .sfm-global-brand-copy comment above for why. A
+   stale @media (max-width: 1499px) version of this rule (forcing a 44px
+   compact width, removed from AppHeader.tsx itself when the header dropped
+   that breakpoint) previously lived here, unsynced - it matched at the
+   1440px desktop test viewport and produced a 44px -> 170px layout shift
+   the moment hydration replaced it with AppHeader's real, unconditional
+   rule below. */
+.sfm-global-header .sfm-command-trigger {
+  width: min(170px, 14vw);
+  min-width: 120px;
+}
+
+/* Must match AppHeader.tsx's unconditional kbd-hide exactly - see the
+   .sfm-global-brand-copy comment above for why. */
+.sfm-global-header .sfm-command-trigger kbd {
+  display: none;
+}
+
 .sfm-language-dropdown {
   position: relative;
   display: inline-flex;
@@ -390,20 +409,6 @@
   gap: 5px;
   margin: 0 5px 5px;
   padding: 6px 6px calc(7px + env(safe-area-inset-bottom));
-}
-
-@media (max-width: 1499px) {
-  .sfm-global-header .sfm-command-trigger {
-    width: 44px;
-    min-width: 44px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .sfm-global-header .sfm-command-trigger span,
-  .sfm-global-header .sfm-command-trigger kbd {
-    display: none;
-  }
 }
 
 @media (max-width: 1179px) {
