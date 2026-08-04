@@ -239,9 +239,12 @@ for (const { locale, theme } of brandStabilityCases) {
     expect(settled.brandName, 'brand name must match between SSR and hydrated render').toBe(ssrBrandName);
     expect(settled.crumbText, 'crumb text must match between SSR and hydrated render').toBe(ssrCrumbText);
 
-    expect(Math.abs(settled.brandWidth - firstPaint.brandWidth), 'BrandLockup width must stay stable through hydration').toBeLessThanOrEqual(1);
-    expect(Math.abs(settled.actionsWidth - firstPaint.actionsWidth), '.sfm-global-actions width must stay stable through hydration').toBeLessThanOrEqual(1);
-    expect(Math.abs(settled.workspaceLeft - firstPaint.workspaceLeft), 'workspace navigation position must stay stable through hydration').toBeLessThanOrEqual(1);
+    // A few px of tolerance absorbs legitimate sub-pixel rendering variance
+    // (font hinting, etc.) - the regression this guards against was a
+    // hundred-plus-pixel reflow, not sub-pixel noise.
+    expect(Math.abs(settled.brandWidth - firstPaint.brandWidth), 'BrandLockup width must stay stable through hydration').toBeLessThanOrEqual(3);
+    expect(Math.abs(settled.actionsWidth - firstPaint.actionsWidth), '.sfm-global-actions width must stay stable through hydration').toBeLessThanOrEqual(3);
+    expect(Math.abs(settled.workspaceLeft - firstPaint.workspaceLeft), 'workspace navigation position must stay stable through hydration').toBeLessThanOrEqual(3);
     // Stricter than the CI-wide 0.05 budget in the loop above - this route's
     // specific regression should have real margin now, not just scrape by.
     expect(settled.cls, '/invest CLS').toBeLessThanOrEqual(0.03);

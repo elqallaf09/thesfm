@@ -48,7 +48,12 @@
 }
 
 .sfm-global-brand-copy {
-  min-width: 0;
+  /* Must match AppHeader.tsx's own .sfm-global-brand-copy rule exactly -
+     this critical CSS governs the header's geometry on first paint, before
+     hydration mounts AppHeader's own <style jsx global>. A mismatched
+     min-width here means the reserved space appears only once hydration
+     completes, producing a visible layout shift at that exact moment. */
+  min-width: 180px;
   display: grid;
   gap: 1px;
 }
@@ -226,9 +231,11 @@
 }
 
 .sfm-user-identity {
-  min-width: 0;
+  /* Must match AppHeader.tsx's header-scoped .sfm-user-identity override
+     exactly - see the .sfm-global-brand-copy comment above for why. */
+  min-width: 118px;
   max-width: 118px;
-  flex: 1 1 auto;
+  flex: 0 0 118px;
 }
 
 .sfm-user-name {
