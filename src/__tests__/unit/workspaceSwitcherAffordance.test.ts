@@ -35,13 +35,11 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(switcher).not.toMatch(/useState/);
   });
 
-  it('renders one shared segmented track with a single sliding active-indicator layer', () => {
-    // 52px: a decisive step above the shared --control-h (44px) so the
-    // switcher, as the header's signature control, clearly reads as more
-    // prominent than an ordinary form control.
-    expect(switcher).toContain('min-height: 52px');
+  it('renders items flush on the header (no separate track surface) with a single sliding underline indicator', () => {
+    // Institutional-dock treatment: items sit directly on the header's own
+    // navy background rather than inside a separately-elevated pill track.
+    expect(switcher).toContain('min-height: 44px');
     expect(switcher).toContain('background: var(--workspace-switcher-bg)');
-    expect(switcher).toContain('box-shadow: var(--workspace-switcher-frame-shadow)');
     expect(switcher).toContain('cursor: pointer');
     expect(switcher).toContain('touch-action: manipulation');
     expect(switcher).toContain('overflow-x: auto');
@@ -49,8 +47,7 @@ describe('workspace switcher interaction affordance contract', () => {
 
     // Exactly one indicator element, positioned behind the items (z-index 0
     // vs. 1) and driven by JS-measured custom properties rather than a
-    // per-item border/fill — this is what makes it read as one segmented
-    // control instead of four independently bordered buttons.
+    // per-item border/fill.
     expect(switcher.match(/sfm-workspace-indicator/g)?.length).toBeGreaterThanOrEqual(2); // ref'd span + its style rule
     expect(switcher).toContain("ref={indicatorRef}");
     expect(switcher).toContain('aria-hidden="true"');
@@ -60,38 +57,42 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(switcher).toContain('z-index: 0');
     expect(switcher).toContain('z-index: 1');
     expect(switcher).toContain('pointer-events: none');
+
+    // The indicator is a slim underline (height, not a filled chip that
+    // covers the tab) — anchored to the bottom edge.
+    expect(switcher).toContain('inset-block-end: 0');
+    expect(switcher).toContain('height: 2px');
   });
 
-  it('gives every item no border, fill, or shadow of its own in either theme — only the shared indicator carries a surface', () => {
+  it('gives every item no border, fill, or shadow of its own in either theme — only the shared underline carries the accent', () => {
     for (const block of [rootBlock, darkBlock]) {
       expect(tokenValue(block, '--workspace-switcher-item-bg')).toBe('transparent');
+      expect(tokenValue(block, '--workspace-switcher-bg')).toBe('transparent');
+      expect(tokenValue(block, '--workspace-switcher-frame-shadow')).toBe('none');
     }
-    // Items only ever set background-color/color in their own rules — border
-    // and box-shadow are not part of the per-item declaration at all (the
-    // indicator owns them).
     const tabBaseRule = switcher.match(/\.sfm-workspace-tab\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? '';
     expect(tabBaseRule).not.toMatch(/\bborder:/);
     expect(tabBaseRule).not.toMatch(/\bbox-shadow:/);
   });
 
-  it('mutes inactive icon/text so only the active item under the indicator reads as selected', () => {
+  it('mutes inactive icon/text (theme-invariant navy-dock tokens) so only the active item under the underline reads as selected', () => {
     for (const block of [rootBlock, darkBlock]) {
-      expect(tokenValue(block, '--workspace-switcher-icon')).toBe('var(--foreground-muted)');
+      expect(tokenValue(block, '--workspace-switcher-icon')).toBe('var(--header-dock-icon)');
+      expect(tokenValue(block, '--workspace-switcher-item-text')).toBe('var(--header-dock-text-muted)');
     }
   });
 
-  it('drives the active state from THE SFM\'s teal brand accent, not the indigo used everywhere else, with real material contrast', () => {
+  it('drives the active state from THE SFM\'s teal brand accent, not the indigo used everywhere else', () => {
     for (const block of [rootBlock, darkBlock]) {
-      // A solid color-mix tone against the elevated surface, not a light
-      // tint/gradient — genuine contrast, not just a colour hint.
-      expect(tokenValue(block, '--workspace-switcher-active-surface')).toMatch(/^color-mix\(in srgb, var\(--accent\)/);
-      expect(tokenValue(block, '--workspace-switcher-item-border-active')).toMatch(/^color-mix\(in srgb, var\(--accent\)/);
+      expect(tokenValue(block, '--workspace-switcher-active-surface')).toBe('var(--accent)');
       expect(tokenValue(block, '--workspace-switcher-icon-active')).toBe('var(--accent)');
+      // Active text stays the dock's own white/near-white token, not
+      // accent-tinted — legible against the navy surface at every weight.
+      expect(tokenValue(block, '--workspace-switcher-item-text-active')).toBe('var(--header-dock-text)');
     }
     expect(themes).not.toContain('--workspace-switcher-active-surface: var(--sidebar-item-bg-active)');
-    // Active text stays a strong neutral (grayscale-recognizable via
-    // fill+border+weight) rather than accent- or primary-tinted.
-    expect(tokenValue(rootBlock, '--workspace-switcher-item-text-active')).toBe('var(--foreground)');
+    expect(themes).not.toMatch(/--workspace-switcher-item-border-active:/);
+    expect(themes).not.toMatch(/--workspace-switcher-shadow-active:/);
   });
 
   it('measures the active item off physical offsetLeft/offsetWidth (RTL-safe without a dir branch)', () => {
@@ -115,7 +116,7 @@ describe('workspace switcher interaction affordance contract', () => {
   });
 
   it('defines hover, pressed, focus-visible, selected, reduced-motion, and disabled states', () => {
-    expect(switcher).toContain(".sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true'])");
+    expect(switcher).toContain(".sfm-workspace-tab:hover:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true'])");
     expect(switcher).toContain(".sfm-workspace-tab:active:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true'])");
     expect(switcher).toContain('.sfm-workspace-tab:focus-visible');
     expect(switcher).toContain(".sfm-workspace-tab[data-active='true']");
@@ -126,17 +127,9 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(reducedMotionBlock).toContain('.sfm-workspace-indicator');
   });
 
-  it("keeps the active tab's own selected look stable while hovered/pressed (no reversion to the plain-hover tint, no JS hover state)", () => {
-    // The plain hover/press background rules explicitly exclude the active
-    // item, so hovering/pressing the selected tab never paints a flat tint
-    // over the indicator sitting beneath it.
+  it('keeps the active tab visually stable via CSS state selectors, not JS hover state', () => {
     expect(switcher).toContain(":hover:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {");
     expect(switcher).toContain(":active:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {");
-    // The indicator itself still responds to hover/press on the active tab,
-    // via a container-level :has() (no JS hover state, no scale() ban to
-    // work around — a tiny press-scale on the indicator is intentional here).
-    expect(switcher).toContain(":has(.sfm-workspace-tab[data-active='true']:hover");
-    expect(switcher).toContain(":has(.sfm-workspace-tab[data-active='true']:active");
     expect(switcher).not.toMatch(/onMouseEnter|onMouseLeave|onPointerEnter|onPointerLeave/);
   });
 
@@ -153,8 +146,6 @@ describe('workspace switcher interaction affordance contract', () => {
       '--workspace-switcher-icon-active',
       '--workspace-switcher-focus',
       '--workspace-switcher-active-surface',
-      '--workspace-switcher-item-border-active',
-      '--workspace-switcher-shadow-active',
     ] as const;
 
     for (const token of requiredTokens) {

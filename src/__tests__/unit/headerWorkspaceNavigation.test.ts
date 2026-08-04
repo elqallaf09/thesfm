@@ -42,7 +42,7 @@ describe('global header workspace navigation contract', () => {
     expect(switcher).toContain('className="sfm-workspace-label-full"');
     expect(switcher).not.toMatch(/MOBILE_WORKSPACE_LABELS|sfm-workspace-label-mobile/);
     expect(switcher).toContain("@media (max-width: 900px)");
-    expect(switcher).toContain('min-height: 52px');
+    expect(switcher).toContain('min-height: 44px');
     // 'center' (not 'nearest') guarantees the active destination clears both
     // rail edges with margin instead of landing flush against one.
     expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'center' })");
@@ -99,29 +99,38 @@ describe('global header workspace navigation contract', () => {
     }
   });
 
-  it('renders the header as a sticky, rounded, glowing floating card via tokens', () => {
+  it('renders the header as a sticky, flush navy dock with a single teal accent rule (institutional-fintech treatment)', () => {
     expect(header).toContain('position: sticky');
-    expect(header).toContain('inset-block-start: var(--app-header-inset-block)');
+    expect(header).toContain('inset-block-start: 0');
     expect(header).toContain('z-index: var(--z-header');
-    expect(header).toContain('border-radius: var(--radius-card)');
-    expect(header).toContain('background: var(--header-surface');
-    expect(header).toContain('box-shadow: var(--header-shadow), var(--header-edge-glow)');
-    // Floating margin uses the inset tokens on all sides.
-    expect(header).toContain('margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block)');
-    // Header surface + edge glow are themed for both light and dark.
-    expect(themes.match(/--header-surface:/g)).toHaveLength(2);
-    expect(themes.match(/--header-edge-glow:/g)).toHaveLength(2);
-  });
-
-  it('collapses to an edge-to-edge bar on mobile so it never overflows the viewport', () => {
-    expect(header).toMatch(/@media \(max-width: 767px\)/);
-    expect(header).toContain('--app-header-inset-block: 0px');
+    expect(header).toContain('border-block-end: 2px solid var(--accent)');
     expect(header).toContain('border-radius: 0');
+    expect(header).toContain('background: var(--header-surface)');
+    expect(header).toContain('color: var(--header-dock-text)');
+    // No floating-card treatment: no rounded corners, no drop shadow, no
+    // inset margin — the dock is flush and edge-to-edge, not a capped card.
+    expect(header).not.toMatch(/border-radius:\s*var\(--radius-card\)/);
+    expect(header).not.toMatch(/box-shadow:\s*var\(--header-shadow\)/);
+    expect(themes.match(/--header-surface:/g)).toHaveLength(2);
+    expect(themes.match(/--header-dock-bg:/g)).toHaveLength(2);
+    expect(themes.match(/--header-dock-text:/g)).toHaveLength(2);
   });
 
-  it('groups utility controls without heavy per-control borders', () => {
-    expect(header).toContain('border: 1px solid var(--header-control-border, transparent)');
-    expect(header).toContain('background: var(--header-control-bg');
+  it('is a flush, full-width bar at every viewport (not a mobile-only edge-to-edge override)', () => {
+    expect(header).toContain('--app-header-inset-block: 0px');
+    expect(header).toContain('--app-header-inset-inline: 0px');
+    expect(header).toContain('--app-header-gap-block: 0px');
+    expect(header).toContain('margin: 0');
+    expect(header).toMatch(/@media \(max-width: 767px\)/);
+  });
+
+  it('groups utility controls as a ghost cluster — transparent until hovered, no shared chip background', () => {
+    expect(header).toContain("border-color: transparent");
+    expect(header).toContain('color: var(--header-dock-icon)');
+    expect(header).toContain('background: var(--header-dock-hover-bg)');
+    // No shared command-bar chip/box behind the cluster anymore.
+    expect(header).not.toMatch(/--header-control-bg/);
+    expect(header).not.toMatch(/--header-control-border/);
   });
 
   it('reserves the full header band in the shell and offsets the sidebar below it', () => {
