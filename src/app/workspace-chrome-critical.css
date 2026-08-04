@@ -255,6 +255,7 @@
   min-width: 118px;
   max-width: 118px;
   flex: 0 0 118px;
+  overflow: hidden;
 }
 
 .sfm-user-name {
