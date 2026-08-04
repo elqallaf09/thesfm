@@ -142,6 +142,11 @@ for (const route of workspaceRoutes) {
       contentType: 'application/json',
     });
 
+    // DIAGNOSTIC ONLY (throwaway bisect branch): print the raw layout-shift
+    // sources unconditionally so a failing CI run's log shows exactly which
+    // elements moved, without needing to download the trace artifact.
+    console.log(`DIAG ${route}: ${JSON.stringify({ cls: profile.metrics.cls, layoutShifts: profile.metrics.layoutShifts })}`);
+
     expect(profile.horizontalOverflow, `${route} horizontal overflow`).toBeLessThanOrEqual(1);
     expect(profile.metrics.cls, `${route} CLS`).toBeLessThanOrEqual(0.05);
     if (profile.metrics.lcp > 0) expect(profile.metrics.lcp, `${route} LCP`).toBeLessThanOrEqual(8_000);
