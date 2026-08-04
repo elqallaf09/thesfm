@@ -37,7 +37,7 @@ export function CommandCluster({
       <ThemeToggle />
       <DensityToggle />
       <HeaderIconAction href="/notifications" label={notificationsLabel} className="sfm-global-notifications">
-        <Bell size={18} aria-hidden="true" />
+        <Bell size={17} aria-hidden="true" />
         {notificationsHasUnread ? <span className="sfm-global-bell-dot" aria-hidden="true" /> : null}
       </HeaderIconAction>
       <AccountMenuTrigger />

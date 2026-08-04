@@ -133,7 +133,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
               data-active={current ? 'true' : 'false'}
               aria-current={current ? 'page' : undefined}
             >
-              <Icon size={20} aria-hidden="true" />
+              <Icon size={16} aria-hidden="true" />
               <span className="sfm-workspace-label-full">{workspace.labels[locale]}</span>
             </Link>
           );
@@ -154,10 +154,10 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           width: fit-content;
           min-width: 0;
           max-width: 100%;
-          min-height: 52px;
+          min-height: 44px;
           display: flex;
           align-items: stretch;
-          gap: 2px;
+          gap: 4px;
           /* Safe padding so the first/last destination never sits flush
              against the rail edge — this is what was read as "clipped"
              labels on narrow viewports. */
@@ -165,12 +165,9 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           overflow-x: auto;
           overflow-y: hidden;
           overscroll-behavior-inline: contain;
-          /* One size step above the header's own card radius — the
-             switcher is a distinct elevated dock, not a zone flush with
-             the header surface around it. */
-          border-radius: var(--radius-panel);
+          /* No track surface in the institutional-dock treatment — items sit
+             directly on the header's own navy background. */
           background: var(--workspace-switcher-bg);
-          box-shadow: var(--workspace-switcher-frame-shadow);
           scrollbar-width: none;
           scroll-padding-inline: 16px;
           scroll-snap-type: inline mandatory;
@@ -187,22 +184,22 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
         }
 
         .sfm-workspace-indicator {
+          /* A slim sliding underline, not a filled surface behind the tab —
+             the institutional-dock treatment marks the active destination
+             with a compact accent rule, not an elevated chip. */
           position: absolute;
-          inset-block: 2px;
+          inset-block-end: 0;
           left: 0;
+          height: 2px;
           width: var(--indicator-w, 0px);
-          transform: translateX(var(--indicator-x, 0px)) scale(var(--indicator-scale, 1));
-          border-radius: var(--radius-panel-inset);
+          transform: translateX(var(--indicator-x, 0px));
           background: var(--workspace-switcher-active-surface);
-          border: 1px solid var(--workspace-switcher-item-border-active);
-          box-shadow: var(--workspace-switcher-shadow-active);
           opacity: 0;
           z-index: 0;
           pointer-events: none;
           transition:
             transform var(--duration) var(--ease),
             width var(--duration) var(--ease),
-            box-shadow var(--duration-fast) ease-out,
             opacity var(--duration-fast) ease-out;
           will-change: transform, width;
         }
@@ -211,13 +208,13 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           position: relative;
           z-index: 1;
           min-width: max-content;
-          min-height: 52px;
+          min-height: 44px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 7px;
-          padding: 0 20px;
-          border-radius: var(--radius-panel-inset);
+          padding: 0 16px;
+          border-radius: var(--radius-control);
           background: var(--workspace-switcher-item-bg);
           color: var(--workspace-switcher-item-text);
           text-decoration: none;
@@ -230,8 +227,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           cursor: pointer;
           transition:
             color var(--duration-fast) ease-out,
-            background-color var(--duration-fast) ease-out,
-            transform var(--duration-fast) ease-out;
+            background-color var(--duration-fast) ease-out;
           -webkit-tap-highlight-color: transparent;
         }
 
@@ -239,10 +235,6 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           flex: 0 0 auto;
           color: var(--workspace-switcher-icon);
           transition: color var(--duration-fast) ease-out;
-        }
-
-        .sfm-workspace-tab:hover:not([aria-disabled='true']):not([data-disabled='true']) {
-          transform: translateY(-1px);
         }
 
         .sfm-workspace-tab:hover:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {
@@ -269,18 +261,8 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           color: var(--workspace-switcher-icon-active);
         }
 
-        .sfm-workspace-tabs:has(.sfm-workspace-tab[data-active='true']:hover:not([aria-disabled='true']):not([data-disabled='true'])) .sfm-workspace-indicator {
-          box-shadow: var(--workspace-switcher-shadow-active-hover);
-        }
-
         .sfm-workspace-tab:active:not([data-active='true']):not([aria-disabled='true']):not([data-disabled='true']) {
           background: var(--workspace-switcher-item-pressed);
-          transform: translateY(0);
-        }
-
-        .sfm-workspace-tabs:has(.sfm-workspace-tab[data-active='true']:active:not([aria-disabled='true']):not([data-disabled='true'])) .sfm-workspace-indicator {
-          --indicator-scale: 0.97;
-          box-shadow: var(--workspace-switcher-shadow-active-pressed);
         }
 
         .sfm-workspace-tab[aria-disabled='true'],
@@ -297,7 +279,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
         @media (max-width: 900px) {
           .sfm-workspace-tab {
-            min-height: 52px;
+            min-height: 44px;
             padding-inline: 13px;
             font-size: var(--type-navigation-size);
           }

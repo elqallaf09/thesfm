@@ -35,12 +35,18 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
 
       <style jsx global>{`
         :root {
-          --global-header-height: 72px;
+          --global-header-height: 64px;
+          /* Institutional dock: the header is a flush, full-width navy bar
+             (not an inset floating card), so it needs no reserved gap or
+             gutter — reserved band collapses to exactly the content height. */
+          --app-header-inset-block: 0px;
+          --app-header-inset-inline: 0px;
+          --app-header-gap-block: 0px;
         }
 
         .sfm-global-header {
           position: sticky;
-          inset-block-start: var(--app-header-inset-block);
+          inset-block-start: 0;
           z-index: var(--z-header, 100);
           grid-area: header;
           min-width: 0;
@@ -57,38 +63,17 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           grid-template-areas: 'brand workspaces actions';
           align-items: center;
           gap: 16px;
-          /* An inset floating panel that stays sticky. */
-          margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-          /* Caps the header on wide/ultra-wide monitors instead of letting it
-             stretch edge to edge; 96rem is the actual constraint (the prior
-             120rem cap only ever activated above 1920px, i.e. never on a
-             standard 1920 display). */
-          max-width: 96rem;
-          margin-inline: auto;
-          padding: 10px clamp(20px, 1.6vw, 24px);
-          border: 1px solid var(--header-border);
-          border-radius: var(--radius-card);
-          background: var(--surface);
-          background: var(--header-surface, var(--header-glass-bg));
-          -webkit-backdrop-filter: blur(16px) saturate(128%);
-          backdrop-filter: blur(16px) saturate(128%);
-          color: var(--foreground);
-          box-shadow: var(--header-shadow), var(--header-edge-glow);
+          width: 100%;
+          margin: 0;
+          padding-inline: 20px;
+          border: 0;
+          /* A single accent rule instead of a full border — the dock reads
+             as a persistent brand strip, not a floating card. */
+          border-block-end: 2px solid var(--accent);
+          border-radius: 0;
+          background: var(--header-surface);
+          color: var(--header-dock-text);
           font-family: var(--font-ui);
-        }
-
-        @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-          .sfm-global-header {
-            background: var(--surface);
-          }
-        }
-
-        @media (prefers-reduced-transparency: reduce) {
-          .sfm-global-header {
-            background: var(--surface);
-            -webkit-backdrop-filter: none;
-            backdrop-filter: none;
-          }
         }
 
         .sfm-global-brand {
@@ -102,17 +87,15 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           padding-inline-end: 18px;
           margin-inline-end: 4px;
           border-radius: var(--radius-control);
-          color: var(--foreground);
+          color: var(--header-dock-text);
           text-decoration: none;
         }
 
-        /* Soft top/bottom-fading divider instead of a hard rule — a tonal
-           transition into the workspace navigation zone. */
         .sfm-global-brand::after {
           content: '';
           position: absolute;
           inset-inline-end: 0;
-          inset-block: 4px;
+          inset-block: 8px;
           width: 1px;
           background: var(--header-brand-divider);
         }
@@ -125,6 +108,7 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         .sfm-global-brand img {
           flex: 0 0 auto;
           object-fit: cover;
+          border-radius: var(--radius-sm);
         }
 
         .sfm-global-brand-copy {
@@ -134,10 +118,10 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         }
 
         .sfm-global-brand strong {
-          color: var(--foreground);
-          font-size: 16px;
+          color: var(--header-dock-text);
+          font-size: 14px;
           font-weight: 600;
-          letter-spacing: 0.01em;
+          letter-spacing: 0.03em;
           line-height: 1.35;
           white-space: nowrap;
         }
@@ -145,7 +129,7 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         .sfm-global-brand-copy > span {
           max-width: 170px;
           overflow: hidden;
-          color: var(--foreground-muted);
+          color: var(--header-dock-text-subtle);
           font-size: var(--type-caption-size);
           font-weight: 400;
           line-height: var(--type-caption-leading);
@@ -158,9 +142,6 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           justify-self: center;
         }
 
-        /* One shared command-bar surface (same track language as the
-           workspace switcher) instead of five independently outlined
-           controls sitting next to each other. */
         .sfm-global-actions {
           grid-area: actions;
           min-width: 0;
@@ -168,30 +149,34 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           align-items: center;
           justify-content: flex-end;
           gap: 2px;
-          padding: 1px;
-          border-radius: var(--radius-card);
-          background: var(--header-control-bg);
-          border: 1px solid var(--header-control-border);
-          box-shadow: var(--shadow-xs);
         }
 
         .sfm-global-header .sfm-command-trigger {
-          width: min(190px, 14vw);
-          min-width: 132px;
+          width: min(170px, 14vw);
+          min-width: 120px;
         }
 
+        /* Ghost command cluster: every control is transparent until
+           hovered, sharing no chip/box background — the "clean
+           professional" institutional read, not five bordered buttons. */
         .sfm-global-header :is(.sfm-command-trigger, .sfm-language-trigger, .sfm-theme-toggle, .sfm-density-toggle, .sfm-user-chip),
         .sfm-global-notifications {
           border-color: transparent;
           background: transparent;
+          color: var(--header-dock-icon);
           box-shadow: none;
         }
 
-        /* Quick search is the visual anchor of the cluster: a persistent
-           soft tonal surface, while every icon-only toggle beside it stays
-           fully quiet until hovered. */
+        /* Quick search is the one persistent surface in the cluster — a
+           slim, low-contrast field, not a filled chip. */
         .sfm-global-header .sfm-command-trigger:not(.compact) {
-          background: var(--surface-muted);
+          background: var(--header-dock-search-bg);
+          border-color: var(--header-dock-search-border);
+          color: var(--header-dock-text-muted);
+        }
+
+        .sfm-global-header .sfm-command-trigger svg {
+          color: var(--accent);
         }
 
         /* No shortcut badge in the header context — it reads as tiny/noisy
@@ -206,28 +191,28 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         .sfm-global-header :is(.sfm-user-chip, .sfm-language-trigger)[aria-expanded='true'],
         .sfm-global-notifications:hover {
           border-color: transparent;
-          background: var(--header-control-hover, var(--primary-soft));
-          color: var(--primary);
+          background: var(--header-dock-hover-bg);
+          color: var(--accent);
         }
 
         .sfm-global-header .sfm-user-chip {
-          color: var(--foreground);
+          color: var(--header-dock-text);
           font-family: var(--font-ui);
         }
 
         .sfm-global-header .sfm-user-name {
-          color: var(--foreground);
+          color: var(--header-dock-text);
           font-weight: 500;
         }
 
         .sfm-global-header .sfm-user-chevron {
-          color: var(--foreground-muted);
+          color: var(--header-dock-icon);
         }
 
         /* Consistent optical icon size across every utility control. */
         .sfm-global-header .sfm-language-trigger svg:first-child {
-          width: 18px;
-          height: 18px;
+          width: 16px;
+          height: 16px;
         }
 
         .sfm-global-notifications,
@@ -236,45 +221,30 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           border-radius: var(--radius-control);
           display: grid;
           place-items: center;
-          color: var(--foreground-secondary);
           text-decoration: none;
           cursor: pointer;
-          transition: background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform var(--duration-fast) ease-out;
+          transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out;
         }
 
-        .sfm-global-notifications {
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-        }
-
+        .sfm-global-notifications,
         .sfm-global-menu-button {
           width: 44px;
           height: 44px;
           min-width: 44px;
-          /* Grouped utilities — subtle idle surface, no heavy per-control border. */
-          border: 1px solid var(--header-control-border, transparent);
-          background: var(--header-control-bg, var(--surface));
-        }
-
-        .sfm-global-notifications:hover,
-        .sfm-global-menu-button:hover {
-          color: var(--primary);
-          transform: translateY(-1px);
         }
 
         .sfm-global-menu-button:hover {
-          border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-          background: var(--header-control-hover, var(--primary-soft));
+          background: var(--header-dock-hover-bg);
+          color: var(--accent);
         }
 
         .sfm-global-bell-dot {
           position: absolute;
-          inset-block-start: 7px;
-          inset-inline-end: 7px;
-          width: 10px;
-          height: 10px;
-          border: 2px solid var(--surface-elevated);
+          inset-block-start: 6px;
+          inset-inline-end: 6px;
+          width: 7px;
+          height: 7px;
+          border: 2px solid var(--header-dock-bg);
           border-radius: var(--radius-circle);
           background: var(--danger);
         }
@@ -291,9 +261,8 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
 
         @media (max-width: 1179px) {
           :root {
-            /* 48px brand/actions row + 52px workspace-switcher row (matching
-               its own min-height below) + 2 * 10px padding-block. */
-            --global-header-height: 120px;
+            /* 48px brand/actions row + 44px workspace-switcher row. */
+            --global-header-height: 92px;
           }
 
           .sfm-global-header {
@@ -301,9 +270,9 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
             grid-template-areas:
               'brand actions'
               'workspaces workspaces';
-            grid-template-rows: 48px 52px;
+            grid-template-rows: 48px 44px;
             row-gap: 0;
-            padding-block: 10px;
+            padding-block: 0;
           }
 
           .sfm-workspace-navigation.sfm-global-workspaces {
@@ -321,24 +290,7 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         }
 
         @media (max-width: 767px) {
-          :root {
-            /* Mobile header is edge-to-edge, so the reserved band = content height. */
-            --app-header-inset-block: 0px;
-            --app-header-inset-inline: 0px;
-            --app-header-gap-block: 0px;
-          }
-
           .sfm-global-header {
-            width: 100%;
-            max-width: 100vw;
-            grid-template-columns: minmax(0, 1fr) auto;
-            overflow-x: clip;
-            margin: 0;
-            border-inline: 0;
-            border-block-start: 0;
-            border-radius: 0;
-            border-block-end: 1px solid var(--border);
-            box-shadow: var(--shadow-xs);
             padding-inline: 12px;
           }
 
@@ -349,11 +301,6 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
 
           .sfm-global-actions {
             max-width: 44px;
-            padding: 0;
-            gap: 0;
-            border: 0;
-            background: transparent;
-            box-shadow: none;
           }
 
           .sfm-global-actions > .sfm-command-trigger,
@@ -384,25 +331,12 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           }
 
           .sfm-brand-mark--header {
-            width: 30px !important;
-            height: 30px !important;
+            width: 26px !important;
+            height: 26px !important;
           }
 
           .sfm-global-brand strong {
-            font-size: 14px;
-          }
-
-          .sfm-global-menu-button {
-            width: 44px;
-            min-width: 44px;
-            height: 44px;
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .sfm-global-notifications,
-          .sfm-global-menu-button {
-            transition: none;
+            font-size: 13px;
           }
         }
       `}</style>

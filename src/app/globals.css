@@ -5763,11 +5763,10 @@ body :is(
 }
 
 :where(.sfm-global-header, .sfm-topbar) {
-  border-color: var(--border) !important;
-  background: color-mix(in srgb, var(--surface) 94%, transparent) !important;
-  color: var(--foreground) !important;
-  box-shadow: var(--shadow-xs) !important;
-  backdrop-filter: blur(16px);
+  border-color: var(--accent) !important;
+  background: var(--header-surface) !important;
+  color: var(--header-dock-text) !important;
+  box-shadow: none !important;
 }
 
 :where(.auth-card, .login-card) {

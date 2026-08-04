@@ -9,12 +9,15 @@
  */
 
 :root {
-  --global-header-height: 72px;
+  --global-header-height: 64px;
+  --app-header-inset-block: 0px;
+  --app-header-inset-inline: 0px;
+  --app-header-gap-block: 0px;
 }
 
 .sfm-global-header {
   position: sticky;
-  inset-block-start: var(--app-header-inset-block);
+  inset-block-start: 0;
   z-index: var(--z-header, 100);
   grid-area: header;
   min-width: 0;
@@ -24,10 +27,9 @@
   grid-template-areas: 'brand workspaces actions';
   align-items: center;
   gap: 16px;
-  margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-  max-width: 96rem;
-  margin-inline: auto;
-  padding: 10px clamp(20px, 1.6vw, 24px);
+  width: 100%;
+  margin: 0;
+  padding-inline: 20px;
   box-sizing: border-box;
 }
 
@@ -84,7 +86,7 @@
 
 .sfm-workspace-tabs {
   min-width: 0;
-  min-height: 52px;
+  min-height: 44px;
   display: flex;
   align-items: stretch;
   gap: 5px;
@@ -95,7 +97,7 @@
 .sfm-workspace-tab {
   position: relative;
   min-width: max-content;
-  min-height: 52px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -399,7 +401,7 @@
 
 @media (max-width: 1179px) {
   :root {
-    --global-header-height: 120px;
+    --global-header-height: 92px;
   }
 
   .sfm-global-header {
@@ -407,9 +409,9 @@
     grid-template-areas:
       'brand actions'
       'workspaces workspaces';
-    grid-template-rows: 48px 52px;
+    grid-template-rows: 48px 44px;
     row-gap: 0;
-    padding-block: 10px;
+    padding-block: 0;
   }
 
   .sfm-global-workspaces {
