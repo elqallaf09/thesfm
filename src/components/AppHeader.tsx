@@ -112,7 +112,15 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         }
 
         .sfm-global-brand-copy {
-          min-width: 0;
+          /* Reserves the brand lockup's own footprint at its widest
+             plausible rendering (matching the crumb span's own 170px cap
+             below) instead of shrinking to whatever the current font/content
+             state happens to need. Without this floor, any width delta in
+             "THE SFM" + the crumb between an early and a settled render -
+             e.g. a webfont swap - ripples through the header's max-content
+             grid tracks (actions, workspace nav) and produces a measurable
+             layout shift, since nothing else in the row holds them still. */
+          min-width: 180px;
           display: grid;
           gap: 1px;
         }
@@ -203,6 +211,20 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
         .sfm-global-header .sfm-user-name {
           color: var(--header-dock-text);
           font-weight: 500;
+        }
+
+        /* Reserves the identity label's own footprint at its shared component's
+           existing max-width instead of letting it shrink to whatever the
+           current name text needs. UserChip's name switches from a loading
+           placeholder to the resolved profile name once the async profile
+           fetch settles - without a fixed floor here, that swap changes the
+           label's rendered width and ripples through this max-content grid
+           (actions, workspace nav) the same way an unbounded brand crumb
+           would. UserChip itself stays untouched - this only stabilizes its
+           width where it's mounted in the header. */
+        .sfm-global-header .sfm-user-identity {
+          flex: 0 0 118px;
+          min-width: 118px;
         }
 
         .sfm-global-header .sfm-user-chevron {
