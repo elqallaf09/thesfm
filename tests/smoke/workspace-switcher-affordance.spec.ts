@@ -253,3 +253,71 @@ test.describe('mobile workspace switcher affordance', () => {
     expect(navigations.filter(path => path === '/investment-companies')).toHaveLength(1);
   });
 });
+
+// Regression coverage for a WebKit-specific bug: calling
+// activeLink.scrollIntoView({ inline: 'center' }) unconditionally on mount -
+// even when the target was already fully visible, where the browser itself
+// would no-op the scroll - caused mobile-webkit to render the sticky header
+// and body shifted a few pixels off the left edge in RTL. The fix gates the
+// call behind an actual-visibility check (see WorkspaceSwitcher.tsx). This
+// suite runs on both desktop Chromium and mobile WebKit - the two engines
+// that matter for this regression - unlike the chromium-only suite above.
+test.describe('workspace switcher RTL mobile-webkit overflow regression', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      !['chromium-desktop', 'mobile-webkit'].includes(testInfo.project.name),
+      'Regression check runs on desktop Chromium and mobile WebKit only - the two engines relevant to this bug.',
+    );
+  });
+
+  test('RTL mobile viewport keeps document width in sync and every destination fully reachable', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await enterGuestDashboard(page);
+    await setLanguage(page, 'ar');
+
+    const navigation = page.locator('header.sfm-global-header .sfm-workspace-navigation');
+    await expect(navigation).toHaveAttribute('dir', 'rtl');
+
+    // document.documentElement.scrollWidth must never exceed its own
+    // clientWidth (the regression's exact assertion: scrollWidth === the
+    // reported available width, not shifted/inflated by a stray scroll).
+    await expect.poll(() => page.evaluate(() => {
+      const root = document.documentElement;
+      return Math.max(root.scrollWidth, document.body.scrollWidth) - root.clientWidth;
+    })).toBeLessThanOrEqual(1);
+
+    // No ancestor box (body, the sticky header) sits shifted off the left
+    // edge - the exact symptom of the WebKit RTL scrollIntoView regression.
+    const bounds = await page.evaluate(() => {
+      const clientWidth = document.documentElement.clientWidth;
+      return ['body', '.sfm-global-header'].map(selector => {
+        const element = document.querySelector(selector);
+        if (!element) return { selector, missing: true as const };
+        const rect = element.getBoundingClientRect();
+        return { selector, left: rect.left, right: rect.right, clientWidth };
+      });
+    });
+    for (const box of bounds) {
+      if ('missing' in box) continue;
+      expect(box.left, box.selector).toBeGreaterThanOrEqual(-1);
+      expect(box.right, box.selector).toBeLessThanOrEqual(box.clientWidth + 1);
+    }
+
+    // First, middle, and last destinations must each be reachable and fully
+    // within the viewport once scrolled into view - not merely present in
+    // the DOM behind an off-screen rail.
+    const first = WORKSPACES[0];
+    const middle = WORKSPACES[Math.floor(WORKSPACES.length / 2)];
+    const last = WORKSPACES[WORKSPACES.length - 1];
+    const viewportWidth = page.viewportSize()!.width;
+    for (const workspace of [first, middle, last]) {
+      const tab = navigation.locator(`[data-workspace-id="${workspace.id}"]`);
+      await tab.scrollIntoViewIfNeeded();
+      await expect(tab).toBeVisible();
+      const box = await tab.boundingBox();
+      expect(box, workspace.id).not.toBeNull();
+      expect(box!.x, workspace.id).toBeGreaterThanOrEqual(-1);
+      expect(box!.x + box!.width, workspace.id).toBeLessThanOrEqual(viewportWidth + 1);
+    }
+  });
+});

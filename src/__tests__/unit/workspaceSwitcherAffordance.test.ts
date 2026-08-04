@@ -101,8 +101,12 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(switcher).toContain("indicator.style.setProperty('--indicator-x'");
     expect(switcher).toContain("indicator.style.setProperty('--indicator-w'");
     // getBoundingClientRect + scrollLeft arithmetic is the classic RTL trap
-    // this component deliberately avoids.
-    expect(switcher).not.toContain('getBoundingClientRect');
+    // this component deliberately avoids - scrollLeft's sign/origin
+    // convention in RTL differs across browsers. getBoundingClientRect
+    // alone (comparing two rects in shared viewport-physical coordinates,
+    // never touching scrollLeft) doesn't have that problem and is used by
+    // the scrollIntoView visibility guard below.
+    expect(switcher).not.toContain('scrollLeft');
   });
 
   it('snaps into place without animating on first paint, then animates on every subsequent move', () => {

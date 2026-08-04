@@ -97,12 +97,25 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
 
   useEffect(() => {
     const activeLink = activeLinkRef.current;
-    if (!activeLink) return;
+    const container = tabsRef.current;
+    if (!activeLink || !container) return;
     const frame = window.requestAnimationFrame(() => {
-      // 'center' (not 'nearest') guarantees the active destination clears
-      // both rail edges with margin — 'nearest' only scrolls the minimum
-      // distance needed, which can leave it flush against an edge.
-      activeLink.scrollIntoView({ block: 'nearest', inline: 'center' });
+      // Only scroll when the active destination is actually clipped by the
+      // rail's current scroll position. An unconditional scrollIntoView
+      // call - even with a target that's already fully visible, where the
+      // browser itself would no-op the scroll - triggers a WebKit RTL bug
+      // where the page's ancestor boxes (body, the sticky header) render
+      // shifted a few pixels off the left edge on mobile-webkit. Gating on
+      // real necessity avoids ever calling it on the common case (the
+      // default-active tab is already visible on first paint) while still
+      // guaranteeing both-edge clearance - via 'center' - for the genuine
+      // case: navigating to a destination currently scrolled out of view.
+      const containerRect = container.getBoundingClientRect();
+      const linkRect = activeLink.getBoundingClientRect();
+      const fullyVisible = linkRect.left >= containerRect.left && linkRect.right <= containerRect.right;
+      if (!fullyVisible) {
+        activeLink.scrollIntoView({ block: 'nearest', inline: 'center' });
+      }
     });
     return () => window.cancelAnimationFrame(frame);
   }, [active.id, pathname]);
