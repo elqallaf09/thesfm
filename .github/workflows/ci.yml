@@ -447,7 +447,7 @@ jobs:
 
       - name: Resolve active isolated Supabase Preview ref for exact SHA
         id: supabase-preview
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = context.payload.pull_request.head.sha;
@@ -559,7 +559,7 @@ jobs:
       - name: Resolve READY Vercel Preview for exact SHA
         if: steps.supabase-preview.outputs.available == 'true'
         id: preview
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = context.payload.pull_request.head.sha;
