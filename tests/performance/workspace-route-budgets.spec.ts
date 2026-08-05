@@ -203,28 +203,40 @@ for (const { locale, theme } of brandStabilityCases) {
       const header = document.querySelector('.sfm-global-header');
       const brand = document.querySelector('.sfm-global-brand');
       const img = brand?.querySelector('img');
+      const workspaceNav = document.querySelector('.sfm-workspace-navigation');
       const cs = (el: Element | null | undefined) => (el ? window.getComputedStyle(el) : null);
-      console.log('DIAG-FIRST', JSON.stringify({
-        headerGTC: cs(header)?.gridTemplateColumns,
-        headerWidth: header?.getBoundingClientRect().width,
-        brandRect: brand?.getBoundingClientRect(),
-        brandCopyRect: brandCopy?.getBoundingClientRect(),
-        brandCopyMinWidth: cs(brandCopy)?.minWidth,
-        imgRect: img?.getBoundingClientRect(),
-        spanRect: span?.getBoundingClientRect(),
-        spanMaxWidth: cs(span)?.maxWidth,
-        spanText: span?.textContent,
-        strongRect: strong?.getBoundingClientRect(),
-        fontsReady: (document as Document & { fonts?: { status?: string } }).fonts?.status,
-      }));
+      const rect = (el: Element | null | undefined) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height, left: r.left };
+      };
       return {
-        brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
+        brandWidth: brand?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
-        workspaceLeft: document.querySelector('.sfm-workspace-navigation')?.getBoundingClientRect().left ?? 0,
+        workspaceLeft: workspaceNav?.getBoundingClientRect().left ?? 0,
         brandName: strong?.textContent ?? '',
         crumbText: span?.textContent ?? '',
+        diag: {
+          viewportWidth: window.innerWidth,
+          dir: document.documentElement.dir,
+          theme: document.documentElement.getAttribute('data-theme') ?? document.documentElement.className,
+          headerGTC: cs(header)?.gridTemplateColumns,
+          headerRect: rect(header),
+          brandRect: rect(brand),
+          brandCopyRect: rect(brandCopy),
+          brandCopyMinWidth: cs(brandCopy)?.minWidth,
+          imgRect: rect(img),
+          spanMaxWidth: cs(span)?.maxWidth,
+          spanText: span?.textContent,
+          workspaceNavRect: rect(workspaceNav),
+          workspaceNavDisplay: cs(workspaceNav)?.display,
+          workspaceNavChildCount: workspaceNav?.children.length ?? -1,
+          workspaceNavHTML: (workspaceNav?.innerHTML ?? '').slice(0, 400),
+          fontsReady: (document as Document & { fonts?: { status?: string } }).fonts?.status,
+        },
       };
     });
+    console.log(`DIAG-FIRST ${JSON.stringify(firstPaint.diag)}`);
 
     await page.waitForLoadState('networkidle', { timeout: 8_000 }).catch(() => undefined);
     await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
@@ -236,29 +248,41 @@ for (const { locale, theme } of brandStabilityCases) {
       const header = document.querySelector('.sfm-global-header');
       const brand = document.querySelector('.sfm-global-brand');
       const img = brand?.querySelector('img');
+      const workspaceNav = document.querySelector('.sfm-workspace-navigation');
       const cs = (el: Element | null | undefined) => (el ? window.getComputedStyle(el) : null);
-      console.log('DIAG-SETTLED', JSON.stringify({
-        headerGTC: cs(header)?.gridTemplateColumns,
-        headerWidth: header?.getBoundingClientRect().width,
-        brandRect: brand?.getBoundingClientRect(),
-        brandCopyRect: brandCopy?.getBoundingClientRect(),
-        brandCopyMinWidth: cs(brandCopy)?.minWidth,
-        imgRect: img?.getBoundingClientRect(),
-        spanRect: span?.getBoundingClientRect(),
-        spanMaxWidth: cs(span)?.maxWidth,
-        spanText: span?.textContent,
-        strongRect: strong?.getBoundingClientRect(),
-        fontsReady: (document as Document & { fonts?: { status?: string } }).fonts?.status,
-      }));
+      const rect = (el: Element | null | undefined) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.x, y: r.y, width: r.width, height: r.height, left: r.left };
+      };
       return {
-        brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
+        brandWidth: brand?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
-        workspaceLeft: document.querySelector('.sfm-workspace-navigation')?.getBoundingClientRect().left ?? 0,
+        workspaceLeft: workspaceNav?.getBoundingClientRect().left ?? 0,
         brandName: strong?.textContent ?? '',
         crumbText: span?.textContent ?? '',
         cls: (window as typeof window & { __sfmWorkspacePerformance: WorkspacePerformanceMetrics }).__sfmWorkspacePerformance.cls,
+        diag: {
+          viewportWidth: window.innerWidth,
+          dir: document.documentElement.dir,
+          theme: document.documentElement.getAttribute('data-theme') ?? document.documentElement.className,
+          headerGTC: cs(header)?.gridTemplateColumns,
+          headerRect: rect(header),
+          brandRect: rect(brand),
+          brandCopyRect: rect(brandCopy),
+          brandCopyMinWidth: cs(brandCopy)?.minWidth,
+          imgRect: rect(img),
+          spanMaxWidth: cs(span)?.maxWidth,
+          spanText: span?.textContent,
+          workspaceNavRect: rect(workspaceNav),
+          workspaceNavDisplay: cs(workspaceNav)?.display,
+          workspaceNavChildCount: workspaceNav?.children.length ?? -1,
+          workspaceNavHTML: (workspaceNav?.innerHTML ?? '').slice(0, 400),
+          fontsReady: (document as Document & { fonts?: { status?: string } }).fonts?.status,
+        },
       };
     });
+    console.log(`DIAG-SETTLED ${JSON.stringify(settled.diag)}`);
 
     expect(problems, `console/page errors: ${problems.join('; ')}`).toHaveLength(0);
     expect(looksLikeRawKey(settled.brandName), `hydrated brand name "${settled.brandName}" must not be a raw translation key`).toBe(false);

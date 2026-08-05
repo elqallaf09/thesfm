@@ -34,11 +34,25 @@
 }
 
 .sfm-global-brand {
+  /* Must match AppHeader.tsx's own .sfm-global-brand rule exactly - see the
+     .sfm-global-brand-copy comment below for why. Without justify-self here,
+     a grid item defaults to stretch, so the brand link fills its entire
+     grid-column track on first paint; AppHeader's own stylesheet (mounted
+     after hydration) sets justify-self: start, shrinking it to content width.
+     padding-inline-end/margin-inline-end are also absent by default (0) here
+     vs AppHeader's 18px/4px, compounding the same first-paint-to-hydration
+     width jump. Both together produced the actual measured regression: a
+     ~75-93px BrandLockup width delta on narrow (<=1179px) viewports, where
+     the brand column's track is wide enough for stretch vs. content-width to
+     visibly differ. */
   grid-area: brand;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-self: start;
+  gap: 10px;
+  padding-inline-end: 18px;
+  margin-inline-end: 4px;
   text-decoration: none;
 }
 
@@ -478,6 +492,15 @@
     display: grid;
   }
 
+  /* Must match AppHeader.tsx's own @media (max-width: 767px) rule for this
+     selector exactly - see the .sfm-global-brand rule's comment above for
+     why. Critical CSS previously had no override here at all, leaving the
+     unconditional 170px cap in effect at first paint versus this tighter
+     one post-hydration. */
+  .sfm-global-brand-copy > span {
+    max-width: min(42vw, 160px);
+  }
+
   .sfm-app-shell-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -489,5 +512,27 @@
 
   .sfm-app-main {
     grid-column: 1;
+  }
+}
+
+/* Must match AppHeader.tsx's own @media (max-width: 430px) block exactly -
+   see the .sfm-global-brand rule's comment above for why. This breakpoint
+   was previously entirely absent from critical CSS. */
+@media (max-width: 430px) {
+  .sfm-global-header {
+    padding-inline: 10px;
+  }
+
+  .sfm-global-brand {
+    gap: 7px;
+  }
+
+  .sfm-brand-mark--header {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .sfm-global-brand strong {
+    font-size: 13px;
   }
 }
