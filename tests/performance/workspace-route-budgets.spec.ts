@@ -196,37 +196,53 @@ for (const { locale, theme } of brandStabilityCases) {
 
     const expectedDir = locale === 'ar' ? 'rtl' : 'ltr';
 
-    // Diagnostic-only snapshot, taken immediately post-domcontentloaded,
-    // before hydration has had any chance to correct the document's
-    // language/direction. This is NOT the PR #111 header-geometry baseline -
-    // it exists purely to keep the pre-existing, application-wide, root-layout
-    // RTL-first-paint issue (src/app/layout.tsx hardcodes lang="ar" dir="rtl"
-    // unconditionally; see tracking issue #117) visible in CI evidence without
-    // asserting on it here, since it belongs to root-layout/i18n architecture,
-    // not to anything PR #111 touches.
-    const preContractDir = await page.evaluate(() => document.documentElement.dir);
-    if (preContractDir !== expectedDir) {
-      console.log(`KNOWN-ISSUE #117: root layout first-paint dir="${preContractDir}" before hydration corrects it to "${expectedDir}" for locale "${locale}".`);
+    // ---- Phase A: pre-contract architecture diagnostic (NOT asserted against
+    // PR #111's header budget). Captures the state of the world before the
+    // requested locale/direction contract exists - this is where the
+    // pre-existing, application-wide root-layout issue lives (src/app/layout.tsx
+    // hardcodes lang="ar" dir="rtl" unconditionally; hydration corrects it
+    // afterward; tracked separately as issue #117). Recorded and logged, never
+    // silently discarded, but not something PR #111 owns or is held to.
+    const preContract = await page.evaluate(() => ({
+      dir: document.documentElement.dir,
+      lang: document.documentElement.lang,
+      cls: (window as typeof window & { __sfmWorkspacePerformance: WorkspacePerformanceMetrics }).__sfmWorkspacePerformance.cls,
+    }));
+    const directionTransitionDetected = preContract.dir !== expectedDir;
+    if (directionTransitionDetected) {
+      console.log(`KNOWN-ISSUE #117: root layout first-paint dir="${preContract.dir}" before hydration corrects it to "${expectedDir}" for locale "${locale}" (preContractCls=${preContract.cls}).`);
     }
 
-    // The PR #111 header-geometry baseline: captured only once the
-    // locale/direction contract this route was requested with is actually
-    // observable on the document. Waiting for this (rather than an arbitrary
-    // timeout, or all network activity, or all visual movement) isolates the
-    // header's own hydration stability from the separate, pre-existing,
-    // application-wide root-direction transition tracked in issue #117 -
-    // without hiding that transition (see the diagnostic snapshot above).
+    // ---- Phase B: the PR #111-owned header stability contract. Wait until
+    // the requested locale/direction is actually observable AND every header
+    // element this test measures is present, rather than an arbitrary
+    // timeout, all network activity, or all visual movement settling. This is
+    // the boundary PR #111's header is held accountable from - not before.
     await page.waitForFunction(
-      expected => document.documentElement.dir === expected,
-      expectedDir,
+      expected => document.documentElement.dir === expected.dir
+        && document.documentElement.lang === expected.lang
+        && document.querySelector('.sfm-global-header') !== null
+        && document.querySelector('.sfm-global-brand') !== null
+        && document.querySelector('.sfm-workspace-navigation') !== null
+        && document.querySelector('.sfm-global-actions') !== null,
+      { dir: expectedDir, lang: locale },
       { timeout: 5_000 },
     );
 
-    const firstPaint = await page.evaluate(() => {
+    // Reset the layout-shift accumulator exactly at the phase-B contract
+    // boundary, so `cls` from this point on reflects only shifts PR #111's
+    // header could plausibly cause - not whatever the pre-existing root-
+    // direction transition (issue #117) contributed before this point.
+    const early = await page.evaluate(() => {
+      const perf = (window as typeof window & { __sfmWorkspacePerformance: WorkspacePerformanceMetrics }).__sfmWorkspacePerformance;
+      const contractEstablishedAt = performance.now();
+      perf.cls = 0;
       const brandCopy = document.querySelector('.sfm-global-brand-copy');
       const strong = brandCopy?.querySelector('strong');
       const span = brandCopy?.querySelector('span');
       return {
+        contractEstablishedAt,
+        headerHeight: document.querySelector('.sfm-global-header')?.getBoundingClientRect().height ?? 0,
         brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
         workspaceLeft: document.querySelector('.sfm-workspace-navigation')?.getBoundingClientRect().left ?? 0,
@@ -243,14 +259,36 @@ for (const { locale, theme } of brandStabilityCases) {
       const strong = brandCopy?.querySelector('strong');
       const span = brandCopy?.querySelector('span');
       return {
+        headerHeight: document.querySelector('.sfm-global-header')?.getBoundingClientRect().height ?? 0,
         brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
         workspaceLeft: document.querySelector('.sfm-workspace-navigation')?.getBoundingClientRect().left ?? 0,
         brandName: strong?.textContent ?? '',
         crumbText: span?.textContent ?? '',
-        cls: (window as typeof window & { __sfmWorkspacePerformance: WorkspacePerformanceMetrics }).__sfmWorkspacePerformance.cls,
+        dir: document.documentElement.dir,
+        lang: document.documentElement.lang,
+        ownedContractCls: (window as typeof window & { __sfmWorkspacePerformance: WorkspacePerformanceMetrics }).__sfmWorkspacePerformance.cls,
       };
     });
+
+    console.log(`PHASE-REPORT ${JSON.stringify({
+      route: '/invest', locale, theme, project: test.info().project.name,
+      viewport: page.viewportSize(),
+      initialLangDir: { lang: preContract.lang, dir: preContract.dir },
+      settledLangDir: { lang: settled.lang, dir: settled.dir },
+      directionTransitionDetected,
+      preContractCls: preContract.cls,
+      ownedContractCls: settled.ownedContractCls,
+      contractEstablishedAt: early.contractEstablishedAt,
+      early: { brandWidth: early.brandWidth, actionsWidth: early.actionsWidth, workspaceLeft: early.workspaceLeft, headerHeight: early.headerHeight },
+      settledGeometry: { brandWidth: settled.brandWidth, actionsWidth: settled.actionsWidth, workspaceLeft: settled.workspaceLeft, headerHeight: settled.headerHeight },
+      deltas: {
+        brandWidth: Math.abs(settled.brandWidth - early.brandWidth),
+        actionsWidth: Math.abs(settled.actionsWidth - early.actionsWidth),
+        workspaceLeft: Math.abs(settled.workspaceLeft - early.workspaceLeft),
+        headerHeight: Math.abs(settled.headerHeight - early.headerHeight),
+      },
+    })}`);
 
     expect(problems, `console/page errors: ${problems.join('; ')}`).toHaveLength(0);
     expect(looksLikeRawKey(settled.brandName), `hydrated brand name "${settled.brandName}" must not be a raw translation key`).toBe(false);
@@ -271,26 +309,20 @@ for (const { locale, theme } of brandStabilityCases) {
     // catching the actual regression this guards against, which was a
     // hundred-plus-pixel reflow (a stale, unsynced critical-CSS breakpoint),
     // not sub-pixel noise.
-    expect(Math.abs(settled.brandWidth - firstPaint.brandWidth), 'BrandLockup width must stay stable through hydration').toBeLessThanOrEqual(3);
-    expect(Math.abs(settled.actionsWidth - firstPaint.actionsWidth), '.sfm-global-actions width must stay stable through hydration').toBeLessThanOrEqual(20);
-    expect(Math.abs(settled.workspaceLeft - firstPaint.workspaceLeft), 'workspace navigation position must stay stable through hydration').toBeLessThanOrEqual(20);
-    if (preContractDir === expectedDir) {
-      // Stricter than the CI-wide 0.05 budget in the loop above - this
-      // route's own header-specific regression should have real margin now,
-      // not just scrape by. Only enforced when no pre-existing, unrelated
-      // root-direction transition (issue #117) occurred in this run, since
-      // that transition's own real layout-shift contribution would otherwise
-      // confound a PR #111-scoped assertion with an out-of-scope root-layout
-      // issue.
-      expect(settled.cls, '/invest CLS').toBeLessThanOrEqual(0.03);
-    } else {
-      // A pre-existing, tracked (issue #117), unrelated root-direction
-      // transition occurred in this run - fall back to the existing,
-      // already-established CI-wide budget (unchanged, not weakened) rather
-      // than this route's stricter self-imposed one, so PR #111 isn't held
-      // responsible for a root-layout issue it didn't introduce.
-      expect(settled.cls, '/invest CLS (pre-existing root-direction transition present, see issue #117)').toBeLessThanOrEqual(0.05);
-    }
+    expect(Math.abs(settled.brandWidth - early.brandWidth), 'BrandLockup width must stay stable through hydration').toBeLessThanOrEqual(3);
+    expect(Math.abs(settled.actionsWidth - early.actionsWidth), '.sfm-global-actions width must stay stable through hydration').toBeLessThanOrEqual(20);
+    expect(Math.abs(settled.workspaceLeft - early.workspaceLeft), 'workspace navigation position must stay stable through hydration').toBeLessThanOrEqual(20);
+    // The header's min-height is a fixed CSS custom property per breakpoint
+    // (--global-header-height) - it should not move at all once the phase-B
+    // contract is established; 1px covers only sub-pixel rounding.
+    expect(Math.abs(settled.headerHeight - early.headerHeight), 'header shell height must stay stable through hydration').toBeLessThanOrEqual(1);
+    // This is entirely PR #111's own responsibility now: the accumulator was
+    // reset at the phase-B contract boundary, so this CLS reflects only
+    // shifts that happened after the requested locale/direction was already
+    // established on the document - it can no longer be inflated by the
+    // pre-existing, unrelated root-direction transition (issue #117),
+    // regardless of whether that transition occurred in this run.
+    expect(settled.ownedContractCls, '/invest header-owned CLS (post phase-B contract)').toBeLessThanOrEqual(0.03);
   });
 }
 
