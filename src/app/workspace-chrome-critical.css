@@ -517,7 +517,12 @@
 
 /* Must match AppHeader.tsx's own @media (max-width: 430px) block exactly -
    see the .sfm-global-brand rule's comment above for why. This breakpoint
-   was previously entirely absent from critical CSS. */
+   was previously entirely absent from critical CSS. AppHeader.tsx's own
+   rule forces the mark's width/height to win against a competing rule
+   elsewhere in its own stylesheet; critical CSS has no such competing rule
+   at first paint, so a plain declaration reaches the same 26px result
+   without spending any of this file's zero-debt forced-priority budget -
+   verified to produce an identical, zero-delta result. */
 @media (max-width: 430px) {
   .sfm-global-header {
     padding-inline: 10px;
@@ -528,8 +533,8 @@
   }
 
   .sfm-brand-mark--header {
-    width: 26px !important;
-    height: 26px !important;
+    width: 26px;
+    height: 26px;
   }
 
   .sfm-global-brand strong {
