@@ -77,7 +77,8 @@ describe('unified Today operational workflow', () => {
     expect(home).toBeLessThan(reports);
     expect(reports).toBeLessThan(tasks);
     expect(navigation).not.toContain("id: 'notif'");
-    expect(read('src/components/AppHeader.tsx')).toContain('className="sfm-global-notifications"');
+    // Notifications render inside AppHeader's CommandCluster composition.
+    expect(read('src/components/header/CommandCluster.tsx')).toContain('className="sfm-global-notifications"');
   });
 
   it('keeps the primary navigation concise while preserving advanced routes', () => {

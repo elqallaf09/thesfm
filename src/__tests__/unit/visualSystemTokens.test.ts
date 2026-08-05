@@ -341,9 +341,13 @@ describe('central visual-system contract', () => {
   });
 
   it('keeps the app header on semantic surfaces and restrained UI typography', () => {
+    // The header moved to a dedicated navy-dock token family
+    // (--header-surface / --header-dock-*) rather than the page-theme
+    // --surface/--foreground tokens — still fully semantic (no raw
+    // values), just a different, intentional token source.
     expect(appHeader).toContain('font-family: var(--font-ui)');
-    expect(appHeader).toContain('background: var(--surface)');
-    expect(appHeader).toContain('color: var(--foreground-muted)');
+    expect(appHeader).toContain('background: var(--header-surface)');
+    expect(appHeader).toContain('color: var(--header-dock-text-subtle)');
     expect(appHeader).not.toMatch(/\bTajawal\b|\bCairo\b|#[0-9a-f]{3,8}|rgba\(|(?:linear|radial)-gradient/i);
     expect(appHeader).not.toMatch(/font-weight:\s*(?:[789]00|[789]\d\d)/);
     expect(globals).not.toContain('body.energy-route-active .sfm-global-header');

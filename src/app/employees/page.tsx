@@ -651,7 +651,7 @@ const employeeStyles = `
   .business-search input:focus,.business-toolbar select:focus,.business-form-grid input:focus,.business-form-grid select:focus,.business-form-grid textarea:focus{box-shadow:var(--focus-shadow);border-color:var(--focus-ring)}
   .business-view-toggle{display:flex;gap:8px;padding:4px;border-radius:var(--radius-card);background:var(--surface-muted);border:1px solid var(--border)}
   .business-view-toggle button{min-height:38px;border:0;border-radius:var(--radius-control);background:transparent;color:var(--foreground-muted);display:inline-flex;align-items:center;gap:6px;padding:0 10px;font-family:inherit;font-weight:500;cursor:pointer;white-space:nowrap}
-  .business-view-toggle button.active{background:var(--primary);color:var(--primary-foreground);font-weight:600}
+  .business-view-toggle button.active{background:var(--surface);color:var(--primary);font-weight:600;box-shadow:var(--shadow-xs)}
   .business-form-card{padding:18px}
   .business-section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
   .business-section-heading h2{margin:0;color:var(--foreground)}

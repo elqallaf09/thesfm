@@ -1035,7 +1035,7 @@ export function ProjectFinancialModelTab({
         .projection-disabled span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:12px}
         .projection-view-toggle,.scenario-toggle-row{display:flex;flex-wrap:wrap;gap:8px}
         .projection-view-toggle button,.scenario-toggle-row button{min-height:36px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground-muted);padding:0 12px;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
-        .projection-view-toggle button.active,.scenario-toggle-row button.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);box-shadow:var(--shadow-sm)}
+        .projection-view-toggle button.active,.scenario-toggle-row button.active{background:var(--primary-soft);color:var(--primary-hover);border-color:color-mix(in srgb, var(--primary) 32%, transparent);font-weight:700}
         .projection-view-toggle button:disabled{cursor:not-allowed;opacity:.72}
         .projection-view-toggle button span{border-radius:var(--radius-pill);background:var(--surface-muted);padding:2px 7px;font-size:12px}
         .forecast-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-card);max-width:100%}

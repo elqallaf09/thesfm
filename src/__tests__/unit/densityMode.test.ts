@@ -216,8 +216,9 @@ describe('density wiring', () => {
     expect(layout).toContain("import { DensityProvider } from '@/hooks/useDensity'");
     expect(layout).toContain('<DensityProvider>');
 
-    const header = readFileSync(join(process.cwd(), 'src/components/AppHeader.tsx'), 'utf8');
-    expect(header).toContain('<DensityToggle />');
+    // The toggle now renders inside AppHeader's CommandCluster composition.
+    const commandCluster = readFileSync(join(process.cwd(), 'src/components/header/CommandCluster.tsx'), 'utf8');
+    expect(commandCluster).toContain('<DensityToggle />');
 
     const globals = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
     expect(globals).toContain('@import "../styles/density.css";');

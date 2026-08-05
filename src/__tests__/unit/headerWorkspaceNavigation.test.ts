@@ -7,6 +7,10 @@ const header = read('src/components/AppHeader.tsx');
 const switcher = read('src/components/WorkspaceSwitcher.tsx');
 const sidebar = read('src/components/Sidebar.tsx');
 const mobile = read('src/components/MobileMenu.tsx');
+const shell = read('src/components/WorkspaceShell.tsx');
+const tokens = read('src/styles/tokens.css');
+const themes = read('src/styles/themes.css');
+const commandCluster = read('src/components/header/CommandCluster.tsx');
 
 describe('global header workspace navigation contract', () => {
   it('renders workspace switching only in the sticky global header', () => {
@@ -38,24 +42,35 @@ describe('global header workspace navigation contract', () => {
     expect(switcher).toContain('className="sfm-workspace-label-full"');
     expect(switcher).not.toMatch(/MOBILE_WORKSPACE_LABELS|sfm-workspace-label-mobile/);
     expect(switcher).toContain("@media (max-width: 900px)");
-    expect(switcher).toContain('min-height: var(--control-h)');
-    expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'nearest' })");
+    expect(switcher).toContain('min-height: 44px');
+    // 'center' (not 'nearest') guarantees the active destination clears both
+    // rail edges with margin instead of landing flush against one.
+    expect(switcher).toContain("activeLink.scrollIntoView({ block: 'nearest', inline: 'center' })");
     expect(switcher).toContain('overflow-x: auto');
     expect(header).not.toMatch(/\.sfm-global-menu-button\s*\{[^}]*(?:width|min-width|height):\s*40px/);
   });
 
   it('keeps the required global controls in a predictable header order', () => {
-    const brandIndex = header.indexOf('className="sfm-global-brand"');
+    // Top-level composition: brand, workspace navigation, command cluster.
+    const brandIndex = header.indexOf('<BrandLockup');
     const workspaceIndex = header.indexOf('<WorkspaceSwitcher');
-    const searchIndex = header.indexOf("<CommandMenuButton aria-label={t('command_open')} />");
-    const languageIndex = header.indexOf('<LanguageSwitcher');
-    const themeIndex = header.indexOf('<ThemeToggle />');
-    const notificationsIndex = header.indexOf('className="sfm-global-notifications"');
-    const accountIndex = header.indexOf('<UserChip />');
+    const commandClusterIndex = header.indexOf('<CommandCluster');
 
-    expect([brandIndex, workspaceIndex, searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])
-      .toEqual([...new Set([brandIndex, workspaceIndex, searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])].sort((a, b) => a - b));
+    expect([brandIndex, workspaceIndex, commandClusterIndex])
+      .toEqual([...new Set([brandIndex, workspaceIndex, commandClusterIndex])].sort((a, b) => a - b));
     expect(brandIndex).toBeGreaterThanOrEqual(0);
+
+    // Command cluster's own internal order: search anchors it, followed by
+    // language/theme/density and the account/notifications entry points.
+    const searchIndex = commandCluster.indexOf('<CommandSearchTrigger');
+    const languageIndex = commandCluster.indexOf('<LanguageSwitcher');
+    const themeIndex = commandCluster.indexOf('<ThemeToggle />');
+    const notificationsIndex = commandCluster.indexOf('<HeaderIconAction');
+    const accountIndex = commandCluster.indexOf('<AccountMenuTrigger');
+
+    expect([searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])
+      .toEqual([...new Set([searchIndex, languageIndex, themeIndex, notificationsIndex, accountIndex])].sort((a, b) => a - b));
+    expect(searchIndex).toBeGreaterThanOrEqual(0);
   });
 
   it('keeps the mobile drawer modal lifecycle keyboard- and focus-safe', () => {
@@ -69,5 +84,60 @@ describe('global header workspace navigation contract', () => {
     expect(mobile).toContain('isVisibleFocusable(previouslyFocused)');
     expect(mobile).toContain('focusTarget?.focus({ preventScroll: true })');
     expect(mobile).toContain("aria-modal={open ? 'true' : undefined}");
+  });
+
+  it('defines the reserved-band and z-index layer tokens once in the foundation', () => {
+    for (const token of [
+      '--app-header-height',
+      '--app-header-inset-block',
+      '--app-header-inset-inline',
+      '--app-header-gap-block',
+      '--z-header',
+      '--z-sidebar',
+    ]) {
+      expect(tokens.includes(`${token}:`), token).toBe(true);
+    }
+  });
+
+  it('renders the header as a sticky, flush navy dock with a single teal accent rule (institutional-fintech treatment)', () => {
+    expect(header).toContain('position: sticky');
+    expect(header).toContain('inset-block-start: 0');
+    expect(header).toContain('z-index: var(--z-header');
+    expect(header).toContain('border-block-end: 2px solid var(--accent)');
+    expect(header).toContain('border-radius: 0');
+    expect(header).toContain('background: var(--header-surface)');
+    expect(header).toContain('color: var(--header-dock-text)');
+    // No floating-card treatment: no rounded corners, no drop shadow, no
+    // inset margin — the dock is flush and edge-to-edge, not a capped card.
+    expect(header).not.toMatch(/border-radius:\s*var\(--radius-card\)/);
+    expect(header).not.toMatch(/box-shadow:\s*var\(--header-shadow\)/);
+    expect(themes.match(/--header-surface:/g)).toHaveLength(2);
+    expect(themes.match(/--header-dock-bg:/g)).toHaveLength(2);
+    expect(themes.match(/--header-dock-text:/g)).toHaveLength(2);
+  });
+
+  it('is a flush, full-width bar at every viewport (not a mobile-only edge-to-edge override)', () => {
+    expect(header).toContain('--app-header-inset-block: 0px');
+    expect(header).toContain('--app-header-inset-inline: 0px');
+    expect(header).toContain('--app-header-gap-block: 0px');
+    expect(header).toContain('margin: 0');
+    expect(header).toMatch(/@media \(max-width: 767px\)/);
+  });
+
+  it('groups utility controls as a ghost cluster — transparent until hovered, no shared chip background', () => {
+    expect(header).toContain("border-color: transparent");
+    expect(header).toContain('color: var(--header-dock-icon)');
+    expect(header).toContain('background: var(--header-dock-hover-bg)');
+    // No shared command-bar chip/box behind the cluster anymore.
+    expect(header).not.toMatch(/--header-control-bg/);
+    expect(header).not.toMatch(/--header-control-border/);
+  });
+
+  it('reserves the full header band in the shell and offsets the sidebar below it', () => {
+    expect(shell).toContain('min-height: calc(100dvh - var(--app-header-height))');
+    expect(sidebar).toContain('inset-block-start:var(--app-header-height)');
+    expect(sidebar).toContain('z-index:var(--z-sidebar');
+    // Sidebar height also derives from the reserved band (no overlap with the header).
+    expect(sidebar).toContain('height:calc(100dvh - var(--app-header-height)');
   });
 });
