@@ -264,7 +264,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      - run: pnpm test:smoke
+      - if: false
+        run: pnpm test:smoke
         env:
           # Prevent Playwright's generated AI error context from copying a DOM
           # snapshot containing filled auth fields into CI diagnostics.
@@ -287,7 +288,9 @@ jobs:
           E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
-      - run: pnpm test:performance
+      # BISECT HARNESS: scoped to one failing case to capture diagnostics
+      # fast. Must never be merged.
+      - run: pnpm exec playwright test --config=playwright.performance.config.ts tests/performance/workspace-route-budgets.spec.ts --project=chromium-desktop -g "geometrically stable through hydration \(en/dark\)"
         name: Playwright platform performance regression suite
         env:
           PLAYWRIGHT_NO_COPY_PROMPT: '1'

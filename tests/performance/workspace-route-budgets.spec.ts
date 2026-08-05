@@ -200,6 +200,23 @@ for (const { locale, theme } of brandStabilityCases) {
       const brandCopy = document.querySelector('.sfm-global-brand-copy');
       const strong = brandCopy?.querySelector('strong');
       const span = brandCopy?.querySelector('span');
+      const header = document.querySelector('.sfm-global-header');
+      const brand = document.querySelector('.sfm-global-brand');
+      const img = brand?.querySelector('img');
+      const cs = (el: Element | null | undefined) => (el ? window.getComputedStyle(el) : null);
+      console.log('DIAG-FIRST', JSON.stringify({
+        headerGTC: cs(header)?.gridTemplateColumns,
+        headerWidth: header?.getBoundingClientRect().width,
+        brandRect: brand?.getBoundingClientRect(),
+        brandCopyRect: brandCopy?.getBoundingClientRect(),
+        brandCopyMinWidth: cs(brandCopy)?.minWidth,
+        imgRect: img?.getBoundingClientRect(),
+        spanRect: span?.getBoundingClientRect(),
+        spanMaxWidth: cs(span)?.maxWidth,
+        spanText: span?.textContent,
+        strongRect: strong?.getBoundingClientRect(),
+        fontsReady: (document as Document & { fonts?: { status?: string } }).fonts?.status,
+      }));
       return {
         brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
@@ -216,6 +233,23 @@ for (const { locale, theme } of brandStabilityCases) {
       const brandCopy = document.querySelector('.sfm-global-brand-copy');
       const strong = brandCopy?.querySelector('strong');
       const span = brandCopy?.querySelector('span');
+      const header = document.querySelector('.sfm-global-header');
+      const brand = document.querySelector('.sfm-global-brand');
+      const img = brand?.querySelector('img');
+      const cs = (el: Element | null | undefined) => (el ? window.getComputedStyle(el) : null);
+      console.log('DIAG-SETTLED', JSON.stringify({
+        headerGTC: cs(header)?.gridTemplateColumns,
+        headerWidth: header?.getBoundingClientRect().width,
+        brandRect: brand?.getBoundingClientRect(),
+        brandCopyRect: brandCopy?.getBoundingClientRect(),
+        brandCopyMinWidth: cs(brandCopy)?.minWidth,
+        imgRect: img?.getBoundingClientRect(),
+        spanRect: span?.getBoundingClientRect(),
+        spanMaxWidth: cs(span)?.maxWidth,
+        spanText: span?.textContent,
+        strongRect: strong?.getBoundingClientRect(),
+        fontsReady: (document as Document & { fonts?: { status?: string } }).fonts?.status,
+      }));
       return {
         brandWidth: document.querySelector('.sfm-global-brand')?.getBoundingClientRect().width ?? 0,
         actionsWidth: document.querySelector('.sfm-global-actions')?.getBoundingClientRect().width ?? 0,
