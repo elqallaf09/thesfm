@@ -11,6 +11,7 @@ const shell = read('src/components/WorkspaceShell.tsx');
 const tokens = read('src/styles/tokens.css');
 const themes = read('src/styles/themes.css');
 const commandCluster = read('src/components/header/CommandCluster.tsx');
+const globals = read('src/app/globals.css');
 
 describe('global header workspace navigation contract', () => {
   it('renders workspace switching only in the sticky global header', () => {
@@ -131,6 +132,41 @@ describe('global header workspace navigation contract', () => {
     // No shared command-bar chip/box behind the cluster anymore.
     expect(header).not.toMatch(/--header-control-bg/);
     expect(header).not.toMatch(/--header-control-border/);
+  });
+
+  it('gives the higher-priority .sfm-global-actions guard the header-aware ghost-cluster tokens, not the page-general ones', () => {
+    // globals.css carries an !important :where(...) guard scoped to
+    // .sfm-global-actions controls (language trigger, theme toggle, density
+    // toggle, user chip, notifications). Because it's !important, it wins
+    // the cascade over AppHeader.tsx's own (non-!important) ghost-cluster
+    // rule above regardless of specificity - so it must independently carry
+    // the header's own --header-dock-*/--accent tokens itself. Using the
+    // page-general --foreground/--primary tokens here made every one of
+    // these controls nearly invisible in light mode specifically:
+    // --foreground resolves to a near-black page-text color, rendered
+    // against the header's own permanently-dark-navy surface regardless of
+    // page theme. It only looked fine in dark mode by coincidence, since
+    // dark mode's --foreground happens to be light too.
+    const guardMatch = globals.match(
+      /:where\(\.sfm-global-actions \.sfm-command-trigger\.compact,[^)]*\)\s*\{([^}]*)\}/,
+    );
+    expect(guardMatch, '.sfm-global-actions ghost-cluster guard must exist in globals.css').not.toBeNull();
+    const guardBody = guardMatch![1];
+    expect(guardBody).toContain('color: var(--header-dock-icon) !important');
+    expect(guardBody).not.toMatch(/color:\s*var\(--foreground\)/);
+
+    const hoverMatch = globals.match(
+      /:where\(\.sfm-global-actions \.sfm-command-trigger\.compact,[^)]*\):is\(:hover, :focus-visible\)\s*\{([^}]*)\}/,
+    );
+    expect(hoverMatch, '.sfm-global-actions ghost-cluster hover guard must exist in globals.css').not.toBeNull();
+    const hoverBody = hoverMatch![1];
+    expect(hoverBody).toContain('background: var(--header-dock-hover-bg) !important');
+    expect(hoverBody).toContain('color: var(--accent) !important');
+    expect(hoverBody).not.toMatch(/color:\s*var\(--primary\)/);
+    // --header-control-hover was referenced only as a fallback here and
+    // never actually defined anywhere - a dead reference that silently
+    // always fell back to --primary-soft. Guard against it coming back.
+    expect(globals).not.toMatch(/--header-control-hover/);
   });
 
   it('reserves the full header band in the shell and offsets the sidebar below it', () => {

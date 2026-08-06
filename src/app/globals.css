@@ -6162,17 +6162,31 @@ body :is(
   color: var(--foreground-secondary) !important;
 }
 
+/* This guard only ever matches inside .sfm-global-actions, which only
+   exists inside the always-dark-navy .sfm-global-header (see AppHeader.tsx) -
+   it must use the header's own foreground/accent tokens (--header-dock-*),
+   not the page's general light/dark --foreground/--primary tokens. Using the
+   general tokens here made every control in this list nearly invisible in
+   light mode specifically: --foreground resolves to a near-black page-text
+   color in light mode, rendered against the header's own permanently-dark
+   navy surface (--header-dock-bg), regardless of page theme. It happened to
+   look fine in dark mode only by coincidence, since dark mode's --foreground
+   is itself a light color. AppHeader.tsx's own rule already sets the correct
+   tokens, but this higher-priority guard - added to keep header controls
+   from inheriting unrelated component chrome - wins the cascade over it
+   regardless of specificity, so it must carry the correct tokens itself
+   rather than relying on AppHeader.tsx's rule to win. */
 :where(.sfm-global-actions .sfm-command-trigger.compact, .sfm-global-actions .sfm-language-trigger, .sfm-global-actions .sfm-theme-toggle, .sfm-global-actions .sfm-density-toggle, .sfm-global-actions .sfm-user-chip, .sfm-global-notifications) {
   border-color: transparent !important;
   background: transparent !important;
-  color: var(--foreground) !important;
+  color: var(--header-dock-icon) !important;
   box-shadow: none !important;
 }
 
 :where(.sfm-global-actions .sfm-command-trigger.compact, .sfm-global-actions .sfm-language-trigger, .sfm-global-actions .sfm-theme-toggle, .sfm-global-actions .sfm-density-toggle, .sfm-global-actions .sfm-user-chip, .sfm-global-notifications):is(:hover, :focus-visible) {
   border-color: transparent !important;
-  background: var(--header-control-hover, var(--primary-soft)) !important;
-  color: var(--primary) !important;
+  background: var(--header-dock-hover-bg) !important;
+  color: var(--accent) !important;
 }
 
 @media (max-width: 720px) {
