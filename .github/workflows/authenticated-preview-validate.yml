@@ -110,7 +110,7 @@ jobs:
 
       - name: Resolve READY Vercel Preview for exact SHA
         id: preview
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = process.env.E2E_EXPECTED_DEPLOYMENT_SHA;
