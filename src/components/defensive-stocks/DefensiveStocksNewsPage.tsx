@@ -1614,7 +1614,7 @@ export function DefensiveStocksNewsPage() {
 
         .def-tabs{display:flex;gap:8px;overflow-x:auto;padding:8px;background:color-mix(in srgb,var(--surface) 82%,transparent);box-shadow:var(--shadow-card)}
         .def-tabs button{flex:0 0 auto;min-height:44px;border:1px solid transparent;border-radius:var(--radius-card);background:transparent;color:var(--foreground-secondary);padding:0 18px;font:600 13px var(--font-ui);cursor:pointer}
-        .def-tabs button.active{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--active-indicator-shadow)}
+        .def-tabs button.active{background:var(--primary-soft);color:var(--primary-hover);font-weight:700;box-shadow:var(--active-indicator-shadow)}
         .def-tabs button:hover,.def-tabs button:focus-visible{outline:none;border-color:var(--accent)}
         .def-data-status{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;color:var(--foreground-secondary);font-size:12px;font-weight:600}
         .def-data-status span{display:inline-flex;align-items:center;gap:7px;color:var(--primary)}
@@ -1726,7 +1726,7 @@ export function DefensiveStocksNewsPage() {
         .def-badge,.def-kicker{background:color-mix(in srgb,var(--hero-foreground) 10%,transparent);border-color:color-mix(in srgb,var(--hero-foreground) 22%,transparent)}
         .def-hero-side button{background:var(--primary);color:var(--primary-foreground)}
         .def-hero-side button:hover:not(:disabled){background:var(--primary-hover)}
-        .def-tabs button.active{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--active-indicator-shadow)}
+        .def-tabs button.active{background:var(--primary-soft);color:var(--primary-hover);font-weight:700;box-shadow:var(--active-indicator-shadow)}
         .def-tabs button:focus-visible,.defensive-hub :is(a,input,select,button):focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
         .def-section-head p,.def-card-head p,.def-news-card p,.def-sector-card p,.def-disclaimer p{color:var(--foreground-secondary);font-weight:400}
         .def-metric-card strong,.def-stock-metrics strong,.def-ticker-item b,.def-stock-context em{font-family:var(--font-data)}

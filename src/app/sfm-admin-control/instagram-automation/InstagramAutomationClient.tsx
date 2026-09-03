@@ -814,7 +814,7 @@ export default function InstagramAutomationClient({
           padding:0 11px;
           font:500 12px var(--font-ui);
         }
-        .ig-tabs button:hover{background:var(--surface-hover)}.ig-tabs button:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-tabs button.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-weight:600}
+        .ig-tabs button:hover{background:var(--surface-hover)}.ig-tabs button:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-tabs button.active{background:var(--primary-soft);color:var(--primary-hover);border-color:color-mix(in srgb, var(--primary) 32%, transparent);font-weight:600}
         .ig-actions{display:flex;gap:8px;flex-wrap:wrap}
         .ig-list{display:grid;gap:8px;max-height:640px;overflow:auto;padding-inline-end:2px}
         .ig-item{display:grid;gap:8px;border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-control);padding:10px;text-align:start;min-width:0;color:var(--foreground)}

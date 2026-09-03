@@ -2,25 +2,374 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Bell, Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
-import { CommandMenuButton } from '@/components/CommandMenuButton';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { DensityToggle } from '@/components/DensityToggle';
-import { UserChip } from '@/components/UserChip';
 import { WorkspaceSwitcher } from '@/components/WorkspaceSwitcher';
+import { BrandLockup } from '@/components/header/BrandLockup';
+import { CommandCluster } from '@/components/header/CommandCluster';
 import { flattenNavigationItems, isNavigationItemActive } from '@/components/navigationConfig';
 
 const MobileMenu = dynamic(() => import('@/components/MobileMenu').then(mod => mod.MobileMenu), {
   ssr: false,
 });
+
+type GlobalHeaderDockProps = {
+  dir: 'ltr' | 'rtl';
+  children: React.ReactNode;
+};
+
+/**
+ * The outer elevated-dock shell: one sticky, capped, centered floating card
+ * with a three-zone grid (brand / workspace navigation / command cluster).
+ * Owns the header's consolidated stylesheet — the zones it composes
+ * (BrandLockup, WorkspaceSwitcher, CommandCluster) are structural, not each
+ * carrying their own generation of local overrides.
+ */
+function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
+  return (
+    <header className="sfm-global-header" dir={dir}>
+      {children}
+
+      <style jsx global>{`
+        :root {
+          --global-header-height: 64px;
+          /* Institutional dock: the header is a flush, full-width navy bar
+             (not an inset floating card), so it needs no reserved gap or
+             gutter — reserved band collapses to exactly the content height. */
+          --app-header-inset-block: 0px;
+          --app-header-inset-inline: 0px;
+          --app-header-gap-block: 0px;
+        }
+
+        .sfm-global-header {
+          position: sticky;
+          inset-block-start: 0;
+          z-index: var(--z-header, 100);
+          grid-area: header;
+          min-width: 0;
+          min-height: var(--global-header-height);
+          display: grid;
+          /* Brand and the utility cluster size to their own content instead
+             of flex-growing — a fixed grid where the outer zones are 1fr
+             stretches empty space around a small logo/icon cluster on wide
+             screens while the switcher (the actual signature control) never
+             grows. Giving the center column the flexible track means any
+             leftover width becomes centered breathing room around the
+             switcher, not dead margins flanking unrelated content. */
+          grid-template-columns: minmax(240px, max-content) minmax(0, 1fr) minmax(360px, max-content);
+          grid-template-areas: 'brand workspaces actions';
+          align-items: center;
+          gap: 16px;
+          width: 100%;
+          margin: 0;
+          padding-inline: 20px;
+          border: 0;
+          /* A single accent rule instead of a full border — the dock reads
+             as a persistent brand strip, not a floating card. */
+          border-block-end: 2px solid var(--accent);
+          border-radius: 0;
+          background: var(--header-surface);
+          color: var(--header-dock-text);
+          font-family: var(--font-ui);
+        }
+
+        .sfm-global-brand {
+          position: relative;
+          grid-area: brand;
+          justify-self: start;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding-inline-end: 18px;
+          margin-inline-end: 4px;
+          border-radius: var(--radius-control);
+          color: var(--header-dock-text);
+          text-decoration: none;
+        }
+
+        .sfm-global-brand::after {
+          content: '';
+          position: absolute;
+          inset-inline-end: 0;
+          inset-block: 8px;
+          width: 1px;
+          background: var(--header-brand-divider);
+        }
+
+        .sfm-global-brand:focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+        }
+
+        .sfm-global-brand img {
+          flex: 0 0 auto;
+          object-fit: cover;
+          border-radius: var(--radius-sm);
+        }
+
+        .sfm-global-brand-copy {
+          /* Reserves the brand lockup's own footprint at its widest
+             plausible rendering (matching the crumb span's own 170px cap
+             below) instead of shrinking to whatever the current font/content
+             state happens to need. Without this floor, any width delta in
+             "THE SFM" + the crumb between an early and a settled render -
+             e.g. a webfont swap - ripples through the header's max-content
+             grid tracks (actions, workspace nav) and produces a measurable
+             layout shift, since nothing else in the row holds them still. */
+          min-width: 180px;
+          display: grid;
+          gap: 1px;
+        }
+
+        .sfm-global-brand strong {
+          color: var(--header-dock-text);
+          font-size: 14px;
+          font-weight: 600;
+          letter-spacing: 0.03em;
+          line-height: 1.35;
+          white-space: nowrap;
+        }
+
+        .sfm-global-brand-copy > span {
+          max-width: 170px;
+          overflow: hidden;
+          color: var(--header-dock-text-subtle);
+          font-size: var(--type-caption-size);
+          font-weight: 400;
+          line-height: var(--type-caption-leading);
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .sfm-global-workspaces {
+          grid-area: workspaces;
+          justify-self: center;
+        }
+
+        .sfm-global-actions {
+          grid-area: actions;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 2px;
+        }
+
+        .sfm-global-header .sfm-command-trigger {
+          width: min(170px, 14vw);
+          min-width: 120px;
+        }
+
+        /* Ghost command cluster: every control is transparent until
+           hovered, sharing no chip/box background — the "clean
+           professional" institutional read, not five bordered buttons. */
+        .sfm-global-header :is(.sfm-command-trigger, .sfm-language-trigger, .sfm-theme-toggle, .sfm-density-toggle, .sfm-user-chip),
+        .sfm-global-notifications {
+          border-color: transparent;
+          background: transparent;
+          color: var(--header-dock-icon);
+          box-shadow: none;
+        }
+
+        /* Quick search is the one persistent surface in the cluster — a
+           slim, low-contrast field, not a filled chip. */
+        .sfm-global-header .sfm-command-trigger:not(.compact) {
+          background: var(--header-dock-search-bg);
+          border-color: var(--header-dock-search-border);
+          color: var(--header-dock-text-muted);
+        }
+
+        .sfm-global-header .sfm-command-trigger svg {
+          color: var(--accent);
+        }
+
+        /* No shortcut badge in the header context — it reads as tiny/noisy
+           at this density. CommandMenuButton's other call site (the sidebar
+           search box) keeps its own kbd hint; this is a header-scoped
+           override only. */
+        .sfm-global-header .sfm-command-trigger kbd {
+          display: none;
+        }
+
+        .sfm-global-header :is(.sfm-command-trigger, .sfm-language-trigger, .sfm-theme-toggle, .sfm-density-toggle, .sfm-user-chip):hover,
+        .sfm-global-header :is(.sfm-user-chip, .sfm-language-trigger)[aria-expanded='true'],
+        .sfm-global-notifications:hover {
+          border-color: transparent;
+          background: var(--header-dock-hover-bg);
+          color: var(--accent);
+        }
+
+        .sfm-global-header .sfm-user-chip {
+          color: var(--header-dock-text);
+          font-family: var(--font-ui);
+        }
+
+        .sfm-global-header .sfm-user-name {
+          color: var(--header-dock-text);
+          font-weight: 500;
+        }
+
+        /* Reserves the identity label's own footprint at its shared component's
+           existing max-width instead of letting it shrink to whatever the
+           current name text needs. UserChip's name switches from a loading
+           placeholder to the resolved profile name once the async profile
+           fetch settles - without a fixed floor here, that swap changes the
+           label's rendered width and ripples through this max-content grid
+           (actions, workspace nav) the same way an unbounded brand crumb
+           would. UserChip itself stays untouched - this only stabilizes its
+           width where it's mounted in the header. */
+        .sfm-global-header .sfm-user-identity {
+          flex: 0 0 118px;
+          min-width: 118px;
+          /* Without overflow set here (not just on the nested .sfm-user-name),
+             the flex item's automatic minimum size stays content-based per
+             spec - flex-shrink: 0 then can't stop a long unbroken name from
+             forcing the box wider than the 118px basis above. */
+          overflow: hidden;
+        }
+
+        .sfm-global-header .sfm-user-chevron {
+          color: var(--header-dock-icon);
+        }
+
+        /* Consistent optical icon size across every utility control. */
+        .sfm-global-header .sfm-language-trigger svg:first-child {
+          width: 16px;
+          height: 16px;
+        }
+
+        .sfm-global-notifications,
+        .sfm-global-menu-button {
+          position: relative;
+          border-radius: var(--radius-control);
+          display: grid;
+          place-items: center;
+          text-decoration: none;
+          cursor: pointer;
+          transition: background-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out;
+        }
+
+        .sfm-global-notifications,
+        .sfm-global-menu-button {
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+        }
+
+        .sfm-global-menu-button:hover {
+          background: var(--header-dock-hover-bg);
+          color: var(--accent);
+        }
+
+        .sfm-global-bell-dot {
+          position: absolute;
+          inset-block-start: 6px;
+          inset-inline-end: 6px;
+          width: 7px;
+          height: 7px;
+          border: 2px solid var(--header-dock-bg);
+          border-radius: var(--radius-circle);
+          background: var(--danger);
+        }
+
+        .sfm-global-notifications:focus-visible,
+        .sfm-global-menu-button:focus-visible {
+          outline: 2px solid var(--focus-ring);
+          outline-offset: 2px;
+        }
+
+        .sfm-global-menu-button {
+          display: none;
+        }
+
+        @media (max-width: 1179px) {
+          :root {
+            /* 48px brand/actions row + 44px workspace-switcher row. */
+            --global-header-height: 92px;
+          }
+
+          .sfm-global-header {
+            grid-template-columns: minmax(150px, 1fr) auto;
+            grid-template-areas:
+              'brand actions'
+              'workspaces workspaces';
+            grid-template-rows: 48px 44px;
+            row-gap: 0;
+            padding-block: 0;
+          }
+
+          .sfm-workspace-navigation.sfm-global-workspaces {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+            justify-self: stretch;
+          }
+
+          .sfm-global-workspaces .sfm-workspace-tabs {
+            width: 100%;
+            justify-content: flex-start;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .sfm-global-header {
+            padding-inline: 12px;
+          }
+
+          .sfm-global-workspaces {
+            width: calc(100vw - 24px);
+            max-width: calc(100vw - 24px);
+          }
+
+          .sfm-global-actions {
+            max-width: 44px;
+          }
+
+          .sfm-global-actions > .sfm-command-trigger,
+          .sfm-global-actions > .sfm-density-toggle,
+          .sfm-global-actions > .sfm-theme-toggle,
+          .sfm-global-actions > .sfm-language-dropdown,
+          .sfm-global-actions > .sfm-global-notifications,
+          .sfm-global-actions > .sfm-user-chip-wrap {
+            display: none;
+          }
+
+          .sfm-global-menu-button {
+            display: grid;
+          }
+
+          .sfm-global-brand-copy > span {
+            max-width: min(42vw, 160px);
+          }
+        }
+
+        @media (max-width: 430px) {
+          .sfm-global-header {
+            padding-inline: 10px;
+          }
+
+          .sfm-global-brand {
+            gap: 7px;
+          }
+
+          .sfm-brand-mark--header {
+            width: 26px !important;
+            height: 26px !important;
+          }
+
+          .sfm-global-brand strong {
+            font-size: 13px;
+          }
+        }
+      `}</style>
+    </header>
+  );
+}
 
 export function AppHeader() {
   const pathname = usePathname() || '/';
@@ -87,355 +436,23 @@ export function AppHeader() {
 
   return (
     <>
-      <header className="sfm-global-header" dir={dir}>
-        <Link href="/dashboard" prefetch={false} className="sfm-global-brand" aria-label="THE SFM">
-          <Image src="/sfm-logo.png" alt="" width={34} height={34} priority className="sfm-brand-mark sfm-brand-mark--header" />
-          <span className="sfm-global-brand-copy">
-            <strong>THE SFM</strong>
-            <span>{crumb}</span>
-          </span>
-        </Link>
+      <GlobalHeaderDock dir={dir}>
+        <BrandLockup crumb={crumb} />
 
         <WorkspaceSwitcher adminAccess={adminAccess} className="sfm-global-workspaces" />
 
-        <div className="sfm-global-actions">
-          <CommandMenuButton aria-label={t('command_open')} />
-          <LanguageSwitcher variant="light" compact />
-          <ThemeToggle />
-          <DensityToggle />
-          <Link
-            href="/notifications"
-            prefetch={false}
-            className="sfm-global-notifications"
-            aria-label={unreadNotifications > 0 ? `${t('nav_notif')} (${unreadNotifications})` : t('nav_notif')}
-            title={t('nav_notif')}
-          >
-            <Bell size={18} aria-hidden="true" />
-            {unreadNotifications > 0 ? <span className="sfm-global-bell-dot" aria-hidden="true" /> : null}
-          </Link>
-          <UserChip />
-          <button
-            type="button"
-            className="sfm-global-menu-button"
-            aria-label={t('nav_open_menu')}
-            aria-expanded={open}
-            aria-controls="sfm-mobile-menu"
-            disabled={!mobileMenuReady}
-            onClick={openMobileMenu}
-          >
-            <Menu size={22} aria-hidden="true" />
-          </button>
-        </div>
-      </header>
+        <CommandCluster
+          commandLabel={t('command_open')}
+          notificationsLabel={unreadNotifications > 0 ? `${t('nav_notif')} (${unreadNotifications})` : t('nav_notif')}
+          notificationsHasUnread={unreadNotifications > 0}
+          menuOpen={open}
+          menuReady={mobileMenuReady}
+          menuLabel={t('nav_open_menu')}
+          onOpenMenu={openMobileMenu}
+        />
+      </GlobalHeaderDock>
 
       {mobileMenuMounted && <MobileMenu open={open} onClose={closeMobileMenu} />}
-
-      <style jsx global>{`
-        :root {
-          --global-header-height: 64px;
-        }
-
-        .sfm-global-header {
-          position: sticky;
-          inset-block-start: var(--app-header-inset-block);
-          z-index: var(--z-header, 100);
-          grid-area: header;
-          min-width: 0;
-          min-height: var(--global-header-height);
-          display: grid;
-          grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
-          grid-template-areas: 'brand workspaces actions';
-          align-items: center;
-          gap: 14px;
-          /* Variant 03: an inset floating panel that stays sticky. */
-          margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-          padding: 8px clamp(12px, 1.5vw, 22px);
-          border: 1px solid var(--header-border);
-          border-radius: var(--radius-card);
-          background: var(--surface);
-          background: var(--header-surface, var(--header-glass-bg));
-          -webkit-backdrop-filter: blur(16px) saturate(128%);
-          backdrop-filter: blur(16px) saturate(128%);
-          color: var(--foreground);
-          box-shadow: var(--header-shadow), var(--header-edge-glow);
-          font-family: var(--font-ui);
-        }
-
-        @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-          .sfm-global-header {
-            background: var(--surface);
-          }
-        }
-
-        @media (prefers-reduced-transparency: reduce) {
-          .sfm-global-header {
-            background: var(--surface);
-            -webkit-backdrop-filter: none;
-            backdrop-filter: none;
-          }
-        }
-
-        .sfm-global-brand {
-          grid-area: brand;
-          min-width: 0;
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          border-radius: var(--radius-control);
-          color: var(--foreground);
-          text-decoration: none;
-        }
-
-        .sfm-global-brand:focus-visible {
-          outline: 2px solid var(--focus-ring);
-          outline-offset: 2px;
-        }
-
-        .sfm-global-brand img {
-          flex: 0 0 auto;
-          object-fit: cover;
-        }
-
-        .sfm-global-brand-copy {
-          min-width: 0;
-          display: grid;
-          gap: 1px;
-        }
-
-        .sfm-global-brand strong {
-          color: var(--foreground);
-          font-size: 15px;
-          font-weight: 600;
-          line-height: 1.35;
-          white-space: nowrap;
-        }
-
-        .sfm-global-brand-copy > span {
-          max-width: 170px;
-          overflow: hidden;
-          color: var(--foreground-muted);
-          font-size: var(--type-caption-size);
-          font-weight: 400;
-          line-height: var(--type-caption-leading);
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .sfm-global-workspaces {
-          grid-area: workspaces;
-          justify-self: center;
-        }
-
-        .sfm-global-actions {
-          grid-area: actions;
-          min-width: 0;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 7px;
-        }
-
-        .sfm-global-header .sfm-command-trigger {
-          width: min(190px, 14vw);
-          min-width: 132px;
-          min-height: var(--control-h);
-        }
-
-        .sfm-global-header .sfm-language-trigger,
-        .sfm-global-header .sfm-theme-toggle,
-        .sfm-global-header .sfm-density-toggle,
-        .sfm-global-header .sfm-user-chip {
-          min-height: var(--control-h);
-          box-shadow: none;
-        }
-
-        .sfm-global-header .sfm-user-chip {
-          min-height: var(--control-h);
-          border-color: var(--header-control-border, var(--border-strong));
-          background: var(--header-control-bg, var(--surface));
-          color: var(--foreground);
-          font-family: var(--font-ui);
-        }
-
-        .sfm-global-header .sfm-user-name {
-          color: var(--foreground);
-          font-weight: 500;
-        }
-
-        .sfm-global-header .sfm-user-chevron {
-          color: var(--foreground-muted);
-        }
-
-        .sfm-global-notifications,
-        .sfm-global-menu-button {
-          position: relative;
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-          /* Variant 03: grouped utilities — subtle idle surface, no heavy per-control border. */
-          border: 1px solid var(--header-control-border, transparent);
-          border-radius: var(--radius-control);
-          display: grid;
-          place-items: center;
-          background: var(--header-control-bg, var(--surface));
-          color: var(--foreground-secondary);
-          text-decoration: none;
-          cursor: pointer;
-          transition: background-color var(--duration-fast) ease-out, border-color var(--duration-fast) ease-out, color var(--duration-fast) ease-out, transform var(--duration-fast) ease-out;
-        }
-
-        .sfm-global-notifications:hover,
-        .sfm-global-menu-button:hover {
-          border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
-          background: var(--header-control-hover, var(--primary-soft));
-          color: var(--primary);
-          transform: translateY(-1px);
-        }
-
-        .sfm-global-bell-dot {
-          position: absolute;
-          inset-block-start: 7px;
-          inset-inline-end: 7px;
-          width: 10px;
-          height: 10px;
-          border: 2px solid var(--surface-elevated);
-          border-radius: var(--radius-circle);
-          background: var(--danger);
-        }
-
-        .sfm-global-notifications:focus-visible,
-        .sfm-global-menu-button:focus-visible {
-          outline: 2px solid var(--focus-ring);
-          outline-offset: 2px;
-        }
-
-        .sfm-global-menu-button {
-          display: none;
-        }
-
-        @media (max-width: 1499px) {
-          .sfm-global-header .sfm-command-trigger {
-            width: 44px;
-            min-width: 44px;
-            padding: 0;
-            justify-content: center;
-          }
-
-          .sfm-global-header .sfm-command-trigger span,
-          .sfm-global-header .sfm-command-trigger kbd {
-            display: none;
-          }
-        }
-
-        @media (max-width: 1179px) {
-          :root {
-            --global-header-height: 108px;
-          }
-
-          .sfm-global-header {
-            grid-template-columns: minmax(150px, 1fr) auto;
-            grid-template-areas:
-              'brand actions'
-              'workspaces workspaces';
-            grid-template-rows: 48px 44px;
-            row-gap: 0;
-            padding-block: 8px;
-          }
-
-          .sfm-global-workspaces {
-            width: auto;
-            min-width: 0;
-            max-width: 100%;
-            overflow: hidden;
-            justify-self: stretch;
-          }
-
-          .sfm-global-workspaces .sfm-workspace-tabs {
-            justify-content: flex-start;
-          }
-        }
-
-        @media (max-width: 767px) {
-          :root {
-            /* Mobile header is edge-to-edge, so the reserved band = content height. */
-            --app-header-inset-block: 0px;
-            --app-header-inset-inline: 0px;
-            --app-header-gap-block: 0px;
-          }
-
-          .sfm-global-header {
-            width: 100%;
-            max-width: 100vw;
-            grid-template-columns: minmax(0, 1fr) auto;
-            overflow-x: clip;
-            margin: 0;
-            border-inline: 0;
-            border-block-start: 0;
-            border-radius: 0;
-            border-block-end: 1px solid var(--border);
-            box-shadow: var(--shadow-xs);
-            padding-inline: 12px;
-          }
-
-          .sfm-global-workspaces {
-            width: calc(100vw - 24px);
-            max-width: calc(100vw - 24px);
-          }
-
-          .sfm-global-actions {
-            max-width: 44px;
-          }
-
-          .sfm-global-actions > .sfm-command-trigger,
-          .sfm-global-actions > .sfm-density-toggle,
-          .sfm-global-actions > .sfm-theme-toggle,
-          .sfm-global-actions > .sfm-language-dropdown,
-          .sfm-global-actions > .sfm-global-notifications,
-          .sfm-global-actions > .sfm-user-chip-wrap {
-            display: none;
-          }
-
-          .sfm-global-menu-button {
-            display: grid;
-          }
-
-          .sfm-global-brand-copy > span {
-            max-width: min(42vw, 160px);
-          }
-        }
-
-        @media (max-width: 430px) {
-          .sfm-global-header {
-            padding-inline: 10px;
-          }
-
-          .sfm-global-brand {
-            gap: 7px;
-          }
-
-          .sfm-brand-mark--header {
-            width: 30px !important;
-            height: 30px !important;
-          }
-
-          .sfm-global-brand strong {
-            font-size: 14px;
-          }
-
-          .sfm-global-menu-button {
-            width: 44px;
-            min-width: 44px;
-            height: 44px;
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .sfm-global-notifications,
-          .sfm-global-menu-button {
-            transition: none;
-          }
-        }
-      `}</style>
     </>
   );
 }

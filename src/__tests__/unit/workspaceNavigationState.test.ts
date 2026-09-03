@@ -144,6 +144,8 @@ describe('workspace navigation direction and presentation contract', () => {
   const mobile = readFileSync(join(process.cwd(), 'src/components/MobileMenu.tsx'), 'utf8');
   const switcher = readFileSync(join(process.cwd(), 'src/components/WorkspaceSwitcher.tsx'), 'utf8');
   const header = readFileSync(join(process.cwd(), 'src/components/AppHeader.tsx'), 'utf8');
+  const commandCluster = readFileSync(join(process.cwd(), 'src/components/header/CommandCluster.tsx'), 'utf8');
+  const accountMenuTrigger = readFileSync(join(process.cwd(), 'src/components/header/AccountMenuTrigger.tsx'), 'utf8');
   const workspaceShell = readFileSync(join(process.cwd(), 'src/components/WorkspaceShell.tsx'), 'utf8');
   const globals = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
 
@@ -197,9 +199,11 @@ describe('workspace navigation direction and presentation contract', () => {
     expect(mobile).not.toContain('WorkspaceSwitcher');
     expect(mobile).not.toContain('sfm-mobile-workspace');
     expect(header).toContain('<WorkspaceSwitcher adminAccess={adminAccess}');
-    expect(header).toContain('<DensityToggle />');
-    expect(header).toContain('<ThemeToggle />');
-    expect(header).toContain('<UserChip />');
+    // Density/theme render inside AppHeader's CommandCluster composition;
+    // the account chip renders via the AccountMenuTrigger wrapper.
+    expect(commandCluster).toContain('<DensityToggle />');
+    expect(commandCluster).toContain('<ThemeToggle />');
+    expect(accountMenuTrigger).toContain('<UserChip />');
     expect(header).toContain('.sfm-global-actions > .sfm-language-dropdown');
     expect(header).toContain('max-width: 44px');
     expect(mobile).toContain('<DensityToggle />');

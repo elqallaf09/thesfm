@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 const read = (file: string) => readFileSync(join(process.cwd(), file), 'utf8');
 const commandButton = read('src/components/CommandMenuButton.tsx');
 const header = read('src/components/AppHeader.tsx');
+const commandCluster = read('src/components/header/CommandCluster.tsx');
+const commandSearchTrigger = read('src/components/header/CommandSearchTrigger.tsx');
 const sidebar = read('src/components/Sidebar.tsx');
 const themes = read('src/styles/themes.css');
 
@@ -28,7 +30,10 @@ describe('accessibility contracts', () => {
     expect(commandButton).toContain("aria-label={ariaLabel ?? (compact ? t('command_open') : undefined)}");
     expect(commandButton).toContain('<span>{t(\'command_open\')}</span>');
     expect(commandButton).toContain('<kbd aria-hidden="true">{t(\'command_shortcut\')}</kbd>');
-    expect(header).toContain("<CommandMenuButton aria-label={t('command_open')} />");
+    // The translated label flows AppHeader -> CommandCluster -> CommandSearchTrigger -> CommandMenuButton.
+    expect(header).toContain("commandLabel={t('command_open')}");
+    expect(commandCluster).toContain('<CommandSearchTrigger ariaLabel={commandLabel} />');
+    expect(commandSearchTrigger).toContain('<CommandMenuButton aria-label={ariaLabel} />');
   });
 
   it('uses the semantic glass sidebar text token for utility group labels', () => {

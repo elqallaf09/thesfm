@@ -10,31 +10,49 @@
 
 :root {
   --global-header-height: 64px;
+  --app-header-inset-block: 0px;
+  --app-header-inset-inline: 0px;
+  --app-header-gap-block: 0px;
 }
 
 .sfm-global-header {
   position: sticky;
-  inset-block-start: var(--app-header-inset-block);
+  inset-block-start: 0;
   z-index: var(--z-header, 100);
   grid-area: header;
   min-width: 0;
   min-height: var(--global-header-height);
   display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(240px, max-content) minmax(0, 1fr) minmax(360px, max-content);
   grid-template-areas: 'brand workspaces actions';
   align-items: center;
-  gap: 14px;
-  margin: var(--app-header-inset-block) var(--app-header-inset-inline) var(--app-header-gap-block);
-  padding: 8px clamp(12px, 1.5vw, 22px);
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding-inline: 20px;
   box-sizing: border-box;
 }
 
 .sfm-global-brand {
+  /* Must match AppHeader.tsx's own .sfm-global-brand rule exactly - see the
+     .sfm-global-brand-copy comment below for why. Without justify-self here,
+     a grid item defaults to stretch, so the brand link fills its entire
+     grid-column track on first paint; AppHeader's own stylesheet (mounted
+     after hydration) sets justify-self: start, shrinking it to content width.
+     padding-inline-end/margin-inline-end are also absent by default (0) here
+     vs AppHeader's 18px/4px, compounding the same first-paint-to-hydration
+     width jump. Both together produced the actual measured regression: a
+     ~75-93px BrandLockup width delta on narrow (<=1179px) viewports, where
+     the brand column's track is wide enough for stretch vs. content-width to
+     visibly differ. */
   grid-area: brand;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-self: start;
+  gap: 10px;
+  padding-inline-end: 18px;
+  margin-inline-end: 4px;
   text-decoration: none;
 }
 
@@ -44,7 +62,12 @@
 }
 
 .sfm-global-brand-copy {
-  min-width: 0;
+  /* Must match AppHeader.tsx's own .sfm-global-brand-copy rule exactly -
+     this critical CSS governs the header's geometry on first paint, before
+     hydration mounts AppHeader's own <style jsx global>. A mismatched
+     min-width here means the reserved space appears only once hydration
+     completes, producing a visible layout shift at that exact moment. */
+  min-width: 180px;
   display: grid;
   gap: 1px;
 }
@@ -82,7 +105,7 @@
 
 .sfm-workspace-tabs {
   min-width: 0;
-  min-height: var(--control-h);
+  min-height: 44px;
   display: flex;
   align-items: stretch;
   gap: 5px;
@@ -93,7 +116,7 @@
 .sfm-workspace-tab {
   position: relative;
   min-width: max-content;
-  min-height: var(--control-h);
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -130,6 +153,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Must match AppHeader.tsx's own .sfm-global-header .sfm-command-trigger
+   rule exactly - see the .sfm-global-brand-copy comment above for why. A
+   stale @media (max-width: 1499px) version of this rule (forcing a 44px
+   compact width, removed from AppHeader.tsx itself when the header dropped
+   that breakpoint) previously lived here, unsynced - it matched at the
+   1440px desktop test viewport and produced a 44px -> 170px layout shift
+   the moment hydration replaced it with AppHeader's real, unconditional
+   rule below. */
+.sfm-global-header .sfm-command-trigger {
+  width: min(170px, 14vw);
+  min-width: 120px;
+}
+
+/* Must match AppHeader.tsx's unconditional kbd-hide exactly - see the
+   .sfm-global-brand-copy comment above for why. */
+.sfm-global-header .sfm-command-trigger kbd {
+  display: none;
 }
 
 .sfm-language-dropdown {
@@ -222,9 +264,12 @@
 }
 
 .sfm-user-identity {
-  min-width: 0;
+  /* Must match AppHeader.tsx's header-scoped .sfm-user-identity override
+     exactly - see the .sfm-global-brand-copy comment above for why. */
+  min-width: 118px;
   max-width: 118px;
-  flex: 1 1 auto;
+  flex: 0 0 118px;
+  overflow: hidden;
 }
 
 .sfm-user-name {
@@ -381,23 +426,9 @@
   padding: 6px 6px calc(7px + env(safe-area-inset-bottom));
 }
 
-@media (max-width: 1499px) {
-  .sfm-global-header .sfm-command-trigger {
-    width: 44px;
-    min-width: 44px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .sfm-global-header .sfm-command-trigger span,
-  .sfm-global-header .sfm-command-trigger kbd {
-    display: none;
-  }
-}
-
 @media (max-width: 1179px) {
   :root {
-    --global-header-height: 108px;
+    --global-header-height: 92px;
   }
 
   .sfm-global-header {
@@ -407,7 +438,7 @@
       'workspaces workspaces';
     grid-template-rows: 48px 44px;
     row-gap: 0;
-    padding-block: 8px;
+    padding-block: 0;
   }
 
   .sfm-global-workspaces {
@@ -461,6 +492,15 @@
     display: grid;
   }
 
+  /* Must match AppHeader.tsx's own @media (max-width: 767px) rule for this
+     selector exactly - see the .sfm-global-brand rule's comment above for
+     why. Critical CSS previously had no override here at all, leaving the
+     unconditional 170px cap in effect at first paint versus this tighter
+     one post-hydration. */
+  .sfm-global-brand-copy > span {
+    max-width: min(42vw, 160px);
+  }
+
   .sfm-app-shell-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -472,5 +512,32 @@
 
   .sfm-app-main {
     grid-column: 1;
+  }
+}
+
+/* Must match AppHeader.tsx's own @media (max-width: 430px) block exactly -
+   see the .sfm-global-brand rule's comment above for why. This breakpoint
+   was previously entirely absent from critical CSS. AppHeader.tsx's own
+   rule forces the mark's width/height to win against a competing rule
+   elsewhere in its own stylesheet; critical CSS has no such competing rule
+   at first paint, so a plain declaration reaches the same 26px result
+   without spending any of this file's zero-debt forced-priority budget -
+   verified to produce an identical, zero-delta result. */
+@media (max-width: 430px) {
+  .sfm-global-header {
+    padding-inline: 10px;
+  }
+
+  .sfm-global-brand {
+    gap: 7px;
+  }
+
+  .sfm-brand-mark--header {
+    width: 26px;
+    height: 26px;
+  }
+
+  .sfm-global-brand strong {
+    font-size: 13px;
   }
 }

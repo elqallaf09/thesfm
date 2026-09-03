@@ -43,7 +43,6 @@ async function styleSnapshot(locator: Locator) {
   return locator.evaluate(element => {
     const style = getComputedStyle(element);
     const icon = element.querySelector('svg');
-    const indicator = getComputedStyle(element, '::after');
     return {
       background: style.backgroundColor,
       backgroundImage: style.backgroundImage,
@@ -56,8 +55,25 @@ async function styleSnapshot(locator: Locator) {
       outlineWidth: Number.parseFloat(style.outlineWidth),
       shadow: style.boxShadow,
       transform: style.transform,
-      indicatorContent: indicator.content,
-      indicatorHeight: Number.parseFloat(indicator.height),
+    };
+  });
+}
+
+// The active destination is marked by one shared sliding indicator (a
+// sibling <span class="sfm-workspace-indicator">), not a per-item
+// border/fill/::after — see WorkspaceSwitcher.tsx. Snapshot it separately
+// from the tab itself.
+async function indicatorSnapshot(page: Page) {
+  return page.locator('.sfm-workspace-indicator').evaluate(element => {
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return {
+      background: style.backgroundColor,
+      backgroundImage: style.backgroundImage,
+      opacity: Number.parseFloat(style.opacity),
+      height: rect.height,
+      left: rect.left,
+      right: rect.right,
     };
   });
 }
@@ -77,7 +93,7 @@ test.describe('mobile workspace switcher affordance', () => {
     );
   });
 
-  test('all destinations have persistent button surfaces and complete pointer and keyboard states', async ({ page }) => {
+  test('all destinations are reachable, and the shared sliding indicator marks the current one with complete pointer and keyboard states', async ({ page }) => {
     await enterGuestDashboard(page);
     await setLanguage(page, 'en');
 
@@ -90,35 +106,42 @@ test.describe('mobile workspace switcher affordance', () => {
       await expect(tab).toHaveAttribute('href', /\/.+/);
       await expect(tab).toContainText(workspace.labels.en);
       const state = await styleSnapshot(tab);
-      expect(state.background !== transparent || state.backgroundImage !== 'none').toBe(true);
-      expect(state.border).not.toBe(transparent);
-      expect(state.shadow).not.toBe('none');
       expect(state.cursor).toBe('pointer');
       expect(state.height).toBeGreaterThanOrEqual(44);
       expect(state.iconColor).not.toBe(transparent);
     }
 
+    // The active destination is marked by one shared sliding indicator (a
+    // sibling element, not a per-item border/fill/::after) — verify it's
+    // visible and positioned over the selected tab, not the inactive one.
     const selected = navigation.locator('[aria-current="page"]');
     const inactive = navigation.locator('[data-workspace-id="markets-trading"]');
     await expect(selected).toHaveCount(1);
-    const selectedState = await styleSnapshot(selected);
-    const inactiveState = await styleSnapshot(inactive);
-    expect(`${selectedState.background}|${selectedState.backgroundImage}`).not.toBe(`${inactiveState.background}|${inactiveState.backgroundImage}`);
-    expect(selectedState.indicatorContent).not.toBe('none');
-    expect(selectedState.indicatorHeight).toBeGreaterThanOrEqual(3);
+    const selectedBox = await selected.boundingBox();
+    expect(selectedBox).not.toBeNull();
+    // The indicator repositions via a layout effect keyed off locale/dir -
+    // poll rather than reading a single synchronous snapshot, since the
+    // label just changed width (ar -> en) a moment ago via setLanguage.
+    await expect.poll(async () => {
+      const indicator = await indicatorSnapshot(page);
+      return indicator.right - (selectedBox!.x + selectedBox!.width);
+    }).toBeLessThanOrEqual(2);
+    const indicator = await indicatorSnapshot(page);
+    expect(indicator.opacity).toBeGreaterThan(0);
+    expect(indicator.background !== transparent || indicator.backgroundImage !== 'none').toBe(true);
+    expect(indicator.left).toBeGreaterThanOrEqual(selectedBox!.x - 2);
 
+    const inactiveState = await styleSnapshot(inactive);
     await inactive.hover();
     const hoverState = await styleSnapshot(inactive);
-    expect(`${hoverState.background}|${hoverState.border}|${hoverState.shadow}`)
-      .not.toBe(`${inactiveState.background}|${inactiveState.border}|${inactiveState.shadow}`);
+    expect(hoverState.background).not.toBe(inactiveState.background);
 
     const box = await inactive.boundingBox();
     expect(box).not.toBeNull();
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     await page.mouse.down();
     const pressedState = await styleSnapshot(inactive);
-    expect(pressedState.shadow).not.toBe(hoverState.shadow);
-    expect(pressedState.transform).not.toBe('none');
+    expect(pressedState.background).not.toBe(hoverState.background);
     await page.mouse.move(0, 0);
     await page.mouse.up();
 
@@ -131,27 +154,30 @@ test.describe('mobile workspace switcher affordance', () => {
     expect(focusState.outlineWidth).toBeGreaterThanOrEqual(2);
   });
 
-  test('light and dark modes retain distinct inactive surfaces and a dominant selected item', async ({ page }) => {
+  test('light and dark modes both render a visible, accent-colored indicator with a dominant selected label', async ({ page }) => {
     await enterGuestDashboard(page, 'light');
     await setLanguage(page, 'fr');
     const inactive = page.locator('[data-workspace-id="markets-trading"]');
     const active = page.locator('.sfm-workspace-navigation [aria-current="page"]');
     const lightInactive = await styleSnapshot(inactive);
     const lightActive = await styleSnapshot(active);
+    const lightIndicator = await indicatorSnapshot(page);
 
     await page.locator('.sfm-global-header .sfm-theme-toggle:not(.sfm-density-toggle)').click();
     await expect(page.locator('html')).toHaveClass(/\bdark\b/);
     const darkInactive = await styleSnapshot(page.locator('[data-workspace-id="markets-trading"]'));
     const darkActive = await styleSnapshot(page.locator('.sfm-workspace-navigation [aria-current="page"]'));
+    const darkIndicator = await indicatorSnapshot(page);
 
-    for (const state of [lightInactive, lightActive, darkInactive, darkActive]) {
-      expect(state.background !== transparent || state.backgroundImage !== 'none').toBe(true);
-      expect(state.border).not.toBe(transparent);
-      expect(state.color).not.toBe(state.background);
+    for (const indicator of [lightIndicator, darkIndicator]) {
+      expect(indicator.opacity).toBeGreaterThan(0);
+      expect(indicator.background !== transparent || indicator.backgroundImage !== 'none').toBe(true);
+      expect(indicator.height).toBeGreaterThanOrEqual(2);
     }
-    expect(`${darkInactive.background}|${darkInactive.border}`).not.toBe(`${lightInactive.background}|${lightInactive.border}`);
-    expect(`${lightActive.background}|${lightActive.backgroundImage}`).not.toBe(`${lightInactive.background}|${lightInactive.backgroundImage}`);
-    expect(`${darkActive.background}|${darkActive.backgroundImage}`).not.toBe(`${darkInactive.background}|${darkInactive.backgroundImage}`);
+    // The selected label reads as dominant via colour + weight, distinct
+    // from the inactive label, in both themes.
+    expect(lightActive.color).not.toBe(lightInactive.color);
+    expect(darkActive.color).not.toBe(darkInactive.color);
   });
 
   test('Arabic, English, and French stay aligned and reachable at every required width', async ({ page }) => {
@@ -200,20 +226,98 @@ test.describe('mobile workspace switcher affordance', () => {
       if (frame === page.mainFrame()) navigations.push(new URL(frame.url()).pathname);
     });
 
+    // locator.click({ position }) (not a raw page.mouse.click at
+    // pre-computed page coordinates) - Playwright re-checks the element is
+    // still stable/visible/unobscured immediately before dispatching and
+    // auto-retries if not, which a stale boundingBox() snapshot can't do.
+    // position stays near the inline-end edge to keep testing "the full
+    // link area is clickable", not just its center.
     const marketTab = page.locator('[data-workspace-id="markets-trading"]');
     const marketBox = await marketTab.boundingBox();
     expect(marketBox).not.toBeNull();
-    await page.mouse.click(marketBox!.x + 2, marketBox!.y + marketBox!.height / 2);
-    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);
+    await marketTab.click({ position: { x: 2, y: marketBox!.height / 2 } });
+    // 'commit' (not the default 'load') - next/link performs a client-side
+    // history transition, which never fires a browser 'load' event, so the
+    // default waitUntil can hang indefinitely on an otherwise-successful
+    // navigation. Only the URL match itself is the real assertion here.
+    await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/, { waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-id="markets-trading"]')).toHaveAttribute('aria-current', 'page');
     expect(navigations.filter(path => path === '/ai-analyst/overview')).toHaveLength(1);
 
     const businessTab = page.locator('[data-workspace-id="business-projects"]');
     const businessBox = await businessTab.boundingBox();
     expect(businessBox).not.toBeNull();
-    await page.mouse.click(businessBox!.x + businessBox!.width - 2, businessBox!.y + businessBox!.height / 2);
-    await page.waitForURL(/\/investment-companies(?:\?|$)/);
+    await businessTab.click({ position: { x: businessBox!.width - 2, y: businessBox!.height / 2 } });
+    await page.waitForURL(/\/investment-companies(?:\?|$)/, { waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-id="business-projects"]')).toHaveAttribute('aria-current', 'page');
     expect(navigations.filter(path => path === '/investment-companies')).toHaveLength(1);
+  });
+});
+
+// Regression coverage for a WebKit-specific bug: calling
+// activeLink.scrollIntoView({ inline: 'center' }) unconditionally on mount -
+// even when the target was already fully visible, where the browser itself
+// would no-op the scroll - caused mobile-webkit to render the sticky header
+// and body shifted a few pixels off the left edge in RTL. The fix gates the
+// call behind an actual-visibility check (see WorkspaceSwitcher.tsx). This
+// suite runs on both desktop Chromium and mobile WebKit - the two engines
+// that matter for this regression - unlike the chromium-only suite above.
+test.describe('workspace switcher RTL mobile-webkit overflow regression', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      !['chromium-desktop', 'mobile-webkit'].includes(testInfo.project.name),
+      'Regression check runs on desktop Chromium and mobile WebKit only - the two engines relevant to this bug.',
+    );
+  });
+
+  test('RTL mobile viewport keeps document width in sync and every destination fully reachable', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await enterGuestDashboard(page);
+    await setLanguage(page, 'ar');
+
+    const navigation = page.locator('header.sfm-global-header .sfm-workspace-navigation');
+    await expect(navigation).toHaveAttribute('dir', 'rtl');
+
+    // document.documentElement.scrollWidth must never exceed its own
+    // clientWidth (the regression's exact assertion: scrollWidth === the
+    // reported available width, not shifted/inflated by a stray scroll).
+    await expect.poll(() => page.evaluate(() => {
+      const root = document.documentElement;
+      return Math.max(root.scrollWidth, document.body.scrollWidth) - root.clientWidth;
+    })).toBeLessThanOrEqual(1);
+
+    // No ancestor box (body, the sticky header) sits shifted off the left
+    // edge - the exact symptom of the WebKit RTL scrollIntoView regression.
+    const bounds = await page.evaluate(() => {
+      const clientWidth = document.documentElement.clientWidth;
+      return ['body', '.sfm-global-header'].map(selector => {
+        const element = document.querySelector(selector);
+        if (!element) return { selector, missing: true as const };
+        const rect = element.getBoundingClientRect();
+        return { selector, left: rect.left, right: rect.right, clientWidth };
+      });
+    });
+    for (const box of bounds) {
+      if ('missing' in box) continue;
+      expect(box.left, box.selector).toBeGreaterThanOrEqual(-1);
+      expect(box.right, box.selector).toBeLessThanOrEqual(box.clientWidth + 1);
+    }
+
+    // First, middle, and last destinations must each be reachable and fully
+    // within the viewport once scrolled into view - not merely present in
+    // the DOM behind an off-screen rail.
+    const first = WORKSPACES[0];
+    const middle = WORKSPACES[Math.floor(WORKSPACES.length / 2)];
+    const last = WORKSPACES[WORKSPACES.length - 1];
+    const viewportWidth = page.viewportSize()!.width;
+    for (const workspace of [first, middle, last]) {
+      const tab = navigation.locator(`[data-workspace-id="${workspace.id}"]`);
+      await tab.scrollIntoViewIfNeeded();
+      await expect(tab).toBeVisible();
+      const box = await tab.boundingBox();
+      expect(box, workspace.id).not.toBeNull();
+      expect(box!.x, workspace.id).toBeGreaterThanOrEqual(-1);
+      expect(box!.x + box!.width, workspace.id).toBeLessThanOrEqual(viewportWidth + 1);
+    }
   });
 });
