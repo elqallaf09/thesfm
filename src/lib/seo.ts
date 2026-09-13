@@ -57,6 +57,7 @@ export const publicRoutes = [
   '/ebooks/feasibility-study-en',
   '/ebooks/feasibility-study-fr',
   '/financial-theories',
+  '/global-markets',
   '/privacy',
   '/terms',
 ] as const;
