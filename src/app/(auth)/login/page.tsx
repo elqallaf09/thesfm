@@ -21,7 +21,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { CurrencySelect } from '@/components/CurrencySelect';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AuthThemeControl } from '@/components/auth/AuthThemeControl';
+import { PremiumLoginShowcase } from '@/components/auth/PremiumLoginShowcase';
+import { PremiumLoginStyles } from '@/components/auth/PremiumLoginStyles';
 import { isEmail } from '@/lib/authSecurity';
 import { loginHrefForDestination, mergeClientHash } from '@/lib/auth/redirects';
 import { trackEvent } from '@/lib/analytics';
@@ -35,6 +37,7 @@ type TwoFactorChallenge = {
   kind: 'email';
 };
 const MIN_PASSWORD_LENGTH = 6;
+const REMEMBERED_IDENTIFIER_KEY = 'sfm.auth.rememberedIdentifier.v1';
 
 const COUNTRY_OPTIONS = [
   { value: 'Kuwait', ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' },
@@ -348,6 +351,12 @@ const TEXT = {
 
 type AuthCopy = Record<keyof typeof TEXT.ar, string>;
 
+const LOGIN_INTRO = {
+  ar: { title: 'مرحباً بعودتك', body: 'سجّل دخولك للوصول إلى حسابك ومتابعة خطتك المالية.', remember: 'تذكرني', createLead: 'ليس لديك حساب؟' },
+  en: { title: 'Welcome back', body: 'Sign in to access your account and keep your financial plan on track.', remember: 'Remember me', createLead: "Don't have an account?" },
+  fr: { title: 'Heureux de vous revoir', body: 'Connectez-vous pour accéder à votre compte et suivre votre plan financier.', remember: 'Se souvenir de moi', createLead: 'Vous n’avez pas de compte ?' },
+} as const;
+
 export default function LoginPage() {
   return (
     <Suspense fallback={<main style={{ minHeight: '100vh', background: 'var(--background)' }} />}>
@@ -410,6 +419,7 @@ function LoginContent() {
   const [termsError, setTermsError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [message, setMessage] = useState<Message>(null);
   const [submitting, setSubmitting] = useState(false);
   const redirectingRef = useRef(false);
@@ -431,8 +441,6 @@ function LoginContent() {
       typeof window === 'undefined' ? '' : window.location.hash,
     );
   }, [searchParams]);
-  const passwordStrength = useMemo(() => strengthFor(password), [password]);
-  const passwordScore = useMemo(() => scorePassword(password), [password]);
 
   function completeAuthRedirect(targetPath: string) {
     redirectingRef.current = true;
@@ -444,6 +452,10 @@ function LoginContent() {
 
   useEffect(() => {
     setHydrated(true);
+    try {
+      const rememberedIdentifier = localStorage.getItem(REMEMBERED_IDENTIFIER_KEY);
+      if (rememberedIdentifier) setUsername(rememberedIdentifier);
+    } catch { /* Authentication remains usable when storage is unavailable. */ }
   }, []);
 
   useEffect(() => {
@@ -590,6 +602,10 @@ function LoginContent() {
       if (result.code === 'rate_limited') return text.errorLoginGeneric;
       return text.errorLoginGeneric;
     }
+    try {
+      if (rememberMe) localStorage.setItem(REMEMBERED_IDENTIFIER_KEY, loginIdentifier);
+      else localStorage.removeItem(REMEMBERED_IDENTIFIER_KEY);
+    } catch { /* Remembering the identifier is optional and never stores the password. */ }
     if (result.code === 'mfa_email_required') {
       setTwoFactorChallenge({ kind: 'email' });
       setTwoFactorCode('');
@@ -828,43 +844,25 @@ function LoginContent() {
     }
   }
 
-  const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : mode === 'twoFactor' ? text.twoFactorTitle : text.login;
+  const loginIntro = LOGIN_INTRO[lang];
+  const cardTitle = mode === 'register' ? text.create : mode === 'forgot' ? text.forgot : mode === 'reset' ? text.reset : mode === 'twoFactor' ? text.twoFactorTitle : loginIntro.title;
   const isRegister = mode === 'register';
 
   return (
     <main className="login-shell" dir={dir}>
       <div className="login-stage">
-        <aside className="login-showcase" aria-hidden="true">
-          <div className="showcase-brand">
-            <Image src="/icons/icon-192.png" alt="" width={56} height={56} priority unoptimized />
-            <strong>THE SFM</strong>
-          </div>
-          <div className="showcase-copy">
-            <span>THE SFM</span>
-            <h2>{text.title}</h2>
-            <p>{text.subtitle}</p>
-          </div>
-          <div className="showcase-visual">
-            <div className="visual-row visual-row--wide" />
-            <div className="visual-row" />
-            <div className="visual-grid">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-        </aside>
+        <PremiumLoginShowcase lang={lang} />
 
         <section className={`login-card ${isRegister ? 'wide' : ''}`} aria-labelledby="auth-title">
         <div className="language-row">
-          <LanguageSwitcher variant="gold" compact />
-          <ThemeToggle />
+          <LanguageSwitcher compact />
+          <AuthThemeControl />
         </div>
 
         <div className="brand">
-          <Image src="/icons/icon-192.png" alt="THE SFM" width={88} height={88} priority unoptimized className="mark sfm-brand-mark sfm-brand-mark--auth" />
+          <Image src="/brand/sfm-original-logo.png" alt="THE SFM" width={88} height={88} priority className="mark sfm-brand-mark sfm-brand-mark--auth" />
           <h1 id="auth-title">{cardTitle}</h1>
-          <p>{mode === 'forgot' ? text.sendResetBody : mode === 'reset' ? text.noReveal : mode === 'twoFactor' ? text.twoFactorBody : text.subtitle}</p>
+          <p>{mode === 'forgot' ? text.sendResetBody : mode === 'reset' ? text.noReveal : mode === 'twoFactor' ? text.twoFactorBody : loginIntro.body}</p>
         </div>
 
         {isRegister && (
@@ -891,6 +889,13 @@ function LoginContent() {
                 ariaLabel={showPassword ? text.hidePassword : text.showPassword}
                 autoComplete="current-password"
               />
+              <div className="login-inline-options">
+                <label className="remember-row">
+                  <input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} />
+                  <span>{loginIntro.remember}</span>
+                </label>
+                <button type="button" className="link-btn" onClick={() => setAuthMode('forgot')}>{text.forgotLink}</button>
+              </div>
             </>
           )}
 
@@ -1071,6 +1076,20 @@ function LoginContent() {
               </svg>
               {socialLoading === 'google' ? text.signingIn : text.signInGoogle}
             </button>
+            <button
+              type="button"
+              className="guest-action guest-btn"
+              onClick={enterGuestMode}
+              disabled={!hydrated || guestSubmitting || submitting || !!socialLoading}
+              aria-busy={guestSubmitting}
+            >
+              <UserRound size={17} aria-hidden="true" />{' '}
+              {guestSubmitting ? text.signingIn : text.guest}
+            </button>
+            <div className="account-action">
+              <span>{loginIntro.createLead}</span>
+              <button type="button" className="link-btn" onClick={() => setAuthMode('register')}>{text.switchCreate}</button>
+            </div>
           </div>
         )}
 
@@ -1085,17 +1104,7 @@ function LoginContent() {
               {text.switchLogin}
             </button>
           )}
-          {mode === 'login' && (
-            <button type="button" className="link-btn" onClick={() => setAuthMode('register')}>
-              {text.switchCreate}
-            </button>
-          )}
-          {mode === 'login' && (
-            <button type="button" className="link-btn" onClick={() => setAuthMode('forgot')}>
-              {text.forgotLink}
-            </button>
-          )}
-          {(mode === 'login' || mode === 'register') && (
+          {mode === 'register' && (
             <button
               type="button"
               className="link-btn guest-btn"
@@ -1184,17 +1193,6 @@ function LoginContent() {
           display:grid;
           gap:12px;
         }
-        .showcase-copy span{
-          width:max-content;
-          border:1px solid color-mix(in srgb,var(--accent) 42%,transparent);
-          color:var(--hero-foreground-muted);
-          background:color-mix(in srgb,var(--accent) 16%,transparent);
-          border-radius:var(--radius-pill);
-          padding:7px 11px;
-          font-size:12px;
-          font-weight:600;
-          letter-spacing:0;
-        }
         .showcase-copy h2{
           margin:0;
           color:var(--hero-foreground);
@@ -1209,29 +1207,6 @@ function LoginContent() {
           font-size:16px;
           line-height:1.9;
           font-weight:400;
-        }
-        .showcase-visual{
-          border:1px solid color-mix(in srgb,var(--hero-foreground) 18%,transparent);
-          background:color-mix(in srgb,var(--hero-gradient-start) 54%,transparent);
-          border-radius:var(--radius-sm);
-          padding:18px;
-          display:grid;
-          gap:12px;
-          backdrop-filter:blur(12px);
-        }
-        .visual-row{
-          height:12px;
-          width:62%;
-          border-radius:var(--radius-pill);
-          background:var(--accent);
-        }
-        .visual-row--wide{width:86%;height:14px}
-        .visual-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
-        .visual-grid span{
-          height:92px;
-          border-radius:var(--radius-sm);
-          background:color-mix(in srgb,var(--hero-foreground) 10%,transparent);
-          border:1px solid color-mix(in srgb,var(--hero-foreground) 14%,transparent);
         }
         .login-card{
           width:100%;
@@ -1346,6 +1321,7 @@ function LoginContent() {
           .pref-row{grid-template-columns:1fr}
         }
       `}</style>
+      <PremiumLoginStyles />
     </main>
   );
 }
@@ -1368,6 +1344,7 @@ function AuthField({
       <span className="auth-label">
         {icon && <span className="auth-icon">{icon}</span>}
         {label}
+        {required ? <span aria-hidden="true">*</span> : null}
       </span>
       {children}
     </label>
