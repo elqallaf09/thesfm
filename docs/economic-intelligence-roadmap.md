@@ -77,15 +77,32 @@
 - Refuse cross-currency ranking without an explicit conversion layer
 - Return an auditable comparison reason rather than an unexplained AI recommendation
 
-## Next — Phase 7.9 — Decision Experience
-- Surface the typed templates in the Decisions Center UI
-- Dynamic AR / EN / FR fields by decision type
-- Cash vs finance toggle for large purchases
-- New loan vs repay debt selector
-- Before/after 3/6/12 month comparison cards
-- Side-by-side candidate comparison UI
-- Persist and reopen comparison sets
-- Mobile-first responsive validation
+## Phase 7.9 — Decision Experience — implemented in PR #119
+- Interactive Decision Lab at `/decisions/simulator`
+- Dynamic AR / EN / FR decision fields
+- Cash vs finance flow for purchases
+- New-loan vs debt-repayment flow
+- Project and investment scenario inputs
+- Side-by-side option comparison using real user finance data
+- Incomplete alternatives are not ranked
+- Full-width responsive simulation workspace
+
+## Phase 7.10 — Economic Intelligence Home — implemented in PR #119
+- Dashboard-level economic state summary built from the canonical Financial Digital Twin
+- Deterministic top-risk prioritization
+- Deterministic opportunity prioritization
+- Highest-risk unresolved user decision surfaced for attention
+- Direct links into Decisions Center and Decision Lab
+- AR / EN / FR presentation
+- Unit coverage for risk, opportunity and decision-priority selection
+- Existing detailed Finance Dashboard Intelligence remains available underneath the summary
+
+## Next — Phase 7.11 — Proactive Intelligence
+- Convert high-priority risk/opportunity states into auditable in-app intelligence events
+- Reuse the smart notifications center rather than creating a parallel notification stack
+- Generate action-oriented reminders only when source data and confidence meet thresholds
+- Track whether users act on, dismiss or resolve intelligence events
+- Feed resolved outcomes back into decision history without claiming causal certainty
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
