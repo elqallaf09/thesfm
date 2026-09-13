@@ -7,7 +7,7 @@ export type EconomicAdvisorId = 'finance' | 'investment' | 'business';
 export type AdvisorEvidenceFact = {
   key: string;
   value: string | number | null;
-  source: 'financial_twin' | 'forecast' | 'economic_context' | 'personal_impact' | 'domain_context';
+  source: 'financial_twin' | 'forecast' | 'economic_context' | 'personal_impact' | 'domain_context' | 'decision_memory';
 };
 
 export type AdvisorGroundingInput = {
@@ -17,6 +17,7 @@ export type AdvisorGroundingInput = {
   impacts?: PersonalEconomicImpact[];
   hasMarketEvidence?: boolean;
   hasBusinessEvidence?: boolean;
+  decisionMemoryFacts?: Array<{ key: string; value: string | number }>;
 };
 
 export type AdvisorGrounding = {
@@ -35,6 +36,7 @@ const COMMON_PROHIBITED_CLAIMS = [
   'fabricated_user_data',
   'fabricated_market_data',
   'licensed_legal_tax_or_investment_advice_claim',
+  'causal_claim_from_decision_memory',
 ] as const;
 
 function clamp(value: number) {
@@ -104,6 +106,12 @@ export function buildAdvisorGrounding(
 
   for (const impact of input.impacts ?? []) {
     facts.push({ key: `impact:${impact.code}`, value: impact.severity, source: 'personal_impact' });
+  }
+
+  const memoryFacts = input.decisionMemoryFacts ?? [];
+  if (memoryFacts.length > 0) {
+    for (const fact of memoryFacts) facts.push({ key: fact.key, value: fact.value, source: 'decision_memory' });
+    allowedClaims.push('describe_user_owned_decision_history_without_causal_inference');
   }
 
   if (advisor === 'finance') {
