@@ -50,6 +50,7 @@ export function shouldIgnoreAnalyticsRequest(request: Request, bodyReferrer?: st
   if (vercelEnvironment && vercelEnvironment !== 'production') return true;
 
   const candidates = [
+    request.url,
     request.headers.get('x-forwarded-host'),
     request.headers.get('host'),
     request.headers.get('origin'),
