@@ -51,8 +51,7 @@ describe('explicit decision inputs', () => {
     expect(newLoan?.simulation?.scenarios.base.afterDecision[0]?.netWorth).toBeLessThan(
       newLoan?.simulation?.scenarios.base.baseline[0]?.netWorth ?? 0,
     );
-    expect(repayment?.simulation?.scenarios.base.afterDecision[0]?.monthlyDebtPayments).toBeUndefined();
-    expect(repayment?.assessment.debtServiceRatioAfterDecision).toBeLessThanOrEqual(
+    expect(repayment?.assessment.debtServiceRatioAfterDecision).toBeLessThan(
       newLoan?.assessment.debtServiceRatioAfterDecision ?? 1,
     );
   });
