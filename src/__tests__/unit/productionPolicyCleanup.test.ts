@@ -14,11 +14,15 @@ describe('production policy cleanup', () => {
     expect(middleware).not.toContain('microphone=(self), camera=(self)');
   });
 
-  it('hardens the page CSP without introducing provider-breaking default-src restrictions', () => {
+  it('hardens CSP consistently without introducing provider-breaking default-src restrictions', () => {
     const middleware = read('src/middleware.ts');
+    const nextConfig = read('next.config.ts');
+    const safeBaseline = "base-uri 'self'; object-src 'none'; frame-ancestors 'self'";
 
-    expect(middleware).toContain("base-uri 'self'; object-src 'none'; frame-ancestors 'self'");
+    expect(middleware).toContain(safeBaseline);
+    expect(nextConfig).toContain(safeBaseline);
     expect(middleware).not.toContain("default-src 'self'");
+    expect(nextConfig).not.toContain("default-src 'self'");
   });
 
   it('generates route inventory from source instead of preserving stale route counts', () => {
