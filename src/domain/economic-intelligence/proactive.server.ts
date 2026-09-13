@@ -1,6 +1,6 @@
 import 'server-only';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
-import type { SmartNotification, NotificationLang } from '@/lib/notifications/generateNotifications';
+import type { SmartNotification, NotificationLang, SmartNotificationSeverity, SmartNotificationType } from '@/lib/notifications/generateNotifications';
 import { buildFinancialTwinSnapshot } from './digitalTwin';
 import { buildEconomicHomeSummary } from '@/lib/dashboard/economicHomeSummary';
 
@@ -28,12 +28,54 @@ const COPY = {
   },
 } as const;
 
+type EventDraft = {
+  eventKey: string;
+  title: string;
+  message: string;
+  type: SmartNotificationType;
+  severity: SmartNotificationSeverity;
+  actionUrl: string;
+  sourceId?: string | null;
+};
+
 function currencyFromProfile(profile: Record<string, unknown> | null) {
   for (const value of [profile?.default_currency, profile?.preferred_currency, profile?.currency]) {
     const currency = String(value ?? '').trim().toUpperCase();
     if (/^[A-Z]{3}$/.test(currency)) return currency;
   }
   return 'KWD';
+}
+
+function riskFingerprint(code: string, twin: ReturnType<typeof buildFinancialTwinSnapshot>) {
+  if (code === 'monthly_deficit') {
+    const ratio = twin.monthlyIncome > 0 ? Math.abs(twin.monthlySurplus) / twin.monthlyIncome : 1;
+    return ratio >= 0.2 ? 'severe' : ratio >= 0.1 ? 'moderate' : 'mild';
+  }
+  if (code === 'low_liquidity') return twin.runwayMonths !== null && twin.runwayMonths < 1 ? 'under-1m' : '1-3m';
+  if (code === 'high_debt') return twin.debtServiceRatio !== null && twin.debtServiceRatio >= 0.5 ? 'over-50' : '35-50';
+  return 'base';
+}
+
+function isUuid(value: unknown) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? ''));
+}
+
+function normalizeStored(row: any, draft: EventDraft): SmartNotification {
+  const status = row?.status === 'archived' ? 'archived' : row?.status === 'read' || row?.read === true ? 'read' : 'unread';
+  return {
+    id: String(row?.id ?? draft.eventKey),
+    title: draft.title,
+    message: draft.message,
+    type: draft.type,
+    severity: draft.severity,
+    sourceModule: 'economic_intelligence',
+    sourceId: draft.sourceId ?? null,
+    actionUrl: draft.actionUrl,
+    status,
+    dueDate: null,
+    createdAt: row?.created_at ?? new Date().toISOString(),
+    isDynamic: false,
+  };
 }
 
 export async function loadProactiveEconomicEvents(userId: string, lang: NotificationLang): Promise<SmartNotification[]> {
@@ -64,22 +106,68 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
   }));
   const summary = buildEconomicHomeSummary(twin, [], decisions);
   const copy = COPY[lang];
-  const now = new Date().toISOString();
-  const events: SmartNotification[] = [];
-  const add = (event: Omit<SmartNotification, 'status' | 'createdAt' | 'isDynamic'>) => events.push({ ...event, status: 'unread', createdAt: now, isDynamic: true });
+  const drafts: EventDraft[] = [];
 
-  if (summary.riskCode === 'monthly_deficit') add({ id: 'economic:risk:monthly-deficit', title: copy.deficitTitle, message: copy.deficitMessage, type: 'expense', severity: 'danger', sourceModule: 'economic_intelligence', actionUrl: '/dashboard' });
-  else if (summary.riskCode === 'low_liquidity') add({ id: 'economic:risk:low-liquidity', title: copy.liquidityTitle, message: copy.liquidityMessage, type: 'general', severity: 'warning', sourceModule: 'economic_intelligence', actionUrl: '/dashboard' });
-  else if (summary.riskCode === 'high_debt') add({ id: 'economic:risk:high-debt', title: copy.debtTitle, message: copy.debtMessage, type: 'general', severity: 'warning', sourceModule: 'economic_intelligence', actionUrl: '/debts' });
+  if (summary.riskCode === 'monthly_deficit') drafts.push({ eventKey: `risk:monthly-deficit:${riskFingerprint(summary.riskCode, twin)}`, title: copy.deficitTitle, message: copy.deficitMessage, type: 'expense', severity: 'danger', actionUrl: '/dashboard' });
+  else if (summary.riskCode === 'low_liquidity') drafts.push({ eventKey: `risk:low-liquidity:${riskFingerprint(summary.riskCode, twin)}`, title: copy.liquidityTitle, message: copy.liquidityMessage, type: 'general', severity: 'warning', actionUrl: '/dashboard' });
+  else if (summary.riskCode === 'high_debt') drafts.push({ eventKey: `risk:high-debt:${riskFingerprint(summary.riskCode, twin)}`, title: copy.debtTitle, message: copy.debtMessage, type: 'general', severity: 'warning', actionUrl: '/debts' });
 
   const opportunityMessage = summary.opportunityCode === 'build_liquidity' ? copy.buildLiquidity
     : summary.opportunityCode === 'reduce_debt' ? copy.reduceDebt
       : summary.opportunityCode === 'invest_surplus' ? copy.investSurplus
         : summary.opportunityCode === 'improve_data' ? copy.improveData
           : null;
-  if (opportunityMessage && twin.dataQuality.completeness >= 0.8) add({ id: `economic:opportunity:${summary.opportunityCode}`, title: copy.opportunityTitle, message: opportunityMessage, type: 'general', severity: 'info', sourceModule: 'economic_intelligence', actionUrl: summary.opportunityCode === 'invest_surplus' ? '/decisions/simulator' : '/dashboard' });
+  if (opportunityMessage && twin.dataQuality.completeness >= 0.8) drafts.push({
+    eventKey: `opportunity:${summary.opportunityCode}`,
+    title: copy.opportunityTitle,
+    message: opportunityMessage,
+    type: 'general',
+    severity: 'info',
+    actionUrl: summary.opportunityCode === 'invest_surplus' ? '/decisions/simulator' : '/dashboard',
+  });
 
-  if (summary.attentionDecision?.id) add({ id: `economic:decision:${summary.attentionDecision.id}`, title: copy.decisionTitle, message: copy.decisionMessage(summary.attentionDecision.title), type: 'general', severity: summary.attentionDecision.status === 'high_risk' ? 'danger' : 'warning', sourceModule: 'economic_intelligence', sourceId: summary.attentionDecision.id, actionUrl: `/decisions?decision=${encodeURIComponent(summary.attentionDecision.id)}` });
+  if (summary.attentionDecision?.id) drafts.push({
+    eventKey: `decision:${summary.attentionDecision.id}:${summary.attentionDecision.status ?? 'review'}:${Math.round((summary.attentionDecision.riskScore ?? 0) / 10) * 10}`,
+    title: copy.decisionTitle,
+    message: copy.decisionMessage(summary.attentionDecision.title),
+    type: 'general',
+    severity: summary.attentionDecision.status === 'high_risk' ? 'danger' : 'warning',
+    sourceId: summary.attentionDecision.id,
+    actionUrl: `/decisions?decision=${encodeURIComponent(summary.attentionDecision.id)}`,
+  });
 
-  return events;
+  if (drafts.length === 0) return [];
+
+  const keys = drafts.map(draft => draft.eventKey);
+  const existingResult = await admin
+    .from('notifications')
+    .select('id,event_key,status,read,created_at')
+    .eq('user_id', userId)
+    .eq('source_module', 'economic_intelligence')
+    .in('event_key', keys);
+  if (existingResult.error) throw existingResult.error;
+
+  const existing = new Map((existingResult.data ?? []).map((row: any) => [String(row.event_key), row]));
+  const missing = drafts.filter(draft => !existing.has(draft.eventKey));
+  if (missing.length > 0) {
+    const insertResult = await admin.from('notifications').insert(missing.map(draft => ({
+      user_id: userId,
+      type: draft.severity === 'danger' || draft.severity === 'warning' ? 'warning' : 'info',
+      title: draft.title,
+      message: draft.message,
+      read: false,
+      link: draft.actionUrl,
+      severity: draft.severity,
+      source_module: 'economic_intelligence',
+      source_id: draft.sourceId && isUuid(draft.sourceId) ? draft.sourceId : null,
+      action_url: draft.actionUrl,
+      status: 'unread',
+      event_key: draft.eventKey,
+      metadata: { economic_intelligence: true, event_key: draft.eventKey },
+    }))).select('id,event_key,status,read,created_at');
+    if (insertResult.error && insertResult.error.code !== '23505') throw insertResult.error;
+    for (const row of insertResult.data ?? []) existing.set(String((row as any).event_key), row);
+  }
+
+  return drafts.map(draft => normalizeStored(existing.get(draft.eventKey), draft));
 }
