@@ -27,11 +27,30 @@ function severityForProviderStatus(status: MarketSystemState['capabilityMatrix']
   return 'warning';
 }
 
+function latestReminderRunPerType(
+  runs: OperationsCenterState['subscriptionReminders']['recentRuns'],
+): OperationsCenterState['subscriptionReminders']['recentRuns'] {
+  const latest = new Map<string, OperationsCenterState['subscriptionReminders']['recentRuns'][number]>();
+  for (const run of runs) {
+    const current = latest.get(run.runType);
+    if (!current) {
+      latest.set(run.runType, run);
+      continue;
+    }
+    const runTime = run.startedAt ? Date.parse(run.startedAt) : Number.NEGATIVE_INFINITY;
+    const currentTime = current.startedAt ? Date.parse(current.startedAt) : Number.NEGATIVE_INFINITY;
+    if (runTime > currentTime) latest.set(run.runType, run);
+  }
+  return Array.from(latest.values());
+}
+
 /**
  * Turns real, already-collected error text into a flat, explorable issue list. Every field is
- * sourced from an existing timestamp/reason string — nothing here is invented. Where the
- * underlying tracker only records the LAST failure (not the first), `firstOccurrence` is
- * deliberately left `null` rather than guessed equal to `lastOccurrence`.
+ * sourced from an existing timestamp/reason string — nothing here is invented. A provider-level
+ * failure is considered an active platform root cause only when no connected provider currently
+ * serves the same capability; redundant-provider failures remain visible in provider diagnostics
+ * without falsely degrading the whole Operations Center. Historical reminder failures likewise
+ * stop being active once a newer run of the same type succeeds.
  */
 export function buildRootCauseIssues(input: {
   market: MarketSystemState;
@@ -44,6 +63,14 @@ export function buildRootCauseIssues(input: {
   for (const cell of input.market.capabilityMatrix) {
     const problematic = cell.status === 'disconnected' || cell.status === 'degraded' || cell.status === 'rate_limited' || cell.status === 'misconfigured';
     if (!problematic || !cell.lastErrorReason) continue;
+
+    const connectedAlternative = input.market.capabilityMatrix.some(other =>
+      other.capability === cell.capability
+      && other.provider !== cell.provider
+      && other.status === 'connected',
+    );
+    if (connectedAlternative) continue;
+
     issues.push({
       id: `market:${cell.provider}:${cell.capability}`,
       problemKey: 'ops_center_root_cause_problem_provider_capability',
@@ -64,6 +91,14 @@ export function buildRootCauseIssues(input: {
   for (const provider of input.marketNews) {
     const problematic = provider.healthStatus === 'degraded' || provider.healthStatus === 'unhealthy' || provider.healthStatus === 'rate_limited';
     if (!problematic || !provider.latestErrorSummary) continue;
+
+    const healthyAlternative = input.marketNews.some(other =>
+      other.providerId !== provider.providerId
+      && other.enabled
+      && other.healthStatus === 'healthy',
+    );
+    if (healthyAlternative) continue;
+
     issues.push({
       id: `market_news:${provider.providerId}`,
       problemKey: 'ops_center_root_cause_problem_news_provider',
@@ -100,7 +135,7 @@ export function buildRootCauseIssues(input: {
     });
   }
 
-  for (const run of input.reminderRuns) {
+  for (const run of latestReminderRunPerType(input.reminderRuns)) {
     if ((run.status !== 'failed' && run.status !== 'partial') || !run.message) continue;
     issues.push({
       id: `reminder_run:${run.id}`,
