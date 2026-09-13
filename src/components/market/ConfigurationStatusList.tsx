@@ -1,14 +1,15 @@
 'use client';
 
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import type { ProviderConfigEntry } from '@/lib/market-state/types';
 
 /**
  * Admin-only safe configuration overview — env var NAME and presence only, never the credential
- * value. The API route omits `configuration` entirely (null, not []) from the public payload, so
- * this component simply renders nothing when there is nothing safe to show.
+ * value. A missing provider key is a configuration warning, not automatically a platform outage:
+ * another connected provider may already serve the same capability. Active impact is determined
+ * separately by the capability/root-cause health logic.
  */
 export function ConfigurationStatusList({ configuration }: { configuration: ProviderConfigEntry[] | null }) {
   const { t } = useLanguage();
@@ -19,9 +20,9 @@ export function ConfigurationStatusList({ configuration }: { configuration: Prov
       <h3>{t('market_configuration_title')}</h3>
       <ul>
         {configuration.map(entry => (
-          <li key={entry.envVar} className={entry.configured ? 'tone-success' : 'tone-danger'}>
+          <li key={entry.envVar} className={entry.configured ? 'tone-success' : 'tone-warning'}>
             <span className="market-configuration-icon" aria-hidden="true">
-              {entry.configured ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+              {entry.configured ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
             </span>
             <span dir="ltr" className="market-configuration-envvar">{entry.envVar}</span>
             <span dir="ltr" className="market-configuration-provider">{traderProviderDisplayName(entry.provider) ?? entry.provider}</span>
