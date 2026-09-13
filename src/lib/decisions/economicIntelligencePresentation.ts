@@ -29,7 +29,7 @@ export type EconomicDecisionPresentation = {
   decisionType: EconomicBridgeDecisionType;
   confidencePercent: number;
   confidenceLabel: string;
-  missingData: string[];
+  missingData: LocalizedEconomicSignal[];
   warnings: LocalizedEconomicSignal[];
   reasons: LocalizedEconomicSignal[];
   scenarios: EconomicScenarioSummary[];
@@ -39,6 +39,13 @@ const LABELS = {
   ar: {
     confidence: { high: 'ثقة عالية', medium: 'ثقة متوسطة', low: 'ثقة منخفضة' },
     scenarios: { stress: 'سيناريو ضاغط', base: 'السيناريو الأساسي', optimistic: 'سيناريو متفائل' },
+    missing: {
+      income: 'بيانات الدخل',
+      expenses: 'بيانات المصروفات',
+      debts: 'بيانات الديون',
+      savings: 'بيانات المدخرات',
+      investments: 'بيانات الاستثمارات',
+    },
     signals: {
       decision_creates_monthly_deficit: 'القرار يسبب عجزاً شهرياً.',
       post_decision_surplus_below_10_percent: 'الفائض بعد القرار أقل من 10% من الدخل.',
@@ -55,6 +62,13 @@ const LABELS = {
   en: {
     confidence: { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' },
     scenarios: { stress: 'Stress scenario', base: 'Base scenario', optimistic: 'Optimistic scenario' },
+    missing: {
+      income: 'Income data',
+      expenses: 'Expense data',
+      debts: 'Debt data',
+      savings: 'Savings data',
+      investments: 'Investment data',
+    },
     signals: {
       decision_creates_monthly_deficit: 'The decision creates a monthly deficit.',
       post_decision_surplus_below_10_percent: 'Post-decision surplus is below 10% of income.',
@@ -71,6 +85,13 @@ const LABELS = {
   fr: {
     confidence: { high: 'Confiance élevée', medium: 'Confiance moyenne', low: 'Confiance faible' },
     scenarios: { stress: 'Scénario de stress', base: 'Scénario de base', optimistic: 'Scénario optimiste' },
+    missing: {
+      income: 'Données de revenus',
+      expenses: 'Données de dépenses',
+      debts: 'Données de dettes',
+      savings: 'Données d’épargne',
+      investments: 'Données d’investissement',
+    },
     signals: {
       decision_creates_monthly_deficit: 'La décision crée un déficit mensuel.',
       post_decision_surplus_below_10_percent: 'Le surplus après décision est inférieur à 10 % du revenu.',
@@ -95,6 +116,11 @@ function confidenceBand(percent: number): 'high' | 'medium' | 'low' {
 function localizeSignal(code: string, locale: EconomicDecisionLocale): LocalizedEconomicSignal {
   const signals = LABELS[locale].signals as Record<string, string>;
   return { code, label: signals[code] ?? code.replaceAll('_', ' ') };
+}
+
+function localizeMissing(code: string, locale: EconomicDecisionLocale): LocalizedEconomicSignal {
+  const missing = LABELS[locale].missing as Record<string, string>;
+  return { code, label: missing[code] ?? code.replaceAll('_', ' ') };
 }
 
 export function presentEconomicDecision(
@@ -128,7 +154,7 @@ export function presentEconomicDecision(
     decisionType,
     confidencePercent,
     confidenceLabel: LABELS[locale].confidence[band],
-    missingData: [...context.snapshot.dataQuality.missing],
+    missingData: context.snapshot.dataQuality.missing.map((code) => localizeMissing(code, locale)),
     warnings: context.assessment.warnings.map((code) => localizeSignal(code, locale)),
     reasons: context.assessment.reasons.map((code) => localizeSignal(code, locale)),
     scenarios,
