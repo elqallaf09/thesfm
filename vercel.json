@@ -19,7 +19,7 @@
     },
     {
       "path": "/api/market/shariah/refresh",
-      "schedule": "23 2 * * *"
+      "schedule": "23 */6 * * *"
     },
     {
       "path": "/api/business/subscriptions/reminders",
