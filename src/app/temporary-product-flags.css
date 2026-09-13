@@ -1,11 +1,13 @@
 /*
  * Temporary production-facing feature visibility overrides.
  *
- * Pricing/subscription checkout remains implemented server-side, but the
- * public pricing interface is intentionally hidden until subscriptions are
- * ready to be reopened. Remove these selectors when billing is re-enabled.
+ * Paid membership checkout remains implemented server-side, but customer-facing
+ * pricing and membership-management UI is intentionally hidden until billing is
+ * ready to be reopened. Business/client recurring-expense tools are unrelated
+ * product features and remain visible.
  */
 .landing-page #pricing,
-.landing-page .landing-links a[href="#pricing"] {
+.landing-page .landing-links a[href="#pricing"],
+.profile-section:has(.premium-layout) {
   display: none !important;
 }
