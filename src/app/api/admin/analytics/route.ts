@@ -1,5 +1,6 @@
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
+import { isNonProductionAnalyticsReferrer } from '@/lib/server/analyticsTraffic';
 
 type AnalyticsRow = {
   id: string;
@@ -9,6 +10,7 @@ type AnalyticsRow = {
   page_title: string | null;
   section_name: string | null;
   module: string | null;
+  referrer: string | null;
   language: string | null;
   device_type: string | null;
   browser: string | null;
@@ -35,12 +37,18 @@ type AnalyticsLoadResult = {
   source: string;
   error?: string;
   code?: string;
+  scannedRows?: number;
+  excludedRows?: number;
+  truncated?: boolean;
 };
 
 type SessionLoadResult = {
   sessions: SessionRow[];
   error?: string;
   code?: string;
+  scannedRows?: number;
+  excludedRows?: number;
+  truncated?: boolean;
 };
 
 const EVENT_LABELS = [
@@ -60,33 +68,57 @@ const EVENT_LABELS = [
   'open_financial_theories',
 ];
 
-function startOfDay(date: Date) {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
+// Supabase/PostgREST commonly caps one response at 1,000 rows even when a larger
+// .limit() is requested. Read in pages so dashboard totals are not silently clipped.
+const ANALYTICS_PAGE_SIZE = 1000;
+const ANALYTICS_MAX_SCAN_ROWS = 100000;
+const KUWAIT_OFFSET_MS = 3 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfKuwaitDay(date: Date) {
+  const shifted = new Date(date.getTime() + KUWAIT_OFFSET_MS);
+  return new Date(Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate(),
+  ) - KUWAIT_OFFSET_MS);
 }
 
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+function startOfKuwaitMonth(date: Date) {
+  const shifted = new Date(date.getTime() + KUWAIT_OFFSET_MS);
+  return new Date(Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    1,
+  ) - KUWAIT_OFFSET_MS);
 }
 
-function startOfYear(date: Date) {
-  return new Date(date.getFullYear(), 0, 1);
+function startOfKuwaitYear(date: Date) {
+  const shifted = new Date(date.getTime() + KUWAIT_OFFSET_MS);
+  return new Date(Date.UTC(shifted.getUTCFullYear(), 0, 1) - KUWAIT_OFFSET_MS);
+}
+
+function parseKuwaitDate(value: string | null | undefined, endOfDay = false) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const suffix = endOfDay ? 'T23:59:59.999+03:00' : 'T00:00:00.000+03:00';
+  const parsed = new Date(`${value}${suffix}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function filterStart(range: string, customFrom?: string | null) {
   const now = new Date();
-  if (range === 'today') return startOfDay(now);
-  if (range === '7d') return new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-  if (range === '30d') return new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
-  if (range === 'month') return startOfMonth(now);
-  if (range === 'year') return startOfYear(now);
-  if (range === 'custom' && customFrom) return new Date(`${customFrom}T00:00:00`);
+  const today = startOfKuwaitDay(now);
+  if (range === 'today') return today;
+  if (range === '7d') return new Date(today.getTime() - 6 * DAY_MS);
+  if (range === '30d') return new Date(today.getTime() - 29 * DAY_MS);
+  if (range === 'month') return startOfKuwaitMonth(now);
+  if (range === 'year') return startOfKuwaitYear(now);
+  if (range === 'custom') return parseKuwaitDate(customFrom) ?? today;
   return new Date(0);
 }
 
 function filterEnd(range: string, customTo?: string | null) {
-  if (range === 'custom' && customTo) return new Date(`${customTo}T23:59:59.999`);
+  if (range === 'custom') return parseKuwaitDate(customTo, true) ?? new Date();
   return new Date();
 }
 
@@ -108,7 +140,7 @@ function pageName(path: string | null) {
   if (path.startsWith('/ebooks')) return 'E-Books';
   if (path.startsWith('/market')) return 'Market Analysis';
   if (path.startsWith('/ai')) return 'Financial AI';
-  if (path.startsWith('/charity') || path.startsWith('/zakat')) return 'Charity / Zakat';
+  if (path.startsWith('/charity') || path.startsWith('/zakat') || path.startsWith('/khums')) return 'Charity / Zakat';
   if (path.startsWith('/business')) return 'Business Management';
   if (path.startsWith('/investment-offers')) return 'Investment Offers';
   if (path.startsWith('/profile')) return 'Profile';
@@ -126,11 +158,16 @@ function groupCount<T>(rows: T[], read: (row: T) => string | null | undefined) {
     if (!key) return;
     map.set(key, (map.get(key) ?? 0) + 1);
   });
-  return Array.from(map.entries()).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+  return Array.from(map.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 function countSince(rows: AnalyticsRow[], start: Date, eventType?: string) {
-  return rows.filter(row => (!eventType || row.event_type === eventType) && new Date(row.created_at) >= start).length;
+  return rows.filter(row => (
+    (!eventType || row.event_type === eventType)
+    && new Date(row.created_at) >= start
+  )).length;
 }
 
 function uniqueSessions(rows: AnalyticsRow[]) {
@@ -198,6 +235,15 @@ function emptyAnalyticsPayload(
       label: options.trackingEnabled === false ? 'disabled' : 'no_recent_events',
       lastEventAt: null,
     },
+    quality: {
+      productionOnly: true,
+      paginated: true,
+      truncated: false,
+      scannedEventRows: 0,
+      excludedEventRows: 0,
+      scannedSessionRows: 0,
+      excludedSessionRows: 0,
+    },
     hasData: false,
   };
 }
@@ -209,12 +255,12 @@ function missingRelation(error: { code?: string } | null | undefined) {
 function schemaRelatedError(error: { code?: string; message?: string } | null | undefined) {
   const message = error?.message?.toLowerCase() ?? '';
   return (
-    error?.code === '42P01' ||
-    error?.code === '42703' ||
-    error?.code === 'PGRST204' ||
-    error?.code === 'PGRST205' ||
-    message.includes('schema cache') ||
-    message.includes('does not exist')
+    error?.code === '42P01'
+    || error?.code === '42703'
+    || error?.code === 'PGRST204'
+    || error?.code === 'PGRST205'
+    || message.includes('schema cache')
+    || message.includes('does not exist')
   );
 }
 
@@ -231,7 +277,7 @@ function moduleFromPath(path: string | null) {
   if (path.startsWith('/ebooks')) return 'ebooks';
   if (path.startsWith('/market')) return 'market';
   if (path.startsWith('/ai')) return 'financial_ai';
-  if (path.startsWith('/charity') || path.startsWith('/zakat')) return 'charity';
+  if (path.startsWith('/charity') || path.startsWith('/zakat') || path.startsWith('/khums')) return 'charity';
   if (path.startsWith('/business')) return 'business';
   if (path.startsWith('/investment-offers')) return 'investment_offers';
   if (path.startsWith('/profile')) return 'profile';
@@ -259,6 +305,7 @@ function mapLegacyRow(row: Record<string, unknown>): AnalyticsRow {
     page_title: typeof row.page_title === 'string' ? row.page_title : null,
     section_name: typeof row.section_name === 'string' ? row.section_name : null,
     module: typeof row.module === 'string' ? row.module : null,
+    referrer: typeof row.referrer === 'string' ? row.referrer : null,
     language: typeof row.language === 'string' ? row.language : null,
     device_type: typeof row.device_type === 'string' ? row.device_type : null,
     browser: typeof row.browser === 'string' ? row.browser : null,
@@ -283,6 +330,47 @@ function mapSessionRow(row: Record<string, unknown>): SessionRow {
   };
 }
 
+async function loadEventTable(
+  admin: NonNullable<ReturnType<typeof createServerSupabaseAdmin>>,
+  table: 'site_events' | 'analytics_events',
+  from: Date,
+  to: Date,
+) {
+  const mapped: AnalyticsRow[] = [];
+  let scannedRows = 0;
+  let truncated = true;
+
+  for (let offset = 0; offset < ANALYTICS_MAX_SCAN_ROWS; offset += ANALYTICS_PAGE_SIZE) {
+    const result = await admin
+      .from(table)
+      .select('*')
+      .gte('created_at', from.toISOString())
+      .lte('created_at', to.toISOString())
+      .order('created_at', { ascending: false })
+      .range(offset, offset + ANALYTICS_PAGE_SIZE - 1);
+
+    if (result.error) {
+      return {
+        rows: [] as AnalyticsRow[],
+        scannedRows,
+        truncated: false,
+        error: result.error,
+      };
+    }
+
+    const page = result.data ?? [];
+    scannedRows += page.length;
+    mapped.push(...page.map(row => mapLegacyRow(row as Record<string, unknown>)));
+
+    if (page.length < ANALYTICS_PAGE_SIZE) {
+      truncated = false;
+      break;
+    }
+  }
+
+  return { rows: mapped, scannedRows, truncated, error: null };
+}
+
 async function loadAnalyticsRows(
   admin: ReturnType<typeof createServerSupabaseAdmin>,
   from: Date,
@@ -292,41 +380,33 @@ async function loadAnalyticsRows(
 ): Promise<AnalyticsLoadResult> {
   if (!admin) return { rows: [], source: 'none', code: 'ANALYTICS_SERVICE_NOT_CONFIGURED' };
 
-  const siteQuery = admin
-    .from('site_events')
-    .select('*')
-    .gte('created_at', from.toISOString())
-    .lte('created_at', to.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(20000);
+  let result = await loadEventTable(admin, 'site_events', from, to);
+  let source = 'site_events';
 
-  const siteResult = await siteQuery;
-  if (!siteResult.error) {
-    return {
-      rows: applyFilters((siteResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), moduleFilter, eventFilter),
-      source: 'site_events',
-    };
-  }
-  if (!schemaRelatedError(siteResult.error)) return { rows: [] as AnalyticsRow[], source: 'site_events', error: siteResult.error.message };
-
-  const legacyQuery = admin
-    .from('analytics_events')
-    .select('*')
-    .gte('created_at', from.toISOString())
-    .lte('created_at', to.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(20000);
-
-  const legacyResult = await legacyQuery;
-  if (legacyResult.error) {
-    if (schemaRelatedError(legacyResult.error) || missingRelation(legacyResult.error)) {
-      return { rows: [], source: 'none', code: 'ANALYTICS_TABLES_MISSING' };
+  if (result.error) {
+    if (!schemaRelatedError(result.error)) {
+      return { rows: [], source, error: result.error.message };
     }
-    return { rows: [], source: 'analytics_events', error: legacyResult.error.message };
+
+    result = await loadEventTable(admin, 'analytics_events', from, to);
+    source = 'analytics_events';
+    if (result.error) {
+      if (schemaRelatedError(result.error) || missingRelation(result.error)) {
+        return { rows: [], source: 'none', code: 'ANALYTICS_TABLES_MISSING' };
+      }
+      return { rows: [], source, error: result.error.message };
+    }
   }
+
+  const productionRows = result.rows.filter(row => !isNonProductionAnalyticsReferrer(row.referrer));
+  const filteredRows = applyFilters(productionRows, moduleFilter, eventFilter);
+
   return {
-    rows: applyFilters((legacyResult.data ?? []).map(row => mapLegacyRow(row as Record<string, unknown>)), moduleFilter, eventFilter),
-    source: 'analytics_events',
+    rows: filteredRows,
+    source,
+    scannedRows: result.scannedRows,
+    excludedRows: result.rows.length - productionRows.length,
+    truncated: result.truncated,
   };
 }
 
@@ -337,25 +417,49 @@ async function loadSessionRows(
 ): Promise<SessionLoadResult> {
   if (!admin) return { sessions: [], code: 'ANALYTICS_SERVICE_NOT_CONFIGURED' };
 
-  const sessionResult = await admin
-    .from('site_sessions')
-    .select('session_id,user_id,first_seen_at,last_seen_at,language,device_type,browser,os,referrer,created_at')
-    .gte('last_seen_at', from.toISOString())
-    .lte('first_seen_at', to.toISOString())
-    .order('last_seen_at', { ascending: false })
-    .limit(20000);
+  const mapped: SessionRow[] = [];
+  let scannedRows = 0;
+  let truncated = true;
 
-  if (sessionResult.error) {
-    if (schemaRelatedError(sessionResult.error) || missingRelation(sessionResult.error)) {
-      return { sessions: [], code: 'ANALYTICS_SESSIONS_TABLE_MISSING' };
+  for (let offset = 0; offset < ANALYTICS_MAX_SCAN_ROWS; offset += ANALYTICS_PAGE_SIZE) {
+    const result = await admin
+      .from('site_sessions')
+      .select('session_id,user_id,first_seen_at,last_seen_at,language,device_type,browser,os,referrer,created_at')
+      .gte('last_seen_at', from.toISOString())
+      .lte('first_seen_at', to.toISOString())
+      .order('session_id', { ascending: true })
+      .range(offset, offset + ANALYTICS_PAGE_SIZE - 1);
+
+    if (result.error) {
+      if (schemaRelatedError(result.error) || missingRelation(result.error)) {
+        return { sessions: [], code: 'ANALYTICS_SESSIONS_TABLE_MISSING' };
+      }
+      return { sessions: [], error: result.error.message };
     }
-    return { sessions: [], error: sessionResult.error.message };
+
+    const page = result.data ?? [];
+    scannedRows += page.length;
+    mapped.push(...page.map(row => mapSessionRow(row as Record<string, unknown>)));
+
+    if (page.length < ANALYTICS_PAGE_SIZE) {
+      truncated = false;
+      break;
+    }
   }
 
+  const productionSessions = mapped
+    .filter(session => session.session_id && !isNonProductionAnalyticsReferrer(session.referrer))
+    .sort((a, b) => {
+      const aTime = new Date(a.last_seen_at ?? a.created_at ?? 0).getTime();
+      const bTime = new Date(b.last_seen_at ?? b.created_at ?? 0).getTime();
+      return bTime - aTime;
+    });
+
   return {
-    sessions: (sessionResult.data ?? [])
-      .map(row => mapSessionRow(row as Record<string, unknown>))
-      .filter(session => session.session_id),
+    sessions: productionSessions,
+    scannedRows,
+    excludedRows: mapped.length - productionSessions.length,
+    truncated,
   };
 }
 
@@ -376,23 +480,36 @@ const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, as
     );
   }
 
-  const [{ rows, source, error, code }, sessionLoad] = await Promise.all([
+  const [analyticsLoad, sessionLoad] = await Promise.all([
     loadAnalyticsRows(admin, from, to, moduleFilter, eventFilter),
     loadSessionRows(admin, from, to),
   ]);
+
+  const { rows, source, error, code } = analyticsLoad;
   const effectiveSource = source === 'none' && sessionLoad.sessions.length ? 'site_sessions' : source;
+
   if (code === 'ANALYTICS_TABLES_MISSING' && sessionLoad.sessions.length === 0) {
     console.warn('[admin-analytics] analytics tables are missing; returning empty analytics payload');
     return json(emptyAnalyticsPayload(source, from, to, { code }), { status: 200 });
   }
+
   if (code === 'ANALYTICS_TABLES_MISSING' && sessionLoad.sessions.length > 0) {
     console.warn('[admin-analytics] event analytics table is missing; continuing with session data only');
   }
+
   if (sessionLoad.error) {
     console.warn('[admin-analytics] session analytics load failed; continuing with event data only', {
       error: sessionLoad.error,
     });
   }
+
+  if (analyticsLoad.truncated || sessionLoad.truncated) {
+    console.warn('[admin-analytics] analytics safety scan limit reached', {
+      scannedEventRows: analyticsLoad.scannedRows ?? 0,
+      scannedSessionRows: sessionLoad.scannedRows ?? 0,
+    });
+  }
+
   if (error) {
     console.error('[admin-analytics] analytics load failed', { source, error });
     return json({
@@ -405,6 +522,7 @@ const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, as
       pages: [],
       topSections: [],
       sections: [],
+      importantEvents: [],
       devices: [],
       languages: [],
       recentActivity: [],
@@ -415,16 +533,23 @@ const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, as
   const pageViews = rows.filter(row => row.event_type === 'page_view');
   const accountEvents = rows.filter(row => row.event_type === 'account_created' || row.event_type === 'signup');
   const now = new Date();
-  const today = startOfDay(now);
-  const week = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-  const month = startOfMonth(now);
-  const last24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const today = startOfKuwaitDay(now);
+  const week = new Date(today.getTime() - 6 * DAY_MS);
+  const month = startOfKuwaitMonth(now);
+  const last24Hours = new Date(now.getTime() - DAY_MS);
   const sessions = sessionLoad.sessions;
   const canUseSessionStats = moduleFilter === 'all' && eventFilter === 'all';
+
   const visitorTotal = canUseSessionStats && sessions.length ? sessions.length : uniqueSessions(rows);
-  const visitorsToday = canUseSessionStats && sessions.length ? countSessionsSince(sessions, today) : uniqueSessions(rows.filter(row => new Date(row.created_at) >= today));
-  const visitorsWeek = canUseSessionStats && sessions.length ? countSessionsSince(sessions, week) : uniqueSessions(rows.filter(row => new Date(row.created_at) >= week));
-  const visitorsMonth = canUseSessionStats && sessions.length ? countSessionsSince(sessions, month) : uniqueSessions(rows.filter(row => new Date(row.created_at) >= month));
+  const visitorsToday = canUseSessionStats && sessions.length
+    ? countSessionsSince(sessions, today)
+    : uniqueSessions(rows.filter(row => new Date(row.created_at) >= today));
+  const visitorsWeek = canUseSessionStats && sessions.length
+    ? countSessionsSince(sessions, week)
+    : uniqueSessions(rows.filter(row => new Date(row.created_at) >= week));
+  const visitorsMonth = canUseSessionStats && sessions.length
+    ? countSessionsSince(sessions, month)
+    : uniqueSessions(rows.filter(row => new Date(row.created_at) >= month));
 
   const pageGroups = new Map<string, { pageName: string; route: string; views: number; visitors: Set<string> }>();
   pageViews.forEach(row => {
@@ -437,32 +562,43 @@ const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, as
   });
 
   const totalViews = pageViews.length;
-  const pages = Array.from(pageGroups.values()).map(group => ({
-    pageName: group.pageName,
-    route: group.route,
-    views: group.views,
-    visitors: group.visitors.size,
-    percentage: percent(group.views, totalViews),
-  })).sort((a, b) => b.views - a.views);
+  const pages = Array.from(pageGroups.values())
+    .map(group => ({
+      pageName: group.pageName,
+      route: group.route,
+      views: group.views,
+      visitors: group.visitors.size,
+      percentage: percent(group.views, totalViews),
+    }))
+    .sort((a, b) => b.views - a.views);
 
   const sections = groupCount(rows, rowModule)
     .map(item => ({ ...item, percentage: percent(item.count, rows.length) }))
     .slice(0, 12);
-  const useSessionBreakdowns = canUseSessionStats && rows.length === 0 && sessions.length > 0;
-  const devices = !useSessionBreakdowns
-    ? groupCount(rows, row => row.device_type || 'unknown').map(item => ({ ...item, percentage: percent(item.count, rows.length) }))
-    : groupCount(sessions, row => row.device_type || 'unknown').map(item => ({ ...item, percentage: percent(item.count, sessions.length) }));
-  const languages = !useSessionBreakdowns
-    ? groupCount(rows, row => row.language || 'unknown').map(item => ({ ...item, percentage: percent(item.count, rows.length) }))
-    : groupCount(sessions, row => row.language || 'unknown').map(item => ({ ...item, percentage: percent(item.count, sessions.length) }));
-  const importantEvents = EVENT_LABELS.map(event => {
-    const eventRows = rows.filter(row => row.event_type === event);
-    return {
-      event,
-      count: eventRows.length,
-      uniqueUsers: uniqueSessions(eventRows),
-    };
-  }).filter(item => item.count > 0);
+
+  // Device/language distributions should represent visitors, not raw event volume.
+  const useSessionBreakdowns = canUseSessionStats && sessions.length > 0;
+  const devices = useSessionBreakdowns
+    ? groupCount(sessions, row => row.device_type || 'unknown')
+      .map(item => ({ ...item, percentage: percent(item.count, sessions.length) }))
+    : groupCount(rows, row => row.device_type || 'unknown')
+      .map(item => ({ ...item, percentage: percent(item.count, rows.length) }));
+  const languages = useSessionBreakdowns
+    ? groupCount(sessions, row => row.language || 'unknown')
+      .map(item => ({ ...item, percentage: percent(item.count, sessions.length) }))
+    : groupCount(rows, row => row.language || 'unknown')
+      .map(item => ({ ...item, percentage: percent(item.count, rows.length) }));
+
+  const importantEvents = EVENT_LABELS
+    .map(event => {
+      const eventRows = rows.filter(row => row.event_type === event);
+      return {
+        event,
+        count: eventRows.length,
+        uniqueUsers: uniqueSessions(eventRows),
+      };
+    })
+    .filter(item => item.count > 0);
 
   const userCountQuery = async (start?: Date) => {
     let profileQuery = admin.from('profiles').select('id', { count: 'exact', head: true });
@@ -486,9 +622,21 @@ const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, as
     || sessions.some(session => new Date(session.last_seen_at ?? session.created_at ?? 0) >= last24Hours);
   const lastEventAt = rows[0]?.created_at ?? sessions[0]?.last_seen_at ?? sessions[0]?.created_at ?? null;
 
+  const recentRows = rows.slice(0, 50).map(row => ({
+    id: row.id,
+    eventType: row.event_type,
+    pagePath: row.page_path,
+    sectionName: sectionName(row),
+    module: sectionName(row),
+    device: row.device_type,
+    language: row.language,
+    createdAt: row.created_at,
+  }));
+
   return json({
     ok: true,
     success: true,
+    code: analyticsLoad.truncated || sessionLoad.truncated ? 'ANALYTICS_SCAN_LIMIT_REACHED' : undefined,
     source: effectiveSource,
     range: { from: from.toISOString(), to: to.toISOString() },
     stats: {
@@ -521,31 +669,22 @@ const analyticsRoute = createAdminApiRoute({ permission: 'admin_dashboard' }, as
     importantEvents,
     devices,
     languages,
-    recentActivity: rows.slice(0, 50).map(row => ({
-      id: row.id,
-      eventType: row.event_type,
-      pagePath: row.page_path,
-      sectionName: sectionName(row),
-      module: sectionName(row),
-      device: row.device_type,
-      language: row.language,
-      createdAt: row.created_at,
-    })),
-    recent: rows.slice(0, 50).map(row => ({
-      id: row.id,
-      eventType: row.event_type,
-      pagePath: row.page_path,
-      sectionName: sectionName(row),
-      module: sectionName(row),
-      device: row.device_type,
-      language: row.language,
-      createdAt: row.created_at,
-    })),
+    recentActivity: recentRows,
+    recent: recentRows,
     tracking: {
       enabled: true,
       recent: trackingRecent,
       label: trackingRecent ? 'active' : 'no_recent_events',
       lastEventAt,
+    },
+    quality: {
+      productionOnly: true,
+      paginated: true,
+      truncated: Boolean(analyticsLoad.truncated || sessionLoad.truncated),
+      scannedEventRows: analyticsLoad.scannedRows ?? 0,
+      excludedEventRows: analyticsLoad.excludedRows ?? 0,
+      scannedSessionRows: sessionLoad.scannedRows ?? 0,
+      excludedSessionRows: sessionLoad.excludedRows ?? 0,
     },
     hasData: rows.length > 0 || (canUseSessionStats && sessions.length > 0),
   });
