@@ -10,7 +10,7 @@ export type ResolutionEventRow = {
 export type ResolutionHistorySummary = {
   activeCount: number;
   resolvedCount: number;
-  recurringFamilies: Array<{ family: string; occurrences: number; resolved: number }>;
+  recurringFamilies: Array<{ family: string; occurrences: number; resolved: number; priorityScore: number }>;
   latestResolved: ResolutionEventRow[];
 };
 
@@ -29,6 +29,15 @@ function timeValue(value: unknown) {
   return Number.isFinite(time) ? time : 0;
 }
 
+function familySeverity(family: string) {
+  if (family === 'risk:monthly-deficit') return 4;
+  if (family === 'risk:low-liquidity') return 3;
+  if (family === 'risk:high-debt') return 3;
+  if (family.startsWith('decision:')) return 2;
+  if (family.startsWith('opportunity:')) return 0;
+  return 1;
+}
+
 export function summarizeResolutionHistory(rows: ResolutionEventRow[] = []): ResolutionHistorySummary {
   const activeCount = rows.filter(row => !row.resolved_at).length;
   const resolved = rows.filter(row => Boolean(row.resolved_at));
@@ -45,8 +54,12 @@ export function summarizeResolutionHistory(rows: ResolutionEventRow[] = []): Res
 
   const recurringFamilies = [...families.entries()]
     .filter(([, stats]) => stats.occurrences > 1)
-    .map(([family, stats]) => ({ family, ...stats }))
-    .sort((a, b) => b.occurrences - a.occurrences || a.family.localeCompare(b.family));
+    .map(([family, stats]) => ({
+      family,
+      ...stats,
+      priorityScore: stats.occurrences * 10 + familySeverity(family),
+    }))
+    .sort((a, b) => b.priorityScore - a.priorityScore || a.family.localeCompare(b.family));
 
   const latestResolved = [...resolved]
     .sort((a, b) => timeValue(b.resolved_at) - timeValue(a.resolved_at))
