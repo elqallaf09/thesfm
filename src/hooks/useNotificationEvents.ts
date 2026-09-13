@@ -150,7 +150,7 @@ async function fetchNotificationEvents(userId: string, lang: 'ar' | 'en' | 'fr')
   const [storedResult, signals, proactive] = await Promise.all([storedPromise, signalsPromise, proactivePromise]);
   if (storedResult.error) throw new Error(storedResult.error.message);
   const byId = new Map<string, SmartNotification>();
-  ((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored).forEach(event => byId.set(`stored:${event.id}`, event));
+  ((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored).forEach(event => byId.set(event.id, event));
   (signals as SmartNotification[]).forEach(event => byId.set(event.id, event));
   (proactive as SmartNotification[]).forEach(event => byId.set(event.id, event));
   return sortEvents(Array.from(byId.values()));
