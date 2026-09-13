@@ -48,8 +48,15 @@ export default function DecisionTimelinePage() {
     setDecision(decisionResult.data ?? null);
     setEvents(eventResult.error ? [] : (eventResult.data ?? []));
     setLoading(false);
-    const unopened = (eventResult.data ?? []).filter((row: EventRow) => !row.opened_at);
-    await Promise.all(unopened.map((row: EventRow) => fetch('/api/economic-intelligence/event-outcome', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notificationId: row.id, action: 'opened' }) }).catch(() => null)));
+    const activeRows = (eventResult.data ?? []).filter((row: EventRow) => !row.resolved_at);
+    await Promise.all(activeRows.map(async (row: EventRow) => {
+      if (!row.opened_at) {
+        await fetch('/api/economic-intelligence/event-outcome', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notificationId: row.id, action: 'opened' }) }).catch(() => null);
+      }
+      if (!row.actioned_at) {
+        await fetch('/api/economic-intelligence/event-outcome', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notificationId: row.id, action: 'actioned' }) }).catch(() => null);
+      }
+    }));
   }, [decisionId, user?.id]);
 
   useEffect(() => { void load(); }, [load]);
