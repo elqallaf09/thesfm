@@ -48,9 +48,6 @@ type SecDirectory = {
 };
 
 type SecSubmission = {
-  name?: string;
-  tickers?: string[];
-  exchanges?: string[];
   sic?: string;
   sicDescription?: string;
 };
@@ -82,11 +79,6 @@ function finiteNumber(value: unknown): number | null {
   }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function positiveOrZero(value: unknown) {
-  const number = finiteNumber(value);
-  return number === null ? null : Math.max(0, number);
 }
 
 function ratio(numerator: number | null | undefined, denominator: number | null | undefined) {
@@ -241,15 +233,16 @@ async function fetchSecSnapshot(input: ScreeningInput): Promise<FinancialSnapsho
     const debtCurrent = latestInstantFact(facts, ['LongTermDebtAndFinanceLeaseObligationsCurrent', 'LongTermDebtCurrent', 'DebtCurrent']);
     const debtNoncurrent = latestInstantFact(facts, ['LongTermDebtAndFinanceLeaseObligationsNoncurrent', 'LongTermDebtNoncurrent']);
     const shortBorrowings = latestInstantFact(facts, ['ShortTermBorrowings', 'ShortTermDebtCurrent']);
-    const debt = totalDebt?.value ?? [debtCurrent?.value, debtNoncurrent?.value, shortBorrowings?.value]
-      .filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value))
-      .reduce((sum, value) => sum + Math.max(0, value), 0);
+    const debtParts = [debtCurrent?.value, debtNoncurrent?.value, shortBorrowings?.value]
+      .filter((value): value is number => value !== null && value !== undefined && Number.isFinite(value));
+    const debt = totalDebt?.value ?? (debtParts.length ? debtParts.reduce((sum, value) => sum + Math.max(0, value), 0) : null);
 
     const cash = latestInstantFact(facts, ['CashAndCashEquivalentsAtCarryingValue', 'Cash']);
     const combinedCashInvestments = latestInstantFact(facts, ['CashCashEquivalentsAndShortTermInvestments']);
     const shortInvestments = latestInstantFact(facts, ['ShortTermInvestments', 'MarketableSecuritiesCurrent']);
+    const cashPartsKnown = cash !== null || shortInvestments !== null;
     const cashAndSecurities = combinedCashInvestments?.value
-      ?? ((cash?.value ?? 0) + (shortInvestments?.value ?? 0));
+      ?? (cashPartsKnown ? (cash?.value ?? 0) + (shortInvestments?.value ?? 0) : null);
     const receivables = latestInstantFact(facts, ['AccountsReceivableNetCurrent', 'AccountsNotesAndLoansReceivableNetCurrent', 'AccountsReceivableNet']);
     const revenue = latestDurationFact(facts, ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet', 'SalesRevenueGoodsNet']);
     const interest = latestDurationFact(facts, ['InterestIncomeNonoperating', 'InvestmentIncomeInterest', 'InterestIncomeExpenseNonoperatingNet', 'NonoperatingIncomeExpense']);
@@ -261,9 +254,9 @@ async function fetchSecSnapshot(input: ScreeningInput): Promise<FinancialSnapsho
       sector: sectorFromSic(submission?.sic),
       industry: cleanText(submission?.sicDescription) || null,
       totalAssets: assets?.value ?? null,
-      totalDebt: Number.isFinite(debt) ? debt : null,
-      cashAndInterestBearingSecurities: Number.isFinite(cashAndSecurities) ? cashAndSecurities : null,
-      cash: cash?.value ?? (combinedCashInvestments?.value ?? null),
+      totalDebt: debt,
+      cashAndInterestBearingSecurities: cashAndSecurities,
+      cash: cash?.value ?? null,
       accountsReceivable: receivables?.value ?? null,
       revenue: revenue?.value ?? null,
       interestIncome: interestValue,
@@ -291,14 +284,16 @@ async function fetchYahooSnapshot(input: ScreeningInput): Promise<FinancialSnaps
     const financialData = objectValue(root.financialData);
     const balanceHistory = objectValue(root.balanceSheetHistory);
     const incomeHistory = objectValue(root.incomeStatementHistory);
-    const balances = Array.isArray(balanceHistory?.balanceSheetStatements) ? balanceHistory?.balanceSheetStatements : [];
-    const incomes = Array.isArray(incomeHistory?.incomeStatementHistory) ? incomeHistory?.incomeStatementHistory : [];
+    const balanceStatements = balanceHistory?.balanceSheetStatements;
+    const incomeStatements = incomeHistory?.incomeStatementHistory;
+    const balances = Array.isArray(balanceStatements) ? balanceStatements : [];
+    const incomes = Array.isArray(incomeStatements) ? incomeStatements : [];
     const balance = objectValue(balances[0]);
     const income = objectValue(incomes[0]);
 
     const totalAssets = firstNumber(balance, ['totalAssets', 'TotalAssets']);
     const totalDebt = firstNumber(balance, ['totalDebt', 'TotalDebt']) ?? firstNumber(financialData, ['totalDebt']);
-    const cash = firstNumber(balance, ['cash', 'cashAndCashEquivalents', 'CashCashEquivalentsAndShortTermInvestments'])
+    const cash = firstNumber(balance, ['cash', 'cashAndCashEquivalents', 'CashAndCashEquivalents'])
       ?? firstNumber(financialData, ['totalCash']);
     const cashAndSecurities = firstNumber(balance, ['cashCashEquivalentsAndShortTermInvestments', 'CashCashEquivalentsAndShortTermInvestments'])
       ?? (() => {
@@ -359,7 +354,7 @@ async function fetchFmpSnapshot(input: ScreeningInput): Promise<FinancialSnapsho
         const longDebt = firstNumber(balance, ['longTermDebt']);
         return shortDebt !== null || longDebt !== null ? (shortDebt ?? 0) + (longDebt ?? 0) : null;
       })();
-    const cash = firstNumber(balance, ['cashAndCashEquivalents', 'cashAndShortTermInvestments']);
+    const cash = firstNumber(balance, ['cashAndCashEquivalents']);
     const cashAndSecurities = firstNumber(balance, ['cashAndShortTermInvestments'])
       ?? (() => {
         const investments = firstNumber(balance, ['shortTermInvestments']);
@@ -402,8 +397,8 @@ function snapshotToData(snapshot: FinancialSnapshot): ShariahScreeningData {
     cashAndInterestBearingSecuritiesRatio: cashRatio,
     accountsReceivableAndCashRatio: receivableCashRatio,
     interestIncomeRatio: interestRatio,
-    // Internal low-cost screening assumes no separate prohibited-revenue stream when the
-    // business-activity screen is clean; reported/estimated interest income remains included.
+    // With a clean business-activity screen, the low-cost model treats reported interest
+    // income as the measurable non-permissible stream. This is explicitly an estimate.
     nonPermissibleRevenueRatio: interestRatio,
     screeningFundamentals: {
       source: snapshot.source,
@@ -430,6 +425,14 @@ function fillMissing(base: ShariahScreeningData, patch: ShariahScreeningData) {
   return next;
 }
 
+function overwriteAvailable(base: ShariahScreeningData, patch: ShariahScreeningData) {
+  const next: ShariahScreeningData = { ...base };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== null && value !== undefined && value !== '') next[key] = value;
+  }
+  return next;
+}
+
 function isComplete(data: ShariahScreeningData) {
   return REQUIRED_RATIOS.every(key => finiteNumber(data[key]) !== null);
 }
@@ -443,12 +446,15 @@ export async function enrichShariahScreeningData(input: ScreeningInput) {
   };
   const sources: string[] = [];
   const estimatedFields: string[] = [];
+  let freshSnapshotApplied = false;
 
   const apply = (snapshot: FinancialSnapshot | null) => {
     if (!snapshot) return;
     sources.push(snapshot.source);
     if (snapshot.interestIncomeEstimated) estimatedFields.push('interestIncome');
-    data = fillMissing(data, snapshotToData(snapshot));
+    const patch = snapshotToData(snapshot);
+    data = freshSnapshotApplied ? fillMissing(data, patch) : overwriteAvailable(data, patch);
+    freshSnapshotApplied = true;
   };
 
   if (usSecurity(input)) apply(await fetchSecSnapshot(input));
@@ -458,8 +464,8 @@ export async function enrichShariahScreeningData(input: ScreeningInput) {
   const now = new Date().toISOString();
   data = {
     ...data,
-    screeningModel: 'SFM FTSE Yasaar-aligned equity screen',
-    screeningMethodology: 'FTSE Yasaar-style business and financial ratio screen',
+    screeningModel: 'SFM Shariah Screener',
+    screeningMethodology: 'FTSE Yasaar-aligned rules-based equity screen',
     screeningMethodologyReference: 'https://www.lseg.com/en/ftse-russell/indices/global-shariah',
     screeningDataSources: [...new Set(sources)],
     screeningDataQuality: isComplete(data) ? (estimatedFields.length ? 'complete_estimated' : 'complete_reported') : 'partial',
