@@ -107,12 +107,21 @@
 - Direct action links to dashboard, debts, Decisions Center and Decision Lab
 - No parallel notifications table or duplicate notification stack
 
-## Next — Phase 7.12 — Intelligence Event Lifecycle
-- Persist dismiss/read/resolve state for Economic Intelligence events without duplicating generated events
-- Prevent a dismissed unchanged dynamic event from immediately reappearing
-- Track action/open/dismiss/resolve outcome metadata
+## Phase 7.12 — Durable Intelligence Event Lifecycle — implemented in PR #119
+- Extend the existing `notifications` table with a durable text `event_key`
+- Unique user/source/event-key contract prevents duplicate economic events
+- Economic Intelligence events are materialized into the existing notifications table, not a new stack
+- Read/archive state is durable across devices through the normal notifications workflow
+- Material risk fingerprints allow a new event only when the underlying risk meaningfully changes
+- Decision-event fingerprints include decision status and risk bucket
+- Stored and proactive feeds deduplicate on the real notification UUID
+
+## Next — Phase 7.13 — Outcome & Resolution Tracking
+- Record explicit open/dismiss/resolve action metadata for Economic Intelligence events
 - Link resolved decision-related events back to versioned decision history
-- Regenerate an event only when its underlying risk fingerprint materially changes
+- Measure whether a risk resolved after a user action without claiming causality
+- Use outcome history to improve prioritization, not to fabricate predictions
+- Surface resolved vs recurring risks in the Economic Intelligence Home
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
