@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
 import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
 import { loadProactiveEconomicEvents } from '@/domain/economic-intelligence/proactive.server';
+import { loadCrossWorkspaceEconomicEvents } from '@/domain/economic-intelligence/crossWorkspaceEvents.server';
 import type { NotificationLang } from '@/lib/notifications/generateNotifications';
 
 export const runtime = 'nodejs';
@@ -29,7 +30,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const lang = normalizeLang(new URL(request.url).searchParams.get('lang'));
-    const events = await loadProactiveEconomicEvents(user.id, lang);
+    const [personalEvents, crossWorkspaceEvents] = await Promise.all([
+      loadProactiveEconomicEvents(user.id, lang),
+      loadCrossWorkspaceEconomicEvents(user.id, lang).catch(() => []),
+    ]);
+    const byId = new Map([...personalEvents, ...crossWorkspaceEvents].map(event => [event.id, event]));
+    const events = Array.from(byId.values());
     return NextResponse.json({ ok: true, events }, { headers: { 'cache-control': 'private, no-store' } });
   } catch (error) {
     const code = error instanceof Error && error.message === 'ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED'
