@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { EconomicCommandCenter } from '@/components/economic-intelligence/EconomicCommandCenter';
 
 export const metadata: Metadata = {
   title: 'Today Center | THE SFM',
@@ -7,5 +8,10 @@ export const metadata: Metadata = {
 };
 
 export default function TodayLayout({ children }: { children: ReactNode }) {
-  return children;
+  return (
+    <>
+      <EconomicCommandCenter />
+      {children}
+    </>
+  );
 }
