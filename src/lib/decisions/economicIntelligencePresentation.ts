@@ -5,7 +5,7 @@ import type {
 
 export type EconomicDecisionLocale = 'ar' | 'en' | 'fr';
 
-export const ECONOMIC_ANALYSIS_VERSION = '7.1.0';
+export const ECONOMIC_ANALYSIS_VERSION = '7.5.0';
 
 export type LocalizedEconomicSignal = {
   code: string;
@@ -23,6 +23,18 @@ export type EconomicScenarioSummary = {
   } | null;
 };
 
+export type EconomicDecisionSimulationHorizon = {
+  month: 3 | 6 | 12;
+  label: string;
+  scenarios: Array<{
+    id: 'stress' | 'base' | 'optimistic';
+    label: string;
+    monthlySurplusDelta: number | null;
+    liquidBalanceDelta: number | null;
+    netWorthDelta: number | null;
+  }>;
+};
+
 export type EconomicDecisionPresentation = {
   analysisVersion: string;
   generatedAt: string;
@@ -33,18 +45,29 @@ export type EconomicDecisionPresentation = {
   warnings: LocalizedEconomicSignal[];
   reasons: LocalizedEconomicSignal[];
   scenarios: EconomicScenarioSummary[];
+  simulation: {
+    title: string;
+    unavailable: string;
+    horizons: EconomicDecisionSimulationHorizon[];
+  } | null;
 };
 
 const LABELS = {
   ar: {
     confidence: { high: 'ثقة عالية', medium: 'ثقة متوسطة', low: 'ثقة منخفضة' },
     scenarios: { stress: 'سيناريو ضاغط', base: 'السيناريو الأساسي', optimistic: 'سيناريو متفائل' },
+    horizons: { 3: 'بعد 3 أشهر', 6: 'بعد 6 أشهر', 12: 'بعد 12 شهراً' },
+    simulationTitle: 'أثر القرار مقارنة بعدم تنفيذه',
+    simulationUnavailable: 'المحاكاة الكاملة تحتاج مدخلات إضافية ولا يتم افتراض القيم المفقودة.',
     missing: {
       income: 'بيانات الدخل',
       expenses: 'بيانات المصروفات',
       debts: 'بيانات الديون',
       savings: 'بيانات المدخرات',
       investments: 'بيانات الاستثمارات',
+      upfront_cash_outflow: 'الدفعة الأولى أو المبلغ النقدي المدفوع',
+      financing_principal: 'قيمة التمويل أو أصل القرض',
+      debt_action_direction: 'هل العملية قرض جديد أم سداد دين',
     },
     signals: {
       decision_creates_monthly_deficit: 'القرار يسبب عجزاً شهرياً.',
@@ -62,12 +85,18 @@ const LABELS = {
   en: {
     confidence: { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' },
     scenarios: { stress: 'Stress scenario', base: 'Base scenario', optimistic: 'Optimistic scenario' },
+    horizons: { 3: 'After 3 months', 6: 'After 6 months', 12: 'After 12 months' },
+    simulationTitle: 'Decision impact versus not taking the decision',
+    simulationUnavailable: 'Full simulation needs additional inputs; missing values are not assumed.',
     missing: {
       income: 'Income data',
       expenses: 'Expense data',
       debts: 'Debt data',
       savings: 'Savings data',
       investments: 'Investment data',
+      upfront_cash_outflow: 'Down payment or upfront cash outflow',
+      financing_principal: 'Financing principal',
+      debt_action_direction: 'Whether this is a new loan or debt repayment',
     },
     signals: {
       decision_creates_monthly_deficit: 'The decision creates a monthly deficit.',
@@ -85,12 +114,18 @@ const LABELS = {
   fr: {
     confidence: { high: 'Confiance élevée', medium: 'Confiance moyenne', low: 'Confiance faible' },
     scenarios: { stress: 'Scénario de stress', base: 'Scénario de base', optimistic: 'Scénario optimiste' },
+    horizons: { 3: 'Après 3 mois', 6: 'Après 6 mois', 12: 'Après 12 mois' },
+    simulationTitle: 'Impact de la décision par rapport à son absence',
+    simulationUnavailable: 'La simulation complète nécessite des données supplémentaires ; aucune valeur manquante n’est supposée.',
     missing: {
       income: 'Données de revenus',
       expenses: 'Données de dépenses',
       debts: 'Données de dettes',
       savings: 'Données d’épargne',
       investments: 'Données d’investissement',
+      upfront_cash_outflow: 'Acompte ou sortie de trésorerie initiale',
+      financing_principal: 'Montant principal du financement',
+      debt_action_direction: 'Préciser nouveau prêt ou remboursement de dette',
     },
     signals: {
       decision_creates_monthly_deficit: 'La décision crée un déficit mensuel.',
@@ -130,8 +165,9 @@ export function presentEconomicDecision(
 ): EconomicDecisionPresentation {
   const confidencePercent = Math.round(Math.max(0, Math.min(1, context.snapshot.dataQuality.completeness)) * 100);
   const band = confidenceBand(confidencePercent);
+  const scenarioIds = ['stress', 'base', 'optimistic'] as const;
 
-  const scenarios = (['stress', 'base', 'optimistic'] as const).map((id) => {
+  const scenarios = scenarioIds.map((id) => {
     const points = context.forecast.scenarios[id].points;
     const last = points.at(-1) ?? null;
     return {
@@ -148,16 +184,43 @@ export function presentEconomicDecision(
     };
   });
 
+  const horizonMap = [
+    [3, context.simulation?.horizons.month3],
+    [6, context.simulation?.horizons.month6],
+    [12, context.simulation?.horizons.month12],
+  ] as const;
+
+  const simulation = context.simulation
+    ? {
+        title: LABELS[locale].simulationTitle,
+        unavailable: LABELS[locale].simulationUnavailable,
+        horizons: horizonMap.map(([month, values]) => ({
+          month,
+          label: LABELS[locale].horizons[month],
+          scenarios: scenarioIds.map((id) => ({
+            id,
+            label: LABELS[locale].scenarios[id],
+            monthlySurplusDelta: values?.[id]?.monthlySurplus ?? null,
+            liquidBalanceDelta: values?.[id]?.liquidBalance ?? null,
+            netWorthDelta: values?.[id]?.netWorth ?? null,
+          })),
+        })),
+      }
+    : null;
+
   return {
     analysisVersion: ECONOMIC_ANALYSIS_VERSION,
     generatedAt: context.forecast.generatedAt,
     decisionType,
     confidencePercent,
     confidenceLabel: LABELS[locale].confidence[band],
-    missingData: context.snapshot.dataQuality.missing.map((code) => localizeMissing(code, locale)),
+    missingData: [...context.snapshot.dataQuality.missing, ...context.simulationMissing]
+      .filter((code, index, all) => all.indexOf(code) === index)
+      .map((code) => localizeMissing(code, locale)),
     warnings: context.assessment.warnings.map((code) => localizeSignal(code, locale)),
     reasons: context.assessment.reasons.map((code) => localizeSignal(code, locale)),
     scenarios,
+    simulation,
   };
 }
 
@@ -172,5 +235,7 @@ export function versionedEconomicAnalysis(
     snapshot: context.snapshot,
     forecast: context.forecast,
     assessment: context.assessment,
+    simulation: context.simulation,
+    simulationMissing: context.simulationMissing,
   };
 }
