@@ -104,7 +104,7 @@ function isLocalQaBypass(pathname: string) {
 
 function withSecurityHeaders<T extends NextResponse>(response: T) {
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
+  response.headers.set('Content-Security-Policy', "base-uri 'self'; object-src 'none'; frame-ancestors 'self'");
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   return response;
 }
