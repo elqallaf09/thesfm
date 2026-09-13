@@ -13,16 +13,17 @@
 - Compatibility bridge from the existing Decisions Center into Economic Intelligence
 - Route purchase, investment, project, and debt/saving decisions through the Financial Digital Twin
 - Preserve legacy deterministic rules for charity/zakat and budget decisions until migrated
-- Include debt-service context when the source is available
-- Expose missing financial sources instead of fabricating values
-- Add bridge integration tests
-
-### Remaining in 7.1
-- Load debt records directly in the Decisions Center source bundle
+- Load debt records directly into the Decisions Center source bundle
+- Include debt-service context in affordability and runway calculations
 - Surface Financial Digital Twin completeness/confidence in the Decisions UI
-- Show 12-month Stress / Base / Optimistic outcomes next to each decision
-- Add translated explanations for Economic Intelligence reason/warning codes
-- Persist a versioned decision-analysis snapshot for auditability
+- Show 12-month Stress / Base / Optimistic outcomes next to each supported decision
+- Translate Economic Intelligence reason/warning and missing-data codes in AR / EN / FR
+- Persist versioned inputs + analysis JSON for decision-history auditability
+- Add bridge and presentation/versioning unit coverage
+
+### Validation gate
+- Preview production build must pass before Phase 7.1 is merged
+- Keep PR #119 Draft until build and visual review are clean
 
 ## Phase 7.2 — Finance Dashboard Intelligence
 - Current financial state summary from the same Digital Twin
