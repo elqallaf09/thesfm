@@ -4,7 +4,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { z } from 'zod';
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
-import { buildEconomicAdvisorSystemPrompt } from '@/domain/economic-intelligence/advisorPrompt';
+import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   try {
     const { text } = await generateText({
       model: ai('claude-haiku-4-5-20251001'),
-      system: buildEconomicAdvisorSystemPrompt(advisor, grounding, locale),
+      system: buildEconomicAdvisorPrompt(grounding, locale),
       messages: messages.map((message) => ({ role: message.role, content: message.content })),
       maxTokens: 900,
     });
