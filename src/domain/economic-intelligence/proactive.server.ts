@@ -78,6 +78,13 @@ function normalizeStored(row: any, draft: EventDraft): SmartNotification {
   };
 }
 
+function resolutionCodeForEventKey(eventKey: string) {
+  if (eventKey.startsWith('risk:')) return 'risk_cleared_or_changed';
+  if (eventKey.startsWith('decision:')) return 'decision_no_longer_requires_attention';
+  if (eventKey.startsWith('opportunity:')) return 'opportunity_no_longer_current';
+  return 'event_no_longer_current';
+}
+
 export async function loadProactiveEconomicEvents(userId: string, lang: NotificationLang): Promise<SmartNotification[]> {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
@@ -136,18 +143,47 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
     actionUrl: `/decisions?decision=${encodeURIComponent(summary.attentionDecision.id)}`,
   });
 
-  if (drafts.length === 0) return [];
-
-  const keys = drafts.map(draft => draft.eventKey);
-  const existingResult = await admin
+  const activeKeys = drafts.map(draft => draft.eventKey);
+  const allOpenResult = await admin
     .from('notifications')
-    .select('id,event_key,status,read,created_at')
+    .select('id,event_key,status,read,created_at,resolved_at')
     .eq('user_id', userId)
     .eq('source_module', 'economic_intelligence')
-    .in('event_key', keys);
+    .is('resolved_at', null);
+  if (allOpenResult.error) throw allOpenResult.error;
+
+  const now = new Date().toISOString();
+  const staleRows = (allOpenResult.data ?? []).filter((row: any) => row.event_key && !activeKeys.includes(String(row.event_key)));
+  for (const row of staleRows) {
+    const resolutionCode = resolutionCodeForEventKey(String((row as any).event_key));
+    const { error } = await admin.from('notifications').update({
+      resolved_at: now,
+      resolution_code: resolutionCode,
+      status: 'archived',
+      read: true,
+      read_at: (row as any).read ? undefined : now,
+      metadata: {
+        economic_intelligence: true,
+        event_key: (row as any).event_key,
+        resolution_code: resolutionCode,
+        resolution_observed_at: now,
+        causal_claim: false,
+      },
+    }).eq('id', (row as any).id).eq('user_id', userId);
+    if (error) throw error;
+  }
+
+  if (drafts.length === 0) return [];
+
+  const existingResult = await admin
+    .from('notifications')
+    .select('id,event_key,status,read,created_at,resolved_at')
+    .eq('user_id', userId)
+    .eq('source_module', 'economic_intelligence')
+    .in('event_key', activeKeys);
   if (existingResult.error) throw existingResult.error;
 
-  const existing = new Map((existingResult.data ?? []).map((row: any) => [String(row.event_key), row]));
+  const existing = new Map((existingResult.data ?? []).filter((row: any) => !(row as any).resolved_at).map((row: any) => [String(row.event_key), row]));
   const missing = drafts.filter(draft => !existing.has(draft.eventKey));
   if (missing.length > 0) {
     const insertResult = await admin.from('notifications').insert(missing.map(draft => ({
@@ -163,8 +199,8 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
       action_url: draft.actionUrl,
       status: 'unread',
       event_key: draft.eventKey,
-      metadata: { economic_intelligence: true, event_key: draft.eventKey },
-    }))).select('id,event_key,status,read,created_at');
+      metadata: { economic_intelligence: true, event_key: draft.eventKey, causal_claim: false },
+    }))).select('id,event_key,status,read,created_at,resolved_at');
     if (insertResult.error && insertResult.error.code !== '23505') throw insertResult.error;
     for (const row of insertResult.data ?? []) existing.set(String((row as any).event_key), row);
   }
