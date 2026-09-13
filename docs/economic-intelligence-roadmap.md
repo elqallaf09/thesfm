@@ -116,12 +116,21 @@
 - Decision-event fingerprints include decision status and risk bucket
 - Stored and proactive feeds deduplicate on the real notification UUID
 
-## Next — Phase 7.13 — Outcome & Resolution Tracking
-- Record explicit open/dismiss/resolve action metadata for Economic Intelligence events
-- Link resolved decision-related events back to versioned decision history
-- Measure whether a risk resolved after a user action without claiming causality
-- Use outcome history to improve prioritization, not to fabricate predictions
-- Surface resolved vs recurring risks in the Economic Intelligence Home
+## Phase 7.13 — Outcome & Resolution Tracking — implemented in PR #119
+- Durable `opened_at`, `actioned_at`, `resolved_at`, and `resolution_code` fields on existing notifications
+- Existing read acknowledgement automatically records action metadata for Economic Intelligence events
+- Authenticated, rate-limited outcome endpoint supports explicit opened / actioned / resolved actions
+- Stale risk, opportunity, and decision events auto-resolve when their underlying fingerprint is no longer current
+- Decision-related resolved events write non-causal outcome metadata back into versioned decision analysis
+- Resolution metadata explicitly records `causal_claim: false`
+- Recurring risks create new fingerprints rather than rewriting prior resolved history
+
+## Next — Phase 7.14 — Resolution Intelligence
+- Surface resolved and recurring-risk history on the Economic Intelligence Home
+- Prioritize recurring risks above first-time low-severity notices when evidence supports it
+- Add decision outcome timeline presentation without implying causality
+- Add explicit “resolved” action to the notifications UI for Economic Intelligence events
+- Keep all prioritization deterministic and auditable
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
