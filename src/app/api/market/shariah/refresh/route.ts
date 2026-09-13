@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isCronAuthorized } from '@/lib/auth/accessPolicy';
-import { refreshShariahClassifications } from '@/lib/market/shariahAutoRefresh';
+import { refreshSfmShariahClassifications } from '@/lib/market/shariahSelfScreening';
 import { createServerSupabaseAdmin, requireAdminApiAccess } from '@/lib/server/adminAccess';
 
 export const runtime = 'nodejs';
@@ -43,14 +43,16 @@ async function run(request: NextRequest, options: { cronOnly: boolean }) {
   const body = request.method === 'POST'
     ? await request.json().catch(() => ({})) as Record<string, unknown>
     : {};
-  const result = await refreshShariahClassifications(admin, {
-    limit: cleanLimit(body.limit ?? new URL(request.url).searchParams.get('limit')),
-    force: body.force === true || new URL(request.url).searchParams.get('force') === '1',
+  const url = new URL(request.url);
+  const result = await refreshSfmShariahClassifications(admin, {
+    limit: cleanLimit(body.limit ?? url.searchParams.get('limit')),
+    force: body.force === true || url.searchParams.get('force') === '1',
   });
 
   return json({
     ...result,
-    source: result.external > 0 ? 'external-provider' : 'internal-screening',
+    source: 'sfm-self-hosted-screening',
+    paidShariahProviderRequired: false,
   }, { status: result.ok ? 200 : 207 });
 }
 
