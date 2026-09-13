@@ -1,6 +1,6 @@
 'use client';
 
-import { Activity, BrainCircuit, CircleAlert, CircleCheck } from 'lucide-react';
+import { Activity, BrainCircuit, CircleAlert, CircleCheck, GitCompareArrows } from 'lucide-react';
 import type { EconomicDecisionPresentation } from '@/lib/decisions/economicIntelligencePresentation';
 
 type Props = {
@@ -19,6 +19,14 @@ type Props = {
     complete: string;
   };
 };
+
+function deltaMoney(value: number | null, money: (value: number) => string) {
+  if (value == null) return '--';
+  const formatted = money(Math.abs(value));
+  if (value > 0) return `+${formatted}`;
+  if (value < 0) return `-${formatted}`;
+  return formatted;
+}
 
 export function EconomicIntelligencePanel({ presentation, money, labels }: Props) {
   return (
@@ -59,6 +67,26 @@ export function EconomicIntelligencePanel({ presentation, money, labels }: Props
         </div>
       </div>
 
+      {presentation.simulation && (
+        <div className="ei-block">
+          <div className="ei-block-title"><GitCompareArrows size={16} /><b>{presentation.simulation.title}</b></div>
+          <div className="ei-simulation-grid">
+            {presentation.simulation.horizons.map((horizon) => (
+              <article key={horizon.month} className="ei-simulation-horizon">
+                <strong>{horizon.label}</strong>
+                {horizon.scenarios.map((scenario) => (
+                  <div key={scenario.id} className="ei-simulation-row">
+                    <span>{scenario.label}</span>
+                    <span>{labels.surplus}: {deltaMoney(scenario.monthlySurplusDelta, money)}</span>
+                    <span>{labels.netWorth}: {deltaMoney(scenario.netWorthDelta, money)}</span>
+                  </div>
+                ))}
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+
       {presentation.reasons.length > 0 && (
         <div className="ei-block">
           <div className="ei-block-title"><CircleCheck size={16} /><b>{labels.reasons}</b></div>
@@ -78,7 +106,7 @@ export function EconomicIntelligencePanel({ presentation, money, labels }: Props
       )}
 
       <style jsx>{`
-        .economic-intelligence-panel{display:grid;gap:14px}.ei-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ei-summary-item{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:12px;min-width:0}.ei-summary-item span,.ei-summary-item small{display:block;color:var(--foreground-muted)}.ei-summary-item span{font-size:12px;font-weight:500}.ei-summary-item strong{display:block;margin:5px 0;color:var(--foreground);font-family:var(--font-data);font-size:20px}.ei-summary-item small{font-size:11px;line-height:1.5;overflow-wrap:anywhere}.ei-block{border-top:1px solid var(--border);padding-top:12px}.ei-block-title{display:flex;align-items:center;gap:7px;color:var(--foreground);margin-bottom:10px}.ei-scenarios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ei-scenario{display:grid;gap:6px;border:1px solid var(--border);border-radius:var(--radius-card);padding:12px;background:var(--surface-muted)}.ei-scenario strong{color:var(--foreground);font-weight:600}.ei-scenario span{color:var(--foreground-muted);font-family:var(--font-data);font-size:12px}.ei-signals{margin:0;padding:0;list-style:none;display:grid;gap:7px}.ei-signals li{border-radius:var(--radius-control);padding:9px 10px;font-size:13px;line-height:1.6}.ei-signals.good li{background:var(--success-soft);color:var(--success)}.ei-signals.warning li{background:var(--warning-soft);color:var(--foreground)}@media(max-width:820px){.ei-summary-grid,.ei-scenarios{grid-template-columns:1fr}}
+        .economic-intelligence-panel{display:grid;gap:14px}.ei-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ei-summary-item{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:12px;min-width:0}.ei-summary-item span,.ei-summary-item small{display:block;color:var(--foreground-muted)}.ei-summary-item span{font-size:12px;font-weight:500}.ei-summary-item strong{display:block;margin:5px 0;color:var(--foreground);font-family:var(--font-data);font-size:20px}.ei-summary-item small{font-size:11px;line-height:1.5;overflow-wrap:anywhere}.ei-block{border-top:1px solid var(--border);padding-top:12px}.ei-block-title{display:flex;align-items:center;gap:7px;color:var(--foreground);margin-bottom:10px}.ei-scenarios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ei-scenario{display:grid;gap:6px;border:1px solid var(--border);border-radius:var(--radius-card);padding:12px;background:var(--surface-muted)}.ei-scenario strong{color:var(--foreground);font-weight:600}.ei-scenario span{color:var(--foreground-muted);font-family:var(--font-data);font-size:12px}.ei-simulation-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ei-simulation-horizon{display:grid;gap:8px;border:1px solid var(--border);border-radius:var(--radius-card);padding:12px;background:var(--surface-muted)}.ei-simulation-horizon>strong{font-size:13px}.ei-simulation-row{display:grid;gap:3px;padding-top:7px;border-top:1px solid var(--border)}.ei-simulation-row span{font-size:11px;color:var(--foreground-muted)}.ei-simulation-row span:first-child{font-weight:600;color:var(--foreground)}.ei-signals{margin:0;padding:0;list-style:none;display:grid;gap:7px}.ei-signals li{border-radius:var(--radius-control);padding:9px 10px;font-size:13px;line-height:1.6}.ei-signals.good li{background:var(--success-soft);color:var(--success)}.ei-signals.warning li{background:var(--warning-soft);color:var(--foreground)}@media(max-width:820px){.ei-summary-grid,.ei-scenarios,.ei-simulation-grid{grid-template-columns:1fr}}
       `}</style>
     </section>
   );
