@@ -1,18 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, BriefcaseBusiness, CircleDollarSign, LineChart, Loader2, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { AlertTriangle, ArrowUpRight, BriefcaseBusiness, CircleDollarSign, LineChart, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 
 type Lang = 'ar' | 'en' | 'fr';
 type BriefItem = { code: string; severity: 'info' | 'warning' | 'danger'; sources: Array<'finance' | 'trader' | 'business'>; evidence: Record<string, number | string | null> };
 type Brief = { state: 'clear' | 'attention' | 'critical'; items: BriefItem[]; compatibleFundingNeed: number | null; fundingCurrency: string | null };
+type Action = { code: string; severity: 'info' | 'warning' | 'danger'; actionUrl: string; sources: Array<'finance' | 'trader' | 'business'>; fingerprint: string };
 
 const TEXT = {
   ar: {
     title: 'الموجز الاقتصادي اليومي', subtitle: 'صورة موحدة من Finance وTrader وBusiness. قيود السيولة والديون لها أولوية على فرص السوق.',
-    finance: 'المال الشخصي', trader: 'الأسواق', business: 'الأعمال', clear: 'لا يوجد تعارض مهم ظاهر', attention: 'توجد نقاط تحتاج انتباه', critical: 'يوجد تعارض عالي الأولوية',
+    finance: 'المال الشخصي', trader: 'الأسواق', business: 'الأعمال', clear: 'لا يوجد تعارض مهم ظاهر', attention: 'توجد نقاط تحتاج انتباه', critical: 'يوجد تعارض عالي الأولوية', nextAction: 'الإجراء الأعلى أولوية', act: 'افتح الإجراء',
     market_attention_vs_low_liquidity: 'هناك اهتمام بالسوق بينما السيولة الشخصية منخفضة. راجع قدرة الاستثمار قبل زيادة التعرض.',
     market_attention_vs_debt_pressure: 'اهتمام السوق يتزامن مع ضغط دين مرتفع. معالجة قدرة السداد أولوية قبل زيادة المخاطر.',
     business_funding_vs_personal_liquidity: 'المشاريع تحتاج تمويلاً بينما هامش السيولة الشخصية محدود.',
@@ -22,7 +24,7 @@ const TEXT = {
   },
   en: {
     title: 'Daily Economic Brief', subtitle: 'A unified view across Finance, Trader, and Business. Liquidity and debt constraints take priority over market opportunities.',
-    finance: 'Personal finance', trader: 'Markets', business: 'Business', clear: 'No material conflict detected', attention: 'Items need attention', critical: 'High-priority conflict detected',
+    finance: 'Personal finance', trader: 'Markets', business: 'Business', clear: 'No material conflict detected', attention: 'Items need attention', critical: 'High-priority conflict detected', nextAction: 'Highest-priority action', act: 'Open action',
     market_attention_vs_low_liquidity: 'Market attention is active while personal liquidity is weak. Review investment capacity before increasing exposure.',
     market_attention_vs_debt_pressure: 'Market attention coincides with elevated debt pressure. Debt capacity takes priority before adding risk.',
     business_funding_vs_personal_liquidity: 'Business projects need funding while personal liquidity headroom is limited.',
@@ -32,7 +34,7 @@ const TEXT = {
   },
   fr: {
     title: 'Brief économique quotidien', subtitle: 'Vue unifiée Finance, Trader et Business. Les contraintes de liquidité et de dette priment sur les opportunités de marché.',
-    finance: 'Finances personnelles', trader: 'Marchés', business: 'Business', clear: 'Aucun conflit important détecté', attention: 'Des points nécessitent une attention', critical: 'Conflit prioritaire détecté',
+    finance: 'Finances personnelles', trader: 'Marchés', business: 'Business', clear: 'Aucun conflit important détecté', attention: 'Des points nécessitent une attention', critical: 'Conflit prioritaire détecté', nextAction: 'Action prioritaire', act: 'Ouvrir l’action',
     market_attention_vs_low_liquidity: 'L’intérêt marché est actif alors que la liquidité personnelle est faible. Vérifiez la capacité d’investissement avant d’augmenter l’exposition.',
     market_attention_vs_debt_pressure: 'L’intérêt marché coïncide avec une pression de dette élevée. La capacité de remboursement est prioritaire.',
     business_funding_vs_personal_liquidity: 'Les projets nécessitent un financement alors que la marge de liquidité personnelle est limitée.',
@@ -45,11 +47,14 @@ const TEXT = {
 const SOURCE_ICON = { finance: CircleDollarSign, trader: LineChart, business: BriefcaseBusiness } as const;
 
 export function CrossWorkspaceEconomicBrief() {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
   const locale = (lang === 'fr' ? 'fr' : lang === 'en' ? 'en' : 'ar') as Lang;
   const text = TEXT[locale];
   const [brief, setBrief] = useState<Brief | null>(null);
+  const [actions, setActions] = useState<Action[]>([]);
+  const [highestPriority, setHighestPriority] = useState<Action | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -60,7 +65,7 @@ export function CrossWorkspaceEconomicBrief() {
     setLoading(true); setError(false);
     void fetch('/api/economic-intelligence/daily-brief', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(async response => response.ok ? response.json() : Promise.reject(new Error('brief_failed')))
-      .then(payload => { if (!cancelled) { setBrief(payload.brief ?? null); setLoading(false); } })
+      .then(payload => { if (!cancelled) { setBrief(payload.brief ?? null); setActions(Array.isArray(payload.actions) ? payload.actions : []); setHighestPriority(payload.highestPriority ?? null); setLoading(false); } })
       .catch(() => { if (!cancelled) { setError(true); setLoading(false); } });
     return () => { cancelled = true; };
   }, [authLoading, user]);
@@ -71,11 +76,12 @@ export function CrossWorkspaceEconomicBrief() {
 
   return <aside className={`cross-brief ${brief.state}`} dir={dir} aria-label={text.title}>
     <div className="head"><div><span>Cross-Workspace Intelligence</span><h2>{text.title}</h2><p>{text.subtitle}</p></div><div className="state">{brief.state === 'critical' ? <AlertTriangle size={17} /> : <ShieldCheck size={17} />}<strong>{text[brief.state]}</strong></div></div>
-    <div className="items">{brief.items.map(item => <article key={item.code} className={item.severity}><div className="sources">{item.sources.map(source => { const Icon = SOURCE_ICON[source]; return <span key={source}><Icon size={14} />{text[source]}</span>; })}</div><p>{text[item.code as keyof typeof text] ?? item.code}</p></article>)}</div>
+    {highestPriority ? <div className={`priority ${highestPriority.severity}`}><div><span>{text.nextAction}</span><strong>{text[highestPriority.code as keyof typeof text] ?? highestPriority.code}</strong></div><button type="button" onClick={() => router.push(highestPriority.actionUrl)}>{text.act}<ArrowUpRight size={15} /></button></div> : null}
+    <div className="items">{brief.items.map(item => { const action = actions.find(candidate => candidate.code === item.code); return <article key={item.code} className={item.severity}><div className="sources">{item.sources.map(source => { const Icon = SOURCE_ICON[source]; return <span key={source}><Icon size={14} />{text[source]}</span>; })}</div><p>{text[item.code as keyof typeof text] ?? item.code}</p>{action && action.code !== highestPriority?.code ? <button type="button" className="inline-action" onClick={() => router.push(action.actionUrl)}>{text.act}<ArrowUpRight size={14} /></button> : null}</article>; })}</div>
     <style jsx>{styles}</style>
   </aside>;
 }
 
 const styles = `
-.cross-brief{display:grid;gap:14px;margin:0 auto 18px;max-width:1440px;padding:18px;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);box-shadow:var(--shadow-card);color:var(--foreground)}.cross-brief.loading,.cross-brief.unavailable{display:flex;align-items:center;gap:8px;color:var(--foreground-muted)}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.head>div:first-child>span{color:var(--primary);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.head h2{margin:5px 0 4px;font-size:21px}.head p{margin:0;color:var(--foreground-muted);line-height:1.6}.state{display:flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface-muted);font-size:12px}.critical .state{color:var(--danger);background:var(--danger-soft)}.attention .state{color:var(--warning);background:var(--warning-soft)}.clear .state{color:var(--success);background:var(--success-soft)}.items{display:grid;gap:9px}.items article{display:grid;gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted)}.items article.danger{border-color:color-mix(in srgb,var(--danger) 45%,var(--border))}.items article.warning{border-color:color-mix(in srgb,var(--warning) 45%,var(--border))}.items p{margin:0;line-height:1.6;color:var(--foreground-secondary)}.sources{display:flex;gap:7px;flex-wrap:wrap}.sources span{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:var(--radius-pill);background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--foreground-muted)}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:760px){.head{display:grid}.state{width:max-content;max-width:100%}}
+.cross-brief{display:grid;gap:14px;margin:0 auto 18px;max-width:1440px;padding:18px;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);box-shadow:var(--shadow-card);color:var(--foreground)}.cross-brief.loading,.cross-brief.unavailable{display:flex;align-items:center;gap:8px;color:var(--foreground-muted)}.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.head>div:first-child>span{color:var(--primary);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.head h2{margin:5px 0 4px;font-size:21px}.head p{margin:0;color:var(--foreground-muted);line-height:1.6}.state{display:flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface-muted);font-size:12px}.critical .state{color:var(--danger);background:var(--danger-soft)}.attention .state{color:var(--warning);background:var(--warning-soft)}.clear .state{color:var(--success);background:var(--success-soft)}.priority{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--primary-soft)}.priority>div{display:grid;gap:4px}.priority span{font-size:11px;color:var(--foreground-muted);font-weight:700;text-transform:uppercase}.priority strong{line-height:1.5}.priority button,.inline-action{min-height:38px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font:600 12px var(--font-ui)}.items{display:grid;gap:9px}.items article{display:grid;gap:8px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted)}.items article.danger{border-color:color-mix(in srgb,var(--danger) 45%,var(--border))}.items article.warning{border-color:color-mix(in srgb,var(--warning) 45%,var(--border))}.items p{margin:0;line-height:1.6;color:var(--foreground-secondary)}.sources{display:flex;gap:7px;flex-wrap:wrap}.sources span{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:var(--radius-pill);background:var(--surface);border:1px solid var(--border);font-size:11px;color:var(--foreground-muted)}.inline-action{width:max-content;background:transparent;color:var(--primary)}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:760px){.head,.priority{display:grid}.state{width:max-content;max-width:100%}.priority button{width:100%}}
 `;
