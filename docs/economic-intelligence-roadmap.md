@@ -34,24 +34,63 @@
 - Personal Economic Impact mapping from macro context to the Financial Digital Twin
 - Never replace deterministic personal-finance arithmetic with LLM estimates
 
-## Phase 7.4 — Specialist Advisors — in progress in PR #119
+## Phase 7.4 — Specialist Advisors — implemented in PR #119
 - Finance Advisor grounding
 - Investment / Markets Advisor grounding
 - Business Advisor grounding
 - Shared evidence, missing-data and confidence contract
 - Shared allowed/prohibited claim boundaries
-- Next: connect grounded advisor context to the existing AI Analyst / workspace chat surfaces without creating a parallel chatbot stack
+- Grounded advisor context connects to the existing AI surfaces rather than creating a parallel chatbot stack
 
-## Phase 7.5 — Decision Simulation
-- Buy car / home
-- Take loan
-- Pay debt vs invest
-- Start or expand business
-- Scenario comparison and decision history
+## Phase 7.5 — Decision Simulation — implemented in PR #119
+- Deterministic before/after simulation against one canonical Financial Digital Twin
+- Buy-car / large-purchase modeling
+- Debt vs investment paths
+- Start-business/project paths
+- Stress / Base / Optimistic comparison at 3/6/12 months
+- Versioned decision history
+- Financed purchases are not silently treated as full-cash purchases
+
+## Phase 7.6 — Explicit Decision Inputs — implemented in PR #119
+- Explicit down payment / upfront cash outflow
+- Explicit financing principal
+- Explicit monthly payment and loan term
+- Explicit new-loan vs debt-repayment direction
+- Explicit debt-payment reduction after repayment
+- Explicit project monthly income change
+- Missing financing assumptions are exposed instead of inferred
+- Inputs flow through Decisions Center analysis into the simulation engine
+
+## Phase 7.7 — Decision Templates — implemented in PR #119
+- Typed input templates per decision type
+- Purchase, investment, project, debt, charity/zakat and budget contracts
+- Conditional financing fields for financed purchases
+- Separate field sets for new borrowing and debt repayment
+- Deterministic completeness validation before simulation
+- No fabricated terms or inferred financing assumptions
+
+## Phase 7.8 — Decision Comparison — implemented in PR #119
+- Compare two or more candidate decisions against the same Financial Digital Twin
+- Rank only candidates with complete comparable inputs
+- Use deterministic status, risk score, post-decision monthly net and liquidity as comparison signals
+- Refuse ranking when data is incomplete
+- Refuse cross-currency ranking without an explicit conversion layer
+- Return an auditable comparison reason rather than an unexplained AI recommendation
+
+## Next — Phase 7.9 — Decision Experience
+- Surface the typed templates in the Decisions Center UI
+- Dynamic AR / EN / FR fields by decision type
+- Cash vs finance toggle for large purchases
+- New loan vs repay debt selector
+- Before/after 3/6/12 month comparison cards
+- Side-by-side candidate comparison UI
+- Persist and reopen comparison sets
+- Mobile-first responsive validation
 
 ### Validation gate
-- Keep PR #119 Draft and unmerged until Preview build, CI and visual validation are clean
-- No Production changes before the validation gate passes
+- Required GitHub checks, Preview build and browser validation must pass before merge
+- Auto-merge is authorized after repository-required checks pass
+- No fake data, skipped required checks or lowered quality thresholds to force a merge
 
 ## Guardrails
 - No fake/demo financial records in production analysis
