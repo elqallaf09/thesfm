@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { ChevronDown, LogIn, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentUserProfile } from '@/hooks/useCurrentUserProfile';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -18,7 +19,7 @@ type MenuPosition = {
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function UserChip({ displayName }: { displayName?: string }) {
-  const { signOut } = useAuth();
+  const { signOut, user, loading: authLoading } = useAuth();
   const currentUser = useCurrentUserProfile();
   const { t, dir } = useLanguage();
   const router = useRouter();
@@ -45,6 +46,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
     .slice(0, 2)
     .join('')
     .toUpperCase() || 'S').slice(0, 1);
+  const showSignIn = !authLoading && !user;
 
   const updatePosition = useCallback(() => {
     const button = buttonRef.current;
@@ -104,6 +106,10 @@ export function UserChip({ displayName }: { displayName?: string }) {
     return () => window.cancelAnimationFrame(frame);
   }, [mounted, open]);
 
+  useEffect(() => {
+    if (showSignIn && open) setOpen(false);
+  }, [open, showSignIn]);
+
   const goProfile = () => {
     setOpen(false);
     router.push('/profile');
@@ -121,7 +127,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
     router.refresh();
   };
 
-  const menu = open && mounted ? createPortal(
+  const menu = open && mounted && user ? createPortal(
     <div
       ref={menuRef}
       className="sfm-user-menu"
@@ -163,7 +169,7 @@ export function UserChip({ displayName }: { displayName?: string }) {
         </span>
         <span className="sfm-user-menu-copy">
           <strong>{name}</strong>
-          <small dir="ltr">{currentUser.isGuest ? t('guest_mode') : email || t('common_user')}</small>
+          <small dir="ltr">{email || t('common_user')}</small>
         </span>
       </div>
       <button type="button" role="menuitem" className="sfm-user-menu-item" onClick={goProfile}>
@@ -186,10 +192,12 @@ export function UserChip({ displayName }: { displayName?: string }) {
     <>
       <style>{`
         .sfm-user-chip-wrap{position:relative;display:inline-flex;width:auto;max-width:min(190px,100%);min-width:0;flex:0 1 auto;font-family:var(--font-ui);vertical-align:top}
-        .sfm-user-chip{display:inline-flex;align-items:center;gap:8px;width:auto;max-width:100%;min-width:0;min-height:44px;padding:6px 10px 6px 7px;border-radius:var(--radius-pill);background:var(--surface-elevated);border:1px solid var(--border);cursor:pointer;color:var(--foreground);text-align:start;box-shadow:var(--shadow-xs);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;font-family:var(--font-ui)}
+        .sfm-user-chip{display:inline-flex;align-items:center;gap:8px;width:auto;max-width:100%;min-width:0;min-height:44px;padding:6px 10px 6px 7px;border-radius:var(--radius-pill);background:var(--surface-elevated);border:1px solid var(--border);cursor:pointer;color:var(--foreground);text-align:start;box-shadow:var(--shadow-xs);transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;font-family:var(--font-ui);text-decoration:none}
         .sfm-user-chip:hover,.sfm-user-chip[aria-expanded="true"]{background:var(--surface-hover);border-color:color-mix(in srgb,var(--primary) 36%,var(--border));box-shadow:var(--shadow-card)}
         .sfm-user-chip:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
         .sfm-user-chip:active{transform:translateY(1px)}
+        .sfm-user-chip-login{justify-content:center;padding-inline:12px;color:var(--primary-hover);font-weight:600}
+        .sfm-user-chip-login svg{flex:0 0 auto}
         .sfm-user-avatar{width:28px;height:28px;border-radius:var(--radius-pill);background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--primary-foreground);flex:0 0 auto;box-shadow:var(--shadow-xs);overflow:hidden;background-size:cover;background-position:center}
         .sfm-user-identity{flex:1 1 auto;min-width:0;max-width:118px;display:block}
         .sfm-user-name{display:block;min-width:0;font-size:var(--type-navigation-size);font-weight:600;line-height:var(--type-navigation-leading);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--foreground)}
@@ -213,21 +221,28 @@ export function UserChip({ displayName }: { displayName?: string }) {
         @media(prefers-reduced-motion:reduce){.sfm-user-chip,.sfm-user-menu,.sfm-user-menu-item{animation:none;transition:none}}
       `}</style>
       <div className="sfm-user-chip-wrap">
-        <button
-          ref={buttonRef}
-          type="button"
-          className="sfm-user-chip"
-          onClick={() => setOpen(value => !value)}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          aria-label={name}
-        >
-          <span className={avatarClassName} style={avatarStyle}>{avatarUrl ? null : initials}</span>
-          <span className="sfm-user-identity">
-            <span className="sfm-user-name">{name}</span>
-          </span>
-          <ChevronDown className="sfm-user-chevron" size={15} />
-        </button>
+        {showSignIn ? (
+          <Link href="/login" prefetch={false} className="sfm-user-chip sfm-user-chip-login" aria-label={t('login_sign_in')}>
+            <LogIn size={16} aria-hidden="true" />
+            <span className="sfm-user-name">{t('login_sign_in')}</span>
+          </Link>
+        ) : (
+          <button
+            ref={buttonRef}
+            type="button"
+            className="sfm-user-chip"
+            onClick={() => setOpen(value => !value)}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-label={name}
+          >
+            <span className={avatarClassName} style={avatarStyle}>{avatarUrl ? null : initials}</span>
+            <span className="sfm-user-identity">
+              <span className="sfm-user-name">{name}</span>
+            </span>
+            <ChevronDown className="sfm-user-chevron" size={15} />
+          </button>
+        )}
       </div>
       {menu}
     </>
