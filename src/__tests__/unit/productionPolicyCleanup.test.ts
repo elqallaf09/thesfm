@@ -14,6 +14,13 @@ describe('production policy cleanup', () => {
     expect(middleware).not.toContain('microphone=(self), camera=(self)');
   });
 
+  it('hardens the page CSP without introducing provider-breaking default-src restrictions', () => {
+    const middleware = read('src/middleware.ts');
+
+    expect(middleware).toContain("base-uri 'self'; object-src 'none'; frame-ancestors 'self'");
+    expect(middleware).not.toContain("default-src 'self'");
+  });
+
   it('generates route inventory from source instead of preserving stale route counts', () => {
     const packageJson = read('package.json');
     const docs = read('docs/route-inventory.md');
