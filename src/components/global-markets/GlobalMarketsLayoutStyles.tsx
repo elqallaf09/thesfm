@@ -71,6 +71,9 @@ export function GlobalMarketsLayoutStyles() {
       }
 
       .gm-header-updated {
+        inline-size: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
         color: var(--foreground-muted);
         font-size: 11.5px;
         font-weight: 500;
@@ -104,18 +107,14 @@ export function GlobalMarketsLayoutStyles() {
         to { transform: rotate(360deg); }
       }
 
-      .gm-error {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 14px;
-        border: 1px solid var(--danger);
-        border-radius: var(--radius-card);
-        background: var(--danger-soft);
-        color: var(--danger);
-        font-size: 13px;
-        font-weight: 600;
+      .gm-header-feedback {
+        min-block-size: 2.8em;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
+      .gm-header-feedback.is-error { color: var(--danger); }
 
       .gm-selection {
         display: flex;
@@ -128,7 +127,7 @@ export function GlobalMarketsLayoutStyles() {
         background: var(--surface);
       }
 
-      .gm-selection > div { display: grid; gap: 4px; min-width: 0; }
+      .gm-selection > div { flex: 1; display: grid; gap: 4px; min-width: 0; }
       .gm-selection strong { font-size: 13px; color: var(--foreground); }
       .gm-selection span { overflow: hidden; color: var(--foreground-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
       .gm-selection button, .gm-picker-save, .gm-picker-restore {
@@ -169,23 +168,6 @@ export function GlobalMarketsLayoutStyles() {
         gap: 14px;
       }
 
-      .gm-strips-skeleton {
-        display: grid;
-        gap: 14px;
-      }
-
-      .gm-strips-skeleton-row {
-        min-height: 110px;
-        border-radius: var(--radius-card);
-        background: var(--surface-muted);
-        animation: gm-pulse 1.4s ease-in-out infinite;
-      }
-
-      @keyframes gm-pulse {
-        0%, 100% { opacity: 0.6; }
-        50% { opacity: 1; }
-      }
-
       .gm-disclaimer {
         margin: 0;
         padding-top: 6px;
@@ -199,20 +181,18 @@ export function GlobalMarketsLayoutStyles() {
         .gm-header-refresh .is-spinning {
           animation: none;
         }
-        .gm-strips-skeleton-row {
-          animation: none;
-        }
+      }
+
+      @media (max-width: 1024px) {
+        .gm-header-updated { display: none; }
       }
 
       @media (max-width: 640px) {
         [dir] .gm-shell .gm-main { gap: 12px; }
         .gm-header { padding: 11px 12px; }
         .gm-header-icon { inline-size: 36px; block-size: 36px; }
-        .gm-header-copy p { display: none; }
         .gm-header-updated { display: none; }
         .gm-strips { gap: 9px; }
-        .gm-strips-skeleton { gap: 9px; }
-        .gm-strips-skeleton-row { min-height: 104px; }
         .gm-selection { align-items: stretch; flex-direction: column; }
         .gm-selection button { width: 100%; }
         .gm-picker-options { grid-template-columns: 1fr; }
