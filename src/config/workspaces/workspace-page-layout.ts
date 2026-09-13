@@ -3,6 +3,7 @@ import type { WorkspacePageContainerVariant } from '@/components/layout/Workspac
 export type WorkspacePageLayoutRule = { prefix: string; variant: WorkspacePageContainerVariant; description: string };
 
 export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
+  { prefix: '/economic-intelligence', variant: 'full', description: 'Unified economic intelligence command center' },
   { prefix: '/thesfm-trader-own', variant: 'full', description: 'Trading terminal and dense market tools' },
   { prefix: '/sfm-admin-control', variant: 'full', description: 'Administration dashboards and operational tables' },
   { prefix: '/ai-analyst', variant: 'full', description: 'Unified financial intelligence workspace' },
