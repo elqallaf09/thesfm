@@ -53,6 +53,8 @@ async function run(request: NextRequest, options: { cronOnly: boolean }) {
     ...result,
     source: 'sfm-self-hosted-screening',
     paidShariahProviderRequired: false,
+    dataSources: ['SEC EDGAR', 'Yahoo Finance fundamentals', 'FMP when already configured'],
+    disclaimer: 'Automated rules-based screening estimate; not a fatwa or certified Shariah opinion.',
   }, { status: result.ok ? 200 : 207 });
 }
 
