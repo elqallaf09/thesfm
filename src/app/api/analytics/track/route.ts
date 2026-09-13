@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { createServerSupabaseAdmin, getUserFromBearerToken } from '@/lib/server/adminAccess';
+import { shouldIgnoreAnalyticsRequest } from '@/lib/server/analyticsTraffic';
 
 export const runtime = 'nodejs';
 
@@ -159,6 +160,11 @@ async function readRequestBody(request: Request): Promise<Record<string, unknown
 export async function POST(request: Request) {
   try {
     const body = await readRequestBody(request);
+    const bodyReferrer = text(body?.referrer, 600);
+    if (shouldIgnoreAnalyticsRequest(request, bodyReferrer)) {
+      return ignored('ANALYTICS_NON_PRODUCTION_ENVIRONMENT');
+    }
+
     const rawEventType = text(body?.event_type, 80) ?? 'page_view';
     const eventType = ALLOWED_EVENTS.has(rawEventType) ? rawEventType : null;
     const pagePath = text(body?.page_path, 300);
@@ -183,7 +189,7 @@ export async function POST(request: Request) {
     const resolvedDeviceType = text(body?.device_type, 80) ?? deviceType(userAgent);
     const resolvedBrowser = text(body?.browser, 80) ?? browser(userAgent);
     const resolvedOs = text(body?.os, 80) ?? text(body?.operating_system, 80) ?? os(userAgent);
-    const referrer = text(body?.referrer, 600) ?? text(request.headers.get('referer'), 600);
+    const referrer = bodyReferrer ?? text(request.headers.get('referer'), 600);
     const sectionName = text(body?.section_name, 140) ?? text(body?.module, 140);
     const eventPayload = {
       user_id: user?.id ?? null,
