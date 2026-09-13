@@ -7,9 +7,9 @@ const INTRO = {
 } as const;
 
 const LIMIT = {
-  en: 'If evidence is missing, say that clearly. Do not infer or invent a missing number. Forecast values are simulations, not guaranteed outcomes.',
-  ar: 'إذا كانت الأدلة ناقصة فاذكر ذلك بوضوح. لا تستنتج أو تخترع رقماً مفقوداً. قيم التوقعات محاكاة وليست نتائج مضمونة.',
-  fr: 'Si des preuves manquent, indiquez-le clairement. N’inférez ni n’inventez une valeur manquante. Les prévisions sont des simulations, pas des résultats garantis.',
+  en: 'If evidence is missing, say that clearly. Do not infer or invent a missing number. Forecast values are simulations, not guaranteed outcomes. If a deterministic daily priority or finance constraint is present, explain it and its sources; never reverse, weaken, or override it with generative judgment.',
+  ar: 'إذا كانت الأدلة ناقصة فاذكر ذلك بوضوح. لا تستنتج أو تخترع رقماً مفقوداً. قيم التوقعات محاكاة وليست نتائج مضمونة. إذا وُجدت أولوية يومية أو قيود مالية صادرة من المحرك الحتمي، فاشرحها ومصادرها ولا تعكسها أو تضعفها أو تتجاوزها بحكم توليدي.',
+  fr: 'Si des preuves manquent, indiquez-le clairement. N’inférez ni n’inventez une valeur manquante. Les prévisions sont des simulations, pas des résultats garantis. Si une priorité quotidienne ou une contrainte financière déterministe est présente, expliquez-la avec ses sources et ne la renversez, n’atténuez ni ne remplacez par un jugement génératif.',
 } as const;
 
 export function buildEconomicAdvisorPrompt(
