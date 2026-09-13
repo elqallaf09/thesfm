@@ -19,7 +19,7 @@ function source(overrides: Partial<DecisionSourceData> = {}): DecisionSourceData
 }
 
 describe('economic intelligence decision bridge', () => {
-  it('routes supported purchase decisions through the financial digital twin', () => {
+  it('routes supported purchase decisions through the financial digital twin and simulator', () => {
     const result = analyzeDecision({
       title: 'Buy a car',
       decisionType: 'purchase',
@@ -33,7 +33,24 @@ describe('economic intelligence decision bridge', () => {
     expect(result.economicContext?.snapshot.monthlyIncome).toBe(3000);
     expect(result.economicContext?.snapshot.monthlyDebtPayments).toBe(300);
     expect(result.economicContext?.forecast.horizonMonths).toBe(12);
+    expect(result.economicContext?.simulation?.horizons.month12.base).not.toBeNull();
     expect(result.netAfterDecision).toBe(1250);
+  });
+
+  it('does not pretend a financed purchase is fully paid in cash', () => {
+    const result = analyzeDecision({
+      title: 'Finance a car',
+      decisionType: 'purchase',
+      amount: 20000,
+      monthlyPayment: 250,
+      currency: 'KWD',
+      priority: 'medium',
+    }, source());
+
+    expect(result.economicContext?.simulationMissing).toEqual(
+      expect.arrayContaining(['upfront_cash_outflow', 'financing_principal']),
+    );
+    expect(result.economicContext?.assessment.runwayMonthsAfterDecision).not.toBe(0);
   });
 
   it('keeps unsupported charity decisions on the legacy deterministic rules', () => {
