@@ -3,4 +3,5 @@ export * from './digitalTwin';
 export * from './decisionEngine';
 export * from './dataSource';
 export * from './economicContext';
+export * from './personalEconomicImpact';
 export * from './version';
