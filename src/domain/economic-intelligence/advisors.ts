@@ -7,7 +7,7 @@ export type EconomicAdvisorId = 'finance' | 'investment' | 'business';
 export type AdvisorEvidenceFact = {
   key: string;
   value: string | number | null;
-  source: 'financial_twin' | 'forecast' | 'economic_context' | 'personal_impact' | 'domain_context' | 'decision_memory';
+  source: 'financial_twin' | 'forecast' | 'economic_context' | 'personal_impact' | 'domain_context' | 'decision_memory' | 'cross_workspace';
 };
 
 export type AdvisorGroundingInput = {
@@ -18,6 +18,7 @@ export type AdvisorGroundingInput = {
   hasMarketEvidence?: boolean;
   hasBusinessEvidence?: boolean;
   decisionMemoryFacts?: Array<{ key: string; value: string | number }>;
+  crossWorkspaceFacts?: Array<{ key: string; value: string | number }>;
 };
 
 export type AdvisorGrounding = {
@@ -37,6 +38,7 @@ const COMMON_PROHIBITED_CLAIMS = [
   'fabricated_market_data',
   'licensed_legal_tax_or_investment_advice_claim',
   'causal_claim_from_decision_memory',
+  'override_deterministic_finance_constraint',
 ] as const;
 
 function clamp(value: number) {
@@ -112,6 +114,13 @@ export function buildAdvisorGrounding(
   if (memoryFacts.length > 0) {
     for (const fact of memoryFacts) facts.push({ key: fact.key, value: fact.value, source: 'decision_memory' });
     allowedClaims.push('describe_user_owned_decision_history_without_causal_inference');
+  }
+
+  const crossWorkspaceFacts = input.crossWorkspaceFacts ?? [];
+  if (crossWorkspaceFacts.length > 0) {
+    for (const fact of crossWorkspaceFacts) facts.push({ key: fact.key, value: fact.value, source: 'cross_workspace' });
+    allowedClaims.push('explain_cross_workspace_priority_with_source_attribution');
+    warnings.push('deterministic_cross_workspace_priority_is_authoritative');
   }
 
   if (advisor === 'finance') {
