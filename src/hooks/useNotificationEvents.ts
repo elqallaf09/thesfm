@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import type {
   SmartNotification,
@@ -118,7 +119,7 @@ function sortEvents(events: SmartNotification[]) {
   });
 }
 
-async function fetchNotificationEvents(userId: string) {
+async function fetchNotificationEvents(userId: string, lang: 'ar' | 'en' | 'fr') {
   const db = supabase as any;
   const storedFields = 'id,type,title,message,read,link,created_at,severity,source_module,source_id,action_url,status,due_date,read_at,metadata';
   const storedPromise = (async () => {
@@ -137,17 +138,28 @@ async function fetchNotificationEvents(userId: string) {
     const rows = Array.isArray(payload.notifications) ? payload.notifications : Array.isArray(payload.items) ? payload.items : [];
     return rows.map((row: Record<string, any>) => normalizeSignalNotification(row));
   }).catch(() => [] as SmartNotification[]);
+  const proactivePromise = fetch(`/api/economic-intelligence/proactive-events?lang=${encodeURIComponent(lang)}`, {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  }).then(async response => {
+    if (!response.ok) return [];
+    const payload = await response.json();
+    return Array.isArray(payload.events) ? payload.events as SmartNotification[] : [];
+  }).catch(() => [] as SmartNotification[]);
 
-  const [storedResult, signals] = await Promise.all([storedPromise, signalsPromise]);
+  const [storedResult, signals, proactive] = await Promise.all([storedPromise, signalsPromise, proactivePromise]);
   if (storedResult.error) throw new Error(storedResult.error.message);
   const byId = new Map<string, SmartNotification>();
   ((storedResult.data ?? []) as StoredNotificationRow[]).map(normalizeStored).forEach(event => byId.set(`stored:${event.id}`, event));
-  (signals as SmartNotification[]).forEach(event => byId.set(`signal:${event.id}`, event));
+  (signals as SmartNotification[]).forEach(event => byId.set(event.id, event));
+  (proactive as SmartNotification[]).forEach(event => byId.set(event.id, event));
   return sortEvents(Array.from(byId.values()));
 }
 
 export function useNotificationEvents() {
   const { user, loading: authLoading } = useAuth();
+  const { lang } = useLanguage();
+  const locale = lang === 'fr' ? 'fr' : lang === 'en' ? 'en' : 'ar';
   const [events, setEvents] = useState<SmartNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +172,8 @@ export function useNotificationEvents() {
       setLoading(false);
       return;
     }
-    const cached = notificationCache.get(user.id);
+    const cacheKey = `${user.id}:${locale}`;
+    const cached = notificationCache.get(cacheKey);
     if (!force && cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
       setEvents(cached.events);
       setError(null);
@@ -169,8 +182,8 @@ export function useNotificationEvents() {
     }
     setLoading(true);
     try {
-      const nextEvents = await fetchNotificationEvents(user.id);
-      notificationCache.set(user.id, { events: nextEvents, cachedAt: Date.now() });
+      const nextEvents = await fetchNotificationEvents(user.id, locale);
+      notificationCache.set(cacheKey, { events: nextEvents, cachedAt: Date.now() });
       setEvents(nextEvents);
       setError(null);
     } catch (loadError) {
@@ -179,7 +192,7 @@ export function useNotificationEvents() {
     } finally {
       setLoading(false);
     }
-  }, [authLoading, user]);
+  }, [authLoading, locale, user]);
 
   useEffect(() => {
     void load(false);
@@ -188,10 +201,10 @@ export function useNotificationEvents() {
   const updateEvents = useCallback((updater: (current: SmartNotification[]) => SmartNotification[]) => {
     setEvents(current => {
       const next = sortEvents(updater(current));
-      if (user) notificationCache.set(user.id, { events: next, cachedAt: Date.now() });
+      if (user) notificationCache.set(`${user.id}:${locale}`, { events: next, cachedAt: Date.now() });
       return next;
     });
-  }, [user]);
+  }, [locale, user]);
 
   return {
     events,
