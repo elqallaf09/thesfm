@@ -1,4 +1,5 @@
 import { currentMonthRange, moneyAmount, sumAmounts } from '@/lib/data/financeData';
+import { buildEconomicDecisionContext, type EconomicDecisionContext } from './economicIntelligenceBridge';
 
 export type DecisionType =
   | 'purchase'
@@ -40,6 +41,7 @@ export type DecisionInputs = {
 export type DecisionSourceData = {
   income: any[];
   expenses: any[];
+  debts?: any[];
   savings: any[];
   investments: any[];
   goals: any[];
@@ -58,7 +60,7 @@ export type DecisionScenario = {
 };
 
 export type DecisionAnalysis = {
-  source: 'rules';
+  source: 'rules' | 'economic_intelligence';
   monthlyIncome: number;
   monthlyExpenses: number;
   monthlyNet: number | null;
@@ -73,6 +75,7 @@ export type DecisionAnalysis = {
   riskFlags: string[];
   scenarios: DecisionScenario[];
   linkedProjectName?: string;
+  economicContext?: EconomicDecisionContext | null;
 };
 
 function inCurrentMonth(row: Record<string, unknown>, dateKeys: string[]) {
@@ -102,6 +105,13 @@ function amountValue(value: unknown) {
 
 function hasGoalsSupport(rows: any[]) {
   return rows.some(row => amountValue(row?.target_amount ?? row?.target) > 0);
+}
+
+function statusFromEconomicContext(context: EconomicDecisionContext): DecisionAnalysis['status'] {
+  if (context.snapshot.monthlyIncome <= 0 || context.snapshot.dataQuality.completeness < 0.6) return 'insufficient_data';
+  if (context.assessment.affordability === 'weak') return 'high_risk';
+  if (context.assessment.affordability === 'strong') return 'initially_suitable';
+  return 'needs_review';
 }
 
 export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData): DecisionAnalysis {
@@ -175,7 +185,7 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     scenarios.push({ key: 'reduce_project_capital', amount: amount > 0 ? amount * 0.8 : undefined, monthlyImpact: amountValue(inputs.expectedMonthlyCost) });
   } else if (inputs.decisionType === 'debt_saving') {
     scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || amount });
-    scenarios.push({ key: 'save_first', amount: amount, monthlyImpact: amount });
+    scenarios.push({ key: 'save_first', amount, monthlyImpact: amount });
     scenarios.push({ key: 'split_between_debt_and_savings', amount: amount > 0 ? amount / 2 : undefined, monthlyImpact: amount > 0 ? amount / 2 : undefined });
   } else if (inputs.decisionType === 'charity_zakat') {
     scenarios.push({ key: 'pay_now', amount, monthlyImpact: amount });
@@ -187,13 +197,55 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     scenarios.push({ key: 'delay_budget', amount, monthlyImpact: amount > 0 ? amount / 3 : undefined });
   }
 
-  const status: DecisionAnalysis['status'] = score === null
+  const legacyStatus: DecisionAnalysis['status'] = score === null
     ? 'insufficient_data'
     : riskFlags.includes('negative_net_after_decision') || riskFlags.includes('emergency_savings_low')
       ? 'high_risk'
       : score >= 75
         ? 'initially_suitable'
         : 'needs_review';
+
+  const economicContext = buildEconomicDecisionContext(
+    {
+      decisionType: inputs.decisionType,
+      amount,
+      recurringCost: inputs.recurringCost,
+      expectedMonthlyCost: inputs.expectedMonthlyCost,
+      monthlyPayment: inputs.monthlyPayment,
+      debtAmount: inputs.debtAmount,
+      expectedReturn: inputs.expectedReturn,
+    },
+    {
+      income: data.income,
+      expenses: data.expenses,
+      debts: data.debts,
+      savings: data.savings,
+      investments: data.investments,
+    },
+    inputs.currency,
+  );
+
+  if (economicContext) {
+    const economicScore = clampScore(100 - economicContext.assessment.riskScore);
+    return {
+      source: 'economic_intelligence',
+      monthlyIncome: economicContext.snapshot.monthlyIncome,
+      monthlyExpenses: economicContext.snapshot.monthlyExpenses,
+      monthlyNet: economicContext.snapshot.monthlySurplus,
+      savingsTotal: economicContext.snapshot.savingsBalance,
+      investmentsTotal: economicContext.snapshot.investmentBalance,
+      decisionRatio,
+      netAfterDecision: economicContext.assessment.monthlySurplusAfterDecision,
+      savingsAfterDecision,
+      score: economicScore,
+      status: statusFromEconomicContext(economicContext),
+      missingData: [...new Set([...missingData, ...economicContext.snapshot.dataQuality.missing])],
+      riskFlags: [...new Set([...riskFlags, ...economicContext.assessment.warnings])],
+      scenarios,
+      linkedProjectName: linkedProjectName || undefined,
+      economicContext,
+    };
+  }
 
   return {
     source: 'rules',
@@ -206,10 +258,11 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     netAfterDecision,
     savingsAfterDecision,
     score,
-    status,
+    status: legacyStatus,
     missingData,
     riskFlags,
     scenarios,
     linkedProjectName: linkedProjectName || undefined,
+    economicContext: null,
   };
 }
