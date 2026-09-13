@@ -149,12 +149,24 @@
 - Specialist advisors receive only aggregated user-owned decision-memory facts when enough history exists
 - Advisor policy explicitly prohibits causal claims from decision memory
 
-## Next — Phase 7.17 — Cross-Workspace Economic Brain
-- Combine Finance, Trader and Business evidence into one prioritized daily economic brief
-- Preserve workspace-level data boundaries and source attribution
-- Surface cross-workspace conflicts such as investment opportunity vs personal liquidity or business funding needs
-- Keep deterministic finance constraints authoritative over generative advisor language
-- Use one Economic Intelligence event stream instead of separate advisor alert systems
+## Phase 7.17 — Cross-Workspace Economic Brain — implemented in PR #119
+- One deterministic daily brief combines Finance, Trader and Business evidence
+- Finance evidence comes from the canonical Financial Twin
+- Trader evidence uses saved market watchlist and price-alert state without inventing market opportunities
+- Business evidence uses active projects and funding-readiness records
+- Detects liquidity vs market-attention, debt-pressure vs market-attention, business-funding vs personal-liquidity, and capital-allocation conflicts
+- Refuses to aggregate funding needs across mixed currencies without an explicit conversion layer
+- Dashboard surface shows each conflict with Finance / Trader / Business source attribution
+- Material warning/danger conflicts enter the existing Economic Intelligence notification stream and auto-resolve when cleared
+- Entire `/api/economic-intelligence` namespace is protected by the shared access policy
+- Unit coverage verifies deterministic conflict behavior and mixed-currency refusal
+
+## Next — Phase 7.18 — Daily Brief Priorities & Actions
+- Convert the cross-workspace brief into a ranked daily action list with one highest-priority next step
+- Attach explicit action destinations for Finance, Trader and Business remediation
+- Track whether the user opens or resolves a daily priority through the existing event lifecycle
+- Avoid generating a new daily event when evidence and priority fingerprint are unchanged
+- Keep deterministic constraints authoritative over advisor wording
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
