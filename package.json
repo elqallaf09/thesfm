@@ -32,7 +32,8 @@
     "test:ui": "vitest --ui",
     "preview": "next start",
     "preview:test": "next start",
-    "qa:visual": "node scripts/qa-full-capture.mjs"
+    "qa:visual": "node scripts/qa-full-capture.mjs",
+    "routes:inventory": "node scripts/release/generate-route-inventory.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
