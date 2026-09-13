@@ -36,6 +36,11 @@ function normalizeCurrency(value: unknown) {
   return /^[A-Z]{3}$/.test(currency) ? currency : null;
 }
 
+function normalizeCountry(value: unknown) {
+  const country = typeof value === 'string' ? value.trim() : '';
+  return country && /^[\p{L}\s.-]{2,64}$/u.test(country) ? country : null;
+}
+
 async function loadRows(userId: string): Promise<{ rows: RowMap; profile: Record<string, unknown> | null }> {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
@@ -48,7 +53,7 @@ async function loadRows(userId: string): Promise<{ rows: RowMap; profile: Record
         return [key, (data ?? []) as Record<string, unknown>[]] as const;
       }),
     ),
-    admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).maybeSingle(),
+    admin.from('profiles').select('default_currency,preferred_currency,currency,country').eq('id', userId).maybeSingle(),
   ]);
 
   if (profileResult.error && profileResult.error.code !== 'PGRST116') {
@@ -78,7 +83,7 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
   }, currency);
   const forecast = forecastFinancialTwin(twin, 12);
 
-  const country = options.country?.trim();
+  const country = normalizeCountry(options.country) ?? normalizeCountry(profile?.country);
   const contextResult = country ? await loadEconomicContext(country).catch(() => null) : null;
   const economicContext = contextResult?.context ?? null;
   const impacts = economicContext ? assessPersonalEconomicImpact(twin, economicContext) : [];
