@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, History, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -92,6 +93,6 @@ export function EconomicResolutionHistory() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return <article className="metric">{icon}<div><strong>{value}</strong><span>{label}</span></div></article>;
 }
