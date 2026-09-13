@@ -4,6 +4,7 @@ import { buildFinancialTwinSnapshot, forecastFinancialTwin } from './digitalTwin
 import { buildAdvisorGrounding, type AdvisorGrounding, type EconomicAdvisorId } from './advisors';
 import { loadEconomicContext } from './economicContext.server';
 import { assessPersonalEconomicImpact } from './personalEconomicImpact';
+import { loadAdvisorDecisionMemoryFacts } from './decisionMemory.server';
 
 type LoadAdvisorGroundingOptions = {
   userId: string;
@@ -67,7 +68,10 @@ async function loadRows(userId: string): Promise<{ rows: RowMap; profile: Record
 }
 
 export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions): Promise<AdvisorGrounding> {
-  const { rows, profile } = await loadRows(options.userId);
+  const [{ rows, profile }, decisionMemoryFacts] = await Promise.all([
+    loadRows(options.userId),
+    loadAdvisorDecisionMemoryFacts(options.userId).catch(() => []),
+  ]);
   const currency = normalizeCurrency(options.currency)
     ?? normalizeCurrency(profile?.default_currency)
     ?? normalizeCurrency(profile?.preferred_currency)
@@ -95,5 +99,6 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
     impacts,
     hasMarketEvidence: options.hasMarketEvidence,
     hasBusinessEvidence: rows.projects.length > 0,
+    decisionMemoryFacts,
   });
 }
