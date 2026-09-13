@@ -2,6 +2,7 @@ import 'server-only';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { NotificationLang, SmartNotification } from '@/lib/notifications/generateNotifications';
 import { loadCrossWorkspaceBrief } from './crossWorkspaceBrain.server';
+import { buildDailyPriorityActions } from './dailyPriority';
 
 const COPY = {
   ar: {
@@ -27,7 +28,7 @@ const COPY = {
   },
 } as const;
 
-function normalizeRow(row: any, title: string, message: string, severity: 'warning' | 'danger'): SmartNotification {
+function normalizeRow(row: any, title: string, message: string, severity: 'warning' | 'danger', actionUrl: string): SmartNotification {
   return {
     id: String(row.id),
     title,
@@ -36,7 +37,7 @@ function normalizeRow(row: any, title: string, message: string, severity: 'warni
     severity,
     sourceModule: 'economic_intelligence',
     sourceId: null,
-    actionUrl: '/dashboard',
+    actionUrl,
     status: row.status === 'archived' ? 'archived' : row.read === true || row.status === 'read' ? 'read' : 'unread',
     dueDate: null,
     createdAt: row.created_at ?? null,
@@ -49,15 +50,16 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
   const brief = await loadCrossWorkspaceBrief(userId);
   const copy = COPY[lang];
+  const itemByCode = new Map(brief.items.map(item => [item.code, item]));
+  const activeActions = buildDailyPriorityActions(brief).filter(action => action.severity === 'warning' || action.severity === 'danger');
+  const activeKeys = activeActions.map(action => `priority:${action.fingerprint}`);
 
-  const activeItems = brief.items.filter(item => item.severity === 'warning' || item.severity === 'danger');
-  const activeKeys = activeItems.map(item => `cross:${item.code}`);
   const existingOpen = await admin
     .from('notifications')
     .select('id,event_key,status,read,created_at,resolved_at')
     .eq('user_id', userId)
     .eq('source_module', 'economic_intelligence')
-    .like('event_key', 'cross:%')
+    .like('event_key', 'priority:%')
     .is('resolved_at', null);
   if (existingOpen.error) throw existingOpen.error;
 
@@ -66,16 +68,16 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
   for (const row of stale) {
     const { error } = await admin.from('notifications').update({
       resolved_at: now,
-      resolution_code: 'cross_workspace_conflict_cleared',
+      resolution_code: 'daily_priority_changed_or_cleared',
       status: 'archived',
       read: true,
       read_at: row.read ? undefined : now,
-      metadata: { economic_intelligence: true, event_key: row.event_key, cross_workspace: true, causal_claim: false },
+      metadata: { economic_intelligence: true, event_key: row.event_key, daily_priority: true, causal_claim: false },
     }).eq('id', row.id).eq('user_id', userId);
     if (error) throw error;
   }
 
-  if (activeItems.length === 0) return [];
+  if (activeActions.length === 0) return [];
   const existingResult = await admin
     .from('notifications')
     .select('id,event_key,status,read,created_at,resolved_at')
@@ -85,30 +87,41 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
   if (existingResult.error) throw existingResult.error;
 
   const existing = new Map((existingResult.data ?? []).filter((row: any) => !row.resolved_at).map((row: any) => [String(row.event_key), row]));
-  const missing = activeItems.filter(item => !existing.has(`cross:${item.code}`));
+  const missing = activeActions.filter(action => !existing.has(`priority:${action.fingerprint}`));
   if (missing.length > 0) {
-    const insert = await admin.from('notifications').insert(missing.map(item => ({
-      user_id: userId,
-      type: 'warning',
-      title: copy.title,
-      message: copy[item.code as keyof typeof copy] ?? item.code,
-      read: false,
-      link: '/dashboard',
-      severity: item.severity,
-      source_module: 'economic_intelligence',
-      source_id: null,
-      action_url: '/dashboard',
-      status: 'unread',
-      event_key: `cross:${item.code}`,
-      metadata: { economic_intelligence: true, cross_workspace: true, event_key: `cross:${item.code}`, sources: item.sources, evidence: item.evidence, causal_claim: false },
-    }))).select('id,event_key,status,read,created_at,resolved_at');
+    const insert = await admin.from('notifications').insert(missing.map(action => {
+      const item = itemByCode.get(action.code);
+      return {
+        user_id: userId,
+        type: 'warning',
+        title: copy.title,
+        message: copy[action.code as keyof typeof copy] ?? action.code,
+        read: false,
+        link: action.actionUrl,
+        severity: action.severity,
+        source_module: 'economic_intelligence',
+        source_id: null,
+        action_url: action.actionUrl,
+        status: 'unread',
+        event_key: `priority:${action.fingerprint}`,
+        metadata: {
+          economic_intelligence: true,
+          daily_priority: true,
+          event_key: `priority:${action.fingerprint}`,
+          priority_fingerprint: action.fingerprint,
+          sources: action.sources,
+          evidence: item?.evidence ?? {},
+          causal_claim: false,
+        },
+      };
+    })).select('id,event_key,status,read,created_at,resolved_at');
     if (insert.error && insert.error.code !== '23505') throw insert.error;
     for (const row of insert.data ?? []) existing.set(String((row as any).event_key), row);
   }
 
-  return activeItems.map(item => {
-    const key = `cross:${item.code}`;
+  return activeActions.map(action => {
+    const key = `priority:${action.fingerprint}`;
     const row = existing.get(key);
-    return normalizeRow(row, copy.title, copy[item.code as keyof typeof copy] ?? item.code, item.severity as 'warning' | 'danger');
+    return normalizeRow(row, copy.title, copy[action.code as keyof typeof copy] ?? action.code, action.severity as 'warning' | 'danger', action.actionUrl);
   });
 }
