@@ -133,12 +133,20 @@
 - Unit coverage for active/resolved counts and recurring-family detection
 - Resolution history is mounted alongside Economic Intelligence Home and Finance Dashboard Intelligence
 
-## Next — Phase 7.15 — Resolution Actions & Decision Timeline
-- Add an explicit “resolved” action to Economic Intelligence notifications
-- Record notification open events when users follow an Economic Intelligence action link
-- Present the decision outcome timeline from versioned analysis and linked resolved events
-- Prioritize recurring unresolved risks above first-time low-severity events where deterministic evidence supports it
-- Keep all resolution/outcome claims observational, not causal
+## Phase 7.15 — Resolution Actions & Decision Timeline — implemented in PR #119
+- Dedicated `/decisions/timeline?decision=...` outcome timeline
+- Record opened and actioned state when a user enters a decision timeline
+- Explicit user-confirmed resolved action through the authenticated outcome endpoint
+- Timeline combines initial decision analysis with linked Economic Intelligence alert/open/action/resolution events
+- Deterministic recurring-risk ordering uses recurrence count plus fixed severity weights
+- Outcome presentation explicitly remains observational and non-causal
+
+## Next — Phase 7.16 — Decision Memory & Learning
+- Build a user-owned decision memory from versioned analyses and observed outcomes
+- Summarize repeated decision patterns without training on or exposing another user's private data
+- Compare new decisions with the user's own similar historical decisions when inputs are genuinely comparable
+- Never infer a successful causal rule from a single historical outcome
+- Feed only auditable historical evidence into specialist advisors
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
