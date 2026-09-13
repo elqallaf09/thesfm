@@ -125,12 +125,20 @@
 - Resolution metadata explicitly records `causal_claim: false`
 - Recurring risks create new fingerprints rather than rewriting prior resolved history
 
-## Next — Phase 7.14 — Resolution Intelligence
-- Surface resolved and recurring-risk history on the Economic Intelligence Home
-- Prioritize recurring risks above first-time low-severity notices when evidence supports it
-- Add decision outcome timeline presentation without implying causality
-- Add explicit “resolved” action to the notifications UI for Economic Intelligence events
-- Keep all prioritization deterministic and auditable
+## Phase 7.14 — Resolution Intelligence — implemented in PR #119
+- Dashboard Resolution Intelligence surface using the existing Economic Intelligence notification history
+- Active, resolved, and recurring-risk counts
+- Deterministic grouping of materially changed risk fingerprints into recurring risk families
+- AR / EN / FR presentation with an explicit non-causal history disclaimer
+- Unit coverage for active/resolved counts and recurring-family detection
+- Resolution history is mounted alongside Economic Intelligence Home and Finance Dashboard Intelligence
+
+## Next — Phase 7.15 — Resolution Actions & Decision Timeline
+- Add an explicit “resolved” action to Economic Intelligence notifications
+- Record notification open events when users follow an Economic Intelligence action link
+- Present the decision outcome timeline from versioned analysis and linked resolved events
+- Prioritize recurring unresolved risks above first-time low-severity events where deterministic evidence supports it
+- Keep all resolution/outcome claims observational, not causal
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
