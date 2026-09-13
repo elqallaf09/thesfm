@@ -97,12 +97,22 @@
 - Unit coverage for risk, opportunity and decision-priority selection
 - Existing detailed Finance Dashboard Intelligence remains available underneath the summary
 
-## Next — Phase 7.11 — Proactive Intelligence
-- Convert high-priority risk/opportunity states into auditable in-app intelligence events
-- Reuse the smart notifications center rather than creating a parallel notification stack
-- Generate action-oriented reminders only when source data and confidence meet thresholds
-- Track whether users act on, dismiss or resolve intelligence events
-- Feed resolved outcomes back into decision history without claiming causal certainty
+## Phase 7.11 — Proactive Intelligence Feed — implemented in PR #119
+- Server-side high-priority economic risk/opportunity events
+- Authenticated and rate-limited proactive-events API
+- Reuse the existing SmartNotification contract and notifications center
+- Merge proactive economic events with stored notifications and market-signal alerts
+- Language-aware AR / EN / FR event copy
+- Confidence threshold before opportunity events are emitted
+- Direct action links to dashboard, debts, Decisions Center and Decision Lab
+- No parallel notifications table or duplicate notification stack
+
+## Next — Phase 7.12 — Intelligence Event Lifecycle
+- Persist dismiss/read/resolve state for Economic Intelligence events without duplicating generated events
+- Prevent a dismissed unchanged dynamic event from immediately reappearing
+- Track action/open/dismiss/resolve outcome metadata
+- Link resolved decision-related events back to versioned decision history
+- Regenerate an event only when its underlying risk fingerprint materially changes
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
