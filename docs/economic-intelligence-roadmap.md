@@ -141,12 +141,20 @@
 - Deterministic recurring-risk ordering uses recurrence count plus fixed severity weights
 - Outcome presentation explicitly remains observational and non-causal
 
-## Next — Phase 7.16 — Decision Memory & Learning
-- Build a user-owned decision memory from versioned analyses and observed outcomes
-- Summarize repeated decision patterns without training on or exposing another user's private data
-- Compare new decisions with the user's own similar historical decisions when inputs are genuinely comparable
-- Never infer a successful causal rule from a single historical outcome
-- Feed only auditable historical evidence into specialist advisors
+## Phase 7.16 — Decision Memory & Learning — implemented in PR #119
+- User-owned decision memory built only from that user's stored decisions and linked Economic Intelligence outcomes
+- Comparable-decision matching requires the same decision type, same currency when specified, and a bounded amount range
+- Historical rates are withheld when fewer than two comparable cases exist
+- Private decision-memory API exposes auditable counts/aggregates without cross-user data
+- Specialist advisors receive only aggregated user-owned decision-memory facts when enough history exists
+- Advisor policy explicitly prohibits causal claims from decision memory
+
+## Next — Phase 7.17 — Cross-Workspace Economic Brain
+- Combine Finance, Trader and Business evidence into one prioritized daily economic brief
+- Preserve workspace-level data boundaries and source attribution
+- Surface cross-workspace conflicts such as investment opportunity vs personal liquidity or business funding needs
+- Keep deterministic finance constraints authoritative over generative advisor language
+- Use one Economic Intelligence event stream instead of separate advisor alert systems
 
 ### Validation gate
 - Required GitHub checks, Preview build and browser validation must pass before merge
