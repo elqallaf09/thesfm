@@ -5,6 +5,8 @@ import { buildAdvisorGrounding, type AdvisorGrounding, type EconomicAdvisorId } 
 import { loadEconomicContext } from './economicContext.server';
 import { assessPersonalEconomicImpact } from './personalEconomicImpact';
 import { loadAdvisorDecisionMemoryFacts } from './decisionMemory.server';
+import { buildCrossWorkspaceBrief } from './crossWorkspaceBrain';
+import { highestDailyPriority } from './dailyPriority';
 
 type LoadAdvisorGroundingOptions = {
   userId: string;
@@ -21,6 +23,9 @@ type RowMap = {
   savings: Record<string, unknown>[];
   investments: Record<string, unknown>[];
   projects: Record<string, unknown>[];
+  watchlist: Record<string, unknown>[];
+  marketAlerts: Record<string, unknown>[];
+  fundingReadiness: Record<string, unknown>[];
 };
 
 const TABLES = {
@@ -30,6 +35,9 @@ const TABLES = {
   savings: 'savings_items',
   investments: 'investment_items',
   projects: 'projects',
+  watchlist: 'market_watchlist',
+  marketAlerts: 'market_price_alerts',
+  fundingReadiness: 'project_funding_readiness',
 } as const;
 
 function normalizeCurrency(value: unknown) {
@@ -67,6 +75,37 @@ async function loadRows(userId: string): Promise<{ rows: RowMap; profile: Record
   };
 }
 
+function crossWorkspaceFacts(rows: RowMap, twin: ReturnType<typeof buildFinancialTwinSnapshot>) {
+  const activeProjects = rows.projects.filter(row => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
+  const alerts = rows.marketAlerts;
+  const brief = buildCrossWorkspaceBrief({
+    finance: { snapshot: twin },
+    trader: {
+      watchlistCount: rows.watchlist.length,
+      activeAlertCount: alerts.filter(row => !['triggered', 'disabled', 'archived'].includes(String(row.status ?? '').toLowerCase())).length,
+      triggeredAlertCount: alerts.filter(row => String(row.status ?? '').toLowerCase() === 'triggered').length,
+    },
+    business: {
+      activeProjectCount: activeProjects.length,
+      fundingNeeds: rows.fundingReadiness.map(row => ({
+        projectId: String(row.project_id ?? ''),
+        amount: Number.isFinite(Number(row.funding_needed)) ? Math.max(0, Number(row.funding_needed)) : 0,
+        currency: normalizeCurrency(row.currency) ?? twin.currency,
+        readinessScore: Number.isFinite(Number(row.readiness_score)) ? Number(row.readiness_score) : null,
+      })),
+    },
+  });
+  const priority = highestDailyPriority(brief);
+  if (!priority) return [];
+  return [
+    { key: 'daily_priority_code', value: priority.code },
+    { key: 'daily_priority_severity', value: priority.severity },
+    { key: 'daily_priority_action_url', value: priority.actionUrl },
+    { key: 'daily_priority_sources', value: priority.sources.join(',') },
+    { key: 'cross_workspace_state', value: brief.state },
+  ];
+}
+
 export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions): Promise<AdvisorGrounding> {
   const [{ rows, profile }, decisionMemoryFacts] = await Promise.all([
     loadRows(options.userId),
@@ -97,8 +136,9 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
     forecast,
     economicContext,
     impacts,
-    hasMarketEvidence: options.hasMarketEvidence,
+    hasMarketEvidence: options.hasMarketEvidence || rows.watchlist.length > 0 || rows.marketAlerts.length > 0,
     hasBusinessEvidence: rows.projects.length > 0,
     decisionMemoryFacts,
+    crossWorkspaceFacts: crossWorkspaceFacts(rows, twin),
   });
 }
