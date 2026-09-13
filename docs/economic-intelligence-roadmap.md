@@ -1,6 +1,6 @@
 # SFM Economic Intelligence Roadmap
 
-## Phase 7.0 — Foundation
+## Phase 7.0 — Foundation — implemented in PR #119
 - Economic Intelligence domain contracts
 - Financial Digital Twin snapshot
 - 3/6/12 month forecasting primitives
@@ -9,7 +9,7 @@
 - Data-quality and confidence guardrails
 - Unit coverage
 
-## Phase 7.1 — Decisions Integration
+## Phase 7.1 — Decisions Integration — implemented in PR #119
 - Compatibility bridge from the existing Decisions Center into Economic Intelligence
 - Route purchase, investment, project, and debt/saving decisions through the Financial Digital Twin
 - Preserve legacy deterministic rules for charity/zakat and budget decisions until migrated
@@ -21,26 +21,26 @@
 - Persist versioned inputs + analysis JSON for decision-history auditability
 - Add bridge and presentation/versioning unit coverage
 
-### Validation gate
-- Preview production build must pass before Phase 7.1 is merged
-- Keep PR #119 Draft until build and visual review are clean
-
-## Phase 7.2 — Finance Dashboard Intelligence
+## Phase 7.2 — Finance Dashboard Intelligence — implemented in PR #119
 - Current financial state summary from the same Digital Twin
 - 12-month trajectory cards
 - Liquidity runway and debt-service pressure
-- Goal trajectory and early warnings
+- Early warnings from canonical finance data
+- Dashboard unit coverage
 
-## Phase 7.3 — Economic Context Engine
-- Inflation, rates, FX, market regime and relevant macro context
-- Explicit source timestamps and freshness
+## Phase 7.3 — Economic Context Engine — implemented in PR #119
+- Inflation, policy-rate, growth, labor and yield-curve context
+- Explicit source/provider timestamps and freshness
+- Personal Economic Impact mapping from macro context to the Financial Digital Twin
 - Never replace deterministic personal-finance arithmetic with LLM estimates
 
-## Phase 7.4 — Specialist Agents
-- Finance Advisor
-- Investment / Markets Advisor
-- Business Advisor
-- Shared Economic Intelligence context and permission boundaries
+## Phase 7.4 — Specialist Advisors — in progress in PR #119
+- Finance Advisor grounding
+- Investment / Markets Advisor grounding
+- Business Advisor grounding
+- Shared evidence, missing-data and confidence contract
+- Shared allowed/prohibited claim boundaries
+- Next: connect grounded advisor context to the existing AI Analyst / workspace chat surfaces without creating a parallel chatbot stack
 
 ## Phase 7.5 — Decision Simulation
 - Buy car / home
@@ -49,9 +49,14 @@
 - Start or expand business
 - Scenario comparison and decision history
 
+### Validation gate
+- Keep PR #119 Draft and unmerged until Preview build, CI and visual validation are clean
+- No Production changes before the validation gate passes
+
 ## Guardrails
 - No fake/demo financial records in production analysis
 - Incomplete data lowers confidence; it is never silently filled
 - Forecasts are simulations, not guarantees
 - High-impact recommendations must expose assumptions and reasons
 - All workspaces consume one canonical Economic Intelligence layer
+- Advisors may explain evidence, scenarios and risks but may not invent market/user data or guarantee outcomes
