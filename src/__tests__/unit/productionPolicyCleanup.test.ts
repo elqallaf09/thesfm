@@ -24,4 +24,24 @@ describe('production policy cleanup', () => {
     expect(docs).not.toContain('Page routes | 132');
     expect(docs).not.toContain('Route handlers total | 172');
   });
+
+  it('fails launch policy for page routes that have no platform ownership classification', () => {
+    const packageJson = read('package.json');
+    const routeGate = read('scripts/check-page-route-ownership.mjs');
+
+    expect(packageJson).toContain('"check:page-routes": "node scripts/check-page-route-ownership.mjs"');
+    expect(packageJson).toContain('node scripts/check-api-route-policy.mjs && node scripts/check-page-route-ownership.mjs');
+    expect(routeGate).toContain('Page route ownership check failed');
+    expect(routeGate).toContain('protectedPrefixes');
+    expect(routeGate).toContain('workspacePrefixes');
+    expect(routeGate).toContain('publicShellRoutes');
+  });
+
+  it('pins Vercel to the same Node major used by CI', () => {
+    const packageJson = read('package.json');
+    const ci = read('.github/workflows/ci.yml');
+
+    expect(packageJson).toContain('"node": "22.x"');
+    expect(ci).toContain('node-version: 22.13.0');
+  });
 });
