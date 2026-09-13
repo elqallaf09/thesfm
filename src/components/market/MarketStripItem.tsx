@@ -94,7 +94,7 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
     <article className={`gm-strip-item is-${tone}`} dir="ltr">
       <div className="gm-strip-item-head">
         <AssetIdentity
-          variant="badge"
+          variant="avatar"
           symbol={item.symbol}
           name={item.name}
           size="xs"
@@ -113,11 +113,14 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
           {available && item.changePercent !== null ? formatPercent(item.changePercent, lang) : unavailableLabel}
         </em>
       </div>
-      {sectorLabel ? <span className="gm-strip-item-sector" dir="auto">{sectorLabel}</span> : null}
+      <span className="gm-strip-item-sector" dir="auto">{sectorLabel || '\u00a0'}</span>
 
       <style jsx>{`
         .gm-strip-item {
           inline-size: 150px;
+          block-size: var(--gm-strip-item-height, 92px);
+          min-block-size: var(--gm-strip-item-height, 92px);
+          font-variant-numeric: tabular-nums;
           min-inline-size: min(136px, 100%);
           max-inline-size: min(150px, 100%);
           display: grid;
@@ -138,6 +141,13 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
           align-items: center;
           gap: 6px;
           min-width: 0;
+          block-size: 24px;
+        }
+
+        .gm-strip-item-head :global(.gm-strip-item-logo) {
+          flex: 0 0 24px;
+          inline-size: 24px;
+          block-size: 24px;
         }
 
         .gm-strip-item-head strong {
@@ -183,7 +193,10 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
         }
 
         .gm-strip-item-change {
-          flex: 0 0 auto;
+          flex: 0 1 auto;
+          min-inline-size: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
           display: inline-flex;
           align-items: center;
           gap: 2px;
@@ -232,14 +245,17 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
           .gm-strip-item {
             inline-size: min(136px, 100%);
             block-size: 74px;
+            min-block-size: 74px;
             gap: 2px;
             padding: 5px 7px;
           }
+          .gm-strip-item-head { block-size: 20px; }
           .gm-strip-item-name { font-size: 9.5px; }
           .gm-strip-item-values { margin-top: 0; }
           .gm-strip-item-sector { margin-top: 0; font-size: 9px; }
           .gm-strip-item-change { padding: 1px 4px; }
           .gm-strip-item-head :global(.gm-strip-item-logo) {
+            flex-basis: 20px;
             inline-size: 20px;
             block-size: 20px;
           }

@@ -270,11 +270,10 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           </select>
         </label>
 
-        {(query || country !== 'all' || exchange !== 'all' || sector !== 'all' || assetType !== 'all') ? (
-          <button type="button" className="gm-explorer-reset" onClick={resetFilters}>
-            {t('global_markets_reset_filters', lang)}
-          </button>
-        ) : null}
+        <button type="button" className="gm-explorer-reset" onClick={resetFilters}
+          disabled={!query && country === 'all' && exchange === 'all' && sector === 'all' && assetType === 'all'}>
+          {t('global_markets_reset_filters', lang)}
+        </button>
       </div>
 
       <p className="gm-explorer-count" dir="auto">
@@ -330,15 +329,14 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           display: grid;
           gap: 14px;
         }
-
         .gm-explorer-heading {
           margin: 0;
           color: var(--foreground);
           font-size: 16px;
           font-weight: 700;
         }
-
         .gm-explorer-search {
+          min-block-size: 44px;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -348,7 +346,6 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           background: var(--surface);
           color: var(--foreground-muted);
         }
-
         .gm-explorer-search input {
           flex: 1;
           border: none;
@@ -358,27 +355,26 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           outline: none;
           min-width: 0;
         }
-
         .gm-explorer-filters {
           display: flex;
           flex-wrap: wrap;
           align-items: end;
           gap: 10px;
         }
-
         .gm-explorer-filter {
+          flex: 1 1 140px;
+          min-inline-size: 0;
           display: grid;
           gap: 4px;
-          min-width: 140px;
+          max-inline-size: 100%;
         }
-
         .gm-explorer-filter span {
           color: var(--foreground-muted);
           font-size: 11.5px;
           font-weight: 600;
         }
-
         .gm-explorer-filter select {
+          inline-size: 100%;
           min-height: 40px;
           padding: 0 10px;
           border: 1px solid var(--border);
@@ -387,7 +383,6 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           color: var(--foreground);
           font-size: 13px;
         }
-
         .gm-explorer-reset {
           min-height: 40px;
           padding: 0 14px;
@@ -399,7 +394,6 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           font-weight: 600;
           cursor: pointer;
         }
-
         .gm-explorer-toggle {
           justify-self: start;
           min-height: 44px;
@@ -411,30 +405,25 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           font-weight: 650;
           cursor: pointer;
         }
-
         .gm-explorer-count {
           margin: 0;
           color: var(--foreground-muted);
           font-size: 12px;
           font-weight: 500;
         }
-
         .gm-explorer-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
           gap: 10px;
         }
-
         .gm-explorer-grid :global(.gm-strip-item) {
           inline-size: 100%;
           max-inline-size: 100%;
         }
-
         .gm-explorer-grid > :global(*) {
           content-visibility: auto;
-          contain-intrinsic-size: 150px 92px;
+          contain-intrinsic-size: auto 92px;
         }
-
         .gm-explorer-load-more {
           justify-self: center;
           min-height: 40px;
@@ -449,7 +438,6 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           min-width: 150px;
           position: relative;
         }
-
         .gm-explorer-load-more:disabled { cursor: wait; opacity: .72; }
         .gm-explorer-load-label { visibility: visible; }
         .gm-explorer-load-status {
@@ -461,15 +449,16 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
         }
         .gm-explorer-load-more[aria-busy='true'] .gm-explorer-load-label { visibility: hidden; }
         .gm-explorer-load-more[aria-busy='true'] .gm-explorer-load-status { visibility: visible; }
+        .gm-explorer-reset:disabled { opacity: .5; cursor: default; }
+        @media(max-width:430px) {
+          .gm-explorer-grid > :global(*) { contain-intrinsic-size: auto 74px; }
         }
-
         .gm-explorer-all-loaded {
           text-align: center;
           margin: 0;
           color: var(--foreground-muted);
           font-size: 12.5px;
         }
-
         .gm-explorer-empty {
           display: grid;
           gap: 4px;
@@ -479,12 +468,10 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
           background: var(--surface-muted);
           text-align: center;
         }
-
         .gm-explorer-empty strong {
           color: var(--foreground);
           font-size: 14px;
         }
-
         .gm-explorer-empty span {
           color: var(--foreground-muted);
           font-size: 12.5px;
