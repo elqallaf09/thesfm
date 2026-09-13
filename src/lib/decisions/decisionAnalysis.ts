@@ -1,5 +1,5 @@
 import { currentMonthRange, moneyAmount, sumAmounts } from '@/lib/data/financeData';
-import { buildEconomicDecisionContext, type EconomicDecisionContext } from './economicIntelligenceBridge';
+import { buildEconomicDecisionContext, type DebtDecisionDirection, type EconomicDecisionContext } from './economicIntelligenceBridge';
 
 export type DecisionType =
   | 'purchase'
@@ -29,13 +29,20 @@ export type DecisionInputs = {
   linkedProjectId?: string;
   requiredCapital?: number;
   expectedMonthlyCost?: number;
+  expectedMonthlyIncomeChange?: number;
   expectedReturn?: number;
   debtAmount?: number;
   rate?: number;
   monthlyPayment?: number;
+  monthlyDebtPaymentReduction?: number;
   emergencyFundAmount?: number;
   donationRequired?: boolean;
   usesSavings?: boolean;
+  upfrontCashOutflow?: number;
+  financingPrincipal?: number;
+  loanTermMonths?: number;
+  debtDirection?: DebtDecisionDirection;
+  debtPaydownAmount?: number;
 };
 
 export type DecisionSourceData = {
@@ -136,7 +143,16 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
   if (!hasGoalsSupport(data.goals)) missingData.push('goals');
   if (inputs.decisionType === 'project' && !inputs.linkedProjectId && data.projects.length === 0) missingData.push('project');
   if (inputs.decisionType === 'investment' && !inputs.riskLevel) missingData.push('risk_level');
-  if (inputs.decisionType === 'debt_saving' && amountValue(inputs.debtAmount) <= 0) missingData.push('debt_amount');
+  if (inputs.decisionType === 'debt_saving') {
+    if (!inputs.debtDirection) missingData.push('debt_action_direction');
+    if (inputs.debtDirection === 'new_loan') {
+      if (amountValue(inputs.financingPrincipal ?? inputs.debtAmount ?? inputs.amount) <= 0) missingData.push('financing_principal');
+      if (amountValue(inputs.monthlyPayment) <= 0) missingData.push('monthly_payment');
+    }
+    if (inputs.debtDirection === 'repay_debt' && amountValue(inputs.debtPaydownAmount ?? inputs.debtAmount ?? inputs.amount) <= 0) {
+      missingData.push('debt_paydown_amount');
+    }
+  }
   if (inputs.decisionType === 'charity_zakat' && data.zakatCalculations.length === 0 && !inputs.donationRequired) missingData.push('zakat_or_charity_context');
 
   const riskFlags: string[] = [];
@@ -184,7 +200,7 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     scenarios.push({ key: 'wait_until_savings_target', amount: amount > savingsTotal ? amount - savingsTotal : 0, missing: savingsTotal > 0 ? [] : ['savings'] });
     scenarios.push({ key: 'reduce_project_capital', amount: amount > 0 ? amount * 0.8 : undefined, monthlyImpact: amountValue(inputs.expectedMonthlyCost) });
   } else if (inputs.decisionType === 'debt_saving') {
-    scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || amount });
+    scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtPaydownAmount ?? inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || amount });
     scenarios.push({ key: 'save_first', amount, monthlyImpact: amount });
     scenarios.push({ key: 'split_between_debt_and_savings', amount: amount > 0 ? amount / 2 : undefined, monthlyImpact: amount > 0 ? amount / 2 : undefined });
   } else if (inputs.decisionType === 'charity_zakat') {
@@ -211,9 +227,16 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
       amount,
       recurringCost: inputs.recurringCost,
       expectedMonthlyCost: inputs.expectedMonthlyCost,
+      expectedMonthlyIncomeChange: inputs.expectedMonthlyIncomeChange,
       monthlyPayment: inputs.monthlyPayment,
+      monthlyDebtPaymentReduction: inputs.monthlyDebtPaymentReduction,
       debtAmount: inputs.debtAmount,
       expectedReturn: inputs.expectedReturn,
+      upfrontCashOutflow: inputs.upfrontCashOutflow,
+      financingPrincipal: inputs.financingPrincipal,
+      loanTermMonths: inputs.loanTermMonths,
+      debtDirection: inputs.debtDirection,
+      debtPaydownAmount: inputs.debtPaydownAmount,
     },
     {
       income: data.income,
@@ -239,7 +262,7 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
       savingsAfterDecision,
       score: economicScore,
       status: statusFromEconomicContext(economicContext),
-      missingData: [...new Set([...missingData, ...economicContext.snapshot.dataQuality.missing])],
+      missingData: [...new Set([...missingData, ...economicContext.snapshot.dataQuality.missing, ...economicContext.simulationMissing])],
       riskFlags: [...new Set([...riskFlags, ...economicContext.assessment.warnings])],
       scenarios,
       linkedProjectName: linkedProjectName || undefined,
