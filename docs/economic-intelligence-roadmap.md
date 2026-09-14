@@ -51,12 +51,21 @@
 - No raw finance rows, provider secrets or cross-user data are persisted in the trace
 - Unit coverage verifies the snapshot contains metadata only and handles pre-snapshot history safely
 
-## Next — Phase 7.33 — Historical Evidence Drift
-- Compare a stored historical evidence snapshot with current provenance using metadata only
-- Show which workspace readiness, freshness or source coverage changed since the historical priority
-- Keep drift descriptive and non-causal; do not claim a user action caused the change
-- Refuse comparisons when the historical snapshot is unavailable
-- Surface material evidence drift in the Economic Brief Archive without rewriting historical records
+## Phase 7.33 — Historical Evidence Drift — implemented in PR #119
+- Stored historical evidence snapshots are compared with current readiness/provenance using metadata only
+- Drift reports readiness deltas plus source coverage and freshness changes
+- Archive labels source changes as improved / degraded / unchanged / unavailable
+- Historical records without a snapshot remain explicitly unavailable instead of being reconstructed
+- Comparison is descriptive only and carries an explicit non-causal contract
+- Unit coverage verifies drift direction and safe handling of pre-snapshot records
+
+## Next — Phase 7.34 — Economic Intelligence Integrity Audit
+- Audit every production Economic Intelligence number back to its canonical DB/provider source
+- Flag hard-coded, mock, demo or fallback numeric values that could reach production analysis
+- Verify confidence/readiness values are derived from real evidence and freshness metadata
+- Verify protected routes, workspace isolation, auth/error states and source provenance contracts
+- Verify historical snapshots remain immutable and are never silently rebuilt from current evidence
+- Produce a concise integrity report and fix confirmed issues before the final production-hardening phase
 
 ### Validation gate
 - Required GitHub checks and Vercel Preview build must pass before merge
