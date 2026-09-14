@@ -22,6 +22,7 @@ const TEXT = {
     title: 'جاهزية الذكاء الاقتصادي', subtitle: 'كلما اكتملت بيانات Finance وTrader وBusiness ارتفعت دقة التحليل.',
     overall: 'الجاهزية العامة', finance: 'Finance', trader: 'Trader', business: 'Business', next: 'ما الذي ينقصك؟', loading: 'جاري قياس الجاهزية...', unavailable: 'تعذر قياس الجاهزية حالياً.',
     high: 'جاهزية مرتفعة', medium: 'جاهزية متوسطة', low: 'جاهزية منخفضة', open: 'إكمال البيانات',
+    'finance:income_missing': 'أضف مصدر دخل واحداً على الأقل.', 'finance:expenses_missing': 'أضف مصروفاتك الشهرية.', 'finance:debts_missing': 'أكمل بيانات الديون، أو أكد عدم وجود ديون.', 'finance:savings_missing': 'أضف المدخرات والسيولة المتاحة.', 'finance:investments_missing': 'أضف الاستثمارات الحالية، أو أكد عدم وجود استثمارات.',
     'trader:watchlist_missing': 'أضف أصولاً إلى قائمة المتابعة.', 'trader:alerts_missing': 'أضف تنبيهات سوقية حتى يفهم SFM ما تراقبه.', 'trader:portfolio_missing': 'أضف محفظتك الاستثمارية.',
     'business:projects_missing': 'أضف مشروعاً واحداً على الأقل لتفعيل ذكاء الأعمال.', 'business:funding_readiness_missing': 'أكمل بيانات جاهزية التمويل للمشاريع النشطة.',
   },
@@ -29,6 +30,7 @@ const TEXT = {
     title: 'Economic Intelligence Readiness', subtitle: 'Better Finance, Trader, and Business evidence increases intelligence confidence.',
     overall: 'Overall readiness', finance: 'Finance', trader: 'Trader', business: 'Business', next: 'What is missing?', loading: 'Measuring readiness...', unavailable: 'Readiness is currently unavailable.',
     high: 'High readiness', medium: 'Medium readiness', low: 'Low readiness', open: 'Complete data',
+    'finance:income_missing': 'Add at least one income source.', 'finance:expenses_missing': 'Add your monthly expenses.', 'finance:debts_missing': 'Complete debt data, or confirm that you have no debt.', 'finance:savings_missing': 'Add savings and available liquidity.', 'finance:investments_missing': 'Add current investments, or confirm that you have none.',
     'trader:watchlist_missing': 'Add assets to your market watchlist.', 'trader:alerts_missing': 'Add market alerts so SFM knows what you actively monitor.', 'trader:portfolio_missing': 'Add your investment portfolio.',
     'business:projects_missing': 'Add at least one project to activate Business intelligence.', 'business:funding_readiness_missing': 'Complete funding-readiness data for active projects.',
   },
@@ -36,16 +38,13 @@ const TEXT = {
     title: 'Préparation de l’intelligence économique', subtitle: 'Des données Finance, Trader et Business plus complètes améliorent la confiance des analyses.',
     overall: 'Préparation globale', finance: 'Finance', trader: 'Trader', business: 'Business', next: 'Que manque-t-il ?', loading: 'Mesure de la préparation...', unavailable: 'La préparation est indisponible actuellement.',
     high: 'Préparation élevée', medium: 'Préparation moyenne', low: 'Préparation faible', open: 'Compléter les données',
+    'finance:income_missing': 'Ajoutez au moins une source de revenu.', 'finance:expenses_missing': 'Ajoutez vos dépenses mensuelles.', 'finance:debts_missing': 'Complétez les dettes, ou confirmez que vous n’en avez pas.', 'finance:savings_missing': 'Ajoutez l’épargne et la liquidité disponible.', 'finance:investments_missing': 'Ajoutez vos investissements, ou confirmez que vous n’en avez pas.',
     'trader:watchlist_missing': 'Ajoutez des actifs à votre liste de suivi.', 'trader:alerts_missing': 'Ajoutez des alertes marché.', 'trader:portfolio_missing': 'Ajoutez votre portefeuille d’investissement.',
     'business:projects_missing': 'Ajoutez au moins un projet pour activer l’intelligence Business.', 'business:funding_readiness_missing': 'Complétez les données de préparation au financement.',
   },
 } as const;
 
-function issueText(code: string, text: any) {
-  if (text[code]) return text[code];
-  const raw = code.replace(/^finance:/, '').replaceAll('_', ' ');
-  return raw ? `Finance: ${raw}` : code;
-}
+function issueText(code: string, text: any) { return text[code] ?? code; }
 
 export function EconomicIntelligenceReadiness() {
   const { user, loading: authLoading } = useAuth();
