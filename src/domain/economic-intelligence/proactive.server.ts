@@ -65,6 +65,10 @@ function isUuid(value: unknown) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? ''));
 }
 
+function isProactiveEventKey(eventKey: string) {
+  return eventKey.startsWith('risk:') || eventKey.startsWith('decision:') || eventKey.startsWith('opportunity:');
+}
+
 function normalizeStored(row: EconomicStoredRow | undefined, draft: EventDraft): SmartNotification {
   const status = row?.status === 'archived' ? 'archived' : row?.status === 'read' || row?.read === true ? 'read' : 'unread';
   return {
@@ -158,7 +162,10 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
   if (allOpenResult.error) throw allOpenResult.error;
 
   const now = new Date().toISOString();
-  const staleRows = (allOpenResult.data ?? []).filter((row: EconomicStoredRow) => row.event_key && !activeKeys.includes(String(row.event_key)));
+  const staleRows = (allOpenResult.data ?? []).filter((row: EconomicStoredRow) => {
+    const eventKey = String(row.event_key ?? '');
+    return isProactiveEventKey(eventKey) && !activeKeys.includes(eventKey);
+  });
   for (const row of staleRows) {
     const resolutionCode = resolutionCodeForEventKey(String(row.event_key));
     const previousMetadata = asObject(row.metadata);
