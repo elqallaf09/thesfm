@@ -70,6 +70,7 @@ for (const width of [2048, 1440, 390]) {
           body: JSON.stringify({ success: false, status: 'unavailable', items: [], data: [], recommendations: [], followedTrades: [], dataProvider: { configured: false, status: 'disconnected' } }),
         }));
         await page.goto(`${origin}/contrast-host`, { waitUntil: 'domcontentloaded' });
+        await expect(page.frameLocator('iframe[name="trader-contrast-frame"]').locator('.trade-performance-page .page-hero')).toBeVisible();
         const terminal = page.frame({ name: 'trader-contrast-frame' });
         if (!terminal) throw new Error('Embedded terminal was not created');
         await expect(terminal.locator('.trade-performance-page .page-hero')).toBeVisible();
@@ -84,7 +85,8 @@ for (const width of [2048, 1440, 390]) {
         const search = terminal.locator('#symbol-input');
         await search.focus();
         await terminal.evaluate(next => {
-          const bridge = (window as Window & { SFMTraderTheme: { apply: (preference: string, resolved: string) => void } }).SFMTraderTheme;
+          const bridge = (window as Window & { SFMTraderTheme?: { apply: (preference: string, resolved: string) => void } }).SFMTraderTheme;
+          if (!bridge) throw new Error('The production theme bridge did not initialize');
           bridge.apply(next, next);
         }, theme === 'light' ? 'dark' : 'light');
         await expect(search).toBeFocused();
