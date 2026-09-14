@@ -59,13 +59,23 @@
 - Comparison is descriptive only and carries an explicit non-causal contract
 - Unit coverage verifies drift direction and safe handling of pre-snapshot records
 
-## Next — Phase 7.34 — Economic Intelligence Integrity Audit
-- Audit every production Economic Intelligence number back to its canonical DB/provider source
-- Flag hard-coded, mock, demo or fallback numeric values that could reach production analysis
-- Verify confidence/readiness values are derived from real evidence and freshness metadata
-- Verify protected routes, workspace isolation, auth/error states and source provenance contracts
-- Verify historical snapshots remain immutable and are never silently rebuilt from current evidence
-- Produce a concise integrity report and fix confirmed issues before the final production-hardening phase
+## Phase 7.34 — Economic Intelligence Integrity Audit — implemented in PR #119
+- Audited production Economic Intelligence facts, deterministic metrics, heuristics, simulations and AI narrative boundaries
+- Fixed empty income/expense inputs being treated as fully complete evidence
+- Fixed legacy one-off decision amounts leaking into monthly cash-flow impact
+- Encoded risk score methodology as `deterministic_policy_heuristic`
+- Encoded Financial Twin scenario methodology as `fixed_assumption_sensitivity_simulation`
+- Finance Dashboard now exposes scenario assumptions and states simulations are not forecasts or guarantees
+- Verified Economic Intelligence API protection, provenance privacy, historical snapshot separation and non-causal drift semantics
+- Added `docs/economic-intelligence-integrity-audit.md` with scope, findings, fixes and remaining semantic cleanup
+
+## Next — Phase 7.35 — Production Hardening
+- Audit authenticated/RLS isolation for Economic Intelligence source tables and durable notifications
+- Verify server-only boundaries for secrets/provider credentials and admin clients
+- Normalize cache/no-store behavior, rate limits, retries/timeouts and 401/403/429/5xx error contracts
+- Verify workspace isolation and route/runtime resilience across Economic Intelligence APIs
+- Remove semantic-debt inputs that could be mistaken for real evidence (for example implicit expected return placeholders)
+- Produce a production-hardening report and fix confirmed issues before final release verification
 
 ### Validation gate
 - Required GitHub checks and Vercel Preview build must pass before merge
