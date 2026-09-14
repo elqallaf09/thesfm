@@ -26,6 +26,8 @@ type ShariahRow = {
   shariah_manual_override?: boolean | null;
   shariah_reviewed_by?: string | null;
   updated_at?: string | null;
+  shariah_refresh_error?: string | null;
+  shariah_next_refresh_at?: string | null;
   shariah_screening_data?: ComponentProps<typeof ShariahEvidencePanel>['evidence'];
 };
 
@@ -35,7 +37,8 @@ type ApiResponse = {
   item?: ShariahRow;
   message?: string;
   code?: string;
-  counts?: Record<ShariahStatus, number>;
+  counts?: Record<ShariahStatus, number> | null;
+  countsError?: string | null;
   lastRun?: ComponentProps<typeof ShariahEvidencePanel>['lastRun'];
   diagnosticsError?: string | null;
 };
@@ -96,9 +99,11 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       setCountsLoaded(Boolean(data.counts));
       setLastRun(data.lastRun); setDiagnosticsError(data.diagnosticsError ?? null);
       setSelected(current => current ? data.items?.find(item => item.id === current.id) ?? current : null);
+      return true;
     } catch (error) {
       setCountsLoaded(false);
       setMessage(t('admin_shariah_load_error'));
+      return false;
     } finally {
       setLoading(false);
     }
@@ -159,6 +164,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
         <p>{t('admin_shariah_desc')}</p>
       </header>
 
+      {!countsLoaded && !loading && items.length > 0 && <p role="status">{lang === 'ar' ? 'نتائج الأسهم متاحة؛ تعذّر تحديث العدادات مؤقتًا.' : lang === 'fr' ? 'Résultats disponibles ; compteurs temporairement indisponibles.' : 'Stock results are available; counters are temporarily unavailable.'}</p>}
       <section className="sharia-admin-stats">
         {statuses.map(item => (
           <article key={item.value} className={`sharia-admin-stat status-${item.value}`}>
@@ -188,7 +194,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
 
       {message ? <p role="status" className={`sharia-admin-message ${message === t('admin_shariah_saved') ? 'success' : 'error'}`}>{message}</p> : null}
 
-      <ShariahEvidencePanel evidence={selected?.shariah_screening_data} lastRun={lastRun} diagnosticsError={diagnosticsError} onUpdated={() => load(query)} />
+      <ShariahEvidencePanel evidence={selected?.shariah_screening_data} lastRun={lastRun} diagnosticsError={diagnosticsError} onUpdated={() => load(query)} selected={selected?.id ? { id: String(selected.id), symbol: selected.symbol, assetType: selected.asset_type, error: selected.shariah_refresh_error, nextRetryAt: selected.shariah_next_refresh_at } : null} />
 
       <section className="sharia-admin-workspace">
         <div

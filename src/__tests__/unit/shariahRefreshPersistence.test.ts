@@ -43,6 +43,18 @@ describe('bounded refresh persistence', () => {
     enrich.mockImplementation(async () => sourceResult()); const store = db(20);
     expect(await refreshSfmShariahClassifications(store.admin, { limit: 4 })).toMatchObject({ scanned: 4, updated: 4, hasMore: true });
   });
+  it('records partial progress when one stock fails without discarding the other saves', async () => {
+    enrich.mockResolvedValueOnce(sourceResult()).mockResolvedValueOnce({ documents: [], financialValues: [], errors: ['official_provider_timed_out'] }).mockResolvedValue(sourceResult());
+    const store = db(3); const result = await refreshSfmShariahClassifications(store.admin);
+    expect(result).toMatchObject({ ok: false, updated: 2, scanned: 3, status: 'partial', fatal: false });
+    expect(store.runs[0]).toMatchObject({ status: 'partial' });
+  });
+  it('caps interactive requests at three stocks even when a legacy caller asks for 50', async () => {
+    enrich.mockResolvedValue(sourceResult()); const store = db(50);
+    const result = await refreshSfmShariahClassifications(store.admin, { limit: 50, interactive: true });
+    expect(result).toMatchObject({ ok: true, updated: 3, scanned: 3, hasMore: true });
+    expect(store.rpc.mock.calls.filter(([name]) => name === 'claim_shariah_refresh_batch')).toHaveLength(1);
+  });
   it('fails closed when the migration/run table is unavailable', async () => {
     const admin = { from: () => ({ insert: () => ({ select: () => ({ single: async () => ({ data: null, error: {} }) }) }) }) } as unknown as SupabaseClient;
     await expect(refreshSfmShariahClassifications(admin)).rejects.toThrow('REFRESH_MIGRATION_OR_DATABASE_UNAVAILABLE');

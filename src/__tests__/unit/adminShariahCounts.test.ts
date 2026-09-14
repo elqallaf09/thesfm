@@ -4,7 +4,7 @@ import { computeShariahCounts } from '@/lib/market/shariahAdminCatalog';
 function fakeAdmin(values: Record<string, number | null>) {
   return { from: () => ({ select: () => ({ eq: (_: string, status: string) => ({ eq: (key: string, active: boolean) => {
     expect([key, active]).toEqual(['is_active', true]);
-    return Promise.resolve({ count: Object.hasOwn(values, status) ? values[status] : 0, error: null });
+    return { abortSignal: () => Promise.resolve({ count: Object.hasOwn(values, status) ? values[status] : 0, error: null }) };
   } }) }) }) } as unknown as SupabaseClient;
 }
 describe('computeShariahCounts', () => {

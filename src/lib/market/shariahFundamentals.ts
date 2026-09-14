@@ -63,7 +63,17 @@ export async function enrichShariahScreeningData(input: ScreeningInput) {
         }));
       } catch { errors.push('official_business_document_unavailable'); }
     } else errors.push('official_business_document_not_found');
-  } catch (error) { errors.push(error instanceof Error && /^official_|^sec_/.test(error.message) ? error.message : 'official_provider_fetch_failed'); }
+  } catch (error) {
+    const status = (error as { status?: number } | null)?.status;
+    const code = (error as { code?: string } | null)?.code;
+    errors.push(input.signal?.aborted || (error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name))
+      ? 'official_provider_timed_out'
+      : status === 429 ? 'official_provider_rate_limited'
+        : status === 403 ? 'official_provider_access_denied'
+          : code === 'DNS_RESOLUTION_FAILED' ? 'official_provider_dns_failed'
+            : error instanceof Error && /^(official_|sec_)[a-z_]+$/.test(error.message)
+              ? error.message : 'official_provider_fetch_failed');
+  }
   const missingFields = missingFinancialFields(financialValues);
   const data: ShariahScreeningData = {
     evidenceVersion: EVIDENCE_VERSION, security, documents, financialValues,

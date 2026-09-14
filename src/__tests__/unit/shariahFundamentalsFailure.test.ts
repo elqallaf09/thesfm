@@ -11,6 +11,16 @@ describe('fresh extraction never launders absent or old values', () => {
     expect(result.data.interestBearingDebtRatio).toBeUndefined();
     expect(result.errors).toEqual(['official_provider_fetch_failed']);
   });
+  it.each([
+    [Object.assign(new Error('untrusted server details'), { status: 429 }), 'official_provider_rate_limited'],
+    [Object.assign(new Error('untrusted server details'), { status: 403 }), 'official_provider_access_denied'],
+    [new DOMException('timed out', 'TimeoutError'), 'official_provider_timed_out'],
+    [Object.assign(new Error('DNS private info'), { code: 'DNS_RESOLUTION_FAILED' }), 'official_provider_dns_failed'],
+  ])('records safe, actionable source error codes', async (error, code) => {
+    directory.mockRejectedValueOnce(error);
+    const result = await enrichShariahScreeningData({ symbol: 'TEST', country: 'US' });
+    expect(result.errors).toEqual([code]); expect(result.documents).toEqual([]);
+  });
   it('does not remap Kuwait tickers onto a US ticker with the same spelling', async () => {
     directory.mockClear();
     const result = await enrichShariahScreeningData({ symbol: 'KFH', country: 'KW', exchange: 'BOURSA_KUWAIT' });

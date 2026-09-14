@@ -40,7 +40,7 @@ export const GET = createAdminApiRoute({
 
   let query = auth.admin
     .from('market_symbols')
-    .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,updated_at')
+    .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,shariah_refresh_error,shariah_next_refresh_at,updated_at')
     .eq('is_active', true)
     .order('updated_at', { ascending: false })
     .limit(limit);
@@ -50,17 +50,24 @@ export const GET = createAdminApiRoute({
     query = query.or(`symbol.ilike.${like},display_symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},company_name_ar.ilike.${like},company_name_en.ilike.${like}`);
   }
 
-  const [{ data, error }, counts, diagnostics] = await Promise.all([
-    query,
+  const [rows, countsResult, diagnosticsResult] = await Promise.allSettled([
+    query.abortSignal(AbortSignal.timeout(8_000)),
     computeShariahCounts(auth.admin),
-    auth.admin.from('shariah_refresh_runs').select('id,status,finished_at,result').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+    auth.admin.from('shariah_refresh_runs').select('id,status,finished_at,result').order('started_at', { ascending: false }).limit(1).abortSignal(AbortSignal.timeout(5_000)).maybeSingle(),
   ]);
-  if (error) {
-    console.error('[admin-shariah] load failed', { code: error.code, message: error.message });
-    return json({ ok: false, code: 'LOAD_FAILED' }, { status: 500 });
+  if (rows.status !== 'fulfilled' || rows.value.error) {
+    console.error('[admin-shariah] load failed', { code: 'CATALOG_ROWS_UNAVAILABLE' });
+    return json({ ok: false, code: 'LOAD_FAILED' }, { status: 503 });
   }
-
-  return json({ ok: true, items: data ?? [], counts, lastRun: diagnostics.data ?? null, diagnosticsError: diagnostics.error ? 'REFRESH_DIAGNOSTICS_UNAVAILABLE' : null });
+  // Counts and diagnostics are optional metadata: their failure must not hide
+  // successfully persisted symbol results or fail the entire page refresh.
+  const counts = countsResult.status === 'fulfilled' ? countsResult.value : null;
+  const countsError = countsResult.status === 'rejected' ? 'SHARIAH_COUNTS_UNAVAILABLE' : null;
+  const diagnostics = diagnosticsResult.status === 'fulfilled' ? diagnosticsResult.value : null;
+  if (countsError) console.warn('[admin-shariah] counts unavailable', { code: countsError });
+  return json({ ok: true, items: rows.value.data ?? [], counts, countsError,
+    lastRun: diagnostics?.data ?? null,
+    diagnosticsError: !diagnostics || diagnostics.error ? 'REFRESH_DIAGNOSTICS_UNAVAILABLE' : null });
 });
 
 async function saveOverride({ request, auth, json }: AdminApiContext) {
@@ -127,7 +134,7 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
         .from('market_symbols')
         .update(patch)
         .eq('id', existing.data.id)
-        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,updated_at')
+        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,shariah_refresh_error,shariah_next_refresh_at,updated_at')
         .single()
     : await auth.admin
         .from('market_symbols')
@@ -143,7 +150,7 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
           is_active: true,
           ...patch,
         })
-        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,updated_at')
+        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,shariah_refresh_error,shariah_next_refresh_at,updated_at')
         .single();
 
   if (result.error) {

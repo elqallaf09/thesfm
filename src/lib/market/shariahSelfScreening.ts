@@ -1,3 +1,4 @@
+import { shariahRefreshOutcome, type ShariahRefreshOutcome } from './shariahRefreshOutcome';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { enrichShariahScreeningData } from './shariahFundamentals';
 import { analyzeShariaEvidence } from '@/lib/sharia-research/shariaAnalyzer';
@@ -34,23 +35,27 @@ export function classifySfmShariahStock(row: { symbol: string; name?: string | n
     shariahManualOverride: false, shariahMethod: 'automatic_screening' };
 }
 
-export async function refreshSfmShariahClassifications(admin: SupabaseClient, options: { limit?: number; force?: boolean; symbolId?: string } = {}) {
+export async function refreshSfmShariahClassifications(admin: SupabaseClient, options: { limit?: number; force?: boolean; symbolId?: string; interactive?: boolean } = {}) {
   const started = Date.now();
-  const limit = cleanRefreshLimit(options.limit);
-  const signal = AbortSignal.timeout(45_000);
-  const report = { ok: true, scanned: 0, updated: 0, compliant: 0, nonCompliant: 0, needsReview: 0, unclassified: 0,
+  // Interactive callers get one small batch; the browser reports saved progress
+  // and continues serially. Cron keeps its existing bounded, multi-batch budget.
+  const limit = options.interactive ? Math.min(3, cleanRefreshLimit(options.limit)) : cleanRefreshLimit(options.limit);
+  const budgetMs = options.interactive ? 22_000 : 45_000;
+  const signal = AbortSignal.timeout(budgetMs);
+  const claimWindowMs = budgetMs - 10_000;
+  const report = { ok: true, fatal: false, status: 'completed' as ShariahRefreshOutcome, elapsedMs: 0, scanned: 0, updated: 0, compliant: 0, nonCompliant: 0, needsReview: 0, unclassified: 0,
     skippedManual: 0, skippedConcurrent: 0, hasMore: false, failed: [] as Array<{ symbol: string; reason: string }>,
     model: 'SFM evidence v2', methodology: SFM_FTSE_POINT_IN_TIME.name, runId: '' };
   const run = await admin.from('shariah_refresh_runs').insert({}).select('id').single();
   if (run.error || !run.data) throw new Error('REFRESH_MIGRATION_OR_DATABASE_UNAVAILABLE');
   report.runId = run.data.id;
   try {
-    while (report.scanned < limit && Date.now() - started < 35_000) {
+    while (report.scanned < limit && Date.now() - started < claimWindowMs) {
       const claim = await admin.rpc('claim_shariah_refresh_batch', { p_run_id: report.runId, p_limit: Math.min(3, limit - report.scanned), p_force: options.force === true, p_symbol_id: options.symbolId ?? null });
       if (claim.error) throw new Error('REFRESH_CLAIM_FAILED');
       const rows = claim.data as Array<{ id: string; symbol: string; provider_symbol: string; name: string; exchange: string; country: string; updated_at: string }>;
       if (!rows?.length) break;
-      await Promise.all(rows.map(async row => {
+      const settlements = await Promise.allSettled(rows.map(async row => {
         report.scanned++;
         let patch: ReturnType<typeof catalogPatchForResearch> | null = null;
         let error: string | null = null;
@@ -61,10 +66,10 @@ export async function refreshSfmShariahClassifications(admin: SupabaseClient, op
           const result = analyzeShariaEvidence({ security: fresh.security, documents: fresh.documents,
             financialValues: fresh.financialValues, methodology: SFM_FTSE_POINT_IN_TIME });
           patch = catalogPatchForResearch(result);
-        } catch (failure) { error = failure instanceof Error && /^[a-z_]+$/.test(failure.message) ? failure.message : 'screening_failed_or_timed_out'; }
+        } catch (failure) { error = signal.aborted ? 'official_provider_timed_out' : failure instanceof Error && /^[a-z_]+$/.test(failure.message) ? failure.message : 'screening_failed_or_timed_out'; }
         const saved = await admin.rpc('finish_shariah_refresh', { p_run_id: report.runId, p_symbol_id: row.id,
           p_expected_updated_at: row.updated_at, p_patch: patch, p_error: error });
-        if (saved.error) error = 'refresh_persistence_failed';
+        if (saved.error) { error = 'refresh_persistence_failed'; report.fatal = true; }
         if (error) { report.failed.push({ symbol: row.symbol, reason: error }); return; }
         if (saved.data !== 1 || !patch) { report.skippedConcurrent++; return; }
         report.updated++;
@@ -72,12 +77,21 @@ export async function refreshSfmShariahClassifications(admin: SupabaseClient, op
         else if (patch.shariah_status === 'non_compliant') report.nonCompliant++;
         else report.needsReview++;
       }));
+      settlements.forEach((settled, index) => {
+        if (settled.status === 'rejected') {
+          report.fatal = true;
+          report.failed.push({ symbol: rows[index].symbol, reason: 'refresh_persistence_failed' });
+        }
+      });
+      if (report.fatal) break;
     }
-    report.hasMore = report.scanned >= limit || Date.now() - started >= 35_000;
-  } catch { report.failed.push({ symbol: 'refresh', reason: 'refresh_database_or_claim_failed' }); }
+    report.hasMore = report.scanned >= limit || Date.now() - started >= claimWindowMs;
+  } catch { report.fatal = true; report.failed.push({ symbol: 'refresh', reason: 'refresh_database_or_claim_failed' }); }
   report.ok = report.failed.length === 0;
+  report.status = shariahRefreshOutcome(report);
+  report.elapsedMs = Date.now() - started;
   const finished = await admin.from('shariah_refresh_runs').update({ finished_at: new Date().toISOString(),
-    status: report.ok ? report.hasMore ? 'partial' : 'completed' : 'failed', result: report }).eq('id', report.runId);
-  if (finished.error) { report.ok = false; report.failed.push({ symbol: 'refresh', reason: 'refresh_run_log_write_failed' }); }
+    status: report.status, result: report }).eq('id', report.runId);
+  if (finished.error) { report.ok = false; report.fatal = true; report.status = 'failed'; report.failed.push({ symbol: 'refresh', reason: 'refresh_run_log_write_failed' }); }
   return report;
 }
