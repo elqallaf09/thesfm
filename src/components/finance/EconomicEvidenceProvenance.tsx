@@ -34,7 +34,7 @@ export function EconomicEvidenceProvenance() {
   const [error, setError] = useState(false);
   const locale = lang === 'fr' ? 'fr-FR' : lang === 'en' ? 'en-US' : 'ar-KW';
   const explained = useMemo(() => new Set(
-    (searchParams.get('explain') ?? '')
+    (searchParams?.get('explain') ?? '')
       .split(',')
       .map(value => value.trim())
       .filter((value): value is Workspace => WORKSPACES.has(value as Workspace)),
