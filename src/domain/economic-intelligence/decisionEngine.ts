@@ -25,6 +25,7 @@ export function assessFinancialDecision(
     ? liquidAfterUpfront / monthlyOutflowAfterDecision
     : null;
 
+  // This is a deterministic product-policy heuristic, not a probability of loss/default.
   let riskScore = 20;
   const reasons: string[] = [];
   const warnings: string[] = [];
@@ -78,6 +79,7 @@ export function assessFinancialDecision(
     kind: input.kind,
     affordability,
     riskScore,
+    riskScoreMethod: 'deterministic_policy_heuristic',
     monthlySurplusAfterDecision,
     runwayMonthsAfterDecision,
     reasons,
