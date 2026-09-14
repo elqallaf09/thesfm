@@ -1,11 +1,14 @@
 name: Shariah production refresh verification
 on:
   push:
-    branches: [main]
+    branches: [main, fix/shariah-evidence-coverage-production-proof]
     paths:
       - 'src/lib/sharia-research/**'
       - 'src/lib/market/shariah*'
       - 'src/app/api/market/shariah/**'
+      - 'src/app/sfm-admin-control/shariah/**'
+      - 'src/app/api/sharia-stocks/screening/**'
+      - 'scripts/shariah/verify-production-session.mjs'
       - '.github/workflows/shariah-production-verify.yml'
   workflow_dispatch:
 permissions:
@@ -15,52 +18,25 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
-    if: github.repository == 'elqallaf09/thesfm' && github.ref == 'refs/heads/main'
+    if: github.repository == 'elqallaf09/thesfm' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/shariah-evidence-coverage-production-proof')
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
           node-version: 22.16.0
-      - name: Verify deployed code, authenticate one bounded refresh and read the public catalog
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify normal admin session, real refresh and persisted read-back
         env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          node --input-type=module <<'JS'
-          import { mkdirSync, writeFileSync } from 'node:fs';
-          const origin = 'https://www.the-sfm.com';
-          const secret = process.env.CRON_SECRET?.trim();
-          if (!secret) throw new Error('CRON_SECRET is not configured in repository Actions secrets; no production request was made.');
-          const sha = process.env.GITHUB_SHA;
-          if (!/^[a-f0-9]{40}$/.test(sha ?? '')) throw new Error('Invalid deployment revision.');
-          let deployed = false;
-          for (let attempt = 0; attempt < 45; attempt++) {
-            const response = await fetch(`${origin}/_next/static/${sha}/_buildManifest.js`, { signal: AbortSignal.timeout(10000), redirect: 'error' }).catch(() => null);
-            if (response?.ok && /javascript/.test(response.headers.get('content-type') ?? '')) { deployed = true; break; }
-            await new Promise(resolve => setTimeout(resolve, 10000));
-          }
-          if (!deployed) throw new Error('The exact merged production build was not observed; no refresh was attempted.');
-          const endpoint = `${origin}/api/market/shariah/refresh`;
-          const unauthorized = await fetch(endpoint, { signal: AbortSignal.timeout(10000), redirect: 'error' });
-          if (unauthorized.status !== 401) throw new Error(`Unauthenticated refresh must be denied (status ${unauthorized.status}).`);
-          const response = await fetch(endpoint, { headers: { authorization: `Bearer ${secret}` }, signal: AbortSignal.timeout(65000), redirect: 'error' });
-          const data = await response.json().catch(() => null);
-          mkdirSync('proof', { recursive: true });
-          const proof = { revision: sha, verifiedAt: new Date().toISOString(), unauthorizedStatus: unauthorized.status,
-            refreshStatus: response.status, ok: data?.ok, runId: data?.runId, scanned: data?.scanned, updated: data?.updated,
-            compliant: data?.compliant, nonCompliant: data?.nonCompliant, needsReview: data?.needsReview,
-            hasMore: data?.hasMore, failed: data?.failed, code: data?.code };
-          writeFileSync('proof/production-refresh.json', JSON.stringify(proof, null, 2));
-          if (!response.ok || !data?.ok || !data.runId) throw new Error(`Production refresh did not succeed (HTTP ${response.status}); see the sanitized proof.`);
-          const catalog = await fetch(`${origin}/api/sharia-stocks/screening`, { signal: AbortSignal.timeout(15000), redirect: 'error' });
-          const catalogData = await catalog.json().catch(() => null);
-          writeFileSync('proof/public-catalog.json', JSON.stringify(catalogData, null, 2));
-          if (!catalog.ok || !catalogData) throw new Error('Public catalog read-back failed.');
-          console.log(JSON.stringify(proof));
-          JS
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: node scripts/shariah/verify-production-session.mjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: shariah-production-proof
-          path: proof
+          path: proof/production-session.json
           retention-days: 7
