@@ -14,16 +14,21 @@ import { compareHistoricalEvidence } from '@/domain/economic-intelligence/eviden
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const NO_STORE = { 'cache-control': 'private, no-store' };
+
 function normalizeLocale(value: string | null): EconomicNarrativeLocale {
   return value === 'fr' ? 'fr' : value === 'en' ? 'en' : 'ar';
 }
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request).catch(() => null);
-  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' } }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' } }, { status: 401, headers: NO_STORE });
 
   const limit = checkRateLimitWithMetadata(`user:${user.id}`, { max: 30, windowMs: 60_000, prefix: 'economic-daily-brief' });
-  if (!limit.allowed) return NextResponse.json({ ok: false, error: { code: 'APPLICATION_RATE_LIMITED' } }, { status: 429 });
+  if (!limit.allowed) return NextResponse.json({ ok: false, error: { code: 'APPLICATION_RATE_LIMITED' } }, {
+    status: 429,
+    headers: { ...NO_STORE, 'Retry-After': String(Math.max(1, limit.retryAfterSeconds)) },
+  });
 
   try {
     const locale = normalizeLocale(new URL(request.url).searchParams.get('lang'));
@@ -45,8 +50,8 @@ export async function GET(request: NextRequest) {
         evidenceDrift: compareHistoricalEvidence(entry.evidenceSnapshot, readiness, provenance),
       })),
     };
-    return NextResponse.json({ ok: true, brief, readiness, provenance, actions, highestPriority, narrative, history }, { headers: { 'cache-control': 'private, no-store' } });
+    return NextResponse.json({ ok: true, brief, readiness, provenance, actions, highestPriority, narrative, history }, { headers: NO_STORE });
   } catch {
-    return NextResponse.json({ ok: false, error: { code: 'DAILY_BRIEF_UNAVAILABLE' } }, { status: 502 });
+    return NextResponse.json({ ok: false, error: { code: 'DAILY_BRIEF_UNAVAILABLE' } }, { status: 502, headers: NO_STORE });
   }
 }
