@@ -25,7 +25,6 @@ This is a completed implementation slice, not a claim that the full Phase 7.35 s
 
 - Local Next.js production build could not fetch Google Fonts because the build environment could not resolve the font host. This is not recorded as a passing build; the new Vercel deployment must validate the published commit.
 - Playwright browser download was blocked by the local network. The original browser regression has an implementation fix and unit coverage, but browser confirmation still requires GitHub CI.
-- Mocked API isolation tests do not establish live Supabase RLS correctness. Complete authenticated two-user RLS and workspace-isolation checks, broader route error/retry contracts, and remaining semantic-debt cleanup before closing Phase 7.35.
 - No live database records, migrations, secrets, billing configuration, or branch protection rules were modified by this slice.
 
 ## Publication
@@ -39,4 +38,20 @@ Publish these related changes together as one commit on the existing PR branch, 
 - Typed readiness text and narrative copy selection. A missing notification row after a competing unique-key insert no longer reaches the strict cross-workspace normalizer.
 - Full local TypeScript rerun passed. Full coverage rerun passed: 278 files / 2172 tests. Final repository lint guard passed with 457 explicit-any warnings and 420 unused-variable warnings; the checked-out baseline remains unchanged (459 / 423). The main merge candidate has its own stricter baseline and must pass fresh CI.
 - Generated coverage reports were kept outside the checkout for the lint run, matching CI's separate clean jobs; no tracked source was excluded.
-- These changes do not establish live RLS verification or complete the wider lifecycle/semantic audit. In particular, verify event-family ownership when resolving stale notifications, preservation of historical metadata across all writers, and distinctions between opening a timeline and recording a real user action in the remaining 7.35 work.
+
+## Follow-up — lifecycle, ownership, privacy and live-RLS hardening
+
+- Decision Timeline page load now records only `opened`. It no longer fabricates an `actioned` outcome merely because the user viewed the timeline. A real resolution still records the appropriate interaction through the event-outcomes route.
+- Proactive and freshness stale-event writers now preserve existing notification metadata before adding resolution metadata. Evidence snapshots and historical provenance are not replaced by a smaller resolution object.
+- Stale-event updates are additionally scoped by user and `source_module = economic_intelligence`.
+- Event-family ownership is explicit: proactive owns only `risk:`, `decision:` and `opportunity:` events; freshness owns only `freshness:` events; cross-workspace priorities own only `priority:` events. The proactive writer can no longer archive another writer's active family during concurrent refresh.
+- Personalized advisor-grounding, advisor-chat and proactive-events responses now apply `private, no-store` to authentication failures, validation failures, rate limits, upstream failures and success responses. Retry-After remains present on application throttling.
+- Added source-contract regression coverage for timeline semantics, metadata preservation, event-family ownership and personalized API privacy.
+- Added a real two-identity RLS Playwright check that runs only when CI resolves an exact-SHA isolated Supabase Preview. It verifies own-row access plus denial of cross-user read, update and forged insert on `user_decisions`, and cleans up only its own synthetic rows. It refuses to run if the Preview ref is absent, invalid or equals Production.
+
+## Remaining before Phase 7.35 can be called complete
+
+- The new exact-SHA CI head must pass TypeScript, lint-debt guards, unit/integration tests, production build/budgets, browser smoke and the authenticated isolated-Preview RLS check. A prior green head is not sufficient.
+- Review any CI failure from the new lifecycle/RLS coverage without weakening assertions or falling back to Production credentials.
+- Re-run the final route/error-boundary inventory after the current head is green and confirm no personalized Economic Intelligence route lacks private/no-store behavior.
+- Merge only after repository-required checks permit it; then verify the exact merged SHA/deployment separately before starting the next product phase.
