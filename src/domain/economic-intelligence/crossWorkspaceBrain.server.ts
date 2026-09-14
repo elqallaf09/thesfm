@@ -15,6 +15,18 @@ function currencyFromProfile(profile: Record<string, unknown> | null) {
     ?? 'KWD';
 }
 
+function latestTimestamp(groups: unknown[][]) {
+  let latest = 0;
+  let value: string | null = null;
+  for (const row of groups.flat() as any[]) {
+    for (const candidate of [row?.updated_at, row?.created_at]) {
+      const time = candidate ? new Date(String(candidate)).getTime() : 0;
+      if (Number.isFinite(time) && time > latest) { latest = time; value = new Date(time).toISOString(); }
+    }
+  }
+  return value;
+}
+
 export async function loadCrossWorkspaceEvidence(userId: string): Promise<WorkspaceEvidence> {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
@@ -26,16 +38,17 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     admin.from('savings_items').select('*').eq('user_id', userId).limit(2000),
     admin.from('investment_items').select('*').eq('user_id', userId).limit(2000),
     admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).maybeSingle(),
-    admin.from('market_watchlist').select('id,symbol,asset_type').eq('user_id', userId).limit(1000),
-    admin.from('market_price_alerts').select('id,status').eq('user_id', userId).limit(1000),
-    admin.from('projects').select('id,status').eq('user_id', userId).limit(1000),
-    admin.from('project_funding_readiness').select('project_id,funding_needed,currency,readiness_score').eq('user_id', userId).limit(1000),
+    admin.from('market_watchlist').select('id,symbol,asset_type,created_at').eq('user_id', userId).limit(1000),
+    admin.from('market_price_alerts').select('id,status,created_at').eq('user_id', userId).limit(1000),
+    admin.from('projects').select('id,status,created_at,updated_at').eq('user_id', userId).limit(1000),
+    admin.from('project_funding_readiness').select('project_id,funding_needed,currency,readiness_score,created_at,updated_at').eq('user_id', userId).limit(1000),
   ]);
 
   const failures = [income, expenses, debts, savings, investments, watchlist, alerts, projects, funding].filter(result => result.error);
   if (failures.length > 0) throw failures[0].error;
 
   const currency = currencyFromProfile((profile.data ?? null) as Record<string, unknown> | null);
+  const financeGroups = [income.data ?? [], expenses.data ?? [], debts.data ?? [], savings.data ?? [], investments.data ?? []];
   const snapshot = buildFinancialTwinSnapshot({
     income: income.data ?? [],
     expenses: expenses.data ?? [],
@@ -63,6 +76,11 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
         currency: normalizeCurrency(row.currency) ?? currency,
         readinessScore: Number.isFinite(Number(row.readiness_score)) ? Number(row.readiness_score) : null,
       })),
+    },
+    freshness: {
+      finance: latestTimestamp(financeGroups),
+      trader: latestTimestamp([watchlist.data ?? [], alerts.data ?? []]),
+      business: latestTimestamp([projects.data ?? [], funding.data ?? []]),
     },
   };
 }
