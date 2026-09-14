@@ -60,9 +60,11 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
   const noncurrent = select(us('LongTermDebtNoncurrent', 'LongTermDebtAndFinanceLeaseObligationsNoncurrent'));
   const longTotal = select(us('LongTermDebt', 'LongTermDebtAndFinanceLeaseObligations'));
   const short = select(us('ShortTermBorrowings', 'ShortTermDebtCurrent', 'CommercialPaper'));
-  const debt = allCurrent ? [allCurrent, noncurrent]
-    : longTotal ? [longTotal, short]
-      : [currentMaturities, noncurrent, short];
+  // Compare disjoint alternatives rather than dropping a reported long-term
+  // total just because a current-only balance also exists. Never add the
+  // alternatives to each other: their coverage overlaps.
+  const debt = [[allCurrent, noncurrent], [longTotal, short], [currentMaturities, noncurrent, short]]
+    .sort((a, b) => b.reduce((sum, fact) => sum + (fact?.val ?? 0), 0) - a.reduce((sum, fact) => sum + (fact?.val ?? 0), 0))[0];
   emit('interest_bearing_debt', debt, 'lower', 'Non-overlapping disclosed debt lower bound. Unreported borrowing/lease categories remain unknown.');
 
   // Debt securities are NOT interchangeable with all marketable securities or

@@ -8,6 +8,7 @@ import { SFM_FTSE_POINT_IN_TIME } from '@/lib/sharia-research/methodologies';
 import { catalogPatchForResearch } from '@/lib/sharia-research/catalogSync';
 import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
 import { validFinancialValue } from '@/lib/sharia-research/evidenceValidation';
+import { loadSecCompanyFacts, loadSecSubmissions } from '@/lib/sharia-research/secData';
 
 // Explicit opt-in. Never executed against Supabase/production, never takes a key.
 const enabled = process.env.SFM_LIVE_SEC_PROBE === '1';
@@ -21,8 +22,19 @@ describe.skipIf(!enabled)('live public SEC evidence â†’ actual SQL persistence â
     mkdirSync('artifacts/shariah', { recursive: true });
     const result = analyzeShariaEvidence({ security: fresh.security, documents: fresh.documents, financialValues: fresh.financialValues, methodology: SFM_FTSE_POINT_IN_TIME });
     const patch = catalogPatchForResearch(result);
+    const period = fresh.financialValues.find(value => value.normalizedField === 'total_assets')?.periodEnd;
+    const raw = fresh.security.cik ? await loadSecCompanyFacts(fresh.security.cik) : null;
+    const submissions = fresh.security.cik ? await loadSecSubmissions(fresh.security.cik) : null;
+    const sourceDiagnostics = { sic: submissions?.payload.sic, sicDescription: submissions?.payload.sicDescription,
+      tags: Object.entries(raw?.payload.facts?.['us-gaap'] ?? {}).filter(([tag]) => /Debt|Borrow|CommercialPaper|InterestIncome|InvestmentIncome|InterestAnd|RevenuesNetOf/i.test(tag)).map(([tag, concept]) => ({
+        tag, description: concept.description, units: Object.fromEntries(Object.entries(concept.units ?? {}).map(([unit, rows]) => [unit, rows.filter(row => row.end === period).slice(-4)])),
+      })).filter(item => Object.values(item.units).some(rows => rows.length)),
+      businessText: fresh.documents.filter(document => document.sourceType === 'annual_report').map(document => ({ sourceUrl: document.sourceUrl,
+        beginning: document.extractedText.slice(0, 14000),
+        bankContexts: [...document.extractedText.matchAll(/.{0,160}(?:holding company|commercial banking|principal business).{0,240}/gi)].slice(0, 8).map(match => match[0]) })),
+    };
     writeFileSync(`artifacts/shariah/${symbol}.json`, JSON.stringify({ symbol, exchange, fetchedAt: new Date().toISOString(),
-      errors: fresh.errors, financialValues: fresh.financialValues, patch,
+      errors: fresh.errors, financialValues: fresh.financialValues, patch, sourceDiagnostics,
       sourceCount: fresh.documents.length, missingFields: result.missingFinancialFields }, null, 2));
     // No test rating is predetermined. A real provider failure is a failed live proof.
     expect(fresh.documents.length, JSON.stringify(fresh.errors)).toBeGreaterThan(0);
