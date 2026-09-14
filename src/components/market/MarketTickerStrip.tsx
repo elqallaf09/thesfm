@@ -113,7 +113,7 @@ export function MarketTickerStrip({
 
   useEffect(() => {
     // A manual scroll offset must not carry into the duplicate-set animation.
-    if (!manual && !paused) viewportRef.current?.scrollTo({ left: 0, behavior: 'instant' });
+    if (!manual) viewportRef.current?.scrollTo({ left: 0, behavior: 'instant' });
   }, [manual, paused]);
 
   useEffect(() => {
