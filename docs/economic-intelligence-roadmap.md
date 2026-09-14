@@ -1,182 +1,63 @@
 # SFM Economic Intelligence Roadmap
 
-## Phase 7.0 — Foundation — implemented in PR #119
-- Economic Intelligence domain contracts
-- Financial Digital Twin snapshot
-- 3/6/12 month forecasting primitives
-- Stress / Base / Optimistic scenarios
-- Deterministic decision risk engine
-- Data-quality and confidence guardrails
-- Unit coverage
+## Phase 7.0–7.17 — Implemented in PR #119
+- Financial Digital Twin, 3/6/12 month scenarios, deterministic decision risk and simulation
+- Decisions Center integration, explicit financing inputs, templates, comparison and Decision Lab
+- Finance Dashboard Intelligence and Economic Context Engine
+- Specialist Finance / Investment / Business advisors with shared grounding and guardrails
+- Economic Intelligence Home, proactive event feed, durable lifecycle, outcomes and Resolution Intelligence
+- Decision Timeline and user-owned Decision Memory
+- Cross-Workspace Economic Brain combining Finance, Trader and Business evidence
 
-## Phase 7.1 — Decisions Integration — implemented in PR #119
-- Compatibility bridge from the existing Decisions Center into Economic Intelligence
-- Route purchase, investment, project, and debt/saving decisions through the Financial Digital Twin
-- Preserve legacy deterministic rules for charity/zakat and budget decisions until migrated
-- Load debt records directly into the Decisions Center source bundle
-- Include debt-service context in affordability and runway calculations
-- Surface Financial Digital Twin completeness/confidence in the Decisions UI
-- Show 12-month Stress / Base / Optimistic outcomes next to each supported decision
-- Translate Economic Intelligence reason/warning and missing-data codes in AR / EN / FR
-- Persist versioned inputs + analysis JSON for decision-history auditability
-- Add bridge and presentation/versioning unit coverage
+## Phase 7.18–7.23 — Implemented in PR #119
+- Ranked Daily Priorities with deterministic action destinations and stable fingerprints
+- Economic Command Center at `/economic-intelligence`
+- Advisor orchestration against the same Daily Priority
+- Daily Brief narrative, material-change history and archive
+- One shared Economic Intelligence event stack across workspaces
 
-## Phase 7.2 — Finance Dashboard Intelligence — implemented in PR #119
-- Current financial state summary from the same Digital Twin
-- 12-month trajectory cards
-- Liquidity runway and debt-service pressure
-- Early warnings from canonical finance data
-- Dashboard unit coverage
+## Phase 7.24–7.27 — Implemented in PR #119
+- Workspace readiness for Finance / Trader / Business
+- Readiness-aware confidence gates for Daily Brief and advisors
+- Explicit zero-state confirmations such as no debts / no investments / no business projects
+- Truth reconciliation invalidates confirmations contradicted by live evidence
 
-## Phase 7.3 — Economic Context Engine — implemented in PR #119
-- Inflation, policy-rate, growth, labor and yield-curve context
-- Explicit source/provider timestamps and freshness
-- Personal Economic Impact mapping from macro context to the Financial Digital Twin
-- Never replace deterministic personal-finance arithmetic with LLM estimates
+## Phase 7.28–7.29 — Implemented in PR #119
+- Evidence freshness scoring with workspace-specific stale / very-stale thresholds
+- Freshness lowers readiness and advisor confidence instead of presenting stale evidence as current
+- Durable, deduplicated freshness alerts auto-resolve after source refresh
 
-## Phase 7.4 — Specialist Advisors — implemented in PR #119
-- Finance Advisor grounding
-- Investment / Markets Advisor grounding
-- Business Advisor grounding
-- Shared evidence, missing-data and confidence contract
-- Shared allowed/prohibited claim boundaries
-- Grounded advisor context connects to the existing AI surfaces rather than creating a parallel chatbot stack
+## Phase 7.30 — Evidence Provenance — implemented in PR #119
+- Protected provenance API over the same canonical evidence loader
+- Source-level record counts for Finance / Trader / Business evidence
+- Last evidence timestamp and stale / very-stale state
+- Economic Command Center provenance panel
+- No raw private rows, provider secrets, or cross-user data are exposed
 
-## Phase 7.5 — Decision Simulation — implemented in PR #119
-- Deterministic before/after simulation against one canonical Financial Digital Twin
-- Buy-car / large-purchase modeling
-- Debt vs investment paths
-- Start-business/project paths
-- Stress / Base / Optimistic comparison at 3/6/12 months
-- Versioned decision history
-- Financed purchases are not silently treated as full-cash purchases
+## Phase 7.31 — Explainability Links — implemented in PR #119
+- Daily Priority actions carry an explicit `explainUrl`
+- Explainability links identify the Finance / Trader / Business source groups behind the conclusion
+- Evidence Provenance highlights the exact supporting workspaces when opened from an explanation link
+- Specialist Advisor grounding includes the same `daily_priority_explain_url`
+- Economic Command Center exposes a localized “Why this priority?” surface
+- Deterministic conclusions remain authoritative; explainability adds traceability rather than a second recommendation engine
 
-## Phase 7.6 — Explicit Decision Inputs — implemented in PR #119
-- Explicit down payment / upfront cash outflow
-- Explicit financing principal
-- Explicit monthly payment and loan term
-- Explicit new-loan vs debt-repayment direction
-- Explicit debt-payment reduction after repayment
-- Explicit project monthly income change
-- Missing financing assumptions are exposed instead of inferred
-- Inputs flow through Decisions Center analysis into the simulation engine
-
-## Phase 7.7 — Decision Templates — implemented in PR #119
-- Typed input templates per decision type
-- Purchase, investment, project, debt, charity/zakat and budget contracts
-- Conditional financing fields for financed purchases
-- Separate field sets for new borrowing and debt repayment
-- Deterministic completeness validation before simulation
-- No fabricated terms or inferred financing assumptions
-
-## Phase 7.8 — Decision Comparison — implemented in PR #119
-- Compare two or more candidate decisions against the same Financial Digital Twin
-- Rank only candidates with complete comparable inputs
-- Use deterministic status, risk score, post-decision monthly net and liquidity as comparison signals
-- Refuse ranking when data is incomplete
-- Refuse cross-currency ranking without an explicit conversion layer
-- Return an auditable comparison reason rather than an unexplained AI recommendation
-
-## Phase 7.9 — Decision Experience — implemented in PR #119
-- Interactive Decision Lab at `/decisions/simulator`
-- Dynamic AR / EN / FR decision fields
-- Cash vs finance flow for purchases
-- New-loan vs debt-repayment flow
-- Project and investment scenario inputs
-- Side-by-side option comparison using real user finance data
-- Incomplete alternatives are not ranked
-- Full-width responsive simulation workspace
-
-## Phase 7.10 — Economic Intelligence Home — implemented in PR #119
-- Dashboard-level economic state summary built from the canonical Financial Digital Twin
-- Deterministic top-risk prioritization
-- Deterministic opportunity prioritization
-- Highest-risk unresolved user decision surfaced for attention
-- Direct links into Decisions Center and Decision Lab
-- AR / EN / FR presentation
-- Unit coverage for risk, opportunity and decision-priority selection
-- Existing detailed Finance Dashboard Intelligence remains available underneath the summary
-
-## Phase 7.11 — Proactive Intelligence Feed — implemented in PR #119
-- Server-side high-priority economic risk/opportunity events
-- Authenticated and rate-limited proactive-events API
-- Reuse the existing SmartNotification contract and notifications center
-- Merge proactive economic events with stored notifications and market-signal alerts
-- Language-aware AR / EN / FR event copy
-- Confidence threshold before opportunity events are emitted
-- Direct action links to dashboard, debts, Decisions Center and Decision Lab
-- No parallel notifications table or duplicate notification stack
-
-## Phase 7.12 — Durable Intelligence Event Lifecycle — implemented in PR #119
-- Extend the existing `notifications` table with a durable text `event_key`
-- Unique user/source/event-key contract prevents duplicate economic events
-- Economic Intelligence events are materialized into the existing notifications table, not a new stack
-- Read/archive state is durable across devices through the normal notifications workflow
-- Material risk fingerprints allow a new event only when the underlying risk meaningfully changes
-- Decision-event fingerprints include decision status and risk bucket
-- Stored and proactive feeds deduplicate on the real notification UUID
-
-## Phase 7.13 — Outcome & Resolution Tracking — implemented in PR #119
-- Durable `opened_at`, `actioned_at`, `resolved_at`, and `resolution_code` fields on existing notifications
-- Existing read acknowledgement automatically records action metadata for Economic Intelligence events
-- Authenticated, rate-limited outcome endpoint supports explicit opened / actioned / resolved actions
-- Stale risk, opportunity, and decision events auto-resolve when their underlying fingerprint is no longer current
-- Decision-related resolved events write non-causal outcome metadata back into versioned decision analysis
-- Resolution metadata explicitly records `causal_claim: false`
-- Recurring risks create new fingerprints rather than rewriting prior resolved history
-
-## Phase 7.14 — Resolution Intelligence — implemented in PR #119
-- Dashboard Resolution Intelligence surface using the existing Economic Intelligence notification history
-- Active, resolved, and recurring-risk counts
-- Deterministic grouping of materially changed risk fingerprints into recurring risk families
-- AR / EN / FR presentation with an explicit non-causal history disclaimer
-- Unit coverage for active/resolved counts and recurring-family detection
-- Resolution history is mounted alongside Economic Intelligence Home and Finance Dashboard Intelligence
-
-## Phase 7.15 — Resolution Actions & Decision Timeline — implemented in PR #119
-- Dedicated `/decisions/timeline?decision=...` outcome timeline
-- Record opened and actioned state when a user enters a decision timeline
-- Explicit user-confirmed resolved action through the authenticated outcome endpoint
-- Timeline combines initial decision analysis with linked Economic Intelligence alert/open/action/resolution events
-- Deterministic recurring-risk ordering uses recurrence count plus fixed severity weights
-- Outcome presentation explicitly remains observational and non-causal
-
-## Phase 7.16 — Decision Memory & Learning — implemented in PR #119
-- User-owned decision memory built only from that user's stored decisions and linked Economic Intelligence outcomes
-- Comparable-decision matching requires the same decision type, same currency when specified, and a bounded amount range
-- Historical rates are withheld when fewer than two comparable cases exist
-- Private decision-memory API exposes auditable counts/aggregates without cross-user data
-- Specialist advisors receive only aggregated user-owned decision-memory facts when enough history exists
-- Advisor policy explicitly prohibits causal claims from decision memory
-
-## Phase 7.17 — Cross-Workspace Economic Brain — implemented in PR #119
-- One deterministic daily brief combines Finance, Trader and Business evidence
-- Finance evidence comes from the canonical Financial Twin
-- Trader evidence uses saved market watchlist and price-alert state without inventing market opportunities
-- Business evidence uses active projects and funding-readiness records
-- Detects liquidity vs market-attention, debt-pressure vs market-attention, business-funding vs personal-liquidity, and capital-allocation conflicts
-- Refuses to aggregate funding needs across mixed currencies without an explicit conversion layer
-- Dashboard surface shows each conflict with Finance / Trader / Business source attribution
-- Material warning/danger conflicts enter the existing Economic Intelligence notification stream and auto-resolve when cleared
-- Entire `/api/economic-intelligence` namespace is protected by the shared access policy
-- Unit coverage verifies deterministic conflict behavior and mixed-currency refusal
-
-## Next — Phase 7.18 — Daily Brief Priorities & Actions
-- Convert the cross-workspace brief into a ranked daily action list with one highest-priority next step
-- Attach explicit action destinations for Finance, Trader and Business remediation
-- Track whether the user opens or resolves a daily priority through the existing event lifecycle
-- Avoid generating a new daily event when evidence and priority fingerprint are unchanged
-- Keep deterministic constraints authoritative over advisor wording
+## Next — Phase 7.32 — Evidence Snapshot Trace
+- Persist an immutable, privacy-safe evidence summary alongside material Daily Brief / priority history entries
+- Record source groups, counts, freshness timestamps and readiness scores used at that time
+- Allow historical briefs to explain what evidence was available when the conclusion was produced
+- Never persist raw finance rows or provider secrets in the trace
+- Keep current evidence and historical evidence snapshots clearly separated
 
 ### Validation gate
-- Required GitHub checks, Preview build and browser validation must pass before merge
+- Required GitHub checks and Vercel Preview build must pass before merge
 - Auto-merge is authorized after repository-required checks pass
 - No fake data, skipped required checks or lowered quality thresholds to force a merge
 
 ## Guardrails
 - No fake/demo financial records in production analysis
-- Incomplete data lowers confidence; it is never silently filled
-- Forecasts are simulations, not guarantees
-- High-impact recommendations must expose assumptions and reasons
+- Incomplete or stale data lowers confidence; it is never silently filled
+- Forecasts and comparisons are simulations, not guarantees
+- High-impact recommendations expose assumptions, reasons and supporting evidence
 - All workspaces consume one canonical Economic Intelligence layer
-- Advisors may explain evidence, scenarios and risks but may not invent market/user data or guarantee outcomes
+- Advisors may explain evidence, scenarios and risks but may not invent market/user data, override deterministic finance constraints, or guarantee outcomes
