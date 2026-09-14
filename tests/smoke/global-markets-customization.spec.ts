@@ -110,9 +110,9 @@ test('market selection is visible, replaces one market and persists after reload
 // WebKit trace completed every assertion but exceeded that cumulative deadline.
 // Seed the context once, not on each reload, so a broken cancel cannot be masked.
 const savedSelectionTest = test.extend({
-  storageState: async ({ baseURL }, use) => {
+  storageState: async ({ baseURL }, provideStorageState) => {
     if (!baseURL) throw new Error('A configured application origin is required');
-    await use({ cookies: [], origins: [{ origin: new URL(baseURL).origin, localStorage: [
+    await provideStorageState({ cookies: [], origins: [{ origin: new URL(baseURL).origin, localStorage: [
       { name: GLOBAL_MARKETS_PREFERENCE_KEY, value: JSON.stringify(['kuwait_boursa', 'saudi_tadawul', 'us_nasdaq', 'crypto']) },
     ] }] });
   },
