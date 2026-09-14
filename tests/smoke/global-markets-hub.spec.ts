@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mockMarketDirectory } from './helpers/global-market-directory';
 
 function stripsPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -42,6 +43,7 @@ function newsPayload() {
 }
 
 async function mockGlobalMarkets(page: Page, strips = stripsPayload(), news = newsPayload()) {
+  await mockMarketDirectory(page);
   await page.route('**/api/market-strips**', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -233,6 +235,7 @@ test.describe('Global Markets Hub', () => {
     await expect(explorer.getByLabel('Sector')).toBeVisible();
     await expect(explorer.getByLabel('Asset type')).toBeVisible();
 
+    await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
     const initialCards = await explorer.locator('.gm-strip-item').count();
     expect(initialCards).toBeGreaterThan(0);
 

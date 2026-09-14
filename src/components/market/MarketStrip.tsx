@@ -17,6 +17,7 @@ type MarketStripProps = {
   lang: Lang;
   dir: 'rtl' | 'ltr';
   loading?: boolean;
+  onBrowse?: () => void;
 };
 
 // TechStockPrice.delayed is always `true` (the Finnhub/Yahoo fallback chain
@@ -29,7 +30,7 @@ function stripStatusTone(items: GlobalMarketStripConfig['items'], prices: Record
   return quotes.some(quote => quote.available) ? 'delayed' : 'unavailable';
 }
 
-export function MarketStrip({ strip, prices, lang, dir, loading = false }: MarketStripProps) {
+export function MarketStrip({ strip, prices, lang, dir, loading = false, onBrowse }: MarketStripProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [manual, setManual] = useState(false);
   const label = lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn;
@@ -44,6 +45,7 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false }: Marke
       assetType: strip.kind,
       price: quote?.available ? quote.price : null,
       currency: inferStripCurrency(config.symbol),
+      priceUnit: strip.countryCode === 'KW' ? 'fils' as const : undefined,
       changePercent: quote?.available ? quote.changePercent : null,
       available: Boolean(quote?.available),
     };
@@ -57,6 +59,7 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false }: Marke
         itemCount={strip.items.length}
         status={<MarketDataStatus tone={tone} lang={lang} />}
       />
+      {onBrowse ? <button type="button" className="gm-strip-browse" onClick={onBrowse}>{lang === 'ar' ? 'مختارات السوق · استعرض الدليل' : lang === 'fr' ? 'Sélection · Parcourir le répertoire' : 'Market selection · Browse directory'}</button> : null}
       <div className="gm-strip-body" ref={containerRef}>
         <MarketTickerStrip
           ariaLabel={label}
@@ -74,6 +77,8 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false }: Marke
       </div>
 
       <style jsx>{`
+        .gm-strip-browse { display: block; margin-inline-start: auto; min-block-size: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--foreground); cursor: pointer; font-size: 12px; }
+        .gm-strip-browse:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .gm-strip {
           --gm-strip-item-height: 92px;
           min-width: 0;

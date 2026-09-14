@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit --pretty false",
     "symbols:sync": "node scripts/sync-market-symbols.mjs",
     "symbols:sync:kw": "node scripts/sync-market-symbols.mjs --only=boursa-kuwait",
+    "symbols:sync:global": "node --experimental-strip-types scripts/sync-global-market-directory.mjs",
     "symbols:sync:crypto": "node scripts/sync-crypto-symbols.mjs",
     "symbols:validate": "node scripts/validate-market-symbols.mjs",
     "test": "vitest",
