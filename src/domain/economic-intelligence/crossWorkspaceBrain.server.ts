@@ -11,8 +11,34 @@ function normalizeCurrency(value: unknown) {
 function currencyFromProfile(profile: Record<string, unknown> | null) {
   return normalizeCurrency(profile?.default_currency)
     ?? normalizeCurrency(profile?.preferred_currency)
-    ?? normalizeCurrency(profile?.currency)
-    ?? 'KWD';
+    ?? normalizeCurrency(profile?.currency);
+}
+
+function rowCurrency(row: Record<string, unknown>) {
+  return normalizeCurrency(row.currency)
+    ?? normalizeCurrency(row.currency_code)
+    ?? normalizeCurrency(row.base_currency);
+}
+
+function resolveFinanceCurrency(
+  profile: Record<string, unknown> | null,
+  financeGroups: Record<string, unknown>[][],
+) {
+  const preferred = currencyFromProfile(profile);
+  if (preferred) return preferred;
+
+  const observed = new Set<string>();
+  for (const row of financeGroups.flat()) {
+    const value = rowCurrency(row);
+    if (value) observed.add(value);
+  }
+
+  if (observed.size === 1) return [...observed][0];
+  if (observed.size > 1) throw new Error('ECONOMIC_INTELLIGENCE_CURRENCY_AMBIGUOUS');
+
+  // With no finance evidence there is no amount to misclassify. KWD is only a display
+  // default for an empty snapshot; it must never resolve conflicting live currencies.
+  return 'KWD';
 }
 
 function latestTimestamp(groups: unknown[][]) {
@@ -56,8 +82,8 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
   const alertRows = alerts.data ?? [];
   const projectRows = projects.data ?? [];
   const fundingRows = funding.data ?? [];
-  const currency = currencyFromProfile((profile.data ?? null) as Record<string, unknown> | null);
-  const financeGroups = [incomeRows, expenseRows, debtRows, savingRows, investmentRows];
+  const financeGroups = [incomeRows, expenseRows, debtRows, savingRows, investmentRows] as Record<string, unknown>[][];
+  const currency = resolveFinanceCurrency((profile.data ?? null) as Record<string, unknown> | null, financeGroups);
   const snapshot = buildFinancialTwinSnapshot({
     income: incomeRows,
     expenses: expenseRows,
@@ -67,6 +93,16 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
   }, currency);
 
   const activeProjects = projectRows.filter((row: any) => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
+  const fundingNeeds = fundingRows.flatMap((row: any) => {
+    const fundingCurrency = normalizeCurrency(row.currency);
+    if (!fundingCurrency) return [];
+    return [{
+      projectId: String(row.project_id ?? ''),
+      amount: Number.isFinite(Number(row.funding_needed)) ? Math.max(0, Number(row.funding_needed)) : 0,
+      currency: fundingCurrency,
+      readinessScore: Number.isFinite(Number(row.readiness_score)) ? Number(row.readiness_score) : null,
+    }];
+  });
 
   return {
     finance: { snapshot },
@@ -77,12 +113,7 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     },
     business: {
       activeProjectCount: activeProjects.length,
-      fundingNeeds: fundingRows.map((row: any) => ({
-        projectId: String(row.project_id ?? ''),
-        amount: Number.isFinite(Number(row.funding_needed)) ? Math.max(0, Number(row.funding_needed)) : 0,
-        currency: normalizeCurrency(row.currency) ?? currency,
-        readinessScore: Number.isFinite(Number(row.readiness_score)) ? Number(row.readiness_score) : null,
-      })),
+      fundingNeeds,
     },
     freshness: {
       finance: latestTimestamp(financeGroups),
