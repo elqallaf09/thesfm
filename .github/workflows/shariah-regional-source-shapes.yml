@@ -1,0 +1,43 @@
+name: Shariah regional source shapes
+on:
+  push:
+    branches: [fix/shariah-evidence-coverage-production-proof]
+    paths: ['.github/workflows/shariah-regional-source-shapes.yml']
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Inspect public same-origin classification assets
+        run: |
+          mkdir -p source-shapes
+          python3 - <<'PY'
+          import urllib.request, pathlib, re, json, time, urllib.parse
+          out=pathlib.Path('source-shapes'); manifest=[]
+          def get(url):
+            time.sleep(.25)
+            try:
+              with urllib.request.urlopen(urllib.request.Request(url,headers={'User-Agent':'THE-SFM admin@the-sfm.com'}),timeout=25) as r:
+                b=r.read(5000001)
+                if len(b)>5000000: raise ValueError('size_limit')
+                name=urllib.parse.urlparse(url).path.split('/')[-1] or 'index.html'
+                (out/name).write_bytes(b)
+                manifest.append({'name':name,'url':url,'status':r.status,'bytes':len(b)})
+                return b.decode('utf8','replace')
+            except Exception as e: manifest.append({'url':url,'error':str(e)[:200]}); return ''
+          links=[]
+          for path in ['Ci7-U_3_2.js','DOheIT98.js','CPiV5uQv.js']:
+            text=get('https://www.dfm.ae/_nuxt/'+path)
+            links.extend(re.findall(r'(?:from|import)\s*[\"\x27](\./[^\"\x27]+\.js)[\"\x27]',text))
+          for path in list(dict.fromkeys(links))[:16]: get(urllib.parse.urljoin('https://www.dfm.ae/_nuxt/',path))
+          (out/'manifest.json').write_text(json.dumps(manifest,indent=2))
+          print(json.dumps(manifest,indent=2))
+          PY
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: shariah-regional-source-shapes
+          path: source-shapes
+          retention-days: 1
