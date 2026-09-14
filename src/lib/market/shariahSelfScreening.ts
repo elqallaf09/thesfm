@@ -15,7 +15,7 @@ export const SFM_SHARIAH_THRESHOLDS = {
 export function cleanRefreshLimit(value: unknown) {
   if (value === null || value === undefined || value === '') return 50;
   const number = typeof value === 'number' || typeof value === 'string' ? Number(value) : NaN;
-  return Number.isFinite(number) && number > 0 ? Math.min(100, Math.floor(number)) : 50;
+  return Number.isFinite(number) && number >= 1 ? Math.min(100, Math.floor(number)) : 50;
 }
 
 /** Backward-compatible entry point; unsourced legacy ratios cannot become evidence. */
@@ -46,12 +46,12 @@ export async function refreshSfmShariahClassifications(admin: SupabaseClient, op
   const report = { ok: true, fatal: false, status: 'completed' as ShariahRefreshOutcome, elapsedMs: 0, scanned: 0, updated: 0, compliant: 0, nonCompliant: 0, needsReview: 0, unclassified: 0,
     skippedManual: 0, skippedConcurrent: 0, hasMore: false, failed: [] as Array<{ symbol: string; reason: string }>,
     model: 'SFM evidence v2', methodology: SFM_FTSE_POINT_IN_TIME.name, runId: '' };
-  const run = await admin.from('shariah_refresh_runs').insert({}).select('id').single();
+  const run = await admin.from('shariah_refresh_runs').insert({}).select('id').abortSignal(AbortSignal.timeout(4_000)).single();
   if (run.error || !run.data) throw new Error('REFRESH_MIGRATION_OR_DATABASE_UNAVAILABLE');
   report.runId = run.data.id;
   try {
     while (report.scanned < limit && Date.now() - started < claimWindowMs) {
-      const claim = await admin.rpc('claim_shariah_refresh_batch', { p_run_id: report.runId, p_limit: Math.min(3, limit - report.scanned), p_force: options.force === true, p_symbol_id: options.symbolId ?? null });
+      const claim = await admin.rpc('claim_shariah_refresh_batch', { p_run_id: report.runId, p_limit: Math.min(3, limit - report.scanned), p_force: options.force === true, p_symbol_id: options.symbolId ?? null }).abortSignal(AbortSignal.timeout(4_000));
       if (claim.error) throw new Error('REFRESH_CLAIM_FAILED');
       const rows = claim.data as Array<{ id: string; symbol: string; provider_symbol: string; name: string; exchange: string; country: string; updated_at: string }>;
       if (!rows?.length) break;
@@ -68,7 +68,7 @@ export async function refreshSfmShariahClassifications(admin: SupabaseClient, op
           patch = catalogPatchForResearch(result);
         } catch (failure) { error = signal.aborted ? 'official_provider_timed_out' : failure instanceof Error && /^[a-z_]+$/.test(failure.message) ? failure.message : 'screening_failed_or_timed_out'; }
         const saved = await admin.rpc('finish_shariah_refresh', { p_run_id: report.runId, p_symbol_id: row.id,
-          p_expected_updated_at: row.updated_at, p_patch: patch, p_error: error });
+          p_expected_updated_at: row.updated_at, p_patch: patch, p_error: error }).abortSignal(AbortSignal.timeout(4_000));
         if (saved.error) { error = 'refresh_persistence_failed'; report.fatal = true; }
         if (error) { report.failed.push({ symbol: row.symbol, reason: error }); return; }
         if (saved.data !== 1 || !patch) { report.skippedConcurrent++; return; }
@@ -90,8 +90,13 @@ export async function refreshSfmShariahClassifications(admin: SupabaseClient, op
   report.ok = report.failed.length === 0;
   report.status = shariahRefreshOutcome(report);
   report.elapsedMs = Date.now() - started;
-  const finished = await admin.from('shariah_refresh_runs').update({ finished_at: new Date().toISOString(),
-    status: report.status, result: report }).eq('id', report.runId);
-  if (finished.error) { report.ok = false; report.fatal = true; report.status = 'failed'; report.failed.push({ symbol: 'refresh', reason: 'refresh_run_log_write_failed' }); }
+  try {
+    const finished = await admin.from('shariah_refresh_runs').update({ finished_at: new Date().toISOString(),
+      status: report.status, result: report }).eq('id', report.runId).abortSignal(AbortSignal.timeout(4_000));
+    if (finished.error) throw new Error('RUN_LOG_WRITE_FAILED');
+  } catch {
+    report.ok = false; report.fatal = true; report.status = 'failed';
+    report.failed.push({ symbol: 'refresh', reason: 'refresh_run_log_write_failed' });
+  }
   return report;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ShariahEvidencePanel from './ShariahEvidencePanel';
 import type { ComponentProps } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -71,6 +71,9 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
   const [lastRun, setLastRun] = useState<ApiResponse['lastRun']>(null);
   const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
   const [countsLoaded, setCountsLoaded] = useState(false);
+  const [countsUnavailable, setCountsUnavailable] = useState(false);
+  const loadController = useRef<AbortController | null>(null);
+  useEffect(() => () => loadController.current?.abort(), []);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<ShariahRow[]>([]);
   // Server-computed across the FULL catalog (see /api/admin/shariah's computeShariahCounts) — not
@@ -86,26 +89,33 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
   const [message, setMessage] = useState('');
 
   const load = useCallback(async (term = '') => {
+    loadController.current?.abort();
+    const current = new AbortController();
+    loadController.current = current;
     setLoading(true);
     setMessage('');
     try {
       const params = new URLSearchParams({ limit: '50' });
       if (term.trim()) params.set('q', term.trim());
-      const response = await fetch(`/api/admin/shariah?${params}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/shariah?${params}`, { cache: 'no-store', credentials: 'same-origin',
+        signal: AbortSignal.any([current.signal, AbortSignal.timeout(15_000)]) });
       const data = await response.json().catch(() => ({})) as ApiResponse;
-      if (!response.ok || data.ok === false) throw new Error(data.message || data.code || 'LOAD_FAILED');
+      if (current.signal.aborted) return false;
+      if (!response.ok || data.ok !== true || !Array.isArray(data.items)) throw new Error(data.message || data.code || 'LOAD_FAILED');
       setItems(Array.isArray(data.items) ? data.items : []);
       setCounts(data.counts ?? EMPTY_SHARIAH_COUNTS);
       setCountsLoaded(Boolean(data.counts));
+      setCountsUnavailable(!data.counts);
       setLastRun(data.lastRun); setDiagnosticsError(data.diagnosticsError ?? null);
       setSelected(current => current ? data.items?.find(item => item.id === current.id) ?? current : null);
       return true;
     } catch (error) {
+      if (current.signal.aborted) return false;
       setCountsLoaded(false);
       setMessage(t('admin_shariah_load_error'));
       return false;
     } finally {
-      setLoading(false);
+      if (loadController.current === current) { loadController.current = null; setLoading(false); }
     }
   }, [t]);
 
@@ -173,6 +183,8 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
           </article>
         ))}
       </section>
+
+      {countsUnavailable && <p role="status">{lang === 'ar' ? 'تعذّر تحديث العدادات فقط. نتائج الأسهم المحفوظة ما زالت معروضة؛ استخدم تحديث عرض النتائج.' : lang === 'fr' ? 'Compteurs temporairement indisponibles. Les résultats enregistrés restent affichés ; actualisez la vue.' : 'Counts are temporarily unavailable. Saved stock results remain visible; reload the view.'}</p>}
 
       <form
         onSubmit={(event) => {

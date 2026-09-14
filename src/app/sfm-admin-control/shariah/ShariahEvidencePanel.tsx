@@ -43,6 +43,8 @@ export default function ShariahEvidencePanel({ evidence, lastRun, diagnosticsErr
     return () => clearInterval(timer);
   }, [busy]);
   const errorText = (code: string) => {
+    if (code === 'refresh_persistence_failed') return text('تعذّر تأكيد حفظ النتيجة', 'Result persistence could not be confirmed', 'Enregistrement non confirmé');
+    if (code === 'official_market_filing_adapter_unavailable') return text('مصدر الإفصاحات لهذا السوق غير متاح حاليًا', 'Filing source for this market is not yet available', 'Source des déclarations de ce marché indisponible');
     if (code === 'official_provider_timed_out') return text('انتهت مهلة المصدر', 'Source timed out', 'Délai de la source dépassé');
     if (code === 'official_provider_rate_limited') return text('وصل المصدر إلى حد الطلبات', 'Source rate limit', 'Limite de requêtes de la source');
     if (code === 'official_provider_access_denied') return text('رفض المصدر الاتصال', 'Source denied access', 'Accès refusé par la source');
@@ -92,7 +94,7 @@ export default function ShariahEvidencePanel({ evidence, lastRun, diagnosticsErr
     </div>
     <p>{text('دفعات صغيرة متتابعة، وتظهر النتائج المحفوظة بعد كل دفعة. تعذّر سهم لا يلغي بقية النتائج ولا يغيّر المراجعات اليدوية.', 'Small serial batches show saved results after each batch. One unavailable stock does not cancel other results or manual reviews.', 'Petits lots successifs : résultats affichés après chaque lot. Un titre indisponible n’annule pas les autres résultats ni les avis manuels.')}</p>
     {busy && <p>{text('الوقت المنقضي', 'Elapsed', 'Temps écoulé')}: <span dir="ltr">{elapsed}s</span> · {text('يجري جلب الإفصاحات والتحقق منها', 'Retrieving and verifying filings', 'Récupération et vérification des documents')}</p>}
-    {startedOnce && <p role="status" aria-live="polite">{text('تم حفظ', 'Saved', 'Enregistrés')} <b>{progress.updated}</b> / {progress.scanned} · {text('الدفعات المكتملة', 'Completed batches', 'Lots terminés')}: {progress.batches}{progress.runId ? ` · ${text('رقم التشغيل', 'Run', 'Exécution')}: ${progress.runId}` : ''}</p>}
+    {startedOnce && <p role="status" aria-live="polite">{text('تم حفظ', 'Saved', 'Enregistrés')} <span dir="ltr"><b>{progress.updated}</b> / {progress.scanned}</span> · {text('الدفعات المكتملة', 'Completed batches', 'Lots terminés')}: {progress.batches}{progress.runId ? ` · ${text('رقم التشغيل', 'Run', 'Exécution')}: ${progress.runId}` : ''}</p>}
     {notice && <p role="status">{notice}</p>}
     {progress.viewUnavailable && progress.updated > 0 && <p role="alert">{text('الحفظ مؤكد، لكن تعذّر تحديث عرض الجدول. لا تعِد الفحص؛ استخدم تحديث عرض النتائج.', 'Saving was confirmed, but the table could not be reloaded. Reload the view instead of repeating the scan.', 'Enregistrement confirmé, mais tableau indisponible. Actualisez la vue sans relancer le filtrage.')}</p>}
     {progress.failed.map((failure, i) => <p key={`${failure.symbol}:${i}`}><b dir="ltr">{failure.symbol}</b>: {errorText(failure.reason)}.</p>)}

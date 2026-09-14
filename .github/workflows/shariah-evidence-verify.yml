@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/lib/sharia-research/**'
       - 'src/lib/market/shariah*'
+      - 'src/lib/market/runShariahRefresh.ts'
+      - 'src/app/sfm-admin-control/shariah/**'
       - 'src/app/api/**/shariah/**'
       - 'src/app/api/sharia-stocks/**'
       - 'src/__tests__/**/sharia*'
@@ -46,6 +48,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Source-to-decision and persistence regressions
         run: pnpm exec vitest run src/__tests__/unit/*[sS]haria*.test.ts --maxWorkers=2
+      - name: Browser progress and error regression checks (synthetic, isolated components)
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          SHARIAH_UI_PROOF_DIR=artifacts/shariah/ui node scripts/shariah/verify-progress-ui.mjs
       - name: Isolated PostgreSQL lease and write verification
         run: |
           mkdir -p artifacts/shariah
