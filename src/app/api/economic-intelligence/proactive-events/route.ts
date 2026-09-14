@@ -9,13 +9,15 @@ import type { NotificationLang } from '@/lib/notifications/generateNotifications
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const NO_STORE = { 'cache-control': 'private, no-store' };
+
 function normalizeLang(value: string | null): NotificationLang {
   return value === 'fr' ? 'fr' : value === 'en' ? 'en' : 'ar';
 }
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request).catch(() => null);
-  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' } }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' } }, { status: 401, headers: NO_STORE });
 
   const limit = checkRateLimitWithMetadata(`user:${user.id}`, {
     max: 20,
@@ -25,7 +27,7 @@ export async function GET(request: NextRequest) {
   if (!limit.allowed) {
     return NextResponse.json({ ok: false, error: { code: 'APPLICATION_RATE_LIMITED' } }, {
       status: 429,
-      headers: { 'Retry-After': String(Math.max(1, limit.retryAfterSeconds ?? 60)) },
+      headers: { ...NO_STORE, 'Retry-After': String(Math.max(1, limit.retryAfterSeconds ?? 60)) },
     });
   }
 
@@ -38,11 +40,11 @@ export async function GET(request: NextRequest) {
     ]);
     const byId = new Map([...personalEvents, ...crossWorkspaceEvents, ...freshnessEvents].map(event => [event.id, event]));
     const events = Array.from(byId.values());
-    return NextResponse.json({ ok: true, events }, { headers: { 'cache-control': 'private, no-store' } });
+    return NextResponse.json({ ok: true, events }, { headers: NO_STORE });
   } catch (error) {
     const code = error instanceof Error && error.message === 'ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED'
       ? 'SERVICE_NOT_CONFIGURED'
       : 'PROACTIVE_EVENTS_UNAVAILABLE';
-    return NextResponse.json({ ok: false, error: { code } }, { status: code === 'SERVICE_NOT_CONFIGURED' ? 503 : 502 });
+    return NextResponse.json({ ok: false, error: { code } }, { status: code === 'SERVICE_NOT_CONFIGURED' ? 503 : 502, headers: NO_STORE });
   }
 }
