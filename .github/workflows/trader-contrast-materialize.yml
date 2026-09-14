@@ -1,0 +1,54 @@
+name: Materialize inspected Trader contrast repair
+on:
+  push:
+    branches: [fix/trader-readable-light-theme]
+    paths: [.github/workflows/trader-contrast-materialize.yml]
+permissions:
+  contents: write
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/trader-readable-light-theme
+      - name: Apply only the four inspected presentation files
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          checks = {
+            'cinema.css': ('c18c0be2b7c351f05fa34792eaf9d911408496dd70d4e5768adeb71c25b24af4', 'f8c0c6672b804ab41ee553b5d7a7831178029c5be5dab84ccaf217a67944a536'),
+            'index.html': ('4f256fd6053e1d76db79aa380785b62ce3532e8da884f6fd89f3f254880be215', 'b3d8193a955dd91cde5be63522175b87351d2cc596d8af13f82d98b7a1f1af6e'),
+            'detail.html': ('290f67f8ca60b3bfc258b27ba92818c84a52f0c524078e70226ae73052eef4a3', '716ecdb0b3b4d319a265c9e3c44f04ec1a30e70f15c2372963b307bf0ef7ccab'),
+            'service-worker.js': ('72cf446613bf5b7fef9bf6de15dec377e96b97b85dddd993d55a6f0ab30f7ba5', '022ce24ed84a16f5c801cc680a68caff466017ef457dd341696d5158f41ae00b')
+          }
+          root = Path('src/trader-app/public')
+          for name, (before, after) in checks.items():
+            assert hashlib.sha256((root/name).read_bytes()).hexdigest() == before, name
+          def once(text, before, after):
+            assert text.count(before) == 1, before
+            return text.replace(before, after)
+          p = root/'cinema.css'
+          s = p.read_text()
+          s = once(s, 'html[data-theme] :is(.page-hero, .command-hero) {', 'html[data-theme] .terminal-content :is(.page-hero, .command-hero) {')
+          for types in ['h1, h2, h3, strong', 'p, small, span']:
+            s = once(s, f'html[data-theme] :is(.page-hero, .command-hero) :is({types}) {{', f'html[data-theme] .terminal-content :is(.page-hero, .command-hero) :is({types}) {{')
+          s = once(s, '.topbar-stats .sb-cell > span,\n.topbar-stats .sb-cell > em {\n  font-size: 12px !important;\n  line-height: 1.25 !important;\n}', '.topbar-stats .sb-cell > span,\n.topbar-stats .sb-cell > em {\n  font-size: max(13px, var(--type-label-size)) !important;\n  line-height: var(--type-label-leading) !important;\n  font-weight: var(--type-label-weight);\n}')
+          s = once(s, 'html[data-theme="light"] .topbar-stats .sb-cell > span,\nhtml[data-theme="light"] .topbar-stats .sb-cell > em {\n  color: var(--foreground-muted) !important;\n  font-size: 0.78rem !important;\n}', 'html[data-theme="light"] .topbar-stats .sb-cell > span,\nhtml[data-theme="light"] .topbar-stats .sb-cell > em {\n  color: var(--foreground-secondary) !important;\n}')
+          p.write_text(s)
+          for name in ['index.html', 'detail.html', 'service-worker.js']:
+            p = root/name
+            s = p.read_text().replace('/cinema.css?v=20260717-shell-unify', '/cinema.css?v=20260717-shell-unify-contrast-20260914').replace('const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify"', 'const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify-contrast-20260914"')
+            p.write_text(s)
+          for name, (before, after) in checks.items():
+            assert hashlib.sha256((root/name).read_bytes()).hexdigest() == after, name
+          PY
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/trader-app/public/cinema.css src/trader-app/public/index.html src/trader-app/public/detail.html src/trader-app/public/service-worker.js
+          git commit -m 'fix: restore embedded Trader hero contrast and readable metadata'
+          git push origin HEAD:refs/heads/fix/trader-readable-light-theme
