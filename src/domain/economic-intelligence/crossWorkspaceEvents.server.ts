@@ -1,8 +1,13 @@
 import 'server-only';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { NotificationLang, SmartNotification } from '@/lib/notifications/generateNotifications';
-import { loadCrossWorkspaceBrief } from './crossWorkspaceBrain.server';
+import { loadCrossWorkspaceEvidence } from './crossWorkspaceBrain.server';
+import { buildCrossWorkspaceBrief } from './crossWorkspaceBrain';
 import { buildDailyPriorityActions } from './dailyPriority';
+import { buildEconomicIntelligenceReadiness } from './readiness';
+import { loadReadinessConfirmations } from './readinessConfirmations.server';
+import { buildEvidenceProvenance } from './evidenceProvenance';
+import { buildEvidenceSnapshotTrace } from './evidenceSnapshotTrace';
 
 const COPY = {
   ar: {
@@ -28,6 +33,10 @@ const COPY = {
   },
 } as const;
 
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 function normalizeRow(row: any, title: string, message: string, severity: 'warning' | 'danger', actionUrl: string): SmartNotification {
   return {
     id: String(row.id),
@@ -48,7 +57,14 @@ function normalizeRow(row: any, title: string, message: string, severity: 'warni
 export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: NotificationLang): Promise<SmartNotification[]> {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
-  const brief = await loadCrossWorkspaceBrief(userId);
+
+  const [evidence, confirmations] = await Promise.all([
+    loadCrossWorkspaceEvidence(userId),
+    loadReadinessConfirmations(userId).catch(() => []),
+  ]);
+  const brief = buildCrossWorkspaceBrief(evidence);
+  const readiness = buildEconomicIntelligenceReadiness(evidence, confirmations);
+  const provenance = buildEvidenceProvenance(evidence, readiness, evidence.recordCounts ?? {});
   const copy = COPY[lang];
   const itemByCode = new Map(brief.items.map(item => [item.code, item]));
   const activeActions = buildDailyPriorityActions(brief).filter(action => action.severity === 'warning' || action.severity === 'danger');
@@ -56,7 +72,7 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
 
   const existingOpen = await admin
     .from('notifications')
-    .select('id,event_key,status,read,created_at,resolved_at')
+    .select('id,event_key,status,read,created_at,resolved_at,metadata')
     .eq('user_id', userId)
     .eq('source_module', 'economic_intelligence')
     .like('event_key', 'priority:%')
@@ -66,13 +82,20 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
   const now = new Date().toISOString();
   const stale = (existingOpen.data ?? []).filter((row: any) => row.event_key && !activeKeys.includes(String(row.event_key)));
   for (const row of stale) {
+    const previousMetadata = asObject(row.metadata);
     const { error } = await admin.from('notifications').update({
       resolved_at: now,
       resolution_code: 'daily_priority_changed_or_cleared',
       status: 'archived',
       read: true,
       read_at: row.read ? undefined : now,
-      metadata: { economic_intelligence: true, event_key: row.event_key, daily_priority: true, causal_claim: false },
+      metadata: {
+        ...previousMetadata,
+        economic_intelligence: true,
+        event_key: row.event_key,
+        daily_priority: true,
+        causal_claim: false,
+      },
     }).eq('id', row.id).eq('user_id', userId);
     if (error) throw error;
   }
@@ -91,6 +114,7 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
   if (missing.length > 0) {
     const insert = await admin.from('notifications').insert(missing.map(action => {
       const item = itemByCode.get(action.code);
+      const evidenceSnapshot = buildEvidenceSnapshotTrace(action, readiness, provenance);
       return {
         user_id: userId,
         type: 'warning',
@@ -111,6 +135,7 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
           priority_fingerprint: action.fingerprint,
           sources: action.sources,
           evidence: item?.evidence ?? {},
+          evidence_snapshot: evidenceSnapshot,
           causal_claim: false,
         },
       };
