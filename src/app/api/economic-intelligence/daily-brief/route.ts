@@ -8,6 +8,8 @@ import { buildDailyBriefNarrative, type EconomicNarrativeLocale } from '@/domain
 import { loadDailyBriefHistory } from '@/domain/economic-intelligence/dailyBriefHistory.server';
 import { buildEconomicIntelligenceReadiness } from '@/domain/economic-intelligence/readiness';
 import { loadReadinessConfirmations } from '@/domain/economic-intelligence/readinessConfirmations.server';
+import { buildEvidenceProvenance } from '@/domain/economic-intelligence/evidenceProvenance';
+import { compareHistoricalEvidence } from '@/domain/economic-intelligence/evidenceDrift';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -31,11 +33,19 @@ export async function GET(request: NextRequest) {
     ]);
     const brief = buildCrossWorkspaceBrief(evidence);
     const readiness = buildEconomicIntelligenceReadiness(evidence, confirmations);
+    const provenance = buildEvidenceProvenance(evidence, readiness, evidence.recordCounts ?? {});
     const actions = buildDailyPriorityActions(brief);
     const highestPriority = highestDailyPriority(brief);
     const narrative = buildDailyBriefNarrative(brief, locale, readiness);
-    const history = await loadDailyBriefHistory(user.id, highestPriority).catch(() => ({ entries: [], change: { changed: false, currentFingerprint: highestPriority?.fingerprint ?? null, previousFingerprint: null, previousCode: null, previousSeverity: null, previousCreatedAt: null } }));
-    return NextResponse.json({ ok: true, brief, readiness, actions, highestPriority, narrative, history }, { headers: { 'cache-control': 'private, no-store' } });
+    const historyBase = await loadDailyBriefHistory(user.id, highestPriority).catch(() => ({ entries: [], change: { changed: false, currentFingerprint: highestPriority?.fingerprint ?? null, previousFingerprint: null, previousCode: null, previousSeverity: null, previousCreatedAt: null } }));
+    const history = {
+      ...historyBase,
+      entries: historyBase.entries.map(entry => ({
+        ...entry,
+        evidenceDrift: compareHistoricalEvidence(entry.evidenceSnapshot, readiness, provenance),
+      })),
+    };
+    return NextResponse.json({ ok: true, brief, readiness, provenance, actions, highestPriority, narrative, history }, { headers: { 'cache-control': 'private, no-store' } });
   } catch {
     return NextResponse.json({ ok: false, error: { code: 'DAILY_BRIEF_UNAVAILABLE' } }, { status: 502 });
   }
