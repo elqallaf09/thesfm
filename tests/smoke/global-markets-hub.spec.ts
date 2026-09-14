@@ -246,9 +246,9 @@ test.describe('Global Markets Hub', () => {
     await mockGlobalMarkets(page);
     await page.goto('/global-markets');
     const explorer = page.locator('.gm-explorer');
-    await explorer.getByRole('button', { name: /Browse all assets|تصفح جميع الأصول/ }).click();
+    await explorer.getByRole('button', { name: 'Browse all assets' }).click();
     await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
-    const loadMore = explorer.getByRole('button', { name: /Load more|عرض المزيد/ });
+    const loadMore = explorer.getByRole('button', { name: /Load more/ });
     await loadMore.evaluate(button => {
       const loadButton = button as HTMLButtonElement;
       loadButton.click();
