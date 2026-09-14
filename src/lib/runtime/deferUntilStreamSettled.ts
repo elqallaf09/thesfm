@@ -18,9 +18,9 @@
  * plain `useEffect`, as soon as the component mounted, regardless of
  * whether the route it landed in was still streaming.
  *
- * Scope: this guards only `LanguageProvider` (the workspace/authenticated
- * locale provider used by `AdaptiveLanguageProvider` for every non-public
- * route). It deliberately does not touch `PublicLanguageProvider`, `useAuth`,
+ * Scope: this guards `LanguageProvider` (the workspace locale provider)
+ * and restoration of saved Global Markets selections.
+ * It deliberately does not touch `PublicLanguageProvider`, `useAuth`,
  * `useCurrency`, `useDensity`, or `use-mobile` — an earlier attempt at
  * deferring all six first-paint provider syncs app-wide (see PR #51) landed
  * on every route including the public landing page, which measurably

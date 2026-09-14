@@ -1,3 +1,4 @@
+# Export the reviewed refresh-progress repair for isolated offline regression testing.
 name: Shariah repair workspace
 on:
   pull_request:

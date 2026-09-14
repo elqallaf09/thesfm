@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { MARKET_TICKER_PIXELS_PER_SECOND, MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { MarketStripItem } from '@/components/market/MarketStripItem';
 import { MarketStripControls } from '@/components/market/MarketStripControls';
@@ -31,6 +31,7 @@ function stripStatusTone(items: GlobalMarketStripConfig['items'], prices: Record
 
 export function MarketStrip({ strip, prices, lang, dir, loading = false }: MarketStripProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [manual, setManual] = useState(false);
   const label = lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn;
   const tone = loading ? 'loading' : stripStatusTone(strip.items, prices);
 
@@ -62,7 +63,8 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false }: Marke
           direction={dir}
           pixelsPerSecond={MARKET_TICKER_PIXELS_PER_SECOND}
           minimumItems={12}
-          status={<MarketStripControls containerRef={containerRef} dir={dir} lang={lang} />}
+          manual={manual}
+          status={<MarketStripControls containerRef={containerRef} dir={dir} lang={lang} manual={manual} onManualChange={setManual} />}
           emptyState={loading ? <MarketStripSkeleton /> : <div className="gm-strip-empty">{t('global_markets_strip_unavailable', lang)}</div>}
         >
           {!loading && items.map(item => (
@@ -90,8 +92,7 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false }: Marke
            inside .gm-strip-body, so other MarketTickerStrip consumers
            (TechTickerStrip, StockTickerStrip, etc.) are unaffected. */
         .gm-strip-body :global(.market-ticker-strip[data-market-ticker='true']) {
-          display: flex;
-          align-items: center;
+          display: grid;
           gap: 6px;
           min-width: 0;
         }
