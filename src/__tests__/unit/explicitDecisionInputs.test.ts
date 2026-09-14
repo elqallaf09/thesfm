@@ -51,8 +51,22 @@ describe('explicit decision inputs', () => {
     expect(newLoan?.simulation?.scenarios.base.afterDecision[0]?.netWorth).toBeLessThan(
       newLoan?.simulation?.scenarios.base.baseline[0]?.netWorth ?? 0,
     );
-    expect(repayment?.assessment.debtServiceRatioAfterDecision).toBeLessThan(
-      newLoan?.assessment.debtServiceRatioAfterDecision ?? 1,
+    // Debt payments belong to the simulation, not FinancialDecisionAssessment.
+    // Assert the explicit amounts before comparing ratios; a missing scenario
+    // must fail rather than passing through a fabricated fallback value.
+    const newLoanPoint = newLoan?.simulation?.scenarios.base.afterDecision[0];
+    const repaymentPoint = repayment?.simulation?.scenarios.base.afterDecision[0];
+    expect(newLoanPoint).toBeDefined();
+    expect(repaymentPoint).toBeDefined();
+    if (!newLoanPoint || !repaymentPoint) throw new Error('Expected both debt simulations');
+    expect(newLoanPoint.debtPayments).toBe(370);
+    expect(repaymentPoint.debtPayments).toBe(160);
+    expect(newLoanPoint.income).toBe(2500);
+    expect(repaymentPoint.income).toBe(2500);
+    expect(newLoanPoint.debtPayments / newLoanPoint.income).toBeCloseTo(0.148);
+    expect(repaymentPoint.debtPayments / repaymentPoint.income).toBeCloseTo(0.064);
+    expect(repaymentPoint.debtPayments / repaymentPoint.income).toBeLessThan(
+      newLoanPoint.debtPayments / newLoanPoint.income,
     );
   });
 

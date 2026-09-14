@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BrainCircuit, Gauge, ShieldCheck, Target, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useDashboardData } from './DashboardDataProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
 import { supabase } from '@/integrations/supabase/client';
@@ -140,6 +141,7 @@ const INITIAL: State = { loading: true, snapshot: null, forecast: null, goals: [
 
 export function FinanceDashboardIntelligence() {
   const { user, loading: authLoading } = useAuth();
+  const dashboardData = useDashboardData();
   const { lang, dir } = useLanguage();
   const { currency } = useCurrency();
   const locale = (lang === 'fr' ? 'fr' : lang === 'en' ? 'en' : 'ar') as Locale;
@@ -155,7 +157,9 @@ export function FinanceDashboardIntelligence() {
     let cancelled = false;
     setState((current) => ({ ...current, loading: true }));
     void (async () => {
-      const result = await loadUserDataTables(supabase as any, user.id, ECONOMIC_INTELLIGENCE_TABLES);
+      const result = await (dashboardData
+          ? dashboardData.loadTables(ECONOMIC_INTELLIGENCE_TABLES)
+          : loadUserDataTables(supabase, user.id, ECONOMIC_INTELLIGENCE_TABLES));
       if (cancelled) return;
       const records = result.records as Record<string, any[]>;
       const snapshot = buildFinancialTwinSnapshot(financialTwinSourceFromRecords(records), currency || 'KWD');
@@ -166,7 +170,7 @@ export function FinanceDashboardIntelligence() {
       if (!cancelled) setState({ loading: false, snapshot: null, forecast: null, goals: [], errors: ['load'] });
     });
     return () => { cancelled = true; };
-  }, [authLoading, currency, user?.id]);
+  }, [authLoading, currency, dashboardData, user?.id]);
 
   const warnings = useMemo(() => {
     const list: string[] = [];

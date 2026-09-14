@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowUpRight, BrainCircuit, Lightbulb, Scale, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useDashboardData } from './DashboardDataProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +51,7 @@ const TEXT = {
 
 export function EconomicIntelligenceHome() {
   const { user, loading: authLoading } = useAuth();
+  const dashboardData = useDashboardData();
   const { lang, dir } = useLanguage();
   const { currency } = useCurrency();
   const locale = (lang === 'fr' ? 'fr' : lang === 'en' ? 'en' : 'ar') as Locale;
@@ -62,7 +64,9 @@ export function EconomicIntelligenceHome() {
     let cancelled = false;
     void (async () => {
       const [finance, saved] = await Promise.all([
-        loadUserDataTables(supabase as any, user.id, ECONOMIC_INTELLIGENCE_TABLES),
+        (dashboardData
+          ? dashboardData.loadTables(ECONOMIC_INTELLIGENCE_TABLES)
+          : loadUserDataTables(supabase, user.id, ECONOMIC_INTELLIGENCE_TABLES)),
         (supabase as any).from('user_decisions').select('id,decision_title,status,risk_score,updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(12),
       ]);
       if (cancelled) return;
@@ -73,7 +77,7 @@ export function EconomicIntelligenceHome() {
       setState({ loading: false, snapshot, goals, decisions });
     })().catch(() => { if (!cancelled) setState({ loading: false, snapshot: null, goals: [], decisions: [] }); });
     return () => { cancelled = true; };
-  }, [authLoading, currency, user?.id]);
+  }, [authLoading, currency, dashboardData, user?.id]);
 
   const summary = useMemo(() => state.snapshot ? buildEconomicHomeSummary(state.snapshot, state.goals, state.decisions) : null, [state.decisions, state.goals, state.snapshot]);
   if (authLoading || state.loading) return <section className="sfm-eih" dir={dir}><div className="sfm-eih-loading"><BrainCircuit size={18} />{text.loading}</div></section>;
@@ -99,8 +103,8 @@ export function EconomicIntelligenceHome() {
       </div>
       <style jsx>{`
         .sfm-eih{display:grid;gap:14px;margin:0 auto 14px;max-width:1440px;padding:18px;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);box-shadow:var(--shadow-card);color:var(--foreground)}
-        .sfm-eih-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.sfm-eih-head span{display:flex;align-items:center;gap:7px;color:var(--primary);font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}.sfm-eih-head h1{margin:5px 0 0;font-size:22px}.sfm-eih-head>strong{padding:7px 10px;border-radius:999px;background:var(--surface-muted);font-size:12px}.is-critical .sfm-eih-head>strong,.is-watch .sfm-eih-head>strong{background:var(--warning-soft)}.is-strong .sfm-eih-head>strong{background:var(--success-soft);color:var(--success)}
-        .sfm-eih-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.sfm-eih-grid article{min-width:0;padding:13px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted)}.sfm-eih-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800}.sfm-eih-grid p{margin:8px 0 0;color:var(--foreground-muted);line-height:1.65;font-size:13px}.sfm-eih-actions{display:flex;gap:8px;flex-wrap:wrap}.sfm-eih-actions :global(a){display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-control);text-decoration:none;color:var(--foreground);font-weight:700;font-size:12px}.sfm-eih-actions :global(a:last-child){background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.sfm-eih-loading{display:flex;align-items:center;justify-content:center;gap:8px;min-height:70px;color:var(--foreground-muted)}
+        .sfm-eih-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.sfm-eih-head span{display:flex;align-items:center;gap:7px;color:var(--primary);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}.sfm-eih-head h1{margin:5px 0 0;font-size:22px}.sfm-eih-head>strong{padding:7px 10px;border-radius:var(--radius-pill);background:var(--surface-muted);font-size:12px}.is-critical .sfm-eih-head>strong,.is-watch .sfm-eih-head>strong{background:var(--warning-soft)}.is-strong .sfm-eih-head>strong{background:var(--success-soft);color:var(--success)}
+        .sfm-eih-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.sfm-eih-grid article{min-width:0;padding:13px;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted)}.sfm-eih-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700}.sfm-eih-grid p{margin:8px 0 0;color:var(--foreground-muted);line-height:1.65;font-size:13px}.sfm-eih-actions{display:flex;gap:8px;flex-wrap:wrap}.sfm-eih-actions :global(a){display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-control);text-decoration:none;color:var(--foreground);font-weight:700;font-size:12px}.sfm-eih-actions :global(a:last-child){background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.sfm-eih-loading{display:flex;align-items:center;justify-content:center;gap:8px;min-height:70px;color:var(--foreground-muted)}
         @media(max-width:820px){.sfm-eih-grid{grid-template-columns:1fr}.sfm-eih-head{align-items:center}.sfm-eih-head h1{font-size:19px}}
       `}</style>
     </section>

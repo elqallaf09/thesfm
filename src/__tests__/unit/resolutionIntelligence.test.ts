@@ -12,7 +12,7 @@ describe('summarizeResolutionHistory', () => {
     expect(summary.activeCount).toBe(1);
     expect(summary.resolvedCount).toBe(2);
     expect(summary.recurringFamilies).toEqual([
-      { family: 'risk:low-liquidity', occurrences: 2, resolved: 1 },
+      { family: 'risk:low-liquidity', occurrences: 2, resolved: 1, priorityScore: 23 },
     ]);
     expect(summary.latestResolved).toHaveLength(2);
   });
