@@ -17,7 +17,7 @@ test('Kuwait directory includes unselected stocks, paginates, and requests their
   const priceRequests: string[] = [];
   page.on('request', request => { if (request.url().includes('/api/market-directory/quotes?')) priceRequests.push(request.url()); });
   const explorer = await openDirectory(page);
-  await explorer.getByLabel('Exchange', { exact: true }).selectOption('kuwait_boursa');
+  await explorer.getByRole('combobox', { name: 'Exchange', exact: true }).selectOption('kuwait_boursa');
   await expect(explorer.locator('.gm-explorer-count')).toContainText('134');
   await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
   await explorer.getByRole('button', { name: /Load more/ }).click();
@@ -33,7 +33,7 @@ test('Kuwait directory includes unselected stocks, paginates, and requests their
 test('NASDAQ, Shanghai and Shenzhen searches extend beyond the strip selections', async ({ page }) => {
   const explorer = await openDirectory(page);
   for (const [exchange, symbol] of [['us_nasdaq', 'AMD'], ['china_sse', '600000.SS'], ['china_szse', '000002.SZ']]) {
-    await explorer.getByLabel('Exchange', { exact: true }).selectOption(exchange);
+    await explorer.getByRole('combobox', { name: 'Exchange', exact: true }).selectOption(exchange);
     await explorer.getByRole('searchbox').fill(symbol);
     await expect(explorer.locator('.gm-strip-item')).toHaveCount(1);
     await expect(explorer.locator('.gm-strip-item')).toContainText(symbol);
@@ -45,11 +45,11 @@ test('NASDAQ, Shanghai and Shenzhen searches extend beyond the strip selections'
 test('directory errors show retry and unconnected markets have an explicit explanation', async ({ page }) => {
   const explorer = await openDirectory(page);
   await page.route('**/api/market-directory?**', route => route.fulfill({ status: 503, json: { success: false } }), { times: 1 });
-  await explorer.getByLabel('Exchange', { exact: true }).selectOption('kuwait_boursa');
+  await explorer.getByRole('combobox', { name: 'Exchange', exact: true }).selectOption('kuwait_boursa');
   await expect(explorer.getByRole('alert')).toContainText('could not be loaded');
   await explorer.getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(explorer.locator('.gm-explorer-count')).toContainText('134');
-  await explorer.getByLabel('Exchange', { exact: true }).selectOption('egypt_egx');
+  await explorer.getByRole('combobox', { name: 'Exchange', exact: true }).selectOption('egypt_egx');
   await expect(explorer.locator('.gm-directory-feedback')).toContainText('not connected yet');
   await expect(explorer.locator('.gm-strip-item')).toHaveCount(0);
 });
@@ -57,6 +57,6 @@ test('directory errors show retry and unconnected markets have an explicit expla
 test('each strip opens its own directory', async ({ page }) => {
   const explorer = await openDirectory(page);
   await page.locator('.gm-shell:visible .gm-strip').first().getByRole('button', { name: 'Market selection · Browse directory', exact: true }).click();
-  await expect(explorer.getByLabel('Exchange', { exact: true })).toHaveValue('kuwait_boursa');
+  await expect(explorer.getByRole('combobox', { name: 'Exchange', exact: true })).toHaveValue('kuwait_boursa');
   await expect(explorer.locator('.gm-explorer-count')).toContainText('134');
 });
