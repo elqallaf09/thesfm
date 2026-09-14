@@ -1,4 +1,5 @@
 import 'server-only';
+import type { EconomicStoredRow } from './storedRowTypes';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { SmartNotification, NotificationLang, SmartNotificationSeverity, SmartNotificationType } from '@/lib/notifications/generateNotifications';
 import { buildFinancialTwinSnapshot } from './digitalTwin';
@@ -60,7 +61,7 @@ function isUuid(value: unknown) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? ''));
 }
 
-function normalizeStored(row: any, draft: EventDraft): SmartNotification {
+function normalizeStored(row: EconomicStoredRow | undefined, draft: EventDraft): SmartNotification {
   const status = row?.status === 'archived' ? 'archived' : row?.status === 'read' || row?.read === true ? 'read' : 'unread';
   return {
     id: String(row?.id ?? draft.eventKey),
@@ -108,7 +109,7 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
     income: rows.income ?? [], expenses: rows.expenses ?? [], debts: rows.debts ?? [], savings: rows.savings ?? [], investments: rows.investments ?? [],
   }, currencyFromProfile((profileResult.data ?? null) as Record<string, unknown> | null));
 
-  const decisions = (decisionsResult.data ?? []).map((row: any) => ({
+  const decisions = (decisionsResult.data ?? []).map((row: EconomicStoredRow) => ({
     id: row.id, title: String(row.decision_title ?? ''), status: row.status, riskScore: Number(row.risk_score ?? 0), updatedAt: row.updated_at,
   }));
   const summary = buildEconomicHomeSummary(twin, [], decisions);
@@ -153,23 +154,23 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
   if (allOpenResult.error) throw allOpenResult.error;
 
   const now = new Date().toISOString();
-  const staleRows = (allOpenResult.data ?? []).filter((row: any) => row.event_key && !activeKeys.includes(String(row.event_key)));
+  const staleRows = (allOpenResult.data ?? []).filter((row: EconomicStoredRow) => row.event_key && !activeKeys.includes(String(row.event_key)));
   for (const row of staleRows) {
-    const resolutionCode = resolutionCodeForEventKey(String((row as any).event_key));
+    const resolutionCode = resolutionCodeForEventKey(String((row as EconomicStoredRow).event_key));
     const { error } = await admin.from('notifications').update({
       resolved_at: now,
       resolution_code: resolutionCode,
       status: 'archived',
       read: true,
-      read_at: (row as any).read ? undefined : now,
+      read_at: (row as EconomicStoredRow).read ? undefined : now,
       metadata: {
         economic_intelligence: true,
-        event_key: (row as any).event_key,
+        event_key: (row as EconomicStoredRow).event_key,
         resolution_code: resolutionCode,
         resolution_observed_at: now,
         causal_claim: false,
       },
-    }).eq('id', (row as any).id).eq('user_id', userId);
+    }).eq('id', (row as EconomicStoredRow).id).eq('user_id', userId);
     if (error) throw error;
   }
 
@@ -183,7 +184,7 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
     .in('event_key', activeKeys);
   if (existingResult.error) throw existingResult.error;
 
-  const existing = new Map((existingResult.data ?? []).filter((row: any) => !(row as any).resolved_at).map((row: any) => [String(row.event_key), row]));
+  const existing = new Map((existingResult.data ?? []).filter((row: EconomicStoredRow) => !(row as EconomicStoredRow).resolved_at).map((row: EconomicStoredRow) => [String(row.event_key), row]));
   const missing = drafts.filter(draft => !existing.has(draft.eventKey));
   if (missing.length > 0) {
     const insertResult = await admin.from('notifications').insert(missing.map(draft => ({
@@ -202,7 +203,7 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
       metadata: { economic_intelligence: true, event_key: draft.eventKey, causal_claim: false },
     }))).select('id,event_key,status,read,created_at,resolved_at');
     if (insertResult.error && insertResult.error.code !== '23505') throw insertResult.error;
-    for (const row of insertResult.data ?? []) existing.set(String((row as any).event_key), row);
+    for (const row of insertResult.data ?? []) existing.set(String((row as EconomicStoredRow).event_key), row);
   }
 
   return drafts.map(draft => normalizeStored(existing.get(draft.eventKey), draft));

@@ -51,8 +51,9 @@ export function buildDailyBriefNarrative(brief: CrossWorkspaceBrief, locale: Eco
   const priority = highestDailyPriority(brief);
   const item = brief.items[0] ?? null;
   const code = priority?.code ?? 'no_cross_workspace_conflict_detected';
-  const copySet = COPY[locale] as any;
-  const copy = copySet[code] ?? copySet.clear;
+  const copySet = COPY[locale];
+  const candidate = Object.hasOwn(copySet, code) ? copySet[code as keyof typeof copySet] : null;
+  const copy = candidate && typeof candidate === 'object' ? candidate : copySet.clear;
   const confidence = readiness ? readiness.overallScore / 100 : 1;
   const confidenceNote = confidence < 0.5 ? copySet.lowConfidence : confidence < 0.8 ? copySet.partialConfidence : null;
 

@@ -46,17 +46,17 @@ export type DecisionInputs = {
 };
 
 export type DecisionSourceData = {
-  income: any[];
-  expenses: any[];
-  debts?: any[];
-  savings: any[];
-  investments: any[];
-  goals: any[];
-  projects: any[];
-  financialModels: any[];
-  zakatCalculations: any[];
-  zakatAssets: any[];
-  charityCommitments: any[];
+  income: Record<string, unknown>[];
+  expenses: Record<string, unknown>[];
+  debts?: Record<string, unknown>[];
+  savings: Record<string, unknown>[];
+  investments: Record<string, unknown>[];
+  goals: Record<string, unknown>[];
+  projects: Record<string, unknown>[];
+  financialModels: Record<string, unknown>[];
+  zakatCalculations: Record<string, unknown>[];
+  zakatAssets: Record<string, unknown>[];
+  charityCommitments: Record<string, unknown>[];
 };
 
 export type DecisionScenario = {
@@ -94,11 +94,11 @@ function inCurrentMonth(row: Record<string, unknown>, dateKeys: string[]) {
   return date >= startDate && date <= endDate;
 }
 
-function monthlyExpenseRows(rows: any[]) {
+function monthlyExpenseRows(rows: Record<string, unknown>[]) {
   return rows.filter(row => inCurrentMonth(row, ['expense_date', 'date', 'created_at']));
 }
 
-function projectName(row: any) {
+function projectName(row: Record<string, unknown> | undefined) {
   return String(row?.name ?? row?.title ?? '').trim();
 }
 
@@ -110,7 +110,7 @@ function amountValue(value: unknown) {
   return Math.max(0, moneyAmount(value));
 }
 
-function hasGoalsSupport(rows: any[]) {
+function hasGoalsSupport(rows: Record<string, unknown>[]) {
   return rows.some(row => amountValue(row?.target_amount ?? row?.target) > 0);
 }
 

@@ -25,39 +25,39 @@ export type FinancialTwinSource = {
 };
 
 function sameCurrency(rows: FinancialRow[], currency: string) {
-  return rows.filter((row) => rowCurrency(row as any) === currency);
+  return rows.filter((row) => rowCurrency(row) === currency);
 }
 
 function sumSavings(rows: FinancialRow[], currency: string) {
   return sameCurrency(rows, currency).reduce(
-    (total, row) => total + (firstNumber(row as any, ['current_amount', 'amount', 'balance', 'saved_amount']) ?? 0),
+    (total, row) => total + (firstNumber(row, ['current_amount', 'amount', 'balance', 'saved_amount']) ?? 0),
     0,
   );
 }
 
 function sumInvestments(rows: FinancialRow[], currency: string) {
   return rows.reduce((total, row) => {
-    const value = investmentValue(row as any, currency);
+    const value = investmentValue(row, currency);
     return value?.currency === currency ? total + value.amount : total;
   }, 0);
 }
 
 function monthlyDebtPayments(rows: FinancialRow[], currency: string) {
-  return activeDebtRows(rows as any[]).reduce((total, row) => {
-    if (rowCurrency(row as any) !== currency) return total;
-    return total + (firstNumber(row as any, ['monthly_payment', 'payment_amount', 'installment_amount']) ?? 0);
+  return activeDebtRows(rows).reduce((total, row) => {
+    if (rowCurrency(row) !== currency) return total;
+    return total + (firstNumber(row, ['monthly_payment', 'payment_amount', 'installment_amount']) ?? 0);
   }, 0);
 }
 
 function totalDebt(rows: FinancialRow[], currency: string) {
-  return activeDebtRows(rows as any[]).reduce((total, row) => {
-    if (rowCurrency(row as any) !== currency) return total;
-    return total + (debtBalance(row as any) ?? 0);
+  return activeDebtRows(rows).reduce((total, row) => {
+    if (rowCurrency(row) !== currency) return total;
+    return total + (debtBalance(row) ?? 0);
   }, 0);
 }
 
 function monthlyRows(rows: FinancialRow[], currency: string, keys = ['amount']) {
-  return sumRows(sameCurrency(rows, currency) as any[], keys);
+  return sumRows(sameCurrency(rows, currency), keys);
 }
 
 function quality(source: FinancialTwinSource) {

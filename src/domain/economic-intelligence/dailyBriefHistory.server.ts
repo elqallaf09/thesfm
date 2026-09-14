@@ -1,4 +1,5 @@
 import 'server-only';
+import type { EconomicStoredRow } from './storedRowTypes';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { DailyPriorityAction } from './dailyPriority';
 import { parseEvidenceSnapshotTrace, type EvidenceSnapshotTrace } from './evidenceSnapshotTrace';
@@ -44,7 +45,7 @@ export async function loadDailyBriefHistory(userId: string, current: DailyPriori
     .limit(20);
   if (result.error) throw result.error;
 
-  const entries: DailyBriefHistoryEntry[] = (result.data ?? []).map((row: any) => {
+  const entries: DailyBriefHistoryEntry[] = (result.data ?? []).map((row: EconomicStoredRow) => {
     const metadata = asObject(row.metadata);
     const fingerprint = typeof metadata.priority_fingerprint === 'string'
       ? metadata.priority_fingerprint

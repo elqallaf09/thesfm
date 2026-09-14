@@ -31,3 +31,12 @@ This is a completed implementation slice, not a claim that the full Phase 7.35 s
 ## Publication
 
 Publish these related changes together as one commit on the existing PR branch, retaining main and unrelated work. Auto-merge is authorized only when repository-required checks permit it. Do not infer production deployment from a successful Preview build.
+
+## Follow-up — type contracts and lint debt repair
+
+- Published 7.35A as `02959e830b44d5f3446ce44c6524614f62e8b881`; its Vercel Preview reached READY. GitHub TypeScript passed, while the lint debt guard found 534 explicit-any warnings against main's 458 baseline. Ordinary ESLint error counts alone did not detect that budget failure.
+- Replaced loose row types with selected-field contracts and unknown JSON boundaries across economic loaders, Financial Twin, decision analysis, and shared finance metadata helpers. Removed redundant casts; no eslint-disable directives or baseline increases were added.
+- Typed readiness text and narrative copy selection. A missing notification row after a competing unique-key insert no longer reaches the strict cross-workspace normalizer.
+- Full local TypeScript rerun passed. Full coverage rerun passed: 278 files / 2172 tests. Final repository lint guard passed with 457 explicit-any warnings and 420 unused-variable warnings; the checked-out baseline remains unchanged (459 / 423). The main merge candidate has its own stricter baseline and must pass fresh CI.
+- Generated coverage reports were kept outside the checkout for the lint run, matching CI's separate clean jobs; no tracked source was excluded.
+- These changes do not establish live RLS verification or complete the wider lifecycle/semantic audit. In particular, verify event-family ownership when resolving stale notifications, preservation of historical metadata across all writers, and distinctions between opening a timeline and recording a real user action in the remaining 7.35 work.

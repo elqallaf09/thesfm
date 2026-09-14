@@ -59,8 +59,8 @@ const TEXT = {
   },
 } as const;
 
-function issueText(code: string, text: any) { return text[code] ?? code; }
-function freshnessText(value: Freshness | undefined, text: any) {
+function issueText(code: string, text: Record<string, string>) { return text[code] ?? code; }
+function freshnessText(value: Freshness | undefined, text: Record<string, string>) {
   if (!value || value.ageDays === null) return text.noFreshness;
   return `${value.ageDays} ${text.daysAgo}`;
 }

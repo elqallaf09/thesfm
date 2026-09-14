@@ -18,7 +18,7 @@ export async function loadReadinessConfirmations(userId: string): Promise<Readin
     .eq('user_id', userId)
     .limit(20);
   if (error) throw error;
-  return (data ?? []).map((row: any) => normalizeReadinessConfirmationKey(row.confirmation_key)).filter(Boolean) as ReadinessConfirmationKey[];
+  return (data ?? []).map((row: { confirmation_key: unknown }) => normalizeReadinessConfirmationKey(row.confirmation_key)).filter(Boolean) as ReadinessConfirmationKey[];
 }
 
 export async function setReadinessConfirmation(userId: string, key: ReadinessConfirmationKey) {

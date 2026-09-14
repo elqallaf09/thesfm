@@ -1,4 +1,5 @@
 import 'server-only';
+import type { EconomicStoredRow } from './storedRowTypes';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { NotificationLang, SmartNotification } from '@/lib/notifications/generateNotifications';
 import { loadCrossWorkspaceEvidence } from './crossWorkspaceBrain.server';
@@ -37,7 +38,7 @@ function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
-function normalizeRow(row: any, title: string, message: string, severity: 'warning' | 'danger', actionUrl: string): SmartNotification {
+function normalizeRow(row: EconomicStoredRow, title: string, message: string, severity: 'warning' | 'danger', actionUrl: string): SmartNotification {
   return {
     id: String(row.id),
     title,
@@ -80,7 +81,7 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
   if (existingOpen.error) throw existingOpen.error;
 
   const now = new Date().toISOString();
-  const stale = (existingOpen.data ?? []).filter((row: any) => row.event_key && !activeKeys.includes(String(row.event_key)));
+  const stale = (existingOpen.data ?? []).filter((row: EconomicStoredRow) => row.event_key && !activeKeys.includes(String(row.event_key)));
   for (const row of stale) {
     const previousMetadata = asObject(row.metadata);
     const { error } = await admin.from('notifications').update({
@@ -109,7 +110,7 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
     .in('event_key', activeKeys);
   if (existingResult.error) throw existingResult.error;
 
-  const existing = new Map((existingResult.data ?? []).filter((row: any) => !row.resolved_at).map((row: any) => [String(row.event_key), row]));
+  const existing = new Map((existingResult.data ?? []).filter((row: EconomicStoredRow) => !row.resolved_at).map((row: EconomicStoredRow) => [String(row.event_key), row]));
   const missing = activeActions.filter(action => !existing.has(`priority:${action.fingerprint}`));
   if (missing.length > 0) {
     const insert = await admin.from('notifications').insert(missing.map(action => {
@@ -141,12 +142,13 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
       };
     })).select('id,event_key,status,read,created_at,resolved_at');
     if (insert.error && insert.error.code !== '23505') throw insert.error;
-    for (const row of insert.data ?? []) existing.set(String((row as any).event_key), row);
+    for (const row of insert.data ?? []) existing.set(String((row as EconomicStoredRow).event_key), row);
   }
 
-  return activeActions.map(action => {
+  return activeActions.flatMap(action => {
     const key = `priority:${action.fingerprint}`;
     const row = existing.get(key);
-    return normalizeRow(row, copy.title, copy[action.code as keyof typeof copy] ?? action.code, action.severity as 'warning' | 'danger', action.actionUrl);
+    // A competing insert can win the unique key. Do not fabricate a stored row.
+    return row ? [normalizeRow(row, copy.title, copy[action.code as keyof typeof copy] ?? action.code, action.severity as 'warning' | 'danger', action.actionUrl)] : [];
   });
 }

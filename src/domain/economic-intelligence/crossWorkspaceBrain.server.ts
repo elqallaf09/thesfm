@@ -1,4 +1,5 @@
 import 'server-only';
+import type { EconomicStoredRow } from './storedRowTypes';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { buildFinancialTwinSnapshot } from './digitalTwin';
 import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspaceBrain';
@@ -44,7 +45,7 @@ function resolveFinanceCurrency(
 function latestTimestamp(groups: unknown[][]) {
   let latest = 0;
   let value: string | null = null;
-  for (const row of groups.flat() as any[]) {
+  for (const row of groups.flat() as EconomicStoredRow[]) {
     for (const candidate of [row?.updated_at, row?.created_at]) {
       const time = candidate ? new Date(String(candidate)).getTime() : 0;
       if (Number.isFinite(time) && time > latest) { latest = time; value = new Date(time).toISOString(); }
@@ -92,8 +93,8 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     investments: investmentRows,
   }, currency);
 
-  const activeProjects = projectRows.filter((row: any) => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
-  const fundingNeeds = fundingRows.flatMap((row: any) => {
+  const activeProjects = projectRows.filter((row: EconomicStoredRow) => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
+  const fundingNeeds = fundingRows.flatMap((row: Record<string, unknown>) => {
     const fundingCurrency = normalizeCurrency(row.currency);
     if (!fundingCurrency) return [];
     return [{
@@ -108,8 +109,8 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     finance: { snapshot },
     trader: {
       watchlistCount: watchlistRows.length,
-      activeAlertCount: alertRows.filter((row: any) => !['triggered', 'disabled', 'archived'].includes(String(row.status ?? '').toLowerCase())).length,
-      triggeredAlertCount: alertRows.filter((row: any) => String(row.status ?? '').toLowerCase() === 'triggered').length,
+      activeAlertCount: alertRows.filter((row: EconomicStoredRow) => !['triggered', 'disabled', 'archived'].includes(String(row.status ?? '').toLowerCase())).length,
+      triggeredAlertCount: alertRows.filter((row: EconomicStoredRow) => String(row.status ?? '').toLowerCase() === 'triggered').length,
     },
     business: {
       activeProjectCount: activeProjects.length,

@@ -1,4 +1,5 @@
 import 'server-only';
+import type { EconomicStoredRow } from './storedRowTypes';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { buildDecisionMemoryInsight, type DecisionMemoryRecord } from './decisionMemory';
 
@@ -14,28 +15,28 @@ async function loadDecisionHistory(userId: string) {
     .limit(100);
   if (decisionsResult.error) throw decisionsResult.error;
 
-  const ids = (decisionsResult.data ?? []).map((row: any) => row.id).filter(Boolean);
+  const ids = (decisionsResult.data ?? []).map((row: EconomicStoredRow) => row.id).filter(Boolean);
   const notificationsResult = ids.length
     ? await admin.from('notifications')
         .select('source_id,resolved_at,event_key')
         .eq('user_id', userId)
         .eq('source_module', 'economic_intelligence')
         .in('source_id', ids)
-    : { data: [], error: null } as any;
+    : { data: [] as EconomicStoredRow[], error: null };
   if (notificationsResult.error) throw notificationsResult.error;
 
   const stats = new Map<string, { resolved: number; families: Set<string> }>();
   for (const row of notificationsResult.data ?? []) {
-    const id = String((row as any).source_id ?? '');
+    const id = String((row as EconomicStoredRow).source_id ?? '');
     if (!id) continue;
     const current = stats.get(id) ?? { resolved: 0, families: new Set<string>() };
-    if ((row as any).resolved_at) current.resolved += 1;
-    const key = String((row as any).event_key ?? '');
+    if ((row as EconomicStoredRow).resolved_at) current.resolved += 1;
+    const key = String((row as EconomicStoredRow).event_key ?? '');
     if (key) current.families.add(key.split(':').slice(0, 2).join(':'));
     stats.set(id, current);
   }
 
-  return (decisionsResult.data ?? []).map((row: any): DecisionMemoryRecord => {
+  return (decisionsResult.data ?? []).map((row: EconomicStoredRow): DecisionMemoryRecord => {
     const stat = stats.get(String(row.id)) ?? { resolved: 0, families: new Set<string>() };
     return {
       id: String(row.id),
