@@ -12,7 +12,8 @@ describe('production cleanup stage 1', () => {
     expect(flags).toContain('.landing-page #pricing');
     expect(flags).toContain('.landing-page .landing-links a[href="#pricing"]');
     expect(flags).toContain('.profile-section:has(.premium-layout)');
-    expect(flags).toContain('display: none !important');
+    expect(flags).toContain('display: none;');
+    expect(flags).not.toContain('!important');
   });
 
   it('gives Global Markets its own canonical metadata and sitemap entry', () => {
