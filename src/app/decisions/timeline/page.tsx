@@ -53,9 +53,6 @@ export default function DecisionTimelinePage() {
       if (!row.opened_at) {
         await fetch('/api/economic-intelligence/event-outcomes', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notificationId: row.id, action: 'opened' }) }).catch(() => null);
       }
-      if (!row.actioned_at) {
-        await fetch('/api/economic-intelligence/event-outcomes', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ notificationId: row.id, action: 'actioned' }) }).catch(() => null);
-      }
     }));
   }, [decisionId, user?.id]);
 
