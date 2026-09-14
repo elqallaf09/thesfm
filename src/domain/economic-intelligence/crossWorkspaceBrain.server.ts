@@ -1,7 +1,7 @@
 import 'server-only';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { buildFinancialTwinSnapshot } from './digitalTwin';
-import { buildCrossWorkspaceBrief } from './crossWorkspaceBrain';
+import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspaceBrain';
 
 function normalizeCurrency(value: unknown) {
   const currency = String(value ?? '').trim().toUpperCase();
@@ -15,7 +15,7 @@ function currencyFromProfile(profile: Record<string, unknown> | null) {
     ?? 'KWD';
 }
 
-export async function loadCrossWorkspaceBrief(userId: string) {
+export async function loadCrossWorkspaceEvidence(userId: string): Promise<WorkspaceEvidence> {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
 
@@ -48,7 +48,7 @@ export async function loadCrossWorkspaceBrief(userId: string) {
   const projectRows = projects.data ?? [];
   const activeProjects = projectRows.filter((row: any) => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
 
-  return buildCrossWorkspaceBrief({
+  return {
     finance: { snapshot },
     trader: {
       watchlistCount: (watchlist.data ?? []).length,
@@ -64,5 +64,9 @@ export async function loadCrossWorkspaceBrief(userId: string) {
         readinessScore: Number.isFinite(Number(row.readiness_score)) ? Number(row.readiness_score) : null,
       })),
     },
-  });
+  };
+}
+
+export async function loadCrossWorkspaceBrief(userId: string) {
+  return buildCrossWorkspaceBrief(await loadCrossWorkspaceEvidence(userId));
 }
