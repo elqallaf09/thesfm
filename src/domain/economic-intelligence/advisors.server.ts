@@ -7,7 +7,7 @@ import { assessPersonalEconomicImpact } from './personalEconomicImpact';
 import { loadAdvisorDecisionMemoryFacts } from './decisionMemory.server';
 import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspaceBrain';
 import { highestDailyPriority } from './dailyPriority';
-import { buildEconomicIntelligenceReadiness } from './readiness';
+import { buildEconomicIntelligenceReadiness, type ReadinessConfirmationKey } from './readiness';
 import { loadReadinessConfirmations } from './readinessConfirmations.server';
 
 type LoadAdvisorGroundingOptions = {
@@ -98,7 +98,7 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
   const [{ rows, profile }, decisionMemoryFacts, confirmations] = await Promise.all([
     loadRows(options.userId),
     loadAdvisorDecisionMemoryFacts(options.userId).catch(() => []),
-    loadReadinessConfirmations(options.userId).catch(() => []),
+    loadReadinessConfirmations(options.userId).catch((): ReadinessConfirmationKey[] => []),
   ]);
   const currency = normalizeCurrency(options.currency)
     ?? normalizeCurrency(profile?.default_currency)
