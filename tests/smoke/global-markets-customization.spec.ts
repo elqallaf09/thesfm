@@ -20,7 +20,11 @@ for (const lang of ['ar', 'en', 'fr']) {
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => document.fonts.ready);
       await expect.poll(() => page.locator('.gm-strips .market-ticker-track').evaluateAll(tracks =>
-        tracks.every(track => Number(track.getAttribute('data-loop-distance')) > 0),
+        tracks.every(track => {
+          const measured = Number(track.getAttribute('data-loop-distance'));
+          const current = track.querySelector('[data-ticker-set="primary"]')!.getBoundingClientRect().width;
+          return measured > 0 && Math.abs(measured - current) < .5;
+        }),
       )).toBe(true);
       const samples = await page.locator('.gm-strips .market-ticker-track').evaluateAll(tracks => {
         const results: Array<{ covered: boolean; velocity: number; offsetError: number }> = [];
