@@ -276,7 +276,10 @@ test.describe('Global Markets Hub', () => {
       if (request.url().includes('/api/market-news')) newsRequests.push(request.url());
     });
     await page.goto('/global-markets');
-    await expect(page.locator('.gm-strip-heading-label').first()).toBeVisible();
+    // Headings belong to the initial stable shell, not to completed hydration.
+    // Wait for both provider results before checking the exact request counts.
+    await expect(page.locator('.gm-strip[aria-busy="false"]')).toHaveCount(4);
+    await expect(page.locator('.gm-news')).toContainText('Federal Reserve holds interest rates steady');
     expect(stripsRequests).toHaveLength(1);
     expect(newsRequests).toHaveLength(1);
     expect(stripsRequests[0]).toContain('ids=kuwait_boursa%2Csaudi_tadawul%2Cus_nasdaq%2Cforex');

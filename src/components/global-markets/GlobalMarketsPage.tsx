@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Globe2, RefreshCcw, Settings2 } from 'lucide-react';
+import { Globe2, RefreshCcw, Settings2 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MarketStrip } from '@/components/market/MarketStrip';
@@ -37,6 +37,7 @@ export function GlobalMarketsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const hasLoadedRef = useRef(false);
+  const activeRequestRef = useRef<AbortController | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { selectedIds, setSelectedIds, restoreDefaults, hydrated } = useGlobalMarketSelection();
   const selectedStrips = useMemo(() => selectedIds.flatMap(id => {
@@ -48,35 +49,41 @@ export function GlobalMarketsPage() {
   const customizeLabel = lang === 'ar' ? 'تخصيص الأسواق' : lang === 'fr' ? 'Personnaliser les marchés' : 'Customize markets';
   const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
 
-  const load = useCallback(async (showLoader: boolean, idsKey: string, signal?: AbortSignal) => {
+  const load = useCallback(async (showLoader: boolean, idsKey: string) => {
+    activeRequestRef.current?.abort();
+    const controller = new AbortController();
+    activeRequestRef.current = controller;
+    const { signal } = controller;
     if (showLoader) setLoading(true);
     else setRefreshing(true);
     setError(false);
     try {
       const response = await fetch(`/api/market-strips?ids=${encodeURIComponent(idsKey)}`, { signal });
       const json = await response.json() as MarketStripsResponse;
-      if (!json.success) throw new Error(json.error);
+      if (signal.aborted) return;
+      if (!response.ok || !json.success) throw new Error('market_strips_unavailable');
       setPrices(json.prices);
       setLastUpdated(json.lastUpdated);
       hasLoadedRef.current = true;
     } catch (loadError) {
-      if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
+      if (signal.aborted || (loadError instanceof DOMException && loadError.name === 'AbortError')) return;
       setError(true);
     } finally {
-      if (showLoader) setLoading(false);
-      setRefreshing(false);
+      if (!signal.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    const controller = new AbortController();
-    void load(!hasLoadedRef.current, selectedIdsKey, controller.signal);
-    return () => controller.abort();
+    void load(!hasLoadedRef.current, selectedIdsKey);
+    return () => activeRequestRef.current?.abort();
   }, [hydrated, load, selectedIdsKey]);
 
   const lastUpdatedLabel = lastUpdated
-    ? new Intl.DateTimeFormat(localeFor(lang), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdated))
+    && Number.isFinite(Date.parse(lastUpdated)) ? new Intl.DateTimeFormat(localeFor(lang), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lastUpdated))
     : '';
 
   return (
@@ -89,30 +96,25 @@ export function GlobalMarketsPage() {
           </div>
           <div className="gm-header-copy">
             <h1>{t('global_markets_title', lang)}</h1>
-            <p>{t('global_markets_subtitle', lang)}</p>
+            <p className={error ? 'gm-header-feedback is-error' : 'gm-header-feedback'} role={error ? 'alert' : undefined}>
+              {t(error ? 'global_markets_strip_unavailable' : 'global_markets_subtitle', lang)}
+            </p>
           </div>
           <div className="gm-header-actions">
-            {lastUpdatedLabel ? (
-              <span className="gm-header-updated" dir="auto">{t('global_markets_last_updated', lang)}: {lastUpdatedLabel}</span>
-            ) : null}
+            <span className="gm-header-updated" dir="auto" title={lastUpdatedLabel}>
+              {t('global_markets_last_updated', lang)}: {lastUpdatedLabel || '—'}
+            </span>
             <button
               type="button"
               className="gm-header-refresh"
               onClick={() => void load(false, selectedIdsKey)}
-              disabled={refreshing}
+              disabled={!hydrated || loading || refreshing}
               aria-label={t('global_markets_last_updated', lang)}
             >
               <RefreshCcw size={16} className={refreshing ? 'is-spinning' : ''} />
             </button>
           </div>
         </header>
-
-        {error ? (
-          <div className="gm-error" role="alert">
-            <AlertTriangle size={18} aria-hidden="true" />
-            <span>{t('global_markets_strip_unavailable', lang)}</span>
-          </div>
-        ) : null}
 
         <section className="gm-selection" aria-label={selectedLabel}>
           <div>
@@ -125,22 +127,14 @@ export function GlobalMarketsPage() {
         </section>
 
         <section className="gm-strips" aria-label={t('global_markets_strips_heading', lang)}>
-          {loading ? (
-            <div className="gm-strips-skeleton" role="status">
-              {Array.from({ length: GLOBAL_MARKETS_SELECTION_SIZE }).map((_, index) => (
-                <div className="gm-strips-skeleton-row" key={index} />
-              ))}
-            </div>
-          ) : (
-            selectedStrips.map(strip => (
-              <MarketStrip key={strip.id} strip={strip} prices={prices} lang={lang} dir={dir} />
-            ))
-          )}
+          {selectedStrips.map((strip, slot) => (
+            <MarketStrip key={slot} strip={strip} prices={prices} lang={lang} dir={dir} loading={loading} />
+          ))}
         </section>
 
         <GlobalMarketsExplorer prices={prices} lang={lang} dir={dir} />
 
-        <GlobalMarketsNews lang={lang} dir={dir} selectedStrips={selectedStrips} />
+        <GlobalMarketsNews lang={lang} dir={dir} selectedStrips={selectedStrips} ready={hydrated} />
 
         <p className="gm-disclaimer" dir="auto">{t('global_markets_disclaimer', lang)}</p>
       </WorkspacePageContainer>
