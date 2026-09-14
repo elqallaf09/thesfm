@@ -12,15 +12,28 @@ export type EconomicIntelligenceReadiness = {
   nextActions: ReadinessIssue[];
 };
 
+const FINANCE_GROUPS = ['income', 'expenses', 'debts', 'savings', 'investments'] as const;
 function clampScore(value: number) { return Math.max(0, Math.min(100, Math.round(value))); }
+function financeAction(code: string) {
+  if (code.includes('income')) return '/income';
+  if (code.includes('expense')) return '/expenses';
+  if (code.includes('debt')) return '/debts';
+  if (code.includes('saving')) return '/savings';
+  if (code.includes('investment')) return '/investments';
+  return '/dashboard';
+}
 
 export function buildEconomicIntelligenceReadiness(evidence: WorkspaceEvidence): EconomicIntelligenceReadiness {
   const financeIssues: ReadinessIssue[] = [];
-  const financeScore = clampScore(evidence.finance.snapshot.dataQuality.completeness * 100);
-  for (const missing of evidence.finance.snapshot.dataQuality.missing) {
-    const code = String(missing);
-    const actionUrl = code.includes('income') ? '/income' : code.includes('expense') ? '/expenses' : code.includes('debt') ? '/debts' : code.includes('saving') ? '/savings' : code.includes('investment') ? '/investments' : '/dashboard';
-    financeIssues.push({ code: `finance:${code}`, workspace: 'finance', actionUrl, weight: 100 - financeScore });
+  const quality = evidence.finance.snapshot.dataQuality;
+  const missingOrEmpty = new Set<string>([
+    ...quality.missing.map(String),
+    ...quality.warnings.filter(value => String(value).endsWith(':empty')).map(value => String(value).replace(/:empty$/, '')),
+  ]);
+  const financeAvailable = FINANCE_GROUPS.filter(group => !missingOrEmpty.has(group)).length;
+  const financeScore = clampScore((financeAvailable / FINANCE_GROUPS.length) * 100);
+  for (const code of FINANCE_GROUPS.filter(group => missingOrEmpty.has(group))) {
+    financeIssues.push({ code: `finance:${code}_missing`, workspace: 'finance', actionUrl: financeAction(code), weight: 20 });
   }
 
   const traderSignals = [
@@ -35,15 +48,16 @@ export function buildEconomicIntelligenceReadiness(evidence: WorkspaceEvidence):
   if (evidence.finance.snapshot.investmentBalance <= 0) traderIssues.push({ code: 'trader:portfolio_missing', workspace: 'trader', actionUrl: '/investments', weight: 35 });
 
   const activeProjects = evidence.business.activeProjectCount;
-  const fundingCovered = activeProjects === 0 ? true : evidence.business.fundingNeeds.length >= activeProjects;
-  const businessSignals = [activeProjects > 0, fundingCovered && activeProjects > 0];
-  const businessScore = activeProjects === 0 ? 0 : clampScore((businessSignals.filter(Boolean).length / businessSignals.length) * 100);
+  const fundingCovered = activeProjects > 0 && evidence.business.fundingNeeds.length >= activeProjects;
+  const businessScore = activeProjects === 0 ? 0 : fundingCovered ? 100 : 50;
   const businessIssues: ReadinessIssue[] = [];
   if (activeProjects === 0) businessIssues.push({ code: 'business:projects_missing', workspace: 'business', actionUrl: '/projects', weight: 60 });
   else if (!fundingCovered) businessIssues.push({ code: 'business:funding_readiness_missing', workspace: 'business', actionUrl: '/business-hub', weight: 40 });
 
   const overallScore = clampScore(financeScore * 0.5 + traderScore * 0.25 + businessScore * 0.25);
-  const nextActions = [...financeIssues, ...traderIssues, ...businessIssues].sort((a, b) => b.weight - a.weight || a.code.localeCompare(b.code)).slice(0, 5);
+  const nextActions = [...financeIssues, ...traderIssues, ...businessIssues]
+    .sort((a, b) => b.weight - a.weight || a.code.localeCompare(b.code))
+    .slice(0, 5);
 
   return {
     overallScore,
