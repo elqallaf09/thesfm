@@ -13,6 +13,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+const NO_STORE = { 'cache-control': 'private, no-store' };
+
 const messageSchema = z.object({
   role: z.enum(['user', 'assistant']),
   content: z.string().trim().min(1).max(4_000),
@@ -42,7 +44,7 @@ function unavailable(locale: 'ar' | 'en' | 'fr') {
 export async function POST(request: NextRequest) {
   const correlationId = randomUUID();
   const user = await getCurrentUserFromRequest(request).catch(() => null);
-  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' }, correlationId }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' }, correlationId }, { status: 401, headers: NO_STORE });
 
   const limit = checkRateLimitWithMetadata(`user:${user.id}`, {
     max: 20,
@@ -52,12 +54,12 @@ export async function POST(request: NextRequest) {
   if (!limit.allowed) {
     return NextResponse.json({ ok: false, error: { code: 'APPLICATION_RATE_LIMITED' }, correlationId }, {
       status: 429,
-      headers: { 'Retry-After': String(Math.max(1, limit.retryAfterSeconds ?? 60)) },
+      headers: { ...NO_STORE, 'Retry-After': String(Math.max(1, limit.retryAfterSeconds ?? 60)) },
     });
   }
 
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ ok: false, error: { code: 'INVALID_REQUEST' }, correlationId }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ ok: false, error: { code: 'INVALID_REQUEST' }, correlationId }, { status: 400, headers: NO_STORE });
 
   const { advisor, messages, currency, country, locale } = parsed.data;
   let grounding;
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
       hasMarketEvidence: false,
     });
   } catch {
-    return NextResponse.json({ ok: false, error: { code: 'GROUNDING_UNAVAILABLE' }, correlationId }, { status: 502 });
+    return NextResponse.json({ ok: false, error: { code: 'GROUNDING_UNAVAILABLE' }, correlationId }, { status: 502, headers: NO_STORE });
   }
 
   const ai = provider();
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
       confidence: grounding.confidence,
       missing: grounding.missing,
       correlationId,
-    });
+    }, { headers: NO_STORE });
   }
 
   const usage = await consumeAiUsage({
@@ -115,7 +117,7 @@ export async function POST(request: NextRequest) {
       missing: grounding.missing,
       warnings: grounding.warnings,
       correlationId,
-    }, { headers: { 'cache-control': 'private, no-store' } });
+    }, { headers: NO_STORE });
   } catch {
     return NextResponse.json({
       ok: true,
@@ -125,6 +127,6 @@ export async function POST(request: NextRequest) {
       confidence: grounding.confidence,
       missing: grounding.missing,
       correlationId,
-    }, { headers: { 'cache-control': 'private, no-store' } });
+    }, { headers: NO_STORE });
   }
 }
