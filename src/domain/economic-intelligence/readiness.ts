@@ -12,9 +12,11 @@ export type EconomicIntelligenceReadiness = {
   business: WorkspaceReadiness;
   nextActions: ReadinessIssue[];
   confirmations: ReadinessConfirmationKey[];
+  invalidatedConfirmations: ReadinessConfirmationKey[];
 };
 
 const FINANCE_GROUPS = ['income', 'expenses', 'debts', 'savings', 'investments'] as const;
+const CONFIRMATION_KEYS: ReadinessConfirmationKey[] = ['no_debts', 'no_investments', 'no_business_projects'];
 function clampScore(value: number) { return Math.max(0, Math.min(100, Math.round(value))); }
 function financeAction(code: string) {
   if (code.includes('income')) return '/income';
@@ -25,11 +27,29 @@ function financeAction(code: string) {
   return '/dashboard';
 }
 
+export function reconcileReadinessConfirmations(evidence: WorkspaceEvidence, confirmationKeys: Iterable<string> = []) {
+  const requested = new Set([...confirmationKeys].filter((key): key is ReadinessConfirmationKey => CONFIRMATION_KEYS.includes(key as ReadinessConfirmationKey)));
+  const invalidated: ReadinessConfirmationKey[] = [];
+
+  if (requested.has('no_debts') && (evidence.finance.snapshot.debtBalance > 0 || evidence.finance.snapshot.monthlyDebtPayments > 0)) {
+    requested.delete('no_debts'); invalidated.push('no_debts');
+  }
+  if (requested.has('no_investments') && evidence.finance.snapshot.investmentBalance > 0) {
+    requested.delete('no_investments'); invalidated.push('no_investments');
+  }
+  if (requested.has('no_business_projects') && evidence.business.activeProjectCount > 0) {
+    requested.delete('no_business_projects'); invalidated.push('no_business_projects');
+  }
+
+  return { confirmations: [...requested], invalidated };
+}
+
 export function buildEconomicIntelligenceReadiness(
   evidence: WorkspaceEvidence,
   confirmationKeys: Iterable<string> = [],
 ): EconomicIntelligenceReadiness {
-  const confirmations = new Set([...confirmationKeys].filter((key): key is ReadinessConfirmationKey => ['no_debts', 'no_investments', 'no_business_projects'].includes(key)));
+  const reconciled = reconcileReadinessConfirmations(evidence, confirmationKeys);
+  const confirmations = new Set(reconciled.confirmations);
   const financeIssues: ReadinessIssue[] = [];
   const quality = evidence.finance.snapshot.dataQuality;
   const missingOrEmpty = new Set<string>([
@@ -78,5 +98,6 @@ export function buildEconomicIntelligenceReadiness(
     business: { score: businessScore, ready: businessScore >= 75, issues: businessIssues },
     nextActions,
     confirmations: [...confirmations],
+    invalidatedConfirmations: reconciled.invalidated,
   };
 }
