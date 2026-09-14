@@ -3,9 +3,14 @@ import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
 import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
 import { loadCrossWorkspaceBrief } from '@/domain/economic-intelligence/crossWorkspaceBrain.server';
 import { buildDailyPriorityActions, highestDailyPriority } from '@/domain/economic-intelligence/dailyPriority';
+import { buildDailyBriefNarrative, type EconomicNarrativeLocale } from '@/domain/economic-intelligence/dailyBriefNarrative';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+function normalizeLocale(value: string | null): EconomicNarrativeLocale {
+  return value === 'fr' ? 'fr' : value === 'en' ? 'en' : 'ar';
+}
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request).catch(() => null);
@@ -15,10 +20,12 @@ export async function GET(request: NextRequest) {
   if (!limit.allowed) return NextResponse.json({ ok: false, error: { code: 'APPLICATION_RATE_LIMITED' } }, { status: 429 });
 
   try {
+    const locale = normalizeLocale(new URL(request.url).searchParams.get('lang'));
     const brief = await loadCrossWorkspaceBrief(user.id);
     const actions = buildDailyPriorityActions(brief);
     const highestPriority = highestDailyPriority(brief);
-    return NextResponse.json({ ok: true, brief, actions, highestPriority }, { headers: { 'cache-control': 'private, no-store' } });
+    const narrative = buildDailyBriefNarrative(brief, locale);
+    return NextResponse.json({ ok: true, brief, actions, highestPriority, narrative }, { headers: { 'cache-control': 'private, no-store' } });
   } catch {
     return NextResponse.json({ ok: false, error: { code: 'DAILY_BRIEF_UNAVAILABLE' } }, { status: 502 });
   }
