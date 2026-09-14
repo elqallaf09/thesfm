@@ -5,6 +5,7 @@ import { CrossWorkspaceEconomicBrief } from '@/components/finance/CrossWorkspace
 import { EconomicResolutionHistory } from '@/components/finance/EconomicResolutionHistory';
 import { EconomicIntelligenceReadiness } from '@/components/finance/EconomicIntelligenceReadiness';
 import { EconomicEvidenceProvenance } from '@/components/finance/EconomicEvidenceProvenance';
+import { EconomicExplainabilityLink } from '@/components/finance/EconomicExplainabilityLink';
 import { FinanceDashboardIntelligence } from '@/components/finance/FinanceDashboardIntelligence';
 
 export default function EconomicIntelligencePage() {
@@ -26,6 +27,7 @@ export default function EconomicIntelligencePage() {
       </section>
 
       <EconomicIntelligenceReadiness />
+      <EconomicExplainabilityLink />
       <EconomicEvidenceProvenance />
       <EconomicIntelligenceHome />
       <CrossWorkspaceEconomicBrief />
