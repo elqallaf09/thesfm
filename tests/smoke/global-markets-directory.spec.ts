@@ -23,7 +23,7 @@ test('Kuwait directory includes unselected stocks, paginates, and requests their
   await explorer.getByRole('button', { name: /Load more/ }).click();
   const count = await page.evaluate(() => matchMedia('(max-width: 640px)').matches ? 18 : 24);
   await expect(explorer.locator('.gm-strip-item')).toHaveCount(count);
-  await explorer.getByRole('searchbox').fill('BOUBYAN');
+  await explorer.getByRole('searchbox').fill('BOUBYAN.KW');
   await expect(explorer.locator('.gm-strip-item')).toHaveCount(1);
   await expect(explorer.locator('.gm-strip-item')).toContainText('BOUBYAN.KW');
   await expect(explorer.locator('.gm-strip-item')).toContainText('123.45');
