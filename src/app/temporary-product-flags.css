@@ -9,5 +9,5 @@
 .landing-page #pricing,
 .landing-page .landing-links a[href="#pricing"],
 .profile-section:has(.premium-layout) {
-  display: none !important;
+  display: none;
 }
