@@ -14,7 +14,7 @@ async function prepare(page: Page, lang = 'en') {
 for (const lang of ['ar', 'en', 'fr']) {
   test(`ticker covers the viewport throughout its full animation cycle: ${lang}`, async ({ page }) => {
     await prepare(page, lang);
-    await page.goto('/global-markets');
+    await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.gm-strip[aria-busy="false"]')).toHaveCount(4);
     for (const width of [390, 768, 1920]) {
       await page.setViewportSize({ width, height: 900 });
@@ -22,20 +22,25 @@ for (const lang of ['ar', 'en', 'fr']) {
       await expect.poll(() => page.locator('.gm-strips .market-ticker-track').evaluateAll(tracks =>
         tracks.every(track => Number(track.getAttribute('data-loop-distance')) > 0),
       )).toBe(true);
-      const samples = await page.locator('.gm-strips .market-ticker-track').evaluateAll(async tracks => {
-        const results: Array<{ covered: boolean; velocity: number }> = [];
+      const samples = await page.locator('.gm-strips .market-ticker-track').evaluateAll(tracks => {
+        const results: Array<{ covered: boolean; velocity: number; offsetError: number }> = [];
         for (const track of tracks) {
           const animation = track.getAnimations()[0];
           if (!animation) throw new Error('Ticker animation is missing');
           const duration = Number(animation.effect?.getTiming().duration);
           animation.pause();
+          animation.currentTime = 0;
+          const startLeft = track.getBoundingClientRect().left;
+          const loopDistance = Number(track.getAttribute('data-loop-distance'));
           for (const progress of [0, .1, .25, .5, .75, .95, .999, 1.001]) {
             animation.currentTime = duration * progress;
-            await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+            // Seeking is synchronous; geometry reads flush animation styles.
+            // Offscreen WebKit frames can throttle requestAnimationFrame.
             const viewport = track.parentElement!.getBoundingClientRect();
             const bounds = track.getBoundingClientRect();
             results.push({ covered: bounds.left <= viewport.left + 1 && bounds.right >= viewport.right - 1,
-              velocity: Number(track.getAttribute('data-loop-distance')) / (duration / 1000) });
+              velocity: loopDistance / (duration / 1000),
+              offsetError: Math.abs(Math.abs(bounds.left - startLeft) - loopDistance * (progress % 1)) });
           }
           animation.play();
         }
@@ -44,6 +49,7 @@ for (const lang of ['ar', 'en', 'fr']) {
       for (const sample of samples) {
         expect(sample.covered, `${lang} ${width}px must never expose a blank loop`).toBe(true);
         expect(sample.velocity).toBeCloseTo(30, 1);
+        expect(sample.offsetError, 'Every sample must reach its requested animation position').toBeLessThan(1);
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     }
@@ -52,7 +58,7 @@ for (const lang of ['ar', 'en', 'fr']) {
 
 test('manual navigation stops animation and resume clears the scroll offset', async ({ page }) => {
   await prepare(page);
-  await page.goto('/global-markets');
+  await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
   const strip = page.locator('.gm-strip').first();
   await expect(strip.locator('.market-ticker-track')).toHaveAttribute('data-pixels-per-second', '30');
   await strip.getByRole('button', { name: 'Next', exact: true }).click();
@@ -67,7 +73,7 @@ test('manual navigation stops animation and resume clears the scroll offset', as
 test('market selection is visible, replaces one market, saves, and keeps restore as a draft until saved', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
-  await page.goto('/global-markets');
+  await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Customize markets' });
   await expect(dialog.getByRole('checkbox', { checked: true })).toHaveCount(4);
@@ -76,13 +82,13 @@ test('market selection is visible, replaces one market, saves, and keeps restore
   await expect(dialog.getByRole('button', { name: /Save markets/ })).toBeDisabled();
   await dialog.getByRole('checkbox', { name: 'Crypto', exact: true }).click();
   await dialog.getByRole('button', { name: /Save markets/ }).click();
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('.gm-strip-heading-label').last()).toHaveText('Crypto');
   await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
   await dialog.getByRole('button', { name: 'Restore defaults', exact: true }).click();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('.gm-strip-heading-label').last()).toHaveText('Crypto');
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('.gm-strip-heading-label').last()).toHaveText('Crypto');
 });
 
@@ -90,7 +96,7 @@ test('Customize news opens from automatic mode and applies selectable filters in
   await prepare(page);
   const requests: string[] = [];
   page.on('request', request => { if (request.url().includes('/api/market-news')) requests.push(request.url()); });
-  await page.goto('/global-markets');
+  await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.gm-news-results')).toHaveAttribute('aria-busy', 'false');
   const before = requests.length;
   await page.getByRole('button', { name: 'Customize news', exact: true }).click();
@@ -105,7 +111,7 @@ test('Customize news opens from automatic mode and applies selectable filters in
   await expect.poll(() => requests.length).toBe(before + 1);
   const query = new URL(requests.at(-1)!).searchParams;
   expect(query.get('countries')).toBe('US');
-  expect(query.get('exchangeCodes')).toBe('NASDAQ');
+  expect(query.get('exchangeCode')).toBe('NASDAQ');
   expect(query.get('symbols')).toBe('AAPL');
   expect(query.get('sourceNames')).toBe('QA Source');
   expect(query.has('marketIds')).toBe(false);
@@ -121,7 +127,7 @@ test('saving markets still works when browser storage is unavailable', async ({ 
       return original.call(this, key, value);
     };
   });
-  await page.goto('/global-markets');
+  await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Remove: Forex', exact: true }).click();
@@ -134,7 +140,7 @@ test('saving markets still works when browser storage is unavailable', async ({ 
 test('saved selections reserve the same summary height for short and long market names', async ({ page }) => {
   await prepare(page);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/global-markets');
+  await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.gm-strip[aria-busy="false"]')).toHaveCount(4);
   const before = await page.locator('.gm-selection').boundingBox();
   await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
@@ -145,7 +151,7 @@ test('saved selections reserve the same summary height for short and long market
   await expect(page.locator('.gm-selection-chips')).toContainText('Commodities & Metals');
   const after = await page.locator('.gm-selection').boundingBox();
   expect(after?.height).toBe(before?.height);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('.gm-selection-chips')).toContainText('Commodities & Metals');
   const reloaded = await page.locator('.gm-selection').boundingBox();
   expect(reloaded?.height).toBe(before?.height);

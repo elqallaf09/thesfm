@@ -6,7 +6,8 @@ import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils
 import type { GlobalMarketStripConfig } from '@/lib/market/globalMarketStrips';
 import type { Lang } from '@/lib/translations';
 import { t } from '@/lib/translations';
-import { EMPTY_NEWS_FILTERS, GlobalMarketsNewsFilters } from '@/components/global-markets/GlobalMarketsNewsFilters';
+import { GlobalMarketsNewsFilters } from '@/components/global-markets/GlobalMarketsNewsFilters';
+import { EMPTY_NEWS_FILTERS, globalMarketNewsRequest } from '@/lib/market/globalMarketNewsRequest';
 
 type NewsItem = {
   id?: string | null;
@@ -57,22 +58,7 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
   const [visibleCount, setVisibleCount] = useState(6);
   const selectedKey = selectedStrips.map(strip => strip.id).join(',');
 
-  const requestUrl = useMemo(() => {
-    const params = new URLSearchParams({ scope: 'general', lang, limit: '24', sort: manual.sort });
-    if (mode === 'automatic') params.set('marketIds', selectedKey);
-    else {
-      if (manual.country) params.set('countries', manual.country);
-      if (manual.exchange) params.set('exchangeCodes', manual.exchange);
-      if (manual.symbol) params.set('symbols', manual.symbol.toUpperCase());
-      if (manual.language) params.set('sourceLanguages', manual.language);
-      if (manual.source) params.set('sourceNames', manual.source);
-      if (manual.asset) params.set('assetTypes', manual.asset);
-      if (manual.from) params.set('from', manual.from);
-      if (manual.to) params.set('to', manual.to);
-      if (manual.region) params.set('marketCodes', manual.region);
-    }
-    return `/api/market-news?${params.toString()}`;
-  }, [lang, manual, mode, selectedKey]);
+  const requestUrl = useMemo(() => globalMarketNewsRequest(lang, selectedKey, mode === 'manual' ? manual : null), [lang, manual, mode, selectedKey]);
 
   useEffect(() => {
     if (!ready) return;
