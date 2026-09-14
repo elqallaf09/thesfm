@@ -57,6 +57,7 @@ export type FinancialTwinForecast = {
   generatedAt: string;
   horizonMonths: number;
   currency: string;
+  methodology: 'fixed_assumption_sensitivity_simulation';
   scenarios: Record<EconomicScenarioId, FinancialTwinScenario>;
 };
 
@@ -80,6 +81,7 @@ export type FinancialDecisionAssessment = {
   kind: FinancialDecisionKind;
   affordability: 'strong' | 'borderline' | 'weak';
   riskScore: number;
+  riskScoreMethod: 'deterministic_policy_heuristic';
   monthlySurplusAfterDecision: number;
   runwayMonthsAfterDecision: number | null;
   reasons: string[];
