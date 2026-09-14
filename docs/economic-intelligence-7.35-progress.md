@@ -23,8 +23,8 @@ This is a completed implementation slice, not a claim that the full Phase 7.35 s
 
 ## Validation limitations and remaining work
 
-- Local Next.js production build could not fetch Google Fonts because the build environment could not resolve the font host. This is not recorded as a passing build; the new Vercel deployment must validate the published commit.
-- Playwright browser download was blocked by the local network. The original browser regression has an implementation fix and unit coverage, but browser confirmation still requires GitHub CI.
+- Local Next.js production build could not fetch Google Fonts because the build environment could not resolve the font host. This is not recorded as a passing build; GitHub CI/Vercel must validate the published commit.
+- Playwright browser download was blocked by the local network. Browser confirmation requires GitHub CI.
 - No live database records, migrations, secrets, billing configuration, or branch protection rules were modified by this slice.
 
 ## Publication
@@ -34,7 +34,7 @@ Publish these related changes together on the existing PR branch, retaining main
 ## Follow-up — type contracts and lint debt repair
 
 - Published 7.35A as `02959e830b44d5f3446ce44c6524614f62e8b881`; its Vercel Preview reached READY. GitHub TypeScript passed, while the lint debt guard found 534 explicit-any warnings against main's 458 baseline. Ordinary ESLint error counts alone did not detect that budget failure.
-- Replaced loose row types with selected-field contracts and unknown JSON boundaries across economic loaders, Financial Twin, decision analysis, and shared finance metadata helpers. Removed redundant casts; no eslint-disable directives or baseline increases were added.
+- Replaced loose row types with selected-field contracts and unknown JSON boundaries across economic loaders, Financial Twin, decision analysis, and shared finance metadata helpers. Removed redundant casts; no eslint-disable directives and no baseline increases were added.
 - Typed readiness text and narrative copy selection. A missing notification row after a competing unique-key insert no longer reaches the strict cross-workspace normalizer.
 - Full local TypeScript rerun passed. Full coverage rerun passed: 278 files / 2172 tests. Final repository lint guard passed with 457 explicit-any warnings and 420 unused-variable warnings; the checked-out baseline remains unchanged (459 / 423). The main merge candidate has its own stricter baseline and must pass fresh CI.
 - Generated coverage reports were kept outside the checkout for the lint run, matching CI's separate clean jobs; no tracked source was excluded.
@@ -43,16 +43,23 @@ Publish these related changes together on the existing PR branch, retaining main
 
 - Decision Timeline page load now records only `opened`. It no longer fabricates an `actioned` outcome merely because the user viewed the timeline. A real resolution still records the appropriate interaction through the event-outcomes route.
 - Proactive and freshness stale-event writers now preserve existing notification metadata before adding resolution metadata. Evidence snapshots and historical provenance are not replaced by a smaller resolution object.
-- Stale-event updates are additionally scoped by user and `source_module = economic_intelligence`.
+- Stale-event updates are additionally scoped by user and `source_module = economic_intelligence` across proactive, freshness and cross-workspace writers.
 - Event-family ownership is explicit: proactive owns only `risk:`, `decision:` and `opportunity:` events; freshness owns only `freshness:` events; cross-workspace priorities own only `priority:` events. The proactive writer can no longer archive another writer's active family during concurrent refresh.
 - Personalized advisor-grounding, advisor-chat and proactive-events responses now apply `private, no-store` to authentication failures, validation failures, rate limits, upstream failures and success responses. Retry-After remains present on application throttling.
 - Added source-contract regression coverage for timeline semantics, metadata preservation, event-family ownership and personalized API privacy.
 - Added a real two-identity RLS Playwright check that runs only when CI resolves an exact-SHA isolated Supabase Preview. It verifies own-row access plus denial of cross-user read, update and forged insert on `user_decisions`, and cleans up only its own synthetic rows. It refuses to run if the Preview ref is absent, invalid or equals Production.
+- Final secret-boundary inventory found AI provider secrets only in the server-side advisor-chat route; no service-role or secret key is referenced by Economic Intelligence client/domain modules.
+- Final personalized route inventory covers advisor-chat, advisor-grounding, daily-brief, decision-memory, event-outcomes, proactive-events, provenance and readiness. Each has private/no-store handling; `context` is intentionally public/cacheable macro context and is not treated as personalized user data.
+
+## Current-head CI
+
+- Head `de3898367adb35fe339bf4222490ccfc2b3c1e47` fixed a TypeScript-only test compatibility failure by replacing the unsupported RegExp dotAll flag with a target-compatible `[\\s\\S]` expression. No TypeScript target or test threshold was changed.
+- On CI run `34895296860`, Supabase migration clean-chain, i18n, ESLint, TypeScript, production launch guards and production build/performance budgets passed. Unit/integration execution passed and only its coverage upload/finalization remained in progress at the last recorded check. Browser smoke/Lighthouse and Vercel remained in progress and are authoritative before merge.
+- Supabase Preview for the branch is currently reported as skipped because the git branch is not associated with a Supabase Branch. Therefore the live two-user RLS spec is present and safely gated, but has not produced live Preview evidence. This must not be represented as a passed live-RLS check.
 
 ## Remaining before Phase 7.35 can be called complete
 
-- The new exact-SHA CI head must pass TypeScript, lint-debt guards, unit/integration tests, production build/budgets, browser smoke and, when an isolated Supabase Preview is available for that SHA, the authenticated two-user RLS check. A prior green head is not sufficient.
-- If the exact-SHA Supabase Preview is legitimately unavailable and the existing CI contract skips authenticated Preview validation, do not mislabel that skip as live-RLS proof. Phase 7.35 remains technically implemented but live isolation evidence remains outstanding until an isolated Preview run executes it successfully.
-- Review any CI failure from the new lifecycle/RLS coverage without weakening assertions or falling back to Production credentials.
-- Re-run the final route/error-boundary inventory after the current head is green and confirm no personalized Economic Intelligence route lacks private/no-store behavior.
+- The current exact-SHA browser smoke/Lighthouse and Vercel checks must finish successfully. A prior green head is not sufficient.
+- If the exact-SHA Supabase Preview remains legitimately unavailable and the existing CI contract skips authenticated Preview validation, do not mislabel that skip as live-RLS proof. The implementation is ready for isolated execution, but live isolation evidence remains outstanding until an isolated Preview run executes it successfully.
+- Review any current-head failure without weakening assertions or falling back to Production credentials.
 - Merge only after repository-required checks permit it; then verify the exact merged SHA/deployment separately before starting the next product phase.
