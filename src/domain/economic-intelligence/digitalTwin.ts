@@ -64,8 +64,6 @@ function quality(source: FinancialTwinSource) {
   const required: Array<keyof FinancialTwinSource> = ['income', 'expenses', 'debts', 'savings', 'investments'];
   const missing = required.filter((key) => !source[key]).map(String);
   const empty = required.filter((key) => Array.isArray(source[key]) && source[key]?.length === 0).map(String);
-  // Empty balance/portfolio collections can legitimately represent zero. Empty income or
-  // expense inputs cannot support a reliable cash-flow decision, so they lower completeness.
   const criticalEmpty = empty.filter((key) => key === 'income' || key === 'expenses');
   const unavailable = new Set([...missing, ...criticalEmpty]);
   const available = required.length - unavailable.size;
@@ -179,6 +177,7 @@ export function forecastFinancialTwin(
     generatedAt: generatedAt.toISOString(),
     horizonMonths: safeHorizon,
     currency: snapshot.currency,
+    methodology: 'fixed_assumption_sensitivity_simulation',
     scenarios: {
       stress: projectScenario(snapshot, 'stress', assumptions.stress, safeHorizon),
       base: projectScenario(snapshot, 'base', assumptions.base, safeHorizon),
