@@ -9,7 +9,7 @@ import { newsSourcesAdapter, isFinnhubEnabled } from './sourceAdapters/newsSourc
 import { regulatoryFilingsAdapter } from './sourceAdapters/regulatoryFilings';
 import { reputableFinancialSitesAdapter } from './sourceAdapters/reputableFinancialSites';
 import { rssSourcesAdapter } from './sourceAdapters/rssSources';
-import { deduplicateEvidence } from './evidenceDeduplication';
+import { canonicalizeEvidenceUrl, deduplicateEvidence } from './evidenceDeduplication';
 import { resolveFinancialConflicts } from './conflictResolver';
 import { getMethodology } from './methodologies';
 import { analyzeShariaEvidence } from './shariaAnalyzer';
@@ -86,9 +86,21 @@ export async function researchSecurity(input: {
     errors: [{ code: 'ADAPTER_REJECTED', message: result.reason instanceof Error ? result.reason.message : String(result.reason), retryable: true }],
   }));
   const security = mergeSecurityIdentity(input.security, adapterResults.map(result => result.identityPatch));
-  const documents = deduplicateEvidence(adapterResults.flatMap(result => result.documents));
-  const keptDocumentIds = new Set(documents.map(document => document.id));
-  const financialValues = adapterResults.flatMap(result => result.financialValues).filter(value => keptDocumentIds.has(value.documentId));
+  const originalDocuments = adapterResults.flatMap(result => result.documents);
+  const documents = deduplicateEvidence(originalDocuments);
+  // Deduplication changes document IDs, not the existence of extracted values.
+  const remappedIds = new Map(originalDocuments.map(original => {
+    let canonicalUrl = '';
+    try { canonicalUrl = canonicalizeEvidenceUrl(original.canonicalUrl || original.sourceUrl); } catch { /* Unusable source URLs cannot identify duplicate evidence. */ }
+    const kept = documents.find(document => document.id === original.id
+      || (original.extractedText.length >= 300 && document.contentHash === original.contentHash)
+      || (canonicalUrl && document.canonicalUrl === canonicalUrl));
+    return [original.id, kept?.id];
+  }));
+  const financialValues = adapterResults.flatMap(result => result.financialValues).flatMap(value => {
+    const documentId = remappedIds.get(value.documentId);
+    return documentId ? [{ ...value, documentId }] : [];
+  });
   const evidence: EvidenceItem[] = [];
   await input.onProgress?.('extracting_financial_data', 62);
   const conflicts = resolveFinancialConflicts(financialValues, documents, evidence);

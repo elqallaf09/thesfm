@@ -7,7 +7,7 @@ export function resolveFinancialConflicts(values: FinancialValue[], documents: S
   const documentById = new Map(documents.map(document => [document.id, document]));
   const grouped = new Map<string, FinancialValue[]>();
   for (const value of values) {
-    const key = `${value.normalizedField}:${value.periodEnd}:${value.currency}`;
+    const key = `${value.normalizedField}:${value.periodStart ?? ''}:${value.periodEnd}:${value.currency}:${value.validation?.bound ?? 'legacy'}`;
     grouped.set(key, [...(grouped.get(key) ?? []), value]);
   }
   for (const [key, candidates] of grouped) {

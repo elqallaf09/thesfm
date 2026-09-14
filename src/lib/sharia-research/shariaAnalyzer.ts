@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { analyzeBusinessEvidence } from './businessEvidence';
+import { EVIDENCE_VERSION, missingFinancialFields, validFinancialValue } from './evidenceValidation';
 import { calculateFinancialRatios, isFinancialDataStale } from './financialRatioCalculator';
 import { evidenceReliabilityScore, sourceQualityBreakdown } from './sourceScoring';
 import type {
@@ -10,14 +12,6 @@ import type {
   ShariaScreeningResult,
   SourceDocument,
 } from './types';
-
-const BUSINESS_SOURCE_TYPES = new Set(['company_ir', 'annual_report', 'quarterly_report', 'regulatory_filing', 'fund_prospectus', 'sharia_board_document']);
-
-function excerptAround(text: string, term: string) {
-  const index = text.toLowerCase().indexOf(term.toLowerCase());
-  if (index < 0) return '';
-  return text.slice(Math.max(0, index - 180), Math.min(text.length, index + term.length + 320)).replace(/\s+/g, ' ').trim();
-}
 
 function evidenceFromDocument(document: SourceDocument, input: Pick<EvidenceItem, 'category' | 'conclusion' | 'excerpt'>): EvidenceItem {
   return {
@@ -35,92 +29,6 @@ function evidenceFromDocument(document: SourceDocument, input: Pick<EvidenceItem
     reliability: document.reliability,
     reportingPeriod: document.reportingPeriod,
   };
-}
-
-function hasStrongDirectActivityPhrase(excerpt: string, category: string) {
-  const normalized = excerpt.toLowerCase();
-  const directPattern = /(our principal business|our primary business|we are (?:a|an)|the company (?:is|operates|owns)|primarily engaged in)/;
-  if (!directPattern.test(normalized)) return false;
-  if (category === 'conventional_financial_services' && /(commercial bank|consumer lender|mortgage lender|conventional insurance|credit card issuer)/.test(normalized)) return true;
-  if (category === 'gambling' && /(casino|gambling|sports betting|lottery)/.test(normalized)) return true;
-  if (category === 'alcohol' && /(brewery|distillery|producer of alcoholic|wine producer)/.test(normalized)) return true;
-  if (category === 'tobacco_and_non_medical_cannabis' && /(tobacco|cigarette|recreational cannabis)/.test(normalized)) return true;
-  if (category === 'defense_and_weapons' && /(weapons manufacturer|defense equipment|missile systems)/.test(normalized)) return true;
-  return false;
-}
-
-function analyzeBusiness(
-  security: SecurityIdentity,
-  documents: SourceDocument[],
-  financialValues: FinancialValue[],
-  methodology: ShariaMethodology,
-  evidence: EvidenceItem[],
-): BusinessScreenResult {
-  const officialDocuments = documents.filter(document => (
-    document.tier === 1
-    && document.reliability === 'official'
-    && document.extractionStatus === 'success'
-    && BUSINESS_SOURCE_TYPES.has(document.sourceType)
-  ));
-  const substantiveDocuments = officialDocuments.filter(document => (
-    ['annual_report', 'quarterly_report', 'company_ir', 'fund_prospectus', 'sharia_board_document'].includes(document.sourceType)
-    && document.extractedText.length >= 600
-  ));
-  const officialDescriptionFound = substantiveDocuments.length > 0;
-  const detectedActivities: BusinessScreenResult['detectedActivities'] = [];
-
-  for (const [category, terms] of Object.entries(methodology.businessRules.supportingKeywords)) {
-    const categoryEvidence: EvidenceItem[] = [];
-    let materialityKnown = false;
-    for (const document of substantiveDocuments) {
-      for (const term of terms) {
-        const excerpt = excerptAround(document.extractedText, term);
-        if (!excerpt) continue;
-        const item = evidenceFromDocument(document, {
-          category: 'business_activity',
-          conclusion: `Possible prohibited or questionable activity: ${category}`,
-          excerpt,
-        });
-        evidence.push(item);
-        categoryEvidence.push(item);
-        if (hasStrongDirectActivityPhrase(excerpt, category)) materialityKnown = true;
-        break;
-      }
-      if (categoryEvidence.length >= 3) break;
-    }
-    if (categoryEvidence.length > 0) detectedActivities.push({ category, evidence: categoryEvidence, materialityKnown });
-  }
-
-  const latestIncome = [...financialValues].filter(value => value.normalizedField === 'total_income').sort((a, b) => b.periodEnd.localeCompare(a.periodEnd))[0];
-  const prohibitedRevenue = financialValues.find(value => value.normalizedField === 'prohibited_revenue' && value.periodEnd === latestIncome?.periodEnd);
-  const interestIncome = financialValues.find(value => value.normalizedField === 'interest_income' && value.periodEnd === latestIncome?.periodEnd);
-  const prohibitedRevenueRatio = latestIncome && latestIncome.value > 0 && prohibitedRevenue && interestIncome
-    ? (prohibitedRevenue.value + interestIncome.value) / latestIncome.value
-    : null;
-  const reasons: string[] = [];
-
-  if (!officialDescriptionFound) {
-    reasons.push('No current substantive Tier 1 business description was extracted.');
-    return { status: 'unavailable', detectedActivities, officialDescriptionFound, prohibitedRevenueRatio, reasons };
-  }
-  if (prohibitedRevenueRatio !== null && prohibitedRevenueRatio > methodology.businessRules.prohibitedRevenueThreshold) {
-    reasons.push('Documented prohibited and interest income exceeds the methodology limit.');
-    return { status: 'fail', detectedActivities, officialDescriptionFound, prohibitedRevenueRatio, reasons };
-  }
-  if (detectedActivities.some(activity => activity.materialityKnown)) {
-    reasons.push('An official company source describes a directly excluded principal activity.');
-    return { status: 'fail', detectedActivities, officialDescriptionFound, prohibitedRevenueRatio, reasons };
-  }
-  if (detectedActivities.length > 0) {
-    reasons.push('Questionable activity terms were found, but public evidence does not establish their revenue materiality.');
-    return { status: 'review', detectedActivities, officialDescriptionFound, prohibitedRevenueRatio, reasons };
-  }
-  reasons.push('Current official business descriptions were found and no configured excluded activity was identified in the extracted evidence.');
-  if (prohibitedRevenueRatio === null) {
-    reasons.push('Separate prohibited-revenue and interest-income amounts were not both disclosed; neither missing value was treated as zero.');
-    return { status: 'review', detectedActivities, officialDescriptionFound, prohibitedRevenueRatio, reasons };
-  }
-  return { status: 'pass', detectedActivities, officialDescriptionFound, prohibitedRevenueRatio, reasons };
 }
 
 function addFinancialEvidence(values: FinancialValue[], documents: SourceDocument[], evidence: EvidenceItem[]) {
@@ -221,28 +129,35 @@ export function analyzeShariaEvidence(input: {
   const evidence = input.evidence ?? [];
   const decisionDocuments = input.documents.filter(document => !['news', 'rss'].includes(document.sourceType));
   const relatedNews = input.documents.filter(document => ['news', 'rss'].includes(document.sourceType));
-  const ratios = calculateFinancialRatios(input.financialValues, input.methodology);
-  const business = analyzeBusiness(input.security, decisionDocuments, input.financialValues, input.methodology, evidence);
-  addFinancialEvidence(input.financialValues, decisionDocuments, evidence);
+  const sourceById = new Map(decisionDocuments.map(document => [document.id, document]));
+  const supportedValues = input.financialValues.filter(value => {
+    const source = sourceById.get(value.documentId);
+    return source && source.companyIdentifier === input.security.canonicalId && source.extractionStatus === 'success'
+      && source.tier <= 2 && source.sourceUrl === value.sourceUrl;
+  });
+  const ratios = calculateFinancialRatios(supportedValues, input.methodology, new Date(retrievedAt));
+  const business = analyzeBusinessEvidence(input.security, decisionDocuments, supportedValues, input.methodology, evidence, new Date(retrievedAt));
+  addFinancialEvidence(supportedValues.filter(value => validFinancialValue(value, new Date(retrievedAt))), decisionDocuments, evidence);
   const conflicts = input.conflicts ?? [];
   const lastFinancialReportDate = ratios.map(ratio => ratio.reportingPeriod).filter((value): value is string => Boolean(value)).sort((a, b) => b.localeCompare(a))[0] ?? null;
   const stale = isFinancialDataStale(lastFinancialReportDate, input.methodology.freshnessMonths, new Date(retrievedAt));
   const unavailableChecks = ratios.filter(ratio => ratio.status === 'unavailable').map(ratio => ratio.name);
-  if (business.status === 'unavailable') unavailableChecks.push('فحص النشاط التجاري');
+  if (business.status === 'unavailable' || business.status === 'review') unavailableChecks.push('فحص النشاط التجاري والدخل غير المتوافق');
   const failedChecks = ratios.filter(ratio => ratio.status === 'fail').map(ratio => ratio.name);
   if (business.status === 'fail') failedChecks.push('فحص النشاط التجاري');
 
   let classification: ShariaScreeningResult['classification'];
   if (conflicts.length > 0) classification = 'conflicting_evidence';
+  else if (business.institutionalReviewRequired) classification = 'requires_review';
+  else if (business.status === 'fail' || failedChecks.length > 0) classification = 'non_compliant';
   else if (stale) classification = 'insufficient_current_data';
-  else if (failedChecks.length > 0) classification = 'non_compliant';
   else if (unavailableChecks.length > 0) classification = 'insufficient_current_data';
   else if (business.status === 'review') classification = 'requires_review';
   else if (business.status === 'pass' && ratios.every(ratio => ratio.status === 'pass')) classification = 'compliant';
   else classification = 'requires_review';
 
   const score = confidenceScore({
-    documents: decisionDocuments,
+    documents: decisionDocuments.filter(document => document.sourceType !== 'methodology'),
     business,
     availableRatioCount: ratios.filter(ratio => ratio.status !== 'unavailable').length,
     ratioCount: ratios.length,
@@ -254,7 +169,7 @@ export function analyzeShariaEvidence(input: {
     classification,
     business,
     ratios,
-    documents: decisionDocuments,
+    documents: decisionDocuments.filter(document => document.sourceType !== 'methodology'),
     conflictCount: conflicts.length,
     stale,
   });
@@ -276,6 +191,8 @@ export function analyzeShariaEvidence(input: {
 
   return {
     id: randomUUID(),
+    evidenceVersion: EVIDENCE_VERSION,
+    missingFinancialFields: missingFinancialFields(supportedValues, new Date(retrievedAt)),
     security: input.security,
     classification,
     confidence: score,
@@ -294,7 +211,7 @@ export function analyzeShariaEvidence(input: {
     conflicts,
     sourceCount: input.documents.length,
     sourceQualityBreakdown: sourceQualityBreakdown(input.documents),
-    documents: decisionDocuments,
+    documents: decisionDocuments.filter(document => document.sourceType !== 'methodology'),
     evidence,
     relatedNews,
     retrievedAt,

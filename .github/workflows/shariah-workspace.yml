@@ -1,0 +1,37 @@
+name: Shariah repair workspace
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/shariah-workspace.yml']
+permissions:
+  contents: read
+jobs:
+  workspace:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Archive source and offline test dependencies without credentials
+        run: |
+          git archive --format=tar.gz HEAD > "$RUNNER_TEMP/source.tar.gz"
+          tar -czf "$RUNNER_TEMP/dependencies.tar.gz" node_modules
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shariah-offline-workspace
+          path: |
+            ${{ runner.temp }}/source.tar.gz
+            ${{ runner.temp }}/dependencies.tar.gz
+          compression-level: 0
+          retention-days: 1

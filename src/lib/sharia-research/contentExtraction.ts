@@ -70,6 +70,8 @@ function jsonLdText(value: unknown): string[] {
 export function htmlToPlainText(html: string) {
   const withoutUnsafeBlocks = html
     .replace(/<!--[\s\S]*?-->/g, ' ')
+    // Hidden inline-XBRL contexts are metadata, not the issuer business narrative.
+    .replace(/<ix:header\b[^>]*>[\s\S]*?<\/ix:header>/gi, ' ')
     .replace(/<(script|style|noscript|template|svg|canvas|iframe|object|embed)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|p|div|section|article|header|footer|main|aside|li|tr|h[1-6])\b[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, ' ');

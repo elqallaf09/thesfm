@@ -2,7 +2,7 @@ import 'server-only';
 
 import { secureFetch } from './secureFetch';
 import { normalizeResearchText } from './normalizeQuery';
-import type { FinancialValue, NormalizedFinancialField, SecurityIdentity, SourceDocument } from './types';
+import type { SecurityIdentity } from './types';
 
 export const SEC_TICKER_DIRECTORY_URL = 'https://www.sec.gov/files/company_tickers_exchange.json';
 const SEC_SUBMISSIONS_BASE = 'https://data.sec.gov/submissions';
@@ -56,6 +56,7 @@ type SecCompanyFacts = {
 
 const secHeaders = {
   accept: 'application/json',
+  'user-agent': process.env.SEC_USER_AGENT || 'THE-SFM admin@the-sfm.com',
 };
 
 export function normalizeCik(value: unknown) {
@@ -157,148 +158,7 @@ export async function loadSecCompanyFacts(cik: string, signal?: AbortSignal) {
   };
 }
 
-type FactSelection = SecFactUnit & { taxonomy: string; tag: string; label: string; unit: string };
-
-function candidatesForTag(payload: SecCompanyFacts, taxonomy: string, tag: string) {
-  const fact = payload.facts?.[taxonomy]?.[tag];
-  if (!fact?.units) return [];
-  return Object.entries(fact.units).flatMap(([unit, values]) => values.map(value => ({
-    ...value,
-    taxonomy,
-    tag,
-    label: fact.label ?? tag,
-    unit,
-  }))).filter((value): value is FactSelection => (
-    typeof value.val === 'number'
-    && Number.isFinite(value.val)
-    && Boolean(value.end)
-    && ['10-K', '10-Q', '20-F', '40-F'].includes(value.form ?? '')
-  ));
-}
-
-function selectLatestFact(payload: SecCompanyFacts, tags: string[], periodEnd?: string | null) {
-  const all = tags.flatMap(tag => candidatesForTag(payload, 'us-gaap', tag));
-  const filtered = periodEnd ? all.filter(value => value.end === periodEnd) : all;
-  return filtered.sort((a, b) => (
-    String(b.end).localeCompare(String(a.end))
-    || String(b.filed).localeCompare(String(a.filed))
-    || Number(Boolean(b.frame)) - Number(Boolean(a.frame))
-  ))[0] ?? null;
-}
-
-function buildFinancialValue(input: {
-  selections: FactSelection[];
-  normalizedField: NormalizedFinancialField;
-  document: SourceDocument;
-  formula: string;
-  value?: number;
-}): FinancialValue | null {
-  const first = input.selections[0];
-  if (!first?.end) return null;
-  const value = input.value ?? input.selections.reduce((sum, selection) => sum + Number(selection.val), 0);
-  return {
-    id: crypto.randomUUID(),
-    documentId: input.document.id,
-    sourceUrl: input.document.sourceUrl,
-    sourceTitle: input.document.sourceTitle,
-    sourceTier: input.document.tier,
-    reportingPeriod: first.fp ? `${first.fy ?? ''} ${first.fp}`.trim() : first.end,
-    periodEnd: first.end,
-    filedAt: first.filed ?? null,
-    currency: first.unit === 'USD' ? 'USD' : first.unit,
-    value,
-    unit: first.unit,
-    originalField: input.selections.map(selection => `${selection.taxonomy}:${selection.tag}`).join(' + '),
-    normalizedField: input.normalizedField,
-    normalizationFormula: input.formula,
-    accessionNumber: first.accn ?? null,
-    form: first.form ?? null,
-  };
-}
-
-function chooseComponentSet(payload: SecCompanyFacts, alternatives: string[][], periodEnd: string) {
-  for (const tags of alternatives) {
-    const selections = tags.map(tag => selectLatestFact(payload, [tag], periodEnd)).filter((value): value is FactSelection => Boolean(value));
-    if (selections.length === tags.length) return selections;
-  }
-  return [];
-}
-
-export function extractFinancialValuesFromCompanyFacts(payload: SecCompanyFacts, document: SourceDocument) {
-  const assets = selectLatestFact(payload, ['Assets']);
-  if (!assets?.end) return [];
-  const periodEnd = assets.end;
-  const values: FinancialValue[] = [];
-  const add = (value: FinancialValue | null) => { if (value) values.push(value); };
-
-  add(buildFinancialValue({
-    selections: [assets],
-    normalizedField: 'total_assets',
-    document,
-    formula: 'Direct XBRL value reported as total assets.',
-    value: assets.val,
-  }));
-
-  const debt = chooseComponentSet(payload, [
-    ['LongTermDebtAndFinanceLeaseObligationsCurrent', 'LongTermDebtAndFinanceLeaseObligationsNoncurrent', 'ShortTermBorrowings'],
-    ['LongTermDebtCurrent', 'LongTermDebtNoncurrent', 'ShortTermBorrowings'],
-    ['LongTermDebtAndFinanceLeaseObligationsCurrent', 'LongTermDebtAndFinanceLeaseObligationsNoncurrent'],
-    ['LongTermDebtCurrent', 'LongTermDebtNoncurrent'],
-    ['LongTermDebt', 'ShortTermBorrowings'],
-    ['LongTermDebt'],
-  ], periodEnd);
-  add(buildFinancialValue({
-    selections: debt,
-    normalizedField: 'interest_bearing_debt',
-    document,
-    formula: `Sum of non-overlapping reported debt fields for ${periodEnd}; see original fields.`,
-  }));
-
-  const cash = selectLatestFact(payload, [
-    'CashAndCashEquivalentsAtCarryingValue',
-    'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents',
-  ], periodEnd);
-  if (cash) add(buildFinancialValue({
-    selections: [cash],
-    normalizedField: 'cash_and_equivalents',
-    document,
-    formula: 'Direct XBRL cash and cash-equivalents field.',
-    value: cash.val,
-  }));
-
-  const securities = chooseComponentSet(payload, [
-    ['MarketableSecuritiesCurrent', 'MarketableSecuritiesNoncurrent'],
-    ['ShortTermInvestments', 'LongTermInvestments'],
-    ['MarketableSecuritiesCurrent'],
-    ['ShortTermInvestments'],
-  ], periodEnd);
-  add(buildFinancialValue({
-    selections: securities,
-    normalizedField: 'interest_bearing_securities',
-    document,
-    formula: 'Sum of reported marketable-security/investment fields; instrument composition remains visible for manual review.',
-  }));
-
-  const receivable = selectLatestFact(payload, ['AccountsReceivableNetCurrent', 'AccountsNotesAndLoansReceivableNetCurrent'], periodEnd);
-  if (receivable) add(buildFinancialValue({
-    selections: [receivable],
-    normalizedField: 'accounts_receivable',
-    document,
-    formula: 'Direct XBRL net current receivables field.',
-    value: receivable.val,
-  }));
-
-  const income = selectLatestFact(payload, ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet']);
-  if (income) add(buildFinancialValue({
-    selections: [income],
-    normalizedField: 'total_income',
-    document,
-    formula: 'Latest annual or quarterly XBRL revenue field; no prohibited-income amount is inferred from it.',
-    value: income.val,
-  }));
-
-  return values;
-}
+export { extractFinancialValuesFromCompanyFacts } from './secFinancialExtraction';
 
 export function secSecurityPatch(security: SecurityIdentity, payload: SecSubmissions): Partial<SecurityIdentity> {
   return {

@@ -92,8 +92,65 @@ export const MSCI_ISLAMIC_INDEX_JULY_2025: ShariaMethodology = {
   ],
 };
 
-export const SHARIA_METHODOLOGIES = [MSCI_ISLAMIC_INDEX_JULY_2025];
+// Independent point-in-time implementation of the published numerical limits.
+// It does not reproduce FTSE index membership, buffer monitoring or board decisions.
+export const SFM_FTSE_POINT_IN_TIME: ShariaMethodology = {
+  ...MSCI_ISLAMIC_INDEX_JULY_2025,
+  id: 'sfm-ftse-yasaar-point-in-time',
+  version: '2026-09-14-sfm-evidence-v2',
+  name: 'SFM point-in-time screen — published FTSE Yasaar limits',
+  nameAr: 'فحص SFM المستقل — الحدود المنشورة لـ FTSE Yasaar',
+  nameFr: 'Filtre indépendant SFM — seuils publiés FTSE Yasaar',
+  sourceDocument: {
+    title: 'FTSE Yasaar Global Equity Shariah: business and financial screening',
+    publisher: 'FTSE Russell / LSEG',
+    url: 'https://www.lseg.com/en/ftse-russell/indices/global-shariah',
+    versionDate: '2026-09-14',
+  },
+  businessRules: {
+    ...MSCI_ISLAMIC_INDEX_JULY_2025.businessRules,
+    thresholdLabel: 'Interest plus other non-compliant income / revenue ≤ 5%',
+    supportingKeywords: {
+      alcohol: ['alcohol', 'brewery', 'breweries', 'beer', 'wine', 'distillery'],
+      tobacco_and_non_medical_cannabis: ['tobacco', 'cigarette', 'nicotine', 'cannabis', 'vape', 'shisha'],
+      pork: ['pork', 'swine', 'non-halal food'],
+      conventional_financial_services: ['commercial bank', 'consumer lending', 'mortgage lender', 'conventional insurance', 'credit card issuer'],
+      defense_and_weapons: ['weapons manufacturer', 'defense equipment', 'missile systems', 'arms manufacturer'],
+      gambling: ['casino', 'sports betting', 'gambling', 'lottery'],
+      music: ['music publishing', 'music production'],
+      hotels: ['hotel operator', 'hotel ownership', 'hotels'],
+      cinema_and_broadcasting: ['cinema', 'movie production'],
+      adult_entertainment_and_online_dating: ['pornography', 'adult entertainment'],
+    },
+    sourceSection: 'Business activity screening; financial ratio screening',
+  },
+  financialRatioRules: [
+    { ...MSCI_ISLAMIC_INDEX_JULY_2025.financialRatioRules[0], operator: '<', threshold: 0.33333, thresholdLabel: '< 33.333%', sourceSection: 'Financial ratios: debt / assets' },
+    { ...MSCI_ISLAMIC_INDEX_JULY_2025.financialRatioRules[1], operator: '<', threshold: 0.33333, thresholdLabel: '< 33.333%', sourceSection: 'Financial ratios: cash and interest-bearing items / assets' },
+    { ...MSCI_ISLAMIC_INDEX_JULY_2025.financialRatioRules[2], operator: '<', threshold: 0.5, thresholdLabel: '< 50%', sourceSection: 'Financial ratios: receivables and cash / assets' },
+    {
+      id: 'combined-non-permissible-income-to-revenue',
+      name: 'Interest and other non-compliant income / revenue',
+      nameAr: 'الفوائد والدخل غير المتوافق الآخر إلى الإيرادات',
+      nameFr: 'Intérêts et autres revenus non conformes / chiffre d’affaires',
+      numeratorFields: ['interest_income', 'prohibited_revenue'], denominatorField: 'total_income',
+      operator: '<=', threshold: 0.05, thresholdLabel: '≤ 5%', unavailableBehavior: 'insufficient_data',
+      sourceSection: 'Financial ratios: total interest and non-compliant activities income',
+    },
+  ],
+  denominatorRules: 'Total assets for balance-sheet checks; same-period revenue for the combined-income check. No market-cap substitution.',
+  purificationGuidance: 'No purification amount is fabricated from missing income evidence.',
+  notes: [
+    'Independent SFM screening estimate, not an official FTSE/Yasaar rating, index membership, certification or fatwa.',
+    'Point-in-time limits only. FTSE quarterly buffer monitoring and Shariah Board decisions are not reproduced.',
+    'The 15-month evidence-age limit is an SFM operational safeguard, not an assertion about an official index rating.',
+    'Incomplete or conflicting evidence cannot produce a positive compliance classification.',
+  ],
+};
+
+export const SHARIA_METHODOLOGIES = [SFM_FTSE_POINT_IN_TIME, MSCI_ISLAMIC_INDEX_JULY_2025];
 
 export function getMethodology(id?: string | null) {
-  return SHARIA_METHODOLOGIES.find(methodology => methodology.id === id) ?? MSCI_ISLAMIC_INDEX_JULY_2025;
+  if (id && !SHARIA_METHODOLOGIES.some(methodology => methodology.id === id)) throw new Error('UNKNOWN_SHARIA_METHODOLOGY');
+  return SHARIA_METHODOLOGIES.find(methodology => methodology.id === id) ?? SFM_FTSE_POINT_IN_TIME;
 }

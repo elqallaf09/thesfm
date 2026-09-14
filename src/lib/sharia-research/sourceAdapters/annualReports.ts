@@ -7,7 +7,7 @@ export const annualReportsAdapter: SourceAdapter = {
   label: 'Official annual and quarterly filing documents',
   tier: 1,
   isEnabled: () => true,
-  supports: security => Boolean(security.cik && String(security.country ?? '').toUpperCase() === 'US'),
+  supports: security => Boolean(security.cik),
   async research(context) {
     if (!context.security.cik) return emptyAdapterResult(this.id);
     try {
