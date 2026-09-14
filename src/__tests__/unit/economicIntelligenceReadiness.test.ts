@@ -14,6 +14,7 @@ function evidence(overrides: any = {}) {
     },
     trader: { watchlistCount: 0, activeAlertCount: 0, triggeredAlertCount: 0, ...(overrides.trader ?? {}) },
     business: { activeProjectCount: 0, fundingNeeds: [], ...(overrides.business ?? {}) },
+    ...(Object.prototype.hasOwnProperty.call(overrides, 'freshness') ? { freshness: overrides.freshness } : {}),
   } as any;
 }
 
@@ -54,5 +55,19 @@ describe('buildEconomicIntelligenceReadiness', () => {
     }), ['no_debts', 'no_investments', 'no_business_projects']);
     expect(readiness.confirmations).toEqual([]);
     expect(readiness.invalidatedConfirmations).toEqual(expect.arrayContaining(['no_debts', 'no_investments', 'no_business_projects']));
+  });
+
+  it('reduces readiness and adds refresh diagnostics when evidence is stale', () => {
+    const now = new Date('2026-09-14T00:00:00.000Z');
+    const readiness = buildEconomicIntelligenceReadiness(evidence({
+      snapshot: { investmentBalance: 5000, dataQuality: { completeness: 1, missing: [], warnings: [] } },
+      trader: { watchlistCount: 3, activeAlertCount: 1 },
+      business: { activeProjectCount: 1, fundingNeeds: [{ projectId: 'p1', amount: 1000, currency: 'KWD', readinessScore: 80 }] },
+      freshness: { finance: '2026-05-01T00:00:00.000Z', trader: '2026-06-01T00:00:00.000Z', business: '2026-04-01T00:00:00.000Z' },
+    }), [], now);
+    expect(readiness.finance.score).toBe(60);
+    expect(readiness.trader.score).toBe(60);
+    expect(readiness.business.score).toBe(60);
+    expect(readiness.nextActions.map(item => item.code)).toEqual(expect.arrayContaining(['finance:stale', 'trader:stale', 'business:stale']));
   });
 });
