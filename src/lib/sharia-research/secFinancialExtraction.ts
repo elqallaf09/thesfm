@@ -55,10 +55,10 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
 
   // DebtCurrent includes current maturities and short-term debt. Never add
   // ShortTermBorrowings to it. LongTermDebt alone does not establish total debt.
-  const allCurrent = select(us('DebtCurrent', 'LongTermDebtAndCapitalLeaseObligationsCurrent'));
-  const currentMaturities = select(us('LongTermDebtCurrent', 'LongTermDebtAndFinanceLeaseObligationsCurrent'));
-  const noncurrent = select(us('LongTermDebtNoncurrent', 'LongTermDebtAndFinanceLeaseObligationsNoncurrent'));
-  const longTotal = select(us('LongTermDebt', 'LongTermDebtAndFinanceLeaseObligations'));
+  const allCurrent = select(us('DebtCurrent'));
+  const currentMaturities = select(us('LongTermDebtCurrent', 'LongTermDebtAndFinanceLeaseObligationsCurrent', 'LongTermDebtAndCapitalLeaseObligationsCurrent'));
+  const noncurrent = select(us('LongTermDebtNoncurrent', 'LongTermDebtAndFinanceLeaseObligationsNoncurrent', 'LongTermDebtAndCapitalLeaseObligations'));
+  const longTotal = select(us('LongTermDebt', 'LongTermDebtAndFinanceLeaseObligations', 'LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities'));
   const short = select(us('ShortTermBorrowings', 'ShortTermDebtCurrent', 'CommercialPaper'));
   // Compare disjoint alternatives rather than dropping a reported long-term
   // total just because a current-only balance also exists. Never add the
@@ -69,7 +69,7 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
 
   // Debt securities are NOT interchangeable with all marketable securities or
   // long-term investments (which may include equities and operating holdings).
-  const debtSecurities = select(us('AvailableForSaleSecuritiesDebtSecurities'));
+  const debtSecurities = select(us('DebtSecurities', 'AvailableForSaleSecuritiesDebtSecurities'));
   const currentSecurities = select(us('AvailableForSaleSecuritiesDebtSecuritiesCurrent', 'HeldToMaturitySecuritiesCurrent'));
   const longSecurities = select(us('AvailableForSaleSecuritiesDebtSecuritiesNoncurrent', 'HeldToMaturitySecuritiesNoncurrent'));
   emit('interest_bearing_securities', debtSecurities ? [debtSecurities] : [currentSecurities, longSecurities], 'lower', 'Disclosed debt-security lower bound; unknown trading/held-to-maturity categories are not zero.');
@@ -78,11 +78,13 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
   // Annual / quarterly / year-to-date values must never be divided across periods.
   const income = candidates(payload, [...us('RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'), ...ifrs('Revenue')], now)
     .find(fact => fact.start && fact.end === assets.end && fact.accn === assets.accn && fact.unit === assets.unit);
-  if (income) {
-    emit('total_income', [income], 'exact', 'Consolidated reported revenue for this exact start/end period.');
-    const interest = select([...us('InvestmentIncomeInterest', 'InterestIncomeNonoperating'), ...ifrs('InterestIncome')], income);
-    emit('interest_income', [interest], 'lower', 'Reported gross interest-income lower bound; never net interest, expense or broad non-operating profit.');
-  }
+  if (income) emit('total_income', [income], 'exact', 'Consolidated reported revenue for this exact start/end period.');
+  // Gross interest is useful evidence even when a bank reports only net revenue.
+  // Never replace the missing gross-revenue denominator with net-interest revenue.
+  const interestTags = [...us('InterestIncomeOperating', 'InvestmentIncomeInterest', 'InterestIncomeNonoperating'), ...ifrs('InterestIncome')];
+  const interest = income ? select(interestTags, income) : candidates(payload, interestTags, now).find(fact => fact.start
+    && fact.end === assets.end && fact.accn === assets.accn && fact.unit === assets.unit);
+  emit('interest_income', [interest], 'lower', 'Reported gross interest-income lower bound; never net interest, expense or broad non-operating profit.');
   // No standard tag proves that all prohibited operating revenue is zero.
   // A separately sourced, quantified activity/revenue breakdown is required.
   return values;

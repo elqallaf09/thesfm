@@ -5,12 +5,24 @@ import type { BusinessScreenResult, EvidenceItem, FinancialValue, SecurityIdenti
 const BUSINESS_TYPES = new Set(['company_ir', 'annual_report', 'quarterly_report', 'fund_prospectus', 'sharia_board_document']);
 const ISLAMIC_INSTITUTION = /\b(?:islamic bank|islamic banking|takaful|shariah?[- ](?:compliant|based) (?:bank|financial institution))\b|بنك إسلامي|مصرف إسلامي/i;
 const DIRECT: Record<string, RegExp> = {
-  conventional_financial_services: /\b(?:we are|the company is|our primary business is|our principal business is) (?:a |an )?(?:registered |regulated |national |state |leading )*(?:commercial bank|consumer lender|mortgage lender|conventional insurer|credit card issuer)\b/i,
+  conventional_financial_services: /\b(?:we are|the company is|our primary business is|our principal business is) (?:a |an )?(?:registered |regulated |national |state |leading )*(?:commercial bank|bank holding company|consumer lender|mortgage lender|conventional insurer|credit card issuer)\b/i,
   gambling: /\b(?:our principal business is operating|our primary business is operating) (?:a |an |the )?(?:casino|casinos|sports betting|gambling)\b/i,
   alcohol: /\b(?:we are|the company is|our principal business is) (?:a |an )?(?:brewery|distillery|wine producer|producer of alcoholic beverages)\b/i,
   tobacco_and_non_medical_cannabis: /\b(?:we (?:manufacture|produce)|the company (?:manufactures|produces)|our principal business is (?:manufacturing|producing)) (?:tobacco|cigarettes|recreational cannabis)\b/i,
   defense_and_weapons: /\b(?:we are|the company is|our principal business is) (?:a |an )?(?:weapons manufacturer|arms manufacturer|manufacturer of military weapons)\b/i,
 };
+
+
+/** Explicit issuer-subject legal status, not a customer or industry keyword. */
+function namedBankPrincipal(text: string, name: string) {
+  const tokens = name.match(/[a-z0-9]+|&/gi) ?? [];
+  if (tokens.length < 2) return undefined;
+  const issuer = tokens.join('[\\s.,]*');
+  const pattern = new RegExp(`\\b${issuer}[.,]*\\s+(?:is|operates as)\\s+(?:a |an )?(?:regulated )?bank holding company\\b`, 'i');
+  const match = pattern.exec(text);
+  if (!match || /\b(?:not|no longer|do not|does not)\b/i.test(text.slice(Math.max(0, match.index - 80), match.index))) return undefined;
+  return text.slice(match.index, match.index + match[0].length + 180);
+}
 
 export function analyzeBusinessEvidence(security: SecurityIdentity, documents: SourceDocument[], values: FinancialValue[], methodology: ShariaMethodology, evidence: EvidenceItem[], now: Date): BusinessScreenResult {
   const substantive = documents.filter(document => document.tier === 1 && document.reliability === 'official'
@@ -32,7 +44,7 @@ export function analyzeBusinessEvidence(security: SecurityIdentity, documents: S
 
   // Institution exception is checked BEFORE any conventional-finance phrase.
   if (substantive.some(document => ISLAMIC_INSTITUTION.test(document.extractedText))) {
-    return result('review', 'An Islamic financial institution requires a documented institution-level Shariah review; ordinary corporate ratios are not an institutional certification.');
+    return { ...result('review', 'An Islamic financial institution requires a documented institution-level Shariah review; ordinary corporate ratios are not an institutional certification.'), institutionalReviewRequired: true };
   }
   for (const [category, terms] of Object.entries(methodology.businessRules.supportingKeywords)) {
     const categoryEvidence: EvidenceItem[] = [];
@@ -40,10 +52,12 @@ export function analyzeBusinessEvidence(security: SecurityIdentity, documents: S
     for (const document of substantive) {
       // Same-sentence principal-activity evidence, not adjacent customer/risk-factor mentions.
       const sentences = document.extractedText.split(/(?<=[.!?])\s+|\n+/);
-      const sentence = sentences.find(text => terms.some(term => text.toLowerCase().includes(term.toLowerCase())));
+      const namedDirect = category === 'conventional_financial_services' ? namedBankPrincipal(document.extractedText, security.name) : undefined;
+      const sentence = sentences.find(text => terms.some(term => text.toLowerCase().includes(term.toLowerCase()))) ?? namedDirect;
       if (!sentence) continue;
       const direct = sentences.find(text => DIRECT[category]?.test(text)
-        && !/\b(?:not|no longer|do not|does not|ceased)\b/i.test(text));
+        && !/\b(?:not|no longer|do not|does not|ceased)\b/i.test(text))
+        ?? namedDirect;
       const item: EvidenceItem = {
         id: randomUUID(), documentId: document.id, category: 'business_activity', conclusion: direct ? `Direct principal activity: ${category}` : `Activity mention requiring context: ${category}`,
         excerpt: (direct ?? sentence).slice(0, 1_200), sourceUrl: document.sourceUrl, sourceTitle: document.sourceTitle,

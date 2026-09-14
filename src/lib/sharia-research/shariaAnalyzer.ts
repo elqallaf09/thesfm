@@ -148,6 +148,7 @@ export function analyzeShariaEvidence(input: {
 
   let classification: ShariaScreeningResult['classification'];
   if (conflicts.length > 0) classification = 'conflicting_evidence';
+  else if (business.institutionalReviewRequired) classification = 'requires_review';
   else if (business.status === 'fail' || failedChecks.length > 0) classification = 'non_compliant';
   else if (stale) classification = 'insufficient_current_data';
   else if (unavailableChecks.length > 0) classification = 'insufficient_current_data';

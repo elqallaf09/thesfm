@@ -208,6 +208,7 @@ export type RatioResult = {
 };
 
 export type BusinessScreenResult = {
+  institutionalReviewRequired?: boolean;
   status: 'pass' | 'fail' | 'review' | 'unavailable';
   detectedActivities: Array<{
     category: string;
