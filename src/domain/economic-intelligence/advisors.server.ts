@@ -8,6 +8,7 @@ import { loadAdvisorDecisionMemoryFacts } from './decisionMemory.server';
 import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspaceBrain';
 import { highestDailyPriority } from './dailyPriority';
 import { buildEconomicIntelligenceReadiness } from './readiness';
+import { loadReadinessConfirmations } from './readinessConfirmations.server';
 
 type LoadAdvisorGroundingOptions = {
   userId: string;
@@ -94,9 +95,10 @@ function crossWorkspaceFacts(evidence: WorkspaceEvidence) {
 }
 
 export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions): Promise<AdvisorGrounding> {
-  const [{ rows, profile }, decisionMemoryFacts] = await Promise.all([
+  const [{ rows, profile }, decisionMemoryFacts, confirmations] = await Promise.all([
     loadRows(options.userId),
     loadAdvisorDecisionMemoryFacts(options.userId).catch(() => []),
+    loadReadinessConfirmations(options.userId).catch(() => []),
   ]);
   const currency = normalizeCurrency(options.currency)
     ?? normalizeCurrency(profile?.default_currency)
@@ -107,7 +109,7 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
   const twin = buildFinancialTwinSnapshot({ income: rows.income, expenses: rows.expenses, debts: rows.debts, savings: rows.savings, investments: rows.investments }, currency);
   const forecast = forecastFinancialTwin(twin, 12);
   const evidence = workspaceEvidence(rows, twin);
-  const readiness = buildEconomicIntelligenceReadiness(evidence);
+  const readiness = buildEconomicIntelligenceReadiness(evidence, confirmations);
 
   const country = normalizeCountry(options.country) ?? normalizeCountry(profile?.country);
   const contextResult = country ? await loadEconomicContext(country).catch(() => null) : null;
@@ -120,7 +122,7 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
     economicContext,
     impacts,
     hasMarketEvidence: options.hasMarketEvidence || rows.watchlist.length > 0 || rows.marketAlerts.length > 0,
-    hasBusinessEvidence: rows.projects.length > 0,
+    hasBusinessEvidence: rows.projects.length > 0 || confirmations.includes('no_business_projects'),
     decisionMemoryFacts,
     crossWorkspaceFacts: crossWorkspaceFacts(evidence),
     readiness,
