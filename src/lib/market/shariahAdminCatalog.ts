@@ -10,10 +10,11 @@ import { SHARIAH_STATUSES, type ShariahStatus } from '@/lib/market/shariah-scree
 export async function computeShariahCounts(admin: SupabaseClient): Promise<Record<ShariahStatus, number>> {
   const counts: Record<ShariahStatus, number> = { compliant: 0, non_compliant: 0, needs_review: 0, unclassified: 0 };
   await Promise.all(SHARIAH_STATUSES.map(async status => {
-    const { count } = await admin
+    const { count, error } = await admin
       .from('market_symbols')
       .select('id', { count: 'exact', head: true })
-      .eq('shariah_status', status);
+      .eq('shariah_status', status).eq('is_active', true);
+    if (error || count === null) throw new Error('SHARIAH_COUNTS_UNAVAILABLE');
     counts[status] = count ?? 0;
   }));
   return counts;

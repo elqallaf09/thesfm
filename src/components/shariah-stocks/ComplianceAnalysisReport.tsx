@@ -166,6 +166,7 @@ function buildRatioViews(result: ShariaScreeningResult, locale: Lang, tr: Sharia
       name: localizedRatioName(ratio, locale, tr),
       value: ratio.value,
       threshold: ratio.threshold,
+      operator: ratio.operator ?? rule?.operator ?? '<=',
       status: statusLabel(ratio.status, tr),
       statusCode: ratio.status,
       explanation: ratioExplanation(ratio.status, tr),
@@ -176,6 +177,7 @@ function buildRatioViews(result: ShariaScreeningResult, locale: Lang, tr: Sharia
       sourceSection: rule?.sourceSection ?? '',
     };
   });
+  if (financial.some(ratio => ratio.id === 'combined-non-permissible-income-to-revenue')) return financial;
   const exposure = result.businessScreen.prohibitedRevenueRatio;
   const incomeStatus: RatioView['statusCode'] = exposure === null
     ? 'unavailable'
@@ -392,6 +394,18 @@ export function ComplianceSummaryCard({
           </div>
         </div>
       </div>
+      {result.evidenceVersion === 'sfm-evidence-v2' ? (
+        <div className={styles.scorePanels}>
+          <div className={styles.confidencePanel}>
+            <div><span>{locale === 'ar' ? 'اختبارات مالية محسومة بالدليل' : locale === 'fr' ? 'Tests financiers établis' : 'Evidence-supported financial checks'}</span><strong dir="ltr">{result.financialRatios.filter(rule => rule.status !== 'unavailable').length} / {result.financialRatios.length}</strong></div>
+            <small>{locale === 'ar' ? 'عدد الفحوص المكتملة، وليس احتمال صحة الحكم الشرعي.' : locale === 'fr' ? 'Nombre de tests établis, pas une probabilité de conformité.' : 'Completed checks, not a probability that the religious conclusion is correct.'}</small>
+          </div>
+          <div className={styles.confidencePanel}>
+            <div><span>{locale === 'ar' ? 'حقول تحتاج أدلة مكتملة' : locale === 'fr' ? 'Champs à compléter' : 'Fields requiring complete evidence'}</span><strong>{result.missingFinancialFields?.length ?? '—'}</strong></div>
+            <small>{locale === 'ar' ? 'قد يكفي حد أدنى موثق لإثبات مخالفة؛ لا يكفي لإثبات التوافق.' : locale === 'fr' ? 'Une borne inférieure peut prouver un échec, jamais une réussite.' : 'A documented lower bound can establish failure, never a pass.'}</small>
+          </div>
+        </div>
+      ) : (
       <div className={styles.scorePanels}>
         <div className={styles.confidencePanel}>
           <div><span>{tr('sharia_research_confidence')}</span><strong>{formatPercent(result.confidence / 100, locale, { maximumFractionDigits: 0 })}</strong></div>
@@ -404,6 +418,7 @@ export function ComplianceSummaryCard({
           <small>{tr('sharia_research_classification_confidence_note')}</small>
         </div>
       </div>
+      )}
       <p className={styles.resultExplanation}>{tr(classificationExplanationKey(result.classification))}</p>
       <dl className={styles.verificationGrid}>
         <div><dt>{tr('sharia_research_verified')}</dt><dd>{formatDateTime(result.security.lastVerifiedAt || result.retrievedAt, locale) || tr('sharia_research_unavailable_value')}</dd></div>
@@ -422,8 +437,8 @@ export function ComplianceRatioCard({ ratio, locale, tr }: { ratio: RatioView; l
     <article className={styles.ratioCard} data-ratio-status={ratio.statusCode}>
       <div className={styles.ratioHeader}><h3>{ratio.name}</h3><ComplianceStatusBadge status={ratio.statusCode} tr={tr} /></div>
       <div className={styles.ratioValues}>
-        <div><span>{tr('sharia_research_actual_value')}</span><strong dir="ltr">{ratio.value === null ? '—' : formatPercent(ratio.value, locale, { maximumFractionDigits: 2 })}</strong></div>
-        <div><span>{tr('sharia_research_allowed_threshold')}</span><strong dir="ltr">≤ {formatPercent(ratio.threshold, locale, { maximumFractionDigits: 2 })}</strong></div>
+        <div><span>{tr('sharia_research_actual_value')}</span><strong dir="ltr">{ratio.value === null ? '—' : formatPercent(ratio.value, locale, { maximumFractionDigits: 3 })}</strong></div>
+        <div><span>{tr('sharia_research_allowed_threshold')}</span><strong dir="ltr">{ratio.operator === '<' ? '<' : '≤'} {formatPercent(ratio.threshold, locale, { maximumFractionDigits: 3 })}</strong></div>
       </div>
       <div className={styles.ratioTrack} aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
       <p>{ratio.explanation}</p>
@@ -769,7 +784,7 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
           <dl className={styles.businessFacts}>
             <div><dt>{tr('sharia_research_primary_activity')}</dt><dd dir="auto">{primaryActivity}</dd></div>
             <div><dt>{tr('sharia_research_activity_permissible')}</dt><dd><ComplianceStatusBadge status={businessStatus} tr={tr} /></dd></div>
-            <div><dt>{tr('sharia_research_revenue_exposure')}</dt><dd dir="ltr">{result.businessScreen.prohibitedRevenueRatio === null ? '—' : formatPercent(result.businessScreen.prohibitedRevenueRatio, locale, { maximumFractionDigits: 2 })}</dd></div>
+            <div><dt>{tr('sharia_research_revenue_exposure')}</dt><dd dir="ltr">{result.businessScreen.prohibitedRevenueRatio === null ? '—' : formatPercent(result.businessScreen.prohibitedRevenueRatio, locale, { maximumFractionDigits: 3 })}</dd></div>
             <div><dt>{tr('sharia_research_suspected_activities')}</dt><dd>{suspectedActivities.length ? suspectedActivities.join(' · ') : tr('sharia_research_no_suspected_activities')}</dd></div>
           </dl>
           <div className={styles.businessExplanation}><strong>{tr('sharia_research_business_explanation')}</strong><p>{localizedBusinessReason(result.businessScreen, result.classification, tr)}</p></div>
@@ -786,8 +801,8 @@ export function ComplianceAnalysisReport({ result, locale, tr, sourceStatus, par
               <div><h3>{ratio.name}</h3><ComplianceStatusBadge status={ratio.statusCode} tr={tr} /></div>
               <dl>
                 <div><dt>{tr('sharia_research_calculation_method')}</dt><dd>{ratio.fields.map(calculationName).join(' + ')} ÷ {ratio.denominator ? calculationName(ratio.denominator) : tr('sharia_research_unavailable_value')}</dd></div>
-                <div><dt>{tr('sharia_research_calculation_inputs')}</dt><dd>{ratio.inputs.length ? ratio.inputs.map(input => `${calculationName(input.normalizedField)}: ${formatNumber(input.value, locale, { maximumFractionDigits: 2 })} ${input.currency}`).join(' · ') : tr('sharia_research_unavailable_value')}</dd></div>
-                <div><dt>{tr('sharia_research_allowed_threshold')}</dt><dd dir="ltr">≤ {formatPercent(ratio.threshold, locale, { maximumFractionDigits: 2 })}</dd></div>
+                <div><dt>{tr('sharia_research_calculation_inputs')}</dt><dd>{ratio.inputs.length ? ratio.inputs.map(input => `${calculationName(input.normalizedField)}: ${formatNumber(input.value, locale, { maximumFractionDigits: 3 })} ${input.currency}`).join(' · ') : tr('sharia_research_unavailable_value')}</dd></div>
+                <div><dt>{tr('sharia_research_allowed_threshold')}</dt><dd dir="ltr">{ratio.operator === '<' ? '<' : '≤'} {formatPercent(ratio.threshold, locale, { maximumFractionDigits: 3 })}</dd></div>
                 <div><dt>{tr('sharia_research_methodology_reference')}</dt><dd dir="ltr">{referenceNumbers(ratio.sourceSection)}</dd></div>
               </dl>
             </article>

@@ -55,6 +55,8 @@ function financial(document: SourceDocument, field: FinancialValue['normalizedFi
     originalField,
     normalizedField: field,
     normalizationFormula: 'Direct test filing value.',
+    periodStart: ['total_income', 'interest_income', 'prohibited_revenue'].includes(field) ? '2026-02-01' : null,
+    validation: { version: 'sfm-evidence-v2', bound: 'exact', note: 'Synthetic verified test fixture; not a real security.' },
     form: '10-Q',
   };
 }

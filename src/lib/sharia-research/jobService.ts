@@ -1,4 +1,6 @@
 import 'server-only';
+import { EVIDENCE_VERSION } from './evidenceValidation';
+import { syncResearchResultToCatalog } from './catalogSync';
 
 import { createHash, randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -110,13 +112,14 @@ export async function findRecentCachedResult(admin: DbClient, userId: string, se
     .eq('security_id', securityId)
     .eq('methodology_id', methodologyId)
     .eq('methodology_version', methodologyVersion)
+    .eq('persistence_status', 'complete')
     .is('invalidated_at', null)
     .order('research_timestamp', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (response.error || !response.data) return null;
+  if (response.error || !response.data || response.data.result_payload?.evidenceVersion !== EVIDENCE_VERSION) return null;
   const age = Date.now() - new Date(response.data.research_timestamp).getTime();
-  if (!Number.isFinite(age) || age > 24 * 60 * 60 * 1000 || response.data.cache_state === 'outdated') return null;
+  if (!Number.isFinite(age) || age < 0 || age > 24 * 60 * 60 * 1000 || response.data.cache_state === 'outdated') return null;
   return {
     id: String(response.data.id),
     result: { ...(response.data.result_payload as ShariaScreeningResult), cacheState: 'recently_cached' as const },
@@ -261,6 +264,7 @@ async function persistResearchResult(admin: DbClient, input: {
     security: input.security,
     documents: input.result.documents.map(document => ({ ...document, id: documentIdMap.get(document.id) ?? document.id, extractedText: '' })),
     relatedNews: input.result.relatedNews.map(document => ({ ...document, id: documentIdMap.get(document.id) ?? document.id, extractedText: '' })),
+    financialRatios: input.result.financialRatios.map(ratio => ({ ...ratio, inputs: ratio.inputs.map(value => ({ ...value, documentId: documentIdMap.get(value.documentId) ?? value.documentId })) })),
     evidence: input.result.evidence.map(item => ({ ...item, documentId: documentIdMap.get(item.documentId) ?? item.documentId })),
   };
   const saved = await admin.from('sharia_screening_results').insert({
@@ -270,6 +274,7 @@ async function persistResearchResult(admin: DbClient, input: {
     security_id: input.security.id,
     methodology_id: input.result.methodology.id,
     methodology_version: input.result.methodology.version,
+    persistence_status: 'pending',
     classification: input.result.classification,
     confidence: input.result.confidence,
     reporting_period: input.result.reportingPeriod,
@@ -277,7 +282,7 @@ async function persistResearchResult(admin: DbClient, input: {
     source_count: input.result.sourceCount,
     source_quality_breakdown: input.result.sourceQualityBreakdown,
     business_screen: input.result.businessScreen,
-    financial_ratio_result: input.result.financialRatios,
+    financial_ratio_result: resultPayload.financialRatios,
     failed_checks: input.result.failedChecks,
     unavailable_checks: input.result.unavailableChecks,
     conflicts: input.result.conflicts,
@@ -289,6 +294,7 @@ async function persistResearchResult(admin: DbClient, input: {
   }).select('id').single();
   if (saved.error) throw new Error(`SCREENING_RESULT_SAVE_FAILED:${saved.error.message}`);
 
+  try {
   if (input.result.evidence.length > 0) {
     const evidenceRows = input.result.evidence.map(item => ({
       id: item.id,
@@ -325,9 +331,16 @@ async function persistResearchResult(admin: DbClient, input: {
       normalization_formula: value.normalizationFormula,
       accession_number: value.accessionNumber,
       form: value.form,
+      validation_metadata: { ...value.validation, periodStart: value.periodStart ?? null },
     }));
     const valuesSave = await admin.from('sharia_financial_values').insert(valueRows);
     if (valuesSave.error) throw new Error(`FINANCIAL_VALUES_SAVE_FAILED:${valuesSave.error.message}`);
+  }
+  const completed = await admin.from('sharia_screening_results').update({ persistence_status: 'complete' }).eq('id', resultId);
+  if (completed.error) throw new Error('RESULT_COMPLETION_SAVE_FAILED');
+  } catch (error) {
+    await admin.from('sharia_screening_results').update({ persistence_status: 'failed', invalidated_at: new Date().toISOString() }).eq('id', resultId);
+    throw error;
   }
   return { resultId, resultPayload };
 }
@@ -381,6 +394,7 @@ export async function processResearchJob(admin: DbClient, jobId: string, userId:
       result: researched.result,
       financialValues: researched.financialValues,
     });
+    await syncResearchResultToCatalog(admin, researched.result);
     await admin.from('sharia_research_jobs').update({
       status: 'completed',
       progress: 100,

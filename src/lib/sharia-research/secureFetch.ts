@@ -186,11 +186,14 @@ function sleep(milliseconds: number, signal?: AbortSignal) {
 }
 
 async function rateLimitDomain(hostname: string, intervalMs: number, signal?: AbortSignal) {
-  const key = hostname.toLowerCase();
+  const sec = /(^|\.)sec\.gov$/i.test(hostname);
+  const key = sec ? 'sec.gov' : hostname.toLowerCase();
+  const spacing = sec ? Math.max(intervalMs, 500) : intervalMs;
   const now = Date.now();
-  const next = domainNextRequestAt.get(key) ?? now;
-  if (next > now) await sleep(next - now, signal);
-  domainNextRequestAt.set(key, Date.now() + intervalMs);
+  const slot = Math.max(now, domainNextRequestAt.get(key) ?? now);
+  // Reserve before waiting: concurrent requests must not wake into the same slot.
+  domainNextRequestAt.set(key, slot + spacing);
+  if (slot > now) await sleep(slot - now, signal);
 }
 
 function cacheKey(url: URL, options: SecureFetchOptions) {

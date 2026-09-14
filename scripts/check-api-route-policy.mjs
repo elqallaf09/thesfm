@@ -13,6 +13,7 @@ const allowedExceptions = new Map([
   ['src/app/api/admin/me/route.ts', 'admin-self-inspection'],
   ['src/app/api/health/database/route.ts', 'public-health-admin-details'],
   ['src/app/api/market-news/ingest/route.ts', 'cron-or-admin-news-ingest'],
+  ['src/app/api/market/shariah/refresh/route.ts', 'cron-or-admin-shariah-refresh'],
   ['src/app/api/market/signals/refresh/route.ts', 'cron-or-admin-signal-refresh'],
 ]);
 const sensitiveHybridRoutes = new Set([
