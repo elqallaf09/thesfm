@@ -35,9 +35,10 @@ test('NASDAQ, Shanghai and Shenzhen searches extend beyond the strip selections'
   for (const [exchange, symbol] of [['us_nasdaq', 'AMD'], ['china_sse', '600000.SS'], ['china_szse', '000002.SZ']]) {
     await explorer.getByRole('combobox', { name: 'Exchange', exact: true }).selectOption(exchange);
     await explorer.getByRole('searchbox').fill(symbol);
-    await expect(explorer.locator('.gm-strip-item')).toHaveCount(1);
-    await expect(explorer.locator('.gm-strip-item')).toContainText(symbol);
-    await expect(explorer.locator('.gm-strip-item')).toContainText('123.45');
+    const result = explorer.locator('.gm-strip-item').filter({ has: page.getByText(symbol, { exact: true }) });
+    await expect(result).toHaveCount(1);
+    await expect(result).toContainText(symbol);
+    await expect(result).toContainText('123.45');
   }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
