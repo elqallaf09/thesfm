@@ -18,6 +18,11 @@ export type WorkspaceEvidence = {
     trader: string | null;
     business: string | null;
   };
+  recordCounts?: Partial<Record<
+    'monthly_income_sources' | 'expense_items' | 'debts' | 'savings_items' | 'investment_items' |
+    'market_watchlist' | 'market_price_alerts' | 'projects' | 'project_funding_readiness',
+    number
+  >>;
 };
 
 export type CrossWorkspaceBriefItem = {
