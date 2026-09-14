@@ -130,3 +130,23 @@ test('saving markets still works when browser storage is unavailable', async ({ 
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('.gm-strip-heading-label').last()).toHaveText('Crypto');
 });
+
+test('saved selections reserve the same summary height for short and long market names', async ({ page }) => {
+  await prepare(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/global-markets');
+  await expect(page.locator('.gm-strip[aria-busy="false"]')).toHaveCount(4);
+  const before = await page.locator('.gm-selection').boundingBox();
+  await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Remove: Forex', exact: true }).click();
+  await dialog.getByRole('checkbox', { name: 'Commodities & Metals', exact: true }).click();
+  await dialog.getByRole('button', { name: /Save markets/ }).click();
+  await expect(page.locator('.gm-selection-chips')).toContainText('Commodities & Metals');
+  const after = await page.locator('.gm-selection').boundingBox();
+  expect(after?.height).toBe(before?.height);
+  await page.reload();
+  await expect(page.locator('.gm-selection-chips')).toContainText('Commodities & Metals');
+  const reloaded = await page.locator('.gm-selection').boundingBox();
+  expect(reloaded?.height).toBe(before?.height);
+});

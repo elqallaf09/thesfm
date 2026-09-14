@@ -71,6 +71,7 @@ export function GlobalMarketsNewsFilters({ lang, value, sources, onApply }: {
         .gm-news-filter-panel .gm-news-filter-error { color:var(--danger); }
         .gm-news-filter-panel :is(input,select,button):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
         @media(max-width:900px) { .gm-news-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+        @media(max-width:640px) { .gm-news-filters input,.gm-news-filters select { font-size:16px; } }
         @media(max-width:480px) { .gm-news-filters { grid-template-columns:1fr; } .gm-news-filter-actions button { flex:1; } }
       `}</style>
     </form>

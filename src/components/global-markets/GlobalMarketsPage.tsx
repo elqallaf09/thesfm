@@ -120,7 +120,7 @@ export function GlobalMarketsPage() {
         <section className="gm-selection" aria-label={selectedLabel}>
           <div>
             <strong>{selectedLabel}: {selectedIds.length} / {GLOBAL_MARKETS_SELECTION_SIZE}</strong>
-            <ul className="gm-selection-chips">{selectedStrips.map(strip => <li key={strip.id}>{lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn}</li>)}</ul>
+            <ul className="gm-selection-chips">{selectedStrips.map(strip => <li key={strip.id} title={lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn}>{lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn}</li>)}</ul>
           </div>
           <button type="button" onClick={() => setPickerOpen(true)}>
             <Settings2 size={17} aria-hidden="true" /> {customizeLabel}

@@ -133,8 +133,8 @@ export function GlobalMarketsLayoutStyles() {
 
       .gm-selection > div { flex: 1; display: grid; gap: 4px; min-width: 0; }
       .gm-selection strong { font-size: 13px; color: var(--foreground); }
-      .gm-selection-chips { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
-      .gm-selection-chips li { padding: 5px 9px; border-radius: var(--radius-control); background: var(--accent-soft); color: var(--foreground); font-size: 12px; line-height: 1.5; }
+      .gm-selection-chips { list-style: none; padding: 0; margin: 6px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+      .gm-selection-chips li { min-width: 0; block-size: 48px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding: 5px 9px; border-radius: var(--radius-control); background: var(--accent-soft); color: var(--foreground); font-size: 12px; line-height: 1.5; }
       .gm-selection > button { background: var(--accent); border-color: var(--accent); color: var(--accent-foreground); flex: none; }
       .gm-header-refresh:disabled { opacity: .55; cursor: wait; }
       .gm-header button:focus-visible, .gm-selection button:focus-visible, .gm-picker button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -223,6 +223,8 @@ export function GlobalMarketsLayoutStyles() {
         .gm-header-icon { inline-size: 36px; block-size: 36px; }
         .gm-header-updated { display: block; }
         .gm-strips { gap: 9px; }
+        .gm-selection-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .gm-picker-search input { font-size: 16px; }
         .gm-selection { align-items: stretch; flex-direction: column; }
         .gm-selection button { width: 100%; }
         .gm-picker-options { grid-template-columns: 1fr; }
