@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.1.3",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:debug": "NODE_OPTIONS='--inspect' next dev",
@@ -14,7 +17,8 @@
     "check:visual-system": "node scripts/check-visual-system.mjs",
     "check:prod-endpoints": "node scripts/check-production-endpoints.mjs",
     "check:public-env": "node scripts/check-public-env.mjs",
-    "check:api-policy": "node scripts/check-api-route-policy.mjs",
+    "check:page-routes": "node scripts/check-page-route-ownership.mjs",
+    "check:api-policy": "node scripts/check-api-route-policy.mjs && node scripts/check-page-route-ownership.mjs",
     "check:schema-drift-parser": "node scripts/check-supabase-migration-drift.mjs --self-test",
     "check:launch": "pnpm exec tsc --noEmit --pretty false && pnpm lint && pnpm check:i18n && pnpm check:maintainability && pnpm check:repo-hygiene && pnpm check:visual-system && pnpm check:prod-endpoints && pnpm check:public-env && pnpm check:api-policy && pnpm test:run && pnpm build && pnpm check:performance-budget",
     "check:performance-budget": "node scripts/check-performance-budget.mjs",
@@ -32,7 +36,8 @@
     "test:ui": "vitest --ui",
     "preview": "next start",
     "preview:test": "next start",
-    "qa:visual": "node scripts/qa-full-capture.mjs"
+    "qa:visual": "node scripts/qa-full-capture.mjs",
+    "routes:inventory": "node scripts/release/generate-route-inventory.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",

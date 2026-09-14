@@ -295,7 +295,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "frame-ancestors 'self'",
+            value: "base-uri 'self'; object-src 'none'; frame-ancestors 'self'",
           },
           {
             key: "X-Content-Type-Options",

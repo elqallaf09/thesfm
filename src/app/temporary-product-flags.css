@@ -1,0 +1,13 @@
+/*
+ * Temporary production-facing feature visibility overrides.
+ *
+ * Paid membership checkout remains implemented server-side, but customer-facing
+ * pricing and membership-management UI is intentionally hidden until billing is
+ * ready to be reopened. Business/client recurring-expense tools are unrelated
+ * product features and remain visible.
+ */
+.landing-page #pricing,
+.landing-page .landing-links a[href="#pricing"],
+.profile-section:has(.premium-layout) {
+  display: none !important;
+}

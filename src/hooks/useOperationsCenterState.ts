@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { OperationsCenterState } from '@/lib/admin/opsCenter/types';
+import { buildTruthfulFeatureHealth, buildTruthfulOverview } from '@/lib/admin/opsCenter/healthTruth';
 import { getOrCreateFetchStore } from '@/lib/market-state/sharedFetchStore';
 
 const OPS_CENTER_URL = '/api/admin/ops-center';
@@ -11,7 +12,12 @@ const MIN_REFETCH_INTERVAL_MS = 5_000;
 async function fetchOperationsCenterState(signal: AbortSignal): Promise<OperationsCenterState> {
   const response = await fetch(OPS_CENTER_URL, { signal });
   const payload = (await response.json()) as { ok: boolean; state: OperationsCenterState };
-  return payload.state;
+  const featureHealth = buildTruthfulFeatureHealth(payload.state);
+  return {
+    ...payload.state,
+    featureHealth,
+    overview: buildTruthfulOverview(payload.state, featureHealth),
+  };
 }
 
 const store = getOrCreateFetchStore(OPS_CENTER_URL, fetchOperationsCenterState, { minRefetchIntervalMs: MIN_REFETCH_INTERVAL_MS });
@@ -19,7 +25,8 @@ const store = getOrCreateFetchStore(OPS_CENTER_URL, fetchOperationsCenterState, 
 /**
  * Mirrors useMarketSystemState.ts's shape exactly: one shared fetch store (mounting this in
  * multiple tabs still issues one request), 60s polling paused while the tab is hidden, immediate
- * refetch on becoming visible again.
+ * refetch on becoming visible again. Before the snapshot enters the store, historical failures
+ * and redundant-provider configuration are normalized out of the current-health summary.
  */
 export function useOperationsCenterState() {
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);

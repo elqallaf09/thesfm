@@ -53,7 +53,20 @@ describe('buildRootCauseIssues', () => {
     expect(issues[0].lastOccurrence).toBe('2026-07-11T01:00:00.000Z');
   });
 
-  it('marks a misconfigured provider as not retry-available (needs manual config, not a retry)', () => {
+  it('does not treat a broken redundant provider as an active root cause when a connected fallback serves the same capability', () => {
+    const issues = buildRootCauseIssues({
+      market: market([
+        cell({ provider: 'marketstack', status: 'misconfigured', healthy: false, lastErrorReason: 'marketstack_not_configured' }),
+        cell({ provider: 'twelvedata', status: 'connected', healthy: true }),
+      ]),
+      marketNews: [],
+      shariahJobs: [],
+      reminderRuns: [],
+    });
+    expect(issues).toEqual([]);
+  });
+
+  it('marks a misconfigured provider as not retry-available when no connected fallback exists', () => {
     const issues = buildRootCauseIssues({
       market: market([cell({ status: 'misconfigured', lastErrorReason: 'fmp_not_configured' })]),
       marketNews: [],
@@ -64,7 +77,7 @@ describe('buildRootCauseIssues', () => {
     expect(issues[0].suggestedFixKey).toBe('ops_center_fix_check_configuration');
   });
 
-  it('marks a disconnected provider as critical severity', () => {
+  it('marks a disconnected provider as critical severity when the capability has no connected fallback', () => {
     const issues = buildRootCauseIssues({
       market: market([cell({ status: 'disconnected', lastErrorReason: 'provider_temporarily_unavailable' })]),
       marketNews: [],
@@ -87,7 +100,7 @@ describe('buildRootCauseIssues', () => {
     expect(issues).toEqual([]);
   });
 
-  it('surfaces a real market-news provider failure with lastFailedFetch as the last occurrence', () => {
+  it('surfaces a real market-news provider failure with lastFailedFetch as the last occurrence when no healthy alternative exists', () => {
     const newsProvider: MarketNewsAdminProviderStatus = {
       providerId: 'rss-example', providerName: 'Example RSS', sourceType: 'public_rss', sourceDomain: 'example.com',
       reliabilityScore: 0.5, priority: 1, officialSource: false, supportedMarkets: [], enabled: true,
@@ -100,7 +113,24 @@ describe('buildRootCauseIssues', () => {
     expect(issues[0]).toMatchObject({ severity: 'critical', affectedFeature: 'news', lastOccurrence: '2026-07-10T12:00:00.000Z' });
   });
 
-  it('surfaces a failed Shariah research job with both first (createdAt) and last (completedAt) occurrence, since that source genuinely tracks both', () => {
+  it('does not promote one failed news source to an active platform issue while another enabled source is healthy', () => {
+    const failed: MarketNewsAdminProviderStatus = {
+      providerId: 'rss-bad', providerName: 'Bad RSS', sourceType: 'public_rss', sourceDomain: 'bad.example',
+      reliabilityScore: 0.5, priority: 2, officialSource: false, supportedMarkets: [], enabled: true,
+      healthStatus: 'unhealthy', lastSuccessfulFetch: null, lastFailedFetch: '2026-07-10T12:00:00.000Z',
+      averageLatency: null, failureCount: 5, rateLimitState: 'none', disabledUntil: null,
+      latestErrorSummary: 'upstream_error', latestFetch: null,
+    };
+    const healthy: MarketNewsAdminProviderStatus = {
+      ...failed,
+      providerId: 'rss-good', providerName: 'Good RSS', sourceDomain: 'good.example',
+      healthStatus: 'healthy', failureCount: 0, latestErrorSummary: null,
+    };
+    const issues = buildRootCauseIssues({ market: market([]), marketNews: [failed, healthy], shariahJobs: [], reminderRuns: [] });
+    expect(issues).toEqual([]);
+  });
+
+  it('surfaces a failed Shariah research job with both first and last occurrence', () => {
     const issues = buildRootCauseIssues({
       market: market([]),
       marketNews: [],
@@ -110,13 +140,30 @@ describe('buildRootCauseIssues', () => {
     expect(issues[0]).toMatchObject({ firstOccurrence: '2026-07-10T00:00:00.000Z', lastOccurrence: '2026-07-10T00:05:00.000Z', retryAvailable: true });
   });
 
-  it('surfaces a failed subscription-reminder run but never marks it retry-available (no real retry mechanism exists for this source)', () => {
+  it('keeps only the latest reminder outcome per run type so a recovered schedule does not remain an active warning', () => {
     const issues = buildRootCauseIssues({
       market: market([]),
       marketNews: [],
       shariahJobs: [],
-      reminderRuns: [{ id: 'run-1', runType: 'scheduled', status: 'failed', startedAt: '2026-07-10T00:00:00.000Z', finishedAt: '2026-07-10T00:01:00.000Z', emailSentCount: 2, emailFailedCount: 3, message: 'smtp_not_configured' }],
+      reminderRuns: [
+        { id: 'run-new', runType: 'scheduled', status: 'completed', startedAt: '2026-07-11T00:00:00.000Z', finishedAt: '2026-07-11T00:01:00.000Z', emailSentCount: 5, emailFailedCount: 0, message: null },
+        { id: 'run-old', runType: 'scheduled', status: 'failed', startedAt: '2026-07-10T00:00:00.000Z', finishedAt: '2026-07-10T00:01:00.000Z', emailSentCount: 2, emailFailedCount: 3, message: 'smtp_not_configured' },
+      ],
     });
-    expect(issues[0]).toMatchObject({ affectedFeature: 'email', retryAvailable: false });
+    expect(issues).toEqual([]);
+  });
+
+  it('surfaces the latest failed subscription-reminder run but never marks it retry-available', () => {
+    const issues = buildRootCauseIssues({
+      market: market([]),
+      marketNews: [],
+      shariahJobs: [],
+      reminderRuns: [
+        { id: 'run-new', runType: 'scheduled', status: 'failed', startedAt: '2026-07-11T00:00:00.000Z', finishedAt: '2026-07-11T00:01:00.000Z', emailSentCount: 2, emailFailedCount: 3, message: 'smtp_not_configured' },
+        { id: 'run-old', runType: 'scheduled', status: 'failed', startedAt: '2026-07-10T00:00:00.000Z', finishedAt: '2026-07-10T00:01:00.000Z', emailSentCount: 0, emailFailedCount: 5, message: 'smtp_not_configured' },
+      ],
+    });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ id: 'reminder_run:run-new', affectedFeature: 'email', retryAvailable: false });
   });
 });

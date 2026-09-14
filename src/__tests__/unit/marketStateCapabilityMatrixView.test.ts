@@ -3,6 +3,7 @@ import {
   buildCapabilityMatrixView,
   buildProviderProfiles,
   DRAWER_CAPABILITY_ROWS,
+  isMeasuredCapabilityCell,
   STATUS_RANK,
 } from '@/lib/market-state/capabilityMatrixView';
 import type { ProviderCapabilityCell } from '@/lib/market-state/types';
@@ -35,7 +36,7 @@ describe('DRAWER_CAPABILITY_ROWS', () => {
 });
 
 describe('buildProviderProfiles', () => {
-  it('marks a provider degraded when one capability succeeds and another is rate limited', () => {
+  it('marks a provider degraded when one measured capability succeeds and another measured capability is rate limited', () => {
     const profiles = buildProviderProfiles([
       cell({ provider: 'fmp', capability: 'quotes', status: 'connected' }),
       cell({ provider: 'fmp', capability: 'earnings', status: 'rate_limited' }),
@@ -45,7 +46,7 @@ describe('buildProviderProfiles', () => {
     expect(STATUS_RANK.rate_limited).toBeGreaterThan(STATUS_RANK.connected);
   });
 
-  it('computes successRatePercent as the share of connected cells, not just configured ones', () => {
+  it('computes successRatePercent from measured cells', () => {
     const profiles = buildProviderProfiles([
       cell({ provider: 'twelvedata', capability: 'quotes', status: 'connected' }),
       cell({ provider: 'twelvedata', capability: 'forex', status: 'disconnected', healthy: false }),
@@ -54,9 +55,34 @@ describe('buildProviderProfiles', () => {
     expect(twelvedata?.successRatePercent).toBe(50);
   });
 
-  it('reports null successRatePercent for a provider with zero cells rather than fabricating 0 or 100', () => {
-    const profiles = buildProviderProfiles([]);
-    expect(profiles).toEqual([]);
+  it('does not count declaration-only degraded capability rows as failed health checks', () => {
+    const declarationOnly = cell({
+      provider: 'twelvedata',
+      capability: 'forex',
+      status: 'degraded',
+      healthy: false,
+      lastSuccessAt: null,
+      lastErrorAt: null,
+      lastErrorReason: null,
+      latencyMs: null,
+    });
+    expect(isMeasuredCapabilityCell(declarationOnly)).toBe(false);
+
+    const profiles = buildProviderProfiles([
+      cell({ provider: 'twelvedata', capability: 'quotes', status: 'connected', latencyMs: 80 }),
+      declarationOnly,
+    ]);
+    const twelvedata = profiles.find(profile => profile.provider === 'twelvedata');
+    expect(twelvedata?.successRatePercent).toBe(100);
+    expect(twelvedata?.status).toBe('connected');
+  });
+
+  it('reports null successRatePercent when a provider has no measured cells', () => {
+    const profiles = buildProviderProfiles([
+      cell({ provider: 'yahoo', status: 'unknown', healthy: false }),
+    ]);
+    expect(profiles[0]?.successRatePercent).toBeNull();
+    expect(profiles[0]?.status).toBe('unknown');
   });
 
   it('sorts profiles alphabetically by provider id', () => {
