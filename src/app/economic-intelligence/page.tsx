@@ -3,6 +3,7 @@ import { Archive, BrainCircuit, ChartNoAxesCombined, Landmark, LineChart, Sparkl
 import { EconomicIntelligenceHome } from '@/components/finance/EconomicIntelligenceHome';
 import { CrossWorkspaceEconomicBrief } from '@/components/finance/CrossWorkspaceEconomicBrief';
 import { EconomicResolutionHistory } from '@/components/finance/EconomicResolutionHistory';
+import { EconomicIntelligenceReadiness } from '@/components/finance/EconomicIntelligenceReadiness';
 import { FinanceDashboardIntelligence } from '@/components/finance/FinanceDashboardIntelligence';
 
 export default function EconomicIntelligencePage() {
@@ -23,6 +24,7 @@ export default function EconomicIntelligencePage() {
         </nav>
       </section>
 
+      <EconomicIntelligenceReadiness />
       <EconomicIntelligenceHome />
       <CrossWorkspaceEconomicBrief />
       <EconomicResolutionHistory />
