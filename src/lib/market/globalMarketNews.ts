@@ -16,7 +16,7 @@ export type MarketNewsMetadata = {
 const STRIP_BY_ID = new Map(GLOBAL_MARKET_STRIPS.map(strip => [strip.id, strip]));
 
 function assetTypeFor(kind: GlobalMarketStripKind) {
-  return kind === 'equity' ? 'stock' : kind;
+  return kind === 'forex' ? 'currency' : kind;
 }
 
 function normalized(values: string[] | undefined) {

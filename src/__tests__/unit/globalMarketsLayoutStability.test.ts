@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(path, 'utf8');
 describe('Global Markets asynchronous layout contracts', () => {
   it('renders selected strip shells independently of quote completion', () => {
     const page = read('src/components/global-markets/GlobalMarketsPage.tsx');
-    expect(page).toContain('selectedStrips.map((strip, slot)');
+    expect(page).toContain('selectedStrips.map(strip');
     expect(page).toContain('loading={loading}');
     expect(page).not.toContain('gm-strips-skeleton-row');
     const strip = read('src/components/market/MarketStrip.tsx');
