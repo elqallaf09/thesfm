@@ -57,15 +57,15 @@ export function useGlobalMarketDirectory(enabled: boolean, filters: GlobalDirect
     if (!page || page.nextOffset === null || appendLock.current) return;
     appendLock.current = true;
     setAppending(true);
+    performance.clearMarks('gm-explorer-append-start');
+    performance.clearMarks('gm-explorer-append-end');
+    performance.clearMeasures('gm-explorer-append');
     const controller = new AbortController();
     request.current = controller;
     try {
       const next = await getPage(paramsFor(filters, page.nextOffset, mobile ? 6 : PAGE_SIZE), controller.signal);
       if (controller.signal.aborted) return;
       const seen = new Set(page.items.map(item => item.id));
-      performance.clearMarks('gm-explorer-append-start');
-      performance.clearMarks('gm-explorer-append-end');
-      performance.clearMeasures('gm-explorer-append');
       performance.mark('gm-explorer-append-start');
       commitStarted.current = true;
       startTransition(() => setState({ key, page: { ...next, items: [...page.items, ...next.items.filter(item => !seen.has(item.id))] }, loading: false, error: false }));
