@@ -94,6 +94,11 @@ function cleanText(value: unknown) {
 }
 
 function numberOrNull(value: unknown) {
+  // Missing provider evidence must stay missing. JavaScript's Number(null),
+  // Number(''), and Number(false) all coerce to 0, which would incorrectly
+  // turn an unknown Shariah ratio into an automatic pass.
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
