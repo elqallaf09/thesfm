@@ -89,6 +89,7 @@ function crossWorkspaceFacts(evidence: WorkspaceEvidence) {
     { key: 'daily_priority_code', value: priority.code },
     { key: 'daily_priority_severity', value: priority.severity },
     { key: 'daily_priority_action_url', value: priority.actionUrl },
+    { key: 'daily_priority_explain_url', value: priority.explainUrl },
     { key: 'daily_priority_sources', value: priority.sources.join(',') },
     { key: 'cross_workspace_state', value: brief.state },
   ];
