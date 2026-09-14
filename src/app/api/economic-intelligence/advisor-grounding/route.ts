@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const ADVISORS = new Set<EconomicAdvisorId>(['finance', 'investment', 'business']);
+const NO_STORE = { 'cache-control': 'private, no-store' };
 
 function normalizeAdvisor(value: string | null): EconomicAdvisorId | null {
   return value && ADVISORS.has(value as EconomicAdvisorId) ? value as EconomicAdvisorId : null;
@@ -25,7 +26,7 @@ function normalizeCountry(value: string | null) {
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUserFromRequest(request).catch(() => null);
-  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' } }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: { code: 'UNAUTHENTICATED' } }, { status: 401, headers: NO_STORE });
 
   const limit = checkRateLimitWithMetadata(`user:${user.id}`, {
     max: 30,
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (!limit.allowed) {
     return NextResponse.json({ ok: false, error: { code: 'APPLICATION_RATE_LIMITED' } }, {
       status: 429,
-      headers: { 'Retry-After': String(Math.max(1, limit.retryAfterSeconds ?? 60)) },
+      headers: { ...NO_STORE, 'Retry-After': String(Math.max(1, limit.retryAfterSeconds ?? 60)) },
     });
   }
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   const currency = normalizeCurrency(url.searchParams.get('currency'));
   const country = normalizeCountry(url.searchParams.get('country'));
   if (!advisor || !currency) {
-    return NextResponse.json({ ok: false, error: { code: 'INVALID_REQUEST' } }, { status: 400 });
+    return NextResponse.json({ ok: false, error: { code: 'INVALID_REQUEST' } }, { status: 400, headers: NO_STORE });
   }
 
   try {
@@ -55,11 +56,11 @@ export async function GET(request: NextRequest) {
       country,
       hasMarketEvidence: false,
     });
-    return NextResponse.json({ ok: true, grounding }, { headers: { 'cache-control': 'private, no-store' } });
+    return NextResponse.json({ ok: true, grounding }, { headers: NO_STORE });
   } catch (error) {
     const code = error instanceof Error && error.message === 'ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED'
       ? 'SERVICE_NOT_CONFIGURED'
       : 'GROUNDING_UNAVAILABLE';
-    return NextResponse.json({ ok: false, error: { code } }, { status: code === 'SERVICE_NOT_CONFIGURED' ? 503 : 502 });
+    return NextResponse.json({ ok: false, error: { code } }, { status: code === 'SERVICE_NOT_CONFIGURED' ? 503 : 502, headers: NO_STORE });
   }
 }
