@@ -7,6 +7,7 @@ import { buildDailyPriorityActions, highestDailyPriority } from '@/domain/econom
 import { buildDailyBriefNarrative, type EconomicNarrativeLocale } from '@/domain/economic-intelligence/dailyBriefNarrative';
 import { loadDailyBriefHistory } from '@/domain/economic-intelligence/dailyBriefHistory.server';
 import { buildEconomicIntelligenceReadiness } from '@/domain/economic-intelligence/readiness';
+import { loadReadinessConfirmations } from '@/domain/economic-intelligence/readinessConfirmations.server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,9 +25,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const locale = normalizeLocale(new URL(request.url).searchParams.get('lang'));
-    const evidence = await loadCrossWorkspaceEvidence(user.id);
+    const [evidence, confirmations] = await Promise.all([
+      loadCrossWorkspaceEvidence(user.id),
+      loadReadinessConfirmations(user.id).catch(() => []),
+    ]);
     const brief = buildCrossWorkspaceBrief(evidence);
-    const readiness = buildEconomicIntelligenceReadiness(evidence);
+    const readiness = buildEconomicIntelligenceReadiness(evidence, confirmations);
     const actions = buildDailyPriorityActions(brief);
     const highestPriority = highestDailyPriority(brief);
     const narrative = buildDailyBriefNarrative(brief, locale, readiness);
