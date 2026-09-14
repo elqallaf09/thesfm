@@ -39,7 +39,7 @@ export function GlobalMarketsPage() {
   const hasLoadedRef = useRef(false);
   const activeRequestRef = useRef<AbortController | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const { selectedIds, setSelectedIds, restoreDefaults, hydrated } = useGlobalMarketSelection();
+  const { selectedIds, setSelectedIds, hydrated } = useGlobalMarketSelection();
   const selectedStrips = useMemo(() => selectedIds.flatMap(id => {
     const strip = GLOBAL_MARKET_STRIPS.find(candidate => candidate.id === id);
     return strip ? [strip] : [];
@@ -47,6 +47,7 @@ export function GlobalMarketsPage() {
   const selectedIdsKey = selectedIds.join(',');
 
   const customizeLabel = lang === 'ar' ? 'تخصيص الأسواق' : lang === 'fr' ? 'Personnaliser les marchés' : 'Customize markets';
+  const refreshLabel = lang === 'ar' ? 'تحديث الأسعار' : lang === 'fr' ? 'Actualiser les cours' : 'Refresh prices';
   const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
 
   const load = useCallback(async (showLoader: boolean, idsKey: string) => {
@@ -109,9 +110,9 @@ export function GlobalMarketsPage() {
               className="gm-header-refresh"
               onClick={() => void load(false, selectedIdsKey)}
               disabled={!hydrated || loading || refreshing}
-              aria-label={t('global_markets_last_updated', lang)}
+              aria-label={refreshLabel}
             >
-              <RefreshCcw size={16} className={refreshing ? 'is-spinning' : ''} />
+              <RefreshCcw size={16} aria-hidden="true" className={refreshing ? 'is-spinning' : ''} /><span>{refreshLabel}</span>
             </button>
           </div>
         </header>
@@ -119,7 +120,7 @@ export function GlobalMarketsPage() {
         <section className="gm-selection" aria-label={selectedLabel}>
           <div>
             <strong>{selectedLabel}: {selectedIds.length} / {GLOBAL_MARKETS_SELECTION_SIZE}</strong>
-            <span>{selectedStrips.map(strip => lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn).join(' · ')}</span>
+            <ul className="gm-selection-chips">{selectedStrips.map(strip => <li key={strip.id}>{lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn}</li>)}</ul>
           </div>
           <button type="button" onClick={() => setPickerOpen(true)}>
             <Settings2 size={17} aria-hidden="true" /> {customizeLabel}
@@ -127,8 +128,8 @@ export function GlobalMarketsPage() {
         </section>
 
         <section className="gm-strips" aria-label={t('global_markets_strips_heading', lang)}>
-          {selectedStrips.map((strip, slot) => (
-            <MarketStrip key={slot} strip={strip} prices={prices} lang={lang} dir={dir} loading={loading} />
+          {selectedStrips.map(strip => (
+            <MarketStrip key={strip.id} strip={strip} prices={prices} lang={lang} dir={dir} loading={loading} />
           ))}
         </section>
 
@@ -145,7 +146,6 @@ export function GlobalMarketsPage() {
           selectedIds={selectedIds}
           onClose={() => setPickerOpen(false)}
           onSave={setSelectedIds}
-          onRestoreDefaults={() => { restoreDefaults(); setPickerOpen(false); }}
         />
       ) : null}
     </div>

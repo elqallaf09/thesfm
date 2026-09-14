@@ -47,6 +47,12 @@ const ASSET_TYPE_LABEL_KEY: Record<GlobalMarketStripKind, string> = {
 };
 
 const COUNTRY_LABEL: Record<string, { ar: string; en: string; fr: string }> = {
+  KW: { ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' },
+  SA: { ar: 'السعودية', en: 'Saudi Arabia', fr: 'Arabie saoudite' },
+  AE: { ar: 'الإمارات', en: 'UAE', fr: 'Émirats arabes unis' },
+  QA: { ar: 'قطر', en: 'Qatar', fr: 'Qatar' },
+  BH: { ar: 'البحرين', en: 'Bahrain', fr: 'Bahreïn' },
+  OM: { ar: 'عُمان', en: 'Oman', fr: 'Oman' },
   US: { ar: 'الولايات المتحدة', en: 'United States', fr: 'États-Unis' },
   JP: { ar: 'اليابان', en: 'Japan', fr: 'Japon' },
   CN: { ar: 'الصين', en: 'China', fr: 'Chine' },
@@ -131,11 +137,11 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
   ), [rows]);
 
   const exchangeOptions = useMemo(() => (
-    GLOBAL_MARKET_STRIPS.map(strip => ({
+    GLOBAL_MARKET_STRIPS.filter(strip => country === 'all' || strip.countryCode === country).map(strip => ({
       id: strip.id,
       label: lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn,
     }))
-  ), [lang]);
+  ), [country, lang]);
 
   const filteredRows = useMemo(() => {
     const normalizedQuery = deferredQuery.trim().toLowerCase();
@@ -232,7 +238,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir }: GlobalMarketsExplor
       {expanded ? <><div className="gm-explorer-filters">
         <label className="gm-explorer-filter">
           <span>{t('global_markets_filter_country', lang)}</span>
-          <select value={country} onChange={event => updateFilter(setCountry, event.target.value)}>
+          <select value={country} onChange={event => { setExchange('all'); updateFilter(setCountry, event.target.value); }}>
             <option value="all">{t('global_markets_filter_all', lang)}</option>
             {countryOptions.map(code => (
               <option key={code} value={code}>{COUNTRY_LABEL[code]?.[lang] ?? code}</option>

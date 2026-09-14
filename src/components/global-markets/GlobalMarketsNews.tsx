@@ -6,6 +6,7 @@ import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils
 import type { GlobalMarketStripConfig } from '@/lib/market/globalMarketStrips';
 import type { Lang } from '@/lib/translations';
 import { t } from '@/lib/translations';
+import { EMPTY_NEWS_FILTERS, GlobalMarketsNewsFilters } from '@/components/global-markets/GlobalMarketsNewsFilters';
 
 type NewsItem = {
   id?: string | null;
@@ -47,7 +48,7 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
   const copy = COPY[lang];
   const [mode, setMode] = useState<Mode>('automatic');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [manual, setManual] = useState({ country: '', exchange: '', symbol: '', region: '', language: '', source: '', asset: '', from: '', to: '', sort: 'latest' });
+  const [manual, setManual] = useState({ ...EMPTY_NEWS_FILTERS });
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [settled, setSettled] = useState(false);
@@ -64,7 +65,7 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
       if (manual.exchange) params.set('exchangeCodes', manual.exchange);
       if (manual.symbol) params.set('symbols', manual.symbol.toUpperCase());
       if (manual.language) params.set('sourceLanguages', manual.language);
-      if (manual.source) params.set('sources', manual.source);
+      if (manual.source) params.set('sourceNames', manual.source);
       if (manual.asset) params.set('assetTypes', manual.asset);
       if (manual.from) params.set('from', manual.from);
       if (manual.to) params.set('to', manual.to);
@@ -112,6 +113,8 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
   const notice = loading ? (newsItems.length ? stateCopy.refreshing : stateCopy.loading)
     : error ? (newsItems.length ? stateCopy.failed : t('global_markets_news_error', lang))
       : partial ? copy.partial : '';
+  const filterCount = Object.entries(manual).filter(([key, value]) => key !== 'sort' && value).length;
+  const sourceOptions = [...new Set(items.map(item => item.sourceName || item.source || '').filter(Boolean))];
   const labels = selectedStrips.map(strip => lang === 'ar' ? strip.labelAr.split(' — ')[0] : lang === 'fr' ? strip.labelFr.split(' — ')[0] : strip.labelEn.split(' — ')[0]);
 
   return (
@@ -119,26 +122,16 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
       <div className="gm-news-head">
         <h2 id="gm-news-heading"><Newspaper size={18} aria-hidden="true" />{t('global_markets_news_heading', lang)}</h2>
         <div className="gm-news-modes" role="group" aria-label={copy.customize}>
-          <button type="button" className={mode === 'automatic' ? 'is-active' : ''} onClick={() => setMode('automatic')}>{copy.auto}</button>
-          <button type="button" className={mode === 'manual' ? 'is-active' : ''} onClick={() => { setMode('manual'); setFiltersOpen(true); }}>{copy.manual}</button>
+          <button type="button" className={mode === 'automatic' ? 'is-active' : ''} aria-pressed={mode === 'automatic'} onClick={() => { setMode('automatic'); setFiltersOpen(false); }}>{copy.auto}</button>
+          <button type="button" className={mode === 'manual' ? 'is-active' : ''} aria-pressed={mode === 'manual'} onClick={() => { setMode('manual'); setFiltersOpen(true); }}>{copy.manual}</button>
         </div>
       </div>
 
-      <div className="gm-news-summary"><strong>{copy.according}:</strong> {mode === 'automatic' ? labels.join(' · ') : copy.manual}<button type="button" onClick={() => setFiltersOpen(value => !value)}><Filter size={15} />{copy.customize}</button></div>
+      <div className="gm-news-summary"><strong>{copy.according}:</strong> <span>{mode === 'automatic' ? [...new Set(labels)].join(' · ') : `${copy.manual} · ${filterCount}`}</span><button type="button" aria-expanded={filtersOpen} aria-controls="gm-news-filters" onClick={() => { setFiltersOpen(value => !value); }}><Filter size={15} aria-hidden="true" />{copy.customize}</button></div>
 
-      {mode === 'manual' && filtersOpen ? (
-        <div className="gm-news-filters">
-          <input aria-label={copy.country} placeholder={copy.country} value={manual.country} onChange={event => setManual(value => ({ ...value, country: event.target.value.toUpperCase() }))} />
-          <input aria-label={copy.exchange} placeholder={copy.exchange} value={manual.exchange} onChange={event => setManual(value => ({ ...value, exchange: event.target.value.toUpperCase() }))} />
-          <input aria-label={copy.company} placeholder={copy.company} value={manual.symbol} onChange={event => setManual(value => ({ ...value, symbol: event.target.value }))} />
-          <select aria-label={copy.region} value={manual.region} onChange={event => setManual(value => ({ ...value, region: event.target.value }))}><option value="">{copy.region}: {copy.all}</option><option value="GULF">الخليج / Gulf</option><option value="ARAB">العالم العربي / Arab world</option><option value="MIDDLE_EAST">الشرق الأوسط / Middle East</option><option value="CHINA_HONGKONG">الصين وهونغ كونغ</option><option value="ASIA">Asia</option><option value="NORTH_AMERICA">US & Canada</option><option value="GLOBAL">Global</option></select>
-          <select aria-label={copy.language} value={manual.language} onChange={event => setManual(value => ({ ...value, language: event.target.value }))}><option value="">{copy.language}: {copy.all}</option><option value="ar">العربية</option><option value="en">English</option><option value="zh">中文</option><option value="fr">Français</option></select>
-          <input aria-label={copy.source} placeholder={copy.source} value={manual.source} onChange={event => setManual(value => ({ ...value, source: event.target.value }))} />
-          <select aria-label={copy.asset} value={manual.asset} onChange={event => setManual(value => ({ ...value, asset: event.target.value }))}><option value="">{copy.asset}: {copy.all}</option><option value="stock">Stock</option><option value="forex">Forex</option><option value="commodity">Commodity</option><option value="crypto">Crypto</option><option value="index">Index</option></select>
-          <input type="date" aria-label={copy.from} value={manual.from} onChange={event => setManual(value => ({ ...value, from: event.target.value }))} />
-          <input type="date" aria-label={copy.to} value={manual.to} onChange={event => setManual(value => ({ ...value, to: event.target.value }))} />
-          <select aria-label={copy.sort} value={manual.sort} onChange={event => setManual(value => ({ ...value, sort: event.target.value }))}><option value="latest">{copy.latest}</option><option value="relevance">{copy.relevance}</option></select>
-        </div>
+      {filtersOpen ? (
+        <GlobalMarketsNewsFilters lang={lang} value={manual} sources={sourceOptions}
+          onApply={filters => { setManual(filters); setMode('manual'); }} />
       ) : null}
 
       <p className="gm-news-notice" role="status" title={notice}>{notice}</p>
@@ -194,11 +187,10 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
         .gm-news-head h2 { display:flex; align-items:center; gap:8px; margin:0; font-size:16px; }
         .gm-news-modes { display:flex; gap:6px; flex-wrap:wrap; }
         .gm-news-modes button,.gm-news-summary button,.gm-news-load { min-height:44px; border:1px solid var(--border); border-radius:var(--radius-control); padding:0 11px; background:var(--surface); color:var(--foreground); cursor:pointer; }
+        .gm-news :is(button,a):focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
         .gm-news-modes .is-active { border-color:var(--accent); background:var(--accent-soft); color:var(--accent); }
-        .gm-news-summary { position:sticky; top:var(--workspace-header-offset,72px); z-index:3; display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius-control); background:var(--surface); }
+        .gm-news-summary { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:9px 11px; border:1px solid var(--border); border-radius:var(--radius-control); background:var(--surface); }
         .gm-news-summary button { margin-inline-start:auto; display:inline-flex; align-items:center; gap:5px; }
-        .gm-news-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; padding:12px; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface-muted); }
-        .gm-news-filters input,.gm-news-filters select { width:100%; min-height:44px; border:1px solid var(--border); border-radius:var(--radius-control); padding:0 10px; background:var(--surface); color:var(--foreground); }
         .gm-news-notice { margin:0; block-size:34px; font-size:12px; line-height:17px; color:var(--foreground-muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
         .gm-news-results { min-block-size:calc(6 * var(--gm-news-row-size) + 40px); min-inline-size:0; }
         .gm-news-empty { display:flex; align-items:center; gap:7px; margin:0; padding:11px; border:1px dashed var(--border-strong); border-radius:var(--radius-control); color:var(--foreground-muted); }
@@ -217,7 +209,6 @@ export function GlobalMarketsNews({ lang, dir, selectedStrips, ready = true }: P
         @media(max-width:640px) {
           .gm-news-head { align-items:stretch; flex-direction:column; }
           .gm-news-modes { display:grid; grid-template-columns:1fr; }
-          .gm-news-filters { grid-template-columns:1fr; }
           .gm-news-summary { font-size:12px; }
         }
       `}</style>

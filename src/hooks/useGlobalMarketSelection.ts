@@ -26,7 +26,11 @@ export function useGlobalMarketSelection() {
   const setSelectedIds = useCallback((ids: GlobalMarketStripId[]) => {
     const normalized = normalizeSelectedMarketIds(ids);
     setSelectedIdsState(normalized);
-    window.localStorage.setItem(GLOBAL_MARKETS_PREFERENCE_KEY, JSON.stringify(normalized));
+    try {
+      window.localStorage.setItem(GLOBAL_MARKETS_PREFERENCE_KEY, JSON.stringify(normalized));
+    } catch {
+      // Restricted storage must not prevent selecting markets for this visit.
+    }
   }, []);
 
   const restoreDefaults = useCallback(() => {

@@ -139,7 +139,8 @@ for (const locale of ['ar', 'en'] as const) {
         newsGate = gate(); gates.push(newsGate);
         newsStatus = 200; newsItems = [];
         const beforeEmptyRequest = newsRequests;
-        await page.getByRole('textbox', { name: locale === 'ar' ? 'الدولة' : 'Country', exact: true }).fill('US');
+        await page.getByRole('combobox', { name: locale === 'ar' ? 'الدولة' : 'Country', exact: true }).selectOption('US');
+        await page.getByRole('button', { name: locale === 'ar' ? 'تطبيق الفلاتر' : 'Apply filters', exact: true }).click();
         await expect.poll(() => newsRequests).toBeGreaterThan(beforeEmptyRequest);
         await expect(page.locator('.gm-news-list li')).toHaveCount(6);
         newsGate.release();

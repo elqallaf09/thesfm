@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, cloneElement, isValidElement, useCallback, useEffect, useRef, useState } from 'react';
+import { Children, useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 type TickerDirection = 'ltr' | 'rtl';
@@ -17,6 +17,7 @@ type MarketTickerStripProps = {
   minimumItems?: number;
   emptyState?: ReactNode;
   status?: ReactNode;
+  manual?: boolean;
   children: ReactNode;
 };
 
@@ -47,18 +48,13 @@ function joinClasses(...classes: Array<string | false | null | undefined>) {
 }
 
 function renderTickerChild(child: ReactNode, key: string, hidden: boolean) {
-  if (isValidElement<{ 'aria-hidden'?: boolean; role?: string }>(child)) {
-    return cloneElement(child, {
-      key,
-      role: child.props.role ?? 'listitem',
-      ...(hidden ? { 'aria-hidden': true } : {}),
-    });
-  }
-
+  // Custom React components may not forward aria-hidden or role. Put the
+  // semantics on a real DOM wrapper so repeated cards stay out of the
+  // accessibility tree and reduced-motion mode shows each item only once.
   return (
-    <span key={key} role="listitem" aria-hidden={hidden || undefined}>
+    <div key={key} role="listitem" aria-hidden={hidden || undefined} inert={hidden || undefined}>
       {child}
-    </span>
+    </div>
   );
 }
 
@@ -74,6 +70,7 @@ export function MarketTickerStrip({
   minimumItems = 10,
   emptyState,
   status,
+  manual = false,
   children,
 }: MarketTickerStripProps) {
   const [paused, setPaused] = useState(false);
@@ -90,7 +87,7 @@ export function MarketTickerStrip({
     '--market-ticker-duration': measuredDuration ? `${measuredDuration}s` : undefined,
   } as CSSProperties;
   const trackStyle = {
-    animationName: measuredDuration ? animationName : 'none',
+    animationName: measuredDuration && !manual ? animationName : 'none',
     animationDuration: measuredDuration ? 'var(--market-ticker-duration)' : undefined,
     animationTimingFunction: 'linear',
     animationIterationCount: 'infinite',
@@ -113,6 +110,11 @@ export function MarketTickerStrip({
     if (width <= 0) return;
     setLoopDistance(previous => hasMaterialTickerWidthChange(previous, width) ? width : previous);
   }, [pixelsPerSecond]);
+
+  useEffect(() => {
+    // A manual scroll offset must not carry into the duplicate-set animation.
+    if (!manual && !paused) viewportRef.current?.scrollTo({ left: 0, behavior: 'instant' });
+  }, [manual, paused]);
 
   useEffect(() => {
     if (!pixelsPerSecond || !primarySetRef.current || !viewportRef.current || typeof ResizeObserver === 'undefined') return;
@@ -149,6 +151,7 @@ export function MarketTickerStrip({
       aria-live="off"
       data-market-ticker="true"
       data-direction={resolvedDirection}
+      data-manual={manual || undefined}
       dir={resolvedDirection}
       style={style}
       onPointerDown={() => setPaused(true)}
@@ -187,7 +190,8 @@ export function MarketTickerStrip({
         .market-ticker-strip[data-market-ticker='true']:hover > .market-ticker-viewport,
         .market-ticker-strip[data-market-ticker='true']:focus-within > .market-ticker-viewport,
         .market-ticker-strip[data-market-ticker='true']:active > .market-ticker-viewport,
-        .market-ticker-strip[data-market-ticker='true'].is-paused > .market-ticker-viewport {
+        .market-ticker-strip[data-market-ticker='true'].is-paused > .market-ticker-viewport,
+        .market-ticker-strip[data-market-ticker='true'][data-manual] > .market-ticker-viewport {
           overflow-x: auto;
           touch-action: pan-x;
         }
