@@ -5,8 +5,9 @@ import { buildAdvisorGrounding, type AdvisorGrounding, type EconomicAdvisorId } 
 import { loadEconomicContext } from './economicContext.server';
 import { assessPersonalEconomicImpact } from './personalEconomicImpact';
 import { loadAdvisorDecisionMemoryFacts } from './decisionMemory.server';
-import { buildCrossWorkspaceBrief } from './crossWorkspaceBrain';
+import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspaceBrain';
 import { highestDailyPriority } from './dailyPriority';
+import { buildEconomicIntelligenceReadiness } from './readiness';
 
 type LoadAdvisorGroundingOptions = {
   userId: string;
@@ -29,22 +30,14 @@ type RowMap = {
 };
 
 const TABLES = {
-  income: 'monthly_income_sources',
-  expenses: 'expense_items',
-  debts: 'debts',
-  savings: 'savings_items',
-  investments: 'investment_items',
-  projects: 'projects',
-  watchlist: 'market_watchlist',
-  marketAlerts: 'market_price_alerts',
-  fundingReadiness: 'project_funding_readiness',
+  income: 'monthly_income_sources', expenses: 'expense_items', debts: 'debts', savings: 'savings_items', investments: 'investment_items',
+  projects: 'projects', watchlist: 'market_watchlist', marketAlerts: 'market_price_alerts', fundingReadiness: 'project_funding_readiness',
 } as const;
 
 function normalizeCurrency(value: unknown) {
   const currency = typeof value === 'string' ? value.trim().toUpperCase() : '';
   return /^[A-Z]{3}$/.test(currency) ? currency : null;
 }
-
 function normalizeCountry(value: unknown) {
   const country = typeof value === 'string' ? value.trim() : '';
   return country && /^[\p{L}\s.-]{2,64}$/u.test(country) ? country : null;
@@ -53,32 +46,22 @@ function normalizeCountry(value: unknown) {
 async function loadRows(userId: string): Promise<{ rows: RowMap; profile: Record<string, unknown> | null }> {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
-
   const [entries, profileResult] = await Promise.all([
-    Promise.all(
-      Object.entries(TABLES).map(async ([key, table]) => {
-        const { data, error } = await admin.from(table).select('*').eq('user_id', userId).limit(2000);
-        if (error) throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:${key}:${error.code ?? 'unknown'}`);
-        return [key, (data ?? []) as Record<string, unknown>[]] as const;
-      }),
-    ),
+    Promise.all(Object.entries(TABLES).map(async ([key, table]) => {
+      const { data, error } = await admin.from(table).select('*').eq('user_id', userId).limit(2000);
+      if (error) throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:${key}:${error.code ?? 'unknown'}`);
+      return [key, (data ?? []) as Record<string, unknown>[]] as const;
+    })),
     admin.from('profiles').select('default_currency,preferred_currency,currency,country').eq('id', userId).maybeSingle(),
   ]);
-
-  if (profileResult.error && profileResult.error.code !== 'PGRST116') {
-    throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:profile:${profileResult.error.code ?? 'unknown'}`);
-  }
-
-  return {
-    rows: Object.fromEntries(entries) as RowMap,
-    profile: (profileResult.data ?? null) as Record<string, unknown> | null,
-  };
+  if (profileResult.error && profileResult.error.code !== 'PGRST116') throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:profile:${profileResult.error.code ?? 'unknown'}`);
+  return { rows: Object.fromEntries(entries) as RowMap, profile: (profileResult.data ?? null) as Record<string, unknown> | null };
 }
 
-function crossWorkspaceFacts(rows: RowMap, twin: ReturnType<typeof buildFinancialTwinSnapshot>) {
+function workspaceEvidence(rows: RowMap, twin: ReturnType<typeof buildFinancialTwinSnapshot>): WorkspaceEvidence {
   const activeProjects = rows.projects.filter(row => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
   const alerts = rows.marketAlerts;
-  const brief = buildCrossWorkspaceBrief({
+  return {
     finance: { snapshot: twin },
     trader: {
       watchlistCount: rows.watchlist.length,
@@ -94,7 +77,11 @@ function crossWorkspaceFacts(rows: RowMap, twin: ReturnType<typeof buildFinancia
         readinessScore: Number.isFinite(Number(row.readiness_score)) ? Number(row.readiness_score) : null,
       })),
     },
-  });
+  };
+}
+
+function crossWorkspaceFacts(evidence: WorkspaceEvidence) {
+  const brief = buildCrossWorkspaceBrief(evidence);
   const priority = highestDailyPriority(brief);
   if (!priority) return [];
   return [
@@ -117,14 +104,10 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
     ?? normalizeCurrency(profile?.currency);
   if (!currency) throw new Error('ECONOMIC_INTELLIGENCE_CURRENCY_NOT_CONFIGURED');
 
-  const twin = buildFinancialTwinSnapshot({
-    income: rows.income,
-    expenses: rows.expenses,
-    debts: rows.debts,
-    savings: rows.savings,
-    investments: rows.investments,
-  }, currency);
+  const twin = buildFinancialTwinSnapshot({ income: rows.income, expenses: rows.expenses, debts: rows.debts, savings: rows.savings, investments: rows.investments }, currency);
   const forecast = forecastFinancialTwin(twin, 12);
+  const evidence = workspaceEvidence(rows, twin);
+  const readiness = buildEconomicIntelligenceReadiness(evidence);
 
   const country = normalizeCountry(options.country) ?? normalizeCountry(profile?.country);
   const contextResult = country ? await loadEconomicContext(country).catch(() => null) : null;
@@ -139,6 +122,7 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
     hasMarketEvidence: options.hasMarketEvidence || rows.watchlist.length > 0 || rows.marketAlerts.length > 0,
     hasBusinessEvidence: rows.projects.length > 0,
     decisionMemoryFacts,
-    crossWorkspaceFacts: crossWorkspaceFacts(rows, twin),
+    crossWorkspaceFacts: crossWorkspaceFacts(evidence),
+    readiness,
   });
 }
