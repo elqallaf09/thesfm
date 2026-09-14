@@ -29,7 +29,7 @@ This is a completed implementation slice, not a claim that the full Phase 7.35 s
 
 ## Publication
 
-Publish these related changes together as one commit on the existing PR branch, retaining main and unrelated work. Auto-merge is authorized only when repository-required checks permit it. Do not infer production deployment from a successful Preview build.
+Publish these related changes together on the existing PR branch, retaining main and unrelated work. Auto-merge is authorized only when repository-required checks permit it. Do not infer production deployment from a successful Preview build.
 
 ## Follow-up — type contracts and lint debt repair
 
@@ -51,7 +51,8 @@ Publish these related changes together as one commit on the existing PR branch, 
 
 ## Remaining before Phase 7.35 can be called complete
 
-- The new exact-SHA CI head must pass TypeScript, lint-debt guards, unit/integration tests, production build/budgets, browser smoke and the authenticated isolated-Preview RLS check. A prior green head is not sufficient.
+- The new exact-SHA CI head must pass TypeScript, lint-debt guards, unit/integration tests, production build/budgets, browser smoke and, when an isolated Supabase Preview is available for that SHA, the authenticated two-user RLS check. A prior green head is not sufficient.
+- If the exact-SHA Supabase Preview is legitimately unavailable and the existing CI contract skips authenticated Preview validation, do not mislabel that skip as live-RLS proof. Phase 7.35 remains technically implemented but live isolation evidence remains outstanding until an isolated Preview run executes it successfully.
 - Review any CI failure from the new lifecycle/RLS coverage without weakening assertions or falling back to Production credentials.
 - Re-run the final route/error-boundary inventory after the current head is green and confirm no personalized Economic Intelligence route lacks private/no-store behavior.
 - Merge only after repository-required checks permit it; then verify the exact merged SHA/deployment separately before starting the next product phase.
