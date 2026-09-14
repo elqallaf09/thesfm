@@ -1,6 +1,7 @@
 import 'server-only';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { DailyPriorityAction } from './dailyPriority';
+import { parseEvidenceSnapshotTrace, type EvidenceSnapshotTrace } from './evidenceSnapshotTrace';
 
 export type DailyBriefHistoryEntry = {
   id: string;
@@ -12,6 +13,8 @@ export type DailyBriefHistoryEntry = {
   createdAt: string | null;
   resolvedAt: string | null;
   sources: string[];
+  evidenceSnapshot: EvidenceSnapshotTrace | null;
+  historicalEvidenceAvailable: boolean;
 };
 
 export type DailyBriefChangeSummary = {
@@ -50,6 +53,7 @@ export async function loadDailyBriefHistory(userId: string, current: DailyPriori
         : null;
     const code = fingerprint ? fingerprint.split(':', 1)[0] ?? null : null;
     const sources = Array.isArray(metadata.sources) ? metadata.sources.map(String) : [];
+    const evidenceSnapshot = parseEvidenceSnapshotTrace(metadata.evidence_snapshot);
     return {
       id: String(row.id),
       eventKey: String(row.event_key ?? ''),
@@ -60,6 +64,8 @@ export async function loadDailyBriefHistory(userId: string, current: DailyPriori
       createdAt: row.created_at ?? null,
       resolvedAt: row.resolved_at ?? null,
       sources,
+      evidenceSnapshot,
+      historicalEvidenceAvailable: evidenceSnapshot !== null,
     };
   });
 
