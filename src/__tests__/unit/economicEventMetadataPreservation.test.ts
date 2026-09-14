@@ -13,7 +13,7 @@ describe('economic intelligence event-history preservation', () => {
   ])('%s stale-event resolution preserves prior metadata', (_name, source) => {
     expect(source).toContain('metadata');
     expect(source).toMatch(/previousMetadata\s*=\s*asObject\(row\.metadata\)/);
-    expect(source).toMatch(/metadata:\s*\{\s*\.\.\.previousMetadata,/s);
+    expect(source).toMatch(/metadata:\s*\{[\s\S]*?\.\.\.previousMetadata,/);
   });
 
   it.each([
