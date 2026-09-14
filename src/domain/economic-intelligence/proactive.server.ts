@@ -39,6 +39,10 @@ type EventDraft = {
   sourceId?: string | null;
 };
 
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 function currencyFromProfile(profile: Record<string, unknown> | null) {
   for (const value of [profile?.default_currency, profile?.preferred_currency, profile?.currency]) {
     const currency = String(value ?? '').trim().toUpperCase();
@@ -147,7 +151,7 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
   const activeKeys = drafts.map(draft => draft.eventKey);
   const allOpenResult = await admin
     .from('notifications')
-    .select('id,event_key,status,read,created_at,resolved_at')
+    .select('id,event_key,status,read,created_at,resolved_at,metadata')
     .eq('user_id', userId)
     .eq('source_module', 'economic_intelligence')
     .is('resolved_at', null);
@@ -156,21 +160,23 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
   const now = new Date().toISOString();
   const staleRows = (allOpenResult.data ?? []).filter((row: EconomicStoredRow) => row.event_key && !activeKeys.includes(String(row.event_key)));
   for (const row of staleRows) {
-    const resolutionCode = resolutionCodeForEventKey(String((row as EconomicStoredRow).event_key));
+    const resolutionCode = resolutionCodeForEventKey(String(row.event_key));
+    const previousMetadata = asObject(row.metadata);
     const { error } = await admin.from('notifications').update({
       resolved_at: now,
       resolution_code: resolutionCode,
       status: 'archived',
       read: true,
-      read_at: (row as EconomicStoredRow).read ? undefined : now,
+      read_at: row.read ? undefined : now,
       metadata: {
+        ...previousMetadata,
         economic_intelligence: true,
-        event_key: (row as EconomicStoredRow).event_key,
+        event_key: row.event_key,
         resolution_code: resolutionCode,
         resolution_observed_at: now,
         causal_claim: false,
       },
-    }).eq('id', (row as EconomicStoredRow).id).eq('user_id', userId);
+    }).eq('id', row.id).eq('user_id', userId).eq('source_module', 'economic_intelligence');
     if (error) throw error;
   }
 
@@ -184,7 +190,7 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
     .in('event_key', activeKeys);
   if (existingResult.error) throw existingResult.error;
 
-  const existing = new Map((existingResult.data ?? []).filter((row: EconomicStoredRow) => !(row as EconomicStoredRow).resolved_at).map((row: EconomicStoredRow) => [String(row.event_key), row]));
+  const existing = new Map((existingResult.data ?? []).filter((row: EconomicStoredRow) => !row.resolved_at).map((row: EconomicStoredRow) => [String(row.event_key), row]));
   const missing = drafts.filter(draft => !existing.has(draft.eventKey));
   if (missing.length > 0) {
     const insertResult = await admin.from('notifications').insert(missing.map(draft => ({
@@ -203,7 +209,7 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
       metadata: { economic_intelligence: true, event_key: draft.eventKey, causal_claim: false },
     }))).select('id,event_key,status,read,created_at,resolved_at');
     if (insertResult.error && insertResult.error.code !== '23505') throw insertResult.error;
-    for (const row of insertResult.data ?? []) existing.set(String((row as EconomicStoredRow).event_key), row);
+    for (const row of insertResult.data ?? []) existing.set(String(row.event_key), row);
   }
 
   return drafts.map(draft => normalizeStored(existing.get(draft.eventKey), draft));
