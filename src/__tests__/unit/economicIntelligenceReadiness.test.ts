@@ -5,6 +5,8 @@ function evidence(overrides: any = {}) {
   return {
     finance: {
       snapshot: {
+        debtBalance: 0,
+        monthlyDebtPayments: 0,
         investmentBalance: 0,
         dataQuality: { completeness: 1, missing: [], warnings: ['income:empty', 'expenses:empty', 'debts:empty', 'savings:empty', 'investments:empty'] },
         ...(overrides.snapshot ?? {}),
@@ -43,5 +45,14 @@ describe('buildEconomicIntelligenceReadiness', () => {
     expect(readiness.finance.issues.map(item => item.code)).not.toContain('finance:investments_missing');
     expect(readiness.business.score).toBe(100);
     expect(readiness.confirmations).toEqual(expect.arrayContaining(['no_debts', 'no_investments', 'no_business_projects']));
+  });
+
+  it('invalidates a zero-state confirmation when live evidence contradicts it', () => {
+    const readiness = buildEconomicIntelligenceReadiness(evidence({
+      snapshot: { debtBalance: 2500, monthlyDebtPayments: 150, investmentBalance: 1000, dataQuality: { completeness: 1, missing: [], warnings: [] } },
+      business: { activeProjectCount: 1, fundingNeeds: [] },
+    }), ['no_debts', 'no_investments', 'no_business_projects']);
+    expect(readiness.confirmations).toEqual([]);
+    expect(readiness.invalidatedConfirmations).toEqual(expect.arrayContaining(['no_debts', 'no_investments', 'no_business_projects']));
   });
 });
