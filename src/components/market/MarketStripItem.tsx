@@ -16,6 +16,8 @@ export type MarketStripItemData = {
   currency: string | null;
   changePercent: number | null;
   available: boolean;
+  loading?: boolean;
+  priceUnit?: 'fils';
 };
 
 type MarketStripItemProps = {
@@ -74,6 +76,7 @@ function formatPercent(value: number, lang: Lang) {
 
 export function MarketStripItem({ item, lang }: MarketStripItemProps) {
   const unavailableLabel = t('global_markets_price_unavailable', lang);
+  const missingLabel = item.loading ? (lang === 'ar' ? 'جارٍ التحميل…' : lang === 'fr' ? 'Chargement…' : 'Loading…') : unavailableLabel;
   const available = item.available && item.price !== null;
   const tone = !available || item.changePercent === null
     ? 'neutral'
@@ -106,7 +109,7 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
       <span className="gm-strip-item-name" dir="auto">{item.name}</span>
       <div className="gm-strip-item-values">
         <b dir="ltr">
-          {available && item.price !== null ? formatValue(item.price, item.currency, lang) : unavailableLabel}
+          {available && item.price !== null ? (item.priceUnit === 'fils' ? `${formatValue(item.price, null, lang)} ${lang === 'ar' ? 'فلس' : 'fils'}` : formatValue(item.price, item.currency, lang)) : missingLabel}
         </b>
         <em className={`gm-strip-item-change is-${tone}`} dir="ltr">
           {TrendIcon ? <TrendIcon size={10} /> : <span aria-hidden="true">--</span>}
