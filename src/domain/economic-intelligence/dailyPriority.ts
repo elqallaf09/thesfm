@@ -4,6 +4,7 @@ export type DailyPriorityAction = {
   code: string;
   severity: 'info' | 'warning' | 'danger';
   actionUrl: string;
+  explainUrl: string;
   sources: CrossWorkspaceBriefItem['sources'];
   fingerprint: string;
 };
@@ -38,11 +39,17 @@ function fingerprintFor(item: CrossWorkspaceBriefItem) {
   return `${item.code}:${item.severity}:${importantEvidence || 'stable'}`;
 }
 
+function explainUrlFor(sources: CrossWorkspaceBriefItem['sources']) {
+  const query = sources.slice().sort().join(',');
+  return `/economic-intelligence?explain=${encodeURIComponent(query)}#evidence-provenance`;
+}
+
 export function buildDailyPriorityActions(brief: CrossWorkspaceBrief): DailyPriorityAction[] {
   return brief.items.map(item => ({
     code: item.code,
     severity: item.severity,
     actionUrl: ACTION_URLS[item.code] ?? '/dashboard',
+    explainUrl: explainUrlFor(item.sources),
     sources: item.sources,
     fingerprint: fingerprintFor(item),
   }));
