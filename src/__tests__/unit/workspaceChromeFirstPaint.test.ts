@@ -32,6 +32,15 @@ describe('workspace chrome first-paint contract', () => {
     expect(globals).not.toMatch(/\.sfm-global-header\s*\{/);
   });
 
+  it('reserves the live header border before streamed styles arrive', () => {
+    const criticalRule = criticalCss.match(/\.sfm-global-header\s*\{([^}]+)\}/)?.[1] ?? '';
+    const liveRule = header.match(/\.sfm-global-header\s*\{([^}]+)\}/)?.[1] ?? '';
+    const border = (rule: string) => rule.match(/border-block-end:\s*([^;]+);/)?.[1];
+    expect(border(criticalRule)).toBe('2px solid var(--accent)');
+    expect(border(criticalRule)).toBe(border(liveRule));
+    expect(criticalRule).toMatch(/border:\s*0;/);
+  });
+
   it('keeps its pre-paint header geometry numerically in sync with the live AppHeader.tsx styled-jsx', () => {
     // Extracts the numeric grid-template-columns/height values from both
     // files and asserts they match, so a future round that tunes one and

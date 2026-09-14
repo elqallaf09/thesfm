@@ -118,7 +118,18 @@ function normalizeHostname(hostname: string) {
     : hostname;
 }
 
-async function resolveSafePublicUrl(input: string | URL): Promise<ResolvedPublicUrl> {
+function abortableLookup(hostname: string, signal: AbortSignal) {
+  signal.throwIfAborted();
+  return new Promise<Array<{ address: string; family: number }>>((resolve, reject) => {
+    const aborted = () => reject(signal.reason);
+    signal.addEventListener('abort', aborted, { once: true });
+    lookup(hostname, { all: true, verbatim: true }).then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', aborted));
+  });
+}
+
+async function resolveSafePublicUrl(input: string | URL, signal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS)): Promise<ResolvedPublicUrl> {
+  signal.throwIfAborted();
   let url: URL;
   try {
     url = input instanceof URL ? new URL(input) : new URL(input);
@@ -153,8 +164,10 @@ async function resolveSafePublicUrl(input: string | URL): Promise<ResolvedPublic
 
   let addresses: Array<{ address: string; family: number }>;
   try {
-    addresses = await lookup(hostname, { all: true, verbatim: true });
+    addresses = await abortableLookup(hostname, signal);
+    signal.throwIfAborted();
   } catch {
+    signal.throwIfAborted();
     throw new UnsafeUrlError('DNS_RESOLUTION_FAILED', 'The source hostname could not be resolved.');
   }
   if (addresses.length === 0 || addresses.some(({ address, family }) => {
@@ -171,17 +184,16 @@ async function resolveSafePublicUrl(input: string | URL): Promise<ResolvedPublic
   };
 }
 
-export async function assertSafePublicUrl(input: string | URL) {
-  return (await resolveSafePublicUrl(input)).url;
+export async function assertSafePublicUrl(input: string | URL, signal?: AbortSignal) {
+  return (await resolveSafePublicUrl(input, signal)).url;
 }
 
 function sleep(milliseconds: number, signal?: AbortSignal) {
+  signal?.throwIfAborted();
   return new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, milliseconds);
-    signal?.addEventListener('abort', () => {
-      clearTimeout(timer);
-      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
-    }, { once: true });
+    const aborted = () => { clearTimeout(timer); reject(signal?.reason ?? new DOMException('Aborted', 'AbortError')); };
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', aborted); resolve(); }, milliseconds);
+    signal?.addEventListener('abort', aborted, { once: true });
   });
 }
 
@@ -427,7 +439,8 @@ async function fetchAttempt(initialUrl: URL, options: SecureFetchOptions) {
   const accepted = options.acceptedContentTypes ?? [];
 
   for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount += 1) {
-    const resolved = await resolveSafePublicUrl(current);
+    const resolveSignal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs);
+    const resolved = await resolveSafePublicUrl(current, resolveSignal);
     current = resolved.url;
     await rateLimitDomain(current.hostname, options.minDomainIntervalMs ?? 350, options.signal);
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
@@ -483,7 +496,10 @@ function isRetryable(error: unknown) {
 }
 
 export async function secureFetch(input: string, options: SecureFetchOptions = {}): Promise<SecureFetchResult> {
-  const url = await assertSafePublicUrl(input);
+  options.signal?.throwIfAborted();
+  const resolveSignal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS)]) : AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const url = await assertSafePublicUrl(input, resolveSignal);
+  options.signal?.throwIfAborted();
   const key = cacheKey(url, options);
   const cached = cacheGet(key);
   if (cached) return cached;

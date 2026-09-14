@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { GLOBAL_MARKETS_PREFERENCE_KEY } from '../../src/lib/market/globalMarketPreferences';
 
 async function prepare(page: Page, lang = 'en') {
   await page.addInitScript(language => localStorage.setItem('sfm_lang', language), lang);
@@ -84,7 +85,7 @@ test('manual navigation stops animation and resume clears the scroll offset', as
   await expect(strip.locator('.market-ticker-track')).not.toHaveCSS('animation-name', 'none');
 });
 
-test('market selection is visible, replaces one market, saves, and keeps restore as a draft until saved', async ({ page }) => {
+test('market selection is visible, replaces one market and persists after reload', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
   await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
@@ -100,13 +101,43 @@ test('market selection is visible, replaces one market, saves, and keeps restore
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectMarketsReady(page);
   await expect(page.locator('.gm-shell:visible .gm-strip-heading-label').last()).toHaveText('Crypto');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), GLOBAL_MARKETS_PREFERENCE_KEY))
+    .toEqual(['kuwait_boursa', 'saudi_tadawul', 'us_nasdaq', 'crypto']);
+});
+
+// Keep save/persistence and draft/cancel independent. The former combined three
+// navigations and two modal sessions under one 30-second test budget; the retained
+// WebKit trace completed every assertion but exceeded that cumulative deadline.
+// Seed the context once, not on each reload, so a broken cancel cannot be masked.
+const savedSelectionTest = test.extend({
+  storageState: async ({ baseURL }, provideStorageState) => {
+    if (!baseURL) throw new Error('A configured application origin is required');
+    await provideStorageState({ cookies: [], origins: [{ origin: new URL(baseURL).origin, localStorage: [
+      { name: GLOBAL_MARKETS_PREFERENCE_KEY, value: JSON.stringify(['kuwait_boursa', 'saudi_tadawul', 'us_nasdaq', 'crypto']) },
+    ] }] });
+  },
+});
+
+savedSelectionTest('restoring defaults stays a draft and cancel preserves the saved selection after reload', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.goto('/global-markets', { waitUntil: 'domcontentloaded' });
+  await expectMarketsReady(page);
+  await expect(page.locator('.gm-shell:visible .gm-strip-heading-label').last()).toHaveText('Crypto');
   await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Customize markets' });
   await dialog.getByRole('button', { name: 'Restore defaults', exact: true }).click();
+  await expect(dialog.getByRole('checkbox', { name: 'Forex', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(dialog.getByRole('checkbox', { name: 'Crypto', exact: true })).toHaveAttribute('aria-checked', 'false');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const saved = ['kuwait_boursa', 'saudi_tadawul', 'us_nasdaq', 'crypto'];
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), GLOBAL_MARKETS_PREFERENCE_KEY)).toEqual(saved);
   await expect(page.locator('.gm-shell:visible .gm-strip-heading-label').last()).toHaveText('Crypto');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectMarketsReady(page);
   await expect(page.locator('.gm-shell:visible .gm-strip-heading-label').last()).toHaveText('Crypto');
+  expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key) || 'null'), GLOBAL_MARKETS_PREFERENCE_KEY)).toEqual(saved);
 });
 
 test('Customize news opens from automatic mode and applies selectable filters in one request', async ({ page }) => {

@@ -22,6 +22,21 @@ describe('refresh HTTP authentication and failure semantics', () => {
     refresh.mockResolvedValue({ ok: false, updated: 0 });
     expect((await GET(new NextRequest(url, { headers: { authorization: 'Bearer isolated-unit-test-secret' } }))).status).toBe(500);
   });
+  it('keeps partial stock errors explicit without returning a page-wide 500', async () => {
+    refresh.mockResolvedValue({ ok: false, updated: 8, scanned: 9, fatal: false, hasMore: true, failed: [{ symbol: 'TSLA', reason: 'official_provider_fetch_failed' }] });
+    const response = await GET(new NextRequest(url, { headers: { authorization: 'Bearer isolated-unit-test-secret' } }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: false, updated: 8, failed: [{ symbol: 'TSLA', reason: 'official_provider_fetch_failed' }] });
+  });
+  it('does not conceal a database failure even if some results were saved', async () => {
+    refresh.mockResolvedValue({ ok: false, updated: 2, fatal: true });
+    expect((await GET(new NextRequest(url, { headers: { authorization: 'Bearer isolated-unit-test-secret' } }))).status).toBe(500);
+  });
+  it('sets server-owned interactive budgets on authenticated POST', async () => {
+    authenticate.mockResolvedValue({ ok: true, admin });
+    expect((await POST(new NextRequest(url, { method: 'POST', body: JSON.stringify({ limit: 50 }) }))).status).toBe(200);
+    expect(refresh).toHaveBeenCalledWith(admin, { limit: 50, interactive: true });
+  });
   it('requires admin_dashboard permission for POST', async () => {
     authenticate.mockResolvedValue({ ok: false, code: 'FORBIDDEN', status: 403 });
     expect((await POST(new NextRequest(url, { method: 'POST', body: '{}' }))).status).toBe(403);

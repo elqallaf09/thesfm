@@ -66,9 +66,12 @@ test.describe('Global Markets Hub', () => {
     await mockGlobalMarkets(page);
     await page.goto('/global-markets');
 
-    await expect(page.locator('.gm-strip-heading-label').last()).toBeVisible();
-    const headings = await page.locator('.gm-strip-heading-label').allTextContents();
     const expectedLabels = ['Kuwait — Boursa Kuwait', 'Saudi Arabia — Tadawul', 'United States — NASDAQ', 'Forex'];
+    const headingLabels = page.locator('.gm-strip-heading-label');
+    // The stable SSR shell is visible before the saved language hydrates.
+    // Retry the exact text/order/count assertion, not an early text snapshot.
+    await expect(headingLabels).toHaveText(expectedLabels);
+    const headings = await headingLabels.allTextContents();
     expect(headings).toEqual(expectedLabels);
     expect(headings).toHaveLength(4);
     expect(new Set(headings).size).toBe(headings.length);
