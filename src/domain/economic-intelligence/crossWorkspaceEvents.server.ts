@@ -95,9 +95,11 @@ export async function loadCrossWorkspaceEconomicEvents(userId: string, lang: Not
         economic_intelligence: true,
         event_key: row.event_key,
         daily_priority: true,
+        resolution_code: 'daily_priority_changed_or_cleared',
+        resolution_observed_at: now,
         causal_claim: false,
       },
-    }).eq('id', row.id).eq('user_id', userId);
+    }).eq('id', row.id).eq('user_id', userId).eq('source_module', 'economic_intelligence');
     if (error) throw error;
   }
 
