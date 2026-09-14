@@ -32,6 +32,10 @@ const ACTION_URL: Record<ReadinessWorkspace, string> = {
   business: '/business-hub',
 };
 
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 function normalizeRow(row: EconomicStoredRow, workspace: ReadinessWorkspace, lang: NotificationLang, veryStale: boolean): SmartNotification {
   const copy = COPY[lang];
   return {
@@ -69,7 +73,7 @@ export async function loadFreshnessEconomicEvents(userId: string, lang: Notifica
   const activeKeys = drafts.map(draft => draft.eventKey);
   const openResult = await admin
     .from('notifications')
-    .select('id,event_key,status,read,created_at,resolved_at')
+    .select('id,event_key,status,read,created_at,resolved_at,metadata')
     .eq('user_id', userId)
     .eq('source_module', 'economic_intelligence')
     .like('event_key', 'freshness:%')
@@ -78,14 +82,23 @@ export async function loadFreshnessEconomicEvents(userId: string, lang: Notifica
 
   const now = new Date().toISOString();
   for (const row of (openResult.data ?? []).filter((row: EconomicStoredRow) => row.event_key && !activeKeys.includes(String(row.event_key)))) {
+    const previousMetadata = asObject(row.metadata);
     const { error } = await admin.from('notifications').update({
       resolved_at: now,
       resolution_code: 'source_refreshed_or_freshness_changed',
       status: 'archived',
       read: true,
       read_at: row.read ? undefined : now,
-      metadata: { economic_intelligence: true, freshness_event: true, event_key: row.event_key, causal_claim: false },
-    }).eq('id', row.id).eq('user_id', userId);
+      metadata: {
+        ...previousMetadata,
+        economic_intelligence: true,
+        freshness_event: true,
+        event_key: row.event_key,
+        resolution_code: 'source_refreshed_or_freshness_changed',
+        resolution_observed_at: now,
+        causal_claim: false,
+      },
+    }).eq('id', row.id).eq('user_id', userId).eq('source_module', 'economic_intelligence');
     if (error) throw error;
   }
 
