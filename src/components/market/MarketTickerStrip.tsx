@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, useCallback, useEffect, useRef, useState } from 'react';
+import { Children, cloneElement, isValidElement, useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 
 type TickerDirection = 'ltr' | 'rtl';
@@ -48,6 +48,13 @@ function joinClasses(...classes: Array<string | false | null | undefined>) {
 }
 
 function renderTickerChild(child: ReactNode, key: string, hidden: boolean) {
+  if (isValidElement<{ role?: string; 'aria-hidden'?: boolean; inert?: boolean }>(child) && typeof child.type === 'string') {
+    return cloneElement(child, {
+      key,
+      role: child.props.role ?? 'listitem',
+      ...(hidden ? { 'aria-hidden': true, inert: true } : {}),
+    });
+  }
   // Custom React components may not forward aria-hidden or role. Put the
   // semantics on a real DOM wrapper so repeated cards stay out of the
   // accessibility tree and reduced-motion mode shows each item only once.
