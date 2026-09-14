@@ -19,6 +19,7 @@ describe('economic intelligence event-history preservation', () => {
   it.each([
     ['proactive', proactive],
     ['freshness', freshness],
+    ['cross-workspace', crossWorkspace],
   ])('%s stale-event update remains scoped to economic-intelligence ownership', (_name, source) => {
     expect(source).toMatch(/\.eq\('id', row\.id\)\.eq\('user_id', userId\)\.eq\('source_module', 'economic_intelligence'\)/);
   });
