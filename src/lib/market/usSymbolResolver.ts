@@ -134,14 +134,15 @@ export async function getUSSymbolUniverse() {
 
   try {
     const [nasdaqResponse, otherResponse] = await Promise.all([
-      fetch(NASDAQ_LISTED_URL, { next: { revalidate: 86400 } }),
-      fetch(OTHER_LISTED_URL, { next: { revalidate: 86400 } }),
+      fetch(NASDAQ_LISTED_URL, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(6500) }),
+      fetch(OTHER_LISTED_URL, { next: { revalidate: 86400 }, signal: AbortSignal.timeout(6500) }),
     ]);
     if (!nasdaqResponse.ok || !otherResponse.ok) throw new Error('NasdaqTrader symbol directory unavailable');
     const rows = dedupe([
       ...parseNasdaqListed(await nasdaqResponse.text()),
       ...parseOtherListed(await otherResponse.text()),
     ]);
+    if (rows.length < 1000) throw new Error('Incomplete NasdaqTrader symbol directory');
     cachedUniverse = { rows, source: 'nasdaqtrader', expiresAt: now + US_SYMBOL_CACHE_MS };
     return cachedUniverse;
   } catch (error) {
@@ -150,7 +151,7 @@ export async function getUSSymbolUniverse() {
         message: error instanceof Error ? error.message : String(error),
       });
     }
-    cachedUniverse = { rows: await staticUniverse(), source: 'static', expiresAt: now + US_SYMBOL_CACHE_MS };
+    cachedUniverse = { rows: await staticUniverse(), source: 'static', expiresAt: now + 300000 };
     return cachedUniverse;
   }
 }

@@ -1,0 +1,20 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { getGlobalMarketListings } from '@/lib/server/globalMarketListingSources';
+afterEach(() => { vi.unstubAllGlobals(); });
+it('keeps the complete saved directory when an exchange cannot be reached and coalesces concurrent reads', async () => {
+  const fetch = vi.fn().mockRejectedValue(new Error('source unavailable'));
+  vi.stubGlobal('fetch', fetch);
+  const first = getGlobalMarketListings('kuwait');
+  const duplicate = getGlobalMarketListings('kuwait');
+  expect(first).toBe(duplicate);
+  const result = await first;
+  expect(result.status).toBe('snapshot');
+  expect(result.rows.length).toBeGreaterThan(100);
+  expect(result.asOf).toMatch(/^2026-/);
+  expect(result.rows.find(row => row.symbol === 'MABANEE')?.sector).toBe('real_estate');
+  const [shanghai, shenzhen] = await Promise.all([getGlobalMarketListings('shanghai'), getGlobalMarketListings('shenzhen')]);
+  expect(shanghai.rows.length).toBeGreaterThan(2000);
+  expect(shenzhen.rows.length).toBeGreaterThan(2500);
+  expect(shanghai.status).toBe('snapshot');
+  expect(shenzhen.status).toBe('snapshot');
+});

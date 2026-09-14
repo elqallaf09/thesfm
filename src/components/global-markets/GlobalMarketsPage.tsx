@@ -5,7 +5,7 @@ import { Globe2, RefreshCcw, Settings2 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MarketStrip } from '@/components/market/MarketStrip';
-import { GlobalMarketsExplorer } from '@/components/global-markets/GlobalMarketsExplorer';
+import { GlobalMarketsExplorer, type GlobalExplorerRequest } from '@/components/global-markets/GlobalMarketsExplorer';
 import { GlobalMarketsNews } from '@/components/global-markets/GlobalMarketsNews';
 import { GlobalMarketsLayoutStyles } from '@/components/global-markets/GlobalMarketsLayoutStyles';
 import { GLOBAL_MARKET_STRIPS } from '@/lib/market/globalMarketStrips';
@@ -39,6 +39,7 @@ export function GlobalMarketsPage() {
   const hasLoadedRef = useRef(false);
   const activeRequestRef = useRef<AbortController | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [browseRequest, setBrowseRequest] = useState<GlobalExplorerRequest | null>(null);
   const { selectedIds, setSelectedIds, hydrated } = useGlobalMarketSelection();
   const selectedStrips = useMemo(() => selectedIds.flatMap(id => {
     const strip = GLOBAL_MARKET_STRIPS.find(candidate => candidate.id === id);
@@ -129,11 +130,11 @@ export function GlobalMarketsPage() {
 
         <section className="gm-strips" aria-label={t('global_markets_strips_heading', lang)}>
           {selectedStrips.map(strip => (
-            <MarketStrip key={strip.id} strip={strip} prices={prices} lang={lang} dir={dir} loading={loading} />
+            <MarketStrip key={strip.id} strip={strip} prices={prices} lang={lang} dir={dir} loading={loading} onBrowse={() => setBrowseRequest(current => ({ id: strip.id, sequence: (current?.sequence || 0) + 1 }))} />
           ))}
         </section>
 
-        <GlobalMarketsExplorer prices={prices} lang={lang} dir={dir} />
+        <GlobalMarketsExplorer prices={prices} lang={lang} dir={dir} browseRequest={browseRequest} />
 
         <GlobalMarketsNews lang={lang} dir={dir} selectedStrips={selectedStrips} ready={hydrated} />
 
