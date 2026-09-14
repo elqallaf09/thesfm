@@ -30,6 +30,10 @@
   width: 100%;
   margin: 0;
   padding-inline: 20px;
+  /* Reserve the same 2px accent rule before streamed AppHeader styles arrive.
+     Fixed mobile rows total 92px; a late border otherwise changes 92px to 94px. */
+  border: 0;
+  border-block-end: 2px solid var(--accent);
   box-sizing: border-box;
 }
 
