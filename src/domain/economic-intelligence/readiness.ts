@@ -4,7 +4,7 @@ export type ReadinessWorkspace = 'finance' | 'trader' | 'business';
 export type ReadinessConfirmationKey = 'no_debts' | 'no_investments' | 'no_business_projects';
 export type ReadinessIssue = { code: string; workspace: ReadinessWorkspace; actionUrl: string; weight: number };
 export type WorkspaceReadiness = { score: number; ready: boolean; issues: ReadinessIssue[] };
-export type WorkspaceFreshness = { asOf: string | null; ageDays: number | null; stale: boolean; veryStale: boolean };
+export type WorkspaceFreshness = { asOf: string | null; ageDays: number | null; stale: boolean; veryStale: boolean; available: boolean };
 export type EconomicIntelligenceReadiness = {
   overallScore: number;
   level: 'low' | 'medium' | 'high';
@@ -34,15 +34,17 @@ function financeAction(code: string) {
   if (code.includes('investment')) return '/investments';
   return '/dashboard';
 }
-function freshnessFor(asOf: string | null | undefined, workspace: ReadinessWorkspace, now = new Date()): WorkspaceFreshness {
-  if (!asOf) return { asOf: null, ageDays: null, stale: true, veryStale: true };
+function freshnessFor(asOf: string | null | undefined, workspace: ReadinessWorkspace, now = new Date(), metadataAvailable = true): WorkspaceFreshness {
+  if (!metadataAvailable) return { asOf: null, ageDays: null, stale: false, veryStale: false, available: false };
+  if (!asOf) return { asOf: null, ageDays: null, stale: true, veryStale: true, available: true };
   const time = new Date(asOf).getTime();
-  if (!Number.isFinite(time)) return { asOf: null, ageDays: null, stale: true, veryStale: true };
+  if (!Number.isFinite(time)) return { asOf: null, ageDays: null, stale: true, veryStale: true, available: true };
   const ageDays = Math.max(0, Math.floor((now.getTime() - time) / 86_400_000));
   const thresholds = STALE_DAYS[workspace];
-  return { asOf: new Date(time).toISOString(), ageDays, stale: ageDays > thresholds.stale, veryStale: ageDays > thresholds.veryStale };
+  return { asOf: new Date(time).toISOString(), ageDays, stale: ageDays > thresholds.stale, veryStale: ageDays > thresholds.veryStale, available: true };
 }
 function freshnessPenalty(freshness: WorkspaceFreshness) {
+  if (!freshness.available) return 1;
   if (freshness.veryStale) return 0.6;
   if (freshness.stale) return 0.8;
   return 1;
@@ -72,10 +74,11 @@ export function buildEconomicIntelligenceReadiness(
 ): EconomicIntelligenceReadiness {
   const reconciled = reconcileReadinessConfirmations(evidence, confirmationKeys);
   const confirmations = new Set(reconciled.confirmations);
+  const hasFreshnessMetadata = evidence.freshness !== undefined;
   const freshness = {
-    finance: freshnessFor(evidence.freshness?.finance ?? evidence.finance.snapshot.asOf ?? null, 'finance', now),
-    trader: freshnessFor(evidence.freshness?.trader ?? null, 'trader', now),
-    business: freshnessFor(evidence.freshness?.business ?? null, 'business', now),
+    finance: freshnessFor(hasFreshnessMetadata ? evidence.freshness?.finance ?? null : null, 'finance', now, hasFreshnessMetadata),
+    trader: freshnessFor(hasFreshnessMetadata ? evidence.freshness?.trader ?? null : null, 'trader', now, hasFreshnessMetadata),
+    business: freshnessFor(hasFreshnessMetadata ? evidence.freshness?.business ?? null : null, 'business', now, hasFreshnessMetadata),
   } satisfies Record<ReadinessWorkspace, WorkspaceFreshness>;
 
   const financeIssues: ReadinessIssue[] = [];
@@ -93,7 +96,7 @@ export function buildEconomicIntelligenceReadiness(
   for (const code of FINANCE_GROUPS.filter(group => missingOrEmpty.has(group))) {
     financeIssues.push({ code: `finance:${code}_missing`, workspace: 'finance', actionUrl: financeAction(code), weight: 20 });
   }
-  if (financeAvailable > 0 && freshness.finance.stale) financeIssues.push({ code: 'finance:stale', workspace: 'finance', actionUrl: '/dashboard', weight: freshness.finance.veryStale ? 55 : 30 });
+  if (financeAvailable > 0 && freshness.finance.available && freshness.finance.stale) financeIssues.push({ code: 'finance:stale', workspace: 'finance', actionUrl: '/dashboard', weight: freshness.finance.veryStale ? 55 : 30 });
 
   const noInvestmentsConfirmed = confirmations.has('no_investments');
   const traderSignals = [
@@ -107,7 +110,7 @@ export function buildEconomicIntelligenceReadiness(
   if (evidence.trader.watchlistCount === 0) traderIssues.push({ code: 'trader:watchlist_missing', workspace: 'trader', actionUrl: '/ai-analyst/watchlist', weight: 40 });
   if (evidence.trader.activeAlertCount === 0 && evidence.trader.triggeredAlertCount === 0) traderIssues.push({ code: 'trader:alerts_missing', workspace: 'trader', actionUrl: '/ai-analyst/alerts', weight: 25 });
   if (evidence.finance.snapshot.investmentBalance <= 0 && !noInvestmentsConfirmed) traderIssues.push({ code: 'trader:portfolio_missing', workspace: 'trader', actionUrl: '/investments', weight: 35 });
-  if (traderSignals.some(Boolean) && freshness.trader.stale) traderIssues.push({ code: 'trader:stale', workspace: 'trader', actionUrl: '/ai-analyst', weight: freshness.trader.veryStale ? 60 : 35 });
+  if (traderSignals.some(Boolean) && freshness.trader.available && freshness.trader.stale) traderIssues.push({ code: 'trader:stale', workspace: 'trader', actionUrl: '/ai-analyst', weight: freshness.trader.veryStale ? 60 : 35 });
 
   const activeProjects = evidence.business.activeProjectCount;
   const noBusinessProjectsConfirmed = confirmations.has('no_business_projects');
@@ -117,7 +120,7 @@ export function buildEconomicIntelligenceReadiness(
   const businessIssues: ReadinessIssue[] = [];
   if (activeProjects === 0 && !noBusinessProjectsConfirmed) businessIssues.push({ code: 'business:projects_missing', workspace: 'business', actionUrl: '/projects', weight: 60 });
   else if (activeProjects > 0 && !fundingCovered) businessIssues.push({ code: 'business:funding_readiness_missing', workspace: 'business', actionUrl: '/business-hub', weight: 40 });
-  if (activeProjects > 0 && freshness.business.stale) businessIssues.push({ code: 'business:stale', workspace: 'business', actionUrl: '/business-hub', weight: freshness.business.veryStale ? 55 : 30 });
+  if (activeProjects > 0 && freshness.business.available && freshness.business.stale) businessIssues.push({ code: 'business:stale', workspace: 'business', actionUrl: '/business-hub', weight: freshness.business.veryStale ? 55 : 30 });
 
   const overallScore = clampScore(financeScore * 0.5 + traderScore * 0.25 + businessScore * 0.25);
   const nextActions = [...financeIssues, ...traderIssues, ...businessIssues]
