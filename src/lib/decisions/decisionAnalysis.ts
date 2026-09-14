@@ -129,7 +129,13 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
   const investmentsTotal = sumAmounts(data.investments, ['current_value', 'amount']);
   const monthlyNet = monthlyIncome > 0 && monthlyExpenses >= 0 ? monthlyIncome - monthlyExpenses : null;
   const decisionRatio = monthlyIncome > 0 && amount > 0 ? (amount / monthlyIncome) * 100 : null;
-  const monthlyDecisionCost = amount + amountValue(inputs.recurringCost) + amountValue(inputs.maintenanceCost) + amountValue(inputs.expectedMonthlyCost);
+  // `amount` is a one-off decision value. Only explicit recurring obligations belong in
+  // monthly cash-flow impact; treating the purchase principal as monthly cost can create
+  // a false deficit and inflate risk.
+  const monthlyDecisionCost = amountValue(inputs.recurringCost)
+    + amountValue(inputs.maintenanceCost)
+    + amountValue(inputs.expectedMonthlyCost)
+    + amountValue(inputs.monthlyPayment);
   const netAfterDecision = monthlyNet === null ? null : monthlyNet - monthlyDecisionCost;
   const savingsAfterDecision = inputs.usesSavings || inputs.decisionType === 'project'
     ? savingsTotal - amount
@@ -196,16 +202,16 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     scenarios.push({ key: 'invest_smaller_amount', amount: monthlyIncome > 0 ? monthlyIncome * 0.1 : undefined, monthlyImpact: monthlyIncome > 0 ? monthlyIncome * 0.1 : undefined, missing: monthlyIncome > 0 ? [] : ['monthly_income'] });
     scenarios.push({ key: 'downside_cash_only', amount, monthlyImpact: amount });
   } else if (inputs.decisionType === 'project') {
-    scenarios.push({ key: 'use_savings_now', amount, monthlyImpact: amount + amountValue(inputs.expectedMonthlyCost) });
+    scenarios.push({ key: 'use_savings_now', amount, monthlyImpact: amountValue(inputs.expectedMonthlyCost) });
     scenarios.push({ key: 'wait_until_savings_target', amount: amount > savingsTotal ? amount - savingsTotal : 0, missing: savingsTotal > 0 ? [] : ['savings'] });
     scenarios.push({ key: 'reduce_project_capital', amount: amount > 0 ? amount * 0.8 : undefined, monthlyImpact: amountValue(inputs.expectedMonthlyCost) });
   } else if (inputs.decisionType === 'debt_saving') {
-    scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtPaydownAmount ?? inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || amount });
-    scenarios.push({ key: 'save_first', amount, monthlyImpact: amount });
-    scenarios.push({ key: 'split_between_debt_and_savings', amount: amount > 0 ? amount / 2 : undefined, monthlyImpact: amount > 0 ? amount / 2 : undefined });
+    scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtPaydownAmount ?? inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || undefined });
+    scenarios.push({ key: 'save_first', amount, monthlyImpact: undefined });
+    scenarios.push({ key: 'split_between_debt_and_savings', amount: amount > 0 ? amount / 2 : undefined, monthlyImpact: undefined });
   } else if (inputs.decisionType === 'charity_zakat') {
-    scenarios.push({ key: 'pay_now', amount, monthlyImpact: amount });
-    scenarios.push({ key: 'schedule_payment', amount, monthlyImpact: amount });
+    scenarios.push({ key: 'pay_now', amount, monthlyImpact: undefined });
+    scenarios.push({ key: 'schedule_payment', amount, monthlyImpact: undefined });
     scenarios.push({ key: 'confirm_zakat_before_payment', amount, missing: data.zakatCalculations.length > 0 ? [] : ['zakat_calculation'] });
   } else {
     scenarios.push({ key: 'approve_budget', amount, monthlyImpact: monthlyDecisionCost });
