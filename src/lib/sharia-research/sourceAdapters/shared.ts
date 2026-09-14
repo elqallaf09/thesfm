@@ -41,6 +41,7 @@ export async function fetchDocument(input: {
   const response = await secureFetch(input.url, {
     acceptedContentTypes: ['text/html', 'application/xhtml+xml', 'application/pdf', 'text/plain'],
     maxBytes: 15 * 1024 * 1024,
+    headers: /(^|\.)sec\.gov$/i.test(new URL(input.url).hostname) ? { 'user-agent': process.env.SEC_USER_AGENT || 'THE-SFM admin@the-sfm.com' } : undefined,
     cacheTtlMs: input.sourceType === 'news' ? 15 * 60 * 1000 : 6 * 60 * 60 * 1000,
     respectRobots: input.respectRobots ?? true,
     signal: input.context.signal,

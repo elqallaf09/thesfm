@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  classifyShariahCompliance,
   getExternalShariahProviderConfig,
   normalizeShariahStatus,
   type ShariahClassification,
@@ -66,9 +65,6 @@ export type ShariahRefreshResult = {
   providerConfigured: boolean;
 };
 
-const DEFAULT_REFRESH_LIMIT = 50;
-const MAX_REFRESH_LIMIT = 100;
-const DEFAULT_STALE_HOURS = 24;
 const ZOYA_LIVE_URL = 'https://api.zoya.finance/graphql';
 
 function cleanText(value: unknown) {
@@ -76,27 +72,10 @@ function cleanText(value: unknown) {
 }
 
 function finiteNumber(value: unknown): number | null {
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
-}
-
-function clampLimit(value: unknown) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return DEFAULT_REFRESH_LIMIT;
-  return Math.min(MAX_REFRESH_LIMIT, Math.max(1, Math.trunc(parsed)));
-}
-
-function staleHours() {
-  const parsed = Number(process.env.SHARIAH_REFRESH_STALE_HOURS);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_STALE_HOURS;
-}
-
-function isStale(row: MarketSymbolRow, force: boolean) {
-  if (force) return true;
-  if (!row.shariah_last_reviewed_at) return true;
-  const reviewed = new Date(row.shariah_last_reviewed_at).getTime();
-  if (!Number.isFinite(reviewed)) return true;
-  return Date.now() - reviewed >= staleHours() * 60 * 60 * 1000;
 }
 
 function providerConfig() {
@@ -174,6 +153,7 @@ async function postZoya(row: MarketSymbolRow, apiKey: string, baseUrl: string): 
     ? `query GetBasicCompliance($symbol: String!) {\n  basicCompliance {\n    report(symbol: $symbol) {\n      symbol\n      name\n      exchange\n      status\n      purificationRatio\n      reportDate\n    }\n  }\n}`
     : `query GetAdvancedCompliance($symbol: String!) {\n  advancedCompliance {\n    report(input: { symbol: $symbol, methodology: AAOIFI }) {\n      symbol\n      rawSymbol\n      name\n      exchange\n      status\n      reportDate\n      businessScreen\n      financialScreen\n      compliantRevenue\n      nonCompliantRevenue\n      questionableRevenue\n    }\n  }\n}`;
 
+  if (baseUrl !== ZOYA_LIVE_URL) throw new Error('unapproved_provider_endpoint');
   const response = await fetch(baseUrl, {
     method: 'POST',
     headers: {
@@ -227,122 +207,8 @@ export async function fetchExternalShariahClassification(row: MarketSymbolRow): 
   }
 }
 
-function internalClassification(row: MarketSymbolRow, providerReason: string | null): ShariahClassification {
-  const classification = classifyShariahCompliance({
-    symbol: row.symbol,
-    name: row.company_name_en || row.name || row.company_name_ar || row.symbol,
-    assetType: row.asset_type,
-    exchange: row.exchange,
-    country: row.country,
-    sector: row.sector,
-    industry: row.industry,
-    businessDescription: row.description,
-    shariahScreeningData: row.shariah_screening_data,
-  });
-  const now = new Date().toISOString();
-  return {
-    ...classification,
-    shariahLastReviewedAt: now,
-    shariahReviewedBy: 'automatic:internal',
-    shariahScreeningData: {
-      ...classification.shariahScreeningData,
-      automaticRefresh: {
-        reviewedAt: now,
-        providerFallbackReason: providerReason,
-      },
-    },
-  };
-}
-
-async function refreshOne(admin: SupabaseClient, row: MarketSymbolRow) {
-  if (row.shariah_manual_override) return { kind: 'manual' as const };
-
-  const external = await fetchExternalShariahClassification(row);
-  const classification = external.classification ?? internalClassification(row, external.reason);
-  const reviewedAt = classification.shariahLastReviewedAt || new Date().toISOString();
-  const { error } = await admin
-    .from('market_symbols')
-    .update({
-      shariah_status: classification.shariahStatus,
-      shariah_reason: classification.shariahReason,
-      shariah_source: classification.shariahSource,
-      shariah_last_reviewed_at: reviewedAt,
-      shariah_manual_override: false,
-      shariah_reviewed_by: classification.shariahReviewedBy,
-      shariah_screening_data: classification.shariahScreeningData,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', row.id)
-    .eq('shariah_manual_override', false);
-
-  if (error) throw new Error(`db_update_${error.code || 'failed'}`);
-  return { kind: external.classification ? 'external' as const : 'internal' as const };
-}
-
-export async function refreshShariahClassifications(
-  admin: SupabaseClient,
-  options: { limit?: number; force?: boolean } = {},
-): Promise<ShariahRefreshResult> {
-  const limit = clampLimit(options.limit);
-  const force = options.force === true;
-  const config = providerConfig();
-  const fetchLimit = Math.min(MAX_REFRESH_LIMIT * 3, Math.max(limit, limit * 3));
-  const { data, error } = await admin
-    .from('market_symbols')
-    .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,sector,industry,description,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data')
-    .eq('is_active', true)
-    .in('asset_type', ['stock', 'etf'])
-    .order('shariah_last_reviewed_at', { ascending: true, nullsFirst: true })
-    .limit(fetchLimit);
-
-  if (error) {
-    return {
-      ok: false,
-      scanned: 0,
-      updated: 0,
-      external: 0,
-      internal: 0,
-      skippedManual: 0,
-      failed: [{ symbol: 'market_symbols', reason: `load_${error.code || 'failed'}` }],
-      provider: config.provider,
-      providerConfigured: config.configured,
-    };
-  }
-
-  const candidates = ((data ?? []) as MarketSymbolRow[])
-    .filter(row => !row.shariah_manual_override && isStale(row, force))
-    .slice(0, limit);
-
-  let external = 0;
-  let internal = 0;
-  let skippedManual = 0;
-  const failed: Array<{ symbol: string; reason: string }> = [];
-
-  for (let index = 0; index < candidates.length; index += 3) {
-    const chunk = candidates.slice(index, index + 3);
-    const results = await Promise.allSettled(chunk.map(row => refreshOne(admin, row)));
-    results.forEach((result, offset) => {
-      const row = chunk[offset];
-      if (result.status === 'rejected') {
-        failed.push({ symbol: row.symbol, reason: result.reason instanceof Error ? result.reason.message : 'refresh_failed' });
-        return;
-      }
-      if (result.value.kind === 'external') external += 1;
-      if (result.value.kind === 'internal') internal += 1;
-      if (result.value.kind === 'manual') skippedManual += 1;
-    });
-    if (index + 3 < candidates.length) await new Promise(resolve => setTimeout(resolve, 175));
-  }
-
-  return {
-    ok: failed.length === 0,
-    scanned: candidates.length,
-    updated: external + internal,
-    external,
-    internal,
-    skippedManual,
-    failed,
-    provider: config.provider,
-    providerConfigured: config.configured,
-  };
+/** Deprecated entry point delegates to the single source-validated worker. */
+export async function refreshShariahClassifications(admin: SupabaseClient, options: { limit?: number; force?: boolean } = {}) {
+  const { refreshSfmShariahClassifications } = await import('./shariahSelfScreening');
+  return refreshSfmShariahClassifications(admin, options);
 }

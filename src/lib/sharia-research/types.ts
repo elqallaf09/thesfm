@@ -136,6 +136,8 @@ export type FinancialValue = {
   sourceTier: SourceTier;
   reportingPeriod: string;
   periodEnd: string;
+  periodStart?: string | null;
+  validation?: { version: string; bound: 'exact' | 'lower' | 'upper' | 'unverified'; note: string };
   filedAt: string | null;
   currency: string;
   value: number;
@@ -154,7 +156,7 @@ export type RatioRule = {
   nameFr: string;
   numeratorFields: NormalizedFinancialField[];
   denominatorField: NormalizedFinancialField;
-  operator: '<=';
+  operator: '<' | '<=';
   threshold: number;
   thresholdLabel: string;
   unavailableBehavior: 'insufficient_data';
@@ -196,6 +198,7 @@ export type RatioResult = {
   denominator: number | null;
   value: number | null;
   threshold: number;
+  operator?: '<' | '<=';
   formula: string;
   status: 'pass' | 'fail' | 'unavailable';
   reportingPeriod: string | null;
@@ -244,6 +247,8 @@ export type ShariaScreeningResult = {
   retrievedAt: string;
   reportingPeriod: string | null;
   cacheState: 'live' | 'recently_cached' | 'outdated';
+  evidenceVersion?: string;
+  missingFinancialFields?: string[];
   warnings: string[];
 };
 

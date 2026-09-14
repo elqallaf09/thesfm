@@ -4,7 +4,7 @@ import { SHARIA_CLASSIFICATIONS } from './types';
 export const SearchRequestSchema = z.object({
   query: z.string().trim().min(1).max(160),
   market: z.enum(['BOURSA_KUWAIT', 'TADAWUL', 'DFM', 'NASDAQ_DUBAI', 'ADX', 'QSE', 'BAHRAIN_BOURSE', 'MUSCAT', 'US']).optional(),
-  methodologyId: z.string().trim().min(1).max(120).optional(),
+  methodologyId: z.enum(['sfm-ftse-yasaar-point-in-time', 'msci-islamic-index-series-assets']).optional(),
   selectedCanonicalId: z.string().trim().min(1).max(220).optional(),
   forceRefresh: z.boolean().optional().default(false),
 }).strict();

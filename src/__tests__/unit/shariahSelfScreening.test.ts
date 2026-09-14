@@ -1,104 +1,38 @@
-import { describe, expect, it } from 'vitest';
-import { classifySfmShariahStock, SFM_SHARIAH_THRESHOLDS } from '@/lib/market/shariahSelfScreening';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { classifySfmShariahStock, cleanRefreshLimit } from '@/lib/market/shariahSelfScreening';
+import { evidenceFixture, security } from './shariaEvidenceFixtures';
 
-const cleanRatios = {
-  sector: 'Technology',
-  industry: 'Software',
-  businessDescription: 'Enterprise software and cloud services.',
-  interestBearingDebtRatio: 0.12,
-  cashAndInterestBearingSecuritiesRatio: 0.18,
-  accountsReceivableAndCashRatio: 0.22,
-  nonPermissibleRevenueRatio: 0.01,
-  interestIncomeRatio: 0.01,
-};
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-14T00:00:00Z')); });
+afterEach(() => { vi.useRealTimers(); });
 
-describe('SFM self-hosted Shariah screener', () => {
-  it('marks a clean stock compliant only after business and all financial rules pass', () => {
-    const result = classifySfmShariahStock({
-      symbol: 'TEST',
-      name: 'Test Software Inc.',
-      exchange: 'NASDAQ',
-      country: 'US',
-    }, cleanRatios);
-
-    expect(result.shariahStatus).toBe('compliant');
-    expect(result.shariahSource).toContain('SFM Shariah Screener');
-    expect(result.shariahScreeningData.screeningRules).toBeTruthy();
+describe('shared source-verified stock screening', () => {
+  it('only passes a stock with complete documented business and financial evidence', () => {
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, evidenceFixture().bag).shariahStatus).toBe('compliant');
   });
-
-  it('rejects conventional banking before ratio screening', () => {
-    const result = classifySfmShariahStock({
-      symbol: 'BANK',
-      name: 'Example Commercial Bank',
-      exchange: 'NYSE',
-      country: 'US',
-    }, {
-      ...cleanRatios,
-      sector: 'Financial Services',
-      industry: 'Commercial Bank',
-    });
-
-    expect(result.shariahStatus).toBe('non_compliant');
-    expect(result.shariahReason).toContain('prohibited conventional finance');
+  it('does not accept old ratios as a substitute for source evidence', () => {
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, { sector: 'Software', interestBearingDebtRatio: 0, nonPermissibleRevenueRatio: 0 }).shariahStatus).toBe('needs_review');
   });
-
-  it('rejects debt at or above the one-third threshold', () => {
-    const result = classifySfmShariahStock({
-      symbol: 'DEBT',
-      name: 'Debt Test Inc.',
-      exchange: 'NASDAQ',
-      country: 'US',
-    }, {
-      ...cleanRatios,
-      interestBearingDebtRatio: SFM_SHARIAH_THRESHOLDS.debtToAssets,
-    });
-
-    expect(result.shariahStatus).toBe('non_compliant');
-    expect(result.shariahReason).toContain('Interest-bearing debt');
+  it('rejects an official current principal commercial bank activity even with incomplete financial data', () => {
+    const fixture = evidenceFixture('We are a commercial bank.'); fixture.bag.financialValues = [];
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, fixture.bag).shariahStatus).toBe('non_compliant');
   });
-
-  it('rejects receivables plus cash at or above 50% of assets', () => {
-    const result = classifySfmShariahStock({
-      symbol: 'REC',
-      name: 'Receivable Test Inc.',
-      exchange: 'NASDAQ',
-      country: 'US',
-    }, {
-      ...cleanRatios,
-      accountsReceivableAndCashRatio: 0.5,
-    });
-
-    expect(result.shariahStatus).toBe('non_compliant');
-    expect(result.shariahReason).toContain('Accounts receivable + cash');
+  it.each([33.333, 34, 50])('rejects debt of %s per 100 assets, using the published strict boundary independently', debt => {
+    const fixture = evidenceFixture(); fixture.values.find(value => value.normalizedField === 'interest_bearing_debt')!.value = debt;
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, fixture.bag).shariahStatus).toBe('non_compliant');
   });
-
-  it('uses needs_review instead of inventing a compliant result when a ratio is missing', () => {
-    const result = classifySfmShariahStock({
-      symbol: 'MISS',
-      name: 'Missing Data Inc.',
-      exchange: 'NASDAQ',
-      country: 'US',
-    }, {
-      ...cleanRatios,
-      nonPermissibleRevenueRatio: null,
-    });
-
-    expect(result.shariahStatus).toBe('needs_review');
+  it('rejects exactly 50% receivables and cash', () => {
+    const fixture = evidenceFixture(); fixture.values.find(value => value.normalizedField === 'accounts_receivable')!.value = 40;
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, fixture.bag).shariahStatus).toBe('non_compliant');
   });
-
-  it('routes Islamic financial institutions to review rather than treating them as conventional banks', () => {
-    const result = classifySfmShariahStock({
-      symbol: 'ISLM',
-      name: 'Example Islamic Bank',
-      exchange: 'KSE',
-      country: 'KW',
-    }, {
-      ...cleanRatios,
-      sector: 'Financial Services',
-      industry: 'Islamic Banking',
-    });
-
-    expect(result.shariahStatus).toBe('needs_review');
-    expect(result.shariahReason).toContain('Islamic financial institutions');
+  it('requires review when a required amount is missing', () => {
+    const fixture = evidenceFixture(); fixture.bag.financialValues = fixture.values.filter(value => value.normalizedField !== 'prohibited_revenue');
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, fixture.bag).shariahStatus).toBe('needs_review');
   });
+  it('checks Islamic institutional exception before commercial-bank wording', () => {
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, evidenceFixture('We are a commercial bank operating as an Islamic bank.').bag).shariahStatus).toBe('needs_review');
+  });
+  it('does not mistake a software supplier to banks for a bank', () => {
+    expect(classifySfmShariahStock({ ...security, symbol: security.ticker }, evidenceFixture('We provide software to a commercial bank.').bag).shariahStatus).not.toBe('non_compliant');
+  });
+  it.each([null, undefined, '', false, 0, 'not-a-number'])('uses default limit for absent or invalid input %s', value => expect(cleanRefreshLimit(value)).toBe(50));
 });

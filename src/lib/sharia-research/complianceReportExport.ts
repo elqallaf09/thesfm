@@ -13,6 +13,7 @@ export type ExportRatio = {
   name: string;
   value: number | null;
   threshold: number;
+  operator?: '<' | '<=';
   status: string;
   explanation: string;
 };
@@ -85,7 +86,7 @@ export function openCompliancePdfReport({
   const ratioRows = ratios.map(ratio => `<tr>
     <th>${html(ratio.name)}</th>
     <td>${html(ratio.value === null ? tr('sharia_research_unavailable_value') : formatPercent(ratio.value, locale, { maximumFractionDigits: 2 }))}</td>
-    <td>≤ ${html(formatPercent(ratio.threshold, locale, { maximumFractionDigits: 2 }))}</td>
+    <td>${ratio.operator === '<' ? '&lt;' : '≤'} ${html(formatPercent(ratio.threshold, locale, { maximumFractionDigits: 2 }))}</td>
     <td>${html(ratio.status)}</td>
     <td>${html(ratio.explanation)}</td>
   </tr>`).join('');
