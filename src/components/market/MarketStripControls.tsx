@@ -20,7 +20,9 @@ function scrollViewport(containerRef: RefObject<HTMLDivElement | null>, directio
   const viewport = containerRef.current?.querySelector<HTMLDivElement>('.market-ticker-viewport');
   if (!viewport) return;
   const signedAmount = direction * SCROLL_AMOUNT_PX * (dir === 'rtl' ? -1 : 1);
-  viewport.scrollBy({ left: signedAmount, behavior: 'smooth' });
+  // Finish the step before resuming the loop. A queued smooth scroll can
+  // write a residual offset after the resume reset on touch browsers.
+  viewport.scrollBy({ left: signedAmount, behavior: 'instant' });
 }
 
 /**
