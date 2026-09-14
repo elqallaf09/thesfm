@@ -13,6 +13,11 @@ export type WorkspaceEvidence = {
     activeProjectCount: number;
     fundingNeeds: Array<{ projectId: string; amount: number; currency: string; readinessScore: number | null }>;
   };
+  freshness?: {
+    finance: string | null;
+    trader: string | null;
+    business: string | null;
+  };
 };
 
 export type CrossWorkspaceBriefItem = {
