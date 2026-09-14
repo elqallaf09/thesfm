@@ -42,12 +42,21 @@
 - Economic Command Center exposes a localized “Why this priority?” surface
 - Deterministic conclusions remain authoritative; explainability adds traceability rather than a second recommendation engine
 
-## Next — Phase 7.32 — Evidence Snapshot Trace
-- Persist an immutable, privacy-safe evidence summary alongside material Daily Brief / priority history entries
-- Record source groups, counts, freshness timestamps and readiness scores used at that time
-- Allow historical briefs to explain what evidence was available when the conclusion was produced
-- Never persist raw finance rows or provider secrets in the trace
-- Keep current evidence and historical evidence snapshots clearly separated
+## Phase 7.32 — Evidence Snapshot Trace — implemented in PR #119
+- Material Daily Priority events persist a versioned privacy-safe evidence snapshot inside existing notification metadata
+- Snapshot records source groups, source record counts, freshness state and readiness scores as they existed when the priority was created
+- Historical archive reads the stored snapshot rather than rebuilding old explanations from current data
+- Older records without a snapshot explicitly report historical evidence as unavailable
+- Resolving or archiving a priority preserves its existing snapshot metadata
+- No raw finance rows, provider secrets or cross-user data are persisted in the trace
+- Unit coverage verifies the snapshot contains metadata only and handles pre-snapshot history safely
+
+## Next — Phase 7.33 — Historical Evidence Drift
+- Compare a stored historical evidence snapshot with current provenance using metadata only
+- Show which workspace readiness, freshness or source coverage changed since the historical priority
+- Keep drift descriptive and non-causal; do not claim a user action caused the change
+- Refuse comparisons when the historical snapshot is unavailable
+- Surface material evidence drift in the Economic Brief Archive without rewriting historical records
 
 ### Validation gate
 - Required GitHub checks and Vercel Preview build must pass before merge
