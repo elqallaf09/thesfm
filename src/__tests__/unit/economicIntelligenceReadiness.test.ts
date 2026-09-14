@@ -33,4 +33,15 @@ describe('buildEconomicIntelligenceReadiness', () => {
     expect(readiness.business.score).toBe(100);
     expect(readiness.overallScore).toBe(100);
   });
+
+  it('treats confirmed true-zero states as known evidence without fabricating records', () => {
+    const readiness = buildEconomicIntelligenceReadiness(evidence({
+      snapshot: { dataQuality: { completeness: 1, missing: [], warnings: ['debts:empty', 'investments:empty'] } },
+      trader: { watchlistCount: 2, activeAlertCount: 1 },
+    }), ['no_debts', 'no_investments', 'no_business_projects']);
+    expect(readiness.finance.issues.map(item => item.code)).not.toContain('finance:debts_missing');
+    expect(readiness.finance.issues.map(item => item.code)).not.toContain('finance:investments_missing');
+    expect(readiness.business.score).toBe(100);
+    expect(readiness.confirmations).toEqual(expect.arrayContaining(['no_debts', 'no_investments', 'no_business_projects']));
+  });
 });
