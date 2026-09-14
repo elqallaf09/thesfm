@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BrainCircuit, ChartNoAxesCombined, Landmark, LineChart, Sparkles } from 'lucide-react';
+import { Archive, BrainCircuit, ChartNoAxesCombined, Landmark, LineChart, Sparkles } from 'lucide-react';
 import { EconomicIntelligenceHome } from '@/components/finance/EconomicIntelligenceHome';
 import { CrossWorkspaceEconomicBrief } from '@/components/finance/CrossWorkspaceEconomicBrief';
 import { EconomicResolutionHistory } from '@/components/finance/EconomicResolutionHistory';
@@ -18,6 +18,7 @@ export default function EconomicIntelligencePage() {
           <Link href="/decisions/simulator"><Landmark size={16} />Decision Lab</Link>
           <Link href="/ai-analyst"><LineChart size={16} />Market Intelligence</Link>
           <Link href="/business-hub"><ChartNoAxesCombined size={16} />Business</Link>
+          <Link href="/economic-intelligence/history"><Archive size={16} />Brief Archive</Link>
           <Link href="/notifications"><Sparkles size={16} />Intelligence Events</Link>
         </nav>
       </section>
