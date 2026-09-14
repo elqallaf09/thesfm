@@ -26,6 +26,23 @@ describe('economic intelligence foundation', () => {
     expect(snapshot.dataQuality.completeness).toBe(1);
   });
 
+  it('does not treat empty income or expense inputs as fully complete evidence', () => {
+    const snapshot = buildFinancialTwinSnapshot({
+      income: [],
+      expenses: [],
+      debts: [],
+      savings: [{ current_amount: 3000, currency: 'KWD' }],
+      investments: [],
+    }, 'KWD');
+
+    expect(snapshot.dataQuality.completeness).toBeLessThan(1);
+    expect(snapshot.dataQuality.warnings).toContain('income:empty');
+    expect(snapshot.dataQuality.warnings).toContain('expenses:empty');
+
+    const assessment = assessFinancialDecision(snapshot, { kind: 'buy_car', monthlyCost: 100 });
+    expect(assessment.warnings).toContain('assessment_based_on_incomplete_data');
+  });
+
   it('projects stress, base and optimistic scenarios without inventing source records', () => {
     const snapshot = buildFinancialTwinSnapshot({
       income: [{ amount: 1500, currency: 'KWD' }],
