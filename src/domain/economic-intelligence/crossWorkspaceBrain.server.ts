@@ -47,30 +47,37 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
   const failures = [income, expenses, debts, savings, investments, watchlist, alerts, projects, funding].filter(result => result.error);
   if (failures.length > 0) throw failures[0].error;
 
-  const currency = currencyFromProfile((profile.data ?? null) as Record<string, unknown> | null);
-  const financeGroups = [income.data ?? [], expenses.data ?? [], debts.data ?? [], savings.data ?? [], investments.data ?? []];
-  const snapshot = buildFinancialTwinSnapshot({
-    income: income.data ?? [],
-    expenses: expenses.data ?? [],
-    debts: debts.data ?? [],
-    savings: savings.data ?? [],
-    investments: investments.data ?? [],
-  }, currency);
-
+  const incomeRows = income.data ?? [];
+  const expenseRows = expenses.data ?? [];
+  const debtRows = debts.data ?? [];
+  const savingRows = savings.data ?? [];
+  const investmentRows = investments.data ?? [];
+  const watchlistRows = watchlist.data ?? [];
   const alertRows = alerts.data ?? [];
   const projectRows = projects.data ?? [];
+  const fundingRows = funding.data ?? [];
+  const currency = currencyFromProfile((profile.data ?? null) as Record<string, unknown> | null);
+  const financeGroups = [incomeRows, expenseRows, debtRows, savingRows, investmentRows];
+  const snapshot = buildFinancialTwinSnapshot({
+    income: incomeRows,
+    expenses: expenseRows,
+    debts: debtRows,
+    savings: savingRows,
+    investments: investmentRows,
+  }, currency);
+
   const activeProjects = projectRows.filter((row: any) => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
 
   return {
     finance: { snapshot },
     trader: {
-      watchlistCount: (watchlist.data ?? []).length,
+      watchlistCount: watchlistRows.length,
       activeAlertCount: alertRows.filter((row: any) => !['triggered', 'disabled', 'archived'].includes(String(row.status ?? '').toLowerCase())).length,
       triggeredAlertCount: alertRows.filter((row: any) => String(row.status ?? '').toLowerCase() === 'triggered').length,
     },
     business: {
       activeProjectCount: activeProjects.length,
-      fundingNeeds: (funding.data ?? []).map((row: any) => ({
+      fundingNeeds: fundingRows.map((row: any) => ({
         projectId: String(row.project_id ?? ''),
         amount: Number.isFinite(Number(row.funding_needed)) ? Math.max(0, Number(row.funding_needed)) : 0,
         currency: normalizeCurrency(row.currency) ?? currency,
@@ -79,8 +86,19 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     },
     freshness: {
       finance: latestTimestamp(financeGroups),
-      trader: latestTimestamp([watchlist.data ?? [], alerts.data ?? []]),
-      business: latestTimestamp([projects.data ?? [], funding.data ?? []]),
+      trader: latestTimestamp([watchlistRows, alertRows]),
+      business: latestTimestamp([projectRows, fundingRows]),
+    },
+    recordCounts: {
+      monthly_income_sources: incomeRows.length,
+      expense_items: expenseRows.length,
+      debts: debtRows.length,
+      savings_items: savingRows.length,
+      investment_items: investmentRows.length,
+      market_watchlist: watchlistRows.length,
+      market_price_alerts: alertRows.length,
+      projects: projectRows.length,
+      project_funding_readiness: fundingRows.length,
     },
   };
 }
