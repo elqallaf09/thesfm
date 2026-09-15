@@ -1,0 +1,43 @@
+name: Apply verified watchlist summary repair
+on:
+  push:
+    branches: [fix/watchlist-owned-engine-20260915]
+    paths: ['.github/watchlist-summary.patch.b64', '.github/workflows/watchlist-summary-repair.yml']
+permissions:
+  contents: write
+jobs:
+  apply:
+    if: github.repository == 'elqallaf09/thesfm' && github.ref == 'refs/heads/fix/watchlist-owned-engine-20260915'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+      - name: Apply three checksum-verified files to the feature branch only
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, lzma, os, pathlib, subprocess
+          assert os.environ['GITHUB_REF'] == 'refs/heads/fix/watchlist-owned-engine-20260915'
+          manifest = {'src/trader-app/public/app.js': ['74e07eea794c7a35942ffb84131c8f613fead58f', 'ab46843657a7d0c89903b35bead919edbb21fe2c'], 'src/trader-app/public/watchlist-view.js': ['93ed249ce6c6fd7d75515bd0fbe767f4cf3754a2', 'bd432706d84a7c1d4dd3b2b85158a00e969e9262'], 'tests/smoke/trader-watchlist-engine.spec.ts': ['77a4fccdedaec564e4d8e2427f9681e574d7b13c', 'b454de0b7d525c5a103f4ebecfb4e083a5e638d1']}
+          def blob(path):
+              return subprocess.check_output(['git', 'hash-object', path], text=True).strip()
+          for path, hashes in manifest.items():
+              assert blob(path) == hashes[0], path
+          patch = lzma.decompress(base64.b64decode(pathlib.Path('.github/watchlist-summary.patch.b64').read_text(), validate=True))
+          assert hashlib.sha256(patch).hexdigest() == '9a5a54d79a81b3fca7940d585fa31decb1350b4e50e5335fc53681f5eb7e410b'
+          subprocess.run(['git', 'apply', '--check', '-'], input=patch, check=True)
+          subprocess.run(['git', 'apply', '-'], input=patch, check=True)
+          for path, hashes in manifest.items():
+              assert blob(path) == hashes[1], path
+          subprocess.run(['git', 'add', '--', *manifest], check=True)
+          assert sorted(subprocess.check_output(['git', 'diff', '--cached', '--name-only'], text=True).splitlines()) == sorted(manifest)
+          PY
+          node --check src/trader-app/public/app.js
+          node --check src/trader-app/public/watchlist-view.js
+          git config user.name 'THE SFM Engineering'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(trader): derive watchlist summary from owned quote evidence, not market feed'
+          git push origin HEAD:refs/heads/fix/watchlist-owned-engine-20260915
+          git rev-parse HEAD HEAD^{tree}
