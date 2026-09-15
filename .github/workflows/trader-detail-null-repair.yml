@@ -1,0 +1,77 @@
+name: Repair Trader null evidence rendering
+on:
+  push:
+    branches: [fix/watchlist-owned-engine-20260915]
+    paths: [.github/workflows/trader-detail-null-repair.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.repository == 'elqallaf09/thesfm' && github.ref == 'refs/heads/fix/watchlist-owned-engine-20260915'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Apply exact reviewed changes
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+          def git(*args): return subprocess.check_output(['git', *args], text=True).strip()
+          assert git('rev-parse', 'HEAD^') == '309601b7b8b43f153167445172eed412e5c2194c'
+          expected = {
+            'src/trader-app/public/detail.js': 'de130f8189f319d39ca3d2637adad2c19cbd9236',
+            'tests/engine/trader-signal-evidence.test.mjs': '199ab6198ed4957733c1fe79daf159de57fc2ea1',
+            'tests/smoke/trader-watchlist-engine.spec.ts': 'cffef05d41e15f8549be3ad8ac55582dc78a1697'
+          }
+          for name, sha in expected.items(): assert git('hash-object', name) == sha, name
+          def replace(text, old, new):
+              assert text.count(old) == 1, old
+              return text.replace(old, new)
+          p = Path('src/trader-app/public/detail.js')
+          text = p.read_text()
+          text = replace(text, 'function localizeConfidenceText(value) {\n  if (!Number.isFinite(Number(value))) return unavailableText();', 'function localizeConfidenceText(value) {\n  if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim()) || !Number.isFinite(Number(value))) return unavailableText();')
+          text = replace(text, 'function localizeAgreementText(consensus = {}) {\n  if (!Number.isFinite(Number(consensus.agreementPct))) return unavailableText();', 'function localizeAgreementText(consensus = {}) {\n  if (!consensus || consensus.agreementPct === null || consensus.agreementPct === undefined || typeof consensus.agreementPct === "boolean" || (typeof consensus.agreementPct === "string" && !consensus.agreementPct.trim()) || !Number.isFinite(Number(consensus.agreementPct))) return unavailableText();')
+          text = replace(text, 'analysisQuality: null, tradePlan: null, timeframeConsensus: null, timeframes: [], upsideOutlook: [],', 'analysisQuality: null, dataHealth: null, tradePlan: null, timeframeConsensus: null, timeframes: [], upsideOutlook: [],')
+          p.write_text(text)
+          p = Path('tests/engine/trader-signal-evidence.test.mjs')
+          text = replace(p.read_text(), "let brace=source.indexOf('{',start),level=1,end=brace+1;", "const brace=source.indexOf('{',source.indexOf(') {',start));let level=1,end=brace+1;")
+          text += '''
+          scope.unavailableText = () => 'Unavailable';
+          for (const name of ['localizeConfidenceText', 'localizeAgreementText']) {
+            vm.runInNewContext(extract(detail, name), scope);
+          }
+          test('absent confidence renders unavailable, never null percent or a fabricated zero', () => {
+            for (const value of [null, undefined, true, false, '', ' ', NaN, Infinity]) {
+              assert.equal(scope.localizeConfidenceText(value), 'Unavailable');
+            }
+            assert.equal(scope.localizeConfidenceText(0), '0% confidence');
+            assert.equal(scope.localizeConfidenceText(75), '75% confidence');
+          });
+          test('null timeframe consensus renders safely with genuine zero preserved', () => {
+            for (const value of [null, undefined, {}, { agreementPct: null }, { agreementPct: '' }, { agreementPct: false }]) {
+              assert.equal(scope.localizeAgreementText(value), 'Unavailable');
+            }
+            assert.match(scope.localizeAgreementText({ agreementPct: 0, coverage: 1, total: 3 }), /agreement 0%/);
+          });
+          '''
+          p.write_text(text)
+          p = Path('tests/smoke/trader-watchlist-engine.spec.ts')
+          text = replace(p.read_text(), "await expect(page.locator('#detail-confidence')).not.toContainText('95');", "await expect(page.locator('#detail-confidence')).toHaveText('Unavailable');")
+          p.write_text(text)
+          Path('.github/workflows/trader-detail-null-repair.yml').unlink()
+          PY
+      - name: Run evidence regressions and syntax check
+        run: |
+          node --check src/trader-app/public/detail.js
+          node --test tests/engine/trader-signal-evidence.test.mjs
+          git diff --check
+      - name: Commit final correction and remove transport
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/trader-app/public/detail.js tests/engine/trader-signal-evidence.test.mjs tests/smoke/trader-watchlist-engine.spec.ts .github/workflows/trader-detail-null-repair.yml
+          git commit -m 'fix(trader): render absent confidence and timeframe consensus without false zero or crashes'
+          git push origin HEAD:fix/watchlist-owned-engine-20260915
