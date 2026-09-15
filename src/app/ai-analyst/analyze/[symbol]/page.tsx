@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { AiAnalystAnalysis } from '@/components/ai-analyst/AiAnalystAnalysis';
 import { AiAnalystShell } from '@/components/ai-analyst/AiAnalystShell';
+import { InvestmentCheckCard } from '@/components/ai-analyst/InvestmentCheckCard';
 import { normalizeAiAnalystAssetType, normalizeAiAnalystHorizon, normalizeAiAnalystSymbol } from '@/lib/ai-analyst/legacyRoutes';
 import { investmentAnalysisContextFromQuery } from '@/lib/investments/center';
 
@@ -40,6 +41,7 @@ export default async function AiAnalystAssetPage({ params, searchParams }: PageP
   });
   return (
     <AiAnalystShell activeTab="assetDetails">
+      {!investmentContext?.privateAsset ? <InvestmentCheckCard symbol={symbol} assetType={assetType} horizon={horizon} /> : null}
       <AiAnalystAnalysis symbol={symbol} assetType={assetType} horizon={horizon} autoRun={autoRun} investmentContext={investmentContext} />
     </AiAnalystShell>
   );
