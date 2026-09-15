@@ -25,11 +25,10 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
       - name: Actual embedded assets, staged prices, failure recovery and three languages
         env:
-          E2E_BASE_URL: http://127.0.0.1:3000
           PLAYWRIGHT_NO_COPY_PROMPT: '1'
         # Isolated contract fixtures do not use auth setup or any production secrets.
         # Real route authorization has separate tests; normal CI remains unchanged.
-        run: pnpm exec playwright test tests/smoke/trader-watchlist-engine.spec.ts --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --no-deps --workers=2 --retries=0
+        run: pnpm exec playwright test --config=tests/watchlist.playwright.config.ts --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --no-deps --workers=2 --retries=0
       - uses: actions/upload-artifact@v7
         if: always()
         with:
