@@ -53,83 +53,96 @@ for (const width of [1440, 390]) {
   for (const language of ['ar', 'en'] as const) {
     for (const theme of ['light', 'dark'] as const) {
       for (const motion of ['reduce', 'no-preference'] as const) {
-        test(`Trader controls: ${width}px ${language} ${theme} ${motion}`, async ({ page }, testInfo) => {
-          const errors: string[] = [];
-          page.on('pageerror', error => errors.push(error.message));
-          await page.setViewportSize({ width, height: 1000 });
-          await page.emulateMedia({ reducedMotion: motion });
-          await page.addInitScript(({ language, theme }) => {
-            localStorage.setItem('sfm_lang', language);
-            localStorage.setItem('the-sfm-theme', theme);
-            localStorage.setItem('sfm-density', 'auto');
-            // Preserve user toggles across reload, unlike a resetting fixture.
-            if (!localStorage.getItem('sfmTraderSettings:v1')) {
-              localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({ defaultMarket: 'us-stocks', quickTickerVisible: false }));
-            }
-          }, { language, theme });
-          await page.route('**/api/**', route => route.fulfill({
-            status: 200, contentType: 'application/json',
-            body: JSON.stringify({ success: false, status: 'unavailable', items: [], data: [], recommendations: [], followedTrades: [], dataProvider: { configured: false, status: 'disconnected' } }),
-          }));
-          let frame = await openTerminal(page);
-          const initial = await frame.evaluate(() => {
-            const skip = document.querySelector('.terminal-skip-link')!;
-            const ticker = document.querySelector<HTMLElement>('#ticker-row')!;
-            return {
-              viewportWidth: innerWidth,
-              skipBottom: skip.getBoundingClientRect().bottom,
-              tickerHidden: ticker.hidden,
-              tickerHeight: ticker.getBoundingClientRect().height,
-              links: [...document.querySelectorAll('.command-deck-link')].map(element => ({
-                text: element.textContent, width: element.getBoundingClientRect().width,
-                height: element.getBoundingClientRect().height,
-              })),
-            };
+        test.describe(`Trader controls: ${width}px ${language} ${theme} ${motion}`, () => {
+          test.beforeEach(async ({ page }) => {
+            await page.setViewportSize({ width, height: 1000 });
+            await page.emulateMedia({ reducedMotion: motion });
+            await page.addInitScript(({ language, theme }) => {
+              localStorage.setItem('sfm_lang', language);
+              localStorage.setItem('the-sfm-theme', theme);
+              localStorage.setItem('sfm-density', 'auto');
+              // Preserve user toggles across reload, unlike a resetting fixture.
+              if (!localStorage.getItem('sfmTraderSettings:v1')) {
+                localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({ defaultMarket: 'us-stocks', quickTickerVisible: false }));
+              }
+            }, { language, theme });
+            await page.route('**/api/**', route => route.fulfill({
+              status: 200, contentType: 'application/json',
+              body: JSON.stringify({ success: false, status: 'unavailable', items: [], data: [], recommendations: [], followedTrades: [], dataProvider: { configured: false, status: 'disconnected' } }),
+            }));
           });
-          await testInfo.attach('initial-controls', { body: JSON.stringify(initial, null, 2), contentType: 'application/json' });
-          await testInfo.attach('dashboard', { body: await page.screenshot(), contentType: 'image/png' });
-          expect(initial.viewportWidth, 'The embedded fixture must use the device viewport').toBe(width);
-          expect.soft(initial.skipBottom, 'Unfocused skip link must not cover the title').toBeLessThanOrEqual(0);
-          expect.soft(initial.tickerHidden).toBe(true);
-          expect.soft(initial.tickerHeight, 'Hidden ticker must not leave an empty mobile strip').toBe(0);
-          expect(initial.links).toHaveLength(3);
-          for (const link of initial.links) {
-            expect.soft(link.height, `Standalone action target: ${link.text}`).toBeGreaterThanOrEqual(44);
-            expect.soft(link.width, `Standalone action target: ${link.text}`).toBeGreaterThanOrEqual(44);
-          }
 
-          // Actual keyboard traversal: the hidden link must remain usable.
-          const skip = frame.locator('.terminal-skip-link');
-          await frame.locator('#symbol-input').focus();
-          await page.keyboard.press('Shift+Tab');
-          await expect(skip).toBeFocused();
-          await expect(skip).toBeInViewport({ ratio: 1 });
-          await page.keyboard.press('Enter');
-          await expect(frame.locator('#terminal-content')).toBeFocused();
-          await expect.soft(skip).not.toBeInViewport();
+          // Separate independent journeys so WebKit startup/screenshots cannot
+          // consume another journey's unchanged 30s test/8s assertion budgets.
+          test('structure and real keyboard skip navigation', async ({ page }, testInfo) => {
+            const errors: string[] = [];
+            page.on('pageerror', error => errors.push(error.message));
+            const frame = await openTerminal(page);
+            const initial = await frame.evaluate(() => {
+              const skip = document.querySelector('.terminal-skip-link')!;
+              const ticker = document.querySelector<HTMLElement>('#ticker-row')!;
+              return {
+                viewportWidth: innerWidth,
+                skipBottom: skip.getBoundingClientRect().bottom,
+                tickerHidden: ticker.hidden,
+                tickerHeight: ticker.getBoundingClientRect().height,
+                links: [...document.querySelectorAll('.command-deck-link')].map(element => ({
+                  text: element.textContent, width: element.getBoundingClientRect().width,
+                  height: element.getBoundingClientRect().height,
+                })),
+              };
+            });
+            await testInfo.attach('initial-controls', { body: JSON.stringify(initial, null, 2), contentType: 'application/json' });
+            await testInfo.attach('dashboard', { body: await page.screenshot({ scale: 'css' }), contentType: 'image/png' });
+            expect(initial.viewportWidth, 'The embedded fixture must use the device viewport').toBe(width);
+            expect.soft(initial.skipBottom, 'Unfocused skip link must not cover the title').toBeLessThanOrEqual(0);
+            expect.soft(initial.tickerHidden).toBe(true);
+            expect.soft(initial.tickerHeight, 'Hidden ticker must not leave an empty mobile strip').toBe(0);
+            expect(initial.links).toHaveLength(3);
+            for (const link of initial.links) {
+              expect.soft(link.height, `Standalone action target: ${link.text}`).toBeGreaterThanOrEqual(44);
+              expect.soft(link.width, `Standalone action target: ${link.text}`).toBeGreaterThanOrEqual(44);
+            }
+            // Actual keyboard traversal: the hidden link must remain usable.
+            const skip = frame.locator('.terminal-skip-link');
+            await frame.locator('#symbol-input').focus();
+            await page.keyboard.press('Shift+Tab');
+            await expect(skip).toBeFocused();
+            await expect(skip).toBeInViewport({ ratio: 1 });
+            await page.keyboard.press('Enter');
+            await expect(frame.locator('#terminal-content')).toBeFocused();
+            await expect.soft(skip).not.toBeInViewport();
+            expect(await frame.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+            expect(errors).toEqual([]);
+          });
 
-          // Positive control: do not fix the empty strip by hiding the ticker forever.
-          const toggle = frame.locator('#ticker-toggle');
-          await toggle.click();
-          await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-          await expect(frame.locator('#ticker-row')).toBeVisible();
-          await expect(frame.locator('#ticker-row .ticker-chip').first()).toBeVisible();
-          await toggle.click();
-          await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-          expect.soft(await frame.locator('#ticker-row').evaluate(element => element.getBoundingClientRect().height)).toBe(0);
-          frame = await openTerminal(page);
-          expect.soft(await frame.locator('#ticker-row').evaluate(element => element.getBoundingClientRect().height)).toBe(0);
-
-          // Check the enlarged action still navigates, including with the keyboard.
-          const provider = frame.locator('.command-deck-provider .command-deck-link');
-          await provider.focus();
-          await page.keyboard.press('Enter');
-          await expect(frame.locator('.trader-settings-page')).toBeVisible();
-          await frame.locator('.topbar-actions [data-route="alerts"]').click();
-          await expect(frame.locator('#alert-form')).toBeVisible();
-          expect(await frame.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
-          await testInfo.attach('alerts-after-navigation', { body: await page.screenshot(), contentType: 'image/png' });
-          expect(errors).toEqual([]);
+          test('ticker persistence and action-link navigation', async ({ page }, testInfo) => {
+            const errors: string[] = [];
+            page.on('pageerror', error => errors.push(error.message));
+            let frame = await openTerminal(page);
+            expect(await frame.evaluate(() => innerWidth)).toBe(width);
+            // Positive control: never fix the empty strip by hiding the ticker forever.
+            const toggle = frame.locator('#ticker-toggle');
+            await toggle.click();
+            await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+            await expect(frame.locator('#ticker-row')).toBeVisible();
+            await expect(frame.locator('#ticker-row .ticker-chip').first()).toBeVisible();
+            await toggle.click();
+            await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+            expect.soft(await frame.locator('#ticker-row').evaluate(element => element.getBoundingClientRect().height)).toBe(0);
+            frame = await openTerminal(page);
+            expect.soft(await frame.locator('#ticker-row').evaluate(element => element.getBoundingClientRect().height)).toBe(0);
+            // The enlarged action must still navigate, including with the keyboard.
+            const provider = frame.locator('.command-deck-provider .command-deck-link');
+            await provider.focus();
+            await page.keyboard.press('Enter');
+            await expect(frame.locator('.trader-settings-page')).toBeVisible();
+            await frame.locator('.topbar-actions [data-route="alerts"]').click();
+            await expect(frame.locator('#alert-form')).toBeVisible();
+            expect(await frame.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+            await testInfo.attach('alerts-after-navigation', { body: await page.screenshot({ scale: 'css' }), contentType: 'image/png' });
+            expect(errors).toEqual([]);
+          });
         });
       }
     }
