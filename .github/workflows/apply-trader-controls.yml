@@ -1,0 +1,135 @@
+name: Apply Trader controls repair
+on:
+  push:
+    branches: [fix/trader-surface-readability]
+    paths: [.github/workflows/apply-trader-controls.yml]
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.ref == 'refs/heads/fix/trader-surface-readability'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      E2E_BASE_URL: https://trader-contrast.invalid
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 20
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Await genuine focus transitions without timer sleeps
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          f=Path('tests/smoke/trader-control-visibility.spec.ts')
+          s=f.read_text()
+          edits=[
+            ("expect(await skip.evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);", "await expect(skip).toBeInViewport({ ratio: 1 });"),
+            ("expect.soft(await skip.evaluate(element => element.getBoundingClientRect().bottom)).toBeLessThanOrEqual(0);", "await expect.soft(skip).not.toBeInViewport();"),
+          ]
+          for old,new in edits:
+            assert s.count(old)==1
+            s=s.replace(old,new)
+          f.write_text(s)
+          PY
+      - name: Prove the new assertions reject unchanged production CSS
+        run: |
+          mkdir -p .artifacts/trader-controls
+          set +e
+          PLAYWRIGHT_JSON_OUTPUT_NAME=.artifacts/trader-controls/before.json pnpm exec playwright test tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --no-deps --workers=2 --retries=0 --reporter=list,json
+          code=$?
+          set -e
+          test "$code" -ne 0
+          python3 - <<'PY'
+          import json
+          p=json.load(open('.artifacts/trader-controls/before.json'))
+          assert p['stats']['unexpected']==16, p['stats']
+          assert p['stats']['skipped']==0 and p['stats']['flaky']==0
+          print('All 16 new scenarios reject the unchanged CSS; raw report retained.')
+          PY
+          mv test-results .artifacts/trader-controls/before-results
+      - name: Apply bounded source edits and synchronize CSS cache URLs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          edits={
+            'src/trader-app/public/cinema.css': ('f8c0c6672b804ab41ee553b5d7a7831178029c5be5dab84ccaf217a67944a536','9d953ace2639629d9d773bc5bb2b9b129b8ad6151cdb36edb3a037c172796832',[
+              ('.ticker-strip[hidden],\n.ticker-strip.is-empty {','#ticker-row[hidden], .ticker-strip[hidden],\n#ticker-row.is-empty, .ticker-strip.is-empty {',1),
+              ('@media (prefers-reduced-motion: reduce) {\n  html[data-theme] :is(button, a, [role="button"], [role="tab"]) {','@media (prefers-reduced-motion: reduce) {\n  html[data-theme] :is(button, a, [role="button"], [role="tab"]):not(.terminal-skip-link) {',2),
+              ('.command-deck-link { width: fit-content; color: var(--trader-selected); font-size: 12px; font-weight: 700; }','.command-deck-link { width: fit-content; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; padding-inline: 4px; border-radius: var(--radius-control); color: var(--trader-selected); font-size: max(13px, var(--type-label-size)); font-weight: 700; }',1),
+            ]),
+            'src/trader-app/public/index.html': ('b3d8193a955dd91cde5be63522175b87351d2cc596d8af13f82d98b7a1f1af6e','e0e936219f0f33273632b45e291f193cbac46f5e365bb3b92fe429b718769dfd',[
+              ('cinema.css?v=20260717-shell-unify-contrast-20260914','cinema.css?v=20260717-shell-unify-contrast-20260914-controls-20260915',1),
+            ]),
+            'src/trader-app/public/detail.html': ('716ecdb0b3b4d319a265c9e3c44f04ec1a30e70f15c2372963b307bf0ef7ccab','556c7584c09a54919acb2f5c24bf29795046852409a6a8fda5657e22b033cf12',[
+              ('cinema.css?v=20260717-shell-unify-contrast-20260914','cinema.css?v=20260717-shell-unify-contrast-20260914-controls-20260915',1),
+            ]),
+            'src/trader-app/public/service-worker.js': ('022ce24ed84a16f5c801cc680a68caff466017ef457dd341696d5158f41ae00b','9ac9b08dcd6779d5b6fadc9aac806c9dc1894d9832b15c8a918e2ba75dbe2bb6',[
+              ('cinema.css?v=20260717-shell-unify-contrast-20260914','cinema.css?v=20260717-shell-unify-contrast-20260914-controls-20260915',1),
+              ('the-sfm-trader-v20260717-shell-unify-contrast-20260914"','the-sfm-trader-v20260717-shell-unify-contrast-20260914-controls-20260915"',1),
+            ]),
+          }
+          for name,(before,after,replacements) in edits.items():
+            f=Path(name);s=f.read_text()
+            assert hashlib.sha256(s.encode()).hexdigest()==before, name
+            for old,new,count in replacements:
+              assert s.count(old)==count,(name,old)
+              s=s.replace(old,new)
+            assert hashlib.sha256(s.encode()).hexdigest()==after, name
+            f.write_text(s)
+            print(name,after)
+          f=Path('.github/workflows/trader-text-contrast.yml');s=f.read_text()
+          anchor="      - 'tests/smoke/trader-text-contrast.spec.ts'"
+          assert s.count(anchor)==2
+          s=s.replace(anchor,anchor+"\n      - 'tests/smoke/trader-control-visibility.spec.ts'")
+          command='playwright test tests/smoke/trader-text-contrast.spec.ts --project'
+          assert s.count(command)==1
+          s=s.replace(command,'playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project')
+          f.write_text(s)
+          for name in ['.github/workflows/trader-surface-inspection.yml','.github/workflows/apply-trader-controls.yml','tests/manual/trader-readability-audit.mjs']:
+            Path(name).unlink()
+          PY
+      - name: Verify repaired controls and preserve the original contrast regressions
+        run: |
+          PLAYWRIGHT_JSON_OUTPUT_NAME=.artifacts/trader-controls/after.json pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --no-deps --workers=2 --retries=0 --reporter=list,json
+          mv test-results .artifacts/trader-controls/after-results
+          pnpm exec tsc --noEmit --pretty false
+          pnpm lint
+          pnpm check:maintainability
+          pnpm check:visual-system
+          pnpm check:repo-hygiene
+          pnpm check:prod-endpoints
+          git diff --check
+      - name: Save exact reviewed changes and push only this repair branch
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          test "$(git ls-remote origin refs/heads/fix/trader-surface-readability | cut -f1)" = "$EXPECTED_SHA"
+          git diff 05112fe0cd2a2558e906b87b73b22833d2a67ed3 -- .github/workflows/trader-text-contrast.yml src/trader-app/public tests/smoke/trader-control-visibility.spec.ts > .artifacts/trader-controls/review.patch
+          tar -czf .artifacts/trader-controls/reviewed-files.tar.gz .github/workflows/trader-text-contrast.yml src/trader-app/public/cinema.css src/trader-app/public/index.html src/trader-app/public/detail.html src/trader-app/public/service-worker.js tests/smoke/trader-control-visibility.spec.ts
+          git add -A .github/workflows src/trader-app/public tests/manual/trader-readability-audit.mjs tests/smoke/trader-control-visibility.spec.ts
+          git write-tree > .artifacts/trader-controls/tree.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(trader): respect hidden controls and keyboard visibility across motion preferences'
+          git push origin HEAD:fix/trader-surface-readability
+          git rev-parse HEAD > .artifacts/trader-controls/commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trader-controls-repair-evidence
+          path: |
+            .artifacts/trader-controls/
+            test-results/
+          retention-days: 14
+          if-no-files-found: error
