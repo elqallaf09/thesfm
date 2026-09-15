@@ -73,7 +73,7 @@ function PlaceholderCard({ icon: Icon, title, body, action }: {
   return (
     <section className={`${styles.card} ${styles.placeholderCard}`}>
       <Icon aria-hidden="true" size={20} className={styles.placeholderIcon} />
-      <h2>{title}</h2>
+      <h2 className={styles.panelTitle}>{title}</h2>
       <p>{body}</p>
       {action ? <Link className={styles.linkAction} href={action.href}>{action.label}</Link> : null}
     </section>
@@ -104,25 +104,29 @@ function OverviewSurface() {
       <DeferredOverviewPanel className={styles.spanFour}>
         <AccuracySummaryPanel compact />
       </DeferredOverviewPanel>
-      <PlaceholderCard
-        icon={Landmark}
-        title={copy.navigation.items.marketLeadership}
-        body={copy.overview.snapshotBody}
-        action={{ href: '/ai-analyst/market-leadership', label: copy.actions.open }}
-      />
-      <PlaceholderCard icon={TrendingUp} title={copy.overview.trending} body={copy.overview.trendingBody} />
-      <PlaceholderCard
-        icon={History}
-        title={copy.overview.timeline}
-        body={copy.overview.timelineBody}
-        action={{ href: '/ai-analyst/history?view=timeline', label: copy.overview.openHistory }}
-      />
-      <PlaceholderCard
-        icon={ChartNoAxesCombined}
-        title={copy.overview.changes}
-        body={copy.overview.changesBody}
-        action={{ href: '/ai-analyst/history?view=timeline', label: copy.overview.openHistory }}
-      />
+
+      <div className={`${styles.spanFull} ${styles.twoColumn}`}>
+        <PlaceholderCard
+          icon={Landmark}
+          title={copy.navigation.items.marketLeadership}
+          body={copy.overview.snapshotBody}
+          action={{ href: '/ai-analyst/market-leadership', label: copy.actions.open }}
+        />
+        <PlaceholderCard icon={TrendingUp} title={copy.overview.trending} body={copy.overview.trendingBody} />
+        <PlaceholderCard
+          icon={History}
+          title={copy.overview.timeline}
+          body={copy.overview.timelineBody}
+          action={{ href: '/ai-analyst/history?view=timeline', label: copy.overview.openHistory }}
+        />
+        <PlaceholderCard
+          icon={ChartNoAxesCombined}
+          title={copy.overview.changes}
+          body={copy.overview.changesBody}
+          action={{ href: '/ai-analyst/history?view=timeline', label: copy.overview.openHistory }}
+        />
+      </div>
+
       <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="ai-analyst-overview-next-title">
         <header className={styles.cardHeader}>
           <div>
