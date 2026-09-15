@@ -1,10 +1,10 @@
-'use client';
-import { useCallback,useEffect,useState } from 'react';
-import { useParams } from 'next/navigation';
-import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { RealEstateLandAnalyst } from '@/components/invest/RealEstateLandAnalyst';
-import { RealEstateValuationTimeline } from '@/components/invest/RealEstateValuationTimeline';
-import '@/components/invest/RealEstateLandAnalyst.css';
-import { useAuth } from '@/hooks/useAuth';
-type Snapshot={id:string;currency:string|null;low_value:number|null;midpoint_value:number|null;high_value:number|null;confidence_level:string;evidence_count:number;official_evidence_count:number;methodology_version:string;valued_at:string};
-export default function SavedRealEstateAnalystPage(){const params=useParams<{positionId:string}>();const positionId=params?.positionId??'';const{session,isGuest}=useAuth();const[items,setItems]=useState<Snapshot[]>([]);const[loading,setLoading]=useState(true);const load=useCallback(async(signal?:AbortSignal)=>{const token=session?.access_token;if(!token||isGuest||!positionId){setLoading(false);return;}setLoading(true);try{const r=await fetch(`/api/investments/real-estate/history?positionId=${encodeURIComponent(positionId)}`,{headers:{Authorization:`Bearer ${token}`},cache:'no-store',signal});const p=r.ok?await r.json():null;setItems(p?.items??[])}catch(e){if(!(e instanceof DOMException&&e.name==='AbortError'))setItems([])}finally{setLoading(false)}},[isGuest,positionId,session?.access_token]);useEffect(()=>{const c=new AbortController();void load(c.signal);return()=>c.abort()},[load]);return <DashboardPageShell ariaLabel="Real Estate Intelligence"><RealEstateLandAnalyst positionId={positionId||undefined} onSnapshotSaved={()=>void load()}/><section className="real-estate-analyst__history-card"><div><span>Historical intelligence</span><h2>Valuation timeline</h2><p>Every saved valuation keeps its date, evidence count, official-source coverage, confidence and methodology version.</p></div>{loading?<div className="real-estate-analyst__timeline-empty">Loading valuation history…</div>:<RealEstateValuationTimeline items={items}/>}</section></DashboardPageShell>}
+import { RealEstateAnalystWorkspace } from '@/components/invest/RealEstateAnalystWorkspace';
+
+export default async function SavedRealEstateAnalystPage({
+  params,
+}: {
+  params: Promise<{ positionId: string }>;
+}) {
+  const { positionId } = await params;
+  return <RealEstateAnalystWorkspace positionId={positionId} />;
+}
