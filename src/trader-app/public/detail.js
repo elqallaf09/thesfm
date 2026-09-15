@@ -959,7 +959,7 @@ function renderDetail(data) {
     ...sourceItem, expectedPrice: null, targetPrice: null, target1: null, target2: null, stopLoss: null,
     confidence: null, aiConfidence: null, finalScore: null, score: null, riskReward: null,
     expectedMovePct: null, duration: null, support: null, resistance: null,
-    analysisQuality: null, tradePlan: null, timeframeConsensus: null, timeframes: [], upsideOutlook: [],
+    analysisQuality: null, dataHealth: null, tradePlan: null, timeframeConsensus: null, timeframes: [], upsideOutlook: [],
     risk: { level: "unknown", label: "unknown", notes: [] }, reasons: [normalizedRecommendation.reason]
   };
   const finalScore = calculateFinalScore(item, normalizedRecommendation);
@@ -1496,12 +1496,12 @@ function localizeRegion(value) {
 }
 
 function localizeConfidenceText(value) {
-  if (!Number.isFinite(Number(value))) return unavailableText();
+  if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim()) || !Number.isFinite(Number(value))) return unavailableText();
   return detailText(`${value}% ثقة`, `${value}% confidence`, `${value}% de confiance`);
 }
 
 function localizeAgreementText(consensus = {}) {
-  if (!Number.isFinite(Number(consensus.agreementPct))) return unavailableText();
+  if (!consensus || consensus.agreementPct === null || consensus.agreementPct === undefined || typeof consensus.agreementPct === "boolean" || (typeof consensus.agreementPct === "string" && !consensus.agreementPct.trim()) || !Number.isFinite(Number(consensus.agreementPct))) return unavailableText();
   const agreement = consensus.agreementPct || 0;
   const coverage = consensus.coverage || 0;
   const total = consensus.total || 0;

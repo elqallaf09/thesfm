@@ -248,7 +248,7 @@ test('full detail rejects the raw decision and invented score when core evidence
   await page.goto(`${origin}${prefix}detail.html?symbol=MSFT`);
   await expect(page.locator('#decision-title')).toHaveText('Insufficient data');
   await expect(page.locator('#decision-panel')).not.toContainText('Strong buy');
-  await expect(page.locator('#detail-confidence')).not.toContainText('95');
+  await expect(page.locator('#detail-confidence')).toHaveText('Unavailable');
   await expect(page.locator('#detail-score')).not.toContainText('95');
   await expect(page.locator('#detail-score')).not.toContainText('0');
   await expect(page.locator('#detail-target-one')).not.toContainText('USD');

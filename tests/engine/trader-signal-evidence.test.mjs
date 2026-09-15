@@ -39,7 +39,7 @@ for(const value of [null,undefined,true,false,'', ' ', -1,101,Infinity,NaN])test
   const r=normalizeRecommendation({...base(),confidence:value,score:99});assert.equal(r.confidence,null);
 });
 test('actual zero confidence is preserved',()=>{assert.equal(normalizeRecommendation({...base(),confidence:0}).confidence,0)});
-function extract(source,name){const start=source.indexOf(`function ${name}(`);assert.ok(start>=0);let brace=source.indexOf('{',start),level=1,end=brace+1;for(;end<source.length&&level;end++){if(source[end]==='{')level++;else if(source[end]==='}')level--;}return source.slice(start,end)}
+function extract(source,name){const start=source.indexOf(`function ${name}(`);assert.ok(start>=0);const brace=source.indexOf('{',source.indexOf(') {',start));let level=1,end=brace+1;for(;end<source.length&&level;end++){if(source[end]==='{')level++;else if(source[end]==='}')level--;}return source.slice(start,end)}
 const detail=readFileSync('src/trader-app/public/detail.js','utf8');
 const scope={Recommendation:{normalizeRecommendation},Number,detailText:(ar,en)=>en,localizeDetailText:v=>v};
 for(const name of ['calculateFinalScore','evaluationScoreState','buildDecision'])vm.runInNewContext(extract(detail,name),scope);
@@ -56,4 +56,22 @@ test('missing or rejected score has no invented points; actual source score surv
 test('null evaluation is unavailable, actual zero remains a real zero',()=>{
   for(const x of [null,undefined,true,false,'',' '])assert.equal(scope.evaluationScoreState(x),null);
   assert.equal(scope.evaluationScoreState(0),'danger');assert.equal(scope.evaluationScoreState(50),'success');
+});
+
+scope.unavailableText = () => 'Unavailable';
+for (const name of ['localizeConfidenceText', 'localizeAgreementText']) {
+  vm.runInNewContext(extract(detail, name), scope);
+}
+test('absent confidence renders unavailable, never null percent or a fabricated zero', () => {
+  for (const value of [null, undefined, true, false, '', ' ', NaN, Infinity]) {
+    assert.equal(scope.localizeConfidenceText(value), 'Unavailable');
+  }
+  assert.equal(scope.localizeConfidenceText(0), '0% confidence');
+  assert.equal(scope.localizeConfidenceText(75), '75% confidence');
+});
+test('null timeframe consensus renders safely with genuine zero preserved', () => {
+  for (const value of [null, undefined, {}, { agreementPct: null }, { agreementPct: '' }, { agreementPct: false }]) {
+    assert.equal(scope.localizeAgreementText(value), 'Unavailable');
+  }
+  assert.match(scope.localizeAgreementText({ agreementPct: 0, coverage: 1, total: 3 }), /agreement 0%/);
 });
