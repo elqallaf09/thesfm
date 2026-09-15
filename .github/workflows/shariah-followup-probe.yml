@@ -1,0 +1,35 @@
+name: Shariah follow-up public source probe
+on:
+  push:
+    branches: [fix/shariah-followup-evidence-coverage]
+    paths:
+      - .github/workflows/shariah-followup-probe.yml
+      - src/__tests__/shariah-followup-live.test.ts
+      - scripts/shariah/probe-fund-public-pages.mjs
+permissions:
+  contents: read
+jobs:
+  public-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --reporter=silent
+      - name: Inspect bounded official document extraction
+        env:
+          SHARIAH_FOLLOWUP_LIVE: '1'
+        run: pnpm exec vitest run src/__tests__/shariah-followup-live.test.ts --reporter=verbose
+      - run: pnpm exec playwright install --with-deps chromium > /tmp/playwright-install.log 2>&1
+      - name: Observe only public fund data responses
+        run: node scripts/shariah/probe-fund-public-pages.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: shariah-followup-public-probe-${{ github.run_id }}
+          path: proof/public-probe/
+          retention-days: 7
