@@ -57,6 +57,26 @@ jobs:
         env:
           SFM_RLS_DISPOSABLE: '1'
         run: node scripts/economic-intelligence/verify-local-rls.mjs "$RUNNER_TEMP/sfm-local-status.json" "$RUNNER_TEMP/sfm-rls-result.json"
+      - name: Diagnose local cleanup without exposing raw database logs
+        if: failure()
+        shell: bash
+        run: |
+          docker logs supabase_db_sfm-isolation 2>&1 | node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const log = readFileSync(0, "utf8");
+            const patterns = [
+              /permission denied for (?:table|schema|sequence) [a-z_][a-z_0-9.]*/gi,
+              /violates (?:foreign key|not-null|check|unique) constraint "[a-z_][a-z_0-9]*"/gi,
+              /relation "[a-z_][a-z_0-9.]*" does not exist/gi,
+              /column "[a-z_][a-z_0-9]*" (?:does not exist|of relation "[a-z_][a-z_0-9]*" violates not-null constraint)/gi,
+              /record "[a-z_][a-z_0-9]*" has no field "[a-z_][a-z_0-9]*"/gi,
+              /must be owner of (?:table|function|sequence) [a-z_][a-z_0-9.]*/gi,
+              /function [a-z_][a-z_0-9.]*\([^()]*\) does not exist/gi,
+            ];
+            const errors = new Set(patterns.flatMap(pattern => Array.from(log.matchAll(pattern), match => match[0])));
+            for (const error of errors) console.log(`LOCAL_DB_STRUCTURE: ${error}`);
+            if (!errors.size) console.log("No allowlisted structural error; raw logs remain private.");
+          '
       - name: Publish non-sensitive verification result
         if: always()
         uses: actions/upload-artifact@v7
