@@ -1,4 +1,6 @@
-import test from 'node:test';
+// The same safety cases run both in the standalone credential preflight and
+// in the repository-wide Vitest coverage suite. Register with its active runner.
+const { test } = process.env.VITEST ? await import('vitest') : await import('node:test');
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolvePreviewCredentials, writePreviewCredentials } from '../resolve-preview-credentials.mjs';
