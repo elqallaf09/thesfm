@@ -1,0 +1,19 @@
+.watchlist-quote-meta {
+  display: grid;
+  gap: 0.25rem;
+  margin-block-start: 0.4rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  white-space: normal;
+  min-inline-size: 10rem;
+}
+.watchlist-quote-meta time {
+  font-variant-numeric: tabular-nums;
+}
+.watchlist-engine-note {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.8;
+  margin-block: 1rem 0;
+}

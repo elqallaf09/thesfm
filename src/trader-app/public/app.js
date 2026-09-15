@@ -1340,6 +1340,7 @@
     errors: {},
     cache: new Map(), marketCache: new Map()
   };
+  const watchlistView = window.SFMWatchlistView.create({ state, defaults, unique, hero, textPair, h, logo, emptyState, ROOT, normalizeQuote, norm, currency, sharedRecommendation, num, assetDataState, recommendationTone, recommendationLabel, dashCell, displaySymbolFor, terminalText, price, changeUnavailableText, change, isValidPrice, riskTone, riskShort, date, renderAfterData });
   state.settings.lang = currentLanguage();
   state.settings.language = state.settings.lang;
   discardTraderThemePreference();
@@ -1791,6 +1792,7 @@
   }
 
   async function hydrate(force = false) {
+    watchlistView.sync(force);
     const commandSymbols = dashboardSymbols();
     const newsPath = marketNewsPath(12);
     const routeId = state.route.id;
@@ -1801,7 +1803,7 @@
     else if (routeId === "news") ["news", "providerStatus"].forEach(key => needs.add(key));
     else if (routeId === "alerts") ["rec", "signals", "signalAlerts", "providerStatus"].forEach(key => needs.add(key));
     else if (["portfolio", "trade-performance"].includes(routeId)) ["rec", "followed", "providerStatus"].forEach(key => needs.add(key));
-    else if (routeId === "watchlist") ["rec", "providerStatus"].forEach(key => needs.add(key));
+    else if (routeId === "watchlist") ["providerStatus"].forEach(key => needs.add(key));
     else if (routeId === "settings") needs.add("providerStatus");
     else if (routeId !== "calendar") needs.add("providerStatus");
 
@@ -2723,6 +2725,7 @@
   }
 
   function afterRoute() {
+    watchlistView.sync();
     const id = state.route.id;
     if (id !== "calendar") hydrate().catch((error) => devLog("route-hydration", "failed", { route: id, message: errorMessage(error) }));
     if (id === "symbol-details" && state.route.symbol) loadSymbol(state.route.symbol);
@@ -3193,14 +3196,7 @@
   window.__tabRenderers.scan = (v) => { const r = recs(); const f = v === "all" ? r : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : r.length ? selectionEmptyState() : dataStateEmpty(recommendationFeedState(r)); };
   window.__tabRenderers.rec = (v) => { const r = recs(); const f = v === "all" ? r : v === "high" ? r.filter(x => (num(x.confidence, x.score, x.aiConfidence) || 0) >= 70) : r.filter(x => v === "wait" ? !["buy", "sell"].includes(signal(x)) : signal(x) === v); return f.length ? assetList(f) : r.length ? selectionEmptyState() : dataStateEmpty(recommendationFeedState(r)); };
 
-  function watchPage() {
-    const quick = unique(defaults.concat(["EURUSD", "SPY", "2222.SR", "ETHUSD"]));
-    return `<div class="page-stack">${hero(textPair("قائمة متابعة ذكية ونظيفة", "Clean smart watchlist"), textPair("أضف الرموز التي تريد مراقبتها. الأسعار والتحليلات تظهر فقط عند توفرها من المزود، والعملة تتبع كل رمز.", "Add the symbols you want to watch. Prices and analysis appear only when available from the provider, and currency follows each symbol."), "WATCHLIST")}
-      <section class="panel"><span class="eyebrow">${h(textPair("إضافة سريعة", "Quick add"))}</span><h2>${h(textPair("إضافة سريعة", "Quick add"))}</h2><div class="quick-actions">${quick.map(s => `<button class="ghost-btn" data-quick-add="${h(s)}">${logo({ symbol: s })}<span class="ltr">${h(s)}</span></button>`).join("")}</div></section>
-      <section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("قائمتي", "My watchlist"))}</span><h2>${h(textPair(`قائمتي (${state.watch.length})`, `My watchlist (${state.watch.length})`, `Ma liste de suivi (${state.watch.length})`))}</h2></div></div>
-        ${state.watch.length ? watchlistTable(state.watch.map(s => matchRec(s) || { symbol: s, name: s }), { removable: true }) : emptyState(textPair("قائمة المتابعة فارغة", "Watchlist is empty"), textPair("أضف رموزاً من الأعلى. لن نملأها ببيانات وهمية.", "Add symbols above. We will not fill it with synthetic data."), textPair("افتح الأسواق", "Open markets"), `${ROOT}/markets`)}
-      </section></div>`;
-  }
+  function watchPage() { return watchlistView.page(); }
 
   function portfolioPage() {
     const t = trades(), h2 = state.holdings;
@@ -4206,12 +4202,14 @@
     const key = sym(symbol);
     const aliases = symbolAliases(key);
     const cachedEntry = Array.from(state.cache.entries()).find(([cacheKey]) => aliases.includes(sym(cacheKey)));
-    const cachedDetail = cachedEntry ? cachedEntry[1] : null;
+    const watchRow = state.route.id === "watchlist" ? watchlistView.lookup(key) : null;
+    // Never blend an old detail recommendation into a newer/gated watchlist row.
+    const cachedDetail = watchRow ? null : cachedEntry ? cachedEntry[1] : null;
     let loaded = mergeRecLists(legacyRecsFrom(state.commandCards), recs());
     const marketRows = [];
     state.marketCache.forEach(payload => marketRows.push(...marketUniverseRows(payload)));
     loaded = mergeRecLists(marketRows, loaded);
-    const loadedAsset = findAssetForSymbol(key, loaded) || matchRec(key) || null;
+    const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
     const rec = cachedDetail && cachedDetail.rec || loadedAsset;
     const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(rec || {}) }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
@@ -5070,6 +5068,7 @@
   }
 
   function evaluationScoreState(value) {
+    if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return null;
     const score = Number(value);
     if (!Number.isFinite(score)) return null;
     return score < 50 ? "danger" : "success";
@@ -5416,38 +5415,8 @@
   function exploreCarousel() {
     return `<section class="explore"><div class="explore-head"><span class="eyebrow">${h(textPair("استكشف الأسواق", "Explore markets"))}</span></div><div class="explore-row">${EXPLORE.map(id => { const m = MARKETS.find(x => x.id === id); if (!m) return ""; return `<a class="explore-card" href="${ROOT}/markets/${m.id}" data-route-link><span class="ex-icon">${marketGlyph(m)}</span><strong>${h(marketName(m))}</strong><small>${h(marketFamilyName(m.family))}</small></a>`; }).join("")}</div></section>`;
   }
-  function watchlistTable(items, opts = {}) {
-    const rows = items.map(x => {
-      const a = normalizeQuote(norm(x)), c = currency(a), recommendation = sharedRecommendation(a), sig = recommendation.status;
-      const conf = recommendation.confidence, p = a.price;
-      const chg = a.changePercent, tgt = num(a.target, a.targetPrice, a.priceTarget), score = num(a.aiScore, a.score, a.rating);
-      const risk = a.risk || a.riskLevel;
-      const ds = assetDataState(a, recommendation);
-      // عندما تكون الأدلة غير مكتملة لا نعرض نسب ثقة تبدو مؤكدة —
-      // تُستبدل بشرطة مع تلميح يوضح السبب (العرض فقط، دون تغيير الحسابات).
-      const evidenceGated = ds.key !== "available";
-      const gateNote = evidenceGated ? ds.label : "";
-      const recommendationHtml = evidenceGated
-        ? `<span class="state-badge ${ds.tone}">${h(ds.label)}</span>`
-        : `<span class="state-badge ${recommendationTone(recommendation)}">${h(recommendationLabel(recommendation))}</span>`;
-      const confHtml = conf === null || evidenceGated ? dashCell(gateNote) : Math.round(conf) + "%";
-      const scoreHtml = score === null || evidenceGated ? dashCell(gateNote) : (score > 10 ? Math.round(score) + "%" : score.toFixed(1));
-      const rm = opts.removable ? `<button class="icon-btn danger" data-remove-watch="${h(a.symbol)}" title="${h(textPair("إزالة", "Remove"))}">✕</button>` : "";
-      return `<tr>
-        <td class="wt-asset" data-label="${h(terminalText("asset"))}"><button data-symbol-details="${h(a.symbol)}">${logo(a)}<span><strong class="ltr">${h(a.symbol)}</strong><small>${h(a.name || displaySymbolFor(a.symbol))}</small></span></button></td>
-        <td class="ltr" data-label="${h(terminalText("price"))}">${h(price(p, c))}</td>
-        <td class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}" data-label="${h(textPair("التغير", "Change"))}">${chg === null ? dashCell(changeUnavailableText()) : h(change(chg))}</td>
-        <td data-label="${h(textPair("التوصية", "Recommendation"))}">${recommendationHtml}</td>
-        <td class="ltr" data-label="${h(terminalText("confidence"))}">${confHtml}</td>
-        <td class="ltr" data-label="${h(terminalText("target"))}">${isValidPrice(tgt) ? price(tgt, c) : dashCell()}</td>
-        <td data-label="${h(textPair("المدة", "Horizon"))}">${h(a.timeframe || a.horizon || a.duration) || dashCell()}</td>
-        <td data-label="${h(textPair("المخاطرة", "Risk"))}">${risk ? `<span class="risk-pill ${riskTone(risk)}">${h(riskShort(risk))}</span>` : dashCell()}</td>
-        <td class="ltr" data-label="${h(textPair("سكور AI", "AI score"))}">${scoreHtml}</td>
-        <td class="row-actions" data-label="${h(terminalText("action"))}"><button class="ghost-btn sm" data-symbol-details="${h(a.symbol)}">${h(terminalText("analysis"))}</button>${rm}</td>
-      </tr>`;
-    }).join("");
-    return `<div class="table-shell watchlist-table"><table><thead><tr><th>${h(terminalText("asset"))}</th><th>${h(terminalText("price"))}</th><th>${h(textPair("التغير", "Change"))}</th><th>${h(textPair("التوصية", "Recommendation"))}</th><th>${h(terminalText("confidence"))}</th><th>${h(terminalText("target"))}</th><th>${h(textPair("المدة", "Horizon"))}</th><th>${h(textPair("المخاطرة", "Risk"))}</th><th>${h(textPair("سكور AI", "AI score"))}</th><th>${h(terminalText("action"))}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-  }
+  function watchlistTable(items, opts = {}) { return watchlistView.table(items, opts); }
+
   function recCards(items) { return `<div class="rec-grid">${items.map(recCard).join("")}</div>`; }
   function assetList(items) { return `<div class="watchlist-grid">${items.map(x => assetCard(normalizeQuote(norm(x)))).join("")}</div>`; }
   function recCard(x) {
@@ -6315,7 +6284,9 @@
     <p class="muted-note">${h(textPair("الهدف الأول قريب عمداً (≈0.9×ATR) لرفع احتمال الإصابة، وهو الهدف الذي تُقاس عليه نسبة النجاح التاريخية. الوقف أوسع خلف الهيكل السعري، لذلك العائد/المخاطرة يُقرأ مع الهدف الثاني.", "The first target is intentionally close (around 0.9x ATR) to raise hit probability; historical success is measured against that target. The stop is wider behind the price structure, so risk/reward is read with the second target."))}</p>`;
   }
   function signalAnalysis(rec, c) {
-    const sig = signal(rec), conf = confText(rec);
+    const checked = sharedRecommendation(rec), evidence = assetDataState(rec, checked);
+    if (evidence.key !== "available") return drawerUnavailable(evidence.label, evidence.body);
+    const sig = checked.status, conf = checked.confidence === null ? terminalText("unavailable") : `${Math.round(checked.confidence)}%`;
     const reasons = arr(rec.reasons).map(String).filter(Boolean).slice(0, 5);
     const warnings = arr(rec.warnings).map(String).filter(Boolean).slice(0, 5);
     const score = rec.scoreBreakdown || rec.score_breakdown || {};
@@ -6732,7 +6703,7 @@
     const bar = document.getElementById("terminal-statusbar");
     const rec = recs(), mk = arr(state.markets.markets || state.markets.data || state.markets.results), p = providerCopy();
     const feedState = recommendationFeedState(rec);
-    const cells = [[textPair("بيانات التحليل", "Analysis data", "Données d’analyse"), feedState.label, feedState.title], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
+    const cells = state.route.id === "watchlist" ? watchlistView.statusCells() : [[textPair("بيانات التحليل", "Analysis data", "Données d’analyse"), feedState.label, feedState.title], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
     const metricCellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("");
     const statusCellHtml = `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${h(p.className === "online" ? textPair("النظام يعمل", "System online") : textPair("بانتظار المزود", "Waiting for provider"))}</strong></div>`;
     if (statsHost) statsHost.innerHTML = metricCellsHtml;
@@ -6741,8 +6712,8 @@
   }
 
   /* ───────────────────── Actions ───────────────────── */
-  function addWatch(raw) { const s = sym(raw); if (!s) return; state.watch = unique([s, ...state.watch]); write(keys.watch, state.watch); toast(textPair(`تمت إضافة ${s} لقائمة المتابعة.`, `${s} added to watchlist.`, `${s} a été ajouté à la liste de suivi.`)); render(); }
-  function removeWatch(raw) { const s = sym(raw); state.watch = state.watch.filter(x => x !== s); write(keys.watch, state.watch); toast(textPair(`تمت إزالة ${s}.`, `${s} removed.`, `${s} a été supprimé.`)); render(); }
+  function addWatch(raw) { const s = sym(raw); if (!s) return; state.watch = unique([s, ...state.watch]); write(keys.watch, state.watch); watchlistView.sync(); toast(textPair(`تمت إضافة ${s} لقائمة المتابعة.`, `${s} added to watchlist.`, `${s} a été ajouté à la liste de suivi.`)); render(); }
+  function removeWatch(raw) { const s = sym(raw); state.watch = state.watch.filter(x => x !== s); write(keys.watch, state.watch); watchlistView.sync(); toast(textPair(`تمت إزالة ${s}.`, `${s} removed.`, `${s} a été supprimé.`)); render(); }
   function createAlert(raw) { const s = sym(raw); if (!s) return; state.alerts = [{ symbol: s, type: "signal", title: textPair(`متابعة ${s}`, `Watch ${s}`, `Surveiller ${s}`), message: textPair("تنبيه محلي محفوظ. يحتاج مزود أسعار لتفعيله تلقائياً.", "Local alert saved. A price provider is required to trigger it automatically."), createdAt: new Date().toISOString() }, ...state.alerts].slice(0, 30); write(keys.alerts, state.alerts); toast(textPair(`تم إنشاء تنبيه لـ ${s}.`, `Alert created for ${s}.`, `Alerte créée pour ${s}.`)); render(); }
   function deleteAlert(i) { state.alerts.splice(Number(i), 1); write(keys.alerts, state.alerts); render(); }
   function tradeDraftFromAsset(asset, sourceType = "manual") {

@@ -8,6 +8,7 @@ const read = (file: string) => readFileSync(join(root, file), 'utf8');
 const app = read('src/trader-app/public/app.js');
 const styles = read('src/trader-app/public/cinema.css');
 const html = read('src/trader-app/public/index.html');
+const serviceWorker = read('src/trader-app/public/service-worker.js');
 
 describe('SFM Trader workspace experience', () => {
   it('renders one active dashboard workspace instead of evaluating every chart view', () => {
@@ -96,7 +97,30 @@ describe('SFM Trader workspace experience', () => {
     expect(html).toContain('semantic-tokens.css?v=20260713-central-system');
     expect(html).toContain('theme-bridge.js?v=20260714-phase34');
     expect(html).toContain('cinema.css?v=20260717-shell-unify');
-    expect(html).toContain('app.js?v=20260717-shell-unify');
+    expect(html).toContain('app.js?v=20260915-watchlist-engine-2');
+  });
+
+  it('loads version-aligned watchlist dependencies before the controller and precaches the same assets', () => {
+    const version = '20260915-watchlist-engine-2';
+    const scripts = [
+      `./watchlist-engine.js?v=${version}`,
+      `./watchlist-view.js?v=${version}`,
+      `/app.js?v=${version}`,
+    ];
+    let previous = -1;
+    for (const src of scripts) {
+      const tag = `<script src="${src}" defer></script>`;
+      const position = html.indexOf(tag);
+      expect(position, src).toBeGreaterThan(previous);
+      expect(html.indexOf(tag, position + tag.length), src).toBe(-1);
+      expect(serviceWorker, src).toContain(`"${src}"`);
+      expect(read(`src/trader-app/public/${src.split('?')[0].replace(/^\.?\//, '')}`).trim(), src).not.toBe('');
+      previous = position;
+    }
+    expect(html).toContain(`<link rel="stylesheet" href="./watchlist.css?v=${version}" />`);
+    expect(serviceWorker).toContain(`"./watchlist.css?v=${version}"`);
+    expect(serviceWorker).toContain(`const CACHE_NAME = "the-sfm-trader-v${version}";`);
+    expect(html).not.toContain('/app.js?v=20260717-shell-unify');
   });
 
   it('includes mobile reflow, dark-mobile repair, RTL wrapping, and reduced motion', () => {
