@@ -38,14 +38,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - name: Embedded Arabic/English, light/dark contrast and theme switching
         env:
-          # Disable the normal app webServer; the test owns its isolated server.
+          # Disable the unrelated Next/auth web-server setup; the spec owns an ephemeral fixture server.
           # This reserved placeholder is never requested.
           E2E_BASE_URL: https://trader-contrast.invalid
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/trader-contrast/report.json
-        run: pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --no-deps --workers=2 --retries=0 --reporter=list,json
+        run: pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --no-deps --workers=2 --retries=0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

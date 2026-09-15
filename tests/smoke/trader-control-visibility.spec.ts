@@ -16,7 +16,7 @@ test.beforeAll(async () => {
       response.setHeader('cache-control', 'no-store');
       if (url.pathname === '/host') {
         response.setHeader('content-type', 'text/html; charset=utf-8');
-        response.end('<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}iframe{display:block;border:0;width:100%;height:1600px}</style></head><body><iframe name="trader-controls" title="Trader controls" src="/thesfm-trader-own/app/index.html?route=dashboard"></iframe></body></html>');
+        response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="utf-8"><style>body{margin:0}iframe{display:block;border:0;width:100%;height:1600px}</style></head><body><iframe name="trader-controls" title="Trader controls" src="/thesfm-trader-own/app/index.html?route=dashboard"></iframe></body></html>');
         return;
       }
       const file = decodeURIComponent(url.pathname).replace(/^\/thesfm-trader-own\/app\//, '').replace(/^\/+/, '');
@@ -76,6 +76,7 @@ for (const width of [1440, 390]) {
             const skip = document.querySelector('.terminal-skip-link')!;
             const ticker = document.querySelector<HTMLElement>('#ticker-row')!;
             return {
+              viewportWidth: innerWidth,
               skipBottom: skip.getBoundingClientRect().bottom,
               tickerHidden: ticker.hidden,
               tickerHeight: ticker.getBoundingClientRect().height,
@@ -87,6 +88,7 @@ for (const width of [1440, 390]) {
           });
           await testInfo.attach('initial-controls', { body: JSON.stringify(initial, null, 2), contentType: 'application/json' });
           await testInfo.attach('dashboard', { body: await page.screenshot(), contentType: 'image/png' });
+          expect(initial.viewportWidth, 'The embedded fixture must use the device viewport').toBe(width);
           expect.soft(initial.skipBottom, 'Unfocused skip link must not cover the title').toBeLessThanOrEqual(0);
           expect.soft(initial.tickerHidden).toBe(true);
           expect.soft(initial.tickerHeight, 'Hidden ticker must not leave an empty mobile strip').toBe(0);
