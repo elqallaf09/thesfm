@@ -76,7 +76,7 @@
       const stamps = priced.map(row => row.engine?.asOf).filter(stamp => typeof stamp === "string" && Number.isFinite(Date.parse(stamp)));
       const latest = stamps.length ? new Date(Math.max(...stamps.map(stamp => Date.parse(stamp)))).toLocaleString("en-GB", { hour12: false }) : "--";
       return [
-        [textPair("بيانات قائمتي", "Watchlist data", "Données de la liste"), label, "SFM Watchlist Engine"],
+        [textPair("بيانات قائمتي", "Watchlist data", "Données de la liste"), label, textPair("محرك SFM لقائمة المتابعة", "SFM Watchlist Engine", "Moteur SFM de suivi")],
         [textPair("أسعار متاحة", "Available prices", "Cours disponibles"), priced.length, `${priced.length}/${rows.length}`],
         [textPair("تحليلات متاحة", "Available analyses", "Analyses disponibles"), analyzed.length, `${analyzed.length}/${rows.length}`],
         [terminalText("watchlist"), rows.length, terminalText("watchlist")],
