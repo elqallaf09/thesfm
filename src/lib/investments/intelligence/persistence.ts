@@ -1,7 +1,15 @@
 import type { ValuationEvidence } from './contracts';
 import type { ValuationRangeResult } from './valuation-range';
 
-type SupabaseLike = { from(table: string): any };
+type QueryResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
+type InsertBuilder<T> = {
+  select(columns: string): QueryResult<T> & { single(): QueryResult<T>; };
+  then?: never;
+};
+type TableBuilder = {
+  insert(values: unknown): InsertBuilder<unknown>;
+};
+type SupabaseLike = { from(table: string): TableBuilder };
 
 export interface PersistValuationInput {
   userId: string;
@@ -61,7 +69,7 @@ export async function persistValuationSnapshot(db: SupabaseLike, input: PersistV
     valued_at: input.valuedAt ?? new Date().toISOString(),
   }).select('id').single();
   if (snapshotInsert.error) throw snapshotInsert.error;
-  const snapshotId = snapshotInsert.data?.id as string | undefined;
+  const snapshotId = (snapshotInsert.data as { id?: string } | null)?.id;
   if (!snapshotId) throw new Error('Snapshot persistence did not return an id.');
 
   const lineageRows = persistedEvidence.map((row) => ({ snapshot_id: snapshotId, evidence_id: row.id, user_id: input.userId, inclusion_reason: 'Used by deterministic valuation range engine.' }));
