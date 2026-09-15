@@ -1,0 +1,30 @@
+name: Shariah NBK source diagnostic
+on:
+  push:
+    branches: [fix/shariah-evidence-coverage-production-proof]
+    paths: ['.github/workflows/shariah-nbk-diagnostic.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: elqallaf09/thesfm
+          run-id: 34937881129
+          name: shariah-evidence-proof
+          path: proof
+      - name: Print only the saved public filing diagnostic
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          paths=list(Path('proof').rglob('extended-NBK.json'))
+          if len(paths)!=1: raise RuntimeError('Expected one retained NBK public diagnostic')
+          value=json.loads(paths[0].read_text())
+          print('NBK_SOURCE_DIAGNOSTIC',json.dumps(value,ensure_ascii=False))
+          PY
