@@ -1,15 +1,8 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ValuationEvidence } from './contracts';
 import type { ValuationRangeResult } from './valuation-range';
 
-type QueryResult<T> = PromiseLike<{ data: T | null; error: unknown }>;
-type InsertBuilder<T> = {
-  select(columns: string): QueryResult<T> & { single(): QueryResult<T>; };
-  then?: never;
-};
-type TableBuilder = {
-  insert(values: unknown): InsertBuilder<unknown>;
-};
-type SupabaseLike = { from(table: string): TableBuilder };
+type SupabaseLike = Pick<SupabaseClient, 'from'>;
 
 export interface PersistValuationInput {
   userId: string;
