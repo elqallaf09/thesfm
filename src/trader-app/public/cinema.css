@@ -8574,8 +8574,9 @@ html[data-theme="light"] .topbar-stats .sb-cell {
 
 .topbar-stats .sb-cell > span,
 .topbar-stats .sb-cell > em {
-  font-size: 12px !important;
-  line-height: 1.25 !important;
+  font-size: max(13px, var(--type-label-size)) !important;
+  line-height: var(--type-label-leading) !important;
+  font-weight: var(--type-label-weight);
 }
 
 .topbar-stats .sb-cell > strong {
@@ -9095,8 +9096,7 @@ html[data-theme="light"] .topbar-stats .sb-cell {
 
 html[data-theme="light"] .topbar-stats .sb-cell > span,
 html[data-theme="light"] .topbar-stats .sb-cell > em {
-  color: var(--foreground-muted) !important;
-  font-size: 0.78rem !important;
+  color: var(--foreground-secondary) !important;
 }
 
 html[data-theme="light"] .topbar-stats .sb-cell > strong {
@@ -13271,18 +13271,18 @@ html[data-theme] :is(
   color: var(--foreground) !important;
 }
 
-html[data-theme] :is(.page-hero, .command-hero) {
+html[data-theme] .terminal-content :is(.page-hero, .command-hero) {
   border-color: color-mix(in srgb, var(--primary) 40%, var(--border)) !important;
   background: var(--hero-gradient) !important;
   color: var(--hero-foreground) !important;
   box-shadow: var(--shadow-card) !important;
 }
 
-html[data-theme] :is(.page-hero, .command-hero) :is(h1, h2, h3, strong) {
+html[data-theme] .terminal-content :is(.page-hero, .command-hero) :is(h1, h2, h3, strong) {
   color: var(--hero-foreground) !important;
 }
 
-html[data-theme] :is(.page-hero, .command-hero) :is(p, small, span) {
+html[data-theme] .terminal-content :is(.page-hero, .command-hero) :is(p, small, span) {
   color: var(--hero-foreground-muted) !important;
 }
 

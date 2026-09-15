@@ -1,10 +1,10 @@
-const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify";
+const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify-contrast-20260914";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/semantic-tokens.css?v=20260713-central-system",
-  "/cinema.css?v=20260717-shell-unify",
+  "/cinema.css?v=20260717-shell-unify-contrast-20260914",
   "/detail.css?v=20260714-phase34",
   "/theme-bridge.js?v=20260714-phase34",
   "/app.js?v=20260717-shell-unify",
