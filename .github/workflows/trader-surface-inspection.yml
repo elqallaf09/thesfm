@@ -1,0 +1,33 @@
+name: Trader surface inspection
+on:
+  push:
+    branches: [fix/trader-surface-readability]
+permissions:
+  contents: read
+concurrency:
+  group: trader-surface-inspection
+  cancel-in-progress: true
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: node tests/manual/trader-readability-audit.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trader-surface-inspection
+          path: .artifacts/trader-surface-audit
+          retention-days: 7
+          if-no-files-found: error
