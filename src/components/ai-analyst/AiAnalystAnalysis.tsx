@@ -9,10 +9,38 @@ import { IntelligencePanel, IntelligenceStatusPanel } from '@/components/intelli
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
+import {
+  SFM_MARKET_INTELLIGENCE_ENGINE_NAME,
+  withSfmAnalyticalSource,
+} from '@/lib/intelligence/branding';
 import type { InvestmentAnalysisContext } from '@/lib/investments/center';
 import { AssetTypeBadge } from './AssetTypeBadge';
 import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
+
+const SOURCE_COPY = {
+  ar: {
+    eyebrow: 'المصدر التحليلي',
+    body: 'THE SFM ينتج القراءة والثقة والمخاطر والأوزان وقواعد القرار. مزود السوق يبقى مصدر بيانات خام موثقاً بشكل مستقل.',
+    dataProvider: 'مزود بيانات السوق',
+    attempts: 'محاولات بيانات السوق',
+    unavailable: 'غير متاح',
+  },
+  en: {
+    eyebrow: 'Analytical source',
+    body: 'THE SFM produces the reading, confidence, risk, weighting, and decision policy. The market provider remains separately identified as an upstream data source.',
+    dataProvider: 'Market-data provider',
+    attempts: 'Market-data attempts',
+    unavailable: 'Unavailable',
+  },
+  fr: {
+    eyebrow: 'Source analytique',
+    body: 'THE SFM produit la lecture, la confiance, le risque, la pondération et la politique de décision. Le fournisseur de marché reste identifié séparément comme source de données en amont.',
+    dataProvider: 'Fournisseur de données de marché',
+    attempts: 'Tentatives de données de marché',
+    unavailable: 'Indisponible',
+  },
+} as const;
 
 function DeferredLoading({ surface }: { surface: 'chart' | 'timeline' | 'history' }) {
   const { lang } = useLanguage();
@@ -109,6 +137,7 @@ function MarketAiAnalystAnalysis({
   const { lang } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale];
+  const sourceCopy = SOURCE_COPY[locale];
   const { user, isGuest } = useAuth();
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -212,6 +241,7 @@ function MarketAiAnalystAnalysis({
     return `/ai-analyst/assistant?${params.toString()}`;
   }, [assetType, symbol]);
   const signInHref = useMemo(() => loginHrefForCurrentLocation(`/ai-analyst/analyze/${encodeURIComponent(symbol)}`), [symbol]);
+  const presentedResult = useMemo(() => result ? withSfmAnalyticalSource(result) : null, [result]);
   const retryMessage = retryAfterSeconds && errorCode
     ? `${copy.analysis.retryAvailable} ${retryAfterSeconds}s`
     : null;
@@ -260,8 +290,24 @@ function MarketAiAnalystAnalysis({
         />
       </div>
 
-      {result ? <div className={styles.spanFull} data-testid="ai-analyst-canonical-result">
-        <IntelligencePanel result={result} loading={false} errorCode={null} onRetry={() => void requestAnalysis(false)} showStatus={false} />
+      {result ? <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="sfm-intelligence-source-title" data-testid="sfm-intelligence-source">
+        <header className={styles.cardHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>{sourceCopy.eyebrow}</p>
+            <h2 id="sfm-intelligence-source-title" className={styles.panelTitle}>{SFM_MARKET_INTELLIGENCE_ENGINE_NAME}</h2>
+            <p>{sourceCopy.body}</p>
+          </div>
+          <span className={styles.metricPill} dir="ltr">v{result.engineVersion}</span>
+        </header>
+        <div className={styles.statusRail}>
+          <span>{sourceCopy.dataProvider}: <b dir="ltr">{result.providerProvenance.selectedProvider ?? sourceCopy.unavailable}</b></span>
+          <span>·</span>
+          <span>{sourceCopy.attempts}: <b dir="ltr">{result.providerProvenance.attempts.length}</b></span>
+        </div>
+      </section> : null}
+
+      {presentedResult ? <div className={styles.spanFull} data-testid="ai-analyst-canonical-result">
+        <IntelligencePanel result={presentedResult} loading={false} errorCode={null} onRetry={() => void requestAnalysis(false)} showStatus={false} />
       </div> : null}
 
       {result ? <section className={`${styles.card} ${styles.spanSeven}`} aria-labelledby="ai-analyst-chart-title">
@@ -287,8 +333,7 @@ function MarketAiAnalystAnalysis({
               <p className={styles.mutedText}>{copy.analysis.historyBody}</p>
             </div>
             <button className={styles.disclosureButton} type="button" aria-expanded={accuracyOpen} onClick={() => setAccuracyOpen(value => !value)}>
-              <ChevronDown size={16} aria-hidden="true" />{copy.actions.learnMore}
-            </button>
+              <ChevronDown size={16} aria-hidden="true" />{copy.actions.learnMore}</button>
           </div>
           {accuracyOpen ? <AccuracySummaryPanel compact /> : null}
           <Link className={styles.linkAction} href={historyHref}><History size={16} aria-hidden="true" />{copy.analysis.openHistory}</Link>
