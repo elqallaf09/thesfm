@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { LandPlot } from 'lucide-react';
 import { REAL_ESTATE_ANALYST_PATH } from '@/lib/investments/realEstateHandoff';
