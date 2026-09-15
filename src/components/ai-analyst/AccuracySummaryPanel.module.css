@@ -1,0 +1,54 @@
+.compactMetrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.compactMetric {
+  min-block-size: 88px;
+  align-content: space-between;
+}
+
+.sampleProgress {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  background: var(--surface-secondary);
+  color: var(--foreground-secondary);
+  font-size: .74rem;
+  line-height: 1.45;
+}
+
+.sampleProgress strong {
+  flex: 0 0 auto;
+  color: var(--foreground);
+  font-family: var(--font-data);
+  font-size: .92rem;
+}
+
+.reasonNote {
+  margin: 0;
+  border-inline-start: 3px solid var(--warning);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  background: var(--warning-soft);
+  color: var(--foreground-secondary);
+  font-size: .76rem;
+  line-height: 1.65;
+}
+
+@media (max-width: 520px) {
+  .compactMetrics {
+    grid-template-columns: 1fr;
+  }
+
+  .sampleProgress {
+    grid-column: auto;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
