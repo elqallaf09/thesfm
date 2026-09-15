@@ -1,0 +1,39 @@
+name: Authorized Shariah catalog continuation
+on:
+  push:
+    branches: [fix/shariah-followup-evidence-coverage]
+    paths:
+      - scripts/shariah/refresh-catalog-session.mjs
+      - .github/workflows/shariah-followup-refresh.yml
+permissions:
+  contents: read
+concurrency:
+  group: shariah-authorized-catalog-continuation
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.repository == 'elqallaf09/thesfm' && github.actor == 'elqallaf09'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --reporter=silent
+      - run: pnpm exec playwright install --with-deps chromium > /tmp/playwright-install.log 2>&1
+      - name: Continue due instruments through normal authenticated production API
+        env:
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          SFM_EXPECTED_PRODUCTION_SHA: a596923c50f0759bb147e35670bd2868f9d7de60
+        run: node scripts/shariah/refresh-catalog-session.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: shariah-catalog-continuation-${{ github.run_id }}
+          path: proof/catalog-continuation.json
+          retention-days: 7
+          if-no-files-found: error
