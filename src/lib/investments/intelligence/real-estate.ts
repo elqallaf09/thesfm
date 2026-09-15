@@ -48,22 +48,16 @@ export function normalizeComparableToM2(evidence: ValuationEvidence): Normalized
   return null;
 }
 
+/**
+ * Prepares comparables without performing FX conversion. Currency normalization belongs
+ * to the valuation engine, where every non-identity conversion must have a supplied,
+ * auditable FX quote. This keeps raw evidence intact and prevents guessed conversion.
+ */
 export function prepareRealEstateEvidence(evidence: ValuationEvidence[]) {
   const sufficiency = assessEvidenceSufficiency(evidence);
   const comparables = sufficiency.usableEvidence
     .map(normalizeComparableToM2)
     .filter((item): item is NormalizedComparable => item !== null);
-
-  const currencies = new Set(comparables.map((item) => item.currency));
-  if (currencies.size > 1) {
-    return {
-      ...sufficiency,
-      sufficient: false,
-      confidence: 'INSUFFICIENT' as const,
-      reasons: [...sufficiency.reasons, 'Comparable currencies differ; verified FX normalization is required before valuation.'],
-      comparables,
-    };
-  }
 
   return { ...sufficiency, comparables };
 }
