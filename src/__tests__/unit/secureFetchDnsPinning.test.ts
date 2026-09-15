@@ -144,3 +144,25 @@ describe('secure fetch DNS pinning', () => {
     expect(networkMocks.lookup).toHaveBeenCalledTimes(3);
   });
 });
+
+
+describe('source cancellation includes DNS and cache boundaries', () => {
+  it('aborts stalled DNS promptly and never opens a late network request', async () => {
+    let resolveLookup!: (value: Array<{ address: string; family: number }>) => void;
+    networkMocks.lookup.mockImplementation(() => new Promise(resolve => { resolveLookup = resolve; }));
+    const controller = new AbortController();
+    const result = secureFetch('https://research.example/slow', { signal: controller.signal, respectRobots: false });
+    const assertion = expect(result).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort();
+    await assertion;
+    resolveLookup([{ address: '93.184.216.34', family: 4 }]);
+    await Promise.resolve();
+    expect(networkMocks.httpsRequest).not.toHaveBeenCalled();
+  });
+  it('rejects an already cancelled signal before DNS or any network side effect', async () => {
+    const controller = new AbortController(); controller.abort();
+    await expect(secureFetch('https://research.example/slow', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(networkMocks.lookup).not.toHaveBeenCalled();
+    expect(networkMocks.httpsRequest).not.toHaveBeenCalled();
+  });
+});

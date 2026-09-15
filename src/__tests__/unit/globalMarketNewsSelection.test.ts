@@ -16,7 +16,13 @@ describe('personalized global market news', () => {
     expect(storyMatchesSelectedMarkets({ symbols: [], countries: ['CA'] }, ['kuwait_boursa', 'saudi_tadawul'])).toBe(false);
   });
 
+  it('distinguishes American exchanges when a story provides only exchange metadata', () => {
+    expect(matchingMarketIds({ exchangeCodes: ['NASDAQ'] }, ['us_nasdaq', 'us_nyse'])).toEqual(['us_nasdaq']);
+    expect(matchingMarketIds({ exchangeCodes: ['NYSE'] }, ['us_nasdaq', 'us_nyse'])).toEqual(['us_nyse']);
+  });
+
   it('matches asset-only selections without fabricating an exchange', () => {
     expect(matchingMarketIds({ assetTypes: ['crypto'] }, ['crypto', 'kuwait_boursa'])).toEqual(['crypto']);
+    expect(matchingMarketIds({ assetTypes: ['currency'] }, ['forex', 'crypto'])).toEqual(['forex']);
   });
 });

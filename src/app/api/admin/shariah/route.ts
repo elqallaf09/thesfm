@@ -11,12 +11,14 @@ function cleanText(value: unknown, max = 500) {
 }
 
 function cleanLimit(value: string | null) {
+  if (!value?.trim()) return 50;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 30;
   return Math.min(100, Math.max(1, Math.trunc(parsed)));
 }
 
 function validateStatus(value: unknown): ShariahStatus | null {
+  if (value === 'unclassified') return 'unclassified';
   const status = normalizeShariahStatus(value, null);
   return status && SHARIAH_STATUSES.includes(status) ? status : null;
 }
@@ -25,7 +27,7 @@ function reviewedAtValue(value: unknown) {
   const text = cleanText(value, 64);
   if (!text) return new Date().toISOString();
   const date = new Date(text);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  return Number.isNaN(date.getTime()) || date.getTime() > Date.now() + 60_000 ? null : date.toISOString();
 }
 
 export const GET = createAdminApiRoute({
@@ -38,28 +40,39 @@ export const GET = createAdminApiRoute({
 
   let query = auth.admin
     .from('market_symbols')
-    .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,updated_at')
+    .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,shariah_refresh_error,shariah_next_refresh_at,updated_at')
+    .eq('is_active', true)
     .order('updated_at', { ascending: false })
     .limit(limit);
 
   if (q) {
-    const like = `%${q.replace(/[%,]/g, '')}%`;
+    const like = `%${q.replace(/[^\p{L}\p{N}. _-]/gu, '')}%`;
     query = query.or(`symbol.ilike.${like},display_symbol.ilike.${like},provider_symbol.ilike.${like},name.ilike.${like},company_name_ar.ilike.${like},company_name_en.ilike.${like}`);
   }
 
-  const [{ data, error }, counts] = await Promise.all([
-    query,
+  const [rows, countsResult, diagnosticsResult] = await Promise.allSettled([
+    query.abortSignal(AbortSignal.timeout(8_000)),
     computeShariahCounts(auth.admin),
+    auth.admin.from('shariah_refresh_runs').select('id,status,finished_at,result').order('started_at', { ascending: false }).limit(1).abortSignal(AbortSignal.timeout(5_000)).maybeSingle(),
   ]);
-  if (error) {
-    console.error('[admin-shariah] load failed', { code: error.code, message: error.message });
-    return json({ ok: false, code: 'LOAD_FAILED' }, { status: 500 });
+  if (rows.status !== 'fulfilled' || rows.value.error) {
+    console.error('[admin-shariah] load failed', { code: 'CATALOG_ROWS_UNAVAILABLE' });
+    return json({ ok: false, code: 'LOAD_FAILED' }, { status: 503 });
   }
-
-  return json({ ok: true, items: data ?? [], counts });
+  // Counts and diagnostics are optional metadata: their failure must not hide
+  // successfully persisted symbol results or fail the entire page refresh.
+  const counts = countsResult.status === 'fulfilled' ? countsResult.value : null;
+  const countsError = countsResult.status === 'rejected' ? 'SHARIAH_COUNTS_UNAVAILABLE' : null;
+  const diagnostics = diagnosticsResult.status === 'fulfilled' ? diagnosticsResult.value : null;
+  if (countsError) console.warn('[admin-shariah] counts unavailable', { code: countsError });
+  return json({ ok: true, items: rows.value.data ?? [], counts, countsError,
+    lastRun: diagnostics?.data ?? null,
+    diagnosticsError: !diagnostics || diagnostics.error ? 'REFRESH_DIAGNOSTICS_UNAVAILABLE' : null });
 });
 
 async function saveOverride({ request, auth, json }: AdminApiContext) {
+  const origin = request.headers.get('origin');
+  if (origin && origin !== new URL(request.url).origin) return json({ ok: false, code: 'INVALID_ORIGIN' }, { status: 403 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body) return json({ ok: false, code: 'INVALID_JSON' }, { status: 400 });
 
@@ -71,15 +84,15 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
   if (!status) return json({ ok: false, code: 'INVALID_STATUS' }, { status: 400 });
   if (!reviewedAt) return json({ ok: false, code: 'INVALID_REVIEW_DATE' }, { status: 400 });
 
-  const reviewedBy = cleanText(body.reviewedBy ?? body.shariahReviewedBy, 160)
-    || auth.access.email
+  const reviewedBy = auth.access.email
     || auth.user.email
     || auth.user.id;
   const reason = cleanText(body.reason ?? body.shariahReason, 1000) || null;
   const source = cleanText(body.source ?? body.shariahSource, 240) || 'manual_admin_review';
-  const screeningData = body.screeningData && typeof body.screeningData === 'object' && !Array.isArray(body.screeningData)
-    ? body.screeningData as Record<string, unknown>
-    : {};
+  if (['compliant', 'non_compliant'].includes(status) && (!reason || source === 'manual_admin_review')) {
+    return json({ ok: false, code: 'REASON_AND_SOURCE_REQUIRED' }, { status: 400 });
+  }
+  const screeningData = {};
   const audit = {
     ...screeningData,
     manualOverride: {
@@ -93,11 +106,13 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
 
   let lookup = auth.admin
     .from('market_symbols')
-    .select('id,symbol,exchange')
+    .select('id,symbol,exchange,shariah_screening_data')
     .eq('symbol', symbol)
-    .limit(1);
+    .limit(2);
   if (exchange) lookup = lookup.eq('exchange', exchange);
-  const existing = await lookup.maybeSingle();
+  const lookupResult = await lookup;
+  if ((lookupResult.data?.length ?? 0) > 1) return json({ ok: false, code: 'EXCHANGE_REQUIRED' }, { status: 409 });
+  const existing = { data: lookupResult.data?.[0], error: lookupResult.error };
   if (existing.error && existing.error.code !== 'PGRST116') {
     console.error('[admin-shariah] lookup failed', { code: existing.error.code, message: existing.error.message });
     return json({ ok: false, code: 'LOOKUP_FAILED' }, { status: 500 });
@@ -110,7 +125,7 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
     shariah_last_reviewed_at: reviewedAt,
     shariah_manual_override: true,
     shariah_reviewed_by: reviewedBy,
-    shariah_screening_data: audit,
+    shariah_screening_data: { ...(existing.data?.shariah_screening_data ?? {}), ...audit },
     updated_at: new Date().toISOString(),
   };
 
@@ -119,7 +134,7 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
         .from('market_symbols')
         .update(patch)
         .eq('id', existing.data.id)
-        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,updated_at')
+        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,shariah_refresh_error,shariah_next_refresh_at,updated_at')
         .single()
     : await auth.admin
         .from('market_symbols')
@@ -135,7 +150,7 @@ async function saveOverride({ request, auth, json }: AdminApiContext) {
           is_active: true,
           ...patch,
         })
-        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,updated_at')
+        .select('id,symbol,display_symbol,provider_symbol,name,company_name_ar,company_name_en,asset_type,exchange,country,currency,shariah_status,shariah_reason,shariah_source,shariah_last_reviewed_at,shariah_manual_override,shariah_reviewed_by,shariah_screening_data,shariah_refresh_error,shariah_next_refresh_at,updated_at')
         .single();
 
   if (result.error) {

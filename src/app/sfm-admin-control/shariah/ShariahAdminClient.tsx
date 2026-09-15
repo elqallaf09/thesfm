@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ShariahEvidencePanel from './ShariahEvidencePanel';
+import type { ComponentProps } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 
 type ShariahStatus = 'compliant' | 'non_compliant' | 'needs_review' | 'unclassified';
@@ -24,6 +26,9 @@ type ShariahRow = {
   shariah_manual_override?: boolean | null;
   shariah_reviewed_by?: string | null;
   updated_at?: string | null;
+  shariah_refresh_error?: string | null;
+  shariah_next_refresh_at?: string | null;
+  shariah_screening_data?: ComponentProps<typeof ShariahEvidencePanel>['evidence'];
 };
 
 type ApiResponse = {
@@ -32,7 +37,10 @@ type ApiResponse = {
   item?: ShariahRow;
   message?: string;
   code?: string;
-  counts?: Record<ShariahStatus, number>;
+  counts?: Record<ShariahStatus, number> | null;
+  countsError?: string | null;
+  lastRun?: ComponentProps<typeof ShariahEvidencePanel>['lastRun'];
+  diagnosticsError?: string | null;
 };
 
 const EMPTY_SHARIAH_COUNTS: Record<ShariahStatus, number> = { compliant: 0, non_compliant: 0, needs_review: 0, unclassified: 0 };
@@ -60,6 +68,12 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
     { value: 'unclassified', label: t('admin_shariah_unclassified') },
   ], [t]);
   const statusLabel = (value: string | null | undefined) => statuses.find(item => item.value === value)?.label ?? t('admin_shariah_unclassified');
+  const [lastRun, setLastRun] = useState<ApiResponse['lastRun']>(null);
+  const [diagnosticsError, setDiagnosticsError] = useState<string | null>(null);
+  const [countsLoaded, setCountsLoaded] = useState(false);
+  const [countsUnavailable, setCountsUnavailable] = useState(false);
+  const loadController = useRef<AbortController | null>(null);
+  useEffect(() => () => loadController.current?.abort(), []);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<ShariahRow[]>([]);
   // Server-computed across the FULL catalog (see /api/admin/shariah's computeShariahCounts) — not
@@ -74,25 +88,36 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  const load = useCallback(async (term = query) => {
+  const load = useCallback(async (term = '') => {
+    loadController.current?.abort();
+    const current = new AbortController();
+    loadController.current = current;
     setLoading(true);
     setMessage('');
     try {
       const params = new URLSearchParams({ limit: '50' });
       if (term.trim()) params.set('q', term.trim());
-      const response = await fetch(`/api/admin/shariah?${params}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/shariah?${params}`, { cache: 'no-store', credentials: 'same-origin',
+        signal: AbortSignal.any([current.signal, AbortSignal.timeout(15_000)]) });
       const data = await response.json().catch(() => ({})) as ApiResponse;
-      if (!response.ok || data.ok === false) throw new Error(data.message || data.code || 'LOAD_FAILED');
+      if (current.signal.aborted) return false;
+      if (!response.ok || data.ok !== true || !Array.isArray(data.items)) throw new Error(data.message || data.code || 'LOAD_FAILED');
       setItems(Array.isArray(data.items) ? data.items : []);
       setCounts(data.counts ?? EMPTY_SHARIAH_COUNTS);
+      setCountsLoaded(Boolean(data.counts));
+      setCountsUnavailable(!data.counts);
+      setLastRun(data.lastRun); setDiagnosticsError(data.diagnosticsError ?? null);
+      setSelected(current => current ? data.items?.find(item => item.id === current.id) ?? current : null);
+      return true;
     } catch (error) {
-      setItems([]);
-      setCounts(EMPTY_SHARIAH_COUNTS);
+      if (current.signal.aborted) return false;
+      setCountsLoaded(false);
       setMessage(t('admin_shariah_load_error'));
+      return false;
     } finally {
-      setLoading(false);
+      if (loadController.current === current) { loadController.current = null; setLoading(false); }
     }
-  }, [query, t]);
+  }, [t]);
 
   useEffect(() => {
     void load('');
@@ -131,7 +156,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       });
       const data = await response.json().catch(() => ({})) as ApiResponse;
       if (!response.ok || data.ok === false || !data.item) throw new Error(data.message || data.code || 'SAVE_FAILED');
-      setItems(current => current.map(item => item.symbol === data.item?.symbol ? data.item : item));
+      await load(query);
       setSelected(data.item);
       setMessage(t('admin_shariah_saved'));
     } catch (error) {
@@ -149,14 +174,17 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
         <p>{t('admin_shariah_desc')}</p>
       </header>
 
+      {!countsLoaded && !loading && items.length > 0 && <p role="status">{lang === 'ar' ? 'نتائج الأسهم متاحة؛ تعذّر تحديث العدادات مؤقتًا.' : lang === 'fr' ? 'Résultats disponibles ; compteurs temporairement indisponibles.' : 'Stock results are available; counters are temporarily unavailable.'}</p>}
       <section className="sharia-admin-stats">
         {statuses.map(item => (
           <article key={item.value} className={`sharia-admin-stat status-${item.value}`}>
-            <strong>{counts[item.value]}</strong>
+            <strong>{countsLoaded ? counts[item.value] : '—'}</strong>
             <p>{item.label}</p>
           </article>
         ))}
       </section>
+
+      {countsUnavailable && <p role="status">{lang === 'ar' ? 'تعذّر تحديث العدادات فقط. نتائج الأسهم المحفوظة ما زالت معروضة؛ استخدم تحديث عرض النتائج.' : lang === 'fr' ? 'Compteurs temporairement indisponibles. Les résultats enregistrés restent affichés ; actualisez la vue.' : 'Counts are temporarily unavailable. Saved stock results remain visible; reload the view.'}</p>}
 
       <form
         onSubmit={(event) => {
@@ -177,6 +205,8 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
       </form>
 
       {message ? <p role="status" className={`sharia-admin-message ${message === t('admin_shariah_saved') ? 'success' : 'error'}`}>{message}</p> : null}
+
+      <ShariahEvidencePanel evidence={selected?.shariah_screening_data} lastRun={lastRun} diagnosticsError={diagnosticsError} onUpdated={() => load(query)} selected={selected?.id ? { id: String(selected.id), symbol: selected.symbol, assetType: selected.asset_type, error: selected.shariah_refresh_error, nextRetryAt: selected.shariah_next_refresh_at } : null} />
 
       <section className="sharia-admin-workspace">
         <div

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { mockMarketDirectory } from '../smoke/helpers/global-market-directory';
 
 function median(values: number[]) {
   const sorted = [...values].sort((left, right) => left - right);
@@ -6,6 +7,7 @@ function median(values: number[]) {
 }
 
 test('Global Markets Explorer Load More stays within the controlled interaction budget', async ({ page }, testInfo) => {
+  await mockMarketDirectory(page);
   await page.addInitScript(() => {
     localStorage.setItem('sfm_lang', 'ar');
     localStorage.setItem('sfm_theme', 'dark');

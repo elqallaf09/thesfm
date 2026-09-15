@@ -61,8 +61,8 @@ export type ShariahScreeningInput = {
 
 export const SHARIAH_SCREENING_THRESHOLDS = {
   nonPermissibleRevenueRatio: 0.05,
-  interestBearingDebtRatio: 0.33,
-  cashAndInterestBearingSecuritiesRatio: 0.33,
+  interestBearingDebtRatio: 0.33333,
+  cashAndInterestBearingSecuritiesRatio: 0.33333,
   interestIncomeRatio: 0.05,
   fundMinimumScreenedWeight: 0.9,
   fundMaximumNonCompliantWeight: 0.05,
@@ -75,51 +75,8 @@ export const SHARIAH_STATUS_LABELS: Record<ShariahStatus, { ar: string; en: stri
   unclassified: { ar: 'غير مصنّف', en: 'Unclassified', compactEn: 'Unclassified', icon: '—' },
 };
 
-const STOCK_FINANCIAL_FIELDS = [
-  'nonPermissibleRevenueRatio',
-  'interestBearingDebtRatio',
-  'cashAndInterestBearingSecuritiesRatio',
-  'interestIncomeRatio',
-] as const;
-
-const PROHIBITED_ACTIVITY_PATTERNS = [
-  /\b(alcohol|brewery|breweries|distiller|distillery|wine|liquor)\b/i,
-  /\b(tobacco|cigarette|cigar|nicotine|vape)\b/i,
-  /\b(casino|gambling|gaming|lottery|betting|wagering)\b/i,
-  /\b(pork|swine)\b/i,
-  /\b(adult entertainment|pornography)\b/i,
-  /\b(weapon|weapons|arms manufacturer|defense contractor|military weapons)\b/i,
-  /\b(conventional bank|commercial bank|investment bank|mortgage lender|consumer finance|payday lender)\b/i,
-  /\b(insurance|reinsurance|life insurance|property casualty)\b/i,
-];
-
-const CONVENTIONAL_BANK_SYMBOLS = new Set([
-  'JPM',
-  'BAC',
-  'C',
-  'WFC',
-  'GS',
-  'MS',
-  'USB',
-  'PNC',
-  'TFC',
-  'BK',
-  'STT',
-  'COF',
-  'AXP',
-]);
-
 function cleanText(value: unknown) {
   return String(value ?? '').trim();
-}
-
-function upper(value: unknown) {
-  return cleanText(value).toUpperCase();
-}
-
-function numberOrNull(value: unknown): number | null {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function booleanFromDb(value: unknown) {
@@ -166,13 +123,17 @@ function statusFromTrustedInput(input: ShariahScreeningInput) {
   if (!status) return null;
   const manual = booleanFromDb(input.shariahManualOverride);
   const source = cleanText(input.shariahSource);
-  const trusted = manual || hasText(source) || hasText(input.shariahReason) || hasText(input.shariahLastReviewedAt);
+  const data = normalizeScreeningData(input.shariahScreeningData);
+  const verifiedAutomatic = data.evidenceVersion === 'sfm-evidence-v2';
+  const reviewed = Date.parse(input.shariahLastReviewedAt ?? '');
+  const current = Number.isFinite(reviewed) && reviewed <= Date.now() && Date.now() - reviewed < 7 * 86_400_000;
+  const trusted = (manual && hasText(source) && hasText(input.shariahReason) && Number.isFinite(reviewed) && reviewed <= Date.now()) || (verifiedAutomatic && current && hasText(source));
   if (!trusted && status === 'compliant') return null;
   if (!trusted && status !== 'unclassified') return null;
 
   const method: ShariahScreeningMethod = manual
     ? 'manual_review'
-    : source && /provider|api|idealratings|zoya|musaffa|islamicly|s&p|ftse|dow jones/i.test(source)
+    : verifiedAutomatic ? 'automatic_screening' : source && /provider|api|idealratings|zoya|musaffa|islamicly|s&p|ftse|dow jones/i.test(source)
       ? 'external_provider'
       : status === 'unclassified'
         ? 'unclassified'
@@ -216,141 +177,6 @@ function needsReview(reason: string, data: ShariahScreeningData = {}): ShariahCl
   };
 }
 
-function nonCompliant(reason: string, data: ShariahScreeningData = {}): ShariahClassification {
-  return {
-    shariahStatus: 'non_compliant',
-    shariahReason: reason,
-    shariahSource: 'Internal automatic screening',
-    shariahLastReviewedAt: null,
-    shariahManualOverride: false,
-    shariahReviewedBy: null,
-    shariahScreeningData: data,
-    shariahMethod: 'automatic_screening',
-  };
-}
-
-function compliant(reason: string, data: ShariahScreeningData = {}): ShariahClassification {
-  return {
-    shariahStatus: 'compliant',
-    shariahReason: reason,
-    shariahSource: 'Internal automatic screening',
-    shariahLastReviewedAt: null,
-    shariahManualOverride: false,
-    shariahReviewedBy: null,
-    shariahScreeningData: data,
-    shariahMethod: 'automatic_screening',
-  };
-}
-
-function isExplicitlyProhibitedActivity(input: ShariahScreeningInput, data: ShariahScreeningData) {
-  const symbol = upper(input.symbol).replace(/\..*$/, '');
-  if (CONVENTIONAL_BANK_SYMBOLS.has(symbol)) return true;
-
-  const country = upper(input.country);
-  const haystack = [input.name, data.sector, data.industry, data.businessDescription].map(cleanText).join(' ');
-
-  if (/bank/i.test(haystack) && /^(US|USA|UNITED STATES|CANADA|GB|UK|UNITED KINGDOM|EU|EUROPE)/.test(country || 'US')) {
-    return true;
-  }
-
-  return PROHIBITED_ACTIVITY_PATTERNS.some(pattern => pattern.test(haystack));
-}
-
-function availableStockFinancialData(data: ShariahScreeningData) {
-  return STOCK_FINANCIAL_FIELDS.map(field => numberOrNull(data[field]));
-}
-
-function classifyStock(input: ShariahScreeningInput, data: ShariahScreeningData) {
-  const symbol = upper(input.symbol);
-  const name = cleanText(input.name);
-  const hasDescriptiveName = Boolean(name && upper(name) !== symbol && !/^[A-Z0-9.^=:/-]{1,12}$/.test(name));
-  const hasBusinessContext = hasDescriptiveName || [data.sector, data.industry, data.businessDescription].map(cleanText).some(Boolean);
-  if (!hasBusinessContext) return unclassified('No business activity or financial screening data is available.', data);
-
-  if (isExplicitlyProhibitedActivity(input, data)) {
-    return nonCompliant('Business activity appears to be in a prohibited or conventional financial sector based on available data.', data);
-  }
-
-  const [nonPermissibleRevenue, debt, cashAndSecurities, interestIncome] = availableStockFinancialData(data);
-  if ([nonPermissibleRevenue, debt, cashAndSecurities, interestIncome].some(value => value === null)) {
-    return needsReview('Business activity data is available, but financial ratios are missing or incomplete.', data);
-  }
-
-  if (nonPermissibleRevenue! > SHARIAH_SCREENING_THRESHOLDS.nonPermissibleRevenueRatio) {
-    return nonCompliant('Non-permissible revenue ratio exceeds the configured Shariah screening threshold.', data);
-  }
-  if (debt! > SHARIAH_SCREENING_THRESHOLDS.interestBearingDebtRatio) {
-    return nonCompliant('Interest-bearing debt ratio exceeds the configured Shariah screening threshold.', data);
-  }
-  if (cashAndSecurities! > SHARIAH_SCREENING_THRESHOLDS.cashAndInterestBearingSecuritiesRatio) {
-    return nonCompliant('Cash and interest-bearing securities ratio exceeds the configured Shariah screening threshold.', data);
-  }
-  if (interestIncome! > SHARIAH_SCREENING_THRESHOLDS.interestIncomeRatio) {
-    return nonCompliant('Interest income ratio exceeds the configured Shariah screening threshold.', data);
-  }
-
-  return compliant('Business activity and all configured financial ratios passed the internal screening thresholds.', data);
-}
-
-function weightedStatus(items: NonNullable<ShariahScreeningData['holdings']>) {
-  let totalWeight = 0;
-  let screenedWeight = 0;
-  let nonCompliantWeight = 0;
-  let needsReviewWeight = 0;
-
-  for (const item of items) {
-    const weight = Math.max(0, numberOrNull(item.weight) ?? 0);
-    const status = normalizeShariahStatus(item.shariahStatus, 'unclassified');
-    totalWeight += weight;
-    if (status !== 'unclassified') screenedWeight += weight;
-    if (status === 'non_compliant') nonCompliantWeight += weight;
-    if (status === 'needs_review') needsReviewWeight += weight;
-  }
-
-  return {
-    totalWeight,
-    screenedWeight,
-    nonCompliantWeight,
-    needsReviewWeight,
-    coverage: totalWeight > 0 ? screenedWeight / totalWeight : 0,
-  };
-}
-
-function classifyFund(data: ShariahScreeningData) {
-  const holdings = Array.isArray(data.holdings) ? data.holdings : null;
-  if (!holdings?.length) {
-    return needsReview('ETF/fund requires holdings-level screening before compliance can be determined.', data);
-  }
-
-  const weights = weightedStatus(holdings);
-  if (weights.coverage < SHARIAH_SCREENING_THRESHOLDS.fundMinimumScreenedWeight || weights.needsReviewWeight > 0) {
-    return needsReview('ETF/fund holdings screening is incomplete or includes holdings needing review.', {
-      ...data,
-      weightedScreening: weights,
-    });
-  }
-
-  if (weights.nonCompliantWeight > SHARIAH_SCREENING_THRESHOLDS.fundMaximumNonCompliantWeight) {
-    return nonCompliant('Weighted non-compliant holdings exceed the configured fund screening threshold.', {
-      ...data,
-      weightedScreening: weights,
-    });
-  }
-
-  return compliant('Holdings-level screening coverage passed the configured fund thresholds.', {
-    ...data,
-    weightedScreening: weights,
-  });
-}
-
-function classifyIndex(data: ShariahScreeningData) {
-  const constituents = Array.isArray(data.constituents) ? data.constituents : null;
-  if (!constituents?.length) {
-    return unclassified('Index constituent-level Shariah screening data is not available.', data);
-  }
-  return needsReview('Index constituent-level data is available and requires a dedicated weighted screening review.', data);
-}
-
 export function normalizeShariahStatus(value: unknown, fallback: ShariahStatus | null = 'unclassified'): ShariahStatus | null {
   const raw = String(value ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   if (['compliant', 'shariah_compliant', 'sharia_compliant', 'halal', 'approved', 'pass', 'passed'].includes(raw)) return 'compliant';
@@ -383,15 +209,17 @@ export function classifyShariahCompliance(input: ShariahScreeningInput): Shariah
   const assetType = normalizeAssetKind(input.assetType);
   const data = screeningDataForInput(input);
 
-  if (assetType === 'etf' || assetType === 'fund') return classifyFund(data);
+  if (assetType === 'etf' || assetType === 'fund') return needsReview('ETF/fund requires holdings-level screening before compliance can be determined.', data);
   if (assetType === 'crypto') return unclassified('Crypto assets require a specific configured Shariah rule or trusted source before classification.', data);
   if (assetType === 'forex') return unclassified('Forex asset pairs are not classified here because Shariah treatment depends on the trading method and contract structure.', data);
-  if (assetType === 'index') return classifyIndex(data);
+  if (assetType === 'index') return unclassified('Index constituent-level Shariah screening data is not available.', data);
   if (assetType === 'gold' || assetType === 'commodity') {
     return unclassified('Commodity or metal compliance depends on the asset, contract, settlement, and trading method; no trusted classification is available.', data);
   }
 
-  return classifyStock(input, data);
+  return [input.name, data.sector, data.industry, data.businessDescription].some(hasText)
+    ? needsReview('No current source-verified screening decision is available. Descriptions and unsourced ratios are not a classification.', data)
+    : unclassified('No business activity or financial screening data is available.', data);
 }
 
 export function pickPreferredShariahClassification(
@@ -400,6 +228,10 @@ export function pickPreferredShariahClassification(
 ): ShariahClassification {
   if (current.shariahManualOverride) return current;
   if (next.shariahManualOverride) return next;
+  const currentV2 = current.shariahScreeningData.evidenceVersion === 'sfm-evidence-v2';
+  const nextV2 = next.shariahScreeningData.evidenceVersion === 'sfm-evidence-v2';
+  if (nextV2 && (!currentV2 || Date.parse(next.shariahLastReviewedAt ?? '') > Date.parse(current.shariahLastReviewedAt ?? ''))) return next;
+  if (currentV2) return current;
   if (current.shariahMethod === 'external_provider' && next.shariahMethod !== 'external_provider') return current;
   if (next.shariahMethod === 'external_provider' && current.shariahMethod !== 'external_provider') return next;
   if (current.shariahStatus === 'unclassified' && next.shariahStatus !== 'unclassified') return next;
@@ -409,6 +241,7 @@ export function pickPreferredShariahClassification(
 }
 
 const SHARIAH_REASON_AR: Record<string, string> = {
+  'No current source-verified screening decision is available. Descriptions and unsourced ratios are not a classification.': 'لا يوجد قرار فحص حديث موثق بالمصادر. الوصف والنسب بلا مصادر لا يمثلان تصنيفًا شرعيًا.',
   'Classified as Shariah-compliant by a manual review or trusted provider.': 'مصنّف كمطابق للشريعة بناءً على مراجعة يدوية أو مزود موثوق.',
   'Classified as not Shariah-compliant by a manual review, trusted provider, or available screening data.': 'مصنّف كغير مطابق للشريعة بناءً على مراجعة يدوية أو مزود موثوق أو بيانات فحص متاحة.',
   'ETF/fund requires holdings-level screening before compliance can be determined.': 'الصندوق يتطلب فحصاً على مستوى مكوّناته قبل تحديد التوافق.',

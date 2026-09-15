@@ -64,7 +64,7 @@ describe('Shariah screening workflow safeguards', () => {
     expect(classifyShariahCompliance({ symbol: 'GLD', assetType: 'etf' }).shariahStatus).toBe('needs_review');
   });
 
-  it('flags conventional bank activity as non-compliant from available data', () => {
+  it('does not turn a legacy unsourced business description into a definitive judgment', () => {
     const classification = classifyShariahCompliance({
       symbol: 'JPM',
       name: 'JPMorgan Chase',
@@ -74,7 +74,7 @@ describe('Shariah screening workflow safeguards', () => {
       industry: 'Conventional bank',
     });
 
-    expect(classification.shariahStatus).toBe('non_compliant');
+    expect(classification.shariahStatus).toBe('needs_review');
   });
 
   it('lets manual admin classifications take priority over automatic screening', () => {
@@ -94,7 +94,7 @@ describe('Shariah screening workflow safeguards', () => {
     expect(classification.shariahMethod).toBe('manual_review');
   });
 
-  it('only returns compliant for stocks with complete passing screening data', () => {
+  it('requires provenance rather than accepting four unsourced passing ratios', () => {
     const classification = classifyShariahCompliance({
       symbol: 'COMPLETE',
       name: 'Complete Data Technology',
@@ -109,6 +109,6 @@ describe('Shariah screening workflow safeguards', () => {
       },
     });
 
-    expect(classification.shariahStatus).toBe('compliant');
+    expect(classification.shariahStatus).toBe('needs_review');
   });
 });

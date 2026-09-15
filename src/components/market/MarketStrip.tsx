@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { MARKET_TICKER_PIXELS_PER_SECOND, MarketTickerStrip } from '@/components/market/MarketTickerStrip';
 import { MarketStripItem } from '@/components/market/MarketStripItem';
 import { MarketStripControls } from '@/components/market/MarketStripControls';
@@ -16,6 +16,8 @@ type MarketStripProps = {
   prices: Record<string, TechStockPrice> | null;
   lang: Lang;
   dir: 'rtl' | 'ltr';
+  loading?: boolean;
+  onBrowse?: () => void;
 };
 
 // TechStockPrice.delayed is always `true` (the Finnhub/Yahoo fallback chain
@@ -28,10 +30,11 @@ function stripStatusTone(items: GlobalMarketStripConfig['items'], prices: Record
   return quotes.some(quote => quote.available) ? 'delayed' : 'unavailable';
 }
 
-export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
+export function MarketStrip({ strip, prices, lang, dir, loading = false, onBrowse }: MarketStripProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [manual, setManual] = useState(false);
   const label = lang === 'ar' ? strip.labelAr : lang === 'fr' ? strip.labelFr : strip.labelEn;
-  const tone = stripStatusTone(strip.items, prices);
+  const tone = loading ? 'loading' : stripStatusTone(strip.items, prices);
 
   const items = strip.items.map(config => {
     const quote = prices?.[config.symbol] ?? null;
@@ -42,36 +45,42 @@ export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
       assetType: strip.kind,
       price: quote?.available ? quote.price : null,
       currency: inferStripCurrency(config.symbol),
+      priceUnit: strip.countryCode === 'KW' ? 'fils' as const : undefined,
       changePercent: quote?.available ? quote.changePercent : null,
       available: Boolean(quote?.available),
     };
   });
 
   return (
-    <section className="gm-strip" aria-labelledby={`gm-strip-heading-${strip.id}`}>
+    <section className="gm-strip" aria-busy={loading} aria-labelledby={`gm-strip-heading-${strip.id}`}>
       <CountryExchangeHeading
         id={`gm-strip-heading-${strip.id}`}
         label={label}
         itemCount={strip.items.length}
         status={<MarketDataStatus tone={tone} lang={lang} />}
       />
+      {onBrowse ? <button type="button" className="gm-strip-browse" onClick={onBrowse}>{lang === 'ar' ? 'مختارات السوق · استعرض الدليل' : lang === 'fr' ? 'Sélection · Parcourir le répertoire' : 'Market selection · Browse directory'}</button> : null}
       <div className="gm-strip-body" ref={containerRef}>
         <MarketTickerStrip
           ariaLabel={label}
           direction={dir}
           pixelsPerSecond={MARKET_TICKER_PIXELS_PER_SECOND}
           minimumItems={12}
-          status={<MarketStripControls containerRef={containerRef} dir={dir} lang={lang} />}
-          emptyState={<div className="gm-strip-empty">{t('global_markets_strip_unavailable', lang)}</div>}
+          manual={manual}
+          status={<MarketStripControls containerRef={containerRef} dir={dir} lang={lang} manual={manual} onManualChange={setManual} />}
+          emptyState={loading ? <MarketStripSkeleton /> : <div className="gm-strip-empty">{t('global_markets_strip_unavailable', lang)}</div>}
         >
-          {items.map(item => (
+          {!loading && items.map(item => (
             <MarketStripItem key={item.symbol} item={item} lang={lang} />
           ))}
         </MarketTickerStrip>
       </div>
 
       <style jsx>{`
+        .gm-strip-browse { display: block; margin-inline-start: auto; min-block-size: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--foreground); cursor: pointer; font-size: 12px; }
+        .gm-strip-browse:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .gm-strip {
+          --gm-strip-item-height: 92px;
           min-width: 0;
         }
 
@@ -88,19 +97,19 @@ export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
            inside .gm-strip-body, so other MarketTickerStrip consumers
            (TechTickerStrip, StockTickerStrip, etc.) are unaffected. */
         .gm-strip-body :global(.market-ticker-strip[data-market-ticker='true']) {
-          display: flex;
-          align-items: center;
+          display: grid;
           gap: 6px;
           min-width: 0;
         }
 
         .gm-strip-body :global(.market-ticker-viewport) {
+          block-size: var(--gm-strip-item-height);
           flex: 1 1 auto;
           min-width: 0;
         }
 
         .gm-strip-empty {
-          min-height: 56px;
+          min-block-size: var(--gm-strip-item-height);
           display: grid;
           place-items: center;
           border: 1px dashed var(--border-strong);
@@ -112,6 +121,10 @@ export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
           padding: 0 12px;
         }
 
+        @media (max-width: 430px) {
+          .gm-strip { --gm-strip-item-height: 74px; }
+        }
+
         @media (max-width: 640px) {
           .gm-strip-body {
             gap: 4px;
@@ -119,6 +132,21 @@ export function MarketStrip({ strip, prices, lang, dir }: MarketStripProps) {
         }
       `}</style>
     </section>
+  );
+}
+
+// Rendered in MarketTickerStrip's existing viewport, so both states share
+// the exact heading, controls, viewport size, and responsive shell.
+export function MarketStripSkeleton() {
+  return (
+    <div className="gm-strip-skeleton" aria-hidden="true">
+      {Array.from({ length: 6 }, (_, slot) => <span key={slot} />)}
+      <style jsx>{`
+        .gm-strip-skeleton { display:flex; gap:10px; block-size:var(--gm-strip-item-height); overflow:hidden; }
+        .gm-strip-skeleton span { flex:0 0 150px; border-radius:var(--radius-card); background:var(--surface-muted); }
+        @media(max-width:430px) { .gm-strip-skeleton span { flex-basis:136px; } }
+      `}</style>
+    </div>
   );
 }
 

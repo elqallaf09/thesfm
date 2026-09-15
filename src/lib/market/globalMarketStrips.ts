@@ -65,7 +65,10 @@ export type GlobalMarketSector =
   | 'consumer_goods'
   | 'retail'
   | 'automotive'
-  | 'transportation';
+  | 'transportation'
+  | 'insurance'
+  | 'consumer_services'
+  | 'basic_materials';
 
 export type GlobalMarketStripItemConfig = {
   symbol: string;
@@ -105,6 +108,9 @@ export const SECTOR_LABEL: Record<GlobalMarketSector, { ar: string; en: string; 
   retail: { ar: 'تجزئة', en: 'Retail', fr: 'Commerce de détail' },
   automotive: { ar: 'سيارات', en: 'Automotive', fr: 'Automobile' },
   transportation: { ar: 'نقل', en: 'Transportation', fr: 'Transport' },
+  insurance: { ar: 'تأمين', en: 'Insurance', fr: 'Assurance' },
+  consumer_services: { ar: 'خدمات استهلاكية', en: 'Consumer Services', fr: 'Services aux consommateurs' },
+  basic_materials: { ar: 'مواد أساسية', en: 'Basic Materials', fr: 'Matériaux de base' },
 };
 
 export const GLOBAL_MARKET_STRIPS: GlobalMarketStripConfig[] = [
@@ -116,7 +122,7 @@ export const GLOBAL_MARKET_STRIPS: GlobalMarketStripConfig[] = [
       { symbol: 'NBK.KW', name: 'National Bank of Kuwait', nameAr: 'بنك الكويت الوطني', sector: 'bank' },
       { symbol: 'ZAIN.KW', name: 'Zain', nameAr: 'زين', sector: 'telecom' },
       { symbol: 'MABANEE.KW', name: 'Mabanee', nameAr: 'المباني', sector: 'real_estate' },
-      { symbol: 'AGLTY.KW', name: 'Agility', nameAr: 'أجيليتي', sector: 'transportation' },
+      { symbol: 'MKHZN.KW', name: 'Agility Public Warehousing', nameAr: 'أجيليتي للمخازن العمومية', sector: 'transportation' },
       { symbol: 'MEZZAN.KW', name: 'Mezzan Holding', nameAr: 'ميزان القابضة', sector: 'consumer_goods' },
     ],
   },
@@ -192,6 +198,7 @@ export const GLOBAL_MARKET_STRIPS: GlobalMarketStripConfig[] = [
     id: 'us_nasdaq',
     kind: 'equity',
     countryCode: 'US',
+    exchangeCode: 'NASDAQ',
     labelAr: 'الولايات المتحدة — بورصة ناسداك',
     labelEn: 'United States — NASDAQ',
     labelFr: 'États-Unis — NASDAQ',
@@ -210,6 +217,7 @@ export const GLOBAL_MARKET_STRIPS: GlobalMarketStripConfig[] = [
     id: 'us_nyse',
     kind: 'equity',
     countryCode: 'US',
+    exchangeCode: 'NYSE',
     labelAr: 'الولايات المتحدة — بورصة نيويورك',
     labelEn: 'United States — NYSE',
     labelFr: 'États-Unis — NYSE',

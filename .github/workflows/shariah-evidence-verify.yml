@@ -1,0 +1,69 @@
+name: Shariah evidence verification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/sharia-research/**'
+      - 'src/lib/market/shariah*'
+      - 'src/lib/market/runShariahRefresh.ts'
+      - 'src/app/sfm-admin-control/shariah/**'
+      - 'src/app/api/**/shariah/**'
+      - 'src/app/api/sharia-stocks/**'
+      - 'src/__tests__/**/sharia*'
+      - 'supabase/migrations/20260914090000_shariah_evidence_refresh.sql'
+      - 'scripts/shariah/**'
+      - '.github/workflows/shariah-evidence-verify.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shariah-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shariah_verify
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Source-to-decision and persistence regressions
+        run: pnpm exec vitest run src/__tests__/unit/*[sS]haria*.test.ts --maxWorkers=2
+      - name: Browser progress and error regression checks (synthetic, isolated components)
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          SHARIAH_UI_PROOF_DIR=artifacts/shariah/ui node scripts/shariah/verify-progress-ui.mjs
+      - name: Isolated PostgreSQL lease and write verification
+        run: |
+          mkdir -p artifacts/shariah
+          psql 'postgresql://postgres:postgres@127.0.0.1:5432/shariah_verify' -X -v ON_ERROR_STOP=1 -f scripts/shariah/verify-refresh.sql 2>&1 | tee artifacts/shariah/postgres-proof.txt
+      - name: Live keyless SEC extraction and persisted read-back (no production writes)
+        env:
+          SFM_LIVE_SEC_PROBE: '1'
+          SEC_USER_AGENT: 'THE-SFM admin@the-sfm.com'
+        run: pnpm exec vitest run src/__tests__/integration/shariahLiveEvidence.test.ts --maxWorkers=1
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: shariah-evidence-proof
+          path: artifacts/shariah
+          retention-days: 7

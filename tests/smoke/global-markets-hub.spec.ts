@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mockMarketDirectory } from './helpers/global-market-directory';
 
 function stripsPayload(overrides: Record<string, unknown> = {}) {
   return {
@@ -42,6 +43,7 @@ function newsPayload() {
 }
 
 async function mockGlobalMarkets(page: Page, strips = stripsPayload(), news = newsPayload()) {
+  await mockMarketDirectory(page);
   await page.route('**/api/market-strips**', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -64,9 +66,12 @@ test.describe('Global Markets Hub', () => {
     await mockGlobalMarkets(page);
     await page.goto('/global-markets');
 
-    await expect(page.locator('.gm-strip-heading-label').last()).toBeVisible();
-    const headings = await page.locator('.gm-strip-heading-label').allTextContents();
     const expectedLabels = ['Kuwait — Boursa Kuwait', 'Saudi Arabia — Tadawul', 'United States — NASDAQ', 'Forex'];
+    const headingLabels = page.locator('.gm-strip-heading-label');
+    // The stable SSR shell is visible before the saved language hydrates.
+    // Retry the exact text/order/count assertion, not an early text snapshot.
+    await expect(headingLabels).toHaveText(expectedLabels);
+    const headings = await headingLabels.allTextContents();
     expect(headings).toEqual(expectedLabels);
     expect(headings).toHaveLength(4);
     expect(new Set(headings).size).toBe(headings.length);
@@ -230,6 +235,7 @@ test.describe('Global Markets Hub', () => {
     await expect(explorer.getByLabel('Sector')).toBeVisible();
     await expect(explorer.getByLabel('Asset type')).toBeVisible();
 
+    await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
     const initialCards = await explorer.locator('.gm-strip-item').count();
     expect(initialCards).toBeGreaterThan(0);
 
@@ -276,7 +282,10 @@ test.describe('Global Markets Hub', () => {
       if (request.url().includes('/api/market-news')) newsRequests.push(request.url());
     });
     await page.goto('/global-markets');
-    await expect(page.locator('.gm-strip-heading-label').first()).toBeVisible();
+    // Headings belong to the initial stable shell, not to completed hydration.
+    // Wait for both provider results before checking the exact request counts.
+    await expect(page.locator('.gm-strip[aria-busy="false"]')).toHaveCount(4);
+    await expect(page.locator('.gm-news')).toContainText('Federal Reserve holds interest rates steady');
     expect(stripsRequests).toHaveLength(1);
     expect(newsRequests).toHaveLength(1);
     expect(stripsRequests[0]).toContain('ids=kuwait_boursa%2Csaudi_tadawul%2Cus_nasdaq%2Cforex');
