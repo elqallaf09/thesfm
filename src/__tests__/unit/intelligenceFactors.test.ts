@@ -47,6 +47,74 @@ function snapshot(): VerifiedIntelligenceSnapshot {
   };
 }
 
+function contextualSnapshot() {
+  return {
+    ...snapshot(),
+    contextEvidence: {
+      sentiment: {
+        provider: 'finnhub' as const,
+        positivePercent: 70,
+        negativePercent: 30,
+        sampleSize: 12,
+        observedAt: '2026-07-19T06:30:00.000Z',
+      },
+      news: {
+        provider: 'finnhub',
+        observedAt: '2026-07-19T06:45:00.000Z',
+        stale: false,
+        failureCode: null,
+        articles: [
+          {
+            headline: 'Apple reports record profit and raises guidance',
+            source: 'Reuters',
+            publishedAt: '2026-07-19T06:45:00.000Z',
+            sentiment: null,
+            sentimentSource: null,
+          },
+          {
+            headline: 'Apple supplier outlook remains stable',
+            source: 'Reuters',
+            publishedAt: '2026-07-19T05:30:00.000Z',
+            sentiment: 'neutral' as const,
+            sentimentSource: 'provider' as const,
+          },
+        ],
+      },
+      macro: {
+        provider: 'finnhub',
+        observedAt: '2026-07-19T07:00:00.000Z',
+        stale: false,
+        failureCode: null,
+        events: [
+          {
+            title: 'US GDP Growth Rate',
+            country: 'US',
+            currency: 'USD',
+            dateTimeUtc: '2026-07-19T05:00:00.000Z',
+            impact: 'high' as const,
+            actual: 3.2,
+            forecast: 2.1,
+            previous: 2.4,
+            provider: 'finnhub',
+          },
+          {
+            title: 'Federal Reserve Rate Decision',
+            country: 'US',
+            currency: 'USD',
+            dateTimeUtc: '2026-07-20T18:00:00.000Z',
+            impact: 'high' as const,
+            actual: null,
+            forecast: 4.5,
+            previous: 4.5,
+            provider: 'finnhub',
+          },
+        ],
+      },
+      sharia: null,
+    },
+  };
+}
+
 describe('intelligence factor normalization', () => {
   it('normalizes verified observations inside the canonical score range', () => {
     const config = getIntelligenceMethodologyConfig('STOCK', 'SWING');
@@ -69,7 +137,7 @@ describe('intelligence factor normalization', () => {
     expect(factor.failureReason).toBe('VERIFIED_SHARIA_STATUS_UNAVAILABLE');
   });
 
-  it('reports unsupported factor providers truthfully', () => {
+  it('reports missing contextual evidence truthfully instead of fabricating factors', () => {
     const config = getIntelligenceMethodologyConfig('STOCK', 'SWING');
     const factors = runIntelligenceFactors(
       { request, snapshot: snapshot(), config, now: Date.parse('2026-07-19T08:00:00.000Z') },
@@ -78,8 +146,54 @@ describe('intelligence factor normalization', () => {
     expect(factors.every(factor => factor.availability === 'UNAVAILABLE')).toBe(true);
     expect(factors.map(factor => factor.failureReason)).toEqual([
       'SENTIMENT_PROVIDER_NOT_AVAILABLE',
-      'NEWS_FACTOR_NOT_CONNECTED',
-      'MACRO_FACTOR_NOT_CONNECTED',
+      'NEWS_NO_RELEVANT_RESULTS',
+      'MACRO_NO_RELEVANT_EVENTS',
     ]);
+  });
+
+  it('turns verified contextual evidence into deterministic sentiment, news, and macro factors', () => {
+    const config = getIntelligenceMethodologyConfig('STOCK', 'SWING');
+    const factors = runIntelligenceFactors(
+      { request, snapshot: contextualSnapshot(), config, now: Date.parse('2026-07-19T08:00:00.000Z') },
+      ['SENTIMENT', 'NEWS', 'MACRO'],
+    );
+    const sentiment = factors.find(factor => factor.factor === 'SENTIMENT')!;
+    const news = factors.find(factor => factor.factor === 'NEWS')!;
+    const macro = factors.find(factor => factor.factor === 'MACRO')!;
+
+    expect(sentiment.availability).toBe('AVAILABLE');
+    expect(sentiment.normalizedScore).toBeGreaterThan(0);
+    expect(sentiment.source).toBe('finnhub');
+    expect(sentiment.evidence.some(item => item.labelKey === 'intelligence_evidence_sentiment_sample_size')).toBe(true);
+
+    expect(news.availability).toBe('AVAILABLE');
+    expect(news.normalizedScore).toBeGreaterThan(0);
+    expect(news.evidence.some(item => item.value === 'Apple reports record profit and raises guidance')).toBe(true);
+
+    expect(macro.availability).toBe('AVAILABLE');
+    expect(macro.normalizedScore).toBeGreaterThan(0);
+    expect(macro.evidence.some(item => item.labelKey === 'intelligence_evidence_next_macro_event')).toBe(true);
+  });
+
+  it('keeps upcoming macro events informative without inventing a directional surprise', () => {
+    const config = getIntelligenceMethodologyConfig('STOCK', 'SWING');
+    const base = contextualSnapshot();
+    const onlyUpcoming = {
+      ...base,
+      contextEvidence: {
+        ...base.contextEvidence,
+        macro: {
+          ...base.contextEvidence.macro,
+          events: [base.contextEvidence.macro.events[1]],
+        },
+      },
+    };
+    const [macro] = runIntelligenceFactors(
+      { request, snapshot: onlyUpcoming, config, now: Date.parse('2026-07-19T08:00:00.000Z') },
+      ['MACRO'],
+    );
+    expect(macro.availability).toBe('PARTIAL');
+    expect(macro.normalizedScore).toBe(0);
+    expect(macro.warnings.some(item => item.code === 'MACRO_DIRECTION_UNCLEAR')).toBe(true);
   });
 });
