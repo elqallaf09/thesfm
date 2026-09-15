@@ -23,6 +23,76 @@ export type IntelligenceFactorModule = {
   analyze(context: FactorContext): FactorResult;
 };
 
+type ContextNewsArticle = {
+  headline: string;
+  source: string;
+  publishedAt: string;
+  sentiment: 'positive' | 'neutral' | 'negative' | null;
+  sentimentSource: 'provider' | 'ai' | null;
+};
+
+type ContextEvidence = {
+  news: {
+    provider: string | null;
+    observedAt: string | null;
+    stale: boolean;
+    articles: ContextNewsArticle[];
+    failureCode: string | null;
+  };
+  sentiment: {
+    provider: 'finnhub' | 'alphavantage' | 'myfxbook';
+    positivePercent: number;
+    negativePercent: number;
+    sampleSize: number;
+    observedAt: string | null;
+  } | null;
+  macro: {
+    provider: string | null;
+    observedAt: string | null;
+    stale: boolean;
+    events: Array<{
+      title: string;
+      country: string | null;
+      currency: string | null;
+      dateTimeUtc: string;
+      impact: 'high' | 'medium' | 'low' | 'unknown';
+      actual: string | number | null;
+      forecast: string | number | null;
+      previous: string | number | null;
+      provider: string;
+    }>;
+    failureCode: string | null;
+  };
+};
+
+type SnapshotWithContext = VerifiedIntelligenceSnapshot & {
+  contextEvidence?: ContextEvidence | null;
+};
+
+const CONTEXT_TTL_SECONDS = {
+  SENTIMENT: {
+    INTRADAY: 6 * 3600,
+    SHORT_TERM: 12 * 3600,
+    SWING: 48 * 3600,
+    POSITION: 5 * 86_400,
+    LONG_TERM: 7 * 86_400,
+  },
+  NEWS: {
+    INTRADAY: 6 * 3600,
+    SHORT_TERM: 12 * 3600,
+    SWING: 72 * 3600,
+    POSITION: 7 * 86_400,
+    LONG_TERM: 14 * 86_400,
+  },
+  MACRO: {
+    INTRADAY: 24 * 3600,
+    SHORT_TERM: 48 * 3600,
+    SWING: 7 * 86_400,
+    POSITION: 14 * 86_400,
+    LONG_TERM: 30 * 86_400,
+  },
+} as const;
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -34,6 +104,16 @@ function rounded(value: number, digits = 2) {
 function finite(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function numericObservation(value: unknown) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  const match = raw.replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -89,6 +169,24 @@ function factorFreshness(context: FactorContext, observedAt = context.snapshot.d
   });
 }
 
+function contextualFreshness(
+  context: FactorContext,
+  factor: 'SENTIMENT' | 'NEWS' | 'MACRO',
+  observedAt: string | null,
+  stale = false,
+) {
+  return calculateFreshness({
+    observedAt,
+    providerState: stale ? 'CACHED' : observedAt ? 'LIVE' : 'UNAVAILABLE',
+    thresholdSeconds: CONTEXT_TTL_SECONDS[factor][context.request.horizon],
+    now: context.now,
+  });
+}
+
+function contextEvidence(context: FactorContext) {
+  return (context.snapshot as SnapshotWithContext).contextEvidence ?? null;
+}
+
 function freshnessWarnings(factor: IntelligenceFactorKey, state: ReturnType<typeof factorFreshness>['state']): IntelligenceWarning[] {
   if (state === 'STALE') {
     return [{ code: 'STALE_FACTOR_DATA', severity: 'WARNING', factor, detailKey: 'intelligence_warning_stale_factor' }];
@@ -108,6 +206,7 @@ function evidence(
   direction: DirectionalBias,
   significance: number,
   observedAt = context.snapshot.dataAsOf,
+  sourceOverride?: { source?: string | null; provider?: string | null },
 ): IntelligenceEvidence {
   return {
     id: `${factor.toLowerCase()}:${key}`,
@@ -117,8 +216,8 @@ function evidence(
     value,
     unit,
     observedAt,
-    source: context.snapshot.provider,
-    provider: context.snapshot.provider,
+    source: sourceOverride?.source ?? context.snapshot.provider,
+    provider: sourceOverride?.provider ?? sourceOverride?.source ?? context.snapshot.provider,
     direction,
     significance: clamp(Math.round(significance), 0, 100),
   };
@@ -148,6 +247,31 @@ function unavailable(
   };
 }
 
+function contextualUnavailable(
+  context: FactorContext,
+  factor: 'SENTIMENT' | 'NEWS' | 'MACRO',
+  reason: string,
+  input?: { source?: string | null; observedAt?: string | null; stale?: boolean },
+): FactorResult {
+  const source = input?.source ?? context.snapshot.provider;
+  const freshness = contextualFreshness(context, factor, input?.observedAt ?? null, input?.stale);
+  return {
+    factor,
+    availability: 'UNAVAILABLE',
+    normalizedScore: null,
+    directionalBias: 'UNAVAILABLE',
+    strength: 0,
+    required: context.config.requiredFactors.includes(factor),
+    freshness,
+    evidence: [],
+    source,
+    provider: source,
+    operationalReliability: context.snapshot.operationalReliability,
+    warnings: [{ code: reason, severity: 'INFO', factor, detailKey: 'intelligence_warning_factor_unavailable' }],
+    failureReason: reason,
+  };
+}
+
 function availableFactor(input: {
   context: FactorContext;
   factor: IntelligenceFactorKey;
@@ -158,9 +282,12 @@ function availableFactor(input: {
   warnings?: IntelligenceWarning[];
   observedAt?: string | null;
   source?: string | null;
+  provider?: string | null;
+  freshness?: FactorResult['freshness'];
 }) {
-  const freshness = factorFreshness(input.context, input.observedAt ?? input.context.snapshot.dataAsOf);
+  const freshness = input.freshness ?? factorFreshness(input.context, input.observedAt ?? input.context.snapshot.dataAsOf);
   const score = clamp(Math.round(input.score), -100, 100);
+  const source = input.source ?? input.context.snapshot.provider;
   return {
     factor: input.factor,
     availability: input.availability ?? 'AVAILABLE',
@@ -170,8 +297,8 @@ function availableFactor(input: {
     required: input.context.config.requiredFactors.includes(input.factor),
     freshness,
     evidence: input.evidence,
-    source: input.source ?? input.context.snapshot.provider,
-    provider: input.context.snapshot.provider,
+    source,
+    provider: input.provider ?? source,
     operationalReliability: input.context.snapshot.operationalReliability,
     warnings: [...freshnessWarnings(input.factor, freshness.state), ...(input.warnings ?? [])],
     failureReason: null,
@@ -268,8 +395,9 @@ const momentumFactor: IntelligenceFactorModule = {
 function volatilityPercent(context: FactorContext) {
   const values = closes(context);
   if (values.length < 20) return null;
-  const returns = values.slice(-61).slice(1).map((value, index) => {
-    const previous = values.slice(-61)[index];
+  const recentValues = values.slice(-61);
+  const returns = recentValues.slice(1).map((value, index) => {
+    const previous = recentValues[index];
     return previous > 0 ? (value - previous) / previous : 0;
   });
   const deviation = standardDeviation(returns);
@@ -380,6 +508,175 @@ const fundamentalFactor: IntelligenceFactorModule = {
   },
 };
 
+const sentimentFactor: IntelligenceFactorModule = {
+  key: 'SENTIMENT',
+  analyze(context) {
+    const sentiment = contextEvidence(context)?.sentiment;
+    if (!sentiment) return contextualUnavailable(context, 'SENTIMENT', 'SENTIMENT_PROVIDER_NOT_AVAILABLE');
+    const score = clamp((sentiment.positivePercent - sentiment.negativePercent) * 1.2, -100, 100);
+    const freshness = contextualFreshness(context, 'SENTIMENT', sentiment.observedAt);
+    const source = sentiment.provider;
+    const items = [
+      evidence(context, 'SENTIMENT', 'positive_sentiment_percent', rounded(sentiment.positivePercent), '%', 'BULLISH', Math.min(100, sentiment.positivePercent), sentiment.observedAt, { source }),
+      evidence(context, 'SENTIMENT', 'negative_sentiment_percent', rounded(sentiment.negativePercent), '%', 'BEARISH', Math.min(100, sentiment.negativePercent), sentiment.observedAt, { source }),
+      evidence(context, 'SENTIMENT', 'sentiment_sample_size', sentiment.sampleSize, null, scoreBias(score), Math.min(100, sentiment.sampleSize * 8), sentiment.observedAt, { source }),
+    ];
+    return availableFactor({
+      context,
+      factor: 'SENTIMENT',
+      availability: sentiment.sampleSize >= 5 ? 'AVAILABLE' : 'PARTIAL',
+      score,
+      evidence: items,
+      source,
+      provider: source,
+      freshness,
+      warnings: sentiment.sampleSize < 5
+        ? [{ code: 'LIMITED_SENTIMENT_SAMPLE', severity: 'INFO', factor: 'SENTIMENT', detailKey: 'intelligence_warning_limited_sentiment_sample' }]
+        : [],
+    });
+  },
+};
+
+const POSITIVE_NEWS_PHRASES = [
+  'beats estimates', 'beat estimates', 'raises guidance', 'raised guidance', 'record profit',
+  'profit rises', 'earnings rise', 'revenue rises', 'upgrade', 'wins contract', 'contract award',
+  'dividend increase', 'dividend raised', 'buyback', 'approval', 'strong growth', 'profit growth',
+];
+const NEGATIVE_NEWS_PHRASES = [
+  'misses estimates', 'missed estimates', 'cuts guidance', 'cut guidance', 'profit falls', 'loss widens',
+  'downgrade', 'lawsuit', 'investigation', 'probe', 'fine', 'default', 'bankruptcy', 'dividend cut',
+  'profit warning', 'fraud', 'restructuring charge',
+];
+
+function headlineDirection(article: ContextNewsArticle) {
+  if (article.sentiment === 'positive') return 35;
+  if (article.sentiment === 'negative') return -35;
+  if (article.sentiment === 'neutral') return 0;
+  const text = article.headline.toLowerCase();
+  const positive = POSITIVE_NEWS_PHRASES.filter(phrase => text.includes(phrase)).length;
+  const negative = NEGATIVE_NEWS_PHRASES.filter(phrase => text.includes(phrase)).length;
+  if (positive === negative) return 0;
+  return positive > negative ? Math.min(45, 20 + positive * 8) : Math.max(-45, -20 - negative * 8);
+}
+
+const newsFactor: IntelligenceFactorModule = {
+  key: 'NEWS',
+  analyze(context) {
+    const news = contextEvidence(context)?.news;
+    if (!news || news.articles.length === 0) {
+      return contextualUnavailable(context, 'NEWS', news?.failureCode ?? 'NEWS_NO_RELEVANT_RESULTS', {
+        source: news?.provider,
+        observedAt: news?.observedAt,
+        stale: news?.stale,
+      });
+    }
+    const scored = news.articles.map(article => ({ article, score: headlineDirection(article) }));
+    const directional = scored.filter(item => item.score !== 0);
+    const score = directional.length ? average(directional.map(item => item.score)) ?? 0 : 0;
+    const positive = scored.filter(item => item.score > 0).length;
+    const negative = scored.filter(item => item.score < 0).length;
+    const source = news.provider ?? 'market-news';
+    const freshness = contextualFreshness(context, 'NEWS', news.observedAt, news.stale);
+    const latest = news.articles[0];
+    const items = [
+      evidence(context, 'NEWS', 'news_article_count', news.articles.length, null, scoreBias(score), Math.min(100, news.articles.length * 10), news.observedAt, { source }),
+      evidence(context, 'NEWS', 'positive_news_count', positive, null, 'BULLISH', Math.min(100, positive * 20), news.observedAt, { source }),
+      evidence(context, 'NEWS', 'negative_news_count', negative, null, 'BEARISH', Math.min(100, negative * 20), news.observedAt, { source }),
+      evidence(context, 'NEWS', 'latest_news_headline', latest.headline.slice(0, 240), null, scoreBias(headlineDirection(latest)), 55, latest.publishedAt, { source: latest.source, provider: source }),
+    ];
+    return availableFactor({
+      context,
+      factor: 'NEWS',
+      availability: directional.length > 0 ? 'AVAILABLE' : 'PARTIAL',
+      score,
+      evidence: items,
+      source,
+      provider: source,
+      freshness,
+      warnings: directional.length === 0
+        ? [{ code: 'NEWS_DIRECTION_UNCLEAR', severity: 'INFO', factor: 'NEWS', detailKey: 'intelligence_warning_news_direction_unclear' }]
+        : [],
+    });
+  },
+};
+
+function macroImpactWeight(impact: 'high' | 'medium' | 'low' | 'unknown') {
+  if (impact === 'high') return 1;
+  if (impact === 'medium') return 0.65;
+  if (impact === 'low') return 0.35;
+  return 0.4;
+}
+
+function macroSurpriseScore(context: FactorContext, title: string, actual: number, forecast: number) {
+  if (actual === forecast) return 0;
+  const lowerTitle = title.toLowerCase();
+  const actualHigher = actual > forecast;
+  if (/unemployment|jobless claims|unemployment claims/.test(lowerTitle)) return actualHigher ? -30 : 30;
+  if (/gdp|gross domestic product|retail sales|payroll|employment|industrial production|pmi|purchasing managers|consumer confidence|business confidence/.test(lowerTitle)) {
+    return actualHigher ? 25 : -25;
+  }
+  const rateSensitiveAsset = ['STOCK', 'CRYPTO', 'INDEX', 'FUND'].includes(context.request.asset.assetType);
+  if (rateSensitiveAsset && /cpi|inflation|pce|ppi|consumer price|producer price/.test(lowerTitle)) return actualHigher ? -20 : 20;
+  if (rateSensitiveAsset && /interest rate|rate decision|policy rate|fed funds/.test(lowerTitle)) return actualHigher ? -25 : 25;
+  return null;
+}
+
+const macroFactor: IntelligenceFactorModule = {
+  key: 'MACRO',
+  analyze(context) {
+    const macro = contextEvidence(context)?.macro;
+    if (!macro || macro.events.length === 0) {
+      return contextualUnavailable(context, 'MACRO', macro?.failureCode ?? 'MACRO_NO_RELEVANT_EVENTS', {
+        source: macro?.provider,
+        observedAt: macro?.observedAt,
+        stale: macro?.stale,
+      });
+    }
+    const now = context.now;
+    const contributions: number[] = [];
+    let completedSurprises = 0;
+    let highImpact = 0;
+    let nextEvent: ContextEvidence['macro']['events'][number] | null = null;
+    for (const event of macro.events) {
+      if (event.impact === 'high') highImpact += 1;
+      const eventAt = Date.parse(event.dateTimeUtc);
+      if (Number.isFinite(eventAt) && eventAt > now && (!nextEvent || eventAt < Date.parse(nextEvent.dateTimeUtc))) nextEvent = event;
+      if (!Number.isFinite(eventAt) || eventAt > now) continue;
+      const actual = numericObservation(event.actual);
+      const forecast = numericObservation(event.forecast);
+      if (actual === null || forecast === null) continue;
+      const rawScore = macroSurpriseScore(context, event.title, actual, forecast);
+      if (rawScore === null) continue;
+      contributions.push(rawScore * macroImpactWeight(event.impact));
+      completedSurprises += 1;
+    }
+    const score = average(contributions) ?? 0;
+    const source = macro.provider ?? macro.events[0]?.provider ?? 'economic-calendar';
+    const freshness = contextualFreshness(context, 'MACRO', macro.observedAt, macro.stale);
+    const items: IntelligenceEvidence[] = [
+      evidence(context, 'MACRO', 'macro_event_count', macro.events.length, null, scoreBias(score), Math.min(100, macro.events.length * 6), macro.observedAt, { source }),
+      evidence(context, 'MACRO', 'macro_high_impact_count', highImpact, null, 'NEUTRAL', Math.min(100, highImpact * 20), macro.observedAt, { source }),
+      evidence(context, 'MACRO', 'macro_surprise_count', completedSurprises, null, scoreBias(score), Math.min(100, completedSurprises * 25), macro.observedAt, { source }),
+    ];
+    if (nextEvent) {
+      items.push(evidence(context, 'MACRO', 'next_macro_event', nextEvent.title.slice(0, 200), null, 'NEUTRAL', nextEvent.impact === 'high' ? 85 : 50, nextEvent.dateTimeUtc, { source: nextEvent.provider, provider: source }));
+    }
+    return availableFactor({
+      context,
+      factor: 'MACRO',
+      availability: completedSurprises > 0 ? 'AVAILABLE' : 'PARTIAL',
+      score,
+      evidence: items,
+      source,
+      provider: source,
+      freshness,
+      warnings: completedSurprises === 0
+        ? [{ code: 'MACRO_DIRECTION_UNCLEAR', severity: 'INFO', factor: 'MACRO', detailKey: 'intelligence_warning_macro_direction_unclear' }]
+        : [],
+    });
+  },
+};
+
 const riskFactor: IntelligenceFactorModule = {
   key: 'RISK',
   analyze(context) {
@@ -425,9 +722,9 @@ const shariaFactor: IntelligenceFactorModule = {
       strength: 0,
       required: context.config.requiredFactors.includes('SHARIA'),
       freshness,
-      evidence: [evidence(context, 'SHARIA', 'verified_sharia_status', sharia.status, null, 'NEUTRAL', 100, sharia.reviewedAt)],
+      evidence: [evidence(context, 'SHARIA', 'verified_sharia_status', sharia.status, null, 'NEUTRAL', 100, sharia.reviewedAt, { source: sharia.source })],
       source: sharia.source,
-      provider: context.snapshot.provider,
+      provider: sharia.source,
       operationalReliability: context.snapshot.operationalReliability,
       warnings: freshnessWarnings('SHARIA', freshness.state),
       failureReason: null,
@@ -435,16 +732,12 @@ const shariaFactor: IntelligenceFactorModule = {
   },
 };
 
-function unavailableModule(key: IntelligenceFactorKey, reason: string): IntelligenceFactorModule {
-  return { key, analyze: context => unavailable(context, key, reason) };
-}
-
 export const DEFAULT_INTELLIGENCE_FACTOR_MODULES: IntelligenceFactorModule[] = [
   technicalFactor,
   fundamentalFactor,
-  unavailableModule('SENTIMENT', 'SENTIMENT_PROVIDER_NOT_AVAILABLE'),
-  unavailableModule('NEWS', 'NEWS_FACTOR_NOT_CONNECTED'),
-  unavailableModule('MACRO', 'MACRO_FACTOR_NOT_CONNECTED'),
+  sentimentFactor,
+  newsFactor,
+  macroFactor,
   momentumFactor,
   liquidityFactor,
   volatilityFactor,
