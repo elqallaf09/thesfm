@@ -11,6 +11,15 @@ const PUBLIC_SHELL_EXACT = new Set([
 
 const PUBLIC_SHELL_PREFIXES = ['/investor'] as const;
 
+// These product surfaces are intentionally readable without authentication,
+// but authenticated users should still receive the full workspace chrome.
+// Anonymous/guest visitors get the public shell so account/profile/logout UI
+// is never rendered for a session that does not exist.
+const ANONYMOUS_PUBLIC_WORKSPACE_EXACT = new Set([
+  '/global-markets',
+  '/ai-analyst/overview',
+]);
+
 function normalizePathname(pathname: string | null | undefined): string {
   const raw = String(pathname ?? '').split(/[?#]/)[0] || '/';
   return raw.length > 1 && raw.endsWith('/') ? raw.slice(0, -1) : raw;
@@ -20,4 +29,8 @@ export function isPublicShellRoute(pathname: string | null | undefined): boolean
   const normalized = normalizePathname(pathname);
   if (PUBLIC_SHELL_EXACT.has(normalized)) return true;
   return PUBLIC_SHELL_PREFIXES.some(prefix => normalized.startsWith(`${prefix}/`));
+}
+
+export function isAnonymousPublicWorkspaceRoute(pathname: string | null | undefined): boolean {
+  return ANONYMOUS_PUBLIC_WORKSPACE_EXACT.has(normalizePathname(pathname));
 }
