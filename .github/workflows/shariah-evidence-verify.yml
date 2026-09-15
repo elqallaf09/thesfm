@@ -10,7 +10,7 @@ on:
       - 'src/app/api/**/shariah/**'
       - 'src/app/api/sharia-stocks/**'
       - 'src/__tests__/**/sharia*'
-      - 'supabase/migrations/20260914090000_shariah_evidence_refresh.sql'
+      - 'supabase/migrations/*shariah*.sql'
       - 'scripts/shariah/**'
       - '.github/workflows/shariah-evidence-verify.yml'
   workflow_dispatch:
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17
@@ -52,15 +52,17 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
           SHARIAH_UI_PROOF_DIR=artifacts/shariah/ui node scripts/shariah/verify-progress-ui.mjs
-      - name: Isolated PostgreSQL lease and write verification
+      - name: Isolated PostgreSQL lease, fund and publication verification
         run: |
+          set -o pipefail
           mkdir -p artifacts/shariah
           psql 'postgresql://postgres:postgres@127.0.0.1:5432/shariah_verify' -X -v ON_ERROR_STOP=1 -f scripts/shariah/verify-refresh.sql 2>&1 | tee artifacts/shariah/postgres-proof.txt
-      - name: Live keyless SEC extraction and persisted read-back (no production writes)
+          psql 'postgresql://postgres:postgres@127.0.0.1:5432/shariah_verify' -X -v ON_ERROR_STOP=1 -f scripts/shariah/verify-publications.sql 2>&1 | tee artifacts/shariah/publications-postgres-proof.txt
+      - name: Live official extraction and persisted read-back (no production writes)
         env:
           SFM_LIVE_SEC_PROBE: '1'
           SEC_USER_AGENT: 'THE-SFM admin@the-sfm.com'
-        run: pnpm exec vitest run src/__tests__/integration/shariahLiveEvidence.test.ts --maxWorkers=1
+        run: pnpm exec vitest run src/__tests__/integration/shariahLiveEvidence.test.ts src/__tests__/integration/shariahExtendedSourcesLive.test.ts --maxWorkers=1
       - uses: actions/upload-artifact@v7
         if: always()
         with:

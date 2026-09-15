@@ -1,8 +1,8 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-// Only the normal, pre-existing admin account/session is used. No service key,
-// credential reset, role changes, mocks, storage-state files or tracing.
+// Normal existing admin login only: no service key, credential reset, role
+// changes, mocks, storage-state artifacts, screenshots or session tracing.
 const ORIGIN = 'https://www.the-sfm.com';
 const main = process.env.GITHUB_REF === 'refs/heads/main';
 const proof = { checkedAt: new Date().toISOString(), mode: main ? 'production-admin-refresh' : 'production-admin-readiness',
@@ -41,7 +41,6 @@ try {
   const loginPromise = page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/login' && response.request().method() === 'POST');
   await page.locator('button[type="submit"]').first().click();
   const login = await loginPromise;
-  // Never print a login payload, cookie, request body, email or password.
   proof.loginStatus = login.status();
   requireCheck(login.status() === 200, 'ADMIN_LOGIN_NOT_SUCCESSFUL');
   await page.waitForURL(url => url.pathname !== '/login');
@@ -55,8 +54,7 @@ try {
   requireCheck(catalog.status() === 200, 'ADMIN_PAGE_ACCESS_NOT_AUTHORIZED');
   const before = await catalog.json();
   requireCheck(before.ok && Array.isArray(before.items) && before.items.length > 0, 'ADMIN_CATALOG_NOT_LOADED');
-  proof.authenticated = true;
-  proof.beforeCounts = before.counts;
+  proof.authenticated = true; proof.beforeCounts = before.counts;
   if (main) {
     const selected = before.items.find(row => row.asset_type === 'stock' && !row.shariah_manual_override && row.symbol === 'KO')
       ?? before.items.find(row => row.asset_type === 'stock' && !row.shariah_manual_override);
@@ -86,13 +84,23 @@ try {
     proof.savedReadBack = true;
     proof.saved = { symbol: stored.symbol, exchange: stored.exchange, status: stored.shariah_status, reviewedAt: stored.shariah_last_reviewed_at, runId: outcome.runId };
     proof.afterCounts = after.counts;
+    proof.stage = 'published-opinions-refresh';
+    const section = page.getByTestId('shariah-published-opinions');
+    await section.locator('summary').click();
+    const publishedResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/admin/shariah/publications' && response.request().method() === 'POST', { timeout: 45000 });
+    await page.getByTestId('shariah-refresh-publications').click();
+    const publication = await publishedResponse;
+    const publicationResult = await publication.json();
+    proof.publications = { httpStatus: publication.status(), ...publicationResult };
+    requireCheck(publication.ok() && publicationResult.ok && publicationResult.saved > 0, 'PUBLISHED_OPINIONS_REFRESH_NOT_COMPLETE');
+    const read = await context.request.get('/api/sharia-stocks/publications');
+    const readBack = await read.json();
+    requireCheck(read.ok() && readBack.ok && readBack.items?.length > 0, 'PUBLISHED_OPINIONS_READ_BACK_FAILED');
+    proof.publicationReadBack = { count: readBack.items.length, sources: [...new Set(readBack.items.map(item => item.source))] };
   }
-  proof.stage = 'complete';
-  proof.ok = true;
+  proof.stage = 'complete'; proof.ok = true;
   await context.close();
 } catch (error) {
-  // Playwright errors can contain locators/DOM/URLs. Only our allowlisted codes
-  // are recorded; never serialize arbitrary exceptions from a login session.
   proof.ok = false;
   proof.error = /^[A-Z][A-Z0-9_]+$/.test(error?.message ?? '') ? error.message : 'PRODUCTION_SESSION_STEP_FAILED';
   process.exitCode = 1;
