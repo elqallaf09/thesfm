@@ -8,7 +8,7 @@ const origin = 'https://preview.example.test';
 const key = 'sfm.globalMarkets.selection';
 const cookie = { name: 'fixture-session', value: 'synthetic-only', domain: 'preview.example.test', path: '/', expires: -1, httpOnly: true, secure: true, sameSite: 'Lax' as const };
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => { vi.clearAllMocks(); });
 
 describe('smoke preference seeding preserves inherited browser state', () => {
   it('preserves cookies and unrelated origins while adding a new origin', async () => {
