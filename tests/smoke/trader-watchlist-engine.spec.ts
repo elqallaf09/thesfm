@@ -107,7 +107,7 @@ for (const lang of ['ar', 'en', 'fr']) {
       await expect(row.locator('td').nth(8)).toHaveText('80%');
     }
     const stats = frame.locator('#topbar-stats');
-    await expect(stats.locator('.sb-cell').first().locator('small')).toHaveText({ ar: 'محرك SFM لقائمة المتابعة', en: 'SFM Watchlist Engine', fr: 'Moteur SFM de suivi' }[lang]!);
+    await expect(stats.locator('.sb-cell').first().locator('em')).toHaveText({ ar: 'محرك SFM لقائمة المتابعة', en: 'SFM Watchlist Engine', fr: 'Moteur SFM de suivi' }[lang]!);
     await expect(stats.locator('.sb-cell').nth(1).locator('strong')).toHaveText('3');
     await expect(stats.locator('.sb-cell').nth(2).locator('strong')).toHaveText('3');
     await expect(stats.locator('.sb-cell').first().locator('strong')).toHaveText({ ar: 'البيانات متاحة', en: 'Data available', fr: 'Données disponibles' }[lang]!);
