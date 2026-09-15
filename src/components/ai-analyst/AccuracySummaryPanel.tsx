@@ -6,6 +6,7 @@ import type { IntelligenceOutcomeCalibrationGroup } from '@/domain/intelligence/
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale, aiAnalystNumber } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
+import panelStyles from './AccuracySummaryPanel.module.css';
 
 type ValidatedAccuracyReport = {
   methodologyVersion: string;
@@ -30,6 +31,27 @@ type AccuracyAggregate = {
 };
 
 type AccuracyResponse = { ok?: unknown; accuracy?: unknown };
+
+const PANEL_COPY = {
+  ar: {
+    invalidated: 'غير قابل للتقييم',
+    failed: 'فشل التقييم',
+    sampleProgress: 'عينة الدقة',
+    invalidatedNote: 'هناك قراءات محفوظة لم تدخل حساب الدقة لأنها لم تكن قابلة للتقييم وفق المنهجية، مثل القراءة الأصلية ذات البيانات غير الكافية.',
+  },
+  en: {
+    invalidated: 'Not evaluable',
+    failed: 'Evaluation failed',
+    sampleProgress: 'Accuracy sample',
+    invalidatedNote: 'Some stored readings are excluded from accuracy because they were not evaluable under the methodology, such as an original insufficient-data reading.',
+  },
+  fr: {
+    invalidated: 'Non évaluable',
+    failed: 'Échec de l’évaluation',
+    sampleProgress: 'Échantillon de précision',
+    invalidatedNote: 'Certaines lectures enregistrées sont exclues de la précision car elles ne pouvaient pas être évaluées selon la méthodologie, par exemple une lecture initiale avec des données insuffisantes.',
+  },
+} as const;
 
 function numberValue(value: unknown): number | null {
   const parsed = Number(value);
@@ -124,6 +146,7 @@ export function AccuracySummaryPanel({ className = '', compact = false }: { clas
   const { lang } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale];
+  const panelCopy = PANEL_COPY[locale];
   const [state, setState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
   const [aggregate, setAggregate] = useState<AccuracyAggregate | null>(null);
 
@@ -155,6 +178,9 @@ export function AccuracySummaryPanel({ className = '', compact = false }: { clas
 
   const report = aggregate?.report ?? null;
   const accuracy = report?.directional.sampleSufficient ? report.directional.accuracy : null;
+  const directionalSample = report ? report.directional.correctCount + report.directional.incorrectCount : 0;
+  const metricClassName = compact ? `${styles.accuracyMetric} ${panelStyles.compactMetric}` : styles.accuracyMetric;
+
   return (
     <section className={`${styles.card} ${className}`} aria-labelledby="ai-analyst-accuracy-title" data-testid="ai-analyst-accuracy-summary">
       <header className={styles.cardHeader}>
@@ -169,16 +195,23 @@ export function AccuracySummaryPanel({ className = '', compact = false }: { clas
       {state === 'unavailable' ? <p className={styles.errorText} role="status"><AlertTriangle size={16} aria-hidden="true" />{copy.history.accuracyUnavailable}</p> : null}
       {state === 'ready' && report ? (
         <>
-          <div className={styles.accuracyMetrics}>
-            <div className={styles.accuracyMetric}><span>{copy.history.evaluated}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.evaluatedCount)}</strong></div>
-            <div className={styles.accuracyMetric}><span>{copy.history.pending}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.pendingCount)}</strong></div>
-            <div className={styles.accuracyMetric}><span>{copy.history.insufficientData}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.insufficientDataCount)}</strong></div>
-            <div className={styles.accuracyMetric}>
+          <div className={`${styles.accuracyMetrics} ${compact ? panelStyles.compactMetrics : ''}`}>
+            <div className={metricClassName}><span>{copy.history.evaluated}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.evaluatedCount)}</strong></div>
+            <div className={metricClassName}><span>{copy.history.pending}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.pendingCount)}</strong></div>
+            <div className={metricClassName}><span>{copy.history.insufficientData}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.insufficientDataCount)}</strong></div>
+            <div className={metricClassName}><span>{panelCopy.invalidated}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.invalidatedCount)}</strong></div>
+            {report.failedCount > 0 ? <div className={metricClassName}><span>{panelCopy.failed}</span><strong className={styles.numeric} dir="ltr">{aiAnalystNumber(locale, report.failedCount)}</strong></div> : null}
+            <div className={metricClassName}>
               <span>{copy.history.directionalAccuracy}</span>
               <strong className={styles.numeric} dir="ltr">{accuracy === null ? '—' : `${aiAnalystNumber(locale, accuracy)}%`}</strong>
               <small>{accuracy === null ? copy.history.insufficientSample : `${copy.history.minimumSample}: ${aiAnalystNumber(locale, report.minimumDirectionalSample)}`}</small>
             </div>
+            <div className={panelStyles.sampleProgress}>
+              <span>{panelCopy.sampleProgress}</span>
+              <strong dir="ltr">{aiAnalystNumber(locale, directionalSample)} / {aiAnalystNumber(locale, report.minimumDirectionalSample)}</strong>
+            </div>
           </div>
+          {report.invalidatedCount > 0 ? <p className={panelStyles.reasonNote}>{panelCopy.invalidatedNote}</p> : null}
           {compact ? null : (
             <div className={styles.disclosureBody}>
               <p className={styles.statusRail}>{copy.history.marketUnavailable}</p>
