@@ -6,7 +6,11 @@ import {
   intelligencePresentation,
   intelligenceStateFromError,
 } from '@/lib/intelligence/presentation';
-import { calculateFreshness, expirationFrom } from '@/lib/intelligence/freshness';
+import {
+  calculateFreshness,
+  expirationFrom,
+  isDecisionFreshnessEligible,
+} from '@/lib/intelligence/freshness';
 
 const asset = { canonicalSymbol: 'AAPL', assetType: 'STOCK' as const, market: 'US' };
 
@@ -47,6 +51,42 @@ describe('intelligence production readiness contracts', () => {
     expect(calculateFreshness({ observedAt: generatedAt, thresholdSeconds: 900, providerState: 'LIVE', now: Date.parse(generatedAt) + 900_000 }).state).toBe('FRESH');
     expect(calculateFreshness({ observedAt: generatedAt, thresholdSeconds: 900, providerState: 'LIVE', now: Date.parse(generatedAt) + 901_000 }).state).toBe('DELAYED');
     expect(expirationFrom(generatedAt, 900)).toBe('2026-07-20T10:15:00.000Z');
+  });
+
+  it('allows recent delayed EOD data only for slower decision horizons', () => {
+    const observedAt = '2026-09-14T06:00:00.000Z';
+    const now = Date.parse('2026-09-15T12:00:00.000Z');
+    const delayed = calculateFreshness({
+      observedAt,
+      thresholdSeconds: 900,
+      providerState: 'DELAYED',
+      now,
+    });
+
+    expect(delayed.state).toBe('DELAYED');
+    expect(isDecisionFreshnessEligible({
+      providerState: 'DELAYED',
+      freshnessState: delayed.state,
+      horizon: 'SWING',
+    })).toBe(true);
+    expect(isDecisionFreshnessEligible({
+      providerState: 'DELAYED',
+      freshnessState: delayed.state,
+      horizon: 'SHORT_TERM',
+    })).toBe(false);
+
+    const tooOld = calculateFreshness({
+      observedAt,
+      thresholdSeconds: 900,
+      providerState: 'DELAYED',
+      now: Date.parse(observedAt) + (5 * 24 * 60 * 60 * 1000),
+    });
+    expect(tooOld.state).toBe('STALE');
+    expect(isDecisionFreshnessEligible({
+      providerState: 'DELAYED',
+      freshnessState: tooOld.state,
+      horizon: 'SWING',
+    })).toBe(false);
   });
 
   it('never enables unfinished analyst surfaces in production', () => {
