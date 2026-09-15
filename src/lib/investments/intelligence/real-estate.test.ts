@@ -37,12 +37,12 @@ describe('real estate intelligence foundation', () => {
     expect(result.comparables[1].evidence.type).toBe('LISTING_ASK');
   });
 
-  it('blocks mixed currencies until verified FX normalization exists', () => {
+  it('preserves mixed raw currencies for the verified FX normalization stage', () => {
     const result = prepareRealEstateEvidence([
       evidence(),
       evidence({ id: 'e2', sourceName: 'Second official source', currency: 'USD' }),
     ]);
-    expect(result.sufficient).toBe(false);
-    expect(result.confidence).toBe('INSUFFICIENT');
+    expect(result.sufficient).toBe(true);
+    expect(new Set(result.comparables.map((item) => item.currency))).toEqual(new Set(['KWD', 'USD']));
   });
 });
