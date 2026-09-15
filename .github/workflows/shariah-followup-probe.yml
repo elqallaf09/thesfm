@@ -5,7 +5,9 @@ on:
     paths:
       - .github/workflows/shariah-followup-probe.yml
       - src/__tests__/shariah-followup-live.test.ts
+      - src/__tests__/shariah-followup-feeds.test.ts
       - scripts/shariah/probe-fund-public-pages.mjs
+      - src/lib/sharia-research/pdfFinancialEvidence.ts
 permissions:
   contents: read
 jobs:
@@ -20,10 +22,10 @@ jobs:
           node-version: 22.16.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile --reporter=silent
-      - name: Inspect bounded official document extraction
+      - name: PDF regressions and bounded official document extraction
         env:
           SHARIAH_FOLLOWUP_LIVE: '1'
-        run: pnpm exec vitest run src/__tests__/shariah-followup-live.test.ts --reporter=verbose
+        run: pnpm exec vitest run src/__tests__/unit/shariahPdfOwnership.test.ts src/__tests__/unit/shariahRegionalEvidence.test.ts src/__tests__/shariah-followup-live.test.ts src/__tests__/shariah-followup-feeds.test.ts --reporter=verbose
       - run: pnpm exec playwright install --with-deps chromium > /tmp/playwright-install.log 2>&1
       - name: Observe only public fund data responses
         run: node scripts/shariah/probe-fund-public-pages.mjs

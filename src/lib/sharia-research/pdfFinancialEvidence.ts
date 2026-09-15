@@ -6,9 +6,12 @@ import type { FinancialValue, SecurityIdentity, SourceDocument } from './types';
 export type PdfEvidencePage = { num: number; text: string };
 export async function extractSelectedPdfPages(body: Uint8Array, hints: number[] = []): Promise<PdfEvidencePage[]> {
   if (body.byteLength > 15 * 1024 * 1024) throw new Error('pdf_size_limit');
+  if (!body.byteLength) throw new Error('pdf_empty_input');
   const { CanvasFactory } = await import('pdf-parse/worker');
   const { PDFParse } = await import('pdf-parse');
-  const parser = new PDFParse({ data: body, CanvasFactory });
+  // PDF.js transfers this buffer to its worker. The fetch/cache owner must keep
+  // its original bytes intact for hashing, a second parser and bounded retries.
+  const parser = new PDFParse({ data: new Uint8Array(body), CanvasFactory });
   try {
     const info = await parser.getInfo({ parsePageInfo: false });
     const total = Number(info.total);
@@ -24,7 +27,7 @@ export async function extractSelectedPdfPages(body: Uint8Array, hints: number[] 
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 function statementLayout(text: string, income: boolean, now: Date) {
-  const compact = text.slice(0, 700).replace(/\s+/g, ' ');
+  const compact = text.slice(0, 1000).replace(/\s+/g, ' ');
   const dated = /(?:As at|As of|year ended)?\s*(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i.exec(compact);
   if (!dated) return null;
   const day=Number(dated[1]), month=MONTHS.findIndex(value=>value.toLowerCase()===dated[2].toLowerCase()), year=Number(dated[3]);
@@ -32,16 +35,19 @@ function statementLayout(text: string, income: boolean, now: Date) {
   if (new Date(stamp).getUTCDate()!==day || stamp>now.getTime()) return null;
   const yearPair=new RegExp(`${year} ${year-1}`);
   if (day===31 && month===11 && yearPair.test(compact)) return {year,period,columns:2,index:0,start:income?`${year}-01-01`:null};
-  // Explicit observed interim layouts: first balance-sheet column is current;
-  // income's third of four columns is the year-to-date six/nine-month period.
+  // Two observed interim header grammars, not a guess that the first number is
+  // current: NBK groups the years, while Boubyan stacks each date with its year.
   const label=`${day} ${MONTHS[month]}`;
-  if (!income && new RegExp(`${label} 31 December ${label} ${year} ${year-1} ${year-1}`, 'i').test(compact)) return {year,period,columns:3,index:0,start:null};
+  const datedColumns = compact.replace(/\(?\b(?:Unaudited|Audited)\b\)?/gi, '').replace(/\s+/g, ' ');
+  const grouped = new RegExp(`${label} 31 December ${label} ${year} ${year-1} ${year-1}`, 'i');
+  const stacked = new RegExp(`${label} ${year} 31 December ${year-1} ${label} ${year-1}`, 'i');
+  if (!income && (grouped.test(datedColumns) || stacked.test(datedColumns))) return {year,period,columns:3,index:0,start:null};
   if (income && /Three months ended/i.test(compact) && /(?:Six|Nine) months ended/i.test(compact)
     && new RegExp(`${year} ${year-1} ${year} ${year-1}`).test(compact) && [5,8].includes(month)) return {year,period,columns:4,index:2,start:`${year}-01-01`};
   return null;
 }
 
-/** Only unambiguous consolidated, two-year, English statement rows. Unsupported
+/** Only explicitly recognized consolidated English statement rows. Unsupported
  * layouts remain missing; notes/ratios/press-release net profits are not revenue. */
 export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: SecurityIdentity, document: SourceDocument,
   expectedName: RegExp, now = new Date()): FinancialValue[] {
@@ -61,7 +67,7 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
     const income = /STATEMENT OF INCOME/i.test(header[0]);
     const layout = statementLayout(text, income, now);
     if (!layout) continue;
-    const units = /\b(?:KD|KWD)\s*(?:000['’]?s|thousands)/i.test(text.slice(0, 500)) ? { currency: 'KWD', scale: 1000 } : null;
+    const units = /\b(?:KD|KWD)\s*['’‘]?\s*(?:000(?:['’‘]?s)?|thousands)\b/i.test(text.slice(0, 700)) ? { currency: 'KWD', scale: 1000 } : null;
     if (!units) continue;
     const period = layout.period;
     const numeric = /(?:^|\s)(\(?-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?\)?)(?=\s|$)/g;
@@ -78,8 +84,9 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
       else if (!income && /^TOTAL LIABILITIES$/i.test(label)) { field = 'interest_bearing_debt'; bound = 'upper'; }
       else if (!income && /^Cash and cash equivalents$/i.test(label)) field = 'cash_and_equivalents';
       else if (income && /^Interest income$/i.test(label)) { field = 'interest_income'; bound = 'lower'; }
-      // Financing receivables, sukuk, cash + short-term funds and net operating
-      // income are intentionally NOT relabeled as corporate interest/debt/revenue.
+      else if (income && /^Total revenues?$/i.test(label)) field = 'total_income';
+      // Financing receivables, sukuk, cash + short-term funds and NET operating
+      // income are deliberately not relabeled as interest/debt/gross revenue.
       if (!field || (field === 'total_assets' && value <= 0)) continue;
       const existing = result.find(item => item.normalizedField === field && item.periodEnd === period && item.validation?.bound === bound);
       if (existing) { if (existing.value !== value) throw new Error('pdf_conflicting_statement_values'); continue; }
