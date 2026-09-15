@@ -57,6 +57,7 @@ export function InvestmentCheckCard({ symbol, assetType, horizon }: Props) {
   const date = (result.dataAsOf ?? result.generatedAt).split('T')[0];
 
   async function share() {
+    if (!result) return;
     const url = window.location.href;
     const text = `${result.asset.canonicalSymbol} — ${copy.score}: ${score ?? copy.unavailable}${score !== null ? '/100' : ''} · ${copy.confidence}: ${Math.round(result.confidence)}% · THE SFM`;
     if (navigator.share) {
