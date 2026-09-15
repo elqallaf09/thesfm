@@ -1,0 +1,34 @@
+name: Shariah resume workspace
+on:
+  push:
+    branches: [fix/shariah-evidence-coverage-production-proof]
+    paths: [.github/workflows/shariah-resume-workspace.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Archive tracked source and installed packages only
+        run: |
+          mkdir -p /tmp/shariah-resume
+          git archive HEAD | gzip > /tmp/shariah-resume/source.tar.gz
+          git rev-parse HEAD > /tmp/shariah-resume/revision.txt
+          git ls-tree -r HEAD > /tmp/shariah-resume/tree.txt
+          tar czf /tmp/shariah-resume/dependencies.tar.gz node_modules
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shariah-resume-workspace
+          path: /tmp/shariah-resume
+          retention-days: 1
+          compression-level: 0

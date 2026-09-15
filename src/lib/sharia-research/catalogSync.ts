@@ -25,7 +25,7 @@ export function catalogPatchForResearch(result: ShariaScreeningResult) {
     reportingPeriod: ratio.reportingPeriod, currency: ratio.currency, warning: ratio.warning,
     inputs: ratio.inputs.filter(value => safeIds.has(value.documentId)).map(value => ({ field: value.normalizedField,
       originalField: value.originalField, value: value.value, currency: value.currency, periodStart: value.periodStart,
-      periodEnd: value.periodEnd, filedAt: value.filedAt, sourceUrl: value.sourceUrl, validation: value.validation })),
+      periodEnd: value.periodEnd, filedAt: value.filedAt, reportedAt: value.reportedAt, sourceDateKind: value.sourceDateKind, sourceUrl: value.sourceUrl, validation: value.validation })),
   }));
   // A decisive report must not lose its supporting inputs when sanitizing.
   if (status === 'compliant' && financial.some((ratio, index) => ratio.inputs.length !== result.financialRatios[index].inputs.length)) {
@@ -51,6 +51,7 @@ export function catalogPatchForResearch(result: ShariaScreeningResult) {
       evidenceVersion: EVIDENCE_VERSION, screeningMethodology: result.methodology.name,
       methodologyId: result.methodology.id, methodologyVersion: result.methodology.version,
       financialPeriod: result.lastFinancialReportDate, fetchedAt: result.retrievedAt,
+      fieldCoverage: result.fieldCoverage ?? [],
       missingFinancialFields: result.missingFinancialFields ?? [], classification: result.classification,
       screeningRules: { business: { verdict: result.businessScreen.status, reasons: result.businessScreen.reasons }, financial },
       sources: safeDocuments.map(document => ({ title: document.sourceTitle, url: document.sourceUrl,
@@ -65,6 +66,7 @@ function exchangeKey(exchange: string | null | undefined) {
   if (['NASDAQ', 'XNAS', 'NASDAQ GLOBAL SELECT', 'NASDAQ GLOBAL SELECT MARKET'].includes(text)) return 'XNAS';
   if (['NYSE', 'XNYS', 'NEW YORK STOCK EXCHANGE'].includes(text)) return 'XNYS';
   if (['NYSE ARCA', 'NYSEARCA', 'ARCX', 'ARCA'].includes(text)) return 'ARCX';
+  if (['XKUW', 'BOURSA KUWAIT', 'BOURSA KUWAIT - PREMIER MARKET', 'BOURSA KUWAIT - MAIN MARKET', 'KUWAIT STOCK EXCHANGE'].includes(text)) return 'XKUW';
   return text;
 }
 

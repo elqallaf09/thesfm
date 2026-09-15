@@ -1,5 +1,6 @@
 import { shariahRefreshOutcome, type ShariahRefreshOutcome } from './shariahRefreshOutcome';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { reviewFundEvidence } from './shariahFundReview';
 import { enrichShariahScreeningData } from './shariahFundamentals';
 import { analyzeShariaEvidence } from '@/lib/sharia-research/shariaAnalyzer';
 import { catalogPatchForResearch } from '@/lib/sharia-research/catalogSync';
@@ -53,19 +54,23 @@ export async function refreshSfmShariahClassifications(admin: SupabaseClient, op
     while (report.scanned < limit && Date.now() - started < claimWindowMs) {
       const claim = await admin.rpc('claim_shariah_refresh_batch', { p_run_id: report.runId, p_limit: Math.min(3, limit - report.scanned), p_force: options.force === true, p_symbol_id: options.symbolId ?? null }).abortSignal(AbortSignal.timeout(4_000));
       if (claim.error) throw new Error('REFRESH_CLAIM_FAILED');
-      const rows = claim.data as Array<{ id: string; symbol: string; provider_symbol: string; name: string; exchange: string; country: string; updated_at: string }>;
+      const rows = claim.data as Array<{ id: string; symbol: string; provider_symbol: string; name: string; exchange: string; country: string; asset_type: string; updated_at: string }>;
       if (!rows?.length) break;
       const settlements = await Promise.allSettled(rows.map(async row => {
         report.scanned++;
-        let patch: ReturnType<typeof catalogPatchForResearch> | null = null;
+        let patch: ReturnType<typeof catalogPatchForResearch> | Awaited<ReturnType<typeof reviewFundEvidence>> | null = null;
         let error: string | null = null;
         try {
+          if (row.asset_type === 'etf') {
+            patch = await reviewFundEvidence(row, admin, signal);
+          } else {
           const fresh = await enrichShariahScreeningData({ symbol: row.symbol, providerSymbol: row.provider_symbol,
             name: row.name, exchange: row.exchange, country: row.country, signal });
           if (!fresh.documents.length) throw new Error(fresh.errors[0] ?? 'official_evidence_unavailable');
           const result = analyzeShariaEvidence({ security: fresh.security, documents: fresh.documents,
             financialValues: fresh.financialValues, methodology: SFM_FTSE_POINT_IN_TIME });
           patch = catalogPatchForResearch(result);
+          }
         } catch (failure) { error = signal.aborted ? 'official_provider_timed_out' : failure instanceof Error && /^[a-z_]+$/.test(failure.message) ? failure.message : 'screening_failed_or_timed_out'; }
         const saved = await admin.rpc('finish_shariah_refresh', { p_run_id: report.runId, p_symbol_id: row.id,
           p_expected_updated_at: row.updated_at, p_patch: patch, p_error: error }).abortSignal(AbortSignal.timeout(4_000));
