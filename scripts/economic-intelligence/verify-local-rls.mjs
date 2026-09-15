@@ -36,7 +36,7 @@ function record(label) {
   console.log(`PASS ${label}`);
 }
 function successful(response, label) {
-  assert.equal(response.error?.code ?? null, null, `${label}: ${response.error?.code ?? 'unknown error'}`);
+  assert.ok(response.error == null, `${label}: ${response.error?.code ?? 'API error without a code'}`);
   return response.data;
 }
 function denied(response, label) {
@@ -131,8 +131,15 @@ try {
 } finally {
   for (const user of users) {
     try {
+      // profiles_id_fkey is intentionally non-cascading in the baseline. Like
+      // /api/account/delete, remove the generated fixture profile before Auth.
+      // This admin operation is cleanup only, never a tested RLS table access.
+      const profiles = successful(await admin.from('profiles').delete().eq('id', user.id).select('id'), 'delete disposable fixture profile');
+      assert.deepEqual(profiles, [{ id: user.id }], 'Cleanup must delete exactly the fixture profile.');
       successful(await admin.auth.admin.deleteUser(user.id), 'delete disposable auth user');
-      record('disposable Auth user removed');
+      const removed = await admin.auth.admin.getUserById(user.id);
+      assert.equal(removed.error?.status, 404, 'Deleted fixture account must not remain in Auth.');
+      record('disposable profile and Auth user removed and verified absent');
     } catch (error) { failure ??= error; }
   }
 }
