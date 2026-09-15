@@ -28,4 +28,28 @@ describe('explicit regional report rows and source identity',()=>{
    const html='<a href="/reports/nbk-fs-1q-2026-e.pdf">Financial statements 2026</a><a href="/reports/nbk-fs-2q-2026-e.pdf">Financial statements</a><a href="https://evil.example/report-2026.pdf">annual report</a><a href="/investor-presentation-2026.pdf">Annual report</a>';
    expect(issuerPdfLinks(html,'https://www.nbk.com/investor-relations.html',now)).toEqual(['https://www.nbk.com/reports/nbk-fs-2q-2026-e.pdf','https://www.nbk.com/reports/nbk-fs-1q-2026-e.pdf']);
  });
+ it('rejects SPO/general reports even when a recent year would otherwise rank them first',()=>{
+   const html='<a href="/NBK-SPO-Report-2026.pdf">Report 2026</a><a href="/report-2026.pdf">Report</a><a href="/nbk-fs-2q-2026-e.pdf">Financial statements</a><a href="/annual-report-2025.pdf">Annual Report</a>';
+   expect(issuerPdfLinks(html,'https://www.nbk.com/investor-relations.html',now)).toEqual(['https://www.nbk.com/nbk-fs-2q-2026-e.pdf','https://www.nbk.com/annual-report-2025.pdf']);
+ });
+ it('rejects future-dated publications rather than borrowing a past year mentioned in their label',()=>{
+   expect(issuerPdfLinks('<a href="/annual-report-2099.pdf">Annual Report, comparison 2025</a>','https://www.nbk.com',now)).toEqual([]);
+ });
+ it('reads current interim balance and six-month income columns with the independent review date',()=>{
+   // Representative rows/headers from the issuer Q2 2026 report, PDF pages 2, 3, 5.
+   const interim=[{num:2,text:'REPORT ON REVIEW OF INTERIM CONDENSED CONSOLIDATED FINANCIAL INFORMATION\nNational Bank of Kuwait\n20 July 2026\nKuwait'},
+     {num:3,text:"National Bank of Kuwait Group\nINTERIM CONDENSED CONSOLIDATED STATEMENT OF INCOME\n30 June 2026 (Unaudited)\nThree months ended\n30 June\nSix months ended\n30 June\n2026 2025 2026 2025\nNotes KD 000's KD 000's KD 000's KD 000's\nInterest income 456,736 457,212 915,760 894,516"},
+     {num:5,text:"National Bank of Kuwait Group\nINTERIM CONDENSED CONSOLIDATED STATEMENT OF FINANCIAL POSITION\n30 June 2026 (Unaudited)\nAudited\n30 June 31 December 30 June\n2026 2025 2025\nNotes KD 000's KD 000's KD 000's\nTotal assets 46,232,823 45,612,844 43,648,267\nTotal liabilities 40,610,546 39,962,597 38,369,685"}];
+   const values=extract(interim);
+   expect(values).toHaveLength(3);
+   expect(values.every(value=>validFinancialValue(value,now))).toBe(true);
+   expect(values.find(value=>value.normalizedField==='total_assets')).toMatchObject({value:46232823000,periodEnd:'2026-06-30',reportedAt:'2026-07-20',periodStart:null});
+   expect(values.find(value=>value.normalizedField==='interest_income')).toMatchObject({value:915760000,periodStart:'2026-01-01',periodEnd:'2026-06-30'});
+ });
+ it('never emits a zero-assets denominator, and does not invent a signature date',()=>{
+   const values=extract(pages.map(page=>({...page,text:page.text.replace('40,000,000','0').replace('The financial statements were authorised for issue by resolution on 12 January 2026.','')})));
+   expect(values.some(value=>value.normalizedField==='total_assets')).toBe(false);
+   expect(values.every(value=>!validFinancialValue(value,now))).toBe(true);
+ });
+
 });

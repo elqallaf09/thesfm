@@ -47,8 +47,10 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
   expectedName: RegExp, now = new Date()): FinancialValue[] {
   const result: FinancialValue[] = [];
   const allText = pages.map(page => page.text).join('\n');
-  const signature = /(?:authorised for issue[\s\S]{0,260}?on\s+)(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
-    ?? (/INDEPENDENT AUDITORS/i.test(allText) ? /(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2})\s+Kuwait/.exec(allText)?.[1] : null);
+  const signature = /(?:financial (?:statements|information)[\s\S]{0,160}?authorised for issue[\s\S]{0,260}?on\s+)(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
+    ?? pages.filter(page => /INDEPENDENT AUDITORS|REPORT ON REVIEW OF INTERIM/i.test(page.text))
+      .flatMap(page => [...page.text.matchAll(/(?:^|\n)\s*(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2})\s*\n\s*Kuwait\s*(?:\n|$)/g)])
+      .map(match => match[1]).at(-1) ?? null;
   const signatureTime = signature ? Date.parse(signature + ' UTC') : NaN;
   const reportedAt = Number.isFinite(signatureTime) && signatureTime <= now.getTime() ? new Date(signatureTime).toISOString().slice(0, 10) : null;
   for (const page of pages) {
@@ -78,7 +80,7 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
       else if (income && /^Interest income$/i.test(label)) { field = 'interest_income'; bound = 'lower'; }
       // Financing receivables, sukuk, cash + short-term funds and net operating
       // income are intentionally NOT relabeled as corporate interest/debt/revenue.
-      if (!field) continue;
+      if (!field || (field === 'total_assets' && value <= 0)) continue;
       const existing = result.find(item => item.normalizedField === field && item.periodEnd === period && item.validation?.bound === bound);
       if (existing) { if (existing.value !== value) throw new Error('pdf_conflicting_statement_values'); continue; }
       result.push({ id: randomUUID(), documentId: document.id, sourceUrl: document.sourceUrl,

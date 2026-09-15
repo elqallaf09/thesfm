@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
 import { reviewFundEvidence } from '@/lib/market/shariahFundReview';
+import { validFinancialValue } from '@/lib/sharia-research/evidenceValidation';
 import { enrichShariahScreeningData } from '@/lib/market/shariahFundamentals';
 
 const enabled = process.env.SFM_LIVE_SEC_PROBE === '1';
@@ -29,7 +30,10 @@ describe.skipIf(!enabled)('live extended evidence without production writes', ()
       exchange: 'Boursa Kuwait', country: 'KW', signal: AbortSignal.timeout(45000) });
     proof('NBK', { errors: result.errors, values: result.financialValues, sources: result.documents.map(doc => ({ url: doc.sourceUrl, period: doc.reportingPeriod })) });
     expect(result.documents.length, result.errors.join(',')).toBeGreaterThan(0);
-    expect(result.financialValues.some(value => value.normalizedField === 'total_assets')).toBe(true);
+    const assets = result.financialValues.find(value => value.normalizedField === 'total_assets');
+    expect(assets?.value).toBeGreaterThan(0);
+    expect(assets && validFinancialValue(assets)).toBe(true);
+    expect(result.documents.every(document => !/spo|sustainab/i.test(document.sourceUrl))).toBe(true);
     expect(result.financialValues.every(value => value.currency === 'KWD')).toBe(true);
     console.log('EXTENDED_SOURCE_PROOF', JSON.stringify({ symbol: 'NBK', errors: result.errors,
       fields: result.financialValues.map(value => ({ field: value.normalizedField, period: value.periodEnd, currency: value.currency, value: value.value })) }));

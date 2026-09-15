@@ -6,7 +6,7 @@ import { failedAdapterResult } from './sourceAdapters/shared';
 type Profile = { symbols: string[]; country: string; name: RegExp; directory: string; document?: string; pages?: number[] };
 const profiles: Profile[] = [
   { symbols: ['NBK', 'NBK.KW'], country: 'KW', name: /National Bank of Kuwait/i, directory: 'https://www.nbk.com/investor-relations.html',
-    document: 'https://www.nbk.com/dam/jcr:74a4e6f5-e954-4328-a26a-3610ae1a1c13/nbk-financial-statements-2025-e.pdf' },
+    document: 'https://www.nbk.com/dam/jcr:a9b5fda4-e785-4705-8938-9a2364b06360/nbk-fs-2q-2026-e.pdf' },
   { symbols: ['KFH', 'KFH.KW'], country: 'KW', name: /Kuwait Finance House/i, directory: 'https://www.kfh.com/en/home/Investor-Relations/Annual-Reports/Annual-Reports.html',
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
@@ -33,10 +33,14 @@ export function issuerPdfLinks(html: string, directory: string, now = new Date()
     try {
       const url = new URL(match[1].replaceAll('&amp;', '&'), directory);
       const description = decodeURIComponent(url.pathname) + ' ' + match[2].replace(/<[^>]+>/g, ' ');
-      const years = [...description.matchAll(/(?<!\d)(20\d{2})(?!\d)/g)].map(found => Number(found[1])).filter(year => year <= now.getUTCFullYear());
+      const years = [...description.matchAll(/(?<!\d)(20\d{2})(?!\d)/g)].map(found => Number(found[1]));
+      // A generic 'report' is not a financial statement. NBK's SPO sustainability
+      // report otherwise sorted ahead of the current quarterly accounts.
+      const financial = /financial[\s_-]*(?:statements?|reports?)|annual[\s_-]*reports?|(?:^|[ /_-])fs(?:[ /_-]|$)/i.test(description);
+      const unrelated = /arabic|_ar\b|sustainab|esg|presentation|liquidity|nsfr|basel|tariff|full.script|second[\s_-]*party|(?:^|[ /_-])spo(?:[ /_-]|$)/i.test(description);
       if (url.origin !== new URL(directory).origin || url.protocol !== 'https:' || !/\.pdf$/i.test(url.pathname)
-        || !years.length || !/(financial|annual|statement|report|(?:^|[ /-])fs[ /-])/i.test(description) || /(arabic|_ar\b|sustainab|esg|presentation|liquidity|nsfr|basel|tariff|full.script)/i.test(description)) return [];
-      return [{ url: url.toString(), year: Math.max(...years), quarter: Number(/(?:q|quarter)[ -]*([1-4])(?!\d)/i.exec(description)?.[1] ?? /([1-4])[ -]*q(?![a-z])/i.exec(description)?.[1] ?? (/june/i.test(description) ? 2 : /march|mar[_ -]/i.test(description) ? 1 : /september/i.test(description) ? 3 : 4)) }];
+        || url.username || url.password || !years.length || Math.max(...years) > now.getUTCFullYear() || !financial || unrelated) return [];
+      return [{ url: url.toString(), year: Math.max(...years), quarter: Number(/(?:q|quarter)[ -]*([1-4])(?!\d)/i.exec(description)?.[1] ?? /([1-4])[ -]*q(?![a-z])/i.exec(description)?.[1] ?? (/june/i.test(description) ? 2 : /march|mar[_ -]/i.test(description) ? 1 : /september/i.test(description) ? 3 : /annual|(?:^|[ /_-])fy(?:[ /_-]|$)|december/i.test(description) ? 4 : 0)) }];
     } catch { return []; }
   });
   return links.sort((a, b) => b.year - a.year || b.quarter - a.quarter).map(item => item.url).filter((url, i, all) => all.indexOf(url) === i);
