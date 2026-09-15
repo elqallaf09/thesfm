@@ -73,26 +73,24 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
   const debt = [[allCurrent, noncurrent], [longTotal, short], [currentMaturities, noncurrent, short]]
     .sort((a, b) => b.reduce((sum, fact) => sum + (fact?.val ?? 0), 0) - a.reduce((sum, fact) => sum + (fact?.val ?? 0), 0))[0];
   emit('interest_bearing_debt', debt, 'lower', 'Non-overlapping disclosed debt lower bound. Unreported borrowing/lease categories remain unknown.');
-
   emit('interest_bearing_debt', [select([...us('Liabilities'), ...ifrs('Liabilities')])], 'upper',
     'All consolidated liabilities conservatively bound interest-bearing debt above. This is not an exact debt amount.');
 
-  // Debt securities are NOT interchangeable with all marketable securities or
-  // long-term investments (which may include equities and operating holdings).
+  // Broad debt-security notes may include cash equivalents. Without reported
+  // cash, preserve the raw disclosure but disallow its use as a disjoint input.
+  // Another same-accession source could supply cash later; silently treating
+  // the overlapping raw value as a lower bound would double count that cash.
   const debtSecurities = select(us('DebtSecurities', 'AvailableForSaleSecuritiesDebtSecurities'));
   const currentSecurities = select(us('AvailableForSaleSecuritiesDebtSecuritiesCurrent', 'HeldToMaturitySecuritiesCurrent'));
   const longSecurities = select(us('AvailableForSaleSecuritiesDebtSecuritiesNoncurrent', 'HeldToMaturitySecuritiesNoncurrent'));
   const securityParts = (debtSecurities ? [debtSecurities] : [currentSecurities, longSecurities]).filter((fact): fact is Fact => Boolean(fact));
   if (securityParts.length) {
-    emit('interest_bearing_securities', securityParts, 'lower', 'Disclosed debt-security lower bound; possible cash-equivalent overlap is deducted conservatively.');
+    emit('interest_bearing_securities', securityParts, cash ? 'lower' : 'unverified', 'Reported securities; verify overlap with cash equivalents.');
     const item = values[values.length - 1];
-    // Broad debt-security notes may already include cash equivalents. Removing
-    // the entire reported cash balance yields a safe disjoint LOWER bound, not
-    // a claim that the remaining amount is the actual investment balance.
-    item.value = cash ? Math.max(0, item.value - cash.val) : 0;
+    if (cash) item.value = Math.max(0, item.value - cash.val);
     item.normalizationFormula = cash
       ? `max(0, (${item.originalField}) - ${cash.taxonomy}:${cash.tag}) to avoid overlapping cash equivalents`
-      : 'No non-overlapping positive lower bound without the cash-equivalent balance; this derived zero is NOT a reported zero.';
+      : 'Raw reported amount retained; cash-equivalent overlap is unresolved, so this is not a validated ratio input. No missing amount was replaced with zero.';
     item.validation!.note = item.normalizationFormula;
   }
 

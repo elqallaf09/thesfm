@@ -1,14 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 import { secureFetch } from '@/lib/sharia-research/secureFetch';
 import { EVIDENCE_VERSION } from '@/lib/sharia-research/evidenceValidation';
 import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
+import { loadIwmHoldings } from './shariahIwmHoldings';
 
 export const FUND_REVIEW_METHOD = 'SFM_FUND_EVIDENCE_REVIEW';
 const SPY_HOLDINGS = 'https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx';
-export type Holding = { symbol: string; name: string; identifier: string; weight: number; currency: string };
+export type Holding = { symbol: string; name: string; identifier: string; weight: number; currency: string;
+  assetClass?: string; exchange?: string };
 
-/** Ticker alone is not an issuer identity. In the absence of a shared CUSIP,
- * require the full distinctive legal-name token sequence; ambiguity is unknown. */
+/** Ticker alone is not an issuer identity. Require a distinctive full legal
+ * name token sequence; similarly named or ambiguous securities stay unknown. */
 export function sameHoldingIssuer(a: string, b: string) {
   const normalize = (value: string) => value.toUpperCase().replace(/[^A-Z0-9 ]/g, ' ')
     .replace(/\b(CLASS [A-Z]|INCORPORATED|INC|CORPORATION|CORP|COMPANY|CO|PLC|LTD|LIMITED|COM|COMMON|STOCK)\b/g, ' ')
@@ -16,9 +19,6 @@ export function sameHoldingIssuer(a: string, b: string) {
   const first = normalize(a), second = normalize(b);
   return Boolean(first && first === second);
 }
-
-/** Reject XLSX compression bombs before passing data to the existing SheetJS
- * reader. Neither workbook formulas nor external links are evaluated. */
 export function validateHoldingsArchive(bytes: Uint8Array) {
   if (bytes.byteLength > 2_000_000 || bytes.byteLength < 22) throw new Error('fund_holdings_size_limit');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -36,7 +36,6 @@ export function validateHoldingsArchive(bytes: Uint8Array) {
   }
   if (at > directory) throw new Error('fund_invalid_archive');
 }
-
 export function parseSpyRows(rows: unknown[][], now = new Date()) {
   if (rows.length < 8 || rows.length > 2500 || rows[1]?.[0] !== 'Ticker Symbol:' || rows[1]?.[1] !== 'SPY'
     || !/SPDR.*S&P 500.*ETF Trust/i.test(String(rows[0]?.[1] ?? ''))) throw new Error('fund_identity_mismatch');
@@ -69,41 +68,55 @@ export function parseSpyRows(rows: unknown[][], now = new Date()) {
   if (holdings.length < 100 || total < 99.5 || total > 100.5) throw new Error('fund_holdings_total_incomplete');
   return { asOf: new Date(stamp).toISOString().slice(0, 10), totalWeight: total, holdings };
 }
-
+async function summarizeUnderlying(holdings: Holding[], admin: SupabaseClient) {
+  const catalog = await admin.from('market_symbols').select('symbol,name,asset_type,exchange,shariah_status,shariah_manual_override,shariah_source,shariah_reason,shariah_last_reviewed_at,shariah_screening_data')
+    .eq('is_active', true).eq('asset_type', 'stock').abortSignal(AbortSignal.timeout(4000));
+  if (catalog.error) throw new Error('fund_underlying_catalog_unavailable');
+  const groups = new Map<string, typeof catalog.data>();
+  for (const item of catalog.data ?? []) if (/^(NASDAQ|NYSE|AMEX|XNAS|XNYS)$/i.test(item.exchange ?? '')) groups.set(item.symbol, [...(groups.get(item.symbol) ?? []), item]);
+  let passingWeight = 0, failingWeight = 0, unknownWeight = 0, negativeWeight = 0;
+  for (const holding of holdings) {
+    if (holding.weight < 0) { negativeWeight += holding.weight; continue; }
+    const matches = groups.get(holding.symbol) ?? [];
+    const venueMatches = !holding.exchange || matches.length === 1 && (
+      holding.exchange.toUpperCase() === String(matches[0].exchange).toUpperCase()
+      || holding.exchange === 'NASDAQ' && matches[0].exchange === 'XNAS'
+      || holding.exchange === 'NYSE' && matches[0].exchange === 'XNYS');
+    const eligible = (!holding.assetClass || holding.assetClass === 'Equity') && venueMatches;
+    const status = eligible && matches.length === 1 && holding.currency === 'USD' && sameHoldingIssuer(holding.name, matches[0].name)
+      ? publicCatalogItem(matches[0]).shariahStatus : 'needs_review';
+    if (status === 'compliant') passingWeight += holding.weight;
+    else if (status === 'non_compliant') failingWeight += holding.weight;
+    else unknownWeight += holding.weight;
+  }
+  return { passingWeight, failingWeight, unknownWeight, negativeWeight, weightUnit: 'percentage_points',
+    note: 'Underlying exposure totals are diagnostics, not fund pass/fail thresholds. Cash, derivatives and unmatched identities are unknown. Negative positions are shown separately; values are not renormalized.' };
+}
 export async function reviewFundEvidence(row: { symbol: string; name: string; exchange: string; country: string }, admin: SupabaseClient, signal: AbortSignal) {
   const reviewedAt = new Date().toISOString();
   let fundReview: Record<string, unknown> = { coverage: 'unavailable', reason: 'official_fund_holdings_adapter_unavailable',
     structuralChecks: ['Complete dated holdings', 'Underlying securities and cash', 'Derivatives, lending and settlement terms', 'Fund-level Shariah methodology or published opinion'] };
-  const sources: Array<{ title: string; url: string; retrievedAt: string; reportingPeriod: string | null; type: string }> = [];
+  const sources: Array<{ title: string; url: string; retrievedAt: string; reportingPeriod: string | null; type: string; sourceHash?: string }> = [];
   if (['GLD', 'SLV'].includes(row.symbol)) fundReview.reason = 'physical_metal_custody_and_settlement_review_required';
-  if (row.symbol === 'SPY' && /NYSE.?ARCA|ARCX/i.test(row.exchange)) {
-    {
-      const response = await secureFetch(SPY_HOLDINGS, { maxBytes: 2_000_000, signal, acceptedContentTypes: ['spreadsheetml', 'octet-stream'], cacheTtlMs: 3600_000, respectRobots: true });
-      if (response.finalUrl !== SPY_HOLDINGS) throw new Error('fund_source_redirected');
-      validateHoldingsArchive(response.body);
-      const { read, utils } = await import('xlsx');
-      const book = read(response.body, { type: 'array', sheetRows: 2500, cellFormula: false, bookVBA: false });
-      if (!book.Sheets.holdings) throw new Error('fund_holdings_sheet_missing');
-      const parsed = parseSpyRows(utils.sheet_to_json<unknown[]>(book.Sheets.holdings, { header: 1, defval: null, raw: true }));
-      const catalog = await admin.from('market_symbols').select('symbol,name,asset_type,exchange,shariah_status,shariah_manual_override,shariah_source,shariah_reason,shariah_last_reviewed_at,shariah_screening_data')
-        .eq('is_active', true).eq('asset_type', 'stock').abortSignal(AbortSignal.timeout(4000));
-      if (catalog.error) throw new Error('fund_underlying_catalog_unavailable');
-      const groups = new Map<string, typeof catalog.data>();
-      for (const item of catalog.data ?? []) if (/^(NASDAQ|NYSE|AMEX|XNAS|XNYS)$/i.test(item.exchange ?? '')) groups.set(item.symbol, [...(groups.get(item.symbol) ?? []), item]);
-      let passingWeight = 0, failingWeight = 0, unknownWeight = 0;
-      for (const holding of parsed.holdings) {
-        const matches = groups.get(holding.symbol) ?? [];
-        const status = matches.length === 1 && holding.currency === 'USD' && sameHoldingIssuer(holding.name, matches[0].name)
-          ? publicCatalogItem(matches[0]).shariahStatus : 'needs_review';
-        if (status === 'compliant') passingWeight += holding.weight;
-        else if (status === 'non_compliant') failingWeight += holding.weight;
-        else unknownWeight += holding.weight;
-      }
-      fundReview = { ...fundReview, coverage: 'partial', reason: 'fund_level_review_not_completed', asOf: parsed.asOf,
-        holdingCount: parsed.holdings.length, disclosedWeight: parsed.totalWeight, passingWeight, failingWeight, unknownWeight,
-        weightUnit: 'percentage_points', note: 'Underlying exposure totals are diagnostics, not an invented fund pass/fail threshold. Unmatched securities are unknown, not compliant.' };
-      sources.push({ title: 'State Street SPY official dated holdings', url: SPY_HOLDINGS, retrievedAt: response.retrievedAt, reportingPeriod: parsed.asOf, type: 'fund_holdings' });
-    } // Provider/storage failures propagate: the refresh ledger preserves prior evidence.
+  if (row.symbol === 'SPY' && /^(NYSE.?ARCA|ARCX)$/i.test(row.exchange)) {
+    const response = await secureFetch(SPY_HOLDINGS, { maxBytes: 2_000_000, signal, acceptedContentTypes: ['spreadsheetml', 'octet-stream'], cacheTtlMs: 3600_000, respectRobots: true });
+    if (response.finalUrl !== SPY_HOLDINGS) throw new Error('fund_source_redirected');
+    validateHoldingsArchive(response.body);
+    const { read, utils } = await import('xlsx');
+    const book = read(response.body, { type: 'array', sheetRows: 2500, cellFormula: false, bookVBA: false });
+    if (!book.Sheets.holdings) throw new Error('fund_holdings_sheet_missing');
+    const parsed = parseSpyRows(utils.sheet_to_json<unknown[]>(book.Sheets.holdings, { header: 1, defval: null, raw: true }));
+    fundReview = { ...fundReview, ...await summarizeUnderlying(parsed.holdings, admin), coverage: 'partial', reason: 'fund_level_review_not_completed',
+      asOf: parsed.asOf, holdingCount: parsed.holdings.length, disclosedWeight: parsed.totalWeight };
+    sources.push({ title: 'State Street SPY official dated holdings', url: SPY_HOLDINGS, retrievedAt: response.retrievedAt,
+      reportingPeriod: parsed.asOf, type: 'fund_holdings', sourceHash: createHash('sha256').update(response.body).digest('hex') });
+  } else if (row.symbol === 'IWM' && /^(NYSE.?ARCA|ARCX)$/i.test(row.exchange)) {
+    const parsed = await loadIwmHoldings(signal);
+    fundReview = { ...fundReview, ...await summarizeUnderlying(parsed.holdings, admin), coverage: 'partial', reason: 'fund_level_review_not_completed',
+      asOf: parsed.asOf, holdingCount: parsed.holdings.length, disclosedWeight: parsed.totalWeight, totalWeightVerified: parsed.totalVerified,
+      roundedWeightResidual: parsed.roundedWeightResidual, nonEquityPositions: parsed.nonEquityPositions };
+    sources.push({ title: 'iShares IWM official dated holdings', url: parsed.sourceUrl, retrievedAt: parsed.retrievedAt,
+      reportingPeriod: parsed.asOf, type: 'fund_holdings', sourceHash: parsed.sourceHash });
   }
   return { shariah_status: 'needs_review', shariah_reason: `Fund-level evidence review required: ${fundReview.reason}. Corporate debt/assets rules were not applied to this fund.`,
     shariah_source: 'SFM fund evidence review (not a fund certification)', shariah_last_reviewed_at: reviewedAt,
