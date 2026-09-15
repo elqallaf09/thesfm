@@ -1265,7 +1265,7 @@ html[data-theme] .trader-calendar-diagnostics dd {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-theme] :is(button, a, [role="button"], [role="tab"]) {
+  html[data-theme] :is(button, a, [role="button"], [role="tab"]):not(.terminal-skip-link) {
     scroll-behavior: auto !important;
     transform: none !important;
   }
@@ -2411,8 +2411,8 @@ button.topbar-chip {
   direction: rtl;
 }
 
-.ticker-strip[hidden],
-.ticker-strip.is-empty {
+#ticker-row[hidden], .ticker-strip[hidden],
+#ticker-row.is-empty, .ticker-strip.is-empty {
   display: none !important;
 }
 
@@ -12392,7 +12392,7 @@ ul.command-deck-list li b.is-closed { color: var(--trader-neutral); }
 .command-deck-alert p { min-width: 0; margin: 0; }
 .command-deck-alert b { display: block; color: var(--trader-text); font-size: 12px; }
 .command-deck-alert small { display: block; margin-top: 2px; color: var(--trader-muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; white-space: normal; }
-.command-deck-link { width: fit-content; color: var(--trader-selected); font-size: 12px; font-weight: 700; }
+.command-deck-link { width: fit-content; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; padding-inline: 4px; border-radius: var(--radius-control); color: var(--trader-selected); font-size: max(13px, var(--type-label-size)); font-weight: 700; }
 
 .command-deck-sentiment-bars { display: grid; gap: 7px; }
 .command-deck-sentiment-bars > span { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
@@ -13933,7 +13933,7 @@ html[data-theme] :is(
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-theme] :is(button, a, [role="button"], [role="tab"]) {
+  html[data-theme] :is(button, a, [role="button"], [role="tab"]):not(.terminal-skip-link) {
     transform: none !important;
   }
 }

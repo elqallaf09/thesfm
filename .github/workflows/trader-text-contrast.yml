@@ -7,6 +7,7 @@ on:
       - 'src/styles/tokens.css'
       - 'src/styles/themes.css'
       - 'tests/smoke/trader-text-contrast.spec.ts'
+      - 'tests/smoke/trader-control-visibility.spec.ts'
       - '.github/workflows/trader-text-contrast.yml'
   push:
     branches: [main]
@@ -15,6 +16,7 @@ on:
       - 'src/styles/tokens.css'
       - 'src/styles/themes.css'
       - 'tests/smoke/trader-text-contrast.spec.ts'
+      - 'tests/smoke/trader-control-visibility.spec.ts'
       - '.github/workflows/trader-text-contrast.yml'
 permissions:
   contents: read
@@ -43,7 +45,7 @@ jobs:
           # This reserved placeholder is never requested.
           E2E_BASE_URL: https://trader-contrast.invalid
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/trader-contrast/report.json
-        run: pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts --project=chromium-desktop --no-deps --workers=2 --retries=0 --reporter=list,json
+        run: pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --no-deps --workers=2 --retries=0 --reporter=list,json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

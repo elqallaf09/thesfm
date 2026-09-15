@@ -101,10 +101,10 @@ for (const width of [1440, 390]) {
           await frame.locator('#symbol-input').focus();
           await page.keyboard.press('Shift+Tab');
           await expect(skip).toBeFocused();
-          expect(await skip.evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
+          await expect(skip).toBeInViewport({ ratio: 1 });
           await page.keyboard.press('Enter');
           await expect(frame.locator('#terminal-content')).toBeFocused();
-          expect.soft(await skip.evaluate(element => element.getBoundingClientRect().bottom)).toBeLessThanOrEqual(0);
+          await expect.soft(skip).not.toBeInViewport();
 
           // Positive control: do not fix the empty strip by hiding the ticker forever.
           const toggle = frame.locator('#ticker-toggle');
