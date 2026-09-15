@@ -1,0 +1,60 @@
+name: Shariah recovered integration
+on:
+  push:
+    branches: [fix/shariah-evidence-coverage-production-proof]
+    paths: ['scripts/shariah/integrate-recovered.py', '.github/workflows/shariah-integrate-recovered.yml']
+permissions:
+  contents: write
+concurrency:
+  group: shariah-recovered-integration
+  cancel-in-progress: false
+jobs:
+  integrate:
+    if: github.repository == 'elqallaf09/thesfm' && github.ref == 'refs/heads/fix/shariah-evidence-coverage-production-proof'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+      - name: Guard the exact source and preserve the reviewed main update
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-edit 05112fe0cd2a2558e906b87b73b22833d2a67ed3
+          python3 scripts/shariah/integrate-recovered.py
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.16.0
+      - name: Resolve the pinned non-executing XML parser dependency
+        run: pnpm add --save-exact saxes@6.0.0
+      - name: Publish the integrated source for this PR only
+        run: |
+          git add src scripts/shariah/verify-production-session.mjs package.json pnpm-lock.yaml
+          git diff --cached --check
+          git commit -m 'fix(shariah): connect recovered evidence pipeline, fund routing and admin proof'
+          git push origin HEAD:refs/heads/fix/shariah-evidence-coverage-production-proof
+          mkdir -p proof
+          git rev-parse HEAD > proof/revision.txt
+      - name: TypeScript integration check
+        id: types
+        continue-on-error: true
+        run: set -o pipefail; pnpm exec tsc --noEmit --pretty false 2>&1 | tee proof/types.log
+      - name: Shariah regression suite
+        id: tests
+        continue-on-error: true
+        run: set -o pipefail; pnpm exec vitest run sharia --maxWorkers=2 2>&1 | tee proof/tests.log
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: shariah-integrated-checks
+          path: proof
+          retention-days: 7
+      - name: Require both integration checks
+        if: always()
+        run: |
+          test '${{ steps.types.outcome }}' = success
+          test '${{ steps.tests.outcome }}' = success
