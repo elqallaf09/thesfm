@@ -137,5 +137,5 @@ export function parseInlineXbrlFacts(html: string, cik: string, filing: SecFilin
     const entry = (facts[taxonomy] ??= {})[tag] ??= { units: {} };
     (entry.units![currency] ??= []).push(item.fact);
   }
-  return { facts };
+  return { facts, reportingPeriod: filing.reportDate, expectedAccession: filing.accessionNumber };
 }

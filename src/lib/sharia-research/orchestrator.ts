@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { regionalFilingsAdapter } from './regionalFilings';
 import { annualReportsAdapter } from './sourceAdapters/annualReports';
 import { companyInvestorRelationsAdapter } from './sourceAdapters/companyInvestorRelations';
 import { exchangeFilingsAdapter } from './sourceAdapters/exchangeFilings';
@@ -21,6 +22,7 @@ export const SOURCE_ADAPTERS: SourceAdapter[] = [
   exchangeFilingsAdapter,
   regulatoryFilingsAdapter,
   annualReportsAdapter,
+  regionalFilingsAdapter,
   indexMethodologiesAdapter,
   reputableFinancialSitesAdapter,
   rssSourcesAdapter,

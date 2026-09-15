@@ -16,6 +16,14 @@ export function calculateFinancialRatios(values: FinancialValue[], methodology: 
     const denominator = values.filter(value => value.normalizedField === rule.denominatorField)
       .sort((a, b) => b.periodEnd.localeCompare(a.periodEnd) || String(b.filedAt).localeCompare(String(a.filedAt))
         || String(a.periodStart).localeCompare(String(b.periodStart)))[0] ?? null;
+    if (denominator && values.some(value => value !== denominator && value.normalizedField === rule.denominatorField
+      && compatibleFinancialValues(value, denominator) && validFinancialValue(value, now)
+      && value.validation?.bound === 'exact' && value.value !== denominator.value)) {
+      return { ruleId: rule.id, name: rule.name, nameAr: rule.nameAr, nameFr: rule.nameFr,
+        numerator: null, denominator: null, value: null, threshold: rule.threshold, operator: rule.operator,
+        formula: 'Conflicting current denominator values', status: 'unavailable', reportingPeriod: denominator.periodEnd,
+        currency: denominator.currency, inputs: [denominator], warning: 'Conflicting compatible denominator evidence.' };
+    }
     const groups = rule.numeratorFields.map(field => denominator ? values.filter(value => value.normalizedField === field
       && compatibleFinancialValues(value, denominator)) : []);
     const all = groups.flat();

@@ -21,7 +21,8 @@ try {
     for (let attempt = 0; attempt < 60; attempt++) {
       const response = await fetch(`${ORIGIN}/api/sharia-stocks/screening`, { signal: AbortSignal.timeout(15000), redirect: 'error', cache: 'no-store' }).catch(() => null);
       const data = response?.ok ? await response.json().catch(() => null) : null;
-      if (data?.revision === proof.revision) { ready = true; break; }
+      const publications = data?.revision === proof.revision ? await fetch(`${ORIGIN}/api/sharia-stocks/publications`, { signal: AbortSignal.timeout(10000), redirect: 'error' }).catch(() => null) : null;
+      if (data?.revision === proof.revision && publications?.ok) { ready = true; break; }
       await new Promise(resolve => setTimeout(resolve, 10000));
     }
     requireCheck(ready, 'EXACT_PRODUCTION_HANDLER_NOT_DEPLOYED');

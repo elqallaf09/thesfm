@@ -45,7 +45,8 @@ export function compatibleFinancialValues(left: FinancialValue, right: Financial
     && (left.periodStart ?? null) === (right.periodStart ?? null)
     && left.currency === right.currency && left.unit === right.unit
     && (left.accessionNumber && right.accessionNumber
-      ? left.accessionNumber === right.accessionNumber && new URL(left.sourceUrl).hostname === new URL(right.sourceUrl).hostname
+      ? left.accessionNumber === right.accessionNumber && (new URL(left.sourceUrl).hostname === new URL(right.sourceUrl).hostname
+        || [left.sourceUrl, right.sourceUrl].every(url => ['www.sec.gov', 'data.sec.gov'].includes(new URL(url).hostname)))
       : left.documentId === right.documentId);
   } catch { return false; }
 }

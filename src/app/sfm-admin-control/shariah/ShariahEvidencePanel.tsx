@@ -2,8 +2,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { EMPTY_REFRESH_PROGRESS, RefreshRequestError, runShariahRefresh, type RefreshProgress } from '@/lib/market/runShariahRefresh';
 import { useLanguage } from '@/hooks/useLanguage';
+import type { ComponentProps } from 'react';
+import ShariahCoverageDetails from './ShariahCoverageDetails';
 
-type Evidence = { financialPeriod?: string | null; missingFinancialFields?: string[];
+type Evidence = ComponentProps<typeof ShariahCoverageDetails>['evidence'] & { financialPeriod?: string | null; missingFinancialFields?: string[];
   screeningRules?: { financial?: Array<{ key: string; label: string; labelAr?: string; labelFr?: string;
     value: number | null; threshold: number; operator: '<' | '<='; verdict: string; formula?: string; warning?: string | null }> };
   sources?: Array<{ url: string; title: string }> };
@@ -94,17 +96,19 @@ export default function ShariahEvidencePanel({ evidence, lastRun, diagnosticsErr
     </div>
     <p>{text('دفعات صغيرة متتابعة، وتظهر النتائج المحفوظة بعد كل دفعة. تعذّر سهم لا يلغي بقية النتائج ولا يغيّر المراجعات اليدوية.', 'Small serial batches show saved results after each batch. One unavailable stock does not cancel other results or manual reviews.', 'Petits lots successifs : résultats affichés après chaque lot. Un titre indisponible n’annule pas les autres résultats ni les avis manuels.')}</p>
     {busy && <p>{text('الوقت المنقضي', 'Elapsed', 'Temps écoulé')}: <span dir="ltr">{elapsed}s</span> · {text('يجري جلب الإفصاحات والتحقق منها', 'Retrieving and verifying filings', 'Récupération et vérification des documents')}</p>}
-    {startedOnce && <p role="status" aria-live="polite">{text('تم حفظ', 'Saved', 'Enregistrés')} <span dir="ltr"><b>{progress.updated}</b> / {progress.scanned}</span> · {text('الدفعات المكتملة', 'Completed batches', 'Lots terminés')}: {progress.batches}{progress.runId ? ` · ${text('رقم التشغيل', 'Run', 'Exécution')}: ${progress.runId}` : ''}</p>}
+    {startedOnce && <p data-testid="shariah-refresh-progress" role="status" aria-live="polite">{text('تم حفظ', 'Saved', 'Enregistrés')} <span dir="ltr"><b>{progress.updated}</b> / {progress.scanned}</span> · {text('الدفعات المكتملة', 'Completed batches', 'Lots terminés')}: {progress.batches}{progress.runId ? ` · ${text('رقم التشغيل', 'Run', 'Exécution')}: ${progress.runId}` : ''}</p>}
     {notice && <p role="status">{notice}</p>}
     {progress.viewUnavailable && progress.updated > 0 && <p role="alert">{text('الحفظ مؤكد، لكن تعذّر تحديث عرض الجدول. لا تعِد الفحص؛ استخدم تحديث عرض النتائج.', 'Saving was confirmed, but the table could not be reloaded. Reload the view instead of repeating the scan.', 'Enregistrement confirmé, mais tableau indisponible. Actualisez la vue sans relancer le filtrage.')}</p>}
     {progress.failed.map((failure, i) => <p key={`${failure.symbol}:${i}`}><b dir="ltr">{failure.symbol}</b>: {errorText(failure.reason)}.</p>)}
+    {selected && ['stock', 'etf'].includes(selected.assetType ?? '') && <button type="button" data-testid="shariah-refresh-selected" disabled={busy} onClick={() => void refresh(selected.id)}>{text('تحديث أدلة الأداة المحددة', 'Refresh selected instrument evidence', 'Actualiser les preuves du titre sélectionné')}</button>}
     {selected?.error && <div className="retry-panel">
       <p><b dir="ltr">{selected.symbol}</b>: {errorText(selected.error)} · {text('موعد إعادة المحاولة', 'Retry due', 'Prochain essai')}: <span dir="ltr">{selected.nextRetryAt ?? '—'}</span></p>
-      {selected.assetType === 'stock' && <button type="button" disabled={busy} onClick={() => void refresh(selected.id)}>{text('إعادة محاولة السهم المحدد فقط', 'Retry only the selected stock', 'Réessayer uniquement ce titre')}</button>}
+      {['stock', 'etf'].includes(selected.assetType ?? '') && <button type="button" disabled={busy} onClick={() => void refresh(selected.id)}>{text('إعادة محاولة السهم المحدد فقط', 'Retry only the selected stock', 'Réessayer uniquement ce titre')}</button>}
     </div>}
     {diagnosticsError ? <p role="alert">{text('سجل التشغيل غير متاح مؤقتًا. النتائج المحفوظة لا تتأثر.', 'Run diagnostics temporarily unavailable. Saved results are unaffected.', 'Journal temporairement indisponible. Résultats conservés.')}</p>
       : <p>{text('آخر تشغيل', 'Last run', 'Dernière exécution')}: {lastRun ? `${lastRun.status} · ${lastRun.finished_at ?? '—'} · ${lastRun.result?.updated ?? '—'} / ${lastRun.result?.scanned ?? '—'}` : '—'}</p>}
     {evidence ? <>
+      <ShariahCoverageDetails evidence={evidence} />
       <p>{text('تاريخ البيانات المالية', 'Financial period', 'Période financière')}: <span dir="ltr">{evidence.financialPeriod ?? '—'}</span></p>
       {!!evidence.missingFinancialFields?.length && <p>{text('أدلة غير مكتملة أو تمثل حدًا أدنى فقط', 'Incomplete evidence or lower bounds only', 'Preuves incomplètes ou bornes inférieures seulement')}: {evidence.missingFinancialFields.map(field => fields[field]?.[ix] ?? field).join('، ')}</p>}
       <div className="rules">{evidence.screeningRules?.financial?.map(rule => <article key={rule.key}>

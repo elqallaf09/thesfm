@@ -13,12 +13,15 @@ export function publicCatalogItem(row: CatalogRow, now = new Date()) {
   const reviewed = row.shariah_last_reviewed_at ? Date.parse(row.shariah_last_reviewed_at) : NaN;
   const recent = Number.isFinite(reviewed) && reviewed <= now.getTime() && now.getTime() - reviewed < 7 * 86_400_000;
   const proven = data.evidenceVersion === EVIDENCE_VERSION && data.methodologyId === SFM_FTSE_POINT_IN_TIME.id && data.methodologyVersion === SFM_FTSE_POINT_IN_TIME.version;
+  const fund = row.asset_type === 'etf' && data.evidenceVersion === EVIDENCE_VERSION
+    && data.methodologyId === 'SFM_FUND_EVIDENCE_REVIEW' && data.methodologyVersion === '1';
   const manual = row.shariah_manual_override === true && Boolean(row.shariah_reason && row.shariah_source);
   const financial = data.screeningRules && typeof data.screeningRules === 'object'
     ? (data.screeningRules as { financial?: unknown }).financial : null;
   let status = row.shariah_status || 'unclassified';
   if (status !== 'unclassified' && (!recent || (!proven && !manual))) status = 'needs_review';
   if (status === 'compliant' && !manual && isFinancialDataStale(typeof data.financialPeriod === 'string' ? data.financialPeriod : null, SFM_FTSE_POINT_IN_TIME.freshnessMonths, now)) status = 'needs_review';
+  if (fund && !manual) status = 'needs_review';
   const labels = { compliant: 'اجتاز الفحص', non_compliant: 'لم يجتز الفحص', needs_review: 'يحتاج مراجعة', unclassified: 'غير مصنف' };
   if (!(status in labels)) status = 'needs_review';
   const statusKey = status as keyof typeof labels;
@@ -30,10 +33,12 @@ export function publicCatalogItem(row: CatalogRow, now = new Date()) {
   return {
     symbol: row.symbol, name: row.name || row.symbol, sector: row.sector || '', industry: '', exchange: row.exchange,
     assetType: row.asset_type === 'etf' ? 'etf' : 'stock', shariahStatus: statusKey, statusLabelAr: labels[statusKey], reason,
-    screeningSource: (proven || manual) ? row.shariah_source ?? null : null,
-    methodology: manual ? { ar: 'مراجعة يدوية موثقة', en: 'Documented manual review', fr: 'Avis manuel documenté' } : { ar: SFM_FTSE_POINT_IN_TIME.nameAr, en: SFM_FTSE_POINT_IN_TIME.name, fr: SFM_FTSE_POINT_IN_TIME.nameFr },
+    screeningSource: (proven || fund || manual) ? row.shariah_source ?? null : null,
+    methodology: manual ? { ar: 'مراجعة يدوية موثقة', en: 'Documented manual review', fr: 'Avis manuel documenté' } : fund ? { ar: 'مراجعة أدلة صندوق — ليست اعتمادًا شرعيًا', en: 'Fund evidence review — not certification', fr: 'Examen des preuves du fonds — sans certification' } : { ar: SFM_FTSE_POINT_IN_TIME.nameAr, en: SFM_FTSE_POINT_IN_TIME.name, fr: SFM_FTSE_POINT_IN_TIME.nameFr },
     lastScreenedAt: Number.isFinite(reviewed) && reviewed <= now.getTime() ? row.shariah_last_reviewed_at : null,
-    financialRatios: proven && Array.isArray(financial) ? financial : null,
+    fieldCoverage: proven && Array.isArray(data.fieldCoverage) ? data.fieldCoverage : [],
+    fundReview: fund ? data.fundReview ?? null : null,
+    financialRatios: !fund && proven && Array.isArray(financial) ? financial : null,
     missingFinancialFields: proven && Array.isArray(data.missingFinancialFields) ? data.missingFinancialFields : [],
     notes: reason,
   };

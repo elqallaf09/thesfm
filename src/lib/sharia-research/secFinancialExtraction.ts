@@ -3,7 +3,7 @@ import { currentDay, EVIDENCE_VERSION, isoDay, reportedNumber } from './evidence
 import type { FinancialValue, NormalizedFinancialField, SourceDocument } from './types';
 
 export type SecFact = { start?: string; end?: string; val?: number; accn?: string; fy?: number; fp?: string; form?: string; filed?: string; frame?: string };
-export type SecFacts = { entityName?: string; facts?: Record<string, Record<string, { label?: string; description?: string; units?: Record<string, SecFact[]> }>> };
+export type SecFacts = { reportingPeriod?: string; expectedAccession?: string; entityName?: string; facts?: Record<string, Record<string, { label?: string; description?: string; units?: Record<string, SecFact[]> }>> };
 type Fact = SecFact & { taxonomy: string; tag: string; unit: string; end: string; val: number };
 const FORMS = new Set(['10-K', '10-Q', '10-K/A', '10-Q/A', '20-F', '20-F/A', '40-F', '40-F/A', '6-K']);
 
@@ -27,7 +27,9 @@ const ifrs = (...tags: string[]) => tags.map(tag => `ifrs-full:${tag}`);
 export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, document: SourceDocument): FinancialValue[] {
   const now = new Date(document.retrievalDate);
   if (!Number.isFinite(now.getTime())) return [];
-  const assets = candidates(payload, [...us('Assets'), ...ifrs('Assets')], now).find(fact => !fact.start && fact.val > 0);
+  const assets = candidates(payload, [...us('Assets'), ...ifrs('Assets')], now).find(fact => !fact.start && fact.val > 0
+    && (!(payload.reportingPeriod ?? document.reportingPeriod) || fact.end === (payload.reportingPeriod ?? document.reportingPeriod))
+    && (!payload.expectedAccession || fact.accn === payload.expectedAccession));
   if (!assets) return [];
   const values: FinancialValue[] = [];
   const select = (tags: string[], anchor: Fact = assets) => candidates(payload, tags, now).find(fact => (
@@ -51,7 +53,12 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
   emit('total_assets', [assets], 'exact', 'Consolidated total assets, exact filing instant and currency.');
   const cash = select([...us('CashAndCashEquivalentsAtCarryingValue'), ...ifrs('CashAndCashEquivalents')]);
   emit('cash_and_equivalents', [cash], 'exact', 'Reported cash and cash equivalents, excluding unknown investments.');
-  emit('accounts_receivable', [select(us('AccountsReceivableNetCurrent', 'AccountsReceivableNet'))], 'lower', 'Reported net receivables; unreported non-current receivables are not assumed zero.');
+  const totalReceivables = select(us('AccountsReceivableNet'));
+  const currentReceivables = select(us('AccountsReceivableNetCurrent'));
+  const noncurrentReceivables = select(us('AccountsReceivableNetNoncurrent'));
+  if (totalReceivables) emit('accounts_receivable', [totalReceivables], 'exact', 'Reported consolidated net accounts receivable.');
+  else emit('accounts_receivable', [currentReceivables, noncurrentReceivables], currentReceivables && noncurrentReceivables ? 'exact' : 'lower',
+    'Disjoint reported current and non-current net receivables; absent components were not assumed zero.');
 
   // DebtCurrent includes current maturities and short-term debt. Never add
   // ShortTermBorrowings to it. LongTermDebt alone does not establish total debt.
@@ -67,12 +74,27 @@ export function extractFinancialValuesFromCompanyFacts(payload: SecFacts, docume
     .sort((a, b) => b.reduce((sum, fact) => sum + (fact?.val ?? 0), 0) - a.reduce((sum, fact) => sum + (fact?.val ?? 0), 0))[0];
   emit('interest_bearing_debt', debt, 'lower', 'Non-overlapping disclosed debt lower bound. Unreported borrowing/lease categories remain unknown.');
 
+  emit('interest_bearing_debt', [select([...us('Liabilities'), ...ifrs('Liabilities')])], 'upper',
+    'All consolidated liabilities conservatively bound interest-bearing debt above. This is not an exact debt amount.');
+
   // Debt securities are NOT interchangeable with all marketable securities or
   // long-term investments (which may include equities and operating holdings).
   const debtSecurities = select(us('DebtSecurities', 'AvailableForSaleSecuritiesDebtSecurities'));
   const currentSecurities = select(us('AvailableForSaleSecuritiesDebtSecuritiesCurrent', 'HeldToMaturitySecuritiesCurrent'));
   const longSecurities = select(us('AvailableForSaleSecuritiesDebtSecuritiesNoncurrent', 'HeldToMaturitySecuritiesNoncurrent'));
-  emit('interest_bearing_securities', debtSecurities ? [debtSecurities] : [currentSecurities, longSecurities], 'lower', 'Disclosed debt-security lower bound; unknown trading/held-to-maturity categories are not zero.');
+  const securityParts = (debtSecurities ? [debtSecurities] : [currentSecurities, longSecurities]).filter((fact): fact is Fact => Boolean(fact));
+  if (securityParts.length) {
+    emit('interest_bearing_securities', securityParts, 'lower', 'Disclosed debt-security lower bound; possible cash-equivalent overlap is deducted conservatively.');
+    const item = values[values.length - 1];
+    // Broad debt-security notes may already include cash equivalents. Removing
+    // the entire reported cash balance yields a safe disjoint LOWER bound, not
+    // a claim that the remaining amount is the actual investment balance.
+    item.value = cash ? Math.max(0, item.value - cash.val) : 0;
+    item.normalizationFormula = cash
+      ? `max(0, (${item.originalField}) - ${cash.taxonomy}:${cash.tag}) to avoid overlapping cash equivalents`
+      : 'No non-overlapping positive lower bound without the cash-equivalent balance; this derived zero is NOT a reported zero.';
+    item.validation!.note = item.normalizationFormula;
+  }
 
   // Duration fields must have EXACTLY the same start/end, accession and currency.
   // Annual / quarterly / year-to-date values must never be divided across periods.
