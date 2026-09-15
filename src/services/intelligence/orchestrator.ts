@@ -20,7 +20,12 @@ import {
 } from '@/lib/intelligence/config';
 import { buildStructuredExplanation } from '@/lib/intelligence/explainability';
 import { runIntelligenceFactors } from '@/lib/intelligence/factors';
-import { calculateFreshness, expirationFrom, freshnessThresholdSeconds } from '@/lib/intelligence/freshness';
+import {
+  calculateFreshness,
+  expirationFrom,
+  freshnessThresholdSeconds,
+  isDecisionFreshnessEligible,
+} from '@/lib/intelligence/freshness';
 import { determineRecommendation } from '@/lib/intelligence/recommendation';
 import { intelligenceCacheScopeKey, intelligenceScopeForUser } from '@/lib/intelligence/cache';
 import { ExistingMarketDataIntelligenceProvider } from '@/providers/intelligence/existingMarketDataProvider';
@@ -408,9 +413,12 @@ export class IntelligenceOrchestrator {
       compositeScore: confidence.compositeScore,
       minimumEvidenceMet: confidence.calculation.minimumEvidenceMet,
     });
-    const sourceIsSufficient = Boolean(snapshot)
-      && snapshot?.dataStatus === 'LIVE'
-      && overallFreshness.state === 'FRESH'
+    const decisionFreshnessEligible = Boolean(snapshot) && isDecisionFreshnessEligible({
+      providerState: snapshot?.dataStatus ?? 'UNAVAILABLE',
+      freshnessState: overallFreshness.state,
+      horizon: request.horizon,
+    });
+    const sourceIsSufficient = decisionFreshnessEligible
       && confidence.calculation.minimumEvidenceMet;
     const recommendation = sourceIsSufficient
       ? calculatedRecommendation
@@ -419,7 +427,7 @@ export class IntelligenceOrchestrator {
         recommendation: 'INSUFFICIENT_DATA' as const,
         decision: {
           ...calculatedRecommendation.decision,
-          reasonCode: !snapshot ? 'PROVIDER_UNAVAILABLE' : overallFreshness.state !== 'FRESH' ? 'STALE_OR_DELAYED_DATA' : 'INSUFFICIENT_MARKET_DATA',
+          reasonCode: !snapshot ? 'PROVIDER_UNAVAILABLE' : !decisionFreshnessEligible ? 'STALE_OR_DELAYED_DATA' : 'INSUFFICIENT_MARKET_DATA',
         },
       };
     telemetry.record({ name: 'intelligence_recommendation_generated', value: Math.abs(confidence.compositeScore) });
