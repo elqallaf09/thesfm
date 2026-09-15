@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const projectRoot = process.cwd();
 const appJs = readFileSync(join(projectRoot, 'src/trader-app/public/app.js'), 'utf8');
+const watchlistView = readFileSync(join(projectRoot, 'src/trader-app/public/watchlist-view.js'), 'utf8');
 const cinemaCss = readFileSync(join(projectRoot, 'src/trader-app/public/cinema.css'), 'utf8');
 
 describe('trader dashboard polish (phase 2.6)', () => {
@@ -29,12 +30,12 @@ describe('trader dashboard polish (phase 2.6)', () => {
   });
 
   it('gates confident numbers behind evidence completeness in the recommendations table', () => {
-    expect(appJs).toContain('const ds = assetDataState(a, recommendation);');
-    expect(appJs).toContain("const evidenceGated = ds.key !== \"available\";");
-    expect(appJs).toContain('conf === null || evidenceGated ? dashCell(gateNote)');
+    expect(watchlistView).toContain('const ds = assetDataState(a, recommendation);');
+    expect(watchlistView).toContain("const evidenceGated = ds.key !== \"available\" || engineGated;");
+    expect(watchlistView).toContain('conf === null || evidenceGated ? dashCell(gateNote)');
     // Any non-complete evidence state (including unavailable/provider failure)
     // renders its real data state instead of a buy/sell/watch badge.
-    expect(appJs).toContain('const recommendationHtml = evidenceGated');
+    expect(watchlistView).toContain('const recommendationHtml = evidenceGated');
   });
 
   it('sizes the ticker chip logo column to the unified 44px logo so prices are not covered', () => {

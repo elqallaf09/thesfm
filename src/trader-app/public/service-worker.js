@@ -1,4 +1,4 @@
-const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify-contrast-20260914-controls-20260915";
+const CACHE_NAME = "the-sfm-trader-v20260915-watchlist-engine-1";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -7,7 +7,10 @@ const STATIC_ASSETS = [
   "/cinema.css?v=20260717-shell-unify-contrast-20260914-controls-20260915",
   "/detail.css?v=20260714-phase34",
   "/theme-bridge.js?v=20260714-phase34",
-  "/app.js?v=20260717-shell-unify",
+  "./watchlist-engine.js?v=20260915-watchlist-engine-1",
+  "./watchlist-view.js?v=20260915-watchlist-engine-1",
+  "./watchlist.css?v=20260915-watchlist-engine-1",
+  "/app.js?v=20260915-watchlist-engine-1",
   "/detail.js?v=20260714-phase34",
   "/manifest.webmanifest",
   "/assets/trading-cinematic-bg.jpg",
