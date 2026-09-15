@@ -16,8 +16,10 @@ import {
   investmentMatchesCenterAssetClass,
   type InvestmentCenterAssetClass,
 } from '@/lib/investments/center';
+import { realEstateInvestmentHref } from '@/lib/investments/realEstateHandoff';
 import { useCurrency } from '@/lib/useCurrency';
 import type { Investment } from '@/types/investment';
+import { RealEstateIntelligenceEntry } from './RealEstateIntelligenceEntry';
 import styles from './InvestmentCenter.module.css';
 
 type Copy = Record<'ar' | 'en' | 'fr', string>;
@@ -177,6 +179,8 @@ export function InvestmentCenter({ assetClass = 'overview' }: { assetClass?: Inv
           </nav>
         </details>
 
+        {assetClass === 'overview' || assetClass === 'real-estate' ? <RealEstateIntelligenceEntry lang={lang} /> : null}
+
         {isGuest || !user ? (
           <section className={styles.guestGate}>
             <div><ShieldCheck size={18} aria-hidden="true" /><strong>{text('guest')}</strong><p>{text('guestBody')}</p></div>
@@ -241,6 +245,7 @@ function InvestmentCard({ investment, lang, copy }: { investment: Investment; la
   const sourceName = investment.purchasePlatformName?.trim();
   const state = freshness(investment);
   const valuation = investment.valuationSource?.trim() || investment.dataSource?.trim();
+  const analystHref = realEstateInvestmentHref(investment) ?? investmentAnalysisHref(investment);
   return (
     <article className={styles.card}>
       <div className={styles.cardIdentity}>
@@ -264,7 +269,7 @@ function InvestmentCard({ investment, lang, copy }: { investment: Investment; la
         <div><dt>{copy('source')}</dt><dd>{sourceName ? <PlatformIdentity name={sourceName} /> : copy('unavailable')}</dd></div>
       </dl>
       {!value ? <p className={styles.manual}><CircleAlert size={15} aria-hidden="true" />{copy('manual')}</p> : null}
-      <Link className={styles.analyze} href={investmentAnalysisHref(investment)}><ArrowUpRight size={16} aria-hidden="true" />{copy('analyze')}</Link>
+      <Link className={styles.analyze} href={analystHref} prefetch={false}><ArrowUpRight size={16} aria-hidden="true" />{copy('analyze')}</Link>
     </article>
   );
 }
