@@ -397,7 +397,7 @@ jobs:
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
       E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
@@ -413,7 +413,7 @@ jobs:
           for name in \
             VERCEL_AUTOMATION_BYPASS_SECRET \
             SUPABASE_PRODUCTION_REF \
-            SUPABASE_SERVICE_ROLE_KEY \
+            SUPABASE_ACCESS_TOKEN \
             SUPER_ADMIN_EMAILS \
             E2E_USER_EMAIL \
             E2E_USER_PASSWORD \
@@ -624,6 +624,13 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
         if: steps.supabase-preview.outputs.available == 'true'
 
+      - name: Resolve branch-specific Preview credentials
+        id: preview-credentials
+        if: steps.supabase-preview.outputs.available == 'true'
+        run: |
+          node --test .github/scripts/__tests__/resolve-preview-credentials.test.mjs
+          node .github/scripts/resolve-preview-credentials.mjs
+
       - name: Provision isolated Preview auth fixtures
         if: steps.supabase-preview.outputs.available == 'true'
         run: node tests/smoke/preview-auth-fixtures.mjs provision
@@ -649,6 +656,10 @@ jobs:
         if: always()
         shell: bash
         run: |
+          if [[ "${{ steps.preview-credentials.outcome != 'success' }}" == 'true' ]]; then
+            echo 'No branch-specific credentials resolved; no provisioning was attempted.'
+            exit 0
+          fi
           if [[ -z "${SUPABASE_PREVIEW_REF:-}" || -z "${SUPABASE_PREVIEW_URL:-}" ]]; then
             echo 'No isolated Supabase Preview target resolved; no fixture cleanup was required.'
             exit 0
