@@ -6,7 +6,7 @@ import type {
   ProviderAttempt,
   VerifiedIntelligenceSnapshot,
 } from '@/domain/intelligence/contracts';
-import { proxyAnalyze } from '@/lib/market/marketDataProvider';
+import { proxyAnalyze, proxyHistory } from '@/lib/market/marketDataProvider';
 import type { MarketAnalysis } from '@/lib/market/marketService';
 import { marketAssetTypeFromIntelligence } from '@/lib/intelligence/assetTypes';
 import { IntelligenceError } from '@/services/intelligence/errors';
@@ -21,11 +21,19 @@ function finite(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function dataAsOf(analysis: MarketAnalysis) {
-  return validIso(analysis.quote?.timestamp)
-    ?? validIso(analysis.lastUpdated)
-    ?? validIso(analysis.fetchedAt)
-    ?? validIso(analysis.history.at(-1)?.date);
+function latestObservedAt(values: Array<string | null>) {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => Date.parse(right) - Date.parse(left))[0] ?? null;
+}
+
+function dataAsOf(analysis: MarketAnalysis, candles: NormalizedIntelligenceCandle[] = []) {
+  return latestObservedAt([
+    validIso(analysis.quote?.timestamp),
+    validIso(analysis.lastUpdated),
+    validIso(analysis.history.at(-1)?.date),
+    candles.at(-1)?.at ?? null,
+  ]) ?? validIso(analysis.fetchedAt);
 }
 
 function normalizeCandles(analysis: MarketAnalysis): NormalizedIntelligenceCandle[] {
@@ -42,6 +50,45 @@ function normalizeCandles(analysis: MarketAnalysis): NormalizedIntelligenceCandl
     .map(point => ({ ...point, at: point.at! }));
 }
 
+function normalizeSupplementalCandles(payload: unknown): NormalizedIntelligenceCandle[] {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return [];
+  const record = payload as Record<string, unknown>;
+  const rows = Array.isArray(record.points)
+    ? record.points
+    : Array.isArray(record.history)
+      ? record.history
+      : [];
+  return rows
+    .map(row => {
+      if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+      const item = row as Record<string, unknown>;
+      const at = validIso(item.time ?? item.date ?? item.timestamp);
+      const close = finite(item.close);
+      if (!at || close === null || close <= 0) return null;
+      return {
+        at,
+        open: finite(item.open),
+        high: finite(item.high),
+        low: finite(item.low),
+        close,
+        volume: finite(item.volume),
+      } satisfies NormalizedIntelligenceCandle;
+    })
+    .filter((item): item is NormalizedIntelligenceCandle => item !== null);
+}
+
+function supplementalProviderId(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  const record = payload as Record<string, unknown>;
+  const value = typeof record.fallbackProvider === 'string'
+    ? record.fallbackProvider
+    : typeof record.source === 'string'
+      ? record.source
+      : null;
+  if (!value) return null;
+  return value.toLowerCase().includes('yahoo') ? 'yahoo' : value.trim().toLowerCase().replace(/\s+/g, '_').slice(0, 40);
+}
+
 function operationalReliability(analysis: MarketAnalysis) {
   if (analysis.cached) return 0.65;
   if (analysis.dataStatus === 'delayed') return 0.8;
@@ -49,15 +96,19 @@ function operationalReliability(analysis: MarketAnalysis) {
   return 1;
 }
 
-function providerAttempt(analysis: MarketAnalysis, startedAt: number): ProviderAttempt {
+function providerAttempt(
+  analysis: MarketAnalysis,
+  startedAt: number,
+  input?: { provider?: string; fallbackUsed?: boolean; observedAt?: string | null },
+): ProviderAttempt {
   return {
-    provider: String(analysis.provider ?? analysis.source ?? 'existing-market-pipeline').slice(0, 80),
+    provider: String(input?.provider ?? analysis.provider ?? analysis.source ?? 'existing-market-pipeline').slice(0, 80),
     capability: 'ANALYSIS_SNAPSHOT',
     status: 'SUCCESS',
     code: null,
     latencyMs: Math.max(0, Date.now() - startedAt),
-    fallbackUsed: analysis.fallback === true,
-    dataAsOf: dataAsOf(analysis),
+    fallbackUsed: input?.fallbackUsed ?? analysis.fallback === true,
+    dataAsOf: input?.observedAt ?? dataAsOf(analysis),
   };
 }
 
@@ -70,9 +121,10 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
 
   async getSnapshot(request: AnalysisRequest, asset: CanonicalAssetIdentity): Promise<VerifiedIntelligenceSnapshot> {
     const startedAt = Date.now();
+    const marketAssetType = marketAssetTypeFromIntelligence(asset.assetType);
     const result = await proxyAnalyze(
       asset.providerSymbol,
-      marketAssetTypeFromIntelligence(asset.assetType),
+      marketAssetType,
       {
         displaySymbol: asset.displaySymbol,
         name: asset.name,
@@ -89,12 +141,30 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
     }
 
     const price = finite(result.latestPrice);
-    const candles = normalizeCandles(result);
+    let candles = normalizeCandles(result);
+    let supplementalHistoryUsed = false;
+    let supplementalProvider: string | null = null;
+
+    if (candles.length === 0) {
+      const historyResult = await proxyHistory(asset.providerSymbol, marketAssetType, '1y', '1d').catch(() => null);
+      const recovered = normalizeSupplementalCandles(historyResult);
+      if (recovered.length > 0) {
+        candles = recovered;
+        supplementalHistoryUsed = true;
+        supplementalProvider = supplementalProviderId(historyResult);
+      }
+    }
+
     if (price === null || price <= 0 || candles.length === 0) {
       throw new IntelligenceError('PROVIDER_UNAVAILABLE', true);
     }
-    const asOf = dataAsOf(result);
-    const provider = String(result.provider ?? result.source ?? this.id).slice(0, 80);
+
+    const asOf = dataAsOf(result, candles);
+    const primaryProvider = String(result.provider ?? result.source ?? this.id).slice(0, 80);
+    const provider = supplementalHistoryUsed && supplementalProvider && supplementalProvider !== primaryProvider
+      ? `${primaryProvider}+${supplementalProvider}`.slice(0, 80)
+      : primaryProvider;
+    const fallbackUsed = result.fallback === true || supplementalHistoryUsed;
     const dataStatus: VerifiedIntelligenceSnapshot['dataStatus'] = result.cached
       ? 'CACHED'
       : result.dataStatus === 'delayed'
@@ -114,8 +184,10 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       receivedAt: new Date().toISOString(),
       dataAsOf: asOf,
       dataStatus,
-      fallbackUsed: result.fallback === true,
-      operationalReliability: operationalReliability(result),
+      fallbackUsed,
+      operationalReliability: supplementalHistoryUsed
+        ? Math.min(operationalReliability(result), 0.85)
+        : operationalReliability(result),
       reportedRiskLevel: result.riskLevel === 'high' ? 'HIGH' : result.riskLevel === 'medium' ? 'MEDIUM' : result.riskLevel === 'low' ? 'LOW' : null,
       quote: {
         price,
@@ -129,15 +201,18 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       },
       candles,
       fundamentals: result.fundamentalsAvailable === false ? null : result.fundamentals ?? null,
-      fundamentalsSource: result.fundamentalsAvailable === false ? null : result.fundamentalsSource ?? provider,
+      fundamentalsSource: result.fundamentalsAvailable === false ? null : result.fundamentalsSource ?? primaryProvider,
       sharia: {
         status: result.shariahStatus ?? null,
         reason: result.shariahReason ?? null,
         source: result.shariahSource ?? null,
         reviewedAt: result.shariahLastReviewedAt ?? null,
       },
-      warnings: Array.isArray(result.warnings) ? result.warnings.map((_, index) => `PROVIDER_WARNING_${index + 1}`) : [],
-      providerAttempts: [providerAttempt(result, startedAt)],
+      warnings: [
+        ...(Array.isArray(result.warnings) ? result.warnings.map((_, index) => `PROVIDER_WARNING_${index + 1}`) : []),
+        ...(supplementalHistoryUsed ? ['SUPPLEMENTAL_HISTORY_FALLBACK_USED'] : []),
+      ],
+      providerAttempts: [providerAttempt(result, startedAt, { provider, fallbackUsed, observedAt: asOf })],
     };
   }
 }
