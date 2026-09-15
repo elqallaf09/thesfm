@@ -99,6 +99,8 @@ jobs:
           for name in ['.github/workflows/trader-surface-inspection.yml','.github/workflows/apply-trader-controls.yml','tests/manual/trader-readability-audit.mjs']:
             Path(name).unlink()
           PY
+          # Hygiene reads the Git index; stage genuine deletions before checking it.
+          git add -A .github/workflows src/trader-app/public tests/manual/trader-readability-audit.mjs tests/smoke/trader-control-visibility.spec.ts
       - name: Verify repaired controls and preserve the original contrast regressions
         run: |
           PLAYWRIGHT_JSON_OUTPUT_NAME=.artifacts/trader-controls/after.json pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --no-deps --workers=2 --retries=0 --reporter=list,json
@@ -110,6 +112,7 @@ jobs:
           pnpm check:repo-hygiene
           pnpm check:prod-endpoints
           git diff --check
+          git diff --cached --check
       - name: Save exact reviewed changes and push only this repair branch
         env:
           EXPECTED_SHA: ${{ github.sha }}
@@ -117,7 +120,6 @@ jobs:
           test "$(git ls-remote origin refs/heads/fix/trader-surface-readability | cut -f1)" = "$EXPECTED_SHA"
           git diff 05112fe0cd2a2558e906b87b73b22833d2a67ed3 -- .github/workflows/trader-text-contrast.yml src/trader-app/public tests/smoke/trader-control-visibility.spec.ts > .artifacts/trader-controls/review.patch
           tar -czf .artifacts/trader-controls/reviewed-files.tar.gz .github/workflows/trader-text-contrast.yml src/trader-app/public/cinema.css src/trader-app/public/index.html src/trader-app/public/detail.html src/trader-app/public/service-worker.js tests/smoke/trader-control-visibility.spec.ts
-          git add -A .github/workflows src/trader-app/public tests/manual/trader-readability-audit.mjs tests/smoke/trader-control-visibility.spec.ts
           git write-tree > .artifacts/trader-controls/tree.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
