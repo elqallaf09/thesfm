@@ -4202,12 +4202,14 @@
     const key = sym(symbol);
     const aliases = symbolAliases(key);
     const cachedEntry = Array.from(state.cache.entries()).find(([cacheKey]) => aliases.includes(sym(cacheKey)));
-    const cachedDetail = cachedEntry ? cachedEntry[1] : null;
+    const watchRow = state.route.id === "watchlist" ? watchlistView.lookup(key) : null;
+    // Never blend an old detail recommendation into a newer/gated watchlist row.
+    const cachedDetail = watchRow ? null : cachedEntry ? cachedEntry[1] : null;
     let loaded = mergeRecLists(legacyRecsFrom(state.commandCards), recs());
     const marketRows = [];
     state.marketCache.forEach(payload => marketRows.push(...marketUniverseRows(payload)));
     loaded = mergeRecLists(marketRows, loaded);
-    const loadedAsset = findAssetForSymbol(key, loaded) || matchRec(key) || null;
+    const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
     const rec = cachedDetail && cachedDetail.rec || loadedAsset;
     const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(rec || {}) }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
@@ -5066,6 +5068,7 @@
   }
 
   function evaluationScoreState(value) {
+    if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return null;
     const score = Number(value);
     if (!Number.isFinite(score)) return null;
     return score < 50 ? "danger" : "success";
@@ -6281,7 +6284,9 @@
     <p class="muted-note">${h(textPair("الهدف الأول قريب عمداً (≈0.9×ATR) لرفع احتمال الإصابة، وهو الهدف الذي تُقاس عليه نسبة النجاح التاريخية. الوقف أوسع خلف الهيكل السعري، لذلك العائد/المخاطرة يُقرأ مع الهدف الثاني.", "The first target is intentionally close (around 0.9x ATR) to raise hit probability; historical success is measured against that target. The stop is wider behind the price structure, so risk/reward is read with the second target."))}</p>`;
   }
   function signalAnalysis(rec, c) {
-    const sig = signal(rec), conf = confText(rec);
+    const checked = sharedRecommendation(rec), evidence = assetDataState(rec, checked);
+    if (evidence.key !== "available") return drawerUnavailable(evidence.label, evidence.body);
+    const sig = checked.status, conf = checked.confidence === null ? terminalText("unavailable") : `${Math.round(checked.confidence)}%`;
     const reasons = arr(rec.reasons).map(String).filter(Boolean).slice(0, 5);
     const warnings = arr(rec.warnings).map(String).filter(Boolean).slice(0, 5);
     const score = rec.scoreBreakdown || rec.score_breakdown || {};

@@ -127,7 +127,15 @@
     }).join("");
     return `<div class="table-shell watchlist-table"><table><thead><tr><th>${h(terminalText("asset"))}</th><th>${h(terminalText("price"))}</th><th>${h(textPair("التغير", "Change"))}</th><th>${h(textPair("التوصية", "Recommendation"))}</th><th>${h(terminalText("confidence"))}</th><th>${h(terminalText("target"))}</th><th>${h(textPair("المدة", "Horizon"))}</th><th>${h(textPair("المخاطرة", "Risk"))}</th><th>${h(textPair("سكور AI", "AI score"))}</th><th>${h(terminalText("action"))}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-    return { page: watchPage, table: watchlistTable, sync, statusCells };
+    function lookup(symbol) {
+      const key = String(symbol || "").trim().toUpperCase();
+      const id = state.watch.find(saved => {
+        const row = engine.get(saved);
+        return String(saved).toUpperCase() === key || String(row.symbol).toUpperCase() === key;
+      });
+      return id ? engine.get(id) : null;
+    }
+    return { page: watchPage, table: watchlistTable, sync, statusCells, lookup };
   }
   root.SFMWatchlistView = Object.freeze({ create });
 })(window);

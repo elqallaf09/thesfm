@@ -195,3 +195,62 @@ test('partial and old quotes remain explicit; the empty watchlist requests no qu
   await expect(frame.locator('#terminal-content')).toContainText('Watchlist is empty');
   expect(calls.filter(url => url.startsWith('/api/watchlist'))).toEqual([]);
 });
+
+
+test('quick drawer reuses the exact watchlist quote without a second request', async ({ page }) => {
+  await prepare(page);
+  const calls = await mockApi(page);
+  await page.goto(`${origin}/host`);
+  const frame = page.frameLocator('#trader');
+  const row = frame.locator('[data-watchlist-symbol="MSFT"]');
+  await expect(row.locator('td').nth(4)).toHaveText('75%');
+  const count = calls.filter(url => url.startsWith('/api/watchlist')).length;
+  await row.locator('[data-symbol-details="MSFT"]').first().click();
+  const drawer = frame.locator('[data-symbol-drawer]');
+  await expect(drawer).toContainText('501.25 USD');
+  await expect(drawer).toContainText('75%');
+  await drawer.locator('[data-drawer-tab="ai"]').click();
+  await expect(drawer.locator('#drawer-panel-ai')).toContainText('75%');
+  expect(calls.filter(url => url.startsWith('/api/watchlist')).length).toBe(count);
+});
+
+test('incomplete evidence rejects a raw strong signal consistently in the table and drawer', async ({ page }) => {
+  await prepare(page);
+  await mockApi(page, async (route, url) => {
+    const phase = url.searchParams.get('phase') || 'quotes';
+    const row = { ...fixture('MSFT', phase), technicalAvailable: false,
+      dataSufficiency: { sufficient: false }, confidence: 95, aiConfidence: 95, finalScore: 95,
+      finalRecommendation: 'Buy', reason: 'Strong buy signal', decision: { kind: 'buy', title: 'Strong buy signal' } };
+    await route.fulfill({ json: { ok: true, engineVersion: 1, phase, rows: [row] } });
+  });
+  await page.goto(`${origin}/host`);
+  const frame = page.frameLocator('#trader'), row = frame.locator('[data-watchlist-symbol="MSFT"]');
+  await expect(row).toContainText('501.25 USD');
+  await expect(row.locator('td').nth(3)).toContainText('Insufficient');
+  await expect(row.locator('td').nth(4)).not.toContainText('%');
+  await expect(row.locator('td').nth(8)).not.toContainText('%');
+  await row.locator('[data-symbol-details="MSFT"]').first().click();
+  const drawer = frame.locator('[data-symbol-drawer]');
+  await expect(drawer).toContainText('501.25 USD');
+  await drawer.locator('[data-drawer-tab="ai"]').click();
+  await expect(drawer.locator('#drawer-panel-ai')).not.toContainText('95%');
+  await expect(drawer.locator('#drawer-panel-ai')).not.toContainText('Strong buy');
+});
+
+test('full detail rejects the raw decision and invented score when core evidence is absent', async ({ page }) => {
+  await prepare(page);
+  await page.route('**/api/**', async route => {
+    const recommendation = { ...fixture('MSFT', 'analysis'), technicalAvailable: false,
+      dataSufficiency: { sufficient: false }, reason: 'Strong buy signal', confidence: 95, aiConfidence: 95,
+      finalScore: 95, decision: { kind: 'buy', title: 'Strong buy signal', message: 'Buy now', badge: 'Strong' } };
+    await route.fulfill({ json: { ok: true, recommendation, profile: {}, market: {}, providerStatus: {} } });
+  });
+  await page.goto(`${origin}${prefix}detail.html?symbol=MSFT`);
+  await expect(page.locator('#decision-title')).toHaveText('Insufficient data');
+  await expect(page.locator('#decision-panel')).not.toContainText('Strong buy');
+  await expect(page.locator('#detail-confidence')).not.toContainText('95');
+  await expect(page.locator('#detail-score')).not.toContainText('95');
+  await expect(page.locator('#detail-score')).not.toContainText('0');
+  await expect(page.locator('#detail-target-one')).not.toContainText('USD');
+  await expect(page.locator('#detail-current-price')).toContainText('501.25');
+});

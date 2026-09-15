@@ -33,7 +33,7 @@
   const MIN_RISK_REWARD = 1.5;
 
   function finiteNumber(value) {
-    if (value === null || value === undefined || value === "") return null;
+    if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -83,6 +83,7 @@
     const raw = lower(value);
     if (!raw) return "unavailable";
     if (raw === "complete" || raw === "live") return raw;
+    if (raw === "stale" || raw === "last known" || raw === "timestamp unknown") return "stale";
     if (raw === "delayed" || raw === "late" || raw.includes("late") || raw.includes("متأخر")) return "late";
     if (raw === "cached" || raw.includes("cached") || raw.includes("مخزن")) return "cached";
     if (raw === "partial" || raw.includes("partial") || raw.includes("جزئي")) return "partial";
@@ -175,7 +176,7 @@
     const asset = (context && context.asset) || {};
     const tech = (context && context.detail && context.detail.tech) || {};
     const summary = rec.technicalSummary || rec.technical_summary || asset.technicalSummary || asset.technical_summary || tech.technicalSummary || tech.technical_summary || {};
-    const indicators = summary.indicators || {};
+    const indicators = summary.indicators || rec.indicators || rec.technicals || asset.indicators || asset.technicals || {};
     return {
       rsi: firstNumber(indicators.rsi14, indicators.rsi, rec.rsi14, rec.rsi, asset.rsi14, asset.rsi, tech.rsi14, tech.rsi),
       ema20: firstNumber(indicators.ema20, rec.ema20, asset.ema20, tech.ema20),
@@ -214,8 +215,10 @@
   }
 
   function hasCoreIndicators(indicators) {
-    return [indicators.rsi, indicators.ema20, indicators.ema50, indicators.ema200, indicators.sma20, indicators.sma50, indicators.macd, indicators.macdSignal]
-      .some(value => value !== null);
+    // One isolated indicator cannot establish a complete technical signal.
+    return indicators.rsi !== null && indicators.rsi >= 0 && indicators.rsi <= 100
+      && [indicators.ema20, indicators.ema50, indicators.ema200, indicators.sma20, indicators.sma50].some(isValidPrice)
+      && indicators.macd !== null && indicators.macdSignal !== null;
   }
 
   function sourceReason(input) {
@@ -245,8 +248,27 @@
     const signalUnavailable = rec.signalAvailable === false || rec.signal_available === false;
     const missingPrice = !isValidPrice(currentPrice);
     const missingIndicators = technicalUnavailable || !hasCoreIndicators(indicators);
-    const missingLevels = indicators.support === null || indicators.resistance === null;
-    const missingAtr = indicators.atr === null;
+    const missingLevels = !isValidPrice(indicators.support) || !isValidPrice(indicators.resistance)
+      || indicators.support >= indicators.resistance;
+    const missingAtr = !isValidPrice(indicators.atr);
+    const asset = (context && context.asset) || {};
+    const engine = rec.engine || asset.engine;
+    const sufficiency = rec.dataSufficiency || asset.dataSufficiency;
+    const providerStatus = rec.providerStatus || asset.providerStatus || {};
+    // Observation time, never generatedAt (the HTTP response time).
+    const observedAt = engine ? engine.asOf : firstText(rec.lastUpdated, rec.dataTimestamp, rec.updatedAt,
+      asset.lastUpdated, asset.dataTimestamp, asset.updatedAt, providerStatus.lastUpdated);
+    const observedMs = typeof observedAt === "string" && observedAt.trim() ? Date.parse(observedAt) : NaN;
+    const now = Date.now();
+    const staleObservation = !Number.isFinite(observedMs) || observedMs > now + 60_000 || now - observedMs > 15 * 60_000;
+    const degradedQuality = [rec.dataQuality, rec.data_quality, asset.dataQuality, providerStatus.dataQuality]
+      .some(value => value && ["partial", "cached", "late", "stale", "unavailable"].includes(normalizedDataQuality(value)));
+    const evidenceReady = !missingPrice && !missingIndicators && !missingLevels && !missingAtr
+      && !signalUnavailable && rec.available !== false && asset.available !== false
+      && (!sufficiency || sufficiency.sufficient !== false)
+      && (!engine || engine.analysisStatus === "available" && ["available", "cached"].includes(engine.quoteStatus))
+      && ["complete", "live"].includes(dataQuality.status) && !degradedQuality && !staleObservation
+      && !rec.stale && !asset.stale && !providerStatus.stale && !rec.delayed && !asset.delayed && !providerStatus.delayed;
     const missingNews = !hasNewsContext(rec, context);
     const riskLevel = riskKey(rec.riskLevel || rec.risk || ((context && context.asset) || {}).riskLevel || ((context && context.asset) || {}).risk);
     const riskRewardFailed = (statusFromSource === STATUS.BUY || statusFromSource === STATUS.SELL)
@@ -269,15 +291,19 @@
       status = STATUS.WATCH;
     }
 
-    if (statusFromSource === STATUS.INSUFFICIENT || signalUnavailable || missingPrice || dataQuality.status === "unavailable") {
+    if (statusFromSource === STATUS.INSUFFICIENT || !evidenceReady) {
       status = STATUS.INSUFFICIENT;
     }
 
     const label = LABELS[status] || LABELS.watch;
     const fallbackReason = status === STATUS.INSUFFICIENT
       ? INSUFFICIENT_REASON
-      : safetyReasons[0] || WATCH_REASONS.finalWatch;
-    const reason = sourceReason(rec) || fallbackReason;
+      : status === STATUS.BUY || status === STATUS.SELL ? "" : safetyReasons[0] || WATCH_REASONS.finalWatch;
+    // A rejected source verdict must not leak back through its bullish prose.
+    const reason = status === STATUS.INSUFFICIENT ? INSUFFICIENT_REASON : sourceReason(rec) || fallbackReason;
+    const rawConfidence = firstNumber(rec.aiConfidence, rec.ai_confidence, rec.confidence);
+    const confidence = evidenceReady && !safetyReasons.length && status !== STATUS.INSUFFICIENT
+      && rawConfidence !== null && rawConfidence >= 0 && rawConfidence <= 100 ? rawConfidence : null;
     const canFollowTrade = (status === STATUS.BUY || status === STATUS.SELL)
       && isValidPrice(currentPrice)
       && isValidPrice(targetPrice)
@@ -291,14 +317,15 @@
       actionLabelAr: label.ar,
       actionLabelEn: label.en,
       actionLabelFr: label.fr,
-      confidence: firstNumber(rec.aiConfidence, rec.ai_confidence, rec.confidence, rec.score),
+      confidence,
+      evidenceReady,
       reason: status === STATUS.WATCH && safetyReasons.length ? safetyReasons.join(" ") : reason,
       dataQuality,
       canFollowTrade,
       currentPrice,
-      targetPrice,
-      stopLoss,
-      riskReward,
+      targetPrice: evidenceReady ? targetPrice : null,
+      stopLoss: evidenceReady ? stopLoss : null,
+      riskReward: evidenceReady ? riskReward : null,
       riskLevel,
       safetyReasons,
       sourceStatus: statusFromSource

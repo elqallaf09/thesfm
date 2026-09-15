@@ -940,7 +940,10 @@ async function loadDetail() {
     }
 
     renderDetail(data);
-    elements.status.textContent = data.cached ? detailText("بيانات مخزنة لحظياً", "Live cached data") : detailText("تحليل جديد", "Fresh analysis");
+    const readiness = Recommendation.normalizeRecommendation(data.recommendation, { asset: data.recommendation, detail: data });
+    elements.status.textContent = readiness.evidenceReady
+      ? detailText("تحليل متاح", "Analysis available", "Analyse disponible")
+      : detailText("بيانات غير كافية", "Insufficient data", "Données insuffisantes");
     applyDetailLanguage();
   } catch (error) {
     showError(error.message);
@@ -948,12 +951,19 @@ async function loadDetail() {
 }
 
 function renderDetail(data) {
-  const item = data.recommendation;
+  const sourceItem = data.recommendation || {};
   const profile = data.profile || {};
   const market = data.market || {};
-  const normalizedRecommendation = Recommendation.normalizeRecommendation(item, { asset: item, detail: data });
-  const finalScore = calculateFinalScore(item);
-  const decision = item.decision || buildDecision(item, normalizedRecommendation);
+  const normalizedRecommendation = Recommendation.normalizeRecommendation(sourceItem, { asset: sourceItem, detail: data });
+  const item = normalizedRecommendation.evidenceReady ? sourceItem : {
+    ...sourceItem, expectedPrice: null, targetPrice: null, target1: null, target2: null, stopLoss: null,
+    confidence: null, aiConfidence: null, finalScore: null, score: null, riskReward: null,
+    expectedMovePct: null, duration: null, support: null, resistance: null,
+    analysisQuality: null, tradePlan: null, timeframeConsensus: null, timeframes: [], upsideOutlook: [],
+    risk: { level: "unknown", label: "unknown", notes: [] }, reasons: [normalizedRecommendation.reason]
+  };
+  const finalScore = calculateFinalScore(item, normalizedRecommendation);
+  const decision = buildDecision(item, normalizedRecommendation);
 
   detailTitleSymbol = item.symbol;
   updateDetailDocumentTitle();
@@ -1130,7 +1140,7 @@ function renderBacktest(item) {
 
 function buildDecision(item, recommendation) {
   const confidence = recommendation.confidence;
-  const confidenceText = Number.isFinite(Number(confidence)) ? `${confidence}%` : "--";
+  const confidenceText = confidence !== null && confidence !== undefined && Number.isFinite(Number(confidence)) ? `${confidence}%` : "--";
   const messageReason = recommendation.reason || detailText(
     "التوصية النهائية المشتركة لا تسمح بإشارة شراء أو بيع الآن.",
     "The shared final recommendation does not allow a buy or sell signal now."
@@ -1188,34 +1198,19 @@ function showError(message) {
   applyDetailLanguage();
 }
 
-function calculateFinalScore(item) {
-  const confidencePoints = clamp(Number(item.confidence || 0), 0, 100) * 0.35;
-  const agreementPoints = clamp(Number(item.timeframeConsensus?.agreementPct || 0), 0, 100) * 0.15;
-  const shariaPoints = {
-    compliant: 20,
-    needs_review: 8,
-    unclassified: 4,
-    non_compliant: 0
-  }[normalizeDetailShariaStatus(item.shariahStatus || item.shariaStatus)] ?? 4;
-  const riskPoints = {
-    low: 15,
-    medium: 9,
-    high: 3
-  }[item.risk?.level] ?? 8;
-  const winRate = Number(item.backtest?.winRate);
-  const backtestPoints = Number.isFinite(winRate) ? clamp(winRate * 0.1, 0, 10) : 4;
-  const expectedMoveValue = isValidChange(item.expectedMovePct) ? Number(item.expectedMovePct) : null;
-  const movePoints = expectedMoveValue === null ? 0 : clamp(Math.abs(expectedMoveValue) * 1.2, 0, 5);
-  const qualityPoints = clamp(Number(item.analysisQuality?.score || 0), 0, 100) * 0.08;
-  const riskRewardPoints = clamp(Number(item.riskReward || 0), 0, 3) * 2;
-  const conflictPenalty = item.timeframeConsensus?.conflict ? 6 : 0;
-  const score = Math.round(clamp(confidencePoints + agreementPoints + shariaPoints + riskPoints + backtestPoints + movePoints + qualityPoints + riskRewardPoints - conflictPenalty, 0, 100));
-  const label = score >= 80 ? "قوي جداً" : score >= 70 ? "قوي" : score >= 55 ? "متوسط" : "ضعيف";
-
-  return { score, label };
+function calculateFinalScore(item, recommendation) {
+  // Display the computed source score only; do not award points for absent inputs.
+  const ready = recommendation || Recommendation.normalizeRecommendation(item, { asset: item });
+  const raw = item.finalScore ?? item.score;
+  if (!ready.evidenceReady || ready.confidence === null || raw === null || raw === undefined
+    || typeof raw === "boolean" || (typeof raw === "string" && !raw.trim())) return { score: null, label: "" };
+  const score = Number(raw);
+  if (!Number.isFinite(score) || score < 0 || score > 100) return { score: null, label: "" };
+  return { score, label: score >= 80 ? "قوي جداً" : score >= 70 ? "قوي" : score >= 55 ? "متوسط" : "ضعيف" };
 }
 
 function evaluationScoreState(score) {
+  if (score === null || score === undefined || typeof score === "boolean" || (typeof score === "string" && !score.trim())) return null;
   const value = Number(score);
   if (!Number.isFinite(value)) return null;
   return value < 50 ? "danger" : "success";
