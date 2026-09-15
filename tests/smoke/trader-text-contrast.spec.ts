@@ -18,7 +18,7 @@ test.beforeAll(async () => {
       response.setHeader('cache-control', 'no-store');
       if (url.pathname === '/contrast-host') {
         response.setHeader('content-type', 'text/html; charset=utf-8');
-        response.end('<!doctype html><html><head><title>Isolated Trader contrast test</title><style>body{margin:0}iframe{display:block;border:0;width:100%;height:1300px}</style></head><body><iframe name="trader-contrast-frame" title="Trader" src="/thesfm-trader-own/app/index.html?route=trade-performance"></iframe></body></html>');
+        response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Isolated Trader contrast test</title><style>body{margin:0}iframe{display:block;border:0;width:100%;height:1300px}</style></head><body><iframe name="trader-contrast-frame" title="Trader" src="/thesfm-trader-own/app/index.html?route=trade-performance"></iframe></body></html>');
         return;
       }
       const file = decodeURIComponent(url.pathname).replace(/^\/thesfm-trader-own\/app\//, '').replace(/^\/+/, '');
@@ -81,6 +81,7 @@ for (const width of [2048, 1440, 390]) {
         await testInfo.attach('computed-contrast', { body: JSON.stringify(result, null, 2), contentType: 'application/json' });
         // Save before assertions too, so a genuine regression has visual proof.
         await testInfo.attach('trade-performance', { body: await page.screenshot(), contentType: 'image/png' });
+        expect(result.width, 'The embedded fixture must use the device viewport').toBe(width);
         assertReadable(result);
         const search = terminal.locator('#symbol-input');
         await search.focus();
