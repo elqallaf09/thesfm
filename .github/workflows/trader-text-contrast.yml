@@ -1,0 +1,57 @@
+name: Trader text contrast
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/trader-app/public/**'
+      - 'src/styles/tokens.css'
+      - 'src/styles/themes.css'
+      - 'tests/smoke/trader-text-contrast.spec.ts'
+      - 'tests/smoke/trader-control-visibility.spec.ts'
+      - '.github/workflows/trader-text-contrast.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/trader-app/public/**'
+      - 'src/styles/tokens.css'
+      - 'src/styles/themes.css'
+      - 'tests/smoke/trader-text-contrast.spec.ts'
+      - 'tests/smoke/trader-control-visibility.spec.ts'
+      - '.github/workflows/trader-text-contrast.yml'
+permissions:
+  contents: read
+concurrency:
+  group: trader-text-contrast-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Embedded Arabic/English, light/dark contrast and theme switching
+        env:
+          # Disable the unrelated Next/auth web-server setup; the spec owns an ephemeral fixture server.
+          # This reserved placeholder is never requested.
+          E2E_BASE_URL: https://trader-contrast.invalid
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/trader-contrast/report.json
+        run: pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --no-deps --workers=2 --retries=0 --reporter=list,json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trader-text-contrast-${{ github.sha }}
+          path: |
+            .artifacts/trader-contrast/
+            test-results/
+          retention-days: 14
+          if-no-files-found: error
