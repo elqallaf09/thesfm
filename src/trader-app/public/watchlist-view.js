@@ -61,6 +61,28 @@
       const stamp = row.engine?.asOf;
       return `<small class="watchlist-quote-meta" dir="auto"><span>${h(label)}</span>${row.source ? `<span>${h(row.source)}</span>` : ""}${stamp ? `<time datetime="${h(stamp)}">${h(date(stamp))}</time>` : ""}</small>`;
     }
+    function statusCells() {
+      const rows = state.watch.map(id => engine.get(id));
+      const priced = rows.filter(row => row.available === true && isValidPrice(row.price));
+      const analyzed = rows.filter(row => row.engine?.analysisStatus === "available");
+      const old = rows.some(row => ["last_known", "stale", "timestamp_unknown"].includes(row.engine?.quoteStatus));
+      const loading = rows.some(row => row.engine?.quoteStatus === "loading" || row.engine?.analysisStatus === "pending") && !old;
+      const label = !rows.length ? textPair("القائمة فارغة", "Empty watchlist", "Liste vide")
+        : old ? textPair("آخر بيانات متاحة", "Last available data", "Dernières données disponibles")
+          : analyzed.length === rows.length ? textPair("البيانات متاحة", "Data available", "Données disponibles")
+            : loading ? textPair("جارٍ التحديث", "Updating", "Actualisation")
+              : priced.length ? textPair("بيانات جزئية", "Partial data", "Données partielles")
+                : textPair("غير متاح", "Unavailable", "Indisponible");
+      const stamps = priced.map(row => row.engine?.asOf).filter(stamp => typeof stamp === "string" && Number.isFinite(Date.parse(stamp)));
+      const latest = stamps.length ? new Date(Math.max(...stamps.map(stamp => Date.parse(stamp)))).toLocaleString("en-GB", { hour12: false }) : "--";
+      return [
+        [textPair("بيانات قائمتي", "Watchlist data", "Données de la liste"), label, "SFM Watchlist Engine"],
+        [textPair("أسعار متاحة", "Available prices", "Cours disponibles"), priced.length, `${priced.length}/${rows.length}`],
+        [textPair("تحليلات متاحة", "Available analyses", "Analyses disponibles"), analyzed.length, `${analyzed.length}/${rows.length}`],
+        [terminalText("watchlist"), rows.length, terminalText("watchlist")],
+        [textPair("أحدث توقيت سعر", "Latest quote time", "Date du dernier cours"), latest, textPair("توقيت المصدر", "Source timestamp", "Date de la source")],
+      ];
+    }
   function watchPage() {
     const quick = unique(defaults.concat(["EURUSD", "SPY", "2222.SR", "ETHUSD"]));
     return `<div class="page-stack">${hero(textPair("قائمة متابعة ذكية ونظيفة", "Clean smart watchlist"), textPair("أضف الرموز التي تريد مراقبتها. الأسعار والتحليلات تظهر فقط عند توفرها من المزود، والعملة تتبع كل رمز.", "Add the symbols you want to watch. Prices and analysis appear only when available from the provider, and currency follows each symbol."), "WATCHLIST")}
@@ -105,7 +127,7 @@
     }).join("");
     return `<div class="table-shell watchlist-table"><table><thead><tr><th>${h(terminalText("asset"))}</th><th>${h(terminalText("price"))}</th><th>${h(textPair("التغير", "Change"))}</th><th>${h(textPair("التوصية", "Recommendation"))}</th><th>${h(terminalText("confidence"))}</th><th>${h(terminalText("target"))}</th><th>${h(textPair("المدة", "Horizon"))}</th><th>${h(textPair("المخاطرة", "Risk"))}</th><th>${h(textPair("سكور AI", "AI score"))}</th><th>${h(terminalText("action"))}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
-    return { page: watchPage, table: watchlistTable, sync };
+    return { page: watchPage, table: watchlistTable, sync, statusCells };
   }
   root.SFMWatchlistView = Object.freeze({ create });
 })(window);

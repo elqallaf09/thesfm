@@ -106,6 +106,11 @@ for (const lang of ['ar', 'en', 'fr']) {
       await expect(row.locator('td').nth(4)).toHaveText('75%');
       await expect(row.locator('td').nth(8)).toHaveText('80%');
     }
+    const stats = frame.locator('#topbar-stats');
+    await expect(stats).toContainText('SFM Watchlist Engine');
+    await expect(stats.locator('.sb-cell').nth(1).locator('strong')).toHaveText('3');
+    await expect(stats.locator('.sb-cell').nth(2).locator('strong')).toHaveText('3');
+    await expect(stats.locator('.sb-cell').first().locator('strong')).toHaveText({ ar: 'البيانات متاحة', en: 'Data available', fr: 'Données disponibles' }[lang]!);
     expect(calls.some(url => url.startsWith('/api/watchlist?') && url.includes('MSFT'))).toBe(true);
     expect(calls.some(url => url.includes('/recommendations?market='))).toBe(false);
     expect(assets.sort()).toEqual([`${prefix}watchlist-engine.js`, `${prefix}watchlist-view.js`]);
@@ -164,6 +169,8 @@ test('outage retains the source price, strips stale confidence and preserves ref
   await expect(row.locator('time')).toHaveAttribute('datetime', stamp!);
   await expect(row.locator('td').nth(4)).not.toContainText('%');
   await expect(row.locator('td').nth(5)).not.toContainText('USD');
+  await expect(frame.locator('#topbar-stats .sb-cell').first()).toContainText('Last available data');
+  await expect(frame.locator('#topbar-stats .sb-cell').nth(2).locator('strong')).toHaveText('0');
   await expect(refresh).toBeFocused();
   await page.reload();
   await expect(row).toContainText('501.25 USD');
