@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
+import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
 import {
   ChatDomainMismatchError,
   MARKET_CHAT_DOMAINS,
@@ -98,6 +100,21 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let advisorPrompt = '';
+  let advisorGrounded = false;
+  if (domain === 'finance') {
+    try {
+      const grounding = await loadAdvisorGrounding({ userId: user.id, advisor: 'finance' });
+      advisorPrompt = buildEconomicAdvisorPrompt(grounding, locale);
+      advisorGrounded = true;
+    } catch {
+      // Fail soft to the existing finance-chat guardrails. Missing profile
+      // currency/data must never be replaced with guessed values.
+      advisorPrompt = '';
+      advisorGrounded = false;
+    }
+  }
+
   const anthropic = getProvider();
   if (!anthropic) {
     return NextResponse.json({
@@ -106,6 +123,7 @@ export async function POST(request: NextRequest) {
       source: 'unavailable',
       domain,
       asset: verifiedAsset,
+      advisorGrounded,
       correlationId,
     }, { headers: { ...INTELLIGENCE_RESPONSE_HEADERS, 'X-Correlation-ID': correlationId } });
   }
@@ -113,19 +131,26 @@ export async function POST(request: NextRequest) {
   const usage = await consumeAiUsage({
     userId: user.id,
     feature: 'market_ai_insight',
-    metadata: { route: '/api/intelligence/chat', domain, analysisId: analysisId ?? null, messageCount: messages.length },
+    metadata: {
+      route: '/api/intelligence/chat',
+      domain,
+      analysisId: analysisId ?? null,
+      messageCount: messages.length,
+      economicIntelligenceGrounded: advisorGrounded,
+    },
   });
   if (!usage.allowed) return aiUsageLimitResponse(usage);
 
   try {
+    const baseSystemPrompt = buildMarketChatSystemPrompt({
+      domain,
+      asset: verifiedAsset,
+      requestedUnresolvedSymbol,
+      locale,
+    });
     const { text } = await generateText({
       model: anthropic('claude-haiku-4-5-20251001'),
-      system: buildMarketChatSystemPrompt({
-        domain,
-        asset: verifiedAsset,
-        requestedUnresolvedSymbol,
-        locale,
-      }),
+      system: advisorPrompt ? `${baseSystemPrompt} ${advisorPrompt}` : baseSystemPrompt,
       messages: messages.map(message => ({ role: message.role, content: message.content })),
       maxTokens: 800,
     });
@@ -136,6 +161,7 @@ export async function POST(request: NextRequest) {
       source: 'ai',
       domain,
       asset: verifiedAsset,
+      advisorGrounded,
       correlationId,
     }, { headers: { ...INTELLIGENCE_RESPONSE_HEADERS, 'X-Correlation-ID': correlationId } });
   } catch {
@@ -145,6 +171,7 @@ export async function POST(request: NextRequest) {
       source: 'error',
       domain,
       asset: verifiedAsset,
+      advisorGrounded,
       correlationId,
     }, { headers: { ...INTELLIGENCE_RESPONSE_HEADERS, 'X-Correlation-ID': correlationId } });
   }

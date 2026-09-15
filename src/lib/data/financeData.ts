@@ -126,26 +126,27 @@ export function safePercent(numerator: unknown, denominator: unknown) {
   return ratio === null ? null : ratio * 100;
 }
 
-export function sumAmounts(rows: any[] = [], keys: string[] = ['amount']) {
+export function sumAmounts(rows: Record<string, unknown>[] = [], keys: string[] = ['amount']) {
   return rows.reduce((sum, row) => {
     const parsed = firstMoneyValue(row, keys);
     return sum + (parsed.status === 'valid' ? parsed.value : 0);
   }, 0);
 }
 
-function recordObject(value: unknown): Record<string, any> {
+function recordObject(value: unknown): Record<string, unknown> {
   if (!value) return {};
-  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, any>;
+  if (typeof value === 'object' && !Array.isArray(value)) return value as Record<string, unknown>;
   if (typeof value !== 'string') return {};
   try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    const parsed: unknown = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
   } catch {
     return {};
   }
 }
 
-export function incomeProjectId(row: any) {
+export function incomeProjectId(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   const enhancedProject = recordObject(enhanced.project);
   return String(
@@ -159,7 +160,8 @@ export function incomeProjectId(row: any) {
   ).trim();
 }
 
-export function incomeProjectIncomeId(row: any) {
+export function incomeProjectIncomeId(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   return String(
     row?.project_income_id ??
@@ -171,7 +173,8 @@ export function incomeProjectIncomeId(row: any) {
   ).trim();
 }
 
-export function isProjectLinkedIncomeRow(row: any) {
+export function isProjectLinkedIncomeRow(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   const category = String(row?.category ?? row?.income_type ?? enhanced.category ?? '').trim().toLowerCase();
   const source = String(enhanced.source ?? enhanced.kind ?? enhanced.type ?? '').trim().toLowerCase();
@@ -183,7 +186,8 @@ export function isProjectLinkedIncomeRow(row: any) {
   );
 }
 
-export function incomeTransferredToPersonalIncome(row: any) {
+export function incomeTransferredToPersonalIncome(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   return row?.transferred_to_personal_income === true ||
     row?.transferred_to_personal_income === 'true' ||
@@ -195,21 +199,22 @@ export function incomeTransferredToPersonalIncome(row: any) {
     enhanced.transferredToPersonalIncome === 'true';
 }
 
-export function isPersonalIncomeRow(row: any) {
+export function isPersonalIncomeRow(row: unknown) {
   if (!isProjectLinkedIncomeRow(row)) return true;
   return incomeTransferredToPersonalIncome(row);
 }
 
-export function personalIncomeRows<T = any>(rows: T[] = []) {
+export function personalIncomeRows<T = unknown>(rows: T[] = []) {
   return rows.filter(row => isPersonalIncomeRow(row));
 }
 
-export function projectIncomeRows<T = any>(rows: T[] = [], projectId?: string | null) {
+export function projectIncomeRows<T = unknown>(rows: T[] = [], projectId?: string | null) {
   if (!projectId) return [];
   return rows.filter(row => incomeProjectId(row) === projectId);
 }
 
-export function expenseProjectId(row: any) {
+export function expenseProjectId(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   const enhancedProject = recordObject(enhanced.project);
   return String(
@@ -223,7 +228,8 @@ export function expenseProjectId(row: any) {
   ).trim();
 }
 
-export function expenseProjectExpenseId(row: any) {
+export function expenseProjectExpenseId(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   return String(
     row?.project_expense_id ??
@@ -235,7 +241,8 @@ export function expenseProjectExpenseId(row: any) {
   ).trim();
 }
 
-export function isProjectLinkedExpenseRow(row: any) {
+export function isProjectLinkedExpenseRow(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   const category = String(row?.category ?? enhanced.category ?? '').trim().toLowerCase();
   const source = String(enhanced.source ?? enhanced.kind ?? enhanced.type ?? '').trim().toLowerCase();
@@ -247,7 +254,8 @@ export function isProjectLinkedExpenseRow(row: any) {
   );
 }
 
-export function expensePaidFromPersonalBudget(row: any) {
+export function expensePaidFromPersonalBudget(value: unknown) {
+  const row = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
   const enhanced = recordObject(row?.enhanced);
   return row?.paid_from_personal_budget === true ||
     row?.paid_from_personal_budget === 'true' ||
@@ -259,16 +267,16 @@ export function expensePaidFromPersonalBudget(row: any) {
     enhanced.paidFromPersonalBudget === true;
 }
 
-export function isPersonalExpenseRow(row: any) {
+export function isPersonalExpenseRow(row: unknown) {
   if (!isProjectLinkedExpenseRow(row)) return true;
   return expensePaidFromPersonalBudget(row);
 }
 
-export function personalExpenseRows<T = any>(rows: T[] = []) {
+export function personalExpenseRows<T = unknown>(rows: T[] = []) {
   return rows.filter(row => isPersonalExpenseRow(row));
 }
 
-export function projectExpenseRows<T = any>(rows: T[] = [], projectId?: string | null) {
+export function projectExpenseRows<T = unknown>(rows: T[] = [], projectId?: string | null) {
   if (!projectId) return [];
   return rows.filter(row => expenseProjectId(row) === projectId);
 }

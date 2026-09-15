@@ -1,24 +1,14 @@
 import type { WorkspacePageContainerVariant } from '@/components/layout/WorkspacePageContainer';
 
-export type WorkspacePageLayoutRule = {
-  prefix: string;
-  variant: WorkspacePageContainerVariant;
-  description: string;
-};
+export type WorkspacePageLayoutRule = { prefix: string; variant: WorkspacePageContainerVariant; description: string };
 
-/**
- * Central route-to-width policy for authenticated application pages.
- *
- * The application shell owns the available inline size. Routes select only a
- * content-measure variant; they never calculate around the header or sidebar.
- * Rules are evaluated longest-prefix first and are segment-aware.
- */
 export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
-  // Dense dashboards, analytics, financial tables, and the trading terminal.
+  { prefix: '/economic-intelligence', variant: 'full', description: 'Unified economic intelligence command center' },
   { prefix: '/thesfm-trader-own', variant: 'full', description: 'Trading terminal and dense market tools' },
   { prefix: '/sfm-admin-control', variant: 'full', description: 'Administration dashboards and operational tables' },
   { prefix: '/ai-analyst', variant: 'full', description: 'Unified financial intelligence workspace' },
   { prefix: '/investments', variant: 'full', description: 'Unified investments ownership and valuation center' },
+  { prefix: '/decisions/simulator', variant: 'full', description: 'Economic decision comparison simulator' },
   { prefix: '/symbol-details', variant: 'full', description: 'Legacy AI analyst symbol redirect' },
   { prefix: '/market-analysis', variant: 'full', description: 'Market analysis workspace' },
   { prefix: '/market-agent', variant: 'full', description: 'Market research assistant' },
@@ -51,8 +41,6 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/zakat', variant: 'full', description: 'Financial calculation workspace' },
   { prefix: '/khums', variant: 'full', description: 'Financial calculation workspace' },
   { prefix: '/education/expenses', variant: 'full', description: 'Expense management data workspace' },
-
-  // Discovery, directories, listings, news dashboards, and card-heavy tools.
   { prefix: '/investment-companies', variant: 'wide', description: 'Company directory' },
   { prefix: '/trading-companies', variant: 'wide', description: 'Company directory' },
   { prefix: '/accounting-companies', variant: 'wide', description: 'Company directory' },
@@ -84,11 +72,7 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/education/investments', variant: 'wide', description: 'Investment education and discovery cards' },
   { prefix: '/education/savings', variant: 'wide', description: 'Savings education and discovery cards' },
   { prefix: '/site-map', variant: 'wide', description: 'Platform route directory' },
-
-  // Only verified long-form readers retain a narrow reading measure.
   { prefix: '/ebooks/', variant: 'reading', description: 'Long-form educational reader' },
-
-  // Forms, profile/settings, and normal management pages.
   { prefix: '/profile/companies', variant: 'wide', description: 'Owned company listing and management' },
   { prefix: '/expenses/add', variant: 'standard', description: 'Expense entry form' },
   { prefix: '/income/add', variant: 'standard', description: 'Income entry form' },
@@ -109,22 +93,6 @@ export const WORKSPACE_PAGE_LAYOUT_RULES: readonly WorkspacePageLayoutRule[] = [
   { prefix: '/education', variant: 'wide', description: 'Educational library listing' },
 ] as const;
 
-function normalizePathname(pathname: string | null | undefined): string {
-  const normalized = String(pathname ?? '/').split(/[?#]/, 1)[0] || '/';
-  return normalized.length > 1 && normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
-}
-
-function routeMatches(pathname: string, prefix: string): boolean {
-  if (prefix.endsWith('/')) return pathname.startsWith(prefix);
-  return pathname === prefix || pathname.startsWith(`${prefix}/`);
-}
-
-export function resolveWorkspacePageContainerVariant(
-  pathname: string | null | undefined,
-): WorkspacePageContainerVariant {
-  const normalized = normalizePathname(pathname);
-  const match = [...WORKSPACE_PAGE_LAYOUT_RULES]
-    .sort((a, b) => b.prefix.length - a.prefix.length)
-    .find(rule => routeMatches(normalized, rule.prefix));
-  return match?.variant ?? 'standard';
-}
+function normalizePathname(pathname: string | null | undefined): string { const normalized = String(pathname ?? '/').split(/[?#]/, 1)[0] || '/'; return normalized.length > 1 && normalized.endsWith('/') ? normalized.slice(0, -1) : normalized; }
+function routeMatches(pathname: string, prefix: string): boolean { if (prefix.endsWith('/')) return pathname.startsWith(prefix); return pathname === prefix || pathname.startsWith(`${prefix}/`); }
+export function resolveWorkspacePageContainerVariant(pathname: string | null | undefined): WorkspacePageContainerVariant { const normalized = normalizePathname(pathname); const match = [...WORKSPACE_PAGE_LAYOUT_RULES].sort((a,b)=>b.prefix.length-a.prefix.length).find(rule=>routeMatches(normalized,rule.prefix)); return match?.variant ?? 'standard'; }

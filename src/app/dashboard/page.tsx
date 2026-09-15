@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
+import { useDashboardData } from '@/components/finance/DashboardDataProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
@@ -117,6 +118,7 @@ function logSourceFailure(source: DashboardSourceKey, error: unknown) {
 
 export default function ExecutiveDashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const dashboardData = useDashboardData();
   const { lang, dir, t } = useLanguage();
   const [sources, setSources] = useState(EMPTY_SOURCES);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -124,7 +126,10 @@ export default function ExecutiveDashboardPage() {
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  const loadDashboard = useCallback(() => setReloadToken((value) => value + 1), []);
+  const loadDashboard = useCallback(() => {
+    if (dashboardData) dashboardData.refresh();
+    else setReloadToken(value => value + 1);
+  }, [dashboardData]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -170,12 +175,10 @@ export default function ExecutiveDashboardPage() {
 
     const tableRequests = SOURCE_TABLES.map((source) => (async () => {
       try {
-        const { data, error } = await supabase
-          .from(source.table)
-          .select('*')
-          .eq('user_id', user.id)
-          .limit(1000)
-          .abortSignal(controller.signal);
+        const { data, error } = await (dashboardData
+          ? dashboardData.loadTable(source.table)
+          : supabase.from(source.table).select('*').eq('user_id', user.id)
+            .limit(1000).abortSignal(controller.signal));
         if (error) throw error;
         if (controller.signal.aborted) return;
         let rows = (data ?? []) as FinancialRow[];
@@ -200,7 +203,7 @@ export default function ExecutiveDashboardPage() {
     });
 
     return () => controller.abort();
-  }, [authLoading, reloadToken, user?.id]);
+  }, [authLoading, dashboardData, reloadToken, user?.id]);
 
   const summary = useMemo(() => {
     const primaryCurrency = rowCurrency(profile ?? {}, ['default_currency', 'preferred_currency', 'currency']);
