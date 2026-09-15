@@ -1,8 +1,8 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, BarChart3, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -10,133 +10,18 @@ import { useLanguage } from '@/hooks/useLanguage';
 import styles from './InvestmentCheck.module.css';
 
 const SYMBOL_PATTERN = /^[A-Za-z0-9.^=:_/-]{1,32}$/;
-
 const COPY = {
-  ar: {
-    kicker: 'SFM AI Investment Check',
-    title: 'افحص استثمارك قبل ما تحط فلوسك',
-    subtitle: 'اكتب رمز السهم أو الأصل، وTHE SFM يشغّل محرك التحليل الموثق ليعرض لك النتيجة، الثقة، المخاطر والأدلة المتاحة بدون اختلاق أرقام.',
-    label: 'رمز الأصل',
-    placeholder: 'مثال: AAPL أو NVDA',
-    type: 'نوع الأصل',
-    horizon: 'الأفق',
-    run: 'افحص الاستثمار',
-    invalid: 'أدخل رمز أصل صحيح.',
-    verified: 'بيانات موثقة فقط',
-    evidence: 'أدلة ومصادر ظاهرة',
-    share: 'نتيجة قابلة للمشاركة',
-    note: 'إذا لم تتوفر أدلة كافية، سيقول SFM ذلك بوضوح بدل إنشاء Score أو هدف سعري وهمي.',
-    signIn: 'تسجيل الدخول',
-    home: 'THE SFM',
-    stock: 'أسهم', fund: 'ETF / صناديق', crypto: 'عملات رقمية', forex: 'فوركس', commodity: 'سلع / ذهب', index: 'مؤشرات',
-    swing: 'متوسط', short: 'قصير', long: 'طويل', intraday: 'يومي', position: 'مركزي',
-  },
-  en: {
-    kicker: 'SFM AI Investment Check',
-    title: 'Check an investment before you commit capital',
-    subtitle: 'Enter a market symbol and THE SFM runs its verified intelligence engine to show the result, confidence, risk and available evidence without fabricated numbers.',
-    label: 'Asset symbol',
-    placeholder: 'Example: AAPL or NVDA',
-    type: 'Asset type',
-    horizon: 'Horizon',
-    run: 'Check investment',
-    invalid: 'Enter a valid market symbol.',
-    verified: 'Verified data only',
-    evidence: 'Visible evidence & sources',
-    share: 'Shareable result',
-    note: 'If evidence is insufficient, SFM says so clearly instead of creating a fake score or price target.',
-    signIn: 'Sign in',
-    home: 'THE SFM',
-    stock: 'Stocks', fund: 'ETF / Funds', crypto: 'Crypto', forex: 'Forex', commodity: 'Commodities / Gold', index: 'Indices',
-    swing: 'Medium', short: 'Short', long: 'Long', intraday: 'Intraday', position: 'Position',
-  },
-  fr: {
-    kicker: 'SFM AI Investment Check',
-    title: 'Vérifiez un investissement avant d’engager votre capital',
-    subtitle: 'Saisissez un symbole de marché et THE SFM lance son moteur vérifié pour afficher résultat, confiance, risque et preuves disponibles sans chiffres inventés.',
-    label: 'Symbole de l’actif',
-    placeholder: 'Exemple : AAPL ou NVDA',
-    type: 'Type d’actif',
-    horizon: 'Horizon',
-    run: 'Vérifier',
-    invalid: 'Saisissez un symbole de marché valide.',
-    verified: 'Données vérifiées uniquement',
-    evidence: 'Preuves et sources visibles',
-    share: 'Résultat partageable',
-    note: 'Si les preuves sont insuffisantes, SFM le dit clairement au lieu de créer un score ou un objectif de prix fictif.',
-    signIn: 'Connexion',
-    home: 'THE SFM',
-    stock: 'Actions', fund: 'ETF / Fonds', crypto: 'Crypto', forex: 'Forex', commodity: 'Matières / Or', index: 'Indices',
-    swing: 'Moyen', short: 'Court', long: 'Long', intraday: 'Intraday', position: 'Position',
-  },
+  ar: { kicker:'SFM AI Investment Check',title:'افحص استثمارك قبل ما تحط فلوسك',subtitle:'اكتب رمز السهم أو الأصل، وTHE SFM يشغّل محرك التحليل الموثق ليعرض لك النتيجة، الثقة، المخاطر والأدلة المتاحة بدون اختلاق أرقام.',label:'رمز الأصل',placeholder:'مثال: AAPL أو NVDA',type:'نوع الأصل',horizon:'الأفق',run:'افحص الاستثمار',invalid:'أدخل رمز أصل صحيح.',verified:'بيانات موثقة فقط',evidence:'أدلة ومصادر ظاهرة',share:'نتيجة قابلة للمشاركة',note:'إذا لم تتوفر أدلة كافية، سيقول SFM ذلك بوضوح بدل إنشاء Score أو هدف سعري وهمي.',signIn:'تسجيل الدخول',home:'THE SFM',stock:'أسهم',fund:'ETF / صناديق',crypto:'عملات رقمية',forex:'فوركس',commodity:'سلع / ذهب',index:'مؤشرات',swing:'متوسط',short:'قصير',long:'طويل',intraday:'يومي',position:'مركزي' },
+  en: { kicker:'SFM AI Investment Check',title:'Check an investment before you commit capital',subtitle:'Enter a market symbol and THE SFM runs its verified intelligence engine to show the result, confidence, risk and available evidence without fabricated numbers.',label:'Asset symbol',placeholder:'Example: AAPL or NVDA',type:'Asset type',horizon:'Horizon',run:'Check investment',invalid:'Enter a valid market symbol.',verified:'Verified data only',evidence:'Visible evidence & sources',share:'Shareable result',note:'If evidence is insufficient, SFM says so clearly instead of creating a fake score or price target.',signIn:'Sign in',home:'THE SFM',stock:'Stocks',fund:'ETF / Funds',crypto:'Crypto',forex:'Forex',commodity:'Commodities / Gold',index:'Indices',swing:'Medium',short:'Short',long:'Long',intraday:'Intraday',position:'Position' },
+  fr: { kicker:'SFM AI Investment Check',title:'Vérifiez un investissement avant d’engager votre capital',subtitle:'Saisissez un symbole de marché et THE SFM lance son moteur vérifié pour afficher résultat, confiance, risque et preuves disponibles sans chiffres inventés.',label:'Symbole de l’actif',placeholder:'Exemple : AAPL ou NVDA',type:'Type d’actif',horizon:'Horizon',run:'Vérifier',invalid:'Saisissez un symbole de marché valide.',verified:'Données vérifiées uniquement',evidence:'Preuves et sources visibles',share:'Résultat partageable',note:'Si les preuves sont insuffisantes, SFM le dit clairement au lieu de créer un score ou un objectif de prix fictif.',signIn:'Connexion',home:'THE SFM',stock:'Actions',fund:'ETF / Fonds',crypto:'Crypto',forex:'Forex',commodity:'Matières / Or',index:'Indices',swing:'Moyen',short:'Court',long:'Long',intraday:'Intraday',position:'Position' },
 } as const;
-
-type AssetType = 'STOCK' | 'FUND' | 'CRYPTO' | 'FOREX' | 'COMMODITY' | 'INDEX';
-type Horizon = 'INTRADAY' | 'SHORT_TERM' | 'SWING' | 'POSITION' | 'LONG_TERM';
-
-export default function InvestmentCheckPage() {
-  const router = useRouter();
-  const { lang } = useLanguage();
-  const locale = lang === 'ar' || lang === 'fr' ? lang : 'en';
-  const c = COPY[locale];
-  const [symbol, setSymbol] = useState('');
-  const [assetType, setAssetType] = useState<AssetType>('STOCK');
-  const [horizon, setHorizon] = useState<Horizon>('SWING');
-  const [error, setError] = useState(false);
-
-  const normalized = useMemo(() => symbol.trim().toUpperCase(), [symbol]);
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!SYMBOL_PATTERN.test(normalized) || normalized.startsWith('/') || normalized.endsWith('/') || normalized.includes('//') || normalized.includes('..')) {
-      setError(true);
-      return;
-    }
-    setError(false);
-    const params = new URLSearchParams({ assetType, horizon, autoRun: '1', source: 'investment-check' });
-    router.push(`/ai-analyst/analyze/${encodeURIComponent(normalized)}?${params.toString()}`);
-  }
-
-  return (
-    <main className={styles.page}>
-      <nav className={styles.nav} aria-label="Investment Check navigation">
-        <Link href="/" className={styles.brand}>{c.home}</Link>
-        <div className={styles.navActions}><LanguageSwitcher /><ThemeToggle /><Link href="/login" className={styles.signIn}>{c.signIn}</Link></div>
-      </nav>
-
-      <section className={styles.hero}>
-        <div className={styles.copy}>
-          <p className={styles.kicker}><Sparkles size={16} aria-hidden="true" />{c.kicker}</p>
-          <h1>{c.title}</h1>
-          <p className={styles.subtitle}>{c.subtitle}</p>
-          <div className={styles.trustGrid}>
-            <span><ShieldCheck size={17} aria-hidden="true" />{c.verified}</span>
-            <span><BarChart3 size={17} aria-hidden="true" />{c.evidence}</span>
-            <span><ArrowRight size={17} aria-hidden="true" />{c.share}</span>
-          </div>
-        </div>
-
-        <form className={styles.checker} onSubmit={submit} noValidate>
-          <label htmlFor="investment-symbol">{c.label}</label>
-          <div className={styles.symbolRow}>
-            <Search size={19} aria-hidden="true" />
-            <input id="investment-symbol" value={symbol} onChange={event => setSymbol(event.target.value)} placeholder={c.placeholder} autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={32} />
-          </div>
-          {error ? <p className={styles.error} role="alert">{c.invalid}</p> : null}
-
-          <div className={styles.selectGrid}>
-            <label>{c.type}<select value={assetType} onChange={event => setAssetType(event.target.value as AssetType)}>
-              <option value="STOCK">{c.stock}</option><option value="FUND">{c.fund}</option><option value="CRYPTO">{c.crypto}</option><option value="FOREX">{c.forex}</option><option value="COMMODITY">{c.commodity}</option><option value="INDEX">{c.index}</option>
-            </select></label>
-            <label>{c.horizon}<select value={horizon} onChange={event => setHorizon(event.target.value as Horizon)}>
-              <option value="INTRADAY">{c.intraday}</option><option value="SHORT_TERM">{c.short}</option><option value="SWING">{c.swing}</option><option value="POSITION">{c.position}</option><option value="LONG_TERM">{c.long}</option>
-            </select></label>
-          </div>
-
-          <button className={styles.submit} type="submit">{c.run}<ArrowRight size={18} aria-hidden="true" /></button>
-          <p className={styles.note}>{c.note}</p>
-        </form>
-      </section>
-    </main>
-  );
+type AssetType='STOCK'|'FUND'|'CRYPTO'|'FOREX'|'COMMODITY'|'INDEX'; type Horizon='INTRADAY'|'SHORT_TERM'|'SWING'|'POSITION'|'LONG_TERM';
+const ASSET_TYPES=new Set<AssetType>(['STOCK','FUND','CRYPTO','FOREX','COMMODITY','INDEX']); const HORIZONS=new Set<Horizon>(['INTRADAY','SHORT_TERM','SWING','POSITION','LONG_TERM']);
+export default function InvestmentCheckPage(){
+ const router=useRouter(); const searchParams=useSearchParams(); const {lang}=useLanguage(); const locale=lang==='ar'||lang==='fr'?lang:'en'; const c=COPY[locale];
+ const [symbol,setSymbol]=useState(''); const [assetType,setAssetType]=useState<AssetType>('STOCK'); const [horizon,setHorizon]=useState<Horizon>('SWING'); const [error,setError]=useState(false);
+ useEffect(()=>{ const incoming=(searchParams.get('symbol')??'').trim().toUpperCase(); const incomingType=(searchParams.get('assetType')??'').toUpperCase() as AssetType; const incomingHorizon=(searchParams.get('horizon')??'').toUpperCase() as Horizon; if(SYMBOL_PATTERN.test(incoming)) setSymbol(incoming); if(ASSET_TYPES.has(incomingType)) setAssetType(incomingType); if(HORIZONS.has(incomingHorizon)) setHorizon(incomingHorizon); },[searchParams]);
+ const normalized=useMemo(()=>symbol.trim().toUpperCase(),[symbol]);
+ function submit(event:FormEvent<HTMLFormElement>){ event.preventDefault(); if(!SYMBOL_PATTERN.test(normalized)||normalized.startsWith('/')||normalized.endsWith('/')||normalized.includes('//')||normalized.includes('..')){setError(true);return;} setError(false); const params=new URLSearchParams({assetType,horizon,autoRun:'1',source:'investment-check'}); router.push(`/ai-analyst/analyze/${encodeURIComponent(normalized)}?${params.toString()}`); }
+ return <main className={styles.page}><nav className={styles.nav} aria-label="Investment Check navigation"><Link href="/" className={styles.brand}>{c.home}</Link><div className={styles.navActions}><LanguageSwitcher/><ThemeToggle/><Link href="/login" className={styles.signIn}>{c.signIn}</Link></div></nav><section className={styles.hero}><div className={styles.copy}><p className={styles.kicker}><Sparkles size={16} aria-hidden="true"/>{c.kicker}</p><h1>{c.title}</h1><p className={styles.subtitle}>{c.subtitle}</p><div className={styles.trustGrid}><span><ShieldCheck size={17} aria-hidden="true"/>{c.verified}</span><span><BarChart3 size={17} aria-hidden="true"/>{c.evidence}</span><span><ArrowRight size={17} aria-hidden="true"/>{c.share}</span></div></div><form className={styles.checker} onSubmit={submit} noValidate><label htmlFor="investment-symbol">{c.label}</label><div className={styles.symbolRow}><Search size={19} aria-hidden="true"/><input id="investment-symbol" value={symbol} onChange={e=>setSymbol(e.target.value)} placeholder={c.placeholder} autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={32}/></div>{error?<p className={styles.error} role="alert">{c.invalid}</p>:null}<div className={styles.selectGrid}><label>{c.type}<select value={assetType} onChange={e=>setAssetType(e.target.value as AssetType)}><option value="STOCK">{c.stock}</option><option value="FUND">{c.fund}</option><option value="CRYPTO">{c.crypto}</option><option value="FOREX">{c.forex}</option><option value="COMMODITY">{c.commodity}</option><option value="INDEX">{c.index}</option></select></label><label>{c.horizon}<select value={horizon} onChange={e=>setHorizon(e.target.value as Horizon)}><option value="INTRADAY">{c.intraday}</option><option value="SHORT_TERM">{c.short}</option><option value="SWING">{c.swing}</option><option value="POSITION">{c.position}</option><option value="LONG_TERM">{c.long}</option></select></label></div><button className={styles.submit} type="submit">{c.run}<ArrowRight size={18} aria-hidden="true"/></button><p className={styles.note}>{c.note}</p></form></section></main>;
 }
