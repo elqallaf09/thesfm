@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { generateText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
+import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
 import {
   ChatDomainMismatchError,
   MARKET_CHAT_DOMAINS,
@@ -255,6 +257,22 @@ export async function POST(request: NextRequest) {
   const verifiedAsset: VerifiedChatAsset | null = resolved.asset;
   const effectiveDomain = verifiedAsset ? 'market' : domain;
 
+  // Preserve the economic-intelligence grounding added on main, scoped to
+  // this authenticated owner and finance only, never an inferred stock chat.
+  let advisorPrompt = '';
+  let advisorGrounded = false;
+  if (effectiveDomain === 'finance') {
+    try {
+      const grounding = await loadAdvisorGrounding({ userId: user.id, advisor: 'finance' });
+      advisorPrompt = buildEconomicAdvisorPrompt(grounding, locale);
+      advisorGrounded = true;
+    } catch {
+      // Missing profile data is not permission to invent a personal balance.
+      advisorPrompt = '';
+      advisorGrounded = false;
+    }
+  }
+
   const usage = await consumeAiUsage({
     userId: user.id,
     feature: 'market_ai_insight',
@@ -264,16 +282,18 @@ export async function POST(request: NextRequest) {
       analysisId: analysisId ?? null,
       messageCount: messages.length,
       assetResolvedFromMessage: resolved.inferredFromMessage,
+      economicIntelligenceGrounded: advisorGrounded,
     },
   });
   if (!usage.allowed) return aiUsageLimitResponse(usage);
 
-  const system = buildMarketChatSystemPrompt({
+  const baseSystemPrompt = buildMarketChatSystemPrompt({
     domain: effectiveDomain,
     asset: verifiedAsset,
     requestedUnresolvedSymbol: resolved.requestedUnresolvedSymbol,
     locale,
   });
+  const system = advisorPrompt ? `${baseSystemPrompt} ${advisorPrompt}` : baseSystemPrompt;
   const generation = await generateAssistantReply({ system, messages, correlationId });
 
   if (!generation) {
@@ -289,6 +309,7 @@ export async function POST(request: NextRequest) {
     domain: effectiveDomain,
     asset: verifiedAsset,
     assetResolvedFromMessage: resolved.inferredFromMessage,
+    advisorGrounded,
     correlationId,
   }, { headers: { ...INTELLIGENCE_RESPONSE_HEADERS, 'X-Correlation-ID': correlationId } });
 }

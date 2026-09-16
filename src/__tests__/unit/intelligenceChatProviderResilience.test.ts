@@ -3,7 +3,8 @@ import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
   gateway: vi.fn(), openai: vi.fn(), anthropic: vi.fn(), user: vi.fn(), usage: vi.fn(), rate: vi.fn(),
-  resolve: vi.fn(), canonical: vi.fn(), clients: [] as Array<Record<string, unknown>>,
+  resolve: vi.fn(), canonical: vi.fn(), grounding: vi.fn(), economicPrompt: vi.fn(),
+  clients: [] as Array<Record<string, unknown>>,
 }));
 vi.mock('openai', () => ({ default: class {
   chat: { completions: { create: typeof mocks.gateway } };
@@ -14,6 +15,8 @@ vi.mock('openai', () => ({ default: class {
 } }));
 vi.mock('ai', () => ({ generateText: mocks.anthropic }));
 vi.mock('@ai-sdk/anthropic', () => ({ createAnthropic: () => (modelId: string) => ({ modelId }) }));
+vi.mock('@/domain/economic-intelligence/advisors.server', () => ({ loadAdvisorGrounding: mocks.grounding }));
+vi.mock('@/lib/ai-analyst/economicAdvisorPrompt', () => ({ buildEconomicAdvisorPrompt: mocks.economicPrompt }));
 vi.mock('@/lib/server/adminAccess', () => ({ getCurrentUserFromRequest: mocks.user }));
 vi.mock('@/lib/server/aiUsage', () => ({
   consumeAiUsage: mocks.usage,
@@ -47,6 +50,8 @@ beforeEach(() => {
   mocks.usage.mockResolvedValue({ allowed: true });
   mocks.rate.mockReturnValue({ allowed: true });
   mocks.resolve.mockResolvedValue({ ok: false });
+  mocks.grounding.mockResolvedValue({ advisor: 'finance', facts: [] });
+  mocks.economicPrompt.mockReturnValue('Owner-scoped grounding fixture.');
   mocks.gateway.mockResolvedValue(completion('Gateway fixture response'));
   mocks.anthropic.mockResolvedValue({ text: 'Anthropic fixture response' });
   mocks.openai.mockResolvedValue(completion('OpenAI fixture response'));
@@ -65,6 +70,7 @@ describe('intelligence chat provider transport and truthful errors', () => {
     const response = await POST(request());
     expect(response.status).toBe(401);
     expect(mocks.usage).not.toHaveBeenCalled();
+    expect(mocks.grounding).not.toHaveBeenCalled();
     expect(mocks.clients).toHaveLength(0);
     expect(mocks.anthropic).not.toHaveBeenCalled();
   });
@@ -94,6 +100,7 @@ describe('intelligence chat provider transport and truthful errors', () => {
     expect(response.headers.get('x-correlation-id')).toBe(payload.correlationId);
     expect(mocks.usage).not.toHaveBeenCalled();
     expect(mocks.resolve).not.toHaveBeenCalled();
+    expect(mocks.grounding).not.toHaveBeenCalled();
   });
 
   it('stops after Gateway succeeds and forwards the cancellation signal', async () => {
@@ -193,5 +200,44 @@ describe('intelligence chat provider transport and truthful errors', () => {
     const response = await POST(request({ asset: { symbol: 'UNKNOWN', assetType: 'STOCK' } }));
     expect(await response.json()).toMatchObject({ asset: null, assetResolvedFromMessage: false });
     expect(mocks.gateway.mock.calls[0][0].messages[0].content).toContain('ask the user to confirm');
+  });
+
+  it('preserves owner-scoped finance grounding through provider fallback', async () => {
+    configureAll();
+    mocks.gateway.mockRejectedValue(new Error('gateway unavailable'));
+    const response = await POST(request());
+    expect(mocks.grounding).toHaveBeenCalledWith({ userId: 'test-user', advisor: 'finance' });
+    expect(mocks.economicPrompt).toHaveBeenCalledWith({ advisor: 'finance', facts: [] }, 'en');
+    expect(mocks.anthropic.mock.calls[0][0].system).toContain('Owner-scoped grounding fixture.');
+    expect(await response.json()).toMatchObject({ advisorGrounded: true, domain: 'finance', provider: 'anthropic' });
+    expect(mocks.usage.mock.calls[0][0].metadata.economicIntelligenceGrounded).toBe(true);
+  });
+
+  it('continues with honest ungrounded finance guardrails if the evidence loader fails', async () => {
+    configureAll();
+    mocks.grounding.mockRejectedValue(new Error('private database failure'));
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ advisorGrounded: false });
+    expect(mocks.economicPrompt).not.toHaveBeenCalled();
+    expect(mocks.gateway.mock.calls[0][0].messages[0].content).not.toContain('Owner-scoped grounding fixture.');
+    expect(mocks.usage.mock.calls[0][0].metadata.economicIntelligenceGrounded).toBe(false);
+  });
+
+  it('does not fetch personal finance context for the market domain', async () => {
+    configureAll();
+    const response = await POST(request({ domain: 'market' }));
+    expect(await response.json()).toMatchObject({ domain: 'market', advisorGrounded: false });
+    expect(mocks.grounding).not.toHaveBeenCalled();
+  });
+
+  it('does not attach private finance context to an inferred verified ticker question', async () => {
+    configureAll();
+    mocks.resolve.mockResolvedValue({ ok: true, asset: { symbol: 'NVDA', assetType: 'stock' } });
+    mocks.canonical.mockResolvedValue({ symbol: 'NVDA', displaySymbol: 'NVDA', name: 'NVIDIA', assetType: 'STOCK', quoteCurrency: 'USD', exchange: 'NASDAQ', market: 'US' });
+    const response = await POST(request({ messages: [{ role: 'user', content: 'NVDA' }] }));
+    expect(await response.json()).toMatchObject({ domain: 'market', assetResolvedFromMessage: true, advisorGrounded: false });
+    expect(mocks.grounding).not.toHaveBeenCalled();
+    expect(mocks.economicPrompt).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createReadStream } from 'node:fs';
+import { createReadStream, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import path from 'node:path';
 
 const publicRoot = path.join(process.cwd(), 'src', 'trader-app', 'public');
+// Mirror the production static-asset route instead of serving missing CSS as HTML.
+const semanticTokensCss = ['tokens.css', 'themes.css']
+  .map(file => readFileSync(path.join(process.cwd(), 'src', 'styles', file), 'utf8'))
+  .join('\n');
 const qaEnabled = process.env.SFM_LOCAL_TRADER_QA === '1';
 let staticServer: Server;
 let terminalPath = '';
@@ -30,6 +34,21 @@ test.describe('long-page workspaces', () => {
 
   test.afterAll(async () => {
     await new Promise<void>(resolve => staticServer.close(() => resolve()));
+  });
+
+  test('static harness serves production tokens and truthful missing-asset responses', async ({ request }) => {
+    const origin = new URL(terminalPath).origin;
+    for (const pathname of ['/semantic-tokens.css', '/thesfm-trader-own/app/semantic-tokens.css']) {
+      const response = await request.get(`${origin}${pathname}?v=regression`);
+      expect(response.status()).toBe(200);
+      expect(response.headers()['content-type']).toContain('text/css');
+      expect(await response.text()).toBe(semanticTokensCss);
+    }
+    const missing = await request.get(`${origin}/does-not-exist.css`);
+    expect(missing.status()).toBe(404);
+    expect(await missing.text()).toBe('Not found');
+    const malformed = await request.get(`${origin}/%ZZ`);
+    expect(malformed.status()).toBe(404);
   });
 
   test('calendar tabs deep-link, use browser history, isolate failures, and lazy-load once', async ({ page }) => {
@@ -136,7 +155,9 @@ test.describe('long-page workspaces', () => {
     await expect(dividends).toHaveAttribute('aria-selected', 'true');
     await expect(terminal.locator('html')).toHaveAttribute('data-host-history-sentinel', 'mounted');
 
-    await page.goBack();
+    // Same-document history is complete when the route commits; external logos
+    // must not hold this routing/cache assertion behind the document load event.
+    await page.goBack({ waitUntil: 'commit' });
     await expect(page).toHaveURL(/\/thesfm-trader-own\/calendar\?view=earnings$/);
     await expect(earnings).toHaveAttribute('aria-selected', 'true');
   });
@@ -183,7 +204,9 @@ test.describe('long-page workspaces', () => {
     expect(countRequests(requests, '/api/trader/provider-status')).toBe(1);
 
     const hydratedCounts = [...requests];
-    await page.goBack();
+    // Same-document history is complete when the route commits; external logos
+    // must not hold this routing/cache assertion behind the document load event.
+    await page.goBack({ waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-tablist="calendar"]')).toBeVisible();
     await dashboardLink.click();
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
@@ -198,7 +221,9 @@ test.describe('long-page workspaces', () => {
     await page.locator('[data-select-market="forex"]').click();
     expect(countRequests(requests, '/api/recommendations', 'market=forex')).toBe(0);
 
-    await page.goBack();
+    // Same-document history is complete when the route commits; external logos
+    // must not hold this routing/cache assertion behind the document load event.
+    await page.goBack({ waitUntil: 'commit' });
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect(page.locator('[data-workspace-scope="dashboard"][data-workspace-tab="analysis"]')).toHaveAttribute('aria-selected', 'true');
     await expect.poll(() => countRequests(requests, '/api/recommendations', 'market=forex')).toBe(1);
@@ -411,15 +436,31 @@ function createStaticTraderServer() {
       response.end('Not found');
       return;
     }
-    const extension = path.extname(resolved).toLowerCase();
-    response.writeHead(200, { 'content-type': mimeType(extension), 'cache-control': 'no-store' });
-    createReadStream(resolved).on('error', () => response.end('Not found')).pipe(response);
+    if (resolved === path.join(publicRoot, 'semantic-tokens.css')) {
+      response.writeHead(200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-store' });
+      response.end(semanticTokensCss);
+      return;
+    }
+    const stream = createReadStream(resolved);
+    stream.once('open', () => {
+      response.writeHead(200, { 'content-type': mimeType(path.extname(resolved).toLowerCase()), 'cache-control': 'no-store' });
+      stream.pipe(response);
+    });
+    stream.once('error', () => {
+      if (response.headersSent) response.destroy();
+      else {
+        response.writeHead(404, { 'cache-control': 'no-store' });
+        response.end('Not found');
+      }
+    });
   });
   return new Promise<Server>(resolve => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
 function staticPathFor(urlPath: string) {
-  let filePath = decodeURIComponent(urlPath);
+  let filePath: string;
+  try { filePath = decodeURIComponent(urlPath); } catch { return null; }
+  if (filePath.includes('\0')) return null;
   if (filePath.startsWith('/thesfm-trader-own/app/')) filePath = filePath.slice('/thesfm-trader-own/app/'.length);
   else filePath = filePath.replace(/^\/+/, '');
   if (!filePath || filePath.endsWith('/')) filePath = `${filePath}index.html`;

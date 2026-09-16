@@ -1,0 +1,134 @@
+name: Intelligence chat live verification
+
+on:
+  push:
+    branches: [main, fix/intelligence-chat-provider-resilience-20260915]
+    paths:
+      - src/app/api/intelligence/chat/route.ts
+      - src/lib/ai-analyst/marketChat.ts
+      - .github/workflows/intelligence-chat-live-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: intelligence-chat-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify a real authenticated AI reply
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve the READY deployment for this exact commit
+        id: target
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const production = context.ref === 'refs/heads/main';
+            const environment = production ? 'Production' : 'Preview';
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const deployments = await github.paginate(github.rest.repos.listDeployments, {
+                ...context.repo, sha: context.sha, environment, per_page: 100,
+              });
+              for (const deployment of deployments) {
+                if (deployment.sha !== context.sha || deployment.environment !== environment) continue;
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  ...context.repo, deployment_id: deployment.id, per_page: 100,
+                });
+                const latest = statuses[0];
+                if (!latest || latest.state !== 'success') continue;
+                let target;
+                try { target = new URL(latest.environment_url || latest.target_url); }
+                catch { continue; }
+                if (target.protocol !== 'https:' || target.username || target.password) continue;
+                if (!/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\.vercel\.app$/.test(target.hostname)) continue;
+                core.setOutput('url', target.origin);
+                core.setOutput('environment', environment);
+                core.info(`Resolved ${environment} for exact SHA ${context.sha}.`);
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed(`No READY ${environment} deployment found for exact SHA ${context.sha}.`);
+
+      - name: Authenticate the existing test account and verify one real Arabic response
+        uses: actions/github-script@v8
+        env:
+          TARGET_URL: ${{ steps.target.outputs.url }}
+          TARGET_ENVIRONMENT: ${{ steps.target.outputs.environment }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://hirjgsyfolsvfqjayyfz.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        with:
+          script: |
+            // No service-role credential, fixture writes, or AI-key access.
+            // Only this test account's one-request quota is consumed.
+            const required = ['TARGET_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'E2E_USER_EMAIL', 'E2E_USER_PASSWORD'];
+            for (const name of required) {
+              if (!process.env[name]?.trim()) throw new Error(`Missing live verification capability: ${name}`);
+            }
+            const origin = new URL(process.env.TARGET_URL);
+            const auth = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+            if (origin.protocol !== 'https:' || !/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\.vercel\.app$/.test(origin.hostname)) throw new Error('Invalid deployment target');
+            if (auth.protocol !== 'https:' || !/^[a-z0-9]{20}\.supabase\.co$/.test(auth.hostname) || auth.username || auth.password) throw new Error('Invalid Supabase target');
+            const publicKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim();
+            const headers = { 'content-type': 'application/json' };
+            if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()) {
+              headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET.trim();
+            }
+            const body = JSON.stringify({
+              domain: 'market', locale: 'ar',
+              messages: [{ role: 'user', content: 'اشرح مفهوم تنويع الاستثمار بجملة واحدة دون ذكر أسعار أو بيانات حسابي.' }],
+            });
+            let token;
+            try {
+              const anonymous = await fetch(new URL('/api/intelligence/chat', origin), {
+                method: 'POST', headers, body, redirect: 'error', signal: AbortSignal.timeout(20000),
+              });
+              if (anonymous.status !== 401) throw new Error(`Anonymous gate returned HTTP ${anonymous.status}`);
+              const login = await fetch(new URL('/auth/v1/token?grant_type=password', auth), {
+                method: 'POST', headers: { 'content-type': 'application/json', apikey: publicKey },
+                body: JSON.stringify({ email: process.env.E2E_USER_EMAIL.trim(), password: process.env.E2E_USER_PASSWORD }),
+                redirect: 'error', signal: AbortSignal.timeout(20000),
+              });
+              const session = await login.json().catch(() => ({}));
+              if (!login.ok || typeof session.access_token !== 'string') throw new Error(`Test-account authentication failed: HTTP ${login.status}`);
+              token = session.access_token;
+              core.setSecret(token);
+              if (typeof session.refresh_token === 'string') core.setSecret(session.refresh_token);
+              const started = Date.now();
+              const response = await fetch(new URL('/api/intelligence/chat', origin), {
+                method: 'POST', headers: { ...headers, authorization: `Bearer ${token}` }, body,
+                redirect: 'error', signal: AbortSignal.timeout(75000),
+              });
+              const result = await response.json().catch(() => ({}));
+              const correlation = /^[a-f0-9-]{36}$/i.test(result.correlationId || '') ? result.correlationId : null;
+              const code = /^[A-Z0-9_]{1,80}$/.test(result.error?.code || '') ? result.error.code : 'UNKNOWN';
+              if (!response.ok || result.ok !== true || result.source !== 'ai') {
+                throw new Error(`Live AI reply failed: HTTP ${response.status}, code=${code}, correlation=${correlation || 'missing'}`);
+              }
+              if (!['vercel-ai-gateway', 'anthropic', 'openai'].includes(result.provider)) throw new Error('Missing verified provider identity');
+              if (typeof result.text !== 'string' || result.text.trim().length < 10 || !/[\u0600-\u06ff]/u.test(result.text)) throw new Error('No substantive Arabic AI reply');
+              if (!correlation || response.headers.get('x-correlation-id') !== correlation) throw new Error('Correlation contract failed');
+              if (!/no-store/i.test(response.headers.get('cache-control') || '')) throw new Error('Private chat response must not be cached');
+              const model = /^[a-zA-Z0-9/_.-]{1,120}$/.test(result.model || '') ? result.model : 'unspecified';
+              // Do not publish the transcript, account data, auth payload, or token.
+              const evidence = { sha: context.sha, environment: process.env.TARGET_ENVIRONMENT, provider: result.provider, model, status: response.status, textLength: result.text.length, durationMs: Date.now() - started, correlationId: correlation };
+              core.info(JSON.stringify(evidence));
+              await core.summary.addHeading('Authenticated live intelligence chat').addCodeBlock(JSON.stringify(evidence, null, 2), 'json').write();
+            } finally {
+              if (token) {
+                const logout = await fetch(new URL('/auth/v1/logout?scope=local', auth), {
+                  method: 'POST', headers: { apikey: publicKey, authorization: `Bearer ${token}` },
+                  redirect: 'error', signal: AbortSignal.timeout(15000),
+                }).catch(() => null);
+                if (!logout?.ok) core.warning('Could not revoke the newly created test session; no global sign-out was attempted.');
+              }
+            }

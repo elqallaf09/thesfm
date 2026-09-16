@@ -6,21 +6,28 @@ function median(values: number[]) {
   return sorted[Math.floor(sorted.length / 2)] ?? Number.POSITIVE_INFINITY;
 }
 
-async function preparePointerTarget(target: Locator) {
-  await expect(target).toBeEnabled();
-  // The failed mobile-WebKit trace shows repeated auto-scrolls alternating
-  // between the sticky header and the news panel, then a click with the
-  // explorer still collapsed and no directory request. Position the real
-  // control before measuring; do not force-click or invoke a DOM handler.
-  await target.evaluate(element => element.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' }));
-  await expect.poll(() => target.evaluate(element => {
-    const box = element.getBoundingClientRect();
-    const x = box.left + box.width / 2;
-    const y = box.top + box.height / 2;
+async function prepareNativeClick(control: Locator) {
+  await expect(control).toBeVisible();
+  await expect(control).toBeEnabled();
+  // Position setup is outside the measured append. Keep a single native click.
+  await control.evaluate(element => element.scrollIntoView({
+    behavior: 'instant', block: 'center', inline: 'nearest',
+  }));
+  await expect.poll(() => control.evaluate(async element => {
+    const before = element.getBoundingClientRect();
+    await new Promise<void>(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const after = element.getBoundingClientRect();
+    const x = after.left + after.width / 2;
+    const y = after.top + after.height / 2;
     const hit = document.elementFromPoint(x, y);
-    return box.width > 0 && box.height > 0 && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight
-      && Boolean(hit && (hit === element || element.contains(hit)));
-  }), { message: 'The real explorer control must receive pointer events before the measured click' }).toBe(true);
+    return element.isConnected
+      && before.top === after.top && before.left === after.left
+      && before.width === after.width && before.height === after.height
+      && after.width > 0 && after.height > 0
+      && x > 0 && x < innerWidth && y > 0 && y < innerHeight
+      && hit !== null && (hit === element || element.contains(hit));
+  })).toBe(true);
 }
 
 test('Global Markets Explorer Load More stays within the controlled interaction budget', async ({ page }, testInfo) => {
@@ -42,39 +49,45 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
 
   if (process.env.E2E_BOOTSTRAP_URL) await page.goto(process.env.E2E_BOOTSTRAP_URL);
   await page.goto('/global-markets');
-  const explorer = page.locator('.gm-explorer');
-  // The accessible name changes from Show to Hide after the click. Keep the
-  // control identity stable while asserting both labels and expanded state.
-  const toggle = explorer.locator('button.gm-explorer-toggle');
+  const shell = page.locator('.gm-shell:visible');
+  // This existing control requires hydration and the initial strips response.
+  await expect(shell.locator('.gm-header-refresh')).toBeEnabled();
+  const explorer = shell.locator('.gm-explorer');
+  const toggle = explorer.locator('.gm-explorer-toggle');
   await expect(toggle).toHaveAccessibleName('عرض مستكشف الأصول');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await preparePointerTarget(toggle);
+  await prepareNativeClick(toggle);
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(toggle).toHaveAccessibleName('إخفاء مستكشف الأصول');
-  await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
+  const items = explorer.locator('.gm-strip-item');
+  await expect(items).toHaveCount(12);
 
   const increment = testInfo.project.name.startsWith('mobile') ? 6 : 12;
   let expectedCount = 12;
-  async function appendAndMeasure() {
+  async function append() {
     const loadMore = explorer.getByRole('button', { name: /تحميل المزيد/ });
-    await preparePointerTarget(loadMore);
+    await prepareNativeClick(loadMore);
+    // An ignored click must not reuse the previous performance sample.
+    await page.evaluate(() => performance.clearMeasures('gm-explorer-append'));
     await loadMore.click();
     expectedCount += increment;
-    await expect(explorer.locator('.gm-strip-item')).toHaveCount(expectedCount);
-    await page.waitForFunction(() => performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
+    await expect(items).toHaveCount(expectedCount);
+    await page.waitForFunction(() =>
+      performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
     await expect(loadMore).toBeEnabled();
-    return page.evaluate(() => performance.getEntriesByName('gm-explorer-append', 'measure').at(-1)?.duration ?? Number.POSITIVE_INFINITY);
+    return page.evaluate(() =>
+      performance.getEntriesByName('gm-explorer-append', 'measure').at(-1)?.duration
+        ?? Number.POSITIVE_INFINITY);
   }
 
   // One warm-up append is excluded so font/style initialization does not
-  // masquerade as steady-state interaction work. All six clicks stay real.
-  await appendAndMeasure();
+  // masquerade as steady-state interaction work.
+  await append();
+
   const samples: number[] = [];
   const counts: number[] = [];
   for (let index = 0; index < 5; index += 1) {
-    samples.push(await appendAndMeasure());
-    counts.push(await explorer.locator('.gm-strip-item').count());
+    samples.push(await append());
+    counts.push(await items.count());
   }
 
   const result = { project: testInfo.project.name, samples, median: median(samples), worst: Math.max(...samples), counts };

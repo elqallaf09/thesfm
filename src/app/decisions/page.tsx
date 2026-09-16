@@ -14,6 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { EconomicIntelligencePanel } from '@/components/finance/EconomicIntelligencePanel';
 import { PageHero } from '@/components/layout/PageHero';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -31,8 +32,17 @@ import {
   type DecisionSourceData,
   type DecisionType,
 } from '@/lib/decisions/decisionAnalysis';
+import {
+  presentEconomicDecision,
+  versionedEconomicAnalysis,
+  type EconomicDecisionLocale,
+} from '@/lib/decisions/economicIntelligencePresentation';
 
 type Lang = 'ar' | 'en' | 'fr';
+
+type PersistedDecisionAnalysis = DecisionAnalysis & {
+  economic_intelligence?: ReturnType<typeof versionedEconomicAnalysis>;
+};
 
 type DecisionRow = {
   id: string;
@@ -52,7 +62,7 @@ type DecisionRow = {
   action_plan?: unknown;
   priority?: DecisionPriority;
   inputs?: Record<string, unknown> | null;
-  analysis?: DecisionAnalysis | null;
+  analysis?: PersistedDecisionAnalysis | null;
   status?: string;
   created_at: string;
   updated_at?: string | null;
@@ -61,6 +71,7 @@ type DecisionRow = {
 const SOURCE_TABLES = [
   { key: 'income', table: 'monthly_income_sources' },
   { key: 'expenses', table: 'expense_items' },
+  { key: 'debts', table: 'debts' },
   { key: 'savings', table: 'savings_items' },
   { key: 'investments', table: 'investment_items' },
   { key: 'goals', table: 'financial_goals' },
@@ -76,7 +87,6 @@ const TEXT = {
     title: 'هل القرار مناسب؟',
     subtitle: 'حلّل قراراً مالياً قبل تنفيذه، مثل شراء سيارة، أخذ قرض، فتح مشروع، تغيير السكن، شراء جهاز غالي، الاستثمار في فرصة، أو زيادة مصروف شهري.',
     eyebrow: 'تحليل قرارات',
-    newDecision: 'قرار جديد',
     formTitle: 'بيانات القرار',
     titleLabel: 'عنوان القرار',
     titlePlaceholder: 'مثال: شراء سيارة، أخذ قرض، فتح مشروع',
@@ -103,12 +113,7 @@ const TEXT = {
     saved: 'تم حفظ القرار بنجاح',
     saveFailed: 'تعذر حفظ القرار حالياً، الرجاء المحاولة مرة أخرى.',
     validation: 'أدخل عنوان القرار والتكلفة التقديرية.',
-    yes: 'نعم',
-    no: 'لا',
-    wait: 'انتظر',
-    high: 'عالي',
-    medium: 'متوسط',
-    low: 'منخفض',
+    yes: 'نعم', no: 'لا', wait: 'انتظر', high: 'عالي', medium: 'متوسط', low: 'منخفض',
     insufficient: 'أضف الدخل والمصروفات للحصول على تحليل أدق.',
     loading: 'جارٍ تحميل مركز القرارات...',
     disclaimer: 'التحليل إرشاد تعليمي وليس استشارة مالية أو قانونية مرخصة.',
@@ -116,12 +121,21 @@ const TEXT = {
     reasonGood: 'الأثر الشهري ضمن حدود الميزانية المتاحة.',
     reasonReview: 'القرار يحتاج مراجعة لأن أثره على الدخل أو السيولة واضح.',
     reasonHigh: 'القرار قد يخفض صافي الميزانية أو يضغط على المدخرات.',
+    intelligenceTitle: 'التوأم المالي ومحاكاة القرار',
+    dataConfidence: 'ثقة البيانات',
+    missingData: 'بيانات ناقصة',
+    forecast12m: 'توقع 12 شهر',
+    month12Surplus: 'الفائض الشهري في الشهر 12',
+    month12NetWorth: 'صافي الثروة في الشهر 12',
+    economicReasons: 'عوامل داعمة',
+    economicWarnings: 'تحذيرات',
+    analysisVersion: 'نسخة التحليل',
+    dataComplete: 'البيانات الأساسية مكتملة',
   },
   en: {
     title: 'Is This Decision Suitable?',
     subtitle: 'Analyze a financial action before committing, such as buying a car, taking a loan, starting a project, moving homes, buying an expensive device, investing in an opportunity, or adding a monthly expense.',
     eyebrow: 'Decision analysis',
-    newDecision: 'New decision',
     formTitle: 'Decision details',
     titleLabel: 'Decision title',
     titlePlaceholder: 'Example: Buy a car, take a loan, start a project',
@@ -148,12 +162,7 @@ const TEXT = {
     saved: 'Decision analysis saved.',
     saveFailed: 'Could not save the decision right now. Please try again.',
     validation: 'Enter a decision title and estimated cost.',
-    yes: 'Yes',
-    no: 'No',
-    wait: 'Wait',
-    high: 'High',
-    medium: 'Medium',
-    low: 'Low',
+    yes: 'Yes', no: 'No', wait: 'Wait', high: 'High', medium: 'Medium', low: 'Low',
     insufficient: 'Add income and expenses for a more accurate analysis.',
     loading: 'Loading decisions center...',
     disclaimer: 'This analysis is educational guidance, not licensed financial or legal advice.',
@@ -161,12 +170,21 @@ const TEXT = {
     reasonGood: 'The monthly impact fits within the available budget.',
     reasonReview: 'The decision needs review because it has a clear income or liquidity impact.',
     reasonHigh: 'The decision may reduce monthly net or pressure savings.',
+    intelligenceTitle: 'Financial twin and decision simulation',
+    dataConfidence: 'Data confidence',
+    missingData: 'Missing data',
+    forecast12m: '12-month forecast',
+    month12Surplus: 'Month 12 monthly surplus',
+    month12NetWorth: 'Month 12 net worth',
+    economicReasons: 'Supporting factors',
+    economicWarnings: 'Warnings',
+    analysisVersion: 'Analysis version',
+    dataComplete: 'Core financial data is complete',
   },
   fr: {
     title: 'Cette décision est-elle adaptée ?',
     subtitle: 'Analysez une action financière avant de vous engager : acheter une voiture, prendre un prêt, lancer un projet, déménager, acheter un appareil coûteux, investir ou ajouter une dépense mensuelle.',
     eyebrow: 'Analyse de décision',
-    newDecision: 'Nouvelle décision',
     formTitle: 'Détails de la décision',
     titleLabel: 'Titre de la décision',
     titlePlaceholder: 'Exemple : acheter une voiture, prendre un prêt, lancer un projet',
@@ -193,12 +211,7 @@ const TEXT = {
     saved: 'Analyse de décision enregistrée.',
     saveFailed: 'Impossible d’enregistrer la décision pour le moment. Veuillez réessayer.',
     validation: 'Saisissez un titre et un coût estimé.',
-    yes: 'Oui',
-    no: 'Non',
-    wait: 'Attendre',
-    high: 'Élevé',
-    medium: 'Moyen',
-    low: 'Faible',
+    yes: 'Oui', no: 'Non', wait: 'Attendre', high: 'Élevé', medium: 'Moyen', low: 'Faible',
     insufficient: 'Ajoutez revenus et dépenses pour une analyse plus précise.',
     loading: 'Chargement du centre des décisions...',
     disclaimer: 'Cette analyse est éducative, pas un conseil financier ou juridique agréé.',
@@ -206,6 +219,16 @@ const TEXT = {
     reasonGood: 'L’impact mensuel reste compatible avec le budget disponible.',
     reasonReview: 'La décision demande une revue car son impact sur revenus ou liquidité est net.',
     reasonHigh: 'La décision peut réduire le solde mensuel ou peser sur l’épargne.',
+    intelligenceTitle: 'Jumeau financier et simulation de décision',
+    dataConfidence: 'Confiance des données',
+    missingData: 'Données manquantes',
+    forecast12m: 'Prévision sur 12 mois',
+    month12Surplus: 'Surplus mensuel au mois 12',
+    month12NetWorth: 'Valeur nette au mois 12',
+    economicReasons: 'Facteurs favorables',
+    economicWarnings: 'Alertes',
+    analysisVersion: 'Version de l’analyse',
+    dataComplete: 'Les données financières de base sont complètes',
   },
 } as const;
 
@@ -225,50 +248,19 @@ const CHECKLIST = {
 } as const;
 
 const emptyForm = {
-  title: '',
-  decisionType: 'purchase' as DecisionType,
-  amount: '',
-  monthlyImpact: '',
-  expectedBenefit: '',
-  riskLevel: 'medium' as 'low' | 'medium' | 'high',
-  targetDate: '',
-  notes: '',
+  title: '', decisionType: 'purchase' as DecisionType, amount: '', monthlyImpact: '', expectedBenefit: '',
+  riskLevel: 'medium' as 'low' | 'medium' | 'high', targetDate: '', notes: '',
 };
 
-function numeric(value: string) {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.max(0, n) : 0;
-}
-
-function validDateOrNull(value?: string | null) {
-  const text = String(value ?? '').trim();
-  if (!text) return null;
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
-}
-
-function finiteNumber(value: unknown) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
-}
-
-function isUuid(value: unknown) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? ''));
-}
-
-function riskScore(analysis: DecisionAnalysis | null) {
-  if (!analysis?.score && analysis?.score !== 0) return null;
-  return Math.max(0, Math.min(100, 100 - analysis.score));
-}
-
-function rowTitle(row: DecisionRow) {
-  return String(row.decision_title ?? '').trim();
-}
-
-function rowRiskScore(row: DecisionRow) {
-  const savedScore = Number(row.risk_score);
-  if (Number.isFinite(savedScore) && savedScore > 0) return Math.max(0, Math.min(100, savedScore));
-  return riskScore(row.analysis ?? null);
-}
+function numeric(value: string) { const n = Number(value); return Number.isFinite(n) ? Math.max(0, n) : 0; }
+function finiteNumber(value: unknown) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
+function validDateOrNull(value?: string | null) { const text = String(value ?? '').trim(); return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null; }
+function isUuid(value: unknown) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value ?? '')); }
+function riskScore(analysis: DecisionAnalysis | null) { if (!analysis?.score && analysis?.score !== 0) return null; return Math.max(0, Math.min(100, 100 - analysis.score)); }
+function rowTitle(row: DecisionRow) { return String(row.decision_title ?? '').trim(); }
+function decisionCost(row: DecisionRow) { const cost = Number(row.estimated_cost); return Number.isFinite(cost) ? cost : 0; }
+function rowRiskScore(row: DecisionRow) { const score = Number(row.risk_score); return Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : riskScore(row.analysis ?? null); }
+function statusTone(analysis: DecisionAnalysis | null) { if (!analysis || analysis.status === 'insufficient_data') return 'warning'; if (analysis.status === 'high_risk') return 'danger'; if (analysis.status === 'needs_review') return 'warning'; return 'good'; }
 
 function rowAnalysis(row: DecisionRow): DecisionAnalysis | null {
   if (row.analysis) return row.analysis;
@@ -276,33 +268,12 @@ function rowAnalysis(row: DecisionRow): DecisionAnalysis | null {
   if (!Number.isFinite(score)) return null;
   const recommended = row.is_recommended === true;
   return {
-    source: 'rules',
-    monthlyIncome: 0,
-    monthlyExpenses: 0,
-    monthlyNet: null,
-    savingsTotal: 0,
-    investmentsTotal: 0,
-    decisionRatio: null,
-    netAfterDecision: null,
-    savingsAfterDecision: null,
+    source: 'rules', monthlyIncome: 0, monthlyExpenses: 0, monthlyNet: null, savingsTotal: 0, investmentsTotal: 0,
+    decisionRatio: null, netAfterDecision: null, savingsAfterDecision: null,
     score: Math.max(0, Math.min(100, 100 - score)),
     status: recommended ? 'initially_suitable' : score >= 70 ? 'high_risk' : score >= 40 ? 'needs_review' : 'insufficient_data',
-    missingData: [],
-    riskFlags: [],
-    scenarios: [],
+    missingData: [], riskFlags: [], scenarios: [], economicContext: null,
   };
-}
-
-function decisionCost(row: DecisionRow) {
-  const cost = Number(row.estimated_cost);
-  return Number.isFinite(cost) ? cost : 0;
-}
-
-function statusTone(analysis: DecisionAnalysis | null) {
-  if (!analysis || analysis.status === 'insufficient_data') return 'warning';
-  if (analysis.status === 'high_risk') return 'danger';
-  if (analysis.status === 'needs_review') return 'warning';
-  return 'good';
 }
 
 export default function DecisionsPage() {
@@ -311,8 +282,8 @@ export default function DecisionsPage() {
   const { user, loading: authLoading } = useAuth();
   const { lang, dir } = useLanguage();
   const { currency } = useCurrency();
-  const text = TEXT[(lang as Lang) || 'ar'];
-  const locale = lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr' : 'en';
+  const locale = (lang === 'fr' ? 'fr' : lang === 'en' ? 'en' : 'ar') as EconomicDecisionLocale;
+  const text = TEXT[locale];
   const money = useCallback((value: number) => formatCurrency(value, currency, locale), [currency, locale]);
   const [form, setForm] = useState(emptyForm);
   const [sourceData, setSourceData] = useState<DecisionSourceData | null>(null);
@@ -323,383 +294,163 @@ export default function DecisionsPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!authLoading && !user) router.replace(loginHrefForCurrentLocation('/decisions'));
-  }, [authLoading, router, user]);
+  useEffect(() => { if (!authLoading && !user) router.replace(loginHrefForCurrentLocation('/decisions')); }, [authLoading, router, user]);
 
   const load = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     const db = supabase as any;
     const [sources, saved] = await Promise.all([
       loadUserDataTables(db, user.id, SOURCE_TABLES),
       db.from('user_decisions').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }),
     ]);
-
     const records = sources.records as Record<string, any[]>;
     setSourceData({
-      income: personalIncomeRows(records.income ?? []),
-      expenses: personalExpenseRows(records.expenses ?? []),
-      savings: records.savings ?? [],
-      investments: records.investments ?? [],
-      goals: records.goals ?? [],
-      projects: records.projects ?? [],
-      financialModels: records.financialModels ?? [],
-      zakatCalculations: records.zakatCalculations ?? [],
-      zakatAssets: records.zakatAssets ?? [],
-      charityCommitments: records.charityCommitments ?? [],
+      income: personalIncomeRows(records.income ?? []), expenses: personalExpenseRows(records.expenses ?? []),
+      debts: records.debts ?? [], savings: records.savings ?? [], investments: records.investments ?? [], goals: records.goals ?? [],
+      projects: records.projects ?? [], financialModels: records.financialModels ?? [], zakatCalculations: records.zakatCalculations ?? [],
+      zakatAssets: records.zakatAssets ?? [], charityCommitments: records.charityCommitments ?? [],
     });
-
-    if (saved.error) {
-      setError(saved.error.message || 'load_error');
-      setDecisions([]);
-    } else {
-      const rows = (saved.data ?? []) as DecisionRow[];
-      setDecisions(rows);
+    if (saved.error) { setError(saved.error.message || 'load_error'); setDecisions([]); }
+    else {
+      const rows = (saved.data ?? []) as DecisionRow[]; setDecisions(rows);
       const requested = searchParams?.get('decision');
       setSelectedId(requested && rows.some(row => row.id === requested) ? requested : rows[0]?.id ?? '');
     }
     setLoading(false);
   }, [searchParams, user]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const draftAnalysis = useMemo(() => {
-    if (!sourceData) return null;
-    const inputs: DecisionInputs = {
-      title: form.title.trim(),
-      decisionType: form.decisionType,
-      amount: numeric(form.amount),
-      currency,
-      targetDate: form.targetDate || undefined,
-      priority: 'medium',
-      notes: form.notes,
-      recurringCost: numeric(form.monthlyImpact),
-      expectedReturn: 0,
-      riskLevel: form.riskLevel,
-    };
-    return analyzeDecision(inputs, sourceData);
-  }, [currency, form, sourceData]);
+  const currentInputs = useMemo<DecisionInputs>(() => ({
+    title: form.title.trim(), decisionType: form.decisionType, amount: numeric(form.amount), currency,
+    targetDate: form.targetDate || undefined, priority: 'medium', notes: form.notes,
+    recurringCost: numeric(form.monthlyImpact), expectedReturn: 0, riskLevel: form.riskLevel,
+    debtAmount: form.decisionType === 'debt_saving' ? numeric(form.amount) : undefined,
+    monthlyPayment: form.decisionType === 'debt_saving' ? numeric(form.monthlyImpact) : undefined,
+    expectedMonthlyCost: form.decisionType === 'project' ? numeric(form.monthlyImpact) : undefined,
+    usesSavings: form.decisionType === 'project' || form.decisionType === 'investment',
+  }), [currency, form]);
 
+  const draftAnalysis = useMemo(() => sourceData ? analyzeDecision(currentInputs, sourceData) : null, [currentInputs, sourceData]);
   const selectedDecision = decisions.find(item => item.id === selectedId) ?? null;
   const visibleAnalysis = selectedDecision ? rowAnalysis(selectedDecision) : draftAnalysis;
+  const visibleDecisionType = selectedDecision?.decision_type ?? form.decisionType;
+  const economicPresentation = useMemo(() => {
+    if (!visibleAnalysis?.economicContext) return null;
+    return presentEconomicDecision(visibleAnalysis.economicContext, visibleDecisionType, locale);
+  }, [locale, visibleAnalysis, visibleDecisionType]);
 
   async function saveDecision() {
     if (saving) return;
-    if (!user?.id || !sourceData) {
-      setError(text.saveFailed);
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[FinancialDecisions] Save failed', {
-          message: 'Missing authenticated user or source data',
-          userId: user?.id,
-          hasSourceData: Boolean(sourceData),
-        });
-      }
-      return;
-    }
-    if (!form.title.trim() || numeric(form.amount) <= 0) {
-      setError(text.validation);
-      return;
-    }
-    setSaving(true);
-    setError('');
-    setMessage('');
-    let payload: {
-      user_id: string;
-      decision_title: string;
-      decision_type: string;
-      estimated_cost: number;
-      monthly_impact: number;
-      expected_benefit: string;
-      risk_level: string;
-      target_date: string | null;
-      notes: string | null;
-      risk_score: number;
-      is_recommended: boolean;
-      main_reason: string;
-      better_alternative: string;
-      action_plan: string[];
-      currency: string;
-      updated_at: string;
-    } | null = null;
+    if (!user?.id || !sourceData) { setError(text.saveFailed); return; }
+    if (!form.title.trim() || numeric(form.amount) <= 0) { setError(text.validation); return; }
+    setSaving(true); setError(''); setMessage('');
     try {
-      if (!user?.id) throw new Error('Missing authenticated user');
       if (!isUuid(user.id)) throw new Error('Authenticated user id is not a valid UUID');
       const selectedCurrency = currency || 'KWD';
-      const decisionForm = form as typeof form & Record<string, unknown>;
-      const inputs: DecisionInputs = {
-        title: form.title.trim(),
-        decisionType: form.decisionType,
-        amount: numeric(form.amount),
-        currency: selectedCurrency,
-        targetDate: validDateOrNull(form.targetDate) || undefined,
-        priority: 'medium',
-        notes: form.notes,
-        recurringCost: numeric(form.monthlyImpact),
-        expectedReturn: 0,
-        riskLevel: form.riskLevel,
-      };
+      const inputs = { ...currentInputs, currency: selectedCurrency };
       const analysis = analyzeDecision(inputs, sourceData);
       const savedRiskScore = riskScore(analysis) ?? 0;
       const recommended = analysis.status === 'initially_suitable';
-      const mainReason = analysis.status === 'high_risk'
-        ? text.reasonHigh
-        : analysis.status === 'needs_review'
-          ? text.reasonReview
-          : analysis.status === 'insufficient_data'
-            ? text.insufficient
-            : text.reasonGood;
-
-      payload = {
+      const mainReason = analysis.status === 'high_risk' ? text.reasonHigh : analysis.status === 'needs_review' ? text.reasonReview : analysis.status === 'insufficient_data' ? text.insufficient : text.reasonGood;
+      const persistedAnalysis: PersistedDecisionAnalysis = analysis.economicContext
+        ? { ...analysis, economic_intelligence: versionedEconomicAnalysis(analysis.economicContext, inputs.decisionType) }
+        : analysis;
+      const payload = {
         user_id: user.id,
-        decision_title: String(decisionForm.title || decisionForm.decision_title || '').trim(),
-        decision_type: String(decisionForm.decisionType || decisionForm.decision_type || '').trim(),
-        estimated_cost: finiteNumber(decisionForm.estimatedCost ?? decisionForm.estimated_cost ?? numeric(form.amount)),
-        monthly_impact: finiteNumber(decisionForm.monthlyImpact ?? decisionForm.monthly_impact),
-        expected_benefit: String(decisionForm.expectedBenefit ?? decisionForm.expected_benefit ?? ''),
-        risk_level: String(decisionForm.riskLevel || decisionForm.risk_level || '').trim(),
-        target_date: validDateOrNull(String(decisionForm.targetDate || decisionForm.target_date || '')),
-        notes: decisionForm.notes ? String(decisionForm.notes) : null,
+        decision_title: form.title.trim(),
+        decision_type: form.decisionType,
+        estimated_cost: numeric(form.amount),
+        monthly_impact: numeric(form.monthlyImpact),
+        expected_benefit: String(form.expectedBenefit ?? ''),
+        risk_level: form.riskLevel,
+        target_date: validDateOrNull(form.targetDate),
+        notes: form.notes ? String(form.notes) : null,
         risk_score: finiteNumber(savedRiskScore),
-        is_recommended: Boolean(recommended),
-        main_reason: mainReason || '',
-        better_alternative: text.alternativeText || '',
-        action_plan: [...(CHECKLIST[locale] || [])],
+        is_recommended: recommended,
+        main_reason: mainReason,
+        better_alternative: text.alternativeText,
+        action_plan: [...CHECKLIST[locale]],
+        priority: 'medium',
+        inputs,
+        analysis: persistedAnalysis,
+        status: analysis.status,
         currency: selectedCurrency,
         updated_at: new Date().toISOString(),
       };
-
-      if (!payload.decision_title || !payload.decision_type) {
-        throw new Error('Decision title and type are required');
-      }
-
-      const { data: savedDecision, error: saveError } = await supabase
-        .from('user_decisions')
-        .insert(payload)
-        .select()
-        .single();
-
-      if (saveError) {
-        console.error('[FinancialDecisions] Supabase insert response', {
-          code: saveError.code,
-          message: saveError.message,
-          details: saveError.details,
-          hint: saveError.hint,
-          payload,
-        });
-        throw saveError;
-      }
-
-      setForm(emptyForm);
-      setMessage(text.saved);
-      if (savedDecision) {
-        setDecisions(prev => [savedDecision as DecisionRow, ...prev.filter(row => row.id !== savedDecision.id)]);
-        setSelectedId(savedDecision.id);
-      } else {
-        await load();
-      }
-    } catch (error: any) {
-      console.error('[FinancialDecisions] Save failed', {
-        code: error?.code,
-        message: error?.message,
-        details: error?.details,
-        hint: error?.hint,
-        payload,
-      });
+      const { data: savedDecision, error: saveError } = await (supabase as any).from('user_decisions').insert(payload).select().single();
+      if (saveError) throw saveError;
+      setForm(emptyForm); setMessage(text.saved);
+      if (savedDecision) { setDecisions(prev => [savedDecision as DecisionRow, ...prev.filter(row => row.id !== savedDecision.id)]); setSelectedId(savedDecision.id); }
+      else await load();
+    } catch (saveError: any) {
+      console.error('[FinancialDecisions] Save failed', { code: saveError?.code, message: saveError?.message, details: saveError?.details, hint: saveError?.hint });
       setError(text.saveFailed);
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function deleteDecision(id: string) {
     if (!user) return;
     const { error: deleteError } = await supabase.from('user_decisions').delete().eq('id', id).eq('user_id', user.id);
-    if (deleteError) {
-      setError(deleteError.message || 'delete_error');
-      return;
-    }
-    setMessage(text.deleted);
-    await load();
+    if (deleteError) { setError(deleteError.message || 'delete_error'); return; }
+    setMessage(text.deleted); await load();
   }
 
   const tone = statusTone(visibleAnalysis);
   const score = riskScore(visibleAnalysis);
-  const recommendation = visibleAnalysis?.status === 'initially_suitable'
-    ? text.yes
-    : visibleAnalysis?.status === 'high_risk'
-      ? text.no
-      : text.wait;
-  const reason = !visibleAnalysis || visibleAnalysis.status === 'insufficient_data'
-    ? text.insufficient
-    : visibleAnalysis.status === 'high_risk'
-      ? text.reasonHigh
-      : visibleAnalysis.status === 'needs_review'
-        ? text.reasonReview
-        : text.reasonGood;
-  const monthlyImpact = visibleAnalysis?.netAfterDecision === null || visibleAnalysis?.netAfterDecision === undefined
-    ? text.insufficient
-    : money(visibleAnalysis.netAfterDecision);
-  const liquidity = visibleAnalysis?.savingsAfterDecision === null || visibleAnalysis?.savingsAfterDecision === undefined
-    ? text.insufficient
-    : money(visibleAnalysis.savingsAfterDecision);
+  const recommendation = visibleAnalysis?.status === 'initially_suitable' ? text.yes : visibleAnalysis?.status === 'high_risk' ? text.no : text.wait;
+  const reason = !visibleAnalysis || visibleAnalysis.status === 'insufficient_data' ? text.insufficient : visibleAnalysis.status === 'high_risk' ? text.reasonHigh : visibleAnalysis.status === 'needs_review' ? text.reasonReview : text.reasonGood;
+  const monthlyImpact = visibleAnalysis?.netAfterDecision == null ? text.insufficient : money(visibleAnalysis.netAfterDecision);
+  const liquidity = visibleAnalysis?.savingsAfterDecision == null ? text.insufficient : money(visibleAnalysis.savingsAfterDecision);
 
-  if (authLoading || loading) {
-    return (
-      <div className="decisions-page" dir={dir}>
-        <DashboardPageShell ariaLabel={text.title}>
-          <div className="decision-loading"><Loader2 className="spin" size={22} />{text.loading}</div>
-        </DashboardPageShell>
-      </div>
-    );
-  }
+  if (authLoading || loading) return <div className="decisions-page" dir={dir}><DashboardPageShell ariaLabel={text.title}><div className="decision-loading"><Loader2 className="spin" size={22} />{text.loading}</div></DashboardPageShell></div>;
 
   return (
     <div className="decisions-page" dir={dir}>
       <DashboardPageShell ariaLabel={text.title} contentClassName="decisions-content">
         <PageHero eyebrow={text.eyebrow} title={text.title} subtitle={text.subtitle} icon={<Landmark size={28} />} />
-
         {(message || error) && <div className={`decision-message ${error ? 'error' : ''}`}>{error || message}</div>}
 
         <section className="decision-layout">
           <article className="decision-card">
-            <div className="decision-card-head">
-              <Plus size={19} />
-              <h2>{text.formTitle}</h2>
-            </div>
+            <div className="decision-card-head"><Plus size={19} /><h2>{text.formTitle}</h2></div>
             <div className="decision-form-grid">
-              <label>
-                <span>{text.titleLabel}</span>
-                <input value={form.title} placeholder={text.titlePlaceholder} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} />
-              </label>
-              <label>
-                <span>{text.type}</span>
-                <select value={form.decisionType} onChange={event => setForm(prev => ({ ...prev, decisionType: event.target.value as DecisionType }))}>
-                  {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label[lang as Lang]}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>{text.cost}</span>
-                <input inputMode="decimal" value={form.amount} onChange={event => setForm(prev => ({ ...prev, amount: event.target.value }))} />
-              </label>
-              <label>
-                <span>{text.monthlyImpact}</span>
-                <input inputMode="decimal" value={form.monthlyImpact} onChange={event => setForm(prev => ({ ...prev, monthlyImpact: event.target.value }))} />
-              </label>
-              <label>
-                <span>{text.benefit}</span>
-                <div className="decision-benefit-shell">
-                  <input className="decision-benefit-input" inputMode="decimal" value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} />
-                  <span className="decision-benefit-suffix">%</span>
-                </div>
-              </label>
-              <label>
-                <span>{text.riskLevel}</span>
-                <select value={form.riskLevel} onChange={event => setForm(prev => ({ ...prev, riskLevel: event.target.value as 'low' | 'medium' | 'high' }))}>
-                  <option value="low">{text.low}</option>
-                  <option value="medium">{text.medium}</option>
-                  <option value="high">{text.high}</option>
-                </select>
-              </label>
-              <label>
-                <span>{text.targetDate}</span>
-                <input type="date" value={form.targetDate} onChange={event => setForm(prev => ({ ...prev, targetDate: event.target.value }))} />
-              </label>
-              <label className="wide">
-                <span>{text.notes}</span>
-                <textarea value={form.notes} onChange={event => setForm(prev => ({ ...prev, notes: event.target.value }))} rows={4} />
-              </label>
+              <label><span>{text.titleLabel}</span><input value={form.title} placeholder={text.titlePlaceholder} onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))} /></label>
+              <label><span>{text.type}</span><select value={form.decisionType} onChange={event => setForm(prev => ({ ...prev, decisionType: event.target.value as DecisionType }))}>{Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label[locale]}</option>)}</select></label>
+              <label><span>{text.cost}</span><input inputMode="decimal" value={form.amount} onChange={event => setForm(prev => ({ ...prev, amount: event.target.value }))} /></label>
+              <label><span>{text.monthlyImpact}</span><input inputMode="decimal" value={form.monthlyImpact} onChange={event => setForm(prev => ({ ...prev, monthlyImpact: event.target.value }))} /></label>
+              <label><span>{text.benefit}</span><div className="decision-benefit-shell"><input className="decision-benefit-input" inputMode="decimal" value={form.expectedBenefit} onChange={event => setForm(prev => ({ ...prev, expectedBenefit: event.target.value }))} /><span className="decision-benefit-suffix">%</span></div></label>
+              <label><span>{text.riskLevel}</span><select value={form.riskLevel} onChange={event => setForm(prev => ({ ...prev, riskLevel: event.target.value as 'low' | 'medium' | 'high' }))}><option value="low">{text.low}</option><option value="medium">{text.medium}</option><option value="high">{text.high}</option></select></label>
+              <label><span>{text.targetDate}</span><input type="date" value={form.targetDate} onChange={event => setForm(prev => ({ ...prev, targetDate: event.target.value }))} /></label>
+              <label className="wide"><span>{text.notes}</span><textarea value={form.notes} onChange={event => setForm(prev => ({ ...prev, notes: event.target.value }))} rows={4} /></label>
             </div>
-            <button className="decision-primary" type="button" onClick={saveDecision} disabled={saving}>
-              {saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />}
-              {text.analyzeSave}
-            </button>
+            <button className="decision-primary" type="button" onClick={saveDecision} disabled={saving}>{saving ? <Loader2 className="spin" size={16} /> : <Save size={16} />}{text.analyzeSave}</button>
           </article>
 
           <article className={`decision-card analysis ${tone}`}>
-            <div className="decision-card-head">
-              <ShieldAlert size={19} />
-              <h2>{text.riskScore}</h2>
-            </div>
-            <div className="risk-meter">
-              <strong>{score === null ? '--' : `${score}%`}</strong>
-              <span>{text.riskScore}</span>
-            </div>
-            <div className="decision-metrics">
-              <Metric label={text.liquidityImpact} value={liquidity} />
-              <Metric label={text.monthlyBudgetImpact} value={monthlyImpact} />
-              <Metric label={text.suitableNow} value={recommendation} />
-            </div>
-            <div className="decision-reason">
-              <b>{text.mainReason}</b>
-              <p>{reason}</p>
-            </div>
-            <div className="decision-reason">
-              <b>{text.saferAlternative}</b>
-              <p>{text.alternativeText}</p>
-            </div>
-            <div className="decision-reason">
-              <b>{text.checklist}</b>
-              <ul>{CHECKLIST[lang as Lang].map(item => <li key={item}><CheckCircle2 size={14} />{item}</li>)}</ul>
-            </div>
+            <div className="decision-card-head"><ShieldAlert size={19} /><h2>{text.riskScore}</h2></div>
+            <div className="risk-meter"><strong>{score === null ? '--' : `${score}%`}</strong><span>{text.riskScore}</span></div>
+            <div className="decision-metrics"><Metric label={text.liquidityImpact} value={liquidity} /><Metric label={text.monthlyBudgetImpact} value={monthlyImpact} /><Metric label={text.suitableNow} value={recommendation} /></div>
+            <div className="decision-reason"><b>{text.mainReason}</b><p>{reason}</p></div>
+            <div className="decision-reason"><b>{text.saferAlternative}</b><p>{text.alternativeText}</p></div>
+            <div className="decision-reason"><b>{text.checklist}</b><ul>{CHECKLIST[locale].map(item => <li key={item}><CheckCircle2 size={14} />{item}</li>)}</ul></div>
             <p className="decision-disclaimer">{text.disclaimer}</p>
           </article>
         </section>
 
+        {economicPresentation && <EconomicIntelligencePanel presentation={economicPresentation} money={money} labels={{ title: text.intelligenceTitle, confidence: text.dataConfidence, missing: text.missingData, forecast: text.forecast12m, surplus: text.month12Surplus, netWorth: text.month12NetWorth, reasons: text.economicReasons, warnings: text.economicWarnings, version: text.analysisVersion, complete: text.dataComplete }} />}
+
         <section className="decision-card">
-          <div className="decision-card-head">
-            <ClipboardCheck size={19} />
-            <h2>{text.previous}</h2>
-          </div>
-          {decisions.length === 0 ? (
-            <div className="decision-empty">
-              <CalendarDays size={24} />
-              <strong>{text.noDecisions}</strong>
-              <span>{text.noDecisionsBody}</span>
-            </div>
-          ) : (
-            <div className="decision-list">
-              {decisions.map(item => {
-                const itemScore = rowRiskScore(item);
-                const active = item.id === selectedId;
-                const title = rowTitle(item);
-                const createdAt = item.created_at ? formatDate(item.created_at, locale) : '';
-                const targetDate = item.target_date ? formatDate(item.target_date, locale) : '';
-                const benefit = String(item.expected_benefit ?? '').trim();
-                const riskLabel = item.risk_level === 'low'
-                  ? text.low
-                  : item.risk_level === 'high'
-                    ? text.high
-                    : item.risk_level === 'medium'
-                      ? text.medium
-                      : item.risk_level || text.medium;
-                return (
-                  <article key={item.id} className={`decision-row ${active ? 'active' : ''}`}>
-                    <button type="button" onClick={() => setSelectedId(item.id)}>
-                      <strong>{title}</strong>
-                      <span>{TYPE_LABELS[item.decision_type]?.[locale] ?? item.decision_type} · {money(decisionCost(item))}</span>
-                      <span>
-                        {text.monthlyImpact}: {money(Number(item.monthly_impact || 0))}
-                        {' · '}
-                        {text.riskLevel}: {riskLabel}
-                      </span>
-                      <span>
-                        {benefit ? `${text.benefit}: ${benefit} · ` : ''}
-                        {targetDate ? `${text.targetDate}: ${targetDate} · ` : ''}
-                        {createdAt}
-                      </span>
-                    </button>
-                    <em>{itemScore === null ? '--' : `${itemScore}%`}</em>
-                    <button type="button" className="delete" onClick={() => deleteDecision(item.id)} aria-label={`${text.delete}: ${title}`}>
-                      <Trash2 size={16} />
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
+          <div className="decision-card-head"><ClipboardCheck size={19} /><h2>{text.previous}</h2></div>
+          {decisions.length === 0 ? <div className="decision-empty"><CalendarDays size={24} /><strong>{text.noDecisions}</strong><span>{text.noDecisionsBody}</span></div> : (
+            <div className="decision-list">{decisions.map(item => {
+              const itemScore = rowRiskScore(item); const active = item.id === selectedId; const title = rowTitle(item);
+              const createdAt = item.created_at ? formatDate(item.created_at, locale) : ''; const targetDate = item.target_date ? formatDate(item.target_date, locale) : '';
+              const benefit = String(item.expected_benefit ?? '').trim();
+              const riskLabel = item.risk_level === 'low' ? text.low : item.risk_level === 'high' ? text.high : item.risk_level === 'medium' ? text.medium : item.risk_level || text.medium;
+              return <article key={item.id} className={`decision-row ${active ? 'active' : ''}`}><button type="button" onClick={() => setSelectedId(item.id)}><strong>{title}</strong><span>{TYPE_LABELS[item.decision_type]?.[locale] ?? item.decision_type} · {money(decisionCost(item))}</span><span>{text.monthlyImpact}: {money(Number(item.monthly_impact || 0))} · {text.riskLevel}: {riskLabel}</span><span>{benefit ? `${text.benefit}: ${benefit} · ` : ''}{targetDate ? `${text.targetDate}: ${targetDate} · ` : ''}{createdAt}</span></button><em>{itemScore === null ? '--' : `${itemScore}%`}</em><button type="button" className="delete" onClick={() => deleteDecision(item.id)} aria-label={`${text.delete}: ${title}`}><Trash2 size={16} /></button></article>;
+            })}</div>
           )}
         </section>
       </DashboardPageShell>

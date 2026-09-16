@@ -2,6 +2,7 @@ import {
   BellRing,
   BookOpen,
   Bot,
+  BrainCircuit,
   BriefcaseBusiness,
   Calculator,
   CheckCircle2,
@@ -20,6 +21,7 @@ import {
 
 export const landingNavigation = {
   home: { href: '/dashboard', labelKey: 'nav_home', icon: Wallet },
+  'economic-intelligence': { href: '/economic-intelligence', labelKey: 'nav_group_financial_ai', icon: BrainCircuit },
   income: { href: '/income', labelKey: 'nav_income', icon: Wallet },
   expenses: { href: '/expenses', labelKey: 'nav_expenses', icon: ReceiptText },
   goals: { href: '/goals', labelKey: 'nav_goals', icon: Target },

@@ -1,0 +1,38 @@
+name: Economic intelligence diagnostic bundle
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/workflows/economic-intelligence-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    if: github.event.pull_request.number == 119 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Collect source and installed tooling without Git credentials or environment files
+        run: |
+          git rev-parse HEAD > diagnostic-checkout-sha.txt
+          tar --exclude='./.git' --exclude='.env*' --exclude='./.next' --exclude='./coverage' -czf /tmp/economic-intelligence-diagnostics.tgz .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: economic-intelligence-diagnostics-${{ github.run_id }}
+          path: /tmp/economic-intelligence-diagnostics.tgz
+          retention-days: 1
+          compression-level: 0
