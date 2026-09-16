@@ -16,6 +16,24 @@ describe('official property source presentation', () => {
     expect(html).toContain(`dir="${language.dir}"`);
     expect(html).not.toContain('Save valuation');
   });
+  it('renders Cook County with its official link and explicit comparison limits', () => {
+    const cook: OfficialPropertyContext = {
+      ...report,
+      providerId: 'us-il-cook-assessor-sales',
+      sourceName: 'Cook County Assessor Parcel Sales',
+      sourceUrl: 'https://datacatalog.cookcountyil.gov/d/wvhk-k5uv',
+      licenseName: 'Cook County Open Data public access',
+      licenseUrl: 'https://datacatalog.cookcountyil.gov/',
+      metadataUpdatedAt: '2026-09-01',
+      latestObservationOn: '2026-07-14',
+      reasons: ['AREA_METADATA_MISSING', 'NON_ARMS_LENGTH_SALES_REQUIRE_REVIEW', 'SALES_REPORTING_LAG'],
+    };
+    const html = renderToStaticMarkup(<OfficialPropertyContextPanel report={cook} />);
+    expect(html).toContain('Cook County Assessor · Parcel Sales');
+    expect(html).toContain('https://datacatalog.cookcountyil.gov/d/wvhk-k5uv');
+    expect(html).toContain('non-arm');
+    expect(html).toContain('months after recording');
+  });
   it('refuses unsafe source/attribution links', () => {
     const html = renderToStaticMarkup(<OfficialPropertyContextPanel report={{ ...report, sourceUrl: 'javascript:alert(1)', licenseUrl: 'https://attacker.invalid/' }} />);
     expect(html).not.toContain('href=');
