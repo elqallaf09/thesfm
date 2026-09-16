@@ -1,7 +1,8 @@
 import type { RealEstateAssetInput } from './intelligence/real-estate';
 
-export const REAL_ESTATE_ANALYST_PATH = '/invest/real-estate';
-export const REAL_ESTATE_CENTER_PATH = '/investments/real-estate';
+export const REAL_ESTATE_MARKET_CENTER_PATH = '/global-markets/real-estate';
+export const REAL_ESTATE_ANALYST_PATH = REAL_ESTATE_MARKET_CENTER_PATH;
+export const REAL_ESTATE_CENTER_PATH = REAL_ESTATE_MARKET_CENTER_PATH;
 
 export function validInvestmentId(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -81,7 +82,7 @@ export function savedRealEstateContext(
   };
 }
 
-/** Compatibility read: a legacy row is never silently treated as a canonical position. */
+/** Compatibility read: a legacy investment ID is never silently treated as a canonical position. */
 export function legacyRealEstateContext(row: Record<string, unknown>): SavedRealEstateContext {
   return {
     investmentId: validInvestmentId(row.id) ? row.id : null,
