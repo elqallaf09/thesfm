@@ -10,7 +10,7 @@ export type MarketDataStatus = 'live' | 'delayed' | 'unavailable';
 export type FundamentalsUnavailableReason = 'not_supported_for_asset_type' | 'provider_returned_empty' | 'symbol_not_supported' | 'api_error';
 export type MarketAiInsight = {
   status: 'ready' | 'unavailable' | 'skipped';
-  provider?: 'openai' | 'anthropic' | 'rule-based';
+  provider?: 'sfm-private-primary' | 'sfm-private-fallback' | 'openai' | 'anthropic' | 'rule-based';
   summary?: string;
   trendStatus?: string;
   riskNotes?: string;
@@ -45,21 +45,35 @@ export type MarketAnalysis = {
   market?: string;
   lastUpdated?: string;
   latestPrice: number;
-  changePercent: number;
+  changePercent?: number;
   quote?: {
     price: number;
-    change: number;
-    changePercent: number;
-    currency: string | null;
-    currencySource?: MarketCurrencySource;
-    priceUnit?: MarketPriceUnit;
-    timestamp: string;
+    change?: number;
+    changePercent?: number;
+    currency?: string | null;
+    timestamp?: string;
   };
-  fundamentals?: Record<string, unknown>;
+  fundamentals?: {
+    marketCap?: number;
+    peRatio?: number;
+    eps?: number;
+    revenue?: number;
+    dividend?: number;
+  };
   fundamentalsAvailable?: boolean;
-  fundamentalsUnavailableReason?: FundamentalsUnavailableReason;
   fundamentalsSource?: string;
-  technicals?: Record<string, unknown>;
+  fundamentalsUnavailableReason?: FundamentalsUnavailableReason;
+  technicals?: {
+    source?: string;
+    ohlc?: Array<{
+      time?: string;
+      open?: number;
+      high?: number;
+      low?: number;
+      close?: number;
+      volume?: number;
+    }>;
+  };
   trend: MarketTrend;
   riskLevel: MarketRiskLevel;
   indicators: {
@@ -74,316 +88,234 @@ export type MarketAnalysis = {
   };
   history: MarketHistoryPoint[];
   summary: string;
-  source?: string;
-  fallback?: boolean;
-  fallbackReason?: string;
-  cached?: boolean;
-  cacheAgeSeconds?: number;
   fetchedAt?: string;
   warnings?: string[];
-  aiInsight?: MarketAiInsight;
-  shariahStatus?: ShariahStatus;
-  shariahReason?: string | null;
-  shariahSource?: string | null;
-  shariahLastReviewedAt?: string | null;
-  shariahManualOverride?: boolean;
-  shariahReviewedBy?: string | null;
-  shariahScreeningData?: ShariahScreeningData;
+  marketDataService?: string;
+  suggestions?: MarketSearchItem[];
 };
 
-export type MarketError = {
+export type MarketFailure = {
   success: false;
-  code?: string;
-  error: string;
-  suggestions?: string[];
-  correction?: string | null;
   provider?: string;
-  dataStatus?: 'unavailable';
-  source?: string;
-  fallback?: false;
-  marketDataService?: 'connected' | 'degraded' | 'slow' | 'not_configured' | 'unavailable';
-  warnings?: string[];
+  dataStatus?: MarketDataStatus;
+  symbol?: string;
+  assetType?: MarketAssetType;
+  currency?: string | null;
+  latestPrice?: number | null;
+  history?: MarketHistoryPoint[];
+  message?: string;
+  code?: string;
+  suggestions?: MarketSearchItem[];
 };
 
-export type MarketResult = MarketAnalysis | MarketError;
+export type MarketResult = MarketAnalysis | MarketFailure;
 
 export type MarketSearchItem = {
   symbol: string;
+  providerSymbol?: string;
   name: string;
   assetType: MarketAssetType;
   exchange?: string;
-  exchangeCode?: string;
-  market?: string;
   country?: string;
-  currency?: string;
-  currencySource?: MarketCurrencySource;
-  providerSymbol?: string;
-  displaySymbol?: string;
+  currency?: string | null;
   aliases?: string[];
-  metadataDiagnostics?: Record<string, unknown>;
-  shariahStatus?: ShariahStatus;
-  shariahReason?: string | null;
-  shariahSource?: string | null;
-  shariahLastReviewedAt?: string | null;
-  shariahManualOverride?: boolean;
-  shariahReviewedBy?: string | null;
-  shariahScreeningData?: ShariahScreeningData;
-  shariahMethod?: string;
 };
 
-const SUPPORTED_ASSET_TYPES: MarketAssetType[] = ['stock', 'etf', 'crypto', 'forex', 'commodity', 'gold', 'index'];
-const COMMON_CURRENCY_CODES = ['USD', 'EUR', 'JPY', 'GBP', 'CHF', 'CAD', 'AUD', 'NZD'] as const;
-const COMMON_FOREX_PAIRS = ['USDJPY', 'EURUSD', 'GBPUSD', 'USDCHF', 'USDCAD', 'AUDUSD', 'NZDUSD', 'EURJPY', 'GBPJPY'] as const;
-const CRYPTO_RECORDS = (cryptoSymbols as Array<{
+export type MarketSearchResponse = {
+  ok: boolean;
+  success: boolean;
+  query: string;
+  items: MarketSearchItem[];
+};
+
+export type MarketSymbolRecord = MarketSearchItem & {
+  provider?: string;
+};
+
+export type MarketQuoteResult = {
+  ok: boolean;
+  success: boolean;
+  provider?: string;
+  dataStatus?: MarketDataStatus;
+  source?: string;
+  fallback?: boolean;
   symbol?: string;
-  provider_symbol?: string | null;
-  name?: string | null;
-  aliases?: string[] | null;
-}>)
-  .map(record => ({
-    symbol: String(record.symbol ?? '').trim().toUpperCase(),
-    providerSymbol: String(record.provider_symbol ?? '').trim().toUpperCase(),
-    name: String(record.name ?? record.symbol ?? '').trim(),
-    aliases: record.aliases ?? [],
-  }))
-  .filter(record => record.symbol && record.providerSymbol);
-
-const COMMON_CRYPTO_PAIRS: Record<string, string> = Object.fromEntries(
-  listCanonicalCryptoAssets().map(asset => [`${asset.baseSymbol}USD`, asset.providerSymbols.yahoo]),
-);
-const COMMON_METAL_PAIRS: Record<string, string> = {
-  XAUUSD: 'GC=F',
-  XAGUSD: 'SI=F',
-  GOLD: 'GC=F',
-  XAU: 'GC=F',
-  SILVER: 'SI=F',
-  XAG: 'SI=F',
+  displaySymbol?: string;
+  providerSymbol?: string;
+  name?: string;
+  assetType?: MarketAssetType;
+  currency?: string | null;
+  exchange?: string;
+  country?: string;
+  market?: string;
+  lastUpdated?: string;
+  latestPrice?: number | null;
+  changePercent?: number | null;
+  quote?: MarketAnalysis['quote'];
+  fundamentals?: MarketAnalysis['fundamentals'];
+  fundamentalsAvailable?: boolean;
+  fundamentalsSource?: string;
+  fundamentalsUnavailableReason?: FundamentalsUnavailableReason;
+  technicals?: MarketAnalysis['technicals'];
+  trend?: MarketTrend;
+  riskLevel?: MarketRiskLevel;
+  indicators?: MarketAnalysis['indicators'];
+  levels?: MarketAnalysis['levels'];
+  history?: MarketHistoryPoint[];
+  summary?: string;
+  fetchedAt?: string;
+  warnings?: string[];
+  marketDataService?: string;
+  suggestions?: MarketSearchItem[];
+  code?: string;
+  message?: string;
 };
 
-export function validateSymbol(symbol: unknown) {
-  const normalized = String(symbol ?? '').trim().toUpperCase();
-  if (!/^[A-Z0-9.^=:/-]{1,24}$/.test(normalized)) return null;
-  return normalized;
+export type MarketMover = {
+  symbol: string;
+  name?: string;
+  price?: number | null;
+  change?: number | null;
+  changePercent?: number | null;
+  currency?: string | null;
+  assetType?: MarketAssetType;
+  exchange?: string;
+  country?: string;
+  logo?: string;
+};
+
+export type MarketMoversResponse = {
+  ok: boolean;
+  success: boolean;
+  provider?: string;
+  dataStatus?: MarketDataStatus;
+  source?: string;
+  gainers: MarketMover[];
+  losers: MarketMover[];
+  updatedAt?: string;
+  message?: string;
+};
+
+export type MarketTickerItem = MarketMover & {
+  market?: string;
+};
+
+export type MarketTickerResponse = {
+  ok: boolean;
+  success: boolean;
+  provider?: string;
+  dataStatus?: MarketDataStatus;
+  source?: string;
+  items: MarketTickerItem[];
+  updatedAt?: string;
+  message?: string;
+};
+
+export type MarketShariahScreening = ShariahScreeningData & {
+  status?: ShariahStatus;
+};
+
+function clean(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
-function compactSymbol(symbol: unknown) {
-  const compact = String(symbol ?? '')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/[\\/]/g, '')
-    .replace(/:/g, '');
-  return compact
-    .replace(/^([A-Z]{6})=X$/, '$1')
-    .replace(/^(FX|FOREX|OANDA|TVC)(?=[A-Z]{6}$)/, '')
-    .replace(/^(NASDAQ|NYSE|AMEX|COINBASE)(?=[A-Z0-9.^=-]{1,12}$)/, '');
+export function validateSymbol(value: unknown): string | null {
+  const symbol = clean(value).toUpperCase();
+  if (!symbol || symbol.length > 40) return null;
+  return /^[A-Z0-9.^=:_/-]+$/u.test(symbol) ? symbol : null;
 }
 
-function compactCryptoSymbol(symbol: unknown) {
-  return compactSymbol(symbol).replace(/-/g, '');
-}
-
-function cryptoRecordForInput(symbol: unknown) {
-  const canonical = resolveCanonicalCryptoSymbol(symbol);
-  if (canonical) {
-    return {
-      symbol: canonical.baseSymbol,
-      providerSymbol: canonical.providerSymbols.yahoo,
-      name: canonical.name,
-      aliases: canonical.aliases,
-    };
-  }
-  const compact = compactCryptoSymbol(symbol);
-  if (!compact) return null;
-  return CRYPTO_RECORDS.find(record => {
-    const symbolKey = compactCryptoSymbol(record.symbol);
-    const providerKey = compactCryptoSymbol(record.providerSymbol);
-    const usdKey = `${symbolKey}USD`;
-    return compact === symbolKey || compact === usdKey || compact === providerKey;
-  }) ?? null;
-}
-
-function inferredCryptoRecord(symbol: unknown) {
-  const direct = cryptoRecordForInput(symbol);
-  if (direct) return direct;
-  const canonical = resolveCanonicalCryptoSymbol(symbol, { assetClass: 'crypto', allowInferred: true });
-  if (canonical) {
-    return {
-      symbol: canonical.baseSymbol,
-      providerSymbol: canonical.providerSymbols.yahoo,
-      name: canonical.name,
-      aliases: canonical.aliases,
-    };
-  }
-  const compact = compactCryptoSymbol(symbol);
-  const withoutQuote = compact.endsWith('USD') && compact.length > 5 ? compact.slice(0, -3) : compact;
-  if (!/^[A-Z0-9]{2,12}$/.test(withoutQuote)) return null;
-  return {
-    symbol: withoutQuote,
-    providerSymbol: `${withoutQuote}-USD`,
-    name: withoutQuote,
-    aliases: [withoutQuote, `${withoutQuote}USD`, `${withoutQuote}-USD`],
-  };
-}
-
-function isCurrencyCode(code: string) {
-  return COMMON_CURRENCY_CODES.includes(code as typeof COMMON_CURRENCY_CODES[number]);
-}
-
-function closestCurrencyCode(code: string) {
-  if (isCurrencyCode(code)) return code;
-  const sorted = COMMON_CURRENCY_CODES
-    .map(currency => ({
-      currency,
-      score: [...currency].reduce((sum, letter, index) => sum + (letter === code[index] ? 1 : 0), 0),
-    }))
-    .sort((a, b) => b.score - a.score);
-  return sorted[0]?.score >= 2 ? sorted[0].currency : null;
-}
-
-function closestForexPair(symbol: string) {
-  const directPrefix = COMMON_FOREX_PAIRS.find(pair => symbol.startsWith(pair) && symbol.length <= pair.length + 2);
-  if (directPrefix) return directPrefix;
-  const compact = symbol.replace(/[^A-Z]/g, '');
-  const scored = COMMON_FOREX_PAIRS
-    .map(pair => {
-      let score = 0;
-      const max = Math.max(compact.length, pair.length);
-      for (let index = 0; index < max; index += 1) {
-        if (compact[index] === pair[index]) score += 2;
-        else if (compact.includes(pair[index] ?? '')) score += 0.25;
-      }
-      score -= Math.abs(compact.length - pair.length);
-      return { pair, score };
-    })
-    .sort((a, b) => b.score - a.score);
-  return scored[0]?.score >= 9 ? scored[0].pair : null;
-}
-
-export function marketSymbolCorrection(symbol: unknown) {
-  const compact = compactSymbol(symbol);
-  if (compact === 'USDERU') return 'USDEUR';
-  const forexPair = closestForexPair(compact);
-  return forexPair && compact !== forexPair ? forexPair : null;
-}
-
-export function marketSymbolSuggestions(symbol: unknown) {
-  const compact = compactSymbol(symbol);
-  if (!compact) return [];
-  if (compact === 'USDERU') return ['EURUSD'];
-  const typoPair = closestForexPair(compact);
-  if (typoPair && typoPair !== compact) return [typoPair];
-
-  const relatedSymbols = [
-    ...COMMON_FOREX_PAIRS,
-    ...Object.keys(COMMON_CRYPTO_PAIRS),
-    ...CRYPTO_RECORDS.flatMap(record => [record.symbol, record.name, ...record.aliases]),
-    ...Object.entries(COMMON_METAL_PAIRS).map(([input, provider]) => {
-      if (provider === 'GC=F') return input === 'GOLD' || input === 'XAU' ? 'XAUUSD' : input;
-      if (provider === 'SI=F') return input === 'SILVER' || input === 'XAG' ? 'XAGUSD' : input;
-      return input;
-    }),
-  ].filter((item, index, list) => list.indexOf(item) === index);
-
-  const relatedMatches = relatedSymbols.filter(item => {
-    const normalized = String(item).toUpperCase();
-    return normalized.startsWith(compact) || normalized.includes(compact);
-  });
-  if (compact.length === 6) {
-    const from = closestCurrencyCode(compact.slice(0, 3));
-    const to = closestCurrencyCode(compact.slice(3, 6));
-    const pairSuggestions = from && to ? [`${from}${to}`, `${to}${from}`] : [];
-    return [...pairSuggestions, ...relatedMatches].filter((item, index, list) => list.indexOf(item) === index).slice(0, 6);
-  }
-  return relatedMatches.slice(0, 6);
-}
-
-export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unknown) {
-  const raw = String(symbol ?? '').trim();
-  const compact = compactSymbol(raw);
-  const requestedAssetType = normalizeAssetType(assetTypeInput);
-  if (!compact || !validateSymbol(compact)) {
-    return { valid: false as const, code: 'invalid_symbol', suggestions: marketSymbolSuggestions(raw) };
-  }
-
-  if (COMMON_METAL_PAIRS[compact]) {
-    const normalizedMetalSymbol = compact === 'GOLD' ? 'XAUUSD' : compact === 'SILVER' ? 'XAGUSD' : compact;
-    return {
-      valid: true as const,
-      symbol: normalizedMetalSymbol,
-      displaySymbol: normalizedMetalSymbol,
-      providerSymbol: COMMON_METAL_PAIRS[compact],
-      assetType: normalizedMetalSymbol === 'XAGUSD' ? 'commodity' as MarketAssetType : 'gold' as MarketAssetType,
-      suggestions: marketSymbolSuggestions(compact),
-    };
-  }
-
-  const canonicalCrypto = resolveCanonicalCryptoSymbol(raw, { assetClass: requestedAssetType, allowInferred: requestedAssetType === 'crypto' });
-  if (canonicalCrypto) {
-    return {
-      valid: true as const,
-      symbol: canonicalCrypto.canonicalSymbol,
-      displaySymbol: canonicalCrypto.displaySymbol,
-      providerSymbol: canonicalCrypto.providerSymbols.yahoo,
-      assetType: 'crypto' as MarketAssetType,
-      suggestions: marketSymbolSuggestions(canonicalCrypto.baseSymbol),
-    };
-  }
-
-  const requestedCrypto = requestedAssetType === 'crypto' ? inferredCryptoRecord(compact) : null;
-  if (requestedCrypto) {
-    return {
-      valid: true as const,
-      symbol: `${requestedCrypto.symbol}USD`,
-      displaySymbol: requestedCrypto.symbol,
-      providerSymbol: requestedCrypto.providerSymbol,
-      assetType: 'crypto' as MarketAssetType,
-      suggestions: marketSymbolSuggestions(requestedCrypto.symbol),
-    };
-  }
-
-  const likelyForexTypo = closestForexPair(compact);
-  if (likelyForexTypo && compact !== likelyForexTypo) {
-    return { valid: false as const, code: 'invalid_symbol', suggestions: marketSymbolSuggestions(compact), correction: likelyForexTypo };
-  }
-
-  if (compact.length === 6) {
-    const base = compact.slice(0, 3);
-    const quote = compact.slice(3, 6);
-    const baseValid = isCurrencyCode(base);
-    const quoteValid = isCurrencyCode(quote);
-    if (baseValid && quoteValid) {
-      const providerSymbol = `${compact}=X`;
-      return {
-        valid: true as const,
-        symbol: compact,
-        displaySymbol: compact,
-        providerSymbol,
-        assetType: 'forex' as MarketAssetType,
-        suggestions: marketSymbolSuggestions(compact),
-      };
-    }
-    if (baseValid || quoteValid || requestedAssetType === 'forex') {
-      return { valid: false as const, code: 'symbol_not_found', suggestions: marketSymbolSuggestions(compact), correction: marketSymbolCorrection(compact) };
-    }
-  }
-
-  const validated = validateSymbol(raw);
-  return {
-    valid: true as const,
-    symbol: validated!,
-    displaySymbol: validated!,
-    providerSymbol: validated!,
-    assetType: requestedAssetType,
-    suggestions: marketSymbolSuggestions(validated),
-  };
-}
-
-export function normalizeAssetType(assetType: unknown): MarketAssetType {
-  const normalized = String(assetType ?? '').trim().toLowerCase();
-  if (normalized === 'stocks') return 'stock';
-  if (normalized === 'commodities') return 'commodity';
-  if (normalized === 'indices' || normalized === 'indexes') return 'index';
-  if (SUPPORTED_ASSET_TYPES.includes(normalized as MarketAssetType)) return normalized as MarketAssetType;
+export function normalizeMarketAssetType(value: unknown): MarketAssetType {
+  const raw = clean(value).toLowerCase();
+  if (raw === 'etf') return 'etf';
+  if (raw === 'crypto' || raw === 'cryptocurrency') return 'crypto';
+  if (raw === 'forex' || raw === 'fx') return 'forex';
+  if (raw === 'commodity' || raw === 'commodities') return 'commodity';
+  if (raw === 'gold' || raw === 'metal' || raw === 'metals') return 'gold';
+  if (raw === 'index' || raw === 'indices') return 'index';
   return 'stock';
+}
+
+export function normalizeSearchText(value: unknown) {
+  return clean(value).toLocaleLowerCase('en-US').replace(/\s+/g, ' ');
+}
+
+export function compactSearchText(value: unknown) {
+  return normalizeSearchText(value).replace(/[^a-z0-9\p{L}]+/giu, '');
+}
+
+function searchScore(item: MarketSearchItem, query: string) {
+  const normalized = normalizeSearchText(query);
+  const compact = compactSearchText(query);
+  const symbol = normalizeSearchText(item.symbol);
+  const providerSymbol = normalizeSearchText(item.providerSymbol);
+  const name = normalizeSearchText(item.name);
+  const aliases = (item.aliases ?? []).map(alias => normalizeSearchText(alias));
+  const fields = [symbol, providerSymbol, name, ...aliases].filter(Boolean);
+  let score = 0;
+  for (const field of fields) {
+    const fieldCompact = compactSearchText(field);
+    if (field === normalized) score = Math.max(score, 100);
+    else if (fieldCompact && fieldCompact === compact) score = Math.max(score, 95);
+    else if (field.startsWith(normalized)) score = Math.max(score, 80);
+    else if (normalized && field.includes(normalized)) score = Math.max(score, 60);
+    else if (compact && fieldCompact.includes(compact)) score = Math.max(score, 50);
+  }
+  return score;
+}
+
+export function rankMarketSearchItems(items: MarketSearchItem[], query: string) {
+  return [...items]
+    .map(item => ({ item, score: searchScore(item, query) }))
+    .filter(entry => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.item.symbol.localeCompare(b.item.symbol))
+    .map(entry => entry.item);
+}
+
+export function canonicalCryptoSearchItems(): MarketSearchItem[] {
+  return listCanonicalCryptoAssets().map(asset => ({
+    symbol: asset.symbol,
+    providerSymbol: asset.providerSymbol,
+    name: asset.name,
+    assetType: 'crypto',
+    exchange: 'CRYPTO',
+    country: 'GLOBAL',
+    currency: 'USD',
+    aliases: asset.aliases,
+  }));
+}
+
+export function bundledCryptoSearchItems(): MarketSearchItem[] {
+  const raw = Array.isArray(cryptoSymbols) ? cryptoSymbols : [];
+  return raw.map(item => {
+    const record = item as Record<string, unknown>;
+    const symbol = validateSymbol(record.symbol) ?? clean(record.symbol).toUpperCase();
+    const canonical = resolveCanonicalCryptoSymbol(symbol || clean(record.name));
+    return {
+      symbol: canonical?.symbol ?? symbol,
+      providerSymbol: canonical?.providerSymbol ?? validateSymbol(record.providerSymbol) ?? symbol,
+      name: clean(record.name) || canonical?.name || symbol,
+      assetType: 'crypto' as const,
+      exchange: clean(record.exchange) || 'CRYPTO',
+      country: clean(record.country) || 'GLOBAL',
+      currency: clean(record.currency) || 'USD',
+      aliases: canonical?.aliases ?? [],
+    };
+  }).filter(item => Boolean(item.symbol));
+}
+
+export function mergeMarketSearchItems(...groups: MarketSearchItem[][]) {
+  const seen = new Set<string>();
+  const result: MarketSearchItem[] = [];
+  for (const group of groups) {
+    for (const item of group) {
+      const symbol = validateSymbol(item.symbol);
+      if (!symbol) continue;
+      const key = `${symbol}:${item.assetType}:${item.exchange ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ ...item, symbol });
+    }
+  }
+  return result;
 }
