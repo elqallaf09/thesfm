@@ -1,8 +1,8 @@
 (function installTraderDrawerFocus() {
   "use strict";
 
-  const controlAttributes = ["data-drawer-tab", "data-drawer-close", "data-drawer-analyze", "data-drawer-full", "data-drawer-watch", "data-drawer-alert", "data-drawer-compare", "data-drawer-export", "data-drawer-share", "data-symbol-details"];
-  const scrollSelectors = ["[data-symbol-drawer]", ".drawer-tabs", ".drawer-panel", ".drawer-actions"];
+  const controlAttributes = ["data-drawer-retry", "data-drawer-tab", "data-drawer-close", "data-drawer-analyze", "data-drawer-full", "data-drawer-watch", "data-drawer-alert", "data-drawer-compare", "data-drawer-export", "data-drawer-share", "data-symbol-details"];
+  const scrollSelectors = ["[data-symbol-drawer]", ".drawer-tabs", ".drawer-panel", ".drawer-actions", ".drawer-more-actions"];
 
   function available(element) {
     return element instanceof HTMLElement && element.isConnected
@@ -32,6 +32,7 @@
       ownsFocus: document.hasFocus() && host.contains(document.activeElement),
       identity: identity(document.activeElement),
       view: viewKey(host),
+      moreOpen: Boolean(host.querySelector(".drawer-more[open]")),
       scroll: scrollSelectors.map(selector => {
         const element = host.querySelector(selector);
         return { selector, top: element?.scrollTop || 0, left: element?.scrollLeft || 0 };
@@ -40,6 +41,8 @@
   }
 
   function restore(host, snapshot, focusTab) {
+    const disclosure = host.querySelector(".drawer-more");
+    if (disclosure && snapshot.moreOpen && snapshot.view === viewKey(host)) disclosure.open = true;
     let target = null;
     if (!focusTab && snapshot.ownsFocus && snapshot.identity) {
       const { attribute, value } = snapshot.identity;

@@ -58,7 +58,7 @@ describe('SFM Trader workspace experience', () => {
     expect(styles).toContain('html[data-theme="light"] .market-session-terminal .st-track');
   });
 
-  it('opens stock details in a loaded-data-only quick drawer with keyboard support', () => {
+  it('opens stock details in a on-demand quick drawer with keyboard support', () => {
     expect(app).toContain('openSymbolDrawer(s, detail)');
     expect(app).toContain('role="dialog" aria-modal="true"');
     expect(app).toContain('function handleSymbolDrawerKeydown(event)');
@@ -96,7 +96,7 @@ describe('SFM Trader workspace experience', () => {
     expect(html).toContain('semantic-tokens.css?v=20260713-central-system');
     expect(html).toContain('theme-bridge.js?v=20260714-phase34');
     expect(html).toContain('cinema.css?v=20260717-shell-unify');
-    expect(html).toContain('app.js?v=20260717-shell-unify');
+    expect(html).toContain('app.js?v=20260916-symbol-data');
   });
 
   it('includes mobile reflow, dark-mobile repair, RTL wrapping, and reduced motion', () => {
