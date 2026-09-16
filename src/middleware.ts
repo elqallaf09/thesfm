@@ -13,63 +13,19 @@ import { clearAuthenticatedCookies } from '@/lib/server/authCookies';
 import { bearerToken, inspectSessionSecurity, type SessionSecurityResult } from '@/lib/server/authSession';
 
 const protectedPrefixes = [
-  '/dashboard',
-  '/onboarding',
-  '/command-center',
-  '/decisions',
-  '/today',
-  '/tasks',
-  '/documents',
-  '/expenses',
-  '/income',
-  '/invest',
-  '/investments',
-  '/debts',
-  '/savings',
-  '/education/investments',
-  '/goals',
-  '/reports',
-  '/reports-center',
-  '/business',
-  '/business-hub',
-  '/business-operations',
-  '/employees',
-  '/sales',
-  '/customers',
-  '/invoices',
-  '/suppliers',
-  '/operating-expenses',
-  '/investment-offers',
-  '/projects',
-  '/zakat',
-  '/khums',
-  '/ai',
-  '/charity',
-  '/charity-projects',
-  '/settings',
-  '/site-map',
-  '/security',
-  '/mfa/verify',
-  '/profile',
-  '/notifications',
-  '/sfm-admin-control',
-  '/thesfm-trader-own',
-  '/wakeel',
+  '/dashboard', '/onboarding', '/command-center', '/decisions', '/today', '/tasks', '/documents',
+  '/expenses', '/income', '/invest', '/investments', '/debts', '/savings', '/education/investments',
+  '/goals', '/reports', '/reports-center', '/business', '/business-hub', '/business-operations',
+  '/employees', '/sales', '/customers', '/invoices', '/suppliers', '/operating-expenses',
+  '/investment-offers', '/projects', '/zakat', '/khums', '/ai', '/charity', '/charity-projects',
+  '/settings', '/site-map', '/security', '/mfa/verify', '/profile', '/notifications',
+  '/sfm-admin-control', '/thesfm-trader-own', '/wakeel',
 ];
 
 const authPages = ['/login', '/reset-password'];
 const guestAllowedPaths = new Set([
-  '/dashboard',
-  '/income',
-  '/expenses',
-  '/expenses/monthly-subscriptions',
-  '/invest',
-  '/investments',
-  '/savings',
-  '/goals',
-  '/reports',
-  '/reports-center',
-  '/ai',
+  '/dashboard', '/income', '/expenses', '/expenses/monthly-subscriptions', '/invest', '/investments',
+  '/savings', '/goals', '/reports', '/reports-center', '/ai',
 ]);
 
 function isProtected(pathname: string) {
@@ -80,12 +36,67 @@ function isGuestAllowed(pathname: string) {
   return guestAllowedPaths.has(pathname);
 }
 
-/**
- * The retained legacy market adapter is intentionally isolated while its
- * remaining route-by-route parity work is completed. It must never become a
- * public backdoor to legacy directional UI merely because the canonical AI
- * Analyst shell is publicly readable.
- */
+function isAdminPath(pathname: string) {
+  return pathname === '/sfm-admin-control' || pathname.startsWith('/sfm-admin-control/');
+}
+
+function superAdminEmails() {
+  return (process.env.SUPER_ADMIN_EMAILS || '')
+    .split(',')
+    .map(value => value.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function hasAdminRole(session: Extract<SessionSecurityResult, { status: 'ok' }>) {
+  const normalizedEmail = session.email?.trim().toLowerCase() || '';
+  if (normalizedEmail && superAdminEmails().includes(normalizedEmail)) return true;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return false;
+
+  const url = new URL(`${supabaseUrl}/rest/v1/admin_roles`);
+  url.searchParams.set('select', 'user_id,role,is_active');
+  url.searchParams.set('user_id', `eq.${session.userId}`);
+  url.searchParams.set('is_active', 'eq.true');
+  url.searchParams.set('limit', '1');
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${session.token}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+    if (!response.ok) return false;
+    const rows = await response.json().catch(() => []) as Array<{ user_id?: string; role?: string; is_active?: boolean }>;
+    const role = rows[0];
+    return role?.user_id === session.userId && role.is_active === true && (role.role === 'admin' || role.role === 'super_admin');
+  } catch {
+    return false;
+  }
+}
+
+function noIndex<T extends NextResponse>(response: T) {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  response.headers.set('Cache-Control', 'private, no-store');
+  return response;
+}
+
+function withSecurityHeaders<T extends NextResponse>(response: T) {
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
+  response.headers.set('Permissions-Policy', 'microphone=(self), camera=(self)');
+  return response;
+}
+
+function secured<T extends NextResponse>(response: T, pathname?: string) {
+  const next = withSecurityHeaders(response);
+  return pathname && isAdminPath(pathname) ? noIndex(next) : next;
+}
+
 function isLegacyMarketCompatibilityRoute(request: NextRequest) {
   return request.nextUrl.pathname === '/ai-analyst/overview'
     && request.nextUrl.searchParams.get('legacy') === 'market';
@@ -96,17 +107,8 @@ function isLocalQaBypass(pathname: string) {
   const isTraderPath = pathname === '/thesfm-trader-own' || pathname.startsWith('/thesfm-trader-own/');
   const isDashboardPath = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
   if (isTraderPath) return process.env.SFM_LOCAL_TRADER_QA === '1';
-  if (isDashboardPath) {
-    return process.env.SFM_LOCAL_DASHBOARD_QA === '1' || process.env.SFM_LOCAL_TRADER_QA === '1';
-  }
+  if (isDashboardPath) return process.env.SFM_LOCAL_DASHBOARD_QA === '1' || process.env.SFM_LOCAL_TRADER_QA === '1';
   return false;
-}
-
-function withSecurityHeaders<T extends NextResponse>(response: T) {
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('Content-Security-Policy', "frame-ancestors 'self'");
-  response.headers.set('Permissions-Policy', 'microphone=(self), camera=(self)');
-  return response;
 }
 
 function apiError(code: string, status: number, extra?: object) {
@@ -119,9 +121,7 @@ function apiError(code: string, status: number, extra?: object) {
 function authTransitionDestination(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const explicitNext = resolveInternalDestination(request.nextUrl.searchParams.get('next'));
-  if (authPages.includes(pathname) || pathname === '/mfa/verify') {
-    return explicitNext ?? DEFAULT_AUTH_DESTINATION;
-  }
+  if (authPages.includes(pathname) || pathname === '/mfa/verify') return explicitNext ?? DEFAULT_AUTH_DESTINATION;
   return requestDestination(pathname, request.nextUrl.search);
 }
 
@@ -131,7 +131,7 @@ function redirectToLogin(request: NextRequest, reason?: string) {
   loginUrl.search = '';
   loginUrl.searchParams.set('next', authTransitionDestination(request));
   if (reason) loginUrl.searchParams.set('auth', reason);
-  return withSecurityHeaders(NextResponse.redirect(loginUrl));
+  return secured(NextResponse.redirect(loginUrl), request.nextUrl.pathname);
 }
 
 function redirectToMfa(request: NextRequest, type: 'totp' | 'email') {
@@ -140,7 +140,7 @@ function redirectToMfa(request: NextRequest, type: 'totp' | 'email') {
   url.search = '';
   url.searchParams.set('next', authTransitionDestination(request));
   if (type === 'email') url.searchParams.set('mfa', 'email');
-  return withSecurityHeaders(NextResponse.redirect(url));
+  return secured(NextResponse.redirect(url), request.nextUrl.pathname);
 }
 
 async function sessionForRequest(request: NextRequest): Promise<SessionSecurityResult> {
@@ -151,7 +151,7 @@ async function sessionForRequest(request: NextRequest): Promise<SessionSecurityR
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const response = withSecurityHeaders(NextResponse.next());
+  const response = secured(NextResponse.next(), pathname);
 
   if (pathname.startsWith('/api/')) {
     if (!isProtectedApiPath(pathname)) return response;
@@ -159,9 +159,7 @@ export async function middleware(request: NextRequest) {
     const session = await sessionForRequest(request);
     if (session.status === 'unauthenticated') return apiError('UNAUTHORIZED', 401);
     if (session.status === 'unavailable') return apiError('AUTH_UNAVAILABLE', 503);
-    if (session.mfaRequirement !== 'none') {
-      return apiError('MFA_REQUIRED', 403, { mfaType: session.mfaRequirement });
-    }
+    if (session.mfaRequirement !== 'none') return apiError('MFA_REQUIRED', 403, { mfaType: session.mfaRequirement });
     return response;
   }
 
@@ -175,25 +173,22 @@ export async function middleware(request: NextRequest) {
 
   if (authPages.includes(pathname)) {
     if (session.status !== 'ok') {
-      if (session.status === 'unauthenticated' && request.cookies.has(AUTH_ACCESS_COOKIE)) {
-        clearAuthenticatedCookies(response);
-      }
+      if (session.status === 'unauthenticated' && request.cookies.has(AUTH_ACCESS_COOKIE)) clearAuthenticatedCookies(response);
       return response;
     }
     if (session.mfaRequirement === 'totp') return redirectToMfa(request, 'totp');
     if (session.mfaRequirement === 'email') return response;
     const nextPath = resolveInternalDestination(request.nextUrl.searchParams.get('next'));
     const nextPathname = internalDestinationPathname(nextPath);
-    const nextIsAuthTransition = Boolean(nextPathname
-      && (authPages.includes(nextPathname) || nextPathname === '/mfa/verify'));
+    const nextIsAuthTransition = Boolean(nextPathname && (authPages.includes(nextPathname) || nextPathname === '/mfa/verify'));
     if (nextPath && nextPathname && !nextIsAuthTransition) {
       const protectedTargetUrl = request.nextUrl.clone();
       applyInternalDestination(protectedTargetUrl, nextPath);
-      return withSecurityHeaders(NextResponse.redirect(protectedTargetUrl));
+      return secured(NextResponse.redirect(protectedTargetUrl), pathname);
     }
     const defaultUrl = request.nextUrl.clone();
     applyInternalDestination(defaultUrl, DEFAULT_AUTH_DESTINATION);
-    return withSecurityHeaders(NextResponse.redirect(defaultUrl));
+    return secured(NextResponse.redirect(defaultUrl), pathname);
   }
 
   if (session.status === 'unauthenticated') {
@@ -209,24 +204,29 @@ export async function middleware(request: NextRequest) {
     if (pathname === '/mfa/verify' && session.mfaRequirement === 'totp') return response;
     return redirectToMfa(request, session.mfaRequirement);
   }
+
+  if (isAdminPath(pathname)) {
+    const allowed = await hasAdminRole(session);
+    if (!allowed) {
+      return noIndex(withSecurityHeaders(new NextResponse('Not Found', { status: 404 })));
+    }
+  }
+
   if (pathname === '/mfa/verify') {
     const target = resolveInternalDestination(request.nextUrl.searchParams.get('next')) || DEFAULT_AUTH_DESTINATION;
     const targetUrl = request.nextUrl.clone();
     applyInternalDestination(targetUrl, target);
-    return withSecurityHeaders(NextResponse.redirect(targetUrl));
+    return secured(NextResponse.redirect(targetUrl), pathname);
   }
   if (pathname === '/dashboard' && !session.onboardingComplete) {
     const onboardingUrl = request.nextUrl.clone();
     onboardingUrl.pathname = '/onboarding';
     onboardingUrl.search = '';
-    return withSecurityHeaders(NextResponse.redirect(onboardingUrl));
+    return secured(NextResponse.redirect(onboardingUrl), pathname);
   }
   return response;
 }
 
 export const config = {
-  matcher: [
-    '/api/:path*',
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
-  ],
+  matcher: ['/api/:path*', '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };
