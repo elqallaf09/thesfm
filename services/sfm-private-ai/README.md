@@ -46,7 +46,7 @@ docker compose --profile vision up -d sfm-vision
 
 Do not assume text and vision models fit safely on the same single GPU. On a one-GPU host, keep the vision profile disabled unless measured VRAM headroom proves both services can coexist; a separate GPU/node is the safer production design.
 
-The raw model ports are deliberately published only on loopback (`127.0.0.1`). Put HTTPS in front of them with the supplied `Caddyfile.example`; do not expose raw vLLM ports to the internet.
+The raw model ports are deliberately published only on loopback (`127.0.0.1`). Put HTTPS in front of them with the supplied `Caddyfile.example`; do not expose raw vLLM ports to the internet. The example reverse proxy also fails closed for unused vLLM routes: externally it permits only authenticated `GET /v1/models` and `POST /v1/chat/completions` (plus the equivalent `/vision/...` paths when vision is enabled).
 
 ## 2. THE SFM server variables
 
