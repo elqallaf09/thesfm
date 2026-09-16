@@ -40,7 +40,7 @@ function result<T>(data: T[]): TraderProviderResult<T> {
   };
 }
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => { vi.clearAllMocks(); });
 
 describe('symbol-scoped calendar response', () => {
   it('filters every data alias and count, without mutating cached provider rows', () => {
