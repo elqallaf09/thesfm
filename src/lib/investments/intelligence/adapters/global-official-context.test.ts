@@ -48,8 +48,10 @@ describe('global official property context', () => {
       const url = String(input);
       expect(url).toContain('data.cityofnewyork.us/resource/usep-8jbt.json');
       expect(decodeURIComponent(url)).toContain("borough='1'");
+      expect(decodeURIComponent(url)).toContain('building_class_at_time_of');
+      expect(decodeURIComponent(url)).not.toContain('building_class_at_time_of_sale');
       expect(url).not.toContain('private condo address');
-      return response([{ borough: '1', neighborhood: 'MIDTOWN WEST', building_class_category: '10 COOPS - ELEVATOR APARTMENTS', block: '1000', lot: '10', address: 'PUBLIC SOURCE ADDRESS', gross_square_feet: '1000', land_square_feet: '800', building_class_at_time_of_sale: 'D4', sale_price: '1500000', sale_date: '2026-08-20T00:00:00.000' }]);
+      return response([{ borough: '1', neighborhood: 'MIDTOWN WEST', building_class_category: '10 COOPS - ELEVATOR APARTMENTS', block: '1000', lot: 10, address: 'PUBLIC SOURCE ADDRESS', gross_square_feet: '1000', land_square_feet: '800', building_class_at_time_of: 'D4', sale_price: '1500000', sale_date: '2026-08-20T00:00:00.000' }]);
     }) as unknown as typeof fetch;
     const report = await collectNycPropertyContext({ countryCode: 'US', region: 'NY', city: 'New York City', district: 'Manhattan', propertyType: 'APARTMENT', landArea: 90, landAreaUnit: 'M2', address: 'private condo address' }, { fetcher, now: () => new Date('2026-09-16T00:00:00Z') });
     expect(report.status).toBe('CONNECTED_REVIEW_REQUIRED');
