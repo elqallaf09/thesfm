@@ -7,7 +7,7 @@ type PageProps = { params: Promise<{ assetClass: string }> };
 
 export function generateStaticParams() {
   return INVESTMENT_CENTER_ASSET_CLASSES
-    .filter(assetClass => assetClass !== 'overview' && assetClass !== 'real-estate')
+    .filter(assetClass => assetClass !== 'overview')
     .map(assetClass => ({ assetClass }));
 }
 
