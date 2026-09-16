@@ -1,0 +1,6 @@
+# Replace ai.example.com with the hostname you control.
+# Caddy terminates HTTPS; vLLM remains bound to 127.0.0.1 only.
+ai.example.com {
+  encode zstd gzip
+  reverse_proxy 127.0.0.1:8000
+}
