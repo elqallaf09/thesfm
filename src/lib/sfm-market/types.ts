@@ -72,6 +72,30 @@ export type SfmTechnicalSnapshot = {
   observedThrough: string | null;
 };
 
+export type SfmOfficialFiling = {
+  form: string;
+  filingDate: string;
+  reportDate: string | null;
+  accessionNumber: string;
+  documentUrl: string;
+};
+
+export type SfmRegulatorEvidence = {
+  status: 'ready' | 'not_applicable' | 'not_found' | 'unavailable';
+  regulator: 'SEC';
+  sourceClass: 'regulator';
+  sourceUrl: string | null;
+  retrievedAt: string | null;
+  symbol: string;
+  cik: string | null;
+  entityName: string | null;
+  exchange: string | null;
+  latestPeriodicFiling: SfmOfficialFiling | null;
+  latestCurrentReport: SfmOfficialFiling | null;
+  xbrlConceptCount: number | null;
+  reason: string | null;
+};
+
 export type SfmAnalystStatus = 'ready' | 'partial' | 'blocked';
 
 export type SfmMarketAnalysis = {
@@ -84,10 +108,14 @@ export type SfmMarketAnalysis = {
   code: string | null;
   quote: SfmMarketQuote | null;
   technical: SfmTechnicalSnapshot;
+  officialEvidence: {
+    sec: SfmRegulatorEvidence;
+  };
   evidence: {
     quoteAvailable: boolean;
     historyAvailable: boolean;
     historyPoints: number;
+    officialRegulatorEvidenceAvailable: boolean;
     missing: string[];
     upstreamAttempts: number;
   };
