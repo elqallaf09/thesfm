@@ -63,24 +63,32 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!quote || !quote.available) return unavailable(decoded, quote?.unavailableReason ?? result.reason);
 
   const indicators = {
-    rsi: quote.rsi,
-    sma20: quote.sma20,
-    sma50: quote.sma50,
-    ema20: quote.ema20,
-    ema50: quote.ema50,
-    ema200: quote.ema200,
-    macd: quote.macd,
-    macdSignal: quote.macdSignal,
-    priceMomentum20: quote.priceMomentum20,
-    support: quote.support,
-    resistance: quote.resistance,
-    volumeRatio: quote.volumeRatio,
-    atr: quote.atr,
+    rsi: quote.rsi ?? null,
+    sma20: quote.sma20 ?? null,
+    sma50: quote.sma50 ?? null,
+    ema20: quote.ema20 ?? null,
+    ema50: quote.ema50 ?? null,
+    ema200: quote.ema200 ?? null,
+    macd: quote.macd ?? null,
+    macdSignal: quote.macdSignal ?? null,
+    priceMomentum20: quote.priceMomentum20 ?? null,
+    support: quote.support ?? null,
+    resistance: quote.resistance ?? null,
+    volumeRatio: quote.volumeRatio ?? null,
+    atr: quote.atr ?? null,
   };
   const missingFields = Object.entries(indicators)
-    .filter(([, value]) => value === null || value === undefined)
+    .filter(([, value]) => value === null)
     .map(([key]) => key);
-  const technicalAvailable = Boolean(quote.technicalAvailable && quote.samples >= 20);
+  const sampleCount = quote.samples ?? 0;
+  const technicalAvailable = Boolean(quote.technicalAvailable && sampleCount >= 20);
+  const trend = quote.price !== null && indicators.ema20 !== null && indicators.ema50 !== null
+    ? quote.price > indicators.ema20 && indicators.ema20 > indicators.ema50
+      ? 'bullish'
+      : quote.price < indicators.ema20 && indicators.ema20 < indicators.ema50
+        ? 'bearish'
+        : 'neutral'
+    : null;
 
   return json({
     ok: true,
@@ -98,21 +106,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     exchangeCode: quote.exchangeCode,
     market: quote.market,
     country: quote.country,
-    trend: quote.technicalSummary?.indicators?.ema20 !== null && quote.technicalSummary?.indicators?.ema50 !== null
-      ? quote.ema20 !== null && quote.ema50 !== null && quote.price !== null
-        ? quote.price > quote.ema20 && quote.ema20 > quote.ema50
-          ? 'bullish'
-          : quote.price < quote.ema20 && quote.ema20 < quote.ema50
-            ? 'bearish'
-            : 'neutral'
-        : null
-      : null,
-    support: quote.support === null ? [] : [quote.support],
-    resistance: quote.resistance === null ? [] : [quote.resistance],
-    rsi: quote.rsi,
-    movingAverages: { sma20: quote.sma20, sma50: quote.sma50 },
+    trend,
+    support: indicators.support === null ? [] : [indicators.support],
+    resistance: indicators.resistance === null ? [] : [indicators.resistance],
+    rsi: indicators.rsi,
+    movingAverages: { sma20: indicators.sma20, sma50: indicators.sma50 },
     indicators,
-    samples: quote.samples,
+    samples: sampleCount,
     dataQuality: quote.dataQuality,
     missingFields,
     source: SFM_MARKET_ENGINE_NAME,
