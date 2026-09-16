@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import type { CanonicalAssetIdentity } from '@/domain/intelligence/contracts';
 import { aiProviderConfigured, generateAssistantReply, type ChatMessage } from '@/lib/server/aiProvider';
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
@@ -9,7 +10,9 @@ import {
   MARKET_CHAT_DOMAINS,
   assertChatDomain,
   buildMarketChatSystemPrompt,
+  implicitMarketAssetCandidate,
   type VerifiedChatAsset,
+  type VerifiedChatMarketSnapshot,
 } from '@/lib/ai-analyst/marketChat';
 import { intelligenceAssetTypeFromMarket } from '@/lib/intelligence/assetTypes';
 import { INTELLIGENCE_RESPONSE_HEADERS, readBoundedJson } from '@/lib/intelligence/api';
@@ -17,12 +20,13 @@ import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
+import { ExistingMarketDataIntelligenceProvider } from '@/providers/intelligence/existingMarketDataProvider';
 import { resolveCanonicalIntelligenceAsset } from '@/services/intelligence/assetResolver';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // Two bounded provider paths leave room for verified identity, owner
-// grounding and quota storage. No Anthropic credential is used.
+// grounding and quota storage. No third-party model-vendor credential is used.
 export const maxDuration = 60;
 
 type ChatLocale = 'ar' | 'en' | 'fr';
@@ -40,12 +44,6 @@ function errorResponse(status: number, code: string, correlationId: string, text
   });
 }
 
-function implicitSymbolCandidate(messages: ChatMessage[]) {
-  const latestUserMessage = [...messages].reverse().find(message => message.role === 'user')?.content.trim();
-  if (!latestUserMessage || latestUserMessage.length > 24) return null;
-  return /^[A-Za-z0-9.^=:_/-]+$/u.test(latestUserMessage) ? latestUserMessage : null;
-}
-
 async function resolveChatAsset(input: {
   requestedAsset: { symbol: string; assetType: Parameters<typeof resolveCanonicalIntelligenceAsset>[0]['assetType'] } | null | undefined;
   messages: ChatMessage[];
@@ -59,7 +57,7 @@ async function resolveChatAsset(input: {
     }
   }
 
-  const candidate = implicitSymbolCandidate(input.messages);
+  const candidate = implicitMarketAssetCandidate(input.messages);
   if (!candidate) return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
 
   try {
@@ -69,8 +67,57 @@ async function resolveChatAsset(input: {
     const asset = await resolveCanonicalIntelligenceAsset({ symbol: resolved.asset.symbol, assetType });
     return { asset, requestedUnresolvedSymbol: false, inferredFromMessage: true };
   } catch {
-    // Free-form words are not classified as tickers without resolver evidence.
+    // A short word/name is never classified as an asset without resolver evidence.
     return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
+  }
+}
+
+async function loadVerifiedMarketSnapshot(input: {
+  userId: string;
+  asset: CanonicalAssetIdentity;
+  locale: ChatLocale;
+  correlationId: string;
+}): Promise<VerifiedChatMarketSnapshot | null> {
+  try {
+    const snapshot = await new ExistingMarketDataIntelligenceProvider().getSnapshot({
+      userId: input.userId,
+      asset: {
+        symbol: input.asset.displaySymbol || input.asset.canonicalSymbol,
+        assetType: input.asset.assetType,
+        exchange: input.asset.exchange,
+        market: input.asset.market,
+        quoteCurrency: input.asset.quoteCurrency,
+      },
+      horizon: 'SWING',
+      locale: input.locale,
+      requestedModules: [],
+      providerPreferences: null,
+      source: 'INTERNAL',
+      correlationId: input.correlationId,
+      forceRefresh: false,
+    }, input.asset);
+
+    return {
+      provider: snapshot.provider,
+      dataAsOf: snapshot.dataAsOf,
+      dataStatus: snapshot.dataStatus,
+      fallbackUsed: snapshot.fallbackUsed,
+      price: snapshot.quote.price,
+      change: snapshot.quote.change,
+      changePercent: snapshot.quote.changePercent,
+      volume: snapshot.quote.volume,
+      support: snapshot.levels.support,
+      resistance: snapshot.levels.resistance,
+      reportedRiskLevel: snapshot.reportedRiskLevel,
+      currency: snapshot.asset.quoteCurrency,
+      shariaStatus: snapshot.sharia.status,
+      shariaSource: snapshot.sharia.source,
+      shariaReviewedAt: snapshot.sharia.reviewedAt,
+    };
+  } catch {
+    // Chat remains useful with verified identity/general knowledge if live market
+    // evidence is unavailable; the system prompt forbids inventing missing facts.
+    return null;
   }
 }
 
@@ -117,7 +164,8 @@ export async function POST(request: NextRequest) {
     return errorResponse(503, 'AI_PROVIDER_NOT_CONFIGURED', correlationId, unavailableResponse(locale));
   }
   const resolved = await resolveChatAsset({ requestedAsset, messages });
-  const verifiedAsset: VerifiedChatAsset | null = resolved.asset;
+  const canonicalAsset: CanonicalAssetIdentity | null = resolved.asset;
+  const verifiedAsset: VerifiedChatAsset | null = canonicalAsset;
   const effectiveDomain = verifiedAsset ? 'market' : domain;
 
   // Preserve the economic-intelligence grounding added on main, scoped to
@@ -150,9 +198,17 @@ export async function POST(request: NextRequest) {
   });
   if (!usage.allowed) return aiUsageLimitResponse(usage);
 
+  // Fetch current values only after auth, rate-limit and AI allowance pass.
+  // Failure is non-fatal: identity remains verified and the prompt explicitly
+  // forbids inventing unavailable live values.
+  const marketSnapshot = canonicalAsset
+    ? await loadVerifiedMarketSnapshot({ userId: user.id, asset: canonicalAsset, locale, correlationId })
+    : null;
+
   const baseSystemPrompt = buildMarketChatSystemPrompt({
     domain: effectiveDomain,
     asset: verifiedAsset,
+    marketSnapshot,
     requestedUnresolvedSymbol: resolved.requestedUnresolvedSymbol,
     locale,
   });
@@ -173,6 +229,10 @@ export async function POST(request: NextRequest) {
     asset: verifiedAsset,
     assetResolvedFromMessage: resolved.inferredFromMessage,
     advisorGrounded,
+    marketDataGrounded: Boolean(marketSnapshot),
+    marketDataProvider: marketSnapshot?.provider ?? null,
+    marketDataStatus: marketSnapshot?.dataStatus ?? null,
+    marketDataAsOf: marketSnapshot?.dataAsOf ?? null,
     correlationId,
   }, { headers: { ...INTELLIGENCE_RESPONSE_HEADERS, 'X-Correlation-ID': correlationId } });
 }
