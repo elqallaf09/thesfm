@@ -28,10 +28,12 @@ jobs:
           from textwrap import dedent
           text = Path('/tmp/original.yml').read_text()
           script = dedent(text.split('        run: |\n', 1)[1])
-          old = '"  const sourceMeta = requestedSymbols.length\\n    ? requestedSymbols\\n    : universe.symbolMeta;",\n    "  const sourceMeta = uniqueRecommendationSymbols(requestedSymbols.length\\n    ? requestedSymbols\\n    : universe.symbolMeta);")'
-          new = '"  const sourceMeta = requestedSymbols.length\\n    ? universe.symbolMeta.filter(symbol => requestedKeySet.has(normalizeSymbol(symbol.symbol)) || requestedKeySet.has(normalizeSymbol(symbol.providerSymbol)))\\n    : universe.symbolMeta;",\n    "  const sourceMeta = uniqueRecommendationSymbols(requestedSymbols.length\\n    ? universe.symbolMeta.filter(symbol => requestedKeySet.has(normalizeSymbol(symbol.symbol)) || requestedKeySet.has(normalizeSymbol(symbol.providerSymbol)))\\n    : universe.symbolMeta);")'
-          if old not in script:
-              raise SystemExit('current recommendations-route adaptation target was not found')
-          Path('/tmp/apply.sh').write_text(script.replace(old, new, 1))
+          start = script.index("          replace('src/app/api/recommendations/route.ts',\n            \"  const sourceMeta")
+          end = script.index("\n\n          replace('src/lib/market/fetchYahooQuote.ts'", start)
+          adapted = '''          replace('src/app/api/recommendations/route.ts',
+            "  const sourceMeta = requestedSymbols.length\\n    ? universe.symbolMeta.filter(symbol => requestedKeySet.has(normalizeSymbol(symbol.symbol)) || requestedKeySet.has(normalizeSymbol(symbol.providerSymbol)))\\n    : universe.symbolMeta;",
+            "  const sourceMeta = uniqueRecommendationSymbols(requestedSymbols.length\\n    ? universe.symbolMeta.filter(symbol => requestedKeySet.has(normalizeSymbol(symbol.symbol)) || requestedKeySet.has(normalizeSymbol(symbol.providerSymbol)))\\n    : universe.symbolMeta);")'''
+          script = script[:start] + adapted + script[end:]
+          Path('/tmp/apply.sh').write_text(script)
           PYTHON
           bash /tmp/apply.sh
