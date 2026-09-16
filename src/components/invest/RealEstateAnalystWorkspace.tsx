@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { REAL_ESTATE_ANALYST_PATH, REAL_ESTATE_CENTER_PATH, validInvestmentId, type SavedRealEstateContext } from '@/lib/investments/realEstateHandoff';
+import { REAL_ESTATE_ANALYST_PATH, validInvestmentId, type SavedRealEstateContext } from '@/lib/investments/realEstateHandoff';
 import { RealEstateLandAnalyst } from './RealEstateLandAnalyst';
 import { RealEstateValuationTimeline } from './RealEstateValuationTimeline';
 import styles from '@/components/investments/InvestmentCenter.module.css';
@@ -18,7 +18,7 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
   const { user, session, isGuest, loading } = useAuth();
   const { lang, dir } = useLanguage();
   const L = (ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en;
-  const title = L('محلل الأراضي والعقار', 'Land & Real Estate Analyst', 'Analyste immobilier et foncier');
+  const title = L('مركز السوق العقاري', 'Real Estate Market Center', 'Centre du marché immobilier');
   const next = positionId && validInvestmentId(positionId)
     ? `${REAL_ESTATE_ANALYST_PATH}/${positionId}`
     : investmentId && validInvestmentId(investmentId)
@@ -28,8 +28,12 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
   return <div className={styles.shell} dir={dir}>
     <DashboardPageShell ariaLabel={title} className={styles.main} contentClassName={styles.content}>
       <header className={styles.header}>
-        <div><p className={styles.eyebrow}>{L('ذكاء الاستثمارات', 'Investment intelligence', 'Intelligence d’investissement')}</p><h1>{title}</h1></div>
-        <Link className={styles.secondaryAction} href={REAL_ESTATE_CENTER_PATH}>{L('العودة إلى مركز الاستثمارات', 'Back to Investments Center', 'Retour au centre d’investissements')}</Link>
+        <div>
+          <p className={styles.eyebrow}>{L('الأسواق العالمية', 'Global markets', 'Marchés mondiaux')}</p>
+          <h1>{title}</h1>
+          <p>{L('بحث وتحليل الأراضي والعقار من المصادر الرسمية والسوقية المسموح بها، مع فصل ملكية محفظتك عن بيانات السوق.', 'Research land and property with permitted official and market sources while keeping portfolio ownership separate from market intelligence.', 'Analyse des terrains et biens à partir de sources officielles et de marché autorisées, en séparant la propriété du portefeuille des données de marché.')}</p>
+        </div>
+        <Link className={styles.secondaryAction} href="/global-markets">{L('العودة إلى مركز الأسواق العالمية', 'Back to Global Markets Hub', 'Retour au centre des marchés mondiaux')}</Link>
       </header>
       {loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !user || isGuest || !session?.access_token ? (
         <section className={styles.guestGate}><p>{L('سجّل الدخول لتحليل عقارك والوصول إلى سجلاتك الخاصة.', 'Sign in to analyze your property and access your private records.', 'Connectez-vous pour analyser votre bien et accéder à vos données privées.')}</p><Link href={`/login?next=${encodeURIComponent(next)}`}>{L('تسجيل الدخول', 'Sign in', 'Se connecter')}</Link></section>
