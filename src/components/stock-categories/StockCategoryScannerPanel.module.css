@@ -58,7 +58,7 @@
   margin: 0;
   font-size: clamp(20px, 2.4vw, 30px);
   line-height: 1.25;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .heading p:not(.kicker) {
@@ -402,17 +402,17 @@
 
 .skeleton {
   min-height: 220px;
-  background: linear-gradient(90deg, var(--surface-muted), var(--surface), var(--surface-muted));
-  background-size: 220% 100%;
-  animation: shimmer 1.4s linear infinite;
+  background: var(--surface-muted);
+  opacity: .72;
+  animation: pulse 1.4s ease-in-out infinite alternate;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-@keyframes shimmer {
-  to { background-position: -220% 0; }
+@keyframes pulse {
+  to { opacity: .42; }
 }
 
 @media (max-width: 980px) {
@@ -436,7 +436,7 @@
   }
 
   .container {
-    border-radius: 14px;
+    border-radius: var(--radius-card);
     padding: 14px;
   }
 
