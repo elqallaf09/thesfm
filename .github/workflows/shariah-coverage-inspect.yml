@@ -2,9 +2,11 @@ name: Inspect remaining official Shariah sources
 on:
   push:
     branches: [fix/shariah-remaining-source-coverage]
-    paths: ['.github/workflows/shariah-coverage-inspect.yml', 'src/__tests__/integration/shariahSourceInspection.test.ts']
 permissions:
   contents: read
+concurrency:
+  group: shariah-coverage-inspect
+  cancel-in-progress: true
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -20,7 +22,13 @@ jobs:
         with:
           node-version: 22.16.0
       - run: pnpm install --frozen-lockfile
+      - name: Specialized regression tests
+        run: pnpm exec vitest run src/__tests__/unit/*[sS]haria*.test.ts --maxWorkers=2
+      - name: TypeScript
+        if: ${{ !cancelled() }}
+        run: pnpm exec tsc --noEmit --pretty false
       - name: Inspect public source layouts without production access
+        if: ${{ !cancelled() }}
         env:
           SFM_SOURCE_INSPECT: '1'
           SEC_USER_AGENT: 'THE-SFM admin@the-sfm.com'
