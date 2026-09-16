@@ -68,6 +68,13 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
   expectedName: RegExp, now = new Date()): FinancialValue[] {
   const result: FinancialValue[] = [];
   const allText = pages.map(page => page.text).join('\n');
+  // Verify issuer identity across the selected document once. Some official
+  // statements (IFA is a real example) render the issuer heading letter-spaced
+  // on the numeric pages while the normal legal name appears on the auditor or
+  // notes pages. Requiring the legal name on every statement page discarded
+  // valid rows even after the document itself had already been issuer-bound.
+  // Never parse a statement when the expected issuer is absent from all pages.
+  if (!expectedName.test(allText)) return [];
   const signature = /(?:financial (?:statements|information)[\s\S]{0,160}?authori[sz]ed for issue[\s\S]{0,260}?on\s+)(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
     ?? /approved (?:these )?consolidated financial statements for issue on\s+(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
     ?? pages.filter(page => /INDEPENDENT AUDITORS|REPORT ON REVIEW OF INTERIM/i.test(page.text))
@@ -76,7 +83,6 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
   const signatureTime = signature ? Date.parse(signature + ' UTC') : NaN;
   const reportedAt = Number.isFinite(signatureTime) && signatureTime <= now.getTime() ? new Date(signatureTime).toISOString().slice(0, 10) : null;
   for (const page of pages) {
-    if (!expectedName.test(page.text)) continue;
     const header = statementHeader(page.text);
     if (!header) continue;
     const text = page.text.slice(header.index);
