@@ -36,6 +36,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_market_agent: { ar:'وكيل تحليل الأسواق', en:'Market Agent', fr:'Agent de marché' },
   nav_ai_analyst: { ar:'إس إف إم المحلل الذكي', en:'SFM AI Analyst', fr:'Analyste IA SFM' },
   nav_global_markets: { ar:'مركز الأسواق العالمية', en:'Global Markets Hub', fr:'Centre des marchés mondiaux' },
+  nav_real_estate_market: { ar:'مركز السوق العقاري', en:'Real Estate Market Center', fr:'Centre du marché immobilier' },
   nav_gulf_news: { ar:'أخبار أسواق الخليج', en:'Gulf Market News', fr:'Actualités des marchés du Golfe' },
   nav_europe_news: { ar:'أخبار الأسواق الأوروبية', en:'European Market News', fr:'Actualités des marchés européens' },
   nav_tech_news: { ar:'أخبار السوق التقني', en:'Tech Market News', fr:'Actualités du marché technologique' },
