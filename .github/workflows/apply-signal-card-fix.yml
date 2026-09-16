@@ -1,0 +1,318 @@
+name: Apply signal card completeness fix
+
+on:
+  push:
+    branches:
+      - fix/signal-card-evidence-20260916
+    paths:
+      - .github/workflows/apply-signal-card-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: fix/signal-card-evidence-20260916
+      - name: Sync main and apply production fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          python <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"missing expected block in {path}: {old[:120]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          Path('src/lib/market/yahooSessionQuote.mjs').write_text(r'''// Resolve a quote against the previous exchange-local DAILY session.
+          const finite = value => (typeof value === "number" || (typeof value === "string" && value.trim()))
+            && Number.isFinite(Number(value)) ? Number(value) : null;
+          const positive = value => { const n = finite(value); return n !== null && n > 0 ? n : null; };
+          function sessionDay(seconds, meta) {
+            const n = positive(seconds);
+            if (n === null || n * 1000 > 8.64e15) return null;
+            try {
+              if (typeof meta.exchangeTimezoneName === "string" && meta.exchangeTimezoneName) {
+                const parts = new Intl.DateTimeFormat("en-CA", { timeZone: meta.exchangeTimezoneName,
+                  year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(n * 1000));
+                return ["year", "month", "day"].map(key => parts.find(part => part.type === key)?.value).join("-");
+              }
+              const offset = finite(meta.gmtoffset);
+              return offset === null ? null : new Date((n + offset) * 1000).toISOString().slice(0, 10);
+            } catch { return null; }
+          }
+          export function resolveYahooSessionQuote(meta = {}, timestamps = [], quote = {}, interval = "1d") {
+            const price = positive(meta.regularMarketPrice);
+            const time = positive(meta.regularMarketTime);
+            const day = sessionDay(time, meta);
+            const rows = interval === "1d" && day ? timestamps.map((stamp, index) => ({
+              stamp: positive(stamp), day: sessionDay(stamp, meta), close: positive(quote.close?.[index]),
+              volume: finite(quote.volume?.[index]),
+            })).filter(row => row.stamp !== null && time !== null && row.stamp <= time && row.day && row.close !== null)
+              .sort((a, b) => a.stamp - b.stamp) : [];
+            const prior = rows.filter(row => row.day < day).at(-1);
+            const current = rows.filter(row => row.day === day).at(-1);
+            const previousClose = positive(meta.previousClose) ?? prior?.close ?? null;
+            const sourceVolume = finite(meta.regularMarketVolume);
+            const volume = time !== null && sourceVolume !== null && sourceVolume >= 0 ? sourceVolume
+              : current?.volume !== null && current?.volume !== undefined && current.volume >= 0 ? current.volume : null;
+            const change = price !== null && previousClose !== null ? price - previousClose : null;
+            const explicitChange = finite(meta.regularMarketChangePercent);
+            const changePercent = change !== null ? change / previousClose * 100 : explicitChange;
+            const asOf = time !== null && time * 1000 <= 8.64e15 ? new Date(time * 1000).toISOString() : null;
+            return { price, previousClose, change, changePercent: price !== null ? changePercent : null,
+              volume, volumeAsOf: volume !== null ? asOf : null, asOf,
+              previousCloseSource: positive(meta.previousClose) !== null ? "provider_previous_close" : prior ? "previous_daily_session" : null };
+          }
+          ''')
+
+          Path('src/lib/trader/recommendationSymbols.ts').write_text(r'''import type { TraderCatalogSymbol } from './marketCatalog';
+
+          export function uniqueRecommendationSymbols(rows: TraderCatalogSymbol[]) {
+            const result = new Map<string, TraderCatalogSymbol>();
+            for (const row of rows) {
+              const key = row.symbol.trim().toUpperCase();
+              if (!key) continue;
+              const prior = result.get(key);
+              result.set(key, prior ? { ...prior,
+                marketIds: Array.from(new Set([...prior.marketIds, ...row.marketIds])),
+                aliases: Array.from(new Set([...prior.aliases, ...row.aliases])),
+              } : row);
+            }
+            return Array.from(result.values());
+          }
+          ''')
+
+          Path('src/trader-app/public/assets/card-evidence.js').write_text(r'''(function (root) {
+            "use strict";
+            const TTL = 60 * 1000;
+            const MAX_OBSERVATION_AGE = 36 * 60 * 60 * 1000;
+            const number = value => (typeof value === "number" || typeof value === "string" && value.trim()) && Number.isFinite(Number(value)) ? Number(value) : null;
+            function observedAt(row) {
+              const value = row?.quoteAsOf ?? row?.asOf ?? row?.dataProvenance?.marketTimestamp
+                ?? row?.providerStatus?.lastUpdated ?? row?.lastUpdated ?? row?.last_updated ?? row?.updatedAt ?? row?.timestamp;
+              if (typeof value === "number" && value > 0) return value < 1e12 ? value * 1000 : value;
+              if (typeof value !== "string" || !/T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return null;
+              const time = Date.parse(value);
+              return Number.isFinite(time) && time > 0 ? time : null;
+            }
+            function freshness(row, now = Date.now()) {
+              const time = observedAt(row);
+              if (time === null || time > now + 120000) return "unknown";
+              const quality = String(row?.dataQuality || row?.dataProvenance?.freshness || "").toLowerCase();
+              return row?.stale || quality === "stale" || now - time > MAX_OBSERVATION_AGE ? "stale" : "current";
+            }
+            function analysisReady(row, now = Date.now()) {
+              if (!row || row.available === false || freshness(row, now) !== "current") return false;
+              const price = number(row.price ?? row.currentPrice);
+              const quality = String(row.dataQuality || "").toLowerCase();
+              if (price === null || price <= 0 || /unavailable|error|unsupported|stale/.test(quality)) return false;
+              if (row.dataSufficiency?.sufficient === false || row.technicalAvailable === false) return false;
+              return row.dataSufficiency?.sufficient === true || row.technicalAvailable === true && number(row.samples) >= 200;
+            }
+            function guard(row, now = Date.now()) {
+              if (analysisReady(row, now)) return row;
+              return { ...row, confidence: null, aiConfidence: null, ai_confidence: null, score: null, finalScore: null,
+                signal: "watch", action: "watch", recommendation: "insufficient_data", finalRecommendation: "Insufficient data",
+                finalRecommendationAr: null, finalRecommendationFr: null, technicalAvailable: false,
+                target: null, targetPrice: null, target1: null, stop: null, stopLoss: null, risk: null, riskLevel: null,
+                dataQuality: freshness(row, now) === "stale" ? "stale" : row.dataQuality };
+            }
+            function mergeRows(primary, fallback, keyOf = value => String(value || "").trim().toUpperCase()) {
+              const map = new Map();
+              const metadata = ["symbol", "name", "companyName", "assetType", "currency", "market", "country", "exchange", "sector", "industry"];
+              for (const candidate of [...fallback, ...primary]) {
+                const key = keyOf(candidate.symbol);
+                if (!key) continue;
+                const row = Object.fromEntries(Object.entries(candidate).filter(([, value]) => value !== undefined));
+                const prior = map.get(key);
+                if (!prior) { map.set(key, row); continue; }
+                const incomingTime = observedAt(row), priorTime = observedAt(prior);
+                const newer = incomingTime !== null && (priorTime === null || incomingTime > priorTime);
+                const sameTime = incomingTime === priorTime;
+                const richer = row.dataSufficiency?.sufficient === true && prior.dataSufficiency?.sufficient !== true;
+                const winner = newer || sameTime && (richer || !prior.dataSufficiency) ? row : prior;
+                const other = winner === row ? prior : row;
+                map.set(key, { ...Object.fromEntries(metadata.filter(field => other[field] !== undefined).map(field => [field, other[field]])), ...winner });
+              }
+              return Array.from(map.values()).map(row => guard(row));
+            }
+            function state(row) {
+              const age = freshness(row);
+              if (age === "stale") return "stale";
+              if (age === "unknown") return "partial";
+              if (!analysisReady(row)) return "insufficient";
+              const change = number(row.changePercent), volume = number(row.volume);
+              return change === null || ["stock", "fund", "etf"].includes(row.assetType) && (volume === null || volume < 0) ? "partial" : "";
+            }
+            function createTtlSet(ttl = TTL, now = Date.now) {
+              const map = new Map();
+              return { add(key) { map.set(key, now()); }, delete(key) { return map.delete(key); },
+                has(key) { if (!map.has(key)) return false; if (now() - map.get(key) < ttl) return true; map.delete(key); return false; },
+                [Symbol.iterator]() { return map.keys(); } };
+            }
+            function createHydrator({ state: app, context, selectedSignals, get, rowsFrom, render }) {
+              const cache = new Map(); let generation = 0;
+              return async function hydrateSignalQuotes(force = false) {
+                const current = context();
+                const symbols = [...new Set(selectedSignals().map(row => String(row.symbol || "").trim().toUpperCase()).filter(Boolean))].slice(0, 12);
+                const key = `${current}|${symbols.join(",")}`, request = ++generation;
+                if (!symbols.length) { app.signalCardQuotes = {}; return; }
+                let entry = cache.get(key);
+                if (!entry || force || Date.now() - entry.time >= TTL) {
+                  const path = `/recommendations?market=${encodeURIComponent(current.split("|")[0])}&symbols=${encodeURIComponent(symbols.join(","))}${force ? "&refresh=1" : ""}`;
+                  entry = { time: Date.now(), promise: Promise.resolve().then(() => get(path)) };
+                  cache.set(key, entry); while (cache.size > 4) cache.delete(cache.keys().next().value);
+                }
+                try {
+                  const payload = await entry.promise;
+                  if (request !== generation || context() !== current) return;
+                  const rows = rowsFrom(payload).filter(row => symbols.includes(String(row.symbol || "").toUpperCase()));
+                  if (!rows.length || payload?.ok === false || payload?.error) throw new Error("symbol_quote_batch_unavailable");
+                  app.signalCardQuotes = { recommendations: rows }; app.signalCardQuoteState = "ready";
+                } catch {
+                  cache.delete(key); if (request !== generation || context() !== current) return; app.signalCardQuoteState = "error";
+                }
+                render();
+              };
+            }
+            function startVisibleRefresh(hydrate, active) {
+              const refresh = () => { if (root.document.visibilityState === "visible" && active()) Promise.resolve(hydrate()).catch(() => {}); };
+              root.document.addEventListener("visibilitychange", refresh); root.addEventListener("focus", refresh);
+              const timer = root.setInterval(refresh, TTL); root.addEventListener("pagehide", () => root.clearInterval(timer), { once: true });
+            }
+            root.SFMTraderCardEvidence = { observedAt, freshness, analysisReady, guard, mergeRows, state, createTtlSet, createHydrator, startVisibleRefresh };
+          })(window);
+          ''')
+
+          Path('src/trader-app/public/assets/signal-cards.css').write_text(r'''html .page-stack .watchlist-grid,
+          html[data-density] .watchlist-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); align-items: start; }
+          html .dash-rail .watchlist-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+          html .trader-stock-card { min-width: 0; height: auto; align-content: start; }
+          html .trader-stock-card .stock-card-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          html .trader-stock-card .stock-meta-item b { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; line-height: 1.5; }
+          html .trader-stock-card .stock-card-price { flex-wrap: wrap; row-gap: 6px; }
+          html .trader-stock-card .stock-card-chart:has(.chart-empty) { display: none; }
+          html .trader-stock-card .stock-card-chart { flex: none; min-height: 58px; height: auto; }
+          html .trader-stock-card .stock-card-actions { flex-wrap: wrap; }
+          html .strongest-signals .panel-head { align-items: center; gap: 12px; }
+          html .strongest-signals .panel-head button { min-width: 44px; min-height: 44px; }
+          ''')
+
+          replace('src/app/api/recommendations/route.ts',
+            "import { NextResponse } from 'next/server';",
+            "import { NextResponse } from 'next/server';\nimport { uniqueRecommendationSymbols } from '@/lib/trader/recommendationSymbols';")
+          replace('src/app/api/recommendations/route.ts',
+            "  const sourceMeta = requestedSymbols.length\n    ? requestedSymbols\n    : universe.symbolMeta;",
+            "  const sourceMeta = uniqueRecommendationSymbols(requestedSymbols.length\n    ? requestedSymbols\n    : universe.symbolMeta);")
+
+          replace('src/lib/market/fetchYahooQuote.ts',
+            "import { finiteQuoteNumber } from '@/lib/market/quoteNormalization';",
+            "import { finiteQuoteNumber } from '@/lib/market/quoteNormalization';\nimport { resolveYahooSessionQuote } from '@/lib/market/yahooSessionQuote.mjs';")
+          replace('src/lib/market/fetchYahooQuote.ts',
+            "  const previousClose = numberOrNull(meta?.chartPreviousClose) ?? numberOrNull(meta?.previousClose);",
+            "  const chart = body?.chart?.result?.[0];\n  const previousClose = resolveYahooSessionQuote(meta, chart?.timestamp, chart?.indicators?.quote?.[0]).previousClose;")
+
+          replace('src/lib/trader/marketQuotes.ts',
+            "import { finiteQuoteNumber as numberOrNull } from '@/lib/market/quoteNormalization';",
+            "import { finiteQuoteNumber as numberOrNull } from '@/lib/market/quoteNormalization';\nimport { resolveYahooSessionQuote } from '@/lib/market/yahooSessionQuote.mjs';")
+          replace('src/lib/trader/marketQuotes.ts',
+            "  marketTime: string | null;\n};",
+            "  marketTime: string | null;\n  volume: number | null;\n  volumeAsOf: string | null;\n};")
+          replace('src/lib/trader/marketQuotes.ts',
+            "    volume: quote.volume ?? numberOrNull(raw.volume ?? raw.regularMarketVolume ?? raw.averageVolume),",
+            "    volume: quote.volume ?? numberOrNull(raw.volume ?? raw.regularMarketVolume),")
+          replace('src/lib/trader/marketQuotes.ts',
+            "    volume: numberOrNull(record.volume ?? record.regularMarketVolume ?? record.averageVolume),",
+            "    volume: numberOrNull(record.volume ?? record.regularMarketVolume),")
+          replace('src/lib/trader/marketQuotes.ts',
+            "  const previousClose = numberOrNull(meta.chartPreviousClose)\n    ?? numberOrNull(meta.previousClose)\n    ?? (closes.length >= 2 ? closes[closes.length - 2] : null);\n  const marketTime = numberOrNull(meta.regularMarketTime);",
+            "  const session = resolveYahooSessionQuote(meta, timestamps, quote);\n  const previousClose = session.previousClose;\n  const marketTime = numberOrNull(meta.regularMarketTime);")
+          replace('src/lib/trader/marketQuotes.ts',
+            "    history,\n    marketTime: marketTime ? new Date(marketTime * 1000).toISOString() : null,",
+            "    history,\n    volume: session.volume,\n    volumeAsOf: session.volumeAsOf,\n    marketTime: marketTime ? new Date(marketTime * 1000).toISOString() : null,")
+          replace('src/lib/trader/marketQuotes.ts',
+            "    previousClose: chart.previousClose,",
+            "    previousClose: chart.previousClose,\n    volume: chart.volume,\n    volumeAsOf: chart.volumeAsOf,")
+          replace('src/lib/trader/marketQuotes.ts',
+            "    dataQuality: recommendation.dataQuality,",
+            "    dataQuality: recommendation.dataQuality,\n    technicalTrend: indicators.ema50 !== null && indicators.ema200 !== null\n      ? (indicators.ema50 > indicators.ema200 ? 'bullish' : indicators.ema50 < indicators.ema200 ? 'bearish' : 'neutral') : null,")
+
+          replace('src/trader-app/public/app.js',
+            "  const hydrationLoaded = new Set();",
+            "  const CardEvidence = window.SFMTraderCardEvidence;\n  const hydrationLoaded = CardEvidence.createTtlSet();")
+          replace('src/trader-app/public/app.js',
+            "    window.addEventListener(\"focus\", () => hydrate());",
+            "    window.addEventListener(\"focus\", () => hydrate());\n    CardEvidence.startVisibleRefresh(() => hydrate(), () => [\"dashboard\", \"ai-scanner\", \"recommendations\"].includes(state.route.id));")
+          marker = "  async function hydrateRoute(route = state.route.id, force = false) {"
+          insert = "  const hydrateSignalQuotes = CardEvidence.createHydrator({ state, get, render: renderAfterData,\n    context: () => `${marketApi(state.settings.defaultMarket)}|${currentSelectedCategory()}`,\n    selectedSignals: () => filterRecommendationsForSelection(signalsFrom(state.signals), state.settings.defaultMarket, currentSelectedCategory()), rowsFrom: legacyRecsFrom });\n\n"
+          replace('src/trader-app/public/app.js', marker, insert + marker)
+          replace('src/trader-app/public/app.js',
+            "    if (needs.has(\"signals\")) await loadSignals(force);",
+            "    if (needs.has(\"signals\")) { await loadSignals(force); await hydrateSignalQuotes(force); }")
+          replace('src/trader-app/public/app.js',
+            "    const conf = confBuckets(r);",
+            "    const conf = confBuckets(r.filter(x => CardEvidence.analysisReady(x))); const strongest = topPicks(r, 3);")
+          replace('src/trader-app/public/app.js',
+            '<article class="panel"><span class="eyebrow">${h(textPair("الأقوى", "Strongest"))}</span><h2>${h(textPair("أقوى الإشارات", "Strongest signals"))}</h2>${r.length ? assetList(topPicks(r, 3)) : dataStateEmpty(feedState)}</article>',
+            '<article class="panel strongest-signals"><div class="panel-head"><h2>${h(textPair("أقوى الإشارات", "Strongest signals", "Signaux les plus forts"))}</h2><button class="ghost-btn compact-btn" data-retry type="button">${h(terminalText("refresh"))}</button></div>${strongest.length ? assetList(strongest) : dataStateEmpty(marketDataStateCopy(state.signalCardQuoteState === "error" ? "error" : "insufficient"))}</article>')
+          replace('src/trader-app/public/app.js',
+            "    const dataState = assetDataState(a);",
+            "    const cardState = CardEvidence.state(a);\n    if (cardState) return marketDataStateCopy(cardState);\n    const dataState = assetDataState(a);")
+          replace('src/trader-app/public/app.js',
+            "    return providerName(provider) || providerCopy().label || terminalText(\"unavailable\");",
+            "    return providerName(provider) || terminalText(\"unavailable\");")
+          replace('src/trader-app/public/app.js',
+            "    const updated = asset.updatedAt || asset.lastUpdated || asset.timestamp || asset.providerStatus && asset.providerStatus.lastUpdated;",
+            "    const observed = CardEvidence.observedAt(asset); const updated = observed === null ? null : new Date(observed).toISOString();")
+          replace('src/trader-app/public/app.js',
+            '    const item = (label, value, tone = "", valueLtr = false) => `<span class="stock-meta-item ${tone}"><small>${h(label)}</small><b class="${valueLtr || isMarketValueText(value) ? "ltr market-value" : ""}">${h(value || terminalText("unavailable"))}</b></span>`;',
+            '    const item = (label, value, tone = "", valueLtr = false) => `<span class="stock-meta-item ${tone}"><small>${h(label)}</small><b title="${h(value || terminalText("unavailable"))}" class="${valueLtr || isMarketValueText(value) ? "ltr market-value" : ""}">${h(value || terminalText("unavailable"))}</b></span>`;')
+          replace('src/trader-app/public/app.js',
+            "    const evidenceReady = dataState.key === \"available\";",
+            "    const evidenceReady = CardEvidence.analysisReady(a);")
+          replace('src/trader-app/public/app.js',
+            "  function allRecommendationSources() { return mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); }",
+            "  function allRecommendationSources() { return mergeRecLists(legacyRecsFrom(state.signalCardQuotes), mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec))); }")
+          old_merge = '''  function mergeRecLists(primary, fallback) {
+            const map = new Map();
+            fallback.forEach(item => { if (item.symbol) map.set(sym(item.symbol), item); });
+            primary.forEach(item => {
+              const key = sym(item.symbol);
+              if (key) map.set(key, { ...(map.get(key) || {}), ...item });
+            });
+            return Array.from(map.values());
+          }'''
+          replace('src/trader-app/public/app.js', old_merge,
+            "  function mergeRecLists(primary, fallback) { return CardEvidence.mergeRows(primary, fallback, sym); }")
+          replace('src/trader-app/public/app.js',
+            "  function topPicks(r, n) { return [...r].sort((a, b) => (num(b.aiConfidence, b.ai_confidence, b.confidence, b.score) || 0) - (num(a.aiConfidence, a.ai_confidence, a.confidence, a.score) || 0)).slice(0, n); }",
+            "  function topPicks(r, n) { return r.filter(x => CardEvidence.analysisReady(x) && num(x.aiConfidence, x.confidence) !== null).sort((a, b) => (num(b.aiConfidence, b.ai_confidence, b.confidence, b.score) || 0) - (num(a.aiConfidence, a.ai_confidence, a.confidence, a.score) || 0)).slice(0, n); }")
+
+          replace('src/trader-app/public/index.html',
+            '    <link rel="stylesheet" href="/cinema.css?v=20260916-symbol-data" />',
+            '    <link rel="stylesheet" href="/cinema.css?v=20260916-symbol-data" />\n    <link rel="stylesheet" href="/assets/signal-cards.css?v=20260916-session-evidence" />')
+          replace('src/trader-app/public/index.html',
+            '    <script src="/app.js?v=20260916-symbol-data" defer></script>',
+            '    <script src="/assets/card-evidence.js?v=20260916-session-evidence" defer></script>\n    <script src="/app.js?v=20260916-session-evidence" defer></script>')
+          PY
+          rm -f .github/workflows/apply-signal-card-fix.yml
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm exec vitest run src/__tests__/unit/traderDataRoutes.test.ts src/__tests__/unit/traderRecommendationsEvidence.test.ts --passWithNoTests
+          pnpm typecheck
+          git add -A
+          git commit -m "fix(trader): hydrate strongest signals from current evidence"
+          git push origin HEAD:fix/signal-card-evidence-20260916
