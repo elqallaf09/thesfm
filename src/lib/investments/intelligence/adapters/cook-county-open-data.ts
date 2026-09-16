@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { RealEstateAssetInput } from '../real-estate';
 import type { OfficialPropertyContext, OfficialPropertyRecord } from '../official-context';
 
-const ENDPOINT = 'https://datacatalog.cookcountyil.gov/api/v3/views/wvhk-k5uv/query.json';
+const ENDPOINT = 'https://datacatalog.cookcountyil.gov/resource/wvhk-k5uv.json';
 const SOURCE = 'https://datacatalog.cookcountyil.gov/d/wvhk-k5uv';
 const PROVIDER_ID = 'us-il-cook-assessor-sales';
 const SOURCE_NAME = 'Cook County Assessor Parcel Sales';
@@ -79,8 +79,9 @@ export function cookCountyContextUnavailable(): OfficialPropertyContext {
 
 function eligibleRow(row: CookSaleRow): boolean {
   const township = text(row.township_code);
+  const salePrice = positive(row.sale_price);
   if (!township || !CHICAGO_TOWNSHIPS.includes(township as (typeof CHICAGO_TOWNSHIPS)[number])) return false;
-  if (positive(row.sale_price) === null || positive(row.sale_price)! < 10_000) return false;
+  if (salePrice === null || salePrice < 10_000) return false;
   if (booleanValue(row.sale_filter_less_than_10k) !== false) return false;
   if (booleanValue(row.sale_filter_deed_type) !== false) return false;
   if (booleanValue(row.sale_filter_same_sale_within_365) !== false) return false;
@@ -93,27 +94,25 @@ async function fetchCookSales(fetcher: typeof fetch): Promise<CookSaleRow[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   const townships = CHICAGO_TOWNSHIPS.map(code => `'${code}'`).join(',');
-  const query = `SELECT pin,township_code,class,sale_date,sale_price,doc_no,deed_type,is_multisale,num_parcels_sale,sale_type,sale_filter_same_sale_within_365,sale_filter_less_than_10k,sale_filter_deed_type,row_id WHERE township_code IN (${townships}) AND sale_filter_less_than_10k=false AND sale_filter_deed_type=false AND sale_filter_same_sale_within_365=false AND is_multisale=false AND num_parcels_sale=1 ORDER BY sale_date DESC LIMIT ${LIMIT + 1}`;
+  const url = new URL(ENDPOINT);
+  url.searchParams.set('$select', 'pin,township_code,class,sale_date,sale_price,doc_no,deed_type,is_multisale,num_parcels_sale,sale_type,sale_filter_same_sale_within_365,sale_filter_less_than_10k,sale_filter_deed_type,row_id');
+  url.searchParams.set('$where', `township_code in(${townships}) AND sale_filter_less_than_10k=false AND sale_filter_deed_type=false AND sale_filter_same_sale_within_365=false AND is_multisale=false AND num_parcels_sale=1`);
+  url.searchParams.set('$order', 'sale_date DESC');
+  url.searchParams.set('$limit', String(LIMIT + 1));
   try {
-    const response = await fetcher(ENDPOINT, {
-      method: 'POST',
+    const response = await fetcher(url, {
+      method: 'GET',
       redirect: 'error',
       cache: 'no-store',
       signal: controller.signal,
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, page: { pageNumber: 1, pageSize: LIMIT + 1 }, includeSynthetic: false }),
+      headers: { Accept: 'application/json' },
     });
     if (!response.ok) throw new Error('SOURCE_HTTP_ERROR');
     const body = await response.text();
     if (body.length > MAX_BYTES) throw new Error('SOURCE_RESPONSE_TOO_LARGE');
     const parsed: unknown = JSON.parse(body);
-    const rows = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === 'object' && Array.isArray((parsed as { data?: unknown }).data)
-        ? (parsed as { data: unknown[] }).data
-        : null;
-    if (!rows) throw new Error('SOURCE_SCHEMA_INVALID');
-    return rows.filter((row): row is CookSaleRow => Boolean(row && typeof row === 'object'));
+    if (!Array.isArray(parsed)) throw new Error('SOURCE_SCHEMA_INVALID');
+    return parsed.filter((row): row is CookSaleRow => Boolean(row && typeof row === 'object'));
   } finally {
     clearTimeout(timeout);
   }
