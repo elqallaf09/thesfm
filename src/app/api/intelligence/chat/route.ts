@@ -5,12 +5,12 @@ import { aiProviderConfigured, generateAssistantReply, type ChatMessage } from '
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
 import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
+import { implicitMarketAssetCandidates } from '@/lib/ai-analyst/marketAssetCandidate';
 import {
   ChatDomainMismatchError,
   MARKET_CHAT_DOMAINS,
   assertChatDomain,
   buildMarketChatSystemPrompt,
-  implicitMarketAssetCandidate,
   type VerifiedChatAsset,
   type VerifiedChatMarketSnapshot,
 } from '@/lib/ai-analyst/marketChat';
@@ -57,19 +57,22 @@ async function resolveChatAsset(input: {
     }
   }
 
-  const candidate = implicitMarketAssetCandidate(input.messages);
-  if (!candidate) return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
+  const candidates = implicitMarketAssetCandidates(input.messages);
+  if (candidates.length === 0) return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
 
-  try {
-    const resolved = await resolveMarketSymbol(candidate);
-    if (!resolved.ok) return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
-    const assetType = intelligenceAssetTypeFromMarket(resolved.asset.assetType);
-    const asset = await resolveCanonicalIntelligenceAsset({ symbol: resolved.asset.symbol, assetType });
-    return { asset, requestedUnresolvedSymbol: false, inferredFromMessage: true };
-  } catch {
-    // A short word/name is never classified as an asset without resolver evidence.
-    return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
+  for (const candidate of candidates) {
+    try {
+      const resolved = await resolveMarketSymbol(candidate);
+      if (!resolved.ok) continue;
+      const assetType = intelligenceAssetTypeFromMarket(resolved.asset.assetType);
+      const asset = await resolveCanonicalIntelligenceAsset({ symbol: resolved.asset.symbol, assetType });
+      return { asset, requestedUnresolvedSymbol: false, inferredFromMessage: true };
+    } catch {
+      // Candidate text never becomes trusted identity without resolver evidence.
+    }
   }
+
+  return { asset: null, requestedUnresolvedSymbol: false, inferredFromMessage: false };
 }
 
 async function loadVerifiedMarketSnapshot(input: {
