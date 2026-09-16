@@ -3,21 +3,38 @@ on:
   push:
     branches: [feat/investments-intelligence-2-foundation]
     paths:
+      - 'src/lib/investments/intelligence/**'
+      - 'src/components/invest/**'
+      - 'src/app/api/investments/real-estate/**'
+      - 'src/__tests__/**'
       - '.github/scripts/real-estate-public-source-discovery.mjs'
       - '.github/workflows/real-estate-public-source-check.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  discover:
+  source-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
       - uses: actions/setup-node@v7
         with:
           node-version: 22.13.0
-      - name: Read official public dataset metadata without application secrets
-        run: node .github/scripts/real-estate-public-source-discovery.mjs
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Full TypeScript check
+        run: pnpm exec tsc --noEmit --pretty false
+      - name: Lint and language parity
+        run: pnpm lint && pnpm check:i18n && pnpm check:maintainability
+      - name: Deterministic source, request, presentation and persistence regressions
+        run: pnpm exec vitest run src/lib/investments/intelligence src/__tests__/unit/officialPropertyContextPanel.test.tsx src/__tests__/unit/realEstatePublicSourceRoutes.test.ts src/__tests__/unit/realEstateSnapshotRoute.test.ts src/__tests__/unit/realEstateAtomicPersistence.test.ts
+      - name: Real official API contract, without application secrets
+        env:
+          SFM_QATAR_LIVE_CHECK: '1'
+        run: pnpm exec vitest run src/__tests__/integration/qatarOpenDataLive.test.ts

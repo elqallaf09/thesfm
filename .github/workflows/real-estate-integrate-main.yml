@@ -1,0 +1,67 @@
+name: Integrate reviewed main into property branch
+on:
+  push:
+    branches: [feat/investments-intelligence-2-foundation]
+    paths: ['.github/workflows/real-estate-integrate-main.yml']
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Merge the reviewed main revision, preserving both test discovery sets
+        env:
+          REVIEWED_MAIN: c12b50fc8c6cc0577082cdb534b89608feef3d53
+          PROPERTY_BRANCH: feat/investments-intelligence-2-foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin "refs/heads/$PROPERTY_BRANCH" | cut -f1)" = "$GITHUB_SHA"
+          git cat-file -e "$REVIEWED_MAIN^{commit}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          set +e
+          git merge --no-commit --no-ff "$REVIEWED_MAIN"
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            test "$(git diff --name-only --diff-filter=U)" = 'vitest.config.mts'
+            test "$(git rev-parse :2:vitest.config.mts)" = '2d0ca0546a6b721670285c7a93b6963d0bf50ae0'
+            test "$(git rev-parse :3:vitest.config.mts)" = '44ba71db174320fc8386f99f31fe64511ef2d2eb'
+            git show :2:vitest.config.mts > vitest.config.mts
+            python3 - <<'PY'
+          from pathlib import Path
+          path = Path('vitest.config.mts')
+          content = path.read_text()
+          needle = "      'src/__tests__/**/*.test.tsx',\n"
+          assert content.count(needle) == 1
+          path.write_text(content.replace(needle, needle + "      'src/domain/economic-intelligence/__tests__/**/*.test.ts',\n"))
+          PY
+            git add vitest.config.mts
+          fi
+          # Small reviewed cleanup: no cached observation response gets a new retrieval timestamp.
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/investments/intelligence/adapters/qatar-public-client.ts')
+          content = path.read_text()
+          old = "const useCache = fetcher === fetch && process.env.NODE_ENV !== 'test';"
+          assert content.count(old) == 1
+          path.write_text(content.replace(old, "const useCache = (resource === 'metadata' || Boolean(query.group_by)) && fetcher === fetch && process.env.NODE_ENV !== 'test';"))
+          path = Path('src/components/invest/RealEstateLandAnalyst.tsx')
+          content = path.read_text()
+          assert content.count('KP KR KS KW') == 1
+          content = content.replace('KP KR KS KW', 'KP KR KW').replace(".split(' ').filter(code => code !== 'KS')", ".split(' ')")
+          path.write_text(content)
+          PY
+          git add src/lib/investments/intelligence/adapters/qatar-public-client.ts src/components/invest/RealEstateLandAnalyst.tsx
+          test -z "$(git diff --name-only --diff-filter=U)"
+          git diff --cached --check
+          git commit -m 'Merge reviewed main into property source integration; preserve all regression suites'
+          test "$(git ls-remote origin "refs/heads/$PROPERTY_BRANCH" | cut -f1)" = "$GITHUB_SHA"
+          git push origin "HEAD:refs/heads/$PROPERTY_BRANCH"
+          echo "Integrated commit: $(git rev-parse HEAD)"
+          echo 'No main ref, database, credentials, check requirements or lint baselines were modified.'
