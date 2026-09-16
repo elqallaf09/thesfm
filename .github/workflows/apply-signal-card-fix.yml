@@ -6,6 +6,7 @@ on:
       - fix/signal-card-evidence-20260916
     paths:
       - .github/workflows/apply-signal-card-fix.yml
+      - tools/apply_signal_card_fix.py
 
 permissions:
   contents: write
