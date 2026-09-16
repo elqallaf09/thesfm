@@ -32,9 +32,26 @@ describe('one asset research workspace', () => {
     expect(source('src/components/ai-analyst/AiAnalystResearchRunner.tsx')).toContain('providedResult={result}');
     expect(source('src/components/ai-analyst/InvestmentCheckCard.tsx')).toContain('if (providedResult !== undefined) return;');
   });
-  it('keeps the shared provider module independent of the Anthropic SDK and key', () => {
+  it('keeps the asset picker synchronized with canonical route selections', () => {
+    const picker = source('src/components/ai-analyst/AiAnalystAssetPicker.tsx');
+    expect(picker).toContain('useEffect(() => {');
+    expect(picker).toContain('setSymbol(initialSymbol)');
+    expect(picker).toContain('setAssetType(initialAssetType)');
+    expect(picker).toContain('setHorizon(initialHorizon)');
+    expect(picker).toContain('[initialSymbol, initialAssetType, initialHorizon]');
+  });
+  it('keeps the shared provider private and independent of third-party model vendor credentials', () => {
     const provider = source('src/lib/server/aiProvider.ts');
-    expect(provider).not.toMatch(/ANTHROPIC_API_KEY|createAnthropic|@ai-sdk\/anthropic/);
-    expect(provider).toContain("DEFAULT_GATEWAY_MODEL = 'openai/gpt-4o-mini'");
+    expect(provider).not.toMatch(/ANTHROPIC_API_KEY|createAnthropic|@ai-sdk\/anthropic|OPENAI_API_KEY|AI_GATEWAY_API_KEY|AI_GATEWAY_TOKEN|DEFAULT_GATEWAY_MODEL/);
+    for (const name of [
+      'SFM_AI_BASE_URL',
+      'SFM_AI_MODEL',
+      'SFM_AI_API_KEY',
+      'SFM_AI_FALLBACK_BASE_URL',
+      'SFM_AI_FALLBACK_MODEL',
+      'SFM_AI_FALLBACK_API_KEY',
+    ]) expect(provider).toContain(name);
+    expect(provider).toContain("provider: 'sfm-private-primary'");
+    expect(provider).toContain("provider: 'sfm-private-fallback'");
   });
 });
