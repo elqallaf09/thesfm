@@ -24,4 +24,6 @@ jobs:
       - name: Inspect public documents without modifying any database
         env:
           SEC_USER_AGENT: 'THE-SFM admin@the-sfm.com'
-        run: pnpm exec vitest run scripts/shariah/coverage-probe.test.ts --maxWorkers=1 --minWorkers=1
+        run: |
+          sed 's|../../src/lib/|../../lib/|g' scripts/shariah/coverage-probe.test.ts > src/__tests__/integration/shariahCoverageProbe.test.ts
+          pnpm exec vitest run src/__tests__/integration/shariahCoverageProbe.test.ts --maxWorkers=1 --minWorkers=1
