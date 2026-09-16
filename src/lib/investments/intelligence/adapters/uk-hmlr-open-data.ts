@@ -10,6 +10,7 @@ const PROVIDER_ID = 'uk-hmlr-price-paid';
 const SOURCE_NAME = 'HM Land Registry Price Paid Data';
 const LIMIT = 50;
 const MAX_BYTES = 1_500_000;
+const LOOKBACK_YEARS = 3;
 
 function sparqlLiteral(value: string): string {
   return JSON.stringify(value.trim().toUpperCase());
@@ -34,6 +35,10 @@ function propertyType(value: string | null): string {
   if (!value) return 'UNKNOWN';
   const tail = decodeURIComponent(value.split('/').pop() ?? value).replace(/([a-z])([A-Z])/g, '$1 $2');
   return tail.replace(/[-_]+/g, ' ').trim().toUpperCase();
+}
+function lookbackDate(now: Date): string {
+  const date = new Date(Date.UTC(now.getUTCFullYear() - LOOKBACK_YEARS, now.getUTCMonth(), now.getUTCDate()));
+  return date.toISOString().slice(0, 10);
 }
 async function queryHmlr(query: string, fetcher: typeof fetch): Promise<Record<string, unknown>[]> {
   const controller = new AbortController();
@@ -89,15 +94,19 @@ export async function collectUkHmlrPropertyContext(
   const locationFilter = district
     ? `?addr lrcommon:district ?district . FILTER(UCASE(STR(?district)) = ${sparqlLiteral(district)})`
     : `?addr lrcommon:town ?town . FILTER(UCASE(STR(?town)) = ${sparqlLiteral(city)})`;
+  const startDate = lookbackDate(now);
+  const endDate = now.toISOString().slice(0, 10);
   const query = `
 PREFIX lrppi: <http://landregistry.data.gov.uk/def/ppi/>
 PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 SELECT ?transaction ?amount ?date ?propertyType ?estateType ?postcode ?town ?district ?county ?paon ?saon ?street
 WHERE {
   ?transaction a lrppi:TransactionRecord ;
     lrppi:pricePaid ?amount ;
     lrppi:transactionDate ?date ;
     lrppi:propertyAddress ?addr .
+  FILTER(?date >= "${startDate}"^^xsd:date && ?date <= "${endDate}"^^xsd:date)
   OPTIONAL { ?transaction lrppi:propertyType ?propertyType }
   OPTIONAL { ?transaction lrppi:estateType ?estateType }
   ${locationFilter}
@@ -118,7 +127,7 @@ LIMIT ${LIMIT + 1}`;
     const transaction = binding(row, 'transaction');
     const observedOn = isoDate(binding(row, 'date'));
     const reportedValue = finitePositive(binding(row, 'amount'));
-    if (!transaction || !observedOn || observedOn > now.toISOString().slice(0, 10) || !reportedValue || seen.has(transaction)) continue;
+    if (!transaction || !observedOn || observedOn > endDate || !reportedValue || seen.has(transaction)) continue;
     seen.add(transaction);
     const town = binding(row, 'town') ?? city;
     const rowDistrict = binding(row, 'district') ?? district;
