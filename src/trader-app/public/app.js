@@ -4204,7 +4204,7 @@
       </aside></div>`;
   }
 
-  const { drawerResourceKey, drawerResources, drawerTabLoading, drawerLoadStatus,
+  const { drawerTabLoading, drawerLoadStatus,
     loadDrawerData, drawerLoadedContext, drawerNewsForSymbol, drawerCalendarRows } = window.SFMTraderDrawerData.createController({
     state, drawerData, sym, currentLanguage, textPair, h, payloadFeatureState,
     marketForSymbol, currentMarket, marketApi, marketNewsPath, get, findAssetForSymbol,
