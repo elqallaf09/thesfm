@@ -26,14 +26,14 @@ export function publicCatalogItem(row: CatalogRow, now = new Date()) {
     ? (data.screeningRules as { financial?: unknown }).financial : null;
   const persistedStatus = row.shariah_status || 'unclassified';
   let status = persistedStatus;
-  if (status !== 'unclassified' && (!recent || (!proven && !manual))) status = 'needs_review';
-  if (status === 'compliant' && !manual && isFinancialDataStale(typeof data.financialPeriod === 'string' ? data.financialPeriod : null, SFM_FTSE_POINT_IN_TIME.freshnessMonths, now)) status = 'needs_review';
+  if (status !== 'unclassified' && (!recent || (!proven && !fund && !manual))) status = 'needs_review';
+  if (status === 'compliant' && !manual && !fund && isFinancialDataStale(typeof data.financialPeriod === 'string' ? data.financialPeriod : null, SFM_FTSE_POINT_IN_TIME.freshnessMonths, now)) status = 'needs_review';
   // A generic fund evidence review remains needs_review. A currently verified
   // provider/SSB Shariah designation is a separate public status: the fund is
   // presented as published-Shariah, while the persisted SFM review can remain
   // needs_review for periodic holdings/source monitoring. A persisted failure is
   // never hidden by the published designation.
-  if (fund && !manual) status = 'needs_review';
+  if (fund && !manual && persistedStatus !== 'non_compliant') status = 'needs_review';
   if (publishedDesignation && !manual && persistedStatus !== 'non_compliant') status = 'compliant';
   const labels = { compliant: 'اجتاز الفحص', non_compliant: 'لم يجتز الفحص', needs_review: 'يحتاج مراجعة', unclassified: 'غير مصنف' };
   if (!(status in labels)) status = 'needs_review';
