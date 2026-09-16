@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { REAL_ESTATE_ANALYST_PATH, validInvestmentId, type SavedRealEstateContext } from '@/lib/investments/realEstateHandoff';
 import { RealEstateLandAnalyst } from './RealEstateLandAnalyst';
+import { RealEstateMarketCoverage } from './RealEstateMarketCoverage';
 import { RealEstateValuationTimeline } from './RealEstateValuationTimeline';
 import styles from '@/components/investments/InvestmentCenter.module.css';
 import './RealEstateLandAnalyst.css';
@@ -35,6 +36,7 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
         </div>
         <Link className={styles.secondaryAction} href="/global-markets">{L('العودة إلى مركز الأسواق العالمية', 'Back to Global Markets Hub', 'Retour au centre des marchés mondiaux')}</Link>
       </header>
+      <RealEstateMarketCoverage />
       {loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !user || isGuest || !session?.access_token ? (
         <section className={styles.guestGate}><p>{L('سجّل الدخول لتحليل عقارك والوصول إلى سجلاتك الخاصة.', 'Sign in to analyze your property and access your private records.', 'Connectez-vous pour analyser votre bien et accéder à vos données privées.')}</p><Link href={`/login?next=${encodeURIComponent(next)}`}>{L('تسجيل الدخول', 'Sign in', 'Se connecter')}</Link></section>
       ) : <OwnedPropertyWorkspace key={`${user.id}:${investmentId ?? ''}:${positionId ?? ''}`} investmentId={investmentId} positionId={positionId} token={session.access_token} />}
