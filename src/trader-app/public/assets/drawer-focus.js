@@ -29,7 +29,7 @@
 
   function capture(host) {
     return {
-      ownsFocus: host.contains(document.activeElement),
+      ownsFocus: document.hasFocus() && host.contains(document.activeElement),
       identity: identity(document.activeElement),
       view: viewKey(host),
       scroll: scrollSelectors.map(selector => {
