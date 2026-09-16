@@ -14,9 +14,6 @@ def run(*args: str) -> str:
 
 text = run("git", "show", f"{SOURCE_COMMIT}:{SOURCE_PATH}")
 script = dedent(text.split("        run: |\n", 1)[1])
-
-# Preserve the already-authored client evidence helper/CSS/app/index mutations, but
-# replace stale backend exact-match edits with edits for the current main tree.
 route_start = script.index("replace('src/app/api/recommendations/route.ts'")
 app_start = script.index("replace('src/trader-app/public/app.js'", route_start)
 
@@ -48,8 +45,13 @@ replace('src/lib/trader/marketQuotes.ts',
   "    technicalSummary: recommendation.technicalSummary,",
   "    technicalSummary: recommendation.technicalSummary,\n    technicalTrend: indicators.ema50 !== null && indicators.ema200 !== null\n      ? (indicators.ema50 > indicators.ema200 ? 'bullish' : indicators.ema50 < indicators.ema200 ? 'bearish' : 'neutral') : null,")
 '''
-
 script = script[:route_start] + backend + script[app_start:]
+
+obsolete_focus = '''replace('src/trader-app/public/app.js',
+  "    window.addEventListener(\\"focus\\", () => hydrate());",
+  "    window.addEventListener(\\"focus\\", () => hydrate());\\n    CardEvidence.startVisibleRefresh(() => hydrate(), () => [\\"dashboard\\", \\"ai-scanner\\", \\"recommendations\\"].includes(state.route.id));")
+'''
+script = script.replace(obsolete_focus, "", 1)
 script = script.replace(
     "rm -f .github/workflows/apply-signal-card-fix.yml",
     "rm -f .github/workflows/apply-signal-card-fix.yml .github/workflows/signal-card-repair.yml tools/apply_signal_card_fix.py",
