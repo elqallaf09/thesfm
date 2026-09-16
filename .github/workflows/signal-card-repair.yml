@@ -1,0 +1,46 @@
+name: Signal card repair workbench
+on:
+  push:
+    branches: [fix/signal-card-evidence-20260916]
+    paths: [.github/workflows/signal-card-repair.yml]
+permissions:
+  contents: read
+jobs:
+  source-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: integrated
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: elqallaf09/the-sfm-trader
+          ref: main
+          path: standalone
+          persist-credentials: false
+      - name: Archive only tracked source and test configuration
+        shell: python
+        run: |
+          import pathlib, subprocess, tarfile, json
+          out = pathlib.Path('source-evidence'); out.mkdir()
+          manifest = {}
+          for name in ['integrated', 'standalone']:
+            root = pathlib.Path(name)
+            manifest[name] = subprocess.check_output(['git','rev-parse','HEAD'], cwd=root, text=True).strip()
+            names = subprocess.check_output(['git','ls-files','-z'], cwd=root).decode().split('\0')
+            with tarfile.open(out / (name+'.tar.gz'), 'w:gz') as tar:
+              for item in names:
+                p = pathlib.PurePosixPath(item)
+                if not item or any(x.startswith('.env') or x in ['secrets', 'credentials', 'node_modules'] for x in p.parts): continue
+                if p.suffix.lower() not in ['.js','.mjs','.cjs','.ts','.tsx','.css','.html','.json','.yml','.yaml','.md']: continue
+                if not (p.parts[0] in ['src','public','server','lib','scripts','test','tests','.github'] or len(p.parts)==1): continue
+                if (root/item).is_file(): tar.add(root/item, arcname=item, recursive=False)
+          (out/'manifest.json').write_text(json.dumps(manifest, indent=2))
+          print(json.dumps(manifest, indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signal-card-source-evidence
+          path: source-evidence/
+          retention-days: 1
