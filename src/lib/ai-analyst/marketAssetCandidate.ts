@@ -1,5 +1,5 @@
 const COMPARISON_CUE = /(?:\b(?:compare|versus|vs\.?|contre)\b|(?:قارن|مقارنه|مقارنة))/iu;
-const QUESTION_LEAD = /^(?:شنو|وش|ما|ماذا|هل|كيف|كم|ليش|متى|وين|من|what|how|why|when|where|who|which|comment|pourquoi|quand|où|ou|qui|quel)\b/iu;
+const QUESTION_LEAD = /^(?:شنو|وش|ما|ماذا|هل|كيف|كم|ليش|متى|وين|من|what|how|why|when|where|who|which|comment|pourquoi|quand|où|ou|qui|quel)(?:\s|$)/iu;
 const ASSET_SHAPE = /^[\p{L}\p{N}.^=:_/&'’+\-\s]+$/u;
 const TICKER_TOKEN = /\b[A-Z][A-Z0-9]{0,11}(?:[.^=:_/-][A-Z0-9]+)*\b/g;
 
