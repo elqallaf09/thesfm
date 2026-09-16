@@ -1,15 +1,18 @@
-import React from 'react';
 import { readFileSync } from 'node:fs';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { RealEstateIntelligenceEntry, REAL_ESTATE_ENTRY_COPY } from '@/components/investments/RealEstateIntelligenceEntry';
-import { realEstateInvestmentHref, savedRealEstateContext, legacyRealEstateContext, validInvestmentId } from '@/lib/investments/realEstateHandoff';
+import {
+  REAL_ESTATE_MARKET_CENTER_PATH,
+  realEstateInvestmentHref,
+  savedRealEstateContext,
+  legacyRealEstateContext,
+  validInvestmentId,
+} from '@/lib/investments/realEstateHandoff';
 
 const id = '11111111-1111-4111-8111-111111111111';
 
-describe('Investments Center property handoff', () => {
-  it.each(['realEstate', 'REAL_ESTATE', 'property', 'LAND'])('routes %s to the property analyst without a synthetic stock ticker', type => {
-    expect(realEstateInvestmentHref({ id, type })).toBe(`/invest/real-estate?investmentId=${id}`);
+describe('Real Estate Market Center handoff', () => {
+  it.each(['realEstate', 'REAL_ESTATE', 'property', 'LAND'])('routes %s to the market center without a synthetic stock ticker', type => {
+    expect(realEstateInvestmentHref({ id, type })).toBe(`${REAL_ESTATE_MARKET_CENTER_PATH}?investmentId=${id}`);
   });
 
   it.each(['stocks', 'crypto', 'gold', 'fund', 'project'])('does not intercept the existing %s analyst route', type => {
@@ -18,7 +21,7 @@ describe('Investments Center property handoff', () => {
 
   it('never embeds untrusted IDs, addresses or purchase values in the handoff', () => {
     expect(validInvestmentId('../../private')).toBe(false);
-    expect(realEstateInvestmentHref({ id: '../../private', type: 'realEstate' })).toBe('/invest/real-estate');
+    expect(realEstateInvestmentHref({ id: '../../private', type: 'realEstate' })).toBe(REAL_ESTATE_MARKET_CENTER_PATH);
     expect(realEstateInvestmentHref({ id, type: 'realEstate' })).not.toMatch(/price|address|sourceUrl/);
   });
 
@@ -45,26 +48,31 @@ describe('Investments Center property handoff', () => {
     expect(context.asset.address).toBe('Recorded address');
   });
 
-  it.each(['ar', 'en', 'fr'] as const)('renders a named, truthful %s entry with a real link', lang => {
-    const markup = renderToStaticMarkup(<RealEstateIntelligenceEntry lang={lang} />);
-    expect(markup).toContain('href="/invest/real-estate"');
-    expect(markup).toContain(REAL_ESTATE_ENTRY_COPY[lang].coverage);
-    expect(markup).toContain('data-testid="real-estate-intelligence-entry"');
-    expect(markup).not.toContain('<main');
+  it('moves the real-estate destination under Global Markets and out of Investments navigation', () => {
+    const nav = readFileSync('src/components/navigationConfig.ts', 'utf8');
+    expect(nav).toContain("href: '/global-markets/real-estate'");
+    expect(nav).toContain("labelKey: 'nav_real_estate_market'");
+    const investments = readFileSync('src/components/investments/InvestmentCenter.tsx', 'utf8');
+    expect(investments).toContain("filter(entry => entry !== 'real-estate')");
+    expect(investments).not.toContain('<RealEstateIntelligenceEntry');
+    expect(investments).toContain('realEstateInvestmentHref(investment) ?? investmentAnalysisHref(investment)');
   });
 
-  it('mounts one lightweight entry inside the existing center shell', () => {
-    const source = readFileSync('src/components/investments/InvestmentCenter.tsx', 'utf8');
-    expect(source.match(/<RealEstateIntelligenceEntry\b/g)).toHaveLength(1);
-    expect(source).toContain("assetClass === 'overview' || assetClass === 'real-estate'");
-    expect(source).toContain('realEstateInvestmentHref(investment) ?? investmentAnalysisHref(investment)');
-    expect(source).not.toContain('RealEstateLandAnalyst');
+  it('keeps legacy property URLs as redirects instead of duplicate market workspaces', () => {
+    const legacy = readFileSync('src/app/invest/real-estate/page.tsx', 'utf8');
+    const legacySaved = readFileSync('src/app/invest/real-estate/[positionId]/page.tsx', 'utf8');
+    expect(legacy).toContain('redirect(target)');
+    expect(legacySaved).toContain('REAL_ESTATE_MARKET_CENTER_PATH');
+    const assetClass = readFileSync('src/app/investments/[assetClass]/page.tsx', 'utf8');
+    expect(assetClass).toContain("assetClass === 'real-estate'");
+    expect(assetClass).toContain('redirect(REAL_ESTATE_MARKET_CENTER_PATH)');
   });
 
   it('preserves explicit history failures and resets the workspace on account changes', () => {
     const source = readFileSync('src/components/invest/RealEstateAnalystWorkspace.tsx', 'utf8');
     expect(source).toContain('key={`${user.id}:');
     expect(source).toContain('this does not mean there are no saved valuations');
+    expect(source).toContain('Real Estate Market Center');
     expect(source).not.toContain('.catch(() => setItems([]))');
     const form = readFileSync('src/components/invest/RealEstateLandAnalyst.tsx', 'utf8');
     expect(form).toContain('revision === revisionRef.current');
