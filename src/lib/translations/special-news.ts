@@ -8,6 +8,11 @@ export const TR_SPECIAL_NEWS: Record<string, TranslationEntry> = {
     en: 'Federal Reserve News',
     fr: 'Actualités de la Réserve fédérale',
   },
+  nav_asia_market_news: {
+    ar: 'أخبار السوق الآسيوي',
+    en: 'Asian Market News',
+    fr: 'Actualités des marchés asiatiques',
+  },
   nav_healthcare_stocks_news: {
     ar: 'أخبار الأسهم الطبية',
     en: 'Healthcare Stocks News',
