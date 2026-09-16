@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { CheckCircle2, Clock3, ExternalLink, Globe2, Search, ShieldAlert } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { REAL_ESTATE_MARKET_COVERAGE, type RealEstateMarketCoverageState } from '@/lib/investments/intelligence/market-center-coverage';
