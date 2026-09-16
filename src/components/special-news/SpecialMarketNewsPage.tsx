@@ -21,7 +21,7 @@ import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils
 import type { NewsPageBackgroundCategory } from '@/lib/news/pageBackground';
 import styles from './SpecialMarketNewsPage.module.css';
 
-export type SpecialNewsTopic = 'federal-reserve' | 'healthcare-stocks' | 'new-stocks' | 'stocks-under-1';
+export type SpecialNewsTopic = 'federal-reserve' | 'healthcare-stocks' | 'new-stocks' | 'stocks-under-1' | 'metals-news';
 
 type Lang = 'ar' | 'en' | 'fr';
 
@@ -53,12 +53,26 @@ type SpecialNewsItem = {
   priceVerified?: boolean;
 };
 
+type MetalTickerItem = {
+  id: 'gold' | 'silver' | 'copper' | 'platinum' | 'palladium';
+  symbol: string;
+  unit: 'USD/oz' | 'USD/lb';
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  source: string;
+  delayed: boolean;
+  available: boolean;
+  unavailableReason?: string | null;
+};
+
 type SpecialNewsResponse = {
   ok?: boolean;
   success?: boolean;
   code?: string | null;
   topic?: SpecialNewsTopic;
   items?: SpecialNewsItem[];
+  metalTicker?: MetalTickerItem[];
   updatedAt?: string | null;
   lastSuccessfulUpdate?: string | null;
   partialFailure?: boolean;
@@ -85,7 +99,6 @@ type TopicCopy = {
 type CommonCopy = {
   refresh: string;
   refreshing: string;
-  source: string;
   official: string;
   verified: string;
   delayed: string;
@@ -97,6 +110,8 @@ type CommonCopy = {
   partial: string;
   results: string;
   priceRule: string;
+  metalsTicker: string;
+  unavailable: string;
 };
 
 const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
@@ -216,13 +231,41 @@ const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
       search: 'Rechercher société ou symbole...',
     },
   },
+  'metals-news': {
+    ar: {
+      title: 'أخبار المعادن',
+      subtitle: 'أخبار الذهب والفضة والنحاس والبلاتين والبلاديوم، مع شريط أسعار متحرك مبني على أسعار سوقية متاحة وليست أرقامًا ثابتة.',
+      badge: 'المعادن الثمينة والصناعية',
+      method: 'نربط أخبار المعادن بتحركات الأسعار والعرض والطلب والاقتصاد والجغرافيا السياسية. شريط الأسعار يستخدم بيانات مزود سوق خارجي وقد تكون متأخرة.',
+      empty: 'لا توجد أخبار معادن مطابقة حاليًا.',
+      emptyHint: 'حدّث لاحقًا؛ الصفحة لا تنشئ أخبارًا أو أسعارًا وهمية عند غياب البيانات.',
+      search: 'ابحث عن الذهب، الفضة، النحاس، البلاتين...',
+    },
+    en: {
+      title: 'Metals News',
+      subtitle: 'Gold, silver, copper, platinum, and palladium news with a moving ticker backed by available market quotes rather than fixed placeholder values.',
+      badge: 'Precious & industrial metals',
+      method: 'Metal news is connected to price moves, supply, demand, macroeconomics, and geopolitics. Ticker quotes come from an external market-data source and may be delayed.',
+      empty: 'No matching metals news is available right now.',
+      emptyHint: 'Refresh later; the page does not invent stories or prices when live data is unavailable.',
+      search: 'Search gold, silver, copper, platinum...',
+    },
+    fr: {
+      title: 'Actualités des métaux',
+      subtitle: 'Actualités de l’or, de l’argent, du cuivre, du platine et du palladium avec un bandeau de cours alimenté par des données de marché disponibles.',
+      badge: 'Métaux précieux et industriels',
+      method: 'Les actualités sont reliées aux prix, à l’offre, à la demande, à la macroéconomie et à la géopolitique. Les cours peuvent être différés.',
+      empty: 'Aucune actualité correspondante sur les métaux actuellement.',
+      emptyHint: 'Actualisez plus tard ; aucun article ni cours fictif n’est créé lorsque les données manquent.',
+      search: 'Rechercher or, argent, cuivre, platine...',
+    },
+  },
 };
 
 const COMMON_COPY: Record<Lang, CommonCopy> = {
   ar: {
     refresh: 'تحديث',
     refreshing: 'جارٍ التحديث...',
-    source: 'المصدر',
     official: 'مصدر رسمي',
     verified: 'سعر متحقق',
     delayed: 'السعر قد يكون متأخرًا',
@@ -234,11 +277,12 @@ const COMMON_COPY: Record<Lang, CommonCopy> = {
     partial: 'بعض مصادر الأخبار غير متاحة حاليًا؛ النتائج المعروضة من المصادر التي استجابت.',
     results: 'نتيجة',
     priceRule: 'يظهر فقط السهم الذي تم التحقق من أن سعره الحالي المتاح أقل من 1$.',
+    metalsTicker: 'أسعار المعادن',
+    unavailable: 'غير متاح',
   },
   en: {
     refresh: 'Refresh',
     refreshing: 'Refreshing...',
-    source: 'Source',
     official: 'Official source',
     verified: 'Price verified',
     delayed: 'Quote may be delayed',
@@ -250,11 +294,12 @@ const COMMON_COPY: Record<Lang, CommonCopy> = {
     partial: 'Some news providers are currently unavailable; results are from providers that responded.',
     results: 'results',
     priceRule: 'Only stocks with an available verified current quote below $1 are shown.',
+    metalsTicker: 'Metals prices',
+    unavailable: 'Unavailable',
   },
   fr: {
     refresh: 'Actualiser',
     refreshing: 'Actualisation...',
-    source: 'Source',
     official: 'Source officielle',
     verified: 'Prix vérifié',
     delayed: 'Le cours peut être différé',
@@ -266,7 +311,17 @@ const COMMON_COPY: Record<Lang, CommonCopy> = {
     partial: 'Certaines sources sont indisponibles ; les résultats proviennent des sources ayant répondu.',
     results: 'résultats',
     priceRule: 'Seules les actions dont le cours disponible et vérifié est inférieur à 1 $ sont affichées.',
+    metalsTicker: 'Cours des métaux',
+    unavailable: 'Indisponible',
   },
+};
+
+const METAL_NAMES: Record<MetalTickerItem['id'], Record<Lang, string>> = {
+  gold: { ar: 'الذهب', en: 'Gold', fr: 'Or' },
+  silver: { ar: 'الفضة', en: 'Silver', fr: 'Argent' },
+  copper: { ar: 'النحاس', en: 'Copper', fr: 'Cuivre' },
+  platinum: { ar: 'البلاتين', en: 'Platinum', fr: 'Platine' },
+  palladium: { ar: 'البلاديوم', en: 'Palladium', fr: 'Palladium' },
 };
 
 const BACKGROUNDS: Record<SpecialNewsTopic, NewsPageBackgroundCategory> = {
@@ -274,6 +329,7 @@ const BACKGROUNDS: Record<SpecialNewsTopic, NewsPageBackgroundCategory> = {
   'healthcare-stocks': 'healthcare',
   'new-stocks': 'growth',
   'stocks-under-1': 'cyclical',
+  'metals-news': 'high-income',
 };
 
 const ICONS = {
@@ -281,6 +337,7 @@ const ICONS = {
   'healthcare-stocks': HeartPulse,
   'new-stocks': Sparkles,
   'stocks-under-1': CircleDollarSign,
+  'metals-news': CircleDollarSign,
 } as const;
 
 function normalizeLang(value: string): Lang {
@@ -309,6 +366,50 @@ function formatChange(value: number | null | undefined) {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+function MetalPriceTicker({ items, lang, label, unavailable }: {
+  items: MetalTickerItem[];
+  lang: Lang;
+  label: string;
+  unavailable: string;
+}) {
+  if (items.length === 0) return null;
+
+  const tickerSet = (duplicate = false) => (
+    <div className={styles.tickerSet} aria-hidden={duplicate || undefined}>
+      {items.map(item => {
+        const price = formatPrice(item.price);
+        const change = formatChange(item.changePercent);
+        const direction = item.changePercent && item.changePercent > 0
+          ? 'up'
+          : item.changePercent && item.changePercent < 0
+            ? 'down'
+            : 'flat';
+        return (
+          <div className={styles.metalTickerItem} key={`${duplicate ? 'dup-' : ''}${item.id}`}>
+            <span className={styles.metalName}>{METAL_NAMES[item.id][lang]}</span>
+            <span className={styles.metalSymbol}>{item.symbol}</span>
+            <strong>{item.available && price ? price : unavailable}</strong>
+            {item.available ? <small>{item.unit}</small> : null}
+            {item.available && change ? <span className={styles.metalChange} data-direction={direction}>{change}</span> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <section className={styles.metalTicker} aria-label={label}>
+      <div className={styles.tickerLabel}>{label}</div>
+      <div className={styles.tickerViewport}>
+        <div className={styles.tickerTrack}>
+          {tickerSet(false)}
+          {tickerSet(true)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
   const { lang: rawLang, dir } = useLanguage();
   const lang = normalizeLang(rawLang);
@@ -317,6 +418,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
   const TopicIcon = ICONS[topic];
 
   const [items, setItems] = useState<SpecialNewsItem[]>([]);
+  const [metalTicker, setMetalTicker] = useState<MetalTickerItem[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -344,6 +446,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
       }
 
       setItems(dedupeNewsItems(payload.items ?? []));
+      setMetalTicker(payload.metalTicker ?? []);
       setPartialFailure(Boolean(payload.partialFailure));
       setLastUpdated(payload.updatedAt ?? payload.lastSuccessfulUpdate ?? null);
     } catch (loadError) {
@@ -407,6 +510,10 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
             {topic === 'stocks-under-1' ? <p className={styles.priceRule}>{common.priceRule}</p> : null}
           </div>
         </section>
+
+        {topic === 'metals-news' ? (
+          <MetalPriceTicker items={metalTicker} lang={lang} label={common.metalsTicker} unavailable={common.unavailable} />
+        ) : null}
 
         {partialFailure ? (
           <div className={styles.notice} role="status">
