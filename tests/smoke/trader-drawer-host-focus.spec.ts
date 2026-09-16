@@ -12,6 +12,7 @@ for (const language of ['ar', 'en', 'fr']) {
       page.on('pageerror', error => errors.push(error.message));
       const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
       await frame.locator('[data-symbol-details="AAPL"]').first().click();
+        await frame.locator("#drawer-more-toggle").click();
       await frame.locator('[data-drawer-share]').focus();
       // Equivalent to a user focusing a global-shell control outside the iframe.
       await page.evaluate(() => {

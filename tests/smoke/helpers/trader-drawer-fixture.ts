@@ -38,20 +38,20 @@ export async function createTraderDrawerFixture() {
   };
 }
 
-export async function openTraderDrawerFixture(page: Page, origin: string, language: string, theme: string) {
+export async function openTraderDrawerFixture(page: Page, origin: string, language: string, theme: string, watchlist = ['AAPL']) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.addInitScript(({ language, theme }) => {
+  await page.addInitScript(({ language, theme, watchlist }) => {
     localStorage.setItem('sfm_lang', language);
     localStorage.setItem('the-sfm-theme', theme);
-    localStorage.setItem('sfmTraderWatchlist:v3', JSON.stringify(['AAPL']));
+    localStorage.setItem('sfmTraderWatchlist:v3', JSON.stringify(watchlist));
     localStorage.setItem('sfmTraderSettings:v1', JSON.stringify({ defaultMarket: 'us-stocks', quickTickerVisible: false }));
-  }, { language, theme });
+  }, { language, theme, watchlist });
   await page.route('**/api/**', route => route.fulfill({
     status: 200, contentType: 'application/json',
     body: JSON.stringify({ success: false, status: 'unavailable', items: [], data: [], recommendations: [], followedTrades: [], dataProvider: { configured: false, status: 'disconnected' } }),
   }));
   await page.goto(`${origin}/host`, { waitUntil: 'domcontentloaded' });
-  await expect(page.frameLocator('iframe').locator('[data-symbol-details="AAPL"]').first()).toBeVisible();
+  await expect(page.frameLocator('iframe').locator(`[data-symbol-details="${watchlist[0]}"]`).first()).toBeVisible();
   const frame = page.frame({ name: 'drawer-fixture' });
   if (!frame) throw new Error('No Trader frame');
   await expect(frame.locator('html')).toHaveAttribute('data-embedded', 'true');
