@@ -1,0 +1,217 @@
+name: Economic intelligence live verification
+
+on:
+  push:
+    branches: [main, fix/economic-intelligence-live-acceptance-20260916]
+    paths:
+      - src/app/api/economic-intelligence/**
+      - src/domain/economic-intelligence/**
+      - src/app/economic-intelligence/**
+      - src/components/finance/Economic*.tsx
+      - .github/workflows/economic-intelligence-live-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: economic-intelligence-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify authenticated Economic Intelligence on exact deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve the READY deployment for this exact commit
+        id: target
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const production = context.ref === 'refs/heads/main';
+            const environment = production ? 'Production' : 'Preview';
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const deployments = await github.paginate(github.rest.repos.listDeployments, {
+                ...context.repo, sha: context.sha, environment, per_page: 100,
+              });
+              for (const deployment of deployments) {
+                if (deployment.sha !== context.sha || deployment.environment !== environment) continue;
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  ...context.repo, deployment_id: deployment.id, per_page: 100,
+                });
+                const latest = statuses[0];
+                if (!latest || latest.state !== 'success') continue;
+                let target;
+                try { target = new URL(latest.environment_url || latest.target_url); }
+                catch { continue; }
+                if (target.protocol !== 'https:' || target.username || target.password) continue;
+                if (!/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\.vercel\.app$/.test(target.hostname)) continue;
+                core.setOutput('url', target.origin);
+                core.setOutput('environment', environment);
+                core.info(`Resolved ${environment} deployment for exact SHA ${context.sha}.`);
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed(`No READY ${environment} deployment found for exact SHA ${context.sha}.`);
+
+      - name: Verify authenticated reads and a reversible confirmation lifecycle
+        uses: actions/github-script@v8
+        env:
+          TARGET_URL: ${{ steps.target.outputs.url }}
+          TARGET_ENVIRONMENT: ${{ steps.target.outputs.environment }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        with:
+          script: |
+            const required = ['TARGET_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'E2E_USER_EMAIL', 'E2E_USER_PASSWORD'];
+            for (const name of required) {
+              if (!process.env[name]?.trim()) throw new Error(`Missing live verification capability: ${name}`);
+            }
+
+            const origin = new URL(process.env.TARGET_URL);
+            const auth = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+            if (origin.protocol !== 'https:' || !/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\.vercel\.app$/.test(origin.hostname)) {
+              throw new Error('Invalid deployment target');
+            }
+            if (auth.protocol !== 'https:' || !/^[a-z0-9]{20}\.supabase\.co$/.test(auth.hostname) || auth.username || auth.password) {
+              throw new Error('Invalid Supabase target');
+            }
+
+            const publicKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim();
+            const baseHeaders = { accept: 'application/json' };
+            if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()) {
+              baseHeaders['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET.trim();
+            }
+
+            async function request(path, options = {}) {
+              const response = await fetch(new URL(path, origin), {
+                redirect: 'error',
+                signal: AbortSignal.timeout(30000),
+                ...options,
+                headers: { ...baseHeaders, ...(options.headers || {}) },
+              });
+              const payload = await response.json().catch(() => null);
+              return { response, payload };
+            }
+            function requirePrivateNoStore(response, label) {
+              if (!/no-store/i.test(response.headers.get('cache-control') || '')) {
+                throw new Error(`${label} must be private/no-store`);
+              }
+            }
+            function requireSuccess(result, label) {
+              if (result.response.status !== 200 || result.payload?.ok !== true) {
+                const code = /^[A-Z0-9_]{1,80}$/.test(result.payload?.error?.code || '') ? result.payload.error.code : 'UNKNOWN';
+                throw new Error(`${label} failed: HTTP ${result.response.status}, code=${code}`);
+              }
+              requirePrivateNoStore(result.response, label);
+            }
+
+            let token;
+            let cleanupKey = null;
+            let lifecycle = 'skipped_no_safe_zero_state';
+            try {
+              const anonymous = await request('/api/economic-intelligence/readiness');
+              if (anonymous.response.status !== 401) throw new Error(`Anonymous readiness gate returned HTTP ${anonymous.response.status}`);
+              requirePrivateNoStore(anonymous.response, 'anonymous readiness');
+
+              const login = await fetch(new URL('/auth/v1/token?grant_type=password', auth), {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', apikey: publicKey },
+                body: JSON.stringify({ email: process.env.E2E_USER_EMAIL.trim(), password: process.env.E2E_USER_PASSWORD }),
+                redirect: 'error',
+                signal: AbortSignal.timeout(20000),
+              });
+              const session = await login.json().catch(() => ({}));
+              if (!login.ok || typeof session.access_token !== 'string') throw new Error(`Test-account authentication failed: HTTP ${login.status}`);
+              token = session.access_token;
+              core.setSecret(token);
+              if (typeof session.refresh_token === 'string') core.setSecret(session.refresh_token);
+
+              const authHeaders = { authorization: `Bearer ${token}` };
+              const readiness = await request('/api/economic-intelligence/readiness', { headers: authHeaders });
+              requireSuccess(readiness, 'readiness');
+              if (!readiness.payload?.readiness || typeof readiness.payload.readiness !== 'object') throw new Error('Readiness payload missing');
+
+              const provenance = await request('/api/economic-intelligence/provenance', { headers: authHeaders });
+              requireSuccess(provenance, 'provenance');
+              if (!Array.isArray(provenance.payload?.provenance?.entries)) throw new Error('Provenance entries missing');
+
+              const brief = await request('/api/economic-intelligence/daily-brief?lang=ar', { headers: authHeaders });
+              requireSuccess(brief, 'daily brief');
+              if (!Array.isArray(brief.payload?.history?.entries)) throw new Error('Daily brief history missing');
+
+              const before = Array.isArray(readiness.payload.readiness.confirmations)
+                ? readiness.payload.readiness.confirmations.filter(value => typeof value === 'string')
+                : [];
+              const issues = Array.isArray(readiness.payload.readiness.nextActions)
+                ? readiness.payload.readiness.nextActions.map(item => item?.code).filter(code => typeof code === 'string')
+                : [];
+              const safeCandidates = [
+                { key: 'no_debts', match: code => code === 'finance:debts_missing' },
+                { key: 'no_investments', match: code => code === 'finance:investments_missing' || code === 'trader:portfolio_missing' },
+                { key: 'no_business_projects', match: code => code === 'business:projects_missing' },
+              ];
+              const candidate = safeCandidates.find(item => !before.includes(item.key) && issues.some(item.match));
+
+              if (candidate) {
+                cleanupKey = candidate.key;
+                const saved = await request('/api/economic-intelligence/readiness', {
+                  method: 'POST',
+                  headers: { ...authHeaders, 'content-type': 'application/json' },
+                  body: JSON.stringify({ key: candidate.key }),
+                });
+                requireSuccess(saved, 'confirmation save');
+
+                const afterSave = await request('/api/economic-intelligence/readiness', { headers: authHeaders });
+                requireSuccess(afterSave, 'readiness after confirmation');
+                const active = Array.isArray(afterSave.payload?.readiness?.confirmations) ? afterSave.payload.readiness.confirmations : [];
+                const invalidated = Array.isArray(afterSave.payload?.readiness?.invalidatedConfirmations) ? afterSave.payload.readiness.invalidatedConfirmations : [];
+                if (!active.includes(candidate.key) && !invalidated.includes(candidate.key)) {
+                  throw new Error('Confirmation lifecycle did not produce an observable owned state');
+                }
+
+                const removed = await request(`/api/economic-intelligence/readiness?key=${encodeURIComponent(candidate.key)}`, {
+                  method: 'DELETE', headers: authHeaders,
+                });
+                requireSuccess(removed, 'confirmation cleanup');
+                cleanupKey = null;
+
+                const finalReadiness = await request('/api/economic-intelligence/readiness', { headers: authHeaders });
+                requireSuccess(finalReadiness, 'final readiness');
+                const finalConfirmations = Array.isArray(finalReadiness.payload?.readiness?.confirmations) ? finalReadiness.payload.readiness.confirmations : [];
+                if (finalConfirmations.includes(candidate.key)) throw new Error('Synthetic confirmation cleanup did not restore state');
+                lifecycle = 'verified_and_cleaned';
+              }
+
+              const evidence = {
+                sha: context.sha,
+                environment: process.env.TARGET_ENVIRONMENT,
+                readiness: 'verified',
+                provenance: 'verified',
+                dailyBrief: 'verified',
+                confirmationLifecycle: lifecycle,
+              };
+              core.info(JSON.stringify(evidence));
+              await core.summary.addHeading('Economic Intelligence live verification').addCodeBlock(JSON.stringify(evidence, null, 2), 'json').write();
+            } finally {
+              if (token && cleanupKey) {
+                await request(`/api/economic-intelligence/readiness?key=${encodeURIComponent(cleanupKey)}`, {
+                  method: 'DELETE', headers: { authorization: `Bearer ${token}` },
+                }).catch(() => null);
+              }
+              if (token) {
+                await fetch(new URL('/auth/v1/logout?scope=local', auth), {
+                  method: 'POST',
+                  headers: { apikey: publicKey, authorization: `Bearer ${token}` },
+                  redirect: 'error',
+                  signal: AbortSignal.timeout(15000),
+                }).catch(() => null);
+              }
+            }
