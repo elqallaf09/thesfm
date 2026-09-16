@@ -18,8 +18,8 @@ export async function GET(request: Request) {
   query.range = normalizeRange(url.searchParams.get('range'));
 
   const result = await getTraderCalendar('dividends', query);
-  const count = result.resultCount ?? 0;
-  const payload = createTraderCalendarRoutePayload('dividends', result);
+  const payload = createTraderCalendarRoutePayload('dividends', result, query.symbols);
+  const count = payload.resultCount;
 
   const endpoint = result.provider === 'fmp'
     ? 'https://financialmodelingprep.com/stable/dividends-calendar'

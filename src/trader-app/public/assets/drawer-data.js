@@ -95,7 +95,12 @@
         const result = await get(paths[kind], { signal });
         if (signal.aborted) return null;
         const feature = payloadFeatureState(result);
-        if (result.ok === false || ["error", "rate_limited", "misconfigured", "unsupported", "unavailable"].includes(feature.key)) {
+        // Calendar/news diagnostics use ok:false for a valid no-events response.
+        // Only accept explicit empty collections; provider failures remain retryable.
+        const emptyCollection = ["news", "earnings", "dividends"].includes(kind)
+          && result.status === "empty" && !result.failureReason && !result.stale
+          && Array.isArray(result.data) && result.data.length === 0;
+        if (!emptyCollection && (result.ok === false || ["error", "rate_limited", "misconfigured", "unsupported", "unavailable"].includes(feature.key))) {
           const error = new Error("Symbol resource unavailable");
           error.payload = result;
           throw error;
