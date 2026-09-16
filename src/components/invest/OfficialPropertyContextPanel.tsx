@@ -6,6 +6,7 @@ import type { OfficialPropertyContext } from '@/lib/investments/intelligence/off
 const SAFE_HOSTS = new Set([
   'www.data.gov.qa', 'creativecommons.org', 'www.gov.uk', 'landregistry.data.gov.uk',
   'www.nationalarchives.gov.uk', 'data.cityofnewyork.us', 'www.nyc.gov',
+  'datacatalog.cookcountyil.gov',
 ]);
 function allowedSource(value: string): string | null {
   try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && SAFE_HOSTS.has(url.hostname) ? url.href : null; } catch { return null; }
@@ -22,13 +23,16 @@ export function OfficialPropertyContextPanel({ report }: { report: OfficialPrope
   const qatar = report.providerId === 'qatar-moj-open-data';
   const uk = report.providerId === 'uk-hmlr-price-paid';
   const nyc = report.providerId === 'us-nyc-dof-rolling-sales';
+  const cook = report.providerId === 'us-il-cook-assessor-sales';
   const title = qatar
     ? L('وزارة العدل القطرية · بوابة البيانات المفتوحة', 'Qatar Ministry of Justice · Open Data Portal', 'Ministère de la Justice du Qatar · Données ouvertes')
     : uk
       ? L('سجل الأراضي البريطاني · بيانات الأسعار المدفوعة', 'HM Land Registry · Price Paid Data', 'HM Land Registry · Données des prix payés')
       : nyc
         ? L('مدينة نيويورك · سجلات المبيعات العقارية', 'New York City · Recorded property sales', 'Ville de New York · Ventes immobilières enregistrées')
-        : report.sourceName;
+        : cook
+          ? L('مقيّم مقاطعة كوك · سجلات مبيعات العقار', 'Cook County Assessor · Parcel Sales', 'Évaluateur du comté de Cook · Ventes immobilières')
+          : report.sourceName;
   return <section dir={dir} aria-label={L('اتصال المصدر الرسمي', 'Official source connection', 'Connexion à la source officielle')}>
     <h3>{title}</h3>
     <p role="status">{report.status === 'UNAVAILABLE'
@@ -44,6 +48,8 @@ export function OfficialPropertyContextPanel({ report }: { report: OfficialPrope
     {report.reasons.includes('REGISTRATION_LAG') ? <p>{L('قد يتأخر تسجيل الصفقة عن تاريخ البيع، لذلك أحدث شهرين قد يكونان غير مكتملين.', 'Registration can lag the sale date, so the newest months may be incomplete.', 'L’enregistrement peut suivre la vente avec retard ; les mois récents peuvent être incomplets.')}</p> : null}
     {report.reasons.includes('NON_MARKET_SALES_REQUIRE_FILTERING') ? <p>{L('سجلات نيويورك قد تشمل تحويلات أو صفقات غير سوقية؛ وجود سعر لا يعني أنها مقارنة صالحة تلقائيًا.', 'NYC records can include transfers or non-market sales; a recorded price does not automatically make a row a valid comparable.', 'Les données de NYC peuvent inclure des transferts non marchands ; un prix enregistré n’est pas automatiquement un comparable valide.')}</p> : null}
     {report.reasons.includes('BUILDING_CLASS_MAPPING_REVIEW') ? <p>{L('تصنيف المبنى في نيويورك يحتاج مطابقة دقيقة مع نوع عقارك قبل اعتماد المقارنات.', 'NYC building classes must be mapped precisely to your asset type before comparables can be approved.', 'Les classes de bâtiments de NYC doivent être rapprochées précisément du type de bien.')}</p> : null}
+    {report.reasons.includes('NON_ARMS_LENGTH_SALES_REQUIRE_REVIEW') ? <p>{L('مقاطعة كوك تنشر فلاتر لاستبعاد أنواع واضحة من الصفقات غير المناسبة، لكنها تنبه أن بعض الصفقات غير السوقية قد تبقى؛ لذلك نراجعها قبل اعتماد أي مقارنة.', 'Cook County publishes filters for obvious non-comparable transfers but warns that some non-arm’s-length sales can remain, so rows require review before comparable use.', 'Le comté de Cook publie des filtres, mais certaines ventes non conclues à distance peuvent subsister ; chaque transaction doit être vérifiée avant comparaison.')}</p> : null}
+    {report.reasons.includes('SALES_REPORTING_LAG') ? <p>{L('بيانات مبيعات مقاطعة كوك قد تصل بعد التسجيل بأشهر؛ حداثة قاعدة البيانات لا تعني اكتمال أحدث الصفقات.', 'Cook County sales can populate months after recording; dataset freshness does not guarantee complete coverage of the newest transactions.', 'Les ventes du comté de Cook peuvent apparaître plusieurs mois après l’enregistrement ; la fraîcheur du jeu de données ne garantit pas l’exhaustivité récente.')}</p> : null}
     {report.reasons.includes('ENGLAND_WALES_ONLY') ? <p>{L('مصدر HM Land Registry هذا يغطي إنجلترا وويلز؛ اسكتلندا وأيرلندا الشمالية تحتاجان مصادر مختلفة.', 'This HM Land Registry source covers England and Wales; Scotland and Northern Ireland require separate sources.', 'Cette source couvre l’Angleterre et le pays de Galles ; l’Écosse et l’Irlande du Nord nécessitent d’autres sources.')}</p> : null}
     {report.status === 'INPUT_REQUIRED' ? <p>{L('أكمل الموقع المطلوب لتضييق السجلات الرسمية قبل البحث.', 'Complete the required location fields to narrow the official records.', 'Complétez les champs de localisation requis pour cibler les données officielles.')}</p> : null}
     {source ? <a href={source} target="_blank" rel="noopener noreferrer">{L('المصدر الرسمي', 'Official source', 'Source officielle')}</a> : null}
