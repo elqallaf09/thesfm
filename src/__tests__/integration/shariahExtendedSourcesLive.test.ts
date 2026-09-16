@@ -5,6 +5,8 @@ import { reviewFundEvidence } from '@/lib/market/shariahFundReview';
 import { validFinancialValue } from '@/lib/sharia-research/evidenceValidation';
 import { enrichShariahScreeningData } from '@/lib/market/shariahFundamentals';
 import { regionalFilingsAdapter } from '@/lib/sharia-research/regionalFilings';
+import { extractSelectedPdfPages } from '@/lib/sharia-research/pdfFinancialEvidence';
+import { secureFetch } from '@/lib/sharia-research/secureFetch';
 import type { SecurityIdentity } from '@/lib/sharia-research/types';
 
 const enabled = process.env.SFM_LIVE_SEC_PROBE === '1';
@@ -45,6 +47,18 @@ describe.skipIf(!enabled)('live extended evidence without production writes', ()
       canonicalId: 'XKUW:IFA', name: 'International Financial Advisors Holding', ticker: 'IFA', providerSymbol: 'IFA.KW',
       exchange: 'Boursa Kuwait', exchangeMic: 'XKUW', country: 'KW', currency: 'KWD', aliases: [], previousNames: [], identitySources: [],
     };
+    // Temporary public-source diagnostic: identify the actual text-bearing annual
+    // statement pages without weakening issuer verification or using OCR.
+    const annualUrl = 'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf';
+    const annual = await secureFetch(annualUrl, { signal: AbortSignal.timeout(30000), maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 0 });
+    const annualPages = await extractSelectedPdfPages(annual.body, [30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60]);
+    console.log('IFA_PAGE_DIAGNOSTIC', JSON.stringify(annualPages.map(page => ({
+      num: page.num, len: page.text.length,
+      hasIssuer: /International Financial Advis[oe]rs/i.test(page.text),
+      hasStatement: /statement of financial position|balance sheet|statement of profit or loss|statement of income/i.test(page.text),
+      hasAssets: /total assets/i.test(page.text), hasCash: /cash and cash equivalents/i.test(page.text), hasLiabilities: /total liabilities/i.test(page.text),
+      sample: page.text.replace(/\s+/g, ' ').slice(0, 220),
+    }))));
     const direct = await regionalFilingsAdapter.research({
       query: { original: 'IFA', normalized: 'ifa', compact: 'ifa', latinAlias: null, possibleTicker: 'IFA', possibleIsin: null, exchangeHint: 'XKUW' },
       security, retrievedAt: new Date().toISOString(), signal: AbortSignal.timeout(65000),
@@ -63,5 +77,5 @@ describe.skipIf(!enabled)('live extended evidence without production writes', ()
     expect(liabilityBound).toMatchObject({ value: 28665529, currency: 'KWD', periodEnd: '2025-12-31', validation: expect.objectContaining({ bound: 'upper' }) });
     expect([assets, cash, liabilityBound].every(value => value && validFinancialValue(value))).toBe(true);
     expect(direct.financialValues.some(value => ['total_income','interest_income','prohibited_revenue'].includes(value.normalizedField))).toBe(false);
-  }, 75000);
+  }, 105000);
 });
