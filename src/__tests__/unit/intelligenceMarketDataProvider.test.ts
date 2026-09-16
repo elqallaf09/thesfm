@@ -104,5 +104,8 @@ describe('ExistingMarketDataIntelligenceProvider', () => {
     expect(snapshot.fallbackUsed).toBe(true);
     expect(snapshot.provider).toBe('finnhub+yahoo');
     expect(snapshot.warnings).toContain('SUPPLEMENTAL_HISTORY_FALLBACK_USED');
+    expect(snapshot.levels).toEqual({ support: null, resistance: null });
+    expect(snapshot.reportedRiskLevel).toBeNull();
+    expect(snapshot.quote.volume).toBeNull();
   });
 });

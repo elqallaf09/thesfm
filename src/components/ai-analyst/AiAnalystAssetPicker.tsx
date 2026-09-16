@@ -13,7 +13,10 @@ type AiAnalystAssetPickerProps = {
   initialSymbol?: string;
   initialAssetType?: IntelligenceAssetType;
   initialHorizon?: IntelligenceHorizon;
-  destination?: 'analysis' | 'history';
+  destination?: 'analysis' | 'history' | 'details';
+  onSelect?: (asset: { symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon }) => void;
+  submitLabel?: string;
+  busy?: boolean;
   autoRun?: boolean;
   compact?: boolean;
 };
@@ -25,6 +28,9 @@ export function AiAnalystAssetPicker({
   destination = 'analysis',
   autoRun = true,
   compact = false,
+  onSelect,
+  submitLabel,
+  busy = false,
 }: AiAnalystAssetPickerProps) {
   const router = useRouter();
   const { lang } = useLanguage();
@@ -38,19 +44,22 @@ export function AiAnalystAssetPicker({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (busy) return;
     const normalizedSymbol = normalizeAiAnalystSymbol(symbol);
     if (!normalizedSymbol) {
       setError(copy.picker.invalidSymbol);
       return;
     }
+    setError('');
     const normalizedAssetType = normalizeAiAnalystAssetType(assetType);
     const normalizedHorizon = normalizeAiAnalystHorizon(horizon);
+    if (onSelect) { onSelect({ symbol: normalizedSymbol, assetType: normalizedAssetType, horizon: normalizedHorizon }); return; }
     const params = new URLSearchParams({ assetType: normalizedAssetType, horizon: normalizedHorizon });
     if (destination === 'analysis' && autoRun) params.set('autoRun', '1');
     const path = destination === 'analysis'
       ? `/ai-analyst/analyze/${encodeURIComponent(normalizedSymbol)}?${params.toString()}`
       : `/ai-analyst/history?symbol=${encodeURIComponent(normalizedSymbol)}&${params.toString()}`;
-    router.push(path);
+    router.push(destination === 'details' ? `/ai-analyst/assets?symbol=${encodeURIComponent(normalizedSymbol)}&assetType=${normalizedAssetType}` : path);
   };
 
   return (
@@ -66,6 +75,7 @@ export function AiAnalystAssetPicker({
           <label htmlFor={`${id}-symbol`}>{copy.picker.symbol}</label>
           <input
             id={`${id}-symbol`}
+            disabled={busy}
             value={symbol}
             onChange={event => { setSymbol(event.target.value); setError(''); }}
             placeholder={copy.picker.symbolPlaceholder}
@@ -80,17 +90,17 @@ export function AiAnalystAssetPicker({
         </div>
         <div className={styles.field}>
           <label htmlFor={`${id}-asset-type`}>{copy.picker.assetType}</label>
-          <select id={`${id}-asset-type`} value={assetType} onChange={event => setAssetType(normalizeAiAnalystAssetType(event.target.value))}>
+          <select disabled={busy} id={`${id}-asset-type`} value={assetType} onChange={event => setAssetType(normalizeAiAnalystAssetType(event.target.value))}>
             {AI_ANALYST_ASSET_TYPES.map(type => <option value={type} key={type}>{ASSET_TYPE_LABELS[locale][type]}</option>)}
           </select>
         </div>
-        <div className={styles.field}>
+        {destination !== 'details' ? <div className={styles.field}>
           <label htmlFor={`${id}-horizon`}>{copy.picker.horizon}</label>
-          <select id={`${id}-horizon`} value={horizon} onChange={event => setHorizon(normalizeAiAnalystHorizon(event.target.value))}>
+          <select disabled={busy} id={`${id}-horizon`} value={horizon} onChange={event => setHorizon(normalizeAiAnalystHorizon(event.target.value))}>
             {AI_ANALYST_HORIZONS.map(value => <option value={value} key={value}>{HORIZON_LABELS[locale][value]}</option>)}
           </select>
-        </div>
-        <button className={styles.primaryAction} type="submit"><Search size={16} aria-hidden="true" />{copy.picker.submit}<ArrowUpRight size={15} aria-hidden="true" /></button>
+        </div> : null}
+        <button className={styles.primaryAction} type="submit" disabled={busy}><Search size={16} aria-hidden="true" />{submitLabel ?? copy.picker.submit}<ArrowUpRight size={15} aria-hidden="true" /></button>
       </form>
       {error ? <p id={`${id}-error`} className={styles.errorText} role="alert">{error}</p> : null}
     </section>

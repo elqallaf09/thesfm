@@ -19,15 +19,18 @@ function scoreFrom(result: AnalysisResult) {
   return Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round((raw + 100) / 2))) : null;
 }
 
-type Props = { symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon };
+type Props = { symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon; providedResult?: AnalysisResult | null };
 
-export function InvestmentCheckCard({ symbol, assetType, horizon }: Props) {
+export function InvestmentCheckCard({ symbol, assetType, horizon, providedResult }: Props) {
   const { lang } = useLanguage();
   const locale = lang === 'ar' || lang === 'fr' ? lang : 'en';
   const copy = COPY[locale];
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [loadedResult, setResult] = useState<AnalysisResult | null>(null);
+
+  const result = providedResult === undefined ? loadedResult : providedResult;
 
   useEffect(() => {
+    if (providedResult !== undefined) return;
     let active = true;
     const controller = new AbortController();
     const params = new URLSearchParams({ symbol, assetType, horizon, locale });
@@ -50,7 +53,7 @@ export function InvestmentCheckCard({ symbol, assetType, horizon }: Props) {
 
     void loadLatest(1);
     return () => { active = false; controller.abort(); timers.forEach(clearTimeout); };
-  }, [assetType, horizon, locale, symbol]);
+  }, [assetType, horizon, locale, symbol, providedResult]);
 
   if (!result) return <div className={`${styles.statusRail} ${styles.spanFull}`} role="status"><ShieldCheck size={16} aria-hidden="true" />{copy.loading}</div>;
   const score = scoreFrom(result);

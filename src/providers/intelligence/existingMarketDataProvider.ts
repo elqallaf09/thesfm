@@ -18,6 +18,7 @@ function validIso(value: unknown) {
 }
 
 function finite(value: unknown) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -183,6 +184,7 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
 
     const price = finite(result.latestPrice);
     let candles = normalizeCandles(result);
+    const hasPrimaryHistory = candles.length > 0;
     let supplementalHistoryUsed = false;
     let supplementalProvider: string | null = null;
 
@@ -229,7 +231,7 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       operationalReliability: supplementalHistoryUsed
         ? Math.min(operationalReliability(result), 0.85)
         : operationalReliability(result),
-      reportedRiskLevel: result.riskLevel === 'high' ? 'HIGH' : result.riskLevel === 'medium' ? 'MEDIUM' : result.riskLevel === 'low' ? 'LOW' : null,
+      reportedRiskLevel: !hasPrimaryHistory ? null : result.riskLevel === 'high' ? 'HIGH' : result.riskLevel === 'medium' ? 'MEDIUM' : result.riskLevel === 'low' ? 'LOW' : null,
       quote: {
         price,
         change: finite(result.quote?.change),
@@ -237,8 +239,8 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
         volume: finite(result.quote && 'volume' in result.quote ? result.quote.volume : null),
       },
       levels: {
-        support: result.fallback === true ? null : finite(result.levels?.support),
-        resistance: result.fallback === true ? null : finite(result.levels?.resistance),
+        support: result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.support),
+        resistance: result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.resistance),
       },
       candles,
       fundamentals: result.fundamentalsAvailable === false ? null : result.fundamentals ?? null,

@@ -1,44 +1,13 @@
 'use client';
 
-import { Bot, GitCompareArrows, ShieldAlert, Sparkles } from 'lucide-react';
+import { GitCompareArrows, Sparkles } from 'lucide-react';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
-import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
-export function AiAnalystAgent({
-  initialSymbol,
-  initialAssetType,
-  initialHorizon,
-}: {
-  initialSymbol?: string;
-  initialAssetType?: IntelligenceAssetType;
-  initialHorizon?: IntelligenceHorizon;
-}) {
-  const { lang } = useLanguage();
-  const copy = AI_ANALYST_COPY[aiAnalystLocale(lang)];
-  return (
-    <div className={styles.grid}>
-      <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="ai-analyst-agent-title">
-        <header className={styles.cardHeader}>
-          <div>
-            <p className={styles.sectionEyebrow}>{copy.tabs.agent}</p>
-            <h2 id="ai-analyst-agent-title">{copy.agent.title}</h2>
-            <p>{copy.agent.body}</p>
-          </div>
-          <Bot aria-hidden="true" className={styles.placeholderIcon} />
-        </header>
-        <p className={styles.statusRail}><ShieldAlert size={16} aria-hidden="true" />{copy.agent.guardrail}</p>
-        <AiAnalystAssetPicker
-          initialSymbol={initialSymbol}
-          initialAssetType={initialAssetType}
-          initialHorizon={initialHorizon}
-        />
-      </section>
-    </div>
-  );
-}
+import Link from 'next/link';
+import { RESEARCH_COPY } from './researchCopy';
 
 export function AiAnalystCompare() {
   const { lang } = useLanguage();
@@ -56,11 +25,11 @@ export function AiAnalystCompare() {
         </header>
         <AiAnalystAssetPicker destination="history" autoRun={false} />
       </section>
-      <article className={`${styles.card} ${styles.placeholderCard}`}>
+      <article className={`${styles.card} ${styles.placeholderCard} ${styles.spanFull}`} data-testid="ai-analyst-rule-engine">
         <Sparkles size={20} aria-hidden="true" className={styles.placeholderIcon} />
         <h2>{copy.compare.ruleEngine}</h2>
         <p>{copy.compare.openTimeline}</p>
-        <span className={styles.statusPill} data-tone="available">{copy.compare.active}</span>
+        <Link className={styles.linkAction} href="/ai-analyst/analyze#rules">{RESEARCH_COPY[aiAnalystLocale(lang)].openRules}</Link>
       </article>
     </div>
   );

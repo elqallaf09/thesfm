@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { generateText } from 'ai';
+import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
 import { z } from 'zod';
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
@@ -11,7 +10,7 @@ import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const NO_STORE = { 'cache-control': 'private, no-store' };
 
@@ -27,13 +26,6 @@ const requestSchema = z.object({
   country: z.string().trim().min(2).max(64).regex(/^[\p{L}\s.-]+$/u).optional(),
   locale: z.enum(['ar', 'en', 'fr']).default('ar'),
 }).strict();
-
-function provider() {
-  const gatewayToken = process.env.AI_GATEWAY_TOKEN;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (gatewayToken) return createAnthropic({ apiKey: gatewayToken, baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic' });
-  return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
-}
 
 function unavailable(locale: 'ar' | 'en' | 'fr') {
   if (locale === 'ar') return 'المستشار غير متاح حالياً. حاول مرة أخرى بعد قليل.';
@@ -75,17 +67,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: { code: 'GROUNDING_UNAVAILABLE' }, correlationId }, { status: 502, headers: NO_STORE });
   }
 
-  const ai = provider();
-  if (!ai) {
+  if (!aiProviderConfigured()) {
     return NextResponse.json({
-      ok: true,
+      ok: false,
+      error: { code: 'AI_PROVIDER_NOT_CONFIGURED' },
       text: unavailable(locale),
       source: 'unavailable',
       advisor,
       confidence: grounding.confidence,
       missing: grounding.missing,
       correlationId,
-    }, { headers: NO_STORE });
+    }, { status: 503, headers: NO_STORE });
   }
 
   const usage = await consumeAiUsage({
@@ -100,33 +92,20 @@ export async function POST(request: NextRequest) {
   });
   if (!usage.allowed) return aiUsageLimitResponse(usage);
 
-  try {
-    const { text } = await generateText({
-      model: ai('claude-haiku-4-5-20251001'),
-      system: buildEconomicAdvisorPrompt(grounding, locale),
-      messages: messages.map((message) => ({ role: message.role, content: message.content })),
-      maxTokens: 900,
-    });
-
+  const generation = await generateAssistantReply({
+    system: buildEconomicAdvisorPrompt(grounding, locale),
+    messages: messages.map(message => ({ role: message.role, content: message.content })),
+    correlationId,
+    maxTokens: 900,
+  });
+  if (!generation) {
     return NextResponse.json({
-      ok: true,
-      text,
-      source: 'ai',
-      advisor,
-      confidence: grounding.confidence,
-      missing: grounding.missing,
-      warnings: grounding.warnings,
-      correlationId,
-    }, { headers: NO_STORE });
-  } catch {
-    return NextResponse.json({
-      ok: true,
-      text: unavailable(locale),
-      source: 'error',
-      advisor,
-      confidence: grounding.confidence,
-      missing: grounding.missing,
-      correlationId,
-    }, { headers: NO_STORE });
+      ok: false, error: { code: 'AI_PROVIDER_UNAVAILABLE' }, text: unavailable(locale),
+      source: 'unavailable', advisor, correlationId,
+    }, { status: 503, headers: { ...NO_STORE, 'X-Correlation-ID': correlationId } });
   }
+  return NextResponse.json({
+    ok: true, text: generation.text, source: 'ai', provider: generation.provider, model: generation.model,
+    advisor, confidence: grounding.confidence, missing: grounding.missing, warnings: grounding.warnings, correlationId,
+  }, { headers: { ...NO_STORE, 'X-Correlation-ID': correlationId } });
 }
