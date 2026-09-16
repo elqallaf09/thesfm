@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { NormalizedMarketCandle, NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
-import { buildSfmTechnicalSnapshot } from '@/lib/sfm-market/engine';
+import {
+  buildSfmTechnicalSnapshot,
+  SFM_MARKET_BLOCKED_TRANSITIONAL_PROVIDERS,
+} from '@/lib/sfm-market/engine';
 import { assessSfmQuoteQuality, marketSourceClassForProvider } from '@/lib/sfm-market/quality';
 
 function completeQuote(patch: Partial<NormalizedMarketQuote> = {}): NormalizedMarketQuote {
@@ -46,6 +49,10 @@ describe('SFM Market Data Engine v1', () => {
   it('keeps current third-party providers labelled as aggregators instead of claiming primary-source ownership', () => {
     expect(marketSourceClassForProvider('finnhub')).toBe('aggregator');
     expect(marketSourceClassForProvider('yahoo')).toBe('aggregator');
+  });
+
+  it('explicitly forbids Yahoo fallback in the SFM-owned v1 contract', () => {
+    expect(SFM_MARKET_BLOCKED_TRANSITIONAL_PROVIDERS).toContain('yahoo');
   });
 
   it('marks a complete fresh quote as complete', () => {
