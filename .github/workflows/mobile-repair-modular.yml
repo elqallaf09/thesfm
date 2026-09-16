@@ -19,7 +19,7 @@ jobs:
           python .repair/modularize.py
           node --check src/trader-app/public/app.js
           node --check src/trader-app/public/assets/drawer-data.js
-          node scripts/check-maintainability-budgets.mjs
+          node scripts/check-source-complexity.mjs
           git diff --check
           git rm -r .repair
           git rm .github/workflows/mobile-repair-modular.yml
@@ -34,7 +34,7 @@ jobs:
         if: success() || failure()
         run: |
           mkdir -p .artifacts
-          pnpm unit > .artifacts/unit.log 2>&1 || { tail -150 .artifacts/unit.log; exit 1; }
+          pnpm test:run > .artifacts/unit.log 2>&1 || { tail -150 .artifacts/unit.log; exit 1; }
           tail -12 .artifacts/unit.log
       - name: Install browsers
         if: success() || failure()
