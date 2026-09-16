@@ -9,6 +9,7 @@ import type { OfficialPropertyContext } from './official-context';
 import { collectQatarPropertyContext, qatarContextUnavailable } from './adapters/qatar-open-data';
 import { collectUkHmlrPropertyContext, ukHmlrContextUnavailable } from './adapters/uk-hmlr-open-data';
 import { collectNycPropertyContext, isNewYorkCityAsset, nycContextUnavailable } from './adapters/nyc-dof-open-data';
+import { collectCookCountyPropertyContext, cookCountyContextUnavailable, isChicagoCookCountyAsset } from './adapters/cook-county-open-data';
 
 export interface RealEstateAnalystResult {
   status: 'VALUED' | 'INSUFFICIENT_EVIDENCE' | 'SOURCE_COVERAGE_UNAVAILABLE' | 'SOURCE_DATA_REVIEW_REQUIRED';
@@ -29,6 +30,9 @@ async function collectOfficialContext(asset: RealEstateAssetInput): Promise<Offi
   }
   if (isNewYorkCityAsset(asset)) {
     try { return await collectNycPropertyContext(asset); } catch { return nycContextUnavailable(); }
+  }
+  if (isChicagoCookCountyAsset(asset)) {
+    try { return await collectCookCountyPropertyContext(asset); } catch { return cookCountyContextUnavailable(); }
   }
   return undefined;
 }
