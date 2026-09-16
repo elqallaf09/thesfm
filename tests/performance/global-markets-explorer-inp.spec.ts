@@ -43,10 +43,15 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
   if (process.env.E2E_BOOTSTRAP_URL) await page.goto(process.env.E2E_BOOTSTRAP_URL);
   await page.goto('/global-markets');
   const explorer = page.locator('.gm-explorer');
-  const toggle = explorer.getByRole('button', { name: 'عرض مستكشف الأصول', exact: true });
+  // The accessible name changes from Show to Hide after the click. Keep the
+  // control identity stable while asserting both labels and expanded state.
+  const toggle = explorer.locator('button.gm-explorer-toggle');
+  await expect(toggle).toHaveAccessibleName('عرض مستكشف الأصول');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await preparePointerTarget(toggle);
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveAccessibleName('إخفاء مستكشف الأصول');
   await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
 
   const increment = testInfo.project.name.startsWith('mobile') ? 6 : 12;
@@ -69,7 +74,7 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
   const counts: number[] = [];
   for (let index = 0; index < 5; index += 1) {
     samples.push(await appendAndMeasure());
-    counts.push(await explorer.locator('.gm-strip-item').count());
+    counts.push(await explorer.locator('.gm-strip-item')).count());
   }
 
   const result = { project: testInfo.project.name, samples, median: median(samples), worst: Math.max(...samples), counts };
