@@ -22,6 +22,8 @@ Each request is bounded and cancelled before private-node failover. HTTP failure
 
 `services/sfm-private-ai/` contains the GPU service template. `GET /api/ai/private-health` is an authenticated no-store reachability check that calls the configured model nodes' `/models` endpoint and exposes no credentials.
 
+The market AI insight route is also migrated to SFM Private AI. It accepts only verified real market analysis input, asks the private model for a constrained educational JSON explanation, and returns the private provider/model identity separately from the legacy `MarketAiInsight.provider` field so existing market UI types are not rewritten during this migration.
+
 ## Validation
 
 Route/provider/quote tests and guest browser tests accompany these changes. Guest fixtures are browser-only and contain no personal records or live market claims. The focused workflow covers Arabic, English and French on desktop Chromium, mobile Chromium and WebKit; it does not replace full repository CI. The authenticated live-check workflow must eventually verify a real Arabic response for the exact deployed SHA from `sfm-private-primary` or `sfm-private-fallback` before production rollout. Passing code tests alone does not establish that a GPU node has been provisioned or connected.
