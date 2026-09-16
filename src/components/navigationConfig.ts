@@ -178,6 +178,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'tech-news', icon: Newspaper, href: '/tech-news', labelKey: 'nav_tech_news', sectionLabelKey: 'nav_subgroup_regional_markets' },
       { id: 'europe-news', icon: Newspaper, href: '/europe-news', labelKey: 'nav_europe_news' },
       { id: 'gulf-news', icon: Newspaper, href: '/gulf-news', labelKey: 'nav_gulf_news' },
+      { id: 'asia-market-news', icon: Globe, href: '/asia-market-news', labelKey: 'nav_asia_market_news' },
       { id: 'crypto-news', icon: CircleDollarSign, href: '/crypto-news', labelKey: 'nav_crypto_news' },
       { id: 'federal-reserve-news', icon: Landmark, href: '/federal-reserve-news', labelKey: 'nav_federal_reserve_news' },
       { id: 'energy-stocks', icon: Compass, href: '/energy-stocks', labelKey: 'nav_energy_stocks', sectionLabelKey: 'nav_subgroup_sector_strategy' },
