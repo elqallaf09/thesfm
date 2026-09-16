@@ -11,7 +11,7 @@
 .real-estate-analyst__analyze { background: var(--primary); color: var(--primary-foreground); }
 .real-estate-analyst__save { background: var(--surface-muted); color: var(--foreground); }
 .real-estate-analyst button:disabled { opacity: .55; cursor: not-allowed; }
-.real-estate-analyst :is(input, select, button, a):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.real-estate-analyst :is(input, select, button, a, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .real-estate-analyst__guardrail { color: var(--foreground-secondary); font-size: var(--type-caption-size); line-height: 1.6; }
 .real-estate-analyst__empty-result { padding: 1rem 0; text-align: center; }
 .real-estate-analyst__empty-result h3 { margin: .5rem 0; font-size: var(--type-body-size); }
@@ -24,6 +24,11 @@
 .real-estate-analyst__evidence-row > div { display: grid; min-width: 0; gap: .35rem; overflow-wrap: anywhere; }
 .real-estate-analyst__evidence-row span, .real-estate-analyst__evidence-row small { color: var(--foreground-secondary); font-size: var(--type-caption-size); line-height: 1.5; }
 .real-estate-analyst__evidence-row a { display: grid; place-items: center; min-width: 44px; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--primary); }
+.real-estate-analyst__results > section { min-width: 0; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
+.real-estate-analyst__results > section > h3 { font-size: var(--type-body-size); font-weight: 700; }
+.real-estate-analyst__results > section > p { margin-block: .75rem; font-size: var(--type-body-small-size); line-height: 1.7; color: var(--foreground-secondary); }
+.real-estate-analyst__results > section > a { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary); text-decoration: underline; }
+.real-estate-analyst__results summary { min-height: 44px; padding-block: .75rem; cursor: pointer; font-weight: 600; }
 .real-estate-analyst__history-card h2 { margin: 0 0 1rem; font-size: var(--type-body-size); }
 .real-estate-analyst__timeline { display: grid; }
 .real-estate-analyst__timeline-item { display: grid; grid-template-columns: 1.5rem minmax(0, 1fr); gap: .75rem; min-height: 5.5rem; }
