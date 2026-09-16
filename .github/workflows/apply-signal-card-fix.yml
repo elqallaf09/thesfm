@@ -28,10 +28,9 @@ jobs:
           from textwrap import dedent
           text = Path('/tmp/original.yml').read_text()
           script = dedent(text.split('        run: |\n', 1)[1])
-          start = script.index("replace('src/app/api/recommendations/route.ts',\n  \"  const sourceMeta")
-          end = script.index("\n\nreplace('src/lib/market/fetchYahooQuote.ts'", start)
-          adapted = "replace('src/app/api/recommendations/route.ts',\n  \"  const sourceMeta = requestedSymbols.length\\\\n    ? universe.symbolMeta.filter(symbol => requestedKeySet.has(normalizeSymbol(symbol.symbol)) || requestedKeySet.has(normalizeSymbol(symbol.providerSymbol)))\\\\n    : universe.symbolMeta;\",\n  \"  const sourceMeta = uniqueRecommendationSymbols(requestedSymbols.length\\\\n    ? universe.symbolMeta.filter(symbol => requestedKeySet.has(normalizeSymbol(symbol.symbol)) || requestedKeySet.has(normalizeSymbol(symbol.providerSymbol)))\\\\n    : universe.symbolMeta);\")"
-          script = script[:start] + adapted + script[end:]
+          start = script.index("replace('src/app/api/recommendations/route.ts'")
+          end = script.index("replace('src/lib/market/fetchYahooQuote.ts'", start)
+          script = script[:start] + script[end:]
           Path('/tmp/apply.sh').write_text(script)
           PYTHON
           bash /tmp/apply.sh
