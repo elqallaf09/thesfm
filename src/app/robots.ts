@@ -57,7 +57,6 @@ const privateRoutes = [
   '/settings',
   '/security',
   '/site-map',
-  '/sfm-admin-control',
   '/thesfm-trader-own',
   '/wakeel',
   '/zoer_proxy',
@@ -67,7 +66,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/about', '/contact', '/financial-theories', '/ebooks', '/privacy', '/terms'],
+      allow: ['/', '/about', '/contact', '/financial-theories', '/ebooks', '/privacy', '/terms', '/zakat-calculator'],
       disallow: privateRoutes,
     },
     sitemap: absoluteUrl('/sitemap.xml'),
