@@ -12,8 +12,8 @@ const LIMIT = 50;
 const MAX_BYTES = 1_500_000;
 const LOOKBACK_YEARS = 3;
 
-function sparqlLiteral(value: string): string {
-  return JSON.stringify(value.trim().toUpperCase());
+function sparqlTypedString(value: string): string {
+  return `${JSON.stringify(value.trim().toUpperCase())}^^xsd:string`;
 }
 function binding(row: Record<string, unknown>, key: string): string | null {
   const item = row[key];
@@ -91,9 +91,12 @@ export async function collectUkHmlrPropertyContext(
       records: [], valuationEligible: false, reasons: ['ENTER_CITY_OR_DISTRICT', 'AREA_METADATA_MISSING', 'NOT_A_PROPERTY_VALUATION'] };
   }
 
-  const locationFilter = district
-    ? `?addr lrcommon:district ?district . FILTER(UCASE(STR(?district)) = ${sparqlLiteral(district)})`
-    : `?addr lrcommon:town ?town . FILTER(UCASE(STR(?town)) = ${sparqlLiteral(city)})`;
+  // HMLR's linked-data examples use an exact typed literal for district/town.
+  // Keeping the literal in the triple lets the endpoint use its index; wrapping
+  // the bound value in UCASE/STR forces an expensive scan and caused live timeouts.
+  const locationConstraint = district
+    ? `?addr lrcommon:district ${sparqlTypedString(district)} .`
+    : `?addr lrcommon:town ${sparqlTypedString(city)} .`;
   const startDate = lookbackDate(now);
   const endDate = now.toISOString().slice(0, 10);
   const query = `
@@ -102,6 +105,7 @@ PREFIX lrcommon: <http://landregistry.data.gov.uk/def/common/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 SELECT ?transaction ?amount ?date ?propertyType ?estateType ?postcode ?town ?district ?county ?paon ?saon ?street
 WHERE {
+  ${locationConstraint}
   ?transaction a lrppi:TransactionRecord ;
     lrppi:pricePaid ?amount ;
     lrppi:transactionDate ?date ;
@@ -109,7 +113,6 @@ WHERE {
   FILTER(?date >= "${startDate}"^^xsd:date && ?date <= "${endDate}"^^xsd:date)
   OPTIONAL { ?transaction lrppi:propertyType ?propertyType }
   OPTIONAL { ?transaction lrppi:estateType ?estateType }
-  ${locationFilter}
   OPTIONAL { ?addr lrcommon:postcode ?postcode }
   OPTIONAL { ?addr lrcommon:town ?town }
   OPTIONAL { ?addr lrcommon:district ?district }
