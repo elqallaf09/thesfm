@@ -20,9 +20,9 @@ export default function ZakatCalculatorClient() {
   }, [cash, gold, investments, receivables, shortTermLiabilities]);
 
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm md:p-8" dir="rtl">
+    <section className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-[var(--shadow-sm)] md:p-8" dir="rtl">
       <div className="mb-8 flex items-start gap-3">
-        <span className="rounded-2xl bg-primary/10 p-3 text-primary"><Calculator size={24} /></span>
+        <span className="rounded-[var(--radius-card)] bg-primary/10 p-3 text-primary"><Calculator size={24} /></span>
         <div>
           <span className="text-sm font-semibold text-primary">أداة عامة مجانية</span>
           <h1 className="mt-1 text-3xl font-bold text-foreground md:text-4xl">حاسبة الزكاة</h1>
@@ -38,7 +38,7 @@ export default function ZakatCalculatorClient() {
         <Field label="الالتزامات قصيرة الأجل القابلة للخصم" value={shortTermLiabilities} onChange={setShortTermLiabilities} />
       </div>
 
-      <div className="mt-7 grid gap-4 rounded-2xl border border-border bg-muted/35 p-5 md:grid-cols-2">
+      <div className="mt-7 grid gap-4 rounded-[var(--radius-card)] border border-border bg-muted/35 p-5 md:grid-cols-2">
         <div>
           <span className="text-sm text-muted-foreground">صافي الوعاء الزكوي</span>
           <strong className="mt-1 block text-2xl text-foreground">{result.eligible.toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong>
@@ -49,7 +49,7 @@ export default function ZakatCalculatorClient() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 rounded-2xl bg-primary/5 p-4 text-sm leading-7 text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 flex flex-col gap-3 rounded-[var(--radius-card)] bg-primary/5 p-4 text-sm leading-7 text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span className="flex items-center gap-2"><ShieldCheck size={18} /> لا نحفظ القيم المدخلة في هذه الحاسبة العامة.</span>
         <Link href="/login?mode=register&next=%2Fzakat" className="font-semibold text-primary hover:underline">احفظ وتتبع زكاتك داخل THE SFM</Link>
       </div>
@@ -68,7 +68,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
         step="0.01"
         value={value}
         onChange={event => onChange(event.target.value)}
-        className="h-12 rounded-xl border border-input bg-background px-3 text-base outline-none focus:border-primary"
+        className="h-12 rounded-[var(--radius-control)] border border-input bg-background px-3 text-base outline-none focus:border-primary"
         placeholder="0"
       />
     </label>
