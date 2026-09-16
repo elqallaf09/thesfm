@@ -108,13 +108,13 @@ export const REAL_ESTATE_MARKET_COVERAGE: readonly RealEstateMarketCoverageEntry
   {
     id: 'us-miami', countryCode: 'US',
     jurisdiction: { ar: 'الولايات المتحدة · Miami-Dade', en: 'United States · Miami-Dade', fr: 'États-Unis · Miami-Dade' },
-    sourceName: 'Miami-Dade Property Appraiser',
-    sourceUrl: 'https://www.miamidade.gov/pa/',
+    sourceName: 'Miami-Dade Property Appraiser File Library',
+    sourceUrl: 'https://bbs.miamidade.gov/library/list/files/?lib=Main',
     state: 'SOURCE_REVIEW', valuationReady: false,
     note: {
-      ar: 'بيانات المبيعات الرسمية متاحة عبر ملفات/خدمات المقيم العقاري؛ بعض مسارات البيانات قد تكون مدفوعة لذلك لا يوجد شراء أو ربط تلقائي بدون موافقة.',
-      en: 'Official sales data is available through Property Appraiser files/services; some data paths may be paid, so nothing is purchased or enabled automatically.',
-      fr: 'Les ventes officielles sont disponibles via les fichiers/services de l’évaluateur ; certains accès peuvent être payants, donc aucun achat automatique.',
+      ar: 'مكتبة الملفات الرسمية متاحة؛ بعض مسارات البيانات قد تكون مدفوعة أو لها شروط إضافية، لذلك لا يوجد شراء أو ربط تلقائي بدون موافقة.',
+      en: 'The official file library is available; some data paths may be paid or carry additional terms, so nothing is purchased or enabled automatically.',
+      fr: 'La bibliothèque officielle est disponible ; certains accès peuvent être payants ou soumis à des conditions supplémentaires, donc aucun achat automatique.',
     },
   },
 ] as const;
