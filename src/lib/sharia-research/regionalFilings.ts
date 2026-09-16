@@ -12,11 +12,14 @@ const profiles: Profile[] = [
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
   { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://www.ifakuwait.com/financial-statements.html',
-    // Prefer the issuer's dedicated audited financial-statements PDF. The larger
-    // annual report remains a same-origin fallback because its visual layout can
-    // produce sparse text extraction even though the source itself is valid.
-    document: 'https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf',
-    alternates: [{ url: 'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf', pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105] }] },
+    // The official 2025 annual report has verified text-bearing auditor and
+    // statement pages. Keep identity-bearing pages together with the numeric
+    // statements because the statement masthead itself is letter-spaced.
+    document: 'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',
+    pages: [33, 34, 35, 36, 37, 38, 39, 40, 43, 44, 45],
+    // Dedicated statements remain a same-origin fallback, but their current PDF
+    // text layer does not expose enough issuer identity for a safe primary path.
+    alternates: [{ url: 'https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf' }] },
 ];
 function issuerHost(hostname: string) { return hostname.toLowerCase().replace(/^www\./, ''); }
 function sameIssuerHost(left: string, right: string) { return issuerHost(new URL(left).hostname) === issuerHost(new URL(right).hostname); }
@@ -84,32 +87,29 @@ export const regionalFilingsAdapter: SourceAdapter = {
       const candidates = [...fallbacks, ...discovered].filter((item, index, all) => all.findIndex(other => other.url === item.url) === index).slice(0, 4);
       if (!candidates.length) throw new Error('regional_financial_document_not_discovered');
 
-      let response: Awaited<ReturnType<typeof secureFetch>> | null = null;
-      let selected: DocumentFallback | null = null;
       let lastError: unknown = null;
       for (const candidate of candidates) {
         try {
           const fetched = await secureFetch(candidate.url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
           if (!sameIssuerHost(fetched.finalUrl, profile.directory)) throw new Error('regional_document_identity_changed');
-          response = fetched;
-          selected = candidate;
-          break;
+          context.signal?.throwIfAborted();
+          const pages = await extractSelectedPdfPages(fetched.body, candidate.pages ?? []);
+          context.signal?.throwIfAborted();
+          const document = pdfEvidenceDocument(pages, context.security, fetched.finalUrl, fetched.retrievedAt);
+          if (!profile.name.test(document.extractedText)) throw new Error('regional_document_issuer_mismatch');
+          const financialValues = financialValuesFromPdfPages(pages, context.security, document, profile.name, new Date(context.retrievedAt));
+          // A fetched PDF with no verifiable statement rows is not a successful
+          // evidence candidate; try another reviewed same-origin document.
+          if (!financialValues.length) throw new Error('regional_document_no_financial_rows');
+          return { adapterId: this.id, status: 'partial', documents: [document], financialValues,
+            errors: [{ code: 'REGIONAL_FINANCIAL_COVERAGE_PARTIAL', message: 'Only explicit current statement rows were extracted. Missing income breakdown, statement layouts and institution-level opinions require further evidence.', retryable: false }],
+            identityPatch: { website: profile.directory } };
         } catch (error) {
           lastError = error;
           context.signal?.throwIfAborted();
         }
       }
-      if (!response || !selected) throw lastError ?? new Error('regional_financial_document_not_discovered');
-
-      context.signal?.throwIfAborted();
-      const pages = await extractSelectedPdfPages(response.body, selected.pages ?? []);
-      context.signal?.throwIfAborted();
-      const document = pdfEvidenceDocument(pages, context.security, response.finalUrl, response.retrievedAt);
-      if (!profile.name.test(document.extractedText)) throw new Error('regional_document_issuer_mismatch');
-      const financialValues = financialValuesFromPdfPages(pages, context.security, document, profile.name, new Date(context.retrievedAt));
-      return { adapterId: this.id, status: 'partial', documents: [document], financialValues,
-        errors: [{ code: 'REGIONAL_FINANCIAL_COVERAGE_PARTIAL', message: 'Only explicit current statement rows were extracted. Missing income breakdown, statement layouts and institution-level opinions require further evidence.', retryable: false }],
-        identityPatch: { website: profile.directory } };
+      throw lastError ?? new Error('regional_financial_document_not_discovered');
     } catch (error) { return failedAdapterResult(this.id, error, profile.directory); }
   },
 };
