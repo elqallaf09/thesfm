@@ -1,0 +1,90 @@
+name: Real estate database validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'src/lib/investments/intelligence/**'
+      - 'src/app/api/investments/real-estate/**'
+      - '.github/scripts/real-estate-*.sql'
+      - '.github/scripts/bootstrap-supabase-stubs.sql'
+      - '.github/workflows/real-estate-database-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'src/lib/investments/intelligence/**'
+      - 'src/app/api/investments/real-estate/**'
+      - '.github/scripts/real-estate-*.sql'
+      - '.github/scripts/bootstrap-supabase-stubs.sql'
+      - '.github/workflows/real-estate-database-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: property-database-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolation:
+    name: CI/Real estate RLS and atomicity (${{ matrix.default_grants }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        default_grants: [permissive, closed]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: sfm_property_isolation_ci
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d sfm_property_isolation_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # Disposable service credentials, never linked-project credentials.
+      PGPASSWORD: postgres
+      PGOPTIONS: '-c sfm.disposable_ci=1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+      - name: Prepare isolated Supabase role and claim stand-ins
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1 -f .github/scripts/bootstrap-supabase-stubs.sql
+          psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1 -f .github/scripts/real-estate-ci-bootstrap.sql
+      - name: Model permissive pre-existing table defaults
+        if: matrix.default_grants == 'permissive'
+        run: >-
+          psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1
+          -c 'ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;'
+      - name: Apply complete migration chain once
+        run: |
+          set -euo pipefail
+          for migration in supabase/migrations/*.sql; do
+            echo "Applying $migration"
+            if ! psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1 -f "$migration" > "$RUNNER_TEMP/property-migration.log" 2>&1; then
+              cat "$RUNNER_TEMP/property-migration.log"
+              exit 1
+            fi
+          done
+      - name: Execute two-user RLS, RPC permissions, lineage and rollback checks
+        run: |
+          set -euo pipefail
+          psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1 -f .github/scripts/real-estate-database-validation.sql
+          {
+            echo '### Property database validation: ${{ matrix.default_grants }} defaults'
+            echo 'PASS: real PostgreSQL grants/RLS, A/B isolation, server-only RPC, subject/evidence lineage and late-failure rollback.'
+            echo 'PASS: all synthetic fixtures rolled back; no linked project or production credentials used.'
+            echo 'Scope: PostgreSQL 17 with explicit Supabase role/claim stand-ins. Hosted Auth/PostgREST and Preview deployment are not claimed verified by this job.'
+          } >> "$GITHUB_STEP_SUMMARY"
