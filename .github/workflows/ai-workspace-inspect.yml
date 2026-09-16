@@ -1,0 +1,22 @@
+name: AI workspace source inspection
+on:
+  push:
+    branches: [fix/ai-workspace-providers-layout-20260916]
+    paths: [.github/workflows/ai-workspace-inspect.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Archive only tracked source, never runtime credentials
+        run: git archive --format=tar.gz --output=ai-workspace-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ai-workspace-source
+          path: ai-workspace-source.tar.gz
+          retention-days: 1
