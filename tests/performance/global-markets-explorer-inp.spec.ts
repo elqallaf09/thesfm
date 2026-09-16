@@ -1,9 +1,33 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { mockMarketDirectory } from '../smoke/helpers/global-market-directory';
 
 function median(values: number[]) {
   const sorted = [...values].sort((left, right) => left - right);
   return sorted[Math.floor(sorted.length / 2)] ?? Number.POSITIVE_INFINITY;
+}
+
+async function prepareNativeClick(control: Locator) {
+  await expect(control).toBeVisible();
+  await expect(control).toBeEnabled();
+  // Position setup is outside the measured append. Keep a single native click.
+  await control.evaluate(element => element.scrollIntoView({
+    behavior: 'instant', block: 'center', inline: 'nearest',
+  }));
+  await expect.poll(() => control.evaluate(async element => {
+    const before = element.getBoundingClientRect();
+    await new Promise<void>(resolve =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    const after = element.getBoundingClientRect();
+    const x = after.left + after.width / 2;
+    const y = after.top + after.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return element.isConnected
+      && before.top === after.top && before.left === after.left
+      && before.width === after.width && before.height === after.height
+      && after.width > 0 && after.height > 0
+      && x > 0 && x < innerWidth && y > 0 && y < innerHeight
+      && hit !== null && (hit === element || element.contains(hit));
+  })).toBe(true);
 }
 
 test('Global Markets Explorer Load More stays within the controlled interaction budget', async ({ page }, testInfo) => {
@@ -25,24 +49,45 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
 
   if (process.env.E2E_BOOTSTRAP_URL) await page.goto(process.env.E2E_BOOTSTRAP_URL);
   await page.goto('/global-markets');
-  const explorer = page.locator('.gm-explorer');
-  await explorer.getByRole('button', { name: 'عرض مستكشف الأصول' }).click();
-  await expect(explorer.locator('.gm-strip-item')).toHaveCount(12);
+  const shell = page.locator('.gm-shell:visible');
+  // This existing control requires hydration and the initial strips response.
+  await expect(shell.locator('.gm-header-refresh')).toBeEnabled();
+  const explorer = shell.locator('.gm-explorer');
+  const toggle = explorer.locator('.gm-explorer-toggle');
+  await expect(toggle).toHaveAccessibleName('عرض مستكشف الأصول');
+  await prepareNativeClick(toggle);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  const items = explorer.locator('.gm-strip-item');
+  await expect(items).toHaveCount(12);
+
+  const increment = testInfo.project.name.startsWith('mobile') ? 6 : 12;
+  let expectedCount = 12;
+  async function append() {
+    const loadMore = explorer.getByRole('button', { name: /تحميل المزيد/ });
+    await prepareNativeClick(loadMore);
+    // An ignored click must not reuse the previous performance sample.
+    await page.evaluate(() => performance.clearMeasures('gm-explorer-append'));
+    await loadMore.click();
+    expectedCount += increment;
+    await expect(items).toHaveCount(expectedCount);
+    await page.waitForFunction(() =>
+      performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
+    await expect(loadMore).toBeEnabled();
+    return page.evaluate(() =>
+      performance.getEntriesByName('gm-explorer-append', 'measure').at(-1)?.duration
+        ?? Number.POSITIVE_INFINITY);
+  }
 
   // One warm-up append is excluded so font/style initialization does not
   // masquerade as steady-state interaction work.
-  let loadMore = explorer.getByRole('button', { name: /تحميل المزيد/ });
-  await loadMore.click();
-  await page.waitForFunction(() => performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
+  await append();
 
   const samples: number[] = [];
   const counts: number[] = [];
   for (let index = 0; index < 5; index += 1) {
-    loadMore = explorer.getByRole('button', { name: /تحميل المزيد/ });
-    await loadMore.click();
-    await page.waitForFunction(() => performance.getEntriesByName('gm-explorer-append', 'measure').length > 0);
-    samples.push(await page.evaluate(() => performance.getEntriesByName('gm-explorer-append', 'measure').at(-1)?.duration ?? Number.POSITIVE_INFINITY));
-    counts.push(await explorer.locator('.gm-strip-item').count());
+    samples.push(await append());
+    counts.push(await items.count());
   }
 
   const result = { project: testInfo.project.name, samples, median: median(samples), worst: Math.max(...samples), counts };
@@ -51,7 +96,6 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
     contentType: 'application/json',
   });
 
-  const increment = testInfo.project.name.startsWith('mobile') ? 6 : 12;
   for (let index = 1; index < counts.length; index += 1) {
     expect(counts[index] - counts[index - 1]).toBe(increment);
   }
