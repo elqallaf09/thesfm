@@ -11,6 +11,11 @@ describe('economic intelligence live verification workflow', () => {
     expect(workflow).toContain("/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\\.vercel\\.app$/");
   });
 
+  it('reruns when Economic Intelligence domain verification changes', () => {
+    expect(workflow).toContain('- src/domain/economic-intelligence/**');
+    expect(workflow).toContain('branches: [main, test/economic-intelligence-live-production-20260916]');
+  });
+
   it('uses only the dedicated test account public auth path and no service-role credential', () => {
     expect(workflow).toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY');
     expect(workflow).toContain('E2E_USER_EMAIL');
