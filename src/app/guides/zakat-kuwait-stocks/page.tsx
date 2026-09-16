@@ -27,10 +27,10 @@ export default function ZakatKuwaitStocksGuidePage() {
         <h2>خطوة عملية</h2>
         <p>اجمع بيانات محفظتك أولاً، ثم استخدم الحاسبة كأداة تقديرية، وبعدها راجع النتيجة وفق الطريقة الشرعية التي تعتمدها. لا تعتبر ناتج الحاسبة فتوى.</p>
       </article>
-      <div className="mt-8 rounded-2xl border border-border bg-card p-5">
+      <div className="mt-8 rounded-[var(--radius-card)] border border-border bg-card p-5">
         <strong>جرّب الحاسبة العامة</strong>
         <p className="mt-2 text-sm text-muted-foreground">بدون تسجيل دخول وبدون حفظ القيم المدخلة.</p>
-        <Link href="/zakat-calculator" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">حاسبة الزكاة</Link>
+        <Link href="/zakat-calculator" className="mt-4 inline-flex rounded-[var(--radius-control)] bg-primary px-4 py-2.5 font-semibold text-primary-foreground">حاسبة الزكاة</Link>
       </div>
     </main>
   );
