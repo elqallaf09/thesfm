@@ -17,11 +17,31 @@ import {
   type SfmTechnicalSnapshot,
 } from '@/lib/sfm-market/types';
 
+export const SFM_MARKET_BLOCKED_TRANSITIONAL_PROVIDERS = ['yahoo'] as const;
+
 export type SfmMarketRequest = {
   market?: string | null;
   assetType?: string | null;
   forceFresh?: boolean;
 };
+
+function providerContext(
+  symbol: string,
+  market: string | null,
+  assetType: string | null | undefined,
+  forceFresh: boolean | undefined,
+): MarketDataProviderContext {
+  return {
+    symbol,
+    market,
+    assetType,
+    forceFresh,
+    // Product decision: the SFM-owned market contract must never silently
+    // fall back to Yahoo. If our other lawful feeds cannot supply evidence,
+    // the engine returns unavailable/partial rather than changing source.
+    excludeProviders: [...SFM_MARKET_BLOCKED_TRANSITIONAL_PROVIDERS],
+  };
+}
 
 function round(value: number | null, digits = 4) {
   if (value === null || !Number.isFinite(value)) return null;
@@ -193,12 +213,12 @@ function buildSummary(symbol: string, quote: SfmMarketQuote | null, technical: S
 export async function getSfmMarketQuote(symbolInput: string, request: SfmMarketRequest = {}): Promise<SfmMarketQuote | null> {
   const normalized = normalizeMarketSymbolInput(symbolInput, request.assetType);
   if (!normalized.valid) return null;
-  const context: MarketDataProviderContext = {
-    symbol: normalized.symbol,
-    market: request.market ?? null,
-    assetType: normalized.assetType,
-    forceFresh: request.forceFresh,
-  };
+  const context = providerContext(
+    normalized.symbol,
+    request.market ?? null,
+    normalized.assetType,
+    request.forceFresh,
+  );
   const result = await getQuoteWithFallback(normalized.providerSymbol, request.market ?? null, context);
   if (!result.ok) return null;
   return buildSfmQuote(result.data, result.attempts, new Date().toISOString());
@@ -235,12 +255,12 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
     };
   }
 
-  const context: MarketDataProviderContext = {
-    symbol: normalized.symbol,
-    market: request.market ?? null,
-    assetType: normalized.assetType,
-    forceFresh: request.forceFresh,
-  };
+  const context = providerContext(
+    normalized.symbol,
+    request.market ?? null,
+    normalized.assetType,
+    request.forceFresh,
+  );
 
   const [quoteResult, historyResult] = await Promise.all([
     getQuoteWithFallback(normalized.providerSymbol, request.market ?? null, context),
