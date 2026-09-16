@@ -19,6 +19,8 @@ const profiles: Profile[] = [
       pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105],
     }] },
 ];
+function issuerHost(hostname: string) { return hostname.toLowerCase().replace(/^www\./, ''); }
+function sameIssuerHost(left: string, right: string) { return issuerHost(new URL(left).hostname) === issuerHost(new URL(right).hostname); }
 export function regionalProfile(security: Pick<SecurityIdentity, 'ticker' | 'providerSymbol' | 'country' | 'exchange' | 'name'>) {
   const country = String(security.country ?? '').toUpperCase();
   if (!['KW', 'KUWAIT'].includes(country) && !/KUWAIT|XKUW/i.test(security.exchange)) return null;
@@ -45,7 +47,7 @@ export function issuerPdfLinks(html: string, directory: string, now = new Date()
       // report otherwise sorted ahead of the current quarterly accounts.
       const financial = /financial[\s_-]*(?:statements?|reports?)|annual[\s_-]*reports?|(?:^|[ /_-])fs(?:[ /_-]|$)/i.test(description);
       const unrelated = /arabic|_ar\b|sustainab|esg|presentation|liquidity|nsfr|basel|tariff|full.script|second[\s_-]*party|(?:^|[ /_-])spo(?:[ /_-]|$)/i.test(description);
-      if (url.origin !== new URL(directory).origin || url.protocol !== 'https:' || !/\.pdf$/i.test(url.pathname)
+      if (!sameIssuerHost(url.toString(), directory) || url.protocol !== 'https:' || !/\.pdf$/i.test(url.pathname)
         || url.username || url.password || !years.length || Math.max(...years) > now.getUTCFullYear() || !financial || unrelated) return [];
       return [{ url: url.toString(), year: Math.max(...years), quarter: Number(/(?:q|quarter)[ -]*([1-4])(?!\d)/i.exec(description)?.[1] ?? /([1-4])[ -]*q(?![a-z])/i.exec(description)?.[1] ?? (/june/i.test(description) ? 2 : /march|mar[_ -]/i.test(description) ? 1 : /september/i.test(description) ? 3 : /annual|(?:^|[ /_-])fy(?:[ /_-]|$)|december/i.test(description) ? 4 : 0)) }];
     } catch { return []; }
@@ -60,9 +62,18 @@ export const regionalFilingsAdapter: SourceAdapter = {
     const profile = regionalProfile(context.security);
     if (!profile) return { adapterId: this.id, status: 'unavailable', documents: [], financialValues: [], errors: [{ code: 'REGIONAL_IDENTITY_NOT_VERIFIED', message: 'No exact issuer/exchange/profile match.', retryable: false }] };
     try {
-      const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
-      if (new URL(directory.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_directory_identity_changed');
-      const found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
+      // Discovery is an enhancement, not a prerequisite for a reviewed explicit
+      // issuer PDF. This prevents a slow/unavailable IR index page from hiding a
+      // known public filing such as IFA's audited annual report.
+      let found: string[] = [];
+      try {
+        const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
+        if (sameIssuerHost(directory.finalUrl, profile.directory)) {
+          found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
+        }
+      } catch {
+        context.signal?.throwIfAborted();
+      }
       const discovered = found.slice(0, 2).map(url => ({ url, pages: url === profile.document ? profile.pages : undefined }));
       const fallbacks: DocumentFallback[] = [
         ...(profile.document ? [{ url: profile.document, pages: profile.pages }] : []),
@@ -77,7 +88,7 @@ export const regionalFilingsAdapter: SourceAdapter = {
       for (const candidate of candidates) {
         try {
           const fetched = await secureFetch(candidate.url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
-          if (new URL(fetched.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_document_identity_changed');
+          if (!sameIssuerHost(fetched.finalUrl, profile.directory)) throw new Error('regional_document_identity_changed');
           response = fetched;
           selected = candidate;
           break;
