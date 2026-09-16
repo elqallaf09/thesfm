@@ -121,6 +121,116 @@
   font-weight: 700;
 }
 
+.metalTicker {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e4e7ec);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--card, #fff) 94%, transparent);
+  box-shadow: 0 9px 24px rgba(16, 24, 40, 0.035);
+}
+
+.tickerLabel {
+  position: relative;
+  z-index: 2;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  min-width: 110px;
+  padding: 11px 14px;
+  border-inline-end: 1px solid var(--border, #e4e7ec);
+  background: color-mix(in srgb, var(--primary, #5b5cf0) 9%, var(--card, #fff));
+  color: var(--foreground, #101828);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tickerViewport {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tickerTrack {
+  display: flex;
+  width: max-content;
+  min-width: 200%;
+  animation: metalTickerScroll 34s linear infinite;
+  will-change: transform;
+}
+
+.tickerViewport:hover .tickerTrack,
+.tickerViewport:focus-within .tickerTrack {
+  animation-play-state: paused;
+}
+
+.tickerSet {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.metalTickerItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-inline-end: 1px solid color-mix(in srgb, var(--border, #e4e7ec) 72%, transparent);
+  direction: ltr;
+  white-space: nowrap;
+}
+
+.metalName {
+  direction: rtl;
+  color: var(--foreground, #344054);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.metalSymbol {
+  color: var(--muted-foreground, #98a2b3);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.68rem;
+}
+
+.metalTickerItem strong {
+  color: var(--foreground, #101828);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.9rem;
+}
+
+.metalTickerItem small {
+  color: var(--muted-foreground, #98a2b3);
+  font-size: 0.66rem;
+}
+
+.metalChange {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.metalChange[data-direction='up'] {
+  color: #067647;
+}
+
+.metalChange[data-direction='down'] {
+  color: #b42318;
+}
+
+.metalChange[data-direction='flat'] {
+  color: var(--muted-foreground, #667085);
+}
+
+@keyframes metalTickerScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 .notice {
   display: flex;
   align-items: flex-start;
@@ -423,6 +533,21 @@
     width: 100%;
   }
 
+  .metalTicker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tickerLabel {
+    min-width: 0;
+    justify-content: start;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border, #e4e7ec);
+  }
+
+  .metalTickerItem {
+    padding-inline: 14px;
+  }
+
   .toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -456,7 +581,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .spin,
-  .skeleton {
+  .skeleton,
+  .tickerTrack {
     animation: none;
   }
 }
