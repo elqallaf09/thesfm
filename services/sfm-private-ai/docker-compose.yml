@@ -1,6 +1,6 @@
 services:
   sfm-ai:
-    image: ${SFM_VLLM_IMAGE:-vllm/vllm-openai:latest}
+    image: ${SFM_VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
     restart: unless-stopped
     ipc: host
     command:
@@ -15,7 +15,13 @@ services:
       - --api-key
       - ${SFM_AI_API_KEY:?SFM_AI_API_KEY is required}
       - --max-model-len
-      - ${SFM_MAX_MODEL_LEN:-32768}
+      - ${SFM_MAX_MODEL_LEN:-16384}
+      - --tensor-parallel-size
+      - ${SFM_GPU_COUNT:-1}
+      - --gpu-memory-utilization
+      - ${SFM_GPU_MEMORY_UTILIZATION:-0.90}
+      - --reasoning-parser
+      - ${SFM_REASONING_PARSER:-qwen3}
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
     ports:
@@ -32,7 +38,7 @@ services:
 
   sfm-vision:
     profiles: [vision]
-    image: ${SFM_VLLM_IMAGE:-vllm/vllm-openai:latest}
+    image: ${SFM_VLLM_IMAGE:-vllm/vllm-openai:v0.29.0}
     restart: unless-stopped
     ipc: host
     command:
@@ -48,6 +54,10 @@ services:
       - ${SFM_VISION_API_KEY:?SFM_VISION_API_KEY is required when the vision profile is enabled}
       - --max-model-len
       - ${SFM_VISION_MAX_MODEL_LEN:-16384}
+      - --tensor-parallel-size
+      - ${SFM_VISION_GPU_COUNT:-1}
+      - --gpu-memory-utilization
+      - ${SFM_VISION_GPU_MEMORY_UTILIZATION:-0.90}
     environment:
       HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
     ports:

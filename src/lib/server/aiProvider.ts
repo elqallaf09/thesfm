@@ -192,6 +192,28 @@ function providerHttpError(status: number) {
   return error;
 }
 
+/**
+ * Return only user-visible final answer text from a private reasoning model.
+ * vLLM reasoning parsers normally keep hidden reasoning in a separate field,
+ * but this is a defense-in-depth boundary for model servers that return
+ * leading <think> or <analysis> blocks inside message.content.
+ */
+export function finalAnswerFromPrivateModel(value: string) {
+  let text = value.trim();
+  if (!text) return '';
+
+  for (let index = 0; index < 4; index += 1) {
+    const privateBlock = text.match(/^\s*<(think|analysis)>[\s\S]*?<\/\1>\s*/iu);
+    if (!privateBlock) break;
+    text = text.slice(privateBlock[0].length).trim();
+  }
+
+  // Never surface a truncated/unclosed private reasoning block. Treat it as an
+  // invalid provider response so requestCompletion can try the fallback node.
+  if (/^\s*<(?:think|analysis)>/iu.test(text)) return '';
+  return text;
+}
+
 function textFromCompletion(payload: unknown) {
   if (!payload || typeof payload !== 'object') return '';
   const choices = (payload as { choices?: unknown }).choices;
@@ -199,13 +221,13 @@ function textFromCompletion(payload: unknown) {
   const message = (choices[0] as { message?: unknown }).message;
   if (!message || typeof message !== 'object') return '';
   const content = (message as { content?: unknown }).content;
-  if (typeof content === 'string') return content.trim();
+  if (typeof content === 'string') return finalAnswerFromPrivateModel(content);
   if (!Array.isArray(content)) return '';
-  return content
+  const joined = content
     .map(part => part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string' ? (part as { text: string }).text : '')
     .filter(Boolean)
-    .join('\n')
-    .trim();
+    .join('\n');
+  return finalAnswerFromPrivateModel(joined);
 }
 
 async function requestCompletion(input: {

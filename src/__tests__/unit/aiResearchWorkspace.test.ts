@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { researchWorkspaceHref } from '@/lib/ai-analyst/researchWorkspace';
+import { finalAnswerFromPrivateModel } from '@/lib/server/aiProvider';
 const source = (file: string) => readFileSync(file, 'utf8');
 describe('one asset research workspace', () => {
   it('preserves asset, horizon and investment context across old bookmarks without autorun', () => {
@@ -39,6 +40,12 @@ describe('one asset research workspace', () => {
     expect(picker).toContain('setAssetType(initialAssetType)');
     expect(picker).toContain('setHorizon(initialHorizon)');
     expect(picker).toContain('[initialSymbol, initialAssetType, initialHorizon]');
+  });
+  it('never exposes leading private reasoning blocks as the user-visible answer', () => {
+    expect(finalAnswerFromPrivateModel('<think>private chain</think>\nFinal answer')).toBe('Final answer');
+    expect(finalAnswerFromPrivateModel('<analysis>private chain</analysis>\n<think>more private chain</think>\nAnswer')).toBe('Answer');
+    expect(finalAnswerFromPrivateModel('<think>truncated private chain')).toBe('');
+    expect(finalAnswerFromPrivateModel('Normal answer')).toBe('Normal answer');
   });
   it('keeps the shared provider private and independent of third-party model vendor credentials', () => {
     const provider = source('src/lib/server/aiProvider.ts');
