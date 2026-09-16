@@ -1,6 +1,17 @@
 # Replace ai.example.com with the hostname you control.
-# Caddy terminates HTTPS; vLLM remains bound to 127.0.0.1 only.
+# Caddy terminates HTTPS; both vLLM processes stay bound to 127.0.0.1.
 ai.example.com {
   encode zstd gzip
-  reverse_proxy 127.0.0.1:8000
+
+  # Optional dedicated vision node. Configure THE SFM with:
+  # SFM_AI_VISION_BASE_URL=https://ai.example.com/vision/v1
+  handle_path /vision/* {
+    reverse_proxy 127.0.0.1:8001
+  }
+
+  # Main text/reasoning model. Configure:
+  # SFM_AI_BASE_URL=https://ai.example.com/v1
+  handle {
+    reverse_proxy 127.0.0.1:8000
+  }
 }
