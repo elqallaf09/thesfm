@@ -52,6 +52,11 @@ function nullableFinite(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function nullableInteger(value: unknown) {
+  const parsed = nullableFinite(value);
+  return parsed === null ? null : Math.max(0, Math.round(parsed));
+}
+
 function normalizedIso(value: unknown) {
   if (!value) return null;
   const date = new Date(String(value));
@@ -66,11 +71,20 @@ export function sfmObservationFingerprint(quote: SfmMarketQuote) {
   const stable = {
     schemaVersion: quote.schemaVersion,
     symbol: quote.symbol,
+    assetType: quote.assetType,
+    market: quote.market,
+    exchange: quote.exchange,
+    currency: quote.currency,
     observedAt: normalizedIso(quote.provenance.observedAt),
     sourceClass: quote.provenance.sourceClass,
     upstreamProvider: quote.provenance.upstreamProvider,
     providerSymbol: quote.provenance.providerSymbol,
     price: nullableFinite(quote.price),
+    change: nullableFinite(quote.change),
+    changePercent: nullableFinite(quote.changePercent),
+    open: nullableFinite(quote.open),
+    high: nullableFinite(quote.high),
+    low: nullableFinite(quote.low),
     previousClose: nullableFinite(quote.previousClose),
     volume: nullableFinite(quote.volume),
   };
@@ -102,7 +116,7 @@ export function toSfmMarketObservationRecord(
     quality_state: quote.quality.state,
     quality_score: Math.max(0, Math.min(100, Math.round(quote.quality.score))),
     completeness_percent: Math.max(0, Math.min(100, Math.round(quote.quality.completenessPercent))),
-    freshness_seconds: nullableFinite(quote.quality.freshnessSeconds),
+    freshness_seconds: nullableInteger(quote.quality.freshnessSeconds),
     missing_fields: [...quote.quality.missingFields],
     quality_reasons: [...quote.quality.reasons],
     source_class: quote.provenance.sourceClass,
@@ -111,7 +125,7 @@ export function toSfmMarketObservationRecord(
     provider_symbol: quote.provenance.providerSymbol,
     delay_type: quote.provenance.delayType,
     cached: quote.provenance.cached,
-    cache_age_seconds: nullableFinite(quote.provenance.cacheAgeSeconds),
+    cache_age_seconds: nullableInteger(quote.provenance.cacheAgeSeconds),
     attempt_count: Math.max(0, Math.trunc(quote.provenance.attemptCount)),
     derived_fields: [...quote.provenance.derivedFields],
     distribution_scope: options.distributionScope ?? 'internal_only',
