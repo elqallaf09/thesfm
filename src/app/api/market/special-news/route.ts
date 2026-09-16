@@ -13,7 +13,16 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
-type TopicId = 'federal-reserve' | 'healthcare-stocks' | 'new-stocks' | 'stocks-under-1' | 'metals-news';
+type TopicId =
+  | 'federal-reserve'
+  | 'healthcare-stocks'
+  | 'new-stocks'
+  | 'stocks-under-1'
+  | 'metals-news'
+  | 'earnings-news'
+  | 'analyst-ratings-news'
+  | 'mergers-acquisitions-news'
+  | 'unusual-moves-news';
 
 type TopicConfig = {
   query: string;
@@ -22,10 +31,16 @@ type TopicConfig = {
   params: Partial<NewsFetchParams>;
 };
 
-type MetalTickerConfig = {
-  id: 'gold' | 'silver' | 'copper' | 'platinum' | 'palladium';
+type StaticTickerConfig = {
   symbol: string;
-  unit: 'USD/oz' | 'USD/lb';
+  name: string;
+  assetType: 'stock' | 'etf' | 'unknown';
+  currency: 'USD';
+  meta?: string;
+};
+
+type MetalTickerConfig = StaticTickerConfig & {
+  id: 'gold' | 'silver' | 'copper' | 'platinum' | 'palladium';
 };
 
 const TOPICS: Record<TopicId, TopicConfig> = {
@@ -80,20 +95,76 @@ const TOPICS: Record<TopicId, TopicConfig> = {
       commodities: ['gold', 'silver', 'copper', 'platinum', 'palladium'],
     },
   },
+  'earnings-news': {
+    query: 'earnings quarterly results revenue EPS guidance profit margin company results earnings beat earnings miss',
+    days: 45,
+    sort: 'importance',
+    params: {
+      marketCodes: ['US'],
+      countries: ['US'],
+      assetTypes: ['equity', 'etf'],
+      eventTypes: ['earnings_results', 'earnings_guidance'],
+    },
+  },
+  'analyst-ratings-news': {
+    query: 'analyst upgrade downgrade rating price target initiated coverage overweight underweight buy sell hold',
+    days: 45,
+    sort: 'latest',
+    params: {
+      marketCodes: ['US'],
+      countries: ['US'],
+      assetTypes: ['equity', 'etf'],
+      eventTypes: ['analyst_rating_change'],
+    },
+  },
+  'mergers-acquisitions-news': {
+    query: 'merger acquisition takeover buyout deal offer acquired acquisition target strategic combination',
+    days: 60,
+    sort: 'importance',
+    params: {
+      marketCodes: ['US'],
+      countries: ['US'],
+      assetTypes: ['equity'],
+      eventTypes: ['merger_acquisition', 'acquisition_offer'],
+    },
+  },
+  'unusual-moves-news': {
+    query: 'stock surges plunges jumps falls rallies tumbles unusual volume heavy volume trading halt gap volatility unusual market move',
+    days: 14,
+    sort: 'latest',
+    params: {
+      marketCodes: ['US'],
+      countries: ['US'],
+      assetTypes: ['equity', 'etf'],
+    },
+  },
 };
 
+const FED_TICKER: StaticTickerConfig[] = [
+  { symbol: 'SPY', name: 'S&P 500 ETF', assetType: 'etf', currency: 'USD' },
+  { symbol: 'QQQ', name: 'Nasdaq 100 ETF', assetType: 'etf', currency: 'USD' },
+  { symbol: 'IWM', name: 'Russell 2000 ETF', assetType: 'etf', currency: 'USD' },
+  { symbol: 'TLT', name: '20+ Year Treasury ETF', assetType: 'etf', currency: 'USD' },
+  { symbol: 'UUP', name: 'US Dollar ETF', assetType: 'etf', currency: 'USD' },
+  { symbol: 'GLD', name: 'Gold ETF', assetType: 'etf', currency: 'USD' },
+];
+
 const METAL_TICKER: MetalTickerConfig[] = [
-  { id: 'gold', symbol: 'GC=F', unit: 'USD/oz' },
-  { id: 'silver', symbol: 'SI=F', unit: 'USD/oz' },
-  { id: 'copper', symbol: 'HG=F', unit: 'USD/lb' },
-  { id: 'platinum', symbol: 'PL=F', unit: 'USD/oz' },
-  { id: 'palladium', symbol: 'PA=F', unit: 'USD/oz' },
+  { id: 'gold', symbol: 'GC=F', name: 'Gold', assetType: 'unknown', currency: 'USD', meta: 'USD/oz' },
+  { id: 'silver', symbol: 'SI=F', name: 'Silver', assetType: 'unknown', currency: 'USD', meta: 'USD/oz' },
+  { id: 'copper', symbol: 'HG=F', name: 'Copper', assetType: 'unknown', currency: 'USD', meta: 'USD/lb' },
+  { id: 'platinum', symbol: 'PL=F', name: 'Platinum', assetType: 'unknown', currency: 'USD', meta: 'USD/oz' },
+  { id: 'palladium', symbol: 'PA=F', name: 'Palladium', assetType: 'unknown', currency: 'USD', meta: 'USD/oz' },
 ];
 
 const FED_PATTERN = /\b(federal reserve|fomc|fed chair|jerome powell|powell)\b/i;
 const HEALTHCARE_PATTERN = /\b(healthcare|health care|biotech|biotechnology|pharma|pharmaceutical|medical device|fda|clinical trial|drug approval|diagnostic|hospital)\b/i;
 const NEW_LISTING_PATTERN = /\b(ipo|initial public offering|newly listed|new listing|market debut|trading debut|direct listing|public debut|begins trading)\b/i;
 const METALS_PATTERN = /\b(gold|silver|copper|platinum|palladium|precious metal|industrial metal|bullion|xau|xag|comex|metal price)\b/i;
+const EARNINGS_PATTERN = /\b(earnings|quarterly results|revenue|eps|guidance|profit|margin|beat estimates|missed estimates)\b/i;
+const ANALYST_PATTERN = /\b(analyst|upgrade|downgrade|price target|rating|initiated coverage|overweight|underweight)\b/i;
+const MA_PATTERN = /\b(merger|acquisition|takeover|buyout|acquire|acquired|deal|offer|strategic combination)\b/i;
+const UNUSUAL_PATTERN = /\b(surge|plunge|soar|tumble|spike|slump|jump|fall|rally|selloff|unusual volume|heavy volume|trading halt|volatile|volatility|gap up|gap down)\b/i;
 
 function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -109,17 +180,18 @@ function storyText(story: ConsolidatedNewsStory) {
 }
 
 function matchesTopic(topic: TopicId, story: ConsolidatedNewsStory) {
-  if (topic === 'federal-reserve') return FED_PATTERN.test(storyText(story));
+  const text = storyText(story);
+  if (topic === 'federal-reserve') return FED_PATTERN.test(text);
   if (topic === 'healthcare-stocks') {
     const hasCompany = story.symbols.length > 0 || story.companyNames.length > 0;
-    return hasCompany && HEALTHCARE_PATTERN.test(storyText(story));
+    return hasCompany && HEALTHCARE_PATTERN.test(text);
   }
-  if (topic === 'new-stocks') {
-    return story.eventType === 'ipo_listing' || NEW_LISTING_PATTERN.test(storyText(story));
-  }
-  if (topic === 'metals-news') {
-    return story.eventType === 'commodity_price_event' || METALS_PATTERN.test(storyText(story));
-  }
+  if (topic === 'new-stocks') return story.eventType === 'ipo_listing' || NEW_LISTING_PATTERN.test(text);
+  if (topic === 'metals-news') return story.eventType === 'commodity_price_event' || METALS_PATTERN.test(text);
+  if (topic === 'earnings-news') return ['earnings_results', 'earnings_guidance'].includes(story.eventType) || EARNINGS_PATTERN.test(text);
+  if (topic === 'analyst-ratings-news') return story.eventType === 'analyst_rating_change' || ANALYST_PATTERN.test(text);
+  if (topic === 'mergers-acquisitions-news') return ['merger_acquisition', 'acquisition_offer'].includes(story.eventType) || MA_PATTERN.test(text);
+  if (topic === 'unusual-moves-news') return UNUSUAL_PATTERN.test(text);
   return true;
 }
 
@@ -153,20 +225,60 @@ function firstUsablePrice(story: ConsolidatedNewsStory, prices: Map<string, Tech
   return null;
 }
 
+function companyNameForSymbol(stories: ConsolidatedNewsStory[], symbol: string) {
+  for (const story of stories) {
+    const index = story.symbols.findIndex(candidate => candidate.toUpperCase() === symbol);
+    if (index >= 0) return story.companyNames[index] ?? story.companyNames[0] ?? symbol;
+  }
+  return symbol;
+}
+
+function stockTickerFromStories(topic: TopicId, stories: ConsolidatedNewsStory[], prices: Map<string, TechStockPrice>) {
+  const symbols = uniqueStorySymbols(stories, 18);
+  let items = symbols.map(symbol => {
+    const quote = prices.get(symbol);
+    return {
+      symbol,
+      name: companyNameForSymbol(stories, symbol),
+      assetType: 'stock' as const,
+      currency: 'USD' as const,
+      price: quote?.available ? quote.price : null,
+      changePercent: quote?.available ? quote.changePercent : null,
+      source: quote?.source ?? 'market data',
+      available: Boolean(quote?.available),
+    };
+  });
+
+  if (topic === 'stocks-under-1') items = items.filter(item => item.available && typeof item.price === 'number' && item.price > 0 && item.price < 1);
+  if (topic === 'unusual-moves-news') {
+    items = items.sort((left, right) => Math.abs(right.changePercent ?? 0) - Math.abs(left.changePercent ?? 0));
+  }
+  return items.slice(0, 12);
+}
+
+async function fetchStaticStockTicker(config: StaticTickerConfig[]) {
+  const prices = await fetchStockPrices(config.map(item => ({ symbol: item.symbol })), process.env.FINNHUB_API_KEY?.trim());
+  return config.map(item => {
+    const quote = prices.get(item.symbol);
+    return {
+      ...item,
+      price: quote?.available ? quote.price : null,
+      changePercent: quote?.available ? quote.changePercent : null,
+      source: quote?.source ?? 'market data',
+      available: Boolean(quote?.available),
+    };
+  });
+}
+
 async function fetchMetalTicker() {
   const settled = await Promise.allSettled(METAL_TICKER.map(async metal => {
     const quote = await fetchYahooChartQuote(metal.symbol);
     return {
-      id: metal.id,
-      symbol: metal.symbol,
-      unit: metal.unit,
+      ...metal,
       price: quote.available ? quote.price : null,
-      change: quote.available ? quote.change : null,
       changePercent: quote.available ? quote.changePercent : null,
       source: quote.source,
-      delayed: quote.delayed,
       available: quote.available,
-      unavailableReason: quote.unavailableReason ?? null,
     };
   }));
 
@@ -174,16 +286,11 @@ async function fetchMetalTicker() {
     if (result.status === 'fulfilled') return result.value;
     const metal = METAL_TICKER[index];
     return {
-      id: metal.id,
-      symbol: metal.symbol,
-      unit: metal.unit,
+      ...metal,
       price: null,
-      change: null,
       changePercent: null,
       source: 'Yahoo Finance' as const,
-      delayed: true as const,
       available: false,
-      unavailableReason: result.reason instanceof Error ? result.reason.message : 'metal_quote_failed',
     };
   });
 }
@@ -250,7 +357,7 @@ export async function GET(request: NextRequest) {
   const refresh = request.nextUrl.searchParams.has('refresh');
 
   try {
-    const [result, metalTicker] = await Promise.all([
+    const [result, fixedTicker] = await Promise.all([
       aggregateFinancialNews({
         ...config.params,
         query: config.query,
@@ -265,20 +372,21 @@ export async function GET(request: NextRequest) {
         sort: config.sort,
         forceExternal: refresh,
       }),
-      topic === 'metals-news' ? fetchMetalTicker() : Promise.resolve([]),
+      topic === 'metals-news'
+        ? fetchMetalTicker()
+        : topic === 'federal-reserve'
+          ? fetchStaticStockTicker(FED_TICKER)
+          : Promise.resolve([]),
     ]);
 
     let stories = result.stories.filter(story => matchesTopic(topic, story));
     let prices = new Map<string, TechStockPrice>();
 
     if (topic !== 'federal-reserve' && topic !== 'metals-news') {
-      const symbolLimit = topic === 'stocks-under-1' ? 36 : 24;
+      const symbolLimit = topic === 'stocks-under-1' ? 36 : 30;
       const symbols = uniqueStorySymbols(stories, symbolLimit);
       if (symbols.length > 0) {
-        prices = await fetchStockPrices(
-          symbols.map(symbol => ({ symbol })),
-          process.env.FINNHUB_API_KEY?.trim(),
-        );
+        prices = await fetchStockPrices(symbols.map(symbol => ({ symbol })), process.env.FINNHUB_API_KEY?.trim());
       }
     }
 
@@ -286,10 +394,8 @@ export async function GET(request: NextRequest) {
       stories = stories.filter(story => story.symbols.some(symbol => verifiedUnderOne(prices.get(symbol.toUpperCase()))));
     }
 
-    const rawItems = stories.map(story => rawUiItem(
-      story,
-      firstUsablePrice(story, prices, topic === 'stocks-under-1'),
-    ));
+    const tickerItems = fixedTicker.length > 0 ? fixedTicker : stockTickerFromStories(topic, stories, prices);
+    const rawItems = stories.map(story => rawUiItem(story, firstUsablePrice(story, prices, topic === 'stocks-under-1')));
     const items = await translateNewsItems(rawItems, language);
     const unavailable = !result.liveUpdatesAvailable && !result.storedFallbackUsed && items.length === 0;
 
@@ -306,7 +412,7 @@ export async function GET(request: NextRequest) {
             : null,
       source: 'multi-source',
       items,
-      metalTicker,
+      tickerItems,
       updatedAt: result.lastUpdated,
       lastSuccessfulUpdate: result.lastSuccessfulUpdate,
       partialFailure: result.partialFailure,
@@ -331,7 +437,7 @@ export async function GET(request: NextRequest) {
       topic,
       code: 'SPECIAL_NEWS_PROVIDER_UNAVAILABLE',
       items: [],
-      metalTicker: [],
+      tickerItems: [],
     }, { status: 503 });
   }
 }
