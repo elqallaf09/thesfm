@@ -23,7 +23,9 @@ beforeEach(() => {
   ]);
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('SFM Private AI health route', () => {
   it('requires an authenticated user', async () => {
