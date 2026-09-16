@@ -17,7 +17,6 @@ import {
   HandCoins,
   LockKeyhole,
   Menu,
-  MoonStar,
   PiggyBank,
   ShieldCheck,
   Sparkles,
@@ -247,7 +246,7 @@ export default function PublicLandingPage() {
       </header>
 
       <section className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.15),transparent_35%),radial-gradient(circle_at_bottom_left,hsl(var(--accent)/0.12),transparent_30%)]" />
+        <div className="absolute inset-0 bg-primary/5" />
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 md:px-6 md:py-20 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:py-24">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"><Sparkles size={15} />{text.heroKicker}</span>
@@ -318,7 +317,7 @@ export default function PublicLandingPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-20 md:px-6">
-        <div className="rounded-[28px] border border-primary/20 bg-primary/10 p-7 text-center md:p-10"><MoonStar className="mx-auto text-primary" /><h2 className="mt-4 text-3xl font-bold">{text.finalTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-muted-foreground">{text.finalSubtitle}</p><div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Link href={appHref} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">{ctaLabel}</Link><Link href="/zakat-calculator" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border bg-card px-6 font-semibold">{text.heroSecondary}</Link></div></div>
+        <div className="rounded-[28px] border border-primary/20 bg-primary/10 p-7 text-center md:p-10"><h2 className="text-3xl font-bold">{text.finalTitle}</h2><p className="mx-auto mt-3 max-w-2xl text-muted-foreground">{text.finalSubtitle}</p><div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Link href={appHref} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-primary px-6 font-semibold text-primary-foreground">{ctaLabel}</Link><Link href="/zakat-calculator" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-border bg-card px-6 font-semibold">{text.heroSecondary}</Link></div></div>
       </section>
 
       <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden"><Link href={appHref} className="flex min-h-12 items-center justify-center rounded-xl bg-primary px-5 font-bold text-primary-foreground shadow-xl">{ctaLabel}</Link></div>

@@ -58,6 +58,8 @@ export const publicRoutes = [
   '/ebooks/feasibility-study-fr',
   '/financial-theories',
   '/zakat-calculator',
+  '/compound-interest-calculator',
+  '/loan-calculator',
   '/privacy',
   '/terms',
 ] as const;

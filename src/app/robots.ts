@@ -66,7 +66,18 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/about', '/contact', '/financial-theories', '/ebooks', '/privacy', '/terms', '/zakat-calculator'],
+      allow: [
+        '/',
+        '/about',
+        '/contact',
+        '/financial-theories',
+        '/ebooks',
+        '/privacy',
+        '/terms',
+        '/zakat-calculator',
+        '/compound-interest-calculator',
+        '/loan-calculator',
+      ],
       disallow: privateRoutes,
     },
     sitemap: absoluteUrl('/sitemap.xml'),
