@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useId, useState } from 'react';
+import { FormEvent, useEffect, useId, useState } from 'react';
 import { ArrowUpRight, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
@@ -41,6 +41,17 @@ export function AiAnalystAssetPicker({
   const [assetType, setAssetType] = useState<IntelligenceAssetType>(initialAssetType);
   const [horizon, setHorizon] = useState<IntelligenceHorizon>(initialHorizon);
   const [error, setError] = useState('');
+
+  // App Router compatibility redirects can keep this client component mounted
+  // while the canonical dynamic-route props change. Keep the editable state in
+  // sync with the authoritative route selection instead of retaining a stale
+  // blank/previous asset after navigation.
+  useEffect(() => {
+    setSymbol(initialSymbol);
+    setAssetType(initialAssetType);
+    setHorizon(initialHorizon);
+    setError('');
+  }, [initialSymbol, initialAssetType, initialHorizon]);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
