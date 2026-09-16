@@ -62,7 +62,9 @@ test('Investments Center preserves owned property totals while handing market an
   const propertyAnalysis = propertyCard.getByRole('link', { name: 'Analyze this asset', exact: true });
   await expect(propertyAnalysis).toHaveAttribute('href', '/global-markets/real-estate?investmentId=d9d9e4f4-f68d-454b-a2c3-33ff7b13c065');
   await expect(propertyAnalysis).not.toHaveAttribute('href', /\/ai-analyst\/|assetType=STOCK/);
-  await expect(page.getByRole('link', { name: 'Real Estate' })).toHaveCount(0);
+  // The Investments Center must not expose a standalone "Real Estate" asset-class tab.
+  // A separate global navigation entry named "Real Estate Market Center" is expected.
+  await expect(page.getByRole('link', { name: 'Real Estate', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('real-estate-intelligence-entry')).toHaveCount(0);
   expect(propertyAnalysisRequests, 'opening the center must not run a valuation or save').toBe(0);
   expect(missingLogoRequests).toBeLessThanOrEqual(1);
