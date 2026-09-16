@@ -174,7 +174,9 @@ export async function collectCookCountyPropertyContext(
     licenseUrl: 'https://datacatalog.cookcountyil.gov/',
     status: 'CONNECTED_REVIEW_REQUIRED',
     retrievedAt: now.toISOString(),
-    metadataUpdatedAt: '2026-09-01',
+    // We do not hard-code the catalog metadata timestamp. If/when we add a
+    // bounded metadata call, this field can be populated from the live source.
+    metadataUpdatedAt: null,
     latestObservationOn,
     sampleTotal: rows.length > LIMIT ? null : records.length,
     sampleTruncated: rows.length > LIMIT,
