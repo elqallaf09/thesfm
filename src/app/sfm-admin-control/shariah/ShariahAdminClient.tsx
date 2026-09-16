@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ShariahEvidencePanel from './ShariahEvidencePanel';
+import ShariahPublishedOpinions from './ShariahPublishedOpinions';
 import type { ComponentProps } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -208,6 +209,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
 
       <ShariahEvidencePanel evidence={selected?.shariah_screening_data} lastRun={lastRun} diagnosticsError={diagnosticsError} onUpdated={() => load(query)} selected={selected?.id ? { id: String(selected.id), symbol: selected.symbol, assetType: selected.asset_type, error: selected.shariah_refresh_error, nextRetryAt: selected.shariah_next_refresh_at } : null} />
 
+      <ShariahPublishedOpinions />
       <section className="sharia-admin-workspace">
         <div
           className="sharia-admin-table-shell"
@@ -225,7 +227,7 @@ export default function ShariahAdminClient({ reviewer }: { reviewer: string }) {
             </thead>
             <tbody>
               {items.map(item => (
-                <tr key={`${item.symbol}:${item.exchange ?? ''}`}>
+                <tr key={`${item.symbol}:${item.exchange ?? ''}`} data-testid={`shariah-row-${item.id}`}>
                   <td className="sharia-admin-symbol" dir="ltr">{item.display_symbol || item.symbol}</td>
                   <td>{rowName(item, lang)}</td>
                   <td>{item.exchange || '—'}</td>

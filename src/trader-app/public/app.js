@@ -4,6 +4,7 @@
 (() => {
   "use strict";
   const Recommendation = window.SFMRecommendation;
+  const DrawerFocus = window.SFMTraderDrawerFocus;
   let _marketSelectorOpen = false;
   let _mobileMoreOpen = false;
   let drawerReturnFocus = null;
@@ -1993,7 +1994,7 @@
       const drawerWatch = event.target.closest("[data-drawer-watch]");
       if (drawerWatch) { event.preventDefault(); toggleDrawerWatch(drawerWatch.dataset.drawerWatch); return; }
       const drawerAlert = event.target.closest("[data-drawer-alert]");
-      if (drawerAlert) { event.preventDefault(); drawerFocusPending = true; createAlert(drawerAlert.dataset.drawerAlert); return; }
+      if (drawerAlert) { event.preventDefault(); drawerFocusPending = false; createAlert(drawerAlert.dataset.drawerAlert); return; }
       const drawerCompare = event.target.closest("[data-drawer-compare]");
       if (drawerCompare) {
         event.preventDefault();
@@ -4252,16 +4253,7 @@
     drawerFocusPending = false;
     renderSymbolDrawer();
     drawerReturnFocus = null;
-    if (options.restoreFocus !== false) {
-      window.requestAnimationFrame(() => {
-        if (restore && typeof restore.focus === "function" && document.contains(restore)) {
-          restore.focus();
-          return;
-        }
-        const fallback = Array.from(document.querySelectorAll("[data-symbol-details]")).find(node => sym(node.dataset.symbolDetails) === closingSymbol);
-        fallback?.focus();
-      });
-    }
+    if (options.restoreFocus !== false) DrawerFocus.restoreTrigger(restore, closingSymbol);
   }
 
   function setDrawerTab(tab, options = {}) {
@@ -4291,16 +4283,12 @@
     document.body.classList.add("symbol-drawer-open");
     document.body.style.overflow = "hidden";
     setDrawerBackgroundState(true);
+    const snapshot = DrawerFocus.capture(host);
     host.hidden = false;
     host.innerHTML = symbolQuickDrawerHtml(drawerLoadedContext(state.drawer.symbol));
     translateRenderedUi(host);
-    if (drawerFocusPending) {
-      drawerFocusPending = false;
-      window.requestAnimationFrame(() => {
-        const target = host.querySelector(`[data-drawer-tab="${state.drawer.tab}"]`) || host.querySelector("[data-drawer-close]");
-        target?.focus();
-      });
-    }
+    DrawerFocus.restore(host, snapshot, drawerFocusPending);
+    drawerFocusPending = false;
   }
 
   function symbolQuickDrawerHtml(context) {
@@ -4419,7 +4407,7 @@
   function toggleDrawerWatch(raw) {
     const symbol = sym(raw);
     if (!symbol) return;
-    drawerFocusPending = true;
+    drawerFocusPending = false;
     if (state.watch.some(item => sym(item) === symbol)) removeWatch(symbol);
     else addWatch(symbol);
   }
@@ -4427,7 +4415,7 @@
   function toggleDrawerCompare(raw) {
     const symbol = sym(raw);
     if (!symbol) return;
-    drawerFocusPending = true;
+    drawerFocusPending = false;
     const exists = state.drawer.compare.some(item => sym(item) === symbol);
     if (exists) state.drawer.compare = state.drawer.compare.filter(item => sym(item) !== symbol);
     else if (state.drawer.compare.length < 4) state.drawer.compare = [...state.drawer.compare, symbol];
@@ -4489,7 +4477,7 @@
   function handleSymbolDrawerKeydown(event) {
     if (!state.drawer.symbol) return false;
     const drawer = document.querySelector("[data-symbol-drawer]");
-    if (!drawer) return false;
+    if (!drawer || !DrawerFocus.ownsKey(event, drawer)) return false;
     if (event.key === "Escape") {
       event.preventDefault();
       closeSymbolDrawer();
@@ -4510,7 +4498,7 @@
       return true;
     }
     if (event.key !== "Tab") return false;
-    const focusable = Array.from(drawer.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')).filter(node => !node.hidden && node.getAttribute("aria-hidden") !== "true");
+    const focusable = DrawerFocus.tabStops(drawer);
     if (!focusable.length) return false;
     const first = focusable[0], last = focusable[focusable.length - 1];
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); return true; }

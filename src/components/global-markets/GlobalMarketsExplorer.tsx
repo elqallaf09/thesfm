@@ -9,6 +9,7 @@ import type { Lang } from '@/lib/translations';
 import { t } from '@/lib/translations';
 import { EMPTY_DIRECTORY_FILTERS, type GlobalDirectoryRow, type GlobalDirectoryFilters } from '@/lib/market/globalMarketDirectoryTypes';
 import { useGlobalDirectoryPrices, useGlobalMarketDirectory } from '@/hooks/useGlobalMarketDirectory';
+import { deferUntilStreamSettled } from '@/lib/runtime/deferUntilStreamSettled';
 
 export type GlobalExplorerRequest = { id: string; sequence: number };
 type GlobalMarketsExplorerProps = { prices: Record<string, TechStockPrice> | null; lang: Lang; dir: 'rtl' | 'ltr'; browseRequest?: GlobalExplorerRequest | null };
@@ -50,6 +51,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
   const copy = COPY[lang];
   const sectionRef = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [interactive, setInteractive] = useState(false);
   const [filters, setFilters] = useState<GlobalDirectoryFilters>({ ...EMPTY_DIRECTORY_FILTERS });
   const [isMobile, setIsMobile] = useState(false);
   const directory = useGlobalMarketDirectory(expanded, filters);
@@ -61,6 +63,9 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
   const countryOptions = useMemo(() => [...new Set(GLOBAL_MARKET_STRIPS.map(strip => strip.countryCode).filter((code): code is string => Boolean(code)))].sort(), []);
   const exchangeOptions = useMemo(() => GLOBAL_MARKET_STRIPS.filter(strip => filters.country === 'all' || strip.countryCode === filters.country), [filters.country]);
 
+  // A visible SSR control must not accept a click before its handlers are live.
+  // Wait for this component and its streamed parent, not for remote market data.
+  useEffect(() => deferUntilStreamSettled(() => setInteractive(true)), []);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 640px)');
     const update = () => setIsMobile(media.matches);
@@ -84,9 +89,9 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
       <h2 className="gm-explorer-heading" id="gm-explorer-heading">{t('global_markets_explorer_heading', lang)}</h2>
       <div className="gm-explorer-search">
         <Search size={16} aria-hidden="true" />
-        <input type="search" value={filters.query} onChange={event => updateFilter('query', event.target.value)} placeholder={t('global_markets_search_placeholder', lang)} aria-label={t('global_markets_search_placeholder', lang)} dir="auto" />
+        <input type="search" disabled={!interactive} value={filters.query} onChange={event => updateFilter('query', event.target.value)} placeholder={t('global_markets_search_placeholder', lang)} aria-label={t('global_markets_search_placeholder', lang)} dir="auto" />
       </div>
-      <button type="button" className="gm-explorer-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
+      <button type="button" className="gm-explorer-toggle" disabled={!interactive} aria-busy={!interactive} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
         {lang === 'ar' ? (expanded ? 'إخفاء مستكشف الأصول' : 'عرض مستكشف الأصول') : lang === 'fr' ? (expanded ? 'Masquer l’explorateur' : 'Afficher l’explorateur') : (expanded ? 'Hide asset explorer' : 'Browse all assets')}
       </button>
       {expanded ? <>

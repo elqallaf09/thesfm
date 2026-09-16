@@ -29,7 +29,8 @@ export function validFinancialValue(value: FinancialValue, now = new Date()) {
   if (value.validation?.version !== EVIDENCE_VERSION || value.validation.bound === 'unverified') return false;
   if (reportedNumber(value.value) === null || typeof value.value !== 'number') return false;
   if (!/^[A-Z]{3}$/.test(value.currency) || value.unit !== value.currency) return false;
-  if (!currentDay(value.periodEnd, now) || !currentDay(value.filedAt, now) || value.filedAt! < value.periodEnd) return false;
+  const evidenceDate = value.filedAt ?? (value.sourceDateKind === 'issuer_report_signature' ? value.reportedAt : null);
+  if (!currentDay(value.periodEnd, now) || !currentDay(evidenceDate, now) || evidenceDate! < value.periodEnd) return false;
   if (![1, 2].includes(value.sourceTier) || !value.documentId || !value.sourceUrl.startsWith('https://')) return false;
   try { if (new URL(value.sourceUrl).protocol !== 'https:') return false; } catch { return false; }
   if (INCOME_FIELDS.has(value.normalizedField)) {
@@ -44,7 +45,8 @@ export function compatibleFinancialValues(left: FinancialValue, right: Financial
     && (left.periodStart ?? null) === (right.periodStart ?? null)
     && left.currency === right.currency && left.unit === right.unit
     && (left.accessionNumber && right.accessionNumber
-      ? left.accessionNumber === right.accessionNumber && new URL(left.sourceUrl).hostname === new URL(right.sourceUrl).hostname
+      ? left.accessionNumber === right.accessionNumber && (new URL(left.sourceUrl).hostname === new URL(right.sourceUrl).hostname
+        || [left.sourceUrl, right.sourceUrl].every(url => ['www.sec.gov', 'data.sec.gov'].includes(new URL(url).hostname)))
       : left.documentId === right.documentId);
   } catch { return false; }
 }
@@ -71,4 +73,17 @@ export function ratioPasses(numerators: number[], denominator: number, threshold
   const left = sum.n * den.d * cap.d;
   const right = sum.d * den.n * cap.n;
   return operator === '<' ? left < right : left <= right;
+}
+
+export function financialFieldCoverage(values: FinancialValue[], period: string | null, now = new Date()) {
+  const fields = ['total_assets', 'interest_bearing_debt', 'cash_and_equivalents', 'interest_bearing_securities', 'accounts_receivable', 'total_income', 'interest_income', 'prohibited_revenue'] as const;
+  return fields.map(field => {
+    const found = values.filter(value => value.normalizedField === field);
+    const current = found.filter(value => !period || value.periodEnd === period);
+    const valid = current.filter(value => validFinancialValue(value, now));
+    const state: import('./types').FieldCoverage['state'] = !found.length ? 'missing'
+      : !current.length ? 'outdated_period' : !valid.length ? 'invalid'
+        : valid.some(value => value.validation?.bound === 'exact') ? 'exact' : 'bounded';
+    return { field, state, reportedValues: found.length, financialPeriod: period };
+  });
 }

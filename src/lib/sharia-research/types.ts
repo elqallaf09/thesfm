@@ -139,6 +139,8 @@ export type FinancialValue = {
   periodStart?: string | null;
   validation?: { version: string; bound: 'exact' | 'lower' | 'upper' | 'unverified'; note: string };
   filedAt: string | null;
+  reportedAt?: string | null;
+  sourceDateKind?: 'issuer_report_signature';
   currency: string;
   value: number;
   unit: string;
@@ -222,7 +224,15 @@ export type BusinessScreenResult = {
 
 export type SourceQualityBreakdown = Record<'tier1' | 'tier2' | 'tier3' | 'tier4', number>;
 
+export type FieldCoverage = {
+  field: NormalizedFinancialField;
+  state: 'missing' | 'outdated_period' | 'invalid' | 'exact' | 'bounded';
+  reportedValues: number;
+  financialPeriod: string | null;
+};
+
 export type ShariaScreeningResult = {
+  fieldCoverage?: FieldCoverage[];
   id: string;
   security: SecurityIdentity;
   classification: ShariaClassification;

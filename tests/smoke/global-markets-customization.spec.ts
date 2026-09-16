@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { GLOBAL_MARKETS_PREFERENCE_KEY } from '../../src/lib/market/globalMarketPreferences';
+import { withStoragePreference } from './storage-state-preference';
 
 async function prepare(page: Page, lang = 'en') {
   await page.addInitScript(language => localStorage.setItem('sfm_lang', language), lang);
@@ -109,12 +110,15 @@ test('market selection is visible, replaces one market and persists after reload
 // navigations and two modal sessions under one 30-second test budget; the retained
 // WebKit trace completed every assertion but exceeded that cumulative deadline.
 // Seed the context once, not on each reload, so a broken cancel cannot be masked.
+// Preserve configured session/protection cookies and all unrelated storage: an
+// empty replacement cookie array sends remote Preview tests to Vercel's login.
 const savedSelectionTest = test.extend({
-  storageState: async ({ baseURL }, provideStorageState) => {
+  storageState: async ({ baseURL, storageState }, provideStorageState) => {
     if (!baseURL) throw new Error('A configured application origin is required');
-    await provideStorageState({ cookies: [], origins: [{ origin: new URL(baseURL).origin, localStorage: [
-      { name: GLOBAL_MARKETS_PREFERENCE_KEY, value: JSON.stringify(['kuwait_boursa', 'saudi_tadawul', 'us_nasdaq', 'crypto']) },
-    ] }] });
+    await provideStorageState(await withStoragePreference(
+      storageState, baseURL, GLOBAL_MARKETS_PREFERENCE_KEY,
+      JSON.stringify(['kuwait_boursa', 'saudi_tadawul', 'us_nasdaq', 'crypto']),
+    ));
   },
 });
 
@@ -156,8 +160,10 @@ test('Customize news opens from automatic mode and applies selectable filters in
   await filters.getByRole('combobox', { name: 'Company or symbol', exact: true }).selectOption('AAPL');
   await filters.getByRole('combobox', { name: 'Source', exact: true }).selectOption('QA Source');
   expect(requests).toHaveLength(before);
+  const queryBeforeApply = requests.length;
   await filters.getByRole('button', { name: 'Apply filters', exact: true }).click();
   await expect.poll(() => requests.length).toBe(before + 1);
+  expect(queryBeforeApply).toBe(before);
   const query = new URL(requests.at(-1)!).searchParams;
   expect(query.get('countries')).toBe('US');
   expect(query.get('exchangeCode')).toBe('NASDAQ');
