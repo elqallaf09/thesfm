@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { Archive, BrainCircuit, ChartNoAxesCombined, Landmark, LineChart, Sparkles } from 'lucide-react';
+import { EconomicCommandHero } from '@/components/finance/EconomicCommandHero';
 import { EconomicIntelligenceHome } from '@/components/finance/EconomicIntelligenceHome';
 import { CrossWorkspaceEconomicBrief } from '@/components/finance/CrossWorkspaceEconomicBrief';
 import { EconomicResolutionHistory } from '@/components/finance/EconomicResolutionHistory';
@@ -11,20 +10,7 @@ import { FinanceDashboardIntelligence } from '@/components/finance/FinanceDashbo
 export default function EconomicIntelligencePage() {
   return (
     <main className="economic-command-center">
-      <section className="command-hero">
-        <div>
-          <span><BrainCircuit size={16} />SFM Economic Intelligence</span>
-          <h1>Economic Command Center</h1>
-          <p>One workspace for your financial twin, daily priorities, cross-workspace conflicts, decisions, markets, business funding, and observed outcomes.</p>
-        </div>
-        <nav aria-label="Economic Intelligence quick actions">
-          <Link href="/decisions/simulator"><Landmark size={16} />Decision Lab</Link>
-          <Link href="/ai-analyst"><LineChart size={16} />Market Intelligence</Link>
-          <Link href="/business-hub"><ChartNoAxesCombined size={16} />Business</Link>
-          <Link href="/economic-intelligence/history"><Archive size={16} />Brief Archive</Link>
-          <Link href="/notifications"><Sparkles size={16} />Intelligence Events</Link>
-        </nav>
-      </section>
+      <EconomicCommandHero />
 
       <EconomicIntelligenceReadiness />
       <EconomicExplainabilityLink />
