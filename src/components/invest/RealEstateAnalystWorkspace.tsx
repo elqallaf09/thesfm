@@ -25,6 +25,14 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
     : investmentId && validInvestmentId(investmentId)
       ? `${REAL_ESTATE_ANALYST_PATH}?investmentId=${investmentId}`
       : REAL_ESTATE_ANALYST_PATH;
+  const savedRecordRequested = investmentId !== undefined || positionId !== undefined;
+  const accessToken = user && !isGuest ? session?.access_token : undefined;
+  const guestGate = !accessToken && !loading ? (
+    <section className={styles.guestGate}>
+      <p>{L('سجّل الدخول لتشغيل التحليل والوصول إلى سجلاتك الخاصة. يمكنك استعراض الحقول وتغطية المصادر بدون كشف أي بيانات خاصة.', 'Sign in to run analysis and access your private records. You can inspect the input fields and source coverage without exposing private data.', 'Connectez-vous pour lancer l’analyse et accéder à vos données privées. Vous pouvez consulter les champs et la couverture des sources sans exposer de données privées.')}</p>
+      <Link href={`/login?next=${encodeURIComponent(next)}`}>{L('تسجيل الدخول', 'Sign in', 'Se connecter')}</Link>
+    </section>
+  ) : null;
 
   return <div className={styles.shell} dir={dir}>
     <DashboardPageShell ariaLabel={title} className={styles.main} contentClassName={styles.content}>
@@ -37,9 +45,12 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
         <Link className={styles.secondaryAction} href="/global-markets">{L('العودة إلى مركز الأسواق العالمية', 'Back to Global Markets Hub', 'Retour au centre des marchés mondiaux')}</Link>
       </header>
       <RealEstateMarketCoverage />
-      {loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !user || isGuest || !session?.access_token ? (
-        <section className={styles.guestGate}><p>{L('سجّل الدخول لتحليل عقارك والوصول إلى سجلاتك الخاصة.', 'Sign in to analyze your property and access your private records.', 'Connectez-vous pour analyser votre bien et accéder à vos données privées.')}</p><Link href={`/login?next=${encodeURIComponent(next)}`}>{L('تسجيل الدخول', 'Sign in', 'Se connecter')}</Link></section>
-      ) : <OwnedPropertyWorkspace key={`${user.id}:${investmentId ?? ''}:${positionId ?? ''}`} investmentId={investmentId} positionId={positionId} token={session.access_token} />}
+      {!savedRecordRequested ? <>
+        {guestGate}
+        <RealEstateLandAnalyst />
+      </> : loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !accessToken ? guestGate : (
+        <OwnedPropertyWorkspace key={`${user?.id ?? 'user'}:${investmentId ?? ''}:${positionId ?? ''}`} investmentId={investmentId} positionId={positionId} token={accessToken} />
+      )}
     </DashboardPageShell>
   </div>;
 }
