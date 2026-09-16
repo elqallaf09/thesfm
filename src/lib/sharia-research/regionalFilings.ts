@@ -12,12 +12,11 @@ const profiles: Profile[] = [
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
   { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://www.ifakuwait.com/financial-statements.html',
-    // The annual report is a confirmed public issuer PDF and contains the audited
-    // primary statements. Prefer the canonical www host over the shorter download
-    // endpoint, which is intermittently unavailable to server-side retrieval.
-    document: 'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',
-    pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105],
-    alternates: [{ url: 'https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf' }] },
+    // Prefer the issuer's dedicated audited financial-statements PDF. The larger
+    // annual report remains a same-origin fallback because its visual layout can
+    // produce sparse text extraction even though the source itself is valid.
+    document: 'https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf',
+    alternates: [{ url: 'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf', pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105] }] },
 ];
 function issuerHost(hostname: string) { return hostname.toLowerCase().replace(/^www\./, ''); }
 function sameIssuerHost(left: string, right: string) { return issuerHost(new URL(left).hostname) === issuerHost(new URL(right).hostname); }
