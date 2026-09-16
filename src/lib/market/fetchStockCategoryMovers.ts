@@ -1,5 +1,6 @@
-import { getStockCategoryConfig, type StockCategoryId, type StockCategoryStock } from '@/lib/market/stockCategoryConfigs';
+import { getStockCategoryConfig, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
 import { finiteQuoteNumber, isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
+import { screenStockCategory } from '@/lib/market/stockCategoryScanner';
 
 export type StockCategoryMoverItem = {
   rank: number;
@@ -25,7 +26,7 @@ export type StockCategoryMoversResponse =
     ok: true;
     category: StockCategoryId;
     updated_at: string;
-    source: 'Yahoo Finance';
+    source: string;
     data: StockCategoryMoversData;
     warnings?: string[];
   }
@@ -34,42 +35,9 @@ export type StockCategoryMoversResponse =
     category: string;
     code: 'STOCK_CATEGORY_MOVERS_UNAVAILABLE' | 'UNSUPPORTED_STOCK_CATEGORY';
     updated_at: string | null;
-    source: 'Yahoo Finance';
+    source: string;
     data: null;
   };
-
-type YahooQuoteRow = {
-  symbol?: string;
-  shortName?: string;
-  longName?: string;
-  currency?: string;
-  regularMarketPrice?: number;
-  regularMarketChangePercent?: number;
-  regularMarketVolume?: number;
-};
-
-type YahooQuoteResponse = {
-  quoteResponse?: {
-    result?: YahooQuoteRow[];
-  };
-};
-
-type YahooChartResponse = {
-  chart?: {
-    result?: Array<{
-      meta?: {
-        symbol?: string;
-        shortName?: string;
-        longName?: string;
-        currency?: string;
-        regularMarketPrice?: number;
-        chartPreviousClose?: number;
-        previousClose?: number;
-        regularMarketVolume?: number;
-      };
-    }>;
-  };
-};
 
 function finiteNumber(value: unknown) {
   return finiteQuoteNumber(value);
@@ -87,83 +55,6 @@ function uniqueMoverRows(rows: Array<Omit<StockCategoryMoverItem, 'rank'>>) {
     seen.add(key);
     return true;
   });
-}
-
-function configuredName(stocks: StockCategoryStock[], symbol: string) {
-  return stocks.find(stock => stock.symbol === symbol)?.name ?? symbol;
-}
-
-function normalizeQuoteRow(stocks: StockCategoryStock[], row: YahooQuoteRow) {
-  const symbol = String(row.symbol ?? '').toUpperCase();
-  const price = finiteNumber(row.regularMarketPrice);
-  if (!symbol || !isValidPrice(price)) return null;
-  return {
-    symbol,
-    name: row.longName ?? row.shortName ?? configuredName(stocks, symbol),
-    price,
-    currency: String(row.currency ?? 'USD').toUpperCase(),
-    changePercent: finiteNumber(row.regularMarketChangePercent),
-    volume: finiteNumber(row.regularMarketVolume),
-  };
-}
-
-function normalizeChartRow(stocks: StockCategoryStock[], symbol: string, meta: NonNullable<NonNullable<YahooChartResponse['chart']>['result']>[number]['meta']) {
-  const price = finiteNumber(meta?.regularMarketPrice);
-  if (!isValidPrice(price)) return null;
-  const previousClose = finiteNumber(meta?.chartPreviousClose) ?? finiteNumber(meta?.previousClose);
-  const changePercent = previousClose && previousClose > 0 ? ((price - previousClose) / previousClose) * 100 : null;
-  return {
-    symbol,
-    name: meta?.longName ?? meta?.shortName ?? configuredName(stocks, symbol),
-    price,
-    currency: String(meta?.currency ?? 'USD').toUpperCase(),
-    changePercent,
-    volume: finiteNumber(meta?.regularMarketVolume),
-  };
-}
-
-async function fetchYahooChartRow(stocks: StockCategoryStock[], symbol: string) {
-  const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=2d&interval=1d`, {
-    next: { revalidate: 300 },
-    signal: AbortSignal.timeout(10000),
-    headers: {
-      accept: 'application/json',
-      'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
-    },
-  });
-  if (!response.ok) return null;
-  const payload = await response.json().catch(() => null) as YahooChartResponse | null;
-  return normalizeChartRow(stocks, symbol, payload?.chart?.result?.[0]?.meta);
-}
-
-async function fetchYahooRows(stocks: StockCategoryStock[]) {
-  const symbols = stocks.map(stock => stock.symbol);
-  const params = new URLSearchParams({ symbols: symbols.join(',') });
-
-  try {
-    const response = await fetch(`https://query1.finance.yahoo.com/v7/finance/quote?${params.toString()}`, {
-      next: { revalidate: 300 },
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        accept: 'application/json',
-        'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
-      },
-    });
-    if (response.ok) {
-      const payload = await response.json().catch(() => null) as YahooQuoteResponse | null;
-      const rows = (payload?.quoteResponse?.result ?? [])
-        .map(row => normalizeQuoteRow(stocks, row))
-        .filter((row): row is Omit<StockCategoryMoverItem, 'rank'> => Boolean(row));
-      if (rows.length > 0) return rows;
-    }
-  } catch {
-    // Chart fallback is used when Yahoo quote returns an empty or blocked response.
-  }
-
-  const settled = await Promise.allSettled(symbols.map(symbol => fetchYahooChartRow(stocks, symbol)));
-  return settled
-    .map(result => result.status === 'fulfilled' ? result.value : null)
-    .filter((row): row is Omit<StockCategoryMoverItem, 'rank'> => Boolean(row));
 }
 
 function ranked(
@@ -249,35 +140,51 @@ export async function fetchStockCategoryMovers(categoryInput: string | null | un
       category,
       code: 'UNSUPPORTED_STOCK_CATEGORY',
       updated_at: null,
-      source: 'Yahoo Finance',
+      source: 'SFM category scanner',
       data: null,
     };
   }
 
   try {
-    const rows = await fetchYahooRows(config.watchlist);
+    const scan = await screenStockCategory(config.id, { limit: 300 });
+    const rows = scan.items
+      .filter(item => item.available && isValidPrice(item.price))
+      .map(item => ({
+        symbol: item.symbol,
+        name: item.name,
+        price: item.price as number,
+        currency: item.currency,
+        changePercent: finiteNumber(item.changePercent),
+        volume: finiteNumber(item.volume),
+      }));
     const data = buildMoversData(rows, limit);
+
     if (!hasAnyMoverData(data)) {
       return {
         ok: false,
         category: config.id,
         code: 'STOCK_CATEGORY_MOVERS_UNAVAILABLE',
-        updated_at: null,
-        source: 'Yahoo Finance',
+        updated_at: scan.updatedAt,
+        source: scan.source,
         data: null,
       };
     }
+
+    const warnings: string[] = [];
+    if (scan.mode === 'fallback_watchlist') warnings.push('scanner_degraded_to_configured_watchlist');
+    if (scan.quoteEnrichedCount < Math.min(scan.returnedCount, 20)) warnings.push('limited_live_quote_coverage');
+
     return {
       ok: true,
       category: config.id,
-      updated_at: new Date().toISOString(),
-      source: 'Yahoo Finance',
+      updated_at: scan.updatedAt,
+      source: scan.source,
       data,
-      warnings: rows.length < limit ? ['provider_returned_limited_rows'] : undefined,
+      warnings: warnings.length ? warnings : undefined,
     };
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      console.warn('[StockCategoryMovers] Failed to fetch movers', {
+      console.warn('[StockCategoryMovers] Scanner failed', {
         category: config.id,
         message: error instanceof Error ? error.message : String(error),
       });
@@ -287,7 +194,7 @@ export async function fetchStockCategoryMovers(categoryInput: string | null | un
       category: config.id,
       code: 'STOCK_CATEGORY_MOVERS_UNAVAILABLE',
       updated_at: null,
-      source: 'Yahoo Finance',
+      source: 'SFM category scanner',
       data: null,
     };
   }
