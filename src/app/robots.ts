@@ -77,6 +77,7 @@ export default function robots(): MetadataRoute.Robots {
         '/zakat-calculator',
         '/compound-interest-calculator',
         '/loan-calculator',
+        '/guides',
       ],
       disallow: privateRoutes,
     },
