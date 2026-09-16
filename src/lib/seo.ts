@@ -4,6 +4,13 @@ const siteUrl = 'https://www.the-sfm.com';
 
 export const baseDescription = 'THE SFM منصة مالية ذكية تجمع إدارة الدخل والمصروفات والمدخرات والاستثمارات والزكاة والمشاريع والتقارير في مكان واحد، مبنية على بياناتك الحقيقية.';
 
+export const publicLandingLanguagePaths = {
+  ar: '/ar',
+  en: '/en',
+  fr: '/fr',
+  'x-default': '/',
+} as const;
+
 export function absoluteUrl(path = '/') {
   return new URL(path, siteUrl).toString();
 }
@@ -44,6 +51,9 @@ export function pageMetadata({
 
 export const publicRoutes = [
   '/',
+  '/ar',
+  '/en',
+  '/fr',
   '/about',
   '/contact',
   '/ebooks',
@@ -57,6 +67,11 @@ export const publicRoutes = [
   '/ebooks/feasibility-study-en',
   '/ebooks/feasibility-study-fr',
   '/financial-theories',
+  '/zakat-calculator',
+  '/compound-interest-calculator',
+  '/loan-calculator',
+  '/guides/zakat-kuwait-stocks',
+  '/guides/budget-800-kwd',
   '/privacy',
   '/terms',
 ] as const;
