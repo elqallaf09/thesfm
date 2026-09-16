@@ -12,20 +12,21 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 18px;
-  padding: clamp(20px, 3vw, 32px);
-  border: 1px solid var(--border, rgba(120, 120, 150, 0.2));
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 24px;
+  border: 1px solid var(--border, #e4e7ec);
   border-radius: 24px;
-  background: color-mix(in srgb, var(--card, #fff) 88%, transparent);
-  box-shadow: 0 16px 40px rgba(20, 24, 40, 0.06);
+  background: color-mix(in srgb, var(--card, #fff) 92%, transparent);
+  box-shadow: 0 16px 42px rgba(16, 24, 40, 0.06);
 }
 
 .heroIcon {
   display: grid;
+  width: 52px;
+  height: 52px;
   place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 17px;
+  border-radius: 16px;
   background: color-mix(in srgb, var(--primary, #5b5cf0) 13%, transparent);
   color: var(--primary, #5b5cf0);
 }
@@ -37,42 +38,44 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  padding: 5px 10px;
+  width: fit-content;
+  margin-bottom: 6px;
+  padding: 4px 9px;
   border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--primary, #5b5cf0);
   background: color-mix(in srgb, var(--primary, #5b5cf0) 10%, transparent);
+  color: var(--primary, #5b5cf0);
+  font-size: 0.76rem;
+  font-weight: 800;
 }
 
 .hero h1 {
-  margin: 9px 0 7px;
-  font-size: clamp(1.55rem, 3vw, 2.45rem);
-  line-height: 1.15;
-  color: var(--foreground, #111827);
+  margin: 0;
+  color: var(--foreground, #101828);
+  font-size: clamp(1.35rem, 2.5vw, 2.15rem);
+  line-height: 1.2;
 }
 
 .hero p {
-  max-width: 920px;
-  margin: 0;
-  line-height: 1.8;
+  max-width: 900px;
+  margin: 8px 0 0;
   color: var(--muted-foreground, #667085);
+  line-height: 1.75;
 }
 
 .refreshButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 9px 14px;
-  border: 1px solid var(--border, #e4e7ec);
+  gap: 7px;
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid var(--border, #d0d5dd);
   border-radius: 12px;
   background: var(--card, #fff);
-  color: var(--foreground, #101828);
+  color: var(--foreground, #344054);
   font: inherit;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -82,7 +85,7 @@
 }
 
 .spin {
-  animation: spin 0.85s linear infinite;
+  animation: spin 0.9s linear infinite;
 }
 
 @keyframes spin {
@@ -90,63 +93,64 @@
 }
 
 .methodCard {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
-  margin-top: 16px;
-  padding: 16px 18px;
-  border: 1px solid color-mix(in srgb, var(--primary, #5b5cf0) 19%, var(--border, #e4e7ec));
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--primary, #5b5cf0) 18%, var(--border, #e4e7ec));
   border-radius: 16px;
   background: color-mix(in srgb, var(--primary, #5b5cf0) 5%, var(--card, #fff));
-  color: var(--foreground, #101828);
+  color: var(--foreground, #344054);
 }
 
 .methodCard > svg {
-  flex: 0 0 auto;
   margin-top: 2px;
   color: var(--primary, #5b5cf0);
 }
 
 .methodCard strong {
-  font-size: 0.92rem;
+  display: block;
+  margin-bottom: 3px;
+  color: var(--foreground, #101828);
 }
 
 .methodCard p {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--muted-foreground, #667085);
+  font-size: 0.82rem;
   line-height: 1.65;
 }
 
 .priceRule {
+  margin-top: 6px !important;
+  color: var(--foreground, #344054) !important;
   font-weight: 700;
+}
+
+.tickerSection {
+  margin: 0 0 20px;
 }
 
 .metalTicker {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 0;
-  margin-top: 14px;
   overflow: hidden;
+  margin-bottom: 20px;
   border: 1px solid var(--border, #e4e7ec);
-  border-radius: 15px;
+  border-radius: 16px;
   background: color-mix(in srgb, var(--card, #fff) 94%, transparent);
-  box-shadow: 0 9px 24px rgba(16, 24, 40, 0.035);
 }
 
 .tickerLabel {
-  position: relative;
-  z-index: 2;
-  align-self: stretch;
-  display: grid;
-  place-items: center;
-  min-width: 110px;
+  display: flex;
+  align-items: center;
+  min-width: 138px;
   padding: 11px 14px;
   border-inline-end: 1px solid var(--border, #e4e7ec);
-  background: color-mix(in srgb, var(--primary, #5b5cf0) 9%, var(--card, #fff));
-  color: var(--foreground, #101828);
-  font-size: 0.8rem;
-  font-weight: 800;
+  color: var(--foreground, #344054);
+  font-size: 0.78rem;
+  font-weight: 900;
   white-space: nowrap;
 }
 
@@ -158,38 +162,33 @@
 .tickerTrack {
   display: flex;
   width: max-content;
-  min-width: 200%;
-  animation: metalTickerScroll 34s linear infinite;
-  will-change: transform;
-}
-
-.tickerViewport:hover .tickerTrack,
-.tickerViewport:focus-within .tickerTrack {
-  animation-play-state: paused;
+  animation: market-ticker-scroll 34s linear infinite;
 }
 
 .tickerSet {
   display: flex;
-  align-items: center;
-  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+
+@keyframes market-ticker-scroll {
+  to { transform: translateX(-50%); }
 }
 
 .metalTickerItem {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
   align-items: baseline;
-  gap: 7px;
-  min-height: 44px;
-  padding: 10px 18px;
-  border-inline-end: 1px solid color-mix(in srgb, var(--border, #e4e7ec) 72%, transparent);
+  gap: 8px;
+  min-width: 250px;
+  padding: 11px 18px;
+  border-inline-end: 1px solid var(--border, #eef0f3);
   direction: ltr;
-  white-space: nowrap;
 }
 
 .metalName {
-  direction: rtl;
-  color: var(--foreground, #344054);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 800;
+  color: var(--foreground, #344054);
 }
 
 .metalSymbol {
@@ -201,17 +200,18 @@
 .metalTickerItem strong {
   color: var(--foreground, #101828);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 0.9rem;
+  font-size: 0.82rem;
 }
 
 .metalTickerItem small {
   color: var(--muted-foreground, #98a2b3);
-  font-size: 0.66rem;
+  font-size: 0.64rem;
 }
 
 .metalChange {
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.74rem;
+  font-weight: 900;
 }
 
 .metalChange[data-direction='up'] {
@@ -226,27 +226,17 @@
   color: var(--muted-foreground, #667085);
 }
 
-@keyframes metalTickerScroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
 .notice {
   display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-top: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(217, 119, 6, 0.28);
-  border-radius: 13px;
-  background: rgba(245, 158, 11, 0.08);
-  color: var(--foreground, #101828);
-  line-height: 1.55;
-}
-
-.notice svg {
-  flex: 0 0 auto;
-  margin-top: 2px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #f79009 28%, var(--border, #e4e7ec));
+  border-radius: 12px;
+  background: color-mix(in srgb, #f79009 8%, var(--card, #fff));
+  color: var(--foreground, #7a2e0e);
+  font-size: 0.8rem;
 }
 
 .toolbar {
@@ -254,26 +244,25 @@
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin: 22px 0 16px;
+  margin-bottom: 18px;
 }
 
 .searchBox {
   display: flex;
   align-items: center;
-  gap: 9px;
-  flex: 1 1 520px;
+  flex: 1 1 480px;
+  gap: 8px;
   max-width: 720px;
-  min-height: 44px;
-  padding: 0 13px;
-  border: 1px solid var(--border, #e4e7ec);
-  border-radius: 13px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border, #d0d5dd);
+  border-radius: 12px;
   background: var(--card, #fff);
   color: var(--muted-foreground, #667085);
 }
 
 .searchBox input {
   width: 100%;
-  min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
