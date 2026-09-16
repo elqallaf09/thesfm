@@ -59,8 +59,10 @@ export function implicitMarketAssetCandidates(messages: readonly { role: string;
     if (!candidates.some(item => item.toLocaleLowerCase() === candidate.toLocaleLowerCase())) candidates.push(candidate);
   };
 
+  const trimmed = trimPunctuation(latest);
+  const hasExplicitAssetIntent = INTENT_PREFIXES.some(prefix => prefix.test(trimmed));
   const cleaned = cleanAssetPhrase(latest);
-  if (cleaned !== trimPunctuation(latest) || !QUESTION_LEAD.test(latest)) add(cleaned);
+  if (hasExplicitAssetIntent || !QUESTION_LEAD.test(latest)) add(cleaned);
 
   for (const token of latest.match(TICKER_TOKEN) ?? []) add(token);
 
