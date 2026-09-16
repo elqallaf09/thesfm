@@ -105,7 +105,7 @@ function cleanTopic(value: string | null): TopicId | null {
 }
 
 function storyText(story: ConsolidatedNewsStory) {
-  return `${story.title} ${story.summary ?? ''} ${story.companyNames.join(' ')} ${story.sectors.join(' ')} ${story.industries.join(' ')} ${story.commodities.join(' ')}`;
+  return `${story.title} ${story.summary ?? ''} ${story.companyNames.join(' ')} ${story.sectors.join(' ')} ${story.industries.join(' ')}`;
 }
 
 function matchesTopic(topic: TopicId, story: ConsolidatedNewsStory) {
@@ -210,7 +210,6 @@ function rawUiItem(story: ConsolidatedNewsStory, price: TechStockPrice | null) {
     companyNames: story.companyNames,
     sectors: story.sectors,
     industries: story.industries,
-    commodities: story.commodities,
     marketCodes: story.marketCodes,
     exchangeCodes: story.exchangeCodes,
     eventType: story.eventType,
