@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
 import type { ConsolidatedNewsStory, NewsFetchParams } from '@/lib/market-news/types';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { fetchYahooChartQuote } from '@/lib/market/fetchYahooQuote';
 import {
   isNewsTranslationEnabled,
   normalizeNewsLanguage,
@@ -12,13 +13,19 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
-type TopicId = 'federal-reserve' | 'healthcare-stocks' | 'new-stocks' | 'stocks-under-1';
+type TopicId = 'federal-reserve' | 'healthcare-stocks' | 'new-stocks' | 'stocks-under-1' | 'metals-news';
 
 type TopicConfig = {
   query: string;
   days: number;
   sort: 'latest' | 'importance' | 'official' | 'relevance';
   params: Partial<NewsFetchParams>;
+};
+
+type MetalTickerConfig = {
+  id: 'gold' | 'silver' | 'copper' | 'platinum' | 'palladium';
+  symbol: string;
+  unit: 'USD/oz' | 'USD/lb';
 };
 
 const TOPICS: Record<TopicId, TopicConfig> = {
@@ -63,11 +70,30 @@ const TOPICS: Record<TopicId, TopicConfig> = {
       assetTypes: ['equity'],
     },
   },
+  'metals-news': {
+    query: 'gold silver copper platinum palladium precious metals industrial metals metal prices mining demand supply commodities',
+    days: 45,
+    sort: 'importance',
+    params: {
+      assetTypes: ['commodity', 'derivative'],
+      eventTypes: ['commodity_price_event', 'macroeconomic_release', 'geopolitical_event', 'other_material_event'],
+      commodities: ['gold', 'silver', 'copper', 'platinum', 'palladium'],
+    },
+  },
 };
+
+const METAL_TICKER: MetalTickerConfig[] = [
+  { id: 'gold', symbol: 'GC=F', unit: 'USD/oz' },
+  { id: 'silver', symbol: 'SI=F', unit: 'USD/oz' },
+  { id: 'copper', symbol: 'HG=F', unit: 'USD/lb' },
+  { id: 'platinum', symbol: 'PL=F', unit: 'USD/oz' },
+  { id: 'palladium', symbol: 'PA=F', unit: 'USD/oz' },
+];
 
 const FED_PATTERN = /\b(federal reserve|fomc|fed chair|jerome powell|powell)\b/i;
 const HEALTHCARE_PATTERN = /\b(healthcare|health care|biotech|biotechnology|pharma|pharmaceutical|medical device|fda|clinical trial|drug approval|diagnostic|hospital)\b/i;
 const NEW_LISTING_PATTERN = /\b(ipo|initial public offering|newly listed|new listing|market debut|trading debut|direct listing|public debut|begins trading)\b/i;
+const METALS_PATTERN = /\b(gold|silver|copper|platinum|palladium|precious metal|industrial metal|bullion|xau|xag|comex|metal price)\b/i;
 
 function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -79,7 +105,7 @@ function cleanTopic(value: string | null): TopicId | null {
 }
 
 function storyText(story: ConsolidatedNewsStory) {
-  return `${story.title} ${story.summary ?? ''} ${story.companyNames.join(' ')} ${story.sectors.join(' ')} ${story.industries.join(' ')}`;
+  return `${story.title} ${story.summary ?? ''} ${story.companyNames.join(' ')} ${story.sectors.join(' ')} ${story.industries.join(' ')} ${story.commodities.join(' ')}`;
 }
 
 function matchesTopic(topic: TopicId, story: ConsolidatedNewsStory) {
@@ -90,6 +116,9 @@ function matchesTopic(topic: TopicId, story: ConsolidatedNewsStory) {
   }
   if (topic === 'new-stocks') {
     return story.eventType === 'ipo_listing' || NEW_LISTING_PATTERN.test(storyText(story));
+  }
+  if (topic === 'metals-news') {
+    return story.eventType === 'commodity_price_event' || METALS_PATTERN.test(storyText(story));
   }
   return true;
 }
@@ -124,6 +153,41 @@ function firstUsablePrice(story: ConsolidatedNewsStory, prices: Map<string, Tech
   return null;
 }
 
+async function fetchMetalTicker() {
+  const settled = await Promise.allSettled(METAL_TICKER.map(async metal => {
+    const quote = await fetchYahooChartQuote(metal.symbol);
+    return {
+      id: metal.id,
+      symbol: metal.symbol,
+      unit: metal.unit,
+      price: quote.available ? quote.price : null,
+      change: quote.available ? quote.change : null,
+      changePercent: quote.available ? quote.changePercent : null,
+      source: quote.source,
+      delayed: quote.delayed,
+      available: quote.available,
+      unavailableReason: quote.unavailableReason ?? null,
+    };
+  }));
+
+  return settled.map((result, index) => {
+    if (result.status === 'fulfilled') return result.value;
+    const metal = METAL_TICKER[index];
+    return {
+      id: metal.id,
+      symbol: metal.symbol,
+      unit: metal.unit,
+      price: null,
+      change: null,
+      changePercent: null,
+      source: 'Yahoo Finance' as const,
+      delayed: true as const,
+      available: false,
+      unavailableReason: result.reason instanceof Error ? result.reason.message : 'metal_quote_failed',
+    };
+  });
+}
+
 function rawUiItem(story: ConsolidatedNewsStory, price: TechStockPrice | null) {
   const primarySymbol = price?.symbol ?? story.symbols[0] ?? null;
   return {
@@ -146,6 +210,7 @@ function rawUiItem(story: ConsolidatedNewsStory, price: TechStockPrice | null) {
     companyNames: story.companyNames,
     sectors: story.sectors,
     industries: story.industries,
+    commodities: story.commodities,
     marketCodes: story.marketCodes,
     exchangeCodes: story.exchangeCodes,
     eventType: story.eventType,
@@ -186,25 +251,28 @@ export async function GET(request: NextRequest) {
   const refresh = request.nextUrl.searchParams.has('refresh');
 
   try {
-    const result = await aggregateFinancialNews({
-      ...config.params,
-      query: config.query,
-      from: dateDaysAgo(config.days),
-      to: new Date().toISOString().slice(0, 10),
-      language,
-      limit: 180,
-      forceRefresh: refresh,
-    }, {
-      page: 1,
-      pageSize: 60,
-      sort: config.sort,
-      forceExternal: refresh,
-    });
+    const [result, metalTicker] = await Promise.all([
+      aggregateFinancialNews({
+        ...config.params,
+        query: config.query,
+        from: dateDaysAgo(config.days),
+        to: new Date().toISOString().slice(0, 10),
+        language,
+        limit: 180,
+        forceRefresh: refresh,
+      }, {
+        page: 1,
+        pageSize: 60,
+        sort: config.sort,
+        forceExternal: refresh,
+      }),
+      topic === 'metals-news' ? fetchMetalTicker() : Promise.resolve([]),
+    ]);
 
     let stories = result.stories.filter(story => matchesTopic(topic, story));
     let prices = new Map<string, TechStockPrice>();
 
-    if (topic !== 'federal-reserve') {
+    if (topic !== 'federal-reserve' && topic !== 'metals-news') {
       const symbolLimit = topic === 'stocks-under-1' ? 36 : 24;
       const symbols = uniqueStorySymbols(stories, symbolLimit);
       if (symbols.length > 0) {
@@ -239,6 +307,7 @@ export async function GET(request: NextRequest) {
             : null,
       source: 'multi-source',
       items,
+      metalTicker,
       updatedAt: result.lastUpdated,
       lastSuccessfulUpdate: result.lastSuccessfulUpdate,
       partialFailure: result.partialFailure,
@@ -263,6 +332,7 @@ export async function GET(request: NextRequest) {
       topic,
       code: 'SPECIAL_NEWS_PROVIDER_UNAVAILABLE',
       items: [],
+      metalTicker: [],
     }, { status: 503 });
   }
 }
