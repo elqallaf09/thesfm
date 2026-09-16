@@ -48,8 +48,8 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
       {!savedRecordRequested ? <>
         {guestGate}
         <RealEstateLandAnalyst />
-      </> : loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !accessToken ? guestGate : (
-        <OwnedPropertyWorkspace key={`${user?.id ?? 'user'}:${investmentId ?? ''}:${positionId ?? ''}`} investmentId={investmentId} positionId={positionId} token={accessToken} />
+      </> : loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !accessToken || !user ? guestGate : (
+        <OwnedPropertyWorkspace key={`${user.id}:${investmentId ?? ''}:${positionId ?? ''}`} investmentId={investmentId} positionId={positionId} token={accessToken} />
       )}
     </DashboardPageShell>
   </div>;
