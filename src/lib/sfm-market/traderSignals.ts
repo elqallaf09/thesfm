@@ -3,6 +3,7 @@ import {
   generateMarketSignal,
   type MarketSignal,
   type MarketSignalDataQuality,
+  type MarketSignalInputPoint,
 } from '@/lib/market/signalEngine';
 import { normalizeMarketSymbolInput } from '@/lib/market/marketService';
 import {
@@ -21,6 +22,12 @@ export type SfmTraderSignal = MarketSignal & {
   open: number | null;
   high: number | null;
   low: number | null;
+  history: MarketSignalInputPoint[];
+  sparkline: number[];
+  chartAvailable: boolean;
+  source: 'THE SFM';
+  delayed: boolean;
+  available: boolean;
   sfmMarket: {
     engine: 'THE SFM Market Data Engine';
     source: 'THE SFM';
@@ -75,6 +82,12 @@ function unavailableSignal(symbol: string, assetType: string, market: string, re
     open: null,
     high: null,
     low: null,
+    history: [],
+    sparkline: [],
+    chartAvailable: false,
+    source: 'THE SFM',
+    delayed: false,
+    available: false,
     sfmMarket: {
       engine: 'THE SFM Market Data Engine',
       source: 'THE SFM',
@@ -108,7 +121,7 @@ export async function generateSfmTraderSignal(
     getSfmMarketQuote(normalized.symbol, request),
     getCandlesWithFallback(normalized.providerSymbol, request.market ?? null, '1d', context),
   ]);
-  const history = historyResult.ok
+  const history: MarketSignalInputPoint[] = historyResult.ok
     ? historyResult.data
         .filter(point => Number.isFinite(point.close) && point.close > 0)
         .map(point => ({
@@ -175,6 +188,12 @@ export async function generateSfmTraderSignal(
     open: quote.open,
     high: quote.high,
     low: quote.low,
+    history,
+    sparkline: history.slice(-30).map(point => point.close),
+    chartAvailable: history.length >= 2,
+    source: 'THE SFM',
+    delayed: dataQuality === 'delayed',
+    available: quote.price !== null && dataQuality !== 'unavailable',
     sfmMarket: {
       engine: 'THE SFM Market Data Engine',
       source: 'THE SFM',
