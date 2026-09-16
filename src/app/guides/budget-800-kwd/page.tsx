@@ -24,10 +24,10 @@ export default function Budget800KwdGuidePage() {
         <h2>4. راجع الميزانية كل شهر</h2>
         <p>الميزانية أداة قرار وليست عقوبة. قارن ما خططت له بما صرفته فعلاً، ثم عدّل الحدود للشهر التالي.</p>
       </article>
-      <div className="mt-8 rounded-2xl border border-border bg-card p-5">
+      <div className="mt-8 rounded-[var(--radius-card)] border border-border bg-card p-5">
         <strong>استخدم بياناتك الحقيقية داخل THE SFM</strong>
         <p className="mt-2 text-sm text-muted-foreground">سجل دخلك ومصروفاتك وشاهد الصورة بناءً على أرقامك أنت.</p>
-        <Link href="/login?mode=register&next=%2Fdashboard" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 font-semibold text-primary-foreground">ابدأ الآن</Link>
+        <Link href="/login?mode=register&next=%2Fdashboard" className="mt-4 inline-flex rounded-[var(--radius-control)] bg-primary px-4 py-2.5 font-semibold text-primary-foreground">ابدأ الآن</Link>
       </div>
     </main>
   );
