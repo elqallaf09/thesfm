@@ -46,11 +46,22 @@ begin
   exception when others then
     get stacked diagnostics observed_state = returned_sqlstate;
   end;
-  perform pg_temp.check_true(observed_state = expected_state, label);
+  perform pg_temp.check_true(observed_state = expected_state,
+    format('%s (expected SQLSTATE %s, received %s)', label, expected_state, coalesce(observed_state, 'no error')));
 end;
 $$;
 
-grant usage on schema pg_temp to anon, authenticated, service_role;
+-- GRANT requires the concrete session schema; pg_temp is a relation/function
+-- lookup alias, not a catalog schema name accepted by GRANT ON SCHEMA.
+-- Only test helpers receive these privileges; application ACLs stay untouched.
+do $$
+declare temporary_schema text;
+begin
+  select nspname into strict temporary_schema from pg_namespace where oid = pg_my_temp_schema();
+  execute format('grant usage on schema %I to anon, authenticated, service_role', temporary_schema);
+  execute format('grant execute on all functions in schema %I to anon, authenticated, service_role', temporary_schema);
+end;
+$$;
 grant select on property_fixture to anon, authenticated, service_role;
 
 insert into auth.users (id, email) values
