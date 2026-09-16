@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ElementType, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,7 +25,6 @@ import {
   X,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { SUPPORT_EMAIL } from '@/lib/constants/contact';
@@ -132,7 +131,7 @@ const COPY: Record<Lang, Copy> = {
   },
 };
 
-const FEATURES: readonly [React.ElementType, Trio, Trio][] = [
+const FEATURES: readonly [ElementType, Trio, Trio][] = [
   [Wallet, ['إدارة المال الشخصي', 'Personal finance', 'Finances personnelles'], ['الدخل والمصروفات والديون والمدخرات والأهداف.', 'Income, expenses, debt, savings, and goals.', 'Revenus, dépenses, dettes, épargne et objectifs.']],
   [TrendingUp, ['الاستثمارات والأسواق', 'Investments & markets', 'Investissements et marchés'], ['تابع أصولك وتحليلاتك وقوائم المتابعة.', 'Track assets, analysis, and watchlists.', 'Suivez actifs, analyses et listes de suivi.']],
   [Calculator, ['الزكاة والحاسبات', 'Zakat & calculators', 'Zakat et calculateurs'], ['حاسبات عملية مع قسم زكاة مخصص داخل الحساب.', 'Public calculators plus a dedicated zakat workspace.', 'Calculateurs publics et espace zakat dédié.']],
@@ -159,8 +158,14 @@ const FAQ = {
 
 const DISPLAY_CURRENCIES: readonly DisplayCurrency[] = ['USD', 'KWD', 'SAR', 'AED'];
 
-function pick(tuple: Trio, lang: Lang) { return tuple[lang === 'ar' ? 0 : lang === 'fr' ? 2 : 1]; }
-function asDisplayCurrency(value: string): DisplayCurrency { return DISPLAY_CURRENCIES.includes(value as DisplayCurrency) ? value as DisplayCurrency : 'USD'; }
+function pick(tuple: Trio, lang: Lang) {
+  return tuple[lang === 'ar' ? 0 : lang === 'fr' ? 2 : 1];
+}
+
+function asDisplayCurrency(value: string): DisplayCurrency {
+  return DISPLAY_CURRENCIES.includes(value as DisplayCurrency) ? value as DisplayCurrency : 'USD';
+}
+
 function localizedPrice(usdAmount: number, currency: DisplayCurrency) {
   if (currency === 'USD') return `$${usdAmount}`;
   const converted = convertCurrencyAmount(usdAmount, 'USD', currency);
@@ -168,7 +173,7 @@ function localizedPrice(usdAmount: number, currency: DisplayCurrency) {
   return `≈ ${converted.toLocaleString('en-US', { maximumFractionDigits: currency === 'KWD' ? 3 : 2 })} ${currency}`;
 }
 
-export default function PublicLandingPage() {
+export default function PublicLandingPage({ languageControl }: { languageControl: ReactNode }) {
   const { lang, dir } = useLanguage();
   const currentLang = (lang as Lang) || 'ar';
   const text = COPY[currentLang];
@@ -198,55 +203,191 @@ export default function PublicLandingPage() {
     }
     setCheckoutLoading(plan);
     try {
-      const response = await fetch('/api/stripe/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` }, body: JSON.stringify({ plan, billingInterval: interval }) });
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ plan, billingInterval: interval }),
+      });
       const payload = await response.json().catch(() => ({})) as { ok?: boolean; url?: string };
       if (!response.ok || !payload.ok || !payload.url) throw new Error('checkout');
       window.location.assign(payload.url);
-    } catch { setMessage(text.checkoutError); } finally { setCheckoutLoading(null); }
+    } catch {
+      setMessage(text.checkoutError);
+    } finally {
+      setCheckoutLoading(null);
+    }
   }, [billing, router, session, text.checkoutError]);
 
-  const structuredData = { '@context': 'https://schema.org', '@graph': [
-    { '@type': 'Organization', '@id': 'https://www.the-sfm.com/#organization', name: 'THE SFM', url: 'https://www.the-sfm.com' },
-    { '@type': 'SoftwareApplication', name: 'THE SFM', applicationCategory: 'FinanceApplication', operatingSystem: 'Web', url: 'https://www.the-sfm.com', offers: [
-      { '@type': 'Offer', name: 'Individuals monthly', price: '5', priceCurrency: 'USD' },
-      { '@type': 'Offer', name: 'Individuals annual', price: '50', priceCurrency: 'USD' },
-      { '@type': 'Offer', name: 'Companies annual', price: '50', priceCurrency: 'USD' },
-    ] },
-  ] };
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'Organization', '@id': 'https://www.the-sfm.com/#organization', name: 'THE SFM', url: 'https://www.the-sfm.com' },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'THE SFM',
+        applicationCategory: 'FinanceApplication',
+        operatingSystem: 'Web',
+        url: 'https://www.the-sfm.com',
+        offers: [
+          { '@type': 'Offer', name: 'Individuals monthly', price: '5', priceCurrency: 'USD' },
+          { '@type': 'Offer', name: 'Individuals annual', price: '50', priceCurrency: 'USD' },
+          { '@type': 'Offer', name: 'Companies annual', price: '50', priceCurrency: 'USD' },
+        ],
+      },
+    ],
+  };
 
   return (
     <main dir={dir} className="landing-page min-h-screen bg-background text-foreground">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
       <header className="sticky top-0 z-50 border-b border-border/70 bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-2 font-bold"><Image src="/sfm-logo.png" alt="THE SFM" width={38} height={38} className="rounded-[var(--radius-card)]" priority /><span>THE SFM</span></Link>
-          <nav className="hidden items-center gap-1 lg:flex">{[[ '#features', text.navFeatures ], [ '#pricing', text.navPricing ], [ '#security', text.navSecurity ], [ '#faq', text.navFaq ]].map(([href, label]) => <a key={href} className="rounded-[var(--radius-pill)] px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground" href={href}>{label}</a>)}</nav>
-          <div className="flex items-center gap-2"><LanguageSwitcher variant="gold" compact /><ThemeToggle /><Link href={appHref} prefetch={false} className="hidden rounded-[var(--radius-control)] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground sm:inline-flex">{ctaLabel}</Link><button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] border border-border lg:hidden" onClick={() => setMenuOpen(value => !value)} aria-label="menu" aria-expanded={menuOpen}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button></div>
+          <Link href="/" className="flex items-center gap-2 font-bold">
+            <Image src="/sfm-logo.png" alt="THE SFM" width={38} height={38} className="rounded-[var(--radius-card)]" priority />
+            <span>THE SFM</span>
+          </Link>
+          <nav className="hidden items-center gap-1 lg:flex">
+            {[[ '#features', text.navFeatures ], [ '#pricing', text.navPricing ], [ '#security', text.navSecurity ], [ '#faq', text.navFaq ]].map(([href, label]) => (
+              <a key={href} className="rounded-[var(--radius-pill)] px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground" href={href}>{label}</a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            {languageControl}
+            <ThemeToggle />
+            <Link href={appHref} prefetch={false} className="hidden rounded-[var(--radius-control)] bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground sm:inline-flex">{ctaLabel}</Link>
+            <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-control)] border border-border lg:hidden" onClick={() => setMenuOpen(value => !value)} aria-label="menu" aria-expanded={menuOpen}>
+              {menuOpen ? <X size={19} /> : <Menu size={19} />}
+            </button>
+          </div>
         </div>
-        {menuOpen ? <div className="border-t border-border bg-background px-4 py-3 lg:hidden"><div className="mx-auto grid max-w-7xl gap-2">{[[ '#features', text.navFeatures ], [ '#pricing', text.navPricing ], [ '#security', text.navSecurity ], [ '#faq', text.navFaq ]].map(([href, label]) => <a key={href} href={href} className="rounded-[var(--radius-control)] px-3 py-2 hover:bg-muted" onClick={() => setMenuOpen(false)}>{label}</a>)}</div></div> : null}
+        {menuOpen ? (
+          <div className="border-t border-border bg-background px-4 py-3 lg:hidden">
+            <div className="mx-auto grid max-w-7xl gap-2">
+              {[[ '#features', text.navFeatures ], [ '#pricing', text.navPricing ], [ '#security', text.navSecurity ], [ '#faq', text.navFaq ]].map(([href, label]) => (
+                <a key={href} href={href} className="rounded-[var(--radius-control)] px-3 py-2 hover:bg-muted" onClick={() => setMenuOpen(false)}>{label}</a>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </header>
 
-      <section className="landing-hero relative overflow-hidden border-b border-border"><div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 md:px-6 md:py-20 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:py-24">
-        <div><span className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-primary/25 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"><Sparkles size={15} />{text.heroKicker}</span><h1 className="mt-5 max-w-4xl text-4xl font-bold leading-tight tracking-tight md:text-6xl">{text.heroTitle}</h1><p className="landing-secondary mt-5 max-w-3xl text-base leading-8 md:text-lg">{text.heroSubtitle}</p><div className="mt-7 flex flex-col gap-3 sm:flex-row"><Link href={appHref} prefetch={false} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-primary-foreground">{ctaLabel}</Link><Link href="/zakat-calculator" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card px-6 font-semibold hover:bg-muted">{text.heroSecondary}<ArrowLeft size={17} /></Link></div></div>
-        <aside className="rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-[var(--shadow-lg)] md:p-6" aria-label={text.demoTitle}><div className="mb-5 flex items-start justify-between gap-4"><div><span className="rounded-[var(--radius-pill)] bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{text.demoBadge}</span><h2 className="mt-3 text-xl font-bold">{text.demoTitle}</h2><p className="landing-muted mt-1 text-sm leading-6">{text.demoSubtitle}</p></div><BarChart3 className="text-primary" /></div><div className="grid grid-cols-2 gap-3">{[[text.demoIncome, '1,250 KWD'], [text.demoExpenses, '680 KWD'], [text.demoProjects, '3'], [text.demoZakat, '312.50 KWD']].map(([label, value]) => <div key={label} className="rounded-[var(--radius-card)] border border-border bg-muted/30 p-4"><small className="landing-muted">{label}</small><strong className="mt-2 block text-xl">{value}</strong><span className="mt-2 inline-block rounded-[var(--radius-pill)] bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary">{text.demoExample}</span></div>)}</div></aside>
-      </div></section>
-
-      <section className="mx-auto max-w-7xl px-4 py-14 md:px-6"><div className="grid gap-6 lg:grid-cols-[.8fr_1.2fr] lg:items-start"><div><h2 className="text-3xl font-bold">{text.trustTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.trustSubtitle}</p></div><div className="grid gap-3 sm:grid-cols-2">{text.trustItems.map(item => <div key={item} className="flex items-start gap-3 rounded-[var(--radius-card)] border border-border bg-card p-4"><CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={20} /><span>{item}</span></div>)}</div></div></section>
-
-      <section id="features" className="border-y border-border bg-muted/25"><div className="mx-auto max-w-7xl px-4 py-14 md:px-6"><div className="max-w-3xl"><h2 className="text-3xl font-bold md:text-4xl">{text.featuresTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.featuresSubtitle}</p></div><div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{featureItems.map(([Icon, title, description]) => <article key={pick(title, currentLang)} className="rounded-[var(--radius-card)] border border-border bg-card p-5 shadow-[var(--shadow-xs)]"><span className="inline-flex rounded-[var(--radius-control)] bg-primary/10 p-2.5 text-primary"><Icon size={21} /></span><h3 className="mt-4 text-lg font-bold">{pick(title, currentLang)}</h3><p className="landing-muted mt-2 text-sm leading-7">{pick(description, currentLang)}</p></article>)}</div><button type="button" onClick={() => setShowAllFeatures(value => !value)} className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] border border-border bg-card px-4 font-semibold hover:bg-muted">{showAllFeatures ? text.lessFeatures : text.allFeatures}</button></div></section>
-
-      <section id="pricing" className="mx-auto max-w-7xl px-4 py-14 md:px-6"><div className="max-w-3xl"><h2 className="text-3xl font-bold md:text-4xl">{text.pricingTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.pricingSubtitle}</p></div>
-        <div className="mt-6 flex flex-wrap items-center gap-3"><div className="inline-flex rounded-[var(--radius-control)] border border-border bg-muted/40 p-1">{(['monthly', 'yearly'] as const).map(interval => <button type="button" key={interval} onClick={() => setBilling(interval)} className={`rounded-[var(--radius-sm)] px-4 py-2 text-sm font-semibold ${billing === interval ? 'bg-card shadow-[var(--shadow-xs)]' : 'text-muted-foreground'}`}>{interval === 'monthly' ? text.monthly : text.yearly}</button>)}</div>{billing === 'yearly' ? <span className="inline-flex rounded-[var(--radius-pill)] bg-success/10 px-3 py-1 text-sm font-semibold text-success">{text.saveTwoMonths}</span> : null}</div>
-        <div className="mt-5 rounded-[var(--radius-card)] border border-border bg-card p-4"><div className="flex flex-wrap items-center gap-3"><span className="text-sm font-semibold">{text.currencyLabel}</span><div className="flex flex-wrap gap-2" aria-label={text.currencyLabel}>{DISPLAY_CURRENCIES.map(code => <button type="button" key={code} aria-pressed={displayCurrency === code} onClick={() => setCurrency(code)} className={`rounded-[var(--radius-pill)] border px-3 py-1.5 text-sm font-semibold ${displayCurrency === code ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>{code}</button>)}</div></div><p className="landing-muted mt-3 text-xs leading-6">{text.usdBillingNote}</p></div>
-        {message ? <div className="mt-4 rounded-[var(--radius-control)] border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{message}</div> : null}
-        <div className="mt-8 grid gap-5 lg:grid-cols-3"><PricingCard title={text.free} price={text.freePrice} description={text.freeDesc} features={PLAN_FEATURES.free.map(item => pick(item, currentLang))} action={<Link href={appHref} className="mt-auto inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border border-border font-semibold hover:bg-muted">{ctaLabel}</Link>} /><PricingCard featured badge={text.recommended} title={text.pro} price={localizedPrice(billing === 'yearly' ? 50 : 5, displayCurrency)} priceMeta={displayCurrency === 'USD' ? undefined : text.approximatePrice} description={text.proDesc} features={PLAN_FEATURES.premium.map(item => pick(item, currentLang))} action={<button type="button" disabled={loading || checkoutLoading !== null} onClick={() => void startCheckout('premium')} className="mt-auto min-h-11 rounded-[var(--radius-control)] bg-primary font-semibold text-primary-foreground disabled:opacity-60">{checkoutLoading === 'premium' ? text.checkoutLoading : text.subscribe}</button>} /><PricingCard title={text.business} price={localizedPrice(50, displayCurrency)} priceMeta={displayCurrency === 'USD' ? text.yearlyOnly : `${text.approximatePrice} · ${text.yearlyOnly}`} description={text.businessDesc} features={PLAN_FEATURES.company.map(item => pick(item, currentLang))} action={<button type="button" disabled={loading || checkoutLoading !== null} onClick={() => void startCheckout('company')} className="mt-auto min-h-11 rounded-[var(--radius-control)] border border-border font-semibold hover:bg-muted disabled:opacity-60">{checkoutLoading === 'company' ? text.checkoutLoading : text.addCompany}</button>} /></div>
+      <section className="landing-hero relative overflow-hidden border-b border-border">
+        <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 md:px-6 md:py-20 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:py-24">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-primary/25 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary"><Sparkles size={15} />{text.heroKicker}</span>
+            <h1 className="mt-5 max-w-4xl text-4xl font-bold leading-tight tracking-tight md:text-6xl">{text.heroTitle}</h1>
+            <p className="landing-secondary mt-5 max-w-3xl text-base leading-8 md:text-lg">{text.heroSubtitle}</p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <Link href={appHref} prefetch={false} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-primary-foreground">{ctaLabel}</Link>
+              <Link href="/zakat-calculator" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-control)] border border-border bg-card px-6 font-semibold hover:bg-muted">{text.heroSecondary}<ArrowLeft size={17} /></Link>
+            </div>
+          </div>
+          <aside className="rounded-[var(--radius-panel)] border border-border bg-card p-4 shadow-[var(--shadow-lg)] md:p-6" aria-label={text.demoTitle}>
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <span className="rounded-[var(--radius-pill)] bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">{text.demoBadge}</span>
+                <h2 className="mt-3 text-xl font-bold">{text.demoTitle}</h2>
+                <p className="landing-muted mt-1 text-sm leading-6">{text.demoSubtitle}</p>
+              </div>
+              <BarChart3 className="text-primary" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[[text.demoIncome, '1,250 KWD'], [text.demoExpenses, '680 KWD'], [text.demoProjects, '3'], [text.demoZakat, '312.50 KWD']].map(([label, value]) => (
+                <div key={label} className="rounded-[var(--radius-card)] border border-border bg-muted/30 p-4">
+                  <small className="landing-muted">{label}</small>
+                  <strong className="mt-2 block text-xl">{value}</strong>
+                  <span className="mt-2 inline-block rounded-[var(--radius-pill)] bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary">{text.demoExample}</span>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
       </section>
 
-      <section id="security" className="border-y border-border bg-muted/25"><div className="mx-auto max-w-7xl px-4 py-14 md:px-6"><div className="max-w-3xl"><div className="inline-flex items-center gap-2 text-primary"><LockKeyhole size={20} /><span className="font-semibold">{text.securityKicker}</span></div><h2 className="mt-3 text-3xl font-bold md:text-4xl">{text.securityTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.securitySubtitle}</p></div><div className="mt-8 grid gap-4 md:grid-cols-2">{text.securityCards.map(item => <div key={item} className="flex items-start gap-3 rounded-[var(--radius-card)] border border-border bg-card p-5"><ShieldCheck className="mt-0.5 shrink-0 text-primary" /><span>{item}</span></div>)}</div></div></section>
+      <section className="mx-auto max-w-7xl px-4 py-14 md:px-6">
+        <div className="grid gap-6 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
+          <div><h2 className="text-3xl font-bold">{text.trustTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.trustSubtitle}</p></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {text.trustItems.map(item => <div key={item} className="flex items-start gap-3 rounded-[var(--radius-card)] border border-border bg-card p-4"><CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={20} /><span>{item}</span></div>)}
+          </div>
+        </div>
+      </section>
 
-      <section id="faq" className="mx-auto max-w-4xl px-4 py-14 md:px-6"><div className="text-center"><h2 className="text-3xl font-bold md:text-4xl">{text.faqTitle}</h2><p className="landing-secondary mt-3">{text.faqSubtitle}</p></div><div className="mt-8 grid gap-3">{faqItems.map(([question, answer], index) => { const open = openFaq === index; return <article key={question} className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-card"><button type="button" onClick={() => setOpenFaq(open ? -1 : index)} className="flex w-full items-center justify-between gap-4 p-4 text-start font-semibold" aria-expanded={open}><span>{question}</span><ChevronDown size={18} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} /></button>{open ? <p className="landing-muted border-t border-border px-4 py-4 text-sm leading-7">{answer}</p> : null}</article>; })}</div><div className="mt-5 text-center"><button type="button" onClick={() => setShowAllFaq(value => !value)} className="rounded-[var(--radius-control)] border border-border bg-card px-4 py-2.5 font-semibold hover:bg-muted">{showAllFaq ? text.less : text.more}</button></div></section>
+      <section id="features" className="border-y border-border bg-muted/25">
+        <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
+          <div className="max-w-3xl"><h2 className="text-3xl font-bold md:text-4xl">{text.featuresTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.featuresSubtitle}</p></div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {featureItems.map(([Icon, title, description]) => (
+              <article key={pick(title, currentLang)} className="rounded-[var(--radius-card)] border border-border bg-card p-5 shadow-[var(--shadow-xs)]">
+                <span className="inline-flex rounded-[var(--radius-control)] bg-primary/10 p-2.5 text-primary"><Icon size={21} /></span>
+                <h3 className="mt-4 text-lg font-bold">{pick(title, currentLang)}</h3>
+                <p className="landing-muted mt-2 text-sm leading-7">{pick(description, currentLang)}</p>
+              </article>
+            ))}
+          </div>
+          <button type="button" onClick={() => setShowAllFeatures(value => !value)} className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] border border-border bg-card px-4 font-semibold hover:bg-muted">{showAllFeatures ? text.lessFeatures : text.allFeatures}</button>
+        </div>
+      </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 md:px-6"><div className="rounded-[var(--radius-panel)] border border-primary/20 bg-primary/10 p-7 text-center md:p-10"><h2 className="text-3xl font-bold">{text.finalTitle}</h2><p className="landing-secondary mx-auto mt-3 max-w-2xl">{text.finalSubtitle}</p><div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Link href={appHref} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-primary-foreground">{ctaLabel}</Link><Link href="/zakat-calculator" className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card px-6 font-semibold">{text.heroSecondary}</Link></div></div></section>
+      <section id="pricing" className="mx-auto max-w-7xl px-4 py-14 md:px-6">
+        <div className="max-w-3xl"><h2 className="text-3xl font-bold md:text-4xl">{text.pricingTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.pricingSubtitle}</p></div>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <div className="inline-flex rounded-[var(--radius-control)] border border-border bg-muted/40 p-1">
+            {(['monthly', 'yearly'] as const).map(interval => (
+              <button type="button" key={interval} onClick={() => setBilling(interval)} className={`rounded-[var(--radius-sm)] px-4 py-2 text-sm font-semibold ${billing === interval ? 'bg-card shadow-[var(--shadow-xs)]' : 'text-muted-foreground'}`}>{interval === 'monthly' ? text.monthly : text.yearly}</button>
+            ))}
+          </div>
+          {billing === 'yearly' ? <span className="inline-flex rounded-[var(--radius-pill)] bg-success/10 px-3 py-1 text-sm font-semibold text-success">{text.saveTwoMonths}</span> : null}
+        </div>
+        <div className="mt-5 rounded-[var(--radius-card)] border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold">{text.currencyLabel}</span>
+            <div className="flex flex-wrap gap-2" aria-label={text.currencyLabel}>
+              {DISPLAY_CURRENCIES.map(code => (
+                <button type="button" key={code} aria-pressed={displayCurrency === code} onClick={() => setCurrency(code)} className={`rounded-[var(--radius-pill)] border px-3 py-1.5 text-sm font-semibold ${displayCurrency === code ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}>{code}</button>
+              ))}
+            </div>
+          </div>
+          <p className="landing-muted mt-3 text-xs leading-6">{text.usdBillingNote}</p>
+        </div>
+        {message ? <div className="mt-4 rounded-[var(--radius-control)] border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{message}</div> : null}
+        <div className="mt-8 grid gap-5 lg:grid-cols-3">
+          <PricingCard title={text.free} price={text.freePrice} description={text.freeDesc} features={PLAN_FEATURES.free.map(item => pick(item, currentLang))} action={<Link href={appHref} className="mt-auto inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] border border-border font-semibold hover:bg-muted">{ctaLabel}</Link>} />
+          <PricingCard featured badge={text.recommended} title={text.pro} price={localizedPrice(billing === 'yearly' ? 50 : 5, displayCurrency)} priceMeta={displayCurrency === 'USD' ? undefined : text.approximatePrice} description={text.proDesc} features={PLAN_FEATURES.premium.map(item => pick(item, currentLang))} action={<button type="button" disabled={loading || checkoutLoading !== null} onClick={() => void startCheckout('premium')} className="mt-auto min-h-11 rounded-[var(--radius-control)] bg-primary font-semibold text-primary-foreground disabled:opacity-60">{checkoutLoading === 'premium' ? text.checkoutLoading : text.subscribe}</button>} />
+          <PricingCard title={text.business} price={localizedPrice(50, displayCurrency)} priceMeta={displayCurrency === 'USD' ? text.yearlyOnly : `${text.approximatePrice} · ${text.yearlyOnly}`} description={text.businessDesc} features={PLAN_FEATURES.company.map(item => pick(item, currentLang))} action={<button type="button" disabled={loading || checkoutLoading !== null} onClick={() => void startCheckout('company')} className="mt-auto min-h-11 rounded-[var(--radius-control)] border border-border font-semibold hover:bg-muted disabled:opacity-60">{checkoutLoading === 'company' ? text.checkoutLoading : text.addCompany}</button>} />
+        </div>
+      </section>
+
+      <section id="security" className="border-y border-border bg-muted/25">
+        <div className="mx-auto max-w-7xl px-4 py-14 md:px-6">
+          <div className="max-w-3xl"><div className="inline-flex items-center gap-2 text-primary"><LockKeyhole size={20} /><span className="font-semibold">{text.securityKicker}</span></div><h2 className="mt-3 text-3xl font-bold md:text-4xl">{text.securityTitle}</h2><p className="landing-secondary mt-3 leading-7">{text.securitySubtitle}</p></div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">{text.securityCards.map(item => <div key={item} className="flex items-start gap-3 rounded-[var(--radius-card)] border border-border bg-card p-5"><ShieldCheck className="mt-0.5 shrink-0 text-primary" /><span>{item}</span></div>)}</div>
+        </div>
+      </section>
+
+      <section id="faq" className="mx-auto max-w-4xl px-4 py-14 md:px-6">
+        <div className="text-center"><h2 className="text-3xl font-bold md:text-4xl">{text.faqTitle}</h2><p className="landing-secondary mt-3">{text.faqSubtitle}</p></div>
+        <div className="mt-8 grid gap-3">
+          {faqItems.map(([question, answer], index) => {
+            const open = openFaq === index;
+            return (
+              <article key={question} className="overflow-hidden rounded-[var(--radius-card)] border border-border bg-card">
+                <button type="button" onClick={() => setOpenFaq(open ? -1 : index)} className="flex w-full items-center justify-between gap-4 p-4 text-start font-semibold" aria-expanded={open}><span>{question}</span><ChevronDown size={18} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} /></button>
+                {open ? <p className="landing-muted border-t border-border px-4 py-4 text-sm leading-7">{answer}</p> : null}
+              </article>
+            );
+          })}
+        </div>
+        <div className="mt-5 text-center"><button type="button" onClick={() => setShowAllFaq(value => !value)} className="rounded-[var(--radius-control)] border border-border bg-card px-4 py-2.5 font-semibold hover:bg-muted">{showAllFaq ? text.less : text.more}</button></div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-20 md:px-6">
+        <div className="rounded-[var(--radius-panel)] border border-primary/20 bg-primary/10 p-7 text-center md:p-10">
+          <h2 className="text-3xl font-bold">{text.finalTitle}</h2><p className="landing-secondary mx-auto mt-3 max-w-2xl">{text.finalSubtitle}</p>
+          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Link href={appHref} className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-6 font-semibold text-primary-foreground">{ctaLabel}</Link><Link href="/zakat-calculator" className="inline-flex min-h-12 items-center justify-center rounded-[var(--radius-control)] border border-border bg-card px-6 font-semibold">{text.heroSecondary}</Link></div>
+        </div>
+      </section>
+
       <div className="fixed inset-x-3 bottom-3 z-40 sm:hidden"><Link href={appHref} className="flex min-h-12 items-center justify-center rounded-[var(--radius-control)] bg-primary px-5 font-bold text-primary-foreground shadow-[var(--shadow-lg)]">{ctaLabel}</Link></div>
       <footer className="border-t border-border px-4 py-8 text-center text-sm text-muted-foreground"><p>{text.footer}</p><div className="mt-3 flex justify-center gap-4"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Contact</Link></div></footer>
       <style jsx>{landingStyles}</style>
@@ -254,8 +395,18 @@ export default function PublicLandingPage() {
   );
 }
 
-function PricingCard({ title, price, description, features, action, featured, badge, priceMeta }: { title: string; price: string; description: string; features: string[]; action: React.ReactNode; featured?: boolean; badge?: string; priceMeta?: string }) {
-  return <article className={`flex min-h-[430px] flex-col rounded-[var(--radius-panel)] border bg-card p-6 ${featured ? 'border-primary shadow-[var(--shadow-lg)] ring-1 ring-primary/20' : 'border-border'}`}>{badge ? <span className="mb-3 w-fit rounded-[var(--radius-pill)] bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{badge}</span> : null}<h3 className="text-xl font-bold">{title}</h3><strong data-financial-value="true" className="mt-4 text-3xl">{price}</strong>{priceMeta ? <span className="landing-muted mt-1 text-xs">{priceMeta}</span> : null}<p className="landing-muted mt-4 text-sm leading-7">{description}</p><ul className="my-6 grid gap-3">{features.map(item => <li key={item} className="flex items-center gap-2 text-sm"><CheckCircle2 size={16} className="text-primary" />{item}</li>)}</ul>{action}</article>;
+function PricingCard({ title, price, description, features, action, featured, badge, priceMeta }: { title: string; price: string; description: string; features: string[]; action: ReactNode; featured?: boolean; badge?: string; priceMeta?: string }) {
+  return (
+    <article className={`flex min-h-[430px] flex-col rounded-[var(--radius-panel)] border bg-card p-6 ${featured ? 'border-primary shadow-[var(--shadow-lg)] ring-1 ring-primary/20' : 'border-border'}`}>
+      {badge ? <span className="mb-3 w-fit rounded-[var(--radius-pill)] bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{badge}</span> : null}
+      <h3 className="text-xl font-bold">{title}</h3>
+      <strong data-financial-value="true" className="mt-4 text-3xl">{price}</strong>
+      {priceMeta ? <span className="landing-muted mt-1 text-xs">{priceMeta}</span> : null}
+      <p className="landing-muted mt-4 text-sm leading-7">{description}</p>
+      <ul className="my-6 grid gap-3">{features.map(item => <li key={item} className="flex items-center gap-2 text-sm"><CheckCircle2 size={16} className="text-primary" />{item}</li>)}</ul>
+      {action}
+    </article>
+  );
 }
 
 const landingStyles = `
