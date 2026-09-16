@@ -90,7 +90,7 @@ for (const language of ['ar', 'en', 'fr']) {
           : { x: geometry.drawer.left > 2 ? geometry.drawer.left / 2 : (geometry.drawer.right + geometry.width) / 2, y: geometry.height / 2 };
         await page.mouse.click(point.x, point.y);
         await expect(frame.locator('[data-symbol-drawer]')).toHaveCount(0);
-        expect(await frame.locator('#app-shell').evaluate(element => element.inert)).toBe(false);
+        expect(await frame.locator('#app-shell').evaluate(element => element instanceof HTMLElement ? element.inert : null)).toBe(false);
       });
 
       test('external preference refresh preserves modal focus and internal scroll', async ({ page }, testInfo) => {
