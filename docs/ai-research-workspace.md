@@ -12,12 +12,16 @@ Asset details, explicit research execution, the canonical analysis ledger, and t
 - Private investment context never causes a public-asset quote lookup. Unsupported private-asset analysis remains explicitly unavailable.
 - Rules and model versions shown are from the actual result, never a hardcoded availability claim. The rules card spans the complete grid.
 
-## Model transport
+## SFM Private AI transport
 
-`src/lib/server/aiProvider.ts` is shared by intelligence chat and economic-advisor chat. Existing `OPENAI_API_KEY` configuration is tried first. Optional Vercel Gateway configuration is an alternate transport, using an OpenAI model by default. These routes no longer read or require `ANTHROPIC_API_KEY`; they do not change or delete stored secrets. An old Anthropic Gateway model setting is ignored in favor of the OpenAI default.
+`src/lib/server/aiProvider.ts` is shared by intelligence chat and economic-advisor chat. These paths now use only user-controlled model nodes configured through `SFM_AI_BASE_URL`, `SFM_AI_MODEL` and `SFM_AI_API_KEY`. A second private node can be configured with the corresponding `SFM_AI_FALLBACK_*` variables for automatic failover.
 
-A Gateway route to the same upstream vendor is not independent model-provider redundancy. No claim of live Gateway availability is made by configuration alone. Each request is bounded and cancelled before fallback; failures return truthful service errors rather than manufactured replies. Auth, owner-scoped grounding, rate limits and usage accounting remain enforced. Other unrelated application modules are outside this migration.
+The transport does not read or require `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY` or `AI_GATEWAY_TOKEN`. It sends a standard chat-completions request to a model server controlled by THE SFM, so vLLM, a compatible LocalAI deployment or another user-controlled compatibility layer can be used without coupling application code to a model vendor.
+
+Each request is bounded and cancelled before private-node failover. HTTP failures, rejected credentials, timeouts and empty replies never become fabricated successful responses. Auth, owner-scoped grounding, rate limits and usage accounting remain enforced. A production private endpoint must be HTTPS and authenticated.
+
+`services/sfm-private-ai/` contains the GPU service template. `GET /api/ai/private-health` is an authenticated no-store reachability check that calls the configured model nodes' `/models` endpoint and exposes no credentials.
 
 ## Validation
 
-Route/provider/quote tests and guest browser tests accompany these changes. Guest fixtures are browser-only and contain no personal records or live market claims. The focused workflow covers Arabic, English and French on desktop Chromium, mobile Chromium and WebKit; it does not replace full repository CI. The existing authenticated live-check workflow verifies a real Arabic response for the exact deployed SHA without publishing its transcript or account secrets. Passing code tests does not establish production or Gateway availability; check the specific workflow and deployment results before release.
+Route/provider/quote tests and guest browser tests accompany these changes. Guest fixtures are browser-only and contain no personal records or live market claims. The focused workflow covers Arabic, English and French on desktop Chromium, mobile Chromium and WebKit; it does not replace full repository CI. The authenticated live-check workflow must eventually verify a real Arabic response for the exact deployed SHA from `sfm-private-primary` or `sfm-private-fallback` before production rollout. Passing code tests alone does not establish that a GPU node has been provisioned or connected.
