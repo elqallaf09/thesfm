@@ -41,8 +41,9 @@ describe('on-demand symbol drawer request lifecycle', () => {
     expect(html.indexOf('drawer-data.js')).toBeLessThan(html.indexOf('/app.js'));
     expect(html).toContain('drawer-mobile.css');
     const app = readFileSync('src/trader-app/public/app.js', 'utf8');
-    expect(app).toContain('symbols=${encoded}&range=90'); expect(app).toContain('data-drawer-retry');
-    expect(app).toContain('newsForSymbol = symbol'); expect(app).toContain('!state.cache.get(key).drawerOnly');
+    const resources = readFileSync('src/trader-app/public/assets/drawer-data.js', 'utf8');
+    expect(resources).toContain('symbols=${encoded}&range=90'); expect(app).toContain('data-drawer-retry');
+    expect(resources).toContain('newsForSymbol = symbol'); expect(app).toContain('!state.cache.get(key).drawerOnly');
   });
   it('technical completeness never treats null, blank, boolean or array as a valid zero', () => {
     const source = readFileSync('src/app/api/market/technical-analysis/route.ts', 'utf8');

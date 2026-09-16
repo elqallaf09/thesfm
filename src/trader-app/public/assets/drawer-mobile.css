@@ -6,7 +6,7 @@
 .symbol-quick-drawer .drawer-identity > div { min-width: 0; flex: 1; }
 .symbol-quick-drawer .drawer-identity h2 { margin: 0; font-size: 18px; text-align: start; }
 .symbol-quick-drawer .drawer-identity p { margin: 2px 0 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-.symbol-quick-drawer .drawer-identity .eyebrow { font-size: 11px; line-height: 1.4; }
+.symbol-quick-drawer .drawer-identity .eyebrow { font-size: 12px; line-height: 1.4; }
 .symbol-quick-drawer .drawer-tabs { scroll-padding-inline: 10px; }
 .symbol-quick-drawer .drawer-tab { min-height: 44px; }
 .symbol-quick-drawer .drawer-panel { padding: 12px 14px; min-height: 0; overflow-x: hidden; }
@@ -43,4 +43,4 @@
 @media print {
   .symbol-quick-drawer .drawer-load-status { display: none; }
 }
-.symbol-quick-drawer .drawer-loading-mark { display: block; width: 70%; height: 12px; margin: auto; border-radius: 6px; background: var(--trader-edge-soft); }
+.symbol-quick-drawer .drawer-loading-mark { display: block; width: 70%; height: 12px; margin: auto; border-radius: var(--radius-control); background: var(--trader-edge-soft); }
