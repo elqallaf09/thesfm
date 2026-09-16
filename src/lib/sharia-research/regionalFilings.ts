@@ -12,12 +12,12 @@ const profiles: Profile[] = [
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
   { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://ifakuwait.com/financial-statements.html',
-    document: 'https://ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf',
-    alternates: [{
-      url: 'https://ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',
-      // Audited statements are on PDF pages 37-44; note 1 carries the 2026 approval date.
-      pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105],
-    }] },
+    // The annual report is a confirmed public issuer PDF and contains the audited
+    // primary statements. Prefer it over the shorter download endpoint, which is
+    // intermittently unavailable to server-side retrieval.
+    document: 'https://ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',
+    pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105],
+    alternates: [{ url: 'https://ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf' }] },
 ];
 function issuerHost(hostname: string) { return hostname.toLowerCase().replace(/^www\./, ''); }
 function sameIssuerHost(left: string, right: string) { return issuerHost(new URL(left).hostname) === issuerHost(new URL(right).hostname); }
@@ -79,7 +79,10 @@ export const regionalFilingsAdapter: SourceAdapter = {
         ...(profile.document ? [{ url: profile.document, pages: profile.pages }] : []),
         ...(profile.alternates ?? []),
       ];
-      const candidates = [...discovered, ...fallbacks].filter((item, index, all) => all.findIndex(other => other.url === item.url) === index).slice(0, 4);
+      // Reviewed explicit issuer documents are tried first. Discovery can add a
+      // newer same-origin filing but cannot delay a known-good fallback until a
+      // request-level deadline is nearly exhausted.
+      const candidates = [...fallbacks, ...discovered].filter((item, index, all) => all.findIndex(other => other.url === item.url) === index).slice(0, 4);
       if (!candidates.length) throw new Error('regional_financial_document_not_discovered');
 
       let response: Awaited<ReturnType<typeof secureFetch>> | null = null;
