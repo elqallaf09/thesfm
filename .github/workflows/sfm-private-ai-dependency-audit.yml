@@ -1,0 +1,42 @@
+name: SFM Private AI dependency audit
+
+on:
+  push:
+    branches: [fix/ai-workspace-providers-layout-20260916]
+    paths:
+      - .github/workflows/sfm-private-ai-dependency-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - name: Audit live AI vendor dependencies without reading secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit
+          pattern="OPENAI_API_KEY|ANTHROPIC_API_KEY|AI_GATEWAY_API_KEY|AI_GATEWAY_TOKEN|api\\.openai\\.com|api\\.anthropic\\.com|from ['\"]openai['\"]|@ai-sdk/anthropic|createAnthropic|OpenAI Vision|openai-vision"
+          grep -RniE "$pattern" src \
+            --exclude-dir='__tests__' \
+            --exclude='*.test.ts' --exclude='*.test.tsx' --exclude='*.spec.ts' --exclude='*.spec.tsx' \
+            > audit/live-src.txt || true
+          grep -RniE "$pattern" src/__tests__ tests > audit/tests.txt || true
+          grep -nE '"openai"|"@ai-sdk/anthropic"|"ai"' package.json > audit/package.txt || true
+          grep -nE 'OPENAI_|ANTHROPIC_|AI_GATEWAY_|SFM_AI_' .env.example > audit/env-example.txt || true
+          grep -RniE "futureLocal|openAi:|OpenAI|Anthropic|AI Gateway" src/components/ai-analyst > audit/ai-analyst-ui.txt || true
+          find .github/workflows scripts -type f -maxdepth 3 -print0 | xargs -0 grep -niE "$pattern" > audit/automation.txt || true
+          printf 'HEAD=%s\n' "$GITHUB_SHA" > audit/meta.txt
+          printf 'live_src_matches=%s\n' "$(wc -l < audit/live-src.txt)" >> audit/meta.txt
+          printf 'test_matches=%s\n' "$(wc -l < audit/tests.txt)" >> audit/meta.txt
+          printf 'package_matches=%s\n' "$(wc -l < audit/package.txt)" >> audit/meta.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sfm-private-ai-dependency-audit
+          path: audit/
+          retention-days: 1
