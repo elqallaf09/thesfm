@@ -9,7 +9,7 @@ describe('Cook County Assessor parcel sales context', () => {
   });
 
   it('uses the County filters and keeps official sales outside valuation evidence', async () => {
-    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       expect(url.origin).toBe('https://datacatalog.cookcountyil.gov');
       expect(url.pathname).toBe('/resource/wvhk-k5uv.json');
@@ -32,7 +32,8 @@ describe('Cook County Assessor parcel sales context', () => {
           sale_filter_same_sale_within_365: false, sale_filter_less_than_10k: true, sale_filter_deed_type: false,
         },
       ]), { status: 200, headers: { 'Content-Type': 'application/json' } });
-    }) as unknown as typeof fetch;
+    });
+    const fetcher = fetchMock as unknown as typeof fetch;
 
     const report = await collectCookCountyPropertyContext(
       { countryCode: 'US', region: 'Illinois', city: 'Chicago', propertyType: 'APARTMENT', landArea: 80, landAreaUnit: 'M2', address: 'private address' },
@@ -46,6 +47,6 @@ describe('Cook County Assessor parcel sales context', () => {
     expect(report.valuationEligible).toBe(false);
     expect(report.reasons).toContain('NON_ARMS_LENGTH_SALES_REQUIRE_REVIEW');
     expect(report.reasons).toContain('AREA_METADATA_MISSING');
-    expect(String(fetcher.mock.calls[0]?.[0])).not.toContain('private address');
+    expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('private address');
   });
 });
