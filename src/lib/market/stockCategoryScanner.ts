@@ -1,10 +1,10 @@
 import 'server-only';
 
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
-import { fetchTraderQuotes, type TraderQuote } from '@/lib/trader/marketQuotes';
-import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
 import { getStockCategoryConfig, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
 import { screenGrowthStocks } from '@/lib/market/growthStockScreener';
+import { fetchTraderQuotes, type TraderQuote } from '@/lib/trader/marketQuotes';
+import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
 
 const FMP_STABLE_BASE = 'https://financialmodelingprep.com/stable';
 const US_EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX'] as const;
@@ -88,24 +88,24 @@ type ScanOptions = {
 
 const CRITERIA: Record<Exclude<StockCategoryId, 'growth' | 'sharia'>, Record<string, unknown>> = {
   energy: {
-    universe: 'Active US common stocks on NASDAQ, NYSE and AMEX',
+    universe: 'All active US common stocks returned by NASDAQ, NYSE and AMEX scans',
     classification: 'Sector = Energy',
   },
   banking: {
-    universe: 'Active US common stocks on NASDAQ, NYSE and AMEX',
-    classification: 'Financial Services companies whose industry/name identifies a bank or banking business',
+    universe: 'All active US common stocks returned by NASDAQ, NYSE and AMEX scans',
+    classification: 'Financial Services companies whose industry or company name identifies banking activity',
   },
   defensive: {
-    universe: 'Active US common stocks on NASDAQ, NYSE and AMEX',
+    universe: 'All active US common stocks returned by NASDAQ, NYSE and AMEX scans',
     classification: 'Consumer Defensive, Healthcare, Utilities, plus telecom-oriented Communication Services',
   },
   cyclical: {
-    universe: 'Active US common stocks on NASDAQ, NYSE and AMEX',
+    universe: 'All active US common stocks returned by NASDAQ, NYSE and AMEX scans',
     classification: 'Consumer Cyclical, Industrials, Basic Materials and Real Estate',
   },
   dividend: {
-    universe: 'Active US common stocks on NASDAQ, NYSE and AMEX',
-    classification: 'Positive annual cash dividend and calculated indicated yield of at least 1.5%',
+    universe: 'All active US common stocks returned by NASDAQ, NYSE and AMEX scans',
+    classification: 'Positive annual cash dividend and indicated dividend yield of at least 1.5%',
     minimumDividendYieldPercent: 1.5,
   },
 };
@@ -133,24 +133,24 @@ function safeError(error: unknown) {
   return error instanceof Error ? error.message.slice(0, 180) : 'category_scanner_unavailable';
 }
 
-function validUsSymbol(value: string) {
+function validSymbol(value: string) {
   return /^[A-Z][A-Z0-9.-]{0,14}$/.test(value) && !value.includes('^');
 }
 
 function normalizeUniverseRows(rows: Array<Record<string, unknown>>) {
   const seen = new Set<string>();
-  const normalizedRows: UniverseRow[] = [];
+  const output: UniverseRow[] = [];
 
   for (const row of rows) {
     const symbol = text(row.symbol).toUpperCase();
-    if (!validUsSymbol(symbol) || seen.has(symbol)) continue;
+    if (!validSymbol(symbol) || seen.has(symbol)) continue;
     if (row.isEtf === true || row.isFund === true || row.isActivelyTrading === false) continue;
 
     const country = text(row.country || 'US') || 'US';
     if (country && !/^US$|United States/i.test(country)) continue;
 
     seen.add(symbol);
-    normalizedRows.push({
+    output.push({
       symbol,
       name: text(row.companyName ?? row.name) || symbol,
       price: finite(row.price),
@@ -166,7 +166,7 @@ function normalizeUniverseRows(rows: Array<Record<string, unknown>>) {
     });
   }
 
-  return normalizedRows;
+  return output;
 }
 
 async function fetchFmpArray(
@@ -240,6 +240,7 @@ function categoryMatch(category: Exclude<StockCategoryId, 'growth' | 'sharia'>, 
   if (category === 'cyclical') {
     return ['consumer cyclical', 'industrials', 'basic materials', 'real estate'].includes(sector);
   }
+
   const yieldPercent = dividendYieldPercent(row);
   return yieldPercent !== null && yieldPercent >= 1.5;
 }
@@ -256,13 +257,13 @@ function classificationReason(category: Exclude<StockCategoryId, 'growth' | 'sha
 function sortMatches(category: Exclude<StockCategoryId, 'growth' | 'sharia'>, rows: UniverseRow[]) {
   return rows.slice().sort((left, right) => {
     if (category === 'dividend') {
-      const yieldDiff = (dividendYieldPercent(right) ?? -1) - (dividendYieldPercent(left) ?? -1);
-      if (yieldDiff !== 0) return yieldDiff;
+      const yieldDifference = (dividendYieldPercent(right) ?? -1) - (dividendYieldPercent(left) ?? -1);
+      if (yieldDifference !== 0) return yieldDifference;
     }
-    const marketCapDiff = (right.marketCap ?? -1) - (left.marketCap ?? -1);
-    if (marketCapDiff !== 0) return marketCapDiff;
-    const volumeDiff = (right.volume ?? -1) - (left.volume ?? -1);
-    if (volumeDiff !== 0) return volumeDiff;
+    const marketCapDifference = (right.marketCap ?? -1) - (left.marketCap ?? -1);
+    if (marketCapDifference !== 0) return marketCapDifference;
+    const volumeDifference = (right.volume ?? -1) - (left.volume ?? -1);
+    if (volumeDifference !== 0) return volumeDifference;
     return left.symbol.localeCompare(right.symbol);
   });
 }
@@ -279,6 +280,7 @@ function mapUniverseItem(
   const quotePrice = quote?.available ? finite(quote.price) : null;
   const price = quotePrice ?? row.price;
   const available = price !== null && price > 0;
+
   return {
     symbol: row.symbol,
     name: quote?.name || row.name,
@@ -388,10 +390,7 @@ function mapGrowthResult(limit: number, result: Awaited<ReturnType<typeof screen
     returnedCount: items.length,
     availableCount: items.filter(item => item.available).length,
     quoteEnrichedCount: items.filter(item => item.changePercent !== null).length,
-    criteria: {
-      ...result.criteria,
-      screeningPeriods: result.periods,
-    },
+    criteria: { ...result.criteria, screeningPeriods: result.periods },
     degradedReason: result.degradedReason,
     items,
   };
@@ -432,7 +431,7 @@ async function shariaScanner(options: ScanOptions): Promise<StockCategoryScanner
   const statusRank: Record<string, number> = { compliant: 0, needs_review: 1, unclassified: 2, non_compliant: 3 };
   const normalizedRows = rows
     .map(row => ({ ...row, symbol: text(row.symbol).toUpperCase(), name: text(row.name) || text(row.symbol) }))
-    .filter(row => validUsSymbol(row.symbol))
+    .filter(row => validSymbol(row.symbol))
     .sort((left, right) => (statusRank[text(left.shariah_status)] ?? 9) - (statusRank[text(right.shariah_status)] ?? 9) || left.symbol.localeCompare(right.symbol));
   const selected = normalizedRows.slice(0, limit);
   const quoteCandidates = selected.slice(0, MAX_QUOTE_ENRICHMENT);
@@ -458,7 +457,7 @@ async function shariaScanner(options: ScanOptions): Promise<StockCategoryScanner
       ...(!quote?.available ? { unavailableReason: quote?.unavailableReason ?? 'quote_not_enriched' } : {}),
       sector: text(row.sector) || null,
       industry: null,
-      exchange: quote?.exchange ?? text(row.exchange) || null,
+      exchange: quote?.exchange ?? (text(row.exchange) || null),
       country: text(row.country) || null,
       marketCap: finite(quote?.marketCap),
       volume: null,
@@ -558,6 +557,7 @@ async function fallbackWatchlist(category: StockCategoryId, reason: string, requ
 
 export async function screenStockCategory(category: StockCategoryId, options: ScanOptions = {}): Promise<StockCategoryScannerResult> {
   const limit = normalizeLimit(options.limit);
+
   if (category === 'growth') {
     try {
       return mapGrowthResult(limit, await screenGrowthStocks());
@@ -565,6 +565,7 @@ export async function screenStockCategory(category: StockCategoryId, options: Sc
       return fallbackWatchlist(category, safeError(error), limit);
     }
   }
+
   if (category === 'sharia') {
     try {
       return await shariaScanner({ ...options, limit });
