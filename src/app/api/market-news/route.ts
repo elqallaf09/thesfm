@@ -248,7 +248,9 @@ export async function GET(request: NextRequest) {
     query: effectiveQuery || undefined,
     symbols,
     companyNames,
-    marketCodes: list(searchParams, ['market', 'markets', 'marketCode', 'selectedMarket'], 40),
+    // The terminal's UI market id is not an article's canonical market code.
+    marketCodes: [...new Set(list(searchParams, ['market', 'markets', 'marketCode', 'selectedMarket'], 40)
+      .map(value => value.toLowerCase() === 'us-stocks' ? 'US' : value))],
     exchangeCodes: list(searchParams, ['exchange', 'exchanges', 'exchangeCode'], 40),
     countries: list(searchParams, ['country', 'countries'], 40),
     sectors: list(searchParams, ['sector', 'sectors'], 60),
