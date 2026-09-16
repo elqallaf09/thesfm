@@ -305,7 +305,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
     setVisible(PAGE_SIZE);
   }, [query, sector, sort]);
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
   const sectors = useMemo(() => [...new Set(items.map(item => item.sector).filter((value): value is string => Boolean(value)))].sort(), [items]);
 
   const filtered = useMemo(() => {
