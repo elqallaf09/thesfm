@@ -1,0 +1,21 @@
+name: Materialize reviewed drawer repair
+on:
+  push:
+    branches: [fix/trader-accessibility-followup]
+    paths: [.github/workflows/trader-drawer-apply.yml]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/trader-accessibility-followup
+          fetch-depth: 0
+      - name: Apply exact checksum-validated source changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 .drawer-apply.py
