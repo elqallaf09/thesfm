@@ -10,7 +10,11 @@ const profiles: Profile[] = [
   { symbols: ['KFH', 'KFH.KW'], country: 'KW', name: /Kuwait Finance House/i, directory: 'https://www.kfh.com/en/home/Investor-Relations/Annual-Reports/Annual-Reports.html',
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
-  { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://www.ifakuwait.com/financial-statements.html' },
+  { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://ifakuwait.com/financial-statements.html',
+    document: 'https://ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',
+    // Audited statements are on PDF pages 37-44; note 1 supplies the 2026 approval date.
+    // Later risk-note pages are included only to expose explicit cash/debt evidence if needed.
+    pages: [37, 38, 39, 40, 43, 44, 45, 91, 103, 105] },
 ];
 export function regionalProfile(security: Pick<SecurityIdentity, 'ticker' | 'providerSymbol' | 'country' | 'exchange' | 'name'>) {
   const country = String(security.country ?? '').toUpperCase();
@@ -56,12 +60,28 @@ export const regionalFilingsAdapter: SourceAdapter = {
       const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
       if (new URL(directory.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_directory_identity_changed');
       const found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
-      const url = found[0] ?? profile.document;
-      if (!url) throw new Error('regional_financial_document_not_discovered');
-      const response = await secureFetch(url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
-      if (new URL(response.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_document_identity_changed');
+      const candidates = [...new Set([...found.slice(0, 2), ...(profile.document ? [profile.document] : [])])];
+      if (!candidates.length) throw new Error('regional_financial_document_not_discovered');
+
+      let response: Awaited<ReturnType<typeof secureFetch>> | null = null;
+      let selectedUrl: string | null = null;
+      let lastError: unknown = null;
+      for (const candidate of candidates.slice(0, 3)) {
+        try {
+          const fetched = await secureFetch(candidate, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
+          if (new URL(fetched.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_document_identity_changed');
+          response = fetched;
+          selectedUrl = candidate;
+          break;
+        } catch (error) {
+          lastError = error;
+          context.signal?.throwIfAborted();
+        }
+      }
+      if (!response || !selectedUrl) throw lastError ?? new Error('regional_financial_document_not_discovered');
+
       context.signal?.throwIfAborted();
-      const pages = await extractSelectedPdfPages(response.body, url === profile.document ? profile.pages : []);
+      const pages = await extractSelectedPdfPages(response.body, selectedUrl === profile.document ? profile.pages : []);
       context.signal?.throwIfAborted();
       const document = pdfEvidenceDocument(pages, context.security, response.finalUrl, response.retrievedAt);
       if (!profile.name.test(document.extractedText)) throw new Error('regional_document_issuer_mismatch');
