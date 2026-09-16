@@ -30,5 +30,37 @@ services:
               count: ${SFM_GPU_COUNT:-1}
               capabilities: [gpu]
 
+  sfm-vision:
+    profiles: [vision]
+    image: ${SFM_VLLM_IMAGE:-vllm/vllm-openai:latest}
+    restart: unless-stopped
+    ipc: host
+    command:
+      - --model
+      - ${SFM_VISION_MODEL:?SFM_VISION_MODEL is required when the vision profile is enabled}
+      - --served-model-name
+      - ${SFM_VISION_SERVED_MODEL:-sfm-vision}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --api-key
+      - ${SFM_VISION_API_KEY:?SFM_VISION_API_KEY is required when the vision profile is enabled}
+      - --max-model-len
+      - ${SFM_VISION_MAX_MODEL_LEN:-16384}
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN:-}
+    ports:
+      - 127.0.0.1:${SFM_VISION_BIND_PORT:-8001}:8000
+    volumes:
+      - sfm_hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${SFM_VISION_GPU_COUNT:-1}
+              capabilities: [gpu]
+
 volumes:
   sfm_hf_cache:
