@@ -74,7 +74,7 @@ test('Global Markets Explorer Load More stays within the controlled interaction 
   const counts: number[] = [];
   for (let index = 0; index < 5; index += 1) {
     samples.push(await appendAndMeasure());
-    counts.push(await explorer.locator('.gm-strip-item')).count());
+    counts.push(await explorer.locator('.gm-strip-item').count());
   }
 
   const result = { project: testInfo.project.name, samples, median: median(samples), worst: Math.max(...samples), counts };
