@@ -37,7 +37,7 @@ async function enterCenter(page: Page, lang: 'ar' | 'en' | 'fr', theme: 'light' 
   await expect(page.locator('html')).toHaveClass(new RegExp(`(^|\\s)${theme}(\\s|$)`));
 }
 
-test('Investments Center preserves the legacy-read data, canonical handoff, and responsive language/theme shell', async ({ page }) => {
+test('Investments Center preserves owned property totals while handing market analysis to the real estate center', async ({ page }) => {
   let missingLogoRequests = 0;
   let propertyAnalysisRequests = 0;
   page.on('request', request => {
@@ -59,16 +59,12 @@ test('Investments Center preserves the legacy-read data, canonical handoff, and 
   const stockAnalysis = stockCard.getByRole('link', { name: 'Analyze this asset', exact: true });
   await expect(stockAnalysis).toHaveAttribute('href', /\/ai-analyst\/analyze\/MISSING\?assetType=STOCK/);
   await expect(stockAnalysis).toHaveAttribute('href', /investmentId=89e7c6d8-ecdf-4d10-83d7-2ed37b3c5a04/);
-  // Phase 8 intentionally replaces the generic private-stock placeholder with
-  // the property specialist. Assert the entire handoff, not only a loose flag.
   const propertyAnalysis = propertyCard.getByRole('link', { name: 'Analyze this asset', exact: true });
-  await expect(propertyAnalysis).toHaveAttribute('href', '/invest/real-estate?investmentId=d9d9e4f4-f68d-454b-a2c3-33ff7b13c065');
+  await expect(propertyAnalysis).toHaveAttribute('href', '/global-markets/real-estate?investmentId=d9d9e4f4-f68d-454b-a2c3-33ff7b13c065');
   await expect(propertyAnalysis).not.toHaveAttribute('href', /\/ai-analyst\/|assetType=STOCK/);
-  await expect(page.getByTestId('real-estate-intelligence-entry').getByRole('link')).toHaveAttribute('href', '/invest/real-estate');
+  await expect(page.getByRole('link', { name: 'Real Estate' })).toHaveCount(0);
+  await expect(page.getByTestId('real-estate-intelligence-entry')).toHaveCount(0);
   expect(propertyAnalysisRequests, 'opening the center must not run a valuation or save').toBe(0);
-  // The resolver may keep an in-flight image node briefly on WebKit, but it
-  // must never retry a known missing URL. Phase 6.3 resolver tests cover the
-  // final fallback DOM after the error event across the cache boundary.
   expect(missingLogoRequests).toBeLessThanOrEqual(1);
 
   for (const [lang, theme] of [['ar', 'light'], ['fr', 'dark']] as const) {
@@ -81,5 +77,5 @@ test('Investments Center preserves the legacy-read data, canonical handoff, and 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('details')).toBeVisible();
   await page.locator('details').click();
-  await expect(page.locator('details nav a')).toHaveCount(8);
+  await expect(page.locator('details nav a')).toHaveCount(7);
 });
