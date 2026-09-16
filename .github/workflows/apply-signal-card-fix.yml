@@ -18,32 +18,12 @@ jobs:
         with:
           fetch-depth: 0
           ref: fix/signal-card-evidence-20260916
-      - name: Apply tested signal-card repair
+      - name: Sync current main and apply signal fix
         shell: bash
         run: |
           set -euo pipefail
-          git show e3392f51facb767941c7909a210e822e90696973:.github/workflows/apply-signal-card-fix.yml > /tmp/original.yml
-          python <<'PYTHON'
-          from pathlib import Path
-          from textwrap import dedent
-          text = Path('/tmp/original.yml').read_text()
-          script = dedent(text.split('        run: |\n', 1)[1])
-          route_start = script.index("replace('src/app/api/recommendations/route.ts'")
-          yahoo_start = script.index("replace('src/lib/market/fetchYahooQuote.ts'", route_start)
-          script = script[:route_start] + script[yahoo_start:]
-          yahoo_start = script.index("replace('src/lib/market/fetchYahooQuote.ts'")
-          market_type = script.index("replace('src/lib/trader/marketQuotes.ts',\n  \"  marketTime: string | null;", yahoo_start)
-          current_import = "replace('src/lib/trader/marketQuotes.ts',\n  \"import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';\",\n  \"import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';\\nimport { resolveYahooSessionQuote } from '@/lib/market/yahooSessionQuote.mjs';\")\n"
-          script = script[:yahoo_start] + current_import + script[market_type:]
-          stale = '''replace('src/lib/trader/marketQuotes.ts',
-  "    previousClose: chart.previousClose,",
-  "    previousClose: chart.previousClose,\\n    volume: chart.volume,\\n    volumeAsOf: chart.volumeAsOf,")'''
-          current = '''replace('src/lib/trader/marketQuotes.ts',
-  "    previousClose: normalizedQuote.previousClose,\\n    currency,",
-  "    previousClose: normalizedQuote.previousClose,\\n    volume: chart.volume,\\n    currency,")'''
-          if stale not in script:
-              raise SystemExit('stale Yahoo volume patch block not found in source runner')
-          script = script.replace(stale, current, 1)
-          Path('/tmp/apply.sh').write_text(script)
-          PYTHON
-          bash /tmp/apply.sh
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          python tools/apply_signal_card_fix.py
