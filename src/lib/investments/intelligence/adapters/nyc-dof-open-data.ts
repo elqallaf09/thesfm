@@ -39,7 +39,7 @@ export function isNewYorkCityAsset(asset: RealEstateAssetInput): boolean {
   const state = (asset.region ?? '').trim().toLowerCase();
   const city = (asset.city ?? asset.municipality ?? '').trim().toLowerCase();
   const district = (asset.district ?? '').trim().toLowerCase();
-  return state === 'ny' || state === 'new york' || city === 'new york' || city === 'new york city' || district in BOROUGHS;
+  return state === 'ny' || state === 'new york' || city === 'new york' || city === 'new york city' || Object.hasOwn(BOROUGHS, district);
 }
 
 /** Rolling sales are authoritative public-sale context, not automatic current-value evidence. */
@@ -58,7 +58,7 @@ export async function collectNycPropertyContext(
   }
   const district = districtRaw.toLowerCase();
   const boroughCode = BOROUGHS[district];
-  const where = boroughCode ? `borough=${soqlLiteral(boroughCode)}` : `upper(neighborhood)=${soqlLiteral(districtRaw.toUpperCase())}`;
+  const where = boroughCode ? `borough=${soqlLiteral(boroughCode)}` : `neighborhood=${soqlLiteral(districtRaw.toUpperCase())}`;
   const select = ['borough','neighborhood','building_class_category','block','lot','address','apartment_number','zip_code','land_square_feet','gross_square_feet','building_class_at_time_of_sale','sale_price','sale_date'].join(',');
   const url = new URL(ENDPOINT);
   url.searchParams.set('$select', select);
