@@ -43,7 +43,7 @@ export async function readQatarPublicJson(
 ): Promise<unknown> {
   const url = new URL(resource === 'metadata' ? QATAR_API : `${QATAR_API}/records`);
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
-  const useCache = fetcher === fetch && process.env.NODE_ENV !== 'test';
+  const useCache = (resource === 'metadata' || Boolean(query.group_by)) && fetcher === fetch && process.env.NODE_ENV !== 'test';
   const key = url.href;
   const cached = useCache ? cache.get(key) : undefined;
   if (cached && cached.expiresAt > Date.now()) return cached.value;

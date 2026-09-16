@@ -15,6 +15,7 @@ export default defineConfig({
     include: [
       'src/__tests__/**/*.test.ts',
       'src/__tests__/**/*.test.tsx',
+      'src/domain/economic-intelligence/__tests__/**/*.test.ts',
       '.github/scripts/__tests__/**/*.test.mjs',
       // Specialist engine/adapter regressions live beside their implementation.
       'src/lib/investments/intelligence/**/*.test.ts',

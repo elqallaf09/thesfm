@@ -98,13 +98,14 @@ describe('Phase 3.1 global-controls contract', () => {
       'src/app/(auth)/login/page.tsx',
       'src/app/about/page.tsx',
       'src/app/contact/page.tsx',
+      'src/app/investment-check/page.tsx',
       'src/app/page.tsx',
       'src/app/profile/page.tsx',
       'src/app/reset-password/page.tsx',
     ]);
 
     const publicRouteRegistry = read('src/config/workspaces/public-shell-routes.ts');
-    for (const route of ['/', '/login', '/reset-password', '/about', '/contact']) {
+    for (const route of ['/', '/login', '/reset-password', '/about', '/contact', '/investment-check']) {
       expect(publicRouteRegistry).toContain(`'${route}'`);
     }
 

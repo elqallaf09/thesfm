@@ -4,6 +4,14 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(path, 'utf8');
 
 describe('Global Markets asynchronous layout contracts', () => {
+  it('does not advertise SSR explorer controls as interactive before hydration', () => {
+    const explorer = read('src/components/global-markets/GlobalMarketsExplorer.tsx');
+    expect(explorer).toContain('const [interactive, setInteractive] = useState(false)');
+    expect(explorer).toContain('useEffect(() => deferUntilStreamSettled(() => setInteractive(true)), [])');
+    expect(explorer).toContain('<input type="search" disabled={!interactive}');
+    expect(explorer).toContain('className="gm-explorer-toggle" disabled={!interactive}');
+  });
+
   it('renders selected strip shells independently of quote completion', () => {
     const page = read('src/components/global-markets/GlobalMarketsPage.tsx');
     expect(page).toContain('selectedStrips.map(strip');

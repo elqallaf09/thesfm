@@ -24,7 +24,7 @@ export async function GET() {
     for (const item of items) counts[item.shariahStatus]++;
     const dates = items.map(item => item.lastScreenedAt).filter((date): date is string => Boolean(date)).sort();
     const connected = items.some(item => item.screeningSource !== null);
-    return NextResponse.json({ ok: true, items, counts, updated_at: dates.at(-1) ?? null,
+    return NextResponse.json({ ok: true, revision: process.env.VERCEL_GIT_COMMIT_SHA ?? null, items, counts, updated_at: dates.at(-1) ?? null,
       sourceConnected: connected, screeningSource: connected ? 'sfm-evidence-v2' : null,
       sourceName: connected ? 'SFM source-verified screening' : null,
       methodology: { ar: SFM_FTSE_POINT_IN_TIME.nameAr, en: SFM_FTSE_POINT_IN_TIME.name, fr: SFM_FTSE_POINT_IN_TIME.nameFr },

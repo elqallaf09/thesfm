@@ -1,0 +1,95 @@
+name: Economic intelligence isolation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: economic-isolation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-rls:
+    name: Economic intelligence / real two-user isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Check that the probe rejects remote endpoints
+        run: node --test scripts/economic-intelligence/local-rls-guard.test.mjs
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+      - name: Start a fresh local Supabase with this checkout's migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          local_dir="$RUNNER_TEMP/sfm-isolation"
+          mkdir -p "$local_dir"
+          supabase init --workdir "$local_dir"
+          mkdir -p "$local_dir/supabase/migrations"
+          cp supabase/migrations/*.sql "$local_dir/supabase/migrations/"
+          # No linked project, production credentials, seed rows, or remote DB push.
+          supabase start --workdir "$local_dir" \
+            --exclude studio,imgproxy,realtime,edge-runtime,logflare,vector,supavisor \
+            > "$RUNNER_TEMP/sfm-local-start.log" 2>&1 || {
+              sed -E 's/eyJ[A-Za-z0-9._-]+/[local-token-redacted]/g' "$RUNNER_TEMP/sfm-local-start.log" | tail -100
+              exit 1
+            }
+          supabase status --workdir "$local_dir" -o json > "$RUNNER_TEMP/sfm-local-status.json"
+          chmod 600 "$RUNNER_TEMP/sfm-local-status.json"
+      - name: Exercise real Auth, PostgREST and RLS in both user directions
+        env:
+          SFM_RLS_DISPOSABLE: '1'
+        run: node scripts/economic-intelligence/verify-local-rls.mjs "$RUNNER_TEMP/sfm-local-status.json" "$RUNNER_TEMP/sfm-rls-result.json"
+      - name: Diagnose local cleanup without exposing raw database logs
+        if: failure()
+        shell: bash
+        run: |
+          docker logs supabase_db_sfm-isolation 2>&1 | node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const log = readFileSync(0, "utf8");
+            const patterns = [
+              /permission denied for (?:table|schema|sequence) [a-z_][a-z_0-9.]*/gi,
+              /violates (?:foreign key|not-null|check|unique) constraint "[a-z_][a-z_0-9]*"/gi,
+              /relation "[a-z_][a-z_0-9.]*" does not exist/gi,
+              /column "[a-z_][a-z_0-9]*" (?:does not exist|of relation "[a-z_][a-z_0-9]*" violates not-null constraint)/gi,
+              /record "[a-z_][a-z_0-9]*" has no field "[a-z_][a-z_0-9]*"/gi,
+              /must be owner of (?:table|function|sequence) [a-z_][a-z_0-9.]*/gi,
+              /function [a-z_][a-z_0-9.]*\([^()]*\) does not exist/gi,
+            ];
+            const errors = new Set(patterns.flatMap(pattern => Array.from(log.matchAll(pattern), match => match[0])));
+            for (const error of errors) console.log(`LOCAL_DB_STRUCTURE: ${error}`);
+            if (!errors.size) console.log("No allowlisted structural error; raw logs remain private.");
+          '
+      - name: Publish non-sensitive verification result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: economic-isolation-result-${{ github.run_id }}
+          path: ${{ runner.temp }}/sfm-rls-result.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove only this job's disposable stack and credentials
+        if: always()
+        shell: bash
+        run: |
+          if command -v supabase >/dev/null && test -f "$RUNNER_TEMP/sfm-isolation/supabase/config.toml"; then
+            supabase stop --workdir "$RUNNER_TEMP/sfm-isolation" --no-backup
+          fi
+          rm -f "$RUNNER_TEMP/sfm-local-status.json" "$RUNNER_TEMP/sfm-local-start.log"

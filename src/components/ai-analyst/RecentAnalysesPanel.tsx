@@ -3,12 +3,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, Clock3, FileClock } from 'lucide-react';
-import type { IntelligenceAssetType, IntelligenceHorizon, IntelligenceRecommendation, IntelligenceRisk } from '@/domain/intelligence/contracts';
+import type {
+  AnalysisStatus,
+  ConfidenceQuality,
+  FreshnessState,
+  IntelligenceAssetType,
+  IntelligenceHorizon,
+  IntelligenceRecommendation,
+  IntelligenceRisk,
+} from '@/domain/intelligence/contracts';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { marketAssetTypeFromIntelligence } from '@/lib/intelligence/assetTypes';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, HORIZON_LABELS, RECOMMENDATION_LABELS, RISK_LABELS, aiAnalystLocale, aiAnalystNumber, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
+import panelStyles from './RecentAnalysesPanel.module.css';
 
 type RecentItem = {
   analysisId: string;
@@ -22,9 +31,12 @@ type RecentItem = {
   };
   recommendation: IntelligenceRecommendation;
   confidence: number;
+  confidenceQuality: ConfidenceQuality;
   risk: IntelligenceRisk;
   horizon: IntelligenceHorizon;
   generatedAt: string;
+  freshness: FreshnessState;
+  status: AnalysisStatus;
 };
 
 type RecentResponse = { ok?: unknown; recent?: { items?: unknown } };
@@ -33,9 +45,41 @@ const ASSET_TYPES = new Set<IntelligenceAssetType>(['STOCK', 'CRYPTO', 'FOREX', 
 const HORIZONS = new Set<IntelligenceHorizon>(['INTRADAY', 'SHORT_TERM', 'SWING', 'POSITION', 'LONG_TERM']);
 const RECOMMENDATIONS = new Set<IntelligenceRecommendation>(['BUY', 'SELL', 'WAIT', 'INSUFFICIENT_DATA']);
 const RISKS = new Set<IntelligenceRisk>(['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH', 'UNAVAILABLE']);
+const CONFIDENCE_QUALITIES = new Set<ConfidenceQuality>(['STRONG_EVIDENCE', 'MODERATE_EVIDENCE', 'LIMITED_EVIDENCE', 'INSUFFICIENT_EVIDENCE']);
+const FRESHNESS = new Set<FreshnessState>(['FRESH', 'DELAYED', 'STALE', 'UNAVAILABLE']);
+const STATUSES = new Set<AnalysisStatus>(['COMPLETE', 'PARTIAL', 'INSUFFICIENT_DATA', 'FAILED']);
+
+const INSUFFICIENT_REASON_COPY = {
+  ar: {
+    risk: 'دليل المخاطر غير متاح',
+    unavailable: 'بيانات السوق غير متاحة',
+    stale: 'البيانات السوقية قديمة أو متأخرة',
+    evidence: 'الأدلة المتاحة غير كافية',
+    coverage: 'التغطية السوقية غير مكتملة',
+  },
+  en: {
+    risk: 'Risk evidence is unavailable',
+    unavailable: 'Market data is unavailable',
+    stale: 'Market data is stale or delayed',
+    evidence: 'Available evidence is insufficient',
+    coverage: 'Market coverage is incomplete',
+  },
+  fr: {
+    risk: 'Les données de risque sont indisponibles',
+    unavailable: 'Les données de marché sont indisponibles',
+    stale: 'Les données de marché sont anciennes ou retardées',
+    evidence: 'Les éléments disponibles sont insuffisants',
+    coverage: 'La couverture du marché est incomplète',
+  },
+} as const;
 
 function stringValue(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function enumValue<T extends string>(value: unknown, allowed: Set<T>): T | null {
+  const normalized = stringValue(value).toUpperCase() as T;
+  return allowed.has(normalized) ? normalized : null;
 }
 
 function itemFromUnknown(value: unknown): RecentItem | null {
@@ -44,17 +88,20 @@ function itemFromUnknown(value: unknown): RecentItem | null {
   const assetRaw = row.asset;
   if (!assetRaw || typeof assetRaw !== 'object' || Array.isArray(assetRaw)) return null;
   const asset = assetRaw as Record<string, unknown>;
-  const assetType = stringValue(asset.assetType).toUpperCase() as IntelligenceAssetType;
-  const horizon = stringValue(row.horizon).toUpperCase() as IntelligenceHorizon;
-  const recommendation = stringValue(row.recommendation).toUpperCase() as IntelligenceRecommendation;
-  const risk = stringValue(row.risk).toUpperCase() as IntelligenceRisk;
+  const assetType = enumValue(asset.assetType, ASSET_TYPES);
+  const horizon = enumValue(row.horizon, HORIZONS);
+  const recommendation = enumValue(row.recommendation, RECOMMENDATIONS);
+  const risk = enumValue(row.risk, RISKS);
+  const confidenceQuality = enumValue(row.confidenceQuality, CONFIDENCE_QUALITIES);
+  const freshness = enumValue(row.freshness, FRESHNESS);
+  const status = enumValue(row.status, STATUSES);
   const confidence = Number(row.confidence);
   const analysisId = stringValue(row.analysisId);
   const canonicalSymbol = stringValue(asset.canonicalSymbol);
   const displaySymbol = stringValue(asset.displaySymbol);
   const name = stringValue(asset.name);
   const generatedAt = stringValue(row.generatedAt);
-  if (!analysisId || !canonicalSymbol || !displaySymbol || !name || !generatedAt || !ASSET_TYPES.has(assetType) || !HORIZONS.has(horizon) || !RECOMMENDATIONS.has(recommendation) || !RISKS.has(risk) || !Number.isFinite(confidence)) return null;
+  if (!analysisId || !canonicalSymbol || !displaySymbol || !name || !generatedAt || !assetType || !horizon || !recommendation || !risk || !confidenceQuality || !freshness || !status || !Number.isFinite(confidence)) return null;
   return {
     analysisId,
     asset: {
@@ -67,10 +114,23 @@ function itemFromUnknown(value: unknown): RecentItem | null {
     },
     recommendation,
     confidence,
+    confidenceQuality,
     risk,
     horizon,
     generatedAt,
+    freshness,
+    status,
   };
+}
+
+function insufficientReason(item: RecentItem, locale: 'ar' | 'en' | 'fr') {
+  if (item.recommendation !== 'INSUFFICIENT_DATA') return null;
+  const copy = INSUFFICIENT_REASON_COPY[locale];
+  if (item.risk === 'UNAVAILABLE') return copy.risk;
+  if (item.freshness === 'UNAVAILABLE') return copy.unavailable;
+  if (item.freshness === 'STALE' || item.freshness === 'DELAYED') return copy.stale;
+  if (item.confidenceQuality === 'INSUFFICIENT_EVIDENCE') return copy.evidence;
+  return copy.coverage;
 }
 
 export function RecentAnalysesPanel({ className = '' }: { className?: string }) {
@@ -122,6 +182,7 @@ export function RecentAnalysesPanel({ className = '' }: { className?: string }) 
         <ul className={styles.recentList}>
           {items.map(item => {
             const params = new URLSearchParams({ assetType: item.asset.assetType, horizon: item.horizon });
+            const reason = insufficientReason(item, locale);
             return (
               <li key={item.analysisId}>
                 <Link className={styles.recentItem} href={`/ai-analyst/analyze/${encodeURIComponent(item.asset.canonicalSymbol)}?${params.toString()}`}>
@@ -134,11 +195,12 @@ export function RecentAnalysesPanel({ className = '' }: { className?: string }) 
                     size="sm"
                     className={styles.recentIdentity}
                   />
-                  <span className={styles.recentMetrics}>
+                  <span className={`${styles.recentMetrics} ${panelStyles.metrics}`}>
                     <span className={`${styles.tag} ${styles.recommendation}`} data-recommendation={item.recommendation}>{RECOMMENDATION_LABELS[locale][item.recommendation]}</span>
                     <span className={styles.metricPill} dir="ltr">{aiAnalystNumber(locale, item.confidence)}%</span>
                     <span className={styles.metricPill}>{HORIZON_LABELS[locale][item.horizon]}</span>
                     <small className={styles.numeric} dir="ltr">{aiAnalystTimestamp(locale, item.generatedAt)}</small>
+                    {reason ? <small className={panelStyles.reason}>{reason}</small> : null}
                     <span className={styles.visuallyHidden}>{RISK_LABELS[locale][item.risk]}</span>
                   </span>
                 </Link>

@@ -1,0 +1,18 @@
+.metrics {
+  min-width: 0;
+}
+
+.reason {
+  flex-basis: 100%;
+  color: var(--foreground-muted);
+  font-size: .68rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: end;
+}
+
+@media (max-width: 640px) {
+  .reason {
+    text-align: start;
+  }
+}

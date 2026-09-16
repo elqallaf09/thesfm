@@ -1,4 +1,5 @@
 import { currentMonthRange, moneyAmount, sumAmounts } from '@/lib/data/financeData';
+import { buildEconomicDecisionContext, type DebtDecisionDirection, type EconomicDecisionContext } from './economicIntelligenceBridge';
 
 export type DecisionType =
   | 'purchase'
@@ -28,26 +29,34 @@ export type DecisionInputs = {
   linkedProjectId?: string;
   requiredCapital?: number;
   expectedMonthlyCost?: number;
+  expectedMonthlyIncomeChange?: number;
   expectedReturn?: number;
   debtAmount?: number;
   rate?: number;
   monthlyPayment?: number;
+  monthlyDebtPaymentReduction?: number;
   emergencyFundAmount?: number;
   donationRequired?: boolean;
   usesSavings?: boolean;
+  upfrontCashOutflow?: number;
+  financingPrincipal?: number;
+  loanTermMonths?: number;
+  debtDirection?: DebtDecisionDirection;
+  debtPaydownAmount?: number;
 };
 
 export type DecisionSourceData = {
-  income: any[];
-  expenses: any[];
-  savings: any[];
-  investments: any[];
-  goals: any[];
-  projects: any[];
-  financialModels: any[];
-  zakatCalculations: any[];
-  zakatAssets: any[];
-  charityCommitments: any[];
+  income: Record<string, unknown>[];
+  expenses: Record<string, unknown>[];
+  debts?: Record<string, unknown>[];
+  savings: Record<string, unknown>[];
+  investments: Record<string, unknown>[];
+  goals: Record<string, unknown>[];
+  projects: Record<string, unknown>[];
+  financialModels: Record<string, unknown>[];
+  zakatCalculations: Record<string, unknown>[];
+  zakatAssets: Record<string, unknown>[];
+  charityCommitments: Record<string, unknown>[];
 };
 
 export type DecisionScenario = {
@@ -58,7 +67,7 @@ export type DecisionScenario = {
 };
 
 export type DecisionAnalysis = {
-  source: 'rules';
+  source: 'rules' | 'economic_intelligence';
   monthlyIncome: number;
   monthlyExpenses: number;
   monthlyNet: number | null;
@@ -73,6 +82,7 @@ export type DecisionAnalysis = {
   riskFlags: string[];
   scenarios: DecisionScenario[];
   linkedProjectName?: string;
+  economicContext?: EconomicDecisionContext | null;
 };
 
 function inCurrentMonth(row: Record<string, unknown>, dateKeys: string[]) {
@@ -84,11 +94,11 @@ function inCurrentMonth(row: Record<string, unknown>, dateKeys: string[]) {
   return date >= startDate && date <= endDate;
 }
 
-function monthlyExpenseRows(rows: any[]) {
+function monthlyExpenseRows(rows: Record<string, unknown>[]) {
   return rows.filter(row => inCurrentMonth(row, ['expense_date', 'date', 'created_at']));
 }
 
-function projectName(row: any) {
+function projectName(row: Record<string, unknown> | undefined) {
   return String(row?.name ?? row?.title ?? '').trim();
 }
 
@@ -100,8 +110,15 @@ function amountValue(value: unknown) {
   return Math.max(0, moneyAmount(value));
 }
 
-function hasGoalsSupport(rows: any[]) {
+function hasGoalsSupport(rows: Record<string, unknown>[]) {
   return rows.some(row => amountValue(row?.target_amount ?? row?.target) > 0);
+}
+
+function statusFromEconomicContext(context: EconomicDecisionContext): DecisionAnalysis['status'] {
+  if (context.snapshot.monthlyIncome <= 0 || context.snapshot.dataQuality.completeness < 0.6) return 'insufficient_data';
+  if (context.assessment.affordability === 'weak') return 'high_risk';
+  if (context.assessment.affordability === 'strong') return 'initially_suitable';
+  return 'needs_review';
 }
 
 export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData): DecisionAnalysis {
@@ -112,7 +129,13 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
   const investmentsTotal = sumAmounts(data.investments, ['current_value', 'amount']);
   const monthlyNet = monthlyIncome > 0 && monthlyExpenses >= 0 ? monthlyIncome - monthlyExpenses : null;
   const decisionRatio = monthlyIncome > 0 && amount > 0 ? (amount / monthlyIncome) * 100 : null;
-  const monthlyDecisionCost = amount + amountValue(inputs.recurringCost) + amountValue(inputs.maintenanceCost) + amountValue(inputs.expectedMonthlyCost);
+  // `amount` is a one-off decision value. Only explicit recurring obligations belong in
+  // monthly cash-flow impact; treating the purchase principal as monthly cost can create
+  // a false deficit and inflate risk.
+  const monthlyDecisionCost = amountValue(inputs.recurringCost)
+    + amountValue(inputs.maintenanceCost)
+    + amountValue(inputs.expectedMonthlyCost)
+    + amountValue(inputs.monthlyPayment);
   const netAfterDecision = monthlyNet === null ? null : monthlyNet - monthlyDecisionCost;
   const savingsAfterDecision = inputs.usesSavings || inputs.decisionType === 'project'
     ? savingsTotal - amount
@@ -126,7 +149,16 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
   if (!hasGoalsSupport(data.goals)) missingData.push('goals');
   if (inputs.decisionType === 'project' && !inputs.linkedProjectId && data.projects.length === 0) missingData.push('project');
   if (inputs.decisionType === 'investment' && !inputs.riskLevel) missingData.push('risk_level');
-  if (inputs.decisionType === 'debt_saving' && amountValue(inputs.debtAmount) <= 0) missingData.push('debt_amount');
+  if (inputs.decisionType === 'debt_saving') {
+    if (!inputs.debtDirection) missingData.push('debt_action_direction');
+    if (inputs.debtDirection === 'new_loan') {
+      if (amountValue(inputs.financingPrincipal ?? inputs.debtAmount ?? inputs.amount) <= 0) missingData.push('financing_principal');
+      if (amountValue(inputs.monthlyPayment) <= 0) missingData.push('monthly_payment');
+    }
+    if (inputs.debtDirection === 'repay_debt' && amountValue(inputs.debtPaydownAmount ?? inputs.debtAmount ?? inputs.amount) <= 0) {
+      missingData.push('debt_paydown_amount');
+    }
+  }
   if (inputs.decisionType === 'charity_zakat' && data.zakatCalculations.length === 0 && !inputs.donationRequired) missingData.push('zakat_or_charity_context');
 
   const riskFlags: string[] = [];
@@ -170,16 +202,16 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     scenarios.push({ key: 'invest_smaller_amount', amount: monthlyIncome > 0 ? monthlyIncome * 0.1 : undefined, monthlyImpact: monthlyIncome > 0 ? monthlyIncome * 0.1 : undefined, missing: monthlyIncome > 0 ? [] : ['monthly_income'] });
     scenarios.push({ key: 'downside_cash_only', amount, monthlyImpact: amount });
   } else if (inputs.decisionType === 'project') {
-    scenarios.push({ key: 'use_savings_now', amount, monthlyImpact: amount + amountValue(inputs.expectedMonthlyCost) });
+    scenarios.push({ key: 'use_savings_now', amount, monthlyImpact: amountValue(inputs.expectedMonthlyCost) });
     scenarios.push({ key: 'wait_until_savings_target', amount: amount > savingsTotal ? amount - savingsTotal : 0, missing: savingsTotal > 0 ? [] : ['savings'] });
     scenarios.push({ key: 'reduce_project_capital', amount: amount > 0 ? amount * 0.8 : undefined, monthlyImpact: amountValue(inputs.expectedMonthlyCost) });
   } else if (inputs.decisionType === 'debt_saving') {
-    scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || amount });
-    scenarios.push({ key: 'save_first', amount: amount, monthlyImpact: amount });
-    scenarios.push({ key: 'split_between_debt_and_savings', amount: amount > 0 ? amount / 2 : undefined, monthlyImpact: amount > 0 ? amount / 2 : undefined });
+    scenarios.push({ key: 'repay_debt', amount: amountValue(inputs.debtPaydownAmount ?? inputs.debtAmount) || amount, monthlyImpact: amountValue(inputs.monthlyPayment) || undefined });
+    scenarios.push({ key: 'save_first', amount, monthlyImpact: undefined });
+    scenarios.push({ key: 'split_between_debt_and_savings', amount: amount > 0 ? amount / 2 : undefined, monthlyImpact: undefined });
   } else if (inputs.decisionType === 'charity_zakat') {
-    scenarios.push({ key: 'pay_now', amount, monthlyImpact: amount });
-    scenarios.push({ key: 'schedule_payment', amount, monthlyImpact: amount });
+    scenarios.push({ key: 'pay_now', amount, monthlyImpact: undefined });
+    scenarios.push({ key: 'schedule_payment', amount, monthlyImpact: undefined });
     scenarios.push({ key: 'confirm_zakat_before_payment', amount, missing: data.zakatCalculations.length > 0 ? [] : ['zakat_calculation'] });
   } else {
     scenarios.push({ key: 'approve_budget', amount, monthlyImpact: monthlyDecisionCost });
@@ -187,13 +219,62 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     scenarios.push({ key: 'delay_budget', amount, monthlyImpact: amount > 0 ? amount / 3 : undefined });
   }
 
-  const status: DecisionAnalysis['status'] = score === null
+  const legacyStatus: DecisionAnalysis['status'] = score === null
     ? 'insufficient_data'
     : riskFlags.includes('negative_net_after_decision') || riskFlags.includes('emergency_savings_low')
       ? 'high_risk'
       : score >= 75
         ? 'initially_suitable'
         : 'needs_review';
+
+  const economicContext = buildEconomicDecisionContext(
+    {
+      decisionType: inputs.decisionType,
+      amount,
+      recurringCost: inputs.recurringCost,
+      expectedMonthlyCost: inputs.expectedMonthlyCost,
+      expectedMonthlyIncomeChange: inputs.expectedMonthlyIncomeChange,
+      monthlyPayment: inputs.monthlyPayment,
+      monthlyDebtPaymentReduction: inputs.monthlyDebtPaymentReduction,
+      debtAmount: inputs.debtAmount,
+      expectedReturn: inputs.expectedReturn,
+      upfrontCashOutflow: inputs.upfrontCashOutflow,
+      financingPrincipal: inputs.financingPrincipal,
+      loanTermMonths: inputs.loanTermMonths,
+      debtDirection: inputs.debtDirection,
+      debtPaydownAmount: inputs.debtPaydownAmount,
+    },
+    {
+      income: data.income,
+      expenses: data.expenses,
+      debts: data.debts,
+      savings: data.savings,
+      investments: data.investments,
+    },
+    inputs.currency,
+  );
+
+  if (economicContext) {
+    const economicScore = clampScore(100 - economicContext.assessment.riskScore);
+    return {
+      source: 'economic_intelligence',
+      monthlyIncome: economicContext.snapshot.monthlyIncome,
+      monthlyExpenses: economicContext.snapshot.monthlyExpenses,
+      monthlyNet: economicContext.snapshot.monthlySurplus,
+      savingsTotal: economicContext.snapshot.savingsBalance,
+      investmentsTotal: economicContext.snapshot.investmentBalance,
+      decisionRatio,
+      netAfterDecision: economicContext.assessment.monthlySurplusAfterDecision,
+      savingsAfterDecision,
+      score: economicScore,
+      status: statusFromEconomicContext(economicContext),
+      missingData: [...new Set([...missingData, ...economicContext.snapshot.dataQuality.missing, ...economicContext.simulationMissing])],
+      riskFlags: [...new Set([...riskFlags, ...economicContext.assessment.warnings])],
+      scenarios,
+      linkedProjectName: linkedProjectName || undefined,
+      economicContext,
+    };
+  }
 
   return {
     source: 'rules',
@@ -206,10 +287,11 @@ export function analyzeDecision(inputs: DecisionInputs, data: DecisionSourceData
     netAfterDecision,
     savingsAfterDecision,
     score,
-    status,
+    status: legacyStatus,
     missingData,
     riskFlags,
     scenarios,
     linkedProjectName: linkedProjectName || undefined,
+    economicContext: null,
   };
 }

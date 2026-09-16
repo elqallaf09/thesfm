@@ -1,0 +1,22 @@
+name: Shariah integration workspace
+on:
+  push:
+    branches: [fix/shariah-evidence-coverage-production-proof]
+    paths: [.github/workflows/shariah-integration-workspace.yml]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          mkdir -p /tmp/shariah-integration
+          git archive --format=tar.gz HEAD > /tmp/shariah-integration/source.tar.gz
+          git rev-parse HEAD > /tmp/shariah-integration/revision.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: shariah-integration-source
+          path: /tmp/shariah-integration
+          retention-days: 1

@@ -19,8 +19,8 @@ export async function GET(request: Request) {
   query.range = nextRange;
 
   const result = await getTraderCalendar('earnings', query);
-  const count = result.resultCount ?? 0;
-  const payload = createTraderCalendarRoutePayload('earnings', result);
+  const payload = createTraderCalendarRoutePayload('earnings', result, query.symbols);
+  const count = payload.resultCount;
   const endpoint = result.provider === 'fmp'
     ? 'https://financialmodelingprep.com/stable/earnings-calendar'
     : result.provider === 'finnhub'

@@ -4,6 +4,7 @@ const PUBLIC_SHELL_EXACT = new Set([
   '/reset-password',
   '/about',
   '/contact',
+  '/investment-check',
   '/terms',
   '/privacy',
 ]);

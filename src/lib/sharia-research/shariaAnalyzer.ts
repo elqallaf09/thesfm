@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { analyzeBusinessEvidence } from './businessEvidence';
-import { EVIDENCE_VERSION, missingFinancialFields, validFinancialValue } from './evidenceValidation';
+import { EVIDENCE_VERSION, missingFinancialFields, validFinancialValue, financialFieldCoverage } from './evidenceValidation';
 import { calculateFinancialRatios, isFinancialDataStale } from './financialRatioCalculator';
 import { evidenceReliabilityScore, sourceQualityBreakdown } from './sourceScoring';
 import type {
@@ -192,6 +192,7 @@ export function analyzeShariaEvidence(input: {
   return {
     id: randomUUID(),
     evidenceVersion: EVIDENCE_VERSION,
+    fieldCoverage: financialFieldCoverage(supportedValues, lastFinancialReportDate, new Date(retrievedAt)),
     missingFinancialFields: missingFinancialFields(supportedValues, new Date(retrievedAt)),
     security: input.security,
     classification,

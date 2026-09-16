@@ -1,13 +1,16 @@
-const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify-contrast-20260914";
+const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify-symbol-data-20260916";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/detail.html",
   "/semantic-tokens.css?v=20260713-central-system",
-  "/cinema.css?v=20260717-shell-unify-contrast-20260914",
+  "/cinema.css?v=20260717-shell-unify-drawer-20260916-controls-20260915",
   "/detail.css?v=20260714-phase34",
   "/theme-bridge.js?v=20260714-phase34",
-  "/app.js?v=20260717-shell-unify",
+  "/assets/drawer-data.js?v=20260916-symbol-data",
+  "/assets/drawer-mobile.css?v=20260916-symbol-data",
+  "/assets/drawer-focus.js?v=20260916-symbol-data",
+  "/app.js?v=20260916-symbol-data",
   "/detail.js?v=20260714-phase34",
   "/manifest.webmanifest",
   "/assets/trading-cinematic-bg.jpg",

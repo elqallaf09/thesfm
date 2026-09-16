@@ -1,4 +1,6 @@
 import 'server-only';
+import { validatePublicReadForm } from './publicReadForm';
+export { validatePublicReadForm } from './publicReadForm';
 
 import { lookup } from 'node:dns/promises';
 import { request as httpRequest, type IncomingHttpHeaders } from 'node:http';
@@ -32,6 +34,7 @@ export class UnsafeUrlError extends Error {
 }
 
 export type SecureFetchOptions = {
+  publicReadForm?: Record<string, string>;
   timeoutMs?: number;
   maxBytes?: number;
   maxRedirects?: number;
@@ -209,7 +212,7 @@ async function rateLimitDomain(hostname: string, intervalMs: number, signal?: Ab
 }
 
 function cacheKey(url: URL, options: SecureFetchOptions) {
-  return `${url.toString()}|${(options.acceptedContentTypes ?? []).join(',')}`;
+  return `${url.toString()}|${(options.acceptedContentTypes ?? []).join(',')}|${options.publicReadForm ? validatePublicReadForm(url, options.publicReadForm) : ''}`;
 }
 
 function cacheGet(key: string) {
@@ -284,6 +287,7 @@ async function assertRobotsAllowed(url: URL, options: SecureFetchOptions) {
   try {
     const robots = await secureFetch(robotsUrl.toString(), {
       ...options,
+      publicReadForm: undefined,
       maxBytes: 512 * 1024,
       maxRedirects: 2,
       retries: 0,
@@ -389,8 +393,8 @@ function requestPinnedUrl(
     hostname,
     port: url.port || undefined,
     path: `${url.pathname}${url.search}`,
-    method: 'GET',
-    headers: requestHeaders(options, accepted),
+    method: options.publicReadForm ? 'POST' : 'GET',
+    headers: options.publicReadForm ? { ...requestHeaders(options, accepted), 'content-type': 'application/x-www-form-urlencoded' } : requestHeaders(options, accepted),
     lookup: createPinnedLookup(address),
     family: address.family,
     signal,
@@ -418,7 +422,7 @@ function requestPinnedUrl(
       }
     });
     request.once('error', reject);
-    request.end();
+    request.end(options.publicReadForm ? validatePublicReadForm(url, options.publicReadForm) : undefined);
   });
 }
 
@@ -448,6 +452,7 @@ async function fetchAttempt(initialUrl: URL, options: SecureFetchOptions) {
     const response = await requestPinnedUrl(current, resolved.addresses[0], options, accepted, signal);
 
     if (response.status >= 300 && response.status < 400) {
+      if (options.publicReadForm) { await discardResponseBody(response); throw new UnsafeUrlError('PUBLIC_READ_REDIRECT_BLOCKED', 'Public read form redirects are not allowed.'); }
       const location = response.headers.get('location');
       await discardResponseBody(response);
       if (!location) throw new UnsafeUrlError('INVALID_REDIRECT', 'The source returned a redirect without a location.');
@@ -497,6 +502,10 @@ function isRetryable(error: unknown) {
 
 export async function secureFetch(input: string, options: SecureFetchOptions = {}): Promise<SecureFetchResult> {
   options.signal?.throwIfAborted();
+  if (options.publicReadForm) {
+    validatePublicReadForm(input, options.publicReadForm);
+    if (Object.keys(options.headers ?? {}).some(key => /^(authorization|cookie|proxy-authorization)$/i.test(key))) throw new UnsafeUrlError('PUBLIC_READ_CREDENTIALS_BLOCKED', 'Public reads cannot carry credentials.');
+  }
   const resolveSignal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS)]) : AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const url = await assertSafePublicUrl(input, resolveSignal);
   options.signal?.throwIfAborted();

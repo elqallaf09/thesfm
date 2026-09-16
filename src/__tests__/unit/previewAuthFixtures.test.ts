@@ -35,10 +35,15 @@ describe('Preview-only authentication fixtures', () => {
     expect(fixture).not.toMatch(/console\.(?:log|info|warn|error)\([^\n]*(?:email|password)/i);
     expect(workflow).not.toMatch(/preview-auth-fixtures\.mjs\s+(?:provision|cleanup)\s+--/);
     expect(authenticatedPreviewJob).toContain(
-      'SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY }}',
+      'SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}',
     );
+    expect(authenticatedPreviewJob).not.toContain('secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY');
     expect(authenticatedPreviewJob).not.toContain(
       'SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}',
+    );
+    expect(authenticatedPreviewJob).toContain('node .github/scripts/resolve-preview-credentials.mjs');
+    expect(authenticatedPreviewJob.indexOf('Resolve branch-specific Preview credentials')).toBeLessThan(
+      authenticatedPreviewJob.indexOf('Provision isolated Preview auth fixtures'),
     );
     expect(authenticatedPreviewJob).toContain('SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}');
     expect(authenticatedPreviewJob).toContain('checks: read');
@@ -77,8 +82,10 @@ describe('Preview-only authentication fixtures', () => {
     expect(provision).toBeLessThan(observability);
     expect(observability).toBeLessThan(remote);
     expect(remote).toBeLessThan(cleanup);
-    const cleanupBlock = workflow.slice(cleanup, cleanup + 420);
+    const cleanupBlock = workflow.slice(cleanup);
     expect(cleanupBlock).toContain('if: always()');
+    expect(cleanupBlock).toContain("steps.preview-credentials.outcome != 'success'");
+    expect(cleanupBlock).toContain('node tests/smoke/preview-auth-fixtures.mjs cleanup');
     expect(cleanupBlock).toContain('SUPABASE_PREVIEW_REF');
     expect(cleanupBlock).toContain('no fixture cleanup was required');
   });
