@@ -27,7 +27,12 @@ export function publicCatalogItem(row: CatalogRow, now = new Date()) {
   let status = row.shariah_status || 'unclassified';
   if (status !== 'unclassified' && (!recent || (!proven && !manual))) status = 'needs_review';
   if (status === 'compliant' && !manual && isFinancialDataStale(typeof data.financialPeriod === 'string' ? data.financialPeriod : null, SFM_FTSE_POINT_IN_TIME.freshnessMonths, now)) status = 'needs_review';
+  // A generic fund evidence review remains needs_review. A currently verified
+  // provider/SSB Shariah designation is a separate public status: the fund is
+  // presented as published-Shariah, while the persisted SFM review can remain
+  // needs_review for periodic holdings/source monitoring.
   if (fund && !manual) status = 'needs_review';
+  if (publishedDesignation && !manual) status = 'compliant';
   const labels = { compliant: 'اجتاز الفحص', non_compliant: 'لم يجتز الفحص', needs_review: 'يحتاج مراجعة', unclassified: 'غير مصنف' };
   if (!(status in labels)) status = 'needs_review';
   const statusKey = status as keyof typeof labels;
