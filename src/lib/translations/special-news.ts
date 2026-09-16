@@ -23,4 +23,9 @@ export const TR_SPECIAL_NEWS: Record<string, TranslationEntry> = {
     en: 'Stocks Under $1 News',
     fr: 'Actualités des actions sous 1 $',
   },
+  nav_metals_news: {
+    ar: 'أخبار المعادن',
+    en: 'Metals News',
+    fr: 'Actualités des métaux',
+  },
 };
