@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Globe2, RefreshCcw, Settings2 } from 'lucide-react';
+import { Building2, Globe2, RefreshCcw, Settings2 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MarketStrip } from '@/components/market/MarketStrip';
@@ -14,6 +15,7 @@ import { useGlobalMarketSelection } from '@/hooks/useGlobalMarketSelection';
 import { GLOBAL_MARKETS_SELECTION_SIZE } from '@/lib/market/globalMarketPreferences';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { t } from '@/lib/translations';
+import marketLinkStyles from './RealEstateMarketLink.module.css';
 
 type MarketStripsResponse = {
   success: true;
@@ -50,6 +52,7 @@ export function GlobalMarketsPage() {
   const customizeLabel = lang === 'ar' ? 'تخصيص الأسواق' : lang === 'fr' ? 'Personnaliser les marchés' : 'Customize markets';
   const refreshLabel = lang === 'ar' ? 'تحديث الأسعار' : lang === 'fr' ? 'Actualiser les cours' : 'Refresh prices';
   const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
+  const realEstateLabel = lang === 'ar' ? 'مركز السوق العقاري' : lang === 'fr' ? 'Centre du marché immobilier' : 'Real Estate Market Center';
 
   const load = useCallback(async (showLoader: boolean, idsKey: string) => {
     activeRequestRef.current?.abort();
@@ -106,6 +109,9 @@ export function GlobalMarketsPage() {
             <span className="gm-header-updated" dir="auto" title={lastUpdatedLabel}>
               {t('global_markets_last_updated', lang)}: {lastUpdatedLabel || '—'}
             </span>
+            <Link href="/global-markets/real-estate" className={marketLinkStyles.link} aria-label={realEstateLabel}>
+              <Building2 size={16} aria-hidden="true" /><span>{realEstateLabel}</span>
+            </Link>
             <button
               type="button"
               className="gm-header-refresh"
