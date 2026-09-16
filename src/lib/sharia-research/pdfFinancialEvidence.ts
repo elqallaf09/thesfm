@@ -23,21 +23,42 @@ export async function extractSelectedPdfPages(body: Uint8Array, hints: number[] 
 }
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_ABBREVIATIONS: Record<string, string> = {
+  jan: 'January', feb: 'February', mar: 'March', apr: 'April', jun: 'June', jul: 'July', aug: 'August',
+  sep: 'September', sept: 'September', oct: 'October', nov: 'November', dec: 'December',
+};
+function normalizeStatementDates(text: string) {
+  return text.replace(/\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?(?=\s+20\d{2}\b)/gi,
+    value => MONTH_ABBREVIATIONS[value.replace('.', '').toLowerCase()] ?? value);
+}
 function statementLayout(text: string, income: boolean, now: Date) {
-  const compact = text.slice(0, 700).replace(/\s+/g, ' ');
+  const compact = normalizeStatementDates(text.slice(0, 700)).replace(/\s+/g, ' ');
   const dated = /(?:As at|As of|year ended)?\s*(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i.exec(compact);
   if (!dated) return null;
   const day=Number(dated[1]), month=MONTHS.findIndex(value=>value.toLowerCase()===dated[2].toLowerCase()), year=Number(dated[3]);
   const stamp=Date.UTC(year,month,day), period=new Date(stamp).toISOString().slice(0,10);
-  if (new Date(stamp).getUTCDate()!==day || stamp>now.getTime()) return null;
+  if (month < 0 || new Date(stamp).getUTCDate()!==day || stamp>now.getTime()) return null;
   const yearPair=new RegExp(`${year} ${year-1}`);
-  if (day===31 && month===11 && yearPair.test(compact)) return {year,period,columns:2,index:0,start:income?`${year}-01-01`:null};
+  const label=`${day} ${MONTHS[month]}`;
+  const annualDatePair = new RegExp(`${label}\\s+${year}(?:\\s+Year ended)?\\s+${label}\\s+${year-1}`, 'i');
+  if (day===31 && month===11 && (yearPair.test(compact) || annualDatePair.test(compact))) return {year,period,columns:2,index:0,start:income?`${year}-01-01`:null};
   // Explicit observed interim layouts: first balance-sheet column is current;
   // income's third of four columns is the year-to-date six/nine-month period.
-  const label=`${day} ${MONTHS[month]}`;
   if (!income && new RegExp(`${label} 31 December ${label} ${year} ${year-1} ${year-1}`, 'i').test(compact)) return {year,period,columns:3,index:0,start:null};
   if (income && /Three months ended/i.test(compact) && /(?:Six|Nine) months ended/i.test(compact)
     && new RegExp(`${year} ${year-1} ${year} ${year-1}`).test(compact) && [5,8].includes(month)) return {year,period,columns:4,index:2,start:`${year}-01-01`};
+  return null;
+}
+
+function statementHeader(text: string) {
+  return /(?:^|\n)[ \t]*(?:INTERIM[ \t]+CONDENSED[ \t]+)?CONSOLIDATED[ \t]+(?:STATEMENT[ \t]+OF[ \t]+(?:FINANCIAL[ \t]+POSITION|INCOME|PROFIT[ \t]+OR[ \t]+LOSS)|BALANCE[ \t]+SHEET)(?:[ \t]*\([^\n)]*\))?[ \t]*(?=\r?$)/im.exec(text);
+}
+function statementUnits(text: string) {
+  const header = text.slice(0, 600);
+  if (/\b(?:KD|KWD)\s*(?:000['’]?s|thousands)/i.test(header)) return { currency: 'KWD', scale: 1000 };
+  // Full-dinar audited statements can expose an explicit unit row such as
+  // "KD KD". Accept only a table unit line, never a narrative mention of KD.
+  if (/(?:^|\n)[ \t]*(?:KD|KWD)(?:[ \t]+(?:KD|KWD)){0,4}[ \t]*(?=\r?$)/im.test(header)) return { currency: 'KWD', scale: 1 };
   return null;
 }
 
@@ -47,7 +68,8 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
   expectedName: RegExp, now = new Date()): FinancialValue[] {
   const result: FinancialValue[] = [];
   const allText = pages.map(page => page.text).join('\n');
-  const signature = /(?:financial (?:statements|information)[\s\S]{0,160}?authorised for issue[\s\S]{0,260}?on\s+)(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
+  const signature = /(?:financial (?:statements|information)[\s\S]{0,160}?authori[sz]ed for issue[\s\S]{0,260}?on\s+)(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
+    ?? /approved (?:these )?consolidated financial statements for issue on\s+(\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(allText)?.[1]
     ?? pages.filter(page => /INDEPENDENT AUDITORS|REPORT ON REVIEW OF INTERIM/i.test(page.text))
       .flatMap(page => [...page.text.matchAll(/(?:^|\n)\s*(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d{2})\s*\n\s*Kuwait\s*(?:\n|$)/g)])
       .map(match => match[1]).at(-1) ?? null;
@@ -55,13 +77,13 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
   const reportedAt = Number.isFinite(signatureTime) && signatureTime <= now.getTime() ? new Date(signatureTime).toISOString().slice(0, 10) : null;
   for (const page of pages) {
     if (!expectedName.test(page.text)) continue;
-    const header = /CONSOLIDATED (?:STATEMENT OF (?:FINANCIAL POSITION|INCOME)|BALANCE SHEET)/i.exec(page.text);
+    const header = statementHeader(page.text);
     if (!header) continue;
     const text = page.text.slice(header.index);
-    const income = /STATEMENT OF INCOME/i.test(header[0]);
+    const income = /STATEMENT OF (?:INCOME|PROFIT OR LOSS)/i.test(header[0]);
     const layout = statementLayout(text, income, now);
     if (!layout) continue;
-    const units = /\b(?:KD|KWD)\s*(?:000['’]?s|thousands)/i.test(text.slice(0, 500)) ? { currency: 'KWD', scale: 1000 } : null;
+    const units = statementUnits(text);
     if (!units) continue;
     const period = layout.period;
     const numeric = /(?:^|\s)(\(?-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?\)?)(?=\s|$)/g;
@@ -98,8 +120,8 @@ export function financialValuesFromPdfPages(pages: PdfEvidencePage[], security: 
 export function pdfEvidenceDocument(pages: PdfEvidencePage[], security: SecurityIdentity, url: string, retrievedAt: string) {
   const text = pages.map(page => `[PDF page ${page.num}] ${page.text}`).join('\n');
   const periods = pages.flatMap(page => {
-    const header = /CONSOLIDATED (?:STATEMENT OF (?:FINANCIAL POSITION|INCOME)|BALANCE SHEET)/i.exec(page.text);
-    const layout = header ? statementLayout(page.text.slice(header.index), /STATEMENT OF INCOME/i.test(header[0]), new Date(retrievedAt)) : null;
+    const header = statementHeader(page.text);
+    const layout = header ? statementLayout(page.text.slice(header.index), /STATEMENT OF (?:INCOME|PROFIT OR LOSS)/i.test(header[0]), new Date(retrievedAt)) : null;
     return layout ? [layout.period] : [];
   }).sort().reverse();
   return createSourceDocument({ adapterId: 'regional-official-filings', sourceTitle: `${security.name} — selected financial report pages`,
