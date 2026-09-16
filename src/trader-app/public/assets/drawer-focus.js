@@ -43,7 +43,7 @@
     let target = null;
     if (!focusTab && snapshot.ownsFocus && snapshot.identity) {
       const { attribute, value } = snapshot.identity;
-      target = Array.from(host.querySelectorAll(`[${attribute}]`)).find(element => element.getAttribute(attribute) === value && available(element));
+      target = Array.from(host.querySelectorAll(`[${attribute}]`)).find(element => element.getAttribute(attribute) === value && element.tabIndex >= 0 && available(element));
     }
     if (focusTab || (snapshot.ownsFocus && !target)) {
       target = host.querySelector('[data-drawer-tab][aria-selected="true"]') || host.querySelector(".drawer-close");

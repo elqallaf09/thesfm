@@ -36,6 +36,8 @@ for (const language of ['ar', 'en', 'fr']) {
       await expect(frame.locator('[data-symbol-drawer]')).toBeVisible();
       await frame.locator('#nested-dialog').evaluate(element => element.remove());
       await frame.locator('.drawer-close').focus();
+      await frame.evaluate(() => window.dispatchEvent(new StorageEvent('storage', { key: 'sfm_lang' })));
+      await expect(frame.locator('.drawer-close')).toBeFocused();
       await frame.evaluate(next => {
         const bridge = (window as Window & { SFMTraderTheme?: { apply: (preference: string, resolved: string) => void } }).SFMTraderTheme;
         if (!bridge) throw new Error('Missing production theme bridge');
