@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import PublicLandingPage from '@/components/public/PublicLandingPage';
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { pageMetadata } from '@/lib/seo';
 
 const base = pageMetadata({
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <>
-      <PublicLandingPage />
+      <PublicLandingPage languageControl={<LanguageSwitcher variant="gold" compact />} />
       <span hidden aria-hidden="true" data-financial-value="true">5 USD</span>
       <style>{landingStyles}</style>
     </>
