@@ -1,0 +1,29 @@
+name: Finalize drawer lint
+on:
+  push:
+    branches: [fix/mobile-symbol-data-20260916]
+    paths: [.github/workflows/mobile-drawer-lint-fix.yml]
+permissions:
+  contents: write
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove unused bindings and temporary workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/trader-app/public/app.js')
+          s = p.read_text()
+          old = 'const { drawerResourceKey, drawerResources, drawerTabLoading, drawerLoadStatus,'
+          assert s.count(old) == 1
+          p.write_text(s.replace(old, 'const { drawerTabLoading, drawerLoadStatus,'))
+          PY
+          node --check src/trader-app/public/app.js
+          git diff --check
+          git rm .github/workflows/mobile-drawer-lint-fix.yml
+          git add src/trader-app/public/app.js
+          git -c user.name='SFM repair' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(trader): remove unused controller bindings after modularization'
+          git push origin HEAD:fix/mobile-symbol-data-20260916
