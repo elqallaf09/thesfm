@@ -56,8 +56,8 @@
   function drawerResources(tab) {
     if (tab === "news") return ["news"];
     if (tab === "earnings") return ["earnings", "dividends"];
-    if (tab === "technical") return ["technical", "signal", "history"];
-    if (tab === "recommendation" || tab === "ai") return ["signal", "technical"];
+    // SFM signal is the canonical bundle for quote history + technical evidence + signal.
+    if (tab === "technical" || tab === "recommendation" || tab === "ai") return ["signal"];
     return ["profile", "quote"];
   }
   function drawerTabLoading(tab) {
@@ -70,7 +70,7 @@
     const message = loading
       ? textPair("جاري جلب بيانات الرمز…", "Loading symbol data…", "Chargement des données du symbole…")
       : failed ? textPair("تعذر جلب بعض البيانات. أعد المحاولة.", "Some data could not be loaded. Retry the request.", "Certaines données n’ont pas pu être chargées. Réessayez.")
-        : textPair("بيانات الرمز من المصادر المتاحة", "Symbol data from available sources", "Données du symbole issues des sources disponibles");
+        : textPair("بيانات الرمز من THE SFM", "Symbol data from THE SFM", "Données du symbole issues de THE SFM");
     const detail = failed?.error?.payload ? payloadFeatureState(failed.error.payload).label : "";
     return `<div class="drawer-load-status" role="status"><span>${h(message)}${detail ? ` · ${h(detail)}` : ""}</span><button class="ghost-btn" type="button" data-drawer-retry ${loading ? "disabled" : ""}>${h(textPair(failed ? "أعد المحاولة" : "تحديث", failed ? "Retry" : "Refresh", failed ? "Réessayer" : "Actualiser"))}</button></div>`;
   }
@@ -78,14 +78,13 @@
     const symbol = state.drawer.symbol;
     if (!symbol) return;
     const encoded = encodeURIComponent(symbol);
-    const refresh = force ? "&refresh=1" : "";
     const market = marketForSymbol(symbol) || currentMarket();
+    const sfmQuery = `?market=${encodeURIComponent(marketApi(market.id))}${force ? "&refresh=1" : ""}`;
+    const refresh = force ? "&refresh=1" : "";
     const paths = {
       profile: `/market/asset-profile?symbol=${encoded}&lang=${currentLanguage()}`,
-      quote: `/recommendations?market=${encodeURIComponent(marketApi(market.id))}&symbols=${encoded}${refresh}`,
-      technical: `/market/technical-analysis?symbol=${encoded}${refresh}`,
-      signal: `/market/signals/${encoded}${force ? "?refresh=1" : ""}`,
-      history: `/market/history?symbol=${encoded}&range=1Y${refresh}`,
+      quote: `/sfm-market/v1/quote/${encoded}${sfmQuery}`,
+      signal: `/sfm-market/v1/signal/${encoded}${sfmQuery}`,
       news: marketNewsPath(6, { symbol, refresh: force }),
       earnings: `/trader/calendar/earnings?symbols=${encoded}&range=90${refresh}`,
       dividends: `/trader/calendar/dividends?symbols=${encoded}&range=90${refresh}`
@@ -115,9 +114,9 @@
     const detail = { ...(previous || {}), drawerOnly: previous ? Boolean(previous.drawerOnly) : true };
     const fallback = drawerLoadedContext(symbol).asset;
     if (kind === "quote") {
-      const row = findAssetForSymbol(symbol, legacyRecsFrom(result));
-      if (!row) throw new Error("Quote response does not contain the requested symbol");
-      detail.asset = normalizeQuote(norm({ ...fallback, ...row }));
+      const row = result.quote || findAssetForSymbol(symbol, legacyRecsFrom(result));
+      if (!row) throw new Error("SFM quote response does not contain the requested symbol");
+      detail.asset = normalizeQuote(norm({ ...fallback, ...row, provider: "THE SFM", source: "THE SFM" }));
     } else if (kind === "profile") {
       const profile = result.profile || result.asset || {};
       if (!profile.symbol || symbolAliases(symbol).includes(sym(profile.symbol))) {
@@ -130,16 +129,30 @@
     } else if (kind === "signal") {
       const raw = result.signal || result.item;
       if (raw && !symbolAliases(symbol).includes(sym(raw.symbol || raw.ticker))) {
-        throw new Error("Signal response does not match the requested symbol");
+        throw new Error("SFM signal response does not match the requested symbol");
       }
-      if (raw) detail.rec = normalizeQuote(norm(signalToRec(raw)));
-    } else if (kind === "technical") {
-      detail.tech = technicalPayloadFromResponse(result);
-      detail.technicalUnavailable = isTechnicalUnavailablePayload(detail.tech);
-      detail.providerStatus = result.providerStatus || detail.providerStatus;
-      detail.technicalReason = technicalUnavailableReason(detail.tech);
-    } else if (kind === "history") {
-      detail.asset = { ...fallback, history: arr(result.points || result.history) };
+      if (raw) {
+        detail.rec = normalizeQuote(norm(signalToRec(raw)));
+        const quote = result.quote || {};
+        detail.asset = normalizeQuote(norm({
+          ...fallback,
+          ...quote,
+          symbol,
+          history: arr(result.history || result.points || raw.history),
+          sparkline: arr(raw.sparkline),
+          provider: "THE SFM",
+          source: "THE SFM"
+        }));
+        detail.tech = result.technical || raw.technicalSummary || technicalPayloadFromResponse(result);
+        detail.technicalUnavailable = isTechnicalUnavailablePayload(detail.tech);
+        detail.technicalReason = technicalUnavailableReason(detail.tech);
+        detail.providerStatus = {
+          provider: "THE SFM",
+          source: "THE SFM",
+          lastUpdated: raw.lastUpdated || quote.lastUpdated || null,
+          dataQuality: raw.dataQuality || quote.dataQuality || "partial"
+        };
+      }
     } else if (kind === "news") {
       detail.news = result;
       detail.newsForSymbol = symbol;
