@@ -2,10 +2,14 @@ import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intell
 import { investmentLinkedSymbol } from '@/lib/investmentCalculations';
 import type { Investment } from '@/types/investment';
 
+/**
+ * Routable tabs that belong to Investments Center itself. Real estate remains
+ * a canonical owned-asset class, but its market-research surface lives under
+ * Global Markets at the Real Estate Market Center.
+ */
 export const INVESTMENT_CENTER_ASSET_CLASSES = [
   'overview',
   'stocks',
-  'real-estate',
   'gold-silver',
   'crypto',
   'funds',
@@ -13,7 +17,8 @@ export const INVESTMENT_CENTER_ASSET_CLASSES = [
   'commodities',
 ] as const;
 
-export type InvestmentCenterAssetClass = typeof INVESTMENT_CENTER_ASSET_CLASSES[number];
+export type InvestmentCenterRoutableAssetClass = typeof INVESTMENT_CENTER_ASSET_CLASSES[number];
+export type InvestmentCenterAssetClass = InvestmentCenterRoutableAssetClass | 'real-estate';
 
 export const CANONICAL_INVESTMENT_ASSET_TYPES = [
   'STOCK', 'REAL_ESTATE', 'GOLD', 'SILVER', 'CRYPTO', 'FUND', 'BOND', 'COMMODITY', 'OTHER',
@@ -94,7 +99,7 @@ export function investmentCenterAssetClassFor(value: unknown): InvestmentCenterA
   return type ? CLASS_BY_TYPE[type] : 'overview';
 }
 
-export function isInvestmentCenterAssetClass(value: string): value is InvestmentCenterAssetClass {
+export function isInvestmentCenterAssetClass(value: string): value is InvestmentCenterRoutableAssetClass {
   return (INVESTMENT_CENTER_ASSET_CLASSES as readonly string[]).includes(value);
 }
 
