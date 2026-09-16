@@ -98,6 +98,13 @@ function issuerHost(url: string) {
   return new URL(url).hostname.toLowerCase().replace(/^www\./, '');
 }
 
+export function normalizePublishedFundHtml(html: string) {
+  return html
+    .replace(/&(amp|#0*38|#x0*26);/gi, '&')
+    .replace(/&(nbsp|#0*160|#x0*a0);/gi, ' ')
+    .replace(/\\u0026/gi, '&');
+}
+
 async function verifyPublishedShariahDesignation(row: { symbol: string; name: string }, signal: AbortSignal) {
   const profile = getPublishedShariahFundProfile(row.symbol, row.name);
   if (!profile) return null;
@@ -109,10 +116,9 @@ async function verifyPublishedShariahDesignation(row: { symbol: string; name: st
     respectRobots: true,
   });
   if (issuerHost(response.finalUrl) !== issuerHost(profile.officialUrl)) throw new Error('fund_shariah_source_identity_changed');
-  const html = new TextDecoder().decode(response.body);
-  if (!profile.identityPattern.test(html) || !profile.evidencePatterns.every(pattern => pattern.test(html))) {
-    throw new Error('fund_shariah_designation_not_verified');
-  }
+  const html = normalizePublishedFundHtml(new TextDecoder().decode(response.body));
+  if (!profile.identityPattern.test(html)) throw new Error('fund_shariah_identity_not_verified');
+  if (!profile.evidencePatterns.every(pattern => pattern.test(html))) throw new Error('fund_shariah_evidence_not_verified');
   return {
     state: 'verified' as const,
     provider: profile.provider,
