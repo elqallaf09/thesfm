@@ -14,7 +14,28 @@ type CheckoutRequest = {
   priceKey?: unknown;
 };
 
-const STRIPE_CHECKOUT_URL = 'https://api.stripe.com/v1/checkout/sessions';
+type StripeRecurringPrice = {
+  id?: string;
+  active?: boolean;
+  currency?: string;
+  unit_amount?: number | null;
+  lookup_key?: string | null;
+  recurring?: {
+    interval?: string;
+    interval_count?: number;
+    usage_type?: string;
+  } | null;
+};
+
+type PriceConfig = {
+  envKey: 'STRIPE_PRICE_PREMIUM_MONTHLY' | 'STRIPE_PRICE_PREMIUM_YEARLY' | 'STRIPE_PRICE_COMPANY_YEARLY';
+  lookupKey: 'sfm_premium_monthly' | 'sfm_premium_yearly' | 'sfm_company_yearly';
+  unitAmount: 500 | 5000;
+  recurringInterval: 'month' | 'year';
+};
+
+const STRIPE_API_BASE = 'https://api.stripe.com/v1';
+const STRIPE_CHECKOUT_URL = `${STRIPE_API_BASE}/checkout/sessions`;
 
 function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, {
@@ -39,20 +60,108 @@ function normalizeInterval(value: unknown): BillingInterval {
   return cleanString(value).toLowerCase() === 'yearly' ? 'yearly' : 'monthly';
 }
 
-function allowedPriceId(plan: CheckoutPlan, interval: BillingInterval) {
-  if (plan === 'company') return process.env.STRIPE_PRICE_COMPANY_YEARLY?.trim() || '';
-  return interval === 'yearly'
-    ? process.env.STRIPE_PRICE_PREMIUM_YEARLY?.trim() || ''
-    : process.env.STRIPE_PRICE_PREMIUM_MONTHLY?.trim() || '';
-}
-
-function allowedPriceKey(plan: CheckoutPlan, interval: BillingInterval) {
-  if (plan === 'company') return 'STRIPE_PRICE_COMPANY_YEARLY';
-  return interval === 'yearly' ? 'STRIPE_PRICE_PREMIUM_YEARLY' : 'STRIPE_PRICE_PREMIUM_MONTHLY';
+function priceConfig(plan: CheckoutPlan, interval: BillingInterval): PriceConfig {
+  if (plan === 'company') {
+    return {
+      envKey: 'STRIPE_PRICE_COMPANY_YEARLY',
+      lookupKey: 'sfm_company_yearly',
+      unitAmount: 5000,
+      recurringInterval: 'year',
+    };
+  }
+  if (interval === 'yearly') {
+    return {
+      envKey: 'STRIPE_PRICE_PREMIUM_YEARLY',
+      lookupKey: 'sfm_premium_yearly',
+      unitAmount: 5000,
+      recurringInterval: 'year',
+    };
+  }
+  return {
+    envKey: 'STRIPE_PRICE_PREMIUM_MONTHLY',
+    lookupKey: 'sfm_premium_monthly',
+    unitAmount: 500,
+    recurringInterval: 'month',
+  };
 }
 
 function stripeSecretKey() {
   return process.env.STRIPE_SECRET_KEY?.trim() || '';
+}
+
+function configuredPriceId(config: PriceConfig) {
+  return process.env[config.envKey]?.trim() || '';
+}
+
+function priceMatchesConfig(price: StripeRecurringPrice | null | undefined, config: PriceConfig) {
+  return Boolean(
+    price?.id?.startsWith('price_')
+    && price.active === true
+    && price.currency?.toLowerCase() === 'usd'
+    && price.unit_amount === config.unitAmount
+    && price.recurring?.interval === config.recurringInterval
+    && (price.recurring.interval_count ?? 1) === 1
+    && (price.recurring.usage_type ?? 'licensed') === 'licensed',
+  );
+}
+
+async function stripeGet<T>(secretKey: string, path: string): Promise<{ ok: true; data: T } | { ok: false; status: number }> {
+  try {
+    const response = await fetch(`${STRIPE_API_BASE}${path}`, {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+    if (!response.ok) return { ok: false, status: response.status };
+    return { ok: true, data: await response.json() as T };
+  } catch {
+    return { ok: false, status: 0 };
+  }
+}
+
+async function resolveVerifiedPriceId(secretKey: string, config: PriceConfig) {
+  const envPriceId = configuredPriceId(config);
+  if (envPriceId) {
+    if (!envPriceId.startsWith('price_')) return null;
+    const retrieved = await stripeGet<StripeRecurringPrice>(secretKey, `/prices/${encodeURIComponent(envPriceId)}`);
+    if (!retrieved.ok || !priceMatchesConfig(retrieved.data, config)) {
+      console.error('[stripe] configured price failed verification', {
+        priceKey: config.envKey,
+        status: retrieved.ok ? 200 : retrieved.status,
+      });
+      return null;
+    }
+    return retrieved.data.id || null;
+  }
+
+  const query = new URLSearchParams({
+    active: 'true',
+    type: 'recurring',
+    limit: '10',
+  });
+  query.append('lookup_keys[]', config.lookupKey);
+  const listed = await stripeGet<{ data?: StripeRecurringPrice[] }>(secretKey, `/prices?${query.toString()}`);
+  if (!listed.ok) {
+    console.error('[stripe] lookup-key price resolution failed', {
+      lookupKey: config.lookupKey,
+      status: listed.status,
+    });
+    return null;
+  }
+
+  const matches = (listed.data.data || []).filter(price =>
+    price.lookup_key === config.lookupKey && priceMatchesConfig(price, config),
+  );
+  if (matches.length !== 1) {
+    console.error('[stripe] lookup-key price verification failed', {
+      lookupKey: config.lookupKey,
+      matchCount: matches.length,
+    });
+    return null;
+  }
+  return matches[0]?.id || null;
 }
 
 function siteOrigin(request: NextRequest) {
@@ -98,23 +207,32 @@ export async function POST(request: NextRequest) {
   }
 
   const secretKey = stripeSecretKey();
-  const expectedPriceId = allowedPriceId(plan, billingInterval);
+  if (!secretKey) {
+    return json({ ok: false, code: 'PAYMENT_UNAVAILABLE', message: 'Payment is currently unavailable.' }, { status: 503 });
+  }
+
+  const config = priceConfig(plan, billingInterval);
+  const expectedPriceId = await resolveVerifiedPriceId(secretKey, config);
   const requestedPriceId = cleanString(payload.priceId);
   const requestedPriceKey = cleanString(payload.priceKey);
+
   console.info('[stripe] checkout configuration', {
-    secretConfigured: Boolean(secretKey),
+    secretConfigured: true,
     publishableConfigured: Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY),
-    expectedPriceConfigured: Boolean(expectedPriceId),
-    priceKey: allowedPriceKey(plan, billingInterval),
+    envPriceConfigured: Boolean(configuredPriceId(config)),
+    priceResolved: Boolean(expectedPriceId),
+    priceKey: config.envKey,
+    lookupKey: config.lookupKey,
     appUrlConfigured: Boolean(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL),
   });
-  if (!secretKey || !expectedPriceId || !expectedPriceId.startsWith('price_')) {
+
+  if (!expectedPriceId) {
     return json({ ok: false, code: 'PAYMENT_UNAVAILABLE', message: 'Payment is currently unavailable.' }, { status: 503 });
   }
   if (requestedPriceId && requestedPriceId !== expectedPriceId) {
     return json({ ok: false, code: 'INVALID_PRICE', message: 'Invalid Stripe price.' }, { status: 400 });
   }
-  if (requestedPriceKey && requestedPriceKey !== allowedPriceKey(plan, billingInterval)) {
+  if (requestedPriceKey && requestedPriceKey !== config.envKey && requestedPriceKey !== config.lookupKey) {
     return json({ ok: false, code: 'INVALID_PRICE_KEY', message: 'Invalid Stripe price key.' }, { status: 400 });
   }
 
