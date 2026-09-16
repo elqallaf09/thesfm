@@ -14,6 +14,7 @@ function values(input: PdfEvidencePage[]) {
   const doc = pdfEvidenceDocument(pages, issuer, 'https://www.bankboubyan.com/report.pdf', now.toISOString());
   return financialValuesFromPdfPages(pages, issuer, doc, /Boubyan Bank/i, now);
 }
+
 describe('strict multi-statement Gulf PDF layouts', () => {
   it('uses the complete ending date rather than 1 January', () => {
     expect(statementLayout(income, 'income', now)).toMatchObject({ period: '2026-06-30', start: '2026-01-01', columns: 4, index: 2 });
@@ -57,5 +58,55 @@ describe('strict multi-statement Gulf PDF layouts', () => {
   it('deduplicates repeated statement text and rejects conflicting same-period values', () => {
     expect(values([{ num: 6, text: balance + '\n' + balance }])).toHaveLength(2);
     expect(() => values([{ num: 6, text: balance }, { num: 7, text: balance.replace('10,592,712', '10,592,713') }])).toThrow('pdf_conflicting_statement_values');
+  });
+});
+
+const ifaIssuer = { ...security, name: 'International Financial Advisors Holding', ticker: 'IFA', canonicalId: 'XKUW:IFA', country: 'KW', exchange: 'Boursa Kuwait' };
+const ifaSignature = { num: 45, text: 'International Financial Advisors Holding\nThe consolidated financial statements were authorized for issue by the Board of Directors on 29 March 2026.' };
+const ifaBalance = `International Financial Advisors Holding
+Consolidated statement of financial position
+Note 31 Dec. 2025 31 Dec. 2024
+KD KD
+Assets
+Cash and cash equivalents 9 4,242,133 7,949,224
+Investments at fair value through profit or loss 11 1,035,642 354,903
+Total assets 161,146,865 135,552,702
+Liabilities and equity
+Total liabilities 28,665,529 25,266,936`;
+const ifaIncome = `International Financial Advisors Holding
+Consolidated statement of profit or loss
+Notes
+Year ended
+31 Dec. 2025
+Year ended
+31 Dec. 2024
+KD KD
+Income
+Dividend income 494,937 214,982
+Rent and other income 479,862 648,914`;
+function ifaValues(input: PdfEvidencePage[]) {
+  const pages = [...input, ifaSignature];
+  const doc = pdfEvidenceDocument(pages, ifaIssuer, 'https://ifakuwait.com/ifa-2025.pdf', now.toISOString());
+  return financialValuesFromPdfPages(pages, ifaIssuer, doc, /International Financial Advis[oe]rs/i, now);
+}
+
+describe('IFA audited full-KD annual statements', () => {
+  it('recognizes abbreviated December dates and exact KD units', () => {
+    expect(statementLayout(ifaBalance, 'balance', now)).toMatchObject({ period: '2025-12-31', columns: 2, index: 0 });
+    expect(statementLayout(ifaIncome, 'income', now)).toMatchObject({ period: '2025-12-31', start: '2025-01-01', columns: 2, index: 0 });
+    expect(statementCurrencyScale(ifaBalance)).toEqual({ currency: 'KWD', scale: 1 });
+  });
+
+  it('extracts conservative balance-sheet evidence without fabricating missing income totals', () => {
+    const found = ifaValues([{ num: 39, text: ifaBalance }, { num: 37, text: ifaIncome }]);
+    expect(found.every(value => validFinancialValue(value, now))).toBe(true);
+    expect(found.find(value => value.normalizedField === 'total_assets')).toMatchObject({ value: 161146865, currency: 'KWD', periodEnd: '2025-12-31', reportedAt: '2026-03-29' });
+    expect(found.find(value => value.normalizedField === 'cash_and_equivalents')).toMatchObject({ value: 4242133, periodStart: null });
+    expect(found.find(value => value.normalizedField === 'interest_bearing_debt')).toMatchObject({ value: 28665529, validation: expect.objectContaining({ bound: 'upper' }) });
+    expect(found.some(value => ['interest_income', 'prohibited_revenue', 'total_income'].includes(value.normalizedField))).toBe(false);
+  });
+
+  it('does not treat narrative KD mentions as a statement unit declaration', () => {
+    expect(statementCurrencyScale('International Financial Advisors Holding reported KD 11.5 million profit.')).toBeNull();
   });
 });
