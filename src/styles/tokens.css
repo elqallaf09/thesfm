@@ -175,6 +175,7 @@
   --shadow-md: 0 12px 28px color-mix(in srgb, var(--shadow-color) 11%, transparent);
   --shadow-lg: 0 20px 44px color-mix(in srgb, var(--shadow-color) 14%, transparent);
   --shadow-card: var(--shadow-sm);
+  --shadow-highlight: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
   --shadow-popover: var(--shadow-md);
   --active-indicator-shadow: inset 0 -3px 0 var(--primary);
   --active-indicator-top-raised: inset 0 3px 0 var(--primary), var(--shadow-md);

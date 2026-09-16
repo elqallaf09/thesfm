@@ -10,6 +10,7 @@ const protectedApiPrefixes = [
   '/api/daily-tip',
   '/api/debts',
   '/api/debug',
+  '/api/economic-intelligence',
   '/api/followed-trades',
   '/api/funding-programs/admin',
   '/api/instagram-automation',
