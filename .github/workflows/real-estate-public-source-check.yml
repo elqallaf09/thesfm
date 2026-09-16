@@ -34,7 +34,8 @@ jobs:
         run: pnpm lint && pnpm check:i18n && pnpm check:maintainability
       - name: Deterministic source, request, presentation and persistence regressions
         run: pnpm exec vitest run src/lib/investments/intelligence src/__tests__/unit/officialPropertyContextPanel.test.tsx src/__tests__/unit/realEstatePublicSourceRoutes.test.ts src/__tests__/unit/realEstateSnapshotRoute.test.ts src/__tests__/unit/realEstateAtomicPersistence.test.ts
-      - name: Real official API contract, without application secrets
+      - name: Live official property source contracts, without application secrets
         env:
           SFM_QATAR_LIVE_CHECK: '1'
-        run: pnpm exec vitest run src/__tests__/integration/qatarOpenDataLive.test.ts
+          SFM_GLOBAL_PROPERTY_LIVE_CHECK: '1'
+        run: pnpm exec vitest run src/__tests__/integration/qatarOpenDataLive.test.ts src/__tests__/integration/globalPropertySourcesLive.test.ts
