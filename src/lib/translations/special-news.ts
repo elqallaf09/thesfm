@@ -28,4 +28,24 @@ export const TR_SPECIAL_NEWS: Record<string, TranslationEntry> = {
     en: 'Metals News',
     fr: 'Actualités des métaux',
   },
+  nav_earnings_news: {
+    ar: 'أخبار الأرباح والنتائج',
+    en: 'Earnings & Results News',
+    fr: 'Actualités des résultats',
+  },
+  nav_analyst_ratings_news: {
+    ar: 'أخبار المحللين',
+    en: 'Analyst Ratings News',
+    fr: 'Actualités des analystes',
+  },
+  nav_mergers_acquisitions_news: {
+    ar: 'أخبار الاندماجات والاستحواذات',
+    en: 'Mergers & Acquisitions News',
+    fr: 'Actualités fusions-acquisitions',
+  },
+  nav_unusual_moves_news: {
+    ar: 'التحركات غير العادية',
+    en: 'Unusual Market Moves',
+    fr: 'Mouvements de marché inhabituels',
+  },
 };
