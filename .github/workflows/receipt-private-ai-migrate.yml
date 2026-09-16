@@ -28,12 +28,34 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Apply guarded private-vision migration
         run: python3 scripts/migrate-receipts-to-sfm-private.py
+      - name: Patch compile guards and private diagnostic naming
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          route = Path('src/app/api/receipts/scan/route.ts')
+          text = route.read_text()
+          old = """  const parsed = generation?.text ? extractPrivateVisionJson(generation.text) : null;\n  if (!parsed) throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'INVALID_JSON_OUTPUT');\n"""
+          new = """  if (!generation) throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'EMPTY_RESPONSE');\n  const parsed = extractPrivateVisionJson(generation.text);\n  if (!parsed) throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'INVALID_JSON_OUTPUT');\n"""
+          if text.count(old) != 1:
+              raise SystemExit('expected one private vision generation guard')
+          route.write_text(text.replace(old, new, 1))
+
+          debug = Path('src/app/api/debug/receipt-provider/route.ts')
+          text = debug.read_text()
+          text = text.replace('hasOpenAiKey: status.openai.hasApiKey,', 'hasPrivateVision: status.privateVision.configured,')
+          text = text.replace("    openai: {\n      configured: status.openai.configured,\n    },", "    privateVision: {\n      configured: status.privateVision.configured,\n    },")
+          if 'status.openai' in text or 'hasOpenAiKey' in text:
+              raise SystemExit('legacy OpenAI debug status remained')
+          debug.write_text(text)
+          PY
       - name: Reject direct OpenAI receipt dependencies
         run: |
           set -euo pipefail
-          ! grep -RniE 'OPENAI_API_KEY|api\.openai\.com|openai-vision|OpenAI Vision|openaiConfigured|providerStatus\.openai|openAiUnits' \
+          ! grep -RniE 'OPENAI_API_KEY|api\.openai\.com|openai-vision|OpenAI Vision|openaiConfigured|providerStatus\.openai|status\.openai|openAiUnits' \
             src/app/api/ai/receipt-scan/route.ts \
             src/app/api/receipts/scan/route.ts \
+            src/app/api/debug/receipt-provider/route.ts \
             src/lib/server/receiptProviderConfig.ts \
             src/lib/routeDashboard/helpers.ts \
             src/lib/routeDashboard/types.ts \
