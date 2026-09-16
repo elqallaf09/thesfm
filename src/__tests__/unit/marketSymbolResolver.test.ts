@@ -58,6 +58,18 @@ describe('market symbol resolver exact ticker support', () => {
     expect(result.asset.name.toLowerCase()).toContain(expectedName);
   });
 
+  it.each(['بوبيان', 'بنك بوبيان', 'Boubyan Bank'])('resolves the localized Boubyan alias %s to the verified Kuwait provider symbol', async (input) => {
+    const result = await resolveMarketSymbol(input, 'stock');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.asset.symbol).toMatch(/^BOUBYAN(?:\.KW)?$/);
+    expect(result.asset.providerSymbol).toBe('BOUBYAN.KW');
+    expect(result.asset.assetType).toBe('stock');
+    expect(result.asset.currency).toBe('KWD');
+    expect(result.asset.country).toBe('Kuwait');
+  });
+
   it.each([
     ['XAUUSD', 'gold', 'XAUUSD', 'GC=F'],
     ['Gold', 'gold', 'XAUUSD', 'GC=F'],
