@@ -21,17 +21,18 @@ export async function getQatarPropertyLocations(fetcher: typeof fetch = fetch): 
   await verifyQatarDataset(fetcher);
   const locations: OfficialPropertyLocation[] = [];
   const seen = new Set<string>();
-  // Bound the directory; never silently use a truncated geographic mapping.
+  // The verified public API caps grouped total_count to the returned page.
+  // Continue until a short page, not until that count appears exhausted.
+  // A full final allowed page fails closed rather than truncating the directory.
   for (let offset = 0; offset < 500; offset += 100) {
-    const data = object(await readQatarPublicJson('records', { select: LOCATION_FIELDS, group_by: LOCATION_FIELDS, order_by: 'municipality_name,district_name', limit: '100', offset: String(offset) }, fetcher));
+    const data = object(await readQatarPublicJson('records', { select: LOCATION_FIELDS, group_by: LOCATION_FIELDS, order_by: LOCATION_FIELDS, limit: '100', offset: String(offset) }, fetcher));
     const batch = rows(data, 100);
     for (const row of batch) {
       const item = location(row); if (!item) continue;
       const key = `${item.municipality}\u0000${item.district}`;
       if (!seen.has(key)) { seen.add(key); locations.push(item); }
     }
-    if (Number(data.total_count) <= offset + batch.length) return locations;
-    if (batch.length === 0) break;
+    if (batch.length < 100) return locations;
   }
   throw new Error('SOURCE_DIRECTORY_TRUNCATED');
 }
