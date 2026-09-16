@@ -29,7 +29,7 @@ export default function HomePage() {
     <>
       <PublicLandingPage />
       <span hidden aria-hidden="true" data-financial-value="true">5 USD</span>
-      <style jsx>{landingStyles}</style>
+      <style>{landingStyles}</style>
     </>
   );
 }
