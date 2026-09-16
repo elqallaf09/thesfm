@@ -16,8 +16,8 @@ export interface OfficialPropertyRecord extends OfficialPropertyLocation {
   areaM2: number | null;
   reportedValue: number | null;
   reportedPricePerM2: number | null;
-  // The reviewed API fields do not declare currency. Do not infer it from a country.
-  currency: null;
+  /** Null means the reviewed source does not explicitly declare a currency for this row. */
+  currency: string | null;
   fullOwnership: boolean;
   sourceUrl: string;
 }
@@ -35,7 +35,7 @@ export interface OfficialPropertyContext {
   sampleTotal: number | null;
   sampleTruncated: boolean;
   records: OfficialPropertyRecord[];
-  // This feed is connected for source inspection, NOT approved for automated valuation.
+  /** Official context is never automatically promoted into valuation evidence. */
   valuationEligible: false;
   reasons: string[];
 }
