@@ -2,13 +2,16 @@ name: Shariah remaining public source probe
 on:
   push:
     branches: [fix/shariah-remaining-evidence-20260916]
-    paths: ['scripts/shariah/coverage-probe.test.ts', '.github/workflows/shariah-coverage-probe.yml']
+    paths: ['scripts/shariah/coverage-probe.test.ts', '.github/workflows/shariah-coverage-probe.yml', 'src/lib/sharia-research/**', 'src/lib/market/shariah*.ts', 'src/__tests__/unit/shariah*.test.ts']
 permissions:
   contents: read
+concurrency:
+  group: shariah-public-probe-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
         with:
@@ -21,9 +24,12 @@ jobs:
           node-version: 22.16.0
           cache: pnpm
       - run: pnpm install --frozen-lockfile > /tmp/shariah-probe-install.log 2>&1 || { tail -60 /tmp/shariah-probe-install.log; exit 1; }
+      - name: All specialized extractor and screening unit regressions
+        run: pnpm exec vitest run src/__tests__/unit/*[sS]haria*.test.ts --maxWorkers=2 --minWorkers=1
       - name: Inspect public documents without modifying any database
+        if: ${{ !cancelled() }}
         env:
           SEC_USER_AGENT: 'THE-SFM admin@the-sfm.com'
         run: |
-          sed 's|../../src/lib/|../../lib/|g' scripts/shariah/coverage-probe.test.ts > src/__tests__/integration/shariahCoverageProbe.test.ts
+          sed 's|../../src/|../../|g' scripts/shariah/coverage-probe.test.ts > src/__tests__/integration/shariahCoverageProbe.test.ts
           pnpm exec vitest run src/__tests__/integration/shariahCoverageProbe.test.ts --maxWorkers=1 --minWorkers=1
