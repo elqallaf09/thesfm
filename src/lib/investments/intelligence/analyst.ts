@@ -7,6 +7,8 @@ import type { FxQuote, ValuationRangeResult } from './valuation-range';
 import { buildRealEstateValuationRange } from './valuation-range';
 import type { OfficialPropertyContext } from './official-context';
 import { collectQatarPropertyContext, qatarContextUnavailable } from './adapters/qatar-open-data';
+import { collectUkHmlrPropertyContext, ukHmlrContextUnavailable } from './adapters/uk-hmlr-open-data';
+import { collectNycPropertyContext, isNewYorkCityAsset, nycContextUnavailable } from './adapters/nyc-dof-open-data';
 
 export interface RealEstateAnalystResult {
   status: 'VALUED' | 'INSUFFICIENT_EVIDENCE' | 'SOURCE_COVERAGE_UNAVAILABLE' | 'SOURCE_DATA_REVIEW_REQUIRED';
@@ -18,13 +20,22 @@ export interface RealEstateAnalystResult {
   officialContext?: OfficialPropertyContext;
 }
 
+async function collectOfficialContext(asset: RealEstateAssetInput): Promise<OfficialPropertyContext | undefined> {
+  if (asset.countryCode === 'QA') {
+    try { return await collectQatarPropertyContext(asset); } catch { return qatarContextUnavailable(); }
+  }
+  if (asset.countryCode === 'GB') {
+    try { return await collectUkHmlrPropertyContext(asset); } catch { return ukHmlrContextUnavailable(); }
+  }
+  if (isNewYorkCityAsset(asset)) {
+    try { return await collectNycPropertyContext(asset); } catch { return nycContextUnavailable(); }
+  }
+  return undefined;
+}
+
 export async function analyzeRealEstateAsset(asset: RealEstateAssetInput, outputCurrency: string, fxQuotes: FxQuote[] = []): Promise<RealEstateAnalystResult> {
   const adapters = getRealEstateSourceAdapters(asset.countryCode);
-  let officialContext: OfficialPropertyContext | undefined;
-  if (asset.countryCode === 'QA') {
-    try { officialContext = await collectQatarPropertyContext(asset); }
-    catch { officialContext = qatarContextUnavailable(); }
-  }
+  const officialContext = await collectOfficialContext(asset);
   const contextFailures = officialContext?.status === 'UNAVAILABLE'
     ? [{ adapterId: officialContext.providerId, reason: 'Official public source could not be verified. No fallback prices were supplied.' }] : [];
   if (adapters.length === 0) {
