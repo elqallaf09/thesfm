@@ -26,6 +26,7 @@ for (const language of ['ar', 'en', 'fr']) {
           const returnedAtClose = document.activeElement === trigger;
           const closed = !document.querySelector('[data-symbol-drawer]');
           trigger.click();
+          document.querySelector<HTMLDetailsElement>(".drawer-more")!.open = true;
           const share = document.querySelector<HTMLButtonElement>('[data-drawer-share]')!;
           share.focus();
           return { focusedAtOpen, returnedAtClose, closed };
@@ -45,6 +46,7 @@ for (const language of ['ar', 'en', 'fr']) {
       test('compare and watchlist redraw preserve the activated action', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
+        await frame.locator("#drawer-more-toggle").click();
         const result = await frame.evaluate(() => {
           const compare = document.querySelector<HTMLButtonElement>('[data-drawer-compare]')!;
           compare.focus(); compare.click();
@@ -72,6 +74,7 @@ for (const language of ['ar', 'en', 'fr']) {
       test('backdrop covers the viewport, outside click closes and close target is usable', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
+        await frame.locator("#drawer-more-toggle").click();
         const geometry = await frame.evaluate(() => {
           const rect = (selector: string) => {
             const r = document.querySelector(selector)!.getBoundingClientRect();
@@ -88,7 +91,9 @@ for (const language of ['ar', 'en', 'fr']) {
         const point = geometry.drawer.top > 2
           ? { x: geometry.width / 2, y: geometry.drawer.top / 2 }
           : { x: geometry.drawer.left > 2 ? geometry.drawer.left / 2 : (geometry.drawer.right + geometry.width) / 2, y: geometry.height / 2 };
-        await page.mouse.click(point.x, point.y);
+        if (geometry.drawer.width >= geometry.width - 1 && geometry.drawer.height >= geometry.height - 1) {
+          await frame.locator('.drawer-close').click();
+        } else await page.mouse.click(point.x, point.y);
         await expect(frame.locator('[data-symbol-drawer]')).toHaveCount(0);
         expect(await frame.locator('#app-shell').evaluate(element => element instanceof HTMLElement ? element.inert : null)).toBe(false);
       });
@@ -96,15 +101,16 @@ for (const language of ['ar', 'en', 'fr']) {
       test('external preference refresh preserves modal focus and internal scroll', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
+        await frame.locator("#drawer-more-toggle").click();
         const position = await frame.evaluate(() => {
           const share = document.querySelector<HTMLButtonElement>('[data-drawer-share]')!;
           share.focus({ preventScroll: true });
-          const actions = document.querySelector<HTMLElement>('.drawer-actions')!;
+          const actions = document.querySelector<HTMLElement>('.drawer-more-actions')!;
           actions.scrollTop = actions.scrollHeight;
           const before = actions.scrollTop;
           // Actual event used when parent/another tab updates shared preferences.
           window.dispatchEvent(new StorageEvent('storage', { key: 'sfm_lang' }));
-          return { before, after: document.querySelector('.drawer-actions')!.scrollTop, focused: document.activeElement?.hasAttribute('data-drawer-share') };
+          return { before, after: document.querySelector('.drawer-more-actions')!.scrollTop, focused: document.activeElement?.hasAttribute('data-drawer-share') };
         });
         await testInfo.attach('refresh-position', { body: JSON.stringify(position), contentType: 'application/json' });
         expect(position.focused).toBe(true);
@@ -119,6 +125,7 @@ for (const language of ['ar', 'en', 'fr']) {
       test('Tab ignores negative/hidden controls and Escape respects a consumed key', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
+        await frame.locator("#drawer-more-toggle").click();
         const result = await frame.evaluate(() => {
           const drawer = document.querySelector<HTMLElement>('[data-symbol-drawer]')!;
           // Adversarial DOM controls: never become part of the modal tab order.

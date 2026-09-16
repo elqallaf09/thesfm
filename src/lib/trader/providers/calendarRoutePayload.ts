@@ -57,9 +57,16 @@ function messageForStatus(feature: TraderCalendarFeature, status: MarketFeatureD
 export function createTraderCalendarRoutePayload<K extends TraderCalendarFeature>(
   feature: K,
   result: TraderProviderResult<TraderCalendarDataMap[K]>,
+  requestedSymbols: readonly string[] = [],
 ) {
-  const items = Array.isArray(result.data) ? result.data : [];
-  const count = result.resultCount ?? items.length;
+  const sourceItems = Array.isArray(result.data) ? result.data : [];
+  const symbols = new Set(requestedSymbols.map(symbol => symbol.trim().toUpperCase()).filter(Boolean));
+  // Some providers return the entire calendar even for a symbol request. Scope all
+  // response aliases and diagnostics together, without mutating the provider cache.
+  const items = symbols.size > 0 && (feature === 'earnings' || feature === 'dividends')
+    ? sourceItems.filter(item => 'symbol' in item && symbols.has(String(item.symbol ?? '').trim().toUpperCase()))
+    : sourceItems;
+  const count = items.length;
   const status = calendarStatus(result as TraderProviderResult<unknown>, count);
   const diagnostic = createMarketFeatureDiagnostic({
     feature: FEATURE_KEYS[feature],
@@ -70,9 +77,9 @@ export function createTraderCalendarRoutePayload<K extends TraderCalendarFeature
     message: messageForStatus(feature, status),
     lastUpdated: result.lastUpdated ?? result.lastSuccessfulUpdate,
   });
-  const code = result.messageCode ?? (status === 'empty'
+  const code = status === 'empty'
     ? `${feature}_calendar_no_events`
-    : messageCodeForStatus(result.status));
+    : result.messageCode ?? messageCodeForStatus(result.status);
 
   return {
     ...diagnostic,

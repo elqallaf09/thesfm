@@ -12,6 +12,7 @@ import { AI_ANALYST_COPY, ASSET_TYPE_LABELS, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
 type LatestAssetResponse = { ok?: boolean; result?: { asset?: { name: string; displaySymbol: string; assetType: IntelligenceAssetType } } };
+type ChatApiResponse = { ok?: boolean; text?: string; error?: { code?: string }; correlationId?: string };
 
 export function AiAnalystChat({ symbol, assetType }: { symbol?: string; assetType?: IntelligenceAssetType }) {
   const { lang, dir } = useLanguage();
@@ -78,8 +79,12 @@ export function AiAnalystChat({ symbol, assetType }: { symbol?: string; assetTyp
           sourceRoute: '/ai-analyst/assistant',
         }),
       });
-      const payload = await response.json().catch(() => ({})) as { ok?: boolean; text?: string };
-      setMessages([...nextMessages, { role: 'assistant', content: payload.ok && payload.text ? payload.text : copy.fallback }]);
+      const payload = await response.json().catch(() => ({})) as ChatApiResponse;
+      // Transient provider failures intentionally return a localized `text`
+      // alongside a non-2xx status for observability. Preserve that useful
+      // message instead of replacing it with a generic fallback bubble.
+      const reply = typeof payload.text === 'string' && payload.text.trim() ? payload.text.trim() : copy.fallback;
+      setMessages([...nextMessages, { role: 'assistant', content: reply }]);
     } catch {
       setMessages([...nextMessages, { role: 'assistant', content: copy.unavailable }]);
     } finally {
