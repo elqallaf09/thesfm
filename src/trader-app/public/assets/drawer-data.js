@@ -111,7 +111,8 @@
     const fallback = drawerLoadedContext(symbol).asset;
     if (kind === "quote") {
       const row = findAssetForSymbol(symbol, legacyRecsFrom(result));
-      if (row) detail.asset = normalizeQuote(norm({ ...fallback, ...row }));
+      if (!row) throw new Error("Quote response does not contain the requested symbol");
+      detail.asset = normalizeQuote(norm({ ...fallback, ...row }));
     } else if (kind === "profile") {
       const profile = result.profile || result.asset || {};
       if (!profile.symbol || symbolAliases(symbol).includes(sym(profile.symbol))) {
@@ -123,9 +124,10 @@
       }
     } else if (kind === "signal") {
       const raw = result.signal || result.item;
-      if (raw && symbolAliases(symbol).includes(sym(raw.symbol || raw.ticker))) {
-        detail.rec = normalizeQuote(norm(signalToRec(raw)));
+      if (raw && !symbolAliases(symbol).includes(sym(raw.symbol || raw.ticker))) {
+        throw new Error("Signal response does not match the requested symbol");
       }
+      if (raw) detail.rec = normalizeQuote(norm(signalToRec(raw)));
     } else if (kind === "technical") {
       detail.tech = technicalPayloadFromResponse(result);
       detail.technicalUnavailable = isTechnicalUnavailablePayload(detail.tech);
@@ -154,7 +156,8 @@
     loaded = mergeRecLists(marketRows, loaded);
     const loadedAsset = findAssetForSymbol(key, loaded) || matchRec(key) || null;
     const rec = cachedDetail && cachedDetail.rec || loadedAsset;
-    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(rec || {}) }));
+    // A cached list/signal is not a newer quote. Keep fetched price and its evidence together.
+    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(rec || {}), ...(cachedDetail && cachedDetail.asset || {}) }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
   }
 
