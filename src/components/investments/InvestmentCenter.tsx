@@ -19,7 +19,6 @@ import {
 import { realEstateInvestmentHref } from '@/lib/investments/realEstateHandoff';
 import { useCurrency } from '@/lib/useCurrency';
 import type { Investment } from '@/types/investment';
-import { RealEstateIntelligenceEntry } from './RealEstateIntelligenceEntry';
 import styles from './InvestmentCenter.module.css';
 
 type Copy = Record<'ar' | 'en' | 'fr', string>;
@@ -80,6 +79,10 @@ const LABEL_KEY_BY_CLASS: Record<InvestmentCenterAssetClass, keyof typeof COPY> 
   bonds: 'bonds',
   commodities: 'commodities',
 };
+
+// Real estate market research lives in Global Markets. Owned properties remain
+// visible in the overview and still contribute to portfolio totals.
+const INVESTMENT_NAV_ASSET_CLASSES = INVESTMENT_CENTER_ASSET_CLASSES.filter(entry => entry !== 'real-estate');
 
 function finite(value: unknown) {
   const number = Number(value);
@@ -166,7 +169,7 @@ export function InvestmentCenter({ assetClass = 'overview' }: { assetClass?: Inv
         </header>
 
         <nav className={styles.desktopNav} aria-label={text('title')}>
-          {INVESTMENT_CENTER_ASSET_CLASSES.map(entry => (
+          {INVESTMENT_NAV_ASSET_CLASSES.map(entry => (
             <Link key={entry} href={classHref(entry)} aria-current={assetClass === entry ? 'page' : undefined}>
               {text(LABEL_KEY_BY_CLASS[entry])}
             </Link>
@@ -175,11 +178,9 @@ export function InvestmentCenter({ assetClass = 'overview' }: { assetClass?: Inv
         <details className={styles.mobileNav}>
           <summary>{text(LABEL_KEY_BY_CLASS[assetClass])}</summary>
           <nav aria-label={text('title')}>
-            {INVESTMENT_CENTER_ASSET_CLASSES.map(entry => <Link key={entry} href={classHref(entry)}>{text(LABEL_KEY_BY_CLASS[entry])}</Link>)}
+            {INVESTMENT_NAV_ASSET_CLASSES.map(entry => <Link key={entry} href={classHref(entry)}>{text(LABEL_KEY_BY_CLASS[entry])}</Link>)}
           </nav>
         </details>
-
-        {assetClass === 'overview' || assetClass === 'real-estate' ? <RealEstateIntelligenceEntry lang={lang} /> : null}
 
         {isGuest || !user ? (
           <section className={styles.guestGate}>
