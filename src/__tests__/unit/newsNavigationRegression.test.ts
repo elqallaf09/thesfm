@@ -53,4 +53,15 @@ describe('unified market-news subgroup rendering', () => {
     const labeled = marketNews?.items.filter(item => item.sectionLabelKey) ?? [];
     expect(labeled.map(item => item.id)).toEqual(['tech-news', 'energy-stocks']);
   });
+
+  it('includes the special news destinations requested for the market-news workspace', () => {
+    const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
+    const destinations = new Map((marketNews?.items ?? []).map(item => [item.id, item.href]));
+
+    expect(destinations.get('federal-reserve-news')).toBe('/federal-reserve-news');
+    expect(destinations.get('healthcare-stocks-news')).toBe('/healthcare-stocks-news');
+    expect(destinations.get('new-stocks-news')).toBe('/new-stocks-news');
+    expect(destinations.get('stocks-under-one')).toBe('/stocks-under-1');
+    expect(destinations.get('metals-news')).toBe('/metals-news');
+  });
 });
