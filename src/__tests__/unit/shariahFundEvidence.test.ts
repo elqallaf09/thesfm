@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseSpyRows, validateHoldingsArchive, sameHoldingIssuer } from '@/lib/market/shariahFundReview';
+import { getPublishedShariahFundProfile } from '@/lib/market/shariahPublishedFunds';
 import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
 const now = new Date('2026-09-15T12:00:00Z');
 function rows(): unknown[][] { return [['Fund Name:', 'State Street SPDR S&P 500 ETF Trust'], ['Ticker Symbol:', 'SPY'], ['Holdings:', 'As of 14-Sep-2026'], [],
@@ -20,9 +21,36 @@ describe('fund holdings evidence without invented fund ratings', () => {
  it('rejects invalid or oversized compressed input before opening the workbook', () => {
    expect(() => validateHoldingsArchive(new Uint8Array(2_000_001))).toThrow(); expect(() => validateHoldingsArchive(new Uint8Array(50))).toThrow();
  });
- it('does not treat a saved fund review as a corporate FTSE pass', () => {
+ it('does not treat a generic saved fund review as a corporate FTSE pass', () => {
    const item=publicCatalogItem({symbol:'SPY',asset_type:'etf',shariah_status:'compliant',shariah_last_reviewed_at:now.toISOString(),shariah_screening_data:{evidenceVersion:'sfm-evidence-v2',methodologyId:'SFM_FUND_EVIDENCE_REVIEW',methodologyVersion:'1',fundReview:{coverage:'partial'}}},now);
    expect(item.shariahStatus).toBe('needs_review');expect(item.financialRatios).toBeNull();expect(item.methodology.en).toContain('not certification');
+ });
+ it('reports a current verified provider/SSB designation separately from SFM periodic fund monitoring', () => {
+   const item=publicCatalogItem({symbol:'HLAL',name:'Wahed FTSE USA Shariah ETF',asset_type:'etf',shariah_status:'needs_review',shariah_source:'Official published Shariah designation + SFM source verification',shariah_last_reviewed_at:now.toISOString(),shariah_screening_data:{evidenceVersion:'sfm-evidence-v2',methodologyId:'SFM_FUND_EVIDENCE_REVIEW',methodologyVersion:'1',fundReview:{coverage:'published_designation_verified',publishedShariahDesignation:{state:'verified',provider:'Wahed',designation:'Shariah ETF',sourceUrl:'https://www.wahed.com/hlal'}}}},now);
+   expect(item.shariahStatus).toBe('compliant');
+   expect(item.statusLabelAr).toBe('توافق شرعي منشور');
+   expect(item.publishedShariahDesignation).toMatchObject({state:'verified',provider:'Wahed'});
+   expect(item.methodology.ar).toContain('منهجية شرعية منشورة');
+   expect(item.reason.ar).toContain('تحقق دوري');
+ });
+ it('does not keep a published designation badge after its verification becomes stale', () => {
+   const item=publicCatalogItem({symbol:'HLAL',name:'Wahed FTSE USA Shariah ETF',asset_type:'etf',shariah_status:'needs_review',shariah_last_reviewed_at:'2026-09-01T00:00:00Z',shariah_screening_data:{evidenceVersion:'sfm-evidence-v2',methodologyId:'SFM_FUND_EVIDENCE_REVIEW',methodologyVersion:'1',fundReview:{publishedShariahDesignation:{state:'verified',provider:'Wahed',sourceUrl:'https://www.wahed.com/hlal'}}}},now);
+   expect(item.shariahStatus).toBe('needs_review');
+   expect(item.statusLabelAr).toBe('يحتاج مراجعة');
+   expect(item.publishedShariahDesignation).toBeNull();
+ });
+});
+
+describe('published Shariah fund registry', () => {
+ it.each([
+   ['SPUS','SP Funds S&P 500 Sharia Industry Exclusions ETF'],
+   ['HLAL','Wahed FTSE USA Shariah ETF'],
+   ['UMMA','Wahed Dow Jones Islamic World ETF'],
+   ['SPRE','SP Funds S&P Global REIT Sharia ETF'],
+   ['SPSK','SP Funds Dow Jones Global Sukuk ETF'],
+ ])('binds %s to its reviewed exact fund identity', (symbol,name) => {
+   expect(getPublishedShariahFundProfile(symbol,name)).toMatchObject({symbol,name});
+   expect(getPublishedShariahFundProfile(symbol,'Different Fund')).toBeNull();
  });
 });
 
