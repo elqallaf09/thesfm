@@ -53,9 +53,10 @@ describe('explicit regional report rows and source identity',()=>{
 });
 
 const ifaIssuer={...security,ticker:'IFA',providerSymbol:'IFA.KW',name:'International Financial Advisors Holding',country:'KW',exchange:'Boursa Kuwait',canonicalId:'XKUW:IFA'};
+const ifaSpacedName='I N T E R N A T I O N A L  F I N A N C I A L  A D V I S O R S  H O L D I N G';
 const ifaPages=[
-  {num:37,text:'International Financial Advisors Holding\nConsolidated statement of profit or loss\nNotes\nYear ended\n31 Dec. 2025\nYear ended\n31 Dec. 2024\nKD KD\nIncome\nDividend income 494,937 214,982\nRent and other income 479,862 648,914'},
-  {num:39,text:'International Financial Advisors Holding\nConsolidated statement of financial position\nNote 31 Dec. 2025 31 Dec. 2024\nKD KD\nAssets\nCash and cash equivalents 9 4,242,133 7,949,224\nTotal assets 161,146,865 135,552,702\nLiabilities and equity\nTotal liabilities 28,665,529 25,266,936'},
+  {num:37,text:`${ifaSpacedName}\nConsolidated statement of profit or loss\nNotes\nYear ended\n31 Dec. 2025\nYear ended\n31 Dec. 2024\nKD KD\nIncome\nDividend income 494,937 214,982\nRent and other income 479,862 648,914`},
+  {num:39,text:`${ifaSpacedName}\nConsolidated statement of financial position\nNote 31 Dec. 2025 31 Dec. 2024\nKD KD\nAssets\nCash and cash equivalents 9 4,242,133 7,949,224\nTotal assets 161,146,865 135,552,702\nLiabilities and equity\nTotal liabilities 28,665,529 25,266,936`},
   {num:45,text:"International Financial Advisors Holding\nThe Parent Company's board of directors approved these consolidated financial statements for issue on 29 March 2026."},
 ];
 function extractIfa(input=ifaPages){ const doc=pdfEvidenceDocument(input,ifaIssuer,'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',now.toISOString()); return financialValuesFromPdfPages(input,ifaIssuer,doc,/International Financial Advis[oe]rs/i,now); }
@@ -65,6 +66,16 @@ describe('IFA official annual financial evidence',()=>{
    expect(profile?.directory).toBe('https://www.ifakuwait.com/financial-statements.html');
    const html='<a href="/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf">Download</a>';
    expect(issuerPdfLinks(html,profile!.directory,now)).toEqual(['https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf']);
+ });
+ it('accepts statement pages with a letter-spaced masthead only after another selected page proves issuer identity',()=>{
+   expect(/International Financial Advis[oe]rs/i.test(ifaPages[0].text)).toBe(false);
+   expect(/International Financial Advis[oe]rs/i.test(ifaPages[1].text)).toBe(false);
+   const values=extractIfa();
+   expect(values.find(value=>value.normalizedField==='total_assets')?.value).toBe(161146865);
+   expect(values.find(value=>value.normalizedField==='cash_and_equivalents')?.value).toBe(4242133);
+ });
+ it('rejects otherwise plausible statement rows when no selected page proves issuer identity',()=>{
+   expect(extractIfa(ifaPages.map(page=>({...page,text:page.text.replace('International Financial Advisors Holding','Unrelated Holding Company')})))).toEqual([]);
  });
  it('parses abbreviated annual dates and explicit full-dinar KD columns',()=>{
    const values=extractIfa();
