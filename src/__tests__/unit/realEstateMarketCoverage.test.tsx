@@ -12,7 +12,7 @@ describe('Real Estate Market Center coverage', () => {
     expect(REAL_ESTATE_MARKET_COVERAGE.length).toBeGreaterThan(0);
     expect(REAL_ESTATE_MARKET_COVERAGE.every(item => item.valuationReady === false)).toBe(true);
     const connected = REAL_ESTATE_MARKET_COVERAGE.filter(item => item.state === 'CONNECTED_CONTEXT');
-    expect(connected.map(item => item.id)).toEqual(expect.arrayContaining(['qa-moj', 'gb-hmlr', 'us-nyc-dof']));
+    expect(connected.map(item => item.id)).toEqual(expect.arrayContaining(['qa-moj', 'gb-hmlr', 'us-nyc-dof', 'us-cook']));
   });
 
   it('keeps jurisdictional US coverage separate rather than claiming USA-wide support', () => {
