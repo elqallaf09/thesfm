@@ -1,0 +1,68 @@
+name: Migrate receipts to SFM Private Vision
+
+on:
+  push:
+    branches: [fix/ai-workspace-providers-layout-20260916]
+    paths:
+      - .github/workflows/receipt-private-ai-migrate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply guarded private-vision migration
+        run: python3 scripts/migrate-receipts-to-sfm-private.py
+      - name: Reject direct OpenAI receipt dependencies
+        run: |
+          set -euo pipefail
+          ! grep -RniE 'OPENAI_API_KEY|api\.openai\.com|openai-vision|OpenAI Vision|openaiConfigured|providerStatus\.openai|openAiUnits' \
+            src/app/api/ai/receipt-scan/route.ts \
+            src/app/api/receipts/scan/route.ts \
+            src/lib/server/receiptProviderConfig.ts \
+            src/lib/routeDashboard/helpers.ts \
+            src/lib/routeDashboard/types.ts \
+            src/components/finance/RouteDashboardPage.tsx
+      - name: Validate TypeScript and translations
+        run: |
+          pnpm typecheck
+          pnpm check:i18n
+          git diff --check
+      - name: Run receipt and private-vision regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(find src/__tests__/unit -maxdepth 1 -type f \( -iname '*receipt*.test.ts' -o -iname '*Receipt*.test.ts' -o -name 'sfmPrivateVisionProvider.test.ts' \) | sort)
+          printf 'Running %s focused tests\n' "${#tests[@]}"
+          pnpm exec vitest run "${tests[@]}"
+      - name: Commit the verified migration and remove temporary migration machinery
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f scripts/migrate-receipts-to-sfm-private.py
+          rm -f .github/workflows/receipt-private-ai-source.yml
+          rm -f .github/workflows/receipt-private-ai-migrate.yml
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No migration changes to commit.'
+            exit 0
+          fi
+          git config user.name 'Mohammed alqallaf'
+          git config user.email 'elqallaf09@gmail.com'
+          git commit -m 'refactor(ai): migrate receipt vision to SFM Private AI'
+          git push origin HEAD:fix/ai-workspace-providers-layout-20260916
