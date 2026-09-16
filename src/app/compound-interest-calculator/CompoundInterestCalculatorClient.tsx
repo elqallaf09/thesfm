@@ -28,9 +28,9 @@ export default function CompoundInterestCalculatorClient() {
   }, [principal, monthlyContribution, annualRate, years]);
 
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm md:p-8" dir="rtl">
+    <section className="rounded-[var(--radius-panel)] border border-border bg-card p-5 shadow-[var(--shadow-sm)] md:p-8" dir="rtl">
       <div className="mb-8 flex items-start gap-3">
-        <span className="rounded-2xl bg-primary/10 p-3 text-primary"><TrendingUp size={24} /></span>
+        <span className="rounded-[var(--radius-card)] bg-primary/10 p-3 text-primary"><TrendingUp size={24} /></span>
         <div>
           <span className="text-sm font-semibold text-primary">أداة عامة مجانية</span>
           <h1 className="mt-1 text-3xl font-bold text-foreground md:text-4xl">حاسبة الفائدة المركبة</h1>
@@ -45,7 +45,7 @@ export default function CompoundInterestCalculatorClient() {
         <Field label="عدد السنوات" value={years} onChange={setYears} />
       </div>
 
-      <div className="mt-7 grid gap-4 rounded-2xl border border-border bg-muted/35 p-5 sm:grid-cols-3">
+      <div className="mt-7 grid gap-4 rounded-[var(--radius-card)] border border-border bg-muted/35 p-5 sm:grid-cols-3">
         <Result label="القيمة النهائية" value={result.balance} />
         <Result label="إجمالي المساهمات" value={result.contributed} />
         <Result label="النمو المحسوب" value={result.growth} primary />
@@ -55,7 +55,7 @@ export default function CompoundInterestCalculatorClient() {
 }
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label className="grid gap-2 text-sm font-medium text-foreground"><span>{label}</span><input type="number" inputMode="decimal" min="0" step="0.01" value={value} onChange={event => onChange(event.target.value)} className="h-12 rounded-xl border border-input bg-background px-3 text-base outline-none focus:border-primary" /></label>;
+  return <label className="grid gap-2 text-sm font-medium text-foreground"><span>{label}</span><input type="number" inputMode="decimal" min="0" step="0.01" value={value} onChange={event => onChange(event.target.value)} className="h-12 rounded-[var(--radius-control)] border border-input bg-background px-3 text-base outline-none focus:border-primary" /></label>;
 }
 
 function Result({ label, value, primary }: { label: string; value: number; primary?: boolean }) {
