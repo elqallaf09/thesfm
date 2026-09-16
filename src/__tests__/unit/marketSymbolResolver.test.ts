@@ -67,7 +67,7 @@ describe('market symbol resolver exact ticker support', () => {
     expect(result.asset.providerSymbol).toBe('BOUBYAN.KW');
     expect(result.asset.assetType).toBe('stock');
     expect(result.asset.currency).toBe('KWD');
-    expect(result.asset.country).toBe('Kuwait');
+    expect(result.asset.exchange).toBe('Boursa Kuwait');
   });
 
   it.each([
