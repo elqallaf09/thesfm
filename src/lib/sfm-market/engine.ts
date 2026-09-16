@@ -7,6 +7,7 @@ import {
   type ProviderAttemptFailure,
 } from '@/lib/market/marketDataProviders';
 import { normalizeAssetType, normalizeMarketSymbolInput } from '@/lib/market/marketService';
+import { getSecOfficialEvidence, secNotApplicable } from '@/lib/sfm-market/officialEvidence';
 import { assessSfmQuoteQuality, marketSourceClassForProvider } from '@/lib/sfm-market/quality';
 import {
   SFM_MARKET_ENGINE_NAME,
@@ -14,6 +15,7 @@ import {
   SFM_MARKET_SCHEMA_VERSION,
   type SfmMarketAnalysis,
   type SfmMarketQuote,
+  type SfmRegulatorEvidence,
   type SfmTechnicalSnapshot,
 } from '@/lib/sfm-market/types';
 
@@ -190,11 +192,21 @@ function emptyTechnical(): SfmTechnicalSnapshot {
   };
 }
 
-function buildSummary(symbol: string, quote: SfmMarketQuote | null, technical: SfmTechnicalSnapshot, status: SfmMarketAnalysis['status']) {
+function buildSummary(
+  symbol: string,
+  quote: SfmMarketQuote | null,
+  technical: SfmTechnicalSnapshot,
+  secEvidence: SfmRegulatorEvidence,
+  status: SfmMarketAnalysis['status'],
+) {
+  const filing = secEvidence.latestPeriodicFiling;
+  const filingAr = filing ? ` آخر إفصاح دوري رسمي لدى SEC هو ${filing.form} بتاريخ ${filing.filingDate}.` : '';
+  const filingEn = filing ? ` Latest official SEC periodic filing: ${filing.form}, filed ${filing.filingDate}.` : '';
+
   if (!quote) {
     return {
-      ar: `${symbol}: لا توجد حالياً بيانات سوق موثوقة كافية لإنشاء خلاصة. لم يتم اختراع سعر أو توصية بديلة.`,
-      en: `${symbol}: there is not enough trustworthy market data to build a summary. No replacement price or recommendation was fabricated.`,
+      ar: `${symbol}: لا توجد حالياً بيانات سعر سوق موثوقة كافية، لذلك لم يتم اختراع سعر أو توصية بديلة.${filingAr}`,
+      en: `${symbol}: there is not enough trustworthy market-price evidence, so no replacement price or recommendation was fabricated.${filingEn}`,
     };
   }
 
@@ -205,8 +217,8 @@ function buildSummary(symbol: string, quote: SfmMarketQuote | null, technical: S
   const quality = quote.quality.state;
 
   return {
-    ar: `${symbol}: السعر ${priceText}. الاتجاه الفني ${trendAr}، RSI-14 ${rsiText}. جودة البيانات ${quality}. ${status === 'partial' ? 'الخلاصة جزئية لأن بعض الأدلة غير متاحة.' : 'الخلاصة مبنية فقط على الأدلة المتاحة.'}`,
-    en: `${symbol}: price ${priceText}. Technical trend ${trendEn}, RSI-14 ${rsiText}. Data quality ${quality}. ${status === 'partial' ? 'The summary is partial because some evidence is unavailable.' : 'The summary uses only available evidence.'}`,
+    ar: `${symbol}: السعر ${priceText}. الاتجاه الفني ${trendAr}، RSI-14 ${rsiText}. جودة بيانات السوق ${quality}.${filingAr} ${status === 'partial' ? 'الخلاصة جزئية لأن بعض الأدلة غير متاحة.' : 'الخلاصة مبنية فقط على الأدلة المتاحة.'}`,
+    en: `${symbol}: price ${priceText}. Technical trend ${trendEn}, RSI-14 ${rsiText}. Market-data quality ${quality}.${filingEn} ${status === 'partial' ? 'The summary is partial because some evidence is unavailable.' : 'The summary uses only available evidence.'}`,
   };
 }
 
@@ -229,6 +241,7 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
   const normalized = normalizeMarketSymbolInput(symbolInput, request.assetType);
   if (!normalized.valid) {
     const symbol = String(symbolInput ?? '').trim().toUpperCase();
+    const secEvidence = secNotApplicable(symbol, 'The requested symbol could not be normalized.');
     return {
       schemaVersion: SFM_MARKET_SCHEMA_VERSION,
       engine: SFM_MARKET_ENGINE_NAME,
@@ -239,14 +252,16 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
       code: normalized.code ?? 'INVALID_SYMBOL',
       quote: null,
       technical: emptyTechnical(),
+      officialEvidence: { sec: secEvidence },
       evidence: {
         quoteAvailable: false,
         historyAvailable: false,
         historyPoints: 0,
+        officialRegulatorEvidenceAvailable: false,
         missing: ['quote', 'history'],
         upstreamAttempts: 0,
       },
-      summary: buildSummary(symbol || 'UNKNOWN', null, emptyTechnical(), 'blocked'),
+      summary: buildSummary(symbol || 'UNKNOWN', null, emptyTechnical(), secEvidence, 'blocked'),
       guardrails: {
         fabricatedMarketValues: false,
         recommendationGeneratedWithoutEvidence: false,
@@ -261,10 +276,15 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
     normalized.assetType,
     request.forceFresh,
   );
+  const supportsSecEvidence = normalized.assetType === 'stock' || normalized.assetType === 'etf';
+  const secPromise = supportsSecEvidence
+    ? getSecOfficialEvidence(normalized.symbol)
+    : Promise.resolve(secNotApplicable(normalized.symbol));
 
-  const [quoteResult, historyResult] = await Promise.all([
+  const [quoteResult, historyResult, secEvidence] = await Promise.all([
     getQuoteWithFallback(normalized.providerSymbol, request.market ?? null, context),
     getCandlesWithFallback(normalized.providerSymbol, request.market ?? null, '1d', context),
+    secPromise,
   ]);
 
   const quote = quoteResult.ok ? buildSfmQuote(quoteResult.data, quoteResult.attempts, generatedAt) : null;
@@ -278,6 +298,7 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
   const missing = [
     ...(quote?.quality.missingFields ?? ['quote']),
     ...(technical.historyPoints < 20 ? ['history>=20'] : []),
+    ...(supportsSecEvidence && secEvidence.status !== 'ready' ? ['official:sec'] : []),
   ];
   const quoteUsable = Boolean(quote && quote.quality.state !== 'unavailable' && quote.quality.state !== 'stale');
   const historyUsable = technical.historyPoints >= 20;
@@ -304,14 +325,16 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
     code,
     quote,
     technical,
+    officialEvidence: { sec: secEvidence },
     evidence: {
       quoteAvailable: Boolean(quote),
       historyAvailable: technical.historyPoints > 0,
       historyPoints: technical.historyPoints,
+      officialRegulatorEvidenceAvailable: secEvidence.status === 'ready',
       missing,
       upstreamAttempts: attempts,
     },
-    summary: buildSummary(normalized.symbol, quote, technical, status),
+    summary: buildSummary(normalized.symbol, quote, technical, secEvidence, status),
     guardrails: {
       fabricatedMarketValues: false,
       recommendationGeneratedWithoutEvidence: false,
