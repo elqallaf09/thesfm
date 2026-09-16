@@ -246,7 +246,7 @@ async function requestCompletion(input: {
  *
  * The application talks only to user-controlled OpenAI-compatible endpoints
  * such as vLLM, TGI adapters, LocalAI or an Ollama compatibility endpoint.
- * It does not read OPENAI_API_KEY, ANTHROPIC_API_KEY, or vendor gateway keys.
+ * It does not read third-party model-vendor credentials.
  */
 export async function generateAssistantReply(input: {
   system: string;

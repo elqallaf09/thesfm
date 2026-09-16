@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { generateText } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
+import { randomUUID } from 'node:crypto';
+import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import { normalizeDigits } from '@/lib/locale';
 
@@ -99,21 +99,6 @@ function getSupabase(token: string) {
   });
 }
 
-function getProvider() {
-  const gatewayToken = process.env.AI_GATEWAY_TOKEN;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (gatewayToken) {
-    return createAnthropic({
-      apiKey: gatewayToken,
-      baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic',
-    });
-  }
-  return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
-}
-
-function aiProviderConfigured() {
-  return Boolean(process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY);
-}
 
 function toNum(value: unknown) {
   const number = Number(normalizeDigits(value).replace(/[^\d.-]/g, ''));
@@ -229,8 +214,7 @@ function normalizeAiAnalysis(value: any, fallback: ExpenseAnalysis): ExpenseAnal
 }
 
 async function runAi(project: any, expenses: any[], expense: ExpensePayload, fallback: ExpenseAnalysis, lang: Lang) {
-  const provider = getProvider();
-  if (!provider) return fallback;
+  if (!aiProviderConfigured()) return fallback;
   const prompt = [
     `Language: ${lang}.`,
     'Analyze this project expense for THE SFM as strict JSON only.',
@@ -242,12 +226,14 @@ async function runAi(project: any, expenses: any[], expense: ExpensePayload, fal
     `Existing expense count: ${expenses.length}`,
   ].join('\n');
   try {
-    const { text } = await generateText({
-      model: provider('claude-haiku-4-5-20251001'),
-      system: 'You are a project expense analyst for THE SFM. Return structured JSON only and never fabricate receipt or budget values.',
-      prompt,
+    const generation = await generateAssistantReply({
+      correlationId: randomUUID(),
+      system: 'You are the private project expense analyst for THE SFM. Return structured JSON only and never fabricate receipt or budget values.',
+      messages: [{ role: 'user', content: prompt }],
       maxTokens: 900,
     });
+    if (!generation) return fallback;
+    const text = generation.text;
     return normalizeAiAnalysis(extractJson(text), fallback);
   } catch (error) {
     console.error('Project expense AI analysis failed', {
