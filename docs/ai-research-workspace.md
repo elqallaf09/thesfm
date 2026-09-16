@@ -14,16 +14,41 @@ Asset details, explicit research execution, the canonical analysis ledger, and t
 
 ## SFM Private AI transport
 
-`src/lib/server/aiProvider.ts` is shared by intelligence chat and economic-advisor chat. These paths now use only user-controlled model nodes configured through `SFM_AI_BASE_URL`, `SFM_AI_MODEL` and `SFM_AI_API_KEY`. A second private node can be configured with the corresponding `SFM_AI_FALLBACK_*` variables for automatic failover.
+`src/lib/server/aiProvider.ts` is the shared model transport for THE SFM. It uses only user-controlled model nodes configured through `SFM_AI_BASE_URL`, `SFM_AI_MODEL` and `SFM_AI_API_KEY`. A second private node can be configured with the corresponding `SFM_AI_FALLBACK_*` variables for automatic failover.
 
-The transport does not read or require `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `AI_GATEWAY_API_KEY` or `AI_GATEWAY_TOKEN`. It sends a standard chat-completions request to a model server controlled by THE SFM, so vLLM, a compatible LocalAI deployment or another user-controlled compatibility layer can be used without coupling application code to a model vendor.
+The application no longer carries the OpenAI or Anthropic SDK dependencies for these migrated product AI surfaces. Runtime model calls use a standard chat-completions protocol against infrastructure controlled by THE SFM, so vLLM or another compatible self-hosted layer can be used without coupling product code to a model vendor.
 
 Each request is bounded and cancelled before private-node failover. HTTP failures, rejected credentials, timeouts and empty replies never become fabricated successful responses. Auth, owner-scoped grounding, rate limits and usage accounting remain enforced. A production private endpoint must be HTTPS and authenticated.
 
-`services/sfm-private-ai/` contains the GPU service template. `GET /api/ai/private-health` is an authenticated no-store reachability check that calls the configured model nodes' `/models` endpoint and exposes no credentials.
+### Text-model surfaces using SFM Private AI
 
-The market AI insight route is also migrated to SFM Private AI. It accepts only verified real market analysis input, asks the private model for a constrained educational JSON explanation, and returns the private provider/model identity separately from the legacy `MarketAiInsight.provider` field so existing market UI types are not rewritten during this migration.
+The shared private text transport now covers:
 
-## Validation
+- intelligence assistant and economic-intelligence advisors;
+- market AI insight and the market-agent explanation layer;
+- project chat, project AI advisor and project expense analysis;
+- pitch-deck generation/improvement and pitch-deck export enhancement;
+- daily financial-education tips;
+- financial/news translation before optional non-LLM translation fallbacks.
 
-Route/provider/quote tests and guest browser tests accompany these changes. Guest fixtures are browser-only and contain no personal records or live market claims. The focused workflow covers Arabic, English and French on desktop Chromium, mobile Chromium and WebKit; it does not replace full repository CI. The authenticated live-check workflow must eventually verify a real Arabic response for the exact deployed SHA from `sfm-private-primary` or `sfm-private-fallback` before production rollout. Passing code tests alone does not establish that a GPU node has been provisioned or connected.
+Rule-based market/project calculations remain authoritative where already designed that way. A private model may explain or improve wording but must not invent missing evidence or silently replace deterministic calculations.
+
+## SFM Private Vision
+
+Receipt and invoice image understanding can use a separate self-hosted multimodal model configured through `SFM_AI_VISION_*`. The vision transport has independent primary/fallback configuration and never silently treats a text-only model as image-capable.
+
+Google Document AI remains an independent OCR/document-extraction option where configured; the previous OpenAI Vision fallback has been replaced by SFM Private Vision. Unknown receipt fields remain unavailable rather than guessed. PDF handling stays on document extraction unless a verified private multimodal PDF path is added later.
+
+`services/sfm-private-ai/` contains text and optional vision GPU service templates using vLLM. `GET /api/ai/private-health` is an authenticated no-store reachability check for configured private text nodes and exposes no model-node credentials.
+
+## Server configuration
+
+The application-side private variables are documented in `.env.example` and the GPU-host variables in `services/sfm-private-ai/.env.example`. Production should configure long random API keys and HTTPS endpoints. The application supports independent text and vision fallback nodes so a single GPU or host failure does not have to take down all AI features.
+
+## Validation and release boundary
+
+The migration has dedicated provider, health, receipt, quote, navigation and browser regressions. Guarded migration jobs also require TypeScript, lint, translations, production build and focused project/private-AI tests before committing transformed files.
+
+A code/build pass does **not** establish that a private model is live. Before production rollout, the exact deployed SHA must receive a real authenticated Arabic reply from `sfm-private-primary` or `sfm-private-fallback`, and the private health check must report a reachable configured node. Receipt vision should likewise remain disabled until a real private vision model is provisioned and verified.
+
+Do not merge this migration to production while the private GPU node and `SFM_AI_*` deployment variables are absent or the exact-SHA live private-provider verification is failing.
