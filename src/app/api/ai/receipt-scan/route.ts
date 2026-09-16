@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+import { generatePrivateVisionReply, privateAiVisionConfigured } from '@/lib/server/aiProvider';
 import {
   exceedsDeclaredBodyLimit,
   exceedsReceiptAggregateLimit,
@@ -525,129 +527,49 @@ function normalizeResult(value: unknown, fileName: string): ReceiptScanResult {
   return result;
 }
 
-function readOutputText(payload: Record<string, unknown>) {
-  if (typeof payload.output_text === 'string') return payload.output_text;
-  const output = Array.isArray(payload.output) ? payload.output : [];
-  for (const item of output) {
-    const content = item && typeof item === 'object' && Array.isArray((item as Record<string, unknown>).content)
-      ? (item as Record<string, unknown>).content as Array<Record<string, unknown>>
-      : [];
-    for (const part of content) {
-      if (typeof part.text === 'string') return part.text;
-      if (typeof part.output_text === 'string') return part.output_text;
-    }
+function extractPrivateVisionJson(text: string) {
+  const cleaned = text.replace(/```json|```/gi, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
   }
-  return '';
 }
 
-async function analyzeWithOpenAI(file: File, bytes: ArrayBuffer): Promise<ReceiptScanResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || file.type === 'application/pdf') return null;
-
-  const base64 = Buffer.from(bytes).toString('base64');
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_RECEIPT_MODEL || 'gpt-4.1-mini',
-      input: [{
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: [
-              'Extract receipt or invoice data as strict JSON only.',
-              'Invoice parsing rule: the expense amount must be the final payable amount.',
-              'Priority: Grand Total, Total, Amount Due, Balance Due, Invoice Total, المجموع الكلي, الإجمالي, المبلغ الإجمالي, المطلوب دفعه; then bottom-most Total; then Subtotal + Tax minus/including Discount if no final total exists.',
-              'Do not use line item amount, unit price, subtotal, tax, or discount as final total when a final total is visible.',
-              'Return amountCandidates with labels for Total, Subtotal, line item amount, Tax, Discount, and computed total when visible.',
-              'Detect currency symbols: $=USD, USD=USD, جنيه/EGP=EGP, KD/KWD/د.ك=KWD, SAR/ر.س=SAR, AED/د.إ=AED, €=EUR, £=GBP.',
-              'Ignore template placeholders wrapped in {{...}}. Never return {{date}}, {{InvoiceNum}}, {{CompanyName}}, or {{BillToName}} as real values.',
-              'If the date is a placeholder or unclear, use null for receiptDate.',
-              'Set description to a concise real expense description. For Arabic invoices with a merchant, use "merchant - فاتورة"; for labor invoices, use "Invoice - Labor service".',
-              'For the sample pattern "Labor: 12 hours at $105/hr" with subtotal, discount, tax, and total, choose the final Total amount.',
-              'Use this schema: {"merchantName":"string|null","description":"string|null","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number|null,"currency":"string|null","taxAmount":number|null,"discountAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD|null","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"amountCandidates":[{"label":"string","amount":number,"currency":"string|null","confidence":number,"source":"string"}],"confidenceScore":number,"confidenceLevel":"high|medium|low","warnings":["string"],"rawText":"string"}.',
-            ].join(' '),
-          },
-          {
-            type: 'input_image',
-            image_url: `data:${file.type};base64,${base64}`,
-          },
-        ],
-      }],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'receipt_scan',
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              merchantName: { type: ['string', 'null'] },
-              description: { type: ['string', 'null'] },
-              invoiceNumber: { type: ['string', 'null'] },
-              subtotal: { type: ['number', 'null'] },
-              totalAmount: { type: ['number', 'null'] },
-              currency: { type: ['string', 'null'] },
-              taxAmount: { type: ['number', 'null'] },
-              discountAmount: { type: ['number', 'null'] },
-              paidAmount: { type: ['number', 'null'] },
-              changeAmount: { type: ['number', 'null'] },
-              receiptDate: { type: ['string', 'null'] },
-              category: { type: 'string' },
-              paymentMethod: { type: 'string' },
-              items: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    name: { type: 'string' },
-                    quantity: { type: ['number', 'null'] },
-                    unitPrice: { type: ['number', 'null'] },
-                    total: { type: 'number' },
-                  },
-                  required: ['name', 'quantity', 'unitPrice', 'total'],
-                },
-              },
-              amountCandidates: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    label: { type: 'string' },
-                    amount: { type: 'number' },
-                    currency: { type: ['string', 'null'] },
-                    confidence: { type: 'number' },
-                    source: { type: 'string' },
-                  },
-                  required: ['label', 'amount', 'currency', 'confidence', 'source'],
-                },
-              },
-              confidenceScore: { type: 'number' },
-              confidenceLevel: { type: 'string' },
-              warnings: { type: 'array', items: { type: 'string' } },
-              rawText: { type: 'string' },
-            },
-            required: ['merchantName', 'description', 'invoiceNumber', 'subtotal', 'totalAmount', 'currency', 'taxAmount', 'discountAmount', 'paidAmount', 'changeAmount', 'receiptDate', 'category', 'paymentMethod', 'items', 'amountCandidates', 'confidenceScore', 'confidenceLevel', 'warnings', 'rawText'],
-          },
-        },
-      },
-    }),
+async function analyzeWithPrivateVision(file: File, bytes: ArrayBuffer): Promise<ReceiptScanResult | null> {
+  if (!privateAiVisionConfigured() || file.type === 'application/pdf') return null;
+  const mimeType = file.type || 'image/jpeg';
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) return null;
+  const generation = await generatePrivateVisionReply({
+    correlationId: randomUUID(),
+    maxTokens: 1600,
+    system: [
+      'You are SFM Private Vision, THE SFM receipt and invoice extraction engine.',
+      'Use only values visibly present in the supplied image.',
+      'Never invent merchant names, totals, dates, currencies, line items, or payment methods.',
+      'Return strict JSON only, without markdown or commentary.',
+    ].join(' '),
+    prompt: [
+      'Extract receipt or invoice data as strict JSON only.',
+      'The expense amount must be the final payable amount.',
+      'Priority: Grand Total, Total, Amount Due, Balance Due, Invoice Total, المجموع الكلي, الإجمالي, المبلغ الإجمالي, المطلوب دفعه; then bottom-most Total; then Subtotal + Tax minus/including Discount if no final total exists.',
+      'Do not use line item amount, unit price, subtotal, tax, or discount as final total when a final total is visible.',
+      'Return amountCandidates with labels for Total, Subtotal, line item amount, Tax, Discount, and computed total when visible.',
+      'Detect currency symbols: $=USD, USD=USD, جنيه/EGP=EGP, KD/KWD/د.ك=KWD, SAR/ر.س=SAR, AED/د.إ=AED, €=EUR, £=GBP.',
+      'Ignore template placeholders wrapped in {{...}}. Never return {{date}}, {{InvoiceNum}}, {{CompanyName}}, or {{BillToName}} as real values.',
+      'If the date is a placeholder or unclear, use null for receiptDate.',
+      'Set description to a concise real expense description.',
+      'Use this schema: {"merchantName":"string|null","description":"string|null","invoiceNumber":"string|null","subtotal":number|null,"totalAmount":number|null,"currency":"string|null","taxAmount":number|null,"discountAmount":number|null,"paidAmount":number|null,"changeAmount":number|null,"receiptDate":"YYYY-MM-DD|null","category":"restaurants|shopping|bills|transport|health|education|rent|loans|subscriptions|other","paymentMethod":"cash|knet|card|transfer|apple_pay|other","items":[{"name":"string","quantity":number|null,"unitPrice":number|null,"total":number}],"amountCandidates":[{"label":"string","amount":number,"currency":"string|null","confidence":number,"source":"string"}],"confidenceScore":number,"confidenceLevel":"high|medium|low","warnings":["string"],"rawText":"string"}.',
+    ].join(' '),
+    imageDataUrl: `data:${mimeType};base64,${Buffer.from(bytes).toString('base64')}`,
   });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`OpenAI receipt scan failed (${response.status})${body ? `: ${body.slice(0, 240)}` : ''}`);
-  }
-  const payload = await response.json() as Record<string, unknown>;
-  const text = readOutputText(payload);
-  if (!text) throw new Error('OpenAI receipt scan returned no output text');
-  return normalizeResult(JSON.parse(text), file.name);
+  const parsed = generation?.text ? extractPrivateVisionJson(generation.text) : null;
+  if (!parsed) throw new Error('SFM_PRIVATE_VISION_INVALID_RESPONSE');
+  return normalizeResult(parsed, file.name);
 }
 
 function buildDebug(file: File, stage: ScanDebug['stage'], patch: Partial<ScanDebug> = {}): ScanDebug {
@@ -656,7 +578,7 @@ function buildDebug(file: File, stage: ScanDebug['stage'], patch: Partial<ScanDe
     fileName: file.name,
     fileType: file.type,
     fileSize: file.size,
-    providerConfigured: Boolean(process.env.OPENAI_API_KEY),
+    providerConfigured: privateAiVisionConfigured(),
     ...patch,
   };
 }
@@ -719,26 +641,26 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
     };
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!privateAiVisionConfigured()) {
     return {
       fileName: file.name,
       success: false,
       data: undefined,
-      error: 'Receipt AI provider is not configured. You can still enter the expense manually and save the attachment.',
-      debug: buildDebug(file, 'provider', { errorSource: 'missing_OPENAI_API_KEY' }),
+      error: 'SFM Private Vision is not configured. You can still enter the expense manually and save the attachment.',
+      debug: buildDebug(file, 'provider', { errorSource: 'missing_SFM_PRIVATE_VISION' }),
     };
   }
 
   const bytes = await file.arrayBuffer();
 
-  const aiResult = await analyzeWithOpenAI(file, bytes).catch(error => {
+  const aiResult = await analyzeWithPrivateVision(file, bytes).catch(error => {
     if (process.env.NODE_ENV !== 'production') {
-      console.error('Receipt AI scan failed:', { fileName: file.name, error });
+      console.error('SFM Private Vision receipt scan failed:', { fileName: file.name, error });
     }
     return { error };
   });
   if (!aiResult || 'error' in aiResult) {
-    const message = aiResult && 'error' in aiResult && aiResult.error instanceof Error ? aiResult.error.message : 'AI provider returned no result';
+    const message = aiResult && 'error' in aiResult && aiResult.error instanceof Error ? aiResult.error.message : 'SFM Private Vision returned no result';
     return {
       fileName: file.name,
       success: false,
@@ -777,19 +699,20 @@ export async function POST(request: NextRequest) {
     if (signatures.some(valid => !valid)) return errorResponse('Unsupported or invalid receipt file', 415);
     const receiptText = formData.get('receiptText');
     const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
-    const openAiUnits = process.env.OPENAI_API_KEY && !hasReceiptText
+    const privateVisionUnits = privateAiVisionConfigured() && !hasReceiptText
       ? files.filter(file => SUPPORTED_TYPES.has(file.type) && file.type !== 'application/pdf' && file.size <= MAX_FILE_SIZE).length
       : 0;
 
-    if (openAiUnits > 0) {
+    if (privateVisionUnits > 0) {
       const usage = await consumeAiUsage({
         userId: user.id,
         feature: 'receipt_scan',
-        units: openAiUnits,
+        units: privateVisionUnits,
         metadata: {
           route: '/api/ai/receipt-scan',
           fileCount: files.length,
-          openAiUnits,
+          privateVisionUnits,
+          provider: 'sfm-private-vision',
           legacy: true,
         },
       });

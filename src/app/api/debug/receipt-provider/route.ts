@@ -17,7 +17,7 @@ export const GET = createAdminApiRoute({ permission: 'admin_dashboard' }, async 
       hasGoogleLocation: status.google.hasLocation,
       hasGoogleProcessorId: status.google.hasProcessorId,
       hasGoogleCredentialsJson: status.google.hasCredentialsJson,
-      hasOpenAiKey: status.openai.hasApiKey,
+      hasPrivateVision: status.privateVision.configured,
     },
     googleCredentials: {
       jsonParses: parsedCredentials.jsonParses,
@@ -49,8 +49,8 @@ export const GET = createAdminApiRoute({ permission: 'admin_dashboard' }, async 
         googleReason: googleClient.googleReason,
       } : {}),
     },
-    openai: {
-      configured: status.openai.configured,
+    privateVision: {
+      configured: status.privateVision.configured,
     },
   });
 });

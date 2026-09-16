@@ -26,7 +26,7 @@ describe('GET /api/receipts/provider-status authorization', () => {
     vi.clearAllMocks();
     mocks.getReceiptProviderStatus.mockReturnValue({
       google: { configured: true },
-      openai: { configured: false },
+      privateVision: { configured: false },
     });
   });
 
@@ -60,7 +60,7 @@ describe('GET /api/receipts/provider-status authorization', () => {
     expect(response.headers.get('cache-control')).toContain('private, no-store');
     await expect(response.json()).resolves.toEqual({
       google: { configured: true },
-      openai: { configured: false },
+      privateVision: { configured: false },
     });
     expect(mocks.requireAdminApiAccess).toHaveBeenCalledWith(expect.any(NextRequest), 'admin_dashboard');
   });
