@@ -26,7 +26,7 @@ function areaFor(asset: RealEstateAssetInput, row: Record<string, unknown>): num
   const sqft = asset.propertyType === 'LAND' ? positive(row.land_square_feet) : positive(row.gross_square_feet) ?? positive(row.land_square_feet);
   return sqft ? sqft / SQFT_PER_SQM : null;
 }
-function propertyType(row: Record<string, unknown>): string { return text(row.building_class_category) ?? text(row.building_class_at_time_of_sale) ?? 'UNKNOWN'; }
+function propertyType(row: Record<string, unknown>): string { return text(row.building_class_category) ?? text(row.building_class_at_time_of) ?? 'UNKNOWN'; }
 
 export function nycContextUnavailable(): OfficialPropertyContext {
   return { providerId: PROVIDER_ID, sourceName: SOURCE_NAME, sourceUrl: SOURCE, licenseName: 'NYC Open Data Terms of Use', licenseUrl: LICENSE,
@@ -59,7 +59,7 @@ export async function collectNycPropertyContext(
   const district = districtRaw.toLowerCase();
   const boroughCode = BOROUGHS[district];
   const where = boroughCode ? `borough=${soqlLiteral(boroughCode)}` : `neighborhood=${soqlLiteral(districtRaw.toUpperCase())}`;
-  const select = ['borough','neighborhood','building_class_category','block','lot','address','apartment_number','zip_code','land_square_feet','gross_square_feet','building_class_at_time_of_sale','sale_price','sale_date'].join(',');
+  const select = ['borough','neighborhood','building_class_category','block','lot','address','apartment_number','zip_code','land_square_feet','gross_square_feet','building_class_at_time_of','sale_price','sale_date'].join(',');
   const url = new URL(ENDPOINT);
   url.searchParams.set('$select', select);
   url.searchParams.set('$where', `${where} AND sale_price > 0`);
@@ -69,7 +69,7 @@ export async function collectNycPropertyContext(
   let rows: unknown;
   try {
     const response = await fetcher(url, { headers: { Accept: 'application/json' }, redirect: 'error', cache: 'no-store', signal: controller.signal });
-    if (!response.ok) throw new Error('SOURCE_HTTP_ERROR');
+    if (!response.ok) throw new Error(`SOURCE_HTTP_${response.status}`);
     const body = await response.text(); if (body.length > 1_500_000) throw new Error('SOURCE_RESPONSE_TOO_LARGE');
     rows = JSON.parse(body);
   } finally { clearTimeout(timeout); }
@@ -80,7 +80,7 @@ export async function collectNycPropertyContext(
     if (!raw || typeof raw !== 'object') continue;
     const row = raw as Record<string, unknown>;
     const saleDate = dateOnly(row.sale_date); const salePrice = positive(row.sale_price);
-    const block = text(row.block); const lot = text(row.lot); const address = text(row.address);
+    const block = text(row.block); const lotRaw = row.lot; const lot = text(lotRaw) ?? (typeof lotRaw === 'number' ? String(lotRaw) : null); const address = text(row.address);
     if (!saleDate || saleDate > now.toISOString().slice(0, 10) || !salePrice || !block || !lot) continue;
     const identity = `${text(row.borough) ?? ''}:${block}:${lot}:${saleDate}:${salePrice}:${address ?? ''}`;
     if (seen.has(identity)) continue; seen.add(identity);
@@ -90,7 +90,7 @@ export async function collectNycPropertyContext(
     records.push({
       id: createHash('sha256').update(`${PROVIDER_ID}:${identity}`).digest('hex'), observedOn: saleDate,
       municipality: 'New York City', municipalityAr: '', district: neighborhood, districtAr: '',
-      propertyType: propertyType(row), propertyTypeAr: '', usage: text(row.building_class_at_time_of_sale), usageAr: null,
+      propertyType: propertyType(row), propertyTypeAr: '', usage: text(row.building_class_at_time_of), usageAr: null,
       areaM2, reportedValue: salePrice, reportedPricePerM2: areaM2 ? salePrice / areaM2 : null,
       currency: 'USD', fullOwnership: false, sourceUrl: sourceUrl.href,
     });
