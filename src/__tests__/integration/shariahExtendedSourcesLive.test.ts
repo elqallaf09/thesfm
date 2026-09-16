@@ -25,6 +25,26 @@ describe.skipIf(!enabled)('live extended evidence without production writes', ()
     expect(result.shariah_screening_data.sources[0].sourceHash).toMatch(/^[a-f0-9]{64}$/);
     console.log('EXTENDED_SOURCE_PROOF', JSON.stringify({ symbol, ...result.shariah_screening_data.fundReview, sources: result.shariah_screening_data.sources }));
   }, 55000);
+  it.each([
+    ['SPUS','SP Funds S&P 500 Sharia Industry Exclusions ETF'],
+    ['HLAL','Wahed FTSE USA Shariah ETF'],
+    ['UMMA','Wahed Dow Jones Islamic World ETF'],
+    ['SPRE','SP Funds S&P Global REIT Sharia ETF'],
+    ['SPSK','SP Funds Dow Jones Global Sukuk ETF'],
+  ])('%s verifies the manager/SSB published Shariah designation without converting it into an SFM fatwa', async (symbol,name) => {
+    const result = await reviewFundEvidence({ symbol, name, exchange: symbol === 'HLAL' || symbol === 'UMMA' ? 'NASDAQ' : 'NYSE Arca', country: 'US' }, emptyCatalog, AbortSignal.timeout(35000));
+    proof(`${symbol}-published-shariah`, result);
+    expect(result.shariah_status).toBe('needs_review');
+    expect(result.shariah_screening_data.fundReview).toMatchObject({
+      coverage: 'published_designation_verified',
+      reason: 'published_shariah_designation_verified_periodic_monitoring_required',
+      periodicVerificationRequired: true,
+      publishedShariahDesignation: { state: 'verified' },
+    });
+    expect(result.shariah_screening_data.sources.some(source => source.type === 'fund_shariah_methodology' && /^[a-f0-9]{64}$/.test(String(source.sourceHash)))).toBe(true);
+    expect(result.shariah_reason).toContain('Published Shariah designation verified');
+    console.log('PUBLISHED_SHARIAH_FUND_PROOF', JSON.stringify({ symbol, fundReview: result.shariah_screening_data.fundReview, sources: result.shariah_screening_data.sources }));
+  }, 45000);
   it('NBK extracts issuer-bound Kuwait report values without calling the US directory', async () => {
     const result = await enrichShariahScreeningData({ symbol: 'NBK', providerSymbol: 'NBK.KW', name: 'National Bank of Kuwait',
       exchange: 'Boursa Kuwait', country: 'KW', signal: AbortSignal.timeout(45000) });
