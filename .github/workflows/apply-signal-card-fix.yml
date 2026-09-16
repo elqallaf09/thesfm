@@ -35,6 +35,10 @@ jobs:
           market_type = script.index("replace('src/lib/trader/marketQuotes.ts',\n  \"  marketTime: string | null;", yahoo_start)
           current_import = "replace('src/lib/trader/marketQuotes.ts',\n  \"import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';\",\n  \"import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';\\nimport { resolveYahooSessionQuote } from '@/lib/market/yahooSessionQuote.mjs';\")\n"
           script = script[:yahoo_start] + current_import + script[market_type:]
+          old_start = script.index("replace('src/lib/trader/marketQuotes.ts',\n  \"    previousClose: chart.previousClose,\"")
+          old_end = script.index("\n\nreplace('src/lib/trader/marketQuotes.ts',", old_start + 10)
+          current_volume = "replace('src/lib/trader/marketQuotes.ts',\n  \"    previousClose: normalizedQuote.previousClose,\\n    currency,\",\n  \"    previousClose: normalizedQuote.previousClose,\\n    volume: chart.volume,\\n    currency,\")"
+          script = script[:old_start] + current_volume + script[old_end:]
           Path('/tmp/apply.sh').write_text(script)
           PYTHON
           bash /tmp/apply.sh
