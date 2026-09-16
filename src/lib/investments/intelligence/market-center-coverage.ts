@@ -62,11 +62,11 @@ export const REAL_ESTATE_MARKET_COVERAGE: readonly RealEstateMarketCoverageEntry
     jurisdiction: { ar: 'الولايات المتحدة · شيكاغو / Cook County', en: 'United States · Chicago / Cook County', fr: 'États-Unis · Chicago / Cook County' },
     sourceName: 'Cook County Assessor Parcel Sales',
     sourceUrl: 'https://datacatalog.cookcountyil.gov/d/wvhk-k5uv',
-    state: 'LIVE_VERIFICATION', valuationReady: false,
+    state: 'CONNECTED_CONTEXT', valuationReady: false,
     note: {
-      ar: 'الربط البرمجي جاهز مع فلاتر المقاطعة الرسمية؛ اختبار الاتصال الحي على الرأس الحالي قيد التحقق.',
-      en: 'The adapter is connected with the County’s published filters; exact-head live verification is still running.',
-      fr: 'L’adaptateur est connecté avec les filtres publiés par le comté ; la vérification en direct du commit courant est en cours.',
+      ar: 'سجلات المبيعات الرسمية متصلة ومختبرة حيًا مع فلاتر المقاطعة المنشورة؛ الصفقات غير السوقية المحتملة ونقص مساحة موثوقة ما زالا يمنعان اعتمادها كتقييم آلي.',
+      en: 'Official sales are connected and live-verified with the County’s published filters; possible non-arm’s-length transfers and missing dependable area still block automatic valuation use.',
+      fr: 'Les ventes officielles sont connectées et vérifiées avec les filtres publiés par le comté ; les transferts potentiellement non marchands et l’absence de surface fiable bloquent encore la valorisation automatique.',
     },
   },
   {
