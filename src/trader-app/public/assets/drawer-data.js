@@ -70,7 +70,7 @@
     const message = loading
       ? textPair("جاري جلب بيانات الرمز…", "Loading symbol data…", "Chargement des données du symbole…")
       : failed ? textPair("تعذر جلب بعض البيانات. أعد المحاولة.", "Some data could not be loaded. Retry the request.", "Certaines données n’ont pas pu être chargées. Réessayez.")
-        : textPair("بيانات الرمز من المصادر المتاحة", "Symbol data from available sources", "Données du symbole issues des sources disponibles");
+        : textPair("بيانات الرمز من THE SFM والمصادر الموثقة", "Symbol data from THE SFM and documented sources", "Données du symbole issues de THE SFM et de sources documentées");
     const detail = failed?.error?.payload ? payloadFeatureState(failed.error.payload).label : "";
     return `<div class="drawer-load-status" role="status"><span>${h(message)}${detail ? ` · ${h(detail)}` : ""}</span><button class="ghost-btn" type="button" data-drawer-retry ${loading ? "disabled" : ""}>${h(textPair(failed ? "أعد المحاولة" : "تحديث", failed ? "Retry" : "Refresh", failed ? "Réessayer" : "Actualiser"))}</button></div>`;
   }
@@ -79,13 +79,14 @@
     if (!symbol) return;
     const encoded = encodeURIComponent(symbol);
     const refresh = force ? "&refresh=1" : "";
+    const sfmRefresh = force ? "?refresh=1" : "";
     const market = marketForSymbol(symbol) || currentMarket();
     const paths = {
       profile: `/market/asset-profile?symbol=${encoded}&lang=${currentLanguage()}`,
       quote: `/recommendations?market=${encodeURIComponent(marketApi(market.id))}&symbols=${encoded}${refresh}`,
-      technical: `/market/technical-analysis?symbol=${encoded}${refresh}`,
-      signal: `/market/signals/${encoded}${force ? "?refresh=1" : ""}`,
-      history: `/market/history?symbol=${encoded}&range=1Y${refresh}`,
+      technical: `/sfm-market/v1/trader/technical/${encoded}${sfmRefresh}`,
+      signal: `/sfm-market/v1/trader/signal/${encoded}${sfmRefresh}`,
+      history: `/sfm-market/v1/trader/history/${encoded}${sfmRefresh}`,
       news: marketNewsPath(6, { symbol, refresh: force }),
       earnings: `/trader/calendar/earnings?symbols=${encoded}&range=90${refresh}`,
       dividends: `/trader/calendar/dividends?symbols=${encoded}&range=90${refresh}`
