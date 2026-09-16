@@ -16,7 +16,7 @@ The first release adds a stable SFM-owned contract on top of the repository's ex
 - `src/lib/sfm-market/quality.ts` — completeness/freshness quality gate.
 - `src/lib/sfm-market/engine.ts` — quote normalization boundary plus deterministic technical analyst.
 
-Current Yahoo/Finnhub/Twelve Data/EODHD/Marketstack observations are explicitly identified as `aggregator` provenance. v1 does not rename an aggregator into a primary source.
+Finnhub/Twelve Data/EODHD/Marketstack observations remain explicitly identified as `aggregator` provenance while direct official adapters are introduced. **Yahoo is explicitly excluded from the SFM v1 quote and history fallback chain.** If another lawful configured feed cannot supply evidence, SFM v1 returns unavailable/partial rather than silently falling back to Yahoo. The engine never renames an aggregator into a primary source.
 
 ## Data contract rules
 
@@ -26,6 +26,7 @@ Current Yahoo/Finnhub/Twelve Data/EODHD/Marketstack observations are explicitly 
 4. Technical calculations are deterministic and only appear when the required history exists.
 5. Analyst summaries are evidence summaries, not autonomous trade execution and not a substitute for missing market facts.
 6. Upstream provenance stays visible even when THE SFM is the analytical/distribution source.
+7. Yahoo is not an allowed upstream fallback for the SFM-owned v1 contract.
 
 ## Migration path
 
@@ -46,6 +47,8 @@ Add direct source adapters where licensing and technical access permit it:
 - issuer investor-relations disclosures;
 - licensed redistribution feeds where a direct exchange feed is unavailable.
 
+The first official-data target for U.S. securities is SEC EDGAR submissions and XBRL company facts. The repository already has hardened SEC retrieval utilities, so the market engine should reuse those rather than introduce another scraper. SEC evidence supplies filings/fundamentals, not exchange prices.
+
 Each adapter must declare source class, licensing/redistribution boundary, timestamp semantics, symbol mapping and failure mode.
 
 ### Phase D — SFM historical store
@@ -60,6 +63,6 @@ Expose stable authenticated APIs/SDKs to external clients only after licensing, 
 
 - Claiming that THE SFM originated an exchange price.
 - Hiding provider provenance.
-- Removing all upstream providers in one release.
+- Removing every lawful upstream feed in one release.
 - Generating recommendations or confidence when supporting evidence is incomplete.
 - Redistributing licensed real-time exchange data without the required rights.
