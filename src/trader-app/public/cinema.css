@@ -11763,9 +11763,9 @@ html[dir="rtl"] .symbol-drawer-layer.is-open .symbol-quick-drawer { transform: t
 .drawer-head p { margin: 3px 0 0; color: var(--trader-muted); font-size: 12px; }
 
 .drawer-close,
-[data-drawer-close] {
-  width: 42px;
-  height: 42px;
+[data-drawer-close]:not(.symbol-drawer-backdrop) {
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   padding: 0;
@@ -11777,8 +11777,8 @@ html[dir="rtl"] .symbol-drawer-layer.is-open .symbol-quick-drawer { transform: t
 }
 .drawer-close:hover,
 .drawer-close:focus-visible,
-[data-drawer-close]:hover,
-[data-drawer-close]:focus-visible { border-color: var(--trader-negative); color: var(--trader-negative); }
+[data-drawer-close]:not(.symbol-drawer-backdrop):hover,
+[data-drawer-close]:not(.symbol-drawer-backdrop):focus-visible { border-color: var(--trader-negative); color: var(--trader-negative); }
 
 .symbol-drawer-tabs,
 .drawer-tabs {
