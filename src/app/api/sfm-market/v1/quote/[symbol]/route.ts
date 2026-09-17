@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
+import { persistSfmMarketObservation } from '@/lib/sfm-market/store';
 import { SFM_MARKET_ENGINE_NAME, SFM_MARKET_ENGINE_VERSION } from '@/lib/sfm-market/types';
 
 export const runtime = 'nodejs';
@@ -49,5 +50,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }, { status: 503 });
   }
 
-  return json({ ok: true, quote });
+  const persistence = await persistSfmMarketObservation(quote);
+  return json({
+    ok: true,
+    quote,
+    historyStore: {
+      recorded: persistence.stored,
+      reason: persistence.stored ? null : persistence.reason,
+    },
+  });
 }
