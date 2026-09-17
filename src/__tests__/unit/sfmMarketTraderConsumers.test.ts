@@ -10,6 +10,8 @@ const facade = source('src/lib/trader/marketQuotesFacade.ts');
 const adapter = source('src/lib/trader/sfmMarketQuotes.ts');
 const history = source('src/lib/sfm-market/history.ts');
 const engine = source('src/lib/sfm-market/engine.ts');
+const signalProjection = source('src/lib/sfm-market/traderSignals.ts');
+const signalRoute = source('src/app/api/market/signals/route.ts');
 const recommendations = source('src/app/api/recommendations/route.ts');
 const watchlist = source('src/app/api/watchlist/route.ts');
 
@@ -44,5 +46,26 @@ describe('SFM Market Data Engine product consumers', () => {
     expect(adapter).toContain('targetPrice: sufficient ? recommendation.targetPrice : null');
     expect(adapter).toContain('stopLoss: sufficient ? recommendation.stopLoss : null');
     expect(adapter).toContain("finalRecommendation: sufficient ? recommendation.finalRecommendation : 'Insufficient data'");
+  });
+
+  it('regenerates Strongest Signals from the same canonical SFM evidence instead of returning stored price or confidence', () => {
+    expect(signalProjection).toContain('fetchSfmTraderQuotesDetailed');
+    expect(signalProjection).toContain("provider: 'THE SFM'");
+    expect(signalProjection).toContain("action: 'insufficient_data'");
+    expect(signalProjection).toContain('confidenceComputed: false');
+    expect(signalProjection).toContain('targetPrice: null');
+    expect(signalProjection).toContain('stopLoss: null');
+    expect(signalProjection.toLowerCase()).not.toContain('yahoo');
+    expect(signalRoute).toContain('generateSfmTraderSignals');
+    expect(signalRoute).toContain("source: 'sfm-market-data-engine'");
+    expect(signalRoute).not.toContain('generateSignalsForUniverse');
+    expect(signalRoute).not.toContain("source: 'database'");
+  });
+
+  it('uses stored signals only as a symbol shortlist, not as stale action/confidence evidence', () => {
+    expect(signalRoute).toContain('Stored signals can only seed the symbol shortlist');
+    expect(signalRoute).toContain('market: filters.market');
+    expect(signalRoute).not.toContain('action: filters.action');
+    expect(signalRoute).not.toContain('minConfidence: filters.minConfidence');
   });
 });
