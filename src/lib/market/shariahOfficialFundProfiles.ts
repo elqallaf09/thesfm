@@ -20,17 +20,17 @@ const OFFICIAL_FUND_PROFILES: Record<string, OfficialFundEvidenceProfile> = {
   VOO: {
     symbol: 'VOO',
     provider: 'Vanguard',
-    officialUrl: 'https://investor.vanguard.com/investment-products/etfs/profile/voo',
-    host: 'investor.vanguard.com',
+    officialUrl: 'https://advisors.vanguard.com/investments/products/voo/vanguard-sp-500-etf',
+    host: 'advisors.vanguard.com',
     identityPatterns: [/Vanguard\s+S&P\s+500\s+ETF/i, /\bVOO\b/i],
     evidenceType: 'equity_index_fund',
   },
   VTI: {
     symbol: 'VTI',
     provider: 'Vanguard',
-    officialUrl: 'https://investor.vanguard.com/investment-products/etfs/profile/vti',
-    host: 'investor.vanguard.com',
-    identityPatterns: [/Vanguard\s+Total\s+Stock\s+Market\s+ETF/i, /\bVTI\b/i],
+    officialUrl: 'https://advisors.vanguard.com/investments/products/vti/vanguard-total-stock-market-etf',
+    host: 'advisors.vanguard.com',
+    identityPatterns: [/Vanguard\s+(?:Morningstar\s+)?Total\s+Stock\s+Market\s+ETF/i, /\bVTI\b/i],
     evidenceType: 'equity_index_fund',
   },
   GLD: {
