@@ -102,6 +102,13 @@ test.describe('Arabic Sharia screening and documented research page', () => {
 
   test.beforeEach(async ({ page }) => {
     await installOptionalStorageApiCompatibility(page);
+    // This UI suite owns its research fixtures and image responses. External
+    // logo availability must not make its strict console/error assertions flaky.
+    await page.route(/^https:\/\/(?:financialmodelingprep\.com\/image-stock\/|cdn\.simpleicons\.org\/|www\.google\.com\/s2\/favicons\?)/, route => route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#64748b"/></svg>',
+    }));
   });
 
   test('keeps stocks and news visible and embeds research without horizontal overflow', async ({ page }) => {

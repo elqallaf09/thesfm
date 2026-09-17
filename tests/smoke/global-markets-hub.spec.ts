@@ -296,6 +296,10 @@ test.describe('Global Markets Hub', () => {
     test.skip(isMobile, 'Desktop sidebar rail coverage runs in the desktop project; mobile nav is a drawer tested separately.');
     await useEnglish(page);
     await mockGlobalMarkets(page);
+    // Workspace navigation belongs to an explicit guest or signed-in session.
+    await page.goto('/login?mode=register', { waitUntil: 'domcontentloaded' });
+    await page.locator('button.guest-btn').click();
+    await page.waitForURL(/\/dashboard(?:\?|$)/);
     await page.goto('/global-markets');
 
     await expect(page.getByRole('link', { name: 'Global Markets Hub' })).toBeVisible();
