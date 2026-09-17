@@ -304,16 +304,18 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     await analysisTab.click();
     await expect(analysisTab).toHaveAttribute('aria-selected', 'true');
     await expect(page).toHaveURL(/(?:\?|&)view=analysis(?:&|$)/);
-    const analysis = page.locator('.analysis-terminal');
+    const analysis = page.locator('.sa-research');
     await expect(analysis).toBeVisible();
     await expect(analysis).toContainText('AAPL');
-    for (const metric of ['AI confidence', 'Strategy agreement', 'Signals', 'Trend', 'Risk', 'Support', 'Resistance', 'Momentum', 'Market breadth', 'Opportunity score']) {
-      await expect(analysis.locator('.analysis-metric').filter({ hasText: metric }), `${metric} analysis metric`).toBeVisible();
+    for (const metric of ['Daily change', 'Market cap', 'Recommendation', 'RSI', 'MACD', '20-session momentum', 'Support / resistance', 'ATR as % of price']) {
+      await expect(analysis.locator('.sa-metric').filter({ hasText: metric }), `${metric} analysis metric`).toBeVisible();
     }
-    const analysisDataState = analysis.locator('.analysis-provider-state');
-    await expect(analysisDataState.locator('span')).toHaveText('Analysis data status');
-    await expect(analysisDataState.locator('strong')).toHaveText('Available');
-    await expect(analysisDataState.locator('small')).toHaveText('Market data');
+    await expect(analysis.locator('.sa-price')).toContainText('232 USD');
+    await expect(analysis.locator('.sa-price .state-badge')).toHaveText('Available');
+    await expect(analysis.locator('.sa-source')).toContainText('Source: Polygon');
+    await expect(analysis.locator('.sa-source')).toContainText('Market observation');
+    await expect(analysis.locator('.sa-metric').filter({ hasText: 'Support / resistance' })).toContainText('224 USD / 244 USD');
+    await expect(analysis.getByRole('button', { name: 'Open detailed analysis and news' })).toBeVisible();
 
     const sessionsTab = dashboardTab(page, 'sessions');
     await sessionsTab.click();
