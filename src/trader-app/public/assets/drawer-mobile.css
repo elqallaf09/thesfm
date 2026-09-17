@@ -23,16 +23,15 @@
 .symbol-quick-drawer .drawer-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .symbol-quick-drawer .drawer-recommendation-verdict { padding: 10px; }
 /* The drawer stays narrow even on a wide desktop viewport. */
-.symbol-quick-drawer .analysis-terminal {
-  min-width: 0; flex-shrink: 0; align-self: start; padding: 12px; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "hero" "metrics" "signals" "provider";
-}
-.symbol-quick-drawer .analysis-terminal-hero { min-width: 0; min-height: min-content; padding: 14px; gap: 14px; align-content: start; }
-.symbol-quick-drawer .analysis-terminal-hero h2 { font-size: 20px; overflow-wrap: anywhere; }
-.symbol-quick-drawer .analysis-terminal-grid { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.symbol-quick-drawer .analysis-metric { padding: 10px; min-height: 78px; }
-.symbol-quick-drawer .analysis-provider-state { grid-template-columns: minmax(0, 1fr); gap: 6px; }
-.symbol-quick-drawer :is(.analysis-provider-state, .analysis-signal-strip) :is(span, strong, small) { min-width: 0; overflow-wrap: anywhere; }
+.symbol-quick-drawer .sa-research { min-width: 0; flex-shrink: 0; align-self: start; padding: 12px; }
+.symbol-quick-drawer .sa-research-head { min-width: 0; min-height: min-content; gap: 12px; align-items: start; }
+.symbol-quick-drawer .sa-identity { flex-basis: 100%; }
+.symbol-quick-drawer .sa-identity h2 { font-size: 20px; overflow-wrap: anywhere; }
+.symbol-quick-drawer .sa-price { min-width: 0; justify-items: start; overflow-wrap: anywhere; }
+.symbol-quick-drawer .sa-source { gap: 8px; overflow-wrap: anywhere; }
+.symbol-quick-drawer .sa-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.symbol-quick-drawer .sa-metrics > div { padding: 10px; }
+.symbol-quick-drawer .sa-lenses { grid-template-columns: minmax(0, 1fr); }
 .symbol-quick-drawer .drawer-price { grid-template-columns: minmax(0, 1fr) auto; }
 .symbol-quick-drawer .drawer-price > span { grid-column: 1 / -1; }
 .symbol-quick-drawer :is(button, summary):focus-visible { outline: 2px solid var(--trader-selected); outline-offset: 2px; }

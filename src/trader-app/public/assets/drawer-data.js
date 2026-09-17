@@ -163,8 +163,10 @@
     loaded = mergeRecLists(marketRows, loaded);
     const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
     const rec = watchRow || cachedDetail && cachedDetail.rec || loadedAsset;
-    // A cached list/signal is not a newer quote. Keep fetched price and its evidence together.
-    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(rec || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(watchRow || {}) }));
+    // Select a complete observation: an empty watchlist row must not erase a fetched quote.
+    const candidates = [watchRow, cachedDetail && cachedDetail.asset, rec, loadedAsset].filter(Boolean)
+      .map(row => normalizeQuote(norm({ ...row, symbol: key })));
+    const asset = candidates.length ? mergeRecLists(candidates.slice(1), [candidates[0]])[0] : normalizeQuote(norm({ symbol: key }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
   }
 

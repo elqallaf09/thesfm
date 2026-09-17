@@ -69,12 +69,13 @@ for (const setup of [
     expect(geometry.headerHeight).toBeLessThan(125); expect(geometry.contentHeight).toBeGreaterThan(80);
     expect(geometry.closeWidth).toBeGreaterThanOrEqual(44); expect(geometry.closeHeight).toBeGreaterThanOrEqual(44);
     await frame.locator('#drawer-tab-ai').click();
-    const analysis = drawer.locator('.analysis-terminal');
+    const analysis = drawer.locator('.sa-research');
     await expect(analysis).toBeVisible();
+    await expect(analysis.locator('.sa-price')).toContainText('151.23');
     const analysisGeometry = await analysis.evaluate(element => {
-      const box = element.getBoundingClientRect(); const heroElement = element.querySelector('.analysis-terminal-hero')!;
+      const box = element.getBoundingClientRect(); const heroElement = element.querySelector('.sa-research-head')!;
       const hero = heroElement.getBoundingClientRect();
-      const metrics = element.querySelector('.analysis-terminal-grid')!.getBoundingClientRect();
+      const metrics = element.querySelector('.sa-metrics')!.getBoundingClientRect();
       return { width: box.width, contentWidth: element.scrollWidth, heroBottom: hero.bottom, metricsTop: metrics.top, heroHeight: hero.height, heroContentHeight: heroElement.scrollHeight };
     });
     expect(analysisGeometry.contentWidth).toBeLessThanOrEqual(analysisGeometry.width + 1);
@@ -82,7 +83,7 @@ for (const setup of [
     expect(analysisGeometry.heroContentHeight).toBeLessThanOrEqual(analysisGeometry.heroHeight + 1);
     await drawer.locator('#drawer-more-toggle').click();
     await expect(drawer.locator('[data-drawer-share]')).toBeVisible();
-    expect(await analysis.locator('.analysis-terminal-hero').evaluate(element => element.scrollHeight - element.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+    expect(await analysis.locator('.sa-research-head').evaluate(element => element.scrollHeight - element.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
     await info.attach('fixture-symbol-drawer', { body: await page.screenshot({ scale: 'css', path: info.outputPath('quick-analysis.png') }), contentType: 'image/png' });
     await drawer.locator('.drawer-close').click();
     await expect(drawer).toHaveCount(0);
