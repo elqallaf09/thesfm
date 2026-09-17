@@ -64,8 +64,11 @@ describe('SFM Market Data Engine product consumers', () => {
 
   it('uses stored signals only as a symbol shortlist, not as stale action/confidence evidence', () => {
     expect(signalRoute).toContain('Stored signals can only seed the symbol shortlist');
-    expect(signalRoute).toContain('market: filters.market');
-    expect(signalRoute).not.toContain('action: filters.action');
-    expect(signalRoute).not.toContain('minConfidence: filters.minConfidence');
+    const shortlistCall = signalRoute.match(/getLatestSignalsFromDb\(admin, \{([\s\S]*?)\}\);/)?.[1] ?? '';
+    expect(shortlistCall).toContain('market: filters.market');
+    expect(shortlistCall).toContain('limit: shortlistLimit');
+    expect(shortlistCall).not.toContain('action:');
+    expect(shortlistCall).not.toContain('minConfidence:');
+    expect(signalRoute).toContain('action: filters.action as MarketSignalAction');
   });
 });
