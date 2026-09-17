@@ -163,10 +163,10 @@
     loaded = mergeRecLists(marketRows, loaded);
     const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
     const rec = watchRow || cachedDetail && cachedDetail.rec || loadedAsset;
-    // Select a complete observation: an empty watchlist row must not erase a fetched quote.
-    const candidates = [watchRow, cachedDetail && cachedDetail.asset, rec, loadedAsset].filter(Boolean)
-      .map(row => normalizeQuote(norm({ ...row, symbol: key })));
-    const asset = candidates.length ? mergeRecLists(candidates.slice(1), [candidates[0]])[0] : normalizeQuote(norm({ symbol: key }));
+    // The fetched observation is authoritative, including an explicitly unavailable price.
+    // Keep its evidence together; an empty watchlist row must not overwrite it.
+    const observation = cachedDetail && cachedDetail.asset || watchRow || loadedAsset || rec || {};
+    const asset = normalizeQuote(norm({ symbol: key, ...observation }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
   }
 
