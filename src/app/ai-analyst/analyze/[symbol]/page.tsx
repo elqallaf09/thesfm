@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { AiAnalystResearchWorkspace } from '@/components/ai-analyst/AiAnalystResearchWorkspace';
 import { AiAnalystShell } from '@/components/ai-analyst/AiAnalystShell';
-import { normalizeAiAnalystAssetType, normalizeAiAnalystHorizon, normalizeAiAnalystSymbol } from '@/lib/ai-analyst/legacyRoutes';
+import { normalizeAiAnalystAssetType, normalizeAiAnalystHorizon, normalizeAiAnalystPathSymbol } from '@/lib/ai-analyst/legacyRoutes';
 import { investmentAnalysisContextFromQuery } from '@/lib/investments/center';
 
 type PageProps = {
@@ -25,7 +25,7 @@ function single(value: string | string[] | undefined) {
 
 export default async function AiAnalystAssetPage({ params, searchParams }: PageProps) {
   const [{ symbol: rawSymbol }, query] = await Promise.all([params, searchParams]);
-  const symbol = normalizeAiAnalystSymbol(rawSymbol);
+  const symbol = normalizeAiAnalystPathSymbol(rawSymbol);
   if (!symbol) redirect('/ai-analyst/overview');
   const assetType = normalizeAiAnalystAssetType(single(query.assetType));
   const horizon = normalizeAiAnalystHorizon(single(query.horizon));

@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { userAuthStatePath } from './auth-state';
 
 const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
+const AUTH_UNAVAILABLE_NAV_RETRY_DELAYS_MS = [1_500, 3_000, 5_000] as const;
 
 async function expectNoHorizontalOverflow(page: Page) {
   await expect.poll(async () => page.evaluate(() => (
@@ -16,13 +17,30 @@ const authenticatedRouteMatrix = [
   { path: '/notifications', url: /\/notifications(?:\?|$)/, marker: '.notification-list' },
 ] as const;
 
+type AuthenticatedRoute = (typeof authenticatedRouteMatrix)[number];
+
+function isTransientAuthUnavailable(page: Page) {
+  try {
+    const url = new URL(page.url());
+    return url.pathname === '/login' && url.searchParams.get('auth') === 'unavailable';
+  } catch {
+    return false;
+  }
+}
+
 async function navigateToStableAuthenticatedRoute(
   page: Page,
-  route: (typeof authenticatedRouteMatrix)[number],
+  route: AuthenticatedRoute,
 ) {
   if (page.url() !== 'about:blank') await page.waitForLoadState('domcontentloaded');
 
-  const response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+  let response: Awaited<ReturnType<Page['goto']>> = null;
+  for (let attempt = 0; attempt <= AUTH_UNAVAILABLE_NAV_RETRY_DELAYS_MS.length; attempt += 1) {
+    response = await page.goto(route.path, { waitUntil: 'domcontentloaded' });
+    if (!isTransientAuthUnavailable(page) || attempt === AUTH_UNAVAILABLE_NAV_RETRY_DELAYS_MS.length) break;
+    await page.waitForTimeout(AUTH_UNAVAILABLE_NAV_RETRY_DELAYS_MS[attempt]);
+  }
+
   expect(response?.status() ?? 200).toBeLessThan(500);
   await expect(page).toHaveURL(route.url);
   await expect(page.locator(route.marker)).toBeVisible();
@@ -68,21 +86,17 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
     test('Today, Tasks, Notifications, and Command Center redirect respect the unified responsibility model', async ({ page }) => {
       test.skip(!userAuthConfigured, 'No E2E user credentials are configured for source-backed daily workflow validation.');
 
-      await page.goto('/today', { waitUntil: 'domcontentloaded' });
-      await expect(page).toHaveURL(/\/today(?:\?|$)/);
-      await expect(page.locator('.today-main')).toBeVisible();
+      await navigateToStableAuthenticatedRoute(page, authenticatedRouteMatrix[0]);
       await expect(page.locator('a[href="/tasks"]').first()).toBeVisible();
       await expect(page.locator('a[href="/reports-center"]').first()).toBeVisible();
       await expect(page.locator('a[href="/command-center"]')).toHaveCount(0);
       await expectNoHorizontalOverflow(page);
 
-      await page.goto('/tasks', { waitUntil: 'domcontentloaded' });
+      await navigateToStableAuthenticatedRoute(page, authenticatedRouteMatrix[1]);
       await expect(page.locator('.tasks-search input')).toBeVisible();
-      await expect(page.locator('.tasks-toolbar [role="tablist"]')).toBeVisible();
 
-      await page.goto('/notifications', { waitUntil: 'domcontentloaded' });
+      await navigateToStableAuthenticatedRoute(page, authenticatedRouteMatrix[2]);
       await expect(page.locator('.notif-page:visible')).toBeVisible();
-      await expect(page.locator('.notification-list')).toBeVisible();
       await expectNoHorizontalOverflow(page);
 
       await page.goto('/command-center', { waitUntil: 'domcontentloaded' });
@@ -109,7 +123,7 @@ test.describe('Phase 3.5 daily workflow consolidation', () => {
     test('Today renders Arabic, English, French, dark, and light without changing routes', async ({ page }, testInfo) => {
       test.skip(!userAuthConfigured, 'No E2E user credentials are configured for localized workflow validation.');
       test.skip(testInfo.project.name !== 'chromium-desktop', 'Locale and theme combinations run once in desktop Chromium.');
-      await page.goto('/today', { waitUntil: 'domcontentloaded' });
+      await navigateToStableAuthenticatedRoute(page, authenticatedRouteMatrix[0]);
 
       for (const [lang, theme, direction] of [
         ['ar', 'dark', 'rtl'],

@@ -19,6 +19,7 @@ export default defineConfig({
       '.github/scripts/__tests__/**/*.test.mjs',
       // Specialist engine/adapter regressions live beside their implementation.
       'src/lib/investments/intelligence/**/*.test.ts',
+      'src/lib/market/**/*.test.ts',
     ],
     fileParallelism: false,
     coverage: {

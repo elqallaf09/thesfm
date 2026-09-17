@@ -23,4 +23,10 @@ describe('owned-history input boundaries', () => {
     expect(response.status).toBe(400);
     expect(readHistory).not.toHaveBeenCalled();
   });
+
+  it('accepts a percent-encoded index symbol', async () => {
+    const response = await GET(new NextRequest('https://example.test/api/sfm-market/v1/history/%5EGSPC'), { params: Promise.resolve({ symbol: '%5EGSPC' }) });
+    expect(response.status).toBe(200);
+    expect(readHistory).toHaveBeenCalledWith('^GSPC', { from: null, to: null, limit: 200 });
+  });
 });

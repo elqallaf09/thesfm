@@ -86,6 +86,12 @@ export function normalizeAiAnalystSymbol(value: string | null | undefined): stri
   return validSymbol(value ?? null);
 }
 
+/** Route segments may retain percent encoding across compatibility redirects. */
+export function normalizeAiAnalystPathSymbol(value: string | null | undefined): string | null {
+  try { return normalizeAiAnalystSymbol(decodeURIComponent(value ?? '')); }
+  catch { return null; }
+}
+
 export function normalizeAiAnalystAssetType(value: string | null | undefined): IntelligenceAssetType {
   const normalized = String(value ?? '').trim().toUpperCase();
   if ((SUPPORTED_ASSET_TYPES as readonly string[]).includes(normalized)) return normalized as IntelligenceAssetType;

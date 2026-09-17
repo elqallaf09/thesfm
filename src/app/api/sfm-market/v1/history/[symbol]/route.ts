@@ -26,9 +26,9 @@ function validIsoInput(value: string | null) {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const { symbol } = await context.params;
-  // Next has already decoded route parameters; decoding again can throw for
-  // malformed percent input or change the identity of an encoded symbol.
-  const decodedSymbol = (symbol ?? '').trim().toUpperCase();
+  let decodedSymbol: string;
+  try { decodedSymbol = decodeURIComponent(symbol ?? '').trim().toUpperCase(); }
+  catch { decodedSymbol = ''; }
   if (!/^[A-Z0-9.^=:/-]{1,24}$/.test(decodedSymbol)) {
     return json({ ok: false, engine: SFM_MARKET_ENGINE_NAME, code: 'INVALID_SYMBOL', message: 'A valid symbol is required.' }, { status: 400 });
   }

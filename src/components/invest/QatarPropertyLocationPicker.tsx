@@ -29,14 +29,14 @@ export function QatarPropertyLocationPicker({ asset, onChange }: { asset: RealEs
   const districts = locations.filter(item => item.municipality === city);
   return <>
     <label>{L('البلدية من المصدر الرسمي', 'Official municipality', 'Municipalité officielle')}
-      <select disabled={state !== 'ready'} value={city} onChange={event => onChange({ city: event.target.value, municipality: event.target.value, district: '' })}>
+      <select aria-label={L('البلدية من المصدر الرسمي', 'Official municipality', 'Municipalité officielle')} disabled={state !== 'ready'} value={city} onChange={event => onChange({ city: event.target.value, municipality: event.target.value, district: '' })}>
         <option value="">{state === 'loading' ? L('جارٍ تحميل الدليل…', 'Loading directory…', 'Chargement…') : L('اختر البلدية', 'Choose municipality', 'Choisir la municipalité')}</option>
         {city && !municipalities.some(item => item.municipality === city) ? <option value={city}>{city}</option> : null}
         {municipalities.map(item => <option key={item.municipality} value={item.municipality}>{lang === 'ar' ? item.municipalityAr || item.municipality : item.municipality}</option>)}
       </select>
     </label>
     <label>{L('الحي من المصدر الرسمي', 'Official district', 'Quartier officiel')}
-      <select disabled={state !== 'ready' || districts.length === 0} value={asset.district ?? ''} onChange={event => onChange({ district: event.target.value })}>
+      <select aria-label={L('الحي من المصدر الرسمي', 'Official district', 'Quartier officiel')} disabled={state !== 'ready' || districts.length === 0} value={asset.district ?? ''} onChange={event => onChange({ district: event.target.value })}>
         <option value="">{L('اختر الحي', 'Choose district', 'Choisir le quartier')}</option>
         {asset.district && !districts.some(item => item.district === asset.district) ? <option value={asset.district}>{asset.district}</option> : null}
         {districts.map(item => <option key={item.district} value={item.district}>{lang === 'ar' ? item.districtAr || item.district : item.district}</option>)}

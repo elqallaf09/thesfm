@@ -12,7 +12,7 @@ describe('anonymous workspace shell behavior', () => {
     expect(routes).toContain("'/ai-analyst/overview'");
     expect(routes).toContain('isAnonymousPublicWorkspaceRoute');
     expect(layout).toContain('isAnonymousPublicWorkspaceRoute(pathname)');
-    expect(layout).toContain('isAnonymousWorkspacePage && (authLoading || !user)');
+    expect(layout).toContain('isAnonymousWorkspacePage && (authLoading || (!user && !isGuest))');
   });
 
   it('shows a sign-in action instead of profile/logout controls when no user exists', () => {

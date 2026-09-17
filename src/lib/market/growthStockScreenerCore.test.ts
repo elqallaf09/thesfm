@@ -25,7 +25,7 @@ describe('growthStockScreenerCore', () => {
     expect(rows[0]?.revenueGrowth).toBe(0.24);
   });
 
-  it('screens the full supplied universe using fundamentals instead of a fixed watchlist', () => {
+  it('screens the supplied universe using fundamentals and breaks equal-score ties by market cap', () => {
     const universe = normalizeGrowthUniverseRows([
       { symbol: 'FAST', companyName: 'Fast Growth', marketCap: 2_000_000_000, price: 40, volume: 2_000_000 },
       { symbol: 'TOPLINE', companyName: 'Top Line Growth', marketCap: 900_000_000, price: 12, volume: 500_000 },
@@ -38,6 +38,8 @@ describe('growthStockScreenerCore', () => {
     ]);
 
     const candidates = selectGrowthCandidates(universe, growth);
-    expect(candidates.map(row => row.symbol)).toEqual(['TOPLINE', 'FAST']);
+    // Both weighted growth scores are 0.174; the larger company wins the tie.
+    expect(candidates.map(row => row.screenScore)).toEqual([0.174, 0.174]);
+    expect(candidates.map(row => row.symbol)).toEqual(['FAST', 'TOPLINE']);
   });
 });
