@@ -13,7 +13,10 @@ export default defineConfig({
   testDir: './tests/smoke',
   timeout: 30_000,
   expect: {
-    timeout: 8_000,
+    // Smoke assertions validate correctness, not performance. Source-backed
+    // pages can need more than 8s on the shared CI runner while production
+    // build and the dedicated performance suite still enforce speed budgets.
+    timeout: 15_000,
   },
   fullyParallel: false,
   // The production server is intentionally single-process. Keeping local smoke
