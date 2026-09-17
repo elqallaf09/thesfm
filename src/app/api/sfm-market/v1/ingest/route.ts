@@ -79,7 +79,7 @@ async function ingest(symbols: string[], forceFresh: boolean) {
   return results;
 }
 
-async function run(request: NextRequest, symbols: string[], forceFresh: boolean) {
+async function run(symbols: string[], forceFresh: boolean) {
   const results = await ingest(symbols, forceFresh);
   const inserted = results.filter(item => item.inserted === true).length;
   const duplicates = results.filter(item => item.duplicate === true).length;
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
   const requested = normalizeSymbols(body.symbols);
   const symbols = requested.length ? requested : normalizeSymbols(SIGNAL_REFRESH_UNIVERSE);
   const forceFresh = body.forceFresh === true || body.refresh === true;
-  return run(request, symbols, forceFresh);
+  return run(symbols, forceFresh);
 }
 
 export async function GET(request: NextRequest) {
@@ -117,5 +117,5 @@ export async function GET(request: NextRequest) {
   }
   const requested = normalizeSymbols(request.nextUrl.searchParams.get('symbols'));
   const symbols = requested.length ? requested : normalizeSymbols(SIGNAL_REFRESH_UNIVERSE);
-  return run(request, symbols, true);
+  return run(symbols, true);
 }
