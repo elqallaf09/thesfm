@@ -72,16 +72,19 @@ describe('investment canonical cutover readiness', () => {
   });
 
   it('blocks orphan canonical rows without exposing row identifiers in the result', () => {
+    const positionId = '__private-position-id__';
+    const sourceRowId = '__private-source-row-id__';
     const result = computeInvestmentCutoverReadiness({
       legacy: [],
-      canonical: [canonical('a', 'missing')],
-      checks: [check('a', 'missing')],
+      canonical: [canonical(positionId, sourceRowId)],
+      checks: [check(positionId, sourceRowId)],
     });
+    const payload = JSON.stringify(result);
 
     expect(result.readyForReadCutover).toBe(false);
     expect(result.orphanCanonicalCount).toBe(1);
     expect(result.reasons).toContain('CANONICAL_ROWS_ORPHANED');
-    expect(JSON.stringify(result)).not.toContain('missing');
-    expect(JSON.stringify(result)).not.toContain('"a"');
+    expect(payload).not.toContain(positionId);
+    expect(payload).not.toContain(sourceRowId);
   });
 });
