@@ -8,6 +8,22 @@ import { OfficialPropertyContextPanel } from '@/components/invest/OfficialProper
 const report: OfficialPropertyContext = { providerId: 'qa-moj-open-sales-context', sourceName: 'Qatar MOJ', sourceUrl: 'https://www.data.gov.qa/', licenseName: 'CC BY 4.0', licenseUrl: 'https://creativecommons.org/licenses/by/4.0/', status: 'CONNECTED_REVIEW_REQUIRED', retrievedAt: '2026-09-16T12:00:00Z', metadataUpdatedAt: '2026-08-31', latestObservationOn: '2025-12-31', sampleTotal: 0, sampleTruncated: false, records: [], valuationEligible: false, reasons: ['STALE_OBSERVATIONS', 'NO_LOCAL_RECORDS'] };
 beforeEach(() => { language.lang = 'en'; language.dir = 'ltr'; });
 describe('official property source presentation', () => {
+  it.each(['ar', 'en', 'fr'])('keeps conflicting original classifications visible for review in %s', lang => {
+    language.lang = lang; language.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    const html = renderToStaticMarkup(<OfficialPropertyContextPanel report={{
+      ...report, sampleTotal: 1, reasons: ['SOURCE_CLASSIFICATION_REVIEW'], records: [{
+        id: 'source-row', municipality: 'Test city', municipalityAr: 'مدينة اختبار',
+        district: 'Test district', districtAr: 'حي اختبار', observedOn: '2025-12-31',
+        propertyType: 'Two separate villas', propertyTypeAr: 'أرض فضاء',
+        usage: null, usageAr: null, areaM2: 100, reportedValue: 100000,
+        reportedPricePerM2: 1000, currency: null, fullOwnership: true,
+        sourceUrl: 'https://www.data.gov.qa/',
+      }],
+    }} />);
+    expect(html).toContain('Two separate villas');
+    expect(html).toContain('<small lang="ar" dir="rtl">أرض فضاء</small>');
+    expect(html).not.toContain('Save valuation');
+  });
   it.each(['ar', 'en', 'fr'])('renders source dates, attribution and no valuation claim in %s', lang => {
     language.lang = lang; language.dir = lang === 'ar' ? 'rtl' : 'ltr';
     const html = renderToStaticMarkup(<OfficialPropertyContextPanel report={report} />);
