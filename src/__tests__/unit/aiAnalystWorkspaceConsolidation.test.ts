@@ -40,18 +40,18 @@ describe('AI Analyst workspace consolidation', () => {
       'analysis', 'markets', 'monitoring', 'knowledge', 'configuration',
     ]);
 
-    const routes = new Map(AI_ANALYST_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => [item.key, item.href])));
+    const routes = new Map<string, string>(AI_ANALYST_NAVIGATION_GROUPS.flatMap(group => group.items.map(item => [item.key, item.href])));
+    expect(routes.has('agent')).toBe(false);
+    expect(routes.has('assetDetails')).toBe(false);
     expect(Object.fromEntries(routes)).toMatchObject({
       overview: '/ai-analyst/overview',
       analysis: '/ai-analyst/analyze',
       compare: '/ai-analyst/compare',
-      agent: '/ai-analyst/agent',
       path: '/ai-analyst/path',
       history: '/ai-analyst/history?view=history',
       future: '/ai-analyst/opportunities',
       marketLeadership: '/ai-analyst/market-leadership',
       markets: '/ai-analyst/markets',
-      assetDetails: '/ai-analyst/analyze',
       marketSessions: '/ai-analyst/markets/sessions',
       marketMap: '/ai-analyst/markets?view=map',
       watchlist: '/ai-analyst/watchlist',

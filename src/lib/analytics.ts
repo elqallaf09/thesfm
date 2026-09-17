@@ -1,7 +1,5 @@
 'use client';
 
-import { supabase } from '@/integrations/supabase/client';
-
 export type AnalyticsEventType =
   | 'page_view'
   | 'section_view'
@@ -140,7 +138,10 @@ export async function trackEvent(eventType: AnalyticsEventType, payload: TrackPa
   const ua = navigator.userAgent || '';
   const accessToken = 'accessToken' in payload
     ? payload.accessToken ?? null
-    : (await supabase.auth.getSession().catch(() => ({ data: { session: null } }))).data.session?.access_token ?? null;
+    : await import('@/integrations/supabase/client')
+      .then(({ supabase }) => supabase.auth.getSession())
+      .then(({ data }) => data.session?.access_token ?? null)
+      .catch(() => null);
   const body = {
     event_type: eventType,
     session_id: getAnalyticsSessionId(),

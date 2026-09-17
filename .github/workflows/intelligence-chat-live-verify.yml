@@ -2,10 +2,11 @@ name: Intelligence chat live verification
 
 on:
   push:
-    branches: [main, fix/intelligence-chat-provider-resilience-20260915]
+    branches: [main, fix/intelligence-chat-provider-resilience-20260915, fix/ai-workspace-providers-layout-20260916]
     paths:
       - src/app/api/intelligence/chat/route.ts
       - src/lib/ai-analyst/marketChat.ts
+      - src/lib/server/aiProvider.ts
       - .github/workflows/intelligence-chat-live-verify.yml
   workflow_dispatch:
 
@@ -114,7 +115,7 @@ jobs:
               if (!response.ok || result.ok !== true || result.source !== 'ai') {
                 throw new Error(`Live AI reply failed: HTTP ${response.status}, code=${code}, correlation=${correlation || 'missing'}`);
               }
-              if (!['vercel-ai-gateway', 'anthropic', 'openai'].includes(result.provider)) throw new Error('Missing verified provider identity');
+              if (!['vercel-ai-gateway', 'openai'].includes(result.provider)) throw new Error('Missing verified provider identity');
               if (typeof result.text !== 'string' || result.text.trim().length < 10 || !/[\u0600-\u06ff]/u.test(result.text)) throw new Error('No substantive Arabic AI reply');
               if (!correlation || response.headers.get('x-correlation-id') !== correlation) throw new Error('Correlation contract failed');
               if (!/no-store/i.test(response.headers.get('cache-control') || '')) throw new Error('Private chat response must not be cached');

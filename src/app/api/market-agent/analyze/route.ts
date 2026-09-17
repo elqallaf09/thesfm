@@ -1,6 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import OpenAI from 'openai';
 import { proxyHistory } from '@/lib/market/marketDataProvider';
 import { normalizeResearchStatus } from '@/lib/market-state/normalizeStatus';
 import { normalizeMarketSymbol, type NormalizedMarketSymbol } from '@/lib/market/normalizeSymbol';
@@ -10,6 +10,7 @@ import type { MarketAssetType, MarketSearchItem } from '@/lib/market/marketServi
 import { validateSymbol } from '@/lib/market/marketService';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { consumeAiUsage } from '@/lib/server/aiUsage';
+import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
 import {
   aggregateMarketAgentPoints,
   agentAssetTypeFromProvider,
@@ -28,8 +29,6 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const DEFAULT_MARKET_AGENT_AI_MODEL = 'gpt-4o-mini';
-const MARKET_AGENT_AI_TIMEOUT_MS = 8000;
 const GLOBAL_STOCK_SUFFIXES = [
   '.KW', '.SR', '.SA', '.DU', '.AD', '.AE', '.QA', '.BH', '.OM',
   '.T', '.HK', '.SS', '.SZ', '.KS', '.KQ', '.TW', '.TWO', '.NS', '.BO', '.SI', '.JK', '.BK', '.KL', '.AX',
@@ -151,8 +150,7 @@ async function resolveAgentSymbolCandidates(rawSymbol: string, assetType: Market
 }
 
 async function explainAnalysisWithAi(analysis: MarketAgentSuccessResponse, userId?: string | null) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey || !userId) return analysis.summaryArabic;
+  if (!userId || !aiProviderConfigured()) return analysis.summaryArabic;
 
   const usage = await consumeAiUsage({
     userId,
@@ -162,69 +160,51 @@ async function explainAnalysisWithAi(analysis: MarketAgentSuccessResponse, userI
       symbol: analysis.symbol,
       assetType: analysis.assetType,
       timeframe: analysis.timeframe,
+      provider: 'sfm-private-ai',
     },
   });
   if (!usage.allowed) return analysis.summaryArabic;
 
-  const openai = new OpenAI({ apiKey });
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), MARKET_AGENT_AI_TIMEOUT_MS);
+  const generation = await generateAssistantReply({
+    correlationId: randomUUID(),
+    maxTokens: 220,
+    system: [
+      'You are THE SFM market analysis explanation assistant running on SFM Private AI.',
+      'Use only the supplied rule-based market analysis JSON.',
+      'Do not invent prices, indicators, news, fundamentals, events, causes, or reasons.',
+      'Do not change the suggested action, confidence, risk level, or levels.',
+      'Write one concise professional Arabic paragraph only.',
+      'Frame it as an automated analytical reading, not financial advice.',
+      'Avoid exaggerated wording such as مضمون، أكيد، فرصة لا تعوض، اربح الآن, guaranteed, risk-free.',
+    ].join(' '),
+    messages: [{
+      role: 'user',
+      content: JSON.stringify({
+        symbol: analysis.symbol,
+        assetType: analysis.assetType,
+        timeframe: analysis.timeframe,
+        currentPrice: analysis.currentPrice,
+        direction: analysis.direction,
+        suggestedAction: analysis.suggestedAction,
+        confidence: analysis.confidence,
+        riskLevel: analysis.riskLevel,
+        entryZone: analysis.entryZone,
+        stopLoss: analysis.stopLoss,
+        takeProfit: analysis.takeProfit,
+        support: analysis.support,
+        resistance: analysis.resistance,
+        trends: analysis.trends,
+        indicators: analysis.indicators,
+        disclaimer: analysis.disclaimerArabic,
+      }),
+    }],
+  });
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MARKET_AGENT_MODEL || process.env.OPENAI_MODEL || DEFAULT_MARKET_AGENT_AI_MODEL,
-      temperature: 0.2,
-      max_tokens: 220,
-      messages: [
-        {
-          role: 'system',
-          content: [
-            'You are THE SFM market analysis explanation assistant.',
-            'Use only the supplied rule-based market analysis JSON.',
-            'Do not invent prices, indicators, news, fundamentals, or reasons.',
-            'Do not change the suggested action, confidence, risk level, or levels.',
-            'Write one concise professional Arabic paragraph only.',
-            'Frame it as an automated analytical reading, not financial advice.',
-            'Avoid exaggerated wording such as مضمون، أكيد، فرصة لا تعوض، اربح الآن, guaranteed, risk-free.',
-          ].join(' '),
-        },
-        {
-          role: 'user',
-          content: JSON.stringify({
-            symbol: analysis.symbol,
-            assetType: analysis.assetType,
-            timeframe: analysis.timeframe,
-            currentPrice: analysis.currentPrice,
-            direction: analysis.direction,
-            suggestedAction: analysis.suggestedAction,
-            confidence: analysis.confidence,
-            riskLevel: analysis.riskLevel,
-            entryZone: analysis.entryZone,
-            stopLoss: analysis.stopLoss,
-            takeProfit: analysis.takeProfit,
-            support: analysis.support,
-            resistance: analysis.resistance,
-            trends: analysis.trends,
-            indicators: analysis.indicators,
-            disclaimer: analysis.disclaimerArabic,
-          }),
-        },
-      ],
-    }, { signal: controller.signal });
-
-    const text = completion.choices?.[0]?.message?.content?.trim();
-    if (!text || text.length < 40 || text.length > 900 || FORBIDDEN_ADVICE_WORDS.test(text)) {
-      return analysis.summaryArabic;
-    }
-    return text.replace(/^["'`]+|["'`]+$/g, '').trim();
-  } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[market-agent] AI explanation fallback used', error instanceof Error ? error.message : error);
-    }
+  const text = generation?.text?.trim();
+  if (!text || text.length < 40 || text.length > 900 || FORBIDDEN_ADVICE_WORDS.test(text)) {
     return analysis.summaryArabic;
-  } finally {
-    clearTimeout(timeout);
   }
+  return text.replace(/^["'`]+|["'`]+$/g, '').trim();
 }
 
 function resolveProviderAssetType(assetType: MarketAgentAssetType, normalizedAssetType?: MarketAssetType): MarketAssetType {

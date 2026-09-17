@@ -37,8 +37,14 @@ async function enterCenter(page: Page, lang: 'ar' | 'en' | 'fr', theme: 'light' 
   await expect(page.locator('html')).toHaveClass(new RegExp(`(^|\\s)${theme}(\\s|$)`));
 }
 
-test('Investments Center preserves the legacy-read data, canonical handoff, and responsive language/theme shell', async ({ page }) => {
+test('Investments Center preserves owned property totals while handing market analysis to the real estate center', async ({ page }) => {
   let missingLogoRequests = 0;
+  let propertyAnalysisRequests = 0;
+  page.on('request', request => {
+    if (/\/api\/investments\/real-estate\/(?:analyze|snapshots)(?:\?|$)/.test(new URL(request.url()).pathname)) {
+      propertyAnalysisRequests += 1;
+    }
+  });
   await page.route('**financialmodelingprep.com/image-stock/MISSING.png', route => {
     missingLogoRequests += 1;
     return route.fulfill({ status: 404, body: '' });
@@ -46,13 +52,21 @@ test('Investments Center preserves the legacy-read data, canonical handoff, and 
 
   await enterCenter(page, 'en', 'dark');
   await expect(page.getByText('Legacy-read compatibility stage')).toBeVisible();
-  await expect(page.getByText('Missing Logo Holdings')).toBeVisible();
-  await expect(page.getByText('Kuwait private property')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Analyze this asset' }).first()).toHaveAttribute('href', /\/ai-analyst\/analyze\/MISSING\?assetType=STOCK/);
-  await expect(page.getByRole('link', { name: 'Analyze this asset' }).last()).toHaveAttribute('href', /privateAsset=1/);
-  // The resolver may keep an in-flight image node briefly on WebKit, but it
-  // must never retry a known missing URL. Phase 6.3 resolver tests cover the
-  // final fallback DOM after the error event across the cache boundary.
+  const stockCard = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Missing Logo Holdings', exact: true }) });
+  const propertyCard = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Kuwait private property', exact: true }) });
+  await expect(stockCard).toBeVisible();
+  await expect(propertyCard).toBeVisible();
+  const stockAnalysis = stockCard.getByRole('link', { name: 'Analyze this asset', exact: true });
+  await expect(stockAnalysis).toHaveAttribute('href', /\/ai-analyst\/analyze\/MISSING\?assetType=STOCK/);
+  await expect(stockAnalysis).toHaveAttribute('href', /investmentId=89e7c6d8-ecdf-4d10-83d7-2ed37b3c5a04/);
+  const propertyAnalysis = propertyCard.getByRole('link', { name: 'Analyze this asset', exact: true });
+  await expect(propertyAnalysis).toHaveAttribute('href', '/global-markets/real-estate?investmentId=d9d9e4f4-f68d-454b-a2c3-33ff7b13c065');
+  await expect(propertyAnalysis).not.toHaveAttribute('href', /\/ai-analyst\/|assetType=STOCK/);
+  // The Investments Center must not expose a standalone "Real Estate" asset-class tab.
+  // A separate global navigation entry named "Real Estate Market Center" is expected.
+  await expect(page.getByRole('link', { name: 'Real Estate', exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('real-estate-intelligence-entry')).toHaveCount(0);
+  expect(propertyAnalysisRequests, 'opening the center must not run a valuation or save').toBe(0);
   expect(missingLogoRequests).toBeLessThanOrEqual(1);
 
   for (const [lang, theme] of [['ar', 'light'], ['fr', 'dark']] as const) {
@@ -65,5 +79,5 @@ test('Investments Center preserves the legacy-read data, canonical handoff, and 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('details')).toBeVisible();
   await page.locator('details').click();
-  await expect(page.locator('details nav a')).toHaveCount(8);
+  await expect(page.locator('details nav a')).toHaveCount(7);
 });

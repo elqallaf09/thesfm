@@ -5,6 +5,7 @@ import {
   SHARIAH_UNIVERSE,
   shariahStatusLabelAr,
 } from '@/lib/market/shariahUniverse';
+import { publishedShariahFundProfile } from '@/lib/market/shariahPublishedFundProfiles';
 import { TICKER_FALLBACK_SOURCE, toResilientTickerItem } from '@/lib/market/tickerItems';
 import { loadSecCompanyDirectory } from '@/lib/sharia-research/secData';
 
@@ -18,17 +19,26 @@ export async function GET() {
   ) =>
     SHARIAH_UNIVERSE.map(asset => {
       const screening = buildUnknownShariahScreening(asset);
+      const publishedFund = asset.assetType === 'etf' ? publishedShariahFundProfile(asset.symbol) : null;
+      const status = publishedFund ? 'compliant' as const : screening.shariahStatus;
       return {
         ...toResilientTickerItem(asset, prices?.get(asset.symbol)),
         sector: asset.sector,
         industry: asset.industry,
         assetType: asset.assetType,
         exchange: exchanges.get(asset.symbol.toUpperCase()) ?? null,
-        shariahStatus: screening.shariahStatus,
-        statusLabelAr: shariahStatusLabelAr(screening.shariahStatus),
-        screeningSource: screening.screeningSource,
-        screeningMethodology: screening.methodology,
-        lastScreenedAt: screening.lastScreenedAt,
+        shariahStatus: status,
+        statusLabelAr: publishedFund ? 'معلن متوافق شرعياً' : shariahStatusLabelAr(status),
+        screeningSource: publishedFund?.sourceName ?? screening.screeningSource,
+        screeningMethodology: publishedFund?.methodology ?? screening.methodology,
+        lastScreenedAt: publishedFund?.verifiedAt ?? screening.lastScreenedAt,
+        publishedShariahFund: publishedFund ? {
+          provider: publishedFund.provider,
+          officialUrl: publishedFund.officialUrl,
+          verifiedAt: publishedFund.verifiedAt,
+          designation: 'provider_published_shariah',
+          independentSfmCertification: false,
+        } : null,
       };
     });
 

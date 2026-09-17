@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { generateText } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
+import { randomUUID } from 'node:crypto';
+import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import { normalizeDigits } from '@/lib/locale';
 import {
@@ -168,21 +168,6 @@ function getSupabase(token: string) {
   });
 }
 
-function getProvider() {
-  const gatewayToken = process.env.AI_GATEWAY_TOKEN;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (gatewayToken) {
-    return createAnthropic({
-      apiKey: gatewayToken,
-      baseURL: 'https://ai-gateway.vercel.sh/v1/anthropic',
-    });
-  }
-  return anthropicKey ? createAnthropic({ apiKey: anthropicKey }) : null;
-}
-
-function aiProviderConfigured() {
-  return Boolean(process.env.AI_GATEWAY_TOKEN || process.env.ANTHROPIC_API_KEY);
-}
 
 function parseRecord(value: unknown): Record<string, any> {
   if (!value) return {};
@@ -533,8 +518,7 @@ function extractJson(text: string) {
 }
 
 async function improveWithAi(deck: PitchDeckExportData, context: Record<string, any>) {
-  const provider = getProvider();
-  if (!provider) return { source: 'rules' as DeckSource, deck };
+  if (!aiProviderConfigured()) return { source: 'rules' as DeckSource, deck };
 
   const languageName = deck.language === 'ar' ? 'Arabic' : deck.language === 'fr' ? 'French' : 'English';
   const prompt = [
@@ -547,12 +531,14 @@ async function improveWithAi(deck: PitchDeckExportData, context: Record<string, 
   ].join('\n\n');
 
   try {
-    const { text } = await generateText({
-      model: provider('claude-haiku-4-5-20251001'),
-      system: 'You are a THE SFM pitch deck editor. Output JSON only and never fabricate missing project data.',
-      prompt,
+    const generation = await generateAssistantReply({
+      correlationId: randomUUID(),
+      system: 'You are the private THE SFM pitch deck editor. Output JSON only and never fabricate missing project data.',
+      messages: [{ role: 'user', content: prompt }],
       maxTokens: 3200,
     });
+    if (!generation) return { source: 'rules' as DeckSource, deck };
+    const text = generation.text;
     const normalized = normalizeSavedDeck(extractJson(text), deck);
     return { source: normalized ? 'ai' as DeckSource : 'rules' as DeckSource, deck: normalized ?? deck };
   } catch {

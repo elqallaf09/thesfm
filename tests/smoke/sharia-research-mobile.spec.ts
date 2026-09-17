@@ -102,6 +102,13 @@ test.describe('Arabic Sharia screening and documented research page', () => {
 
   test.beforeEach(async ({ page }) => {
     await installOptionalStorageApiCompatibility(page);
+    // This UI suite owns its research fixtures and image responses. External
+    // logo availability must not make its strict console/error assertions flaky.
+    await page.route(/^https:\/\/(?:financialmodelingprep\.com\/image-stock\/|cdn\.simpleicons\.org\/|www\.google\.com\/s2\/favicons\?)/, route => route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#64748b"/></svg>',
+    }));
   });
 
   test('keeps stocks and news visible and embeds research without horizontal overflow', async ({ page }) => {
@@ -113,7 +120,7 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     await expect(page.getByTestId('sharia-stock-results')).toBeVisible();
     await expect(page.getByTestId('sharia-news-section')).toBeVisible();
     await expect(page.getByTestId('sharia-deep-research-entry')).toBeVisible();
-    await page.screenshot({ path: 'artifacts/sharia-integrated-overview-mobile-ar.png', fullPage: true });
+    await page.screenshot({ path: 'artifacts/sharia-integrated-overview-mobile-ar.png', fullPage: true, scale: 'css' });
     await page.getByRole('button', { name: 'البحث الموثق', exact: true }).click();
     await expect(page.getByTestId('sharia-deep-research-tool')).toBeVisible();
     const layout = await page.evaluate(() => ({
@@ -123,7 +130,7 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     }));
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewport + 1);
     expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewport + 1);
-    await page.screenshot({ path: 'artifacts/sharia-integrated-mobile-ar.png', fullPage: true });
+    await page.screenshot({ path: 'artifacts/sharia-integrated-mobile-ar.png', fullPage: true, scale: 'css' });
   });
 
   test('handles an HTML API failure safely and retries the same NVDA search', async ({ page }) => {
@@ -313,7 +320,7 @@ test.describe('Arabic Sharia screening and documented research page', () => {
       expect(metrics.rightGutter).toBeGreaterThanOrEqual(15);
       expect(metrics.textSize).toBeGreaterThanOrEqual(14);
       expect(metrics.touchHeight).toBeGreaterThanOrEqual(44);
-      await page.screenshot({ path: `artifacts/sharia-report-${viewport.name}-light-ar.png`, fullPage: true });
+      await page.screenshot({ path: `artifacts/sharia-report-${viewport.name}-light-ar.png`, fullPage: true, scale: 'css' });
     }
 
     await page.evaluate(() => {
@@ -328,7 +335,7 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     });
     expect(darkColors.background).not.toBe('rgba(0, 0, 0, 0)');
     expect(darkColors.background).not.toBe(darkColors.color);
-    await page.screenshot({ path: 'artifacts/sharia-report-iphone-390-dark-ar.png', fullPage: true });
+    await page.screenshot({ path: 'artifacts/sharia-report-iphone-390-dark-ar.png', fullPage: true, scale: 'css' });
     expect({ consoleErrors, badResponses }).toEqual({ consoleErrors: [], badResponses: [] });
   });
 

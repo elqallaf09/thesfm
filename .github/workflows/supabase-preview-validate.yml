@@ -113,7 +113,7 @@ jobs:
     steps:
       - name: Resolve exact target SHA
         id: resolve
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             // Read inputs from the trusted, already-parsed event payload
@@ -260,7 +260,7 @@ jobs:
       - name: Step 2 — check for a successful externally-resolved Preview branch
         id: external
         if: steps.explicit.outputs.ref == ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = '${{ needs.resolve-target.outputs.sha }}';
@@ -593,7 +593,7 @@ jobs:
     steps:
       - name: Resolve READY Vercel Preview for exact SHA
         id: preview
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const sha = '${{ needs.resolve-target.outputs.sha }}';

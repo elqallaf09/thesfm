@@ -252,7 +252,7 @@ export const expenseUi = {
   confidence: { ar: 'الثقة', en: 'Confidence', fr: 'Confiance' },
   providerUsed: { ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' },
   googleProvider: { ar: 'Google Document AI', en: 'Google Document AI', fr: 'Google Document AI' },
-  openaiProvider: { ar: 'OpenAI Vision', en: 'OpenAI Vision', fr: 'OpenAI Vision' },
+  privateAiProvider: { ar: 'SFM Private Vision', en: 'SFM Private Vision', fr: 'SFM Private Vision' },
   manualProvider: { ar: 'إدخال يدوي', en: 'Manual entry', fr: 'Saisie manuelle' },
   highConfidence: { ar: 'ثقة عالية', en: 'High confidence', fr: 'Confiance élevée' },
   mediumConfidenceLabel: { ar: 'ثقة متوسطة', en: 'Medium confidence', fr: 'Confiance moyenne' },
@@ -480,7 +480,7 @@ export function receiptCandidateLabel(candidate: ReceiptAmountCandidate, lang: s
 
 export function receiptProviderLabel(provider: AiExtractedData['provider'] | undefined, lang: string) {
   if (provider === 'google-document-ai') return expenseText('googleProvider', lang);
-  if (provider === 'openai-vision') return expenseText('openaiProvider', lang);
+  if (provider === 'sfm-private-vision') return expenseText('privateAiProvider', lang);
   if (provider === 'manual') return expenseText('manualProvider', lang);
   return '-';
 }
@@ -511,12 +511,12 @@ export function normalizeReceiptScanCode(errorSource: string | undefined) {
   if (/google_request_failed/.test(errorSource)) return 'google_request_failed';
   if (/google_process_document_failed|google_document_ai_request_failed/.test(errorSource)) return 'google_process_document_failed';
   if (/plan|subscription|paid|premium|business/.test(errorSource)) return 'plan_blocked';
-  if (/openai_env_missing|openai_key_missing/.test(errorSource)) return 'openai_env_missing';
-  if (/openai_fallback_failed|openai_vision_failed|openai_pdf_not_supported|openai_vision_empty_response/.test(errorSource)) return 'openai_fallback_failed';
+  if (/sfm_private_vision_not_configured|private_vision_not_configured/.test(errorSource)) return 'sfm_private_vision_not_configured';
+  if (/sfm_private_vision_failed|private_vision_failed|private_vision_pdf_not_supported|private_vision_empty_response/.test(errorSource)) return 'sfm_private_vision_failed';
   if (/file_type_unsupported|unsupported_file_type/.test(errorSource)) return 'file_type_unsupported';
   if (/file_missing/.test(errorSource)) return 'file_missing';
   if (/google_env_missing|missing_google_/.test(errorSource)) return 'google_env_missing';
-  if (/no_provider_configured|all_providers_unavailable|missing_google_and_openai|provider_unavailable/.test(errorSource)) return 'no_provider_configured';
+  if (/no_provider_configured|all_providers_unavailable|missing_google_and_private_vision|provider_unavailable/.test(errorSource)) return 'no_provider_configured';
   return errorSource;
 }
 
@@ -612,15 +612,15 @@ export function receiptScanSpecificErrorText(errorSource: string | undefined, la
       en: 'Google Document AI request failed. Check location, processor ID, and IAM permissions.',
       fr: 'La requête Google Document AI a échoué. Vérifiez la région, le processeur et les permissions IAM.',
     },
-    openai_env_missing: {
-      ar: 'مفتاح OpenAI الاحتياطي غير موجود، ولم تنجح قراءة Google.',
-      en: 'OpenAI fallback key is missing, and Google scanning did not complete.',
-      fr: 'La clé OpenAI de secours est absente et la lecture Google n’a pas abouti.',
+    sfm_private_vision_not_configured: {
+      ar: 'SFM Private Vision غير مهيأ، ولم تنجح قراءة Google.',
+      en: 'SFM Private Vision is not configured, and Google scanning did not complete.',
+      fr: 'SFM Private Vision n’est pas configuré et la lecture Google n’a pas abouti.',
     },
-    openai_fallback_failed: {
-      ar: 'فشل مزود OpenAI الاحتياطي في قراءة الفاتورة.',
-      en: 'The OpenAI fallback provider could not read the invoice.',
-      fr: 'Le fournisseur de secours OpenAI n’a pas pu lire la facture.',
+    sfm_private_vision_failed: {
+      ar: 'فشل SFM Private Vision في قراءة الفاتورة.',
+      en: 'SFM Private Vision could not read the invoice.',
+      fr: 'SFM Private Vision n’a pas pu lire la facture.',
     },
     file_type_unsupported: {
       ar: 'نوع الملف غير مدعوم.',
@@ -645,7 +645,7 @@ export function receiptScanErrorText(errorSource: string | undefined, lang: stri
   if (!errorSource) return fallback;
   const specific = receiptScanSpecificErrorText(errorSource, lang);
   if (specific) return specific;
-  if (/no_provider_configured|missing_google_and_openai|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
+  if (/no_provider_configured|missing_google_and_private_vision|provider|not_configured|unavailable|all_providers_unavailable|provider_unavailable/.test(errorSource)) {
     return `${expenseText('providerUnavailableTitle', lang)} ${expenseText('providerUnavailable', lang)}`;
   }
   if (/unsupported_file_type|file_too_large|upload/.test(errorSource)) return expenseText('uploadFailed', lang);
@@ -654,7 +654,7 @@ export function receiptScanErrorText(errorSource: string | undefined, lang: stri
 }
 
 export function isReceiptProviderUnavailable(errorSource?: string, code?: string, message?: string) {
-  return /OCR_NOT_CONFIGURED|no_provider_configured|missing_google_and_openai|all_providers_unavailable|provider_unavailable|google_env_missing|openai_env_missing/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
+  return /OCR_NOT_CONFIGURED|no_provider_configured|missing_google_and_private_vision|all_providers_unavailable|provider_unavailable|google_env_missing|sfm_private_vision_not_configured/i.test(`${errorSource || ''} ${code || ''} ${message || ''}`);
 }
 
 export function receiptProviderDevDetail(errorSource: string | undefined, lang: string) {
@@ -736,15 +736,15 @@ export function receiptProviderDevDetail(errorSource: string | undefined, lang: 
       en: 'The request could not reach Google. Check server logs for network/response details.',
       fr: 'La requête n’a pas pu atteindre Google. Vérifiez les journaux serveur.',
     },
-    openai_env_missing: {
-      ar: 'OPENAI_API_KEY غير موجود في الخادم، لذلك لا يوجد مزود احتياطي بعد فشل Google.',
-      en: 'OPENAI_API_KEY is missing on the server, so there is no fallback after Google fails.',
-      fr: 'OPENAI_API_KEY est absent côté serveur, donc aucun secours après l’échec de Google.',
+    sfm_private_vision_not_configured: {
+      ar: 'SFM_AI_VISION_MODEL أو إعدادات SFM Private Vision غير موجودة في الخادم.',
+      en: 'SFM Private Vision is not configured on the server, so there is no private fallback after Google fails.',
+      fr: 'SFM Private Vision n’est pas configuré côté serveur.',
     },
-    openai_fallback_failed: {
-      ar: 'فشل مزود OpenAI الاحتياطي بعد محاولة Google.',
-      en: 'OpenAI fallback failed after Google was attempted.',
-      fr: 'Le secours OpenAI a échoué après la tentative Google.',
+    sfm_private_vision_failed: {
+      ar: 'فشل SFM Private Vision بعد محاولة Google.',
+      en: 'SFM Private Vision failed after Google was attempted.',
+      fr: 'SFM Private Vision a échoué après la tentative Google.',
     },
     no_provider_configured: {
       ar: 'لا يوجد مزود OCR مفعّل في الخادم.',
@@ -785,11 +785,6 @@ export function receiptProviderDevDetail(errorSource: string | undefined, lang: 
       ar: 'تعذر الاتصال بمعالج Google Document AI. تحقق من الموقع والمعالج والصلاحيات.',
       en: 'Google Document AI request failed. Check location, processor ID, and IAM permissions.',
       fr: 'La requête Google Document AI a échoué. Vérifiez la région, le processeur et les permissions IAM.',
-    },
-    openai_key_missing: {
-      ar: 'OPENAI_API_KEY غير موجود في الخادم.',
-      en: 'OPENAI_API_KEY is missing on the server.',
-      fr: 'OPENAI_API_KEY est absent côté serveur.',
     },
     all_providers_unavailable: {
       ar: 'لا يوجد مزود OCR مفعّل في الخادم.',

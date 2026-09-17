@@ -7,9 +7,18 @@ import {
   normalizeAiAnalystAssetType,
   normalizeAiAnalystHorizon,
   normalizeAiAnalystSymbol,
+  normalizeAiAnalystPathSymbol,
 } from '@/lib/ai-analyst/legacyRoutes';
 
 describe('AI Analyst legacy route compatibility', () => {
+  it('decodes valid route symbols once and rejects malformed or nested path escapes', () => {
+    expect(normalizeAiAnalystPathSymbol('EURUSD%3DX')).toBe('EURUSD=X');
+    expect(normalizeAiAnalystPathSymbol('%5EGSPC')).toBe('^GSPC');
+    expect(normalizeAiAnalystPathSymbol('AAPL')).toBe('AAPL');
+    for (const value of ['%E0%A4%A', '%252Fetc', '%2Fetc', '..%2Fsecret']) {
+      expect(normalizeAiAnalystPathSymbol(value)).toBeNull();
+    }
+  });
   it('maps the bare Market Analysis route to canonical Market Leadership', () => {
     expect(mapLegacyMarketAnalysisRoute({ search: '' })).toBe('/ai-analyst/market-leadership');
     expect(mapLegacyMarketAnalysisRoute({ search: '?tab=overview' })).toBe('/ai-analyst/market-leadership');

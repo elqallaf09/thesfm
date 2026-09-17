@@ -49,7 +49,7 @@
     marketForSymbol, currentMarket, marketApi, marketNewsPath, get, findAssetForSymbol,
     legacyRecsFrom, normalizeQuote, norm, symbolAliases, signalToRec, technicalPayloadFromResponse,
     isTechnicalUnavailablePayload, technicalUnavailableReason, arr, mergeRecLists, recs,
-    marketUniverseRows, matchRec }) {
+    marketUniverseRows, matchRec, lookupWatchlist = () => null }) {
   function drawerResourceKey(kind, symbol = state.drawer.symbol) {
     return `${sym(symbol)}|${kind}|${currentLanguage()}`;
   }
@@ -155,15 +155,16 @@
     const key = sym(symbol);
     const aliases = symbolAliases(key);
     const cachedEntry = Array.from(state.cache.entries()).find(([cacheKey]) => aliases.includes(sym(cacheKey)));
+    const watchRow = lookupWatchlist(key);
     const cachedDetail = cachedEntry ? cachedEntry[1] : null;
     let loaded = mergeRecLists(legacyRecsFrom(state.commandCards), recs());
     const marketRows = [];
     state.marketCache.forEach(payload => marketRows.push(...marketUniverseRows(payload)));
     loaded = mergeRecLists(marketRows, loaded);
-    const loadedAsset = findAssetForSymbol(key, loaded) || matchRec(key) || null;
-    const rec = cachedDetail && cachedDetail.rec || loadedAsset;
+    const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
+    const rec = watchRow || cachedDetail && cachedDetail.rec || loadedAsset;
     // A cached list/signal is not a newer quote. Keep fetched price and its evidence together.
-    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(rec || {}), ...(cachedDetail && cachedDetail.asset || {}) }));
+    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(rec || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(watchRow || {}) }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
   }
 

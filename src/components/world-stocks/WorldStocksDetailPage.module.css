@@ -1,0 +1,48 @@
+.shell { min-width: 0; background: var(--background); color: var(--foreground); display: grid; gap: 1rem; padding-block: .5rem 2rem; max-width: 52rem; }
+
+.backLink { display: inline-flex; align-items: center; gap: .4rem; color: var(--foreground-muted); font-size: .84rem; font-weight: 600; text-decoration: none; width: max-content; }
+.backLink:hover, .backLink:focus-visible { outline: none; color: var(--foreground); }
+.backLink:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-control); }
+
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.state { display: grid; place-items: center; gap: .6rem; text-align: center; padding: 3rem 1.2rem; color: var(--foreground-muted); background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius-panel); }
+.state p { margin: 0; color: var(--foreground); font-size: 1rem; font-weight: 600; }
+.state small { color: var(--foreground-muted); }
+.skeleton { display: block; width: 100%; height: 10rem; border-radius: var(--radius-panel); background: var(--skeleton-gradient); background-size: 220% 100%; animation: worldStocksDetailShimmer 1.2s linear infinite; }
+@keyframes worldStocksDetailShimmer { to { background-position: -220% 0; } }
+
+.header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .8rem; border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 1.1rem 1.35rem; background: var(--surface); box-shadow: var(--shadow-xs); }
+.headerMeta { display: flex; flex-wrap: wrap; gap: .4rem; }
+.headerMeta span { display: inline-flex; align-items: center; min-height: 26px; padding: 0 .6rem; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-muted); color: var(--foreground-muted); font-size: .78rem; font-weight: 500; }
+
+.quoteCard { display: grid; gap: .8rem; border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 1.1rem 1.35rem; background: var(--surface); box-shadow: var(--shadow-xs); }
+.priceValue { color: var(--foreground); font-size: 1.8rem; font-weight: 700; font-family: var(--font-data); }
+.priceUnavailable { color: var(--foreground-muted); font-size: 1rem; font-weight: 600; }
+.change { display: inline-flex; align-items: center; gap: .35rem; width: max-content; border-radius: var(--radius-pill); padding: .3rem .65rem; font-size: .9rem; font-weight: 700; font-family: var(--font-data); }
+.change.up { background: var(--success-soft); color: var(--market-positive); }
+.change.down { background: var(--danger-soft); color: var(--danger); }
+.change.neutral { background: var(--surface-muted); color: var(--foreground-secondary); }
+.quoteFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .7rem; margin: 0; border-top: 1px solid var(--border); padding-top: .7rem; }
+.quoteFacts dt { margin: 0; color: var(--foreground-muted); font-size: .76rem; }
+.quoteFacts dd { margin: .15rem 0 0; color: var(--foreground); font-size: .86rem; font-weight: 600; }
+
+.profileCard, .chartCard, .handoffs { border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 1.1rem 1.35rem; background: var(--surface); box-shadow: var(--shadow-xs); }
+.profileCard h2 { margin: 0 0 .8rem; font-size: 1rem; color: var(--foreground); }
+.profileFacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .8rem; margin: 0; }
+.profileFacts dt { margin: 0; color: var(--foreground-muted); font-size: .78rem; }
+.profileFacts dd { margin: .2rem 0 0; color: var(--foreground); font-size: .9rem; font-weight: 600; }
+
+.chartCard { display: grid; justify-items: center; gap: .5rem; text-align: center; color: var(--foreground-muted); padding: 2rem 1.35rem; }
+.chartCard svg { color: var(--accent); }
+.chartCard p { margin: 0; font-size: .88rem; }
+
+.handoffs { display: flex; flex-wrap: wrap; gap: .6rem; }
+.handoffLink { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-muted); color: var(--foreground); padding: 0 1rem; font-family: var(--font-ui); font-size: .84rem; font-weight: 600; text-decoration: none; cursor: pointer; }
+.handoffLink:hover, .handoffLink:focus-visible { outline: none; border-color: var(--accent); background: var(--surface-hover); }
+.handoffLink:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.handoffLink:disabled { opacity: .7; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

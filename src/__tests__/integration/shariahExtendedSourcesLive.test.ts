@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { reviewFundEvidence } from '@/lib/market/shariahFundReview';
 import { validFinancialValue } from '@/lib/sharia-research/evidenceValidation';
 import { enrichShariahScreeningData } from '@/lib/market/shariahFundamentals';
+import { regionalFilingsAdapter } from '@/lib/sharia-research/regionalFilings';
+import type { SecurityIdentity } from '@/lib/sharia-research/types';
 
 const enabled = process.env.SFM_LIVE_SEC_PROBE === '1';
 function proof(symbol: string, result: unknown) {
@@ -25,6 +27,26 @@ describe.skipIf(!enabled)('live extended evidence without production writes', ()
     expect(result.shariah_screening_data.sources[0].sourceHash).toMatch(/^[a-f0-9]{64}$/);
     console.log('EXTENDED_SOURCE_PROOF', JSON.stringify({ symbol, ...result.shariah_screening_data.fundReview, sources: result.shariah_screening_data.sources }));
   }, 55000);
+  it.each([
+    ['SPUS','SP Funds S&P 500 Sharia Industry Exclusions ETF'],
+    ['HLAL','Wahed FTSE USA Shariah ETF'],
+    ['UMMA','Wahed Dow Jones Islamic World ETF'],
+    ['SPRE','SP Funds S&P Global REIT Sharia ETF'],
+    ['SPSK','SP Funds Dow Jones Global Sukuk ETF'],
+  ])('%s verifies the manager/SSB published Shariah designation without converting it into an SFM fatwa', async (symbol,name) => {
+    const result = await reviewFundEvidence({ symbol, name, exchange: symbol === 'HLAL' || symbol === 'UMMA' ? 'NASDAQ' : 'NYSE Arca', country: 'US' }, emptyCatalog, AbortSignal.timeout(35000));
+    proof(`${symbol}-published-shariah`, result);
+    expect(result.shariah_status).toBe('needs_review');
+    expect(result.shariah_screening_data.fundReview).toMatchObject({
+      coverage: 'published_designation_verified',
+      reason: 'published_shariah_designation_verified_periodic_monitoring_required',
+      periodicVerificationRequired: true,
+      publishedShariahDesignation: { state: 'verified' },
+    });
+    expect(result.shariah_screening_data.sources.some(source => source.type === 'fund_shariah_methodology' && /^[a-f0-9]{64}$/.test(String(source.sourceHash)))).toBe(true);
+    expect(result.shariah_reason).toContain('Published Shariah designation verified');
+    console.log('PUBLISHED_SHARIAH_FUND_PROOF', JSON.stringify({ symbol, fundReview: result.shariah_screening_data.fundReview, sources: result.shariah_screening_data.sources }));
+  }, 45000);
   it('NBK extracts issuer-bound Kuwait report values without calling the US directory', async () => {
     const result = await enrichShariahScreeningData({ symbol: 'NBK', providerSymbol: 'NBK.KW', name: 'National Bank of Kuwait',
       exchange: 'Boursa Kuwait', country: 'KW', signal: AbortSignal.timeout(45000) });
@@ -38,4 +60,29 @@ describe.skipIf(!enabled)('live extended evidence without production writes', ()
     console.log('EXTENDED_SOURCE_PROOF', JSON.stringify({ symbol: 'NBK', errors: result.errors,
       fields: result.financialValues.map(value => ({ field: value.normalizedField, period: value.periodEnd, currency: value.currency, value: value.value })) }));
   }, 55000);
+  it('IFA retrieves its official Kuwait filing and yields source-backed annual balance evidence', async () => {
+    const security: SecurityIdentity = {
+      canonicalId: 'XKUW:IFA', name: 'International Financial Advisors Holding', ticker: 'IFA', providerSymbol: 'IFA.KW',
+      exchange: 'Boursa Kuwait', exchangeMic: 'XKUW', country: 'KW', currency: 'KWD', aliases: [], previousNames: [], identitySources: [],
+    };
+    const direct = await regionalFilingsAdapter.research({
+      query: { original: 'IFA', normalized: 'ifa', compact: 'ifa', latinAlias: null, possibleTicker: 'IFA', possibleIsin: null, exchangeHint: 'XKUW' },
+      security, retrievedAt: new Date().toISOString(), signal: AbortSignal.timeout(65000),
+    });
+    proof('IFA-adapter', { status: direct.status, errors: direct.errors, values: direct.financialValues,
+      sources: direct.documents.map(doc => ({ url: doc.sourceUrl, period: doc.reportingPeriod })) });
+    console.log('IFA_ADAPTER_PROOF', JSON.stringify({ status: direct.status, errors: direct.errors,
+      sources: direct.documents.map(doc => ({ url: doc.sourceUrl, period: doc.reportingPeriod })),
+      fields: direct.financialValues.map(value => ({ field: value.normalizedField, period: value.periodEnd, currency: value.currency, value: value.value, bound: value.validation?.bound })) }));
+    expect(direct.documents.length, JSON.stringify(direct.errors)).toBeGreaterThan(0);
+    expect(direct.documents[0]?.sourceUrl).toBe('https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf');
+    const assets = direct.financialValues.find(value => value.normalizedField === 'total_assets');
+    const cash = direct.financialValues.find(value => value.normalizedField === 'cash_and_equivalents');
+    const liabilityBound = direct.financialValues.find(value => value.normalizedField === 'interest_bearing_debt');
+    expect(assets).toMatchObject({ value: 161146865, currency: 'KWD', periodEnd: '2025-12-31' });
+    expect(cash).toMatchObject({ value: 4242133, currency: 'KWD', periodEnd: '2025-12-31' });
+    expect(liabilityBound).toMatchObject({ value: 28665529, currency: 'KWD', periodEnd: '2025-12-31', validation: expect.objectContaining({ bound: 'upper' }) });
+    expect([assets, cash, liabilityBound].every(value => value && validFinancialValue(value))).toBe(true);
+    expect(direct.financialValues.some(value => ['total_income','interest_income','prohibited_revenue'].includes(value.normalizedField))).toBe(false);
+  }, 75000);
 });

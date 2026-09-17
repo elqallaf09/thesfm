@@ -1,85 +1,42 @@
 import { NextResponse } from 'next/server';
 import { fetchDividendStockMetrics } from '@/lib/market/fetchDividendStockMetrics';
-import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
-import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
-import { toResilientTickerItem } from '@/lib/market/tickerItems';
+import { screenStockCategory } from '@/lib/market/stockCategoryScanner';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
-const DIVIDEND_TICKER_SYMBOLS = [
-  'T',
-  'VZ',
-  'MO',
-  'PM',
-  'XOM',
-  'CVX',
-  'IBM',
-  'KO',
-  'PEP',
-  'JNJ',
-  'PG',
-  'ABBV',
-  'PFE',
-  'O',
-  'SO',
-  'DUK',
-  'NEE',
-] as const;
+export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 30, prefix: 'dividend-stock-scanner' });
+  if (limited) return limited;
 
-const DIVIDEND_TICKER_NAMES: Record<string, string> = {
-  JNJ: 'Johnson & Johnson',
-  PG: 'Procter & Gamble',
-  KO: 'Coca-Cola',
-  PEP: 'PepsiCo',
-  XOM: 'Exxon Mobil',
-  CVX: 'Chevron',
-  SO: 'Southern Company',
-  DUK: 'Duke Energy',
-  NEE: 'NextEra Energy',
-  VZ: 'Verizon',
-  T: 'AT&T',
-  O: 'Realty Income',
-  IBM: 'IBM',
-  MCD: "McDonald's",
-  PM: 'Philip Morris International',
-  MO: 'Altria',
-  PFE: 'Pfizer',
-  ABBV: 'AbbVie',
-  KMB: 'Kimberly-Clark',
-  GIS: 'General Mills',
-};
+  const url = new URL(request.url);
+  const result = await screenStockCategory('dividend', {
+    limit: 180,
+    forceRefresh: url.searchParams.has('refresh'),
+  });
+  const metricSymbols = result.items.slice(0, 100).map(item => item.symbol);
+  const metrics = metricSymbols.length
+    ? await fetchDividendStockMetrics(metricSymbols, process.env.FINNHUB_API_KEY).catch(() => new Map())
+    : new Map();
+  const degraded = result.mode === 'fallback_watchlist';
 
-const DIVIDEND_SOURCE = 'Finnhub/Yahoo quote fallback + FMP per-symbol dividend metrics';
-
-type DividendMetrics = Awaited<ReturnType<typeof fetchDividendStockMetrics>>;
-
-export async function GET() {
-  const config = getStockCategoryConfig('dividend');
-  const stocksBySymbol = new Map((config?.watchlist ?? []).map(stock => [stock.symbol, stock]));
-  const watchlist = DIVIDEND_TICKER_SYMBOLS.map(symbol => ({
-    symbol,
-    name: stocksBySymbol.get(symbol)?.name ?? DIVIDEND_TICKER_NAMES[symbol] ?? symbol,
-  }));
-
-  const buildItems = (
-    prices?: Awaited<ReturnType<typeof fetchStockPrices>>,
-    metrics?: DividendMetrics,
-  ) =>
-    watchlist.map(stock => {
-      const metric = metrics?.get(stock.symbol);
+  return NextResponse.json({
+    ok: true,
+    ...(degraded ? { code: 'DIVIDEND_SCANNER_DEGRADED' } : {}),
+    source: `${result.source} + dividend metrics`,
+    updated_at: result.updatedAt,
+    screening_mode: result.mode,
+    universe_count: result.universeCount,
+    matched_count: result.matchedCount,
+    available_count: result.availableCount,
+    items: result.items.map(item => {
+      const metric = metrics.get(item.symbol);
       return {
-        ...toResilientTickerItem(
-          stock,
-          prices?.get(stock.symbol),
-          {
-            fallbackSource: DIVIDEND_SOURCE,
-            ...(metric?.currency ? { currency: metric.currency } : {}),
-          },
-        ),
-        dividendYield: metric?.dividendYield ?? null,
+        ...item,
+        dividendYield: metric?.dividendYield ?? item.dividendYieldPercent,
         payoutRatio: metric?.payoutRatio ?? null,
-        annualDividend: metric?.annualDividend ?? null,
+        annualDividend: metric?.annualDividend ?? item.lastAnnualDividend,
         exDividendDate: metric?.exDividendDate ?? null,
         paymentDate: metric?.paymentDate ?? null,
         recordDate: metric?.recordDate ?? null,
@@ -87,48 +44,12 @@ export async function GET() {
         dividendDataLabel: metric?.dividendDataLabel ?? null,
         dividendMetricSource: metric?.available ? metric.source : null,
       };
-    });
-
-  try {
-    const [prices, metrics] = await Promise.all([
-      fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY),
-      fetchDividendStockMetrics(watchlist.map(stock => stock.symbol), process.env.FINNHUB_API_KEY),
-    ]);
-    // Always return every configured symbol; missing quotes are flagged unavailable.
-    const items = buildItems(prices, metrics);
-
-    return NextResponse.json(
-      {
-        ok: true,
-        source: DIVIDEND_SOURCE,
-        updated_at: new Date().toISOString(),
-        available_count: items.filter(item => item.available).length,
-        items,
-      },
-      {
-        headers: {
-          'cache-control': 'public, s-maxage=300, stale-while-revalidate=600',
-        },
-      },
-    );
-  } catch (error) {
-    console.error('[DividendStocksTicker] Failed to load ticker', {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return NextResponse.json(
-      {
-        ok: true,
-        code: 'DIVIDEND_TICKER_DEGRADED',
-        source: DIVIDEND_SOURCE,
-        updated_at: new Date().toISOString(),
-        available_count: 0,
-        items: buildItems(),
-      },
-      {
-        headers: {
-          'cache-control': 'public, s-maxage=60, stale-while-revalidate=600',
-        },
-      },
-    );
-  }
+    }),
+  }, {
+    headers: {
+      'cache-control': degraded
+        ? 'public, s-maxage=60, stale-while-revalidate=600'
+        : 'public, s-maxage=300, stale-while-revalidate=900',
+    },
+  });
 }

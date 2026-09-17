@@ -12,13 +12,21 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/__tests__/**/*.test.ts', 'src/__tests__/**/*.test.tsx', 'src/domain/economic-intelligence/__tests__/**/*.test.ts', '.github/scripts/__tests__/**/*.test.mjs'],
+    include: [
+      'src/__tests__/**/*.test.ts',
+      'src/__tests__/**/*.test.tsx',
+      'src/domain/economic-intelligence/__tests__/**/*.test.ts',
+      '.github/scripts/__tests__/**/*.test.mjs',
+      // Specialist engine/adapter regressions live beside their implementation.
+      'src/lib/investments/intelligence/**/*.test.ts',
+      'src/lib/market/**/*.test.ts',
+    ],
     fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       include: ['src/lib/**/*.ts'],
-      exclude: ['src/lib/supabase/**', 'src/lib/translations/**'],
+      exclude: ['src/lib/supabase/**', 'src/lib/translations/**', 'src/lib/**/*.test.ts'],
     },
   },
 });

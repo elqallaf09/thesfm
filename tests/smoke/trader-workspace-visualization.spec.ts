@@ -539,6 +539,9 @@ async function openDashboard(page: Page) {
 }
 
 async function configureTerminal(page: Page, language: 'ar' | 'en', theme: 'light' | 'dark') {
+  // These isolated provider observations must be fresh relative to the browser
+  // clock; stale-observation rejection is covered by trader-signal-evidence.
+  await page.clock.setFixedTime(new Date(provider.lastUpdated));
   await page.addInitScript(({ language: nextLanguage, theme: nextTheme }) => {
     if (!localStorage.getItem('sfm_lang')) localStorage.setItem('sfm_lang', nextLanguage);
     if (!localStorage.getItem('the-sfm-theme')) localStorage.setItem('the-sfm-theme', nextTheme);

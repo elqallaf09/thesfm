@@ -13,12 +13,18 @@ import { previewProtectionStatePath } from './preview-protection-state';
 const httpsLoopback = process.env.PLAYWRIGHT_HTTPS_LOOPBACK === '1';
 const baseURL = process.env.E2E_BASE_URL
   || (httpsLoopback ? 'https://127.0.0.1:3443' : 'http://127.0.0.1:3000');
+const transientAuthRetryDelaysMs = [1_500, 3_000, 5_000] as const;
 
 type SafeLoginPayload = {
   ok?: boolean;
   code?: string;
   status?: string;
   mfaType?: string;
+};
+
+type LoginAttempt = {
+  response: PlaywrightResponse;
+  payload: SafeLoginPayload | null;
 };
 
 test.use({ trace: 'off', screenshot: 'off', video: 'off' });
@@ -104,18 +110,7 @@ async function signIn(
   await loginInput.fill(email);
   await passwordInput.fill(password);
 
-  const responsePromise = page.waitForResponse(response => {
-    if (response.request().method() !== 'POST') return false;
-    try {
-      return new URL(response.url()).pathname === '/api/auth/login';
-    } catch {
-      return false;
-    }
-  }, { timeout: 30_000 });
-
-  await submit.click();
-  const response = await responsePromise;
-  const safePayload = await safeLoginPayload(response);
+  const { response, payload: safePayload } = await submitLoginWithTransientRetry(page, submit, role);
   expect(
     response.status(),
     `${role} credential sign-in failed: ${JSON.stringify({ status: response.status(), payload: safePayload })}`,
@@ -147,6 +142,43 @@ async function signIn(
     message: `${role} sign-in did not persist the browser session.`,
     timeout: 30_000,
   }).toBe(true);
+}
+
+async function submitLoginWithTransientRetry(
+  page: Page,
+  submit: ReturnType<Page['locator']>,
+  role: 'user' | 'admin',
+): Promise<LoginAttempt> {
+  const maxAttempts = transientAuthRetryDelaysMs.length + 1;
+  let lastAttempt: LoginAttempt | null = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const responsePromise = page.waitForResponse(response => {
+      if (response.request().method() !== 'POST') return false;
+      try {
+        return new URL(response.url()).pathname === '/api/auth/login';
+      } catch {
+        return false;
+      }
+    }, { timeout: 30_000 });
+
+    await expect(submit).toBeEnabled();
+    await submit.click();
+    const response = await responsePromise;
+    const payload = await safeLoginPayload(response);
+    lastAttempt = { response, payload };
+
+    const transientUnavailable = response.status() === 503 && payload?.code === 'AUTH_UNAVAILABLE';
+    if (!transientUnavailable) return lastAttempt;
+    if (attempt >= transientAuthRetryDelaysMs.length) break;
+
+    await page.waitForTimeout(transientAuthRetryDelaysMs[attempt]);
+  }
+
+  if (!lastAttempt) {
+    throw new Error(`${role} credential sign-in did not produce a login response.`);
+  }
+  return lastAttempt;
 }
 
 async function safeLoginPayload(response: PlaywrightResponse): Promise<SafeLoginPayload | null> {

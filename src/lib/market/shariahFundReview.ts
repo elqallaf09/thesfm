@@ -3,7 +3,9 @@ import { createHash } from 'node:crypto';
 import { secureFetch } from '@/lib/sharia-research/secureFetch';
 import { EVIDENCE_VERSION } from '@/lib/sharia-research/evidenceValidation';
 import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
+import { getPublishedShariahFundProfile } from './shariahPublishedFunds';
 import { loadIwmHoldings } from './shariahIwmHoldings';
+import { officialFundEvidenceProfile, validateOfficialFundPage } from './shariahOfficialFundProfiles';
 
 export const FUND_REVIEW_METHOD = 'SFM_FUND_EVIDENCE_REVIEW';
 const SPY_HOLDINGS = 'https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx';
@@ -92,12 +94,119 @@ async function summarizeUnderlying(holdings: Holding[], admin: SupabaseClient) {
   return { passingWeight, failingWeight, unknownWeight, negativeWeight, weightUnit: 'percentage_points',
     note: 'Underlying exposure totals are diagnostics, not fund pass/fail thresholds. Cash, derivatives and unmatched identities are unknown. Negative positions are shown separately; values are not renormalized.' };
 }
+
+function issuerHost(url: string) {
+  return new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+}
+
+export function normalizePublishedFundHtml(html: string) {
+  return html
+    .replace(/&(amp|#0*38|#x0*26);/gi, '&')
+    .replace(/&(nbsp|#0*160|#x0*a0);/gi, ' ')
+    .replace(/\\u0026/gi, '&');
+}
+
+async function verifyPublishedShariahDesignation(row: { symbol: string; name: string }, signal: AbortSignal) {
+  const profile = getPublishedShariahFundProfile(row.symbol, row.name);
+  if (!profile) return null;
+  const response = await secureFetch(profile.officialUrl, {
+    maxBytes: 5_000_000,
+    signal,
+    acceptedContentTypes: ['text/html'],
+    cacheTtlMs: 6 * 3600_000,
+    respectRobots: true,
+  });
+  if (issuerHost(response.finalUrl) !== issuerHost(profile.officialUrl)) throw new Error('fund_shariah_source_identity_changed');
+  const html = normalizePublishedFundHtml(new TextDecoder().decode(response.body));
+  if (!profile.identityPattern.test(html)) throw new Error('fund_shariah_identity_not_verified');
+  if (!profile.evidencePatterns.every(pattern => pattern.test(html))) throw new Error('fund_shariah_evidence_not_verified');
+  return {
+    state: 'verified' as const,
+    provider: profile.provider,
+    designation: profile.designation,
+    methodology: profile.methodology,
+    authority: profile.authority,
+    sourceUrl: response.finalUrl,
+    verifiedAt: response.retrievedAt,
+    sourceHash: createHash('sha256').update(response.body).digest('hex'),
+  };
+}
+
 export async function reviewFundEvidence(row: { symbol: string; name: string; exchange: string; country: string }, admin: SupabaseClient, signal: AbortSignal) {
   const reviewedAt = new Date().toISOString();
   let fundReview: Record<string, unknown> = { coverage: 'unavailable', reason: 'official_fund_holdings_adapter_unavailable',
     structuralChecks: ['Complete dated holdings', 'Underlying securities and cash', 'Derivatives, lending and settlement terms', 'Fund-level Shariah methodology or published opinion'] };
   const sources: Array<{ title: string; url: string; retrievedAt: string; reportingPeriod: string | null; type: string; sourceHash?: string }> = [];
+  const publishedProfile = getPublishedShariahFundProfile(row.symbol, row.name);
+  if (publishedProfile) {
+    try {
+      const designation = await verifyPublishedShariahDesignation(row, signal);
+      if (designation) {
+        fundReview = { ...fundReview, coverage: 'published_designation_verified', reason: 'published_shariah_designation_verified_periodic_monitoring_required',
+          publishedShariahDesignation: designation, periodicVerificationRequired: true };
+        sources.push({ title: `${designation.provider} official published Shariah designation`, url: designation.sourceUrl,
+          retrievedAt: designation.verifiedAt, reportingPeriod: null, type: 'fund_shariah_methodology', sourceHash: designation.sourceHash });
+      }
+    } catch (error) {
+      fundReview = { ...fundReview, publishedShariahDesignation: {
+        state: 'unverified', provider: publishedProfile.provider, designation: publishedProfile.designation,
+        methodology: publishedProfile.methodology, authority: publishedProfile.authority, sourceUrl: publishedProfile.officialUrl,
+        error: error instanceof Error ? error.message : 'fund_shariah_designation_verification_failed',
+      } };
+    }
+  }
   if (['GLD', 'SLV'].includes(row.symbol)) fundReview.reason = 'physical_metal_custody_and_settlement_review_required';
+
+  const officialProfile = officialFundEvidenceProfile(row.symbol);
+  if (officialProfile) {
+    try {
+      const response = await secureFetch(officialProfile.officialUrl, {
+        maxBytes: 4_000_000, signal, acceptedContentTypes: ['text/html'], cacheTtlMs: 3600_000, respectRobots: true,
+      });
+      const text = new TextDecoder().decode(response.body);
+      const verified = validateOfficialFundPage(officialProfile, response.finalUrl, text);
+      sources.push({
+        title: `${officialProfile.provider} ${row.symbol} official fund disclosure`,
+        url: response.finalUrl,
+        retrievedAt: response.retrievedAt,
+        reportingPeriod: null,
+        type: verified.evidenceType === 'physical_metal_trust' ? 'fund_structure' : 'fund_profile',
+        sourceHash: createHash('sha256').update(response.body).digest('hex'),
+      });
+      if (verified.evidenceType === 'physical_metal_trust') {
+        fundReview = {
+          ...fundReview,
+          coverage: verified.structuralVerified ? 'structural' : 'official_profile',
+          reason: verified.structuralVerified
+            ? 'physical_metal_structure_verified_shariah_contract_review_pending'
+            : 'physical_metal_custody_and_settlement_review_required',
+          provider: verified.provider,
+          officialUrl: verified.officialUrl,
+          structuralEvidenceVerified: verified.structuralVerified,
+        };
+      } else {
+        fundReview = {
+          ...fundReview,
+          coverage: 'official_profile',
+          reason: 'official_profile_verified_holdings_pending',
+          provider: verified.provider,
+          officialUrl: verified.officialUrl,
+        };
+      }
+    } catch (error) {
+      if (signal.aborted) throw error;
+      fundReview = {
+        ...fundReview,
+        reason: officialProfile.evidenceType === 'physical_metal_trust'
+          ? 'physical_metal_custody_and_settlement_review_required'
+          : 'official_fund_profile_unavailable',
+        profileError: error instanceof Error ? error.message : 'fund_official_profile_fetch_failed',
+      };
+    }
+  } else if (['GLD', 'SLV'].includes(row.symbol)) {
+    fundReview.reason = 'physical_metal_custody_and_settlement_review_required';
+  }
+
   if (row.symbol === 'SPY' && /^(NYSE.?ARCA|ARCX)$/i.test(row.exchange)) {
     const response = await secureFetch(SPY_HOLDINGS, { maxBytes: 2_000_000, signal, acceptedContentTypes: ['spreadsheetml', 'octet-stream'], cacheTtlMs: 3600_000, respectRobots: true });
     if (response.finalUrl !== SPY_HOLDINGS) throw new Error('fund_source_redirected');
@@ -118,11 +227,17 @@ export async function reviewFundEvidence(row: { symbol: string; name: string; ex
     sources.push({ title: 'iShares IWM official dated holdings', url: parsed.sourceUrl, retrievedAt: parsed.retrievedAt,
       reportingPeriod: parsed.asOf, type: 'fund_holdings', sourceHash: parsed.sourceHash });
   }
-  return { shariah_status: 'needs_review', shariah_reason: `Fund-level evidence review required: ${fundReview.reason}. Corporate debt/assets rules were not applied to this fund.`,
-    shariah_source: 'SFM fund evidence review (not a fund certification)', shariah_last_reviewed_at: reviewedAt,
+  const published = (fundReview.publishedShariahDesignation as { state?: string; provider?: string } | undefined)?.state === 'verified';
+  return { shariah_status: 'needs_review', shariah_reason: published
+      ? `Published Shariah designation verified from ${(fundReview.publishedShariahDesignation as { provider?: string }).provider ?? 'the fund provider'}; SFM periodic source and holdings verification remains separate and is not a new fatwa.`
+      : `Fund-level evidence review required: ${fundReview.reason}. Corporate debt/assets rules were not applied to this fund.`,
+    shariah_source: published ? 'Official published Shariah designation + SFM source verification' : 'SFM fund evidence review (not a fund certification)',
+    shariah_last_reviewed_at: reviewedAt,
     shariah_reviewed_by: 'automatic:sfm-evidence-v2', shariah_screening_data: { evidenceVersion: EVIDENCE_VERSION,
-      methodologyId: FUND_REVIEW_METHOD, methodologyVersion: '1', screeningMethodology: 'Fund holdings and contract evidence review',
+      methodologyId: FUND_REVIEW_METHOD, methodologyVersion: '1', screeningMethodology: 'Fund holdings, published methodology and contract evidence review',
       fetchedAt: reviewedAt, financialPeriod: null, missingFinancialFields: [], fieldCoverage: [], classification: 'requires_review' as const,
-      screeningRules: { business: { verdict: 'review' as const, reasons: ['Fund-level structural and holdings review is incomplete.'] }, financial: [] }, sources, fundReview,
-      screeningDisclaimer: 'Fund holdings coverage is not a Shariah certification or the FTSE corporate-equity screen.' } };
+      screeningRules: { business: { verdict: 'review' as const, reasons: [published
+        ? 'A current published Shariah designation was verified; SFM monitoring is separate from the provider or Shariah board certification.'
+        : 'Fund-level structural and holdings review is incomplete.'] }, financial: [] }, sources, fundReview,
+      screeningDisclaimer: 'A published fund Shariah designation is reported as source evidence. SFM does not replace the fund Shariah board or issue a fatwa.' } };
 }

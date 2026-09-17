@@ -4,7 +4,9 @@ import {
   MARKET_CHAT_DOMAINS,
   assertChatDomain,
   buildMarketChatSystemPrompt,
+  implicitMarketAssetCandidate,
   type VerifiedChatAsset,
+  type VerifiedChatMarketSnapshot,
 } from '@/lib/ai-analyst/marketChat';
 
 // This is the direct regression coverage for the confirmed live bug: a
@@ -30,6 +32,23 @@ const EURUSD: VerifiedChatAsset = {
 const GOLD: VerifiedChatAsset = {
   canonicalSymbol: 'XAUUSD', displaySymbol: 'XAUUSD', name: 'Gold', assetType: 'COMMODITY', exchange: null, market: 'COMMODITY', quoteCurrency: 'USD',
 };
+const LIVE_AAPL: VerifiedChatMarketSnapshot = {
+  provider: 'finnhub',
+  dataAsOf: '2026-09-16T18:00:00.000Z',
+  dataStatus: 'LIVE',
+  fallbackUsed: false,
+  price: 189.25,
+  change: 2.5,
+  changePercent: 1.34,
+  volume: 1234567,
+  support: 184.2,
+  resistance: 192.8,
+  reportedRiskLevel: 'MEDIUM',
+  currency: 'USD',
+  shariaStatus: 'compliant',
+  shariaSource: 'verified-screening',
+  shariaReviewedAt: '2026-09-15T00:00:00.000Z',
+};
 
 describe('assertChatDomain — fail-closed cross-domain guard', () => {
   it('allows exactly the domains on the allowlist', () => {
@@ -49,6 +68,19 @@ describe('assertChatDomain — fail-closed cross-domain guard', () => {
     expect(() => assertChatDomain('', MARKET_CHAT_DOMAINS)).toThrow(ChatDomainMismatchError);
     expect(() => assertChatDomain(null, MARKET_CHAT_DOMAINS)).toThrow(ChatDomainMismatchError);
     expect(() => assertChatDomain(42, MARKET_CHAT_DOMAINS)).toThrow(ChatDomainMismatchError);
+  });
+});
+
+describe('implicitMarketAssetCandidate — multilingual verified resolver handoff', () => {
+  it('accepts ticker-like and one-token localized company aliases without trusting them yet', () => {
+    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'NVDA' }])).toBe('NVDA');
+    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'بوبيان' }])).toBe('بوبيان');
+    expect(implicitMarketAssetCandidate([{ role: 'assistant', content: 'x' }, { role: 'user', content: 'بيتكوين' }])).toBe('بيتكوين');
+  });
+
+  it('does not classify a normal sentence/question as an implicit asset', () => {
+    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'شنو وضع السوق اليوم؟' }])).toBeNull();
+    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'compare NVDA with AMD' }])).toBeNull();
   });
 });
 
@@ -74,6 +106,20 @@ describe('buildMarketChatSystemPrompt — verified financial-instrument framing'
     expect(prompt).toMatch(/Verified asset metadata.*always overrides any prior project/i);
   });
 
+  it('injects only verified current market facts with provider, timestamp and freshness status', () => {
+    const prompt = buildMarketChatSystemPrompt({
+      domain: 'market', asset: AAPL, marketSnapshot: LIVE_AAPL, requestedUnresolvedSymbol: false, locale: 'en',
+    });
+    expect(prompt).toContain('Verified THE SFM server market snapshot');
+    expect(prompt).toContain('"price":189.25');
+    expect(prompt).toContain('"currency":"USD"');
+    expect(prompt).toContain('"provider":"finnhub"');
+    expect(prompt).toContain('"dataStatus":"LIVE"');
+    expect(prompt).toContain('"dataAsOf":"2026-09-16T18:00:00.000Z"');
+    expect(prompt).toContain('"shariaStatus":"compliant"');
+    expect(prompt).toMatch(/do not infer missing values/i);
+  });
+
   it('never fabricates instructions permitting invented prices, targets, or confidence values', () => {
     const prompt = buildMarketChatSystemPrompt({ domain: 'finance', asset: AAPL, requestedUnresolvedSymbol: false, locale: 'en' });
     expect(prompt).toMatch(/Never invent or estimate a price, price target, confidence score/i);
@@ -87,9 +133,10 @@ describe('buildMarketChatSystemPrompt — verified financial-instrument framing'
     expect(prompt).not.toContain('type=');
   });
 
-  it('omits both the verified-asset line and the unresolved-symbol line for a general finance question with no symbol', () => {
+  it('omits both verified asset and live-snapshot lines for a general finance question with no symbol', () => {
     const prompt = buildMarketChatSystemPrompt({ domain: 'finance', asset: null, requestedUnresolvedSymbol: false, locale: 'en' });
     expect(prompt).not.toContain('Verified asset for this conversation');
+    expect(prompt).not.toContain('Verified THE SFM server market snapshot');
     expect(prompt).not.toMatch(/could not verify|could not be verified/i);
   });
 });

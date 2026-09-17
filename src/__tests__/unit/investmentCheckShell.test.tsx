@@ -5,11 +5,13 @@ import { isPublicShellRoute } from '@/config/workspaces/public-shell-routes';
 import { AppLayout } from '@/components/AppLayout';
 import InvestmentCheckPage from '@/app/investment-check/page';
 
-const navigation = vi.hoisted(() => ({ pathname: '/investment-check', lang: 'en' as 'ar' | 'en' | 'fr' }));
+const navigation = vi.hoisted(() => ({ pathname: '/investment-check', lang: 'en' as 'ar' | 'en' | 'fr', isGuest: false }));
 vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: vi.fn() }),
 }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: null, isGuest: navigation.isGuest, loading: false }) }));
 vi.mock('next/dynamic', () => ({
   default: () => function WorkspaceShell({ children }: { children: React.ReactNode }) {
     return <div data-workspace-shell="true">{children}</div>;
@@ -47,5 +49,13 @@ describe('Investment Check public shell', () => {
     }
     navigation.pathname = '/investments';
     expect(renderToStaticMarkup(<AppLayout><p>Investments</p></AppLayout>)).toContain('data-workspace-shell');
+  });
+
+  it('retains navigation when an active guest enters the public market overview', () => {
+    navigation.pathname = '/ai-analyst/overview';
+    navigation.isGuest = true;
+    expect(renderToStaticMarkup(<AppLayout><p>Overview</p></AppLayout>)).toContain('data-workspace-shell');
+    navigation.isGuest = false;
+    expect(renderToStaticMarkup(<AppLayout><p>Overview</p></AppLayout>)).toContain('sfm-app-layout-public');
   });
 });

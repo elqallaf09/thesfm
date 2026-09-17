@@ -1,4 +1,5 @@
 import { createPrivateKey, createSign } from 'node:crypto';
+import { privateAiVisionConfigured } from '@/lib/server/aiProvider';
 
 export type ReceiptProviderErrorCode =
   | 'google_env_missing'
@@ -17,8 +18,8 @@ export type ReceiptProviderErrorCode =
   | 'google_unsupported_file_type'
   | 'google_quota_exceeded'
   | 'google_request_failed'
-  | 'openai_env_missing'
-  | 'openai_fallback_failed'
+  | 'sfm_private_vision_not_configured'
+  | 'sfm_private_vision_failed'
   | 'no_provider_configured';
 
 export type GoogleReceiptCredentials = {
@@ -63,9 +64,8 @@ export type ReceiptProviderStatus = {
     processorPathBuilt: boolean;
     error?: ReceiptProviderErrorCode;
   };
-  openai: {
+  privateVision: {
     configured: boolean;
-    hasApiKey: boolean;
   };
 };
 
@@ -164,9 +164,8 @@ export function getReceiptProviderStatus(): ReceiptProviderStatus {
       processorPathBuilt: Boolean(processorPath),
       ...(error ? { error } : {}),
     },
-    openai: {
-      configured: Boolean(process.env.OPENAI_API_KEY),
-      hasApiKey: Boolean(process.env.OPENAI_API_KEY),
+    privateVision: {
+      configured: privateAiVisionConfigured(),
     },
   }
 }
@@ -392,8 +391,8 @@ export function safeProviderErrorMessage(code: ReceiptProviderErrorCode) {
     google_unsupported_file_type: 'Google Document AI does not support this file type.',
     google_quota_exceeded: 'Google Document AI quota was exceeded.',
     google_request_failed: 'Could not connect to Google Document AI.',
-    openai_env_missing: 'OpenAI API key is missing.',
-    openai_fallback_failed: 'OpenAI Vision fallback failed.',
+    sfm_private_vision_not_configured: 'SFM Private Vision is not configured.',
+    sfm_private_vision_failed: 'SFM Private Vision fallback failed.',
     no_provider_configured: 'No receipt scanning provider is configured.',
   };
   return messages[code];

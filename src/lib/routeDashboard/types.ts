@@ -166,7 +166,7 @@ export type ReceiptAmountCandidate = {
 export type AiExtractedData = {
   merchantName?: string;
   description?: string;
-  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
+  provider?: 'google-document-ai' | 'sfm-private-vision' | 'manual';
   invoiceNumber?: string;
   totalAmount?: number;
   subtotal?: number;
@@ -192,14 +192,14 @@ export type AiExtractedData = {
   confidence?: number;
 };
 export type ReceiptScanDebug = {
-  stage?: 'upload' | 'provider' | 'ai' | 'parser' | 'ui' | 'google' | 'openai';
+  stage?: 'upload' | 'provider' | 'ai' | 'parser' | 'ui' | 'google' | 'private-ai';
   fileName?: string;
   fileType?: string;
   fileSize?: number;
   providerConfigured?: boolean;
   googleConfigured?: boolean;
-  openaiConfigured?: boolean;
-  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
+  privateVisionConfigured?: boolean;
+  provider?: 'google-document-ai' | 'sfm-private-vision' | 'manual';
   rawTextLength?: number;
   candidateCount?: number;
   selectedAmount?: number;
@@ -213,7 +213,7 @@ export type ReceiptScanDebug = {
 export type ReceiptScanApiResult = {
   fileName: string;
   success?: boolean;
-  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
+  provider?: 'google-document-ai' | 'sfm-private-vision' | 'manual';
   confidence?: 'high' | 'medium' | 'low';
   code?: string;
   data?: AiExtractedData;
@@ -222,7 +222,7 @@ export type ReceiptScanApiResult = {
 };
 export type ReceiptScanApiPayload = {
   success?: boolean;
-  provider?: 'google-document-ai' | 'openai-vision' | 'manual';
+  provider?: 'google-document-ai' | 'sfm-private-vision' | 'manual';
   confidence?: 'high' | 'medium' | 'low';
   code?: string;
   error?: string;

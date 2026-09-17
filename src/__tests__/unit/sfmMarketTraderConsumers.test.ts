@@ -21,7 +21,8 @@ describe('SFM Market Data Engine product consumers', () => {
     expect(facade).toContain("from './sfmMarketQuotes'");
     expect(facade).toContain('return fetchSfmTraderQuotesDetailed(symbols, options)');
     expect(recommendations).toContain("from '@/lib/trader/marketQuotes'");
-    expect(watchlist).toContain("from '@/lib/trader/marketQuotes'");
+    expect(watchlist).toContain("from '@/lib/trader/watchlistEngine'");
+    expect(source('src/lib/trader/watchlistEngine.ts')).toContain("from '@/lib/trader/marketQuotes'");
   });
 
   it('uses SFM quote and history boundaries instead of Yahoo enrichment for migrated consumers', () => {

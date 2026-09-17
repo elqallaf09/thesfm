@@ -1,97 +1,39 @@
 import { NextResponse } from 'next/server';
-import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
-import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
-import { TICKER_FALLBACK_SOURCE, toResilientTickerItem } from '@/lib/market/tickerItems';
+import { screenGrowthStocks } from '@/lib/market/growthStockScreener';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
-export const revalidate = 300;
+export const revalidate = 900;
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: Request) {
+  const limited = rateLimitRequest(request, { max: 30, prefix: 'growth-stocks-screener' });
+  if (limited) return limited;
 
-const GROWTH_TICKER_SYMBOLS = [
-  'NVDA',
-  'MSFT',
-  'GOOGL',
-  'AMZN',
-  'META',
-  'TSLA',
-  'AMD',
-  'PLTR',
-  'DDOG',
-  'NOW',
-  'RBLX',
-] as const;
+  const result = await screenGrowthStocks();
+  const degraded = result.mode !== 'fundamental_screener';
 
-const GROWTH_TICKER_NAMES: Record<string, string> = {
-  NVDA: 'NVIDIA',
-  MSFT: 'Microsoft',
-  AAPL: 'Apple',
-  AMZN: 'Amazon',
-  GOOGL: 'Alphabet',
-  META: 'Meta Platforms',
-  TSLA: 'Tesla',
-  AVGO: 'Broadcom',
-  AMD: 'Advanced Micro Devices',
-  PLTR: 'Palantir',
-  SNOW: 'Snowflake',
-  NOW: 'ServiceNow',
-  CRM: 'Salesforce',
-  SHOP: 'Shopify',
-  UBER: 'Uber',
-  MELI: 'MercadoLibre',
-  DDOG: 'Datadog',
-  NET: 'Cloudflare',
-  CRWD: 'CrowdStrike',
-  RBLX: 'Roblox',
-  ABNB: 'Airbnb',
-};
-
-export async function GET() {
-  const config = getStockCategoryConfig('growth');
-  const stocksBySymbol = new Map((config?.watchlist ?? []).map(stock => [stock.symbol, stock]));
-  const watchlist = GROWTH_TICKER_SYMBOLS.map(symbol => ({
-    symbol,
-    name: stocksBySymbol.get(symbol)?.name ?? GROWTH_TICKER_NAMES[symbol] ?? symbol,
-  }));
-
-  const buildItems = (prices?: Awaited<ReturnType<typeof fetchStockPrices>>) =>
-    watchlist.map(stock => toResilientTickerItem(stock, prices?.get(stock.symbol)));
-
-  try {
-    const prices = await fetchStockPrices(watchlist, process.env.FINNHUB_API_KEY);
-    const items = buildItems(prices);
-
-    return NextResponse.json(
-      {
-        ok: true,
-        source: TICKER_FALLBACK_SOURCE,
-        updated_at: new Date().toISOString(),
-        available_count: items.filter(item => item.available).length,
-        items,
+  return NextResponse.json(
+    {
+      ok: true,
+      ...(degraded ? { code: 'GROWTH_SCREENER_DEGRADED' } : {}),
+      source: result.source,
+      updated_at: result.updatedAt,
+      screening_mode: result.mode,
+      universe_count: result.universeCount,
+      matched_count: result.matchedCount,
+      returned_count: result.returnedCount,
+      available_count: result.availableCount,
+      screening_periods: result.periods,
+      screening_criteria: result.criteria,
+      degraded_reason: result.degradedReason,
+      items: result.items,
+    },
+    {
+      headers: {
+        'cache-control': degraded
+          ? 'public, s-maxage=60, stale-while-revalidate=600'
+          : 'public, s-maxage=900, stale-while-revalidate=3600',
       },
-      {
-        headers: {
-          'cache-control': 'public, s-maxage=300, stale-while-revalidate=600',
-        },
-      },
-    );
-  } catch (error) {
-    console.error('[GrowthStocksTicker] Failed to load ticker', {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return NextResponse.json(
-      {
-        ok: true,
-        code: 'GROWTH_TICKER_DEGRADED',
-        source: TICKER_FALLBACK_SOURCE,
-        updated_at: new Date().toISOString(),
-        available_count: 0,
-        items: buildItems(),
-      },
-      {
-        headers: {
-          'cache-control': 'public, s-maxage=60, stale-while-revalidate=600',
-        },
-      },
-    );
-  }
+    },
+  );
 }

@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearerToken } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
+import { generatePrivateVisionReply, privateAiVisionConfigured } from '@/lib/server/aiProvider';
 import { normalizeDigits } from '@/lib/locale';
 import {
   getGoogleAccessToken,
@@ -50,7 +52,7 @@ function inferReceiptMimeType(file: File) {
   return explicitType || 'application/octet-stream';
 }
 
-type ScanProvider = 'google-document-ai' | 'openai-vision' | 'manual';
+type ScanProvider = 'google-document-ai' | 'sfm-private-vision' | 'manual';
 type ConfidenceLevel = 'high' | 'medium' | 'low';
 type ScanErrorCode =
   | 'scan_success'
@@ -70,8 +72,8 @@ type ScanErrorCode =
   | 'google_unsupported_file_type'
   | 'google_quota_exceeded'
   | 'google_request_failed'
-  | 'openai_env_missing'
-  | 'openai_fallback_failed'
+  | 'sfm_private_vision_not_configured'
+  | 'sfm_private_vision_failed'
   | 'OCR_NOT_CONFIGURED'
   | 'no_provider_configured'
   | 'provider_unavailable'
@@ -151,12 +153,12 @@ type ProviderExtraction = {
 };
 
 type ScanDebug = {
-  stage: 'upload' | 'provider' | 'google' | 'openai' | 'parser' | 'ui';
+  stage: 'upload' | 'provider' | 'google' | 'private-ai' | 'parser' | 'ui';
   fileName: string;
   fileType: string;
   fileSize: number;
   googleConfigured: boolean;
-  openaiConfigured: boolean;
+  privateVisionConfigured: boolean;
   provider?: ScanProvider;
   rawTextLength?: number;
   candidateCount?: number;
@@ -261,8 +263,8 @@ function googleConfigured() {
   return getReceiptProviderStatus().google.configured;
 }
 
-function openaiConfigured() {
-  return getReceiptProviderStatus().openai.configured;
+function privateVisionAvailable() {
+  return getReceiptProviderStatus().privateVision.configured;
 }
 
 function buildDebug(file: File, stage: ScanDebug['stage'], patch: Partial<ScanDebug> = {}): ScanDebug {
@@ -272,7 +274,7 @@ function buildDebug(file: File, stage: ScanDebug['stage'], patch: Partial<ScanDe
     fileType: inferReceiptMimeType(file),
     fileSize: file.size,
     googleConfigured: googleConfigured(),
-    openaiConfigured: openaiConfigured(),
+    privateVisionConfigured: privateVisionAvailable(),
     ...patch,
   };
 }
@@ -845,7 +847,7 @@ function normalizeExtraction(extraction: ProviderExtraction, fileName: string): 
       fileType: '',
       fileSize: 0,
       googleConfigured: googleConfigured(),
-      openaiConfigured: openaiConfigured(),
+      privateVisionConfigured: privateVisionAvailable(),
       provider: extraction.provider,
       rawTextLength: rawText.length,
       candidateCount: candidates.length,
@@ -1192,144 +1194,58 @@ async function scanWithGoogleDocumentAI(file: File, bytes: ArrayBuffer): Promise
   };
 }
 
-function readOutputText(payload: Record<string, unknown>) {
-  if (typeof payload.output_text === 'string') return payload.output_text;
-  const output = Array.isArray(payload.output) ? payload.output : [];
-  for (const item of output) {
-    const content = item && typeof item === 'object' && Array.isArray((item as Record<string, unknown>).content)
-      ? (item as Record<string, unknown>).content as Array<Record<string, unknown>>
-      : [];
-    for (const part of content) {
-      if (typeof part.text === 'string') return part.text;
-      if (typeof part.output_text === 'string') return part.output_text;
-    }
+function extractPrivateVisionJson(text: string) {
+  const cleaned = text.replace(/```json|```/gi, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(cleaned.slice(start, end + 1));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
   }
-  return '';
 }
 
-async function scanWithOpenAIVision(file: File, bytes: ArrayBuffer): Promise<ProviderExtraction> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new ReceiptScanProviderError('openai_env_missing');
+async function scanWithPrivateVision(file: File, bytes: ArrayBuffer): Promise<ProviderExtraction> {
+  if (!privateAiVisionConfigured()) throw new ReceiptScanProviderError('sfm_private_vision_not_configured');
   const mimeType = inferReceiptMimeType(file);
-  if (mimeType === 'application/pdf') throw new ReceiptScanProviderError('openai_fallback_failed', undefined, 'PDF_NOT_SUPPORTED');
-
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_RECEIPT_MODEL || 'gpt-4.1-mini',
-      input: [{
-        role: 'user',
-        content: [
-          {
-            type: 'input_text',
-            text: [
-              'You are reading a receipt or invoice image. Extract only real visible values as strict JSON.',
-              'Ignore template placeholders like {{CompanyName}}, {{date}}, {{InvoiceNum}}, {{BillToName}}, and {{ContactEmail}}.',
-              'The expense amount must be the final payable amount. Prefer Grand Total, Total, Amount Due, Balance Due, Invoice Total, المجموع الكلي, الإجمالي, المبلغ الإجمالي, المطلوب دفعه.',
-              'Do not choose subtotal, tax, discount, unit price, or line-item amount as final total when a final total exists.',
-              'Detect currencies: جنيه/EGP=EGP, $/USD=USD, د.ك/KD/KWD=KWD, ر.س/SAR=SAR, د.إ/AED=AED, €/EUR=EUR, £/GBP=GBP.',
-              'Return amountCandidates for total, subtotal, tax, discount, and line item values when visible.',
-              'For Arabic invoices with a merchant, description should be "merchant - فاتورة". For labor invoices, use "Invoice - Labor service".',
-            ].join(' '),
-          },
-          {
-            type: 'input_image',
-            image_url: `data:${mimeType};base64,${Buffer.from(bytes).toString('base64')}`,
-          },
-        ],
-      }],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'receipt_scan',
-          schema: {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-              merchantName: { type: ['string', 'null'] },
-              description: { type: ['string', 'null'] },
-              invoiceNumber: { type: ['string', 'null'] },
-              date: { type: ['string', 'null'] },
-              subtotal: { type: ['number', 'null'] },
-              taxAmount: { type: ['number', 'null'] },
-              discountAmount: { type: ['number', 'null'] },
-              totalAmount: { type: ['number', 'null'] },
-              currency: { type: ['string', 'null'] },
-              category: { type: 'string' },
-              paymentMethod: { type: 'string' },
-              lineItems: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    description: { type: ['string', 'null'] },
-                    quantity: { type: ['number', 'null'] },
-                    unitPrice: { type: ['number', 'null'] },
-                    amount: { type: ['number', 'null'] },
-                  },
-                  required: ['description', 'quantity', 'unitPrice', 'amount'],
-                },
-              },
-              amountCandidates: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  additionalProperties: false,
-                  properties: {
-                    label: { type: 'string' },
-                    amount: { type: 'number' },
-                    currency: { type: ['string', 'null'] },
-                    confidence: { type: 'number' },
-                    source: { type: 'string' },
-                  },
-                  required: ['label', 'amount', 'currency', 'confidence', 'source'],
-                },
-              },
-              confidenceScore: { type: 'number' },
-              rawText: { type: 'string' },
-              warnings: { type: 'array', items: { type: 'string' } },
-            },
-            required: ['merchantName', 'description', 'invoiceNumber', 'date', 'subtotal', 'taxAmount', 'discountAmount', 'totalAmount', 'currency', 'category', 'paymentMethod', 'lineItems', 'amountCandidates', 'confidenceScore', 'rawText', 'warnings'],
-          },
-        },
-      },
-    }),
+  if (mimeType === 'application/pdf') throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'PDF_NOT_SUPPORTED');
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'UNSUPPORTED_IMAGE_TYPE');
+  const generation = await generatePrivateVisionReply({
+    correlationId: randomUUID(),
+    maxTokens: 1600,
+    system: [
+      'You are SFM Private Vision, THE SFM receipt and invoice extraction engine.',
+      'Use only real visible values from the supplied image.',
+      'Never invent totals, dates, currencies, merchant names, line items, or payment methods.',
+      'Return strict JSON only without markdown or commentary.',
+    ].join(' '),
+    prompt: [
+      'Extract JSON fields: merchantName, description, invoiceNumber, date, subtotal, taxAmount, discountAmount, totalAmount, currency, category, paymentMethod, lineItems, amountCandidates, confidenceScore, rawText, warnings.',
+      'The expense amount must be the final payable amount. Prefer Grand Total, Total, Amount Due, Balance Due, Invoice Total, المجموع الكلي, الإجمالي, المبلغ الإجمالي, المطلوب دفعه.',
+      'Do not choose subtotal, tax, discount, unit price, or line-item amount as final total when a final total exists.',
+      'Detect currencies: جنيه/EGP=EGP, $/USD=USD, د.ك/KD/KWD=KWD, ر.س/SAR=SAR, د.إ/AED=AED, €/EUR=EUR, £/GBP=GBP.',
+      'Ignore template placeholders like {{CompanyName}}, {{date}}, {{InvoiceNum}}, {{BillToName}}, and {{ContactEmail}}.',
+      'Use null when a field is unclear instead of guessing. confidenceScore must be between 0 and 1.',
+      'lineItems entries use description, quantity, unitPrice, amount. amountCandidates entries use label, amount, currency, confidence, source.',
+    ].join(' '),
+    imageDataUrl: `data:${mimeType};base64,${Buffer.from(bytes).toString('base64')}`,
   });
-  if (!response.ok) {
-    let providerReason: string | undefined;
-    try {
-      const body = await response.json() as { error?: { type?: string; code?: string } };
-      providerReason = body.error?.code || body.error?.type;
-    } catch {
-      providerReason = undefined;
-    }
-    throw new ReceiptScanProviderError('openai_fallback_failed', response.status, providerReason);
-  }
-  const payload = await response.json() as Record<string, unknown>;
-  const text = readOutputText(payload);
-  if (!text) throw new ReceiptScanProviderError('openai_fallback_failed', undefined, 'EMPTY_RESPONSE');
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    throw new ReceiptScanProviderError('openai_fallback_failed', undefined, 'INVALID_JSON_OUTPUT');
-  }
+  if (!generation) throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'EMPTY_RESPONSE');
+  const parsed = extractPrivateVisionJson(generation.text);
+  if (!parsed) throw new ReceiptScanProviderError('sfm_private_vision_failed', undefined, 'INVALID_JSON_OUTPUT');
   return {
-    provider: 'openai-vision',
+    provider: 'sfm-private-vision',
     rawText: typeof parsed.rawText === 'string' ? parsed.rawText : '',
     data: parsed,
     providerConfidence: Number(parsed.confidenceScore) || 0.72,
     warnings: Array.isArray(parsed.warnings) ? parsed.warnings.filter((item): item is string => typeof item === 'string') : [],
-    rawProvider: 'openai-vision',
+    rawProvider: `${generation.provider}:${generation.model}`,
   };
 }
 
-function shouldFallbackToOpenAI(result: ScanFileResult | null) {
+function shouldFallbackToPrivateVision(result: ScanFileResult | null) {
   return !result
     || !result.fields.total
     || !result.fields.currency
@@ -1354,7 +1270,7 @@ function scanErrorCode(errorSource: string): ScanErrorCode {
   errorSource = sourceCode;
   if (errorSource === 'scan_success') return 'scan_success';
   if (/plan|subscription|paid|premium|business/.test(errorSource)) return 'plan_blocked';
-  if (errorSource === 'missing_google_and_openai' || errorSource === 'all_providers_unavailable' || errorSource === 'no_provider_configured') return 'no_provider_configured';
+  if (errorSource === 'missing_google_and_private_vision' || errorSource === 'all_providers_unavailable' || errorSource === 'no_provider_configured') return 'no_provider_configured';
   if (/missing_google_|google_env_missing|provider_unavailable/.test(errorSource)) return 'google_env_missing';
   if (/invalid_google_credentials_json|google_credentials_json_invalid/.test(errorSource)) return 'google_credentials_json_invalid';
   if (/google_credentials_private_key_missing/.test(errorSource)) return 'google_credentials_private_key_missing';
@@ -1371,8 +1287,8 @@ function scanErrorCode(errorSource: string): ScanErrorCode {
   if (errorSource === 'google_quota_exceeded') return 'google_quota_exceeded';
   if (errorSource === 'google_request_failed') return 'google_request_failed';
   if (/google_document_ai_request_failed|google_process_document_failed/.test(errorSource)) return 'google_process_document_failed';
-  if (/openai_key_missing|openai_env_missing|openai_vision_not_configured/.test(errorSource)) return 'openai_env_missing';
-  if (/openai_fallback_failed|openai_vision_failed|openai_pdf_not_supported|openai_vision_empty_response/.test(errorSource)) return 'openai_fallback_failed';
+  if (/sfm_private_vision_not_configured|private_vision_not_configured/.test(errorSource)) return 'sfm_private_vision_not_configured';
+  if (/sfm_private_vision_failed|private_vision_failed|private_vision_empty_response/.test(errorSource)) return 'sfm_private_vision_failed';
   if (/unsupported_file_type|file_type_unsupported/.test(errorSource)) return 'file_type_unsupported';
   if (/file_too_large/.test(errorSource)) return 'file_too_large';
   if (/file_missing/.test(errorSource)) return 'file_missing';
@@ -1401,8 +1317,8 @@ function scanErrorMessage(code: ScanErrorCode, fallback: string) {
   if (code === 'google_unsupported_file_type') return safeProviderErrorMessage('google_unsupported_file_type');
   if (code === 'google_quota_exceeded') return safeProviderErrorMessage('google_quota_exceeded');
   if (code === 'google_request_failed') return safeProviderErrorMessage('google_request_failed');
-  if (code === 'openai_env_missing') return safeProviderErrorMessage('openai_env_missing');
-  if (code === 'openai_fallback_failed') return safeProviderErrorMessage('openai_fallback_failed');
+  if (code === 'sfm_private_vision_not_configured') return safeProviderErrorMessage('sfm_private_vision_not_configured');
+  if (code === 'sfm_private_vision_failed') return safeProviderErrorMessage('sfm_private_vision_failed');
   if (code === 'provider_unavailable') return safeProviderErrorMessage('no_provider_configured');
   if (code === 'file_missing') return 'No receipt file uploaded';
   if (code === 'unsupported_file_type') return 'Unsupported file type';
@@ -1416,7 +1332,7 @@ function providerFailureResult(file: File, warnings: string[], errorSource: stri
   const code = scanErrorCode(errorSource);
   const detail = warnings
     .map(warning => {
-      const [, statusCode, reason] = warning.match(/^(?:google_[a-z_]+|openai_fallback_failed):(\d+)?(?::([A-Z0-9_.$-]+))?$/i) || [];
+      const [, statusCode, reason] = warning.match(/^(?:google_[a-z_]+|sfm_private_vision_failed):(\d+)?(?::([A-Z0-9_.$-]+))?$/i) || [];
       return { statusCode: statusCode ? Number(statusCode) : undefined, reason };
     })
     .find(item => item.statusCode || item.reason);
@@ -1492,12 +1408,12 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
     warnings.push(googleUnavailableCode);
   }
 
-  if (shouldFallbackToOpenAI(googleResult)) {
-    if (providerStatus.openai.configured) {
+  if (shouldFallbackToPrivateVision(googleResult)) {
+    if (providerStatus.privateVision.configured) {
       try {
-        const openai = withFileDebug(normalizeExtraction(await scanWithOpenAIVision(file, bytes), file.name), file, { provider: 'openai-vision' });
-        openai.warnings = [...warnings, ...openai.warnings];
-        return openai;
+        const privateVision = withFileDebug(normalizeExtraction(await scanWithPrivateVision(file, bytes), file.name), file, { provider: 'sfm-private-vision' });
+        privateVision.warnings = [...warnings, ...privateVision.warnings];
+        return privateVision;
       } catch (error) {
         const detail = providerErrorDetails(error);
         const message = [
@@ -1507,7 +1423,7 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
         ].filter(Boolean).join(':');
         warnings.push(message);
         if (process.env.NODE_ENV !== 'production') {
-          console.error('OpenAI Vision receipt scan failed:', {
+          console.error('SFM Private Vision receipt scan failed:', {
             errorCode: detail.message,
             providerStatusCode: detail.providerStatusCode,
             providerReason: detail.providerReason,
@@ -1515,7 +1431,7 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
         }
       }
     } else {
-      warnings.push('openai_env_missing');
+      warnings.push('sfm_private_vision_not_configured');
     }
   }
 
@@ -1524,12 +1440,12 @@ async function scanFile(file: File, receiptText?: string): Promise<ScanFileResul
     return googleResult;
   }
 
-  const errorSource = !providerStatus.google.configured && !providerStatus.openai.configured
+  const errorSource = !providerStatus.google.configured && !providerStatus.privateVision.configured
     ? 'no_provider_configured'
     : !providerStatus.google.configured
       ? googleUnavailableCode
-      : warnings.find(warning => scanErrorCode(warning) !== 'scan_failed' && scanErrorCode(warning) !== 'openai_env_missing')?.split(':')[0]
-        || (!providerStatus.openai.configured ? 'openai_env_missing' : 'google_process_document_failed');
+      : warnings.find(warning => scanErrorCode(warning) !== 'scan_failed' && scanErrorCode(warning) !== 'sfm_private_vision_not_configured')?.split(':')[0]
+        || (!providerStatus.privateVision.configured ? 'sfm_private_vision_not_configured' : 'google_process_document_failed');
   return providerFailureResult(file, warnings, errorSource);
 }
 
@@ -1553,28 +1469,29 @@ export async function POST(request: NextRequest) {
     const receiptText = formData.get('receiptText');
     const hasReceiptText = typeof receiptText === 'string' && receiptText.trim().length > 0;
     const providerStatus = getReceiptProviderStatus();
-    const openAiUnits = providerStatus.openai.configured && !hasReceiptText
+    const privateVisionUnits = providerStatus.privateVision.configured && !hasReceiptText
       ? files.filter(file => {
         const mimeType = inferReceiptMimeType(file);
         return SUPPORTED_TYPES.has(mimeType) && mimeType !== 'application/pdf' && file.size <= MAX_FILE_SIZE;
       }).length
       : 0;
 
-    if (openAiUnits > 0) {
+    if (privateVisionUnits > 0) {
       const usage = await consumeAiUsage({
         userId: user.id,
         feature: 'receipt_scan',
-        units: openAiUnits,
+        units: privateVisionUnits,
         metadata: {
           route: '/api/receipts/scan',
           fileCount: files.length,
-          openAiUnits,
+          privateVisionUnits,
+          provider: 'sfm-private-vision',
         },
       });
       if (!usage.allowed) return aiUsageLimitResponse(usage);
     }
 
-    if (!providerStatus.google.configured && !providerStatus.openai.configured && !hasReceiptText) {
+    if (!providerStatus.google.configured && !providerStatus.privateVision.configured && !hasReceiptText) {
       const googleError = providerStatus.google.error || 'google_env_missing';
       return NextResponse.json({
         success: false,
@@ -1584,7 +1501,7 @@ export async function POST(request: NextRequest) {
         code: 'OCR_NOT_CONFIGURED',
         fields: {},
         candidates: { amounts: [] },
-        warnings: [googleError, 'openai_env_missing'],
+        warnings: [googleError, 'sfm_private_vision_not_configured'],
         error: 'خدمة قراءة الفواتير غير مفعلة حالياً. يمكنك إدخال البيانات يدوياً.',
         debug: {
           stage: 'provider',
@@ -1592,7 +1509,7 @@ export async function POST(request: NextRequest) {
           fileType: files[0]?.type || '',
           fileSize: files[0]?.size || 0,
           googleConfigured: providerStatus.google.configured,
-          openaiConfigured: providerStatus.openai.configured,
+          privateVisionConfigured: providerStatus.privateVision.configured,
           provider: 'manual',
           errorSource: 'OCR_NOT_CONFIGURED',
           message: googleError,

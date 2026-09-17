@@ -2,9 +2,12 @@
 
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import { PublicLanguageProvider } from '@/components/PublicLanguageProvider';
 import { isPublicShellRoute } from '@/config/workspaces/public-shell-routes';
 import { resolveWorkspaceRouteId } from '@/config/workspaces/workspace-route-index';
+
+const PublicLanguageProvider = dynamic(
+  () => import('@/components/PublicLanguageProvider').then(module => module.PublicLanguageProvider),
+);
 
 const PersonalFinanceLanguageProvider = dynamic(
   () => import('@/components/language/PersonalFinanceLanguageProvider').then(module => module.PersonalFinanceLanguageProvider),

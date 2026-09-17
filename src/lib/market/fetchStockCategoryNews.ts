@@ -1,10 +1,12 @@
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
+import { screenStockCategory } from '@/lib/market/stockCategoryScanner';
 import {
   getStockCategoryConfig,
   type StockCategoryFilterKey,
   type StockCategoryId,
+  type StockCategoryStock,
 } from '@/lib/market/stockCategoryConfigs';
 import {
   isNewsTranslationEnabled,
@@ -78,8 +80,14 @@ export type StockCategoryNewsPayload = {
   partialFailure: boolean;
   liveUpdatesAvailable: boolean;
   storedFallbackUsed: boolean;
+  scannerMode?: string;
+  scannerUniverseCount?: number;
+  scannerMatchedCount?: number;
   message?: string;
 };
+
+const NEWS_SYMBOL_LIMIT = 120;
+const PRICE_SYMBOL_LIMIT = 80;
 
 function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -89,17 +97,71 @@ function unique(values: string[]) {
   return [...new Set(values.map(value => value.trim()).filter(Boolean))];
 }
 
+function normalize(value: unknown) {
+  return String(value ?? '').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function scannerStockFilter(config: NonNullable<ReturnType<typeof getStockCategoryConfig>>, sector: string | null, industry: string | null) {
+  const haystack = normalize(`${sector ?? ''} ${industry ?? ''}`);
+  const match = config.filters.find(filter => filter.key !== 'all' && filter.keywords.some(keyword => haystack.includes(normalize(keyword))));
+  return match?.key ?? config.filters.find(filter => filter.key !== 'all')?.key ?? 'general';
+}
+
+async function categoryUniverse(config: NonNullable<ReturnType<typeof getStockCategoryConfig>>) {
+  // Sharia news keeps its conservative configured universe here. The full
+  // Sharia scanner is exposed separately and retains explicit screening status.
+  if (config.id === 'sharia') {
+    return {
+      stocks: config.watchlist,
+      mode: 'configured_sharia_news_universe',
+      universeCount: config.watchlist.length,
+      matchedCount: config.watchlist.length,
+    };
+  }
+
+  const scan = await screenStockCategory(config.id, { limit: NEWS_SYMBOL_LIMIT }).catch(() => null);
+  if (!scan || scan.items.length === 0) {
+    return {
+      stocks: config.watchlist,
+      mode: 'fallback_watchlist',
+      universeCount: config.watchlist.length,
+      matchedCount: config.watchlist.length,
+    };
+  }
+
+  const stocks: StockCategoryStock[] = scan.items.map(item => {
+    const filter = scannerStockFilter(config, item.sector, item.industry);
+    return {
+      symbol: item.symbol,
+      name: item.name,
+      filter,
+      filters: [filter],
+      aliases: [],
+    };
+  });
+  return {
+    stocks,
+    mode: scan.mode,
+    universeCount: scan.universeCount,
+    matchedCount: scan.matchedCount,
+  };
+}
+
 export async function fetchStockCategoryNews(categoryInput: string | null | undefined, languageInput?: string | null) {
   const config = getStockCategoryConfig(categoryInput);
   if (!config) throw new Error('Unsupported stock category');
 
   const language = normalizeNewsLanguage(languageInput);
   const apiKey = process.env.FINNHUB_API_KEY?.trim();
+  const universe = await categoryUniverse(config);
+  const newsStocks = universe.stocks.slice(0, NEWS_SYMBOL_LIMIT);
+  const priceStocks = newsStocks.slice(0, PRICE_SYMBOL_LIMIT);
+
   const [newsResult, priceResult] = await Promise.allSettled([
     aggregateFinancialNews({
       query: config.rssQuery,
-      symbols: config.watchlist.map(stock => stock.symbol),
-      companyNames: config.watchlist.flatMap(stock => [stock.name, ...(stock.aliases ?? [])]),
+      symbols: newsStocks.map(stock => stock.symbol),
+      companyNames: newsStocks.flatMap(stock => [stock.name, ...(stock.aliases ?? [])]),
       marketCodes: ['US'],
       countries: ['US'],
       sectors: config.filters.filter(filter => filter.key !== 'all').map(filter => filter.key),
@@ -107,9 +169,9 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       from: dateDaysAgo(45),
       to: new Date().toISOString().slice(0, 10),
       language,
-      limit: 160,
-    }, { page: 1, pageSize: 60, sort: 'importance' }),
-    fetchStockPrices(config.watchlist, apiKey),
+      limit: 240,
+    }, { page: 1, pageSize: 80, sort: 'importance' }),
+    fetchStockPrices(priceStocks, apiKey),
   ]);
 
   const aggregated = newsResult.status === 'fulfilled'
@@ -124,7 +186,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       lastSuccessfulUpdate: null,
     };
   const prices = priceResult.status === 'fulfilled' ? priceResult.value : new Map<string, TechStockPrice>();
-  const stockBySymbol = new Map(config.watchlist.map(stock => [stock.symbol.toUpperCase(), stock]));
+  const stockBySymbol = new Map(newsStocks.map(stock => [stock.symbol.toUpperCase(), stock]));
 
   const normalizedItems: StockCategoryNewsItem[] = aggregated.stories.map(story => {
     const stock = story.symbols.map(symbol => stockBySymbol.get(symbol.toUpperCase())).find(Boolean) ?? null;
@@ -184,7 +246,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
   });
 
   const items = await translateNewsItems(normalizedItems, language) as StockCategoryNewsItem[];
-  const priceList = config.watchlist.map(stock => prices.get(stock.symbol) ?? {
+  const priceList = priceStocks.map(stock => prices.get(stock.symbol) ?? {
     symbol: stock.symbol,
     price: null,
     changePercent: null,
@@ -199,7 +261,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
   return {
     success: true,
     category: config.id,
-    source: 'multi-source market news',
+    source: 'multi-source market news + dynamic category scanner',
     priceSource: 'market data',
     lastUpdated,
     lastSuccessfulUpdate: aggregated.lastSuccessfulUpdate,
@@ -211,6 +273,9 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
     partialFailure: aggregated.partialFailure,
     liveUpdatesAvailable: aggregated.liveUpdatesAvailable,
     storedFallbackUsed: aggregated.storedFallbackUsed,
+    scannerMode: universe.mode,
+    scannerUniverseCount: universe.universeCount,
+    scannerMatchedCount: universe.matchedCount,
     ...(items.length === 0 ? { message: config.noNewsMessage } : {}),
   } satisfies StockCategoryNewsPayload;
 }

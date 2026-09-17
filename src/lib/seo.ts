@@ -72,6 +72,7 @@ export const publicRoutes = [
   '/loan-calculator',
   '/guides/zakat-kuwait-stocks',
   '/guides/budget-800-kwd',
+  '/global-markets',
   '/privacy',
   '/terms',
 ] as const;

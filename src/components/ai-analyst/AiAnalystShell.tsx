@@ -32,10 +32,9 @@ export const AI_ANALYST_NAVIGATION_GROUPS = [
     key: 'analysis',
     items: [
       { key: 'overview', href: '/ai-analyst/overview' },
-      { key: 'analysis', href: '/ai-analyst/analyze' },
+      { key: 'analysis', href: '/ai-analyst/analyze', activeTabs: ['analysis', 'agent', 'assetDetails'] },
       { key: 'assistant', href: '/ai-analyst/assistant' },
       { key: 'compare', href: '/ai-analyst/compare' },
-      { key: 'agent', href: '/ai-analyst/agent' },
       { key: 'path', href: '/ai-analyst/path', activeTabs: ['path', 'timeline'] },
       { key: 'history', href: '/ai-analyst/history?view=history' },
       { key: 'future', href: '/ai-analyst/opportunities' },
@@ -46,7 +45,6 @@ export const AI_ANALYST_NAVIGATION_GROUPS = [
     items: [
       { key: 'marketLeadership', href: '/ai-analyst/market-leadership' },
       { key: 'markets', href: '/ai-analyst/markets' },
-      { key: 'assetDetails', href: '/ai-analyst/analyze' },
       { key: 'marketSessions', href: '/ai-analyst/markets/sessions' },
       { key: 'marketMap', href: '/ai-analyst/markets?view=map' },
     ],

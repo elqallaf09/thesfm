@@ -10,6 +10,7 @@ import { TR_NAV } from '@/lib/translations/nav';
 import { TR_NEWS } from '@/lib/translations/news';
 import { TR_SHARIA_RESEARCH } from '@/lib/translations/sharia-research';
 import { TR_STOCK } from '@/lib/translations/stock';
+import { TR_SPECIAL_NEWS } from '@/lib/translations/special-news';
 import { TR_TECH } from '@/lib/translations/tech';
 import type { TranslationDictionary } from '@/lib/translations/types';
 
@@ -26,5 +27,6 @@ export const MARKETS_TRADING_TRANSLATIONS = {
   ...TR_NEWS,
   ...TR_SHARIA_RESEARCH,
   ...TR_STOCK,
+  ...TR_SPECIAL_NEWS,
   ...TR_TECH,
 } satisfies TranslationDictionary;

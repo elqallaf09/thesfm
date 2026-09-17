@@ -1,4 +1,4 @@
-const CACHE_NAME = "the-sfm-trader-v20260717-shell-unify-symbol-data-20260916";
+const CACHE_NAME = "the-sfm-trader-v20260917-integrated-trader";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -10,8 +10,11 @@ const STATIC_ASSETS = [
   "/assets/drawer-data.js?v=20260916-symbol-data",
   "/assets/drawer-mobile.css?v=20260916-symbol-data",
   "/assets/drawer-focus.js?v=20260916-symbol-data",
-  "/app.js?v=20260916-symbol-data",
-  "/detail.js?v=20260714-phase34",
+  "./watchlist-engine.js?v=20260917-integrated-trader",
+  "./watchlist-view.js?v=20260917-integrated-trader",
+  "./watchlist.css?v=20260917-integrated-trader",
+  "/app.js?v=20260917-integrated-trader",
+  "/detail.js?v=20260714-phase34-signal-gate-20260915",
   "/manifest.webmanifest",
   "/assets/trading-cinematic-bg.jpg",
   "/assets/world-dotted-map.png",
