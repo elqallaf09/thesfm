@@ -40,3 +40,18 @@ test('shows a stale last-known price with its original timestamp without countin
   assert.equal(analyzer.coverage([stale]).analyses, 0);
   assert.doesNotThrow(() => analyzer.render({}, options));
 });
+
+test('retains normalized confidence and canonical observation time in the watchlist research drawer', () => {
+  const item = { symbol: 'MSFT', price: 501.25, engine: { asOf: '2026-09-17T19:00:00Z' } };
+  const options = { h: String, text: (_ar, en) => en, price: String, currency: () => 'USD', status: () => ({}),
+    recommendation: () => ({ evidenceReady: true, confidence: 75, targetPrice: 550, stopLoss: 480, riskReward: 2.3 }),
+    recommendationLabel: () => 'Buy', date: String, logo: () => '', titleId: 'drawer-analysis-terminal-title', lang: 'en' };
+  const html = analyzer.render(item, options);
+  assert.match(html, /75%/);
+  assert.match(html, /2026-09-17T19:00:00/);
+  assert.match(html, /550/);
+  assert.doesNotMatch(html, /data-symbol-details/);
+  const blocked = analyzer.render({ ...item, explanationEn: 'Unsafe bullish prose' }, { ...options,
+    recommendation: () => ({ evidenceReady: false, confidence: null, reason: 'Insufficient data' }) });
+  assert.doesNotMatch(blocked, /75%|550|Unsafe bullish prose/);
+});
