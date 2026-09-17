@@ -49,7 +49,7 @@ const OFFICIAL_FUND_PROFILES: Record<string, OfficialFundEvidenceProfile> = {
     host: 'www.ishares.com',
     identityPatterns: [/iShares(?:®|\s)*Silver\s+Trust/i, /\bSLV\b/i],
     evidenceType: 'physical_metal_trust',
-    structuralPatterns: [/silver\s+held\s+by\s+a\s+custodian/i, /ounces\s+in\s+trust/i],
+    structuralPatterns: [/silver\s+bullion/i, /ounces\s+in\s+trust|silver\s+bar\s+list/i],
   },
 };
 
