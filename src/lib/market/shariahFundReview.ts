@@ -4,6 +4,7 @@ import { secureFetch } from '@/lib/sharia-research/secureFetch';
 import { EVIDENCE_VERSION } from '@/lib/sharia-research/evidenceValidation';
 import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
 import { loadIwmHoldings } from './shariahIwmHoldings';
+import { officialFundEvidenceProfile, validateOfficialFundPage } from './shariahOfficialFundProfiles';
 
 export const FUND_REVIEW_METHOD = 'SFM_FUND_EVIDENCE_REVIEW';
 const SPY_HOLDINGS = 'https://www.ssga.com/library-content/products/fund-data/etfs/us/holdings-daily-us-en-spy.xlsx';
@@ -97,7 +98,57 @@ export async function reviewFundEvidence(row: { symbol: string; name: string; ex
   let fundReview: Record<string, unknown> = { coverage: 'unavailable', reason: 'official_fund_holdings_adapter_unavailable',
     structuralChecks: ['Complete dated holdings', 'Underlying securities and cash', 'Derivatives, lending and settlement terms', 'Fund-level Shariah methodology or published opinion'] };
   const sources: Array<{ title: string; url: string; retrievedAt: string; reportingPeriod: string | null; type: string; sourceHash?: string }> = [];
-  if (['GLD', 'SLV'].includes(row.symbol)) fundReview.reason = 'physical_metal_custody_and_settlement_review_required';
+
+  const officialProfile = officialFundEvidenceProfile(row.symbol);
+  if (officialProfile) {
+    try {
+      const response = await secureFetch(officialProfile.officialUrl, {
+        maxBytes: 4_000_000, signal, acceptedContentTypes: ['text/html'], cacheTtlMs: 3600_000, respectRobots: true,
+      });
+      const text = new TextDecoder().decode(response.body);
+      const verified = validateOfficialFundPage(officialProfile, response.finalUrl, text);
+      sources.push({
+        title: `${officialProfile.provider} ${row.symbol} official fund disclosure`,
+        url: response.finalUrl,
+        retrievedAt: response.retrievedAt,
+        reportingPeriod: null,
+        type: verified.evidenceType === 'physical_metal_trust' ? 'fund_structure' : 'fund_profile',
+        sourceHash: createHash('sha256').update(response.body).digest('hex'),
+      });
+      if (verified.evidenceType === 'physical_metal_trust') {
+        fundReview = {
+          ...fundReview,
+          coverage: verified.structuralVerified ? 'structural' : 'official_profile',
+          reason: verified.structuralVerified
+            ? 'physical_metal_structure_verified_shariah_contract_review_pending'
+            : 'physical_metal_custody_and_settlement_review_required',
+          provider: verified.provider,
+          officialUrl: verified.officialUrl,
+          structuralEvidenceVerified: verified.structuralVerified,
+        };
+      } else {
+        fundReview = {
+          ...fundReview,
+          coverage: 'official_profile',
+          reason: 'official_profile_verified_holdings_pending',
+          provider: verified.provider,
+          officialUrl: verified.officialUrl,
+        };
+      }
+    } catch (error) {
+      if (signal.aborted) throw error;
+      fundReview = {
+        ...fundReview,
+        reason: officialProfile.evidenceType === 'physical_metal_trust'
+          ? 'physical_metal_custody_and_settlement_review_required'
+          : 'official_fund_profile_unavailable',
+        profileError: error instanceof Error ? error.message : 'fund_official_profile_fetch_failed',
+      };
+    }
+  } else if (['GLD', 'SLV'].includes(row.symbol)) {
+    fundReview.reason = 'physical_metal_custody_and_settlement_review_required';
+  }
+
   if (row.symbol === 'SPY' && /^(NYSE.?ARCA|ARCX)$/i.test(row.exchange)) {
     const response = await secureFetch(SPY_HOLDINGS, { maxBytes: 2_000_000, signal, acceptedContentTypes: ['spreadsheetml', 'octet-stream'], cacheTtlMs: 3600_000, respectRobots: true });
     if (response.finalUrl !== SPY_HOLDINGS) throw new Error('fund_source_redirected');
