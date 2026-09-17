@@ -1,3 +1,5 @@
+import type { ShariahUniverseItem } from './shariahUniverse';
+
 export type PublishedShariahFundProfile = {
   symbol: string;
   provider: string;
@@ -69,4 +71,44 @@ export function publishedShariahFundProfile(symbol: string | null | undefined) {
 
 export function publishedShariahFundSymbols() {
   return Object.keys(PUBLISHED_SHARIAH_FUNDS);
+}
+
+export function publishedShariahFundCatalogItem(item: ShariahUniverseItem) {
+  const profile = item.assetType === 'etf' ? publishedShariahFundProfile(item.symbol) : null;
+  if (!profile) return null;
+  const reason = {
+    ar: `تعلن ${profile.provider} هذا الصندوق كمنتج متوافق شرعياً وفق منهجية ورقابة منشورة. هذه حالة معلنة من الجهة الراعية وليست فتوى أو اعتماداً مستقلاً صادراً من THE SFM.`,
+    en: `${profile.provider} publishes this fund as Shariah-compliant under a disclosed methodology and oversight process. This is the sponsor's published designation, not an independent THE SFM fatwa or certification.`,
+    fr: `${profile.provider} publie ce fonds comme conforme à la charia selon une méthodologie et une supervision documentées. Il s'agit de la désignation publiée par le promoteur, et non d'une fatwa ou certification indépendante de THE SFM.`,
+  };
+  return {
+    symbol: item.symbol,
+    name: item.name,
+    sector: item.sector,
+    industry: item.industry,
+    exchange: null,
+    assetType: 'etf' as const,
+    shariahStatus: 'compliant' as const,
+    statusLabelAr: 'معلن متوافق شرعياً',
+    reason,
+    screeningSource: profile.sourceName,
+    methodology: {
+      ar: `المنهجية الشرعية المنشورة للصندوق من ${profile.provider}`,
+      en: profile.methodology,
+      fr: `Méthodologie charia publiée du fonds par ${profile.provider}`,
+    },
+    lastScreenedAt: profile.verifiedAt,
+    fieldCoverage: [],
+    fundReview: {
+      coverage: 'published_designation',
+      reason: 'provider_published_shariah',
+      provider: profile.provider,
+      officialUrl: profile.officialUrl,
+      verifiedAt: profile.verifiedAt,
+      independentSfmCertification: false,
+    },
+    financialRatios: null,
+    missingFinancialFields: [],
+    notes: reason,
+  };
 }
