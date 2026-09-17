@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { sfmRedistributionPolicy, type SfmRedistributionPolicy } from '@/lib/sfm-market/storePolicy';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 
 export const SFM_MARKET_OBSERVATIONS_TABLE = 'sfm_market_observations' as const;
-
-export type SfmRedistributionPolicy = 'internal_only' | 'rights_review_required' | 'redistributable';
 
 export type SfmMarketObservationRow = {
   schema_version: string;
@@ -44,13 +43,6 @@ export type SfmMarketObservationRow = {
   evidence_hash: string;
   provenance: SfmMarketQuote['provenance'];
 };
-
-function redistributionPolicy(quote: SfmMarketQuote): SfmRedistributionPolicy {
-  // Never infer redistribution rights from source quality. Aggregators remain
-  // internal-only and direct/official sources still require an explicit rights review.
-  if (quote.provenance.sourceClass === 'aggregator') return 'internal_only';
-  return 'rights_review_required';
-}
 
 export function sfmMarketEvidenceHash(quote: SfmMarketQuote) {
   const evidence = {
@@ -110,7 +102,7 @@ export function buildSfmMarketObservation(quote: SfmMarketQuote): SfmMarketObser
     cache_age_seconds: quote.provenance.cacheAgeSeconds,
     attempt_count: quote.provenance.attemptCount,
     derived_fields: [...quote.provenance.derivedFields],
-    redistribution_policy: redistributionPolicy(quote),
+    redistribution_policy: sfmRedistributionPolicy(quote.provenance.sourceClass),
     evidence_hash: sfmMarketEvidenceHash(quote),
     provenance: { ...quote.provenance, derivedFields: [...quote.provenance.derivedFields] },
   };
