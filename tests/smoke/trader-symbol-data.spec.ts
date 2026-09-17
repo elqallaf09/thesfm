@@ -72,14 +72,17 @@ for (const setup of [
     const analysis = drawer.locator('.analysis-terminal');
     await expect(analysis).toBeVisible();
     const analysisGeometry = await analysis.evaluate(element => {
-      const box = element.getBoundingClientRect(); const hero = element.querySelector('.analysis-terminal-hero')!.getBoundingClientRect();
+      const box = element.getBoundingClientRect(); const heroElement = element.querySelector('.analysis-terminal-hero')!;
+      const hero = heroElement.getBoundingClientRect();
       const metrics = element.querySelector('.analysis-terminal-grid')!.getBoundingClientRect();
-      return { width: box.width, contentWidth: element.scrollWidth, heroBottom: hero.bottom, metricsTop: metrics.top };
+      return { width: box.width, contentWidth: element.scrollWidth, heroBottom: hero.bottom, metricsTop: metrics.top, heroHeight: hero.height, heroContentHeight: heroElement.scrollHeight };
     });
     expect(analysisGeometry.contentWidth).toBeLessThanOrEqual(analysisGeometry.width + 1);
     expect(analysisGeometry.metricsTop).toBeGreaterThanOrEqual(analysisGeometry.heroBottom - 1);
+    expect(analysisGeometry.heroContentHeight).toBeLessThanOrEqual(analysisGeometry.heroHeight + 1);
     await drawer.locator('#drawer-more-toggle').click();
     await expect(drawer.locator('[data-drawer-share]')).toBeVisible();
+    expect(await analysis.locator('.analysis-terminal-hero').evaluate(element => element.scrollHeight - element.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
     await info.attach('fixture-symbol-drawer', { body: await page.screenshot({ scale: 'css', path: info.outputPath('quick-analysis.png') }), contentType: 'image/png' });
     await drawer.locator('.drawer-close').click();
     await expect(drawer).toHaveCount(0);
