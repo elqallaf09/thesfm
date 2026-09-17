@@ -259,7 +259,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     newsSentiment: UNAVAILABLE_NEWS_SENTIMENT,
   });
   const quoteAvailable = quote.quality.state !== 'stale' && quote.quality.state !== 'unavailable';
-  const sufficient = quoteAvailable && recommendation.dataSufficiency.sufficient && recommendation.finalRecommendation !== 'Insufficient data';
+  const sufficient = recommendation.dataSufficiency.sufficient && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
   const indicators = recommendation.technicalSummary.indicators;
   const provider = traderProvider(quote.provenance.upstreamProvider);
   const upstreamName = quote.provenance.upstreamProviderName ?? providerDisplayName(quote.provenance.upstreamProvider);
