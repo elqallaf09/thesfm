@@ -45,6 +45,16 @@ describe('on-demand symbol drawer request lifecycle', () => {
     expect(resources).toContain('symbols=${encoded}&range=90'); expect(app).toContain('data-drawer-retry');
     expect(resources).toContain('newsForSymbol = symbol'); expect(app).toContain('!state.cache.get(key).drawerOnly');
   });
+  it('routes Quick View quote, technical, signal and history evidence through THE SFM boundaries', () => {
+    const resources = readFileSync('src/trader-app/public/assets/drawer-data.js', 'utf8');
+    expect(resources).toContain('/recommendations?market=');
+    expect(resources).toContain('/sfm-market/v1/trader/technical/${encoded}');
+    expect(resources).toContain('/sfm-market/v1/trader/signal/${encoded}');
+    expect(resources).toContain('/sfm-market/v1/trader/history/${encoded}');
+    expect(resources).not.toContain('technical: `/market/technical-analysis');
+    expect(resources).not.toContain('signal: `/market/signals/');
+    expect(resources).not.toContain('history: `/market/history?');
+  });
   it('technical completeness never treats null, blank, boolean or array as a valid zero', () => {
     const source = readFileSync('src/app/api/market/technical-analysis/route.ts', 'utf8');
     const body = source.slice(source.indexOf('function finiteTechnicalNumber'), source.indexOf('function missingTechnicalFields'));
