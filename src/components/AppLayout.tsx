@@ -16,13 +16,13 @@ const WorkspaceShell = dynamic(
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/';
-  const { user, loading: authLoading } = useAuth();
+  const { user, isGuest, loading: authLoading } = useAuth();
   // Single source of truth for chrome-free public pages (phase 3):
   // src/config/workspaces/public-shell-routes.ts.
   const isPublicPage = isPublicShellRoute(pathname);
   const isAnonymousWorkspacePage = isAnonymousPublicWorkspaceRoute(pathname);
   const themeScope = getThemeScope(pathname);
-  const usePublicShell = isPublicPage || (isAnonymousWorkspacePage && (authLoading || !user));
+  const usePublicShell = isPublicPage || (isAnonymousWorkspacePage && (authLoading || (!user && !isGuest)));
 
   if (usePublicShell) {
     return (

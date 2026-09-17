@@ -20,9 +20,9 @@ const PUBLIC_SHELL_EXACT = new Set([
 const PUBLIC_SHELL_PREFIXES = ['/investor'] as const;
 
 // These product surfaces are intentionally readable without authentication,
-// but authenticated users should still receive the full workspace chrome.
-// Anonymous/guest visitors get the public shell so account/profile/logout UI
-// is never rendered for a session that does not exist.
+// but signed-in users and active guest sessions retain workspace navigation.
+// Visitors without a session receive the public shell. UserChip independently
+// limits account controls to authenticated users.
 const ANONYMOUS_PUBLIC_WORKSPACE_EXACT = new Set([
   '/global-markets',
   '/ai-analyst/overview',
