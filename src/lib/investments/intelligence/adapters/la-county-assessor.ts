@@ -10,6 +10,7 @@ const PROVIDER_ID = 'us-ca-la-assessor-recent-sales';
 const SOURCE_NAME = 'Los Angeles County Assessor Recent Sales';
 const MAX_BYTES = 250_000;
 const FETCH_TIMEOUT_MS = 5_000;
+const RESULT_LIMIT = 2;
 
 const USE_TYPE_LABELS: Record<string, string> = {
   'C/I': 'Commercial / Industrial',
@@ -131,7 +132,7 @@ async function fetchSaleByAin(ain: string, fetcher: typeof fetch): Promise<LaSal
   url.searchParams.set('where', `AIN='${ain}'`);
   url.searchParams.set('outFields', 'OBJECTID,AIN,FORMATTED_AIN,SALEDATE,FORMATTED_SALEDATE,SALEPRICE,FORMATTED_SALEPRICE,YEARBUILT,USECODE,USETYPE');
   url.searchParams.set('returnGeometry', 'false');
-  url.searchParams.set('resultRecordCount', '2');
+  url.searchParams.set('resultRecordCount', String(RESULT_LIMIT));
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -209,6 +210,7 @@ export async function collectLaCountyPropertyContext(
   }
 
   const latestObservationOn = records.map(record => record.observedOn).sort().at(-1) ?? null;
+  const sampleTruncated = rows.length >= RESULT_LIMIT;
   return {
     providerId: PROVIDER_ID,
     sourceName: SOURCE_NAME,
@@ -219,8 +221,8 @@ export async function collectLaCountyPropertyContext(
     retrievedAt: (dependencies.now?.() ?? new Date()).toISOString(),
     metadataUpdatedAt: null,
     latestObservationOn,
-    sampleTotal: records.length,
-    sampleTruncated: rows.length > records.length,
+    sampleTotal: sampleTruncated ? null : records.length,
+    sampleTruncated,
     records,
     valuationEligible: false,
     reasons: [
