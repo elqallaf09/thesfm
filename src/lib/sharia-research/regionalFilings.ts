@@ -3,10 +3,15 @@ import { extractSelectedPdfPages, financialValuesFromPdfPages, pdfEvidenceDocume
 import type { SecurityIdentity, SourceAdapter } from './types';
 import { failedAdapterResult } from './sourceAdapters/shared';
 
-type Profile = { symbols: string[]; country: string; name: RegExp; directory: string; document?: string; pages?: number[] };
+type DocumentFallback = { url: string; pages?: number[] };
+type Profile = { symbols: string[]; country: string; name: RegExp; directory: string; document?: string; pages?: number[]; alternates?: DocumentFallback[] };
 const profiles: Profile[] = [
-  { symbols: ['NBK', 'NBK.KW'], country: 'KW', name: /National Bank of Kuwait/i, directory: 'https://www.nbk.com/investor-relations.html',
-    document: 'https://www.nbk.com/dam/jcr:a9b5fda4-e785-4705-8938-9a2364b06360/nbk-fs-2q-2026-e.pdf' },
+  { symbols: ['NBK', 'NBK.KW'], country: 'KW', name: /National Bank of Kuwait/i,
+    directory: 'https://www.nbk.com/investor-relations/financial-reports.html',
+    document: 'https://www.nbk.com/dam/jcr:a9b5fda4-e785-4705-8938-9a2364b06360/nbk-fs-2q-2026-e.pdf',
+    // Exact Boursa Kuwait disclosure for the same 30-Jun-2026 interim filing.
+    // This is a reviewed official exchange fallback, not a search-engine mirror.
+    alternates: [{ url: 'https://ifsahdocs.boursakuwait.com.kw/DiscAssets/2026_17431/NBK%20FS%2030%20Jun%202026%20EN.pdf' }] },
   { symbols: ['KFH', 'KFH.KW'], country: 'KW', name: /Kuwait Finance House/i, directory: 'https://www.kfh.com/en/home/Investor-Relations/Annual-Reports/Annual-Reports.html',
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
@@ -53,15 +58,47 @@ export const regionalFilingsAdapter: SourceAdapter = {
     const profile = regionalProfile(context.security);
     if (!profile) return { adapterId: this.id, status: 'unavailable', documents: [], financialValues: [], errors: [{ code: 'REGIONAL_IDENTITY_NOT_VERIFIED', message: 'No exact issuer/exchange/profile match.', retryable: false }] };
     try {
-      const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
-      if (new URL(directory.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_directory_identity_changed');
-      const found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
-      const url = found[0] ?? profile.document;
-      if (!url) throw new Error('regional_financial_document_not_discovered');
-      const response = await secureFetch(url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
-      if (new URL(response.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_document_identity_changed');
+      let found: string[] = [];
+      try {
+        const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
+        if (new URL(directory.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_directory_identity_changed');
+        found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
+      } catch {
+        // A reviewed explicit issuer/exchange filing may still be available when
+        // the index page is slow. Do not let directory failure hide that source.
+        context.signal?.throwIfAborted();
+      }
+
+      const candidates: DocumentFallback[] = [
+        ...found.slice(0, 2).map(url => ({ url, pages: url === profile.document ? profile.pages : undefined })),
+        ...(profile.document ? [{ url: profile.document, pages: profile.pages }] : []),
+        ...(profile.alternates ?? []),
+      ].filter((item, index, all) => all.findIndex(other => other.url === item.url) === index).slice(0, 5);
+      if (!candidates.length) throw new Error('regional_financial_document_not_discovered');
+
+      const allowedOrigins = new Set([
+        new URL(profile.directory).origin,
+        ...(profile.alternates ?? []).map(item => new URL(item.url).origin),
+      ]);
+      let response: Awaited<ReturnType<typeof secureFetch>> | null = null;
+      let selected: DocumentFallback | null = null;
+      let lastError: unknown = null;
+      for (const candidate of candidates) {
+        try {
+          const fetched = await secureFetch(candidate.url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
+          if (!allowedOrigins.has(new URL(fetched.finalUrl).origin)) throw new Error('regional_document_identity_changed');
+          response = fetched;
+          selected = candidate;
+          break;
+        } catch (error) {
+          lastError = error;
+          context.signal?.throwIfAborted();
+        }
+      }
+      if (!response || !selected) throw lastError ?? new Error('regional_financial_document_not_discovered');
+
       context.signal?.throwIfAborted();
-      const pages = await extractSelectedPdfPages(response.body, url === profile.document ? profile.pages : []);
+      const pages = await extractSelectedPdfPages(response.body, selected.pages ?? []);
       context.signal?.throwIfAborted();
       const document = pdfEvidenceDocument(pages, context.security, response.finalUrl, response.retrievedAt);
       if (!profile.name.test(document.extractedText)) throw new Error('regional_document_issuer_mismatch');
