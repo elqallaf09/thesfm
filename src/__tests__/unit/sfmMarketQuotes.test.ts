@@ -79,6 +79,18 @@ beforeEach(() => {
 });
 
 describe('SFM trader quote adapter', () => {
+  it('retains a stale observation only as last-known evidence and withholds trade outputs', async () => {
+    const stale = quote();
+    stale.quality.state = 'stale';
+    stale.marketCap = 2_000_000;
+    mocks.quote.mockResolvedValue(stale);
+    mocks.history.mockResolvedValue({ ok: true, provider: 'fmp', candles: candles(220), attempts: [] });
+    const { quotes } = await fetchSfmTraderQuotesDetailed(['AAPL']);
+    expect(quotes[0]).toMatchObject({ available: false, price: null, lastKnownPrice: 320,
+      lastUpdated: stale.provenance.observedAt, marketCap: 2_000_000, signalAvailable: false,
+      targetPrice: null, stopLoss: null, confidence: null, finalRecommendation: 'Insufficient data' });
+  });
+
   it('presents THE SFM as the analytical source while keeping upstream provenance', async () => {
     mocks.quote.mockResolvedValue(quote());
     mocks.history.mockResolvedValue({

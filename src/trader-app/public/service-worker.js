@@ -1,4 +1,4 @@
-const CACHE_NAME = "the-sfm-trader-v20260917-integrated-trader";
+const CACHE_NAME = "the-sfm-trader-v20260918-analyzer-evidence";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -10,10 +10,12 @@ const STATIC_ASSETS = [
   "/assets/drawer-data.js?v=20260916-symbol-data",
   "/assets/drawer-mobile.css?v=20260916-symbol-data",
   "/assets/drawer-focus.js?v=20260916-symbol-data",
-  "./watchlist-engine.js?v=20260917-integrated-trader",
-  "./watchlist-view.js?v=20260917-integrated-trader",
-  "./watchlist.css?v=20260917-integrated-trader",
-  "/app.js?v=20260917-integrated-trader",
+  "./watchlist-engine.js?v=20260918-analyzer-evidence",
+  "./watchlist-view.js?v=20260918-analyzer-evidence",
+  "./watchlist.css?v=20260918-analyzer-evidence",
+  "./smart-analyzer.js?v=20260918-analyzer-evidence",
+  "./smart-analyzer.css?v=20260918-analyzer-evidence",
+  "/app.js?v=20260918-analyzer-evidence",
   "/detail.js?v=20260714-phase34-signal-gate-20260915",
   "/manifest.webmanifest",
   "/assets/trading-cinematic-bg.jpg",

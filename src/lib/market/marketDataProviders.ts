@@ -3,12 +3,12 @@ import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeAssetType, type MarketAssetType, type MarketHistoryPoint, type MarketSearchItem } from '@/lib/market/marketService';
 import { isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
+import { FmpMarketDataProvider } from '@/lib/market/providers/fmpMarketData';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
-
-export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'yahoo';
+export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
 
 export type MarketDataProviderContext = {
@@ -36,7 +36,7 @@ export type NormalizedMarketQuote = {
   high: number | null;
   low: number | null;
   previousClose: number | null;
-  volume: number | null;
+  volume: number | null; marketCap?: number | null;
   market: string | null;
   exchange: string | null;
   exchangeCode: string | null;
@@ -1158,7 +1158,7 @@ export const marketDataProviders: MarketDataProvider[] = [
   new TwelveDataProvider(),
   new FinnhubProvider(),
   new EodhdProvider(),
-  new MarketstackProvider(),
+  new MarketstackProvider(), new FmpMarketDataProvider(),
   new YahooProvider(),
 ];
 
@@ -1199,7 +1199,7 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'quote', symbol: upper(symbol), provider: cached.provider });
     return { ok: true, data: { ...cached.data, cached: true, delayType: 'cached' }, provider: cached.provider, attempts };
   }
-  return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
+  return { ok: false, attempts, latestError: attempts.findLast(attempt => attempt.code !== 'NOT_CONFIGURED')?.code ?? attempts.at(-1)?.code ?? null };
 }
 
 export async function getCandlesWithFallback(symbol: string, market?: string | null, interval?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedMarketCandle[]>> {
@@ -1227,7 +1227,7 @@ export async function getCandlesWithFallback(symbol: string, market?: string | n
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'historical_prices', symbol: upper(symbol), provider: cached.provider });
     return { ok: true, data: cached.data, provider: cached.provider, attempts };
   }
-  return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
+  return { ok: false, attempts, latestError: attempts.findLast(attempt => attempt.code !== 'NOT_CONFIGURED')?.code ?? attempts.at(-1)?.code ?? null };
 }
 
 export async function getCompanyProfileWithFallback(symbol: string, market?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedCompanyProfile>> {
@@ -1255,7 +1255,7 @@ export async function getCompanyProfileWithFallback(symbol: string, market?: str
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'profile', symbol: upper(symbol), provider: cached.provider });
     return { ok: true, data: cached.data, provider: cached.provider, attempts };
   }
-  return { ok: false, attempts, latestError: attempts.at(-1)?.code ?? null };
+  return { ok: false, attempts, latestError: attempts.findLast(attempt => attempt.code !== 'NOT_CONFIGURED')?.code ?? attempts.at(-1)?.code ?? null };
 }
 
 export async function getLogoWithFallback(symbol: string, market?: string | null, context: MarketDataProviderContext = {}) {
