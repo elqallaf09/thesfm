@@ -24,12 +24,24 @@ function Wait-Ollama {
   throw "Ollama did not become ready on http://127.0.0.1:11434"
 }
 
+function New-SfmLocalApiKey {
+  $bytes = New-Object byte[] 48
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try {
+    $rng.GetBytes($bytes)
+  } finally {
+    if ($null -ne $rng) { $rng.Dispose() }
+  }
+  return [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+}
+
 Require-Command "nvidia-smi" "Install/update the NVIDIA driver first."
 Require-Command "node" "Install Node.js 20+ first."
 Require-Command "ollama" "Install Ollama for Windows from https://ollama.com/download/windows"
 
 $Gpu = (& nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader 2>$null | Select-Object -First 1)
 Write-Host "GPU: $Gpu"
+Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
 
 try {
   Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -Method Get -TimeoutSec 2 | Out-Null
@@ -40,9 +52,7 @@ try {
 }
 
 if (-not (Test-Path $EnvFile)) {
-  $bytes = New-Object byte[] 48
-  [Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-  $key = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+  $key = New-SfmLocalApiKey
   @"
 SFM_LOCAL_API_KEY=$key
 SFM_LOCAL_SERVED_MODEL=sfm-local-primary
@@ -65,6 +75,9 @@ Get-Content $EnvFile | ForEach-Object {
   }
 }
 
+if (-not $env:SFM_LOCAL_API_KEY) {
+  throw "SFM_LOCAL_API_KEY is missing from $EnvFile. Delete the incomplete file and run start.ps1 again."
+}
 if (-not $env:OLLAMA_MODEL) { $env:OLLAMA_MODEL = $Model }
 Write-Host "Ensuring model is installed: $env:OLLAMA_MODEL"
 & ollama pull $env:OLLAMA_MODEL
