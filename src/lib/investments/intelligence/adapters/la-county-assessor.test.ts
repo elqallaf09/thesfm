@@ -46,12 +46,13 @@ describe('Los Angeles County Assessor context', () => {
   });
 
   it('maps an official recent sale as review-only context without inventing area', async () => {
-    const fetcher = vi.fn(async (input: URL | RequestInfo) => {
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
       const url = new URL(String(input));
       expect(url.hostname).toBe('assessor.gis.lacounty.gov');
       expect(url.searchParams.get('where')).toBe("AIN='6032023009'");
       expect(url.searchParams.get('returnGeometry')).toBe('false');
       expect(url.searchParams.get('outFields')).not.toContain('SAADDR');
+      expect(url.searchParams.get('outFields')).not.toContain('SIZE');
 
       return new Response(JSON.stringify({
         features: [{
