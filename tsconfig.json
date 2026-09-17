@@ -20,6 +20,7 @@
       }
     ],
     "paths": {
+      "@/lib/trader/marketQuotes": ["./src/lib/trader/marketQuotesFacade.ts"],
       "@/*": ["./src/*"]
     }
   },
