@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeSfmMarketSymbol } from '@/lib/sfm-market/engine';
+import { persistSfmMarketObservation } from '@/lib/sfm-market/store';
 import { SFM_MARKET_ENGINE_VERSION } from '@/lib/sfm-market/types';
 
 export const runtime = 'nodejs';
@@ -33,11 +34,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
     || request.nextUrl.searchParams.get('refresh') === 'true';
 
   const analysis = await analyzeSfmMarketSymbol(decodedSymbol, { market, assetType, forceFresh });
+  const persistence = analysis.quote
+    ? await persistSfmMarketObservation(analysis.quote)
+    : { stored: false as const, reason: 'not_persistable' as const };
   const status = analysis.code === 'INVALID_SYMBOL' || analysis.code === 'symbol_not_found'
     ? 400
     : analysis.status === 'blocked'
       ? 503
       : 200;
 
-  return json({ ok: status < 400, analysis }, { status });
+  return json({
+    ok: status < 400,
+    analysis,
+    historyStore: {
+      recorded: persistence.stored,
+      reason: persistence.stored ? null : persistence.reason,
+    },
+  }, { status });
 }
