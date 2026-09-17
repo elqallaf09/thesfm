@@ -78,7 +78,8 @@
 - Produce a production-hardening report and fix confirmed issues before final release verification
 
 ### Validation gate
-- Required GitHub checks and Vercel Preview build must pass before merge
+- Required GitHub checks, production build and targeted browser checks must pass before merge
+- Per the owner's September 17, 2026 cost instruction, automatic Vercel deployment is limited to `main`. Validate branches locally/in CI and batch a release into one Production deployment; create a Preview only for a specific unresolved validation need.
 - Auto-merge is authorized after repository-required checks pass
 - No fake data, skipped required checks or lowered quality thresholds to force a merge
 
@@ -89,3 +90,20 @@
 - High-impact recommendations expose assumptions, reasons and supporting evidence
 - All workspaces consume one canonical Economic Intelligence layer
 - Advisors may explain evidence, scenarios and risks but may not invent market/user data, override deterministic finance constraints, or guarantee outcomes
+
+## September 2026 review — economic platform priorities
+
+The saved August 2 development plan and the earlier global/Gulf economic-platform vision remain the product direction. Implemented code is not equivalent to complete market coverage or verified production readiness. See [the market readiness audit](market-readiness-audit-2026-09-18.md) for the observed production baseline and this release's scope.
+
+| Order | Workstream | Release acceptance |
+| --- | --- | --- |
+| P0 — current | Market and trading reliability | Keep valid quotes when chart data fails; share category scans; preserve successful exchanges; expose directory versus selected-list coverage; verify quick analysis on phone and desktop. |
+| P0 — next | Source coverage and operations | For each exchange, track expected versus imported listings, last successful sync, available quote ratio, source freshness, provider 429s and paid entitlement requirements. Prioritize Saudi/ADX/Qatar/Bahrain/Oman, then the disconnected Egypt/Jordan/Morocco directories. No implied full coverage from a six-stock list. |
+| P0 — next | Production hardening, Phase 7.35 | Complete authenticated account-isolation checks, timeout/cache contracts, source failures and real-user performance checks; keep documented failures separate from accepted release gates. |
+| P1 | Property market research | Use the four connected official contexts for searchable records. Enable valuation jurisdiction by jurisdiction only after rights, reliable area, arm's-length sales, comparable type, freshness, currency and historical backtesting pass. Kuwait reuse approval remains external work. |
+| P1 | Investment and personal finance workflows | Complete asset identity/document/history flows, imports/exports, onboarding, finance calculations and zakat/khums methodology. Require evidence-linked results and private account ownership. |
+| P1 | Economic command center and advisors | Consolidate news, market/portfolio context, cash flow, material events and scenario assumptions in one daily brief. Repair analyst streaming/duplicate requests before expanding advisor features. |
+| P2 | Business planning | Structured feasibility templates, actual-versus-plan tracking and deterministic models with source-linked AI explanations. Keep investor matching behind a separately reviewed product and operating model. |
+| P2 | Memberships and distribution | Companies/memberships, community, referrals and mobile/TV experiences after the reliability and performance gates. External social publishing still needs explicit authorization. |
+
+Cost controls apply throughout: request only the data a view needs, reuse successful results, bound refreshes and provider concurrency, measure usage, and publish tested batches. In-memory request sharing reduces duplication within an instance; it is not a global quota guarantee across serverless instances.

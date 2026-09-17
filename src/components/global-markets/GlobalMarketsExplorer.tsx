@@ -10,6 +10,7 @@ import { t } from '@/lib/translations';
 import { EMPTY_DIRECTORY_FILTERS, type GlobalDirectoryRow, type GlobalDirectoryFilters } from '@/lib/market/globalMarketDirectoryTypes';
 import { useGlobalDirectoryPrices, useGlobalMarketDirectory } from '@/hooks/useGlobalMarketDirectory';
 import { deferUntilStreamSettled } from '@/lib/runtime/deferUntilStreamSettled';
+import { MarketDirectoryCoverage } from './MarketDirectoryCoverage';
 
 export type GlobalExplorerRequest = { id: string; sequence: number };
 type GlobalMarketsExplorerProps = { prices: Record<string, TechStockPrice> | null; lang: Lang; dir: 'rtl' | 'ltr'; browseRequest?: GlobalExplorerRequest | null };
@@ -122,6 +123,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           </label>
           <button type="button" className="gm-explorer-reset" onClick={() => setFilters({ ...EMPTY_DIRECTORY_FILTERS })} disabled={Object.entries(filters).every(([key, value]) => value === EMPTY_DIRECTORY_FILTERS[key as keyof GlobalDirectoryFilters])}>{t('global_markets_reset_filters', lang)}</button>
         </div>
+        <MarketDirectoryCoverage coverage={coverage} lang={lang} onSelect={id => updateFilter('exchange', id)} />
         <div className="gm-directory-feedback" aria-live="polite">
           <p className="gm-explorer-count">{directory.loading ? copy.loading : directory.page ? t('global_markets_results_count', lang).replace('{count}', String(directory.page.total)) : ''}</p>
           {directory.page ? <>

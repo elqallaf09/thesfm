@@ -79,6 +79,31 @@ beforeEach(() => {
 });
 
 describe('SFM trader quote adapter', () => {
+  it('withholds a current recommendation when the quote is stale even with a full history', async () => {
+    const stale = quote();
+    stale.quality.state = 'stale';
+    stale.provenance.cached = true;
+    mocks.quote.mockResolvedValue(stale);
+    mocks.history.mockResolvedValue({ ok: true, candles: candles(220), attempts: [] });
+    const result = await fetchSfmTraderQuotesDetailed(['AAPL']);
+    expect(result.quotes[0]).toMatchObject({ available: false, price: null, signalAvailable: false, confidence: null, targetPrice: null });
+  });
+  it('does not spend history requests on quote-only lists', async () => {
+    mocks.quote.mockResolvedValue(quote());
+    const result = await fetchSfmTraderQuotesDetailed(['AAPL'], { includeHistory: false });
+    expect(mocks.history).not.toHaveBeenCalled();
+    expect(result.quotes[0]).toMatchObject({ available: true, price: 320, chartAvailable: false, signalAvailable: false });
+    expect(result.quotes[0].targetPrice).toBeNull();
+  });
+
+  it('preserves a valid quote when the independent history provider fails', async () => {
+    mocks.quote.mockResolvedValue(quote());
+    mocks.history.mockRejectedValue(new Error('history provider timeout'));
+    const result = await fetchSfmTraderQuotesDetailed(['AAPL']);
+    expect(result.quotes[0]).toMatchObject({ available: true, price: 320, chartAvailable: false, signalAvailable: false });
+    expect(result.summary.loadedSymbols).toBe(1);
+  });
+
   it('presents THE SFM as the analytical source while keeping upstream provenance', async () => {
     mocks.quote.mockResolvedValue(quote());
     mocks.history.mockResolvedValue({

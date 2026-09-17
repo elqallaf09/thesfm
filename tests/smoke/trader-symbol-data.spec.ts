@@ -9,6 +9,7 @@ for (const setup of [
   { width: 390, height: 844, language: 'ar', theme: 'light' },
   { width: 430, height: 932, language: 'en', theme: 'dark' },
   { width: 844, height: 390, language: 'fr', theme: 'light' },
+  { width: 1280, height: 900, language: 'ar', theme: 'light' },
 ]) {
   test(`cold symbol data, retry and mobile layout ${setup.width} ${setup.language} ${setup.theme}`, async ({ page }, info) => {
     await page.setViewportSize({ width: setup.width, height: setup.height });
@@ -67,9 +68,19 @@ for (const setup of [
     expect(geometry.height).toBeLessThanOrEqual(geometry.viewportHeight + 1);
     expect(geometry.headerHeight).toBeLessThan(125); expect(geometry.contentHeight).toBeGreaterThan(80);
     expect(geometry.closeWidth).toBeGreaterThanOrEqual(44); expect(geometry.closeHeight).toBeGreaterThanOrEqual(44);
+    await frame.locator('#drawer-tab-ai').click();
+    const analysis = drawer.locator('.analysis-terminal');
+    await expect(analysis).toBeVisible();
+    const analysisGeometry = await analysis.evaluate(element => {
+      const box = element.getBoundingClientRect(); const hero = element.querySelector('.analysis-terminal-hero')!.getBoundingClientRect();
+      const metrics = element.querySelector('.analysis-terminal-grid')!.getBoundingClientRect();
+      return { width: box.width, contentWidth: element.scrollWidth, heroBottom: hero.bottom, metricsTop: metrics.top };
+    });
+    expect(analysisGeometry.contentWidth).toBeLessThanOrEqual(analysisGeometry.width + 1);
+    expect(analysisGeometry.metricsTop).toBeGreaterThanOrEqual(analysisGeometry.heroBottom - 1);
     await drawer.locator('#drawer-more-toggle').click();
     await expect(drawer.locator('[data-drawer-share]')).toBeVisible();
-    await info.attach('fixture-symbol-drawer', { body: await page.screenshot({ scale: 'css' }), contentType: 'image/png' });
+    await info.attach('fixture-symbol-drawer', { body: await page.screenshot({ scale: 'css', path: info.outputPath('quick-analysis.png') }), contentType: 'image/png' });
     await drawer.locator('.drawer-close').click();
     await expect(drawer).toHaveCount(0);
     await expect(frame.locator('[data-symbol-details="MSFT"]').first()).toBeFocused();
