@@ -1,12 +1,15 @@
 name: Real estate public source verification
 on:
   push:
-    branches: [feat/investments-intelligence-2-foundation]
+    branches:
+      - feat/investments-intelligence-2-foundation
+      - feat/real-estate-la-county-context
     paths:
       - 'src/lib/investments/intelligence/**'
       - 'src/components/invest/**'
       - 'src/app/api/investments/real-estate/**'
       - 'src/__tests__/**'
+      - 'docs/real-estate-sources/**'
       - '.github/scripts/real-estate-public-source-discovery.mjs'
       - '.github/workflows/real-estate-public-source-check.yml'
   workflow_dispatch:
