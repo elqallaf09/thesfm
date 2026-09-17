@@ -45,10 +45,10 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
         <Link className={styles.secondaryAction} href="/global-markets">{L('العودة إلى مركز الأسواق العالمية', 'Back to Global Markets Hub', 'Retour au centre des marchés mondiaux')}</Link>
       </header>
       <RealEstateMarketCoverage />
-      {!savedRecordRequested ? <>
+      {loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !savedRecordRequested ? <>
         {guestGate}
         <RealEstateLandAnalyst />
-      </> : loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !accessToken || !user ? guestGate : (
+      </> : !accessToken || !user ? guestGate : (
         <OwnedPropertyWorkspace key={`${user.id}:${investmentId ?? ''}:${positionId ?? ''}`} investmentId={investmentId} positionId={positionId} token={accessToken} />
       )}
     </DashboardPageShell>
