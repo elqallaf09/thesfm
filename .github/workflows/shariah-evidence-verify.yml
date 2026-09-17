@@ -62,7 +62,12 @@ jobs:
         env:
           SFM_LIVE_SEC_PROBE: '1'
           SEC_USER_AGENT: 'THE-SFM admin@the-sfm.com'
-        run: pnpm exec vitest run src/__tests__/integration/shariahLiveEvidence.test.ts src/__tests__/integration/shariahExtendedSourcesLive.test.ts --maxWorkers=1
+        run: >-
+          pnpm exec vitest run
+          src/__tests__/integration/shariahLiveEvidence.test.ts
+          src/__tests__/integration/shariahExtendedSourcesLive.test.ts
+          src/__tests__/integration/shariahFundOfficialProfilesLive.test.ts
+          --maxWorkers=1
       - uses: actions/upload-artifact@v7
         if: always()
         with:

@@ -1,0 +1,4 @@
+.ai-score-ring > div > strong {
+  color: var(--foreground);
+  font-weight: 700;
+}

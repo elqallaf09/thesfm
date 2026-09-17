@@ -32,9 +32,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const locale = normalizeLocale(new URL(request.url).searchParams.get('lang'));
+    // Unavailable confirmations are not evidence that the user has confirmed nothing.
     const [evidence, confirmations] = await Promise.all([
       loadCrossWorkspaceEvidence(user.id),
-      loadReadinessConfirmations(user.id).catch(() => []),
+      loadReadinessConfirmations(user.id),
     ]);
     const brief = buildCrossWorkspaceBrief(evidence);
     const readiness = buildEconomicIntelligenceReadiness(evidence, confirmations);
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest) {
     const actions = buildDailyPriorityActions(brief);
     const highestPriority = highestDailyPriority(brief);
     const narrative = buildDailyBriefNarrative(brief, locale, readiness);
-    const historyBase = await loadDailyBriefHistory(user.id, highestPriority).catch(() => ({ entries: [], change: { changed: false, currentFingerprint: highestPriority?.fingerprint ?? null, previousFingerprint: null, previousCode: null, previousSeverity: null, previousCreatedAt: null } }));
+    // A failed history read must not manufacture an empty archive or 'changed: false'.
+    const historyBase = await loadDailyBriefHistory(user.id, highestPriority);
     const history = {
       ...historyBase,
       entries: historyBase.entries.map(entry => ({

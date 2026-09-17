@@ -263,6 +263,7 @@ async function enterGuest(page: Page) {
 }
 
 async function stubApis(page: Page, state: 'partial' | 'insufficient' | 'stale') {
+  await page.route('**/api/intelligence/asset-details**', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false }) }));
   await page.route('**/api/market/**', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
@@ -284,6 +285,7 @@ async function openAnalysis(page: Page, state: 'partial' | 'insufficient' | 'sta
   await enterGuest(page);
   const response = await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1', { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
+  await page.getByRole('button', { name: 'Run research and analysis', exact: true }).click();
   const panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
   await expect(panel).toBeVisible({ timeout: 45_000 });
   return panel;
@@ -317,6 +319,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await page.unrouteAll({ behavior: 'wait' });
     await stubApis(page, 'stale');
     await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Run research and analysis', exact: true }).click();
     panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
     status = page.getByTestId('intelligence-status-panel');
     await expect(panel).toBeVisible({ timeout: 45_000 });
@@ -393,7 +396,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
     }
   });
 
-  test('generates a missing reading from the normal request path and gives guests a sign-in refresh action', async ({ page }) => {
+  test('generates a missing reading only after explicit intent and gives guests a sign-in refresh action', async ({ page }) => {
     await stubApis(page, 'partial');
     await enterGuest(page);
     let analyzeRequests = 0;
@@ -403,6 +406,10 @@ test.describe('Phase 6.1 intelligence panel', () => {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: intelligenceResult('partial'), correlationId: 'e2e-correlation' }) });
     });
     await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING', { waitUntil: 'domcontentloaded' });
+    const run = page.getByRole('button', { name: 'Run research and analysis', exact: true });
+    await expect(run).toBeEnabled();
+    expect(analyzeRequests).toBe(0);
+    await run.click();
     await expect(page.getByTestId('ai-analyst-canonical-result')).toBeVisible();
     expect(analyzeRequests).toBe(1);
     await expect(page.getByRole('link', { name: 'Sign in to refresh analysis' })).toHaveAttribute('href', /\/login\?next=/);

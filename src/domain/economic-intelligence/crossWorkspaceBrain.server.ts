@@ -67,7 +67,9 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).maybeSingle(),
     admin.from('market_watchlist').select('id,symbol,asset_type,created_at').eq('user_id', userId).limit(1000),
     admin.from('market_price_alerts').select('id,status,created_at').eq('user_id', userId).limit(1000),
-    admin.from('projects').select('id,status,created_at,updated_at').eq('user_id', userId).limit(1000),
+    // The deployed projects schema has no status/updated_at columns yet. Query only the
+    // stable columns so Economic Intelligence readiness cannot fail on schema drift.
+    admin.from('projects').select('id,created_at').eq('user_id', userId).limit(1000),
     admin.from('project_funding_readiness').select('project_id,funding_needed,currency,readiness_score,created_at,updated_at').eq('user_id', userId).limit(1000),
   ]);
 
@@ -93,7 +95,9 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     investments: investmentRows,
   }, currency);
 
-  const activeProjects = projectRows.filter((row: EconomicStoredRow) => !['completed', 'cancelled', 'archived'].includes(String(row.status ?? '').toLowerCase()));
+  // Until projects gains a lifecycle-status column, each persisted project is active
+  // evidence for readiness rather than fabricating a status that does not exist.
+  const activeProjects = projectRows;
   const fundingNeeds = fundingRows.flatMap((row: Record<string, unknown>) => {
     const fundingCurrency = normalizeCurrency(row.currency);
     if (!fundingCurrency) return [];

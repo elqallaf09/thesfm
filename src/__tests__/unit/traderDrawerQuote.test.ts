@@ -31,7 +31,7 @@ function harness() {
     get: async (path: string) => {
       if (path.startsWith('/recommendations')) return { ok: true, recommendations: [quote] };
       if (path.startsWith('/market/asset-profile')) return { ok: true, profile: { symbol: 'MSFT', name: 'Fixture Microsoft', price: null, currentPrice: null } };
-      if (path.startsWith('/market/signals/')) return { ok: true, signal };
+      if (path.startsWith('/sfm-market/v1/trader/signal/')) return { ok: true, signal };
       return { ok: true, points: [] };
     },
     findAssetForSymbol: (symbol: string, rows: Row[]) => rows.find(row => sym(row.symbol) === sym(symbol)),

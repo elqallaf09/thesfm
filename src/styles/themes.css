@@ -346,6 +346,7 @@
   --market-news-category-high-income: radial-gradient(680px 300px at 50% -14%, color-mix(in srgb, var(--success) 11%, transparent), transparent 62%), repeating-linear-gradient(0deg, color-mix(in srgb, var(--success) 4.5%, transparent) 0 1px, transparent 1px 46px);
 
   /* Domain semantics */
+  --skeleton-shimmer: linear-gradient(90deg, color-mix(in srgb, var(--muted-foreground) 8%, transparent), color-mix(in srgb, var(--muted-foreground) 20%, transparent), color-mix(in srgb, var(--muted-foreground) 8%, transparent));
   --market-positive: var(--success);
   --market-negative: var(--danger);
   --market-neutral: var(--foreground-muted);

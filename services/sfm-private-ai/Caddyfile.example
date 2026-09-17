@@ -1,0 +1,45 @@
+# Replace ai.example.com with the hostname you control.
+# Caddy terminates HTTPS; both vLLM processes stay bound to 127.0.0.1.
+# Only the two API operations THE SFM actually uses are exposed publicly.
+ai.example.com {
+  encode zstd gzip
+
+  @visionModels {
+    path /vision/v1/models
+    method GET
+  }
+  handle @visionModels {
+    uri strip_prefix /vision
+    reverse_proxy 127.0.0.1:8001
+  }
+
+  @visionChat {
+    path /vision/v1/chat/completions
+    method POST
+  }
+  handle @visionChat {
+    uri strip_prefix /vision
+    reverse_proxy 127.0.0.1:8001
+  }
+
+  @textModels {
+    path /v1/models
+    method GET
+  }
+  handle @textModels {
+    reverse_proxy 127.0.0.1:8000
+  }
+
+  @textChat {
+    path /v1/chat/completions
+    method POST
+  }
+  handle @textChat {
+    reverse_proxy 127.0.0.1:8000
+  }
+
+  # Fail closed: do not publish unused vLLM endpoints.
+  handle {
+    respond "Not Found" 404
+  }
+}

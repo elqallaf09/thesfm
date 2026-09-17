@@ -11,6 +11,7 @@ import { proxyAnalyze, proxyHistory } from '@/lib/market/marketDataProvider';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import type { MarketAnalysis, MarketAssetType } from '@/lib/market/marketService';
 import { IntelligenceError } from '@/services/intelligence/errors';
+import { loadIntelligenceContextEvidence } from './contextEvidence';
 
 function validIso(value: unknown) {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return null;
@@ -18,6 +19,7 @@ function validIso(value: unknown) {
 }
 
 function finite(value: unknown) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -181,8 +183,12 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       throw new IntelligenceError('PROVIDER_UNAVAILABLE', true);
     }
 
+    // Context providers are independent of the quote/history path. Start them
+    // immediately so richer evidence does not serialize behind history recovery.
+    const contextEvidencePromise = loadIntelligenceContextEvidence(request, asset).catch(() => null);
     const price = finite(result.latestPrice);
     let candles = normalizeCandles(result);
+    const hasPrimaryHistory = candles.length > 0;
     let supplementalHistoryUsed = false;
     let supplementalProvider: string | null = null;
 
@@ -200,6 +206,7 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       throw new IntelligenceError('PROVIDER_UNAVAILABLE', true);
     }
 
+    const contextEvidence = await contextEvidencePromise;
     const asOf = dataAsOf(result, candles);
     const primaryProvider = String(result.provider ?? result.source ?? this.id).slice(0, 80);
     const provider = supplementalHistoryUsed && supplementalProvider && supplementalProvider !== primaryProvider
@@ -211,8 +218,14 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       : result.dataStatus === 'delayed'
         ? 'DELAYED'
         : 'LIVE';
+    const verifiedSharia = contextEvidence?.sharia ?? {
+      status: result.shariahStatus ?? null,
+      reason: result.shariahReason ?? null,
+      source: result.shariahSource ?? null,
+      reviewedAt: result.shariahLastReviewedAt ?? null,
+    };
 
-    return {
+    const snapshot = {
       asset: {
         ...asset,
         name: result.name || asset.name,
@@ -229,7 +242,7 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       operationalReliability: supplementalHistoryUsed
         ? Math.min(operationalReliability(result), 0.85)
         : operationalReliability(result),
-      reportedRiskLevel: result.riskLevel === 'high' ? 'HIGH' : result.riskLevel === 'medium' ? 'MEDIUM' : result.riskLevel === 'low' ? 'LOW' : null,
+      reportedRiskLevel: !hasPrimaryHistory ? null : result.riskLevel === 'high' ? 'HIGH' as const : result.riskLevel === 'medium' ? 'MEDIUM' as const : result.riskLevel === 'low' ? 'LOW' as const : null,
       quote: {
         price,
         change: finite(result.quote?.change),
@@ -237,23 +250,21 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
         volume: finite(result.quote && 'volume' in result.quote ? result.quote.volume : null),
       },
       levels: {
-        support: result.fallback === true ? null : finite(result.levels?.support),
-        resistance: result.fallback === true ? null : finite(result.levels?.resistance),
+        support: result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.support),
+        resistance: result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.resistance),
       },
       candles,
       fundamentals: result.fundamentalsAvailable === false ? null : result.fundamentals ?? null,
       fundamentalsSource: result.fundamentalsAvailable === false ? null : result.fundamentalsSource ?? primaryProvider,
-      sharia: {
-        status: result.shariahStatus ?? null,
-        reason: result.shariahReason ?? null,
-        source: result.shariahSource ?? null,
-        reviewedAt: result.shariahLastReviewedAt ?? null,
-      },
+      sharia: verifiedSharia,
+      contextEvidence,
       warnings: [
         ...(Array.isArray(result.warnings) ? result.warnings.map((_, index) => `PROVIDER_WARNING_${index + 1}`) : []),
         ...(supplementalHistoryUsed ? ['SUPPLEMENTAL_HISTORY_FALLBACK_USED'] : []),
       ],
       providerAttempts: [providerAttempt(result, startedAt, { provider, fallbackUsed, observedAt: asOf })],
     };
+
+    return snapshot;
   }
 }

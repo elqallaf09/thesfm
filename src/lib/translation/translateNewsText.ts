@@ -1,5 +1,7 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
 
 export type AppNewsLanguage = 'ar' | 'en' | 'fr';
 
@@ -11,7 +13,7 @@ export type NewsTranslationState = {
   summary: string;
   translatedTo: AppNewsLanguage;
   isTranslated: boolean;
-  translationSource: 'Anthropic' | 'OpenAI' | 'LibreTranslate' | 'MyMemory' | 'cache' | 'original';
+  translationSource: 'SFM Private AI' | 'LibreTranslate' | 'MyMemory' | 'cache' | 'original';
 };
 
 type TranslatableNewsItem = {
@@ -63,12 +65,7 @@ function hasTranslationProvider() {
 }
 
 function hasPremiumTranslationProvider() {
-  return Boolean(
-    process.env.ANTHROPIC_API_KEY?.trim()
-    || process.env.AI_GATEWAY_TOKEN?.trim()
-    || process.env.OPENAI_API_KEY?.trim()
-    || providerUrl(),
-  );
+  return aiProviderConfigured() || Boolean(providerUrl());
 }
 
 function getSupabaseAdmin() {
@@ -116,7 +113,11 @@ function extractJsonObject(text: string) {
   const start = cleaned.indexOf('{');
   const end = cleaned.lastIndexOf('}');
   if (start === -1 || end === -1 || end <= start) return null;
-  return JSON.parse(cleaned.slice(start, end + 1)) as { title?: unknown; summary?: unknown };
+  try {
+    return JSON.parse(cleaned.slice(start, end + 1)) as { title?: unknown; summary?: unknown };
+  } catch {
+    return null;
+  }
 }
 
 function translationSystemPrompt(targetLanguage: AppNewsLanguage) {
@@ -126,7 +127,7 @@ function translationSystemPrompt(targetLanguage: AppNewsLanguage) {
     fr: 'French',
   };
   return [
-    'You are a professional financial and technology news translator.',
+    'You are the private translation engine for THE SFM financial and technology news.',
     `Translate the supplied news title and summary into ${targetName[targetLanguage]}.`,
     'Keep company names, stock tickers, source names, URLs, currency symbols, numbers, percentages, and dates unchanged.',
     'Do not add facts, advice, commentary, labels, markdown, or placeholders.',
@@ -135,75 +136,17 @@ function translationSystemPrompt(targetLanguage: AppNewsLanguage) {
   ].join(' ');
 }
 
-async function translateWithAnthropic(title: string, summary: string, targetLanguage: AppNewsLanguage) {
-  const apiKey = process.env.ANTHROPIC_API_KEY?.trim() || process.env.AI_GATEWAY_TOKEN?.trim();
-  if (!apiKey) return null;
-  const isGateway = Boolean(process.env.AI_GATEWAY_TOKEN?.trim());
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 24000);
-  try {
-    const response = await fetch(isGateway ? 'https://ai-gateway.vercel.sh/v1/anthropic/messages' : 'https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_NEWS_TRANSLATION_MODEL || process.env.ANTHROPIC_MARKET_MODEL || 'claude-3-5-haiku-latest',
-        max_tokens: 700,
-        temperature: 0,
-        system: translationSystemPrompt(targetLanguage),
-        messages: [{
-          role: 'user',
-          content: JSON.stringify({ targetLanguage, title, summary }),
-        }],
-      }),
-    });
-    if (!response.ok) throw new Error(`Anthropic returned ${response.status}`);
-    const payload = await response.json();
-    const text = payload?.content?.find?.((item: { type?: string; text?: string }) => item.type === 'text')?.text;
-    const parsed = typeof text === 'string' ? extractJsonObject(text) : null;
-    if (typeof parsed?.title !== 'string' || typeof parsed.summary !== 'string') return null;
-    return { title: parsed.title.trim(), summary: parsed.summary.trim(), source: 'Anthropic' as const };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function translateWithOpenAI(title: string, summary: string, targetLanguage: AppNewsLanguage) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) return null;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 24000);
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_NEWS_TRANSLATION_MODEL || process.env.OPENAI_RECEIPT_MODEL || 'gpt-4.1-mini',
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: translationSystemPrompt(targetLanguage) },
-          { role: 'user', content: JSON.stringify({ targetLanguage, title, summary }) },
-        ],
-      }),
-    });
-    if (!response.ok) throw new Error(`OpenAI returned ${response.status}`);
-    const payload = await response.json();
-    const text = payload?.choices?.[0]?.message?.content;
-    const parsed = typeof text === 'string' ? extractJsonObject(text) : null;
-    if (typeof parsed?.title !== 'string' || typeof parsed.summary !== 'string') return null;
-    return { title: parsed.title.trim(), summary: parsed.summary.trim(), source: 'OpenAI' as const };
-  } finally {
-    clearTimeout(timeout);
-  }
+async function translateWithPrivateAi(title: string, summary: string, targetLanguage: AppNewsLanguage) {
+  if (!aiProviderConfigured()) return null;
+  const generation = await generateAssistantReply({
+    system: translationSystemPrompt(targetLanguage),
+    messages: [{ role: 'user', content: JSON.stringify({ targetLanguage, title, summary }) }],
+    correlationId: randomUUID(),
+    maxTokens: 700,
+  });
+  const parsed = generation?.text ? extractJsonObject(generation.text) : null;
+  if (typeof parsed?.title !== 'string' || typeof parsed.summary !== 'string') return null;
+  return { title: parsed.title.trim(), summary: parsed.summary.trim(), source: 'SFM Private AI' as const };
 }
 
 function protectText(text: string) {
@@ -251,7 +194,6 @@ async function translateWithMyMemory(title: string, summary: string, originalLan
       const url = new URL('https://api.mymemory.translated.net/get');
       url.searchParams.set('q', text.slice(0, 500));
       url.searchParams.set('langpair', langpair);
-      // Adding email increases rate limit from 1k to 50k/day
       const memEmail = process.env.MYMEMORY_EMAIL?.trim();
       if (memEmail) url.searchParams.set('de', memEmail);
       const r = await fetch(url.toString(), { signal: controller.signal });
@@ -259,7 +201,6 @@ async function translateWithMyMemory(title: string, summary: string, originalLan
       const json = await r.json().catch(() => null) as { responseData?: { translatedText?: string }; responseStatus?: number } | null;
       if (json?.responseStatus !== 200 || !json?.responseData?.translatedText) return null;
       const translated = json.responseData.translatedText.trim();
-      // MyMemory returns "PLEASE SELECT TWO DISTINCT LANGUAGES" on same-lang requests
       if (translated.toUpperCase().startsWith('PLEASE SELECT')) return null;
       return translated;
     }
@@ -394,8 +335,7 @@ export async function translateNewsText(options: {
   }
 
   try {
-    const translated = await translateWithAnthropic(titleOriginal, summaryOriginal, options.targetLanguage)
-      ?? await translateWithOpenAI(titleOriginal, summaryOriginal, options.targetLanguage)
+    const translated = await translateWithPrivateAi(titleOriginal, summaryOriginal, options.targetLanguage)
       ?? await translateWithLibre(titleOriginal, summaryOriginal, originalLanguage, options.targetLanguage)
       ?? (process.env.NEWS_ENABLE_PUBLIC_TRANSLATION_FALLBACK === 'true'
         ? await translateWithMyMemory(titleOriginal, summaryOriginal, originalLanguage, options.targetLanguage)
@@ -433,9 +373,6 @@ export async function translateNewsText(options: {
   }
 }
 
-// Max articles translated per API call — keeps Vercel function well under timeout.
-// Articles beyond this limit are returned in their original language and can be
-// translated lazily by subsequent requests once they land in persistent cache.
 const TRANSLATE_LIMIT = 16;
 
 export async function translateNewsItems<T extends TranslatableNewsItem>(
@@ -444,8 +381,6 @@ export async function translateNewsItems<T extends TranslatableNewsItem>(
 ): Promise<Array<T & NewsTranslationState>> {
   const translated: Array<T & NewsTranslationState> = [];
 
-  // Pass-through helper: wraps an item with an originalState so it always
-  // matches the return type even when we skip translation.
   function passThrough(item: T, index: number): void {
     const title = item.titleOriginal || item.title || item.headline || '';
     const summary = item.summaryOriginal || item.summary || title;
@@ -464,14 +399,10 @@ export async function translateNewsItems<T extends TranslatableNewsItem>(
     };
   }
 
-  // Separate items: eagerly translate the first TRANSLATE_LIMIT, skip the rest
   const eager = items.slice(0, TRANSLATE_LIMIT);
   const deferred = items.slice(TRANSLATE_LIMIT);
-
-  // Pre-fill deferred items immediately (no API call needed)
   deferred.forEach((item, i) => passThrough(item, TRANSLATE_LIMIT + i));
 
-  // Translate eager items with higher concurrency (6) for speed
   let nextIndex = 0;
   const concurrency = Math.min(6, eager.length);
 
@@ -497,7 +428,6 @@ export async function translateNewsItems<T extends TranslatableNewsItem>(
           summary: state.summary,
         };
       } catch {
-        // On any error fall back to original text
         passThrough(item, currentIndex);
       }
     }

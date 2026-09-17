@@ -2,19 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
-  gateway: vi.fn(), openai: vi.fn(), anthropic: vi.fn(), user: vi.fn(), usage: vi.fn(), rate: vi.fn(),
-  resolve: vi.fn(), canonical: vi.fn(), grounding: vi.fn(), economicPrompt: vi.fn(),
-  clients: [] as Array<Record<string, unknown>>,
+  user: vi.fn(), usage: vi.fn(), rate: vi.fn(), resolve: vi.fn(), canonical: vi.fn(),
+  grounding: vi.fn(), economicPrompt: vi.fn(),
 }));
-vi.mock('openai', () => ({ default: class {
-  chat: { completions: { create: typeof mocks.gateway } };
-  constructor(options: Record<string, unknown>) {
-    mocks.clients.push(options);
-    this.chat = { completions: { create: options.baseURL ? mocks.gateway : mocks.openai } };
-  }
-} }));
-vi.mock('ai', () => ({ generateText: mocks.anthropic }));
-vi.mock('@ai-sdk/anthropic', () => ({ createAnthropic: () => (modelId: string) => ({ modelId }) }));
+
 vi.mock('@/domain/economic-intelligence/advisors.server', () => ({ loadAdvisorGrounding: mocks.grounding }));
 vi.mock('@/lib/ai-analyst/economicAdvisorPrompt', () => ({ buildEconomicAdvisorPrompt: mocks.economicPrompt }));
 vi.mock('@/lib/server/adminAccess', () => ({ getCurrentUserFromRequest: mocks.user }));
@@ -28,216 +19,210 @@ vi.mock('@/services/intelligence/assetResolver', () => ({ resolveCanonicalIntell
 
 import { POST, maxDuration } from '@/app/api/intelligence/chat/route';
 
-const ENV_KEYS = ['AI_GATEWAY_API_KEY', 'AI_GATEWAY_TOKEN', 'ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'AI_ASSISTANT_GATEWAY_MODEL', 'AI_ASSISTANT_ANTHROPIC_MODEL', 'AI_ASSISTANT_OPENAI_MODEL'];
-const completion = (text: string) => ({ choices: [{ message: { content: text } }] });
+const ENV_KEYS = [
+  'SFM_AI_BASE_URL', 'SFM_AI_MODEL', 'SFM_AI_API_KEY', 'SFM_AI_FALLBACK_BASE_URL',
+  'SFM_AI_FALLBACK_MODEL', 'SFM_AI_FALLBACK_API_KEY', 'SFM_AI_TIMEOUT_MS',
+  'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AI_GATEWAY_API_KEY', 'AI_GATEWAY_TOKEN',
+];
+
+const fetchMock = vi.fn();
+const completion = (text: string, status = 200) => new Response(JSON.stringify({ choices: [{ message: { content: text } }] }), {
+  status,
+  headers: { 'content-type': 'application/json' },
+});
+
 function request(overrides: Record<string, unknown> = {}) {
   return new NextRequest('https://example.test/api/intelligence/chat', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ domain: 'finance', locale: 'en', messages: [{ role: 'user', content: 'Explain diversification' }], ...overrides }),
   });
 }
-function configureAll() {
-  vi.stubEnv('AI_GATEWAY_API_KEY', 'test-gateway-key');
-  vi.stubEnv('ANTHROPIC_API_KEY', 'test-anthropic-key');
-  vi.stubEnv('OPENAI_API_KEY', 'test-openai-key');
+
+function configurePrimary() {
+  vi.stubEnv('SFM_AI_BASE_URL', 'https://primary.sfm.test/v1');
+  vi.stubEnv('SFM_AI_MODEL', 'sfm-primary');
+  vi.stubEnv('SFM_AI_API_KEY', 'private-primary-key');
+}
+
+function configureBoth() {
+  configurePrimary();
+  vi.stubEnv('SFM_AI_FALLBACK_BASE_URL', 'https://fallback.sfm.test/v1');
+  vi.stubEnv('SFM_AI_FALLBACK_MODEL', 'sfm-fallback');
+  vi.stubEnv('SFM_AI_FALLBACK_API_KEY', 'private-fallback-key');
 }
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.clients.length = 0;
   for (const key of ENV_KEYS) vi.stubEnv(key, '');
+  vi.stubGlobal('fetch', fetchMock);
   mocks.user.mockResolvedValue({ id: 'test-user' });
   mocks.usage.mockResolvedValue({ allowed: true });
   mocks.rate.mockReturnValue({ allowed: true });
   mocks.resolve.mockResolvedValue({ ok: false });
   mocks.grounding.mockResolvedValue({ advisor: 'finance', facts: [] });
   mocks.economicPrompt.mockReturnValue('Owner-scoped grounding fixture.');
-  mocks.gateway.mockResolvedValue(completion('Gateway fixture response'));
-  mocks.anthropic.mockResolvedValue({ text: 'Anthropic fixture response' });
-  mocks.openai.mockResolvedValue(completion('OpenAI fixture response'));
+  fetchMock.mockResolvedValue(completion('SFM private fixture response'));
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
-describe('intelligence chat provider transport and truthful errors', () => {
-  it('rejects anonymous requests before quota or provider calls', async () => {
-    configureAll();
-    mocks.user.mockResolvedValue(null);
-    const response = await POST(request());
-    expect(response.status).toBe(401);
+describe('intelligence chat on SFM Private AI only', () => {
+  it('rejects anonymous requests before private context, quota or provider calls', async () => {
+    configureBoth(); mocks.user.mockResolvedValue(null);
+    expect((await POST(request())).status).toBe(401);
     expect(mocks.usage).not.toHaveBeenCalled();
     expect(mocks.grounding).not.toHaveBeenCalled();
-    expect(mocks.clients).toHaveLength(0);
-    expect(mocks.anthropic).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('fails closed on a projects-domain request', async () => {
-    configureAll();
+  it('fails closed for projects conversations', async () => {
+    configureBoth();
     expect((await POST(request({ domain: 'projects' }))).status).toBe(400);
     expect(mocks.user).not.toHaveBeenCalled();
-    expect(mocks.clients).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('keeps the application rate limit and Retry-After header', async () => {
-    configureAll();
-    mocks.rate.mockReturnValue({ allowed: false, retryAfterSeconds: 17 });
+  it('preserves rate limits and retry metadata', async () => {
+    configureBoth(); mocks.rate.mockReturnValue({ allowed: false, retryAfterSeconds: 17 });
     const response = await POST(request());
     expect(response.status).toBe(429);
     expect(response.headers.get('retry-after')).toBe('17');
     expect(mocks.usage).not.toHaveBeenCalled();
-    expect(mocks.clients).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('does not charge quota or resolve symbols when no provider is configured', async () => {
-    const response = await POST(request({ messages: [{ role: 'user', content: 'NVDA' }] }));
-    const payload = await response.json();
+  it('ignores OpenAI, Anthropic and Gateway credentials as provider configuration', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'unused-openai-key');
+    vi.stubEnv('ANTHROPIC_API_KEY', 'unused-anthropic-key');
+    vi.stubEnv('AI_GATEWAY_API_KEY', 'unused-gateway-key');
+    const response = await POST(request());
     expect(response.status).toBe(503);
-    expect(payload).toMatchObject({ ok: false, error: { code: 'AI_PROVIDER_NOT_CONFIGURED' } });
-    expect(response.headers.get('x-correlation-id')).toBe(payload.correlationId);
+    expect(await response.json()).toMatchObject({ ok: false, error: { code: 'AI_PROVIDER_NOT_CONFIGURED' } });
     expect(mocks.usage).not.toHaveBeenCalled();
-    expect(mocks.resolve).not.toHaveBeenCalled();
-    expect(mocks.grounding).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('stops after Gateway succeeds and forwards the cancellation signal', async () => {
-    configureAll();
+  it('uses the user-controlled primary model endpoint', async () => {
+    configurePrimary();
     const response = await POST(request());
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true, source: 'ai', provider: 'vercel-ai-gateway', text: 'Gateway fixture response' });
-    expect(mocks.clients[0]).toMatchObject({ baseURL: 'https://ai-gateway.vercel.sh/v1', maxRetries: 0, timeout: 8500 });
-    expect(mocks.gateway.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
-    expect(mocks.gateway.mock.calls[0][0]).not.toHaveProperty('temperature');
-    expect(mocks.anthropic).not.toHaveBeenCalled();
-    expect(mocks.openai).not.toHaveBeenCalled();
-    expect(mocks.usage).toHaveBeenCalledTimes(1);
+    expect(await response.json()).toMatchObject({ ok: true, provider: 'sfm-private-primary', model: 'sfm-primary', source: 'ai' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://primary.sfm.test/v1/chat/completions');
+    expect(init.headers).toMatchObject({ authorization: 'Bearer private-primary-key' });
+    expect(JSON.parse(String(init.body))).toMatchObject({ model: 'sfm-primary', max_tokens: 1200, stream: false });
   });
 
-  it('supports a legacy Gateway token and a server-selected model', async () => {
-    vi.stubEnv('AI_GATEWAY_TOKEN', 'test-legacy-token');
-    vi.stubEnv('AI_ASSISTANT_GATEWAY_MODEL', 'anthropic/claude-haiku-4.5');
-    const response = await POST(request());
-    expect(response.status).toBe(200);
-    expect(mocks.clients[0].apiKey).toBe('test-legacy-token');
-    expect(mocks.gateway.mock.calls[0][0].model).toBe('anthropic/claude-haiku-4.5');
+  it('fails over automatically to a second private node', async () => {
+    configureBoth();
+    fetchMock.mockResolvedValueOnce(completion('unavailable', 503)).mockResolvedValueOnce(completion('Private fallback response'));
+    const body = await (await POST(request())).json();
+    expect(body).toMatchObject({ ok: true, provider: 'sfm-private-fallback', model: 'sfm-fallback', text: 'Private fallback response' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1][0])).toBe('https://fallback.sfm.test/v1/chat/completions');
+    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain('unavailable');
   });
 
-  it('uses independent Anthropic after a Gateway authentication failure', async () => {
-    configureAll();
-    mocks.gateway.mockRejectedValue(Object.assign(new Error('upstream secret body'), { status: 401 }));
-    const response = await POST(request());
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ provider: 'anthropic' });
-    expect(mocks.anthropic.mock.calls[0][0]).toMatchObject({ maxRetries: 0, abortSignal: expect.any(AbortSignal) });
-    expect(mocks.openai).not.toHaveBeenCalled();
-    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain('upstream secret body');
+  it('normalizes copied env quotes without changing the private key', async () => {
+    vi.stubEnv('SFM_AI_BASE_URL', '  "https://primary.sfm.test/v1"  ');
+    vi.stubEnv('SFM_AI_MODEL', '  "sfm-primary"  ');
+    vi.stubEnv('SFM_AI_API_KEY', '  "private-key"  ');
+    expect((await POST(request())).status).toBe(200);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.headers).toMatchObject({ authorization: 'Bearer private-key' });
   });
 
-  it('uses OpenAI if both earlier providers fail, consuming quota once', async () => {
-    configureAll();
-    mocks.gateway.mockRejectedValue(new Error('gateway unavailable'));
-    mocks.anthropic.mockRejectedValue(new Error('anthropic unavailable'));
-    const response = await POST(request());
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ provider: 'openai', text: 'OpenAI fixture response' });
-    expect(mocks.usage).toHaveBeenCalledTimes(1);
-    expect(mocks.clients.at(-1)).toMatchObject({ maxRetries: 0, timeout: 8500 });
-    expect(mocks.openai.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
-  });
-
-  it.each(['ar', 'en', 'fr'])('returns a real localized 503, not a fake successful reply, for %s', async locale => {
-    configureAll();
-    mocks.gateway.mockRejectedValue(new Error('private upstream response'));
-    mocks.anthropic.mockRejectedValue(new Error('private upstream response'));
-    mocks.openai.mockRejectedValue(new Error('private upstream response'));
+  it.each(['ar', 'en', 'fr'])('returns an honest localized 503 for %s when both private nodes fail', async locale => {
+    configureBoth();
+    fetchMock.mockResolvedValue(completion('private body that must not leak', 503));
     const response = await POST(request({ locale }));
-    const payload = await response.json();
+    const body = await response.json();
     expect(response.status).toBe(503);
-    expect(payload).toMatchObject({ ok: false, error: { code: 'AI_PROVIDER_UNAVAILABLE' }, text: expect.any(String) });
-    expect(response.headers.get('x-correlation-id')).toBe(payload.correlationId);
-    expect(payload.text).not.toContain('private upstream response');
+    expect(body).toMatchObject({ ok: false, error: { code: 'AI_PROVIDER_UNAVAILABLE' }, text: expect.any(String) });
+    expect(response.headers.get('x-correlation-id')).toBe(body.correlationId);
+    expect(body.text).not.toContain('private body that must not leak');
+    expect(mocks.usage).toHaveBeenCalledTimes(1);
   });
 
-  it('treats an empty provider response as failure, not successful AI content', async () => {
-    configureAll();
-    mocks.gateway.mockResolvedValue(completion('   '));
-    const response = await POST(request());
-    expect(await response.json()).toMatchObject({ provider: 'anthropic' });
+  it('treats empty text as a provider failure and uses the private fallback', async () => {
+    configureBoth();
+    fetchMock.mockResolvedValueOnce(completion('   ')).mockResolvedValueOnce(completion('fallback text'));
+    expect(await (await POST(request())).json()).toMatchObject({ provider: 'sfm-private-fallback', text: 'fallback text' });
   });
 
-  it('enforces the daily quota before making a provider request', async () => {
-    configureAll();
-    mocks.usage.mockResolvedValue({ allowed: false });
+  it('enforces quota before any private inference call', async () => {
+    configureBoth(); mocks.usage.mockResolvedValue({ allowed: false });
     expect((await POST(request())).status).toBe(429);
-    expect(mocks.clients).toHaveLength(0);
-    expect(mocks.anthropic).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('aborts the timed-out transport before falling back and clears timers', async () => {
-    configureAll();
+  it('aborts the timed-out private request before failover and clears timers', async () => {
+    configureBoth();
     vi.useFakeTimers();
-    let providerSignal: AbortSignal | undefined;
-    mocks.gateway.mockImplementation((_body: unknown, options: { signal: AbortSignal }) => new Promise((_resolve, reject) => {
-      providerSignal = options.signal;
-      options.signal.addEventListener('abort', () => reject(new Error('transport aborted')), { once: true });
-    }));
+    let primarySignal: AbortSignal | undefined;
+    fetchMock.mockImplementationOnce((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      primarySignal = init.signal as AbortSignal;
+      primarySignal.addEventListener('abort', () => reject(new Error('transport aborted')), { once: true });
+    })).mockResolvedValueOnce(completion('fallback after timeout'));
     const pending = POST(request());
-    await vi.waitFor(() => expect(mocks.gateway).toHaveBeenCalledTimes(1));
-    await vi.advanceTimersByTimeAsync(8501);
-    const response = await pending;
-    expect(providerSignal?.aborted).toBe(true);
-    expect(await response.json()).toMatchObject({ provider: 'anthropic' });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(22_001);
+    expect(await (await pending).json()).toMatchObject({ provider: 'sfm-private-fallback' });
+    expect(primarySignal?.aborted).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
-    expect(maxDuration * 1000).toBeGreaterThan(3 * 8500);
+    expect(maxDuration * 1000).toBeGreaterThan(2 * 22_000);
   });
 
-  it('keeps unresolved selected assets unverified instead of inventing identity', async () => {
-    configureAll();
-    mocks.canonical.mockRejectedValue(new Error('not verified'));
-    const response = await POST(request({ asset: { symbol: 'UNKNOWN', assetType: 'STOCK' } }));
-    expect(await response.json()).toMatchObject({ asset: null, assetResolvedFromMessage: false });
-    expect(mocks.gateway.mock.calls[0][0].messages[0].content).toContain('ask the user to confirm');
+  it('does not consume quota for malformed private provider configuration', async () => {
+    vi.stubEnv('SFM_AI_BASE_URL', 'javascript:bad');
+    vi.stubEnv('SFM_AI_MODEL', 'sfm-primary');
+    expect((await POST(request())).status).toBe(503);
+    expect(mocks.usage).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('preserves owner-scoped finance grounding through provider fallback', async () => {
-    configureAll();
-    mocks.gateway.mockRejectedValue(new Error('gateway unavailable'));
-    const response = await POST(request());
+  it('keeps unverified selected assets unresolved', async () => {
+    configurePrimary(); mocks.canonical.mockRejectedValue(new Error('unknown'));
+    expect(await (await POST(request({ asset: { symbol: 'UNKNOWN', assetType: 'STOCK' } }))).json()).toMatchObject({ asset: null, assetResolvedFromMessage: false });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).messages[0].content).toContain('ask the user to confirm');
+  });
+
+  it('preserves owner-scoped grounding across private-node failover', async () => {
+    configureBoth();
+    fetchMock.mockResolvedValueOnce(completion('down', 503)).mockResolvedValueOnce(completion('grounded fallback'));
+    expect(await (await POST(request())).json()).toMatchObject({ domain: 'finance', advisorGrounded: true, provider: 'sfm-private-fallback' });
     expect(mocks.grounding).toHaveBeenCalledWith({ userId: 'test-user', advisor: 'finance' });
-    expect(mocks.economicPrompt).toHaveBeenCalledWith({ advisor: 'finance', facts: [] }, 'en');
-    expect(mocks.anthropic.mock.calls[0][0].system).toContain('Owner-scoped grounding fixture.');
-    expect(await response.json()).toMatchObject({ advisorGrounded: true, domain: 'finance', provider: 'anthropic' });
-    expect(mocks.usage.mock.calls[0][0].metadata.economicIntelligenceGrounded).toBe(true);
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).messages[0].content).toContain('Owner-scoped grounding fixture.');
   });
 
-  it('continues with honest ungrounded finance guardrails if the evidence loader fails', async () => {
-    configureAll();
-    mocks.grounding.mockRejectedValue(new Error('private database failure'));
-    const response = await POST(request());
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ advisorGrounded: false });
+  it('keeps honest finance guardrails when private grounding fails', async () => {
+    configurePrimary(); mocks.grounding.mockRejectedValue(new Error('private database failure'));
+    expect(await (await POST(request())).json()).toMatchObject({ advisorGrounded: false });
     expect(mocks.economicPrompt).not.toHaveBeenCalled();
-    expect(mocks.gateway.mock.calls[0][0].messages[0].content).not.toContain('Owner-scoped grounding fixture.');
-    expect(mocks.usage.mock.calls[0][0].metadata.economicIntelligenceGrounded).toBe(false);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).messages[0].content).not.toContain('Owner-scoped grounding fixture.');
   });
 
-  it('does not fetch personal finance context for the market domain', async () => {
-    configureAll();
-    const response = await POST(request({ domain: 'market' }));
-    expect(await response.json()).toMatchObject({ domain: 'market', advisorGrounded: false });
+  it('does not load personal finance records for explicit market conversations', async () => {
+    configurePrimary();
+    expect(await (await POST(request({ domain: 'market' }))).json()).toMatchObject({ advisorGrounded: false, domain: 'market' });
     expect(mocks.grounding).not.toHaveBeenCalled();
   });
 
-  it('does not attach private finance context to an inferred verified ticker question', async () => {
-    configureAll();
+  it('does not attach finance records to a ticker resolved from the message', async () => {
+    configurePrimary();
     mocks.resolve.mockResolvedValue({ ok: true, asset: { symbol: 'NVDA', assetType: 'stock' } });
-    mocks.canonical.mockResolvedValue({ symbol: 'NVDA', displaySymbol: 'NVDA', name: 'NVIDIA', assetType: 'STOCK', quoteCurrency: 'USD', exchange: 'NASDAQ', market: 'US' });
-    const response = await POST(request({ messages: [{ role: 'user', content: 'NVDA' }] }));
-    expect(await response.json()).toMatchObject({ domain: 'market', assetResolvedFromMessage: true, advisorGrounded: false });
+    mocks.canonical.mockResolvedValue({ canonicalSymbol: 'NVDA', displaySymbol: 'NVDA', name: 'NVIDIA', assetType: 'STOCK', quoteCurrency: 'USD', exchange: 'NASDAQ', market: 'US' });
+    expect(await (await POST(request({ messages: [{ role: 'user', content: 'NVDA' }] }))).json()).toMatchObject({ domain: 'market', assetResolvedFromMessage: true, advisorGrounded: false });
     expect(mocks.grounding).not.toHaveBeenCalled();
-    expect(mocks.economicPrompt).not.toHaveBeenCalled();
   });
 });

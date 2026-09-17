@@ -18,9 +18,10 @@ for (const setup of [
     await page.route('**/api/**', async route => {
       const url = new URL(route.request().url()); const path = url.pathname;
       calls.set(path, (calls.get(path) || 0) + 1);
-      const symbol = url.searchParams.get('symbol') || url.searchParams.get('symbols') || 'MSFT';
+      const pathSymbol = path.split('/').filter(Boolean).at(-1) || '';
+      const symbol = url.searchParams.get('symbol') || url.searchParams.get('symbols') || (path.includes('/sfm-market/v1/trader/') ? pathSymbol : '') || 'MSFT';
       let payload: Record<string, unknown> = { success: false, status: 'unavailable', items: [], data: [] };
-      if (path === '/api/recommendations') payload = { status: 'available', recommendations: [{ symbol, name: 'Fixture company', price: 151.23, currentPrice: 151.23, currency: 'USD', available: true, source: 'Fixture provider' }] };
+      if (path === '/api/recommendations') payload = { status: 'available', recommendations: [{ symbol, name: 'Fixture company', price: 151.23, currentPrice: 151.23, currency: 'USD', available: true, source: 'THE SFM Market Data Engine' }] };
       if (path.endsWith('/asset-profile')) payload = { profile: { symbol, name: 'Fixture company', currency: 'USD' } };
       if (path === '/api/market-news') {
         if (failNews) return route.fulfill({ status: 429, json: { status: 'rate_limited', message: 'Fixture rate limit' } });
@@ -28,9 +29,9 @@ for (const setup of [
       }
       if (path.includes('/calendar/earnings')) payload = { status: 'available', data: [{ symbol, companyName: 'Fixture earnings MSFT', reportDate: '2026-10-20', epsEstimate: 0 }] };
       if (path.includes('/calendar/dividends')) payload = { status: 'available', data: [] };
-      if (path.includes('/technical-analysis')) payload = { success: true, feature: 'technical_analysis', available: true, symbol, indicators: { rsi: 48 }, dataQuality: 'partial', status: 'partial' };
-      if (path.includes('/signals/')) payload = { success: false, status: 'unavailable', signal: null };
-      if (path.endsWith('/history')) payload = { status: 'available', points: [] };
+      if (path.includes('/sfm-market/v1/trader/technical/')) payload = { ok: true, success: true, feature: 'technical_analysis', available: true, technicalAvailable: true, symbol, indicators: { rsi: 48 }, dataQuality: 'partial', status: 'partial', source: 'THE SFM Market Data Engine' };
+      if (path.includes('/sfm-market/v1/trader/signal/')) payload = { ok: true, success: true, status: 'empty', available: false, signal: null, item: null, source: 'THE SFM Market Data Engine' };
+      if (path.includes('/sfm-market/v1/trader/history/')) payload = { ok: true, success: true, status: 'available', source: 'THE SFM Market Data Engine', points: [] };
       await route.fulfill({ status: 200, json: payload });
     });
     await frame.locator('[data-symbol-details="MSFT"]').first().click();
@@ -45,7 +46,10 @@ for (const setup of [
     await expect(frame.locator('#drawer-panel-earnings')).toHaveAttribute('aria-busy', 'false');
     await frame.locator('#drawer-tab-technical').click();
     await expect(frame.locator('#drawer-panel-technical')).toHaveAttribute('aria-busy', 'false');
-    expect(calls.get('/api/market/technical-analysis')).toBe(1);
+    expect(calls.get('/api/sfm-market/v1/trader/technical/MSFT')).toBe(1);
+    expect(calls.get('/api/sfm-market/v1/trader/history/MSFT')).toBe(1);
+    expect(calls.get('/api/sfm-market/v1/trader/signal/MSFT')).toBe(1);
+    expect(calls.get('/api/market/technical-analysis')).toBeUndefined();
     await frame.locator('#drawer-tab-news').click();
     await expect(drawer).toContainText('Fixture company announcement');
     expect(calls.get('/api/market-news')).toBe(newsCount);

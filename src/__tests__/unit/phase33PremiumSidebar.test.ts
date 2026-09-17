@@ -135,7 +135,7 @@ describe('Phase 3.3 Markets grouping and disclosure', () => {
       fr: 'Secteur et stratégie',
     });
     expect(TR_NAV.nav_group_stock_categories).toBeUndefined();
-    expect(NAV_GROUPS.find(group => group.id === 'market-news')?.items).toHaveLength(11);
+    expect(NAV_GROUPS.find(group => group.id === 'market-news')?.items).toHaveLength(21);
     expect(NAV_GROUPS.some(group => group.id === 'stock-categories')).toBe(false);
   });
 

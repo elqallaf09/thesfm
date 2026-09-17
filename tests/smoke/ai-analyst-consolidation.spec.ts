@@ -47,6 +47,7 @@ async function expectSingleAnalystWorkspace(page: Page) {
 }
 
 async function stubAnalystReads(page: Page) {
+  await page.route('**/api/intelligence/asset-details**', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false }) }));
   await page.route('**/api/intelligence/recent**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, recent: { items: [] } }),
   }));
@@ -169,11 +170,11 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     }
 
     await page.goto('/market-agent', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/ai-analyst\/agent(?:\?|$)/);
-    await expect(page.getByRole('heading', { name: 'Smart market agent' })).toBeVisible();
+    await page.waitForURL(/\/ai-analyst\/analyze(?:\?|$)/);
+    await expect(page.getByRole('heading', { name: 'Analysis and research center' })).toBeVisible();
 
     await page.goto('/market-agent?symbol=EURUSD%3DX&assetType=FOREX&timeframe=1D', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/ai-analyst\/agent\?assetType=FOREX&horizon=INTRADAY&symbol=EURUSD%3DX/);
+    await page.waitForURL(/\/ai-analyst\/analyze\/EURUSD%3DX\?assetType=FOREX&horizon=INTRADAY/);
     await expect(page.getByLabel('Symbol')).toHaveValue('EURUSD=X');
     await expect(page.getByLabel('Asset type')).toHaveValue('FOREX');
     await expect(page.getByLabel('Horizon')).toHaveValue('INTRADAY');
@@ -209,7 +210,7 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
 
     for (const [route, heading] of [
       ['/ai-analyst/compare', 'Analysis comparison'],
-      ['/ai-analyst/agent', 'Smart market agent'],
+      ['/ai-analyst/agent', 'Analysis and research center'],
     ] as const) {
       await page.goto(route, { waitUntil: 'domcontentloaded' });
       await expectSingleAnalystWorkspace(page);

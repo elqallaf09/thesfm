@@ -1,0 +1,172 @@
+name: Investments v2 live verification
+
+on:
+  push:
+    branches: [main, test/investments-v2-live-acceptance-20260916]
+    paths:
+      - src/app/api/investments/v2/**
+      - src/lib/investments/canonical*.ts
+      - supabase/migrations/20260916233000_verify_investment_position_imports.sql
+      - supabase/migrations/20260916234500_reconcile_verified_investment_positions.sql
+      - .github/workflows/investments-v2-live-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: read
+
+concurrency:
+  group: investments-v2-live-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify authenticated Investments v2 on exact deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve READY deployment for this exact commit
+        id: target
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const production = context.ref === 'refs/heads/main';
+            const environment = production ? 'Production' : 'Preview';
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const deployments = await github.paginate(github.rest.repos.listDeployments, {
+                ...context.repo, sha: context.sha, environment, per_page: 100,
+              });
+              for (const deployment of deployments) {
+                if (deployment.sha !== context.sha || deployment.environment !== environment) continue;
+                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
+                  ...context.repo, deployment_id: deployment.id, per_page: 100,
+                });
+                const latest = statuses[0];
+                if (!latest || latest.state !== 'success') continue;
+                let target;
+                try { target = new URL(latest.environment_url || latest.target_url); }
+                catch { continue; }
+                if (target.protocol !== 'https:' || target.username || target.password) continue;
+                if (!/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\.vercel\.app$/.test(target.hostname)) continue;
+                core.setOutput('url', target.origin);
+                core.setOutput('environment', environment);
+                core.setOutput('production', production ? 'true' : 'false');
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed(`No READY ${environment} deployment found for exact SHA ${context.sha}.`);
+
+      - name: Verify authenticated readiness and canonical positions contract
+        uses: actions/github-script@v8
+        env:
+          TARGET_URL: ${{ steps.target.outputs.url }}
+          TARGET_ENVIRONMENT: ${{ steps.target.outputs.environment }}
+          IS_PRODUCTION: ${{ steps.target.outputs.production }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        with:
+          script: |
+            const required = ['TARGET_URL', 'NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'E2E_USER_EMAIL', 'E2E_USER_PASSWORD'];
+            for (const name of required) {
+              if (!process.env[name]?.trim()) throw new Error(`Missing live verification capability: ${name}`);
+            }
+
+            const origin = new URL(process.env.TARGET_URL);
+            const auth = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+            const isProduction = process.env.IS_PRODUCTION === 'true';
+            if (origin.protocol !== 'https:' || !/^thesfm-[a-z0-9]+-mohammed-alqallaf-s-projects\.vercel\.app$/.test(origin.hostname)) {
+              throw new Error('Invalid deployment target');
+            }
+            if (auth.protocol !== 'https:' || !/^[a-z0-9]{20}\.supabase\.co$/.test(auth.hostname) || auth.username || auth.password) {
+              throw new Error('Invalid Supabase target');
+            }
+
+            const publicKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim();
+            const baseHeaders = { accept: 'application/json' };
+            if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()) {
+              baseHeaders['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET.trim();
+            }
+
+            async function request(path, options = {}) {
+              const response = await fetch(new URL(path, origin), {
+                redirect: 'error', signal: AbortSignal.timeout(30000), ...options,
+                headers: { ...baseHeaders, ...(options.headers || {}) },
+              });
+              const payload = await response.json().catch(() => null);
+              return { response, payload };
+            }
+            function requireNoStore(response, label) {
+              if (!/no-store/i.test(response.headers.get('cache-control') || '')) {
+                throw new Error(`${label} must be private/no-store`);
+              }
+            }
+
+            const anonymous = await request('/api/investments/v2/readiness');
+            if (anonymous.response.status !== 401) throw new Error(`Anonymous readiness gate returned HTTP ${anonymous.response.status}`);
+            requireNoStore(anonymous.response, 'anonymous readiness');
+
+            const login = await fetch(new URL('/auth/v1/token?grant_type=password', auth), {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', apikey: publicKey },
+              body: JSON.stringify({ email: process.env.E2E_USER_EMAIL.trim(), password: process.env.E2E_USER_PASSWORD }),
+              redirect: 'error', signal: AbortSignal.timeout(20000),
+            });
+            const session = await login.json().catch(() => ({}));
+            if (!login.ok || typeof session.access_token !== 'string') throw new Error(`Test-account authentication failed: HTTP ${login.status}`);
+            const token = session.access_token;
+            core.setSecret(token);
+            if (typeof session.refresh_token === 'string') core.setSecret(session.refresh_token);
+
+            try {
+              const authHeaders = { authorization: `Bearer ${token}` };
+              const readiness = await request('/api/investments/v2/readiness', { headers: authHeaders });
+              if (readiness.response.status !== 200 || readiness.payload?.ok !== true || typeof readiness.payload?.readiness?.readyForReadCutover !== 'boolean') {
+                throw new Error(`Authenticated readiness failed: HTTP ${readiness.response.status}`);
+              }
+              requireNoStore(readiness.response, 'authenticated readiness');
+
+              const positions = await request('/api/investments/v2/positions', { headers: authHeaders });
+              requireNoStore(positions.response, 'canonical positions');
+
+              const ready = readiness.payload.readiness.readyForReadCutover === true;
+              if (isProduction && !ready) {
+                const reasons = Array.isArray(readiness.payload.readiness.reasons)
+                  ? readiness.payload.readiness.reasons.filter(value => typeof value === 'string').join(',')
+                  : 'UNKNOWN';
+                throw new Error(`Production canonical cutover is not ready: ${reasons}`);
+              }
+
+              if (ready) {
+                if (positions.response.status !== 200 || positions.payload?.ok !== true || !Array.isArray(positions.payload?.positions)) {
+                  throw new Error(`Ready canonical positions read failed: HTTP ${positions.response.status}`);
+                }
+                const serialized = JSON.stringify(positions.payload.positions);
+                for (const forbidden of ['legacy_snapshot', 'legacy_investment_item_id', 'user_id']) {
+                  if (serialized.includes(forbidden)) throw new Error(`Canonical response exposed forbidden field: ${forbidden}`);
+                }
+              } else {
+                if (positions.response.status !== 409 || positions.payload?.error?.code !== 'INVESTMENT_CANONICAL_NOT_READY') {
+                  throw new Error(`Not-ready canonical gate failed closed incorrectly: HTTP ${positions.response.status}`);
+                }
+              }
+
+              const evidence = {
+                sha: context.sha,
+                environment: process.env.TARGET_ENVIRONMENT,
+                readinessEndpoint: 'verified',
+                positionsContract: ready ? 'verified_ready' : 'verified_fail_closed',
+                readyForReadCutover: ready,
+              };
+              core.info(JSON.stringify(evidence));
+              await core.summary.addHeading('Investments v2 live verification').addCodeBlock(JSON.stringify(evidence, null, 2), 'json').write();
+            } finally {
+              await fetch(new URL('/auth/v1/logout?scope=local', auth), {
+                method: 'POST', headers: { apikey: publicKey, authorization: `Bearer ${token}` },
+                redirect: 'error', signal: AbortSignal.timeout(15000),
+              }).catch(() => null);
+            }

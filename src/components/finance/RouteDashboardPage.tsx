@@ -2432,7 +2432,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                         <strong>{pick({ ar: 'تشخيص التحليل', en: 'Scan debug', fr: 'Diagnostic du scan' }, lang)}</strong>
                         <span>{pick({ ar: 'المرحلة', en: 'Stage', fr: 'Étape' }, lang)}: {receiptDebug.stage || '-'}</span>
                         <span>{expenseText('providerUsed', lang)}: {receiptProviderLabel(receiptDebug.provider, lang)}</span>
-                        <span>{pick({ ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' }, lang)}: {(receiptDebug.providerConfigured || receiptDebug.googleConfigured || receiptDebug.openaiConfigured) ? pick({ ar: 'مُعد', en: 'configured', fr: 'configuré' }, lang) : pick({ ar: 'غير مُعد', en: 'missing', fr: 'manquant' }, lang)}</span>
+                        <span>{pick({ ar: 'المزوّد', en: 'Provider', fr: 'Fournisseur' }, lang)}: {(receiptDebug.providerConfigured || receiptDebug.googleConfigured || receiptDebug.privateVisionConfigured) ? pick({ ar: 'مُعد', en: 'configured', fr: 'configuré' }, lang) : pick({ ar: 'غير مُعد', en: 'missing', fr: 'manquant' }, lang)}</span>
                         <span>{pick({ ar: 'طول النص', en: 'Text length', fr: 'Longueur du texte' }, lang)}: {receiptDebug.rawTextLength ?? 0}</span>
                         <span>{pick({ ar: 'المبالغ', en: 'Candidates', fr: 'Candidats' }, lang)}: {receiptDebug.candidateCount ?? 0}</span>
                         <span>{pick({ ar: 'المبلغ المختار', en: 'Selected amount', fr: 'Montant choisi' }, lang)}: {receiptDebug.selectedAmount ?? '-'}</span>

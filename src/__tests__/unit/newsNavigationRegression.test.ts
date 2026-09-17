@@ -31,8 +31,6 @@ describe('account section never auto-expands', () => {
   });
 
   it('keeps profile and logout reachable through the same single click regardless of prior state', () => {
-    // The disclosure toggle is a plain includes/filter flip with no extra
-    // gating, so a second click always closes what the first click opened.
     expect(sidebar).toContain('setOpenGlobalGroupIds(current => current.includes(group.id)');
     expect(sidebar).toContain('? current.filter(id => id !== group.id)');
     expect(mobile).toContain('onClick={() => setOpenGlobalGroupIds(current => current.includes(group.id)');
@@ -52,5 +50,40 @@ describe('unified market-news subgroup rendering', () => {
     const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
     const labeled = marketNews?.items.filter(item => item.sectionLabelKey) ?? [];
     expect(labeled.map(item => item.id)).toEqual(['tech-news', 'energy-stocks']);
+  });
+
+  it('includes all dedicated regional, special, and intelligence news destinations', () => {
+    const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
+    const destinations = new Map((marketNews?.items ?? []).map(item => [item.id, item.href]));
+
+    expect(destinations.get('asia-market-news')).toBe('/asia-market-news');
+    expect(destinations.get('federal-reserve-news')).toBe('/federal-reserve-news');
+    expect(destinations.get('healthcare-stocks-news')).toBe('/healthcare-stocks-news');
+    expect(destinations.get('new-stocks-news')).toBe('/new-stocks-news');
+    expect(destinations.get('stocks-under-one')).toBe('/stocks-under-1');
+    expect(destinations.get('metals-news')).toBe('/metals-news');
+    expect(destinations.get('earnings-news')).toBe('/earnings-news');
+    expect(destinations.get('analyst-ratings-news')).toBe('/analyst-ratings-news');
+    expect(destinations.get('mergers-acquisitions-news')).toBe('/mergers-acquisitions-news');
+    expect(destinations.get('unusual-moves-news')).toBe('/unusual-moves-news');
+  });
+
+  it('uses the shared moving ticker with colored percentage changes for special news pages', () => {
+    const source = read('src/components/special-news/SpecialMarketNewsPage.tsx');
+    expect(source).toContain('StockTickerStrip');
+    expect(source).toContain('changePercent: item.changePercent');
+    expect(source).toContain('durationSeconds={34}');
+    expect(source).toContain('data-direction={direction}');
+  });
+
+  it('gives Asian market news a moving real-market index ticker', () => {
+    const page = read('src/components/asia-market-news/AsiaMarketNewsPage.tsx');
+    const route = read('src/app/api/asia-market-news/route.ts');
+    expect(page).toContain('StockTickerStrip');
+    expect(page).toContain('durationSeconds={34}');
+    expect(route).toContain("symbol: '^N225'");
+    expect(route).toContain("symbol: '^HSI'");
+    expect(route).toContain("symbol: '^KS11'");
+    expect(route).toContain('fetchYahooChartQuote');
   });
 });

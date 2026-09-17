@@ -36,7 +36,6 @@ describe('explicit regional report rows and source identity',()=>{
    expect(issuerPdfLinks('<a href="/annual-report-2099.pdf">Annual Report, comparison 2025</a>','https://www.nbk.com',now)).toEqual([]);
  });
  it('reads current interim balance and six-month income columns with the independent review date',()=>{
-   // Representative rows/headers from the issuer Q2 2026 report, PDF pages 2, 3, 5.
    const interim=[{num:2,text:'REPORT ON REVIEW OF INTERIM CONDENSED CONSOLIDATED FINANCIAL INFORMATION\nNational Bank of Kuwait\n20 July 2026\nKuwait'},
      {num:3,text:"National Bank of Kuwait Group\nINTERIM CONDENSED CONSOLIDATED STATEMENT OF INCOME\n30 June 2026 (Unaudited)\nThree months ended\n30 June\nSix months ended\n30 June\n2026 2025 2026 2025\nNotes KD 000's KD 000's KD 000's KD 000's\nInterest income 456,736 457,212 915,760 894,516"},
      {num:5,text:"National Bank of Kuwait Group\nINTERIM CONDENSED CONSOLIDATED STATEMENT OF FINANCIAL POSITION\n30 June 2026 (Unaudited)\nAudited\n30 June 31 December 30 June\n2026 2025 2025\nNotes KD 000's KD 000's KD 000's\nTotal assets 46,232,823 45,612,844 43,648,267\nTotal liabilities 40,610,546 39,962,597 38,369,685"}];
@@ -51,5 +50,43 @@ describe('explicit regional report rows and source identity',()=>{
    expect(values.some(value=>value.normalizedField==='total_assets')).toBe(false);
    expect(values.every(value=>!validFinancialValue(value,now))).toBe(true);
  });
+});
 
+const ifaIssuer={...security,ticker:'IFA',providerSymbol:'IFA.KW',name:'International Financial Advisors Holding',country:'KW',exchange:'Boursa Kuwait',canonicalId:'XKUW:IFA'};
+const ifaSpacedName='I N T E R N A T I O N A L  F I N A N C I A L  A D V I S O R S  H O L D I N G';
+const ifaPages=[
+  {num:37,text:`${ifaSpacedName}\nConsolidated statement of profit or loss\nNotes\nYear ended\n31 Dec. 2025\nYear ended\n31 Dec. 2024\nKD KD\nIncome\nDividend income 494,937 214,982\nRent and other income 479,862 648,914`},
+  {num:39,text:`${ifaSpacedName}\nConsolidated statement of financial position\nNote 31 Dec. 2025 31 Dec. 2024\nKD KD\nAssets\nCash and cash equivalents 9 4,242,133 7,949,224\nTotal assets 161,146,865 135,552,702\nLiabilities and equity\nTotal liabilities 28,665,529 25,266,936`},
+  {num:45,text:"International Financial Advisors Holding\nThe Parent Company's board of directors approved these consolidated financial statements for issue on 29 March 2026."},
+];
+function extractIfa(input=ifaPages){ const doc=pdfEvidenceDocument(input,ifaIssuer,'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',now.toISOString()); return financialValuesFromPdfPages(input,ifaIssuer,doc,/International Financial Advis[oe]rs/i,now); }
+describe('IFA official annual financial evidence',()=>{
+ it('matches the exact Kuwait issuer profile and same-origin 2025 financial-statement link',()=>{
+   const profile=regionalProfile(ifaIssuer);
+   expect(profile?.directory).toBe('https://www.ifakuwait.com/financial-statements.html');
+   const html='<a href="/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf">Download</a>';
+   expect(issuerPdfLinks(html,profile!.directory,now)).toEqual(['https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf']);
+ });
+ it('accepts statement pages with a letter-spaced masthead only after another selected page proves issuer identity',()=>{
+   expect(/International Financial Advis[oe]rs/i.test(ifaPages[0].text)).toBe(false);
+   expect(/International Financial Advis[oe]rs/i.test(ifaPages[1].text)).toBe(false);
+   const values=extractIfa();
+   expect(values.find(value=>value.normalizedField==='total_assets')?.value).toBe(161146865);
+   expect(values.find(value=>value.normalizedField==='cash_and_equivalents')?.value).toBe(4242133);
+ });
+ it('rejects otherwise plausible statement rows when no selected page proves issuer identity',()=>{
+   expect(extractIfa(ifaPages.map(page=>({...page,text:page.text.replace('International Financial Advisors Holding','Unrelated Holding Company')})))).toEqual([]);
+ });
+ it('parses abbreviated annual dates and explicit full-dinar KD columns',()=>{
+   const values=extractIfa();
+   expect(values.every(value=>validFinancialValue(value,now))).toBe(true);
+   expect(values.find(value=>value.normalizedField==='total_assets')).toMatchObject({value:161146865,currency:'KWD',periodStart:null,periodEnd:'2025-12-31',reportedAt:'2026-03-29'});
+   expect(values.find(value=>value.normalizedField==='cash_and_equivalents')).toMatchObject({value:4242133,currency:'KWD',periodEnd:'2025-12-31'});
+   expect(values.find(value=>value.normalizedField==='interest_bearing_debt')).toMatchObject({value:28665529,validation:expect.objectContaining({bound:'upper'})});
+ });
+ it('keeps missing IFA income fields missing rather than manufacturing a compliant result',()=>{
+   const values=extractIfa();
+   expect(values.some(value=>['total_income','interest_income','prohibited_revenue'].includes(value.normalizedField))).toBe(false);
+   expect(extractIfa(ifaPages.map(page=>({...page,text:page.text.replace(/^KD KD$/m,'IFA reported KD values')})))).toEqual([]);
+ });
 });

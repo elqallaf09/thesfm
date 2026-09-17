@@ -56,14 +56,20 @@ try {
   requireCheck(before.ok && Array.isArray(before.items) && before.items.length > 0, 'ADMIN_CATALOG_NOT_LOADED');
   proof.authenticated = true; proof.beforeCounts = before.counts;
   if (main) {
-    const selected = before.items.find(row => row.asset_type === 'stock' && !row.shariah_manual_override && row.symbol === 'KO')
+    // Prefer recovering a currently failed automatic stock. This makes a release
+    // that repairs a provider/source failure prove that exact recovery rather
+    // than repeatedly refreshing an already-healthy control symbol.
+    const selected = before.items.find(row => row.asset_type === 'stock' && !row.shariah_manual_override && row.shariah_refresh_error)
+      ?? before.items.find(row => row.asset_type === 'stock' && !row.shariah_manual_override && row.symbol === 'KO')
       ?? before.items.find(row => row.asset_type === 'stock' && !row.shariah_manual_override);
     requireCheck(selected, 'NO_AUTOMATIC_EQUITY_FOR_VERIFICATION');
+    proof.selectedBefore = { symbol: selected.symbol, exchange: selected.exchange, status: selected.shariah_status,
+      sourceError: selected.shariah_refresh_error ?? null, reviewedAt: selected.shariah_last_reviewed_at ?? null };
     proof.stage = 'admin-refresh';
     await page.getByTestId(`shariah-row-${selected.id}`).locator('button').first().click();
     const refresh = page.getByTestId('shariah-refresh-selected');
     await refresh.waitFor();
-    const responsePromise = page.waitForResponse(response => new URL(response.url()).pathname === '/api/market/shariah/refresh' && response.request().method() === 'POST', { timeout: 60000 });
+    const responsePromise = page.waitForResponse(response => new URL(response.url()).pathname === '/api/market/shariah/refresh' && response.request().method() === 'POST', { timeout: 90000 });
     await refresh.click();
     await page.getByTestId('shariah-refresh-progress').waitFor();
     const response = await responsePromise;
@@ -81,8 +87,10 @@ try {
     const stored = after.items?.find(item => item.id === selected.id);
     requireCheck(stored?.shariah_last_reviewed_at && stored.shariah_last_reviewed_at !== selected.shariah_last_reviewed_at && !stored.shariah_manual_override, 'NEW_REVIEW_NOT_PERSISTED');
     requireCheck(stored.shariah_refresh_run_id === outcome.runId, 'PERSISTED_ROW_RUN_ID_MISMATCH');
+    requireCheck(!stored.shariah_refresh_error, 'SOURCE_ERROR_NOT_CLEARED_AFTER_SUCCESS');
     proof.savedReadBack = true;
-    proof.saved = { symbol: stored.symbol, exchange: stored.exchange, status: stored.shariah_status, reviewedAt: stored.shariah_last_reviewed_at, runId: outcome.runId };
+    proof.saved = { symbol: stored.symbol, exchange: stored.exchange, status: stored.shariah_status, reviewedAt: stored.shariah_last_reviewed_at, runId: outcome.runId,
+      sourceError: stored.shariah_refresh_error ?? null };
     proof.afterCounts = after.counts;
     proof.stage = 'published-opinions-refresh';
     const section = page.getByTestId('shariah-published-opinions');

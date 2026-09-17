@@ -3,15 +3,30 @@ import { extractSelectedPdfPages, financialValuesFromPdfPages, pdfEvidenceDocume
 import type { SecurityIdentity, SourceAdapter } from './types';
 import { failedAdapterResult } from './sourceAdapters/shared';
 
-type Profile = { symbols: string[]; country: string; name: RegExp; directory: string; document?: string; pages?: number[] };
+type DocumentFallback = { url: string; pages?: number[] };
+type Profile = { symbols: string[]; country: string; name: RegExp; directory: string; document?: string; pages?: number[]; alternates?: DocumentFallback[] };
 const profiles: Profile[] = [
-  { symbols: ['NBK', 'NBK.KW'], country: 'KW', name: /National Bank of Kuwait/i, directory: 'https://www.nbk.com/investor-relations.html',
-    document: 'https://www.nbk.com/dam/jcr:a9b5fda4-e785-4705-8938-9a2364b06360/nbk-fs-2q-2026-e.pdf' },
+  { symbols: ['NBK', 'NBK.KW'], country: 'KW', name: /National Bank of Kuwait/i,
+    directory: 'https://www.nbk.com/investor-relations/financial-reports.html',
+    document: 'https://www.nbk.com/dam/jcr:a9b5fda4-e785-4705-8938-9a2364b06360/nbk-fs-2q-2026-e.pdf',
+    // Exact Boursa Kuwait disclosure for the same 30-Jun-2026 interim filing.
+    // This is a reviewed official exchange fallback, not a search-engine mirror.
+    alternates: [{ url: 'https://ifsahdocs.boursakuwait.com.kw/DiscAssets/2026_17431/NBK%20FS%2030%20Jun%202026%20EN.pdf' }] },
   { symbols: ['KFH', 'KFH.KW'], country: 'KW', name: /Kuwait Finance House/i, directory: 'https://www.kfh.com/en/home/Investor-Relations/Annual-Reports/Annual-Reports.html',
     document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
-  { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://www.ifakuwait.com/financial-statements.html' },
+  { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://www.ifakuwait.com/financial-statements.html',
+    // The official 2025 annual report has verified text-bearing auditor and
+    // statement pages. Keep identity-bearing pages together with the numeric
+    // statements because the statement masthead itself is letter-spaced.
+    document: 'https://www.ifakuwait.com/pdf/annual-report/2025/IFA_Holding_Annual_Report_2025-English.pdf',
+    pages: [33, 34, 35, 36, 37, 38, 39, 40, 43, 44, 45],
+    // Dedicated statements remain a same-origin fallback, but their current PDF
+    // text layer does not expose enough issuer identity for a safe primary path.
+    alternates: [{ url: 'https://www.ifakuwait.com/pdf/2025/EN/IFA_FS_31-12-2025-EN.pdf' }] },
 ];
+function issuerHost(hostname: string) { return hostname.toLowerCase().replace(/^www\./, ''); }
+function sameIssuerHost(left: string, right: string) { return issuerHost(new URL(left).hostname) === issuerHost(new URL(right).hostname); }
 export function regionalProfile(security: Pick<SecurityIdentity, 'ticker' | 'providerSymbol' | 'country' | 'exchange' | 'name'>) {
   const country = String(security.country ?? '').toUpperCase();
   if (!['KW', 'KUWAIT'].includes(country) && !/KUWAIT|XKUW/i.test(security.exchange)) return null;
@@ -38,7 +53,7 @@ export function issuerPdfLinks(html: string, directory: string, now = new Date()
       // report otherwise sorted ahead of the current quarterly accounts.
       const financial = /financial[\s_-]*(?:statements?|reports?)|annual[\s_-]*reports?|(?:^|[ /_-])fs(?:[ /_-]|$)/i.test(description);
       const unrelated = /arabic|_ar\b|sustainab|esg|presentation|liquidity|nsfr|basel|tariff|full.script|second[\s_-]*party|(?:^|[ /_-])spo(?:[ /_-]|$)/i.test(description);
-      if (url.origin !== new URL(directory).origin || url.protocol !== 'https:' || !/\.pdf$/i.test(url.pathname)
+      if (!sameIssuerHost(url.toString(), directory) || url.protocol !== 'https:' || !/\.pdf$/i.test(url.pathname)
         || url.username || url.password || !years.length || Math.max(...years) > now.getUTCFullYear() || !financial || unrelated) return [];
       return [{ url: url.toString(), year: Math.max(...years), quarter: Number(/(?:q|quarter)[ -]*([1-4])(?!\d)/i.exec(description)?.[1] ?? /([1-4])[ -]*q(?![a-z])/i.exec(description)?.[1] ?? (/june/i.test(description) ? 2 : /march|mar[_ -]/i.test(description) ? 1 : /september/i.test(description) ? 3 : /annual|(?:^|[ /_-])fy(?:[ /_-]|$)|december/i.test(description) ? 4 : 0)) }];
     } catch { return []; }
@@ -53,22 +68,53 @@ export const regionalFilingsAdapter: SourceAdapter = {
     const profile = regionalProfile(context.security);
     if (!profile) return { adapterId: this.id, status: 'unavailable', documents: [], financialValues: [], errors: [{ code: 'REGIONAL_IDENTITY_NOT_VERIFIED', message: 'No exact issuer/exchange/profile match.', retryable: false }] };
     try {
-      const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
-      if (new URL(directory.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_directory_identity_changed');
-      const found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
-      const url = found[0] ?? profile.document;
-      if (!url) throw new Error('regional_financial_document_not_discovered');
-      const response = await secureFetch(url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
-      if (new URL(response.finalUrl).hostname !== new URL(profile.directory).hostname) throw new Error('regional_document_identity_changed');
-      context.signal?.throwIfAborted();
-      const pages = await extractSelectedPdfPages(response.body, url === profile.document ? profile.pages : []);
-      context.signal?.throwIfAborted();
-      const document = pdfEvidenceDocument(pages, context.security, response.finalUrl, response.retrievedAt);
-      if (!profile.name.test(document.extractedText)) throw new Error('regional_document_issuer_mismatch');
-      const financialValues = financialValuesFromPdfPages(pages, context.security, document, profile.name, new Date(context.retrievedAt));
-      return { adapterId: this.id, status: 'partial', documents: [document], financialValues,
-        errors: [{ code: 'REGIONAL_FINANCIAL_COVERAGE_PARTIAL', message: 'Only explicit current statement rows were extracted. Missing income breakdown, statement layouts and institution-level opinions require further evidence.', retryable: false }],
-        identityPatch: { website: profile.directory } };
+      // Discovery is an enhancement, not a prerequisite for a reviewed explicit
+      // issuer PDF. This prevents a slow/unavailable IR index page from hiding a
+      // known public filing such as IFA's audited annual report.
+      let found: string[] = [];
+      try {
+        const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
+        if (sameIssuerHost(directory.finalUrl, profile.directory)) {
+          found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
+        }
+      } catch {
+        context.signal?.throwIfAborted();
+      }
+      const discovered = found.slice(0, 2).map(url => ({ url, pages: url === profile.document ? profile.pages : undefined }));
+      const fallbacks: DocumentFallback[] = [
+        ...(profile.document ? [{ url: profile.document, pages: profile.pages }] : []),
+        ...(profile.alternates ?? []),
+      ];
+      // Reviewed explicit issuer documents are tried first. Discovery can add a
+      // newer same-origin filing but cannot delay a known-good fallback until a
+      // request-level deadline is nearly exhausted.
+      const candidates = [...fallbacks, ...discovered].filter((item, index, all) => all.findIndex(other => other.url === item.url) === index).slice(0, 4);
+      if (!candidates.length) throw new Error('regional_financial_document_not_discovered');
+
+      let lastError: unknown = null;
+      for (const candidate of candidates) {
+        try {
+          const fetched = await secureFetch(candidate.url, { signal: context.signal, maxBytes: 15 * 1024 * 1024, acceptedContentTypes: ['application/pdf'], cacheTtlMs: 6 * 3600_000 });
+          const reviewedExchangeOrigin = (profile.alternates ?? []).some(item => new URL(item.url).origin === new URL(fetched.finalUrl).origin);
+          if (!sameIssuerHost(fetched.finalUrl, profile.directory) && !reviewedExchangeOrigin) throw new Error('regional_document_identity_changed');
+          context.signal?.throwIfAborted();
+          const pages = await extractSelectedPdfPages(fetched.body, candidate.pages ?? []);
+          context.signal?.throwIfAborted();
+          const document = pdfEvidenceDocument(pages, context.security, fetched.finalUrl, fetched.retrievedAt);
+          if (!profile.name.test(document.extractedText)) throw new Error('regional_document_issuer_mismatch');
+          const financialValues = financialValuesFromPdfPages(pages, context.security, document, profile.name, new Date(context.retrievedAt));
+          // A fetched PDF with no verifiable statement rows is not a successful
+          // evidence candidate; try another reviewed same-origin document.
+          if (!financialValues.length) throw new Error('regional_document_no_financial_rows');
+          return { adapterId: this.id, status: 'partial', documents: [document], financialValues,
+            errors: [{ code: 'REGIONAL_FINANCIAL_COVERAGE_PARTIAL', message: 'Only explicit current statement rows were extracted. Missing income breakdown, statement layouts and institution-level opinions require further evidence.', retryable: false }],
+            identityPatch: { website: profile.directory } };
+        } catch (error) {
+          lastError = error;
+          context.signal?.throwIfAborted();
+        }
+      }
+      throw lastError ?? new Error('regional_financial_document_not_discovered');
     } catch (error) { return failedAdapterResult(this.id, error, profile.directory); }
   },
 };

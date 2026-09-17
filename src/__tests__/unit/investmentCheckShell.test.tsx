@@ -8,8 +8,10 @@ import InvestmentCheckPage from '@/app/investment-check/page';
 const navigation = vi.hoisted(() => ({ pathname: '/investment-check', lang: 'en' as 'ar' | 'en' | 'fr' }));
 vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: vi.fn() }),
 }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: null, isGuest: false, loading: false }) }));
 vi.mock('next/dynamic', () => ({
   default: () => function WorkspaceShell({ children }: { children: React.ReactNode }) {
     return <div data-workspace-shell="true">{children}</div>;
