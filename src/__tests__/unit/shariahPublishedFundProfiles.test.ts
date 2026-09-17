@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { publishedShariahFundProfile, publishedShariahFundSymbols } from '@/lib/market/shariahPublishedFundProfiles';
+import { SHARIAH_UNIVERSE } from '@/lib/market/shariahUniverse';
+import {
+  publishedShariahFundCatalogItem,
+  publishedShariahFundProfile,
+  publishedShariahFundSymbols,
+} from '@/lib/market/shariahPublishedFundProfiles';
 
 describe('published Shariah fund profiles', () => {
   it('covers only the reviewed Shariah-branded ETFs', () => {
@@ -30,5 +35,21 @@ describe('published Shariah fund profiles', () => {
     expect(publishedShariahFundProfile(' spus ')?.symbol).toBe('SPUS');
     expect(publishedShariahFundProfile('UNKNOWN')).toBeNull();
     expect(publishedShariahFundProfile(null)).toBeNull();
+  });
+
+  it('presents sponsor-published Shariah status without claiming SFM certification', () => {
+    for (const symbol of publishedShariahFundSymbols()) {
+      const universeItem = SHARIAH_UNIVERSE.find(item => item.symbol === symbol)!;
+      const item = publishedShariahFundCatalogItem(universeItem)!;
+      expect(item.shariahStatus).toBe('compliant');
+      expect(item.statusLabelAr).toBe('معلن متوافق شرعياً');
+      expect(item.reason.ar).toContain('الجهة الراعية');
+      expect(item.reason.ar).toContain('ليست فتوى');
+      expect(item.fundReview).toMatchObject({
+        coverage: 'published_designation',
+        reason: 'provider_published_shariah',
+        independentSfmCertification: false,
+      });
+    }
   });
 });
