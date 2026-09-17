@@ -10,6 +10,7 @@ import { collectQatarPropertyContext, qatarContextUnavailable } from './adapters
 import { collectUkHmlrPropertyContext, ukHmlrContextUnavailable } from './adapters/uk-hmlr-open-data';
 import { collectNycPropertyContext, isNewYorkCityAsset, nycContextUnavailable } from './adapters/nyc-dof-open-data';
 import { collectCookCountyPropertyContext, cookCountyContextUnavailable, isChicagoCookCountyAsset } from './adapters/cook-county-open-data';
+import { collectLaCountyPropertyContext, isLosAngelesCountyAsset, laCountyContextUnavailable } from './adapters/la-county-assessor';
 
 export interface RealEstateAnalystResult {
   status: 'VALUED' | 'INSUFFICIENT_EVIDENCE' | 'SOURCE_COVERAGE_UNAVAILABLE' | 'SOURCE_DATA_REVIEW_REQUIRED';
@@ -33,6 +34,9 @@ async function collectOfficialContext(asset: RealEstateAssetInput): Promise<Offi
   }
   if (isChicagoCookCountyAsset(asset)) {
     try { return await collectCookCountyPropertyContext(asset); } catch { return cookCountyContextUnavailable(); }
+  }
+  if (isLosAngelesCountyAsset(asset)) {
+    try { return await collectLaCountyPropertyContext(asset); } catch { return laCountyContextUnavailable(); }
   }
   return undefined;
 }
