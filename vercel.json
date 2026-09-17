@@ -18,6 +18,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/sfm-market/v1/ingest",
+      "schedule": "5 * * * *"
+    },
+    {
       "path": "/api/market/shariah/refresh",
       "schedule": "23 * * * *"
     },
