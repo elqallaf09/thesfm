@@ -97,12 +97,12 @@ export const REAL_ESTATE_MARKET_COVERAGE: readonly RealEstateMarketCoverageEntry
     id: 'us-la', countryCode: 'US',
     jurisdiction: { ar: 'الولايات المتحدة · Los Angeles County', en: 'United States · Los Angeles County', fr: 'États-Unis · comté de Los Angeles' },
     sourceName: 'Los Angeles County Assessor Recent Sales',
-    sourceUrl: 'https://assessor.lacounty.gov/',
-    state: 'SOURCE_REVIEW', valuationReady: false,
+    sourceUrl: 'https://assessor.gis.lacounty.gov/assessor/rest/services/PAIS/pais_sales_parcels/MapServer/0',
+    state: 'CONNECTED_CONTEXT', valuationReady: false,
     note: {
-      ar: 'تم تحديد خدمة Recent Sales الرسمية؛ الحقول والترخيص وحدود الاستخدام الآلي تحت المراجعة قبل الربط.',
-      en: 'The official Recent Sales service is identified; fields, licensing, and automation limits are under review before connection.',
-      fr: 'Le service officiel Recent Sales est identifié ; champs, licence et limites d’automatisation restent à valider.',
+      ar: 'خدمة Recent Sales الرسمية متصلة عبر رقم AIN فقط. المقيم يصف السجلات بأنها مبيعات مفردة غير متحقق منها وقد يكون السعر مستنتجًا من ضريبة نقل الملكية؛ لذلك تبقى سياقًا رسميًا ولا تدخل التقييم الآلي.',
+      en: 'The official Recent Sales layer is connected by AIN only. The Assessor describes displayed records as unverified single-parcel sales and indicated prices may be derived from transfer tax, so they remain context-only.',
+      fr: 'La couche officielle Recent Sales est connectée uniquement par AIN. Les ventes affichées sont décrites comme non vérifiées et le prix indiqué peut être dérivé de la taxe de transfert ; elles restent donc contextuelles.',
     },
   },
   {
