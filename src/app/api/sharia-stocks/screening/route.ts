@@ -24,9 +24,26 @@ export async function GET() {
     }
 
     // Sponsor-published Shariah ETFs are a different evidence class from
-    // conventional ETFs. If they are not yet in market_symbols, expose their
-    // reviewed official designation rather than degrading them to the same
-    // generic `needs_review` state as an unscreened conventional fund.
+    // conventional ETFs. A stale/generic persisted fund-review state must not
+    // hide a current, exact sponsor-published Shariah designation. This does
+    // not claim an independent THE SFM fatwa or certification.
+    const universeBySymbol = new Map(SHARIAH_UNIVERSE.map(item => [item.symbol.toUpperCase(), item]));
+    for (let index = 0; index < items.length; index++) {
+      const universeItem = universeBySymbol.get(items[index].symbol.toUpperCase());
+      if (!universeItem) continue;
+      const published = publishedShariahFundCatalogItem(universeItem);
+      if (!published) continue;
+      items[index] = {
+        ...items[index],
+        ...published,
+        name: items[index].name || published.name,
+        sector: items[index].sector || published.sector,
+        exchange: items[index].exchange ?? published.exchange,
+      };
+    }
+
+    // Also expose reviewed sponsor-published Shariah ETFs that are not yet in
+    // market_symbols, so the public fund list does not silently drop them.
     const present = new Set(items.map(item => item.symbol.toUpperCase()));
     for (const universeItem of SHARIAH_UNIVERSE) {
       if (present.has(universeItem.symbol.toUpperCase())) continue;
