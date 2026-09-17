@@ -2,6 +2,7 @@ import {
   generateMarketSignal,
   type MarketSignal,
   type MarketSignalDataQuality,
+  type MarketSignalInputPoint,
 } from '@/lib/market/signalEngine';
 import { fetchSfmTraderQuotesDetailed, type SfmTraderQuote } from '@/lib/trader/sfmMarketQuotes';
 import type { TraderQuoteLoadOptions } from '@/lib/trader/marketQuotes';
@@ -21,6 +22,7 @@ export type SfmTraderSignal = MarketSignal & {
     quality: SfmTraderQuote['sfmQuality'];
     provenance: SfmTraderQuote['sfmProvenance'];
     historyPoints: number;
+    evidenceReady: boolean;
   };
 };
 
@@ -31,8 +33,23 @@ function signalDataQuality(quote: SfmTraderQuote): MarketSignalDataQuality {
   return 'live';
 }
 
+function signalHistory(quote: SfmTraderQuote): MarketSignalInputPoint[] {
+  return quote.history
+    .filter(point => Number.isFinite(point.close) && point.close > 0)
+    .map(point => ({
+      ...(point.date ? { date: point.date } : {}),
+      open: Number.isFinite(point.open) ? Number(point.open) : null,
+      high: Number.isFinite(point.high) ? Number(point.high) : null,
+      low: Number.isFinite(point.low) ? Number(point.low) : null,
+      close: Number(point.close),
+      volume: Number.isFinite(point.volume) ? Number(point.volume) : null,
+    }));
+}
+
 function projectQuote(quote: SfmTraderQuote): SfmTraderSignal {
   const dataQuality = signalDataQuality(quote);
+  const history = signalHistory(quote);
+  const latestSession = history.at(-1) ?? null;
   const generated = generateMarketSignal({
     symbol: quote.symbol,
     assetName: quote.name,
@@ -41,7 +58,7 @@ function projectQuote(quote: SfmTraderQuote): SfmTraderSignal {
     currency: quote.currency,
     currentPrice: quote.price,
     dailyChangePercent: quote.changePercent,
-    history: quote.history,
+    history,
     provider: 'THE SFM',
     dataQuality,
     delayed: quote.delayed,
@@ -81,16 +98,17 @@ function projectQuote(quote: SfmTraderQuote): SfmTraderSignal {
     change: quote.change,
     changePercent: quote.changePercent,
     previousClose: quote.previousClose,
-    volume: quote.volume ?? null,
-    open: null,
-    high: null,
-    low: null,
+    volume: quote.volume ?? latestSession?.volume ?? null,
+    open: latestSession?.open ?? null,
+    high: latestSession?.high ?? null,
+    low: latestSession?.low ?? null,
     sfmMarket: {
       engine: 'THE SFM Market Data Engine',
       source: 'THE SFM',
       quality: quote.sfmQuality,
       provenance: quote.sfmProvenance,
-      historyPoints: quote.history.length,
+      historyPoints: history.length,
+      evidenceReady,
     },
   };
 }
