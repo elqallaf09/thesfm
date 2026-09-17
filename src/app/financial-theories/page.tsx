@@ -1,5 +1,6 @@
 'use client';
 
+import './financial-theories.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import dynamic from 'next/dynamic';
