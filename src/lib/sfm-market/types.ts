@@ -56,6 +56,7 @@ export type SfmMarketQuote = {
   low: number | null;
   previousClose: number | null;
   volume: number | null;
+  marketCap?: number | null;
   quality: SfmMarketQuality;
   provenance: SfmMarketProvenance;
 };

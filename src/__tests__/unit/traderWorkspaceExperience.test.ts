@@ -97,11 +97,11 @@ describe('SFM Trader workspace experience', () => {
     expect(html).toContain('semantic-tokens.css?v=20260713-central-system');
     expect(html).toContain('theme-bridge.js?v=20260714-phase34');
     expect(html).toContain('cinema.css?v=20260717-shell-unify');
-    expect(html).toContain('app.js?v=20260917-integrated-trader');
+    expect(html).toContain('app.js?v=20260918-analyzer-evidence');
   });
 
   it('loads version-aligned watchlist dependencies before the controller and precaches the same assets', () => {
-    const version = '20260917-integrated-trader';
+    const version = '20260918-analyzer-evidence';
     const scripts = [
       `./watchlist-engine.js?v=${version}`,
       `./watchlist-view.js?v=${version}`,

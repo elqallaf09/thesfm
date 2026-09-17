@@ -1,0 +1,26 @@
+.sa-research, .sa-coverage { min-width: 0; }
+.sa-research-head, .sa-identity, .sa-source, .sa-coverage { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.sa-research-head, .sa-coverage { justify-content: space-between; }
+.sa-identity { flex: 1 1 240px; min-width: 0; }
+.sa-identity > div { min-width: 0; }
+.sa-identity p, .sa-thesis p { overflow-wrap: anywhere; line-height: 1.8; }
+.sa-price { display: grid; gap: 8px; justify-items: end; }
+.sa-price > strong { font-size: clamp(22px, 3vw, 34px); }
+.sa-source { padding: 12px 0; margin: 12px 0; border-block: 1px solid var(--border); font-size: 12px; }
+.sa-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 16px; }
+.sa-metrics > div, .sa-lenses > article { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); min-width: 0; }
+.sa-metric dt { font-size: 12px; opacity: .8; }
+.sa-metric dd { margin: 6px 0 12px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sa-lenses { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.sa-lenses h3, .sa-thesis h3 { margin: 0 0 12px; font-size: 16px; }
+.sa-lenses small, .sa-thesis small { display: block; line-height: 1.8; opacity: .82; }
+.sa-thesis { padding: 18px 0; }
+.sa-coverage > div { flex: 1 1 280px; }
+.sa-coverage p { line-height: 1.7; margin-block: 8px; }
+.sa-coverage dl { display: flex; gap: 24px; flex-wrap: wrap; margin: 0; }
+.sa-coverage dt { font-size: 12px; }
+.sa-coverage dd { margin: 5px 0; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trader-command-deck .command-deck-layout { align-items: start; }
+.trader-command-deck .command-deck-card { min-height: 0; }
+@media (max-width: 900px) { .sa-lenses { grid-template-columns: 1fr; } .sa-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .sa-price { justify-items: start; } .sa-source { gap: 8px; } .sa-metrics { grid-template-columns: 1fr; } }

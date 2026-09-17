@@ -30,9 +30,25 @@ function clearProviderKeys() {
   vi.stubEnv('FINNHUB_API_KEY', '');
   vi.stubEnv('EODHD_API_KEY', '');
   vi.stubEnv('MARKETSTACK_API_KEY', '');
+  vi.stubEnv('FMP_API_KEY', '');
 }
 
 describe('market data provider fallback', () => {
+  it('does not replace a configured provider failure with later missing-key attempts', async () => {
+    clearProviderKeys();
+    vi.stubEnv('TWELVE_DATA_API_KEY', 'test');
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('fetch failed'));
+    const { getQuoteWithFallback, getCandlesWithFallback } = await import('@/lib/market/marketDataProviders');
+    const context = { excludeProviders: ['yahoo' as const] };
+    const quote = await getQuoteWithFallback('AAPL', 'us-stocks', context);
+    const history = await getCandlesWithFallback('AAPL', 'us-stocks', '1d', context);
+    expect(quote.ok).toBe(false); expect(history.ok).toBe(false);
+    if (quote.ok || history.ok) throw new Error('Expected failure');
+    expect(quote.latestError).toBe('NETWORK_FAILURE');
+    expect(history.latestError).toBe('NETWORK_FAILURE');
+  });
+
   it('uses Twelve Data first and keeps Kuwait symbols in KWD', async () => {
     clearProviderKeys();
     vi.stubEnv('TWELVE_DATA_API_KEY', 'td_test_key');
@@ -135,6 +151,7 @@ describe('market data provider fallback', () => {
       'finnhub',
       'eodhd',
       'marketstack',
+      'fmp',
     ]);
     expect(yahooQuoteMock).toHaveBeenCalledOnce();
   });

@@ -4,6 +4,7 @@
 (() => {
   "use strict";
   const Recommendation = window.SFMRecommendation;
+  const Analyzer = window.SFMSmartAnalyzer;
   const DrawerFocus = window.SFMTraderDrawerFocus;
   let _marketSelectorOpen = false;
   let _mobileMoreOpen = false;
@@ -1814,9 +1815,9 @@
     else if (routeId !== "calendar") needs.add("providerStatus");
 
     const requestMap = {
-      rec: { cacheKey: `rec:${marketApi(state.settings.defaultMarket)}`, load: () => get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}`), label: "quotes" },
+      rec: { cacheKey: `rec:${marketApi(state.settings.defaultMarket)}:${routeId === "dashboard" ? "dashboard" : "directory"}`, load: () => get(`/recommendations?market=${marketApi(state.settings.defaultMarket)}${routeId === "dashboard" ? "&view=dashboard" : ""}`), label: "quotes" },
       commandCards: { cacheKey: `commandCards:${commandSymbols.join(",")}`, load: () => get(`/recommendations?symbols=${encodeURIComponent(commandSymbols.join(","))}`), label: "quotes" },
-      signals: { cacheKey: "signals", load: () => get("/market/signals?limit=60"), label: "signals" },
+      signals: { cacheKey: `signals:${routeId === "dashboard" ? commandSymbols.join(",") : "all"}`, load: () => get(routeId === "dashboard" ? `/market/signals?symbols=${encodeURIComponent(commandSymbols.slice(0, 12).join(","))}&limit=12` : "/market/signals?limit=48"), label: "signals" },
       signalAlerts: { cacheKey: "signalAlerts", load: () => get("/market/signal-alerts?limit=50"), label: "signals" },
       markets: { cacheKey: "markets", load: () => get("/markets"), label: "quotes" },
       news: { cacheKey: `news:${newsPath}`, load: () => get(newsPath), label: "news" },
@@ -1841,18 +1842,18 @@
       }
       requests.push({ key, cacheKey, generation, label: request.label, promise: inFlight.promise });
     });
-    const settled = await Promise.allSettled(requests.map(request => request.promise));
-    settled.forEach((result, index) => {
-      const request = requests[index];
+    await Promise.allSettled(requests.map(async (request) => {
+      const [result] = await Promise.allSettled([request.promise]);
       const isCurrent = hydrationExpectedCacheKey.get(request.key) === request.cacheKey
         && (hydrationGeneration.get(request.key) || 0) === request.generation;
       if (isCurrent) {
         state[request.key] = settledValue(result, request.label);
         if (request.key === "providerStatus") state.calendarLoaded.provider = true;
-        hydrationLoaded.add(request.cacheKey);
+        if (!responseFailed(state[request.key])) hydrationLoaded.add(request.cacheKey);
+        renderAfterData();
       }
       if (hydrationInFlight.get(request.cacheKey)?.promise === request.promise) hydrationInFlight.delete(request.cacheKey);
-    });
+    }));
     if (needs.has("news")) state.newsContextKey = newsPath;
     state.providerStatus = state.providerStatus || {};
     state.provider = state.providerStatus.dataProvider || state.commandCards.dataProvider || state.rec.dataProvider || state.markets.dataProvider || state.news.dataProvider || state.commandCards.provider || state.rec.provider || state.markets.provider || state.news.provider || { configured: false, status: "not_configured" };
@@ -2789,12 +2790,12 @@
 
   /* ─────────────────────────── Pages ─────────────────────────── */
   function dashboardPage() {
-    const rec = recs();
+    const rec = Analyzer.rank(recs());
     const active = workspaceView("dashboard");
     const tabs = [
       { id: "overview", label: textPair("نظرة عامة", "Overview", "Vue d’ensemble") },
       { id: "analysis", label: textPair("تحليل السوق", "Market Analysis", "Analyse du marché") },
-      { id: "recommendations", label: textPair("التوصيات", "Recommendations", "Recommandations"), count: rec.length },
+      { id: "recommendations", label: textPair("التوصيات", "Recommendations", "Recommandations"), count: rec.filter(hasValidDirectionalSignal).length },
       { id: "sessions", label: textPair("جلسات السوق", "Market Sessions", "Séances de marché") },
       { id: "heatmap", label: textPair("الخريطة الحرارية", "Heatmap", "Carte thermique") },
       { id: "news", label: textPair("سياق الأخبار", "News Context", "Contexte actualités"), count: newsItems().length },
@@ -2802,6 +2803,7 @@
     ];
     return `<div class="page-stack smart-analysis-workspace">
       ${workspaceTabBar("dashboard", tabs, textPair("مساحة التحليل الذكي", "Smart analysis workspace", "Espace d’analyse intelligent"))}
+      ${Analyzer.summary(rec, { h, text: textPair })}
       ${workspacePanel("dashboard", active, dashboardWorkspaceContent(active, rec))}
       ${disclaimer()}
     </div>`;
@@ -2821,10 +2823,11 @@
     if (active === "heatmap") return opportunityHeatmap(rec);
     if (active === "news") return dashboardNewsPanel();
     if (active === "diagnostics") return dashboardDiagnosticsPanel();
-    return commandCenter(rec);
+    return `${smartAnalysisTerminal(rec[0] || {})}${commandCenter(rec)}`;
   }
 
   function dashboardRecommendationsPanel(rec) {
+    rec = Analyzer.rank(rec).filter(Analyzer.quoted);
     return `<section class="panel recommendations-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الرموز والتوصيات", "Symbols and recommendations"))}</span><h2>${h(textPair("التوصيات الأعلى أولوية", "Highest-priority recommendations", "Recommandations prioritaires"))}</h2></div><a class="rdp-view-all" href="${ROOT}/recommendations" data-route-link>${h(textPair("عرض الكل", "View all", "Tout afficher"))}</a></div>${rec.length ? watchlistTable(rec.slice(0, 14)) : dataStateEmpty(recommendationFeedState(rec))}</section>`;
   }
 
@@ -5008,75 +5011,9 @@
   }
 
   function smartAnalysisTerminal(rec, titleId = "analysis-terminal-title") {
-    const a = normalizeQuote(norm(rec || {}));
-    const recommendation = sharedRecommendation(a);
-    const dataState = assetDataState(a, recommendation);
-    const evidenceReady = dataState.key === "available";
-    const agreement = strategyAgreementMetric(a);
-    const c = currency(a);
-    const technicalData = a.technical || a.technicalAnalysis || a.indicators || {};
-    const support = num(a.support, a.support1, a.s1, a.levels && a.levels.support, technicalData.support, technicalData.s1);
-    const resistance = num(a.resistance, a.resistance1, a.r1, a.levels && a.levels.resistance, technicalData.resistance, technicalData.r1);
-    const momentum = a.momentum ?? a.momentumSignal ?? technicalData.momentum ?? technicalData.momentumSignal ?? null;
-    const breadth = a.marketBreadth ?? a.market_breadth ?? a.breadth ?? null;
-    const opportunityScore = num(a.opportunityScore, a.opportunity_score);
-    const risk = a.risk || a.riskLevel || null;
-    const trend = trendText(a.trend || a.technicalTrend || a.direction || technicalData.trend);
-    const rawSignals = arr(a.signals || a.signalList || a.strategies);
-    const p = providerCopy();
-    const metric = (label, value, tone = "") => `<div class="analysis-metric ${tone}"><span>${h(label)}</span><strong class="${isMarketValueText(value) ? "ltr market-value" : ""}">${h(value || terminalText("unavailable"))}</strong></div>`;
-    return `<section class="analysis-terminal" aria-labelledby="${h(titleId)}">
-      <div class="analysis-terminal-hero"><div>${a.symbol ? logo(a, "lg") : ""}<span><small>${h(textPair("محطة التحليل الذكي", "Smart analysis terminal", "Terminal d’analyse intelligent"))}</small><h2 id="${h(titleId)}">${h(a.symbol ? displaySymbolFor(a.symbol) : textPair("تحليل السوق", "Market analysis", "Analyse du marché"))}</h2><p>${h(a.name || textPair("تعرض المحطة القيم المتاحة فقط من المزود", "The terminal shows only provider-supplied values", "Le terminal affiche uniquement les valeurs du fournisseur"))}</p></span></div><span class="signal-badge ${evidenceReady ? recommendation.status || "unavailable" : dataState.tone || "unavailable"}">${h(evidenceReady ? recommendationLabel(recommendation) : dataState.label)}</span></div>
-      <div class="analysis-terminal-grid">
-        ${metric(textPair("ثقة الذكاء الاصطناعي", "AI confidence", "Confiance IA"), !evidenceReady || recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`, evidenceReady ? recommendationTone(recommendation) : dataState.tone)}
-        ${metric(textPair("اتفاق الاستراتيجيات", "Strategy agreement", "Accord des stratégies"), evidenceReady ? agreement.value : dataState.label)}
-        ${metric(textPair("الإشارات", "Signals", "Signaux"), evidenceReady && rawSignals.length ? textPair(`${latinNumber(rawSignals.length)} إشارات`, `${latinNumber(rawSignals.length)} signals`, `${latinNumber(rawSignals.length)} signaux`) : dataState.label)}
-        ${metric(textPair("الاتجاه", "Trend", "Tendance"), evidenceReady ? trend || terminalText("unavailable") : terminalText("unavailable"))}
-        ${metric(textPair("المخاطر", "Risk", "Risque"), evidenceReady && risk ? riskShort(risk) : terminalText("unavailable"), evidenceReady && risk ? riskTone(risk) : "")}
-        ${metric(textPair("الدعم", "Support", "Support"), evidenceReady && support !== null ? price(support, c) : terminalText("unavailable"))}
-        ${metric(textPair("المقاومة", "Resistance", "Résistance"), evidenceReady && resistance !== null ? price(resistance, c) : terminalText("unavailable"))}
-        ${metric(textPair("الزخم", "Momentum", "Momentum"), evidenceReady ? analysisDisplayValue(momentum) : terminalText("unavailable"))}
-        ${metric(textPair("اتساع السوق", "Market breadth", "Amplitude du marché"), evidenceReady ? analysisDisplayValue(breadth) : terminalText("unavailable"))}
-        ${evidenceReady && opportunityScore !== null
-          ? evaluationScoreMetric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), opportunityScore)
-          : metric(textPair("درجة الفرصة", "Opportunity score", "Score d’opportunité"), terminalText("unavailable"))}
-      </div>
-      <div class="analysis-signal-strip">${evidenceReady && rawSignals.length ? rawSignals.slice(0, 6).map(item => `<span>${h(analysisDisplayValue(item && typeof item === "object" ? item.label || item.name || item.signal || item.value : item))}</span>`).join("") : `<span>${h(dataState.body)}</span>`}</div>
-      <div class="analysis-provider-state ${dataState.tone || p.tone || ""}"><span>${h(textPair("حالة بيانات التحليل", "Analysis data status", "État des données d’analyse"))}</span><strong>${h(dataState.label)}</strong><small>${h(stockProviderValue(a))}</small></div>
-    </section>`;
+    return Analyzer.render(normalizeQuote(norm(rec || {})), { h, text: textPair, price, currency, status: assetDataState, recommendation: sharedRecommendation, recommendationLabel, date, logo, titleId, lang: currentLanguage() });
   }
 
-  function analysisDisplayValue(value) {
-    if (value === null || value === undefined || value === "") return terminalText("unavailable");
-    if (typeof value === "number") return latinNumber(value);
-    if (typeof value === "object") return analysisDisplayValue(value.label ?? value.name ?? value.value ?? value.score ?? null);
-    return translateUiText(String(value));
-  }
-
-  function evaluationScoreState(value) {
-    if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return null;
-    const score = Number(value);
-    if (!Number.isFinite(score)) return null;
-    return score < 50 ? "danger" : "success";
-  }
-
-  function evaluationScoreStatus(tone) {
-    return tone === "success"
-      ? textPair("نتيجة إيجابية", "Positive score", "Score positif")
-      : textPair("بحاجة للتحسين", "Needs attention", "À améliorer");
-  }
-
-  function evaluationScoreMetric(label, value) {
-    const tone = evaluationScoreState(value);
-    if (!tone) return "";
-    const statusLabel = evaluationScoreStatus(tone);
-    const icon = tone === "success" ? "✓" : "!";
-    return `<div class="analysis-metric evaluation-score-card ${tone}" data-score-state="${tone}" aria-label="${h(`${label}: ${latinNumber(value)} · ${statusLabel}`)}">
-      <span>${h(label)}</span>
-      <strong class="ltr market-value"><span aria-hidden="true">${icon}</span> ${h(latinNumber(value))}</strong>
-      <small>${h(statusLabel)}</small>
-    </div>`;
-  }
   function commandMetric(kicker, value, label, tone) {
     return `<article class="command-metric ${tone || ""}"><span class="card-kicker">${h(translateUiText(kicker))}</span><strong>${h(translateUiText(String(value)))}</strong><small>${h(translateUiText(label || terminalText("unavailable")))}</small></article>`;
   }
@@ -5221,7 +5158,7 @@
   }
   function dashboardSymbols() {
     const market = currentMarket();
-    return unique([...leadershipCore, ...(market.symbols || [])]);
+    return unique([...(market.symbols || []), ...state.watch, ...leadershipCore]).slice(0, 16);
   }
   function findAssetForSymbol(symbol, list) {
     const aliases = symbolAliases(symbol);
@@ -6689,7 +6626,7 @@
     const bar = document.getElementById("terminal-statusbar");
     const rec = recs(), mk = arr(state.markets.markets || state.markets.data || state.markets.results), p = providerCopy();
     const feedState = recommendationFeedState(rec);
-    const cells = state.route.id === "watchlist" ? watchlistView.statusCells() : [[textPair("بيانات التحليل", "Analysis data", "Données d’analyse"), feedState.label, feedState.title], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), rec.length || "--", textPair("الأصول المحللة", "Analyzed")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), new Date().toLocaleTimeString(terminalLocale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }), textPair("آخر تحديث", "Updated")]];
+    const cells = state.route.id === "watchlist" ? watchlistView.statusCells() : [[textPair("بيانات التحليل", "Analysis data", "Données d’analyse"), feedState.label, feedState.title], [terminalText("market"), mk.length || MARKETS.length, terminalText("market")], [textPair("الأصول المحللة", "Analyzed assets", "Actifs analysés"), Analyzer.coverage(rec).analyses, textPair("تحليل فني متاح", "Technical analysis available", "Analyse technique disponible")], [terminalText("watchlist"), state.watch.length, terminalText("watchlist")], [terminalText("lastUpdated"), (Analyzer.coverage(rec).latest ? new Date(Analyzer.coverage(rec).latest).toLocaleString(terminalLocale(), { numberingSystem: "latn" }) : "—"), textPair("آخر تحديث", "Updated")]];
     const metricCellsHtml = cells.map(([l, v, hp]) => `<div class="sb-cell"><span>${h(l)}</span><strong>${h(String(v))}</strong><em>${h(hp)}</em></div>`).join("");
     const statusCellHtml = `<div class="sb-cell sb-status"><span class="status-dot ${p.className}"></span><strong>${h(p.className === "online" ? textPair("النظام يعمل", "System online") : textPair("بانتظار المزود", "Waiting for provider"))}</strong></div>`;
     if (statsHost) statsHost.innerHTML = metricCellsHtml;
@@ -6941,7 +6878,7 @@
   function legacyRecsFrom(data) { return arr((data && (data.recommendations || data.items || data.data || data.results))).map(norm).filter(x => x.symbol); }
   function signalsFrom(data) { return arr(data && (data.signals || data.items || data.data || data.results)).map(signalToRec).filter(x => x.symbol); }
   function recsFrom(data) { return mergeRecLists(signalsFrom(data), legacyRecsFrom(data)); }
-  function allRecommendationSources() { return mergeRecLists(signalsFrom(state.signals), legacyRecsFrom(state.rec)); }
+  function allRecommendationSources() { return mergeRecLists(signalsFrom(state.signals), mergeRecLists(legacyRecsFrom(state.rec), legacyRecsFrom(state.commandCards))); }
   function recs() { return filterRecommendationsForSelection(allRecommendationSources(), state.settings.defaultMarket, currentSelectedCategory()); }
   function currentSelectedCategory() { return state.settings.selectedCategory || categoryFromSelection(state.settings.defaultMarket); }
   function filterRecommendationsForSelection(items, selectedMarket, selectedCategory) {
@@ -7090,15 +7027,7 @@
     else if (category === "technology" && ["crypto", "forex", "commodity"].includes(type)) console.warn("[trader] Excluding non-technology asset from technology selection", payload);
     else console.warn("[trader] Excluding asset outside selected market/category", payload);
   }
-  function mergeRecLists(primary, fallback) {
-    const map = new Map();
-    fallback.forEach(item => { if (item.symbol) map.set(sym(item.symbol), item); });
-    primary.forEach(item => {
-      const key = sym(item.symbol);
-      if (key) map.set(key, { ...(map.get(key) || {}), ...item });
-    });
-    return Array.from(map.values());
-  }
+  function mergeRecLists(primary, fallback) { return Analyzer.merge(primary, fallback); }
   function signalToRec(x) {
     x = x || {};
     const base = norm({ ...x, name: x.assetName || x.asset_name || x.name });
@@ -7554,6 +7483,8 @@
     };
   }
   function providerCopy() {
+    const observed = Analyzer.coverage(recs());
+    if (!state.loading && state.route.id === "dashboard" && observed.total) return providerStatusCopy(observed.prices === observed.total ? "provider_status_available" : observed.prices ? "provider_status_partial" : "provider_status_failed", { provider: state.provider?.active });
     const normalized = state.providerStatus && state.providerStatus.normalizedStatus;
     const p = (state.providerStatus && state.providerStatus.dataProvider) || state.provider || {};
     if (state.loading && !Object.keys(state.providerStatus || {}).length) return providerStatusCopy("provider_status_loading", { provider: p.active || p.provider });

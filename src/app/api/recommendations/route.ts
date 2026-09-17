@@ -18,6 +18,7 @@ import { TRADER_FUND_FILTERS, fundTypeLabel, normalizeFundFilter } from '@/lib/t
 import { isValidPrice } from '@/lib/market/quoteNormalization';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
+import { prioritizeDashboardUniverse } from '@/lib/trader/dashboardUniverse';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const dynamic = 'force-dynamic';
@@ -264,7 +265,9 @@ async function handleRecommendations(request: Request) {
   const filteredMeta = shariahStatus
     ? searchedMeta.filter(symbol => symbol.shariahStatus === shariahStatus)
     : searchedMeta;
-  const sortedMeta = sortSymbolMeta(filteredMeta, sortKey, sortDir);
+  const sortedMeta = url.searchParams.get('view') === 'dashboard' && !requestedSymbols.length && !search
+    ? prioritizeDashboardUniverse(filteredMeta, market.id, market.symbols)
+    : sortSymbolMeta(filteredMeta, sortKey, sortDir);
   const offset = requestedSymbols.length ? 0 : (page - 1) * pageSize;
   const selectedMeta = sortedMeta.slice(offset, offset + pageSize);
   const symbols = selectedMeta.map(symbol => symbol.symbol);
@@ -374,6 +377,8 @@ async function handleRecommendations(request: Request) {
     fundName: meta?.fundName ?? quoteRecord.fundName ?? q.name,
     price: q.price,
     currentPrice: q.price,
+    lastKnownPrice: nullableNumber(quoteRecord.lastKnownPrice),
+    upstreamSource: quoteRecord.upstreamSource ?? null,
     change: q.change,
     changePercent: q.changePercent,
     previousClose: q.previousClose,

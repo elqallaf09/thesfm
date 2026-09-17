@@ -161,6 +161,7 @@ function buildSfmQuote(quote: NormalizedMarketQuote, attempts: ProviderAttemptFa
     low: quote.low,
     previousClose: quote.previousClose,
     volume: quote.volume,
+    marketCap: quote.marketCap ?? null,
     quality,
     provenance: {
       sourceClass: marketSourceClassForProvider(quote.provider),
