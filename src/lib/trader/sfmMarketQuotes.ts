@@ -35,6 +35,7 @@ export type SfmTraderQuote = TraderQuote & {
   engineVersion: typeof SFM_MARKET_ENGINE_VERSION;
   schemaVersion: typeof SFM_MARKET_SCHEMA_VERSION;
   upstreamSource: string | null;
+  lastKnownPrice?: number | null;
   sfmQuality: SfmMarketQuote['quality'];
   sfmProvenance: SfmMarketQuote['provenance'];
 };
@@ -57,15 +58,16 @@ function sfmAssetType(value: TraderAssetType | undefined) {
 }
 
 function traderProvider(value: string | null): TraderQuoteProvider | null {
-  if (value === 'finnhub' || value === 'twelve_data' || value === 'eodhd' || value === 'marketstack') return value;
+  if (value === 'finnhub' || value === 'twelve_data' || value === 'eodhd' || value === 'marketstack' || value === 'fmp') return value;
   return null;
 }
 
 function providerDisplayName(value: string | null) {
+  if (value === 'fmp') return 'Financial Modeling Prep';
   if (value === 'finnhub') return 'Finnhub';
   if (value === 'twelve_data') return 'Twelve Data';
   if (value === 'eodhd') return 'EODHD';
-  if (value === 'marketstack') return 'Marketstack';
+  if (value === 'marketstack' || value === 'fmp') return 'Marketstack';
   return null;
 }
 
@@ -292,10 +294,11 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     name: quote.name ?? meta?.name ?? quote.symbol,
     assetType,
     price: quoteAvailable ? quote.price : null,
+    lastKnownPrice: quote.quality.state === 'stale' ? quote.price : null,
     change: quoteAvailable ? quote.change : null,
     changePercent: quoteAvailable ? quote.changePercent : null,
     previousClose: quoteAvailable ? quote.previousClose : null,
-    marketCap: null,
+    marketCap: quote.marketCap ?? null,
     volume: quoteAvailable ? quote.volume : null,
     currency: quote.currency ?? meta?.currency ?? null,
     exchange: quote.exchange ?? meta?.exchange ?? metadataResult.exchange,
