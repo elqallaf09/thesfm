@@ -286,7 +286,7 @@ async function openAnalysis(page: Page, state: 'partial' | 'insufficient' | 'sta
   const response = await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1', { waitUntil: 'domcontentloaded' });
   expect(response?.status() ?? 200).toBeLessThan(500);
   await page.getByRole('button', { name: 'Run research and analysis', exact: true }).click();
-  const panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
+  const panel = page.getByTestId('ai-analyst-canonical-result').locator(':scope > section[aria-labelledby]');
   await expect(panel).toBeVisible({ timeout: 45_000 });
   return panel;
 }
@@ -301,7 +301,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await expect(panel.getByText('Analysis confidence')).toBeVisible();
     await expect(panel.getByText('64%')).toBeVisible();
     await expect(status.getByRole('listitem').filter({ hasText: 'This analysis is partial' })).toBeVisible();
-    await panel.locator('summary').click();
+    await panel.locator(':scope > details > summary').click();
     await expect(panel.getByText('Current price', { exact: true })).toBeVisible();
     await expect(panel.getByText('150 USD', { exact: true })).toBeVisible();
     await expect(panel.getByText('Target range', { exact: true })).toBeVisible();
@@ -320,7 +320,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await stubApis(page, 'stale');
     await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING&autoRun=1', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'Run research and analysis', exact: true }).click();
-    panel = page.locator('section[aria-labelledby="intelligence-ledger-title"]');
+    panel = page.getByTestId('ai-analyst-canonical-result').locator(':scope > section[aria-labelledby]');
     status = page.getByTestId('intelligence-status-panel');
     await expect(panel).toBeVisible({ timeout: 45_000 });
     await expect(status.getByText('This is an explicitly stale result', { exact: false })).toBeVisible();
@@ -333,9 +333,9 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await expect(timeline).toHaveCount(0);
     await page.getByRole('button', { name: /Show this asset/i }).click();
     await expect(timeline).toBeVisible();
-    await panel.locator('summary').focus();
+    await panel.locator(':scope > details > summary').focus();
     await page.keyboard.press('Enter');
-    await expect(panel.locator('details')).toHaveAttribute('open', '');
+    await expect(panel.locator(':scope > details')).toHaveAttribute('open', '');
 
     for (const [language, direction] of [['ar', 'rtl'], ['fr', 'ltr'], ['en', 'ltr']] as const) {
       await page.evaluate(nextLanguage => {
