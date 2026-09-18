@@ -1,17 +1,19 @@
-export type PreciousMetal = 'gold' | 'silver' | 'platinum' | 'palladium';
+export type Metal = 'gold' | 'silver' | 'platinum' | 'palladium' | 'copper';
 
-export const PRECIOUS_METAL_VISUALS: Record<PreciousMetal, { image: string; symbol: string }> = {
+export const METAL_VISUALS: Record<Metal, { image: string; symbol: string }> = {
   gold: { image: '/images/metals/gold-bar.webp', symbol: 'Au' },
   silver: { image: '/images/metals/silver-bar.webp', symbol: 'Ag' },
   platinum: { image: '/images/metals/platinum-bar.webp', symbol: 'Pt' },
   palladium: { image: '/images/metals/palladium-bar.webp', symbol: 'Pd' },
+  copper: { image: '/images/metals/copper-bar.webp', symbol: 'Cu' },
 };
 
-export function isPreciousMetal(value: string): value is PreciousMetal {
-  return Object.hasOwn(PRECIOUS_METAL_VISUALS, value);
+export function isMetal(value: string): value is Metal {
+  return Object.hasOwn(METAL_VISUALS, value);
 }
 
-const METAL_SYMBOLS: Array<[RegExp, PreciousMetal]> = [
+const METAL_SYMBOLS: Array<[RegExp, Metal]> = [
+  [/^(?:HG=F|COPPER(?:\.COMM)?)$/, 'copper'],
   [/^(?:GC=F|GOLD|XAU(?:USD|EUR|GBP|AUD|CHF|CAD|JPY|KWD|SAR|AED)?(?:=X)?)$/, 'gold'],
   [/^(?:SI=F|SILVER|XAG(?:USD|EUR|GBP|AUD|CHF|CAD|JPY|KWD|SAR|AED)?(?:=X)?)$/, 'silver'],
   [/^(?:PL=F|PLATINUM|XPT(?:USD|EUR|GBP|AUD|CHF|CAD|JPY|KWD|SAR|AED)?(?:=X)?)$/, 'platinum'],
@@ -19,7 +21,7 @@ const METAL_SYMBOLS: Array<[RegExp, PreciousMetal]> = [
 ];
 
 /** Exact metal identities only: an equity named Gold must keep its company logo. */
-export function preciousMetalFromSymbol(symbol: string, assetType: string): PreciousMetal | null {
+export function metalFromSymbol(symbol: string, assetType: string): Metal | null {
   if (/stock|equity|share|etf|fund|crypto/.test(assetType)) return null;
   const compact = symbol.toUpperCase().replace(/^(?:COMEX|NYMEX|FX|FOREX):/, '').replace(/[\s/\-]/g, '');
   for (const [pattern, metal] of METAL_SYMBOLS) {
