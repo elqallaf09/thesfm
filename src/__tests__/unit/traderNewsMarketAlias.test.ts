@@ -49,6 +49,16 @@ describe('terminal news market compatibility at the HTTP boundary', () => {
     }), expect.any(Object));
   });
 
+  it('uses the default page size and does not claim untranslated stories are translated', async () => {
+    const story = { id: 'story', title: 'Original title', summary: 'Original summary', originalLanguage: 'en', supportingSources: [] };
+    vi.mocked(aggregateFinancialNews).mockResolvedValue({ ...emptyAggregation(), stories: [story] } as unknown as FinancialNewsAggregationResult);
+    const response = await GET(new NextRequest('https://example.test/api/market-news?lang=ar'));
+    const body = await response.json();
+    expect(body.items[0].translated).toBe(false);
+    expect(body.items[0].titleOriginal).toBe('Original title');
+    expect(aggregateFinancialNews).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({ pageSize: 24 }));
+  });
+
   it('still rejects an asset request without a symbol', async () => {
     const response = await GET(new NextRequest('https://example.test/api/market-news?scope=asset&market=us-stocks'));
     expect(response.status).toBe(400);

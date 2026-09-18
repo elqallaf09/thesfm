@@ -50,6 +50,7 @@ const SOURCE_TYPES = new Set<NewsSourceType>([
 ]);
 
 function integer(value: string | null, fallback: number, min: number, max: number) {
+  if (value === null || value.trim() === '') return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.trunc(parsed))) : fallback;
 }
@@ -148,7 +149,10 @@ function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>, selec
     countryCodes: story.countries,
     marketIds: matchingMarketIds(story, selectedMarketIds),
     sourceRegion: null,
-    translated: Boolean(story.originalLanguage && story.originalLanguage !== story.language),
+    translated: story.isTranslated === true,
+    translatedTo: story.isTranslated === true ? story.translatedTo : null,
+    titleOriginal: story.titleOriginal ?? story.title,
+    summaryOriginal: story.summaryOriginal ?? story.summary,
     companyNames: story.companyNames,
     assetTypes: story.assetTypes,
     currencies: story.currencies,

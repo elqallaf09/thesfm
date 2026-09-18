@@ -1,4 +1,4 @@
-const CACHE_NAME = "the-sfm-trader-v20260918-analyzer-evidence-readiness";
+const CACHE_NAME = "the-sfm-trader-v20260918-news-accuracy";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -7,15 +7,15 @@ const STATIC_ASSETS = [
   "/cinema.css?v=20260717-shell-unify-drawer-20260916-controls-20260915",
   "/detail.css?v=20260714-phase34",
   "/theme-bridge.js?v=20260714-phase34",
-  "/assets/drawer-data.js?v=20260918-analysis-layout",
+  "/assets/drawer-data.js?v=20260918-news-accuracy",
   "/assets/drawer-mobile.css?v=20260918-analysis-layout",
   "/assets/drawer-focus.js?v=20260916-symbol-data",
-  "./watchlist-engine.js?v=20260918-analyzer-evidence-readiness",
-  "./watchlist-view.js?v=20260918-analyzer-evidence-readiness",
-  "./watchlist.css?v=20260918-analyzer-evidence-readiness",
-  "./smart-analyzer.js?v=20260918-analyzer-evidence-readiness",
-  "./smart-analyzer.css?v=20260918-analyzer-evidence-readiness",
-  "/app.js?v=20260918-analyzer-evidence-readiness",
+  "./watchlist-engine.js?v=20260918-news-accuracy",
+  "./watchlist-view.js?v=20260918-news-accuracy",
+  "./watchlist.css?v=20260918-news-accuracy",
+  "./smart-analyzer.js?v=20260918-news-accuracy",
+  "./smart-analyzer.css?v=20260918-news-accuracy",
+  "/app.js?v=20260918-news-accuracy",
   "/detail.js?v=20260714-phase34-signal-gate-20260915",
   "/manifest.webmanifest",
   "/assets/trading-cinematic-bg.jpg",

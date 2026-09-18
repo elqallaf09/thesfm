@@ -1322,7 +1322,7 @@
 
   const state = {
     route: { id: "dashboard" }, loading: true, timeframe: "1D",
-    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, newsContextKey: "", followed: {}, provider: {}, providerStatus: {}, commandCards: {},
+    rec: {}, signals: {}, signalAlerts: {}, markets: {}, news: {}, followed: {}, provider: {}, providerStatus: {}, commandCards: {},
     calendarRange: "30", calendarLoading: false, calendarPendingView: "",
     calendarLoaded: { provider: false, earnings: false, dividends: false, ipos: false, economic: false },
     calendarOpen: { earnings: false, dividends: false, ipos: false, economic: false },
@@ -1801,7 +1801,7 @@
   async function hydrate(force = false) {
     watchlistView.sync(force);
     const commandSymbols = dashboardSymbols();
-    const newsPath = marketNewsPath(12);
+    const newsPath = marketNewsPath(24);
     const routeId = state.route.id;
     const needs = new Set();
     if (routeId === "dashboard") ["rec", "commandCards", "signals", "signalAlerts", "markets", "news", "followed", "providerStatus"].forEach(key => needs.add(key));
@@ -1820,7 +1820,7 @@
       signals: { cacheKey: `signals:${routeId === "dashboard" ? commandSymbols.join(",") : "all"}`, load: () => get(routeId === "dashboard" ? `/market/signals?symbols=${encodeURIComponent(commandSymbols.slice(0, 12).join(","))}&limit=12` : "/market/signals?limit=48"), label: "signals" },
       signalAlerts: { cacheKey: "signalAlerts", load: () => get("/market/signal-alerts?limit=50"), label: "signals" },
       markets: { cacheKey: "markets", load: () => get("/markets"), label: "quotes" },
-      news: { cacheKey: `news:${newsPath}`, load: () => get(newsPath), label: "news" },
+      news: { cacheKey: `news:${newsPath}`, load: () => get(force ? marketNewsPath(24, { refresh: true }) : newsPath), label: "news" },
       followed: { cacheKey: "followed", load: () => get("/followed-trades"), label: "quotes" },
       providerStatus: { cacheKey: "providerStatus", load: () => get("/trader/provider-status", { label: "providerStatus" }), label: "providerStatus" }
     };
@@ -1830,7 +1830,7 @@
       const cacheKey = request.cacheKey || key;
       const previousCacheKey = hydrationExpectedCacheKey.get(key);
       const contextChanged = previousCacheKey !== undefined && previousCacheKey !== cacheKey;
-      if (contextChanged) hydrationGeneration.set(key, (hydrationGeneration.get(key) || 0) + 1);
+      if (force || contextChanged) hydrationGeneration.set(key, (hydrationGeneration.get(key) || 0) + 1);
       hydrationExpectedCacheKey.set(key, cacheKey);
       const generation = hydrationGeneration.get(key) || 0;
       if (!force && !contextChanged && hydrationLoaded.has(cacheKey)) return;
@@ -1854,7 +1854,6 @@
       }
       if (hydrationInFlight.get(request.cacheKey)?.promise === request.promise) hydrationInFlight.delete(request.cacheKey);
     }));
-    if (needs.has("news")) state.newsContextKey = newsPath;
     state.providerStatus = state.providerStatus || {};
     state.provider = state.providerStatus.dataProvider || state.commandCards.dataProvider || state.rec.dataProvider || state.markets.dataProvider || state.news.dataProvider || state.commandCards.provider || state.rec.provider || state.markets.provider || state.news.provider || { configured: false, status: "not_configured" };
     renderAfterData();
@@ -1873,7 +1872,7 @@
     const market = inferredMarket || currentMarket();
     const symbolCategory = targetSymbol ? assetType(targetSymbol) : "";
     const category = symbolCategory && symbolCategory !== "stock" ? symbolCategory : (state.settings.selectedCategory || categoryFromSelection(market.id));
-    const symbols = targetSymbol ? [targetSymbol] : unique(arr(market.symbols));
+    const symbols = targetSymbol ? [targetSymbol] : (market.family === "Sector" ? unique(arr(market.symbols)) : []);
     return { market, category, symbols, symbol: targetSymbol };
   }
   function marketNewsPath(limit = 12, options = {}) {
@@ -1881,21 +1880,21 @@
     const params = new URLSearchParams({
       limit: String(limit),
       scope: context.symbol ? "asset" : "general",
-      market: context.market.id,
-      category: context.category,
+
       lang: currentLanguage(),
     });
     if (context.symbol) params.set("symbol", context.symbol);
     if (context.symbols.length) params.set("symbols", context.symbols.join(","));
+    if (!context.symbol) {
+      const markets = { "us-stocks": "US", kuwait: "KW", saudi: "SA", uae: "AE,DFM,ADX", qatar: "QA", bahrain: "BH", oman: "OM", europe: "EU,EUROPE,GB,DE,FR,CH,NL,ES,IT", asia: "ASIA,CN,HK,JP,KR,TW,IN,SG", crypto: "CRYPTO" };
+      const kinds = { forex: "currency", crypto: "crypto", commodities: "commodity", indices: "index", etfs: "etf,fund" };
+      if (markets[context.market.id]) params.set("markets", markets[context.market.id]);
+      if (kinds[context.market.id]) params.set("assetTypes", kinds[context.market.id]);
+      if (state.route.id === "news" && state.newsView.search) params.set("q", state.newsView.search);
+      if (state.route.id === "news" && state.newsView.source !== "all") params.set("source", state.newsView.source);
+    }
     if (options.refresh) params.set("refresh", "1");
     return `/market-news?${params.toString()}`;
-  }
-  async function loadNews(force = false) {
-    const cacheKey = marketNewsPath(12);
-    if (!force && state.newsContextKey === cacheKey) return;
-    state.newsContextKey = cacheKey;
-    state.news = await get(marketNewsPath(12, { refresh: force }), { label: "news" });
-    if (state.route.id === "news" || state.route.id === "dashboard") render();
   }
   async function post(path, body, options = {}) {
     return requestJson(path, { method: "POST", body, ...options });
@@ -2272,7 +2271,8 @@
       if (!form) return;
       event.preventDefault();
       state.newsView.search = String(new FormData(form).get("newsSearch") || "").trim();
-      render();
+      state.news = { status: "loading" }; invalidateHydrationCache("news");
+      setWorkspaceView("news", "data", { focus: false }); hydrate().catch(() => {});
     });
     document.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-heatmap-search-form]");
@@ -2304,7 +2304,6 @@
       const filter = event.target.closest("[data-news-source-filter]");
       if (!filter) return;
       state.newsView.source = filter.value || "all";
-      render();
     });
     document.addEventListener("change", (event) => {
       const filter = event.target.closest("[data-heatmap-sector]");
@@ -2472,7 +2471,7 @@
         const activeCalendarView = workspaceView("calendar");
         await loadCalendars(true, CALENDAR_VIEW_IDS.includes(activeCalendarView) ? [activeCalendarView] : []);
       } else if (state.route.id === "news") {
-        await loadNews(true);
+        await hydrate(true);
       } else if (state.route.id === "ai-scanner" || state.route.id === "recommendations") {
         state.rec = { status: "loading" };
         state.signals = { status: "loading" };
@@ -3315,7 +3314,7 @@
 
   function newsPage() {
     const items = newsItems();
-    const filtered = filteredNewsItems(items);
+    const filtered = items;
     const sources = newsSourceCounts(items);
     const verifiedCount = items.filter(item => newsEvidence(item).tone === "ok").length;
     const tabs = [
@@ -3327,7 +3326,7 @@
     ];
     return `<div class="page-stack news-workspace">${hero(textPair("أخبار السوق", "Market news", "Actualités des marchés"), textPair("تُجمع الأخبار من مصادر مستقلة وتُعرض مع حالة التحقق بوضوح، دون عناوين مصطنعة.", "News is consolidated from independent sources and shown with clear verification status, without synthetic headlines.", "Les actualités sont consolidées à partir de sources indépendantes et accompagnées d’un statut de vérification clair, sans titres artificiels."), "NEWS")}
       ${workspaceTabBar("news", tabs, textPair("مساحة أخبار السوق", "Market news workspace", "Espace actualités"))}
-      ${workspacePanel("news", "overview", `<section class="metric-grid">${stat(textPair("التغطية الحالية", "Current coverage", "Couverture actuelle"), items.length, textPair("خبر", "items", "articles"))}${stat(textPair("أخبار موثقة", "Verified items", "Articles vérifiés"), verifiedCount, textPair("موثق", "verified", "vérifiés"))}${stat(textPair("المصادر", "Sources", "Sources"), sources.length, textPair("مصدر مستقل", "independent sources", "sources indépendantes"))}${stat(textPair("آخر تحديث", "Latest update", "Dernière mise à jour"), latinDateTime(state.news.lastUpdated || state.news.lastSuccessfulUpdate || state.news.generatedAt), providerName(state.news.provider) || terminalText("unavailable"))}</section>${publicSystemStatus()}${newsIssueText() ? `<div class="provider-warning" role="status">${h(textPair("توجد تغطية جزئية. راجع تبويب المشكلات.", "Coverage is partial. Review the Issues tab.", "La couverture est partielle. Consultez Problèmes."))}</div>` : ""}`)}
+      ${workspacePanel("news", "overview", `<section class="metric-grid">${stat(textPair("التغطية الحالية", "Current coverage", "Couverture actuelle"), items.length, textPair("خبر", "items", "articles"))}${stat(textPair("أخبار موثقة", "Verified items", "Articles vérifiés"), verifiedCount, textPair("موثق", "verified", "vérifiés"))}${stat(textPair("المصادر", "Sources", "Sources"), sources.length, textPair("مصادر معروضة", "displayed sources", "sources affichées"))}${stat(textPair("آخر تحديث", "Latest update", "Dernière mise à jour"), latinDateTime(state.news.lastUpdated || state.news.lastSuccessfulUpdate || state.news.generatedAt), providerName(state.news.provider) || terminalText("unavailable"))}</section>${publicSystemStatus()}${newsIssueText() ? `<div class="provider-warning" role="status">${h(textPair("توجد تغطية جزئية. راجع تبويب المشكلات.", "Coverage is partial. Review the Issues tab.", "La couverture est partielle. Consultez Problèmes."))}</div>` : ""}`)}
       ${workspacePanel("news", "data", `<section class="panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("البيانات", "Data", "Données"))}</span><h2>${h(textPair("أخبار السوق", "Market news", "Actualités des marchés"))}</h2></div><span class="state-badge">${h(latinNumber(filtered.length))}</span></div><div class="news-grid">${filtered.length ? filtered.map(newsCard).join("") : emptyState(textPair("لا توجد أخبار مطابقة", "No matching news", "Aucune actualité correspondante"), textPair("غيّر البحث أو المصدر ثم حاول مرة أخرى.", "Change the search or source and try again.", "Modifiez la recherche ou la source."), "", "")}</div></section>`)}
       ${workspacePanel("news", "filters", newsFiltersPanel(sources))}
       ${workspacePanel("news", "sources", newsSourcesPanel(sources))}
@@ -3348,20 +3347,6 @@
     return Array.from(counts.entries()).map(([source, count]) => ({ source, count })).sort((left, right) => right.count - left.count);
   }
 
-  function filteredNewsItems(items) {
-    const search = String(state.newsView.search || "").trim().toLowerCase();
-    const source = state.newsView.source || "all";
-    return items.filter(item => {
-      if (source !== "all" && newsSourceName(item) !== source) return false;
-      if (!search) return true;
-      return [item.title, item.headline, item.summary, item.description, newsSourceName(item), ...arr(item.symbols || item.relatedSymbols)]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(search);
-    });
-  }
-
   function newsFiltersPanel(sources) {
     return `<section class="panel compact-filter-panel"><div class="panel-head"><div><span class="eyebrow">${h(textPair("الفلاتر", "Filters", "Filtres"))}</span><h2>${h(textPair("ابحث وحدد المصدر", "Search and choose a source", "Rechercher et choisir une source"))}</h2></div></div><form class="workspace-filter-form" data-news-search-form><label><span>${h(terminalText("search"))}</span><input name="newsSearch" value="${h(state.newsView.search || "")}" placeholder="${h(textPair("عنوان أو رمز أو كلمة", "Title, symbol, or keyword", "Titre, symbole ou mot-clé"))}" /></label><label><span>${h(terminalText("source"))}</span><select data-news-source-filter>${[`<option value="all" ${state.newsView.source === "all" ? "selected" : ""}>${h(terminalText("all"))}</option>`, ...sources.map(item => `<option value="${h(item.source)}" ${state.newsView.source === item.source ? "selected" : ""}>${h(item.source)} (${h(latinNumber(item.count))})</option>`)].join("")}</select></label><button class="action-btn" type="submit">${h(textPair("تطبيق", "Apply", "Appliquer"))}</button></form><button class="ghost-btn" type="button" data-workspace-tab="data" data-workspace-scope="news">${h(textPair("عرض الأخبار", "View news", "Voir les actualités"))}</button></section>`;
   }
@@ -3371,7 +3356,9 @@
   }
 
   function newsIssueText() {
-    return formatProviderError(state.news && (state.news.message || state.news.error || state.news.partialFailure || state.news.failureReason), { empty: "" });
+    if (state.news.stale || state.news.liveUpdatesAvailable === false) return textPair("الأخبار المحفوظة قديمة؛ التحديث المباشر غير متاح.", "Stored news may be stale; live updates are unavailable.", "Les actualités stockées peuvent être anciennes ; les mises à jour sont indisponibles.");
+    if (state.news.partialFailure) return textPair("بعض مصادر الأخبار لم تستجب؛ التغطية جزئية.", "Some news sources did not respond; coverage is partial.", "Certaines sources n’ont pas répondu ; la couverture est partielle.");
+    return formatProviderError(state.news.message || state.news.error || state.news.failureReason || (state.news.ok === false ? UNAVAILABLE_MESSAGE : ""), { empty: "" });
   }
 
   function newsIssuesPanel() {
@@ -5468,7 +5455,7 @@
   function newsEvidence(n) {
     const verification = String(n.verificationStatus || "unverified").trim().toLowerCase().replace(/[\s-]+/g, "_");
     const independentCountValue = Number(n.independentSourceCount);
-    const independentCount = Number.isFinite(independentCountValue) && independentCountValue > 0 ? Math.round(independentCountValue) : 0;
+    const independentCount = Number.isInteger(independentCountValue) && independentCountValue > 0 ? independentCountValue : 0;
     const official = n.isOfficial === true || verification === "official";
     const conflicting = verification === "conflicting";
     let label = textPair("غير مؤكد", "Unverified", "Non vérifié"), tone = "";
@@ -5480,9 +5467,6 @@
       tone = "ok";
     } else if (verification === "confirmed" && independentCount >= 2) {
       label = textPair(`مؤكد من ${independentCount} مصادر مستقلة`, `Confirmed by ${independentCount} independent sources`, `Confirmé par ${independentCount} sources indépendantes`);
-      tone = "ok";
-    } else if (verification === "confirmed") {
-      label = textPair("خبر مؤكد", "Confirmed", "Confirmé");
       tone = "ok";
     } else if (verification === "single_source" || independentCount === 1) {
       label = textPair("مصدر واحد · غير مؤكد مستقلاً", "Single source · not independently confirmed", "Source unique · non confirmé indépendamment");
@@ -5496,15 +5480,16 @@
     const title = n.title || n.headline || n.name || textPair("خبر بدون عنوان", "Untitled news", "Actualité sans titre"), src = n.sourceName || n.source || n.publisher || textPair("المصدر غير متاح", "Source unavailable", "Source indisponible"), when = date(n.publishedAt || n.datetime || n.date || n.createdAt), url = safeExternalUrl(n.originalUrl || n.canonicalUrl || n.url || n.link || ""), text = n.summary || n.description || n.text || "", impact = (n.expectedImpact || n.impact || "").toString().toLowerCase();
     const syms = arr(n.symbols || n.relatedSymbols).slice(0, 3);
     const evidence = newsEvidence(n);
-    const hasDetails = Boolean(text || syms.length || url);
-    return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span><span class="impact ${evidence.tone}">${h(evidence.label)}</span></div>${evidence.countLabel && !evidence.label.includes(evidence.countLabel) ? `<div class="news-meta"><span>${h(evidence.countLabel)}</span>${impact ? `<span>${h(translateUiText(impact))}</span>` : ""}</div>` : impact ? `<div class="news-meta"><span>${h(translateUiText(impact))}</span></div>` : ""}<strong>${h(title)}</strong>${hasDetails ? `<details class="news-card-details"><summary>${h(textPair("الملخص والأدلة", "Summary and evidence", "Résumé et preuves"))}</summary>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener noreferrer nofollow">${h(terminalText("source"))}</a>` : ""}</details>` : ""}</article>`;
+    const supporting = arr(n.supportingSources).slice(0, 5).map(source => { const link = safeExternalUrl(source.originalUrl || source.url || ""); return link ? `<a class="ghost-btn sm" href="${h(link)}" target="_blank" rel="noopener noreferrer nofollow">${h(newsSourceName(source))}</a>` : ""; }).join("");
+    const hasDetails = Boolean(text || syms.length || url || supporting);
+    return `<article class="news-card"><div class="news-meta"><span>${h(src)} · ${h(when)}</span><span class="impact ${evidence.tone}">${h(evidence.label)}</span></div>${evidence.countLabel && !evidence.label.includes(evidence.countLabel) ? `<div class="news-meta"><span>${h(evidence.countLabel)}</span>${impact ? `<span>${h(translateUiText(impact))}</span>` : ""}</div>` : impact ? `<div class="news-meta"><span>${h(translateUiText(impact))}</span></div>` : ""}<strong>${h(title)}</strong>${hasDetails ? `<details class="news-card-details"><summary>${h(textPair("الملخص والأدلة", "Summary and evidence", "Résumé et preuves"))}</summary>${text ? `<p>${h(text)}</p>` : ""}${syms.length ? `<div class="news-syms">${syms.map(s => `<button class="badge sm" data-symbol-details="${h(s)}"><span class="ltr">${h(sym(s))}</span></button>`).join("")}</div>` : ""}${url ? `<a class="ghost-btn sm" href="${h(url)}" target="_blank" rel="noopener noreferrer nofollow">${h(terminalText("source"))}</a>` : ""}${supporting}</details>` : ""}</article>`;
   }
   function relatedNews(symbol, detail = {}) {
     const detailNews = arr(detail.news && (detail.news.items || detail.news.articles || detail.news.news || detail.news.data || detail.news.results));
     const sourceItems = detailNews.length ? detailNews : newsItems();
     const items = sourceItems.filter(n => {
       const symbols = arr(n.symbols || n.relatedSymbols).map(sym);
-      return symbols.includes(sym(symbol)) || (detailNews.length && n.relevanceScore);
+      return symbols.includes(sym(symbol));
     }).slice(0, 3);
     return items.length ? newsList(items) : `<p class="muted-note">${h(textPair("لا توجد أخبار مرتبطة من المزود لهذا الرمز.", "No related provider news for this symbol."))}</p>`;
   }
@@ -7505,7 +7490,7 @@
     state.rec = { status: "loading" };
     state.commandCards = {};
     state.news = {};
-    state.newsContextKey = "";
+    state.newsView = { search: "", source: "all" };
     invalidateHydrationCache("rec", "commandCards", "news");
     const cacheKey = `rec:${marketApi(requestedMarket)}`;
     hydrationExpectedCacheKey.set("rec", cacheKey);
@@ -7535,7 +7520,7 @@
     state.signals = { status: "loading" };
     state.signalAlerts = {};
     state.news = {};
-    state.newsContextKey = "";
+    state.newsView = { search: "", source: "all" };
     invalidateHydrationCache("rec", "commandCards", "signals", "signalAlerts", "news");
     if (state.marketCache && state.marketCache.clear) state.marketCache.clear();
     if (state.route.id === "markets" && state.route.market) {

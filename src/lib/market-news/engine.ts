@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { revalidateStoredNewsEntities } from './entityResolver';
+
 import { randomUUID } from 'node:crypto';
 import { createFinancialNewsProviders } from './registry';
 import {
@@ -531,6 +533,7 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
     sort: options.sort ?? 'latest',
   });
 
+  stored.stories = stored.stories.map(revalidateStoredNewsEntities);
   const providers = options.providers ?? createFinancialNewsProviders(params);
   const storedPageEnd = ((page - 1) * pageSize) + stored.stories.length;
   const storedPageComplete = stored.available && (

@@ -1,3 +1,4 @@
+import { observedQuoteProvider } from '@/lib/trader/observedQuoteProvider';
 import { NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { computeCompleteness } from '@/lib/market-state/completeness';
@@ -342,7 +343,7 @@ async function handleRecommendations(request: Request) {
       console.warn('[recommendations] Excluded non-technology assets from technology selection.', excluded);
     }
   }
-  const connectedProvider = getConnectedProvider();
+  const connectedProvider = { ...getConnectedProvider(), ...observedQuoteProvider(quotes) };
   const placeholderProvider = quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider;
 
   const mappedRecommendations = available.map(q => {
