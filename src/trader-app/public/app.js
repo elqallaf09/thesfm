@@ -7351,7 +7351,14 @@
       toast(settingsT("actionFailed", lang));
     }
   }
-  function renderAfterData() { if (!state.loading) render(); }
+  function renderAfterData() {
+    if (state.loading) return;
+    const active = document.activeElement;
+    const focusedSymbol = active?.getAttribute("data-symbol-details");
+    render();
+    // A late quote/retry must not erase focus returned by the closing drawer.
+    if (focusedSymbol && !state.drawer.symbol) DrawerFocus.restoreTrigger(active, sym(focusedSymbol));
+  }
   function requestLabel(path) {
     if (path.includes("/trader/provider-status")) return "providerStatus";
     if (path.includes("/trader/calendar/")) return "calendar";
