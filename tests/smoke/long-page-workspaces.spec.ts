@@ -227,7 +227,7 @@ test.describe('long-page workspaces', () => {
     await expect(page.locator('[data-workspace-tablist="dashboard"]')).toBeVisible();
     await expect(page.locator('[data-workspace-scope="dashboard"][data-workspace-tab="analysis"]')).toHaveAttribute('aria-selected', 'true');
     await expect.poll(() => countRequests(requests, '/api/recommendations', 'market=forex')).toBe(1);
-    await expect.poll(() => countRequests(requests, '/api/market-news', 'market=forex')).toBe(1);
+    await expect.poll(() => countRequests(requests, '/api/market-news', 'assettypes=currency')).toBe(1);
   });
 
   test('an invalidated slow market response cannot overwrite the current market', async ({ page }) => {

@@ -33,6 +33,16 @@ function history(count: number, start = 100, step = 0.18): RecommendationPricePo
 }
 
 describe('trader multi-factor recommendation engine', () => {
+  it('withholds range and volume indicators when recent source inputs have gaps', () => {
+    const points = history(220);
+    points[210].volume = null;
+    points[210].high = null;
+    const result = buildMultiFactorRecommendation({ price: points.at(-1)!.close, history: points, dataQuality: 'partial', delayed: false, assetType: 'stock' });
+    expect(result.technicalSummary.indicators.volumeRatio).toBeNull();
+    expect(result.technicalSummary.indicators.atr).toBeNull();
+    expect(result.marketRegime.adx).toBeNull();
+  });
+
   it('shows insufficient data when no real price history is available', () => {
     const result = buildMultiFactorRecommendation({
       price: 100,

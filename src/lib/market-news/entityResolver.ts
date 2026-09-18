@@ -3,12 +3,15 @@ import { listBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { STOCK_CATEGORY_CONFIGS } from '@/lib/market/stockCategoryConfigs';
 import type { NewsFetchParams, NormalizedNewsItem } from './types';
 
+export const NEWS_ENTITY_VERSION = 'market-news-v2-identity';
+
 type EntityRecord = {
   symbol: string;
   providerSymbol: string | null;
   name: string;
   aliases: string[];
   exchange: string | null;
+  legacyExchange?: string | null;
   market: string | null;
   country: string | null;
   assetType: string | null;
@@ -46,8 +49,8 @@ function symbolMentioned(text: string, symbol: string, explicitProviderSymbols: 
   if (!clean) return false;
   if (explicitProviderSymbols.has(clean)) return true;
   const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (clean.length <= 2) return new RegExp(`(?:^|[^A-Z0-9])\\$${escaped}(?:$|[^A-Z0-9])`, 'i').test(text);
-  return new RegExp(`(?:^|[^A-Z0-9])${escaped}(?:$|[^A-Z0-9])`, 'i').test(text);
+  if (clean.length <= 2) return new RegExp(`(?:^|[^A-Za-z0-9])\\$${escaped}(?:$|[^A-Za-z0-9])`, 'i').test(text);
+  return new RegExp(`(?:^|[^A-Za-z0-9])${escaped}(?:$|[^A-Za-z0-9])`).test(text);
 }
 
 function phraseMentioned(text: string, phrase: string) {
@@ -73,6 +76,7 @@ function createUniverse() {
       name,
       aliases: unique([...(existing?.aliases ?? []), ...(row.aliases ?? [])]),
       exchange,
+      legacyExchange: row.legacyExchange ?? null,
       market: String(row.market ?? '').trim() || null,
       country: String(row.country ?? '').trim() || null,
       assetType: String(row.assetType ?? '').trim() || null,
@@ -93,9 +97,10 @@ function createUniverse() {
     symbol: row.symbol,
     providerSymbol: row.providerSymbol ?? null,
     name: row.name,
-    aliases: row.aliases ?? [],
-    exchange: row.exchange ?? row.exchangeCode ?? null,
-    market: row.market ?? null,
+    aliases: row.entityAliases ?? [],
+    exchange: row.exchangeId ?? row.exchangeCode ?? null,
+    legacyExchange: row.exchange ?? null,
+    market: row.country ?? null,
     country: row.country ?? null,
     assetType: row.assetType,
   }));
@@ -129,12 +134,13 @@ export function identifyEntities(item: NormalizedNewsItem, params: Partial<NewsF
   const exchangeFilters = new Set((params.exchangeCodes ?? []).map(value => value.trim().toUpperCase()).filter(Boolean));
 
   const candidates = ENTITY_UNIVERSE.map(record => {
-    const symbolHit = symbolMentioned(textOriginal.toUpperCase(), record.symbol, providerSymbols);
+    const symbolHit = symbolMentioned(textOriginal, record.symbol, providerSymbols);
     const providerSymbolHit = record.providerSymbol
-      ? symbolMentioned(textOriginal.toUpperCase(), record.providerSymbol, providerSymbols)
+      ? symbolMentioned(textOriginal, record.providerSymbol, providerSymbols)
       : false;
-    const nameHit = phraseMentioned(text, record.name);
-    const aliasHit = record.aliases.some(alias => phraseMentioned(text, alias));
+    const cryptoContext = record.assetType !== 'crypto' || /crypto|token|blockchain|bitcoin|ethereum|decentralized|عملة|عملات|رمز رقمي|jeton/i.test(textOriginal);
+    const nameHit = cryptoContext && phraseMentioned(text, record.name);
+    const aliasHit = cryptoContext && record.aliases.some(alias => normalized(alias) !== normalized(record.symbol) && phraseMentioned(text, alias));
     const requestedHit = requested.has(record.symbol) || Boolean(record.providerSymbol && requested.has(record.providerSymbol));
     const exchangeHit = exchangeFilters.size === 0 || Boolean(record.exchange && exchangeFilters.has(record.exchange.toUpperCase()));
 
@@ -202,5 +208,32 @@ export function enrichNewsEntities(item: NormalizedNewsItem, params: Partial<New
     assetTypes: unique([...(item.assetTypes ?? []), ...result.assetTypes]),
     sectors: unique([...(item.sectors ?? []), ...result.sectors]),
     entityConfidenceScore: Math.max(item.entityConfidenceScore ?? 0, result.confidenceScore),
+  };
+}
+
+// Older stored stories mixed directory search keywords with company identities.
+// Recheck those associations from the original article without trusting their
+// enriched symbol list. Keep non-entity source metadata and the original date.
+export function revalidateStoredNewsEntities<T extends NormalizedNewsItem>(item: T): T {
+  if (item.processingVersion === NEWS_ENTITY_VERSION) return item;
+  const previous = identifyEntities(item);
+  const verified = identifyEntities({ ...item, symbols: [] });
+  const invalidLegacyMarkets = ENTITY_UNIVERSE.filter(record => item.symbols.includes(record.symbol) && !verified.symbols.includes(record.symbol))
+    .flatMap(record => record.legacyExchange ? [record.legacyExchange] : []);
+  const clean = (values: string[], before: string[], after: string[]) => {
+    const unsupported = new Set(before.filter(value => !after.includes(value)));
+    return unique([...values.filter(value => !unsupported.has(value)), ...after]);
+  };
+  return {
+    ...item,
+    symbols: verified.symbols,
+    companyNames: verified.companyNames,
+    exchangeCodes: clean(item.exchangeCodes, [...previous.exchangeCodes, ...invalidLegacyMarkets], verified.exchangeCodes),
+    marketCodes: clean(item.marketCodes, [...previous.marketCodes, ...invalidLegacyMarkets], verified.marketCodes),
+    countries: clean(item.countries, previous.countries, verified.countries),
+    assetTypes: clean(item.assetTypes, previous.assetTypes, verified.assetTypes),
+    sectors: clean(item.sectors, previous.sectors, verified.sectors),
+    entityConfidenceScore: verified.confidenceScore,
+    processingVersion: NEWS_ENTITY_VERSION,
   };
 }

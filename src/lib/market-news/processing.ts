@@ -6,11 +6,11 @@ import type {
   NormalizedNewsItem,
   NewsSupportingSource,
 } from './types';
-import { enrichNewsEntities } from './entityResolver';
+import { enrichNewsEntities, NEWS_ENTITY_VERSION } from './entityResolver';
 import { logMarketNewsEvent } from './logger';
 import { publisherNetworkKey } from './providers/shared';
 
-const PROCESSING_VERSION = 'market-news-v1';
+const PROCESSING_VERSION = NEWS_ENTITY_VERSION;
 const TRACKING_PARAMETERS = new Set([
   'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
   'gclid', 'fbclid', 'msclkid', 'mc_cid', 'mc_eid', 'ref', 'referrer', 'source',

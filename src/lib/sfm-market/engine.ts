@@ -1,3 +1,4 @@
+import { wilderRsi } from '@/lib/market/technicalIndicators';
 import {
   getCandlesWithFallback,
   getQuoteWithFallback,
@@ -60,22 +61,6 @@ function sma(values: number[], period: number) {
   return round(average(values.slice(-period)));
 }
 
-function rsi(values: number[], period = 14) {
-  if (values.length < period + 1) return null;
-  const slice = values.slice(-(period + 1));
-  let gains = 0;
-  let losses = 0;
-  for (let index = 1; index < slice.length; index += 1) {
-    const delta = slice[index] - slice[index - 1];
-    if (delta > 0) gains += delta;
-    else losses += Math.abs(delta);
-  }
-  const averageGain = gains / period;
-  const averageLoss = losses / period;
-  if (averageLoss === 0) return averageGain > 0 ? 100 : 50;
-  const rs = averageGain / averageLoss;
-  return round(100 - (100 / (1 + rs)), 2);
-}
 
 function annualizedVolatility(values: number[]) {
   if (values.length < 21) return null;
@@ -95,9 +80,9 @@ function annualizedVolatility(values: number[]) {
 function averageVolume(candles: NormalizedMarketCandle[], period = 20) {
   const values = candles
     .slice(-period)
-    .map(candle => Number(candle.volume))
-    .filter(value => Number.isFinite(value) && value >= 0);
-  if (values.length < Math.min(period, candles.length)) return null;
+    .map(candle => candle.volume)
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0);
+  if (values.length < period) return null;
   return round(average(values), 0);
 }
 
@@ -110,7 +95,7 @@ export function buildSfmTechnicalSnapshot(
   const closes = valid.map(candle => candle.close);
   const sma20 = sma(closes, 20);
   const sma50 = sma(closes, 50);
-  const rsi14 = rsi(closes, 14);
+  const rsi14 = round(wilderRsi(closes, 14), 2);
   const volatility = annualizedVolatility(closes);
   const comparisonPrice = Number.isFinite(latestPrice) && Number(latestPrice) > 0
     ? Number(latestPrice)

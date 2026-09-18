@@ -34,6 +34,33 @@ function clearProviderKeys() {
 }
 
 describe('market data provider fallback', () => {
+  it.each(['1d', '1day', 'D', '1h'])('requests supported Twelve Data history for %s with room for SMA 200', async interval => {
+    clearProviderKeys();
+    vi.stubEnv('TWELVE_DATA_API_KEY', 'test');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      const url = new URL(String(input));
+      if (!['1day', '1h'].includes(url.searchParams.get('interval') ?? '')) {
+        return new Response(JSON.stringify({ status: 'error', code: 400, message: 'Invalid interval' }), { status: 400 });
+      }
+      return new Response(JSON.stringify({ status: 'ok', values: [
+        { datetime: '2026-09-17', open: '100', high: '103', low: '99', close: '102', volume: '1500' },
+        { datetime: '2026-09-16', open: '99', high: '101', low: '98', close: '100', volume: null },
+      ] }), { status: 200 });
+    });
+    const { getCandlesWithFallback } = await import('@/lib/market/marketDataProviders');
+    const result = await getCandlesWithFallback('AAPL', 'us-stocks', interval, { assetType: 'stock', excludeProviders: ['yahoo'] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('Expected provider history');
+    expect(result.provider).toBe('twelve_data');
+    expect(result.data.map(row => row.close)).toEqual([100, 102]);
+    expect(result.data[0].volume).toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const requested = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(requested.pathname).toBe('/time_series');
+    expect(requested.searchParams.get('interval')).toBe(interval === '1h' ? '1h' : '1day');
+    expect(Number(requested.searchParams.get('outputsize'))).toBeGreaterThanOrEqual(200);
+  });
+
   it('does not replace a configured provider failure with later missing-key attempts', async () => {
     clearProviderKeys();
     vi.stubEnv('TWELVE_DATA_API_KEY', 'test');

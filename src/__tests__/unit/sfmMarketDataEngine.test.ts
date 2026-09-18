@@ -1,3 +1,4 @@
+import { wilderRsi } from '@/lib/market/technicalIndicators';
 import { describe, expect, it } from 'vitest';
 import type { NormalizedMarketCandle, NormalizedMarketQuote } from '@/lib/market/marketDataProviders';
 import {
@@ -96,6 +97,16 @@ describe('SFM Market Data Engine v1', () => {
     expect(snapshot.annualizedVolatilityPercent).not.toBeNull();
     expect(snapshot.averageVolume20).not.toBeNull();
     expect(snapshot.trend).toBe('bullish');
+  });
+
+  it('uses Wilder smoothing and never turns missing volume into zero', () => {
+    const closes = [44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.10, 45.42, 45.84, 46.08, 45.89, 46.03, 45.61, 46.28, 46.28, 46.00, 46.03, 46.41, 46.22, 45.64];
+    expect(wilderRsi(closes)).toBeCloseTo(57.915, 2);
+    const rows = candles(20).map((row, index) => ({ ...row, close: closes[index] }));
+    expect(buildSfmTechnicalSnapshot(rows).rsi14).toBeCloseTo(57.92, 2);
+    rows[5].volume = null;
+    expect(buildSfmTechnicalSnapshot(rows).averageVolume20).toBeNull();
+    expect(buildSfmTechnicalSnapshot(candles(10)).averageVolume20).toBeNull();
   });
 
   it('leaves unsupported indicators unavailable instead of fabricating neutral numbers', () => {

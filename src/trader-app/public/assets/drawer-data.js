@@ -181,7 +181,7 @@
       if (direct && aliases.includes(direct)) return true;
       if (symbols.some(value => aliases.includes(value))) return true;
       if (scoped) return !direct && !symbols.length;
-      return aliases.some(alias => alias.length > 2 && `${item.title || ""} ${item.summary || item.description || ""}`.toUpperCase().includes(alias));
+      return false;
     });
   }
 

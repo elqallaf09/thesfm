@@ -46,6 +46,8 @@ export type MarketSymbolRecord = {
 
 export type MarketSymbolSearchResult = MarketSearchItem & {
   displaySymbol: string;
+  /** Identity aliases only; excludes sector/exchange search keywords. */
+  entityAliases?: string[];
   companyNameAr?: string;
   companyNameEn?: string;
   exchangeId?: MarketExchangeId;
@@ -244,6 +246,7 @@ export function marketSymbolRecordToSearchItem(record: MarketSymbolRecord): Mark
     country: record.country ?? option?.country,
     currency: record.currency ?? option?.currency,
     aliases: recordAliases(record),
+    entityAliases: uniqueNonEmpty([record.company_name_ar, record.company_name_en, ...(record.aliases ?? []), ...(RECORD_ALIASES[recordKey(record)] ?? [])]),
     companyNameAr: nameAr,
     companyNameEn: nameEn,
     exchangeId,

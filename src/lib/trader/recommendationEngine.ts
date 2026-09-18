@@ -1,3 +1,5 @@
+import { wilderRsi as rsi } from '@/lib/market/technicalIndicators';
+
 export type RecommendationSignal = 'buy' | 'sell' | 'watch';
 export type RecommendationRiskLevel = 'low' | 'medium' | 'high';
 export type RecommendationDataQuality = 'complete' | 'delayed' | 'partial' | 'cached' | 'unavailable';
@@ -174,6 +176,7 @@ const DISCLAIMER_EN = 'This automated market reading is for information only and
 const DISCLAIMER_AR = 'هذه قراءة سوق آلية لأغراض معلوماتية فقط وليست نصيحة مالية.';
 
 function finiteNumber(value: unknown): number | null {
+  if (value === null || value === undefined || typeof value === 'boolean' || (typeof value === 'string' && value.trim() === '')) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -210,25 +213,6 @@ function ema(values: number[], period: number) {
   return series.length ? series[series.length - 1] : null;
 }
 
-function rsi(values: number[], period = 14) {
-  if (values.length <= period) return null;
-  let gains = 0;
-  let losses = 0;
-  for (let index = 1; index <= period; index += 1) {
-    const change = values[index] - values[index - 1];
-    if (change >= 0) gains += change;
-    else losses += Math.abs(change);
-  }
-  let averageGain = gains / period;
-  let averageLoss = losses / period;
-  for (let index = period + 1; index < values.length; index += 1) {
-    const change = values[index] - values[index - 1];
-    averageGain = (averageGain * (period - 1) + Math.max(change, 0)) / period;
-    averageLoss = (averageLoss * (period - 1) + Math.max(-change, 0)) / period;
-  }
-  if (averageLoss === 0) return averageGain > 0 ? 100 : 50;
-  return 100 - 100 / (1 + averageGain / averageLoss);
-}
 
 function macd(values: number[]) {
   const fast = emaSeries(values, 12);
@@ -256,8 +240,9 @@ function atr(points: RecommendationPricePoint[], period = 14) {
   for (let index = 1; index < points.length; index += 1) {
     const current = points[index];
     const previous = points[index - 1];
-    const high = finiteNumber(current.high) ?? current.close;
-    const low = finiteNumber(current.low) ?? current.close;
+    const high = finiteNumber(current.high);
+    const low = finiteNumber(current.low);
+    if (high === null || low === null || high < current.close || low > current.close || low <= 0) return null;
     ranges.push(Math.max(high - low, Math.abs(high - previous.close), Math.abs(low - previous.close)));
   }
   if (ranges.length < period) return average(ranges);
@@ -276,7 +261,7 @@ export function adxFromPoints(points: RecommendationPricePoint[], period = 14): 
     .map(point => ({ high: finiteNumber(point.high), low: finiteNumber(point.low), close: finiteNumber(point.close) }))
     .filter((row): row is { high: number; low: number; close: number } =>
       row.high !== null && row.low !== null && row.close !== null && row.high >= row.low);
-  if (rows.length < period * 2 + 1) return null;
+  if (rows.length !== points.length || rows.length < period * 2 + 1) return null;
   let trInit = 0, plusInit = 0, minusInit = 0;
   let smoothedTr = 0, smoothedPlus = 0, smoothedMinus = 0;
   const dxValues: number[] = [];
@@ -673,7 +658,7 @@ export function buildMultiFactorRecommendation(input: BuildRecommendationInput):
   const resistance = highs.length >= 20 ? Math.max(...highs.slice(-20)) : null;
   const priorHigh = highs.length >= 22 ? Math.max(...highs.slice(-21, -1)) : null;
   const priorLow = lows.length >= 22 ? Math.min(...lows.slice(-21, -1)) : null;
-  const volumes = cleanHistory.map(point => finiteNumber(point.volume)).filter((value): value is number => value !== null && value >= 0);
+  const volumes = cleanHistory.slice(-20).map(point => finiteNumber(point.volume)).filter((value): value is number => value !== null && value >= 0);
   const latestVolume = finiteNumber(cleanHistory.at(-1)?.volume);
   const averageVolume20 = volumes.length >= 20 ? average(volumes.slice(-20)) : null;
   const volumeRatio = latestVolume !== null && averageVolume20 && averageVolume20 > 0 ? latestVolume / averageVolume20 : null;

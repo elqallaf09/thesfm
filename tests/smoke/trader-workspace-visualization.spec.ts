@@ -165,6 +165,49 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
     await new Promise<void>(resolve => staticServer.close(() => resolve()));
   });
 
+  for (const language of ['ar', 'en', 'fr'] as const) {
+    test(`news tabs, source evidence, search and symbol actions work in ${language}`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', error => errors.push(error.message));
+      await configureTerminal(page, language, 'light');
+      await mockTraderApi(page);
+      const requests: URL[] = [];
+      await page.route('**/api/market-news?**', async route => {
+        const url = new URL(route.request().url()); requests.push(url);
+        const searched = url.searchParams.get('q') === 'Treasury';
+        await route.fulfill({ json: { ok: true, items: [{
+          id: 'news-proof', title: searched ? 'Treasury market update' : 'Apple market update',
+          summary: 'Source-backed fixture summary', sourceName: 'Reuters', symbols: ['AAPL'],
+          publishedAt: provider.lastUpdated, originalUrl: 'https://example.test/primary',
+          verificationStatus: 'confirmed', independentSourceCount: 2,
+          supportingSources: [{ sourceName: 'Second publication', originalUrl: 'https://example.test/supporting' }],
+        }], lastUpdated: provider.lastUpdated, liveUpdatesAvailable: true } });
+      });
+      await page.goto(`${terminalPath}?route=news`, { waitUntil: 'domcontentloaded' });
+      for (const view of ['data', 'sources', 'issues', 'filters']) {
+        await page.locator(`[data-workspace-scope="news"][data-workspace-tab="${view}"]`).first().click();
+        await expect(page.locator(`#workspace-news-panel-${view}`)).toBeVisible();
+      }
+      await page.locator('input[name="newsSearch"]').fill('Treasury');
+      await page.locator('[data-news-source-filter]').selectOption('Reuters');
+      // Selecting a source must not discard the typed search before submission.
+      await expect(page.locator('input[name="newsSearch"]')).toHaveValue('Treasury');
+      await page.locator('[data-news-search-form] button[type="submit"]').click();
+      const card = page.locator('#workspace-news-panel-data .news-card').first();
+      await expect(card).toContainText('Treasury market update');
+      expect(requests.some(url => url.searchParams.get('q') === 'Treasury' && url.searchParams.get('source') === 'Reuters')).toBe(true);
+      expect(requests[0].searchParams.has('symbols')).toBe(false);
+      await card.locator('summary').click();
+      await expect(card.locator('a[href="https://example.test/primary"]')).toBeVisible();
+      await expect(card.locator('a[href="https://example.test/supporting"]')).toBeVisible();
+      await card.locator('[data-symbol-details="AAPL"]').click();
+      await expect(page.getByRole('dialog', { name: /AAPL/ })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog', { name: /AAPL/ })).toHaveCount(0);
+      expect(errors).toEqual([]);
+    });
+  }
+
   test('shared global preferences update the Trader without local global controls', async ({ page }) => {
     await configureTerminal(page, 'en', 'light');
     await mockTraderApi(page);
@@ -540,7 +583,7 @@ async function openDashboard(page: Page) {
   await expect(page.locator('.command-deck-opportunities [data-symbol-details="AAPL"]')).toBeVisible();
 }
 
-async function configureTerminal(page: Page, language: 'ar' | 'en', theme: 'light' | 'dark') {
+async function configureTerminal(page: Page, language: 'ar' | 'en' | 'fr', theme: 'light' | 'dark') {
   // These isolated provider observations must be fresh relative to the browser
   // clock; stale-observation rejection is covered by trader-signal-evidence.
   await page.clock.setFixedTime(new Date(provider.lastUpdated));

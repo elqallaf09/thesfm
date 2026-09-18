@@ -14,7 +14,7 @@ import {
   mergeConsolidatedStories,
   resetMarketNewsRuntimeForTests,
 } from '@/lib/market-news/engine';
-import { identifyEntities } from '@/lib/market-news/entityResolver';
+import { identifyEntities, revalidateStoredNewsEntities } from '@/lib/market-news/entityResolver';
 import {
   areDuplicateStories,
   calculateImportanceScore,
@@ -215,6 +215,32 @@ describe('market-news entity resolution and classification', () => {
     const result = identifyEntities(item({ symbols: [], companyNames: [], title: 'A company reports market earnings', summary: null }));
     expect(result.symbols).not.toContain('A');
     expect(result.symbols).not.toContain('C');
+  });
+
+  it('does not convert sectors, exchange keywords or prose into company identities', () => {
+    const article = item({ symbols: [], companyNames: [], title: 'Nasdaq rises as Nvidia gains on Amazon deal', summary: 'Energy stocks and data platforms recover. The graph shows market gains.' });
+    const result = identifyEntities(article);
+    expect(result.symbols).toEqual(expect.arrayContaining(['NVDA', 'AMZN']));
+    for (const symbol of ['ABAR', 'ENERGYH', 'IPG', 'NAPESCO', 'SENERGY', 'GRT']) expect(result.symbols).not.toContain(symbol);
+    expect(result.countries).not.toContain('KW');
+    expect(identifyEntities(item({ symbols: [], title: 'Market data someNVDAword', summary: null })).symbols).not.toContain('NVDA');
+  });
+
+  it('retains named Arabic companies, explicit provider symbols and crypto context', () => {
+    expect(identifyEntities(item({ symbols: [], title: 'بيت التمويل الكويتي يعلن نمو الأرباح', summary: null })).symbols).toContain('KFH');
+    expect(identifyEntities(item({ symbols: ['GRT'], title: 'Market update', summary: null })).symbols).toContain('GRT');
+    expect(identifyEntities(item({ symbols: [], title: 'The Graph token gains on blockchain demand', summary: null })).symbols).toContain('GRT');
+  });
+
+  it('revalidates legacy stored associations without changing the publication timestamp', () => {
+    const original = item({ title: 'Nvidia gains as energy stocks rebound', summary: null, symbols: ['NVDA', 'ENERGYH'], countries: ['US', 'KW'], marketCodes: ['US', 'Boursa Kuwait - Main Market'], processingVersion: 'market-news-v1' });
+    const repaired = revalidateStoredNewsEntities(original);
+    expect(repaired.symbols).toContain('NVDA');
+    expect(repaired.symbols).not.toContain('ENERGYH');
+    expect(repaired.countries).not.toContain('KW');
+    expect(repaired.marketCodes).not.toContain('Boursa Kuwait - Main Market');
+    expect(repaired.publishedAt).toBe(original.publishedAt);
+    expect(original.symbols).toContain('ENERGYH');
   });
 
   it('classifies events and keeps importance separate from source reliability', () => {
