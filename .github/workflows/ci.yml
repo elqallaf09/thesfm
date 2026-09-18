@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Superseded PR heads cannot be merged, so stop their redundant full builds and
+# browser runs. Main runs retain unique groups and are never canceled by a PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   typecheck:
     name: CI/TypeScript check
