@@ -9,10 +9,11 @@ export type TechStockPrice = {
   price: number | null;
   changePercent: number | null;
   change: number | null;
-  source: 'Finnhub' | 'Yahoo Finance';
+  source: 'Finnhub' | 'Yahoo Finance' | 'Twelve Data';
   delayed: true;
   available: boolean;
   unavailableReason?: string;
+  asOf?: string | null;
 };
 
 type FinnhubQuote = {

@@ -10,8 +10,10 @@ vi.mock('@/lib/server/globalMarketListingSources', () => ({
   })),
 }));
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: vi.fn(() => null) }));
+vi.mock('@/lib/server/regionalMarketDirectory', () => ({ getRegionalMarketDirectory: vi.fn(async () => ({ rows: [], source: 'https://api.twelvedata.com/stocks', status: 'unavailable', reason: 'source_unavailable', checkedAt: '2026-09-18T00:00:00Z', lastSyncAt: null, sourceRecords: null, excludedRecords: null })) }));
 import { loadGlobalDirectory, paginateGlobalDirectory } from '@/lib/server/globalMarketDirectory';
 import { GET } from '@/app/api/market-directory/route';
+import { getRegionalMarketDirectory } from '@/lib/server/regionalMarketDirectory';
 
 describe('Official exchange listing parsers', () => {
   it('uses the supplied sector dictionary, not obsolete numeric sector assumptions', () => {
@@ -74,6 +76,16 @@ describe('Global Markets directory', () => {
     const absent = await loadGlobalDirectory('egypt_egx');
     expect(absent.rows).toEqual([]);
     expect(absent.coverage[0]).toMatchObject({ count: 0, status: 'unavailable' });
+  });
+  it('expands regional directories while keeping proven quote mappings and unknown exchange totals', async () => {
+    vi.mocked(getRegionalMarketDirectory).mockResolvedValueOnce({ rows: [
+      { symbol: '2222', providerSymbol: 'TD:XSAU:2222', name: 'Saudi Aramco', currency: 'SAR' },
+      { symbol: '1010', providerSymbol: 'TD:XSAU:1010', name: 'Riyad Bank', currency: 'SAR' },
+    ], source: 'https://api.twelvedata.com/stocks?mic_code=XSAU', status: 'directory', checkedAt: '2026-09-18T00:00:00Z', lastSyncAt: '2026-09-18T00:00:00Z', sourceRecords: 2, excludedRecords: 0 });
+    const result = await loadGlobalDirectory('saudi_tadawul');
+    expect(result.rows.map(row => row.providerSymbol)).toEqual(['2222.SR', 'TD:XSAU:1010']);
+    expect(result.rows[0].nameAr).toBe('أرامكو السعودية');
+    expect(result.coverage[0]).toMatchObject({ count: 2, status: 'directory', expectedCount: null, asOf: null });
   });
   it('the API returns a bounded page and rejects unknown exchanges', async () => {
     const response = await GET(new Request('https://example.com/api/market-directory?exchange=china_szse&limit=12'));
