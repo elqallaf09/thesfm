@@ -79,6 +79,21 @@ beforeEach(() => {
 });
 
 describe('SFM trader quote adapter', () => {
+  it.each([
+    [{ precision: 'date' as const, marketOpen: true }, 'daily'],
+    [{ precision: 'instant' as const, marketOpen: false }, 'market_closed'],
+  ])('keeps %s as reference evidence without publishing trading targets', async (observation, kind) => {
+    const source = quote(); source.provenance.observation = observation;
+    mocks.quote.mockResolvedValue(source);
+    mocks.history.mockResolvedValue({ ok: true, candles: candles(220), attempts: [] });
+    const result = await fetchSfmTraderQuotesDetailed(['AAPL']);
+    expect(result.quotes[0]).toMatchObject({ available: false, price: null, lastKnownPrice: 320,
+      priceReference: { kind, price: 320, changePercent: 0.63, volume: 48_000_000, observedAt: source.provenance.observedAt },
+      technicalAsOf: candles(220).at(-1)?.date, technicalAvailable: true,
+      signalAvailable: false, confidence: null, targetPrice: null, stopLoss: null });
+    expect(result.provider).toBe('finnhub');
+    expect(result.cacheStatus).toBe('partial');
+  });
   it('withholds a current recommendation when the quote is stale even with a full history', async () => {
     const stale = quote();
     stale.quality.state = 'stale';

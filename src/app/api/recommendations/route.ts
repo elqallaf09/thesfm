@@ -1,4 +1,5 @@
 import { observedQuoteProvider } from '@/lib/trader/observedQuoteProvider';
+import { recommendationEvidence } from '@/lib/trader/quoteEvidence';
 import { NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
 import { computeCompleteness } from '@/lib/market-state/completeness';
@@ -31,8 +32,9 @@ function clampInteger(value: string | null, fallback: number, min: number, max: 
   return Math.min(max, Math.max(min, Math.trunc(parsed)));
 }
 
-function priceProviderStatus(quoteLoad: Awaited<ReturnType<typeof fetchTraderQuotesDetailed>>, resultCount: number) {
+function priceProviderStatus(quoteLoad: Awaited<ReturnType<typeof fetchTraderQuotesDetailed>>, resultCount: number, evidenceCount: number) {
   if (resultCount > 0) return 'available' as const;
+  if (evidenceCount > 0) return 'partial' as const;
   if (quoteLoad.summary.skippedDueToRateLimit > 0 || quoteLoad.failed.some(item => /rate|limit|429/i.test(item.reason))) {
     return 'rate_limited' as const;
   }
@@ -379,6 +381,8 @@ async function handleRecommendations(request: Request) {
     price: q.price,
     currentPrice: q.price,
     lastKnownPrice: nullableNumber(quoteRecord.lastKnownPrice),
+    priceReference: quoteRecord.priceReference ?? null,
+    technicalAsOf: quoteRecord.technicalAsOf ?? null,
     upstreamSource: quoteRecord.upstreamSource ?? null,
     change: q.change,
     changePercent: q.changePercent,
@@ -613,13 +617,10 @@ async function handleRecommendations(request: Request) {
     .filter((value): value is string => typeof value === 'string' && Number.isFinite(Date.parse(value)))
     .sort((a, b) => Date.parse(a) - Date.parse(b));
   const featureAsOf = timestamps[0] ?? null;
-  const sufficientRecommendationCount = pageRecommendations.filter(row => {
-    const sufficiency = (row as { dataSufficiency?: { sufficient?: boolean } }).dataSufficiency;
-    return row.available === true && isValidPrice(row.price) && sufficiency?.sufficient === true;
-  }).length;
+  const { referencePriceCount, historicalAnalysisCount, evidenceCount, sufficientRecommendationCount } = recommendationEvidence(pageRecommendations);
   const analysisStatus: ResearchOrAnalysisStatus = selectedMeta.length === 0
     ? 'not_started'
-    : availablePriceCount === 0
+    : evidenceCount === 0
       ? 'failed'
       : sufficientRecommendationCount === 0
         ? 'insufficient_data'
@@ -628,7 +629,7 @@ async function handleRecommendations(request: Request) {
           : 'completed';
   const rawProviderStatus = selectedMeta.length === 0
     ? 'connected'
-    : priceProviderStatus(quoteLoad, availablePriceCount);
+    : priceProviderStatus(quoteLoad, availablePriceCount, evidenceCount);
   const diagnostic = createMarketFeatureDiagnostic({
     feature: 'prices',
     provider: quoteLoad.provider ?? connectedProvider.active ?? connectedProvider.provider,
@@ -647,7 +648,7 @@ async function handleRecommendations(request: Request) {
     rateLimited: quoteLoad.summary.skippedDueToRateLimit > 0,
   });
   const requestFailed = selectedMeta.length > 0
-    && availablePriceCount === 0
+    && evidenceCount === 0
     && quoteLoad.failed.length > 0
     && quoteLoad.summary.skippedDueToRateLimit === 0;
   const normalizedStatus = normalizeFeatureDataStatus({
@@ -681,7 +682,7 @@ async function handleRecommendations(request: Request) {
       ...(fallbackUsed ? [{ code: 'fallback_used', messageKey: 'market_provider_role_fallback' }] : []),
       ...(cached ? [{ code: 'cached_data', messageKey: 'market_cached_data' }] : []),
       ...(delayed ? [{ code: 'delayed_data', messageKey: 'market_prices_delayed' }] : []),
-      ...(sufficientRecommendationCount < selectedMeta.length && availablePriceCount > 0
+      ...(sufficientRecommendationCount < selectedMeta.length && evidenceCount > 0
         ? [{ code: 'insufficient_analysis_data', messageKey: 'market_analysis_insufficient' }]
         : []),
     ],
@@ -690,6 +691,8 @@ async function handleRecommendations(request: Request) {
 
   return NextResponse.json({
     ...diagnostic,
+    lastUpdated: featureAsOf, updatedAt: featureAsOf,
+    diagnostics: { ...diagnostic.diagnostics, lastUpdated: featureAsOf },
     envelope,
     analysisStatus,
     legacyDataOmitted: url.searchParams.get('legacyData') !== '1',
@@ -779,6 +782,7 @@ async function handleRecommendations(request: Request) {
       totalFilteredSymbols: filteredMeta.length,
       loaded: selectedMeta.length,
       availableWithPrice: availablePriceCount,
+      referencePriceCount, historicalAnalysisCount, sufficientRecommendationCount,
       unavailablePrice: unavailableCount,
       failed: quoteLoad.failed.length,
       lastUpdated: featureAsOf,

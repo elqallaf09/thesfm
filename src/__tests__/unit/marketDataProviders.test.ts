@@ -34,6 +34,33 @@ function clearProviderKeys() {
 }
 
 describe('market data provider fallback', () => {
+  it('retains precise observation time and delay class across quote cache hits', async () => {
+    clearProviderKeys(); vi.stubEnv('TWELVE_DATA_API_KEY', 'test');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      close: '102', currency: 'USD', datetime: '2026-09-18', is_market_open: true,
+      last_quote_at: Date.parse('2026-09-18T14:30:00Z') / 1000,
+    }), { status: 200 }));
+    const { getQuoteWithFallback } = await import('@/lib/market/marketDataProviders');
+    const context = { assetType: 'stock', excludeProviders: ['yahoo' as const] };
+    const first = await getQuoteWithFallback('AAPL', 'us-stocks', context);
+    const second = await getQuoteWithFallback('AAPL', 'us-stocks', context);
+    for (const result of [first, second]) {
+      expect(result.ok).toBe(true); if (!result.ok) throw new Error('Expected quote');
+      expect(result.data.lastUpdated).toBe('2026-09-18T14:30:00.000Z');
+      expect(result.data.delayType).toBe('delayed');
+    }
+    expect(second.ok && second.data.cached).toBe(true);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(new URL(String(fetchMock.mock.calls[0][0])).searchParams.get('timezone')).toBe('UTC');
+  });
+
+  it('does not stamp an undated price with the request time', async () => {
+    clearProviderKeys(); vi.stubEnv('TWELVE_DATA_API_KEY', 'test');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ close: '102', currency: 'USD' }), { status: 200 }));
+    const { getQuoteWithFallback } = await import('@/lib/market/marketDataProviders');
+    const result = await getQuoteWithFallback('AAPL', 'us-stocks', { excludeProviders: ['yahoo'] });
+    expect(result.ok && result.data.lastUpdated).toBeNull();
+  });
   it.each(['1d', '1day', 'D', '1h'])('requests supported Twelve Data history for %s with room for SMA 200', async interval => {
     clearProviderKeys();
     vi.stubEnv('TWELVE_DATA_API_KEY', 'test');

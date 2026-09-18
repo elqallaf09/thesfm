@@ -1,5 +1,6 @@
 export type MarketFeatureDiagnosticStatus =
   | 'available'
+  | 'partial'
   | 'empty'
   | 'rate_limited'
   | 'unauthorized'
@@ -42,6 +43,7 @@ type MarketFeatureDiagnosticInput<T = unknown> = {
 
 const STATUS_MESSAGES_AR: Record<MarketFeatureDiagnosticStatus, string> = {
   available: 'البيانات متاحة لهذه الميزة',
+  partial: 'تتوفر بيانات مرجعية أو تاريخية؛ البيانات الحالية غير مكتملة',
   empty: 'لا توجد بيانات ضمن الفترة المحددة',
   rate_limited: 'تم الوصول إلى حد استخدام مزود البيانات مؤقتاً',
   unauthorized: 'هذه البيانات غير متاحة في الخطة الحالية لمزود البيانات',
@@ -57,6 +59,7 @@ export function normalizeProviderApiStatus(input?: string | null): MarketFeature
   const status = String(input ?? '').trim().toLowerCase();
   if (!status) return 'provider_error';
   if (['available', 'success', 'connected', 'healthy', 'configured'].includes(status)) return 'available';
+  if (status === 'partial') return 'partial';
   if (['empty', 'no_data', 'no_results', 'not_found'].includes(status)) return 'empty';
   if (['rate_limited', 'provider_rate_limited', 'http_429', '429', 'limit', 'limited'].includes(status)) return 'rate_limited';
   if ([
@@ -79,7 +82,7 @@ export function createMarketFeatureDiagnostic<T = unknown>(
   providerStatus: MarketFeatureDiagnosticStatus;
   resultCount: number;
   total: number;
-  dataQuality: 'available' | 'unavailable';
+  dataQuality: 'available' | 'partial' | 'unavailable';
   providerMessage: string;
   updatedAt: string;
   generatedAt: string;
@@ -96,7 +99,7 @@ export function createMarketFeatureDiagnostic<T = unknown>(
   const count = Number.isFinite(Number(input.count)) ? Number(input.count) : data.length;
   const requestedStatus = normalizeProviderApiStatus(input.status ?? input.providerStatus);
   const status = requestedStatus === 'available' && count <= 0 ? 'empty' : requestedStatus;
-  const ok = status === 'available' && count > 0;
+  const ok = (status === 'available' || status === 'partial') && count > 0;
   const generatedAt = new Date().toISOString();
   const lastUpdated = input.lastUpdated || generatedAt;
   const message = hasArabicText(input.message)
@@ -115,7 +118,7 @@ export function createMarketFeatureDiagnostic<T = unknown>(
     count,
     resultCount: count,
     total: count,
-    dataQuality: ok ? 'available' : 'unavailable',
+    dataQuality: ok ? status === 'partial' ? 'partial' : 'available' : 'unavailable',
     message,
     providerMessage: message,
     lastUpdated,

@@ -60,11 +60,13 @@ export function assessSfmQuoteQuality(quote: NormalizedMarketQuote | null, now =
   const missingFields = QUOTE_FIELDS.filter(field => !isPresent(quote[field])).map(String);
   const completenessPercent = Math.round(((QUOTE_FIELDS.length - missingFields.length) / QUOTE_FIELDS.length) * 100);
   const freshnessSeconds = quoteFreshnessSeconds(quote.lastUpdated, now);
-  const stale = freshnessSeconds === null || freshnessSeconds > freshnessLimitSeconds(quote.delayType);
+  const future = Boolean(quote.lastUpdated && Date.parse(quote.lastUpdated) > now.getTime() + 60_000);
+  const stale = future || freshnessSeconds === null || freshnessSeconds > freshnessLimitSeconds(quote.delayType);
   const reasons: string[] = [];
 
   if (missingFields.length) reasons.push(`Missing fields: ${missingFields.join(', ')}.`);
   if (stale) reasons.push('The upstream observation is stale or has no trustworthy observation time.');
+  if (future) reasons.push('The observation timestamp is in the future.');
   if (quote.cached) reasons.push('The value was served from an upstream/fallback cache.');
 
   let state: SfmMarketQuality['state'];
