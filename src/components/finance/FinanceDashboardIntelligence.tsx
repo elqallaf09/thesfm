@@ -162,7 +162,7 @@ export function FinanceDashboardIntelligence() {
           : loadUserDataTables(supabase, user.id, ECONOMIC_INTELLIGENCE_TABLES));
       if (cancelled) return;
       const records = result.records as Record<string, any[]>;
-      const snapshot = buildFinancialTwinSnapshot(financialTwinSourceFromRecords(records), currency || 'KWD');
+      const snapshot = buildFinancialTwinSnapshot(financialTwinSourceFromRecords(records, result.errors), currency || 'KWD');
       const forecast = forecastFinancialTwin(snapshot, 12);
       const goals = (records.goals ?? []).map((row) => summarizeGoal(row, currency || 'KWD')).filter((goal) => goal.title);
       setState({ loading: false, snapshot, forecast, goals, errors: Object.keys(result.errors ?? {}) });

@@ -33,7 +33,9 @@ export function aiProviderEnv(name: string) {
 }
 
 function providerTimeoutMs() {
-  const parsed = Number(aiProviderEnv('SFM_AI_TIMEOUT_MS'));
+  const configured = aiProviderEnv('SFM_AI_TIMEOUT_MS');
+  if (!configured) return DEFAULT_TIMEOUT_MS;
+  const parsed = Number(configured);
   if (!Number.isFinite(parsed)) return DEFAULT_TIMEOUT_MS;
   return Math.min(25_000, Math.max(5_000, Math.trunc(parsed)));
 }
@@ -239,21 +241,16 @@ async function requestCompletion(input: {
 }): Promise<GenerationResult | null> {
   for (const current of input.candidates) {
     try {
-      const response = await withProviderTimeout(signal => fetch(completionURL(current.baseURL), {
-        method: 'POST',
-        headers: headers(current.apiKey),
-        redirect: 'error',
-        cache: 'no-store',
-        signal,
-        body: JSON.stringify({
-          model: current.model,
-          stream: false,
-          max_tokens: input.maxTokens,
-          messages: input.messages,
-        }),
-      }));
-      if (!response.ok) throw providerHttpError(response.status);
-      const text = textFromCompletion(await response.json().catch(() => null));
+      // A provider can send headers and then stall while generating its body.
+      // The deadline must cover consumption too, before trying the next node.
+      const text = await withProviderTimeout(async signal => {
+        const response = await fetch(completionURL(current.baseURL), {
+          method: 'POST', headers: headers(current.apiKey), redirect: 'error', cache: 'no-store', signal,
+          body: JSON.stringify({ model: current.model, stream: false, max_tokens: input.maxTokens, messages: input.messages }),
+        });
+        if (!response.ok) throw providerHttpError(response.status);
+        return textFromCompletion(await response.json().catch(() => null));
+      });
       if (!text) throw new Error('AI_PROVIDER_EMPTY_RESPONSE');
       return { text, provider: current.provider, model: current.model };
     } catch (error) {

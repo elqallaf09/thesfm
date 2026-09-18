@@ -69,7 +69,7 @@
 - Verified Economic Intelligence API protection, provenance privacy, historical snapshot separation and non-causal drift semantics
 - Added `docs/economic-intelligence-integrity-audit.md` with scope, findings, fixes and remaining semantic cleanup
 
-## Next — Phase 7.35 — Production Hardening
+## Phase 7.35 — Production Hardening — release verification in progress
 - Audit authenticated/RLS isolation for Economic Intelligence source tables and durable notifications
 - Verify server-only boundaries for secrets/provider credentials and admin clients
 - Normalize cache/no-store behavior, rate limits, retries/timeouts and 401/403/429/5xx error contracts
@@ -98,9 +98,9 @@ The saved August 2 development plan and the earlier global/Gulf economic-platfor
 | Order | Workstream | Release acceptance |
 | --- | --- | --- |
 | P0 — shipped, PR #179 | Market and trading reliability | Valid quotes survive independent history failures; category scans are shared; successful exchanges are retained; directory versus selected-list coverage is visible; quick analysis passed phone and desktop checks. Production commit: `3693b10`. |
-| P0 — current release | Regional source coverage and quote recovery | Connect Saudi/ADX/Qatar/Egypt reference directories with strict identity/currency validation; preserve proven quote mappings; record retrieval/error metadata; display quote availability for shown results; recover partial quote responses; bound provider concurrency and cache degraded results briefly. See the [implementation and source audit](regional-market-coverage-2026-09-18.md). |
-| P0 — remaining | Complete source coverage and durable operations | Bahrain/Oman/Jordan/Morocco remain unconnected or selected lists. Independently verify expected exchange totals, resolve quote entitlements, and persist aggregate source-health/429 counters across instances without storing user searches. Directory access alone is not complete or real-time price coverage. |
-| P0 — next | Production hardening, Phase 7.35 | Complete authenticated account-isolation checks, timeout/cache contracts, source failures and real-user performance checks; keep documented failures separate from accepted release gates. |
+| P0 — shipped, PR #182 | Regional source coverage and quote recovery | Connect Saudi/ADX/Qatar/Egypt reference directories with strict identity/currency validation; preserve proven quote mappings; record retrieval/error metadata; display quote availability for shown results; recover partial quote responses; bound provider concurrency and cache degraded results briefly. See the [implementation and source audit](regional-market-coverage-2026-09-18.md). |
+| P0 — remaining | Complete source coverage and durable operations | Bahrain/Oman/Jordan/Morocco remain unconnected or selected lists. Independently verify expected exchange totals and resolve remaining quote entitlements. This release adds durable resolved-quote counters; they include cached results and do not measure every upstream attempt. Directory access alone is not complete or real-time price coverage. |
+| P0 — current release | Production hardening, Phase 7.35 | Complete authenticated account-isolation checks, timeout/cache contracts, source failures and real-user performance checks; keep documented failures separate from accepted release gates. |
 | P1 | Property market research | Use the four connected official contexts for searchable records. Enable valuation jurisdiction by jurisdiction only after rights, reliable area, arm's-length sales, comparable type, freshness, currency and historical backtesting pass. Kuwait reuse approval remains external work. |
 | P1 | Investment and personal finance workflows | Complete asset identity/document/history flows, imports/exports, onboarding, finance calculations and zakat/khums methodology. Require evidence-linked results and private account ownership. |
 | P1 | Economic command center and advisors | Consolidate news, market/portfolio context, cash flow, material events and scenario assumptions in one daily brief. Repair analyst streaming/duplicate requests before expanding advisor features. |
@@ -116,3 +116,16 @@ Cost controls apply throughout: request only the data a view needs, reuse succes
 3. Property: finish one jurisdiction's valuation evidence gate before presenting any automatic valuation as available. Research remains separate.
 4. Finance/investment: audit the existing import/export, document/history and calculation flows against the saved plan, then implement confirmed gaps.
 5. Daily brief and advisors, business actual-versus-plan, then membership/distribution features. Existing implementations must be evaluated before new feature work is marked complete.
+
+## September 18 completion pass
+
+See [the completion audit](economic-platform-completion-2026-09-18.md) for implemented fixes, release evidence, and dependencies that remain open. Preserve PR #181's production news/history/indicator fixes and PR #182's reference-directory expansion. This pass completes the demonstrated reliability repairs; it does not certify universal exchange coverage or enable unsupported property valuation.
+
+- Recover verified Saudi/Qatar directory reference prices after primary-source failure. Keep source identity, currency, timestamp and delay labels.
+- Store anonymous daily aggregate quote outcomes behind service-only writes and the existing admin route.
+- Expand real two-account isolation checks to eleven user-owned tables, harden non-row privileges and function resolution, and bound evidence/AI loading.
+- Reject failed or truncated financial snapshots and do not treat watchlists as current market observations.
+- Require qualified, fresh, distinct transaction evidence for the property valuation foundation; research contexts remain available.
+- Correct short-month payroll dates and neutralize formulas in business CSV text.
+
+Remaining sequence: verify provider coverage/rights and exchange totals; qualify one property's jurisdiction and backtest; finish finance currency/import workflow audit and canonical-investment cutover gates; then define membership/community/referral acceptance criteria and mobile/TV release requirements. Existing workflows are retained; these larger product tracks are not represented as shipped by this reliability release.

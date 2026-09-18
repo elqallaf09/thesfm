@@ -13,6 +13,13 @@ const users = [];
 const passed = [];
 const marker = `ei-isolation-${randomUUID()}`;
 const descriptors = [
+  ...['expense_items', 'savings_items', 'investment_items', 'projects'].map(table => ({
+    table, row: userId => ({ user_id: userId, name: marker }), patch: { name: `${marker}-updated` },
+  })),
+  { table: 'monthly_income_sources', row: userId => ({ user_id: userId, category: 'salary', amount: 1, currency: 'KWD' }), patch: { amount: 2 } },
+  { table: 'financial_goals', row: userId => ({ user_id: userId, goal: marker }), patch: { goal: `${marker}-updated` } },
+  { table: 'market_watchlist', row: userId => ({ user_id: userId, symbol: 'SFMTEST', asset_type: 'stock' }), patch: { symbol: 'SFMTEST2' } },
+  { table: 'debts', row: userId => ({ user_id: userId, name: marker, creditor_name: marker, original_amount: 10, remaining_amount: 10, monthly_payment: 1, start_date: '2026-01-01', currency: 'KWD', auto_add_to_expenses: false }), patch: { name: `${marker}-updated` } },
   {
     table: 'user_decisions',
     row: userId => ({ user_id: userId, decision_title: marker, decision_type: 'other', amount: 1, currency: 'KWD', inputs: { isolated_test: marker }, analysis: {}, status: 'draft' }),
@@ -126,6 +133,20 @@ try {
   const second = await makeUser('B');
   assert.notEqual(first.id, second.id);
   for (const descriptor of descriptors) await checkTable(descriptor, first, second);
+  const healthArgs = { p_checks: [{ mic: 'XSAU', provider: 'twelve_data', outcome: 'available', checks: 1 }] };
+  const beforeHealth = successful(await admin.from('market_source_health_daily').select('checks').eq('mic', 'XSAU').eq('provider', 'twelve_data').eq('outcome', 'available'), 'aggregate baseline');
+  const beforeTotal = beforeHealth.reduce((sum, row) => sum + Number(row.checks), 0);
+  await Promise.all(Array.from({ length: 8 }, async () => successful(await admin.rpc('record_market_source_health', healthArgs), 'concurrent aggregate')));
+  const afterHealth = successful(await admin.from('market_source_health_daily').select('checks').eq('mic', 'XSAU').eq('provider', 'twelve_data').eq('outcome', 'available'), 'aggregate final');
+  assert.equal(afterHealth.reduce((sum, row) => sum + Number(row.checks), 0), beforeTotal + 8);
+  record('source-health counters preserve concurrent increments');
+  for (const client of [anonymous, first.client, second.client]) {
+    const read = await client.from('market_source_health_daily').select('*');
+    assert.ok(read.error?.code === '42501' || (!read.error && read.data.length === 0));
+    const write = await client.rpc('record_market_source_health', healthArgs);
+    assert.ok(['42501', 'PGRST202'].includes(write.error?.code));
+    record('source-health aggregates are unavailable to application identities');
+  }
 } catch (error) {
   failure = error;
 } finally {

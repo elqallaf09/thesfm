@@ -61,4 +61,17 @@ describe('economic advisor shared SFM private transport', () => {
     expect(mocks.grounding).not.toHaveBeenCalled();
     expect(mocks.reply).not.toHaveBeenCalled();
   });
+
+  it('keeps quota errors private and returns a bounded failure when usage tracking rejects', async () => {
+    mocks.usage.mockResolvedValueOnce({ allowed: false });
+    const limited = await POST(req());
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get('cache-control')).toBe('private, no-store');
+    mocks.usage.mockRejectedValueOnce(new Error('private database details'));
+    const failed = await POST(req());
+    expect(failed.status).toBe(503);
+    expect(await failed.json()).toMatchObject({ error: { code: 'AI_USAGE_UNAVAILABLE' } });
+    expect(failed.headers.get('cache-control')).toBe('private, no-store');
+    expect(mocks.reply).not.toHaveBeenCalled();
+  });
 });

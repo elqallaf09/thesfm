@@ -71,7 +71,7 @@ export function EconomicIntelligenceHome() {
       ]);
       if (cancelled) return;
       const records = finance.records as Record<string, any[]>;
-      const snapshot = buildFinancialTwinSnapshot(financialTwinSourceFromRecords(records), currency || 'KWD');
+      const snapshot = buildFinancialTwinSnapshot(financialTwinSourceFromRecords(records, finance.errors), currency || 'KWD');
       const goals = (records.goals ?? []).map((row) => summarizeGoal(row, currency || 'KWD')).filter((goal) => goal.title);
       const decisions = (saved.data ?? []).map((row: any) => ({ id: row.id, title: row.decision_title || '', status: row.status, riskScore: Number(row.risk_score ?? 0), updatedAt: row.updated_at }));
       setState({ loading: false, snapshot, goals, decisions });
