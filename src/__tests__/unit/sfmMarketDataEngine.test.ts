@@ -87,6 +87,14 @@ describe('SFM Market Data Engine v1', () => {
     expect(quality.reasons.join(' ')).toMatch(/stale/i);
   });
 
+  it('withholds freshness for future or missing source timestamps', () => {
+    const now = new Date('2026-09-16T15:00:00Z');
+    expect(assessSfmQuoteQuality(completeQuote({ lastUpdated: null }), now).state).toBe('stale');
+    const future = assessSfmQuoteQuality(completeQuote({ lastUpdated: '2026-09-17T15:00:00Z' }), now);
+    expect(future.state).toBe('stale');
+    expect(future.reasons.join(' ')).toMatch(/future/);
+  });
+
   it('derives technical indicators only when enough history exists', () => {
     const snapshot = buildSfmTechnicalSnapshot(candles(60), 'finnhub', 161);
 

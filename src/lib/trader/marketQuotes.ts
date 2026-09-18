@@ -70,7 +70,7 @@ export type TraderQuoteLoadResult = {
   provider: TraderQuoteProvider | null;
   reason: string | null;
   providerLatencyMs: Partial<Record<TraderQuoteProvider, number>>;
-  cacheStatus: 'live' | 'provider-cache' | 'not_configured';
+  cacheStatus: 'live' | 'provider-cache' | 'partial' | 'not_configured';
   summary: {
     loadedSymbols: number;
     failedSymbols: number;

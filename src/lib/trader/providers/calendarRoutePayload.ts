@@ -27,6 +27,7 @@ const EMPTY_MESSAGES_AR: Record<TraderCalendarFeature, string> = {
 
 const STATUS_MESSAGES_AR: Record<MarketFeatureDiagnosticStatus, string> = {
   available: 'البيانات متاحة لهذه الميزة',
+  partial: 'البيانات متاحة جزئياً لهذه الميزة',
   empty: 'لا توجد بيانات ضمن الفترة المحددة',
   rate_limited: 'تم الوصول إلى حد استخدام مزود البيانات مؤقتاً',
   unauthorized: 'هذه البيانات غير متاحة في الخطة الحالية لمزود البيانات',
