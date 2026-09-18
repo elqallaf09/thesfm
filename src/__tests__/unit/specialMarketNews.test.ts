@@ -31,7 +31,7 @@ function story(title: string, extra: Partial<ConsolidatedNewsStory> = {}) {
 function request(params: string) { return new NextRequest(`https://www.the-sfm.com/api/market/special-news?${params}`); }
 
 beforeEach(() => { vi.clearAllMocks(); mocked.quotes.mockResolvedValue(new Map()); });
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); });
 
 describe('special news data and independent quotes', () => {
   it('returns relevant articles before quote or translation providers finish', async () => {
