@@ -49,8 +49,8 @@ function symbolMentioned(text: string, symbol: string, explicitProviderSymbols: 
   if (!clean) return false;
   if (explicitProviderSymbols.has(clean)) return true;
   const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (clean.length <= 2) return new RegExp(`(?:^|[^A-Z0-9])\\$${escaped}(?:$|[^A-Z0-9])`, 'i').test(text);
-  return new RegExp(`(?:^|[^A-Z0-9])${escaped}(?:$|[^A-Z0-9])`).test(text);
+  if (clean.length <= 2) return new RegExp(`(?:^|[^A-Za-z0-9])\\$${escaped}(?:$|[^A-Za-z0-9])`, 'i').test(text);
+  return new RegExp(`(?:^|[^A-Za-z0-9])${escaped}(?:$|[^A-Za-z0-9])`).test(text);
 }
 
 function phraseMentioned(text: string, phrase: string) {

@@ -223,6 +223,7 @@ describe('market-news entity resolution and classification', () => {
     expect(result.symbols).toEqual(expect.arrayContaining(['NVDA', 'AMZN']));
     for (const symbol of ['ABAR', 'ENERGYH', 'IPG', 'NAPESCO', 'SENERGY', 'GRT']) expect(result.symbols).not.toContain(symbol);
     expect(result.countries).not.toContain('KW');
+    expect(identifyEntities(item({ symbols: [], title: 'Market data someNVDAword', summary: null })).symbols).not.toContain('NVDA');
   });
 
   it('retains named Arabic companies, explicit provider symbols and crypto context', () => {
