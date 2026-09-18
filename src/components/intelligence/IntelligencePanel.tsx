@@ -1,4 +1,6 @@
 'use client';
+import { useId } from 'react';
+import { ContextFactorEvidence, contextDirectionLabel } from './ContextFactorEvidence';
 
 import { AlertTriangle, BrainCircuit, CheckCircle2, ChevronDown, Database, RefreshCw, ShieldAlert } from 'lucide-react';
 import type {
@@ -224,6 +226,7 @@ export function IntelligencePanel({
   onRetry,
   showStatus = true,
 }: IntelligencePanelProps) {
+  const ledgerId = useId();
   const { lang, dir } = useLanguage();
   const locale = localeOf(lang);
   const copy = COPY[locale];
@@ -265,7 +268,7 @@ export function IntelligencePanel({
       : copy.unchanged;
 
   return (
-    <section className={styles.panel} dir={dir} aria-labelledby="intelligence-ledger-title">
+    <section className={styles.panel} dir={dir} aria-labelledby={ledgerId}>
       <header className={styles.header}>
         <div className={styles.identity}>
           <AssetIdentity
@@ -280,7 +283,7 @@ export function IntelligencePanel({
           />
           <div className={styles.title}>
             <span><BrainCircuit size={16} aria-hidden="true" />{copy.title}</span>
-            <small id="intelligence-ledger-title">{copy.subtitle}</small>
+            <small id={ledgerId}>{copy.subtitle}</small>
           </div>
         </div>
         <span className={`${styles.recommendation} ${recommendationTone}`}>
@@ -325,8 +328,9 @@ export function IntelligencePanel({
               <div><strong>{FACTORS[locale][factor.factor]}</strong><span>{STATE_LABELS[locale][factor.availability]}</span></div>
               <div className={styles.factorScore}>
                 <b dir="ltr">{factor.normalizedScore === null ? '—' : `${factor.normalizedScore > 0 ? '+' : ''}${number(factor.normalizedScore, 0)}`}</b>
-                <small>{STATE_LABELS[locale][factor.directionalBias]}</small>
+                <small>{factor.directionalBias === 'UNAVAILABLE' && factor.availability !== 'UNAVAILABLE' ? contextDirectionLabel(locale) : STATE_LABELS[locale][factor.directionalBias]}</small>
               </div>
+              <ContextFactorEvidence factor={factor} locale={locale} />
             </article>
           ))}
         </div>

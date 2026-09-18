@@ -51,7 +51,7 @@ function getSupabaseServerClient() {
 }
 
 function cleanSearchTerm(value: string) {
-  return value.trim().replace(/[%,]/g, '').slice(0, 64);
+  return value.trim().replace(/[%,]/g, '').slice(0, 160);
 }
 
 function compactSearchText(value: unknown) {
