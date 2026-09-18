@@ -11,13 +11,13 @@ import {
   CircleDollarSign,
   Droplets,
   Flame,
-  Gem,
   Landmark,
   LineChart,
   House,
   WalletCards,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { isPreciousMetal, PRECIOUS_METAL_VISUALS } from '@/lib/preciousMetalVisuals';
 import { cacheAssetLogoFailure, isAssetLogoFailureCached } from '@/lib/assetLogoFailureCache';
 import { getAssetVisualMeta, type AssetVisualInput, type AssetVisualMeta, type AssetVisualType } from '@/lib/assetVisuals';
 
@@ -61,6 +61,8 @@ const toneClass: Record<AssetVisualType, string> = {
   commodity: 'border-border bg-surface-muted text-foreground-secondary',
   gold: 'border-warning/25 bg-warning-soft text-warning',
   silver: 'border-border bg-surface-muted text-foreground-secondary',
+  platinum: 'border-border bg-surface-muted text-foreground-secondary',
+  palladium: 'border-border bg-surface-muted text-foreground-secondary',
   oil: 'border-border-strong bg-surface-muted text-foreground',
   gas: 'border-accent/25 bg-accent-soft text-foreground-secondary',
   index: 'border-primary/25 bg-primary-soft text-primary',
@@ -77,7 +79,7 @@ function IconForType({ meta, size }: { meta: AssetVisualMeta; size: AssetAvatarS
   if (meta.iconKind === 'forex') return <CircleDollarSign size={pixels} />;
   if (meta.iconKind === 'etf' || meta.iconKind === 'fund') return <BadgeDollarSign size={pixels} />;
   if (meta.iconKind === 'index') return <LineChart size={pixels} />;
-  if (meta.iconKind === 'gold' || meta.iconKind === 'silver') return <Gem size={pixels} />;
+  if (isPreciousMetal(meta.iconKind)) return <span aria-hidden="true">{PRECIOUS_METAL_VISUALS[meta.iconKind].symbol}</span>;
   if (meta.iconKind === 'oil') return <Droplets size={pixels} />;
   if (meta.iconKind === 'gas') return <Flame size={pixels} />;
   if (meta.iconKind === 'commodity') return <ChartCandlestick size={pixels} />;
@@ -179,7 +181,7 @@ export function AssetAvatar({
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
-          className={cn('absolute inset-0 h-full w-full object-contain p-1 transition-opacity', imageLoaded ? 'opacity-100' : 'opacity-0', imageClassName)}
+          className={cn('absolute inset-0 h-full w-full object-contain transition-opacity', isPreciousMetal(meta.assetType) ? 'p-0.5' : 'p-1', imageLoaded ? 'opacity-100' : 'opacity-0', imageClassName)}
           onLoad={handleImageLoad}
           onError={handleImageError}
         />

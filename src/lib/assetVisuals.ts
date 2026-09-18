@@ -1,3 +1,5 @@
+import { isPreciousMetal, PRECIOUS_METAL_VISUALS, preciousMetalFromSymbol } from '@/lib/preciousMetalVisuals';
+
 export type AssetVisualType =
   | 'stock'
   | 'crypto'
@@ -6,6 +8,8 @@ export type AssetVisualType =
   | 'commodity'
   | 'gold'
   | 'silver'
+  | 'platinum'
+  | 'palladium'
   | 'oil'
   | 'gas'
   | 'index'
@@ -191,26 +195,12 @@ const CURRENCY_FLAGS: Record<string, string> = {
 const COMMODITY_KEYWORDS: Array<[RegExp, AssetVisualType]> = [
   [/\b(XAU|GOLD|GC=F)\b/i, 'gold'],
   [/\b(XAG|SILVER|SI=F)\b/i, 'silver'],
+  [/\b(XPT|PLATINUM|PL=F)\b/i, 'platinum'],
+  [/\b(XPD|PALLADIUM|PA=F)\b/i, 'palladium'],
   [/\b(BRENT|WTI|CRUDE|OIL|CL=F|BZ=F)\b/i, 'oil'],
   [/\b(NATURAL\s*GAS|GAS|NG=F)\b/i, 'gas'],
   [/\b(COPPER|HG=F)\b/i, 'commodity'],
 ];
-
-// Compound forex-style spot quotes for precious metals (XAUUSD, XAGUSD=X) do
-// not contain "XAU"/"XAG" as a separate word, so the \b-based keywords above
-// never match them; matched against the bare symbol only (never the display
-// name) so a metal spot ticker is never misread as a 6-letter currency pair.
-const METAL_TICKER_PATTERNS: Array<[RegExp, 'gold' | 'silver']> = [
-  [/^XAU(?:USD|EUR|GBP|AUD|CHF)?(?:=X)?$/i, 'gold'],
-  [/^XAG(?:USD|EUR|GBP|AUD|CHF)?(?:=X)?$/i, 'silver'],
-];
-
-function commodityTypeFromSymbol(symbol: string): 'gold' | 'silver' | null {
-  for (const [pattern, type] of METAL_TICKER_PATTERNS) {
-    if (pattern.test(symbol)) return type;
-  }
-  return null;
-}
 
 // Dotted ticker suffixes that denote a listing venue (used to split
 // "KFH.KW" → ticker "KFH" + market "KW" and to disambiguate duplicate
@@ -503,15 +493,15 @@ function safeImageUrl(value: unknown) {
 }
 
 export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
-  const explicitUrl = safeImageUrl(input.logoUrl) || safeImageUrl(input.imageUrl);
-  if (explicitUrl) return explicitUrl;
-
   const identity = resolveAssetIdentity(input);
-  if (identity.verified) return identity.verified.logoUrl;
-
   const symbol = identity.canonicalTicker;
   const label = cleanText(input.companyName) || cleanText(input.name) || symbol || 'Asset';
   const inferredType = inferAssetType(input, symbol, label);
+  if (isPreciousMetal(inferredType)) return PRECIOUS_METAL_VISUALS[inferredType].image;
+
+  const explicitUrl = safeImageUrl(input.logoUrl) || safeImageUrl(input.imageUrl);
+  if (explicitUrl) return explicitUrl;
+  if (identity.verified) return identity.verified.logoUrl;
 
   if (inferredType === 'crypto') {
     const compactCryptoSymbol = symbol.replace(/(?:-?USD|-?USDT)$/i, '');
@@ -520,7 +510,7 @@ export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
   }
 
   // Only equity-shaped identities (stock/etf/fund) get the generic by-ticker
-  // guess; metals, forex, indices, cash, etc. render their category icon
+  // guess; other commodities, forex, indices, cash, etc. render their category icon
   // instead of fetching a company-logo-shaped URL that can never be correct.
   const stockLikeType = inferredType === 'stock' || inferredType === 'etf' || inferredType === 'fund';
   if (!stockLikeType || !/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol)) return null;
@@ -539,14 +529,15 @@ function normalizeAssetType(value: unknown, symbol: string, label: string): Asse
   if (raw.includes('crypto') || raw === 'coin') return 'crypto';
   if (raw.includes('gold')) return 'gold';
   if (raw.includes('silver')) return 'silver';
+  if (raw.includes('platinum')) return 'platinum';
+  if (raw.includes('palladium')) return 'palladium';
+  // Spot pairs (including XAU/USD) and futures must resolve before the
+  // commodity/name and six-letter currency heuristics.
+  const metalFromSymbol = preciousMetalFromSymbol(symbol, raw);
+  if (metalFromSymbol) return metalFromSymbol;
   if (raw.includes('commodity') || raw.includes('future') || raw.includes('metal') || raw.includes('energy')) {
     return commodityType(haystack);
   }
-  // Ticker-shaped metal spot/future quotes are checked before the generic
-  // 6-letter forex shape below, so e.g. assetType "silver" + symbol "XAGUSD"
-  // (or a bare XAGUSD with no assetType hint) is never read as a currency pair.
-  const metalFromSymbol = commodityTypeFromSymbol(symbol);
-  if (metalFromSymbol) return metalFromSymbol;
   if (raw.includes('forex') || raw.includes('currency') || /^[A-Z]{6}(?:=X)?$/.test(symbol)) return 'forex';
   if (raw.includes('etf')) return 'etf';
   if (raw.includes('fund')) return 'fund';
