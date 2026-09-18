@@ -68,6 +68,8 @@ export type FinancialNewsAggregationOptions = {
   forceExternal?: boolean;
   providers?: FinancialNewsProvider[];
   skipPersistence?: boolean;
+  providerBudgetMs?: number;
+  schedulePersistence?: (task: () => Promise<void>) => void;
   requestId?: string;
 };
 
@@ -235,6 +237,7 @@ export async function fetchFromProvider(provider: FinancialNewsProvider, params:
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
+      params.signal?.throwIfAborted();
       const items = params.query && provider.searchNews
         ? await provider.searchNews(params)
         : await provider.fetchNews(params);
@@ -253,7 +256,7 @@ export async function fetchFromProvider(provider: FinancialNewsProvider, params:
     } catch (error) {
       lastError = error;
       const meta = errorMetadata(error);
-      if (!meta.retryable || meta.rateLimited || attempt === 1) break;
+      if (!meta.retryable || meta.rateLimited || attempt === 1 || params.signal?.aborted) break;
       await wait(150 * (2 ** attempt));
     }
   }
@@ -278,13 +281,17 @@ export async function fetchFromAllProviders(providers: FinancialNewsProvider[], 
   let cursor = 0;
   const worker = async () => {
     while (cursor < providers.length) {
+      if (params.signal?.aborted) break;
       const index = cursor;
       cursor += 1;
       results[index] = await fetchFromProvider(providers[index], params);
     }
   };
   await Promise.allSettled(Array.from({ length: Math.min(configuredConcurrency(), Math.max(1, providers.length)) }, () => worker()));
-  return results.filter(Boolean);
+  return providers.map((provider, index) => results[index] ?? {
+    provider, items: [], status: 'skipped' as const, durationMs: 0,
+    errorCode: 'request_budget_exhausted', rateLimited: false, retryAfterMs: 0,
+  });
 }
 
 function coverageFor(outcome: ProviderFetchOutcome): ProviderCoverage {
@@ -545,14 +552,20 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   // later pages are served from the indexed store populated by ingestion/page
   // one searches, preventing double offsets and duplicate/missing rows.
   const shouldFetchExternal = options.mode === 'ingest'
-    || (page === 1 && (options.forceExternal === true || !storedPageComplete));
+    || (page === 1 && (options.forceExternal === true || !storedPageComplete
+      || !stored.lastSuccessfulUpdate
+      || Date.now() - Date.parse(stored.lastSuccessfulUpdate) > INDEXED_FRESHNESS_MS
+      || Date.now() - Date.parse(newestTimestamp(stored.stories) ?? '') > INDEXED_FRESHNESS_MS));
   let outcomes: ProviderFetchOutcome[] = [];
   let externalItems: NormalizedNewsItem[] = [];
   let externalStories: ConsolidatedNewsStory[] = [];
   let rejectedItems: Array<{ item: NormalizedNewsItem; reason: string }> = [];
 
   if (shouldFetchExternal && providers.length > 0) {
-    outcomes = await fetchFromAllProviders(providers, params);
+    const signal = options.providerBudgetMs
+      ? AbortSignal.any([AbortSignal.timeout(options.providerBudgetMs), ...(params.signal ? [params.signal] : [])])
+      : params.signal;
+    outcomes = await fetchFromAllProviders(providers, { ...params, signal });
     externalItems = outcomes.flatMap(outcome => outcome.items);
     const processed = processNewsItems(externalItems, params);
     externalItems = processed.items;
@@ -568,52 +581,56 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   const novelExternalStoryCount = Math.max(0, stories.length - stored.stories.length);
   let storedFallbackUsed = stored.stories.length > 0 && liveFetchAttempted && !liveSucceeded;
 
-  let persistenceAvailable = false;
-  if (!options.skipPersistence && externalItems.length > 0) {
-    const persisted = await persistNewsItems(externalItems, stories, runId);
-    persistenceAvailable = persisted.available;
-    logMarketNewsEvent('news_saved', { runId, saved: persisted.saved, deduplicated: persisted.deduplicated, persistenceAvailable: persisted.available });
-  }
-  if (!options.skipPersistence && outcomes.length > 0) {
-    await Promise.allSettled(outcomes.map(outcome => {
-      const acceptedItems = externalItems.filter(item => item.providerId === outcome.provider.id);
-      const rejectedCount = rejectedItems.filter(entry => entry.item.providerId === outcome.provider.id).length;
-      const providerClusterIds = new Set(acceptedItems.flatMap(item => {
-        const story = externalStories.find(candidate => areDuplicateStories(item, candidate));
-        return story ? [story.id] : [];
+  const persist = async () => {
+    let persistenceAvailable = false;
+    if (!options.skipPersistence && externalItems.length > 0) {
+      const persisted = await persistNewsItems(externalItems, stories, runId);
+      persistenceAvailable = persisted.available;
+      logMarketNewsEvent('news_saved', { runId, saved: persisted.saved, deduplicated: persisted.deduplicated, persistenceAvailable: persisted.available });
+    }
+    if (!options.skipPersistence && outcomes.length > 0) {
+      await Promise.allSettled(outcomes.map(outcome => {
+        const acceptedItems = externalItems.filter(item => item.providerId === outcome.provider.id);
+        const rejectedCount = rejectedItems.filter(entry => entry.item.providerId === outcome.provider.id).length;
+        const providerClusterIds = new Set(acceptedItems.flatMap(item => {
+          const story = externalStories.find(candidate => areDuplicateStories(item, candidate));
+          return story ? [story.id] : [];
+        }));
+        const runtime = providerState(outcome.provider);
+        return persistProviderFetch({
+        runId,
+        providerId: outcome.provider.id,
+        providerName: outcome.provider.name,
+        sourceId: outcome.provider.sourceId,
+        sourceName: outcome.provider.sourceName,
+        sourceType: outcome.provider.sourceType,
+        sourceDomain: outcome.provider.sourceDomain,
+        sourceNetwork: outcome.provider.sourceNetworkId,
+        reliabilityScore: outcome.provider.reliabilityScore,
+        priority: outcome.provider.priority,
+        officialSource: outcome.provider.officialSource,
+        supportedMarkets: outcome.provider.supportedMarkets,
+        fetchKind: options.mode === 'ingest' ? 'background' : 'on_demand',
+        status: outcome.status,
+        healthStatus: runtime.healthStatus,
+        lastSuccessfulFetch: runtime.lastSuccessfulFetch,
+        lastFailedFetch: runtime.lastFailedFetch,
+        disabledUntil: runtime.disabledUntil,
+        latencyMs: outcome.durationMs,
+        fetchedCount: outcome.items.length,
+        acceptedCount: acceptedItems.length,
+        rejectedCount,
+        deduplicatedCount: Math.max(0, acceptedItems.length - providerClusterIds.size),
+        savedCount: persistenceAvailable ? acceptedItems.length : 0,
+        errorCode: outcome.errorCode,
+        rateLimitState: runtime.rateLimitState ?? (outcome.rateLimited ? 'limited' : 'available'),
+        requestMarketCodes: params.marketCodes ?? [],
+        });
       }));
-      const runtime = providerState(outcome.provider);
-      return persistProviderFetch({
-      runId,
-      providerId: outcome.provider.id,
-      providerName: outcome.provider.name,
-      sourceId: outcome.provider.sourceId,
-      sourceName: outcome.provider.sourceName,
-      sourceType: outcome.provider.sourceType,
-      sourceDomain: outcome.provider.sourceDomain,
-      sourceNetwork: outcome.provider.sourceNetworkId,
-      reliabilityScore: outcome.provider.reliabilityScore,
-      priority: outcome.provider.priority,
-      officialSource: outcome.provider.officialSource,
-      supportedMarkets: outcome.provider.supportedMarkets,
-      fetchKind: options.mode === 'ingest' ? 'background' : 'on_demand',
-      status: outcome.status,
-      healthStatus: runtime.healthStatus,
-      lastSuccessfulFetch: runtime.lastSuccessfulFetch,
-      lastFailedFetch: runtime.lastFailedFetch,
-      disabledUntil: runtime.disabledUntil,
-      latencyMs: outcome.durationMs,
-      fetchedCount: outcome.items.length,
-      acceptedCount: acceptedItems.length,
-      rejectedCount,
-      deduplicatedCount: Math.max(0, acceptedItems.length - providerClusterIds.size),
-      savedCount: persistenceAvailable ? acceptedItems.length : 0,
-      errorCode: outcome.errorCode,
-      rateLimitState: runtime.rateLimitState ?? (outcome.rateLimited ? 'limited' : 'available'),
-      requestMarketCodes: params.marketCodes ?? [],
-      });
-    }));
-  }
+    }
+  };
+  if (options.schedulePersistence) options.schedulePersistence(persist);
+  else await persist();
 
   const cacheKey = stableParams(params, options);
   if (!liveSucceeded && stored.stories.length === 0) {
