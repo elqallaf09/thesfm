@@ -18,10 +18,12 @@ market-news endpoint and the calculation/quote contracts it consumes.
 | Two analysis paths used different RSI formulas. | Share Wilder RSI; snapshots round only at their output boundary. | Fixed numerical sequence and existing recommendation tests. |
 | Null volume became zero; volume gaps pulled older sessions into a claimed 20-session average. Missing high/low prices were substituted in ATR. | Preserve missing inputs, require 20 actual recent volumes, withhold ATR/ADX when required ranges are incomplete. | Missing-input calculation tests. |
 | Provider summary named the legacy Yahoo preference while returned prices came from Twelve Data. | Summarize observed upstream sources and original timestamps; stale references remain degraded. | Observed-provider tests. |
+| The SFM history/analysis path passed `1d` to Twelve Data, whose daily interval is `1day`; the request also capped history below the 200 sessions needed by SMA 200. | Normalize daily aliases at the provider boundary and request 260 observations. Preserve actual missing fields and chronological order. | Provider contract tests reject unsupported intervals and exercise daily aliases plus an unchanged hourly interval. |
 
 Calculation references: TradingView's [RSI calculation](https://www.tradingview.com/support/solutions/43000502338-relative-strength-index-rsi/)
 and [ATR definition](https://www.tradingview.com/support/solutions/43000501823-average-true-range-atr/).
 These define indicator math, not predictive accuracy or investment outcomes.
+History interval reference: [Twelve Data official client parameters](https://github.com/twelvedata/twelvedata-python#supported-parameters).
 
 ## Verification scope
 

@@ -694,7 +694,7 @@ class TwelveDataProvider extends BaseProvider {
     if (!key) return [];
     const candidate = twelveExchangeCandidates(symbol, market, context)[0];
     if (!candidate) return [];
-    const params = new URLSearchParams({ symbol: candidate.symbol, interval: interval || '1day', outputsize: '120', apikey: key });
+    const params = new URLSearchParams({ symbol: candidate.symbol, interval: !interval || /^(1d|d)$/i.test(interval) ? '1day' : interval, outputsize: '260', apikey: key });
     if (candidate.exchange) params.set('exchange', candidate.exchange);
     const result = await fetchJson(`https://api.twelvedata.com/time_series?${params.toString()}`, {
       cacheKey: `candles:${this.name}:${params.get('symbol')}:${params.get('exchange') ?? ''}:${params.get('interval')}`,
