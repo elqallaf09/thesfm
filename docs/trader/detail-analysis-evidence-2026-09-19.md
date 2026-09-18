@@ -52,6 +52,12 @@ search responses cannot override a newer input.
 A fresh quote paired with old daily history cannot produce executable targets.
 History-only coverage reports its actual provider and daily observation date.
 
+Full detail rendering retains the loaded symbol cache during background provider
+hydration and language changes. Previously, those redraws replaced a completed
+analysis with the loading placeholder. The isolated browser contract job also
+runs the full-detail/Arabic-search cases so regressions receive early feedback;
+the complete production smoke suite remains required.
+
 ## Validation
 
 Local Node 22.13.0 / pnpm 11.1.3 frozen offline installation passed.

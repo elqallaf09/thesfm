@@ -1,4 +1,4 @@
-import { isPreciousMetal, PRECIOUS_METAL_VISUALS, preciousMetalFromSymbol } from '@/lib/preciousMetalVisuals';
+import { isMetal, METAL_VISUALS, metalFromSymbol } from '@/lib/metalVisuals';
 
 export type AssetVisualType =
   | 'stock'
@@ -10,6 +10,7 @@ export type AssetVisualType =
   | 'silver'
   | 'platinum'
   | 'palladium'
+  | 'copper'
   | 'oil'
   | 'gas'
   | 'index'
@@ -199,7 +200,7 @@ const COMMODITY_KEYWORDS: Array<[RegExp, AssetVisualType]> = [
   [/\b(XPD|PALLADIUM|PA=F)\b/i, 'palladium'],
   [/\b(BRENT|WTI|CRUDE|OIL|CL=F|BZ=F)\b/i, 'oil'],
   [/\b(NATURAL\s*GAS|GAS|NG=F)\b/i, 'gas'],
-  [/\b(COPPER|HG=F)\b/i, 'commodity'],
+  [/\b(COPPER|HG=F)\b/i, 'copper'],
 ];
 
 // Dotted ticker suffixes that denote a listing venue (used to split
@@ -497,7 +498,7 @@ export function resolveAssetLogoUrl(input: AssetVisualInput): string | null {
   const symbol = identity.canonicalTicker;
   const label = cleanText(input.companyName) || cleanText(input.name) || symbol || 'Asset';
   const inferredType = inferAssetType(input, symbol, label);
-  if (isPreciousMetal(inferredType)) return PRECIOUS_METAL_VISUALS[inferredType].image;
+  if (isMetal(inferredType)) return METAL_VISUALS[inferredType].image;
 
   const explicitUrl = safeImageUrl(input.logoUrl) || safeImageUrl(input.imageUrl);
   if (explicitUrl) return explicitUrl;
@@ -531,10 +532,11 @@ function normalizeAssetType(value: unknown, symbol: string, label: string): Asse
   if (raw.includes('silver')) return 'silver';
   if (raw.includes('platinum')) return 'platinum';
   if (raw.includes('palladium')) return 'palladium';
+  if (raw.includes('copper')) return 'copper';
   // Spot pairs (including XAU/USD) and futures must resolve before the
   // commodity/name and six-letter currency heuristics.
-  const metalFromSymbol = preciousMetalFromSymbol(symbol, raw);
-  if (metalFromSymbol) return metalFromSymbol;
+  const metal = metalFromSymbol(symbol, raw);
+  if (metal) return metal;
   if (raw.includes('commodity') || raw.includes('future') || raw.includes('metal') || raw.includes('energy')) {
     return commodityType(haystack);
   }

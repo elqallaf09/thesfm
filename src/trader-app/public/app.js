@@ -3970,6 +3970,7 @@
   }
 
   function symbolPage(symbol) {
+    const cached = state.cache.get(sym(symbol));
     if (!symbol) return `<div class="page-stack">${hero(
       textPair("تفاصيل الرمز", "Symbol details", "Détails du symbole"),
       textPair("اكتب رمزاً في البحث العلوي لفتح صفحة تحليل مخصصة. أمثلة: AAPL, BTCUSD, XAUUSD, KFH.KW", "Enter a symbol in the top search to open a dedicated analysis page. Examples: AAPL, BTCUSD, XAUUSD, KFH.KW", "Saisissez un symbole dans la recherche supérieure pour ouvrir une page d’analyse dédiée. Exemples : AAPL, BTCUSD, XAUUSD, KFH.KW"),
@@ -3986,7 +3987,7 @@
         textPair("صفحة تفاصيل حقيقية لكل رمز تعرض الملف والعملة والمصدر والتحليل عند توفرها من المزود.", "A real detail page for each symbol, showing its profile, currency, source, and analysis when the provider supplies them.", "Une page détaillée réelle pour chaque symbole, avec son profil, sa devise, sa source et son analyse lorsque le fournisseur les fournit."),
         textPair("تفاصيل الرمز", "SYMBOL DETAILS", "DÉTAILS DU SYMBOLE")
       )}
-      <section id="symbol-details-body"><div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair("جاري فحص", "Checking", "Vérification de"))} <span class="ltr">${h(symbol)}</span></h2></div></div></section>${disclaimer()}</div>`;
+      <section id="symbol-details-body">${cached && !cached.drawerOnly ? symbolContent(cached) : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair("جاري فحص", "Checking", "Vérification de"))} <span class="ltr">${h(symbol)}</span></h2></div></div>`}</section>${disclaimer()}</div>`;
   }
 
   /* ───────────────────── Async loaders ───────────────────── */

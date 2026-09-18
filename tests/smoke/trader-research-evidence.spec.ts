@@ -52,6 +52,10 @@ for (const language of ['ar', 'en', 'fr']) {
     await expect(detail.locator('.technical-available')).toContainText('57');
     await expect(detail.locator('.consensus-panel .strat-row')).toHaveCount(3);
     await expect(detail.locator('.technical-unavailable')).toHaveCount(0);
+    // Background hydration and preference changes rerender the page; loaded details must survive.
+    await frame.evaluate(() => window.dispatchEvent(new Event('sfm-language-change')));
+    await expect(detail.locator('.final-recommendation-card')).toContainText('64%');
+    await expect(detail.locator('.technical-available')).toContainText('57');
     await expect(detail.locator('[data-follow-trade]')).toHaveCount(0);
     expect(calls).not.toContain('/api/market/technical-analysis');
     expect(calls.some(path => path.startsWith('/api/market/signals/'))).toBe(false);
