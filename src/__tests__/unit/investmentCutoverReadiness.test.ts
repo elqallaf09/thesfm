@@ -59,6 +59,37 @@ describe('investment canonical cutover readiness', () => {
     expect(result.reasons).toContain('IMPORTS_PENDING_VERIFICATION');
   });
 
+  it('does not borrow another source row verification for the same position', () => {
+    const result = computeInvestmentCutoverReadiness({
+      legacy: [legacy('a'), legacy('b')],
+      canonical: [canonical('a'), canonical('b')],
+      checks: [check('a', 'b'), check('b')],
+    });
+    expect(result.readyForReadCutover).toBe(false);
+    expect(result.pendingVerificationCount).toBe(1);
+    expect(result.reasons).toContain('IMPORTS_PENDING_VERIFICATION');
+  });
+
+  it.each([null, 'invalid', '2026-09-16T11:00:00.000Z'])('rejects an unknown or earlier source timestamp %s', updatedAt => {
+    const result = computeInvestmentCutoverReadiness({
+      legacy: [{ id: 'a', updated_at: updatedAt }],
+      canonical: [canonical('a')],
+      checks: [check('a')],
+    });
+    expect(result.readyForReadCutover).toBe(false);
+    expect(result.sourceDriftCount).toBe(1);
+  });
+
+  it('preserves Postgres microseconds while normalizing equivalent timezone offsets', () => {
+    const input = {
+      legacy: [legacy('a', '2026-09-16T12:00:00.123456Z')],
+      canonical: [canonical('a')],
+      checks: [check('a', 'a', '2026-09-16T15:00:00.123456+03:00')],
+    };
+    expect(computeInvestmentCutoverReadiness(input).readyForReadCutover).toBe(true);
+    expect(computeInvestmentCutoverReadiness({ ...input, checks: [check('a', 'a', '2026-09-16T12:00:00.123457Z')] }).sourceDriftCount).toBe(1);
+  });
+
   it('blocks when the legacy source changed after the recorded import timestamp', () => {
     const result = computeInvestmentCutoverReadiness({
       legacy: [legacy('a', '2026-09-16T13:00:00.000Z')],
