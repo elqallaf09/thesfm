@@ -33,11 +33,15 @@ function normalizeStatementDates(text: string) {
 }
 function statementLayout(text: string, income: boolean, now: Date) {
   const compact = normalizeStatementDates(text.slice(0, 700)).replace(/\s+/g, ' ');
-  const dated = /(?:As at|As of|year ended)?\s*(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i.exec(compact);
+  // Interim income statements can put the period start before its end. Bind
+  // the explicit "from … to …" range before considering a standalone date.
+  const range = /For the period from (\d{1,2}\s+[A-Za-z]+\s+20\d{2}) to (\d{1,2}\s+[A-Za-z]+\s+20\d{2})/i.exec(compact);
+  const dated = /(?:As at|As of|year ended)?\s*(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i.exec(range?.[2] ?? compact);
   if (!dated) return null;
   const day=Number(dated[1]), month=MONTHS.findIndex(value=>value.toLowerCase()===dated[2].toLowerCase()), year=Number(dated[3]);
   const stamp=Date.UTC(year,month,day), period=new Date(stamp).toISOString().slice(0,10);
   if (month < 0 || new Date(stamp).getUTCDate()!==day || stamp>now.getTime()) return null;
+  if (range && range[1].toLowerCase() !== `1 january ${year}`) return null;
   const yearPair=new RegExp(`${year} ${year-1}`);
   const label=`${day} ${MONTHS[month]}`;
   const annualDatePair = new RegExp(`${label}\\s+${year}(?:\\s+Year ended)?\\s+${label}\\s+${year-1}`, 'i');
@@ -45,6 +49,9 @@ function statementLayout(text: string, income: boolean, now: Date) {
   // Explicit observed interim layouts: first balance-sheet column is current;
   // income's third of four columns is the year-to-date six/nine-month period.
   if (!income && new RegExp(`${label} 31 December ${label} ${year} ${year-1} ${year-1}`, 'i').test(compact)) return {year,period,columns:3,index:0,start:null};
+  // Boubyan prints each column's complete date, with the audit label between
+  // columns, rather than a shared row of years. Require the exact ordering.
+  if (!income && new RegExp(`${label} ${year} \\(Audited\\) 31 December ${year-1} ${label} ${year-1}`, 'i').test(compact)) return {year,period,columns:3,index:0,start:null};
   if (income && /Three months ended/i.test(compact) && /(?:Six|Nine) months ended/i.test(compact)
     && new RegExp(`${year} ${year-1} ${year} ${year-1}`).test(compact) && [5,8].includes(month)) return {year,period,columns:4,index:2,start:`${year}-01-01`};
   return null;
@@ -55,7 +62,7 @@ function statementHeader(text: string) {
 }
 function statementUnits(text: string) {
   const header = text.slice(0, 600);
-  if (/\b(?:KD|KWD)\s*(?:000['’]?s|thousands)/i.test(header)) return { currency: 'KWD', scale: 1000 };
+  if (/\b(?:KD|KWD)\s*['’]?\s*(?:000['’]?s|thousands)\b/i.test(header)) return { currency: 'KWD', scale: 1000 };
   // Full-dinar audited statements can expose an explicit unit row such as
   // "KD KD". Accept only a table unit line, never a narrative mention of KD.
   if (/(?:^|\n)[ \t]*(?:KD|KWD)(?:[ \t]+(?:KD|KWD)){0,4}[ \t]*(?=\r?$)/im.test(header)) return { currency: 'KWD', scale: 1 };
