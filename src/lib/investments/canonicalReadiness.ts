@@ -36,8 +36,11 @@ export type InvestmentCutoverReadiness = {
 
 function time(value: string | null | undefined) {
   if (!value) return null;
+  const fraction = /[T ]\d{2}:\d{2}:\d{2}(?:\.(\d{1,6}))?(?:Z|[+-]\d{2}(?::?\d{2})?)$/.exec(value);
+  if (!fraction) return null;
   const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  // Postgres stores microseconds; Date.parse alone silently drops three digits.
+  return Number.isFinite(parsed) ? `${Math.floor(parsed / 1000)}.${(fraction[1] ?? '').padEnd(6, '0')}` : null;
 }
 
 export function computeInvestmentCutoverReadiness(input: {
@@ -62,7 +65,8 @@ export function computeInvestmentCutoverReadiness(input: {
 
   const verifiedCount = input.canonical.filter(row => {
     const check = checkByPosition.get(row.id);
-    return row.migration_state === 'VERIFIED' && check?.verification_state === 'VERIFIED';
+    return row.migration_state === 'VERIFIED' && check?.verification_state === 'VERIFIED'
+      && check.source_row_id === row.legacy_investment_item_id;
   }).length;
   const pendingVerificationCount = Math.max(0, input.canonical.length - verifiedCount);
 
@@ -73,8 +77,9 @@ export function computeInvestmentCutoverReadiness(input: {
     if (!legacy) return false;
     const current = time(legacy.updated_at);
     const imported = time(check.source_row_updated_at);
-    if (current === null) return false;
-    return imported === null || current > imported;
+    // Read cutover needs an exact source snapshot match, including when the
+    // imported timestamp is newer or either timestamp cannot be established.
+    return current === null || imported === null || current !== imported;
   }).length;
 
   const reasons: InvestmentCutoverReadinessReason[] = [];

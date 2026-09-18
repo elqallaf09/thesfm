@@ -12,6 +12,9 @@ The [official Boubyan interim report](https://www.bankboubyan.com/media/filer_pu
 - Carry safe failure codes from the regional adapter into the screening record. Distinguish unsupported layout, mismatched issuer/origin, conflicting values, limits, timeout, rate limits and generic retrieval failures. Do not persist raw upstream messages.
 - Bound optional issuer-directory discovery to three seconds with no retry, retaining the reviewed filing fallback and the overall caller deadline.
 - Reconcile the saved roadmap with the actual PR #185 release and require hosted authenticated validation to finish before merge deletes its isolated database.
+- Repair the investment money reader so SQL nulls, blank strings, booleans and objects cannot become synthetic zero/one amounts or mask a valid later value. Preserve explicit zero and require the existing currency match. This does not certify the full multi-currency reporting or canonical import cutover.
+- Tighten canonical read-cutover readiness: a verification must belong to the position's actual legacy row and its source timestamp must match exactly. Unknown or earlier source timestamps are not proof of a synchronized import. No stored verification state is changed.
+- Cancel superseded CI runs within the same pull request; main runs have unique groups and cannot be canceled by a PR. This preserves every check on the current candidate while limiting redundant build/browser work. See [GitHub's concurrency contract](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
 
 The KFH report has not been validated end-to-end in this follow-up. The native-canvas warning alone was disproven as an extraction blocker in the prior packaged positive-PDF test. Do not add speculative dependencies or claim KFH fixed. Boubyan source-format tests use synthetic amounts; a successful unit test is not a production refresh.
 

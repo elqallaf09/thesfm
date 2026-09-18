@@ -11,7 +11,7 @@ import {
   mergeMarketPriceIntoInvestment,
   normalizeInvestment,
 } from '@/lib/investments/investmentUtils';
-import { investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
+import { holdingValueFromRow, investmentValueInCurrency } from '@/lib/investments/currencyIntegrity';
 import { primaryInvestmentTotal } from '@/lib/dashboard/executiveOverview';
 import { buildFinanceOverview } from '@/lib/data/financeData';
 import type { Investment, InvestmentInput, InvestmentType } from '@/types/investment';
@@ -57,6 +57,24 @@ function input(type: InvestmentType, symbol: string): InvestmentInput {
 }
 
 describe('investment holding currency integrity', () => {
+  it.each([null, undefined, '', '  ', false, true, [], {}])('does not turn missing/invalid money %j into a zero or one', missing => {
+    expect(holdingValueFromRow({ currency: 'KWD', current_value: missing, currentValue: '36.6' })).toBe(36.6);
+    expect(holdingValueFromRow({ currency: 'KWD', current_value: missing, amount: null })).toBeNull();
+  });
+
+  it('uses a valid same-currency value when nullable reporting fields have no amount', () => {
+    expect(investmentValueInCurrency({ currency: 'KWD', user_currency: 'KWD', price_currency: 'USD',
+      converted_market_value: null, fx_rate_to_user_currency: 0.305, current_value: 36.6 }, 'KWD'))
+      .toEqual({ amount: 36.6, currency: 'KWD', source: 'holding' });
+    expect(investmentValueInCurrency({ currency: 'EUR', user_currency: 'KWD', price_currency: 'USD',
+      converted_market_value: null, fx_rate_to_user_currency: null, current_value: 36.6 }, 'KWD')).toBeNull();
+  });
+
+  it('preserves explicitly reported zero and ignores no-value native quote fields', () => {
+    expect(holdingValueFromRow({ currency: 'KWD', current_value: 0, amount: 50 })).toBe(0);
+    expect(holdingValueFromRow({ currency: 'USD', current_value: null, current_market_value: null, native_market_value: '120' })).toBe(120);
+  });
+
   it('keeps XAGUSD quote currency USD while all holding metrics stay KWD', () => {
     const item = holding();
     const metrics = calculateInvestmentHoldingMetrics(item);
