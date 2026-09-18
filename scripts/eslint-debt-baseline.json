@@ -1,7 +1,7 @@
 {
   "version": 1,
   "rules": {
-    "@typescript-eslint/no-explicit-any": 458,
+    "@typescript-eslint/no-explicit-any": 456,
     "@typescript-eslint/no-unused-vars": 418
   }
 }

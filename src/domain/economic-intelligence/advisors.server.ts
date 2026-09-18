@@ -9,6 +9,7 @@ import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspa
 import { highestDailyPriority } from './dailyPriority';
 import { buildEconomicIntelligenceReadiness, type ReadinessConfirmationKey } from './readiness';
 import { loadReadinessConfirmations } from './readinessConfirmations.server';
+import { loadCompleteEconomicRows } from './sourceRows.server';
 
 type LoadAdvisorGroundingOptions = {
   userId: string;
@@ -49,13 +50,11 @@ async function loadRows(userId: string): Promise<{ rows: RowMap; profile: Record
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
   const [entries, profileResult] = await Promise.all([
     Promise.all(Object.entries(TABLES).map(async ([key, table]) => {
-      const { data, error } = await admin.from(table).select('*').eq('user_id', userId).limit(2000);
-      if (error) throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:${key}:${error.code ?? 'unknown'}`);
-      return [key, (data ?? []) as Record<string, unknown>[]] as const;
+      return [key, await loadCompleteEconomicRows(admin, table, userId)] as const;
     })),
-    admin.from('profiles').select('default_currency,preferred_currency,currency,country').eq('id', userId).maybeSingle(),
+    admin.from('profiles').select('default_currency,preferred_currency,currency,country').eq('id', userId).abortSignal(AbortSignal.timeout(8000)).maybeSingle(),
   ]);
-  if (profileResult.error && profileResult.error.code !== 'PGRST116') throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:profile:${profileResult.error.code ?? 'unknown'}`);
+  if (profileResult.error) throw new Error(`ECONOMIC_INTELLIGENCE_SOURCE_FAILED:profile:${profileResult.error.code ?? 'unknown'}`);
   return { rows: Object.fromEntries(entries) as RowMap, profile: (profileResult.data ?? null) as Record<string, unknown> | null };
 }
 
@@ -122,7 +121,8 @@ export async function loadAdvisorGrounding(options: LoadAdvisorGroundingOptions)
     forecast,
     economicContext,
     impacts,
-    hasMarketEvidence: options.hasMarketEvidence || rows.watchlist.length > 0 || rows.marketAlerts.length > 0,
+    // Saved interests/alerts contain no verified current market observations.
+    hasMarketEvidence: options.hasMarketEvidence === true,
     hasBusinessEvidence: rows.projects.length > 0 || confirmations.includes('no_business_projects'),
     decisionMemoryFacts,
     crossWorkspaceFacts: crossWorkspaceFacts(evidence),

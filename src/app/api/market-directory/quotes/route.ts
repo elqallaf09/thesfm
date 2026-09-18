@@ -4,7 +4,8 @@ import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
 import { fetchYahooChartQuote } from '@/lib/market/fetchYahooQuote';
 import { DIRECTORY_MAX_PAGE_SIZE } from '@/lib/market/globalMarketDirectoryTypes';
 import { regionalQuoteIdentity } from '@/lib/market/regionalDirectory';
-import { getRegionalDirectoryQuote } from '@/lib/server/regionalDirectoryQuotes';
+import { getRegionalDirectoryPrice } from '@/lib/server/regionalDirectoryPrice';
+import { recordRegionalQuoteHealth } from '@/lib/server/marketSourceHealth';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +29,10 @@ export async function GET(request: Request) {
         const quote = await fetchYahooChartQuote(symbol).catch(() => ({ symbol, price: null, change: null, changePercent: null, available: false, delayed: true as const, source: 'Yahoo Finance' as const, unavailableReason: 'quote_temporarily_unavailable' }));
         return [symbol, quote] as const;
       })),
-      Promise.all(regional.map(async symbol => [symbol, await getRegionalDirectoryQuote(symbol)] as const)),
+      Promise.all(regional.map(async symbol => [symbol, await getRegionalDirectoryPrice(symbol)] as const)),
     ]);
     const prices = Object.fromEntries([...us, ...other, ...regionalQuotes]);
+    await recordRegionalQuoteHealth(regionalQuotes.map(([, quote]) => quote));
     const partial = symbols.some(symbol => !prices[symbol]?.available);
     return NextResponse.json({ success: true, prices }, { headers: { 'cache-control': partial ? 'public, s-maxage=30' : 'public, s-maxage=300, stale-while-revalidate=600' } });
   } catch {

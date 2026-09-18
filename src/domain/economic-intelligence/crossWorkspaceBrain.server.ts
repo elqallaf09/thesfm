@@ -1,6 +1,7 @@
 import 'server-only';
 import type { EconomicStoredRow } from './storedRowTypes';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { loadCompleteEconomicRows } from './sourceRows.server';
 import { buildFinancialTwinSnapshot } from './digitalTwin';
 import { buildCrossWorkspaceBrief, type WorkspaceEvidence } from './crossWorkspaceBrain';
 
@@ -59,32 +60,31 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
   if (!admin) throw new Error('ECONOMIC_INTELLIGENCE_SERVER_NOT_CONFIGURED');
 
   const [income, expenses, debts, savings, investments, profile, watchlist, alerts, projects, funding] = await Promise.all([
-    admin.from('monthly_income_sources').select('*').eq('user_id', userId).limit(2000),
-    admin.from('expense_items').select('*').eq('user_id', userId).limit(2000),
-    admin.from('debts').select('*').eq('user_id', userId).limit(2000),
-    admin.from('savings_items').select('*').eq('user_id', userId).limit(2000),
-    admin.from('investment_items').select('*').eq('user_id', userId).limit(2000),
-    admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).maybeSingle(),
-    admin.from('market_watchlist').select('id,symbol,asset_type,created_at').eq('user_id', userId).limit(1000),
-    admin.from('market_price_alerts').select('id,status,created_at').eq('user_id', userId).limit(1000),
+    loadCompleteEconomicRows(admin, 'monthly_income_sources', userId, '*'),
+    loadCompleteEconomicRows(admin, 'expense_items', userId, '*'),
+    loadCompleteEconomicRows(admin, 'debts', userId, '*'),
+    loadCompleteEconomicRows(admin, 'savings_items', userId, '*'),
+    loadCompleteEconomicRows(admin, 'investment_items', userId, '*'),
+    admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).abortSignal(AbortSignal.timeout(8000)).maybeSingle(),
+    loadCompleteEconomicRows(admin, 'market_watchlist', userId, 'id,symbol,asset_type,created_at'),
+    loadCompleteEconomicRows(admin, 'market_price_alerts', userId, 'id,status,created_at'),
     // The deployed projects schema has no status/updated_at columns yet. Query only the
     // stable columns so Economic Intelligence readiness cannot fail on schema drift.
-    admin.from('projects').select('id,created_at').eq('user_id', userId).limit(1000),
-    admin.from('project_funding_readiness').select('project_id,funding_needed,currency,readiness_score,created_at,updated_at').eq('user_id', userId).limit(1000),
+    loadCompleteEconomicRows(admin, 'projects', userId, 'id,created_at'),
+    loadCompleteEconomicRows(admin, 'project_funding_readiness', userId, 'project_id,funding_needed,currency,readiness_score,created_at,updated_at'),
   ]);
 
-  const failures = [income, expenses, debts, savings, investments, watchlist, alerts, projects, funding].filter(result => result.error);
-  if (failures.length > 0) throw failures[0].error;
+  if (profile.error) throw profile.error;
 
-  const incomeRows = income.data ?? [];
-  const expenseRows = expenses.data ?? [];
-  const debtRows = debts.data ?? [];
-  const savingRows = savings.data ?? [];
-  const investmentRows = investments.data ?? [];
-  const watchlistRows = watchlist.data ?? [];
-  const alertRows = alerts.data ?? [];
-  const projectRows = projects.data ?? [];
-  const fundingRows = funding.data ?? [];
+  const incomeRows = income;
+  const expenseRows = expenses;
+  const debtRows = debts;
+  const savingRows = savings;
+  const investmentRows = investments;
+  const watchlistRows = watchlist;
+  const alertRows = alerts;
+  const projectRows = projects;
+  const fundingRows = funding;
   const financeGroups = [incomeRows, expenseRows, debtRows, savingRows, investmentRows] as Record<string, unknown>[][];
   const currency = resolveFinanceCurrency((profile.data ?? null) as Record<string, unknown> | null, financeGroups);
   const snapshot = buildFinancialTwinSnapshot({
@@ -113,8 +113,8 @@ export async function loadCrossWorkspaceEvidence(userId: string): Promise<Worksp
     finance: { snapshot },
     trader: {
       watchlistCount: watchlistRows.length,
-      activeAlertCount: alertRows.filter((row: EconomicStoredRow) => !['triggered', 'disabled', 'archived'].includes(String(row.status ?? '').toLowerCase())).length,
-      triggeredAlertCount: alertRows.filter((row: EconomicStoredRow) => String(row.status ?? '').toLowerCase() === 'triggered').length,
+      activeAlertCount: alertRows.filter((row) => !['triggered', 'disabled', 'archived'].includes(String(row.status ?? '').toLowerCase())).length,
+      triggeredAlertCount: alertRows.filter((row) => String(row.status ?? '').toLowerCase() === 'triggered').length,
     },
     business: {
       activeProjectCount: activeProjects.length,

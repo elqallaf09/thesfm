@@ -78,6 +78,13 @@ jobs:
               exit 1
             fi
           done
+      - name: Recover the missing hosted-evidence schema in the disposable database
+        run: |
+          set -euo pipefail
+          recovery_migrations=(supabase/migrations/*_recover_missing_evidence_storage.sql)
+          test "${#recovery_migrations[@]}" -eq 1
+          psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1 -f .github/scripts/evidence-storage-recovery-drill.sql
+          psql -X -h 127.0.0.1 -U postgres -d sfm_property_isolation_ci -v ON_ERROR_STOP=1 -f "${recovery_migrations[0]}"
       - name: Execute two-user RLS, RPC permissions, lineage and rollback checks
         run: |
           set -euo pipefail

@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: vi.fn(() => null) }));
+vi.mock('@/lib/server/marketSourceHealth', () => ({ recordRegionalQuoteHealth: vi.fn() }));
 vi.mock('@/lib/market/fetchStockPrices', () => ({ fetchStockPrices: vi.fn(async () => new Map()) }));
 vi.mock('@/lib/market/fetchYahooQuote', () => ({ fetchYahooChartQuote: vi.fn(async (symbol: string) => ({ symbol, price: null, change: null, changePercent: null, available: false, source: 'Yahoo Finance', delayed: true })) }));
 vi.mock('@/lib/server/regionalDirectoryQuotes', () => ({ getRegionalDirectoryQuote: vi.fn(async (symbol: string) => ({ symbol, price: null, change: null, changePercent: null, available: false, source: 'Twelve Data', delayed: true, unavailableReason: 'provider_access_required' })) }));

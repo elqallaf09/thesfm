@@ -325,7 +325,7 @@ export default function DecisionsPage() {
   const currentInputs = useMemo<DecisionInputs>(() => ({
     title: form.title.trim(), decisionType: form.decisionType, amount: numeric(form.amount), currency,
     targetDate: form.targetDate || undefined, priority: 'medium', notes: form.notes,
-    recurringCost: numeric(form.monthlyImpact), expectedReturn: 0, riskLevel: form.riskLevel,
+    recurringCost: numeric(form.monthlyImpact), riskLevel: form.riskLevel,
     debtAmount: form.decisionType === 'debt_saving' ? numeric(form.amount) : undefined,
     monthlyPayment: form.decisionType === 'debt_saving' ? numeric(form.monthlyImpact) : undefined,
     expectedMonthlyCost: form.decisionType === 'project' ? numeric(form.monthlyImpact) : undefined,

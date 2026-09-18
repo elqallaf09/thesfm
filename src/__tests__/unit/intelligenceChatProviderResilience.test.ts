@@ -188,6 +188,23 @@ describe('intelligence chat on SFM Private AI only', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('keeps the default deadline through body consumption and fails over if the body stalls', async () => {
+    configureBoth(); vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementationOnce(async (_url: string, init: RequestInit) => {
+      signal = init.signal as AbortSignal;
+      return { ok: true, json: () => new Promise(() => undefined) };
+    }).mockResolvedValueOnce(completion('fallback after stalled body'));
+    const pending = POST(request());
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await vi.advanceTimersByTimeAsync(6_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(16_001);
+    expect(await (await pending).json()).toMatchObject({ provider: 'sfm-private-fallback', text: 'fallback after stalled body' });
+    expect(signal?.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('keeps unverified selected assets unresolved', async () => {
     configurePrimary(); mocks.canonical.mockRejectedValue(new Error('unknown'));
     expect(await (await POST(request({ asset: { symbol: 'UNKNOWN', assetType: 'STOCK' } }))).json()).toMatchObject({ asset: null, assetResolvedFromMessage: false });
