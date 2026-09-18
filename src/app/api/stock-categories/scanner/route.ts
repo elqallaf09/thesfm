@@ -12,6 +12,7 @@ function parseCategory(value: string | null): StockCategoryId | null {
 }
 
 function parseLimit(value: string | null) {
+  if (!value?.trim()) return 350;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 350;
   return Math.max(24, Math.min(500, Math.floor(parsed)));
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   const limit = parseLimit(request.nextUrl.searchParams.get('limit'));
   const forceRefresh = request.nextUrl.searchParams.has('refresh');
   const result = await screenStockCategory(category, { limit, forceRefresh });
-  const degraded = result.mode === 'fallback_watchlist';
+  const degraded = result.mode === 'fallback_watchlist' || Boolean(result.degradedReason);
 
   return NextResponse.json({
     ok: true,

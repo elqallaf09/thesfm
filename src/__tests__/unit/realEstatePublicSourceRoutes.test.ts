@@ -20,6 +20,17 @@ beforeEach(() => {
   mocks.locations.mockResolvedValue([]); mocks.analyze.mockResolvedValue({ status: 'SOURCE_DATA_REVIEW_REQUIRED', valuation: null, evidence: [] });
 });
 describe('authenticated official source routes', () => {
+  it('allows area-free market research without weakening valuation preflight', async () => {
+    const researchAsset = { countryCode: 'GB', city: 'London', propertyType: 'HOUSE' };
+    const valuation = await POST(analysisRequest({ asset: researchAsset }));
+    expect(valuation.status).toBe(422);
+    expect(mocks.analyze).not.toHaveBeenCalled();
+    const response = await POST(analysisRequest({ asset: researchAsset, purpose: 'market_context' }));
+    expect(response.status).toBe(200); privateResponse(response);
+    expect(mocks.analyze).toHaveBeenCalledWith(researchAsset, 'USD', [], 'market_context');
+    const invalid = await POST(analysisRequest({ asset, purpose: 'unknown' }));
+    expect(invalid.status).toBe(400);
+  });
   it('does not call the public provider before authentication', async () => {
     const response = await GET(locationRequest('QA', false));
     expect(response.status).toBe(401); privateResponse(response); expect(mocks.locations).not.toHaveBeenCalled();

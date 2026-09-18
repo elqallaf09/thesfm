@@ -28,9 +28,13 @@ export async function POST(request: NextRequest) {
     if (!asset) return reply({ ok: false, code: 'INVALID_ASSET' }, 400);
     if (body.outputCurrency !== undefined && (typeof body.outputCurrency !== 'string' || !/^[A-Z]{3}$/.test(body.outputCurrency))) return reply({ ok: false, code: 'INVALID_CURRENCY' }, 400);
     const outputCurrency = typeof body.outputCurrency === 'string' ? body.outputCurrency : 'USD';
+    if (body.purpose !== undefined && body.purpose !== 'market_context' && body.purpose !== 'valuation') return reply({ ok: false, code: 'INVALID_PURPOSE' }, 400);
+    const marketResearch = body.purpose === 'market_context';
     const preflight = assessRealEstateReadiness(asset, []);
-    if (!preflight.checks.assetIdentity || !preflight.checks.area) return reply({ ok: false, code: 'ASSET_DETAILS_INCOMPLETE', readiness: preflight }, 422);
-    const analysis = await analyzeRealEstateAsset(asset, outputCurrency, []);
+    if (!preflight.checks.assetIdentity || (!marketResearch && !preflight.checks.area)) return reply({ ok: false, code: 'ASSET_DETAILS_INCOMPLETE', readiness: preflight }, 422);
+    const analysis = marketResearch
+      ? await analyzeRealEstateAsset(asset, outputCurrency, [], 'market_context')
+      : await analyzeRealEstateAsset(asset, outputCurrency, []);
     return reply({ ok: true, analysis, readiness: preflight });
   } catch { return reply({ ok: false, code: 'ANALYSIS_UNAVAILABLE' }, 503); }
 }

@@ -11,6 +11,9 @@ const US_EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX'] as const;
 const UNIVERSE_CACHE_SECONDS = 15 * 60;
 const MAX_RESULTS = 500;
 const MAX_QUOTE_ENRICHMENT = 180;
+let universeRequest: Promise<{ rows: UniverseRow[]; degradedReason: string | null }> | null = null;
+let universeExpiresAt = 0;
+const scans = new Map<StockCategoryId, { expiresAt: number; request: Promise<StockCategoryScannerResult> }>();
 
 export type StockCategoryScannerMode =
   | 'dynamic_market_screener'
@@ -29,6 +32,7 @@ export type StockCategoryScannerItem = {
   source: string;
   delayed: boolean;
   available: boolean;
+  quoteEnriched?: boolean;
   unavailableReason?: string;
   sector: string | null;
   industry: string | null;
@@ -134,7 +138,7 @@ function safeError(error: unknown) {
 }
 
 function validSymbol(value: string) {
-  return /^[A-Z][A-Z0-9.-]{0,14}$/.test(value) && !value.includes('^');
+  return /^[A-Z0-9][A-Z0-9.-]{0,24}$/.test(value) && !value.includes('^');
 }
 
 function normalizeUniverseRows(rows: Array<Record<string, unknown>>) {
@@ -207,15 +211,35 @@ async function fetchFmpArray(
 }
 
 async function fetchUsUniverse(forceRefresh: boolean) {
-  const groups = await Promise.all(US_EXCHANGES.map(exchange => fetchFmpArray('company-screener', {
+  if (universeRequest && Date.now() < universeExpiresAt && (!forceRefresh || universeExpiresAt === Infinity)) return universeRequest;
+  const request = Promise.allSettled(US_EXCHANGES.map(exchange => fetchFmpArray('company-screener', {
     exchange,
     country: 'US',
     isEtf: false,
     isFund: false,
     isActivelyTrading: true,
     limit: 10_000,
-  }, forceRefresh)));
-  return normalizeUniverseRows(groups.flat());
+  }, forceRefresh))).then(groups => {
+    const rows = normalizeUniverseRows(groups.flatMap(group => group.status === 'fulfilled' ? group.value : []));
+    const missing = US_EXCHANGES.filter((_, index) => {
+      const group = groups[index];
+      return group.status === 'rejected' || group.value.length === 0;
+    });
+    if (!rows.length) {
+      const failed = groups.find(group => group.status === 'rejected');
+      throw new Error(failed?.status === 'rejected' ? safeError(failed.reason) : 'category_universe_unavailable');
+    }
+    const degradedReason = missing.length ? `partial_exchange_coverage:${missing.join(',')}` : null;
+    universeExpiresAt = Date.now() + (degradedReason ? 60_000 : UNIVERSE_CACHE_SECONDS * 1000);
+    return { rows, degradedReason };
+  }).catch(error => {
+    // Share a short failed request across callers instead of amplifying a 429.
+    universeExpiresAt = Date.now() + 60_000;
+    throw error;
+  });
+  universeRequest = request;
+  universeExpiresAt = Infinity;
+  return request;
 }
 
 function dividendYieldPercent(row: UniverseRow) {
@@ -292,6 +316,7 @@ function mapUniverseItem(
     source: quotePrice !== null ? (quote?.source ?? 'market data') : 'Financial Modeling Prep Screener',
     delayed: quote?.delayed ?? true,
     available,
+    quoteEnriched: Boolean(quote?.available),
     ...(!available ? { unavailableReason: quote?.unavailableReason ?? 'price_unavailable' } : {}),
     sector: row.sector,
     industry: row.industry,
@@ -320,7 +345,7 @@ async function dynamicUsScanner(
   options: ScanOptions,
 ): Promise<StockCategoryScannerResult> {
   const limit = normalizeLimit(options.limit);
-  const universe = await fetchUsUniverse(Boolean(options.forceRefresh));
+  const { rows: universe, degradedReason } = await fetchUsUniverse(Boolean(options.forceRefresh));
   const matches = sortMatches(category, universe.filter(row => categoryMatch(category, row)));
   const selected = matches.slice(0, limit);
   const quoteCandidates = selected.slice(0, MAX_QUOTE_ENRICHMENT);
@@ -341,7 +366,7 @@ async function dynamicUsScanner(
     availableCount: items.filter(item => item.available).length,
     quoteEnrichedCount: quoteCandidates.filter(row => bySymbol.get(row.symbol)?.available).length,
     criteria: CRITERIA[category],
-    degradedReason: null,
+    degradedReason,
     items,
   };
 }
@@ -555,7 +580,7 @@ async function fallbackWatchlist(category: StockCategoryId, reason: string, requ
   };
 }
 
-export async function screenStockCategory(category: StockCategoryId, options: ScanOptions = {}): Promise<StockCategoryScannerResult> {
+async function loadStockCategory(category: StockCategoryId, options: ScanOptions = {}): Promise<StockCategoryScannerResult> {
   const limit = normalizeLimit(options.limit);
 
   if (category === 'growth') {
@@ -579,4 +604,22 @@ export async function screenStockCategory(category: StockCategoryId, options: Sc
   } catch (error) {
     return fallbackWatchlist(category, safeError(error), limit);
   }
+}
+
+export async function screenStockCategory(category: StockCategoryId, options: ScanOptions = {}): Promise<StockCategoryScannerResult> {
+  const cached = scans.get(category);
+  let request = cached && cached.expiresAt > Date.now() && (!options.forceRefresh || cached.expiresAt === Infinity) ? cached.request : null;
+  if (!request) {
+    request = loadStockCategory(category, { ...options, limit: MAX_RESULTS });
+    const entry = { request, expiresAt: Number.POSITIVE_INFINITY };
+    // Ticker, scanner, news and movers share one bounded scan per category.
+    scans.set(category, entry);
+    void request.then(result => {
+      entry.expiresAt = Date.now() + (result.degradedReason ? 60_000 : 300_000);
+    }, () => { if (scans.get(category) === entry) scans.delete(category); });
+  }
+  const result = await request;
+  const items = result.items.slice(0, normalizeLimit(options.limit));
+  return { ...result, items, returnedCount: items.length, availableCount: items.filter(item => item.available).length,
+    quoteEnrichedCount: items.filter(item => item.quoteEnriched ?? item.changePercent !== null).length };
 }

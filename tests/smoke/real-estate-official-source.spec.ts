@@ -3,9 +3,9 @@ import { userAuthStatePath } from './auth-state';
 
 const configured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
 const copy = {
-  ar: { country: 'الدولة', city: 'البلدية من المصدر الرسمي', district: 'الحي من المصدر الرسمي', area: 'مساحة الأرض', search: 'البحث عن أدلة موثقة', source: 'اتصال المصدر الرسمي', save: 'حفظ التقييم وأدلته', details: 'عرض سجلات المصدر، وليست تقييمًا', warning: 'المصدر متصل للفحص، وسجلاته منفصلة عن التقييم الحالي للعقار.' },
-  en: { country: 'Country', city: 'Official municipality', district: 'Official district', area: 'Land area', search: 'Search verified evidence', source: 'Official source connection', save: 'Save valuation and evidence', details: 'Inspect source records, not a valuation', warning: 'Source connected for inspection; its records remain separate from current-property valuation.' },
-  fr: { country: 'Pays', city: 'Municipalité officielle', district: 'Quartier officiel', area: 'Surface du terrain', search: 'Rechercher des preuves vérifiées', source: 'Connexion à la source officielle', save: 'Enregistrer l’estimation et ses preuves', details: 'Consulter les transactions, pas une estimation', warning: 'Source connectée pour consultation ; ses données restent séparées de l’estimation actuelle.' },
+  ar: { country: 'الدولة', city: 'البلدية من المصدر الرسمي', district: 'الحي من المصدر الرسمي', area: 'مساحة الأرض', search: 'بحث بيانات السوق الرسمية', source: 'اتصال المصدر الرسمي', save: 'حفظ التقييم وأدلته', details: 'عرض سجلات المصدر، وليست تقييمًا', warning: 'المصدر متصل للفحص، وسجلاته منفصلة عن التقييم الحالي للعقار.' },
+  en: { country: 'Country', city: 'Official municipality', district: 'Official district', area: 'Land area', search: 'Search official market records', source: 'Official source connection', save: 'Save valuation and evidence', details: 'Inspect source records, not a valuation', warning: 'Source connected for inspection; its records remain separate from current-property valuation.' },
+  fr: { country: 'Pays', city: 'Municipalité officielle', district: 'Quartier officiel', area: 'Surface du terrain', search: 'Rechercher les données officielles', source: 'Connexion à la source officielle', save: 'Enregistrer l’estimation et ses preuves', details: 'Consulter les transactions, pas une estimation', warning: 'Source connectée pour consultation ; ses données restent séparées de l’estimation actuelle.' },
 } as const;
 const location = { municipality: 'Synthetic Municipality', municipalityAr: 'بلدية اختبار', district: 'Synthetic District', districtAr: 'حي اختبار' };
 // Isolated test-only public-source data. No private portfolio reads or writes.
@@ -27,7 +27,9 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.route('**/api/investments/real-estate/analyze', async route => {
       analysisRequests += 1;
       const payload = route.request().postDataJSON();
-      expect(payload.asset).toMatchObject({ countryCode: 'QA', municipality: location.municipality, district: location.district, landArea: 100 });
+      expect(payload.asset).toMatchObject({ countryCode: 'QA', municipality: location.municipality, district: location.district });
+      expect(payload.purpose).toBe('market_context');
+      expect(payload.asset.landArea).toBeUndefined();
       await route.fulfill({ json: { ok: true, analysis: { status: 'SOURCE_DATA_REVIEW_REQUIRED', valuation: null, evidence: [], evidenceCount: 0, sourceFailures: [], message: 'Context only', officialContext: report } } });
     });
     await page.route('**/api/investments/real-estate/snapshots', route => { snapshotRequests += 1; return route.fulfill({ status: 500, json: { ok: false } }); });
@@ -38,7 +40,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expect(city).toBeEnabled();
     await city.selectOption(location.municipality);
     await page.getByLabel(labels.district, { exact: true }).selectOption(location.district);
-    await page.getByLabel(labels.area, { exact: true }).fill('100');
+    await expect(page.getByLabel(labels.area, { exact: true })).not.toHaveAttribute('required', '');
     expect(analysisRequests).toBe(0);
     await page.getByRole('button', { name: labels.search, exact: true }).click();
     const source = page.getByRole('region', { name: labels.source, exact: true });

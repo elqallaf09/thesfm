@@ -10,7 +10,7 @@ type Controller = {
   drawerResources: (tab: string) => string[];
   drawerLoadedContext: (symbol: string) => { asset: Row; rec: Row; cachedDetail: Row };
 };
-function harness() {
+function harness(watchRow: Row | null = null) {
   const scope = vm.createContext({ window: {}, AbortController });
   vm.runInContext(readFileSync('src/trader-app/public/assets/drawer-data.js', 'utf8'), scope);
   const api = scope.window.SFMTraderDrawerData;
@@ -41,7 +41,7 @@ function harness() {
     isTechnicalUnavailablePayload: () => true, technicalUnavailableReason: () => 'Fixture has no technical coverage',
     arr: (value: unknown) => Array.isArray(value) ? value : [],
     mergeRecLists: (...lists: Row[][]) => lists.flat(), recs: () => [stale],
-    marketUniverseRows: () => [], matchRec: () => stale,
+    marketUniverseRows: () => [], matchRec: () => stale, lookupWatchlist: () => watchRow,
   }) as Controller;
   return {
     cache, drawerData, controller, fresh,
@@ -87,6 +87,12 @@ describe('drawer quote and symbol integrity with a warm recommendation cache', (
     await fixture.load('summary', true);
     expect(fixture.drawerData.read('MSFT|quote|ar').status).toBe('success');
     expect(fixture.controller.drawerLoadedContext('MSFT').asset.price).toBe(152.34);
+  });
+  it('does not let an empty watchlist observation erase the fetched price or its availability', async () => {
+    const fixture = harness({ symbol: 'MSFT', price: null, available: false });
+    fixture.setQuote({ ...fixture.fresh, available: true });
+    await fixture.load('summary');
+    expect(fixture.controller.drawerLoadedContext('MSFT').asset).toMatchObject({ ...fixture.fresh, available: true });
   });
   it('does not silently accept another symbol as a successful signal request', async () => {
     const fixture = harness();

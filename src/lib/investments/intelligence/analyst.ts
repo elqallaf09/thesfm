@@ -37,8 +37,8 @@ async function collectOfficialContext(asset: RealEstateAssetInput): Promise<Offi
   return undefined;
 }
 
-export async function analyzeRealEstateAsset(asset: RealEstateAssetInput, outputCurrency: string, fxQuotes: FxQuote[] = []): Promise<RealEstateAnalystResult> {
-  const adapters = getRealEstateSourceAdapters(asset.countryCode);
+export async function analyzeRealEstateAsset(asset: RealEstateAssetInput, outputCurrency: string, fxQuotes: FxQuote[] = [], purpose: 'valuation' | 'market_context' = 'valuation'): Promise<RealEstateAnalystResult> {
+  const adapters = purpose === 'market_context' ? [] : getRealEstateSourceAdapters(asset.countryCode);
   const officialContext = await collectOfficialContext(asset);
   const contextFailures = officialContext?.status === 'UNAVAILABLE'
     ? [{ adapterId: officialContext.providerId, reason: 'Official public source could not be verified. No fallback prices were supplied.' }] : [];

@@ -163,8 +163,10 @@
     loaded = mergeRecLists(marketRows, loaded);
     const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
     const rec = watchRow || cachedDetail && cachedDetail.rec || loadedAsset;
-    // A cached list/signal is not a newer quote. Keep fetched price and its evidence together.
-    const asset = normalizeQuote(norm({ symbol: key, ...(loadedAsset || {}), ...(rec || {}), ...(cachedDetail && cachedDetail.asset || {}), ...(watchRow || {}) }));
+    // The fetched observation is authoritative, including an explicitly unavailable price.
+    // Keep its evidence together; an empty watchlist row must not overwrite it.
+    const observation = cachedDetail && cachedDetail.asset || watchRow || loadedAsset || rec || {};
+    const asset = normalizeQuote(norm({ symbol: key, ...observation }));
     return { symbol: key, asset, rec: rec ? normalizeQuote(norm(rec)) : null, cachedDetail };
   }
 

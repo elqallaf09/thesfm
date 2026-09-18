@@ -9,8 +9,12 @@ for (const setup of [
   { width: 390, height: 844, language: 'ar', theme: 'light' },
   { width: 430, height: 932, language: 'en', theme: 'dark' },
   { width: 844, height: 390, language: 'fr', theme: 'light' },
+  { width: 1280, height: 900, language: 'ar', theme: 'light' },
 ]) {
-  test(`cold symbol data, retry and mobile layout ${setup.width} ${setup.language} ${setup.theme}`, async ({ page }, info) => {
+  test(`cold symbol data, retry and mobile layout ${setup.width} ${setup.language} ${setup.theme}`, async ({ page, browserName }, info) => {
+    // This multi-tab/retry flow has 2–6s traced actions on WebKit in CI.
+    // Keep every assertion and the separate performance budgets unchanged.
+    if (browserName === 'webkit') test.setTimeout(60_000);
     await page.setViewportSize({ width: setup.width, height: setup.height });
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     const frame = await openTraderDrawerFixture(page, fixture.origin, setup.language, setup.theme, ['MSFT', 'AAPL']);
@@ -67,9 +71,23 @@ for (const setup of [
     expect(geometry.height).toBeLessThanOrEqual(geometry.viewportHeight + 1);
     expect(geometry.headerHeight).toBeLessThan(125); expect(geometry.contentHeight).toBeGreaterThan(80);
     expect(geometry.closeWidth).toBeGreaterThanOrEqual(44); expect(geometry.closeHeight).toBeGreaterThanOrEqual(44);
+    await frame.locator('#drawer-tab-ai').click();
+    const analysis = drawer.locator('.sa-research');
+    await expect(analysis).toBeVisible();
+    await expect(analysis.locator('.sa-price')).toContainText('151.23');
+    const analysisGeometry = await analysis.evaluate(element => {
+      const box = element.getBoundingClientRect(); const heroElement = element.querySelector('.sa-research-head')!;
+      const hero = heroElement.getBoundingClientRect();
+      const metrics = element.querySelector('.sa-metrics')!.getBoundingClientRect();
+      return { width: box.width, contentWidth: element.scrollWidth, heroBottom: hero.bottom, metricsTop: metrics.top, heroHeight: hero.height, heroContentHeight: heroElement.scrollHeight };
+    });
+    expect(analysisGeometry.contentWidth).toBeLessThanOrEqual(analysisGeometry.width + 1);
+    expect(analysisGeometry.metricsTop).toBeGreaterThanOrEqual(analysisGeometry.heroBottom - 1);
+    expect(analysisGeometry.heroContentHeight).toBeLessThanOrEqual(analysisGeometry.heroHeight + 1);
     await drawer.locator('#drawer-more-toggle').click();
     await expect(drawer.locator('[data-drawer-share]')).toBeVisible();
-    await info.attach('fixture-symbol-drawer', { body: await page.screenshot({ scale: 'css' }), contentType: 'image/png' });
+    expect(await analysis.locator('.sa-research-head').evaluate(element => element.scrollHeight - element.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+    await info.attach('fixture-symbol-drawer', { body: await page.screenshot({ scale: 'css', path: info.outputPath('quick-analysis.png') }), contentType: 'image/png' });
     await drawer.locator('.drawer-close').click();
     await expect(drawer).toHaveCount(0);
     await expect(frame.locator('[data-symbol-details="MSFT"]').first()).toBeFocused();

@@ -3,9 +3,9 @@ import { userAuthStatePath } from './auth-state';
 
 const userAuthConfigured = Boolean(process.env.E2E_USER_EMAIL && process.env.E2E_USER_PASSWORD);
 const copy = {
-  ar: { title: 'مركز السوق العقاري', back: 'العودة إلى مركز الأسواق العالمية', country: 'الدولة', search: 'البحث عن أدلة موثقة' },
-  en: { title: 'Real Estate Market Center', back: 'Back to Global Markets Hub', country: 'Country', search: 'Search verified evidence' },
-  fr: { title: 'Centre du marché immobilier', back: 'Retour au centre des marchés mondiaux', country: 'Pays', search: 'Rechercher des preuves vérifiées' },
+  ar: { title: 'مركز السوق العقاري', back: 'العودة إلى مركز الأسواق العالمية', country: 'الدولة', search: 'بحث بيانات السوق الرسمية' },
+  en: { title: 'Real Estate Market Center', back: 'Back to Global Markets Hub', country: 'Country', search: 'Search official market records' },
+  fr: { title: 'Centre du marché immobilier', back: 'Retour au centre des marchés mondiaux', country: 'Pays', search: 'Rechercher les données officielles' },
 } as const;
 
 // This suite uses the existing isolated Preview user. It never writes asset rows

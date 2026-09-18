@@ -4330,7 +4330,7 @@
     if (tab === "news") return drawerNewsTab(context);
     if (tab === "earnings") return drawerEarningsTab(context);
     if (tab === "recommendation") return drawerRecommendationTab(context);
-    if (tab === "ai") return smartAnalysisTerminal(context.rec || context.asset, "drawer-analysis-terminal-title");
+    if (tab === "ai") return smartAnalysisTerminal(context.asset, "drawer-analysis-terminal-title");
     if (tab === "provider") return drawerProviderTab(context);
     return drawerSummaryTab(context);
   }

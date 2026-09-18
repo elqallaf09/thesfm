@@ -237,7 +237,11 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
   };
   const [quote, historyResult] = await Promise.all([
     getSfmMarketQuote(meta?.symbol ?? symbol, request),
-    getSfmMarketHistory(meta?.symbol ?? symbol, request),
+    options.includeHistory === false
+      ? Promise.resolve({ ok: false as const, candles: [], reason: 'history_not_requested' })
+      : getSfmMarketHistory(meta?.symbol ?? symbol, request).catch(() => ({
+        ok: false as const, candles: [], reason: 'history_unavailable',
+      })),
   ]);
 
   if (!quote || !isValidPrice(quote.price)) {
@@ -256,8 +260,8 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     assetType: traderAssetType(quote.assetType),
     newsSentiment: UNAVAILABLE_NEWS_SENTIMENT,
   });
-  const sufficient = recommendation.dataSufficiency.sufficient && recommendation.finalRecommendation !== 'Insufficient data'
-    && quote.quality.state !== 'stale' && quote.quality.state !== 'unavailable';
+  const quoteAvailable = quote.quality.state !== 'stale' && quote.quality.state !== 'unavailable';
+  const sufficient = recommendation.dataSufficiency.sufficient && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
   const indicators = recommendation.technicalSummary.indicators;
   const provider = traderProvider(quote.provenance.upstreamProvider);
   const upstreamName = quote.provenance.upstreamProviderName ?? providerDisplayName(quote.provenance.upstreamProvider);
@@ -276,7 +280,6 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     },
     catalog: meta as unknown as Record<string, unknown> | undefined,
   });
-  const quoteAvailable = quote.quality.state !== 'stale' && quote.quality.state !== 'unavailable';
   const runtimeQuality = quality as unknown as TraderQuote['dataQuality'];
 
   return {
