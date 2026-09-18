@@ -1,4 +1,5 @@
 import type { MarketAssetType } from '@/lib/market/marketService';
+import type { QuoteObservation } from '@/lib/market/quoteObservation';
 
 export const SFM_MARKET_ENGINE_NAME = 'THE SFM Market Data Engine' as const;
 export const SFM_MARKET_ENGINE_VERSION = '1.0.0' as const;
@@ -35,6 +36,7 @@ export type SfmMarketProvenance = {
   cacheAgeSeconds: number | null;
   attemptCount: number;
   derivedFields: string[];
+  observation?: QuoteObservation;
 };
 
 export type SfmMarketQuote = {

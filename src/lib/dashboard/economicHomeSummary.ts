@@ -37,6 +37,10 @@ export function buildEconomicHomeSummary(
   const hasBehindGoal = goals.some(goal => goal.status === 'behind');
   const completeness = snapshot.dataQuality.completeness;
 
+  if (snapshot.dataQuality.missing.length > 0) {
+    return { health: 'watch', riskCode: 'incomplete_data', opportunityCode: 'improve_data', attentionDecision: null };
+  }
+
   let riskCode: EconomicHomeSummary['riskCode'] = 'none';
   if (snapshot.monthlySurplus < 0) riskCode = 'monthly_deficit';
   else if (snapshot.runwayMonths !== null && snapshot.runwayMonths < 3) riskCode = 'low_liquidity';

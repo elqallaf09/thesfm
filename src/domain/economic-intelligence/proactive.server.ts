@@ -4,6 +4,7 @@ import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import type { SmartNotification, NotificationLang, SmartNotificationSeverity, SmartNotificationType } from '@/lib/notifications/generateNotifications';
 import { buildFinancialTwinSnapshot } from './digitalTwin';
 import { buildEconomicHomeSummary } from '@/lib/dashboard/economicHomeSummary';
+import { loadCompleteEconomicRows } from './sourceRows.server';
 
 const COPY = {
   ar: {
@@ -104,13 +105,15 @@ export async function loadProactiveEconomicEvents(userId: string, lang: Notifica
 
   const [financeEntries, profileResult, decisionsResult] = await Promise.all([
     Promise.all(Object.entries(tableNames).map(async ([key, table]) => {
-      const { data, error } = await admin.from(table).select('*').eq('user_id', userId).limit(2000);
-      if (error) throw error;
-      return [key, data ?? []] as const;
+      return [key, await loadCompleteEconomicRows(admin, table, userId)] as const;
     })),
-    admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).maybeSingle(),
-    admin.from('user_decisions').select('id,decision_title,status,risk_score,updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(20),
+    admin.from('profiles').select('default_currency,preferred_currency,currency').eq('id', userId).abortSignal(AbortSignal.timeout(8000)).maybeSingle(),
+    admin.from('user_decisions').select('id,decision_title,status,risk_score,updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(20).abortSignal(AbortSignal.timeout(8000)),
   ]);
+
+  // A failed source must not resolve existing durable warnings as if it were empty.
+  if (profileResult.error) throw profileResult.error;
+  if (decisionsResult.error) throw decisionsResult.error;
 
   const rows = Object.fromEntries(financeEntries) as Record<string, Record<string, unknown>[]>;
   const twin = buildFinancialTwinSnapshot({

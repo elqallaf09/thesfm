@@ -80,7 +80,9 @@ export async function POST(request: NextRequest) {
     }, { status: 503, headers: NO_STORE });
   }
 
-  const usage = await consumeAiUsage({
+  let usage;
+  try {
+    usage = await consumeAiUsage({
     userId: user.id,
     feature: advisor === 'business' ? 'project_ai_advisor' : 'market_ai_insight',
     metadata: {
@@ -89,8 +91,15 @@ export async function POST(request: NextRequest) {
       messageCount: messages.length,
       groundingConfidence: grounding.confidence,
     },
-  });
-  if (!usage.allowed) return aiUsageLimitResponse(usage);
+    });
+  } catch {
+    return NextResponse.json({ ok: false, error: { code: 'AI_USAGE_UNAVAILABLE' }, correlationId }, { status: 503, headers: NO_STORE });
+  }
+  if (!usage.allowed) {
+    const response = aiUsageLimitResponse(usage);
+    response.headers.set('cache-control', 'private, no-store');
+    return response;
+  }
 
   const generation = await generateAssistantReply({
     system: buildEconomicAdvisorPrompt(grounding, locale),

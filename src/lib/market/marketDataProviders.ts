@@ -8,6 +8,7 @@ import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
+import { observationIso as toIso, twelveDataObservation, type QuoteObservation } from '@/lib/market/quoteObservation';
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
 
@@ -46,6 +47,7 @@ export type NormalizedMarketQuote = {
   providerName: string;
   delayType: MarketDelayType;
   lastUpdated: string | null;
+  observation?: QuoteObservation;
   cached?: boolean;
   cacheAgeSeconds?: number;
 };
@@ -199,17 +201,6 @@ function textOrNull(value: unknown): string | null {
   return text && !/^n\/?a$/i.test(text) ? text : null;
 }
 
-function toIso(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value === 'number' || /^\d+$/.test(String(value))) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric) || numeric <= 0) return null;
-    return new Date(numeric * (String(Math.trunc(numeric)).length <= 10 ? 1000 : 1)).toISOString();
-  }
-  const date = new Date(String(value));
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
 function round(value: number | null): number | null {
   return value === null ? null : Number(value.toFixed(6));
 }
@@ -276,6 +267,7 @@ function normalizeQuote(input: {
   assetType?: unknown;
   delayType: MarketDelayType;
   lastUpdated?: unknown;
+  observation?: QuoteObservation;
   context?: MarketDataProviderContext;
 }): NormalizedMarketQuote | null {
   const rawPrice = numberOrNull(input.price);
@@ -370,7 +362,7 @@ function normalizeQuote(input: {
     provider: input.provider,
     providerName: input.providerName,
     delayType: input.delayType,
-    lastUpdated: toIso(input.lastUpdated) ?? new Date().toISOString(),
+    lastUpdated: toIso(input.lastUpdated), observation: input.observation,
   };
 }
 
@@ -646,7 +638,7 @@ class TwelveDataProvider extends BaseProvider {
     const key = apiKey('TWELVE_DATA_API_KEY');
     if (!key) return null;
     for (const candidate of twelveExchangeCandidates(symbol, market, context)) {
-      const params = new URLSearchParams({ symbol: candidate.symbol, apikey: key });
+      const params = new URLSearchParams({ symbol: candidate.symbol, apikey: key, timezone: 'UTC' });
       if (candidate.exchange) params.set('exchange', candidate.exchange);
       const cacheKey = `quote:${this.name}:${params.get('symbol')}:${params.get('exchange') ?? ''}`;
       const started = Date.now();
@@ -676,12 +668,11 @@ class TwelveDataProvider extends BaseProvider {
         exchangeCode: body.mic_code ?? candidate.exchange,
         country: body.country,
         assetType: body.type ?? body.instrument_type,
-        delayType: body.is_market_open === true ? 'realtime' : 'delayed',
-        lastUpdated: body.datetime ?? body.timestamp,
+        ...twelveDataObservation(body),
         context,
       });
       if (quote) {
-        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds, delayType: 'cached' as MarketDelayType });
+        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds });
         logProviderSuccess(this.name, 'quote', symbol, Date.now() - started, result.cacheHit);
         return quote;
       }
@@ -783,7 +774,7 @@ class FinnhubProvider extends BaseProvider {
         context,
       });
       if (quote) {
-        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds, delayType: 'cached' as MarketDelayType });
+        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds });
         logProviderSuccess(this.name, 'quote', symbol, Date.now() - started, result.cacheHit);
         return quote;
       }
@@ -934,7 +925,7 @@ class EodhdProvider extends BaseProvider {
         context,
       });
       if (quote) {
-        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds, delayType: 'cached' as MarketDelayType });
+        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds });
         logProviderSuccess(this.name, 'quote', symbol, Date.now() - started, result.cacheHit);
         return quote;
       }
@@ -1197,7 +1188,7 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
   const cached = getFallback<NormalizedMarketQuote>(key, FALLBACK_QUOTE_TTL_MS);
   if (cached) {
     logReliabilityEvent('warn', 'market_data_cache_fallback', { capability: 'quote', symbol: upper(symbol), provider: cached.provider });
-    return { ok: true, data: { ...cached.data, cached: true, delayType: 'cached' }, provider: cached.provider, attempts };
+    return { ok: true, data: { ...cached.data, cached: true }, provider: cached.provider, attempts };
   }
   return { ok: false, attempts, latestError: attempts.findLast(attempt => attempt.code !== 'NOT_CONFIGURED')?.code ?? attempts.at(-1)?.code ?? null };
 }

@@ -30,8 +30,10 @@ export function isInDateRange(value: unknown, from: string, to: string) {
   return true;
 }
 
-function escapeCsv(value: unknown) {
-  const text = normalizeDigits(value);
+export function escapeCsv(value: unknown) {
+  const raw = normalizeDigits(value);
+  // Keep actual numeric cells numeric; untrusted text must not become a formula.
+  const text = typeof value !== 'number' && (/^[\s\uFEFF]*[=+@-]/.test(raw) || /^[\t\r\n]/.test(raw)) ? `'${raw}` : raw;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
@@ -199,10 +201,11 @@ export function aggregateBy<T>(rows: T[], getKey: (row: T) => string, getValue: 
 }
 
 export function nextPayrollDate(day: number, base = new Date()) {
-  const normalized = Math.max(1, Math.min(Number.isFinite(day) ? day : 25, 31));
-  const candidate = new Date(base.getFullYear(), base.getMonth(), normalized);
+  const normalized = Math.max(1, Math.min(Number.isFinite(day) ? Math.trunc(day) : 25, 31));
+  const inMonth = (month: number) => new Date(base.getFullYear(), month, Math.min(normalized, new Date(base.getFullYear(), month + 1, 0).getDate()));
+  const candidate = inMonth(base.getMonth());
   if (candidate < new Date(base.getFullYear(), base.getMonth(), base.getDate())) {
-    return new Date(base.getFullYear(), base.getMonth() + 1, normalized);
+    return inMonth(base.getMonth() + 1);
   }
   return candidate;
 }

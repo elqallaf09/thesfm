@@ -2,6 +2,7 @@ import type { EvidenceConfidence, ValuationEvidence } from './contracts';
 import { INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION } from './contracts';
 import type { RealEstateAssetInput } from './real-estate';
 import { areaToSquareMeters, prepareRealEstateEvidence } from './real-estate';
+import { qualifiedTransactionEvidence } from './transactionEvidence';
 
 export interface FxQuote {
   from: string;
@@ -54,9 +55,14 @@ function weightedQuantile(values: Array<{ value: number; weight: number }>, q: n
   return sorted[sorted.length - 1]?.value ?? 0;
 }
 
-function fxRateFor(from: string, to: string, quotes: FxQuote[]): FxQuote | null {
+function fxRateFor(from: string, to: string, quotes: FxQuote[], now: Date): FxQuote | null {
   if (from === to) return { from, to, rate: 1, sourceName: 'identity', observedAt: new Date(0).toISOString(), retrievedAt: new Date(0).toISOString() };
-  return quotes.find((quote) => quote.from === from && quote.to === to && Number.isFinite(quote.rate) && quote.rate > 0) ?? null;
+  return quotes.find((quote) => {
+    const observed = Date.parse(quote.observedAt), retrieved = Date.parse(quote.retrievedAt);
+    return quote.from === from && quote.to === to && Number.isFinite(quote.rate) && quote.rate > 0 && Boolean(quote.sourceName.trim())
+      && Number.isFinite(observed) && Number.isFinite(retrieved) && retrieved >= observed
+      && observed <= now.getTime() && now.getTime() - observed <= 7 * 86_400_000 && retrieved <= now.getTime() + 300_000;
+  }) ?? null;
 }
 
 export function buildRealEstateValuationRange(
@@ -64,15 +70,18 @@ export function buildRealEstateValuationRange(
   evidence: ValuationEvidence[],
   outputCurrency: string,
   fxQuotes: FxQuote[] = [],
+  now = new Date(),
 ): ValuationRangeResult {
-  const prepared = prepareRealEstateEvidence(evidence);
-  const area = asset.landArea && asset.landAreaUnit ? areaToSquareMeters(asset.landArea, asset.landAreaUnit) : null;
+  const qualified = qualifiedTransactionEvidence(evidence, now);
+  const prepared = prepareRealEstateEvidence(qualified);
+  if (qualified.length < evidence.length) prepared.reasons.push('Undated, stale, duplicate, poorly matched or non-transaction observations were excluded.');
+  const area = typeof asset.landArea === 'number' && Number.isFinite(asset.landArea) && asset.landArea > 0 && asset.landAreaUnit ? areaToSquareMeters(asset.landArea, asset.landAreaUnit) : null;
   if (!area) {
     return { status: 'INSUFFICIENT_EVIDENCE', confidence: 'INSUFFICIENT', reasons: ['Land area is required for comparable price-per-area valuation.'], evidenceIds: [], methodologyVersion: INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION };
   }
 
   const normalized = prepared.comparables.flatMap((item) => {
-    const quote = fxRateFor(item.currency, outputCurrency, fxQuotes);
+    const quote = fxRateFor(item.currency, outputCurrency, fxQuotes, now);
     if (!quote) return [];
     const weight = authorityWeight[item.evidence.authority] * matchWeight[item.evidence.assetMatch] * matchWeight[item.evidence.geographyMatch];
     return [{ value: item.valuePerM2 * quote.rate, weight, evidenceId: item.evidenceId }];

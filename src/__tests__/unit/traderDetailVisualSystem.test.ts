@@ -109,7 +109,7 @@ describe('standalone Trader detail visual-system contract', () => {
   it('rewrites, precaches, and serves the scoped stylesheet as a public CSS asset', async () => {
     expect(traderAssetRoute).toContain(".replaceAll('href=\"/detail.css', 'href=\"/thesfm-trader-own/app/detail.css')");
     expect(traderAssetRoute).toContain(".replaceAll('src=\"/theme-bridge.js', 'src=\"/thesfm-trader-own/app/theme-bridge.js')");
-    expect(serviceWorker).toContain('the-sfm-trader-v20260918-news-accuracy');
+    expect(serviceWorker).toContain('the-sfm-trader-v20260918-quote-observation');
     expect(serviceWorker).toContain('/theme-bridge.js?v=20260714-phase34');
     expect(serviceWorker).toContain('/detail.css?v=20260714-phase34');
 

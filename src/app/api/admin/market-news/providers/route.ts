@@ -1,6 +1,7 @@
 import { getMarketNewsAdminProviderStatus } from '@/lib/market-news/persistence';
 import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
+import { loadRegionalQuoteHealth } from '@/lib/server/marketSourceHealth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export const GET = createAdminApiRoute({
     return counts;
   }, { total: 0, enabled: 0, healthy: 0, degraded: 0, attention: 0 });
   // Additive-only field — the new unified market-state view; existing consumers can ignore it.
-  const state = await getMarketSystemState();
+  const [state, directoryHealth] = await Promise.all([getMarketSystemState(), loadRegionalQuoteHealth(auth.admin)]);
 
   return json({
     ok: true,
@@ -29,5 +30,6 @@ export const GET = createAdminApiRoute({
     providers: result.providers,
     summary,
     state,
+    directoryHealth,
   });
 });

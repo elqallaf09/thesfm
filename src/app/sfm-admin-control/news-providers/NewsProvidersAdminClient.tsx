@@ -6,6 +6,8 @@ import { AdminDashboardShell } from '@/components/AdminDashboardShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import { TR_ADMIN } from '@/lib/translations/admin';
 import { translateFromDictionary, type Lang } from '@/lib/translations/types';
+import { MarketSourceHealthPanel } from '@/components/MarketSourceHealthPanel';
+import type { MarketHealthReport } from '@/lib/market/sourceHealth';
 
 type ProviderStatus = {
   providerId: string;
@@ -36,6 +38,7 @@ type ProviderStatus = {
 };
 
 type StatusResponse = {
+  directoryHealth?: MarketHealthReport;
   ok?: boolean;
   available?: boolean;
   generatedAt?: string;
@@ -186,6 +189,7 @@ export default function NewsProvidersAdminClient() {
         {failed || (!loading && data?.available === false && providers.length === 0) ? <div className="news-provider-notice danger"><TriangleAlert size={20} /><p>{text.unavailable}</p></div> : null}
         {!loading && !failed && providers.length === 0 && data?.available !== false ? <div className="news-provider-notice"><DatabaseZap size={20} /><p>{text.empty}</p></div> : null}
 
+        {!loading ? <MarketSourceHealthPanel report={data?.directoryHealth} lang={language} /> : null}
         <section className="news-provider-grid">
           {providers.map(provider => {
             const providerStatusLabel = statusLabel(provider.healthStatus, language, text.unknown);
