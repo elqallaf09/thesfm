@@ -75,6 +75,7 @@ describe('Commodities/metals: dedicated category identity, never a company/build
   });
 
   it.each([
+    ['HG=F', 'copper'], ['COPPER', 'copper'], ['COMEX:HG=F', 'copper'], ['COPPER.COMM', 'copper'],
     ['GC=F', 'gold'], ['SI=F', 'silver'], ['PL=F', 'platinum'], ['PA=F', 'palladium'],
     ['XAU/USD', 'gold'], ['XAGUSD=X', 'silver'], ['XPT/USD', 'platinum'], ['XPDUSD', 'palladium'],
   ])('uses the correct bullion image for %s with incomplete provider metadata', (symbol, metal) => {
@@ -90,6 +91,8 @@ describe('Commodities/metals: dedicated category identity, never a company/build
     expect(getAssetVisualMeta({ symbol: 'GOLD', assetType: 'stock' }).assetType).toBe('stock');
     expect(resolveAssetLogoUrl({ symbol: 'GOLD', assetType: 'stock' })).toContain('image-stock/GOLD.png');
     expect(getAssetVisualMeta({ symbol: 'GLD', assetType: 'etf' }).assetType).toBe('etf');
+    expect(resolveAssetLogoUrl({ symbol: 'SCCO', name: 'Southern Copper', assetType: 'stock' })).toContain('image-stock/SCCO.png');
+    expect(getAssetVisualMeta({ symbol: 'COPX', name: 'Copper Miners ETF', assetType: 'etf' }).assetType).toBe('etf');
   });
 
   it('still classifies futures-style metal codes correctly (GC=F, SI=F)', () => {
