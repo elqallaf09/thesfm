@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { PropertyRecordsExplorer } from './PropertyRecordsExplorer';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { OfficialPropertyContext } from '@/lib/investments/intelligence/official-context';
 
@@ -16,9 +17,6 @@ export function OfficialPropertyContextPanel({ report }: { report: OfficialPrope
   const { lang, dir } = useLanguage();
   const L = (ar: string, en: string, fr: string) => lang === 'ar' ? ar : lang === 'fr' ? fr : en;
   const number = (value: number | null) => value === null ? '—' : new Intl.NumberFormat(lang, { numberingSystem: 'latn', maximumFractionDigits: 2 }).format(value);
-  const money = (value: number | null, currency: string | null) => value === null ? '—' : currency && /^[A-Z]{3}$/.test(currency)
-    ? new Intl.NumberFormat(lang, { style: 'currency', currency, numberingSystem: 'latn', maximumFractionDigits: 0 }).format(value)
-    : number(value);
   const source = allowedSource(report.sourceUrl); const license = allowedSource(report.licenseUrl);
   const qatar = report.providerId === 'qatar-moj-open-data';
   const uk = report.providerId === 'uk-hmlr-price-paid';
@@ -37,7 +35,12 @@ export function OfficialPropertyContextPanel({ report }: { report: OfficialPrope
     <h3>{title}</h3>
     <p role="status">{report.status === 'UNAVAILABLE'
       ? L('تعذر التحقق من المصدر الآن؛ لم نستبدله بأرقام افتراضية.', 'Source verification unavailable; no fallback prices.', 'Source non vérifiable ; aucun prix de remplacement.')
-      : L('المصدر متصل للفحص، وسجلاته منفصلة عن التقييم الحالي للعقار.', 'Source connected for inspection; its records remain separate from current-property valuation.', 'Source connectée pour consultation ; ses données restent séparées de l’estimation actuelle.')}</p>
+      : report.status === 'INPUT_REQUIRED' ? L('أكمل تفاصيل الموقع لبدء بحث المصدر.', 'Complete the location details to query this source.', 'Complétez la localisation pour interroger cette source.') : L('المصدر متصل للفحص، وسجلاته منفصلة عن التقييم الحالي للعقار.', 'Source connected for inspection; its records remain separate from current-property valuation.', 'Source connectée pour consultation ; ses données restent séparées de l’estimation actuelle.')}</p>
+    <div className="real-estate-analyst__future-grid">
+      <div><span>{L('سجلات قابلة للاستعراض', 'Browsable records', 'Transactions consultables')}</span><strong>{report.records.length}</strong></div>
+      <div><span>{L('أحدث صفقة في العينة', 'Latest sale in sample', 'Dernière vente de l’échantillon')}</span><strong dir="ltr">{report.latestObservationOn ?? '—'}</strong></div>
+    </div>
+    <details className="property-source-details"><summary>{L('حداثة البيانات وحدود استخدامها', 'Data freshness and limitations', 'Actualité et limites des données')}</summary>
     <p>{L('أحدث صفقة في العينة', 'Latest transaction in sample', 'Dernière transaction de l’échantillon')}: <bdi>{report.latestObservationOn ?? '—'}</bdi>{report.metadataUpdatedAt ? <> · {L('تحديث بيانات التعريف', 'Metadata update', 'Mise à jour des métadonnées')}: <bdi>{report.metadataUpdatedAt}</bdi></> : null}</p>
     <p>{L('وقت فحص المصدر', 'Source check time', 'Vérification de la source')}: <bdi>{report.retrievedAt ?? '—'}</bdi></p>
     {report.reasons.includes('STALE_OBSERVATIONS') ? <p>{L('أحدث الصفقات قديمة؛ تحديث صفحة المصدر لا يجعل أسعارها حديثة.', 'Latest transactions are stale; a metadata update does not refresh their prices.', 'Les dernières transactions sont anciennes ; les métadonnées ne rajeunissent pas les prix.')}</p> : null}
@@ -55,14 +58,11 @@ export function OfficialPropertyContextPanel({ report }: { report: OfficialPrope
     {source ? <a href={source} target="_blank" rel="noopener noreferrer">{L('المصدر الرسمي', 'Official source', 'Source officielle')}</a> : null}
     {' · '}{license ? <a href={license} target="_blank" rel="noopener noreferrer">{report.licenseName}</a> : null}
     <p>{L('البيانات من الجهة الرسمية المذكورة؛ التنظيم والعرض: THE SFM. لا يمثل ذلك اعتمادًا حكوميًا.', 'Data from the named official authority; organization and presentation: THE SFM. No government endorsement.', 'Données de l’autorité officielle indiquée ; organisation et présentation : THE SFM. Aucun agrément gouvernemental.')}</p>
+    </details>
     {report.sampleTotal !== null ? <p>{L('عدد السجلات في العينة', 'Records in sample', 'Transactions dans l’échantillon')}: {number(report.sampleTotal)} · {L('المعروض بعد التحقق وإزالة التكرار', 'Shown after validation and deduplication', 'Affichées après validation et dédoublonnage')}: {number(report.records.length)}{report.sampleTruncated ? L(' — عينة محدودة، ليست كامل السوق.', ' — bounded sample, not the entire market.', ' — échantillon limité, pas tout le marché.') : ''}</p> : null}
     {report.reasons.includes('NO_LOCAL_RECORDS') ? <p>{L('لا توجد سجلات صالحة للعرض لهذه المنطقة في الاستجابة الحالية.', 'No displayable local records in this response.', 'Aucune transaction locale affichable dans cette réponse.')}</p> : null}
     {report.records.length > 0 ? <details><summary>{L('عرض سجلات المصدر، وليست تقييمًا', 'Inspect source records, not a valuation', 'Consulter les transactions, pas une estimation')} ({number(report.records.length)})</summary>
-      {report.records.map(record => { const href = allowedSource(record.sourceUrl); return <article className="real-estate-analyst__evidence-row" key={record.id}>
-        <div><strong>{lang === 'ar' && record.districtAr ? record.districtAr : record.district || record.municipality}</strong><small><bdi>{record.observedOn}</bdi></small><small dir="ltr">{record.propertyType || '—'}</small>{record.propertyTypeAr && record.propertyTypeAr !== record.propertyType ? <small lang="ar" dir="rtl">{record.propertyTypeAr}</small> : null}<small>{record.usage || '—'}</small></div>
-        <div><small>{L('المساحة المنشورة', 'Reported area', 'Surface publiée')}: <bdi>{number(record.areaM2)} m²</bdi></small><small>{L('قيمة الصفقة المنشورة', 'Reported sale value', 'Valeur de vente publiée')}: <bdi>{money(record.reportedValue, record.currency)}</bdi></small><small>{L('القيمة المنشورة لكل م²', 'Reported value per m²', 'Valeur publiée par m²')}: <bdi>{record.reportedPricePerM2 === null ? '—' : money(record.reportedPricePerM2, record.currency)}</bdi></small><small>{record.fullOwnership ? L('حصة كاملة وفق الحقول المنشورة', 'Full share according to reported fields', 'Pleine quote-part selon les champs publiés') : L('حالة الملكية/الصفقة تحتاج مراجعة قبل المقارنة', 'Ownership/transaction status requires review before comparison', 'Le statut de propriété/transaction doit être vérifié avant comparaison')}</small></div>
-        {href ? <a href={href} target="_blank" rel="noopener noreferrer">{L('السجل بالمصدر', 'Source record', 'Transaction source')}</a> : null}
-      </article>; })}
+      <PropertyRecordsExplorer key={`${report.providerId}:${report.retrievedAt}`} records={report.records} sourceLink={allowedSource} />
     </details> : null}
   </section>;
 }

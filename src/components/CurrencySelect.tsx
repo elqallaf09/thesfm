@@ -88,6 +88,10 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
     setActiveIndex(0);
   }, [query]);
 
+  useEffect(() => {
+    if (open) document.getElementById(`${listboxId}-${filtered[activeIndex]?.code}`)?.scrollIntoView({ block: 'nearest' });
+  }, [open, activeIndex, filtered, listboxId]);
+
   function select(code: string) {
     onChange(code);
     setOpen(false);
@@ -139,6 +143,9 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
                   event.preventDefault();
                   setActiveIndex(index => Math.max(index - 1, 0));
                 }
+                if (event.key === 'Home') { event.preventDefault(); setActiveIndex(0); }
+                if (event.key === 'End') { event.preventDefault(); setActiveIndex(Math.max(0, filtered.length - 1)); }
+                if (event.key === 'Tab') setOpen(false);
                 if (event.key === 'Enter' && filtered[activeIndex]) {
                   event.preventDefault();
                   select(filtered[activeIndex].code);
@@ -149,7 +156,7 @@ export function CurrencySelect({ value = 'KWD', onChange, lang, label, ariaLabel
           <div id={listboxId} className="currency-list" role="listbox" aria-label={TEXT.currency[locale]}>
             {filtered.length === 0 ? (
               <div className="currency-empty">{TEXT.noCurrencies[locale]}</div>
-            ) : filtered.slice(0, 80).map((currency, index) => (
+            ) : filtered.map((currency, index) => (
               <button
                 type="button"
                 id={`${listboxId}-${currency.code}`}

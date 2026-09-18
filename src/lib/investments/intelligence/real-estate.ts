@@ -17,6 +17,8 @@ export interface RealEstateAssetInput {
   builtAreaUnit?: 'M2' | 'FT2';
   parcelIdentifier?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface NormalizedComparable {

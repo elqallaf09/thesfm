@@ -1,4 +1,5 @@
 import 'server-only';
+import { normalizePropertyLocation } from '../propertyLocation';
 import type { ValuationEvidence } from './contracts';
 import type { RealEstateAssetInput } from './real-estate';
 import { collectRealEstateEvidence } from './sources';
@@ -38,6 +39,7 @@ async function collectOfficialContext(asset: RealEstateAssetInput): Promise<Offi
 }
 
 export async function analyzeRealEstateAsset(asset: RealEstateAssetInput, outputCurrency: string, fxQuotes: FxQuote[] = [], purpose: 'valuation' | 'market_context' = 'valuation'): Promise<RealEstateAnalystResult> {
+  asset = normalizePropertyLocation(asset);
   const adapters = purpose === 'market_context' ? [] : getRealEstateSourceAdapters(asset.countryCode);
   const officialContext = await collectOfficialContext(asset);
   const contextFailures = officialContext?.status === 'UNAVAILABLE'

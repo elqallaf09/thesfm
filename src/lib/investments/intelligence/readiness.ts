@@ -12,7 +12,7 @@ export interface RealEstateReadiness {
 export function assessRealEstateReadiness(asset: RealEstateAssetInput, evidence: ValuationEvidence[], now = new Date()): RealEstateReadiness {
   const qualified = qualifiedTransactionEvidence(evidence, now);
   const checks = {
-    assetIdentity: Boolean(asset.countryCode && (asset.city || asset.municipality || asset.region)),
+    assetIdentity: Boolean(asset.countryCode && [asset.city, asset.municipality, asset.region].some(value => value?.trim())),
     area: Boolean(Number.isFinite(asset.landArea) && asset.landArea && asset.landArea > 0 && asset.landAreaUnit),
     evidence: evidence.length > 0,
     transactionComparables: qualified.length >= 2,
