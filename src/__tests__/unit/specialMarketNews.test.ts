@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { TOPICS } from '@/lib/market-news/specialTopics';
 import { cleanTopic, matchesTopic } from '@/lib/market-news/specialMatching';
 import { verifiedUnderOne } from '@/lib/market-news/specialQuotes';
+import { companyHint, explicitUsSymbols, matchedUsEquity } from '@/lib/market-news/specialSymbols';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 
 const mocked = vi.hoisted(() => ({ aggregate: vi.fn(), quotes: vi.fn(), translate: vi.fn() }));
@@ -31,9 +32,21 @@ function story(title: string, extra: Partial<ConsolidatedNewsStory> = {}) {
 function request(params: string) { return new NextRequest(`https://www.the-sfm.com/api/market/special-news?${params}`); }
 
 beforeEach(() => { vi.clearAllMocks(); mocked.quotes.mockResolvedValue(new Map()); });
-afterEach(() => { vi.useRealTimers(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('special news data and independent quotes', () => {
+  it('resolves only explicit symbols or an unambiguous exact US equity company name', () => {
+    expect(explicitUsSymbols('Example (NASDAQ: EXMP) receives a bid-price notice')).toEqual(['EXMP']);
+    expect(explicitUsSymbols('The CEO discussed FDA and EPS updates')).toEqual([]);
+    expect(companyHint('Example Global Limited Announces Receipt of Nasdaq Notification')).toBe('Example Global Limited');
+    expect(companyHint('Best Penny Stocks to Buy')).toBeNull();
+    const quote = { symbol: 'EXMP', longname: 'Example Global Limited', quoteType: 'EQUITY', exchange: 'NCM' };
+    expect(matchedUsEquity('Example Global Limited', [quote])).toBe('EXMP');
+    expect(matchedUsEquity('Another Company', [quote])).toBeNull();
+    expect(matchedUsEquity('Example Global Limited', [{ ...quote, exchange: 'TOR' }])).toBeNull();
+    expect(matchedUsEquity('Example Global Limited', [{ ...quote, quoteType: 'ETF' }])).toBeNull();
+    expect(matchedUsEquity('Example Global Limited', [quote, { ...quote, symbol: 'EXMPB' }])).toBeNull();
+  });
   it('returns relevant articles before quote or translation providers finish', async () => {
     mocked.aggregate.mockResolvedValue({
       stories: [story('Apple quarterly earnings exceed expectations', { symbols: ['AAPL'] })],
@@ -85,5 +98,23 @@ describe('special news data and independent quotes', () => {
     expect(verifiedUnderOne({ ...quote, asOf: '2020-01-01T00:00:00Z' })).toBe(false);
     expect(verifiedUnderOne({ ...quote, asOf: null })).toBe(false);
     expect(verifiedUnderOne({ ...quote, price: 1 })).toBe(false);
+  });
+
+  it('returns an under-$1 story after resolving its named company and verifying its quote', async () => {
+    mocked.aggregate.mockResolvedValue({
+      stories: [story('Example Global Limited Receives Nasdaq Minimum Bid Price Deficiency Notice')],
+      liveUpdatesAvailable: true,
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ quotes: [
+      { symbol: 'EXMP', longname: 'Example Global Limited', quoteType: 'EQUITY', exchange: 'NCM' },
+    ] }), { status: 200 }));
+    mocked.quotes.mockResolvedValue(new Map([['EXMP', {
+      symbol: 'EXMP', available: true, currency: 'USD', assetType: 'EQUITY', price: 0.5,
+      asOf: new Date().toISOString(), source: 'Yahoo Finance',
+    }]]));
+    const payload = await (await GET(request('topic=stocks-under-1'))).json();
+    expect(mocked.quotes).toHaveBeenCalledWith(['EXMP']);
+    expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]).toMatchObject({ ticker: 'EXMP', price: 0.5, priceVerified: true });
   });
 });

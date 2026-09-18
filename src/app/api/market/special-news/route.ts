@@ -4,6 +4,7 @@ import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchSpecialQuotes, verifiedUnderOne, type SpecialQuote } from '@/lib/market-news/specialQuotes';
 import { createSpecialNewsProviders } from '@/lib/market-news/specialProviders';
 import { cleanTopic, matchesTopic } from '@/lib/market-news/specialMatching';
+import { resolveUnderOneSymbols } from '@/lib/market-news/specialSymbols';
 import {
   isNewsTranslationEnabled,
   normalizeNewsLanguage,
@@ -241,6 +242,7 @@ export async function GET(request: NextRequest) {
     let stories = result.stories.filter(story => matchesTopic(topic, story));
     let prices = new Map<string, SpecialQuote>();
     if (topic === 'stocks-under-1') {
+      stories = await resolveUnderOneSymbols(stories);
       prices = await fetchSpecialQuotes(uniqueStorySymbols(stories, 18));
       stories = stories.filter(story => story.symbols.some(symbol => verifiedUnderOne(prices.get(symbol.toUpperCase()))));
     }
