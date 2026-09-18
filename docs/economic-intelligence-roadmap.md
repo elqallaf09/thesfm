@@ -79,7 +79,7 @@
 
 ### Validation gate
 - Required GitHub checks, production build and targeted browser checks must pass before merge
-- Per the owner's September 17, 2026 cost instruction, automatic Vercel deployment is limited to `main`. Validate branches locally/in CI and batch a release into one Production deployment; create a Preview only for a specific unresolved validation need.
+- Per the owner's September 17, 2026 cost instruction, automatic Vercel deployment is limited to `main` and designated `release/*` branches. Development branches stay disabled. Validate locally/in CI, then create one release branch for the repository-required Vercel check and batch the approved changes into one Production deployment.
 - Auto-merge is authorized after repository-required checks pass
 - No fake data, skipped required checks or lowered quality thresholds to force a merge
 
