@@ -8,6 +8,7 @@ import { regionalFilingsAdapter, regionalProfile } from '@/lib/sharia-research/r
 import { EVIDENCE_VERSION, missingFinancialFields, financialFieldCoverage } from '@/lib/sharia-research/evidenceValidation';
 import { normalizeQuery } from '@/lib/sharia-research/normalizeQuery';
 import type { FinancialValue, SecurityIdentity, SourceDocument } from '@/lib/sharia-research/types';
+import { filingFailureCode as sourceError } from '@/lib/sharia-research/filingFailureCode';
 
 export type ScreeningInput = {
   symbol: string; providerSymbol?: string | null; name?: string | null;
@@ -15,16 +16,6 @@ export type ScreeningInput = {
   industry?: string | null; description?: string | null; existing?: ShariahScreeningData | null;
   signal?: AbortSignal;
 };
-
-function sourceError(error: unknown, signal?: AbortSignal) {
-  const status = (error as { status?: number } | null)?.status;
-  const code = (error as { code?: string } | null)?.code;
-  return signal?.aborted || (error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name))
-    ? 'official_provider_timed_out'
-    : status === 429 ? 'official_provider_rate_limited' : status === 403 ? 'official_provider_access_denied'
-      : code === 'DNS_RESOLUTION_FAILED' ? 'official_provider_dns_failed'
-        : error instanceof Error && /^(official_|sec_)[a-z_]+$/.test(error.message) ? error.message : 'official_provider_fetch_failed';
-}
 
 /** Primary filings and their manifest bind issuer, accession, dates and units.
  * An aggregate API is a same-period supplement, never an older passing fallback.
@@ -49,7 +40,12 @@ export async function enrichShariahScreeningData(input: ScreeningInput) {
       documents.push(...regional.documents);
       financialValues = regional.financialValues;
       security = { ...security, ...regional.identityPatch };
-      if (!documents.length) errors.push('official_regional_document_unavailable');
+      if (!documents.length) {
+        errors.push('official_regional_document_unavailable');
+        for (const error of regional.errors) {
+          if (/^official_[a-z_]+$/.test(error.code) && !errors.includes(error.code)) errors.push(error.code);
+        }
+      }
       else errors.push('official_regional_coverage_partial');
     } else {
       if (!usListing) throw new Error('official_market_filing_adapter_unavailable');

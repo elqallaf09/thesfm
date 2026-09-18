@@ -2,6 +2,7 @@ import { secureFetch } from './secureFetch';
 import { extractSelectedPdfPages, financialValuesFromPdfPages, pdfEvidenceDocument } from './pdfFinancialEvidence';
 import type { SecurityIdentity, SourceAdapter } from './types';
 import { failedAdapterResult } from './sourceAdapters/shared';
+import { filingFailureCode } from './filingFailureCode';
 
 type DocumentFallback = { url: string; pages?: number[] };
 type Profile = { symbols: string[]; country: string; name: RegExp; directory: string; document?: string; pages?: number[]; alternates?: DocumentFallback[] };
@@ -73,7 +74,8 @@ export const regionalFilingsAdapter: SourceAdapter = {
       // known public filing such as IFA's audited annual report.
       let found: string[] = [];
       try {
-        const directory = await secureFetch(profile.directory, { signal: context.signal, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
+        const discoverySignal = AbortSignal.timeout(3_000);
+        const directory = await secureFetch(profile.directory, { signal: context.signal ? AbortSignal.any([context.signal, discoverySignal]) : discoverySignal, retries: 0, maxBytes: 5_000_000, acceptedContentTypes: ['text/html'], cacheTtlMs: 6 * 3600_000 });
         if (sameIssuerHost(directory.finalUrl, profile.directory)) {
           found = issuerPdfLinks(new TextDecoder().decode(directory.body), profile.directory, new Date(context.retrievedAt));
         }
@@ -115,6 +117,12 @@ export const regionalFilingsAdapter: SourceAdapter = {
         }
       }
       throw lastError ?? new Error('regional_financial_document_not_discovered');
-    } catch (error) { return failedAdapterResult(this.id, error, profile.directory); }
+    } catch (error) {
+      const failure = failedAdapterResult(this.id, error, profile.directory);
+      // Preserve actionable reasons across the adapter boundary without storing
+      // raw PDF/parser/network messages in the screening record.
+      const code = filingFailureCode(error, context.signal);
+      return { ...failure, errors: [{ code, message: code, retryable: /timed_out|rate_limited|dns_failed|fetch_failed/.test(code) }] };
+    }
   },
 };
