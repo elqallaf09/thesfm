@@ -41,10 +41,12 @@ export async function enrichShariahScreeningData(input: ScreeningInput) {
       financialValues = regional.financialValues;
       security = { ...security, ...regional.identityPatch };
       if (!documents.length) {
-        errors.push('official_regional_document_unavailable');
+        // Refresh persistence keeps the first reason: prefer an actionable,
+        // bounded adapter code while retaining the generic compatibility code.
         for (const error of regional.errors) {
           if (/^official_[a-z_]+$/.test(error.code) && !errors.includes(error.code)) errors.push(error.code);
         }
+        errors.push('official_regional_document_unavailable');
       }
       else errors.push('official_regional_coverage_partial');
     } else {

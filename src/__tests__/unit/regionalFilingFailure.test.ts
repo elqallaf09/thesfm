@@ -13,7 +13,7 @@ it('retains a safe unsupported-layout diagnostic instead of hiding a successfull
   fetchSource.mockImplementation(async (url: string) => ({ finalUrl: url, body: new Uint8Array(), retrievedAt: '2026-09-18T00:00:00Z' }));
   pages.mockResolvedValue([]); values.mockReturnValue([]);
   const result = await enrichShariahScreeningData({ symbol: 'BOUBYAN', name: 'Boubyan Bank', country: 'KW', exchange: 'XKUW' });
-  expect(result.errors).toEqual(['official_regional_document_unavailable', 'official_regional_statement_layout_unsupported']);
+  expect(result.errors).toEqual(['official_regional_statement_layout_unsupported', 'official_regional_document_unavailable']);
   expect(result.complete).toBe(false);
   expect(fetchSource.mock.calls[0][1]).toMatchObject({ retries: 0, signal: expect.any(AbortSignal) });
 });
@@ -31,7 +31,7 @@ it('continues from a failed discovery page to the reviewed filing and retains it
   fetchSource.mockRejectedValueOnce(Object.assign(new Error('private upstream response'), { status: 429 }));
   const result = await enrichShariahScreeningData({ symbol: 'BOUBYAN', name: 'Boubyan Bank', country: 'KW', exchange: 'XKUW' });
   expect(fetchSource).toHaveBeenCalledTimes(2);
-  expect(result.errors).toContain('official_provider_rate_limited');
+  expect(result.errors[0]).toBe('official_provider_rate_limited');
   expect(JSON.stringify(result)).not.toContain('private upstream response');
   expect(pages).not.toHaveBeenCalled();
 });
