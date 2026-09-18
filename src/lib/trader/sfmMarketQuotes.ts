@@ -255,7 +255,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
   if (!quote || !isValidPrice(quote.price)) {
     const empty = unavailableQuote(symbol, meta, historyResult.ok ? 'sfm_quote_unavailable' : historyResult.reason ?? 'sfm_market_data_unavailable');
     const indicators = research.technicalSummary.indicators;
-    return { ...empty, research, history, samples: history.length, chartAvailable: history.length >= 2,
+    return { ...empty, research, history, upstreamSource: providerDisplayName(historyProvider ?? null), samples: history.length, chartAvailable: history.length >= 2,
       technicalAvailable: research.available, technicalAsOf: research.asOf, technicalSummary: research.technicalSummary,
       strategies: research.strategies, strategyAgreement: research.strategyAgreement, strategyCount: research.strategyCount,
       dataSufficiency: research.dataSufficiency, dataQualityStatus: research.dataQualityStatus,
@@ -280,7 +280,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     newsSentiment: UNAVAILABLE_NEWS_SENTIMENT,
   });
   const quoteAvailable = isCurrentSfmQuote(quote);
-  const sufficient = recommendation.dataSufficiency.sufficient && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
+  const sufficient = recommendation.dataSufficiency.sufficient && research.freshness === 'recent' && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
   const indicators = recommendation.technicalSummary.indicators;
   const provider = traderProvider(quote.provenance.upstreamProvider);
   const upstreamName = quote.provenance.upstreamProviderName ?? providerDisplayName(quote.provenance.upstreamProvider);
@@ -460,7 +460,7 @@ export async function fetchSfmTraderQuotesDetailed(
   let skippedDueToRateLimit = 0;
 
   for (const quote of quotes) {
-    const provider = traderProvider(quote.sfmProvenance.upstreamProvider);
+    const provider = traderProvider(quote.sfmProvenance.upstreamProvider ?? quote.research?.provider ?? null);
     if (provider && isValidPrice(quote.price ?? quote.lastKnownPrice)) selectedProvider ??= provider;
     if (quote.sfmProvenance.cached) cachedSymbols += 1;
     if (provider && quote.available && isValidPrice(quote.price)) {

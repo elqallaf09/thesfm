@@ -62,3 +62,42 @@ for (const language of ['ar', 'en', 'fr']) {
     expect(errors).toEqual([]);
   });
 }
+
+
+test('Arabic search opens canonical assets and lets users choose ambiguous names', async ({ page }) => {
+  const frame = await openTraderDrawerFixture(page, fixture.origin, 'ar', 'light');
+  const requestedSymbols: string[] = [];
+  const names: Record<string, string> = { 'ذهب': 'XAUUSD', 'فضة': 'XAGUSD', 'سهم أبل': 'AAPL', 'بيتكوين': 'BTC/USD', 'اليورو مقابل الدولار': 'EURUSD' };
+  await page.route('**/api/**', async route => {
+    const url = new URL(route.request().url());
+    let payload: object = { ok: true, results: [], recommendations: [], items: [] };
+    if (url.pathname === '/api/market/search') {
+      const query = url.searchParams.get('q') || '';
+      const symbol = names[query];
+      payload = symbol ? { resolved: { symbol }, results: [{ symbol }] }
+        : { resolved: null, results: query === 'بنك' ? [{ symbol: 'NBK.KW', name: 'بنك الكويت الوطني' }, { symbol: 'BOUBYAN.KW', name: 'بنك بوبيان' }] : [] };
+    }
+    if (url.pathname === '/api/recommendations' && url.searchParams.has('symbols')) {
+      const symbol = url.searchParams.get('symbols')!; requestedSymbols.push(symbol);
+      payload = { ok: true, recommendations: [{ symbol, name: symbol, price: null, available: false }] };
+    }
+    await route.fulfill({ status: 200, json: payload });
+  });
+  for (const [query, symbol] of Object.entries(names)) {
+    await frame.locator('#symbol-input').fill(query);
+    await frame.locator('#symbol-search button[type="submit"]').click();
+    await expect(frame.locator('#symbol-input')).toHaveValue(symbol);
+    await expect(frame.locator('#price-data-panel .symbol-code')).toHaveText(symbol);
+    await expect.poll(() => requestedSymbols.includes(symbol.replaceAll('/', ''))).toBe(true);
+  }
+  await frame.locator('#symbol-input').fill('بنك');
+  await frame.locator('#symbol-input').press('Enter');
+  await expect(frame.locator('#symbol-search-results button')).toHaveCount(2);
+  await frame.locator('#symbol-search-results button').filter({ hasText: 'بنك بوبيان' }).click();
+  await expect(frame.locator('#price-data-panel .symbol-code')).toHaveText('BOUBYAN.KW');
+  await frame.locator('#symbol-input').fill('اسم مجهول');
+  await frame.locator('#symbol-input').press('Enter');
+  await expect(frame.locator('#symbol-search-results')).toContainText('لم نجد اسماً مطابقاً');
+  await expect(frame.locator('#price-data-panel .symbol-code')).toHaveText('BOUBYAN.KW');
+  expect(requestedSymbols.some(value => /[\u0600-\u06ff]/.test(value))).toBe(false);
+});

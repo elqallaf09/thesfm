@@ -7,7 +7,7 @@
   const first = (...values) => values.map(finite).find(value => value !== null) ?? null;
   const quoted = item => item?.available !== false && first(item?.price, item?.currentPrice) > 0;
   const observed = item => {
-    const stamp = item?.engine?.asOf || item?.lastUpdated || item?.dataTimestamp || item?.providerStatus?.lastUpdated;
+    const stamp = item?.engine?.asOf || item?.lastUpdated || item?.dataTimestamp || item?.providerStatus?.lastUpdated || item?.priceReference?.observedAt;
     const time = Date.parse(stamp || '');
     return Number.isFinite(time) ? time : 0;
   };

@@ -2252,12 +2252,7 @@
         selectMarket(document.activeElement.dataset.selectMarket);
       }
     });
-    document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const symbol = sym(document.getElementById("symbol-input")?.value || "");
-      if (!symbol) return toast(textPair("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.", "Enter a symbol first, such as AAPL or BTCUSD.", "Saisissez d’abord un symbole, comme AAPL ou BTCUSD."));
-      navigate(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`);
-    });
+    window.sfmSymbolSearch = window.SFMSymbolSearch.mount({ form: document.getElementById("symbol-search"), input: document.getElementById("symbol-input"), get, text: textPair, open: symbol => navigate(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`) });
     document.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-earnings-search-form]");
       if (!form) return;
@@ -2502,7 +2497,7 @@
     if (!clean || clean === "home" || clean === "app") return { id: "dashboard" };
     const [id, ...rest] = clean.split("/");
     if (id === "market-analysis") return { id: "recommendations" };
-    if (id === "symbol" || id === "symbol-details") return { id: "symbol-details", symbol: sym(rest.join("/")) };
+    if (id === "symbol" || id === "symbol-details") return { id: "symbol-details", symbol: /[^\x00-\x7F]/.test(rest.join("/")) ? rest.join("/").trim() : sym(rest.join("/")) };
     if (id === "markets" && rest.length) return { id: "markets", market: rest[0] };
     return routes[id] ? { id, market: rest[0] } : { id: "dashboard" };
   }
@@ -4097,6 +4092,10 @@
   async function loadSymbol(symbol, force = false) {
     const target = document.getElementById("symbol-details-body"); if (!target) return;
     const key = sym(symbol);
+    if (/[^\x00-\x7F]|\s/.test(key)) {
+      target.textContent = textPair("جارٍ التحقق من اسم الأصل؛ اختر نتيجة البحث للمتابعة.", "Resolving the asset name; choose a search result to continue.", "Vérification du nom de l’actif ; choisissez un résultat pour continuer.");
+      await window.sfmSymbolSearch?.search(symbol); return;
+    }
     if (!force && state.cache.has(key) && !state.cache.get(key).drawerOnly) {
       target.innerHTML = symbolContent(state.cache.get(key));
       translateRenderedUi(target);
@@ -4142,7 +4141,7 @@
     const ps = detail.providerStatus || {};
     const providerSymbolUsed = a.providerSymbolUsed || ps.providerSymbolUsed || a.providerSymbol || (rec && rec.providerSymbol) || terminalText("unavailable");
     const fallbackUsed = ps.fallbackUsed === true ? textPair("نعم", "Yes") : ps.fallbackUsed === false ? textPair("لا", "No") : terminalText("unavailable");
-    const lastUpdated = latinDateTime(ps.lastUpdated || a.updatedAt || (detail.rec && detail.rec.lastUpdated));
+    const lastUpdated = a.price === null && a.priceReference?.precision === "date" ? String(a.priceReference.observedAt || "--").slice(0, 10) : latinDateTime(ps.lastUpdated || a.updatedAt || (detail.rec && detail.rec.lastUpdated));
     const quality = ps.dataQuality ? dataQualityLabel(ps.dataQuality) : terminalText("unavailable");
     return `<div class="detail-layout">
       <article class="panel detail-main" id="price-data-panel">

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 
 const mocks = vi.hoisted(() => ({
@@ -64,7 +64,7 @@ function quote(patch: Partial<SfmMarketQuote> = {}): SfmMarketQuote {
 
 function candles(count: number) {
   return Array.from({ length: count }, (_, index) => ({
-    date: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+    date: new Date(Date.UTC(2026, 8, 16) - (count - 1 - index) * 86400000).toISOString().slice(0, 10),
     open: 99 + index,
     high: 102 + index,
     low: 98 + index,
@@ -76,7 +76,10 @@ function candles(count: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-16T19:00:15Z'));
 });
+
+afterEach(() => { vi.restoreAllMocks(); });
 
 describe('SFM trader quote adapter', () => {
   it.each([
@@ -103,6 +106,14 @@ describe('SFM trader quote adapter', () => {
     const result = await fetchSfmTraderQuotesDetailed(['AAPL']);
     expect(result.quotes[0]).toMatchObject({ available: false, price: null, signalAvailable: false, confidence: null, targetPrice: null });
   });
+  it('withholds trade outputs when the quote is fresh but daily history is old', async () => {
+    mocks.quote.mockResolvedValue(quote());
+    mocks.history.mockResolvedValue({ ok: true, candles: candles(220).map(point => ({ ...point, date: point.date.replace('2026', '2025') })), provider: 'finnhub' });
+    const result = await fetchSfmTraderQuotesDetailed(['AAPL']);
+    expect(result.quotes[0]).toMatchObject({ available: true, price: 320, signalAvailable: false, confidence: null, targetPrice: null });
+    expect(result.quotes[0]).toMatchObject({ research: { freshness: 'stale', confidence: null, technicalAvailable: true } });
+  });
+
   it('does not spend history requests on quote-only lists', async () => {
     mocks.quote.mockResolvedValue(quote());
     const result = await fetchSfmTraderQuotesDetailed(['AAPL'], { includeHistory: false });

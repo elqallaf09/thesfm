@@ -1,3 +1,4 @@
+import { localizedMarketAliases, normalizeMarketName } from '@/lib/market/localizedMarketNames';
 import { validateSymbol, type MarketAssetType, type MarketSearchItem } from '@/lib/market/marketService';
 import { listCanonicalCryptoAssets } from '@/lib/market/canonicalSymbols';
 
@@ -255,7 +256,8 @@ function compactAlias(value: unknown) {
 function aliasMatches(alias: ProviderSymbolAlias, value: unknown) {
   const compact = compactAlias(value);
   const raw = String(value ?? '').trim().toUpperCase();
-  return alias.aliases.some(candidate => compactAlias(candidate) === compact || String(candidate).toUpperCase() === raw)
+  return localizedMarketAliases(alias.displaySymbol).some(candidate => normalizeMarketName(candidate).replace(/\s/g, '') === normalizeMarketName(value).replace(/\s/g, ''))
+    || alias.aliases.some(candidate => compactAlias(candidate) === compact || String(candidate).toUpperCase() === raw)
     || alias.providerSymbols.some(candidate => compactAlias(candidate) === compact || candidate === raw)
     || compactAlias(alias.displaySymbol) === compact;
 }
@@ -278,7 +280,7 @@ export function providerAliasToMarketSearchItem(alias: ProviderSymbolAlias): Mar
     exchange: alias.exchange,
     country: alias.country,
     currency: alias.currency,
-    aliases: [...alias.aliases, ...alias.providerSymbols],
+    aliases: [...alias.aliases, ...alias.providerSymbols, ...localizedMarketAliases(alias.displaySymbol)],
   };
 }
 

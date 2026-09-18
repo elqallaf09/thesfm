@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({ quote: vi.fn(), history: vi.fn() }));
 vi.mock('@/lib/sfm-market/engine', () => ({ getSfmMarketQuote: mocks.quote }));
 vi.mock('@/lib/sfm-market/history', () => ({ getSfmMarketHistory: mocks.history }));
 import { GET as technical } from '@/app/api/sfm-market/v1/trader/technical/[symbol]/route';
+import { fetchSfmTraderQuotesDetailed } from '@/lib/trader/sfmMarketQuotes';
 import { GET as signal } from '@/app/api/sfm-market/v1/trader/signal/[symbol]/route';
 
 const history = Array.from({ length: 260 }, (_, index) => ({
@@ -32,6 +33,12 @@ describe('research route integration', () => {
     expect(payload.signal.signalAvailable).toBe(false); expect(payload.signal.targetPrice).toBeNull();
     expect(payload.signal.confidence).toBeNull(); expect(payload.signal.research.available).toBe(true);
     expect(payload.signal.research.strategyAgreement.strategyCount).toBeGreaterThan(2);
+  });
+  it('reports the historical provider as partial coverage when the quote is absent', async () => {
+    mocks.quote.mockResolvedValue(null);
+    const payload = await fetchSfmTraderQuotesDetailed(['AAPL']);
+    expect(payload.provider).toBe('twelve_data'); expect(payload.cacheStatus).toBe('partial');
+    expect(payload.quotes[0]).toMatchObject({ lastKnownPrice: expect.any(Number), upstreamSource: 'Twelve Data', priceReference: { observedAt: '2026-09-17', precision: 'date' } });
   });
   it('does not manufacture research when both quote and history fail', async () => {
     mocks.quote.mockResolvedValue(null); mocks.history.mockResolvedValue({ ok: false, candles: [], reason: 'NO_MARKET_DATA' });

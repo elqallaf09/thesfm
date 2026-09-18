@@ -37,10 +37,25 @@ deployment `dpl_Gjvu2PswijSMJWmddgEcsdkcMAgK`.
   risk window and pending-current-quote state. A full-detail refresh button
   forwards `refresh=1`; SFM drawer routes receive the quote request timeout.
 
+## Arabic asset search
+
+The Analyze form now resolves names before navigating and requests analysis only
+for the resulting canonical symbol. Verified Arabic stock, metal and crypto
+aliases share the existing catalog identity; diacritics, hamza forms and common
+Arabic prefixes are normalized. Forex pair names retain their pair direction.
+Ambiguous names show keyboard-accessible choices; unknown names and failed
+searches do not become fictitious stocks. Arabic company names returned by the
+catalog database are retained for ranking, alongside English names. Older
+Arabic detail URLs also resolve before fetching quotes. Stale asynchronous
+search responses cannot override a newer input.
+
+A fresh quote paired with old daily history cannot produce executable targets.
+History-only coverage reports its actual provider and daily observation date.
+
 ## Validation
 
 Local Node 22.13.0 / pnpm 11.1.3 frozen offline installation passed.
-The full local suite passed 2,998 Vitest tests (23 skipped); 96 Node tests pass.
+The full local suite passed 3,023 Vitest tests (23 skipped); 97 Node tests pass.
 Focused route/provider tests additionally cover closed quotes, total quote
 failure with valid history, total evidence failure, and five gold/silver aliases.
 TypeScript, ESLint debt, translations and maintainability checks passed.
@@ -51,10 +66,11 @@ canonical route usage and refresh forwarding across desktop/mobile projects.
 CI results, exact candidate/deployment identifiers and production read-only
 verification are recorded in the pull request before completion.
 
-The workspace build compiled and generated all 216 pages, but hit the existing
-scratch filesystem `ENOTEMPTY` cleanup fault. A clean temporary-directory build
-and the required CI/Vercel builds remain release gates; this is not marked as a
-successful local production build.
+The initial clean temporary-directory production build succeeded, including all
+216 static pages. This avoids the scratch filesystem cleanup fault without
+changing the build checks. Final candidate CI and Vercel builds remain release
+gates. Arabic search regression cases cover canonical navigation, ambiguous
+choices and unknown names, in addition to resolver and API ranking tests.
 
 No auth, permissions, database schemas, provider keys or subscriptions change.
 Previous production baseline above is the rollback reference. Preserve any later
