@@ -162,7 +162,7 @@
     state.marketCache.forEach(payload => marketRows.push(...marketUniverseRows(payload)));
     loaded = mergeRecLists(marketRows, loaded);
     const loadedAsset = watchRow || findAssetForSymbol(key, loaded) || matchRec(key) || null;
-    const rec = watchRow || cachedDetail && cachedDetail.rec || loadedAsset;
+    const rec = cachedDetail?.asset?.research ? cachedDetail.asset : watchRow || cachedDetail && cachedDetail.rec || loadedAsset;
     // The fetched observation is authoritative, including an explicitly unavailable price.
     // Keep its evidence together; an empty watchlist row must not overwrite it.
     const observation = cachedDetail && cachedDetail.asset || watchRow || loadedAsset || rec || {};

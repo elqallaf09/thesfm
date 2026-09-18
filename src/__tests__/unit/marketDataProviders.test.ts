@@ -234,3 +234,27 @@ describe('market data provider fallback', () => {
     expect((yahooQuoteMock.mock.calls[0]?.[0] as { symbols?: string[] } | undefined)?.symbols).not.toContain('APT');
   });
 });
+
+describe('canonical SFM precious metal requests', () => {
+  it.each([['XAUUSD', 'XAU/USD'], ['XAU/USD', 'XAU/USD'], ['GOLD', 'XAU/USD'], ['XAU', 'XAU/USD'], ['SILVER', 'XAG/USD']])('routes %s to the spot feed for both quote and history', async (symbol, providerSymbol) => {
+    clearProviderKeys(); vi.stubEnv('TWELVE_DATA_API_KEY', 'fixture');
+    const calls: URL[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      const url = new URL(String(input)); calls.push(url);
+      if (url.searchParams.get('symbol') !== providerSymbol) return new Response(JSON.stringify({ status: 'error', code: 400 }), { status: 400 });
+      return new Response(JSON.stringify(url.pathname === '/time_series' ? { values: [
+        { datetime: '2026-09-17', open: '3000', high: '3040', low: '2990', close: '3020' },
+      ] } : { symbol: providerSymbol, close: '3020', currency: 'USD', datetime: '2026-09-17', type: 'Physical Currency' }), { status: 200 });
+    });
+    const { getSfmMarketQuote } = await import('@/lib/sfm-market/engine');
+    const { getSfmMarketHistory } = await import('@/lib/sfm-market/history');
+    const quote = await getSfmMarketQuote(symbol, { forceFresh: true });
+    const history = await getSfmMarketHistory(symbol, { forceFresh: true });
+    expect(quote?.price).toBe(3020); expect(quote?.provenance.providerSymbol).toBe(providerSymbol);
+    expect(quote?.assetType).toBe(providerSymbol === 'XAG/USD' ? 'commodity' : 'gold');
+    expect(history.ok).toBe(true); expect(history.candles).toHaveLength(1);
+    expect(calls).toHaveLength(2);
+    expect(calls.map(url => url.searchParams.get('symbol'))).toEqual([providerSymbol, providerSymbol]);
+    expect(yahooQuoteMock).not.toHaveBeenCalled();
+  });
+});

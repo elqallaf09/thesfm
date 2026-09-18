@@ -382,7 +382,7 @@ async function handleRecommendations(request: Request) {
     currentPrice: q.price,
     lastKnownPrice: nullableNumber(quoteRecord.lastKnownPrice),
     priceReference: quoteRecord.priceReference ?? null,
-    technicalAsOf: quoteRecord.technicalAsOf ?? null,
+    technicalAsOf: quoteRecord.technicalAsOf ?? null, research: quoteRecord.research ?? null,
     upstreamSource: quoteRecord.upstreamSource ?? null,
     change: q.change,
     changePercent: q.changePercent,

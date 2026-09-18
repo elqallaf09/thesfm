@@ -70,3 +70,25 @@ for (const [language, label] of [['ar', 'سعر يومي مرجعي'], ['en', 'D
     assert.deepEqual(analyzer.coverage([item]), { total: 1, prices: 0, references: 1, analyses: 1, missing: 0, latest: Date.parse(item.lastUpdated) });
   });
 }
+
+const researchPresenter = require('../../src/trader-app/public/assets/research-evidence.js');
+for (const [index, language] of ['ar', 'en', 'fr'].entries()) {
+  test(`research evidence remains informative without a tradeable quote in ${language}`, () => {
+    const research = { basis: 'daily_history', available: true, technicalAvailable: true, samples: 260,
+      asOf: '2026-09-18', provider: '<script>bad</script>', freshness: 'recent', confidence: 64,
+      technicalSummary: { indicators: { rsi14: 57 } },
+      dataSufficiency: { strategyCoverage: { available: 7, total: 9 } },
+      risk: { annualizedVolatilityPercent: 23.45, maximumDrawdownPercent: 7.89, drawdownSamples: 120 } };
+    const h = value => String(value ?? '').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    const text = (...values) => values[index];
+    const item = { available: false, price: null, research };
+    const html = researchPresenter.render(item, { h, text });
+    assert.match(html, /64%/); assert.match(html, /23.45%/); assert.match(html, /7.89%/);
+    assert.match(html, /2026-09-18/); assert.match(html, /260/); assert.doesNotMatch(html, /<script>/);
+    assert.equal(researchPresenter.technical(item).technicalAvailable, true);
+    assert.equal(researchPresenter.technical(item).currentPrice, null);
+    const missing = researchPresenter.render({ research: { ...research, confidence: null, risk: {} } }, { h, text });
+    assert.doesNotMatch(missing, /0%|64%/);
+    assert.equal(researchPresenter.render({}, { h, text }), '');
+  });
+}

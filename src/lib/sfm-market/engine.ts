@@ -218,7 +218,7 @@ export async function getSfmMarketQuote(symbolInput: string, request: SfmMarketR
     normalized.assetType,
     request.forceFresh,
   );
-  const result = await getQuoteWithFallback(normalized.providerSymbol, request.market ?? null, context);
+  const result = await getQuoteWithFallback(normalized.symbol, request.market ?? null, context);
   if (!result.ok) return null;
   return buildSfmQuote(result.data, result.attempts, new Date().toISOString());
 }
@@ -269,8 +269,8 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
     : Promise.resolve(secNotApplicable(normalized.symbol));
 
   const [quoteResult, historyResult, secEvidence] = await Promise.all([
-    getQuoteWithFallback(normalized.providerSymbol, request.market ?? null, context),
-    getCandlesWithFallback(normalized.providerSymbol, request.market ?? null, '1d', context),
+    getQuoteWithFallback(normalized.symbol, request.market ?? null, context),
+    getCandlesWithFallback(normalized.symbol, request.market ?? null, '1d', context),
     secPromise,
   ]);
 

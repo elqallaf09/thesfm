@@ -68,13 +68,13 @@ export async function getSfmMarketHistory(
     normalized.assetType,
     request.forceFresh,
   );
-  const result = await getCandlesWithFallback(normalized.providerSymbol, market, '1d', context);
+  const result = await getCandlesWithFallback(normalized.symbol, market, '1d', context);
 
   if (!result.ok) {
     return {
       ok: false,
       symbol: normalized.symbol,
-      providerSymbol: normalized.providerSymbol,
+      providerSymbol: normalized.symbol,
       provider: null,
       candles: [],
       attempts: result.attempts,
@@ -85,7 +85,7 @@ export async function getSfmMarketHistory(
   return {
     ok: true,
     symbol: normalized.symbol,
-    providerSymbol: normalized.providerSymbol,
+    providerSymbol: normalized.symbol,
     provider: result.provider,
     candles: result.data,
     attempts: result.attempts,

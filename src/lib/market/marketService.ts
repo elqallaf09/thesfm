@@ -307,7 +307,7 @@ export function normalizeMarketSymbolInput(symbol: unknown, assetTypeInput?: unk
   }
 
   if (COMMON_METAL_PAIRS[compact]) {
-    const normalizedMetalSymbol = compact === 'GOLD' ? 'XAUUSD' : compact === 'SILVER' ? 'XAGUSD' : compact;
+    const normalizedMetalSymbol = ['GOLD', 'XAU'].includes(compact) ? 'XAUUSD' : ['SILVER', 'XAG'].includes(compact) ? 'XAGUSD' : compact;
     return {
       valid: true as const,
       symbol: normalizedMetalSymbol,
