@@ -1,5 +1,6 @@
 import type { GlobalMarketSector, GlobalMarketStripId, GlobalMarketStripKind } from './globalMarketStrips';
 import type { TechStockPrice } from './fetchStockPrices';
+import type { DirectoryFailure } from './regionalDirectory';
 
 export type GlobalDirectoryRow = {
   id: string;
@@ -22,6 +23,13 @@ export type GlobalDirectoryCoverage = {
   status: 'directory' | 'snapshot' | 'selected' | 'unavailable';
   source: string;
   asOf: string | null;
+  /** Unknown unless an independently verified exchange total exists. */
+  expectedCount?: number | null;
+  lastSyncAt?: string | null;
+  checkedAt?: string;
+  sourceRecords?: number | null;
+  excludedRecords?: number | null;
+  reason?: DirectoryFailure;
 };
 
 export type GlobalDirectoryPage = {

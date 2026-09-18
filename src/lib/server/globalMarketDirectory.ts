@@ -4,6 +4,8 @@ import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
 import { DIRECTORY_MAX_PAGE_SIZE, type GlobalDirectoryRow, type GlobalDirectoryCoverage, type GlobalDirectoryPage } from '@/lib/market/globalMarketDirectoryTypes';
 import type { ExchangeListing } from '@/lib/market/marketListingParsers';
 import { getGlobalMarketListings } from '@/lib/server/globalMarketListingSources';
+import { REGIONAL_DIRECTORIES, type RegionalMarket } from '@/lib/market/regionalDirectory';
+import { getRegionalMarketDirectory } from '@/lib/server/regionalMarketDirectory';
 
 const SOURCES = { kuwait_boursa: 'kuwait', us_nasdaq: 'us', us_nyse: 'us', china_sse: 'shanghai', china_szse: 'shenzhen' } as const;
 type DirectorySourceId = keyof typeof SOURCES;
@@ -15,9 +17,10 @@ function sector(value?: string): GlobalMarketSector | undefined {
 }
 
 function mapListing(row: ExchangeListing, strip: Strip): GlobalDirectoryRow {
-  const curated = strip.items.find(item => item.symbol === row.providerSymbol);
+  const regional = row.providerSymbol.startsWith('TD:');
+  const curated = strip.items.find(item => item.symbol === row.providerSymbol || (regional && item.symbol.split('.')[0] === row.symbol));
   return {
-    id: `${strip.id}:${row.providerSymbol}`, symbol: row.providerSymbol, providerSymbol: row.providerSymbol,
+    id: `${strip.id}:${row.providerSymbol}`, symbol: regional ? row.symbol : row.providerSymbol, providerSymbol: regional && curated ? curated.symbol : row.providerSymbol,
     name: curated?.name || row.name, nameAr: curated?.nameAr || (strip.countryCode === 'KW' ? row.localName : undefined),
     localName: row.localName, sector: sector(row.sector) || curated?.sector,
     countryCode: strip.countryCode, stripId: strip.id, kind: strip.kind,
@@ -29,6 +32,15 @@ export async function loadGlobalDirectory(exchange = 'all', country = 'all') {
   const strips = GLOBAL_MARKET_STRIPS.filter(strip => (exchange === 'all' || strip.id === exchange) && (country === 'all' || strip.countryCode === country));
   const batches = await Promise.all(strips.map(async strip => {
     const source = SOURCES[strip.id as DirectorySourceId];
+    let regionalFallback: GlobalDirectoryCoverage | null = null;
+    if (strip.id in REGIONAL_DIRECTORIES) {
+      const listing = await getRegionalMarketDirectory(strip.id as RegionalMarket);
+      const rows = listing.rows.map(row => mapListing(row, strip));
+      regionalFallback = { stripId: strip.id, count: rows.length, status: listing.status, source: listing.source,
+        checkedAt: listing.checkedAt, lastSyncAt: listing.lastSyncAt, sourceRecords: listing.sourceRecords,
+        excludedRecords: listing.excludedRecords, reason: listing.reason, asOf: null, expectedCount: null };
+      if (rows.length) return { rows, coverage: regionalFallback };
+    }
     if (source) {
       const listing = await getGlobalMarketListings(source);
       const selected = listing.rows.filter(row => source !== 'us' || (row.exchange === strip.exchangeCode && row.assetType === 'stock'));
@@ -45,7 +57,7 @@ export async function loadGlobalDirectory(exchange = 'all', country = 'all') {
       id: `${strip.id}:${item.symbol}`, symbol: item.symbol, providerSymbol: item.symbol, name: item.name, nameAr: item.nameAr,
       sector: item.sector, countryCode: strip.countryCode, stripId: strip.id, kind: strip.kind, currency: inferStripCurrency(item.symbol),
     }));
-    return { rows, coverage: { stripId: strip.id, count: rows.length, status: rows.length ? 'selected' : 'unavailable', source: '', asOf: null } satisfies GlobalDirectoryCoverage };
+    return { rows, coverage: { ...regionalFallback, stripId: strip.id, count: rows.length, status: rows.length ? 'selected' : 'unavailable', source: regionalFallback?.source || '', asOf: null, expectedCount: null } satisfies GlobalDirectoryCoverage };
   }));
   return { rows: batches.flatMap(batch => batch.rows), coverage: batches.map(batch => batch.coverage) };
 }

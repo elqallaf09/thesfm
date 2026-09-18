@@ -11,6 +11,7 @@ import { EMPTY_DIRECTORY_FILTERS, type GlobalDirectoryRow, type GlobalDirectoryF
 import { useGlobalDirectoryPrices, useGlobalMarketDirectory } from '@/hooks/useGlobalMarketDirectory';
 import { deferUntilStreamSettled } from '@/lib/runtime/deferUntilStreamSettled';
 import { MarketDirectoryCoverage } from './MarketDirectoryCoverage';
+import { DirectoryQuoteCoverage } from './DirectoryQuoteCoverage';
 
 export type GlobalExplorerRequest = { id: string; sequence: number };
 type GlobalMarketsExplorerProps = { prices: Record<string, TechStockPrice> | null; lang: Lang; dir: 'rtl' | 'ltr'; browseRequest?: GlobalExplorerRequest | null };
@@ -133,6 +134,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           {directory.error ? <p role="alert">{copy.error} <button type="button" className="gm-explorer-reset" onClick={directory.page ? () => void directory.loadMore(isMobile) : directory.retry}>{copy.retry}</button></p> : null}
         </div>
         {directory.loading ? <div className="gm-directory-loading" role="status">{copy.loading}</div> : rows.length ? <>
+          <DirectoryQuoteCoverage rows={rows} prices={quotes.prices} lang={lang} failed={quotes.error} loading={quotes.loading} />
           <div className="gm-explorer-grid" aria-busy={directory.appending}>
             {rows.map(row => <GlobalMarketsExplorerItem key={row.id} row={row} lang={lang} quote={quotes.prices[row.providerSymbol]} loading={quotes.loading && !quotes.prices[row.providerSymbol]} />)}
           </div>

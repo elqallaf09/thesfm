@@ -97,8 +97,9 @@ The saved August 2 development plan and the earlier global/Gulf economic-platfor
 
 | Order | Workstream | Release acceptance |
 | --- | --- | --- |
-| P0 — current | Market and trading reliability | Keep valid quotes when chart data fails; share category scans; preserve successful exchanges; expose directory versus selected-list coverage; verify quick analysis on phone and desktop. |
-| P0 — next | Source coverage and operations | For each exchange, track expected versus imported listings, last successful sync, available quote ratio, source freshness, provider 429s and paid entitlement requirements. Prioritize Saudi/ADX/Qatar/Bahrain/Oman, then the disconnected Egypt/Jordan/Morocco directories. No implied full coverage from a six-stock list. |
+| P0 — shipped, PR #179 | Market and trading reliability | Valid quotes survive independent history failures; category scans are shared; successful exchanges are retained; directory versus selected-list coverage is visible; quick analysis passed phone and desktop checks. Production commit: `3693b10`. |
+| P0 — current release | Regional source coverage and quote recovery | Connect Saudi/ADX/Qatar/Egypt reference directories with strict identity/currency validation; preserve proven quote mappings; record retrieval/error metadata; display quote availability for shown results; recover partial quote responses; bound provider concurrency and cache degraded results briefly. See the [implementation and source audit](regional-market-coverage-2026-09-18.md). |
+| P0 — remaining | Complete source coverage and durable operations | Bahrain/Oman/Jordan/Morocco remain unconnected or selected lists. Independently verify expected exchange totals, resolve quote entitlements, and persist aggregate source-health/429 counters across instances without storing user searches. Directory access alone is not complete or real-time price coverage. |
 | P0 — next | Production hardening, Phase 7.35 | Complete authenticated account-isolation checks, timeout/cache contracts, source failures and real-user performance checks; keep documented failures separate from accepted release gates. |
 | P1 | Property market research | Use the four connected official contexts for searchable records. Enable valuation jurisdiction by jurisdiction only after rights, reliable area, arm's-length sales, comparable type, freshness, currency and historical backtesting pass. Kuwait reuse approval remains external work. |
 | P1 | Investment and personal finance workflows | Complete asset identity/document/history flows, imports/exports, onboarding, finance calculations and zakat/khums methodology. Require evidence-linked results and private account ownership. |
@@ -107,3 +108,11 @@ The saved August 2 development plan and the earlier global/Gulf economic-platfor
 | P2 | Memberships and distribution | Companies/memberships, community, referrals and mobile/TV experiences after the reliability and performance gates. External social publishing still needs explicit authorization. |
 
 Cost controls apply throughout: request only the data a view needs, reuse successful results, bound refreshes and provider concurrency, measure usage, and publish tested batches. In-memory request sharing reduces duplication within an instance; it is not a global quota guarantee across serverless instances.
+
+### Next delivery order after regional coverage
+
+1. Phase 7.35: inspect authenticated/RLS isolation, shared route policy, timeouts, cache contracts and source-error behavior; fix demonstrated gaps and record the result.
+2. Source operations: independently verified exchange totals and durable aggregate health; entitlement/rights decisions are external dependencies, not completed engineering work.
+3. Property: finish one jurisdiction's valuation evidence gate before presenting any automatic valuation as available. Research remains separate.
+4. Finance/investment: audit the existing import/export, document/history and calculation flows against the saved plan, then implement confirmed gaps.
+5. Daily brief and advisors, business actual-versus-plan, then membership/distribution features. Existing implementations must be evaluated before new feature work is marked complete.

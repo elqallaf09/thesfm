@@ -5,7 +5,7 @@ import type { GlobalDirectoryFilters, GlobalDirectoryPage, GlobalDirectoryRow } 
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
 const PAGE_SIZE = 12;
-const pageCache = new Map<string, GlobalDirectoryPage>();
+const pageCache = new Map<string, { page: GlobalDirectoryPage; expires: number }>();
 
 function paramsFor(filters: GlobalDirectoryFilters, offset: number, limit: number) {
   return new URLSearchParams({ q: filters.query.trim(), country: filters.country, exchange: filters.exchange, sector: filters.sector, assetType: filters.assetType, offset: String(offset), limit: String(limit) }).toString();
@@ -13,12 +13,12 @@ function paramsFor(filters: GlobalDirectoryFilters, offset: number, limit: numbe
 
 async function getPage(key: string, signal: AbortSignal) {
   const cached = pageCache.get(key);
-  if (cached) return cached;
+  if (cached && cached.expires > Date.now()) return cached.page;
   const response = await fetch(`/api/market-directory?${key}`, { signal });
   const data = await response.json() as GlobalDirectoryPage;
   if (!response.ok || !data.success || !Array.isArray(data.items)) throw new Error('directory_unavailable');
   if (pageCache.size >= 30) pageCache.delete(pageCache.keys().next().value!);
-  pageCache.set(key, data);
+  pageCache.set(key, { page: data, expires: Date.now() + 300_000 });
   return data;
 }
 
@@ -95,10 +95,11 @@ export function useGlobalDirectoryPrices(rows: GlobalDirectoryRow[], existing: R
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
-  const requested = rows.map(row => row.providerSymbol).filter(symbol => !prices[symbol] && !existing?.[symbol]).slice(0, 24).join(',');
+  const receivedAt = useRef<Record<string, number>>({});
+  const requested = rows.map(row => row.providerSymbol).filter(symbol => (!prices[symbol] && !existing?.[symbol]?.available) || (receivedAt.current[symbol] && Date.now() - receivedAt.current[symbol] > 300_000)).slice(0, 24).join(',');
 
   useEffect(() => {
-    if (!requested) { setLoading(false); return; }
+    if (!requested) { setLoading(false); setError(false); return; }
     const controller = new AbortController();
     setLoading(true);
     setError(false);
@@ -106,12 +107,23 @@ export function useGlobalDirectoryPrices(rows: GlobalDirectoryRow[], existing: R
       .then(async response => {
         const data = await response.json();
         if (!response.ok || !data.success || !data.prices) throw new Error('quotes_unavailable');
-        if (!controller.signal.aborted) setPrices(current => ({ ...current, ...data.prices }));
+        if (!controller.signal.aborted) {
+          const symbols = requested.split(',');
+          for (const symbol of symbols) receivedAt.current[symbol] = Date.now();
+          setPrices(current => ({ ...current, ...data.prices }));
+          setError(symbols.some(symbol => !data.prices[symbol]?.available));
+        }
       }).catch(() => { if (!controller.signal.aborted) setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [requested, retry]);
 
-  const retryPrices = useCallback(() => setRetry(value => value + 1), []);
-  return { prices: { ...existing, ...prices }, loading, error, retry: retryPrices };
+  const visibleSymbols = rows.map(row => row.providerSymbol).join(',');
+  const retryPrices = useCallback(() => {
+    const visible = new Set(visibleSymbols.split(','));
+    setPrices(current => Object.fromEntries(Object.entries(current).filter(([symbol, quote]) => !visible.has(symbol) || quote.available)));
+    setRetry(value => value + 1);
+  }, [visibleSymbols]);
+  const unavailableVisibleQuote = rows.some(row => prices[row.providerSymbol]?.available === false);
+  return { prices: { ...existing, ...prices }, loading, error: error || unavailableVisibleQuote, retry: retryPrices };
 }

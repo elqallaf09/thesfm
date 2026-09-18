@@ -61,3 +61,19 @@ test('each strip opens its own directory', async ({ page }) => {
   await expect(explorer.getByRole('combobox', { name: 'Exchange', exact: true })).toHaveValue('kuwait_boursa');
   await expect(explorer.locator('.gm-explorer-count')).toContainText('134');
 });
+
+test('partial quote responses can be retried without losing the directory', async ({ page }) => {
+  const explorer = await openDirectory(page);
+  await page.route('**/api/market-directory/quotes?**', route => {
+    const symbols = (new URL(route.request().url()).searchParams.get('symbols') || '').split(',');
+    return route.fulfill({ json: { success: true, prices: Object.fromEntries(symbols.map(symbol => [symbol, { symbol, available: false, price: null, change: null, changePercent: null, delayed: true, source: 'Twelve Data', unavailableReason: 'provider_rate_limited' }])) } });
+  }, { times: 1 });
+  await explorer.getByRole('combobox', { name: 'Exchange', exact: true }).selectOption('china_szse');
+  await explorer.getByRole('searchbox').fill('000002.SZ');
+  await expect(explorer.locator('.gm-directory-quotes')).toContainText('Some prices could not be refreshed');
+  await expect(explorer.locator('.directory-quote-coverage')).toContainText('1 unavailable');
+  await explorer.locator('.gm-directory-quotes').getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(explorer.locator('.gm-strip-item')).toContainText('123.45');
+  await expect(explorer.locator('.directory-quote-coverage')).toContainText('1 available');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
