@@ -119,7 +119,7 @@ Cost controls apply throughout: request only the data a view needs, reuse succes
 
 ## September 18 completion pass
 
-See [the completion audit](economic-platform-completion-2026-09-18.md) for implemented fixes, release evidence, and dependencies that remain open. Preserve PR #181's production news/history/indicator fixes and PR #182's reference-directory expansion. This pass completes the demonstrated reliability repairs; it does not certify universal exchange coverage or enable unsupported property valuation.
+See [the completion audit](economic-platform-completion-2026-09-18.md) for implemented fixes, release evidence, and dependencies that remain open. Preserve PR #181's production news/history/indicator fixes, PR #182's reference-directory expansion, and PR #184's quote-observation/reference-evidence fixes. This pass completes the demonstrated reliability repairs; it does not certify universal exchange coverage or enable unsupported property valuation.
 
 - Recover verified Saudi/Qatar directory reference prices after primary-source failure. Keep source identity, currency, timestamp and delay labels.
 - Store anonymous daily aggregate quote outcomes behind service-only writes and the existing admin route.

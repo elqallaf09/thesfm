@@ -4,6 +4,7 @@ import {
   type ShariahClassification,
 } from '@/lib/market/shariah-screening';
 import { isValidPrice } from '@/lib/market/quoteNormalization';
+import { isCurrentSfmQuote, referenceQuote } from '@/lib/trader/quoteEvidence';
 import { getSfmMarketHistory } from '@/lib/sfm-market/history';
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
 import {
@@ -36,6 +37,8 @@ export type SfmTraderQuote = TraderQuote & {
   schemaVersion: typeof SFM_MARKET_SCHEMA_VERSION;
   upstreamSource: string | null;
   lastKnownPrice?: number | null;
+  priceReference?: ReturnType<typeof referenceQuote>;
+  technicalAsOf?: string | null;
   sfmQuality: SfmMarketQuote['quality'];
   sfmProvenance: SfmMarketQuote['provenance'];
 };
@@ -260,7 +263,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     assetType: traderAssetType(quote.assetType),
     newsSentiment: UNAVAILABLE_NEWS_SENTIMENT,
   });
-  const quoteAvailable = quote.quality.state !== 'stale' && quote.quality.state !== 'unavailable';
+  const quoteAvailable = isCurrentSfmQuote(quote);
   const sufficient = recommendation.dataSufficiency.sufficient && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
   const indicators = recommendation.technicalSummary.indicators;
   const provider = traderProvider(quote.provenance.upstreamProvider);
@@ -294,7 +297,8 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     name: quote.name ?? meta?.name ?? quote.symbol,
     assetType,
     price: quoteAvailable ? quote.price : null,
-    lastKnownPrice: quote.quality.state === 'stale' ? quote.price : null,
+    lastKnownPrice: quoteAvailable ? null : quote.price,
+    priceReference: referenceQuote(quote), technicalAsOf: history.at(-1)?.date ?? null,
     change: quoteAvailable ? quote.change : null,
     changePercent: quoteAvailable ? quote.changePercent : null,
     previousClose: quoteAvailable ? quote.previousClose : null,
@@ -363,7 +367,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     source: SFM_MARKET_ENGINE_NAME as unknown as TraderQuote['source'],
     delayed,
     available: quoteAvailable,
-    unavailableReason: quoteAvailable ? undefined : `sfm_quote_${quote.quality.state}`,
+    unavailableReason: quoteAvailable ? undefined : `sfm_quote_${referenceQuote(quote)?.kind ?? quote.quality.state}`,
     lastUpdated: quote.provenance.observedAt,
     updatedAt: quote.provenance.observedAt,
     ...shariahClassificationFields(shariah),
@@ -441,6 +445,7 @@ export async function fetchSfmTraderQuotesDetailed(
 
   for (const quote of quotes) {
     const provider = traderProvider(quote.sfmProvenance.upstreamProvider);
+    if (provider && isValidPrice(quote.price ?? quote.lastKnownPrice)) selectedProvider ??= provider;
     if (quote.sfmProvenance.cached) cachedSymbols += 1;
     if (provider && quote.available && isValidPrice(quote.price)) {
       selectedProvider ??= provider;
@@ -471,7 +476,7 @@ export async function fetchSfmTraderQuotesDetailed(
     provider: selectedProvider,
     reason: availableCount ? null : 'sfm_market_data_unavailable',
     providerLatencyMs: selectedProvider ? { [selectedProvider]: Date.now() - startedAt } : {},
-    cacheStatus: availableCount ? (cachedSymbols ? 'provider-cache' : 'live') : 'not_configured',
+    cacheStatus: cachedSymbols ? 'provider-cache' : availableCount ? 'live' : selectedProvider ? 'partial' : 'not_configured',
     summary: {
       loadedSymbols: availableCount,
       failedSymbols: requested.length - availableCount,

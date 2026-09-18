@@ -15,7 +15,7 @@ test('failed signal cannot erase valid quote or mix unrelated analysis fields', 
 test('counts evidence rather than symbol-directory rows and selects a useful primary stock', () => {
   const unavailable = { symbol: 'A', price: null, available: false };
   const items = [unavailable, quoted, { symbol: 'MSFT', price: 200 }];
-  assert.deepEqual(analyzer.coverage(items), { total: 3, prices: 2, analyses: 1, missing: 1, latest: Date.parse(quoted.lastUpdated) });
+  assert.deepEqual(analyzer.coverage(items), { total: 3, prices: 2, analyses: 1, references: 0, missing: 1, latest: Date.parse(quoted.lastUpdated) });
   assert.equal(analyzer.rank(items)[0].symbol, 'AAPL');
   assert.equal(analyzer.indicators(quoted).rsi, 52);
   assert.equal(analyzer.indicators(quoted).ema50, 95);
@@ -37,7 +37,7 @@ test('shows a stale last-known price with its original timestamp without countin
   assert.match(html, /100/);
   assert.match(html, /2026-09-17T18:00:00/);
   assert.equal(analyzer.coverage([stale]).prices, 0);
-  assert.equal(analyzer.coverage([stale]).analyses, 0);
+  assert.equal(analyzer.coverage([stale]).analyses, 1);
   assert.doesNotThrow(() => analyzer.render({}, options));
 });
 
@@ -55,3 +55,18 @@ test('retains normalized confidence and canonical observation time in the watchl
     recommendation: () => ({ evidenceReady: false, confidence: null, reason: 'Insufficient data' }) });
   assert.doesNotMatch(blocked, /75%|550|Unsafe bullish prose/);
 });
+
+for (const [language, label] of [['ar', 'سعر يومي مرجعي'], ['en', 'Daily reference price'], ['fr', 'Cours journalier indicatif']]) {
+  test(`daily reference presentation preserves date precision and analytical evidence in ${language}`, () => {
+    const item = { ...quoted, price: null, available: false, lastKnownPrice: 100, samples: 260,
+      technicalAsOf: '2026-09-17', lastUpdated: '2026-09-17T00:00:00Z',
+      priceReference: { kind: 'daily', precision: 'date', changePercent: 1.75, volume: 1000000 } };
+    const html = analyzer.render(item, { h: String, text: (...labels) => labels[['ar', 'en', 'fr'].indexOf(language)],
+      price: String, currency: () => 'USD', status: () => ({}), recommendation: () => ({ evidenceReady: false }),
+      recommendationLabel: () => 'Insufficient data', date: String, logo: () => '', titleId: 'test', lang: language });
+    assert.match(html, new RegExp(label));
+    assert.match(html, /2026-09-17/); assert.doesNotMatch(html, /00:00:00/);
+    assert.match(html, /1.75%/); assert.match(html, /1,000,000/);
+    assert.deepEqual(analyzer.coverage([item]), { total: 1, prices: 0, references: 1, analyses: 1, missing: 0, latest: Date.parse(item.lastUpdated) });
+  });
+}

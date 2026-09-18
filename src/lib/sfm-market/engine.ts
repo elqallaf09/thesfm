@@ -154,6 +154,7 @@ function buildSfmQuote(quote: NormalizedMarketQuote, attempts: ProviderAttemptFa
       upstreamProviderName: quote.providerName,
       providerSymbol: quote.providerSymbol,
       observedAt: quote.lastUpdated,
+      observation: quote.observation,
       receivedAt,
       delayType: quote.delayType,
       cached: Boolean(quote.cached),

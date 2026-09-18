@@ -166,6 +166,29 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
   });
 
   for (const language of ['ar', 'en', 'fr'] as const) {
+    test(`daily reference prices retain historical analysis without trading confidence in ${language}`, async ({ page }) => {
+      await configureTerminal(page, language, 'light');
+      await mockTraderApi(page);
+      await page.route('**/api/recommendations?**', route => route.fulfill({ json: {
+        success: true, status: 'partial', dataQuality: 'partial', dataProvider: provider,
+        recommendations: [{ ...recommendations[0], price: null, currentPrice: null, available: false,
+          lastKnownPrice: 232, signalAvailable: false, confidence: null, aiConfidence: null,
+          targetPrice: null, stopLoss: null, technicalAvailable: true, samples: 260, rsi: 52,
+          finalRecommendation: 'Insufficient data', dataSufficiency: { sufficient: false },
+          priceReference: { kind: 'daily', precision: 'date', price: 232, changePercent: 1.75, volume: 78400000 },
+          lastUpdated: '2026-09-17T00:00:00Z', technicalAsOf: '2026-09-17',
+        }],
+      } }));
+      await page.goto(`${terminalPath}?route=dashboard&view=analysis`, { waitUntil: 'domcontentloaded' });
+      const analysis = page.locator('.sa-research').first();
+      await expect(analysis).toContainText({ ar: 'سعر يومي مرجعي', en: 'Daily reference price', fr: 'Cours journalier indicatif' }[language]);
+      await expect(analysis).toContainText('2026-09-17');
+      await expect(analysis).toContainText('260');
+      await expect(analysis).toContainText('52');
+      await expect(analysis).not.toContainText('94%');
+      await expect(analysis.locator('[data-symbol-details="AAPL"]')).toBeEnabled();
+    });
+
     test(`news tabs, source evidence, search and symbol actions work in ${language}`, async ({ page }) => {
       const errors: string[] = [];
       page.on('pageerror', error => errors.push(error.message));

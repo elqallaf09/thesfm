@@ -42,3 +42,9 @@ No automatic Preview on `feat/*`. Use one designated release branch only after f
 ### Production observation contract
 
 Owner: the repository/site owner; verification and immediate rollback monitoring during this release are performed in this task. Observe at least five minutes after Production READY: Saudi/Qatar sample identities and timestamps, ADX/Egypt explicit unavailable states, anonymous protected-route denial, private cache headers and new-route error logs. Abort on an auth/data leak, sustained changed-route 5xx, broken directory loading or a migration compatibility failure; use the immutable baseline application artifact. Whole-site logged-in RUM, user task completion and unattended responder coverage are not established by this short observation. They remain operational follow-up and are not marked passed. The owner has authorized the batched Production release; no quality gate is bypassed.
+
+### Concurrent main update
+
+While the final browser gate ran, PR #184 merged as `45ac2b0132005159466eb6f194504159515cc251` (quote observation timestamps and reference-evidence handling). Its 26 files do not overlap this batch. It is incorporated without conflicts and without reverting either release. The prior candidate passed 2,950 unit tests, 90 engine tests, 855 smoke tests plus one existing investment-card WebKit retry, 100 smoke skips, and 39 performance tests with two skips. The combined head must pass all required checks again.
+
+The initial designated Preview was READY at `0200987`, but strict up-to-date branch protection requires a new genuine Vercel status for the combined head. One additional Preview is necessary because main changed during validation; no optional development Previews are enabled. The production application rollback target moves to PR #184 / `dpl_4BJKqUciGToRTMo1siwBMcaQcgjk` once that immutable deployment is READY, retaining its quote-time fixes. The database migrations remain unchanged and applied.
