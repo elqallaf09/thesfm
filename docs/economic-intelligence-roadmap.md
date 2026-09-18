@@ -125,7 +125,7 @@ See [the completion audit](economic-platform-completion-2026-09-18.md) for imple
 - Store anonymous daily aggregate quote outcomes behind service-only writes and the existing admin route.
 - Expand real two-account isolation checks to eleven user-owned tables, harden non-row privileges and function resolution, and bound evidence/AI loading.
 - Reject failed or truncated financial snapshots and do not treat watchlists as current market observations.
-- Require qualified, fresh, distinct transaction evidence for the property valuation foundation; research contexts remain available.
+- Recover the confirmed missing production property evidence/history and market observation storage through a guarded append-only migration. Require qualified, fresh, distinct transaction evidence for valuation; research contexts remain available.
 - Correct short-month payroll dates and neutralize formulas in business CSV text.
 
 Remaining sequence: verify provider coverage/rights and exchange totals; qualify one property's jurisdiction and backtest; finish finance currency/import workflow audit and canonical-investment cutover gates; then define membership/community/referral acceptance criteria and mobile/TV release requirements. Existing workflows are retained; these larger product tracks are not represented as shipped by this reliability release.
