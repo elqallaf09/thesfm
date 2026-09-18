@@ -11,7 +11,10 @@ for (const setup of [
   { width: 844, height: 390, language: 'fr', theme: 'light' },
   { width: 1280, height: 900, language: 'ar', theme: 'light' },
 ]) {
-  test(`cold symbol data, retry and mobile layout ${setup.width} ${setup.language} ${setup.theme}`, async ({ page }, info) => {
+  test(`cold symbol data, retry and mobile layout ${setup.width} ${setup.language} ${setup.theme}`, async ({ page, browserName }, info) => {
+    // This multi-tab/retry flow has 2–6s traced actions on WebKit in CI.
+    // Keep every assertion and the separate performance budgets unchanged.
+    if (browserName === 'webkit') test.setTimeout(60_000);
     await page.setViewportSize({ width: setup.width, height: setup.height });
     const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
     const frame = await openTraderDrawerFixture(page, fixture.origin, setup.language, setup.theme, ['MSFT', 'AAPL']);
