@@ -27,6 +27,18 @@ Production baseline: `a415bb96e7884b88463ccf9bd8083a99b7b6959c` (PR #181), deplo
 
 ## Validation and release record
 
-Verification is in progress. Required gates: frozen dependency install, TypeScript, ESLint debt ratchet, i18n, maintainability/hygiene/launch guards, complete unit/engine tests, production build/performance budget, smoke/performance/contrast, clean migration chain and real two-user RLS. Record exact passing CI links and production observations in the PR before merge.
+Initial exact-head CI and local build passed; final head and Production observation are pending. Required gates: frozen dependency install, TypeScript, ESLint debt ratchet, i18n, maintainability/hygiene/launch guards, complete unit/engine tests, production build/performance budget, smoke/performance/contrast, clean migration chain and real two-user RLS. Record exact passing CI links and production observations in the PR before merge.
 
 No automatic Preview on `feat/*`. Use one designated release branch only after final code verification for the genuine required Vercel status, then merge through protection for one Production deployment. Roll back application code to the baseline above if needed; retain the additive health table and restrictive privilege hardening unless a specific verified compatibility problem requires a new corrective migration. Never restore broad application TRUNCATE access as a routine rollback.
+
+### Verified before release
+
+- Initial candidate `ff2467f48ae20b512226733f3196cfc106433b97`: clean chain applied all 152 migrations; real Auth/PostgREST isolation passed 230 checks on eleven tables, including concurrent health increments and denied anonymous/authenticated counter access. CI runs: [clean chain](https://github.com/elqallaf09/thesfm/actions/runs/35335721158), [real isolation](https://github.com/elqallaf09/thesfm/actions/runs/35335721264).
+- Local frozen dependency install, production build and all 15 bundle budgets passed. Ten directory browser checks passed at 1440×900 and 390×844. Complete CI unit/engine tests passed after updating the existing project-column contract assertion for the shared counted loader.
+- Production applied `20260918104154_economic_platform_privilege_hardening` and `20260918104210_market_source_health_aggregates`. SQL bytes match the clean-chain-tested files; filenames now match the actual migration-history versions assigned by the management API. No previously published main migration was changed.
+- Post-migration catalog: zero public tables grant application-role TRUNCATE; health table RLS is on, anonymous/authenticated SELECT and function EXECUTE are false, service writes/EXECUTE remain true. Transactional migration assertions preserved non-TRUNCATE and service privileges.
+- Security advisors: twelve mutable-search-path warnings resolved; zero ERROR findings. Leaked-password protection remains one external Auth-setting warning ([configuration](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)). Twenty informational no-policy tables include the intentionally service-only health table.
+
+### Production observation contract
+
+Owner: the repository/site owner; verification and immediate rollback monitoring during this release are performed in this task. Observe at least five minutes after Production READY: Saudi/Qatar sample identities and timestamps, ADX/Egypt explicit unavailable states, anonymous protected-route denial, private cache headers and new-route error logs. Abort on an auth/data leak, sustained changed-route 5xx, broken directory loading or a migration compatibility failure; use the immutable baseline application artifact. Whole-site logged-in RUM, user task completion and unattended responder coverage are not established by this short observation. They remain operational follow-up and are not marked passed. The owner has authorized the batched Production release; no quality gate is bypassed.

@@ -69,7 +69,7 @@
 - Verified Economic Intelligence API protection, provenance privacy, historical snapshot separation and non-causal drift semantics
 - Added `docs/economic-intelligence-integrity-audit.md` with scope, findings, fixes and remaining semantic cleanup
 
-## Phase 7.35 — Production Hardening — release verification in progress
+## Phase 7.35 — Production Hardening — implemented; final Production verification pending
 - Audit authenticated/RLS isolation for Economic Intelligence source tables and durable notifications
 - Verify server-only boundaries for secrets/provider credentials and admin clients
 - Normalize cache/no-store behavior, rate limits, retries/timeouts and 401/403/429/5xx error contracts
