@@ -69,9 +69,27 @@ describe('Commodities/metals: dedicated category identity, never a company/build
   });
 
   it('never fetches a generic by-ticker company logo for a metal holding', () => {
-    expect(resolveAssetLogoUrl({ symbol: 'XAUUSD', assetType: 'gold' })).toBeNull();
-    expect(resolveAssetLogoUrl({ symbol: 'XAGUSD', assetType: 'silver' })).toBeNull();
-    expect(resolveAssetLogoUrl({ symbol: 'XAGUSD' })).toBeNull();
+    expect(resolveAssetLogoUrl({ symbol: 'XAUUSD', assetType: 'gold' })).toBe('/images/metals/gold-bar.webp');
+    expect(resolveAssetLogoUrl({ symbol: 'XAGUSD', assetType: 'silver' })).toBe('/images/metals/silver-bar.webp');
+    expect(resolveAssetLogoUrl({ symbol: 'XAGUSD' })).toBe('/images/metals/silver-bar.webp');
+  });
+
+  it.each([
+    ['GC=F', 'gold'], ['SI=F', 'silver'], ['PL=F', 'platinum'], ['PA=F', 'palladium'],
+    ['XAU/USD', 'gold'], ['XAGUSD=X', 'silver'], ['XPT/USD', 'platinum'], ['XPDUSD', 'palladium'],
+  ])('uses the correct bullion image for %s with incomplete provider metadata', (symbol, metal) => {
+    for (const assetType of [undefined, 'unknown', 'commodity', 'metals']) {
+      const meta = getAssetVisualMeta({ symbol, assetType });
+      expect(meta.assetType).toBe(metal);
+      expect(meta.logoUrl).toBe(`/images/metals/${metal}-bar.webp`);
+      expect(meta.flags).toEqual([]);
+    }
+  });
+
+  it('keeps mining equities and metal ETFs distinct from physical bullion', () => {
+    expect(getAssetVisualMeta({ symbol: 'GOLD', assetType: 'stock' }).assetType).toBe('stock');
+    expect(resolveAssetLogoUrl({ symbol: 'GOLD', assetType: 'stock' })).toContain('image-stock/GOLD.png');
+    expect(getAssetVisualMeta({ symbol: 'GLD', assetType: 'etf' }).assetType).toBe('etf');
   });
 
   it('still classifies futures-style metal codes correctly (GC=F, SI=F)', () => {
