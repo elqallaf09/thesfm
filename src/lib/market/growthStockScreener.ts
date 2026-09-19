@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 
 import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
 import {
@@ -179,7 +180,7 @@ async function fallbackWatchlist(reason: string): Promise<GrowthScreenerResult> 
     const price = finite(quote?.price);
     return {
       symbol: stock.symbol,
-      name: quote?.name || stock.name,
+      name: quote?.name && quote.name.toUpperCase() !== stock.symbol.toUpperCase() ? quote.name : stock.name,
       price,
       currency: quote?.currency || 'USD',
       change: finite(quote?.change),
@@ -216,7 +217,7 @@ async function fallbackWatchlist(reason: string): Promise<GrowthScreenerResult> 
   };
 }
 
-export async function screenGrowthStocks(): Promise<GrowthScreenerResult> {
+async function loadGrowthStocks(): Promise<GrowthScreenerResult> {
   if (!process.env.FMP_API_KEY?.trim()) return fallbackWatchlist('fmp_api_key_not_configured');
 
   try {
@@ -253,4 +254,12 @@ export async function screenGrowthStocks(): Promise<GrowthScreenerResult> {
   } catch (error) {
     return fallbackWatchlist(safeMessage(error));
   }
+}
+
+const cachedGrowthStocks = unstable_cache(loadGrowthStocks, ['growth-screen-v2-100-symbols'], { revalidate: 300 });
+let pendingScreen: Promise<GrowthScreenerResult> | null = null;
+export function screenGrowthStocks(): Promise<GrowthScreenerResult> {
+  // Ticker, news and scanner share the same provider work, including outages.
+  pendingScreen ??= cachedGrowthStocks().finally(() => { pendingScreen = null; });
+  return pendingScreen;
 }
