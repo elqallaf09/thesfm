@@ -37,7 +37,7 @@ import {
 import { getBundledUsSymbolCatalog } from '@/lib/server/usSymbolCatalog';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
-export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack';
+export type TraderQuoteProvider = 'fmp' | 'yahoo' | 'finnhub' | 'twelve_data' | 'eodhd' | 'marketstack' | 'gold_api';
 export type TraderCatalogSource = 'seed' | 'bundled' | 'fmp' | 'supabase';
 
 export type TraderMarketDef = {
@@ -960,7 +960,7 @@ function capabilityMatrix(cacheAvailable = false) {
     reason: configured ? 'health_not_measured' : `${provider}_not_configured`,
     ...supports,
   });
-  return {
+  return { gold_api: configuredCapability('gold_api', true, { supportsTechnicalAnalysis: false }),
     twelve_data: configuredCapability('twelve_data', twelveDataConfigured, {
       supportsTechnicalAnalysis: true,
     }),
