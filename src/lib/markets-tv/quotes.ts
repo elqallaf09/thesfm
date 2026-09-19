@@ -4,6 +4,7 @@ export function quoteStatus(quote: Pick<TvQuote, 'price' | 'observedAt' | 'statu
   if (quote.price === null || !Number.isFinite(quote.price) || quote.price <= 0) return 'unavailable';
   const observed = quote.observedAt ? Date.parse(quote.observedAt) : NaN;
   if (!Number.isFinite(observed) || observed > now + 60_000) return 'unknown_time';
+  if (quote.status === 'reference') return now - observed > 7 * 86400000 ? 'stale' : 'reference';
   if (now - observed > 15 * 60_000 || quote.status === 'stale') return 'stale';
   return quote.status;
 }

@@ -4,11 +4,12 @@ export type TvView = 'markets' | 'map' | 'sessions' | 'brief';
 export type TvSettings = {
   language: TvLanguage; theme: 'dark' | 'light'; layout: 'balanced' | 'quotes';
   groups: TvGroup[]; autoRotate: boolean; rotationSeconds: number; ticker: boolean; sound: boolean;
+  marketIds?: string[]; stripDensity?: 'comfortable' | 'compact'; stripSpeed?: number;
 };
 export type TvQuote = {
   symbol: string; name: string; nameAr: string; currency: string | null; price: number | null;
   changePercent: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
-  status: 'available' | 'delayed' | 'stale' | 'unknown_time' | 'unavailable';
+  status: 'available' | 'delayed' | 'stale' | 'reference' | 'unknown_time' | 'unavailable';
   exchange: string | null; country: string | null;
 };
 export type TvMarket = { id: string; group: TvGroup; labelAr: string; labelEn: string; labelFr: string; count: number; status: string };
@@ -30,5 +31,8 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     groups: groups.length ? groups : [...DEFAULT_TV_SETTINGS.groups], autoRotate: row.autoRotate === true,
     rotationSeconds: [20, 30, 60, 120].includes(Number(row.rotationSeconds)) ? Number(row.rotationSeconds) : 30,
     ticker: row.ticker !== false, sound: row.sound === true,
+    marketIds: Array.isArray(row.marketIds) ? [...new Set(row.marketIds.filter((id): id is string => typeof id === 'string' && /^[A-Za-z0-9_]{1,32}$/.test(id)))].slice(0, 150) : undefined,
+    stripDensity: row.stripDensity === 'compact' ? 'compact' : 'comfortable',
+    stripSpeed: [20,32,44].includes(Number(row.stripSpeed)) ? Number(row.stripSpeed) : 32,
   };
 }

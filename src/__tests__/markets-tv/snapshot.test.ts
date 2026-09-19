@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
+vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
+vi.mock('@/lib/server/markets-tv/instruments', () => ({ tvInstrumentAssets: vi.fn().mockResolvedValue([]), cryptoTvQuotes: vi.fn().mockResolvedValue([]), forexTvQuote: vi.fn() }));
 vi.mock('@/lib/sfm-market/engine', () => ({ getSfmMarketQuote: vi.fn() }));
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
 import * as catalog from '@/lib/server/markets-tv/catalog';
@@ -10,7 +12,7 @@ afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); vi.restoreAllMocks(); 
 describe('TV canonical market snapshots', () => {
   it('passes the actual asset class for indices, commodities and currency groups', async () => {
     vi.mocked(getSfmMarketQuote).mockResolvedValue(null);
-    for (const [group, assetType] of [['global', 'index'], ['commodities', 'commodity'], ['crypto', 'crypto'], ['forex', 'forex']] as const) {
+    for (const [group, assetType] of [['global', 'index'], ['commodities', 'commodity']] as const) {
       vi.mocked(getSfmMarketQuote).mockClear();
       await loadTvSnapshot(group);
       expect(vi.mocked(getSfmMarketQuote).mock.calls.every(call => call[1]?.assetType === assetType)).toBe(true);

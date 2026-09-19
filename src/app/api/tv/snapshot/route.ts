@@ -6,9 +6,11 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 export async function GET(request: Request) {
-  const limited = rateLimitRequest(request, { prefix: 'tv-snapshot', max: 30 }); if (limited) return limited;
   const params = new URL(request.url).searchParams;
   const group = params.get('group') || 'global';
+  // A 4K display can have 16 visible rows polling at 15–30 seconds.
+  // Keep the device-owned watchlist on the tighter private budget.
+  const limited = rateLimitRequest(request, { prefix: 'tv-snapshot', max: group === 'watchlist' ? 30 : 120 }); if (limited) return limited;
   const page = Number(params.get('page') || 0), pageSize = Number(params.get('pageSize') || 6);
   const market = params.get('market') || undefined;
   if (!Number.isInteger(page) || page < 0 || page > 1_000_000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 12 || market && !/^[A-Z_a-z0-9]{1,32}$/.test(market)) return tvJson({ code: 'INVALID_QUERY' }, 400);

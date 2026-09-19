@@ -74,15 +74,35 @@ export const TV_TEXT = {
   nothingRanked: ['لا تتوفر بيانات حديثة كافية للترتيب', 'Not enough recent data to rank', 'Données récentes insuffisantes pour classer'],
   refresh: ['تحديث', 'Refresh', 'Actualiser'], connected: ['الاتصال متاح', 'Connected', 'Connecté'],
   stripMarkets: ['أشرطة الأسواق', 'Market strips', 'Bandes des marchés'],
+  reference: ['سعر مرجعي يومي', 'Daily reference rate', 'Taux de référence quotidien'],
+  rising: ['صعود', 'Rising', 'Hausse'], falling: ['نزول', 'Falling', 'Baisse'], unchanged: ['دون تغير', 'Unchanged', 'Stable'],
+  customizeMarkets: ['تخصيص الأسواق', 'Customize markets', 'Personnaliser les marchés'],
+  searchMarkets: ['ابحث عن سوق', 'Search markets', 'Rechercher un marché'],
+  selectedMarkets: ['الأسواق المختارة', 'Selected markets', 'Marchés sélectionnés'],
+  clearSelection: ['إلغاء الكل', 'Clear all', 'Tout désélectionner'], resetSelection: ['استعادة الافتراضي', 'Reset selection', 'Réinitialiser'],
+  noMatchingMarkets: ['لا توجد أسواق مطابقة', 'No matching markets', 'Aucun marché correspondant'],
+  chooseMarkets: ['اختر الأسواق من زر تخصيص الأسواق', 'Choose markets using Customize markets', 'Choisissez les marchés via Personnaliser les marchés'],
+  pauseStrips: ['إيقاف حركة الأشرطة', 'Pause strips', 'Suspendre les bandes'], resumeStrips: ['تشغيل حركة الأشرطة', 'Resume strips', 'Reprendre les bandes'],
+  stripDensity: ['كثافة الأشرطة', 'Strip density', 'Densité des bandes'], comfortable: ['مريح', 'Comfortable', 'Confortable'], compact: ['مضغوط', 'Compact', 'Compact'],
+  stripSpeed: ['سرعة حركة الأشرطة', 'Scroll speed', 'Vitesse de défilement'], slow: ['هادئة', 'Slow', 'Lente'], normal: ['متوسطة', 'Normal', 'Normale'], fast: ['سريعة', 'Fast', 'Rapide'],
+  sourcePrices: ['أسعار المصدر', 'Source prices', 'Cours du fournisseur'], waitingPrices: ['بانتظار الأسعار', 'Awaiting prices', 'En attente des cours'], retrying: ['إعادة الاتصال', 'Reconnecting', 'Reconnexion'],
   stripsOnly: ['الأشرطة فقط', 'Strips only', 'Bandes uniquement'],
   dashboard: ['لوحة التلفزيون', 'TV dashboard', 'Tableau TV'],
 } satisfies Record<string, [string, string, string]>;
 export type TvTextKey = keyof typeof TV_TEXT;
 export function tvText(language: TvLanguage, key: TvTextKey) { return TV_TEXT[key][language === 'ar' ? 0 : language === 'fr' ? 2 : 1]; }
+const timeFormats = new Map<string, Intl.DateTimeFormat>();
 export function tvTime(value: string | null, language: TvLanguage, date = false) {
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
-  return new Intl.DateTimeFormat(`${language}-u-nu-latn`, { hour: '2-digit', minute: '2-digit', ...(date ? { month: 'short', day: 'numeric' } as const : {}) }).format(new Date(value));
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const key = `${language}:${date}:${dateOnly}`;
+  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), ...(dateOnly ? { timeZone: 'UTC' } : {}) }));
+  return timeFormats.get(key)!.format(new Date(value));
 }
 export function tvPrice(price: number | null, currency: string | null) {
-  return price === null ? '—' : new Intl.NumberFormat('en-US', { maximumFractionDigits: currency === 'KWD' || currency === 'BHD' || currency === 'OMR' ? 3 : price < 1 ? 6 : 4 }).format(price);
+  if (price === null) return '—';
+  const key = price > 0 && price < .001 ? 'tiny' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : price < 1 ? '6' : '4';
+  if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', key === 'tiny' ? { maximumSignificantDigits: 6 } : { maximumFractionDigits: Number(key) }));
+  return priceFormats.get(key)!.format(price);
 }
+const priceFormats = new Map<string, Intl.NumberFormat>();

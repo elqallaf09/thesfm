@@ -88,14 +88,15 @@ test('TV market selection changes the main screen and promotes its independent t
 
 test('strips page fills the viewport, browses all rows and omits dashboard requests', async ({ page }) => {
   const requests: string[] = [];
+  let quotePrice = 123.45;
   page.on('request', request => { if (request.url().includes('/api/tv/')) requests.push(request.url()); });
-  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ ticker: false, autoRotate: true })));
+  await page.addInitScript(() => { if (!localStorage.getItem('sfm-markets-tv-settings-v1')) localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ ticker: false, autoRotate: true })); });
   const markets = Array.from({ length: 30 }, (_, index) => ({ id: `QA${index}`, group: 'us', labelAr: `سوق اختبار ${index}`, labelEn: `QA market ${index}`, labelFr: `Marché test ${index}`, count: 120, status: 'directory' }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets } }));
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams;
     return route.fulfill({ json: { group: 'us', directoryTotal: 120, total: 1, available: 1, quotes: [{
-      symbol: `${params.get('market')}-${params.get('page')}`, name: 'Synthetic QA', nameAr: 'اختبار', price: 123.45, currency: 'USD', changePercent: 1.2,
+      symbol: `${params.get('market')}-${params.get('page')}`, name: 'Synthetic QA', nameAr: 'اختبار', price: quotePrice, currency: 'USD', changePercent: 1.2,
       source: 'Synthetic QA fixture', observedAt: new Date().toISOString(), status: 'available', exchange: 'QA',
     }] } });
   });
@@ -124,6 +125,26 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
   expect(requests.some(url => url.includes('/news'))).toBe(false);
   expect(requests.filter(url => url.includes('/snapshot')).every(url => new URL(url).searchParams.get('pageSize') === '12')).toBe(true);
+  await expect(page.getByRole('img', { name: 'THE SFM', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear all', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Search markets', exact: true }).fill('QA market 7');
+  await page.locator('.tv-market-options button').click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.tv-market-strip')).toHaveCount(1);
+  await expect(page.locator('.tv-market-strip')).toHaveAttribute('data-market', 'QA7');
+  await page.reload();
+  await expect(page.locator('.tv-market-strip')).toHaveCount(1);
+  await expect(page.locator('.tv-market-strip')).toHaveAttribute('data-market', 'QA7');
+  await expect(page.locator('.tv-strip-price').first()).toContainText('123.45');
+  quotePrice = 124.45;
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.locator('.tv-strip-price').first()).toContainText('124.45');
+  await expect(page.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
+  await page.getByRole('button', { name: 'Pause strips', exact: true }).click();
+  await expect(page.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'paused');
+  await page.getByRole('button', { name: 'Resume strips', exact: true }).click();
+  await expect(page.locator('.tv-strip-change svg').first()).toBeVisible();
   await page.getByRole('link', { name: 'TV dashboard', exact: true }).click();
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.locator('.tv-strips-only')).toHaveCount(0);

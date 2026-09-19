@@ -20,6 +20,8 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false }: { sett
     {(['autoRotate','ticker','sound'] as const).map(key => <div className="tv-setting-row" key={key}><span>{t(key)}</span><button role="switch" aria-checked={settings[key]} onClick={() => toggle(key)}>{t(settings[key] ? 'enabled' : 'disabled')}</button></div>)}
     <div className="tv-setting-row"><span>{t('rotationSeconds')}</span><div className="tv-segment">{[20,30,60,120].map(seconds => <button key={seconds} aria-pressed={settings.rotationSeconds === seconds} onClick={() => change({ ...settings, rotationSeconds: seconds })}>{seconds}</button>)}</div></div>
     </>}
+    <div className="tv-setting-row"><span>{t('stripDensity')}</span><div className="tv-segment">{(['comfortable','compact'] as const).map(density => <button key={density} aria-pressed={(settings.stripDensity || 'comfortable') === density} onClick={() => change({ ...settings, stripDensity: density })}>{t(density)}</button>)}</div></div>
+    <div className="tv-setting-row"><span>{t('stripSpeed')}</span><div className="tv-segment">{([20,32,44] as const).map((speed,i) => <button key={speed} aria-pressed={(settings.stripSpeed || 32) === speed} onClick={() => change({ ...settings, stripSpeed: speed })}>{t((['slow','normal','fast'] as const)[i])}</button>)}</div></div>
     <h3>{t('visibleMarkets')}</h3><div className="tv-group-options">{TV_GROUPS.map(group => <button key={group} aria-pressed={settings.groups.includes(group)} onClick={() => {
       const groups = settings.groups.includes(group) ? settings.groups.filter(g => g !== group) : [...settings.groups, group];
       if (groups.length) change({ ...settings, groups });
@@ -70,9 +72,10 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
 export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; language: TvLanguage; now: number }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const scoped = quote.exchange?.startsWith('TD_');
+  const pair = quote.exchange === 'BINANCE' || quote.exchange === 'FOREX';
   const url = scoped ? `/world-stocks/${encodeURIComponent(quote.symbol)}?region=${encodeURIComponent(quote.exchange!)}` : `/ai-analyst/analyze/${encodeURIComponent(quote.symbol)}`;
-  const assetType = quote.symbol.includes('=X') ? 'FOREX' : /-(USD|USDT)$/.test(quote.symbol) ? 'CRYPTO' : /[=]F$/.test(quote.symbol) ? 'COMMODITY' : quote.symbol.startsWith('^') ? 'INDEX' : 'STOCK';
-  const analysis = useTvResource<{ result: AnalysisResult }>(scoped ? null : `/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
+  const assetType = quote.exchange === 'FOREX' || quote.symbol.includes('=X') ? 'FOREX' : quote.exchange === 'BINANCE' ? 'CRYPTO' : /-(USD|USDT)$/.test(quote.symbol) ? 'CRYPTO' : /[=]F$/.test(quote.symbol) ? 'COMMODITY' : quote.symbol.startsWith('^') ? 'INDEX' : 'STOCK';
+  const analysis = useTvResource<{ result: AnalysisResult }>(scoped || pair ? null : `/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
   const result = analysis.data?.result;
   const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
   return <div className="tv-detail">

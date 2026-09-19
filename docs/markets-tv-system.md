@@ -136,6 +136,39 @@ Official platform references: [Samsung engine matrix](https://developer.samsung.
 
 ## Complete listing discovery and exchange strips
 
+The strip wall now includes the official bundled SFM logo, market-by-market
+search/selection (persisted locally and through the existing owned device settings),
+compact/comfortable density, three motion speeds, pause and manual refresh. Quote
+tiles show asset identity/icons, direction arrows, short price-change highlights
+only on a newer source observation, and source/time evidence. Unknown overseas
+logos use an identity badge instead of a same-ticker US company logo.
+
+Visible crypto strips poll every 15 seconds and other strips every 30 seconds,
+after the preceding request completes; this is a refresh cadence, not a promise
+of upstream real-time entitlement. A four-request client queue bounds fanout.
+Failed refreshes preserve the last same-exchange/currency quote without rewriting
+its source clock. Date/number formatters are reused. The public snapshot budget
+supports 120 requests/minute for a multi-row display; owned watchlists retain 30.
+
+Crypto discovery uses all active Binance Spot trading pairs from exchangeInfo,
+and each page uses one batch 24-hour ticker request. USDT, USDC, BTC and other
+quote denominations remain explicit and are never relabelled USD. Forex discovery
+uses the entire Twelve Data forex_pairs directory. Quotes use matching provider
+pairs; the fallback is an explicitly dated daily ECB reference cross rate where
+both currencies are published, never labelled live. This does not promise every
+coin on every venue or price entitlement for every discovered pair.
+
+Exchange snapshots fetch only their own MIC-scoped directory, with persistent
+directory caches, instead of downloading the 42 MB global list per visible row.
+Counts are cached separately. Quote requests carry the already verified listing.
+Market-specific access failures do not disable unrelated exchanges. Foreign
+equities require matching MIC, symbol and currency; unsupported Finnhub index/
+commodity fallback is excluded to prevent lookalike equity prices.
+
+Source contracts: [Binance market data](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints),
+[Twelve Data forex directory](https://api.twelvedata.com/forex_pairs),
+[ECB daily reference history](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml).
+
 `/tv/strips` is a dedicated full-height market-strip page, linked from `/tv` by
 “Strips only”. It keeps a compact toolbar for the dashboard, pairing, settings
 and fullscreen; the remaining viewport belongs to stacked independently scrolling

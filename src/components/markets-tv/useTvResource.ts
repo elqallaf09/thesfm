@@ -1,4 +1,5 @@
 'use client';
+import { queuedTvSnapshot } from './snapshotQueue';
 import { tvFetch } from '@/lib/markets-tv/client';
 import { useEffect, useState } from 'react';
 export function useTvResource<T>(path: string | null, interval: number, token = '', revision = 0) {
@@ -14,7 +15,9 @@ export function useTvResource<T>(path: string | null, interval: number, token = 
       running = true; controller = new AbortController();
       const timeout = setTimeout(() => controller?.abort(), 55000);
       try {
-        const response = await tvFetch(path!, { cache: 'no-store', signal: controller.signal, headers: token ? { 'x-sfm-tv-token': token } : {} });
+        const signal = controller.signal;
+        const fetchResource = () => tvFetch(path!, { cache: 'no-store', signal, headers: token ? { 'x-sfm-tv-token': token } : {} });
+        const response = await (path!.startsWith('/api/tv/snapshot?') ? queuedTvSnapshot(signal, fetchResource) : fetchResource());
         const body = await response.json();
         if (!response.ok) throw new Error(typeof body.code === 'string' ? body.code : 'UNAVAILABLE');
         if (!stopped) setState({ key, data: body as T, error: null, loading: false });
