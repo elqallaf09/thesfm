@@ -104,8 +104,15 @@ describe('ExistingMarketDataIntelligenceProvider', () => {
     expect(snapshot.fallbackUsed).toBe(true);
     expect(snapshot.provider).toBe('finnhub+yahoo');
     expect(snapshot.warnings).toContain('SUPPLEMENTAL_HISTORY_FALLBACK_USED');
-    expect(snapshot.levels).toEqual({ support: null, resistance: null });
-    expect(snapshot.reportedRiskLevel).toBeNull();
-    expect(snapshot.quote.volume).toBeNull();
+    expect(snapshot.levels.support).toBeCloseTo(0.646);
+    expect(snapshot.levels.resistance).toBeCloseTo(0.673);
+    expect(snapshot.reportedRiskLevel).toBe('LOW');
+    expect(snapshot.quote.volume).toBe(1_000_059);
+    expect(snapshot.warnings).toEqual(expect.arrayContaining([
+      'DERIVED_VOLUME_FROM_VERIFIED_CANDLES',
+      'DERIVED_SUPPORT_FROM_VERIFIED_CANDLES',
+      'DERIVED_RESISTANCE_FROM_VERIFIED_CANDLES',
+      'DERIVED_RISK_FROM_VERIFIED_CANDLES',
+    ]));
   });
 });

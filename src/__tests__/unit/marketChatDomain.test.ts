@@ -46,8 +46,10 @@ const LIVE_AAPL: VerifiedChatMarketSnapshot = {
   reportedRiskLevel: 'MEDIUM',
   currency: 'USD',
   shariaStatus: 'compliant',
+  shariaReason: 'Verified screening evidence',
   shariaSource: 'verified-screening',
   shariaReviewedAt: '2026-09-15T00:00:00.000Z',
+  derivedFields: ['support', 'resistance'],
 };
 
 describe('assertChatDomain — fail-closed cross-domain guard', () => {

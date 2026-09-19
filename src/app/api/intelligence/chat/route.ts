@@ -20,6 +20,7 @@ import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
 import { aiUsageLimitResponse, consumeAiUsage } from '@/lib/server/aiUsage';
 import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
+import { loadStoredIntelligenceSharia } from '@/lib/server/intelligenceShariaEvidence';
 import { ExistingMarketDataIntelligenceProvider } from '@/providers/intelligence/existingMarketDataProvider';
 import { resolveCanonicalIntelligenceAsset } from '@/services/intelligence/assetResolver';
 
@@ -100,6 +101,14 @@ async function loadVerifiedMarketSnapshot(input: {
       forceRefresh: false,
     }, input.asset);
 
+    const storedSharia = (!snapshot.sharia.status || snapshot.sharia.status === 'unclassified' || !snapshot.sharia.source)
+      ? await loadStoredIntelligenceSharia(input.asset)
+      : null;
+    const sharia = storedSharia ?? snapshot.sharia;
+    const derivedFields = snapshot.warnings
+      .filter(code => code.startsWith('DERIVED_'))
+      .map(code => code.replace(/^DERIVED_|_FROM_VERIFIED_CANDLES$/g, '').toLowerCase());
+
     return {
       provider: snapshot.provider,
       dataAsOf: snapshot.dataAsOf,
@@ -113,9 +122,11 @@ async function loadVerifiedMarketSnapshot(input: {
       resistance: snapshot.levels.resistance,
       reportedRiskLevel: snapshot.reportedRiskLevel,
       currency: snapshot.asset.quoteCurrency,
-      shariaStatus: snapshot.sharia.status,
-      shariaSource: snapshot.sharia.source,
-      shariaReviewedAt: snapshot.sharia.reviewedAt,
+      shariaStatus: sharia.status ?? (['STOCK', 'FUND'].includes(input.asset.assetType) ? 'unclassified' : null),
+      shariaReason: sharia.reason,
+      shariaSource: sharia.source,
+      shariaReviewedAt: sharia.reviewedAt,
+      derivedFields,
     };
   } catch {
     // Chat remains useful with verified identity/general knowledge if live market

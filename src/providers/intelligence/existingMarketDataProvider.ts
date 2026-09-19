@@ -38,6 +38,34 @@ function dataAsOf(analysis: MarketAnalysis, candles: NormalizedIntelligenceCandl
   ]) ?? validIso(analysis.fetchedAt);
 }
 
+function latestVerifiedVolume(candles: NormalizedIntelligenceCandle[]) {
+  return [...candles].reverse().map(candle => candle.volume).find(value => value !== null && value >= 0) ?? null;
+}
+
+function derivedLevels(candles: NormalizedIntelligenceCandle[]) {
+  const recent = candles.slice(-20);
+  if (recent.length < 10) return { support: null, resistance: null };
+  const lows = recent.map(candle => candle.low).filter((value): value is number => value !== null && value > 0);
+  const highs = recent.map(candle => candle.high).filter((value): value is number => value !== null && value > 0);
+  if (lows.length < 8 || highs.length < 8) return { support: null, resistance: null };
+  const support = Math.min(...lows);
+  const resistance = Math.max(...highs);
+  if (!(support > 0) || !(resistance > support)) return { support: null, resistance: null };
+  return { support, resistance };
+}
+
+function derivedRiskLevel(candles: NormalizedIntelligenceCandle[], assetType: MarketAssetType): 'LOW' | 'MEDIUM' | 'HIGH' | null {
+  const closes = candles.map(candle => candle.close).filter(value => Number.isFinite(value) && value > 0).slice(-60);
+  if (closes.length < 20) return null;
+  const returns = closes.slice(1).map((close, index) => (close / closes[index]) - 1).filter(Number.isFinite);
+  if (returns.length < 19) return null;
+  const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+  const variance = returns.reduce((sum, value) => sum + ((value - mean) ** 2), 0) / Math.max(1, returns.length - 1);
+  const annualizedVolatilityPct = Math.sqrt(Math.max(0, variance)) * Math.sqrt(252) * 100;
+  const thresholds = assetType === 'forex' ? [12, 25] : assetType === 'crypto' ? [40, 80] : [20, 40];
+  return annualizedVolatilityPct < thresholds[0] ? 'LOW' : annualizedVolatilityPct < thresholds[1] ? 'MEDIUM' : 'HIGH';
+}
+
 function normalizeCandles(analysis: MarketAnalysis): NormalizedIntelligenceCandle[] {
   return analysis.history
     .map(point => ({
@@ -208,6 +236,13 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       ? `${primaryProvider}+${supplementalProvider}`.slice(0, 80)
       : primaryProvider;
     const fallbackUsed = result.fallback === true || supplementalHistoryUsed;
+    const providerVolume = finite(result.quote && 'volume' in result.quote ? result.quote.volume : null);
+    const candleVolume = providerVolume === null ? latestVerifiedVolume(candles) : null;
+    const providerSupport = result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.support);
+    const providerResistance = result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.resistance);
+    const candleLevels = providerSupport === null || providerResistance === null ? derivedLevels(candles) : { support: null, resistance: null };
+    const providerRisk = !hasPrimaryHistory ? null : result.riskLevel === 'high' ? 'HIGH' as const : result.riskLevel === 'medium' ? 'MEDIUM' as const : result.riskLevel === 'low' ? 'LOW' as const : null;
+    const candleRisk = providerRisk === null ? derivedRiskLevel(candles, marketAssetType) : null;
     const dataStatus: VerifiedIntelligenceSnapshot['dataStatus'] = result.cached
       ? 'CACHED'
       : result.dataStatus === 'delayed'
@@ -231,16 +266,16 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       operationalReliability: supplementalHistoryUsed
         ? Math.min(operationalReliability(result), 0.85)
         : operationalReliability(result),
-      reportedRiskLevel: !hasPrimaryHistory ? null : result.riskLevel === 'high' ? 'HIGH' : result.riskLevel === 'medium' ? 'MEDIUM' : result.riskLevel === 'low' ? 'LOW' : null,
+      reportedRiskLevel: providerRisk ?? candleRisk,
       quote: {
         price,
         change: finite(result.quote?.change),
         changePercent: finite(result.quote?.changePercent ?? result.changePercent),
-        volume: finite(result.quote && 'volume' in result.quote ? result.quote.volume : null),
+        volume: providerVolume ?? candleVolume,
       },
       levels: {
-        support: result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.support),
-        resistance: result.fallback === true || !hasPrimaryHistory ? null : finite(result.levels?.resistance),
+        support: providerSupport ?? candleLevels.support,
+        resistance: providerResistance ?? candleLevels.resistance,
       },
       candles,
       fundamentals: result.fundamentalsAvailable === false ? null : result.fundamentals ?? null,
@@ -254,6 +289,10 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       warnings: [
         ...(Array.isArray(result.warnings) ? result.warnings.map((_, index) => `PROVIDER_WARNING_${index + 1}`) : []),
         ...(supplementalHistoryUsed ? ['SUPPLEMENTAL_HISTORY_FALLBACK_USED'] : []),
+        ...(providerVolume === null && candleVolume !== null ? ['DERIVED_VOLUME_FROM_VERIFIED_CANDLES'] : []),
+        ...(providerSupport === null && candleLevels.support !== null ? ['DERIVED_SUPPORT_FROM_VERIFIED_CANDLES'] : []),
+        ...(providerResistance === null && candleLevels.resistance !== null ? ['DERIVED_RESISTANCE_FROM_VERIFIED_CANDLES'] : []),
+        ...(providerRisk === null && candleRisk !== null ? ['DERIVED_RISK_FROM_VERIFIED_CANDLES'] : []),
       ],
       providerAttempts: [providerAttempt(result, startedAt, { provider, fallbackUsed, observedAt: asOf })],
     };
