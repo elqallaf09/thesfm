@@ -7,7 +7,8 @@ import {
 import { fetchSfmTraderQuotesDetailed, type SfmTraderQuote } from '@/lib/trader/sfmMarketQuotes';
 import type { TraderQuoteLoadOptions } from '@/lib/trader/marketQuotes';
 
-export type SfmTraderSignal = MarketSignal & {
+export type SfmTraderSignal = MarketSignal & Pick<SfmTraderQuote, 'technicalAvailable' | 'strategies' | 'strategyAgreement' | 'strategyCount' | 'samples' | 'dataSufficiency'> & {
+  research?: SfmTraderQuote['research'];
   price: number | null;
   change: number | null;
   changePercent: number | null;
@@ -93,6 +94,10 @@ function projectQuote(quote: SfmTraderQuote): SfmTraderSignal {
 
   return {
     ...signal,
+    research: quote.research,
+    technicalAvailable: quote.technicalAvailable,
+    strategies: quote.strategies, strategyAgreement: quote.strategyAgreement, strategyCount: quote.strategyCount,
+    samples: quote.samples, dataSufficiency: quote.dataSufficiency,
     provider: 'THE SFM',
     price: quote.price,
     change: quote.change,

@@ -1,3 +1,4 @@
+import { providerCandleInterval } from './historyWindow';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
@@ -11,7 +12,6 @@ import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/relia
 import { observationIso as toIso, twelveDataObservation, type QuoteObservation } from '@/lib/market/quoteObservation';
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
-
 export type MarketDataProviderContext = {
   symbol?: string | null;
   market?: string | null;
@@ -22,7 +22,7 @@ export type MarketDataProviderContext = {
   country?: string | null;
   currency?: string | null;
   excludeProviders?: MarketDataProviderName[];
-  forceFresh?: boolean;
+  forceFresh?: boolean; historyPeriod?: string;
 };
 
 export type NormalizedMarketQuote = {
@@ -358,7 +358,7 @@ function normalizeQuote(input: {
     exchange: textOrNull(input.exchange ?? input.context?.exchange),
     exchangeCode: textOrNull(input.exchangeCode ?? input.context?.exchangeCode),
     country: textOrNull(input.country ?? input.context?.country),
-    assetType: textOrNull(input.assetType ?? input.context?.assetType),
+    assetType,
     provider: input.provider,
     providerName: input.providerName,
     delayType: input.delayType,
@@ -685,7 +685,7 @@ class TwelveDataProvider extends BaseProvider {
     if (!key) return [];
     const candidate = twelveExchangeCandidates(symbol, market, context)[0];
     if (!candidate) return [];
-    const params = new URLSearchParams({ symbol: candidate.symbol, interval: !interval || /^(1d|d)$/i.test(interval) ? '1day' : interval, outputsize: '260', apikey: key });
+    const params = new URLSearchParams({ symbol: candidate.symbol, interval: providerCandleInterval(interval || '1day', 'twelve'), outputsize: '260', apikey: key });
     if (candidate.exchange) params.set('exchange', candidate.exchange);
     const result = await fetchJson(`https://api.twelvedata.com/time_series?${params.toString()}`, {
       cacheKey: `candles:${this.name}:${params.get('symbol')}:${params.get('exchange') ?? ''}:${params.get('interval')}`,
@@ -790,7 +790,7 @@ class FinnhubProvider extends BaseProvider {
     if (!candidate) return [];
     const to = Math.floor(Date.now() / 1000);
     const from = to - 60 * 60 * 24 * 180;
-    const resolution = (interval || 'D').toLowerCase().includes('min') ? '15' : 'D';
+    const resolution = providerCandleInterval(interval || 'D', 'finnhub');
     const params = new URLSearchParams({ symbol: candidate, resolution, from: String(from), to: String(to), token: key });
     const path = normalizeAssetType(context?.assetType) === 'forex' ? 'forex/candle' : normalizeAssetType(context?.assetType) === 'crypto' ? 'crypto/candle' : 'stock/candle';
     const result = await fetchJson(`https://finnhub.io/api/v1/${path}?${params.toString()}`, {
@@ -1139,7 +1139,7 @@ class YahooProvider extends BaseProvider {
 
   async getCandles(symbol: string, _market?: string | null, interval?: string | null, context?: MarketDataProviderContext) {
     const candidate = yahooCandidates(symbol, context)[0] ?? symbol;
-    const result = await fetchYahooHistory(candidate, normalizeAssetType(context?.assetType), '1y', interval || undefined);
+    const result = await fetchYahooHistory(candidate, normalizeAssetType(context?.assetType), context?.historyPeriod ?? '1y', interval || undefined);
     if (!result.success) return [];
     return result.history.map(item => ({ ...item, provider: this.name }));
   }
@@ -1195,7 +1195,7 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
 
 export async function getCandlesWithFallback(symbol: string, market?: string | null, interval?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedMarketCandle[]>> {
   const attempts: ProviderAttemptFailure[] = [];
-  const key = fallbackKey(`candles:${interval ?? ''}`, symbol, market, context);
+  const key = fallbackKey(`candles:${interval ?? ''}:${context.historyPeriod ?? ''}`, symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
     if (!provider.configured()) {
@@ -1204,7 +1204,7 @@ export async function getCandlesWithFallback(symbol: string, market?: string | n
     }
     try {
       const candles = await provider.getCandles(symbol, market, interval, context);
-      if (candles.length > 0) {
+      if (candles.length > 0 && (!/^(\d+)(m|min)$/.test(interval ?? '') || new Set(candles.map(point => point.date.slice(0, 10))).size < candles.length)) {
         setFallback(key, candles, provider.name);
         return { ok: true, data: candles, provider: provider.name, attempts };
       }

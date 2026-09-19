@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { historyNumber, historyWindow } from '@/lib/market/historyWindow';
 import { proxyHistory } from '@/lib/market/marketDataProvider';
 import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { normalizeMarketSymbol } from '@/lib/market/normalizeSymbol';
@@ -57,13 +58,13 @@ function normalizeHistoryPoints(history: unknown) {
   return history
     .map(point => {
       const item = point && typeof point === 'object' ? point as Record<string, unknown> : {};
-      const close = Number(item.close ?? item.c);
+      const close = historyNumber(item.close ?? item.c);
       const time = String(item.date ?? item.time ?? item.timestamp ?? '').trim();
-      if (!time || !Number.isFinite(close)) return null;
-      const open = Number(item.open ?? item.o);
-      const high = Number(item.high ?? item.h);
-      const low = Number(item.low ?? item.l);
-      const volume = Number(item.volume ?? item.v);
+      if (!time || close === null || close <= 0) return null;
+      const open = historyNumber(item.open ?? item.o);
+      const high = historyNumber(item.high ?? item.h);
+      const low = historyNumber(item.low ?? item.l);
+      const volume = historyNumber(item.volume ?? item.v);
       return {
         time,
         open: Number.isFinite(open) ? open : null,
@@ -224,10 +225,11 @@ export async function GET(request: NextRequest) {
     providerSymbol,
     assetType,
   });
-  const points = normalizedHistory.points;
+  const points = historyWindow(normalizedHistory.points, period);
   if (result?.success && points.length > 0) {
     return NextResponse.json({
       ...result,
+      history: points.map(point => ({ ...point, date: point.time })),
       ok: true,
       success: true,
       symbol: displaySymbol,

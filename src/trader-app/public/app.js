@@ -2252,12 +2252,7 @@
         selectMarket(document.activeElement.dataset.selectMarket);
       }
     });
-    document.getElementById("symbol-search")?.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const symbol = sym(document.getElementById("symbol-input")?.value || "");
-      if (!symbol) return toast(textPair("اكتب رمزاً أولاً، مثل AAPL أو BTCUSD.", "Enter a symbol first, such as AAPL or BTCUSD.", "Saisissez d’abord un symbole, comme AAPL ou BTCUSD."));
-      navigate(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`);
-    });
+    window.sfmSymbolSearch = window.SFMSymbolSearch.mount({ form: document.getElementById("symbol-search"), input: document.getElementById("symbol-input"), get, text: textPair, open: symbol => navigate(`${ROOT}/symbol-details/${encodeURIComponent(symbol)}`) });
     document.addEventListener("submit", (event) => {
       const form = event.target.closest("[data-earnings-search-form]");
       if (!form) return;
@@ -2502,7 +2497,7 @@
     if (!clean || clean === "home" || clean === "app") return { id: "dashboard" };
     const [id, ...rest] = clean.split("/");
     if (id === "market-analysis") return { id: "recommendations" };
-    if (id === "symbol" || id === "symbol-details") return { id: "symbol-details", symbol: sym(rest.join("/")) };
+    if (id === "symbol" || id === "symbol-details") return { id: "symbol-details", symbol: /[^\x00-\x7F]/.test(rest.join("/")) ? rest.join("/").trim() : sym(rest.join("/")) };
     if (id === "markets" && rest.length) return { id: "markets", market: rest[0] };
     return routes[id] ? { id, market: rest[0] } : { id: "dashboard" };
   }
@@ -3975,6 +3970,7 @@
   }
 
   function symbolPage(symbol) {
+    const cached = state.cache.get(sym(symbol));
     if (!symbol) return `<div class="page-stack">${hero(
       textPair("تفاصيل الرمز", "Symbol details", "Détails du symbole"),
       textPair("اكتب رمزاً في البحث العلوي لفتح صفحة تحليل مخصصة. أمثلة: AAPL, BTCUSD, XAUUSD, KFH.KW", "Enter a symbol in the top search to open a dedicated analysis page. Examples: AAPL, BTCUSD, XAUUSD, KFH.KW", "Saisissez un symbole dans la recherche supérieure pour ouvrir une page d’analyse dédiée. Exemples : AAPL, BTCUSD, XAUUSD, KFH.KW"),
@@ -3991,7 +3987,7 @@
         textPair("صفحة تفاصيل حقيقية لكل رمز تعرض الملف والعملة والمصدر والتحليل عند توفرها من المزود.", "A real detail page for each symbol, showing its profile, currency, source, and analysis when the provider supplies them.", "Une page détaillée réelle pour chaque symbole, avec son profil, sa devise, sa source et son analyse lorsque le fournisseur les fournit."),
         textPair("تفاصيل الرمز", "SYMBOL DETAILS", "DÉTAILS DU SYMBOLE")
       )}
-      <section id="symbol-details-body"><div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair("جاري فحص", "Checking", "Vérification de"))} <span class="ltr">${h(symbol)}</span></h2></div></div></section>${disclaimer()}</div>`;
+      <section id="symbol-details-body">${cached && !cached.drawerOnly ? symbolContent(cached) : `<div class="panel"><div class="loading-panel compact"><span class="pulse-orb"></span><h2>${h(textPair("جاري فحص", "Checking", "Vérification de"))} <span class="ltr">${h(symbol)}</span></h2></div></div>`}</section>${disclaimer()}</div>`;
   }
 
   /* ───────────────────── Async loaders ───────────────────── */
@@ -4097,54 +4093,32 @@
   async function loadSymbol(symbol, force = false) {
     const target = document.getElementById("symbol-details-body"); if (!target) return;
     const key = sym(symbol);
+    if (/[^\x00-\x7F]|\s/.test(key)) {
+      target.textContent = textPair("جارٍ التحقق من اسم الأصل؛ اختر نتيجة البحث للمتابعة.", "Resolving the asset name; choose a search result to continue.", "Vérification du nom de l’actif ; choisissez un résultat pour continuer.");
+      await window.sfmSymbolSearch?.search(symbol); return;
+    }
     if (!force && state.cache.has(key) && !state.cache.get(key).drawerOnly) {
       target.innerHTML = symbolContent(state.cache.get(key));
       translateRenderedUi(target);
       return;
     }
     try {
+      const market = marketForSymbol(key) || currentMarket();
       const settled = await Promise.allSettled([
-        get(`/market/asset-profile?symbol=${encodeURIComponent(key)}`, { label: "quotes" }),
-        get(`/market/search?q=${encodeURIComponent(key)}&limit=5`, { label: "quotes" }),
-        get(`/market/technical-analysis?symbol=${encodeURIComponent(key)}`, { label: "signals" }),
-        get(`/market/signals/${encodeURIComponent(key)}`, { label: "signals" }),
-        get(`/market/history?symbol=${encodeURIComponent(key)}&range=1Y`, { label: "quotes" }),
-        get(marketNewsPath(6, { symbol: key }), { label: "news" })
+        get(`/market/asset-profile?symbol=${encodeURIComponent(key)}&lang=${currentLanguage()}`, { label: "quotes" }),
+        get(`/recommendations?market=${encodeURIComponent(marketApi(market.id))}&symbols=${encodeURIComponent(key)}${force ? "&refresh=1" : ""}`, { label: "quotes" }),
+        get(marketNewsPath(6, { symbol: key, refresh: force }), { label: "news" })
       ]);
-      const [profile, search, tech, sig, hist, news] = settled.map((result, index) => settledValue(result, index === 2 || index === 3 ? "signals" : index === 5 ? "news" : "quotes"));
-      const found = findAssetForSymbol(key, [search.resolved, ...arr(search.results || search.data || search.items)].filter(Boolean)) || {};
-      const rawProfile = profile.profile || profile.asset || profile.data || profile.result || {};
-      const rawTech = technicalPayloadFromResponse(tech);
-      const technicalUnavailable = isTechnicalUnavailablePayload(rawTech);
-      const historyPoints = arr(hist.points || hist.history);
-      const techAsset = rawTech && typeof rawTech === "object" ? {
-        price: rawTech.currentPrice || rawTech.price,
-        currentPrice: rawTech.currentPrice || rawTech.price,
-        currency: rawTech.currency,
-        source: rawTech.source,
-        exchange: rawTech.exchange || rawTech.market,
-        history: historyPoints
-      } : historyPoints.length ? { history: historyPoints } : {};
-      const providerStatus = rawTech?.providerStatus || hist.providerStatus || profile.providerStatus || {};
-      const rec = sig && (sig.signal || sig.item) ? signalToRec(sig.signal || sig.item) : matchRec(key);
-      const asset = normalizeQuote(norm({ symbol: key, ...found, ...rawProfile, ...techAsset, ...(rec || {}) }));
-      if (rec) Object.assign(rec, normalizeQuote(norm({ ...asset, ...rec })));
-      if (technicalUnavailable) asset.technicalAvailable = false;
-      if (technicalUnavailable && rec) {
-        rec.technicalAvailable = false;
-        rec.canFollowTrade = false;
-        rec.tradeable = false;
-      }
-      const detail = {
-        asset, tech: rawTech, providerStatus,
-        available: Boolean((profile.ok && (rawProfile.symbol || found.symbol || found.name)) || rawTech || historyPoints.length),
-        source: profile.source || search.source || asset.source || (rawTech && rawTech.source) || "--",
-        message: profile.message || search.message || UNAVAILABLE_MESSAGE,
-        technicalUnavailable,
-        technicalReason: technicalUnavailableReason(rawTech),
-        rec,
-        news
-      };
+      const [profile, quotes, news] = settled.map((result, index) => settledValue(result, index === 2 ? "news" : "quotes"));
+      const row = findAssetForSymbol(key, legacyRecsFrom(quotes));
+      const metadata = profile.profile || profile.asset || {};
+      const asset = normalizeQuote(norm({ ...metadata, ...(row || { symbol: key, price: null, available: false }), symbol: key }));
+      const rec = row ? normalizeQuote(norm(row)) : null;
+      const rawTech = window.SFMResearchEvidence.technical(row);
+      const technicalUnavailable = !rawTech.technicalAvailable;
+      const detail = { asset, rec, tech: rawTech, news, newsForSymbol: key,
+        providerStatus: row?.providerStatus || {}, available: Boolean(row), source: row?.upstreamSource || row?.source,
+        technicalUnavailable, technicalReason: technicalUnavailableReason(rawTech), message: quotes.message };
       if (technicalUnavailable) devLog("technical-analysis", "unavailable", technicalUnavailableDiagnostics(detail, asset));
       state.cache.set(key, { ...state.cache.get(key), ...detail, drawerOnly: false });
       if (state.drawer.symbol === key) renderSymbolDrawer();
@@ -4163,29 +4137,29 @@
     const a = normalizeQuote(detail.asset), c = currency(a), rec = detail.rec ? normalizeQuote(norm(detail.rec)) : null;
     const finalModel = finalRecommendationModel(a, detail, rec);
     const technicalUnavailable = isTechnicalUnavailableDetail(detail, { ...a, ...(rec || {}) });
-    const p = a.price;
+    const p = a.price ?? a.lastKnownPrice;
     const chg = a.changePercent;
     const ps = detail.providerStatus || {};
     const providerSymbolUsed = a.providerSymbolUsed || ps.providerSymbolUsed || a.providerSymbol || (rec && rec.providerSymbol) || terminalText("unavailable");
     const fallbackUsed = ps.fallbackUsed === true ? textPair("نعم", "Yes") : ps.fallbackUsed === false ? textPair("لا", "No") : terminalText("unavailable");
-    const lastUpdated = latinDateTime(ps.lastUpdated || a.updatedAt || (detail.rec && detail.rec.lastUpdated));
+    const lastUpdated = a.price === null && a.priceReference?.precision === "date" ? String(a.priceReference.observedAt || "--").slice(0, 10) : latinDateTime(ps.lastUpdated || a.updatedAt || (detail.rec && detail.rec.lastUpdated));
     const quality = ps.dataQuality ? dataQualityLabel(ps.dataQuality) : terminalText("unavailable");
     return `<div class="detail-layout">
       <article class="panel detail-main" id="price-data-panel">
         <div class="asset-head big">${logo(a, "lg")}<div class="asset-title"><strong class="symbol-code">${h(a.symbol)}</strong><small>${h(a.name || textPair("اسم الأصل غير متوفر من المزود", "Asset name unavailable from provider"))}</small></div>
           ${rec || technicalUnavailable ? `<span class="state-badge ${signalCardClass(finalModel.action)} big">${h(sigLabel(finalModel.action))}</span>` : ""}</div>
-        <div class="detail-grid">${detailCard(terminalText("price"), price(p, c), terminalText("price"))}${detailCard(textPair("التغير", "Change", "Variation"), change(chg), textPair("التغير", "Change", "Variation"))}${detailCard(terminalText("currency"), c, terminalText("currency"))}${detailCard(terminalText("type"), a.assetType || assetType(a.symbol), terminalText("type"))}${detailCard(terminalText("exchange"), a.exchange || a.market || "--", terminalText("exchange"))}${detailCard(terminalText("source"), detail.source || "--", terminalText("source"))}</div>
+        <div class="detail-grid">${detailCard(a.price === null && a.lastKnownPrice ? textPair("سعر مرجعي", "Reference price", "Cours indicatif") : terminalText("price"), price(p, c), terminalText("price"))}${detailCard(textPair("التغير", "Change", "Variation"), change(chg), textPair("التغير", "Change", "Variation"))}${detailCard(terminalText("currency"), c, terminalText("currency"))}${detailCard(terminalText("type"), a.assetType || assetType(a.symbol), terminalText("type"))}${detailCard(terminalText("exchange"), a.exchange || a.market || "--", terminalText("exchange"))}${detailCard(terminalText("source"), detail.source || "--", terminalText("source"))}</div>
         <div class="detail-grid">${detailCard(textPair("رمز المزود المستخدم", "Provider symbol used", "Symbole du fournisseur utilisé"), providerSymbolUsed, textPair("رمز المزود", "Provider symbol", "Symbole du fournisseur"))}${detailCard(textPair("استخدم الاحتياطي؟", "Used fallback?", "Solution de repli utilisée ?"), fallbackUsed, textPair("الاحتياطي", "Fallback", "Solution de repli"))}${detailCard(terminalText("lastUpdated"), lastUpdated === "--" ? terminalText("unavailable") : lastUpdated, terminalText("lastUpdated"))}${detailCard(terminalText("dataQuality"), quality, terminalText("dataQuality"))}</div>
-        <div class="card-actions"><button class="action-btn" data-quick-add="${h(a.symbol)}">${h(textPair("أضف للمتابعة", "Add to watchlist"))}</button><button class="ghost-btn" data-create-alert="${h(a.symbol)}">${h(textPair("أنشئ تنبيه", "Create alert"))}</button></div>
+        <div class="card-actions"><button class="ghost-btn" data-retry type="button">${h(terminalText("refresh"))}</button><button class="action-btn" data-quick-add="${h(a.symbol)}">${h(textPair("أضف للمتابعة", "Add to watchlist"))}</button><button class="ghost-btn" data-create-alert="${h(a.symbol)}">${h(textPair("أنشئ تنبيه", "Create alert"))}</button></div>
         ${miniChart(a)}
         ${assetAboutPanel(a)}
       </article>
       <aside class="detail-side">
         ${isSpacAsset(a) ? spacNoticeCard(a) : finalRecommendationCard(a, detail, rec)}
         ${shariaCompliancePanel(a)}
-        <article class="panel consensus-panel"><span class="eyebrow">${h(textPair("اتفاق الاستراتيجيات", "Strategy agreement"))}</span><h2>${h(textPair("اتفاق الاستراتيجيات", "Strategy agreement"))}</h2>${technicalUnavailable ? technicalUnavailableState(detail, a, { actions: false, compact: true }) : strategyConsensus(a, detail.tech, rec)}</article>
+        <article class="panel consensus-panel"><span class="eyebrow">${h(textPair("اتفاق الاستراتيجيات", "Strategy agreement"))}</span><h2>${h(textPair("اتفاق الاستراتيجيات", "Strategy agreement"))}</h2>${technicalUnavailable ? technicalUnavailableState(detail, a, { actions: false, compact: true }) : strategyConsensus(a, detail.tech, rec?.research || rec)}</article>
         <article class="panel"><span class="eyebrow">${h(textPair("التحليل الفني", "Technical analysis"))}</span><h2>${h(textPair("التحليل الفني", "Technical analysis"))}</h2>${technical({ ...a, ...(rec || {}) }, detail.tech, c, detail)}</article>
-        <article class="panel"><span class="eyebrow">${h(textPair("ثقة الذكاء الاصطناعي", "AI confidence"))}</span><h2>${h(textPair("قراءة الذكاء الاصطناعي الخام", "Raw AI reading"))}</h2>${technicalUnavailable ? technicalUnavailableState(detail, a, { actions: false, compact: true }) : rec ? signalAnalysis(rec, c) : emptyState(textPair("لا توجد إشارة كافية", "No sufficient signal"), textPair("لم يرجع المزود بيانات كافية لهذا الرمز.", "The provider did not return enough data for this symbol."), "", "")}</article>
+        <article class="panel"><span class="eyebrow">${h(textPair("ثقة الذكاء الاصطناعي", "AI confidence"))}</span><h2>${h(textPair("تفسير درجة الثقة", "Confidence explanation", "Explication de la confiance"))}</h2>${technicalUnavailable ? technicalUnavailableState(detail, a, { actions: false, compact: true }) : rec ? signalAnalysis(rec, c) : emptyState(textPair("لا توجد إشارة كافية", "No sufficient signal"), textPair("لم يرجع المزود بيانات كافية لهذا الرمز.", "The provider did not return enough data for this symbol."), "", "")}</article>
         <article class="panel"><span class="eyebrow">${h(textPair("أخبار مرتبطة", "Related news"))}</span><h2>${h(textPair("أخبار مرتبطة", "Related news"))}</h2>${relatedNews(a.symbol, detail)}</article>
       </aside></div>`;
   }
@@ -4328,7 +4302,7 @@
     const evidenceReady = dataState.key === "available";
     const c = currency(asset);
     const chg = asset.changePercent;
-    return `<div class="drawer-summary"><div class="drawer-price"><span>${h(terminalText("price"))}</span><strong class="ltr">${h(price(asset.price, c))}</strong><b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></div><div class="drawer-metrics">${drawerMetric(textPair("التوصية", "Recommendation", "Recommandation"), evidenceReady ? recommendationLabel(recommendation) : dataState.label, evidenceReady ? recommendationTone(recommendation) : dataState.tone)}${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), !evidenceReady || recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(textPair("المخاطر", "Risk", "Risque"), asset.risk || asset.riskLevel ? riskShort(asset.risk || asset.riskLevel) : terminalText("unavailable"))}${drawerMetric(textPair("الاتجاه", "Trend", "Tendance"), trendText(asset.trend || asset.technicalTrend || asset.direction) || terminalText("unavailable"))}</div>${!evidenceReady ? `<p class="provider-warning">${h(dataState.body)}</p>` : ""}${miniChart(asset)}${stockCardMeta(asset)}</div>`;
+    return `<div class="drawer-summary"><div class="drawer-price"><span>${h(terminalText("price"))}</span><strong class="ltr">${h(price(asset.price, c))}</strong><b class="ltr ${chg === null ? "" : chg >= 0 ? "up" : "down"}">${h(change(chg))}</b></div><div class="drawer-metrics">${drawerMetric(textPair("التوصية", "Recommendation", "Recommandation"), evidenceReady ? recommendationLabel(recommendation) : dataState.label, evidenceReady ? recommendationTone(recommendation) : dataState.tone)}${drawerMetric(textPair("ثقة AI", "AI confidence", "Confiance IA"), !evidenceReady || recommendation.confidence === null ? terminalText("unavailable") : `${Math.round(recommendation.confidence)}%`)}${drawerMetric(textPair("المخاطر", "Risk", "Risque"), asset.risk || asset.riskLevel ? riskShort(asset.risk || asset.riskLevel) : terminalText("unavailable"))}${drawerMetric(textPair("الاتجاه", "Trend", "Tendance"), trendText(asset.trend || asset.technicalTrend || asset.direction) || terminalText("unavailable"))}</div>${!evidenceReady ? `<p class="provider-warning">${h(dataState.body)}</p>` : ""}${miniChart(asset)}${stockCardMeta(asset)}${window.SFMResearchEvidence.render(asset, { h, text: textPair })}</div>`;
   }
 
   function drawerTechnicalTab({ asset, cachedDetail }) {
@@ -4352,7 +4326,8 @@
     return `<div class="drawer-events">${earnings.map(item => row(item, textPair("أرباح", "Earnings", "Résultats"))).join("")}${dividends.map(item => row(item, textPair("توزيعات", "Dividends", "Dividendes"))).join("")}</div>`;
   }
 
-  function drawerRecommendationTab({ asset, rec }) {
+  function drawerRecommendationTab({ asset, rec, cachedDetail }) {
+    if (window.SFMResearchEvidence.analysis(asset)) return finalRecommendationCard(asset, cachedDetail || { tech: window.SFMResearchEvidence.technical(asset) }, asset);
     const source = rec || asset;
     const recommendation = sharedRecommendation(source);
     const dataState = assetDataState({ ...asset, ...source }, recommendation);
@@ -5102,7 +5077,7 @@
     const display = a.displaySymbol || displaySymbolFor(symbol);
     const detailSymbol = a.canonicalSymbol || symbol;
     const c = currency({ ...a, symbol: detailSymbol });
-    const p = a.price;
+    const p = a.price ?? a.lastKnownPrice;
     const chg = a.changePercent;
     const recommendation = sharedRecommendation(a);
     const conf = recommendation.confidence;
@@ -5999,6 +5974,7 @@
   }
   function isTechnicalUnavailableDetail(detail, source = {}) {
     const tech = detail && detail.tech;
+    if (source.research?.available === true || tech?.research?.available === true) return false;
     return Boolean(
       detail?.technicalUnavailable ||
       isTechnicalUnavailablePayload(tech) ||
@@ -6083,7 +6059,7 @@
   }
   function technicalSnapshot(a, tech) {
     const t = tech || {};
-    const summary = a.technicalSummary || a.technical_summary || t.technicalSummary || t.technical_summary || {};
+    const summary = t.research?.technicalSummary || a.research?.technicalSummary || a.technicalSummary || a.technical_summary || t.technicalSummary || t.technical_summary || {};
     const summaryIndicators = summary.indicators || {};
     const ind = { ...(t.indicators || {}), ...summaryIndicators };
     const ma = t.movingAverages || t.averages || {};
@@ -6122,7 +6098,7 @@
       [textPair("دعم 2", "Support 2", "Support 2"), s2 === null ? "" : price(s2, null)],
       [textPair("مقاومة 1", "Resistance 1", "Résistance 1"), r1 === null ? "" : price(r1, null)],
       [textPair("مقاومة 2", "Resistance 2", "Résistance 2"), r2 === null ? "" : price(r2, null)],
-      [textPair("التذبذب", "Volatility", "Volatilité"), vol === null ? "" : (Math.round(vol * 100) / 100)],
+      [textPair("متوسط المدى الحقيقي · ATR", "Average true range · ATR", "Amplitude réelle moyenne · ATR"), vol === null ? "" : (Math.round(vol * 100) / 100)],
       [textPair("تأكيد الحجم", "Volume confirmation", "Confirmation du volume"), volumeRatio === null ? "" : `${Math.round(volumeRatio * 100) / 100}×`]
     ].filter(([, v]) => hasDisplayValue(v));
     const recommendation = t.recommendation || t.action || t.signal || "";
@@ -6168,13 +6144,13 @@
     if (isTechnicalUnavailableDetail(detail, a) || (tech && tech.available === false)) return technicalUnavailableState(detail, a);
     const snapshot = technicalSnapshot(a, tech);
     if (!snapshot.available) return technicalUnavailableState(detail, a);
-    const summary = a.technicalSummary || a.technical_summary || (tech && (tech.technicalSummary || tech.technical_summary)) || {};
+    const summary = tech?.research?.technicalSummary || a.research?.technicalSummary || a.technicalSummary || a.technical_summary || (tech && (tech.technicalSummary || tech.technical_summary)) || {};
     const summaryText = isFrenchLanguage()
       ? summary.summaryFr || summary.summary_fr || summary.summaryEn || summary.summary_en || summary.summaryAr || summary.summary_ar || ""
       : isEnglishLanguage()
         ? summary.summaryEn || summary.summary_en || summary.summaryAr || summary.summary_ar || ""
         : summary.summaryAr || summary.summary_ar || summary.summaryEn || summary.summary_en || "";
-    return `${summaryText ? `<p class="muted-note">${h(translateUiText(summaryText))}</p>` : ""}<div class="table-shell technical-available"><table><tbody>${snapshot.rows.map(([k, v]) => `<tr><th>${h(translateUiText(k))}</th><td class="${valueTextClass(v)}">${h(translateUiText(v))}</td></tr>`).join("")}</tbody></table></div>
+    return `${a.research?.asOf ? `<p class="muted-note">${h(window.SFMResearchEvidence.label(a.research, textPair))} · ${h(String(a.research.asOf).slice(0, 10))}</p>` : ""}${summaryText ? `<p class="muted-note">${h(translateUiText(summaryText))}</p>` : ""}<div class="table-shell technical-available"><table><tbody>${snapshot.rows.map(([k, v]) => `<tr><th>${h(translateUiText(k))}</th><td class="${valueTextClass(v)}">${h(translateUiText(v))}</td></tr>`).join("")}</tbody></table></div>
       <p class="muted-note">${h(textPair("تظهر هنا المؤشرات التي أرجعها المزود فقط؛ تم إخفاء الصفوف غير المتاحة بدلاً من تقديرها.", "Only indicators returned by the provider are shown here; unavailable rows are hidden instead of estimated."))}</p>`;
   }
   function riskReward(rec, c) {
@@ -6192,6 +6168,7 @@
     <p class="muted-note">${h(textPair("الهدف الأول قريب عمداً (≈0.9×ATR) لرفع احتمال الإصابة، وهو الهدف الذي تُقاس عليه نسبة النجاح التاريخية. الوقف أوسع خلف الهيكل السعري، لذلك العائد/المخاطرة يُقرأ مع الهدف الثاني.", "The first target is intentionally close (around 0.9x ATR) to raise hit probability; historical success is measured against that target. The stop is wider behind the price structure, so risk/reward is read with the second target."))}</p>`;
   }
   function signalAnalysis(rec, c) {
+    if (window.SFMResearchEvidence.analysis(rec)) return window.SFMResearchEvidence.render(rec, { h, text: textPair, view: "confidence" });
     const checked = sharedRecommendation(rec), evidence = assetDataState(rec, checked);
     if (evidence.key !== "available") return drawerUnavailable(evidence.label, evidence.body);
     const sig = checked.status, conf = checked.confidence === null ? terminalText("unavailable") : `${Math.round(checked.confidence)}%`;
@@ -6387,10 +6364,11 @@
     if (technicalUnavailable) recommendation = downgradedTechnicalRecommendation(recommendation, detail);
     const dataState = assetDataState({ ...a, ...source }, recommendation);
     const evidenceReady = dataState.key === "available";
-    const backendRows = technicalUnavailable ? [] : strategyRowsFromBackend(rec, a);
+    const analytical = source.research || rec;
+    const backendRows = technicalUnavailable ? [] : strategyRowsFromBackend(analytical, a);
     const sigs = backendRows.length ? backendRows : strategySignals(a, tech, rec);
-    const consensusResult = backendRows.length ? backendConsensusFromRecords(rec, a) : consensus(sigs);
-    const backendMetric = strategyAgreementMetric(rec, a);
+    const consensusResult = backendRows.length ? backendConsensusFromRecords(analytical, a) : consensus(sigs);
+    const backendMetric = strategyAgreementMetric(analytical, a);
     if (backendMetric.count > 0) {
       consensusResult.count = backendMetric.count;
       consensusResult.limited = backendMetric.limited;
@@ -6398,20 +6376,21 @@
       consensusResult.completeCoverage = backendMetric.completeCoverage;
       if (backendMetric.agreementPct !== null) consensusResult.agreement = backendMetric.agreementPct;
     }
-    const confidence = evidenceReady ? recommendation.confidence : null;
-    const samples = sampleCountFromRec(rec);
-    const dataQuality = recommendation.dataQuality.status;
+    const research = window.SFMResearchEvidence.analysis(source);
+    const confidence = research ? research.confidence : evidenceReady ? recommendation.confidence : null;
+    const samples = research?.samples ?? sampleCountFromRec(rec);
+    const dataQuality = research?.dataQualityStatus?.status || recommendation.dataQuality.status;
     const technicalState = technicalSnapshot({ ...a, ...(rec || {}) }, tech);
-    const riskLevel = recommendation.riskLevel;
+    const riskLevel = research ? research.risk?.level : recommendation.riskLevel;
     const consensusStrong = consensusResult.agreement >= 70 && consensusResult.count >= 3 && consensusResult.completeCoverage === true;
     const aiStrong = confidence !== null && confidence >= 70;
     const dataStrong = dataQuality === "complete" && samples !== null && samples > 0;
-    const technicalStrong = evidenceReady && !technicalUnavailable && technicalState.available && (!rec || rec.technicalAvailable !== false);
+    const technicalStrong = !technicalUnavailable && technicalState.available && (research?.available || !rec || rec.technicalAvailable !== false);
     const riskStrong = riskLevel !== "high";
     return {
       action: recommendation.status,
       dataState,
-      evidenceReady,
+      evidenceReady, research,
       consensusResult,
       confidence,
       samples,
@@ -6444,9 +6423,9 @@
       return `<li class="sufficiency-strategy"><b>${h(name)}</b><span>${h(reason)}</span></li>`;
     }).join("");
     const coverageText = textPair(
-      `تغطية الاستراتيجيات: ${latinNumber(ds.strategyCoverage.available)} من ${latinNumber(ds.strategyCoverage.total)}`,
-      `Strategy coverage: ${latinNumber(ds.strategyCoverage.available)} of ${latinNumber(ds.strategyCoverage.total)}`,
-      `Couverture des stratégies : ${latinNumber(ds.strategyCoverage.available)} sur ${latinNumber(ds.strategyCoverage.total)}`
+      `تغطية الاستراتيجيات: ${latinNumber(ds.strategyCoverage?.available ?? 0)} من ${latinNumber(ds.strategyCoverage?.total ?? 0)}`,
+      `Strategy coverage: ${latinNumber(ds.strategyCoverage?.available ?? 0)} of ${latinNumber(ds.strategyCoverage?.total ?? 0)}`,
+      `Couverture des stratégies : ${latinNumber(ds.strategyCoverage?.available ?? 0)} sur ${latinNumber(ds.strategyCoverage?.total ?? 0)}`
     );
     return `<div class="data-sufficiency-checklist">
       <h3>${h(textPair("قائمة تحقق كفاية البيانات", "Data sufficiency checklist", "Liste de vérification de la suffisance des données"))}</h3>
@@ -6457,17 +6436,17 @@
   }
   function finalRecommendationCard(asset, detail, rec, c) {
     const model = finalRecommendationModel(asset, detail, rec, c);
-    const insufficient = model.evidenceReady && model.action === "insufficient_data";
+    const insufficient = model.action === "insufficient_data";
     const confidenceText = model.confidence === null ? terminalText("unavailable") : `${latinNumber(Math.round(model.confidence))}%`;
-    const samplesText = !model.evidenceReady || model.samples === null ? terminalText("unavailable") : latinNumber(model.samples);
-    const finalLabel = model.evidenceReady ? recommendationLabel(model.normalizedRecommendation) : model.dataState.label;
+    const samplesText = model.samples === null ? terminalText("unavailable") : latinNumber(model.samples);
+    const finalLabel = model.research?.available && !model.evidenceReady ? window.SFMResearchEvidence.label(model.research, textPair) : model.evidenceReady ? recommendationLabel(model.normalizedRecommendation) : model.dataState.label;
     const metrics = [
       [textPair("التوصية النهائية", "Final recommendation"), finalLabel, textPair("النهائي", "Final")],
-      [textPair("اتفاق الاستراتيجيات", "Strategy agreement"), model.evidenceReady ? consensusMetricText(model.consensusResult) : model.dataState.label, textPair("الاتفاق", "Consensus")],
+      [textPair("اتفاق الاستراتيجيات", "Strategy agreement"), model.consensusResult.count > 0 ? consensusMetricText(model.consensusResult) : model.dataState.label, textPair("الاتفاق", "Consensus")],
       [textPair("ثقة الذكاء الاصطناعي", "AI confidence"), confidenceText, textPair("ثقة الذكاء الاصطناعي", "AI confidence")],
-      [textPair("التحليل الفني", "Technical analysis"), model.technicalAvailable ? textPair("متاح من المزود", "Available from provider") : terminalText("unavailable"), textPair("التحليل الفني", "Technical")],
-      [textPair("جودة البيانات / العينات", "Data quality / samples"), model.evidenceReady ? `${dataQualityLabel(model.dataQuality)} · ${samplesText}` : model.dataState.label, textPair("البيانات", "Data")],
-      [textPair("المخاطر", "Risk"), model.evidenceReady ? riskShort(model.riskLevel) : terminalText("unavailable"), textPair("المخاطر", "Risk")]
+      [textPair("التحليل الفني", "Technical analysis"), model.technicalAvailable ? textPair("محسوب من السجل", "Calculated from history", "Calculé à partir de l’historique") : terminalText("unavailable"), textPair("التحليل الفني", "Technical")],
+      [textPair("جودة البيانات / العينات", "Data quality / samples"), model.samples > 0 ? `${dataQualityLabel(model.dataQuality)} · ${samplesText}` : model.dataState.label, textPair("البيانات", "Data")],
+      [textPair("المخاطر", "Risk"), model.riskLevel ? riskShort(model.riskLevel) : terminalText("unavailable"), textPair("المخاطر", "Risk")]
     ];
     return `<article class="panel final-recommendation-card ${!model.evidenceReady || model.technicalUnavailable ? "muted" : signalCardClass(model.action)}">
       <div class="final-recommendation-head">
@@ -6475,8 +6454,8 @@
         <span class="state-badge ${!model.evidenceReady || model.technicalUnavailable ? model.dataState.tone || "muted" : signalCardClass(model.action)}">${h(finalLabel)}</span>
       </div>
       <div class="final-signal-grid">${metrics.map(([label, value, helper]) => detailCard(label, value, helper)).join("")}</div>
-      <p class="recommendation-explanation">${h(model.evidenceReady ? translateUiText(model.explanation || terminalText("unavailable")) : model.dataState.body)}</p>
-      ${insufficient ? dataSufficiencyChecklistCard(rec) : ""}
+      <p class="recommendation-explanation">${h(model.research?.available && !model.evidenceReady ? textPair("التحليل التاريخي متاح؛ توصية التداول تنتظر سعرًا حاليًا صالحًا.", "Historical analysis is available; a trading recommendation awaits a valid current quote.", "L’analyse historique est disponible ; une recommandation de trading attend un cours actuel valide.") : model.evidenceReady ? translateUiText(model.explanation || terminalText("unavailable")) : model.dataState.body)}</p>
+      ${window.SFMResearchEvidence.render(rec || asset, { h, text: textPair })}${insufficient ? dataSufficiencyChecklistCard(model.research || rec) : ""}
     </article>`;
   }
   function stat(label, value, helper) { return `<article class="stat-card"><span class="card-kicker">${h(translateUiText(helper))}</span><strong>${h(String(value))}</strong><small>${h(translateUiText(label))}</small></article>`; }
@@ -7371,7 +7350,7 @@
     if (label === "calendar") return REQUEST_TIMEOUTS.calendar;
     if (label === "news") return REQUEST_TIMEOUTS.news;
     if (label === "signals") return REQUEST_TIMEOUTS.signals;
-    if (path.includes("/recommendations") || path.includes("/market/history") || path.includes("/market/asset-profile") || path.includes("/markets")) return REQUEST_TIMEOUTS.quotes;
+    if (path.includes("/sfm-market/v1/trader/") || path.includes("/recommendations") || path.includes("/market/history") || path.includes("/market/asset-profile") || path.includes("/markets")) return REQUEST_TIMEOUTS.quotes;
     return REQUEST_TIMEOUTS.default;
   }
   function settledValue(result, label) {

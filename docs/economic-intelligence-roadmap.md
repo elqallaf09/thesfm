@@ -1,5 +1,11 @@
 # SFM Economic Intelligence Roadmap
 
+The complete product direction, including Phase 5.0, UX/workspaces, all ten AI
+advisor capabilities, notifications and future products, is maintained in the
+[master platform roadmap](platform-master-roadmap.md). Its September 19 audit
+distinguishes code present, partial delivery, planned work and unverified
+Production acceptance. This file retains the detailed Phase 7 history.
+
 ## Phase 7.0–7.17 — Implemented in PR #119
 - Financial Digital Twin, 3/6/12 month scenarios, deterministic decision risk and simulation
 - Decisions Center integration, explicit financing inputs, templates, comparison and Decision Lab
@@ -69,7 +75,7 @@
 - Verified Economic Intelligence API protection, provenance privacy, historical snapshot separation and non-causal drift semantics
 - Added `docs/economic-intelligence-integrity-audit.md` with scope, findings, fixes and remaining semantic cleanup
 
-## Phase 7.35 — Production Hardening — implemented; final Production verification pending
+## Phase 7.35 — Production Hardening — shipped in PR #185; operational follow-ups open
 - Audit authenticated/RLS isolation for Economic Intelligence source tables and durable notifications
 - Verify server-only boundaries for secrets/provider credentials and admin clients
 - Normalize cache/no-store behavior, rate limits, retries/timeouts and 401/403/429/5xx error contracts
@@ -80,7 +86,7 @@
 ### Validation gate
 - Required GitHub checks, production build and targeted browser checks must pass before merge
 - Per the owner's September 17, 2026 cost instruction, automatic Vercel deployment is limited to `main` and designated `release/*` branches. Development branches stay disabled. Validate locally/in CI, then create one release branch for the repository-required Vercel check and batch the approved changes into one Production deployment.
-- Auto-merge is authorized after repository-required checks pass
+- Merge is authorized after repository-required checks pass. For a release using an isolated Supabase Preview, also wait for authenticated Preview smoke to finish before merging: closing the PR deletes that database branch and can invalidate a still-running check. Do not use early auto-merge for this sequence.
 - No fake data, skipped required checks or lowered quality thresholds to force a merge
 
 ## Guardrails
@@ -100,7 +106,7 @@ The saved August 2 development plan and the earlier global/Gulf economic-platfor
 | P0 — shipped, PR #179 | Market and trading reliability | Valid quotes survive independent history failures; category scans are shared; successful exchanges are retained; directory versus selected-list coverage is visible; quick analysis passed phone and desktop checks. Production commit: `3693b10`. |
 | P0 — shipped, PR #182 | Regional source coverage and quote recovery | Connect Saudi/ADX/Qatar/Egypt reference directories with strict identity/currency validation; preserve proven quote mappings; record retrieval/error metadata; display quote availability for shown results; recover partial quote responses; bound provider concurrency and cache degraded results briefly. See the [implementation and source audit](regional-market-coverage-2026-09-18.md). |
 | P0 — remaining | Complete source coverage and durable operations | Bahrain/Oman/Jordan/Morocco remain unconnected or selected lists. Independently verify expected exchange totals and resolve remaining quote entitlements. This release adds durable resolved-quote counters; they include cached results and do not measure every upstream attempt. Directory access alone is not complete or real-time price coverage. |
-| P0 — current release | Production hardening, Phase 7.35 | Complete authenticated account-isolation checks, timeout/cache contracts, source failures and real-user performance checks; keep documented failures separate from accepted release gates. |
+| P0 — shipped with follow-ups, PR #185 | Production hardening, Phase 7.35 | Eleven-table real-account isolation, timeout/cache contracts and source-failure guards shipped at `67f62dd`. Logged-in production RUM and migration-ledger reconciliation remain open; optional authenticated Preview validation did not run after its database branch was deleted on merge. |
 | P1 | Property market research | Use the four connected official contexts for searchable records. Enable valuation jurisdiction by jurisdiction only after rights, reliable area, arm's-length sales, comparable type, freshness, currency and historical backtesting pass. Kuwait reuse approval remains external work. |
 | P1 | Investment and personal finance workflows | Complete asset identity/document/history flows, imports/exports, onboarding, finance calculations and zakat/khums methodology. Require evidence-linked results and private account ownership. |
 | P1 | Economic command center and advisors | Consolidate news, market/portfolio context, cash flow, material events and scenario assumptions in one daily brief. Repair analyst streaming/duplicate requests before expanding advisor features. |
@@ -129,3 +135,7 @@ See [the completion audit](economic-platform-completion-2026-09-18.md) for imple
 - Correct short-month payroll dates and neutralize formulas in business CSV text.
 
 Remaining sequence: verify provider coverage/rights and exchange totals; qualify one property's jurisdiction and backtest; finish finance currency/import workflow audit and canonical-investment cutover gates; then define membership/community/referral acceptance criteria and mobile/TV release requirements. Existing workflows are retained; these larger product tracks are not represented as shipped by this reliability release.
+
+## Evidence-source continuation
+
+Baseline now includes PR #183 (`88372608`), preserving the lightweight metal images. See [the source reliability follow-up](evidence-source-reliability-2026-09-19.md) for the confirmed regional-parser defect and current acceptance status. An accessible PDF can still fail extraction; distinguish layout, issuer, origin, timeout and provider failures before classifying a source as absent. Source-backed partial values do not establish complete screening or an institutional opinion.

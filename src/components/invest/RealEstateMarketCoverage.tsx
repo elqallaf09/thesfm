@@ -70,7 +70,7 @@ export function RealEstateMarketCoverage() {
           </div>
           <details><summary>{L('تفاصيل التغطية', 'Coverage details', 'Détails de couverture')}</summary><p>{note}</p></details>
           <div className={styles.footer}>
-            <span>{L('التقييم الحالي: غير جاهز بعد', 'Current valuation: not ready yet', 'Valorisation actuelle : pas encore prête')}</span>
+            <span>{item.valuationReady ? L('تقييم آلي عند كفاية المقارنات', 'Automatic estimate when comparables qualify', 'Estimation si les comparables sont suffisants') : L('التقييم الحالي: غير جاهز بعد', 'Current valuation: not ready yet', 'Valorisation actuelle : pas encore prête')}</span>
             <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">{L('المصدر', 'Source', 'Source')} <ExternalLink size={13} aria-hidden="true" /></a>
           </div>
         </article>;

@@ -1,3 +1,4 @@
+import { localizedMarketAliases, normalizeMarketName } from '@/lib/market/localizedMarketNames';
 import {
   normalizeAssetType,
   validateSymbol,
@@ -160,12 +161,7 @@ export const knownSymbols: Record<string, KnownMarketSymbol> = Object.fromEntrie
 );
 
 function normalizeKnownText(value: unknown) {
-  return String(value ?? '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    .toLowerCase();
+  return normalizeMarketName(value);
 }
 
 function compactKnownText(value: unknown) {
@@ -183,11 +179,12 @@ export function findKnownMarketSymbol(query: unknown, assetType?: MarketAssetTyp
   const compact = compactKnownText(query);
   if (!symbol && !normalized) return null;
 
-  return KNOWN_MARKET_SYMBOLS.find(item => {
+  const item = KNOWN_MARKET_SYMBOLS.find(item => {
     if (!matchesAssetType(item, assetType)) return false;
     if (symbol && (item.symbol === symbol || item.providerSymbol === symbol)) return true;
-    return item.aliases.some(alias => normalizeKnownText(alias) === normalized || compactKnownText(alias) === compact);
-  }) ?? null;
+    return [...item.aliases, ...localizedMarketAliases(item.symbol)].some(alias => normalizeKnownText(alias) === normalized || compactKnownText(alias) === compact);
+  });
+  return item ? { ...item, aliases: [...item.aliases, ...localizedMarketAliases(item.symbol)] } : null;
 }
 
 export function isKnownExactMarketSymbol(query: unknown, assetType?: MarketAssetType | 'all' | null) {

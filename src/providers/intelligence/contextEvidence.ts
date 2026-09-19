@@ -5,6 +5,10 @@ import { getMarketNews } from '@/lib/providers/news';
 import type { MarketNewsArticle } from '@/lib/providers/news/types';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
 import { loadStoredIntelligenceSharia } from '@/lib/server/intelligenceShariaEvidence';
+import { loadResearchIntelligenceSharia } from '@/lib/server/intelligenceResearchSharia';
+import { loadOfficialMacroCalendar } from './officialMacroCalendar';
+import { loadOfficialMacroObservations } from './officialMacroObservations';
+import { loadStoredNewsEvidence } from './storedNewsEvidence';
 
 export type IntelligenceContextNewsArticle = {
   headline: string;
@@ -15,7 +19,7 @@ export type IntelligenceContextNewsArticle = {
   sentimentSource: 'provider' | 'ai' | null;
 };
 export type IntelligenceContextSentiment = {
-  provider: 'finnhub' | 'alphavantage' | 'myfxbook';
+  provider: 'finnhub' | 'finnhub-news' | 'alphavantage' | 'myfxbook';
   positivePercent: number;
   negativePercent: number;
   sampleSize: number;
@@ -32,10 +36,14 @@ export type IntelligenceContextMacroEvent = {
   previous: string | number | null;
   provider: string;
 };
+export type IntelligenceContextMacroObservation = {
+  series: 'SOFR' | 'EFFR'; country: string; currency: string; value: number; previous: number | null;
+  previousPeriod: string | null; unit: '%'; period: string; retrievedAt: string; provider: string; sourceUrl: string;
+};
 export type IntelligenceContextEvidence = {
   news: { provider: string | null; observedAt: string | null; stale: boolean; articles: IntelligenceContextNewsArticle[]; failureCode: string | null };
   sentiment: IntelligenceContextSentiment | null;
-  macro: { provider: string | null; observedAt: string | null; stale: boolean; events: IntelligenceContextMacroEvent[]; failureCode: string | null };
+  macro: { provider: string | null; observedAt: string | null; stale: boolean; events: IntelligenceContextMacroEvent[]; observations?: IntelligenceContextMacroObservation[]; failureCode: string | null };
   sharia: VerifiedIntelligenceSnapshot['sharia'] | null;
 };
 
@@ -116,9 +124,12 @@ async function loadNews(request: AnalysisRequest, asset: CanonicalAssetIdentity)
       return true;
     }).sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)).slice(0, 12);
   };
+  const stored = loadStoredNewsEvidence(asset).catch(() => null);
   let response = await getMarketNews({ ...query, scope: 'asset', symbol: asset.providerSymbol }).catch(() => null);
   let articles = response && !response.stale && response.status === 'success' ? select(response.data) : [];
   if (!articles.length) {
+    const indexed = await stored;
+    if (indexed) return indexed;
     const fallback = await getMarketNews({ ...query, scope: 'general', symbol: null }).catch(() => null);
     if (fallback && !fallback.stale && fallback.status === 'success') { response = fallback; articles = select(fallback.data); }
   }
@@ -129,6 +140,21 @@ async function loadNews(request: AnalysisRequest, asset: CanonicalAssetIdentity)
     articles: articles.map(article => ({ headline: article.headline, source: article.source, sourceUrl: article.sourceUrl, publishedAt: article.publishedAt, sentiment: article.sentiment, sentimentSource: article.sentimentSource })),
     failureCode: articles.length ? null : response?.messageCode ?? 'NEWS_NO_RELEVANT_RESULTS',
   };
+}
+
+async function finnhubNewsSentiment(asset: CanonicalAssetIdentity, key: string, deadline: number): Promise<IntelligenceContextSentiment | null> {
+  if (!usStock(asset) || Date.now() >= deadline) return null;
+  const url = new URL('https://finnhub.io/api/v1/news-sentiment');
+  url.searchParams.set('symbol', asset.providerSymbol); url.searchParams.set('token', key);
+  const response = await fetch(url, { next: { revalidate: 900 }, signal: AbortSignal.timeout(Math.max(1, Math.min(3000, deadline - Date.now()))) });
+  if (!response.ok) return null;
+  const payload = await response.json();
+  if (symbol(payload.symbol ?? '') !== asset.providerSymbol) return null;
+  const positive = contextNumber(payload.sentiment?.bullishPercent), negative = contextNumber(payload.sentiment?.bearishPercent);
+  const size = contextNumber(payload.buzz?.articlesInLastWeek);
+  if (positive === null || negative === null || positive < 0 || negative < 0 || positive > 1 || negative > 1 || Math.abs(positive + negative - 1) > 0.01 || size === null || !Number.isInteger(size) || size <= 0) return null;
+  // This endpoint is a current rolling-week aggregate, observed at retrieval, not article publication.
+  return { provider: 'finnhub-news', positivePercent: positive * 100, negativePercent: negative * 100, sampleSize: size, observedAt: new Date().toISOString() };
 }
 
 type SocialEntry = { atTime?: string; positiveMention?: number; negativeMention?: number; positiveScore?: number; negativeScore?: number; score?: number };
@@ -215,6 +241,9 @@ async function loadSentiment(request: AnalysisRequest, asset: CanonicalAssetIden
     if (finnhub) providers.push(() => finnhubSentiment(asset, finnhub, maxAge, deadline));
     if (alpha) providers.push(() => alphaSentiment(asset, alpha, maxAge, deadline));
   }
+  // An explicitly preferred provider must not disable configured fallbacks for other asset classes.
+  if (finnhub) providers.push(() => finnhubNewsSentiment(asset, finnhub, deadline));
+  if (alpha && explicit && explicit !== 'alphavantage') providers.push(() => alphaSentiment(asset, alpha, maxAge, deadline));
   for (const fetchProvider of providers) { const result = await fetchProvider().catch(() => null); if (result) return result; }
   return null;
 }
@@ -224,21 +253,33 @@ async function loadMacro(request: AnalysisRequest, asset: CanonicalAssetIdentity
   const pair = symbol(asset.providerSymbol).replace(/=X$/, '').replace('/', '');
   const currencies = asset.assetType === 'FOREX' && /^[A-Z]{6}$/.test(pair) ? [pair.slice(0, 3), pair.slice(3)] : currency ? [currency] : [];
   if (!currencies.length || (['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) && !assetCountry)) return EMPTY_MACRO;
-  const response = await getEconomicCalendar({ from: dateOnly(now - 3 * DAY), to: dateOnly(now + 7 * DAY), currency: currencies.length === 1 ? currency : undefined, force: request.forceRefresh }).catch(() => null);
-  if (!response || response.stale || response.status !== 'success') return { ...EMPTY_MACRO, provider: response?.provider ?? null, stale: Boolean(response?.stale), failureCode: response?.messageCode ?? 'MACRO_PROVIDER_FAILED' };
+  const usdContext = currencies.includes('USD') && (!['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || assetCountry === 'US');
+  const official = usdContext ? loadOfficialMacroCalendar() : Promise.resolve(null);
+  const observations = usdContext ? loadOfficialMacroObservations() : Promise.resolve([]);
+  const enrich = async (calendar: IntelligenceContextEvidence['macro']): Promise<IntelligenceContextEvidence['macro']> => {
+    const samples = await observations;
+    if (!samples.length) return calendar;
+    const hasCalendar = !calendar.stale && calendar.events.length > 0;
+    return { provider: hasCalendar ? `${calendar.provider}+New York Fed` : 'New York Fed',
+      observedAt: hasCalendar ? calendar.observedAt : samples.map(item => item.retrievedAt).sort().at(-1) ?? null,
+      stale: false, events: hasCalendar ? calendar.events : [], observations: samples, failureCode: null };
+  };
+  const response = await withinBudget(() => getEconomicCalendar({ from: dateOnly(now - 3 * DAY), to: dateOnly(now + 7 * DAY), currency: currencies.length === 1 ? currency : undefined, force: request.forceRefresh }), null, 5000);
+  if (!response || response.stale || response.status !== 'success') return enrich(await official ?? { ...EMPTY_MACRO, provider: response?.provider ?? null, stale: Boolean(response?.stale), failureCode: response?.messageCode ?? 'MACRO_PROVIDER_FAILED' });
   const events = response.data.filter(event => {
     const at = contextIso(event.dateTimeUtc);
     if (!at || Date.parse(at) < now - 3 * DAY || Date.parse(at) > now + 7 * DAY || !currencies.includes(symbol(event.currency ?? ''))) return false;
     return !['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || country(event.country) === assetCountry;
   }).sort((a, b) => Math.abs(Date.parse(a.dateTimeUtc) - now) - Math.abs(Date.parse(b.dateTimeUtc) - now))
     .slice(0, 24).sort((a, b) => Date.parse(a.dateTimeUtc) - Date.parse(b.dateTimeUtc));
-  return { provider: response.provider, observedAt: recent(response.lastSuccessfulUpdate, now, DAY), stale: false, events, failureCode: events.length ? null : 'MACRO_NO_RELEVANT_EVENTS' };
+  if (!events.length) { const fallback = await official; if (fallback) return enrich(fallback); }
+  return enrich({ provider: response.provider, observedAt: recent(response.lastSuccessfulUpdate, Date.now(), DAY), stale: false, events, failureCode: events.length ? null : 'MACRO_NO_RELEVANT_EVENTS' });
 }
 
-async function withinBudget<T>(task: () => Promise<T>, fallback: T): Promise<T> {
+async function withinBudget<T>(task: () => Promise<T>, fallback: T, budget = CONTEXT_BUDGET_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await Promise.race([Promise.resolve().then(task).catch(() => fallback), new Promise<T>(resolve => { timer = setTimeout(() => resolve(fallback), CONTEXT_BUDGET_MS); })]);
+    return await Promise.race([Promise.resolve().then(task).catch(() => fallback), new Promise<T>(resolve => { timer = setTimeout(() => resolve(fallback), budget); })]);
   } finally { if (timer) clearTimeout(timer); }
 }
 
@@ -249,7 +290,10 @@ export async function loadIntelligenceContextEvidence(request: AnalysisRequest, 
     wanted('NEWS') ? withinBudget(() => loadNews(request, asset), { ...EMPTY_NEWS, failureCode: 'NEWS_PROVIDER_FAILED_OR_TIMEOUT' }) : Promise.resolve(EMPTY_NEWS),
     wanted('SENTIMENT') ? withinBudget(() => loadSentiment(request, asset, deadline), null) : Promise.resolve(null),
     wanted('MACRO') ? withinBudget(() => loadMacro(request, asset), { ...EMPTY_MACRO, failureCode: 'MACRO_PROVIDER_FAILED_OR_TIMEOUT' }) : Promise.resolve(EMPTY_MACRO),
-    wanted('SHARIA') ? withinBudget(() => loadStoredIntelligenceSharia(asset), null) : Promise.resolve(null),
+    wanted('SHARIA') ? withinBudget(async () => {
+      const [catalog, research] = await Promise.all([loadStoredIntelligenceSharia(asset), loadResearchIntelligenceSharia(asset, request.userId)]);
+      return research && (!catalog?.reviewedAt || Date.parse(research.reviewedAt ?? '') > Date.parse(catalog.reviewedAt)) ? research : catalog;
+    }, null) : Promise.resolve(null),
   ]);
   // Explicit unknown prevents the market quote's unverified status from bypassing this trust boundary.
   return { news, sentiment, macro, sharia: sharia ?? UNCLASSIFIED };

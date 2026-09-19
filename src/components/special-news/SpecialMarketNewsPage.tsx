@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   BarChart3,
@@ -91,6 +91,7 @@ type SpecialNewsResponse = {
   partialFailure?: boolean;
   liveUpdatesAvailable?: boolean;
   storedFallbackUsed?: boolean;
+  translationEnabled?: boolean;
   priceRule?: {
     currency?: string;
     operator?: string;
@@ -538,38 +539,81 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
   const [partialFailure, setPartialFailure] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
+  const activeRequest = useRef<AbortController | null>(null);
+
   const load = useCallback(async (forceRefresh = false) => {
+    activeRequest.current?.abort();
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 20000);
+    activeRequest.current = controller;
+    const isCurrent = () => activeRequest.current === controller && !controller.signal.aborted;
+    const newsSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]);
     if (forceRefresh) setRefreshing(true);
     else setLoading(true);
     setError('');
 
+    const loadTicker = async (symbols: string[] = []) => {
+      try {
+        const params = new URLSearchParams({ topic, lang, part: 'ticker' });
+        if (symbols.length) params.set('symbols', symbols.join(','));
+        const response = await fetch(`/api/market/special-news?${params}`, {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8_000)]),
+          headers: { accept: 'application/json' },
+        });
+        if (!response.ok) return;
+        const payload = await response.json() as SpecialNewsResponse;
+        if (isCurrent() && payload.tickerItems?.length) setTickerItems(payload.tickerItems);
+      } catch { /* A quote outage must not hide the articles or previous quotes. */ }
+    };
+    const fixedTicker = ['federal-reserve', 'healthcare-stocks', 'metals-news'].includes(topic);
+    if (fixedTicker) void loadTicker();
+
     try {
       const params = new URLSearchParams({ topic, lang });
       if (forceRefresh) params.set('refresh', '1');
-      const response = await fetch(`/api/market/special-news?${params.toString()}`, {
-        signal: controller.signal,
-        headers: { accept: 'application/json' },
+      const response = await fetch(`/api/market/special-news?${params}`, {
+        signal: newsSignal, headers: { accept: 'application/json' },
       });
       const payload = await response.json().catch(() => ({})) as SpecialNewsResponse;
       if (!response.ok || payload.success === false) throw new Error(payload.code || `http_${response.status}`);
-
-      setItems(dedupeNewsItems(payload.items ?? []));
-      setTickerItems(payload.tickerItems ?? []);
+      if (!isCurrent()) return;
+      const nextItems = dedupeNewsItems(payload.items ?? []);
+      startTransition(() => setItems(nextItems));
       setPartialFailure(Boolean(payload.partialFailure));
       setLastUpdated(payload.updatedAt ?? payload.lastSuccessfulUpdate ?? null);
+      if (!fixedTicker) {
+        if (payload.tickerItems?.length) setTickerItems(payload.tickerItems);
+        const symbols = [...new Set(nextItems.flatMap(item => item.symbols ?? []).map(symbol => symbol.toUpperCase()))]
+          .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
+        if (symbols.length) void loadTicker(symbols);
+      }
+      if (payload.translationEnabled && nextItems.length > 0) {
+        const translationParams = new URLSearchParams({ topic, lang, part: 'translation' });
+        void fetch(`/api/market/special-news?${translationParams}`, {
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(45_000)]),
+          headers: { accept: 'application/json' },
+        }).then(response => response.ok ? response.json() as Promise<SpecialNewsResponse> : null)
+          .then(translated => {
+            if (!isCurrent() || !translated?.items?.length) return;
+            const byId = new Map(translated.items.map(item => [item.id, item]));
+            startTransition(() => setItems(current => current.map(item => byId.get(item.id) ?? item)));
+          }).catch(() => undefined);
+      }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'news_load_failed');
+      if (isCurrent()) setError(loadError instanceof Error ? loadError.message : 'news_load_failed');
     } finally {
-      window.clearTimeout(timeoutId);
-      setLoading(false);
-      setRefreshing(false);
+      if (isCurrent()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [lang, topic]);
 
   useEffect(() => {
+    setItems([]);
+    setTickerItems([]);
+    setQuery('');
     void load(false);
+    return () => activeRequest.current?.abort();
   }, [load]);
 
   const filteredItems = useMemo(() => {

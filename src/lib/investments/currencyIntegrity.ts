@@ -4,6 +4,10 @@ export type InvestmentCurrencyRow = Record<string, unknown>;
 
 function finiteNumber(...values: unknown[]) {
   for (const value of values) {
+    // SQL nulls, empty input and booleans are missing monetary evidence. Number
+    // would otherwise turn them into 0/1 and mask a valid later value.
+    if (typeof value !== 'number' && typeof value !== 'string') continue;
+    if (typeof value === 'string' && !value.trim()) continue;
     const parsed = Number(value);
     if (Number.isFinite(parsed)) return parsed;
   }

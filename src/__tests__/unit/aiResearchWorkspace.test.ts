@@ -37,9 +37,9 @@ describe('one asset research workspace', () => {
     const picker = source('src/components/ai-analyst/AiAnalystAssetPicker.tsx');
     expect(picker).toContain('useEffect(() => {');
     expect(picker).toContain('setSymbol(initialSymbol)');
-    expect(picker).toContain('setAssetType(initialAssetType)');
-    expect(picker).toContain('setHorizon(initialHorizon)');
-    expect(picker).toContain('[initialSymbol, initialAssetType, initialHorizon]');
+    expect(picker).toContain("setAssetType(initialSymbol ? initialAssetType : 'ALL')");
+    expect(picker).toContain("setHorizon(allHorizons ? 'ALL' : initialHorizon)");
+    expect(picker).toContain('[initialSymbol, initialAssetType, initialHorizon, allHorizons]');
   });
   it('never exposes leading private reasoning blocks as the user-visible answer', () => {
     expect(finalAnswerFromPrivateModel('<think>private chain</think>\nFinal answer')).toBe('Final answer');

@@ -50,12 +50,12 @@ export const AI_ANALYST_COPY = {
     picker: {
       title: 'ابدأ بتحليل أصل',
       body: 'أدخل رمزاً وأفقاً زمنياً. لا يتم إنشاء قراءة أو سعر بديل عند غياب بيانات موثقة.',
-      symbol: 'رمز الأصل',
-      symbolPlaceholder: 'مثال: AAPL أو BTC-USD أو EURUSD=X',
+      symbol: 'اسم الأصل أو رمزه',
+      symbolPlaceholder: 'مثال: ذهب، أبل، بيتك أو AAPL',
       assetType: 'نوع الأصل',
       horizon: 'الأفق',
       submit: 'فتح التحليل',
-      invalidSymbol: 'أدخل رمزاً صالحاً بطول لا يتجاوز 32 حرفاً.',
+      invalidSymbol: 'أدخل اسم الأصل بالعربية أو الإنجليزية أو رمزه (حتى 160 حرفاً).',
     },
     overview: {
       snapshot: 'لقطة السوق',
@@ -208,7 +208,7 @@ export const AI_ANALYST_COPY = {
       assetType: 'Asset type',
       horizon: 'Horizon',
       submit: 'Open analysis',
-      invalidSymbol: 'Enter a valid symbol of up to 32 characters.',
+      invalidSymbol: 'Enter an Arabic or English asset name or symbol (up to 160 characters).',
     },
     overview: {
       snapshot: 'Market snapshot',
@@ -361,7 +361,7 @@ export const AI_ANALYST_COPY = {
       assetType: 'Type d’actif',
       horizon: 'Horizon',
       submit: 'Ouvrir l’analyse',
-      invalidSymbol: 'Saisissez un symbole valide de 32 caractères maximum.',
+      invalidSymbol: 'Saisissez un nom d’actif ou un symbole (160 caractères maximum).',
     },
     overview: {
       snapshot: 'Instantané du marché',

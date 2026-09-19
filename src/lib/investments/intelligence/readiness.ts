@@ -1,6 +1,7 @@
 import type { ValuationEvidence } from './contracts';
 import type { RealEstateAssetInput } from './real-estate';
 import { qualifiedTransactionEvidence } from './transactionEvidence';
+import { valuationArea } from './real-estate';
 
 export type ReadinessState = 'READY' | 'PARTIAL' | 'BLOCKED';
 export interface RealEstateReadiness {
@@ -10,10 +11,11 @@ export interface RealEstateReadiness {
 }
 
 export function assessRealEstateReadiness(asset: RealEstateAssetInput, evidence: ValuationEvidence[], now = new Date()): RealEstateReadiness {
-  const qualified = qualifiedTransactionEvidence(evidence, now);
+  const area = valuationArea(asset);
+  const qualified = qualifiedTransactionEvidence(evidence, now).filter(item => (item.areaBasis ?? 'LAND') === area?.basis);
   const checks = {
     assetIdentity: Boolean(asset.countryCode && [asset.city, asset.municipality, asset.region].some(value => value?.trim())),
-    area: Boolean(Number.isFinite(asset.landArea) && asset.landArea && asset.landArea > 0 && asset.landAreaUnit),
+    area: Boolean(area),
     evidence: evidence.length > 0,
     transactionComparables: qualified.length >= 2,
     currencyConsistency: qualified.length >= 2 && new Set(qualified.map(item => item.currency)).size === 1,

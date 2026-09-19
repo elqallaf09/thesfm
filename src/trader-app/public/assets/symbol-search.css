@@ -1,0 +1,12 @@
+.symbol-search-results {
+  grid-column: 1 / -1;
+  flex-basis: 100%;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.8rem;
+}
+.symbol-search-results[hidden] { display: none; }
+.symbol-search-results button { white-space: normal; text-align: start; }

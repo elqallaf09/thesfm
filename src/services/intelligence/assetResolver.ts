@@ -16,7 +16,9 @@ export async function resolveCanonicalIntelligenceAsset(input: {
   market?: string | null;
   quoteCurrency?: string | null;
 }): Promise<CanonicalAssetIdentity> {
-  const resolved = await resolveMarketSymbol(input.symbol, marketAssetTypeFromIntelligence(input.assetType));
+  // The market directory has separate gold/commodity kinds; both belong to the
+  // intelligence COMMODITY class. Resolve first, then enforce the canonical type.
+  const resolved = await resolveMarketSymbol(input.symbol, input.assetType === 'COMMODITY' ? undefined : marketAssetTypeFromIntelligence(input.assetType));
   if (!resolved.ok) throw new IntelligenceError('INVALID_SYMBOL', false);
   const resolvedType = intelligenceAssetTypeFromMarket(resolved.asset.assetType);
   if (resolvedType !== input.assetType) throw new IntelligenceError('UNSUPPORTED_ASSET', false);

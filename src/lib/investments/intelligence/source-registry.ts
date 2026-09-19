@@ -1,4 +1,6 @@
 import type { RealEstateEvidenceSourceAdapter } from './sources';
+import { nycTransactionAdapter } from './adapters/nyc-transactions';
+import { cookTransactionAdapter } from './adapters/cook-transactions';
 
 /**
  * Production registry for real-estate evidence adapters.
@@ -8,7 +10,7 @@ import type { RealEstateEvidenceSourceAdapter } from './sources';
  * implemented adapter, provenance rules, and tests. This prevents the UI from
  * implying coverage that THE SFM does not actually have.
  */
-const adapters: RealEstateEvidenceSourceAdapter[] = [];
+const adapters: RealEstateEvidenceSourceAdapter[] = [nycTransactionAdapter, cookTransactionAdapter];
 
 export function registerRealEstateSourceAdapter(adapter: RealEstateEvidenceSourceAdapter): void {
   if (adapters.some((item) => item.id === adapter.id)) throw new Error(`Duplicate real-estate source adapter: ${adapter.id}`);

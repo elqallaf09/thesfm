@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisRequest, CanonicalAssetIdentity } from '@/domain/intelligence/contracts';
 import type { MarketNewsArticle } from '@/lib/providers/news/types';
 
-const mocks = vi.hoisted(() => ({ news: vi.fn(), macro: vi.fn(), sharia: vi.fn(), myfxbook: vi.fn() }));
+const mocks = vi.hoisted(() => ({ news: vi.fn(), macro: vi.fn(), sharia: vi.fn(), myfxbook: vi.fn(), official: vi.fn(), storedNews: vi.fn(), research: vi.fn(), observations: vi.fn() }));
 vi.mock('@/lib/providers/news', () => ({ getMarketNews: mocks.news }));
 vi.mock('@/lib/providers/economic-calendar', () => ({ getEconomicCalendar: mocks.macro }));
 vi.mock('@/lib/server/intelligenceShariaEvidence', () => ({ loadStoredIntelligenceSharia: mocks.sharia }));
+vi.mock('@/lib/server/intelligenceResearchSharia', () => ({ loadResearchIntelligenceSharia: mocks.research }));
+vi.mock('@/providers/intelligence/officialMacroObservations', () => ({ loadOfficialMacroObservations: mocks.observations }));
+vi.mock('@/providers/intelligence/officialMacroCalendar', () => ({ loadOfficialMacroCalendar: mocks.official }));
+vi.mock('@/providers/intelligence/storedNewsEvidence', () => ({ loadStoredNewsEvidence: mocks.storedNews }));
 vi.mock('@/lib/market/providers/myfxbook', () => ({ getMyfxbookSentiment: mocks.myfxbook, resolveMyfxbookSymbol: (symbol: string) => symbol === 'EURUSD' ? { ok: true, symbol } : { ok: false } }));
 import { contextArticleMatches, contextIso, contextNumber, loadIntelligenceContextEvidence } from '@/providers/intelligence/contextEvidence';
 
@@ -20,10 +24,45 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(now); vi.clearAllMocks();
   for (const key of ['MARKET_SENTIMENT_PROVIDER', 'MARKET_SENTIMENT_API_KEY', 'FINNHUB_API_KEY', 'ALPHA_VANTAGE_API_KEY', 'MYFXBOOK_EMAIL', 'MYFXBOOK_PASSWORD']) vi.stubEnv(key, '');
   mocks.news.mockResolvedValue(success([])); mocks.macro.mockResolvedValue(success([])); mocks.sharia.mockResolvedValue(null);
+  mocks.observations.mockResolvedValue([]); mocks.official.mockResolvedValue(null); mocks.storedNews.mockResolvedValue(null); mocks.research.mockResolvedValue(null);
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('context evidence boundaries', () => {
+  it('uses official scheduling evidence when the paid calendar is not entitled', async () => {
+    mocks.macro.mockResolvedValue({ status: 'not_entitled', data: [], messageCode: 'provider_access_denied' });
+    const official = { provider: 'bls', observedAt: new Date(now).toISOString(), stale: false, events: [{ title: 'Employment Situation', country: 'US', currency: 'USD', dateTimeUtc: '2026-09-18T12:30:00Z', actual: null, forecast: null, previous: null, impact: 'unknown', provider: 'bls' }], failureCode: null };
+    mocks.official.mockResolvedValue(official);
+    expect((await loadIntelligenceContextEvidence({ ...request, requestedModules: ['MACRO'] }, asset)).macro).toEqual(official);
+  });
+  it('keeps official observed rates when both paid and calendar sources fail', async () => {
+    mocks.macro.mockResolvedValue({ status: 'not_entitled', data: [], messageCode: 'provider_access_denied' });
+    const sample = { series: 'SOFR', country: 'US', currency: 'USD', value: 3.5, previous: 3.25, previousPeriod: '2026-09-14', unit: '%', period: '2026-09-15', retrievedAt: new Date(now).toISOString(), provider: 'New York Fed', sourceUrl: 'https://www.newyorkfed.org/markets/reference-rates/sofr' };
+    mocks.observations.mockResolvedValue([sample]);
+    const data = await loadIntelligenceContextEvidence({ ...request, requestedModules: ['MACRO'] }, asset);
+    expect(data.macro).toMatchObject({ provider: 'New York Fed', observations: [sample], events: [], failureCode: null, stale: false });
+  });
+  it('does not substitute US funding data for a Kuwait equity', async () => {
+    await loadIntelligenceContextEvidence({ ...request, requestedModules: ['MACRO'] }, { ...asset, country: 'KW', quoteCurrency: 'KWD' });
+    expect(mocks.observations).not.toHaveBeenCalled(); expect(mocks.official).not.toHaveBeenCalled();
+  });
+  it('keeps real fallback news without generating a sentiment score', async () => {
+    const stored = { provider: 'sfm-news', observedAt: '2026-09-16T08:00:00Z', stale: false, articles: [article()], failureCode: null };
+    mocks.storedNews.mockResolvedValue(stored);
+    expect((await loadIntelligenceContextEvidence({ ...request, requestedModules: ['NEWS'] }, asset)).news).toEqual(stored);
+  });
+  it('tries a configured Finnhub news aggregate when preferred sentiment is for another asset class', async () => {
+    vi.stubEnv('MARKET_SENTIMENT_PROVIDER', 'myfxbook'); vi.stubEnv('FINNHUB_API_KEY', 'fixture-key');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ symbol: 'AAPL', sentiment: { bullishPercent: 0.6, bearishPercent: 0.4 }, buzz: { articlesInLastWeek: 20 } }))));
+    const result = await loadIntelligenceContextEvidence(request, asset);
+    expect(result.sentiment).toMatchObject({ provider: 'finnhub-news', positivePercent: 60, negativePercent: 40, sampleSize: 20 });
+  });
+  it('uses a newer owner research result and forwards only the authenticated owner scope', async () => {
+    mocks.sharia.mockResolvedValue({ status: 'needs_review', source: 'catalog', reviewedAt: '2026-09-15T09:00:00Z' });
+    mocks.research.mockResolvedValue({ status: 'non_compliant', source: 'SFM research', reviewedAt: '2026-09-16T08:00:00Z' });
+    const result = await loadIntelligenceContextEvidence({ ...request, requestedModules: ['SHARIA'], userId: 'owner-fixture' }, asset);
+    expect(result.sharia?.status).toBe('non_compliant'); expect(mocks.research).toHaveBeenCalledWith(asset, 'owner-fixture');
+  });
   it.each([[null], [undefined], [''], [' '], [false], [[]], [{}]])('does not turn missing or malformed input into zero: %s', value => { expect(contextNumber(value)).toBeNull(); });
   it('retains genuine zero and normalizes dates without inventing observation times', () => {
     expect(contextNumber(0)).toBe(0); expect(contextNumber('0')).toBe(0);

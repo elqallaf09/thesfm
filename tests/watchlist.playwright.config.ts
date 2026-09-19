@@ -8,7 +8,7 @@ import base from '../playwright.config';
 export default defineConfig({
   ...base,
   testDir: path.join(process.cwd(), 'tests/smoke'),
-  testMatch: 'trader-watchlist-engine.spec.ts',
+  testMatch: ['trader-watchlist-engine.spec.ts', 'trader-research-evidence.spec.ts'],
   webServer: undefined,
   retries: 0,
 });

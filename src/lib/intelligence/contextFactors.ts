@@ -67,7 +67,7 @@ const newsFactor: IntelligenceFactorModule = {
     const classified = articles.filter(article => article.sentimentSource === 'provider' && ['positive', 'neutral', 'negative'].includes(article.sentiment ?? ''));
     const up = classified.filter(article => article.sentiment === 'positive').length;
     const down = classified.filter(article => article.sentiment === 'negative').length;
-    const duplicateNewsBasis = contextData(context)?.sentiment?.provider === 'alphavantage';
+    const duplicateNewsBasis = ['alphavantage', 'finnhub-news'].includes(contextData(context)?.sentiment?.provider ?? '');
     const score = classified.length && !duplicateNewsBasis ? (up - down) / classified.length * 35 : null;
     const at = [...articles].sort((a, b) => Date.parse(a.publishedAt) - Date.parse(b.publishedAt))[0].publishedAt;
     const evidence = [item('NEWS', 'news_article_count', articles.length, at, source), item('NEWS', 'positive_news_count', up, at, source), item('NEWS', 'negative_news_count', down, at, source)];
@@ -114,12 +114,20 @@ const macroFactor: IntelligenceFactorModule = {
       return Number.isFinite(at) && at >= context.now - 3 * DAY * 1000 && at <= context.now + 7 * DAY * 1000;
     });
     const source = data?.provider ?? 'unavailable';
-    if (!events.length) return result(context, 'MACRO', source, data?.observedAt ?? null, [], null, data?.failureCode ?? 'MACRO_NO_RELEVANT_EVENTS');
+    const observations = (data?.observations ?? []).filter(sample => Number.isFinite(sample.value) && validTime(sample.period, context.now, 7 * DAY) && validTime(sample.retrievedAt, context.now, 7 * DAY));
+    if (!events.length && !observations.length) return result(context, 'MACRO', source, data?.observedAt ?? null, [], null, data?.failureCode ?? 'MACRO_NO_RELEVANT_EVENTS');
     const scores: number[] = [];
-    const evidence = [item('MACRO', 'macro_event_count', events.length, data?.observedAt ?? null, source)];
+    const evidence: IntelligenceEvidence[] = events.length ? [item('MACRO', 'macro_event_count', events.length, data?.observedAt ?? null, source)] : [];
+    for (const sample of observations) {
+      evidence.push({ ...item('MACRO', `macro_observation_${sample.series.toLowerCase()}`, sample.value, sample.period, sample.provider), unit: sample.unit });
+      if (sample.previous !== null) evidence.push({ ...item('MACRO', `macro_previous_${sample.series.toLowerCase()}`, sample.previous, sample.previousPeriod, sample.provider), unit: sample.unit });
+      evidence.push({ ...item('MACRO', 'macro_source_url', sample.sourceUrl, sample.retrievedAt, sample.provider), id: `macro:source:${sample.series}` });
+    }
+    if (events.some(event => event.provider === 'bls')) evidence.push(item('MACRO', 'macro_source_url', 'https://www.bls.gov/schedule/news_release/', data?.observedAt ?? null, source));
     let next: typeof events[number] | null = null;
     for (const [index, event] of events.entries()) {
       const at = Date.parse(event.dateTimeUtc);
+      evidence.push({ ...item('MACRO', 'macro_event_title', event.title, event.dateTimeUtc, event.provider), id: `macro:event:${index}` });
       if (at > context.now) { if (!next || at < Date.parse(next.dateTimeUtc)) next = event; continue; }
       // The equity surprise rule is not silently reused for the base/quote legs of FX or for commodities.
       if (!['STOCK', 'INDEX', 'FUND'].includes(context.snapshot.asset.assetType) || !country(context.snapshot.asset.country) || country(event.country) !== country(context.snapshot.asset.country)) continue;
@@ -131,8 +139,8 @@ const macroFactor: IntelligenceFactorModule = {
       evidence.push({ ...item('MACRO', 'macro_actual', event.actual, event.dateTimeUtc, event.provider), id: `macro:actual:${index}` });
       evidence.push({ ...item('MACRO', 'macro_forecast', event.forecast, event.dateTimeUtc, event.provider), id: `macro:forecast:${index}` });
     }
-    evidence.push(item('MACRO', 'macro_high_impact_count', events.filter(event => event.impact === 'high').length, data?.observedAt ?? null, source));
-    evidence.push(item('MACRO', 'macro_surprise_count', scores.length, data?.observedAt ?? null, source));
+    if (events.length) evidence.push(item('MACRO', 'macro_high_impact_count', events.filter(event => event.impact === 'high').length, data?.observedAt ?? null, source));
+    if (events.length) evidence.push(item('MACRO', 'macro_surprise_count', scores.length, data?.observedAt ?? null, source));
     if (next) evidence.push(item('MACRO', 'next_macro_event', next.title.slice(0, 200), next.dateTimeUtc, next.provider));
     const score = scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : null;
     const output = result(context, 'MACRO', source, data?.observedAt ?? null, evidence, score, null, !scores.length, data?.stale);
@@ -146,6 +154,7 @@ const shariaFactor: IntelligenceFactorModule = {
       return result(context, 'SHARIA', sharia.source ?? 'unavailable', sharia.reviewedAt, [], null, 'VERIFIED_SHARIA_STATUS_UNAVAILABLE');
     }
     const evidence = [item('SHARIA', 'verified_sharia_status', sharia.status, sharia.reviewedAt, sharia.source)];
+    if (sharia.reason) evidence.push(item('SHARIA', 'sharia_review_reason', sharia.reason, sharia.reviewedAt, sharia.source));
     return result(context, 'SHARIA', sharia.source, sharia.reviewedAt, evidence, 0, null, sharia.status === 'needs_review');
   },
 };

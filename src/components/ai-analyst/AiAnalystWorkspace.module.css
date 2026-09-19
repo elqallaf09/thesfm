@@ -524,3 +524,7 @@
 @media (prefers-reduced-motion: reduce) {
   .navigationLink, .mobileNavigationGroup summary svg, .recentItem, .primaryAction, .secondaryAction, .disclosureButton { transition: none; }
 }
+
+.searchResults { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; max-height: 320px; overflow: auto; }
+.searchResults button { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-secondary); color: var(--foreground); text-align: start; cursor: pointer; }
+.searchResults button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

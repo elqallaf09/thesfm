@@ -80,6 +80,7 @@ type ResearchApiPayload = {
 };
 
 type ShariaResearchPageProps = {
+  initialMethodologyId?: string;
   embedded?: boolean;
   initialQuery?: string;
   initialResultId?: string;
@@ -117,6 +118,7 @@ function methodologyName(methodology: ShariaMethodology, locale: Lang) {
 export function ShariaResearchPage({
   embedded = false,
   initialQuery = '',
+  initialMethodologyId = 'msci-islamic-index-series-assets',
   initialResultId = '',
   onResultIdChange,
 }: ShariaResearchPageProps) {
@@ -133,7 +135,7 @@ export function ShariaResearchPage({
   const [result, setResult] = useState<ShariaScreeningResult | null>(null);
   const [error, setError] = useState<ResearchErrorView | null>(null);
   const [methodologies, setMethodologies] = useState<ShariaMethodology[]>([]);
-  const [methodologyId, setMethodologyId] = useState('msci-islamic-index-series-assets');
+  const [methodologyId, setMethodologyId] = useState(initialMethodologyId);
   const [sourceStatus, setSourceStatus] = useState<SourceConfigurationStatus[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [partialFailureCount, setPartialFailureCount] = useState(0);

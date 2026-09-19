@@ -7,7 +7,7 @@ import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
 import { AccuracySummaryPanel } from './AccuracySummaryPanel';
 import { useLanguage } from '@/hooks/useLanguage';
 import { normalizeAiAnalystAssetType, normalizeAiAnalystHorizon, normalizeAiAnalystSymbol } from '@/lib/ai-analyst/legacyRoutes';
-import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
+import { AI_ANALYST_COPY, AI_ANALYST_HORIZONS, HORIZON_LABELS, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
 const IntelligenceTimelinePanel = dynamic(
@@ -23,6 +23,7 @@ export function AiAnalystHistory() {
   const symbol = normalizeAiAnalystSymbol(params?.get('symbol'));
   const assetType = normalizeAiAnalystAssetType(params?.get('assetType'));
   const horizon = normalizeAiAnalystHorizon(params?.get('horizon'));
+  const allHorizons = params?.get('horizons') === 'all';
   const view = params?.get('view') === 'accuracy' ? 'accuracy' : 'timeline';
 
   return (
@@ -40,6 +41,7 @@ export function AiAnalystHistory() {
           initialSymbol={symbol ?? ''}
           initialAssetType={assetType}
           initialHorizon={horizon}
+          allHorizons={allHorizons}
           destination="history"
           autoRun={false}
           compact
@@ -56,7 +58,7 @@ export function AiAnalystHistory() {
             <p>{copy.overview.timelineBody}</p>
           </div>
         </header>
-        {symbol ? <IntelligenceTimelinePanel asset={{ canonicalSymbol: symbol, assetType }} horizon={horizon} activeAnalysisId={null} /> : <p className={styles.statusRail}>{copy.history.select}</p>}
+        {symbol ? (allHorizons ? AI_ANALYST_HORIZONS : [horizon]).map(value => <section key={value}><h3>{HORIZON_LABELS[locale][value]}</h3><IntelligenceTimelinePanel asset={{ canonicalSymbol: symbol, assetType }} horizon={value} activeAnalysisId={null} /></section>) : <p className={styles.statusRail}>{copy.history.select}</p>}
       </section>
 
       {view !== 'accuracy' ? <AccuracySummaryPanel className={styles.spanFull} compact /> : null}
