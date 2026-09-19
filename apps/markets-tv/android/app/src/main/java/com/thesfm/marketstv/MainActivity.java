@@ -1,9 +1,7 @@
 package com.thesfm.marketstv;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
-import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -11,9 +9,11 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.webkit.WebViewAssetLoader;
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 
 /** One packaged TV client; no JavaScript/native bridge or account credentials. */
-public final class MainActivity extends Activity {
+public final class MainActivity extends ComponentActivity {
   private WebView screen;
   private static final String APP = "https://appassets.androidplatform.net/assets/index.html";
   @Override public void onCreate(Bundle saved) {
@@ -41,20 +41,18 @@ public final class MainActivity extends Activity {
     });
     setContentView(screen);
     screen.setFocusable(true); screen.setFocusableInTouchMode(true); screen.requestFocus();
+    getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+      @Override public void handleOnBackPressed() { handleTvBack(); }
+    });
     screen.loadUrl(APP);
   }
-  @Override public boolean dispatchKeyEvent(KeyEvent event) {
-    if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-      if (event.getAction() == KeyEvent.ACTION_UP) screen.evaluateJavascript(
-        "Boolean(document.querySelector('[data-tv-dialog]'))", result -> {
-          if ("true".equals(result)) screen.evaluateJavascript("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))", null);
-          else new AlertDialog.Builder(this).setTitle("The SFM Markets TV").setMessage("Exit / خروج / Quitter ?")
-            .setPositiveButton(android.R.string.ok, (dialog, which) -> finish())
-            .setNegativeButton(android.R.string.cancel, null).show();
-        });
-      return true;
-    }
-    return super.dispatchKeyEvent(event);
+  private void handleTvBack() {
+    screen.evaluateJavascript("Boolean(document.querySelector('[data-tv-dialog]'))", result -> {
+      if ("true".equals(result)) screen.evaluateJavascript("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))", null);
+      else new AlertDialog.Builder(this).setTitle("The SFM Markets TV").setMessage("Exit / خروج / Quitter ?")
+        .setPositiveButton(android.R.string.ok, (dialog, which) -> finish())
+        .setNegativeButton(android.R.string.cancel, null).show();
+    });
   }
   @Override protected void onPause() { screen.onPause(); screen.pauseTimers(); super.onPause(); }
   @Override protected void onResume() { super.onResume(); if (screen != null) { screen.onResume(); screen.resumeTimers(); } }
