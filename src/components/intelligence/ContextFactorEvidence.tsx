@@ -15,6 +15,7 @@ export function ContextFactorEvidence({ factor, locale }: { factor: FactorResult
   const copy = COPY[locale];
   const failure = factor.failureReason ?? '';
   const labels: Record<string, string> = { sentiment_sample_size: copy.sample, positive_sentiment_percent: copy.positive, negative_sentiment_percent: copy.negative, news_article_count: copy.news, macro_event_count: copy.events, next_macro_event: copy.next, sharia_review_reason: copy.reason };
+  const nextEvent = factor.evidence.find(item => item.labelKey === 'intelligence_evidence_next_macro_event');
   const hasObservations = factor.evidence.some(item => item.labelKey.startsWith('intelligence_evidence_macro_observation_'));
   const hasOtherEvidence = factor.evidence.some(item => {
     const key = item.labelKey.replace(/^intelligence_evidence_/, '');
@@ -26,6 +27,7 @@ export function ContextFactorEvidence({ factor, locale }: { factor: FactorResult
     <ul>{factor.evidence.map(item => {
       const key = item.labelKey.replace(/^intelligence_evidence_/, '');
       if (/^macro_(observation|previous|country)_/.test(key) || (hasObservations && key === 'macro_source_url')) return null;
+      if (key === 'macro_event_title' && nextEvent && item.value === nextEvent.value && item.observedAt === nextEvent.observedAt) return null;
       const text = typeof item.value === 'string' ? item.value : typeof item.value === 'number' ? String(Math.round(item.value * 100) / 100) : '';
       if (['news_source_url', 'macro_source_url'].includes(key)) {
         try { const url = new URL(text); if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return null; }
