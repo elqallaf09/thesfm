@@ -301,3 +301,27 @@ test.describe('World Stocks Explorer', () => {
     }
   });
 });
+
+test('a later page cannot overwrite a same-symbol listing on another exchange', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await useEnglish(page);
+  await page.route('**/api/world-stocks/search**', route => {
+    const second = new URL(route.request().url()).searchParams.get('page') === '2';
+    const region = second ? 'TD_XLON' : 'US';
+    return route.fulfill({ json: searchPayload([stock({ canonicalSymbol: 'DUAL', providerSymbol: 'DUAL', region, exchangeCode: region, displayName: second ? 'Synthetic London listing' : 'Synthetic US listing', currency: second ? 'GBP' : 'USD' })], { totalCount: 26, hasMore: !second, page: second ? 2 : 1 }) });
+  });
+  await page.route('**/api/world-stocks/quotes', route => {
+    const region = route.request().postDataJSON().symbols[0].exchangeCode;
+    const quote = { price: region === 'US' ? 100 : 200, change: 1, changePercent: 1, currency: region === 'US' ? 'USD' : 'GBP', quoteTimestamp: '2026-09-18T10:00:00Z', delayed: true, dataSource: 'Synthetic QA', status: 'available' };
+    return route.fulfill({ json: { ok: true, success: true, partialFailure: false, quotes: { [`${region}:DUAL`]: quote, DUAL: quote } } });
+  });
+  await page.goto('/world-stocks');
+  const us = page.locator('tr:visible').filter({ hasText: 'Synthetic US listing' });
+  await expect(us).toContainText('100');
+  await page.getByRole('button', { name: 'Load more', exact: true }).click();
+  await expect(page.locator('tr:visible').filter({ hasText: 'Synthetic London listing' })).toContainText('200');
+  await expect(us).toContainText('100');
+  await expect(us).not.toContainText('200');
+  await expect(us).toContainText('Synthetic QA');
+  await expect(us.locator('time')).toHaveAttribute('datetime', '2026-09-18T10:00:00Z');
+});

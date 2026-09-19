@@ -8,7 +8,7 @@ import type { WorldStock } from '@/lib/world-stocks/types';
 export const dynamic = 'force-dynamic';
 
 const querySchema = z.object({
-  symbol: z.string().trim().min(1).max(24),
+  symbol: z.string().trim().min(1).max(32),
   region: z.string().trim().min(1).max(32),
   lang: z.enum(['ar', 'en', 'fr']).optional().default('ar'),
 });

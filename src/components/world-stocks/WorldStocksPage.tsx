@@ -10,6 +10,7 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { WORLD_STOCK_REGIONS } from '@/lib/world-stocks/regions';
 import type { WorldStock, WorldStockMarket, WorldStockAssetType, WorldStockQuotesResponse, WorldStockSearchResponse } from '@/lib/world-stocks/types';
 import { sortWorldStocks, type WorldStockSort } from '@/lib/world-stocks/sort';
+import { WorldStockEvidence } from './WorldStockEvidence';
 import { WorldStocksAdvancedFilters } from './WorldStocksAdvancedFilters';
 import styles from './WorldStocksPage.module.css';
 
@@ -196,8 +197,9 @@ export function WorldStocksPage() {
       const json = await response.json().catch(() => ({})) as WorldStockQuotesResponse;
       if (!response.ok || !json.success) return;
 
+      const scoped = Object.keys(json.quotes).some(key => key.includes(':'));
       setResults(previous => previous.map(stock => {
-        const quote = json.quotes[worldStockQuoteKey(stock.region, stock.canonicalSymbol)] ?? json.quotes[stock.canonicalSymbol];
+        const quote = scoped ? json.quotes[worldStockQuoteKey(stock.region, stock.canonicalSymbol)] : json.quotes[stock.canonicalSymbol];
         if (!quote) return stock;
         return {
           ...stock,
@@ -431,7 +433,7 @@ export function WorldStocksPage() {
                       </td>
                       <td className={styles.numericCol}>
                         {stock.quoteStatus === 'available' ? (
-                          <span dir="ltr">{formatPrice(stock.price, stock.currency)}</span>
+                          <><span dir="ltr">{formatPrice(stock.price, stock.currency)}</span><WorldStockEvidence stock={stock} lang={lang}/></>
                         ) : (
                           <span className={styles.priceUnavailable}>{ui.priceUnavailable}</span>
                         )}
@@ -474,7 +476,7 @@ export function WorldStocksPage() {
                     <div className={styles.resultPrice}>
                       {stock.quoteStatus === 'available' ? (
                         <>
-                          <strong dir="ltr">{formatPrice(stock.price, stock.currency)}</strong>
+                          <strong dir="ltr">{formatPrice(stock.price, stock.currency)}</strong><WorldStockEvidence stock={stock} lang={lang}/>
                           {stock.changePercent !== null ? (
                             <span className={`${styles.change} ${styles[tone]}`} dir="ltr">
                               {formatChangePercent(stock.changePercent)}
