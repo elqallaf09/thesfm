@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Product roadmap
+
+The [THE SFM master roadmap](docs/platform-master-roadmap.md) tracks the complete
+product plan, source evidence, missing capabilities and acceptance gates. The
+[Economic Intelligence roadmap](docs/economic-intelligence-roadmap.md) retains
+the detailed Phase 7 history. Capacity tooling and its measurement limits are
+documented in [local capacity testing](docs/performance/capacity-testing.md).
+
 ## Getting Started
 
 First, run the development server:
@@ -230,5 +238,4 @@ APP_URL=https://your-production-domain.example
 ```
 
 `TELEGRAM_BOT_TOKEN` and `INSTAGRAM_APPROVAL_TELEGRAM_CHAT_ID` are required for the send-for-approval action unless a trusted external workflow supplies Telegram message IDs. `INSTAGRAM_GRAPH_ACCESS_TOKEN` and `INSTAGRAM_BUSINESS_ACCOUNT_ID` are required for publishing. The API returns safe configuration codes when providers are missing and never returns keys, provider secrets, or raw stack traces to the browser.
-
 

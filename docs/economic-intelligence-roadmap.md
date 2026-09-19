@@ -1,5 +1,11 @@
 # SFM Economic Intelligence Roadmap
 
+The complete product direction, including Phase 5.0, UX/workspaces, all ten AI
+advisor capabilities, notifications and future products, is maintained in the
+[master platform roadmap](platform-master-roadmap.md). Its September 19 audit
+distinguishes code present, partial delivery, planned work and unverified
+Production acceptance. This file retains the detailed Phase 7 history.
+
 ## Phase 7.0–7.17 — Implemented in PR #119
 - Financial Digital Twin, 3/6/12 month scenarios, deterministic decision risk and simulation
 - Decisions Center integration, explicit financing inputs, templates, comparison and Decision Lab
