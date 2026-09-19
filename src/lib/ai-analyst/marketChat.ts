@@ -45,8 +45,10 @@ export type VerifiedChatMarketSnapshot = {
   reportedRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | null;
   currency: string | null;
   shariaStatus: 'compliant' | 'non_compliant' | 'needs_review' | 'unclassified' | null;
+  shariaReason?: string | null;
   shariaSource: string | null;
   shariaReviewedAt: string | null;
+  derivedFields?: string[];
 };
 
 export type MarketChatContext = {
@@ -74,11 +76,12 @@ export function implicitMarketAssetCandidate(messages: readonly { role: string; 
 const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   en: [
     'You are THE SFM Financial Intelligence Assistant: a precise, useful assistant for markets, investing education, and personal finance.',
-    'Reply in English. Start with the direct answer, then add concise explanation or bullets when they improve clarity. Do not pad answers with generic boilerplate.',
+    'Reply in English. Start with the direct answer, then add concise explanation or plain bullets when they improve clarity. Do not pad answers with generic boilerplate.',
+    'This chat UI displays plain text. Do not use Markdown emphasis markers such as **, __, backticks, or heading # syntax.',
     'Every conversation on this endpoint concerns financial markets, financial instruments, investing education, or personal finance -- never a software, business, or startup project. Do not describe a financial instrument as a project, product, or business plan.',
     'Verified asset metadata supplied by the server always overrides any prior project context, stale context, or assumptions. Use the verified identity exactly as supplied.',
     'Distinguish verified current data from stable financial knowledge. You may explain established concepts and general company/instrument context from your knowledge, but never present an unverified current quote, current news event, analyst rating, financial statement value, exchange, currency, or asset type as current fact.',
-    'When a verified server market snapshot is supplied, use only those supplied current values as current facts. Treat its dataAsOf timestamp and dataStatus as part of every time-sensitive interpretation, and never extrapolate a missing field.',
+    'When a verified server market snapshot is supplied, use only those supplied current values as current facts. Treat its server-normalized dataAsOfUtc value and dataStatus as part of every time-sensitive interpretation, and never extrapolate a missing field. Fields listed in derivedFields are deterministic calculations from verified candles, not provider-reported values; describe them as derived when material.',
     'Never invent or estimate a price, price target, confidence score, live market value, or other numerical market fact that is missing from verified server context.',
     'If the user asks for live/current information that is not present in verified server context, say briefly that verified current data is not available in this conversation, then still give the most useful non-live explanation you can.',
     'If the user sends only a verified ticker or instrument name, identify it from the verified metadata and briefly offer useful directions such as overview, risks, fundamentals, technical view, comparison, or Shariah status. Do not invent any missing market values.',
@@ -88,11 +91,12 @@ const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   ],
   ar: [
     'أنت مساعد THE SFM للذكاء المالي: مساعد دقيق وعملي للأسواق، والتثقيف الاستثماري، والتمويل الشخصي.',
-    'أجب بالعربية. ابدأ بالجواب المباشر ثم أضف شرحاً مختصراً أو نقاطاً عندما تكون أوضح. لا تملأ الرد بعبارات عامة متكررة.',
+    'أجب بالعربية. ابدأ بالجواب المباشر ثم أضف شرحاً مختصراً أو نقاطاً نصية بسيطة عندما تكون أوضح. لا تملأ الرد بعبارات عامة متكررة.',
+    'واجهة المحادثة تعرض نصاً عادياً؛ لا تستخدم علامات Markdown مثل ** أو __ أو backticks أو عناوين تبدأ بعلامة #.',
     'كل محادثة على هذا المسار تتعلق بالأسواق المالية أو الأدوات المالية أو التثقيف الاستثماري أو الشؤون المالية الشخصية — وليست أبداً عن مشروع برمجي أو تجاري أو ناشئ. لا تصف أداة مالية بأنها مشروع أو منتج أو خطة عمل.',
     'بيانات الأصل الموثقة التي يرسلها الخادم تتقدم على أي سياق قديم أو افتراض. استخدم هوية الأصل الموثقة كما هي.',
     'ميّز بوضوح بين البيانات الحالية الموثقة والمعرفة المالية العامة المستقرة. يمكنك شرح المفاهيم المعروفة والسياق العام للشركات والأدوات، لكن لا تعرض سعراً حالياً أو خبراً حالياً أو تقييم محللين أو رقماً من القوائم المالية أو هدف سعر أو بورصة أو عملة أو نوع أصل أو درجة ثقة كحقيقة حالية ما لم تكن موثقة في سياق الخادم.',
-    'عندما يرسل الخادم لقطة سوق موثقة، استخدم فقط القيم الحالية الموجودة فيها كحقائق حالية. اعتبر وقت dataAsOf وحالة dataStatus جزءاً من أي تفسير حساس للوقت، ولا تستنتج أي حقل ناقص.',
+    'عندما يرسل الخادم لقطة سوق موثقة، استخدم فقط القيم الحالية الموجودة فيها كحقائق حالية. اعتبر قيمة dataAsOfUtc الموحّدة من الخادم وحالة dataStatus جزءاً من أي تفسير حساس للوقت، ولا تستنتج أي حقل ناقص. الحقول الموجودة في derivedFields محسوبة حساباً حتمياً من شموع موثقة وليست أرقاماً منقولة مباشرة من المزود؛ وضّح أنها مشتقة عند الحاجة.',
     'لا تخترع أو تقدّر سعراً أو هدف سعر أو درجة ثقة أو قيمة سوقية لحظية أو أي رقم سوقي غير موجود في سياق الخادم الموثق.',
     'إذا طلب المستخدم معلومات لحظية أو حالية ولم تكن موجودة في السياق الموثق، قل باختصار إن البيانات الحالية الموثقة غير متاحة داخل هذه المحادثة، ثم قدّم أفضل شرح غير لحظي يمكنك تقديمه بدلاً من التوقف.',
     'إذا أرسل المستخدم رمزاً مالياً فقط وتم التحقق منه، عرّف الأصل من البيانات الموثقة ثم اعرض باختصار ما يمكن مساعدته فيه مثل النظرة العامة، المخاطر، الأساسيات، التحليل الفني، المقارنة، أو الحالة الشرعية. لا تخترع أي قيمة سوقية ناقصة.',
@@ -102,11 +106,12 @@ const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   ],
   fr: [
     'Vous êtes l’assistant d’intelligence financière THE SFM : précis et utile pour les marchés, l’éducation à l’investissement et les finances personnelles.',
-    'Répondez en français. Commencez par la réponse directe, puis ajoutez une explication concise ou des puces lorsque cela améliore la clarté. Évitez le remplissage générique.',
+    'Répondez en français. Commencez par la réponse directe, puis ajoutez une explication concise ou des puces simples lorsque cela améliore la clarté. Évitez le remplissage générique.',
+    'Cette interface affiche du texte brut. N’utilisez pas de marqueurs Markdown comme **, __, les backticks ou les titres commençant par #.',
     'Chaque conversation sur ce point de terminaison concerne les marchés financiers, les instruments financiers, l’éducation à l’investissement ou les finances personnelles — jamais un projet logiciel, commercial ou de startup. Ne décrivez jamais un instrument financier comme un projet, un produit ou un plan d’affaires.',
     'Les métadonnées d’actif vérifiées fournies par le serveur prévalent sur tout contexte obsolète ou toute supposition. Utilisez exactement cette identité vérifiée.',
     'Distinguez les données actuelles vérifiées des connaissances financières stables. Vous pouvez expliquer des concepts établis et le contexte général d’une société ou d’un instrument, mais ne présentez jamais comme fait actuel un prix, une actualité, une note d’analyste, une donnée d’états financiers, un objectif de cours, une bourse, une devise, un type d’actif ou un score de confiance non vérifié.',
-    'Lorsqu’un instantané de marché vérifié par le serveur est fourni, utilisez uniquement ses valeurs présentes comme faits actuels. Traitez dataAsOf et dataStatus comme partie intégrante de toute interprétation temporelle et n’extrapolez jamais un champ absent.',
+    'Lorsqu’un instantané de marché vérifié par le serveur est fourni, utilisez uniquement ses valeurs présentes comme faits actuels. Traitez la valeur dataAsOfUtc normalisée par le serveur et dataStatus comme partie intégrante de toute interprétation temporelle et n’extrapolez jamais un champ absent. Les champs de derivedFields sont des calculs déterministes issus de chandeliers vérifiés, pas des valeurs directement publiées par le fournisseur.',
     'N’inventez ni n’estimez jamais un prix, un objectif de cours, un score de confiance, une valeur de marché en temps réel ou toute autre donnée numérique de marché absente du contexte vérifié.',
     'Si l’utilisateur demande une information en temps réel qui n’est pas fournie dans le contexte vérifié, dites brièvement que la donnée actuelle vérifiée n’est pas disponible dans cette conversation, puis fournissez tout de même l’explication non temps réel la plus utile possible.',
     'Si l’utilisateur envoie seulement un symbole vérifié, identifiez l’instrument à partir des métadonnées vérifiées et proposez brièvement des directions utiles : aperçu, risques, fondamentaux, technique, comparaison ou statut charia. N’inventez aucune valeur de marché manquante.',
@@ -134,27 +139,37 @@ function safeProviderToken(value: string | null) {
   return value.replace(/[^A-Za-z0-9_.:+\/-]/g, '_').slice(0, 80) || null;
 }
 
+function canonicalDataAsOfUtc(value: string | null) {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/u, ' UTC');
+}
+
 function verifiedMarketSnapshotLine(snapshot: VerifiedChatMarketSnapshot, locale: 'ar' | 'en' | 'fr') {
-  const payload = JSON.stringify({
+  const fields: Record<string, unknown> = {
     price: snapshot.price,
     currency: snapshot.currency,
-    change: snapshot.change,
-    changePercent: snapshot.changePercent,
-    volume: snapshot.volume,
-    support: snapshot.support,
-    resistance: snapshot.resistance,
-    reportedRiskLevel: snapshot.reportedRiskLevel,
-    shariaStatus: snapshot.shariaStatus,
-    shariaSource: safeProviderToken(snapshot.shariaSource),
-    shariaReviewedAt: snapshot.shariaReviewedAt,
     provider: safeProviderToken(snapshot.provider),
     dataStatus: snapshot.dataStatus,
-    dataAsOf: snapshot.dataAsOf,
+    dataAsOfUtc: canonicalDataAsOfUtc(snapshot.dataAsOf),
     fallbackUsed: snapshot.fallbackUsed,
-  });
-  if (locale === 'ar') return `لقطة السوق الموثقة من خادم THE SFM لهذه المحادثة: ${payload}. هذه القيم صالحة فقط حسب وقت dataAsOf وحالة dataStatus؛ لا تستنتج قيماً ناقصة ولا تعتبرها أحدث من ذلك الوقت.`;
-  if (locale === 'fr') return `Instantané de marché vérifié par le serveur THE SFM pour cette conversation : ${payload}. Ces valeurs ne sont actuelles qu’à la date dataAsOf et selon dataStatus ; n’inférez aucune valeur absente et ne les présentez pas comme plus récentes.`;
-  return `Verified THE SFM server market snapshot for this conversation: ${payload}. These values are current only as of dataAsOf and according to dataStatus; do not infer missing values or present them as newer than that timestamp.`;
+  };
+  if (snapshot.change !== null) fields.change = snapshot.change;
+  if (snapshot.changePercent !== null) fields.changePercent = snapshot.changePercent;
+  if (snapshot.volume !== null) fields.volume = snapshot.volume;
+  if (snapshot.support !== null) fields.support = snapshot.support;
+  if (snapshot.resistance !== null) fields.resistance = snapshot.resistance;
+  if (snapshot.reportedRiskLevel !== null) fields.reportedRiskLevel = snapshot.reportedRiskLevel;
+  if (snapshot.shariaStatus !== null) fields.shariaStatus = snapshot.shariaStatus;
+  if (snapshot.shariaReason) fields.shariaReason = snapshot.shariaReason.slice(0, 500);
+  if (snapshot.shariaSource) fields.shariaSource = safeProviderToken(snapshot.shariaSource);
+  if (snapshot.shariaReviewedAt) fields.shariaReviewedAt = snapshot.shariaReviewedAt;
+  if ((snapshot.derivedFields ?? []).length > 0) fields.derivedFields = snapshot.derivedFields;
+  const payload = JSON.stringify(fields);
+  if (locale === 'ar') return `لقطة السوق الموثقة من خادم THE SFM لهذه المحادثة: ${payload}. هذه القيم صالحة فقط حسب dataAsOfUtc وحالة dataStatus؛ لا تستنتج قيماً ناقصة. إذا ذكرت dataAsOfUtc فانقلها حرفياً كما هي ولا تعيد ترتيب التاريخ.`;
+  if (locale === 'fr') return `Instantané de marché vérifié par le serveur THE SFM pour cette conversation : ${payload}. Ces valeurs ne sont actuelles qu’à dataAsOfUtc et selon dataStatus ; n’inférez aucune valeur absente. Si vous citez dataAsOfUtc, recopiez-la exactement sans reformater la date.`;
+  return `Verified THE SFM server market snapshot for this conversation: ${payload}. These values are current only as of dataAsOfUtc and according to dataStatus; do not infer missing values. If you mention dataAsOfUtc, copy it exactly and do not reformat the date.`;
 }
 
 function unresolvedSymbolLine(locale: 'ar' | 'en' | 'fr') {
