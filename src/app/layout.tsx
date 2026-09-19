@@ -10,6 +10,7 @@ import { DeferredGlobalUtilities } from '@/components/DeferredGlobalUtilities';
 import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { WebVitalsReporter } from '@/components/observability/WebVitalsReporter';
 import { pageMetadata } from '@/lib/seo';
+import { SIDEBAR_BOOTSTRAP } from '@/lib/navigation/sidebarPreference';
 import './globals.css';
 import './workspace-chrome-critical.css';
 import './temporary-product-flags.css';
@@ -57,6 +58,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-sans antialiased">
+        <script dangerouslySetInnerHTML={{ __html: SIDEBAR_BOOTSTRAP }} />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

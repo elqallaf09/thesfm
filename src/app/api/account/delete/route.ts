@@ -11,6 +11,10 @@ type DeleteTarget = {
 };
 
 const DELETE_TARGETS: DeleteTarget[] = [
+  // This authenticated, server-side account-erasure flow explicitly removes
+  // period locks before erasing ledger rows. Ordinary ledger writes stay locked.
+  { table: 'finance_month_closes', column: 'user_id', optional: true },
+  { table: 'finance_month_events', column: 'user_id', optional: true },
   { table: 'monthly_income_sources', column: 'user_id', optional: true },
   { table: 'expense_items', column: 'user_id', optional: true },
   { table: 'savings_items', column: 'user_id', optional: true },

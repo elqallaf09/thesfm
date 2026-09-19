@@ -157,6 +157,10 @@ jobs:
             echo ""
             echo "Applied all $count files in \`supabase/migrations/\` once, in order, against a genuinely empty Postgres 17 database. No second replay is performed — historical apply-once migration files are not required to be idempotent against an already-populated schema."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify month close and collaboration isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/platform-core.sql
 
   build:
     name: CI/Production build
@@ -387,19 +391,52 @@ jobs:
             done
           fi
 
+  preview-configuration:
+    name: CI/Isolated Preview configuration
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: release-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    environment: Preview
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Validate isolated configuration without creating a deployment
+        uses: actions/github-script@v9
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
+        with:
+          script: |
+            const { preflightReleasePreview } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/preflight-release-preview.mjs`);
+            await preflightReleasePreview({ github, context, core });
+
   authenticated-preview:
     name: CI/Authenticated Preview smoke
     # Never expose Preview credentials to an automated dependency PR. A
     # maintainer can validate an approved exact SHA with the fail-closed manual
     # authenticated-preview-validate.yml workflow instead.
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
-    needs: [typecheck, lint, i18n, launch-guards, test, build, smoke, lighthouse]
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain, build, smoke, lighthouse, preview-configuration]
     runs-on: ubuntu-latest
+    concurrency:
+      group: release-preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
     environment: Preview
     permissions:
       contents: read
-      deployments: read
+      deployments: write
       checks: read
+      pull-requests: read
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
@@ -562,55 +599,16 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve READY Vercel Preview for exact SHA
+      - name: Ensure one isolated release Preview for exact SHA
         if: steps.supabase-preview.outputs.available == 'true'
         id: preview
         uses: actions/github-script@v9
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         with:
           script: |
-            const sha = context.payload.pull_request.head.sha;
-            const deadline = Date.now() + 10 * 60 * 1000;
-            while (Date.now() < deadline) {
-              const deployments = await github.paginate(github.rest.repos.listDeployments, {
-                ...context.repo,
-                sha,
-                environment: 'Preview',
-                per_page: 100,
-              });
-              const exact = deployments
-                .filter(deployment => deployment.sha === sha && deployment.ref === sha && deployment.environment === 'Preview')
-                .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
-              for (const deployment of exact) {
-                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
-                  ...context.repo,
-                  deployment_id: deployment.id,
-                  per_page: 100,
-                });
-                const latest = statuses[0];
-                if (!latest) continue;
-                if (['failure', 'error', 'inactive'].includes(latest.state)) {
-                  core.setFailed(`Exact-SHA Preview deployment entered ${latest.state}.`);
-                  return;
-                }
-                if (latest.state !== 'success') continue;
-                const candidate = latest.environment_url || latest.target_url;
-                let target;
-                try {
-                  target = new URL(candidate);
-                } catch {
-                  core.setFailed('Successful Preview deployment did not provide a valid URL.');
-                  return;
-                }
-                if (target.protocol !== 'https:' || !target.hostname.endsWith('.vercel.app')) {
-                  core.setFailed('Resolved deployment URL was not an HTTPS Vercel Preview URL.');
-                  return;
-                }
-                core.setOutput('url', target.origin);
-                return;
-              }
-              await new Promise(resolve => setTimeout(resolve, 15000));
-            }
-            core.setFailed('No READY Vercel Preview deployment appeared for the exact committed SHA.');
+            const { ensureReleasePreview } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/ensure-release-preview.mjs`);
+            await ensureReleasePreview({ github, context, core });
 
       - uses: pnpm/action-setup@v6
         if: steps.supabase-preview.outputs.available == 'true'
