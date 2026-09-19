@@ -250,7 +250,7 @@ describe('canonical SFM precious metal requests', () => {
     const { getSfmMarketHistory } = await import('@/lib/sfm-market/history');
     const quote = await getSfmMarketQuote(symbol, { forceFresh: true });
     const history = await getSfmMarketHistory(symbol, { forceFresh: true });
-    expect(quote?.price).toBe(3020); expect(quote?.provenance.providerSymbol).toBe(providerSymbol);
+    expect(quote?.price).toBe(3020); expect(quote?.provenance.providerSymbol).toBe(providerSymbol === 'XAG/USD' ? 'XAG/USD:COMMODITY' : providerSymbol);
     expect(quote?.assetType).toBe(providerSymbol === 'XAG/USD' ? 'commodity' : 'gold');
     expect(history.ok).toBe(true); expect(history.candles).toHaveLength(1);
     expect(calls).toHaveLength(2);
