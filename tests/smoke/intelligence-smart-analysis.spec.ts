@@ -346,7 +346,7 @@ test.describe('Phase 6.1 intelligence panel', () => {
     panel = page.getByTestId('ai-analyst-canonical-result').locator(':scope > section[aria-labelledby]');
     status = page.getByTestId('intelligence-status-panel');
     await expect(panel).toBeVisible({ timeout: 45_000 });
-    await expect(status.getByText('This is an explicitly stale result', { exact: false })).toBeVisible();
+    await expect(status.getByText('Price observations exceed this horizon’s freshness limit.', { exact: false })).toBeVisible();
     await expect(panel.getByText('34%')).toBeVisible();
   });
 
