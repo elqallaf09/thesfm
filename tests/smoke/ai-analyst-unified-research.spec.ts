@@ -25,10 +25,10 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     const runLabel = { ar: 'تشغيل البحث والتحليل', en: 'Run research and analysis', fr: 'Lancer la recherche et l’analyse' }[locale];
     const run = workspace.getByRole('button', { name: runLabel, exact: true });
     await expect(run).toBeEnabled(); expect(posts).toBe(0);
-    await workspace.locator('a[href="#rules"]').click(); expect(posts).toBe(0);
+    expect(posts).toBe(0);
     const rule = page.getByTestId('ai-analyst-rule-engine'); await expect(rule).toBeVisible();
     await expect(rule.locator('[data-tone="available"]')).toHaveCount(0);
-    await workspace.locator('a[href="#research"]').click(); await run.click();
+    await run.click();
     await expect.poll(() => posts).toBe(1);
     await expect(workspace.getByTestId('intelligence-status-panel')).toHaveAttribute('role', 'alert');
     await expect(run).toBeEnabled(); await expect(page).toHaveURL(/\/ai-analyst\/analyze\/NVDA/);

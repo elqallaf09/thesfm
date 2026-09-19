@@ -13,11 +13,18 @@ export function ContextFactorEvidence({ factor, locale }: { factor: FactorResult
   if (!['NEWS', 'SENTIMENT', 'MACRO', 'SHARIA'].includes(factor.factor)) return null;
   const copy = COPY[locale];
   const failure = factor.failureReason ?? '';
-  const labels: Record<string, string> = { sentiment_sample_size: copy.sample, positive_sentiment_percent: copy.positive, negative_sentiment_percent: copy.negative, news_article_count: copy.news, macro_event_count: copy.events, next_macro_event: copy.next, sharia_review_reason: copy.reason };
-  return <details><summary>{copy.details}</summary>
+  const macroLabels = {
+    ar: { macro_observation_sofr: 'تكلفة التمويل المضمون SOFR', macro_observation_effr: 'الفائدة الفعلية الفيدرالية EFFR', macro_previous_sofr: 'SOFR السابق', macro_previous_effr: 'EFFR السابق' },
+    en: { macro_observation_sofr: 'Secured funding rate SOFR', macro_observation_effr: 'Effective federal funds rate EFFR', macro_previous_sofr: 'Previous SOFR', macro_previous_effr: 'Previous EFFR' },
+    fr: { macro_observation_sofr: 'Taux de financement garanti SOFR', macro_observation_effr: 'Taux effectif des fonds fédéraux EFFR', macro_previous_sofr: 'SOFR précédent', macro_previous_effr: 'EFFR précédent' },
+  }[locale];
+  const labels: Record<string, string> = { ...macroLabels, sentiment_sample_size: copy.sample, positive_sentiment_percent: copy.positive, negative_sentiment_percent: copy.negative, news_article_count: copy.news, macro_event_count: copy.events, next_macro_event: copy.next, sharia_review_reason: copy.reason };
+  const observations = factor.evidence.filter(item => item.labelKey.startsWith('intelligence_evidence_macro_observation_'));
+  return <>{observations.map(item => <p key={item.id}><span>{labels[item.labelKey.replace('intelligence_evidence_', '')]}</span> <strong dir="ltr">{item.value}%</strong><small dir="ltr"> · {item.observedAt}</small></p>)}<details><summary>{copy.details}</summary>
     {factor.availability === 'UNAVAILABLE' ? <p>{factor.factor === 'SHARIA' ? copy.sharia : /access_denied|not_entitled/i.test(failure) ? copy.entitlement : /STALE|UNDATED/i.test(failure) ? copy.stale : copy.unavailable}</p> : null}
     <ul>{factor.evidence.map(item => {
       const key = item.labelKey.replace(/^intelligence_evidence_/, '');
+      if (key.startsWith('macro_observation_')) return null;
       const text = typeof item.value === 'string' ? item.value : typeof item.value === 'number' ? String(Math.round(item.value * 100) / 100) : '';
       if (['news_source_url', 'macro_source_url'].includes(key)) {
         try { const url = new URL(text); if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) return null; }
@@ -26,8 +33,8 @@ export function ContextFactorEvidence({ factor, locale }: { factor: FactorResult
       }
       if (key === 'verified_sharia_status') return <li key={item.id}>{text === 'compliant' || text === 'non_compliant' || text === 'needs_review' ? copy[text] : text}</li>;
       if (!labels[key] && !['latest_news_headline', 'macro_event_title'].includes(key)) return null;
-      return <li key={item.id}><span dir="auto">{labels[key] ? `${labels[key]}: ` : ''}{text}</span>{item.observedAt ? <small dir="ltr"> · {item.observedAt.replace('T', ' ').slice(0, 16)} UTC</small> : null}</li>;
+      return <li key={item.id}><span dir="auto">{labels[key] ? `${labels[key]}: ` : ''}{text}{item.unit === '%' ? '%' : ''}</span>{item.observedAt ? <small dir="ltr"> · {item.observedAt.replace('T', ' ').slice(0, 16)}{item.observedAt.includes('T') ? ' UTC' : ''}</small> : null}</li>;
     })}</ul>
     {factor.source !== 'unavailable' ? <small>{copy.source}: {factor.source}</small> : null}
-  </details>;
+  </details></>;
 }

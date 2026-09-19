@@ -114,10 +114,16 @@ const macroFactor: IntelligenceFactorModule = {
       return Number.isFinite(at) && at >= context.now - 3 * DAY * 1000 && at <= context.now + 7 * DAY * 1000;
     });
     const source = data?.provider ?? 'unavailable';
-    if (!events.length) return result(context, 'MACRO', source, data?.observedAt ?? null, [], null, data?.failureCode ?? 'MACRO_NO_RELEVANT_EVENTS');
+    const observations = (data?.observations ?? []).filter(sample => Number.isFinite(sample.value) && validTime(sample.period, context.now, 7 * DAY) && validTime(sample.retrievedAt, context.now, 7 * DAY));
+    if (!events.length && !observations.length) return result(context, 'MACRO', source, data?.observedAt ?? null, [], null, data?.failureCode ?? 'MACRO_NO_RELEVANT_EVENTS');
     const scores: number[] = [];
-    const evidence = [item('MACRO', 'macro_event_count', events.length, data?.observedAt ?? null, source)];
-    if (source === 'bls') evidence.push(item('MACRO', 'macro_source_url', 'https://www.bls.gov/schedule/news_release/', data?.observedAt ?? null, source));
+    const evidence: IntelligenceEvidence[] = events.length ? [item('MACRO', 'macro_event_count', events.length, data?.observedAt ?? null, source)] : [];
+    for (const sample of observations) {
+      evidence.push({ ...item('MACRO', `macro_observation_${sample.series.toLowerCase()}`, sample.value, sample.period, sample.provider), unit: sample.unit });
+      if (sample.previous !== null) evidence.push({ ...item('MACRO', `macro_previous_${sample.series.toLowerCase()}`, sample.previous, sample.previousPeriod, sample.provider), unit: sample.unit });
+      evidence.push({ ...item('MACRO', 'macro_source_url', sample.sourceUrl, sample.retrievedAt, sample.provider), id: `macro:source:${sample.series}` });
+    }
+    if (events.some(event => event.provider === 'bls')) evidence.push(item('MACRO', 'macro_source_url', 'https://www.bls.gov/schedule/news_release/', data?.observedAt ?? null, source));
     let next: typeof events[number] | null = null;
     for (const [index, event] of events.entries()) {
       const at = Date.parse(event.dateTimeUtc);
@@ -133,8 +139,8 @@ const macroFactor: IntelligenceFactorModule = {
       evidence.push({ ...item('MACRO', 'macro_actual', event.actual, event.dateTimeUtc, event.provider), id: `macro:actual:${index}` });
       evidence.push({ ...item('MACRO', 'macro_forecast', event.forecast, event.dateTimeUtc, event.provider), id: `macro:forecast:${index}` });
     }
-    evidence.push(item('MACRO', 'macro_high_impact_count', events.filter(event => event.impact === 'high').length, data?.observedAt ?? null, source));
-    evidence.push(item('MACRO', 'macro_surprise_count', scores.length, data?.observedAt ?? null, source));
+    if (events.length) evidence.push(item('MACRO', 'macro_high_impact_count', events.filter(event => event.impact === 'high').length, data?.observedAt ?? null, source));
+    if (events.length) evidence.push(item('MACRO', 'macro_surprise_count', scores.length, data?.observedAt ?? null, source));
     if (next) evidence.push(item('MACRO', 'next_macro_event', next.title.slice(0, 200), next.dateTimeUtc, next.provider));
     const score = scores.length ? scores.reduce((sum, value) => sum + value, 0) / scores.length : null;
     const output = result(context, 'MACRO', source, data?.observedAt ?? null, evidence, score, null, !scores.length, data?.stale);

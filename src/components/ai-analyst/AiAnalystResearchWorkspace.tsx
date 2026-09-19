@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import type { IntelligenceAssetType, IntelligenceHorizon } from '@/domain/intelligence/contracts';
 import type { InvestmentAnalysisContext } from '@/lib/investments/center';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -19,17 +20,16 @@ export function AiAnalystResearchWorkspace({ symbol = '', assetType = 'STOCK', h
   const { lang } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = RESEARCH_COPY[locale];
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  useEffect(() => { if (window.location.hash === '#details') setDetailsOpen(true); }, [symbol]);
   const privateAsset = investmentContext?.privateAsset === true;
   return (
     <div className={researchStyles.workspace} data-testid="ai-analyst-research-workspace">
       <section className={styles.card} aria-labelledby="ai-research-title">
         <header className={styles.cardHeader}><div><h2 id="ai-research-title">{copy.title}</h2><p>{copy.body}</p></div></header>
-        <nav className={researchStyles.sections} aria-label={copy.title}>
-          {!privateAsset ? <a href="#details">{copy.details}</a> : null}<a href="#research">{copy.research}</a>{!privateAsset ? <a href="#rules">{copy.rules}</a> : null}
-        </nav>
         <AiAnalystAssetPicker key={`${symbol}:${assetType}:${horizon}`} initialSymbol={symbol} initialAssetType={assetType} initialHorizon={horizon} allHorizons={allHorizons} autoRun={false} submitLabel={copy.select} compact />
       </section>
-      {!privateAsset ? <div id="details"><AiAnalystAssetDetails key={`${symbol}:${assetType}`} symbol={symbol} assetType={assetType} embedded /></div> : null}
+      {!privateAsset && symbol ? <details id="details" open={detailsOpen} className={styles.card} onToggle={event => setDetailsOpen(event.currentTarget.open)}><summary className={styles.panelTitle}>{copy.details}</summary>{detailsOpen ? <AiAnalystAssetDetails key={`${symbol}:${assetType}`} symbol={symbol} assetType={assetType} embedded /> : null}</details> : null}
       {symbol ? <div id="research">{allHorizons && !privateAsset ? <AiAnalystAllHorizons symbol={symbol} assetType={assetType} /> : <AiAnalystAnalysis key={`${symbol}:${assetType}:${horizon}`} symbol={symbol} assetType={assetType} horizon={horizon} autoRun={false} investmentContext={investmentContext} />}</div> : <>
         <section id="research" className={styles.card}><h2 className={styles.panelTitle}>{copy.research}</h2><p className={styles.mutedText}>{copy.idle}</p><button className={styles.primaryAction} type="button" disabled>{copy.run}</button></section>
         <AiAnalystRuleEngine />

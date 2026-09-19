@@ -7,6 +7,7 @@ import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
 import { loadStoredIntelligenceSharia } from '@/lib/server/intelligenceShariaEvidence';
 import { loadResearchIntelligenceSharia } from '@/lib/server/intelligenceResearchSharia';
 import { loadOfficialMacroCalendar } from './officialMacroCalendar';
+import { loadOfficialMacroObservations } from './officialMacroObservations';
 import { loadStoredNewsEvidence } from './storedNewsEvidence';
 
 export type IntelligenceContextNewsArticle = {
@@ -35,10 +36,14 @@ export type IntelligenceContextMacroEvent = {
   previous: string | number | null;
   provider: string;
 };
+export type IntelligenceContextMacroObservation = {
+  series: 'SOFR' | 'EFFR'; country: string; currency: string; value: number; previous: number | null;
+  previousPeriod: string | null; unit: '%'; period: string; retrievedAt: string; provider: string; sourceUrl: string;
+};
 export type IntelligenceContextEvidence = {
   news: { provider: string | null; observedAt: string | null; stale: boolean; articles: IntelligenceContextNewsArticle[]; failureCode: string | null };
   sentiment: IntelligenceContextSentiment | null;
-  macro: { provider: string | null; observedAt: string | null; stale: boolean; events: IntelligenceContextMacroEvent[]; failureCode: string | null };
+  macro: { provider: string | null; observedAt: string | null; stale: boolean; events: IntelligenceContextMacroEvent[]; observations?: IntelligenceContextMacroObservation[]; failureCode: string | null };
   sharia: VerifiedIntelligenceSnapshot['sharia'] | null;
 };
 
@@ -248,17 +253,27 @@ async function loadMacro(request: AnalysisRequest, asset: CanonicalAssetIdentity
   const pair = symbol(asset.providerSymbol).replace(/=X$/, '').replace('/', '');
   const currencies = asset.assetType === 'FOREX' && /^[A-Z]{6}$/.test(pair) ? [pair.slice(0, 3), pair.slice(3)] : currency ? [currency] : [];
   if (!currencies.length || (['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) && !assetCountry)) return EMPTY_MACRO;
-  const official = currencies.includes('USD') && (!['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || assetCountry === 'US') ? loadOfficialMacroCalendar() : Promise.resolve(null);
+  const usdContext = currencies.includes('USD') && (!['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || assetCountry === 'US');
+  const official = usdContext ? loadOfficialMacroCalendar() : Promise.resolve(null);
+  const observations = usdContext ? loadOfficialMacroObservations() : Promise.resolve([]);
+  const enrich = async (calendar: IntelligenceContextEvidence['macro']): Promise<IntelligenceContextEvidence['macro']> => {
+    const samples = await observations;
+    if (!samples.length) return calendar;
+    const hasCalendar = !calendar.stale && calendar.events.length > 0;
+    return { provider: hasCalendar ? `${calendar.provider}+New York Fed` : 'New York Fed',
+      observedAt: hasCalendar ? calendar.observedAt : samples.map(item => item.retrievedAt).sort().at(-1) ?? null,
+      stale: false, events: hasCalendar ? calendar.events : [], observations: samples, failureCode: null };
+  };
   const response = await withinBudget(() => getEconomicCalendar({ from: dateOnly(now - 3 * DAY), to: dateOnly(now + 7 * DAY), currency: currencies.length === 1 ? currency : undefined, force: request.forceRefresh }), null, 5000);
-  if (!response || response.stale || response.status !== 'success') return await official ?? { ...EMPTY_MACRO, provider: response?.provider ?? null, stale: Boolean(response?.stale), failureCode: response?.messageCode ?? 'MACRO_PROVIDER_FAILED' };
+  if (!response || response.stale || response.status !== 'success') return enrich(await official ?? { ...EMPTY_MACRO, provider: response?.provider ?? null, stale: Boolean(response?.stale), failureCode: response?.messageCode ?? 'MACRO_PROVIDER_FAILED' });
   const events = response.data.filter(event => {
     const at = contextIso(event.dateTimeUtc);
     if (!at || Date.parse(at) < now - 3 * DAY || Date.parse(at) > now + 7 * DAY || !currencies.includes(symbol(event.currency ?? ''))) return false;
     return !['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || country(event.country) === assetCountry;
   }).sort((a, b) => Math.abs(Date.parse(a.dateTimeUtc) - now) - Math.abs(Date.parse(b.dateTimeUtc) - now))
     .slice(0, 24).sort((a, b) => Date.parse(a.dateTimeUtc) - Date.parse(b.dateTimeUtc));
-  if (!events.length) { const fallback = await official; if (fallback) return fallback; }
-  return { provider: response.provider, observedAt: recent(response.lastSuccessfulUpdate, Date.now(), DAY), stale: false, events, failureCode: events.length ? null : 'MACRO_NO_RELEVANT_EVENTS' };
+  if (!events.length) { const fallback = await official; if (fallback) return enrich(fallback); }
+  return enrich({ provider: response.provider, observedAt: recent(response.lastSuccessfulUpdate, Date.now(), DAY), stale: false, events, failureCode: events.length ? null : 'MACRO_NO_RELEVANT_EVENTS' });
 }
 
 async function withinBudget<T>(task: () => Promise<T>, fallback: T, budget = CONTEXT_BUDGET_MS): Promise<T> {

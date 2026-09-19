@@ -269,6 +269,7 @@ async function stubApis(page: Page, state: 'partial' | 'insufficient' | 'stale')
     contentType: 'application/json',
     body: JSON.stringify({ ok: false, success: false, code: 'PROVIDER_UNAVAILABLE', items: [], results: [], data: [] }),
   }));
+  await page.route('**/api/market/history**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, success: true, currency: 'USD', updated_at: now, points: marketAnalysis().history.slice(-20).map(point => ({ ...point, time: point.date })) }) }));
   await page.route('**/api/market/analyze**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(marketAnalysis()) }));
   await page.route('**/api/market/ai-insight', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ ok: false, code: 'AI_PROVIDER_UNAVAILABLE' }) }));
   await page.route('**/api/intelligence/latest**', route => route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ ok: false, error: { code: 'NOT_FOUND' } }) }));
@@ -307,6 +308,28 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await expect(panel.getByText('Target range', { exact: true })).toBeVisible();
     await expect(panel.getByText('RECENT_OHLC_RANGE', { exact: true })).toBeVisible();
     await expect(panel.getByText('verified-e2e-provider', { exact: true }).first()).toBeVisible();
+  });
+
+  test('renders a styled price chart without an opaque hit layer or duplicate result cards', async ({ page }) => {
+    await openAnalysis(page, 'partial');
+    const chart = page.getByTestId('ai-analyst-verified-chart');
+    await expect(chart.locator('svg[role="img"]')).toBeVisible();
+    await expect(chart.locator('.price-chart-line-path')).toHaveAttribute('fill', 'none');
+    await expect(chart.locator('.price-chart-hit-zone')).toHaveCSS('fill', 'rgba(0, 0, 0, 0)');
+    await expect(page.getByTestId('ai-analyst-canonical-result')).toHaveCount(1);
+    await expect(page.getByTestId('sfm-investment-check')).not.toContainText('SFM Score:');
+    await expect(page.getByTestId('sfm-intelligence-source')).not.toHaveAttribute('open', '');
+    for (const language of ['ar', 'en', 'fr']) {
+      await page.evaluate(lang => { localStorage.setItem('sfm_lang', lang); window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang } })); }, language);
+      await expect(chart.locator('svg[role="img"]')).toHaveAttribute('direction', 'ltr');
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate(value => document.documentElement.classList.toggle('dark', value === 'dark'), theme);
+        await expect(chart.locator('.price-chart-hit-zone')).toHaveCSS('fill', 'rgba(0, 0, 0, 0)');
+        await expect(chart.locator('.price-chart-line-path')).toHaveCSS('fill', 'none');
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(4);
   });
 
   test('renders insufficient-data and stale states truthfully', async ({ page }) => {
