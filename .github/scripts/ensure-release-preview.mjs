@@ -38,7 +38,7 @@ export async function ensureReleasePreview({ github, context, core, env = proces
     } catch { throw new Error('Vercel request failed; no automatic mutation retry was attempted.'); }
     if (!response.ok) {
       const failure = await response.json().catch(() => null);
-      const code = /^[a-z][a-z0-9_:-]{0,79}$/.test(failure?.error?.code ?? '') ? failure.error.code : 'unclassified';
+      const code = /^[a-z][a-z0-9_:-]{0,79}$/i.test(failure?.error?.code ?? '') ? failure.error.code : 'unclassified';
       // Error messages/bodies may echo values. Log only the API code and our
       // own variable name, never the submitted value or provider message.
       throw new Error(`Vercel ${body?.key ?? url.pathname} failed HTTP ${response.status} (${code}).`);

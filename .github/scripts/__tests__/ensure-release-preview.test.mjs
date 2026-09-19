@@ -118,14 +118,14 @@ test('configuration preflight never creates a deployment or reports a release UR
 });
 
 test('HTTP diagnostics expose only the variable name and sanitized API code', async () => {
-  for (const code of ['invalid_request', 'secret value with whitespace']) {
+  for (const code of ['invalid_request', 'ENV_CONFLICT', 'secret value with whitespace']) {
     const fixture = setup();
     const original = fixture.args.fetchImpl;
     fixture.args.fetchImpl = async (url, init) => new URL(url).pathname.endsWith('/env')
       ? { ok: false, status: 400, json: async () => ({ error: { code, message: jwt('service_role') } }) }
       : original(url, init);
     await assert.rejects(ensureReleasePreview(fixture.args), error => {
-      assert.equal(error.message, `Vercel NEXT_PUBLIC_SUPABASE_URL failed HTTP 400 (${code === 'invalid_request' ? code : 'unclassified'}).`);
+      assert.equal(error.message, `Vercel NEXT_PUBLIC_SUPABASE_URL failed HTTP 400 (${code !== 'secret value with whitespace' ? code : 'unclassified'}).`);
       return true;
     });
     assert.deepEqual(fixture.outputs, []);
