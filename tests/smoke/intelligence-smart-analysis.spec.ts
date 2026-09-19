@@ -210,7 +210,7 @@ function timelineItem(id: string, generatedAt: string, recommendation: 'BUY' | '
     confidence,
     risk: current ? 'MEDIUM' : 'LOW',
     freshness: current ? 'FRESH' : 'DELAYED',
-    warnings: [],
+    warnings: current ? [{ code: 'STALE_FACTOR_DATA', severity: 'WARNING', factor: 'TECHNICAL' }, { code: 'STALE_FACTOR_DATA', severity: 'WARNING', factor: 'RISK' }] : [],
     provider: { selectedProvider: 'verified-e2e-provider', attempts: [], fallbackUsed: false, dataKinds: ['QUOTE'] },
     versions: { engineVersion: '6.1.0', rulesVersion: 'recommendation-policy-v1', weightingVersion: 'asset-horizon-weights-v1' },
     drift: {
@@ -477,8 +477,15 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await expect(timeline).toBeVisible();
     const readings = timeline.getByRole('option');
     await expect(readings).toHaveCount(2);
-    await expect(readings.nth(0).getByText('Awaiting evaluation', { exact: true })).toBeVisible();
+    await expect(readings.nth(0).getByText('No directional recommendation to evaluate', { exact: true })).toBeVisible();
     await expect(readings.nth(1).getByText('Evaluated · Direction correct', { exact: true })).toBeVisible();
+    await expect(readings.nth(0).getByText('+8 points', { exact: true })).toBeVisible();
+    const currentArticle = timeline.locator('article').first();
+    await currentArticle.locator('summary').click();
+    await expect(currentArticle.getByText('Some factor observations exceed their freshness limit.', { exact: false })).toHaveCount(1);
+    await expect(currentArticle.getByText('+10 points', { exact: true })).toBeVisible();
+    await expect(currentArticle.getByText('Evaluation window', { exact: true })).toHaveCount(0);
+    await expect(currentArticle.getByText('STALE_FACTOR_DATA', { exact: false })).toHaveCount(0);
     await readings.nth(0).focus();
     await page.keyboard.press('ArrowDown');
     await expect(readings.nth(1)).toBeFocused();

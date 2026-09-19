@@ -65,3 +65,21 @@ No automatic retention cleanup is introduced by this foundation. Any future rete
 ## Limits and future boundary
 
 The timeline can show observations and descriptive calibration inputs, but it does not feed historical accuracy into live confidence weights. It does not compare AI models, execute trades, infer a benchmark, convert currency without verified FX data, or fill unsupported price history. Those capabilities require separately versioned methods and review.
+
+## Publication-anchored evaluation (v2)
+
+New `outcome-evaluation-v2` windows begin at `generatedAt`, never at an older
+source observation. This prevents a delayed or weekend reading from evaluating
+price movements that occurred before publication. Explicit v1 policies and
+already persisted outcome windows retain their original methodology and dates.
+No historical outcome is rewritten.
+
+Pending WAIT and INSUFFICIENT_DATA readings state that no directional
+recommendation exists to evaluate. Terminal outcomes still display their stored
+classification. Score and confidence changes use points, not relative returns;
+unchanged factors are omitted unless availability changed. Repeated warnings
+are grouped by code with all affected factors retained and localized wording.
+
+Stale intraday observations remain stale when a market is closed. The UI explains
+that the last session price is not a fresh intraday observation; this change does
+not infer exchange opening hours or relax the engine's freshness requirements.

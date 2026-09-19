@@ -1,4 +1,5 @@
 'use client';
+import { SFMerProfile } from '@/components/platform/SFMerProfile';
 import { useCallback, useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +8,7 @@ import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContain
 import { usePrivateResource } from '@/components/platform/usePrivateResource';
 import { platformCopy, platformLanguage } from '@/components/platform/copy';
 import styles from '@/components/platform/platform.module.css';
+type CommunityProfile = { user_id: string; handle: string; display_name: string; bio: string };
 type Post = { id: string; author_id: string; display_name: string; body: string; created_at: string };
 const copy = {
  ar: { title: 'SFMer', note: 'شارك أفكارك المالية مع الأعضاء المسجلين. الأسماء يختارها أصحابها وليست توثيقاً للهوية. لا تنشر معلومات الحسابات أو المحافظ الخاصة، ولا تعتمد على المنشورات وحدها لاتخاذ قرار استثماري.', name: 'اسم النشر', body: 'فكرتك أو سؤالك', publish: 'نشر للأعضاء', consent: 'أوافق على ظهور هذا النص واسم النشر للأعضاء المسجلين.', report: 'إبلاغ وإخفاء عني', reason: 'سبب الإبلاغ (5–500 حرف)', block: 'حظر الكاتب', unblock: 'إلغاء الحظر', blocked: 'الحسابات المحظورة', newest: 'أحدث المنشورات', previous: 'الصفحة السابقة', next: 'الصفحة التالية', edit: 'تعديل' },
@@ -22,7 +24,10 @@ export default function SFMerPage() {
   if (cursor) query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`);
   const [posts, blocks] = await Promise.all([query, supabase.from('sfmer_blocks').select('blocked_user_id').eq('user_id',userId).limit(100)]);
   if (posts.error || blocks.error) throw new Error('LOAD_FAILED');
-  return { posts: posts.data as Post[], blocks: blocks.data as Array<{ blocked_user_id: string }> };
+  const ids = [...new Set(posts.data.map(post => String(post.author_id)))];
+  const profiles = ids.length ? await supabase.from('sfmer_profiles').select('user_id,handle,display_name,bio').in('user_id',ids) : { data: [], error: null };
+  if (profiles.error) throw new Error('LOAD_FAILED');
+  return { posts: posts.data as Post[], blocks: blocks.data as Array<{ blocked_user_id: string }>, profiles: profiles.data as CommunityProfile[] };
  }, [cursor]);
  const { userId, data, loading, error, refresh } = usePrivateResource(load);
  const [name, setName] = useState(''); const [body, setBody] = useState(''); const [consent, setConsent] = useState(false);
@@ -37,7 +42,7 @@ export default function SFMerPage() {
    setReport(null); setReason(''); await refresh();
   } catch { setFailed(true); } finally { setBusy(false); }
  }
- return <WorkspacePageContainer variant="reading" className={styles.page}><h1>{text.title}</h1><p>{text.note}</p>
+ return <WorkspacePageContainer variant="reading" className={styles.page}><h1>{text.title}</h1><p>{text.note}</p><SFMerProfile key={userId} language={language}/>
   {!userId && !loading ? <p>{common.login}</p> : null}{loading ? <p role="status">{common.loading}</p> : null}
   {error || failed ? <p role="alert">{common.error} <Button variant="outline" onClick={() => void refresh()}>{common.retry}</Button></p> : null}
   {userId ? <form className={styles.card} onSubmit={event => { event.preventDefault(); if (consent) void act(editing ? 'edit' : 'publish',editing ?? undefined,body.trim()); }}>
@@ -49,7 +54,7 @@ export default function SFMerPage() {
   <div className={styles.row}><h2>{text.newest}</h2><Button variant="outline" disabled={busy} onClick={() => { setCursors([]); void refresh(); }}>{common.refresh}</Button></div>
   {data?.posts.length === 0 ? <p>{common.empty}</p> : null}
   {data?.posts.slice(0,20).map(post => <article className={styles.card} key={post.id}>
-   <h3 dir="auto">{post.display_name}</h3><time dir="ltr" dateTime={post.created_at}>{post.created_at.slice(0,19).replace('T',' ')} UTC</time><p dir="auto" className={styles.text}>{post.body}</p>
+   <h3 dir="auto">{data.profiles.find(p=>p.user_id===post.author_id)?.display_name??post.display_name}</h3>{data.profiles.filter(p=>p.user_id===post.author_id).map(p=><details key={p.user_id}><summary dir="ltr">@{p.handle}</summary><p className={styles.text} dir="auto">{p.bio}</p></details>)}<time dir="ltr" dateTime={post.created_at}>{post.created_at.slice(0,19).replace('T',' ')} UTC</time><p dir="auto" className={styles.text}>{post.body}</p>
    <div className={styles.row}>{post.author_id === userId ? <><Button disabled={busy} variant="outline" onClick={() => { setEditing(post.id); setName(post.display_name); setBody(post.body); setConsent(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{text.edit}</Button><Button disabled={busy} variant="outline" onClick={() => void act('delete',post.id)}>{common.remove}</Button></> : <><Button disabled={busy} variant="outline" onClick={() => { setReport(post.id); setReason(''); }}>{text.report}</Button><Button disabled={busy} variant="outline" onClick={() => void act('block',post.id)}>{text.block}</Button></>}</div>
    {report === post.id ? <form className={styles.field} onSubmit={event => { event.preventDefault(); void act('report',post.id,reason.trim()); }}><label className={styles.field}>{text.reason}<textarea required minLength={5} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} className={styles.input} /></label><div className={styles.row}><Button disabled={busy || reason.trim().length < 5}>{text.report}</Button><Button type="button" variant="outline" onClick={() => setReport(null)}>{common.cancel}</Button></div></form> : null}
   </article>)}

@@ -23,6 +23,26 @@ describe('macro evidence display', () => {
     expect(html).toContain(locale === 'ar' ? 'سياق طويل الأجل' : locale === 'fr' ? 'contexte à long terme' : 'long-term context');
     expect((html.match(/<details>/g) ?? [])).toHaveLength(1);
   });
+  it('ignores internal metadata without hiding actual calendar events', () => {
+    const metadata = { ...factor, evidence: [...factor.evidence, { ...factor.evidence[0]!, id: 'method', labelKey: 'intelligence_evidence_macro_methodology', value: 'rules-v1', source: 'local' }] };
+    const html = renderToStaticMarkup(<ContextFactorEvidence factor={metadata} locale="en" />);
+    expect((html.match(/<details>/g) ?? [])).toHaveLength(1);
+    const calendar = { ...metadata, evidence: [...metadata.evidence, { ...factor.evidence[0]!, id: 'event', labelKey: 'intelligence_evidence_macro_event_title', value: 'CPI release', source: 'BLS' }] };
+    const events = renderToStaticMarkup(<ContextFactorEvidence factor={calendar} locale="en" />);
+    expect(events).toContain('Economic events');
+    expect(events).toContain('CPI release');
+    expect((events.match(/<details>/g) ?? [])).toHaveLength(2);
+  });
+  it.each(['ar', 'en', 'fr'] as const)('shows the next event once without hiding separate releases in %s', locale => {
+    const event = { ...factor.evidence[0]!, id: 'event', labelKey: 'intelligence_evidence_macro_event_title', value: 'CPI release', observedAt: '2026-09-24T12:30:00Z' };
+    const next = { ...event, id: 'next', labelKey: 'intelligence_evidence_next_macro_event' };
+    const withNext = { ...factor, evidence: [...factor.evidence, event, next] };
+    const html = renderToStaticMarkup(<ContextFactorEvidence factor={withNext} locale={locale} />);
+    expect((html.match(/CPI release/g) ?? [])).toHaveLength(1);
+    expect(html).toContain(locale === 'ar' ? 'الحدث القادم' : locale === 'fr' ? 'Prochain événement' : 'Next event');
+    const separateRelease = { ...withNext, evidence: [...withNext.evidence, { ...event, id: 'other', observedAt: '2026-10-24T12:30:00Z' }] };
+    expect((renderToStaticMarkup(<ContextFactorEvidence factor={separateRelease} locale={locale} />).match(/CPI release/g) ?? [])).toHaveLength(2);
+  });
   it('does not turn an unsafe source into a link', () => {
     const unsafe = { ...factor, evidence: factor.evidence.map(item => item.id === 'macro:source:GDP_ANNUAL' ? { ...item, value: 'javascript:alert(1)' } : item) };
     expect(renderToStaticMarkup(<ContextFactorEvidence factor={unsafe} locale="en" />)).not.toContain('href=');

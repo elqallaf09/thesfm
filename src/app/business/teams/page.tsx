@@ -1,4 +1,5 @@
 'use client';
+import { TeamTasks } from '@/components/platform/TeamTasks';
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,6 +75,6 @@ function TeamDetail({ team, userId, language, onLeave }: { team: Team; userId: s
   {invitation ? <div className={styles.card}><p>{text.inviteNote}</p><label className={styles.field}>{text.code}<input className={styles.input} readOnly value={invitation} dir="ltr" onFocus={event => event.target.select()} /></label><Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(invitation); setCopied(true); } catch { setCopied(false); } }}>{copied ? text.copied : text.copy}</Button></div> : null}
   <h3>{text.members}</h3>{data?.members.map(member => <div className={styles.row} key={member.user_id}><span dir="auto" className={styles.text}>{member.display_name}</span><span>{member.role === 'owner' ? text.owner : text.member}</span>{owner && member.role !== 'owner' ? <Button disabled={busy} variant="outline" onClick={() => void act('remove_member',member.user_id)}>{text.remove}</Button> : null}</div>)}
   <form className={styles.field} onSubmit={event => { event.preventDefault(); void act('note',body.trim()); }}><label className={styles.field}>{text.body}<textarea className={styles.input} required maxLength={4000} value={body} onChange={event => setBody(event.target.value)} /></label><Button disabled={busy || !body.trim()}>{text.publish}</Button></form>
-  <h3>{text.latest}</h3>{data?.notes.length === 0 ? <p>{common.empty}</p> : null}{data?.notes.map(note => <article className={styles.card} key={note.id}><p className={styles.text} dir="auto">{note.body}</p><small dir="ltr">{note.created_at.slice(0,19).replace('T',' ')} UTC</small>{owner || note.author_id === userId ? <Button variant="outline" disabled={busy} onClick={() => void act('delete_note',note.id)}>{common.remove}</Button> : null}</article>)}
+  <TeamTasks teamId={team.id} userId={userId} owner={owner} members={data?.members??[]} language={language}/><h3>{text.latest}</h3>{data?.notes.length === 0 ? <p>{common.empty}</p> : null}{data?.notes.map(note => <article className={styles.card} key={note.id}><p className={styles.text} dir="auto">{note.body}</p><small dir="ltr">{note.created_at.slice(0,19).replace('T',' ')} UTC</small>{owner || note.author_id === userId ? <Button variant="outline" disabled={busy} onClick={() => void act('delete_note',note.id)}>{common.remove}</Button> : null}</article>)}
  </section>;
 }

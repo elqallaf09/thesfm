@@ -105,7 +105,7 @@ export default function InvestorViewerPage({ params }: { params: Promise<{ token
     fetch('/api/investor/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password: activePassword || undefined, action: 'event', eventType, section }),
+      body: JSON.stringify({ token, password: activePassword || undefined, action: 'event', eventType, section, documentId: eventType === 'document_downloaded' ? section : undefined }),
     }).catch(() => undefined);
   }, [activePassword, token]);
 
@@ -305,7 +305,7 @@ function SharedOffer({
                       href={String(doc.url)}
                       target="_blank"
                       rel="noreferrer noopener"
-                      onClick={() => onEvent('document_downloaded', String(doc.name ?? ''))}
+                      onClick={() => onEvent('document_downloaded', String(doc.id ?? ''))}
                     >
                       {text.viewerDownload}
                     </a>

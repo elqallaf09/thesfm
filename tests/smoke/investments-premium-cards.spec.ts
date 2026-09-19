@@ -136,6 +136,8 @@ test('compact card preserves identity, financial hierarchy, accessible actions, 
   expect((menuBox?.x ?? 0) + (menuBox?.width ?? 0)).toBeLessThanOrEqual(320);
   expect((menuBox?.y ?? 0) + (menuBox?.height ?? 0)).toBeLessThanOrEqual(900);
   await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(card.getByRole('button', { name: 'More actions' })).toBeFocused();
 
   const compactHeight = await card.evaluate(element => element.getBoundingClientRect().height);
   expect(compactHeight).toBeLessThan(620);

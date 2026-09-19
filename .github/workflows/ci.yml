@@ -161,6 +161,10 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/platform-core.sql
+      - name: Verify plans, notification delivery and integration isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/platform-expansion.sql
 
   build:
     name: CI/Production build
@@ -390,6 +394,13 @@ jobs:
               printf '| %s | %s | %s | %s | %s | %s |\n' "$run" "$perf" "$tbt" "$lcp" "$fcp" "$cls" >> "$GITHUB_STEP_SUMMARY"
             done
           fi
+
+      - name: Report the separate roadmap 95 and 100 targets
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          node scripts/performance/check-roadmap-targets.mjs .lighthouseci/lhr-*.json >> "$GITHUB_STEP_SUMMARY"
 
   preview-configuration:
     name: CI/Isolated Preview configuration

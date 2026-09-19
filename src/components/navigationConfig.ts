@@ -165,6 +165,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     id: 'investment-market',
     labelKey: 'nav_group_invest_market',
     items: [
+      { id: 'ten-advisors', icon: BrainCircuit, href: '/economic-intelligence/advisors', labelKey: 'nav_ten_advisors' },
       { id: 'sfmer', icon: UsersRound, href: '/market-analysis/sfmer', labelKey: 'nav_sfmer' },
       { id: 'invest', icon: TrendingUp, href: '/investments', labelKey: 'nav_invest' },
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
@@ -293,6 +294,8 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: false,
     items: [
       { id: 'profile', icon: CircleUser, href: '/profile', labelKey: 'nav_profile' },
+      { id: 'apps', icon: Settings, href: '/settings/apps', labelKey: 'nav_sfm_apps' },
+      { id: 'integrations', icon: Activity, href: '/settings/integrations', labelKey: 'nav_sfm_integrations' },
       { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout' },
     ],

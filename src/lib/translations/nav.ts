@@ -3,6 +3,9 @@ import type { Lang } from '../translations';
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
 export const TR_NAV: Record<string, TranslationEntry> = {
+  nav_sfm_apps: { ar:'تطبيق THE SFM', en:'THE SFM app', fr:'Application THE SFM' },
+  nav_sfm_integrations: { ar:'التكاملات', en:'Integrations', fr:'Intégrations' },
+  nav_ten_advisors: { ar:'المستشارون العشرة', en:'Ten advisors', fr:'Dix conseillers' },
   nav_month_close: { ar:'إقفال الشهر', en:'Month close', fr:'Clôture mensuelle' },
   nav_teams: { ar:'فرق العمل', en:'Teams', fr:'Équipes' },
   nav_sfmer_review: { ar:'بلاغات SFMer', en:'SFMer reports', fr:'Signalements SFMer' },
