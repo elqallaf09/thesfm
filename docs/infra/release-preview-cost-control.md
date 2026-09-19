@@ -20,7 +20,8 @@ The workflow uses the existing protected `Preview` environment and its `VERCEL_T
 - The exact successful Supabase Preview check supplies the isolated project ref.
   Production refs and credentials for another project are rejected.
 - Database variables are scoped to that branch and the Preview target only.
-  Service-role values use Vercel's sensitive variable type.
+  New service-role values use Vercel's sensitive type; existing encrypted or
+  sensitive records retain their secure storage type when updated by ID.
 - The deployment is pinned to the full commit SHA. CI verifies its project,
   source, target and isolation metadata before accepting its URL.
 - Reruns reuse a READY or pending deployment. Failed builds and uncertain API

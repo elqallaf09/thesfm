@@ -178,3 +178,19 @@ test('updates only an existing branch-only variable by ID and rejects shared or 
     else { await ensureReleasePreview({ ...fixture.args, configureOnly: true }); assert.deepEqual(writes, [`/v9/projects/${project}/env/env_test`]); }
   }
 });
+
+
+test('preserves existing encrypted server keys instead of changing their storage type', async () => {
+  const fixture = setup(); const original = fixture.args.fetchImpl; let patched = false;
+  fixture.args.fetchImpl = async (url, init) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [{
+      key: 'SUPABASE_SERVICE_ROLE_KEY', id: 'env_secret', gitBranch: 'feat/test', target: ['preview'], type: 'encrypted',
+    }] }) };
+    if (init.method === 'PATCH') { const body = JSON.parse(init.body); assert.equal(body.type, 'encrypted'); patched = true;
+      return { ok: true, json: async () => body }; }
+    return original(url, init);
+  };
+  await ensureReleasePreview({ ...fixture.args, configureOnly: true });
+  assert.equal(patched, true);
+});

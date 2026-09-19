@@ -129,9 +129,13 @@ export async function ensureReleasePreview({ github, context, core, env = proces
         || !/^[A-Za-z0-9_-]+$/.test(current.id ?? ''))) {
         throw new Error(`Branch variable ${key} has shared, custom or system scope; refusing to modify it.`);
       }
-      const body = { key, value, type: key.includes('SERVICE_ROLE') ? 'sensitive' : 'plain', target: ['preview'], gitBranch: branch };
+      const secret = key.includes('SERVICE_ROLE');
+      const type = current && ['encrypted', 'sensitive'].includes(current.type)
+        ? current.type : secret ? 'sensitive' : 'plain';
+      const body = { key, value, type, target: ['preview'], gitBranch: branch };
       // Update a verified branch-only record by ID. Never delete variables or
       // edit a global/shared record to resolve a name conflict.
+      core.info(`Configuring ${key}: ${current ? 'existing' : 'new'} branch-only ${type} record.`);
       const response = current
         ? await request(`/v9/projects/${project}/env/${current.id}`, body, 'PATCH')
         : await request(`/v10/projects/${project}/env`, body);
