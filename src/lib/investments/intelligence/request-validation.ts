@@ -1,3 +1,4 @@
+import { validCoordinates } from '../propertyLocation';
 import type { RealEstateAssetInput } from './real-estate';
 
 const TYPES = ['LAND', 'APARTMENT', 'HOUSE', 'COMMERCIAL', 'BUILDING'];
@@ -28,6 +29,11 @@ export function parseRealEstateAsset(value: unknown): RealEstateAssetInput | nul
     if (item[key] === undefined || item[key] === null) continue;
     if (item[key] !== 'M2' && item[key] !== 'FT2') return null;
     asset[key] = item[key];
+  }
+  if (item.latitude !== undefined || item.longitude !== undefined) {
+    if (!validCoordinates(item.latitude, item.longitude)) return null;
+    asset.latitude = item.latitude as number;
+    asset.longitude = item.longitude as number;
   }
   return asset;
 }

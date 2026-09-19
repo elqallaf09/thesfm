@@ -1,7 +1,7 @@
 import type { EvidenceConfidence, ValuationEvidence } from './contracts';
 import { INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION } from './contracts';
 import type { RealEstateAssetInput } from './real-estate';
-import { areaToSquareMeters, prepareRealEstateEvidence } from './real-estate';
+import { valuationArea, prepareRealEstateEvidence } from './real-estate';
 import { qualifiedTransactionEvidence } from './transactionEvidence';
 
 export interface FxQuote {
@@ -27,6 +27,9 @@ export interface ValuationRangeResult {
   reasons: string[];
   evidenceIds: string[];
   methodologyVersion: string;
+  estimateKind?: 'PRELIMINARY' | 'COMPARABLE_RANGE';
+  areaBasis?: 'LAND' | 'BUILT';
+  sampleSize?: number;
 }
 
 const authorityWeight: Record<ValuationEvidence['authority'], number> = {
@@ -72,17 +75,19 @@ export function buildRealEstateValuationRange(
   fxQuotes: FxQuote[] = [],
   now = new Date(),
 ): ValuationRangeResult {
-  const qualified = qualifiedTransactionEvidence(evidence, now);
+  const subjectArea = valuationArea(asset);
+  const qualified = qualifiedTransactionEvidence(evidence, now).filter(item => (item.areaBasis ?? 'LAND') === subjectArea?.basis);
   const prepared = prepareRealEstateEvidence(qualified);
   if (qualified.length < evidence.length) prepared.reasons.push('Undated, stale, duplicate, poorly matched or non-transaction observations were excluded.');
-  const area = typeof asset.landArea === 'number' && Number.isFinite(asset.landArea) && asset.landArea > 0 && asset.landAreaUnit ? areaToSquareMeters(asset.landArea, asset.landAreaUnit) : null;
+  const area = subjectArea?.value;
   if (!area) {
-    return { status: 'INSUFFICIENT_EVIDENCE', confidence: 'INSUFFICIENT', reasons: ['Land area is required for comparable price-per-area valuation.'], evidenceIds: [], methodologyVersion: INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION };
+    return { status: 'INSUFFICIENT_EVIDENCE', confidence: 'INSUFFICIENT', reasons: ['Enter land area for vacant land or building floor area for a dwelling, with its unit.'], evidenceIds: [], methodologyVersion: INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION };
   }
 
   const normalized = prepared.comparables.flatMap((item) => {
     const quote = fxRateFor(item.currency, outputCurrency, fxQuotes, now);
     if (!quote) return [];
+    if (!Number.isFinite(item.valuePerM2 * quote.rate * area)) return [];
     const weight = authorityWeight[item.evidence.authority] * matchWeight[item.evidence.assetMatch] * matchWeight[item.evidence.geographyMatch];
     return [{ value: item.valuePerM2 * quote.rate, weight, evidenceId: item.evidenceId }];
   });
@@ -97,9 +102,10 @@ export function buildRealEstateValuationRange(
     };
   }
 
-  const lowPerM2 = weightedQuantile(normalized, 0.25);
+  const preliminary = normalized.length < 5;
+  const lowPerM2 = weightedQuantile(normalized, preliminary ? 0 : 0.25);
   const midpointPerM2 = weightedQuantile(normalized, 0.5);
-  const highPerM2 = weightedQuantile(normalized, 0.75);
+  const highPerM2 = weightedQuantile(normalized, preliminary ? 1 : 0.75);
 
   return {
     status: 'VALUED',
@@ -110,8 +116,11 @@ export function buildRealEstateValuationRange(
     lowPerM2,
     midpointPerM2,
     highPerM2,
-    confidence: prepared.confidence,
-    reasons: prepared.reasons,
+    confidence: preliminary ? 'LOW' : prepared.confidence,
+    reasons: [...prepared.reasons, ...(preliminary ? ['Small sample: full observed range, low confidence; not a calibrated prediction interval.'] : []), 'Recorded-sale comparison; condition, title and arm’s-length status are not independently verified.'],
+    estimateKind: preliminary ? 'PRELIMINARY' : 'COMPARABLE_RANGE',
+    areaBasis: subjectArea.basis,
+    sampleSize: normalized.length,
     evidenceIds: normalized.map((item) => item.evidenceId),
     methodologyVersion: INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION,
   };

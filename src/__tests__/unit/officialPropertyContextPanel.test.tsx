@@ -29,6 +29,9 @@ describe('official property source presentation', () => {
     const html = renderToStaticMarkup(<OfficialPropertyContextPanel report={report} />);
     expect(html).toContain('2025-12-31'); expect(html).toContain('2026-08-31');
     expect(html).toContain('CC BY 4.0'); expect(html).toContain('THE SFM');
+    // Freshness must remain visible without expanding the methodology notes.
+    expect(html.indexOf('2026-08-31')).toBeLessThan(html.indexOf('<details'));
+    expect(html.indexOf('href=')).toBeGreaterThan(html.indexOf('</details>'));
     expect(html).toContain(`dir="${language.dir}"`);
     expect(html).not.toContain('Save valuation');
   });
