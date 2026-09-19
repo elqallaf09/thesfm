@@ -19,8 +19,13 @@ export function historyWindow<T extends { time: string; close: number }>(points:
   if (period === '1d') return now - latest <= 7 * DAY
     ? sorted.filter(([stamp]) => new Date(stamp).toISOString().slice(0, 10) === new Date(latest).toISOString().slice(0, 10)).map(([, point]) => point) : [];
   const start = new Date(now);
-  if (period === '1mo' || period === '6mo') start.setUTCMonth(start.getUTCMonth() - (period === '1mo' ? 1 : 6));
-  else if (period === '1y') start.setUTCFullYear(start.getUTCFullYear() - 1);
+  if (period === '1mo' || period === '6mo' || period === '1y') {
+    const day = start.getUTCDate();
+    start.setUTCDate(1);
+    start.setUTCMonth(start.getUTCMonth() - (period === '1mo' ? 1 : period === '6mo' ? 6 : 12));
+    const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
+    start.setUTCDate(Math.min(day, lastDay));
+  }
   else if (period === '5d') start.setUTCDate(start.getUTCDate() - 7);
   else return sorted.map(([, point]) => point);
   start.setUTCHours(0, 0, 0, 0);

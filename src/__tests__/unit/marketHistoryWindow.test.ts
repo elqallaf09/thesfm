@@ -11,6 +11,10 @@ describe('market history range', () => {
     const input = [point('2025-09-20'), point('2026-08-18'), point('2026-08-19'), point('2026-09-18')];
     expect(historyWindow(input, '1mo', now).map(p => p.time)).toEqual(['2026-08-19', '2026-09-18']);
   });
+  it('clamps month and leap-year boundaries instead of rolling into the next month', () => {
+    expect(historyWindow([point('2026-02-27'), point('2026-02-28'), point('2026-03-01')], '1mo', Date.parse('2026-03-31T12:00:00Z')).map(p => p.time)).toEqual(['2026-02-28', '2026-03-01']);
+    expect(historyWindow([point('2023-02-27'), point('2023-02-28')], '1y', Date.parse('2024-02-29T12:00:00Z')).map(p => p.time)).toEqual(['2023-02-28']);
+  });
   it('orders, deduplicates and removes future or invalid prices', () => {
     const input = [point('2026-09-18', 2), point('2026-09-17'), point('2026-09-18', 3), point('invalid'), point('2026-09-20'), point('2026-09-16', 0)];
     expect(historyWindow(input, 'max', now)).toEqual([point('2026-09-17'), point('2026-09-18', 3)]);
