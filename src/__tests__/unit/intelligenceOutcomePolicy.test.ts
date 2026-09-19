@@ -29,13 +29,25 @@ describe('intelligence outcome policy', () => {
       dataAsOf: null,
     });
 
-    expect(intraday.methodologyVersion).toBe('outcome-evaluation-v1');
-    expect(intraday.referenceSource).toBe('DATA_AS_OF');
+    expect(intraday.methodologyVersion).toBe('outcome-evaluation-v2');
+    expect(intraday.referenceSource).toBe('GENERATED_AT');
     expect(Date.parse(intraday.endAt) - Date.parse(intraday.startAt)).toBe(4 * 60 * 60 * 1000);
     expect(Date.parse(longTerm.endAt) - Date.parse(longTerm.startAt)).toBe(365 * 24 * 60 * 60 * 1000);
     expect(isEvaluationEligible(intraday, Date.parse(intraday.eligibleAt) - 1)).toBe(false);
     expect(isEvaluationEligible(intraday, Date.parse(intraday.eligibleAt))).toBe(true);
     expect(getOutcomeWindowConfig('SWING').historyPeriod).toBe('6mo');
+  });
+
+  it('never evaluates a new reading against prices preceding publication', () => {
+    const analysis = { horizon: 'INTRADAY' as const, generatedAt: '2026-09-19T14:22:00.000Z', dataAsOf: '2026-09-18T19:59:00.000Z' };
+    const current = createEvaluationWindow(analysis);
+    expect(current.startAt).toBe(analysis.generatedAt);
+    expect(current.eligibleAt).toBe('2026-09-19T18:22:00.000Z');
+    expect(isEvaluationEligible(current, Date.parse(analysis.generatedAt))).toBe(false);
+    const legacy = createEvaluationWindow(analysis, { ...getOutcomeWindowConfig('INTRADAY'), horizon: 'INTRADAY', methodologyVersion: 'outcome-evaluation-v1' });
+    expect(legacy.startAt).toBe(analysis.dataAsOf);
+    expect(legacy.referenceSource).toBe('DATA_AS_OF');
+    expect(legacy.methodologyVersion).toBe('outcome-evaluation-v1');
   });
 
   it('uses only an observed post-boundary candle within policy tolerance', () => {

@@ -1,6 +1,6 @@
 # Intelligence outcome methodology
 
-Methodology version: `outcome-evaluation-v1`
+Methodology version: `outcome-evaluation-v2` (new windows); stored v1 windows remain unchanged
 Calibration-report version: `confidence-calibration-foundation-v1`
 
 ## Purpose and boundary
@@ -27,7 +27,7 @@ If an older immutable analysis snapshot has an invalid timestamp and therefore c
 
 ## Evaluation reference and horizon windows
 
-The window starts at the analysis `dataAsOf` timestamp only when it is valid and no more than five minutes after `generatedAt`. Otherwise it starts at `generatedAt`. This prevents an implausible provider timestamp from silently moving the measurement window.
+New v2 windows start at the analysis `generatedAt` timestamp. Older source observations cannot move an evaluation before publication. Explicit v1 policies retain the original rule: use valid `dataAsOf` no more than five minutes after `generatedAt`, otherwise use `generatedAt`. Persisted windows and policy snapshots remain immutable and are replayed under their recorded methodology.
 
 `eligibleAt` equals the configured end of the window. The evaluator must not classify an analysis before that instant.
 

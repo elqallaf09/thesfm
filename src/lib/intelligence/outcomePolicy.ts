@@ -12,7 +12,7 @@ import type {
   IntelligenceOutcomePolicySnapshot,
 } from '@/domain/intelligence/outcomes';
 
-export const INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION = 'outcome-evaluation-v1';
+export const INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION = 'outcome-evaluation-v2';
 export const INTELLIGENCE_CALIBRATION_METHODOLOGY_VERSION = 'confidence-calibration-foundation-v1';
 export const INTELLIGENCE_DRIFT_METHODOLOGY_VERSION = 'intelligence-drift-v1';
 export const INTELLIGENCE_CALIBRATION_MINIMUM_DIRECTIONAL_SAMPLE = 30;
@@ -120,7 +120,9 @@ export function createEvaluationWindow(
   const suppliedDataAsOf = validDate(analysis.dataAsOf);
   const generatedMs = Date.parse(generatedAt);
   const dataAsOfMs = suppliedDataAsOf ? Date.parse(suppliedDataAsOf) : Number.NaN;
-  const useDataAsOf = Number.isFinite(dataAsOfMs) && dataAsOfMs <= generatedMs + 5 * 60 * 1000;
+  // Replay explicitly supplied v1 policies unchanged. New windows cannot predate publication.
+  const useDataAsOf = policy?.methodologyVersion === 'outcome-evaluation-v1'
+    && Number.isFinite(dataAsOfMs) && dataAsOfMs <= generatedMs + 5 * 60 * 1000;
   const referenceAt = useDataAsOf ? suppliedDataAsOf! : generatedAt;
   const config = policy ?? {
     methodologyVersion: INTELLIGENCE_OUTCOME_METHODOLOGY_VERSION,
