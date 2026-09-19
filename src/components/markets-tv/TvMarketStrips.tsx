@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import type { TvGroup, TvLanguage, TvMarket, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
+import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TvStripQuote } from './TvStripQuote';
 import { mergeStripSnapshot } from '@/lib/markets-tv/stripQuotes';
@@ -9,7 +9,7 @@ import type { TvSelections } from '@/lib/markets-tv/selections';
 import { useTvResource } from './useTvResource';
 
 type Props = { selections: TvSelections; marketIds?: string[]; speed?: number; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
-function Strip({ market, active, language, token, now, onSelect, onQuote, speed = 32, revision = 0, paused: manualPause = false, selections }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
+function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, selections }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
   const root = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false), [page, setPage] = useState(0), [duration, setDuration] = useState(90), [paused, setPaused] = useState(false);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -30,7 +30,7 @@ function Strip({ market, active, language, token, now, onSelect, onQuote, speed 
   const pages = Math.max(1, Math.ceil((custom ? selection.length : snapshot?.directoryTotal ?? market.count) / 12));
   useEffect(() => {
     if (!track.current) return;
-    const resize = new ResizeObserver(() => { if (track.current) setDuration(Math.max(30, track.current.scrollWidth / 2 / speed)); });
+    const resize = new ResizeObserver(() => { if (track.current) setDuration(Math.max(1, track.current.scrollWidth / 2 / speed)); });
     resize.observe(track.current); return () => resize.disconnect();
   }, [quotes.length, speed]);
   const next = () => { if (!resource.loading) setPage(value => (value + 1) % pages); };

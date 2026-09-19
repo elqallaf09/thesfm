@@ -34,7 +34,14 @@ describe('TV expanded currency feeds', () => {
     expect(mergeStripSnapshot(old, { ...old, quotes: [{ ...quote, price: 11, observedAt: new Date(now + 1000).toISOString() }] }).quotes[0].price).toBe(11);
   });
   it('validates custom market IDs, keeps an explicit empty selection and clamps controls', () => {
-    expect(normalizeTvSettings({ marketIds: ['TD_XSAU','crypto','crypto','<script>'], stripSpeed: 999, stripDensity: 'compact' })).toMatchObject({ marketIds: ['TD_XSAU','crypto'], stripSpeed: 32, stripDensity: 'compact' });
+    expect(normalizeTvSettings({ marketIds: ['TD_XSAU','crypto','crypto','<script>'], stripSpeed: 999, stripDensity: 'compact' })).toMatchObject({ marketIds: ['TD_XSAU','crypto'], stripSpeed: 56, stripDensity: 'compact' });
     expect(normalizeTvSettings({ marketIds: [] }).marketIds).toEqual([]);
+  });
+  it('migrates saved speed presets once without resetting other preferences', () => {
+    for (const [previous, current] of [[20, 36], [32, 56], [44, 80]]) {
+      const settings = normalizeTvSettings({ stripSpeed: previous, language: 'fr', marketIds: ['crypto'], stripDensity: 'compact' });
+      expect(settings).toMatchObject({ stripSpeed: current, language: 'fr', marketIds: ['crypto'], stripDensity: 'compact' });
+      expect(normalizeTvSettings(settings)).toEqual(settings);
+    }
   });
 });

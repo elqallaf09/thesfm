@@ -18,13 +18,18 @@ export type TvNews = { id: string; title: string; source: string; publishedAt: s
 export type TvDevice = { id: string; name: string; expiresAt: string; settings: TvSettings; };
 export type TvAlert = { id: string; symbol: string; alert_type: string; threshold: number; currency: string | null; status: string };
 export const TV_GROUPS: TvGroup[] = ['world', 'global', 'us', 'gulf', 'europe', 'asia', 'crypto', 'forex', 'commodities', 'watchlist'];
+export const TV_STRIP_SPEEDS = [36, 56, 80] as const;
+export const DEFAULT_TV_STRIP_SPEED = TV_STRIP_SPEEDS[1];
 export const DEFAULT_TV_SETTINGS: TvSettings = {
   language: 'ar', theme: 'dark', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
-  autoRotate: false, rotationSeconds: 30, ticker: true, sound: false,
+  autoRotate: false, rotationSeconds: 30, ticker: true, sound: false, stripSpeed: DEFAULT_TV_STRIP_SPEED,
 };
 export function normalizeTvSettings(value: unknown): TvSettings {
   const row = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   const groups = Array.isArray(row.groups) ? [...new Set(row.groups.filter((g): g is TvGroup => TV_GROUPS.includes(g as TvGroup)))] : [];
+  // Preserve the chosen slow/normal/fast preset for existing TVs.
+  const oldSpeedIndex = [20, 32, 44].indexOf(Number(row.stripSpeed));
+  const stripSpeed = oldSpeedIndex >= 0 ? TV_STRIP_SPEEDS[oldSpeedIndex] : TV_STRIP_SPEEDS.find(speed => speed === Number(row.stripSpeed)) ?? DEFAULT_TV_STRIP_SPEED;
   return {
     language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
     theme: row.theme === 'light' ? 'light' : 'dark', layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
@@ -33,6 +38,6 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     ticker: row.ticker !== false, sound: row.sound === true,
     marketIds: Array.isArray(row.marketIds) ? [...new Set(row.marketIds.filter((id): id is string => typeof id === 'string' && /^[A-Za-z0-9_]{1,32}$/.test(id)))].slice(0, 150) : undefined,
     stripDensity: row.stripDensity === 'compact' ? 'compact' : 'comfortable',
-    stripSpeed: [20,32,44].includes(Number(row.stripSpeed)) ? Number(row.stripSpeed) : 32,
+    stripSpeed,
   };
 }

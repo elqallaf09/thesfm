@@ -1,7 +1,7 @@
 'use client';
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { useEffect, useState } from 'react';
-import { TV_GROUPS, type TvGroup, type TvLanguage, type TvQuote, type TvSettings, type TvSnapshot } from '@/lib/markets-tv/types';
+import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvQuote, type TvSettings, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { quoteStatus, tvMovers } from '@/lib/markets-tv/quotes';
 import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
@@ -22,7 +22,7 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, customiz
     <div className="tv-setting-row"><span>{t('rotationSeconds')}</span><div className="tv-segment">{[20,30,60,120].map(seconds => <button key={seconds} aria-pressed={settings.rotationSeconds === seconds} onClick={() => change({ ...settings, rotationSeconds: seconds })}>{seconds}</button>)}</div></div>
     </>}
     <div className="tv-setting-row"><span>{t('stripDensity')}</span><div className="tv-segment">{(['comfortable','compact'] as const).map(density => <button key={density} aria-pressed={(settings.stripDensity || 'comfortable') === density} onClick={() => change({ ...settings, stripDensity: density })}>{t(density)}</button>)}</div></div>
-    <div className="tv-setting-row"><span>{t('stripSpeed')}</span><div className="tv-segment">{([20,32,44] as const).map((speed,i) => <button key={speed} aria-pressed={(settings.stripSpeed || 32) === speed} onClick={() => change({ ...settings, stripSpeed: speed })}>{t((['slow','normal','fast'] as const)[i])}</button>)}</div></div>
+    <div className="tv-setting-row"><span>{t('stripSpeed')}</span><div className="tv-segment">{TV_STRIP_SPEEDS.map((speed,i) => <button key={speed} aria-pressed={(settings.stripSpeed || DEFAULT_TV_STRIP_SPEED) === speed} onClick={() => change({ ...settings, stripSpeed: speed })}>{t((['slow','normal','fast'] as const)[i])}</button>)}</div></div>
     <h3>{t('visibleMarkets')}</h3><div className="tv-group-options">{TV_GROUPS.map(group => <button key={group} aria-pressed={settings.groups.includes(group)} onClick={() => {
       const groups = settings.groups.includes(group) ? settings.groups.filter(g => g !== group) : [...settings.groups, group];
       if (groups.length) change({ ...settings, groups });
