@@ -11,7 +11,7 @@ const meta = { githubCommitSha: sha, sfmPreviewRef: ref, sfmPreviewVersion: '1' 
 const ready = { id: 'dpl_Test', projectId: project, target: null, gitSource: source, meta,
   readyState: 'READY', url: 'isolated-test.vercel.app' };
 
-function setup({ existing = false, transform = value => value, stale = false, fail = false } = {}) {
+function setup({ existing = false, transform = value => value, stale = false, behind = false, fail = false } = {}) {
   const calls = []; const masks = []; const outputs = [];
   const env = { VERCEL_TOKEN: 'test-vercel', SUPABASE_ACCESS_TOKEN: 'test-supabase',
     SUPABASE_PREVIEW_REF: ref, SUPABASE_PRODUCTION_REF: 'c'.repeat(20), SUPABASE_PREVIEW_URL: `https://${ref}.supabase.co` };
@@ -19,8 +19,9 @@ function setup({ existing = false, transform = value => value, stale = false, fa
     number: 199, head: { sha, ref: 'feat/test', repo: { id: 1236791806, full_name: 'elqallaf09/thesfm' } },
   } } };
   const github = { rest: {
-    pulls: { get: async () => ({ data: { state: 'open', head: { sha: stale ? 'd'.repeat(40) : sha } } }) },
+    pulls: { get: async () => ({ data: { state: 'open', head: { sha: stale ? 'd'.repeat(40) : sha }, base: { sha: 'e'.repeat(40) } } }) },
     repos: {
+      compareCommitsWithBasehead: async () => ({ data: { status: behind ? 'diverged' : 'ahead' } }),
       listDeployments: async () => ({ data: existing ? [{ id: 9, sha, ref: sha, payload: { vercelDeploymentId: ready.id } }] : [] }),
       createDeployment: async body => { calls.push(['github-create', body]); return { data: { id: 9 } }; },
       createDeploymentStatus: async body => { calls.push(['github-status', body]); },
@@ -84,6 +85,9 @@ test('rejects forks, production refs, stale heads and missing tokens before any 
   const fixture = setup({ stale: true });
   await assert.rejects(ensureReleasePreview(fixture.args), /stale/);
   assert.equal(fixture.calls.length, 0);
+  const oldBase = setup({ behind: true });
+  await assert.rejects(ensureReleasePreview(oldBase.args), /current main/);
+  assert.equal(oldBase.calls.length, 0);
 });
 
 test('never treats wrong SHA, project, isolation, target or host as ready', async () => {

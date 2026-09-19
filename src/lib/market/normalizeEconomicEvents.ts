@@ -11,6 +11,9 @@ export type NormalizedEconomicEvent = {
   forecast: string | number | null;
   actual: string | number | null;
   source: string | null;
+  sourceUrl?: string | null;
+  retrievedAt?: string | null;
+  stale?: boolean;
   status: 'upcoming' | 'released' | 'unknown';
 };
 
@@ -79,7 +82,7 @@ function normalizeDateTime(value: unknown) {
 function normalizeStatus(dateTime: string | null, actual: string | number | null): NormalizedEconomicEvent['status'] {
   if (actual !== null && actual !== undefined && String(actual).trim()) return 'released';
   if (!dateTime) return 'unknown';
-  return new Date(dateTime).getTime() >= Date.now() ? 'upcoming' : 'released';
+  return new Date(dateTime).getTime() >= Date.now() ? 'upcoming' : 'unknown';
 }
 
 function safeId(value: string) {
@@ -114,6 +117,9 @@ export function normalizeEconomicEvent(record: Record<string, unknown>, index = 
     forecast,
     actual,
     source: safeText(readField(record, FIELD_CANDIDATES.source)),
+    sourceUrl: typeof record.sourceUrl === 'string' && /^https:\/\//.test(record.sourceUrl) ? record.sourceUrl : null,
+    retrievedAt: normalizeDateTime(record.retrievedAt),
+    stale: record.stale === true,
     status: normalizeStatus(dateTime, actual),
   };
 }

@@ -1,6 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dedupeEconomicEvents, normalizeFmpEconomicEvent } from '@/lib/providers/economic-calendar/fmp';
-import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
+import type { EconomicCalendarQuery } from '@/lib/providers/economic-calendar/types';
+// Commercial adapter regression fixtures explicitly isolate unavailable official sources.
+vi.mock('@/lib/providers/economic-calendar/official', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/providers/economic-calendar/official')>(),
+  fetchOfficialCalendar: vi.fn().mockRejectedValue(new Error('http_403')),
+}));
+vi.mock('@/lib/trader/persistentCache', () => ({ getPersistentCache: vi.fn(async () => null), setPersistentCache: vi.fn(async () => undefined) }));
+beforeEach(() => { vi.resetModules(); });
+async function getEconomicCalendar(query: EconomicCalendarQuery) {
+  return (await import('@/lib/providers/economic-calendar')).getEconomicCalendar(query);
+}
 import { getDividendCalendar } from '@/lib/providers/dividend-calendar';
 import { normalizeEconomicEvents } from '@/lib/market/normalizeEconomicEvents';
 import { toCycleIndicator } from '@/lib/providers/economic-data/common';
@@ -14,6 +24,7 @@ import { TR_MARKET } from '@/lib/translations/market';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -298,7 +309,7 @@ describe('economic calendar provider normalization', () => {
     expect(first && second ? dedupeEconomicEvents([first, second]) : []).toHaveLength(1);
   });
 
-  it('returns not_configured when calendar keys are missing', async () => {
+  it('reports source failures when public feeds fail without commercial keys', async () => {
     vi.stubEnv('FINNHUB_API_KEY', '');
     vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', '');
@@ -310,12 +321,13 @@ describe('economic calendar provider normalization', () => {
       to: '2026-06-26',
     });
 
-    expect(result.status).toBe('not_configured');
+    expect(result.status).toBe('provider_error');
     expect(result.data).toEqual([]);
-    expect(result.messageCode).toBe('provider_not_configured');
+    expect(result.sources).toHaveLength(4);
+    expect(result.messageCode).toBe('provider_temporarily_unavailable');
   });
 
-  it('prefers Finnhub economic calendar when FINNHUB_API_KEY is configured', async () => {
+  it('includes Finnhub events in the SFM calendar when its key is configured', async () => {
     vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
     vi.stubEnv('TRADING_ECONOMICS_API_KEY', 'test-te-key');
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
@@ -344,7 +356,7 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('success');
-    expect(result.provider).toBe('finnhub');
+    expect(result.provider).toBe('sfm');
     expect(result.data[0]).toMatchObject({
       title: 'CPI YoY',
       provider: 'finnhub',
@@ -362,7 +374,7 @@ describe('economic calendar provider normalization', () => {
     expect(JSON.stringify(finnhubLog?.[1] ?? {})).not.toContain('test-finnhub-key');
   });
 
-  it('reports Finnhub calendar entitlement failures as not entitled when no fallback is configured', async () => {
+  it('retains source-specific Finnhub entitlement failures in aggregate diagnostics', async () => {
     vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
     vi.stubEnv('TRADING_ECONOMICS_API_KEY', '');
     vi.stubEnv('FMP_API_KEY', '');
@@ -382,10 +394,11 @@ describe('economic calendar provider normalization', () => {
       force: true,
     });
 
-    expect(result.status).toBe('not_entitled');
-    expect(result.provider).toBe('finnhub');
+    expect(result.sources?.find(source => source.provider === 'finnhub')?.errorCode).toBe('not_entitled');
+    expect(result.status).toBe('provider_error');
+    expect(result.provider).toBe('sfm');
     expect(result.data).toEqual([]);
-    expect(result.messageCode).toBe('provider_access_denied');
+    expect(result.messageCode).toBe('provider_temporarily_unavailable');
   });
 
   it('falls back to Trading Economics when Finnhub calendar is blocked by plan access', async () => {
@@ -422,7 +435,7 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('success');
-    expect(result.provider).toBe('tradingeconomics');
+    expect(result.provider).toBe('sfm');
     expect(result.data[0]).toMatchObject({
       title: 'Initial Jobless Claims',
       provider: 'tradingeconomics',
@@ -456,7 +469,7 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('success');
-    expect(result.provider).toBe('fmp');
+    expect(result.provider).toBe('sfm');
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('financialmodelingprep.com/stable/economic-calendar');
   });
 
@@ -481,7 +494,7 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('provider_error');
-    expect(result.provider).toBe('finnhub');
+    expect(result.provider).toBe('sfm');
     expect(result.data).toEqual([]);
     expect(result.messageCode).toBe('provider_temporarily_unavailable');
   });
@@ -519,7 +532,7 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('success');
-    expect(result.provider).toBe('tradingeconomics');
+    expect(result.provider).toBe('sfm');
     expect(result.data[0]).toMatchObject({
       title: 'Producer Price Index',
       provider: 'tradingeconomics',
@@ -547,9 +560,9 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('provider_error');
-    expect(result.provider).toBe('finnhub');
+    expect(result.provider).toBe('sfm');
     expect(result.data).toEqual([]);
-    expect(result.messageCode).toBe('calendar_no_events');
+    expect(result.messageCode).toBe('provider_temporarily_unavailable');
   });
 
   it('returns a clean provider error on calendar network failure', async () => {
@@ -571,7 +584,7 @@ describe('economic calendar provider normalization', () => {
     });
 
     expect(result.status).toBe('provider_error');
-    expect(result.provider).toBe('finnhub');
+    expect(result.provider).toBe('sfm');
     expect(result.data).toEqual([]);
     expect(result.messageCode).toBe('provider_temporarily_unavailable');
     const networkLog = infoSpy.mock.calls.find(call => call[0] === '[economic-calendar] provider request' && (call[1] as Record<string, unknown> | undefined)?.requestStatus === 'network_error');
@@ -628,15 +641,17 @@ describe('economic calendar provider normalization', () => {
       currency: 'USD',
     };
     const first = await getEconomicCalendar(query);
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000);
     const second = await getEconomicCalendar({ ...query, force: true });
 
     expect(first.status).toBe('success');
     expect(first.data).toHaveLength(1);
-    expect(second.status).toBe('rate_limited');
+    expect(second.sources?.find(source => source.provider === 'fmp')?.errorCode).toBe('rate_limited');
+    expect(second.status).toBe('provider_error');
     expect(second.stale).toBe(true);
     expect(second.cached).toBe(true);
     expect(second.data).toHaveLength(1);
-    expect(second.messageCode).toBe('provider_rate_limited');
+    expect(second.messageCode).toBe('calendar_stale_data');
   });
 
   it('keeps Arabic, English, and French calendar diagnostics localized and cause-specific', () => {

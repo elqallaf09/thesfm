@@ -10,7 +10,8 @@ It uses the existing protected `Preview` environment and its `VERCEL_TOKEN` and
 `SUPABASE_ACCESS_TOKEN`; no new secret is committed or exported as an artifact.
 
 - Only same-repository feature branches are eligible; stale PR heads and the
-  Vercel Production branch are rejected.
+  Vercel Production branch are rejected. The branch must contain current main
+  before a Preview is created, avoiding builds that cannot yet be merged.
 - The exact successful Supabase Preview check supplies the isolated project ref.
   Production refs and credentials for another project are rejected.
 - Database variables are scoped to that branch and the Preview target only.
