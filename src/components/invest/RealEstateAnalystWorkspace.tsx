@@ -36,13 +36,12 @@ export function RealEstateAnalystWorkspace({ investmentId, positionId }: Selecto
 
   return <div className={styles.shell} dir={dir}>
     <DashboardPageShell ariaLabel={title} className={styles.main} contentClassName={styles.content}>
-      <header className={styles.header}>
+      <header className={`${styles.header} real-estate-center__header`}>
         <div>
           <p className={styles.eyebrow}>{L('الأسواق العالمية', 'Global markets', 'Marchés mondiaux')}</p>
           <h1>{title}</h1>
           <p>{L('بحث وتحليل الأراضي والعقار من المصادر الرسمية والسوقية المسموح بها، مع فصل ملكية محفظتك عن بيانات السوق.', 'Research land and property with permitted official and market sources while keeping portfolio ownership separate from market intelligence.', 'Analyse des terrains et biens à partir de sources officielles et de marché autorisées, en séparant la propriété du portefeuille des données de marché.')}</p>
         </div>
-        <Link className={styles.secondaryAction} href="/global-markets">{L('العودة إلى مركز الأسواق العالمية', 'Back to Global Markets Hub', 'Retour au centre des marchés mondiaux')}</Link>
       </header>
       {loading ? <p role="status">{L('جارٍ تحميل الجلسة…', 'Loading session…', 'Chargement de la session…')}</p> : !savedRecordRequested ? <>
         {guestGate}

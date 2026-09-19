@@ -51,7 +51,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expect(source.getByRole('link', { name: 'CC BY 4.0', exact: true })).toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/');
     await source.locator('summary').filter({ hasText: labels.details }).click();
     await expect(source.getByText('أرض فضاء', { exact: true })).toBeVisible();
-    await expect(source.getByText('Two separate villas', { exact: true })).toBeVisible();
+    await expect(source.locator('small').filter({ hasText: /^Two separate villas$/ })).toBeVisible();
     await expect(page.getByRole('button', { name: labels.save, exact: true })).toHaveCount(0);
     for (const theme of ['light', 'dark']) {
       await page.evaluate(selected => { document.documentElement.classList.remove('light', 'dark'); document.documentElement.classList.add(selected); }, theme);

@@ -1,4 +1,4 @@
-export const INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION = '2.1.0' as const;
+export const INVESTMENT_INTELLIGENCE_METHODOLOGY_VERSION = '2.2.0' as const;
 
 export type EvidenceAuthority =
   | 'GOVERNMENT'
@@ -40,6 +40,7 @@ export interface ValuationEvidence {
   currency?: string;
   unitValue?: number;
   unitCode?: string;
+  areaBasis?: 'LAND' | 'BUILT';
   limitations?: string;
 }
 

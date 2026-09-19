@@ -39,7 +39,9 @@ export function isNewYorkCityAsset(asset: RealEstateAssetInput): boolean {
   const state = (asset.region ?? '').trim().toLowerCase();
   const city = (asset.city ?? asset.municipality ?? '').trim().toLowerCase();
   const district = (asset.district ?? '').trim().toLowerCase();
-  return state === 'ny' || state === 'new york' || city === 'new york' || city === 'new york city' || Object.hasOwn(BOROUGHS, district);
+  // A state alone does not identify NYC (e.g. Buffalo, NY is outside this dataset).
+  return (!state || state === 'ny' || state === 'new york')
+    && (city === 'new york' || city === 'new york city' || (!city && Object.hasOwn(BOROUGHS, district)));
 }
 
 /** Rolling sales are authoritative public-sale context, not automatic current-value evidence. */

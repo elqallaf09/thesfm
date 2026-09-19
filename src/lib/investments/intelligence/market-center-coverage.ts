@@ -11,7 +11,7 @@ export type RealEstateMarketCoverageEntry = {
   sourceName: string;
   sourceUrl: string;
   state: RealEstateMarketCoverageState;
-  valuationReady: false;
+  valuationReady: boolean;
   note: { ar: string; en: string; fr: string };
 };
 
@@ -50,11 +50,11 @@ export const REAL_ESTATE_MARKET_COVERAGE: readonly RealEstateMarketCoverageEntry
     jurisdiction: { ar: 'الولايات المتحدة · نيويورك', en: 'United States · New York City', fr: 'États-Unis · New York' },
     sourceName: 'NYC Department of Finance Rolling Sales',
     sourceUrl: 'https://data.cityofnewyork.us/d/usep-8jbt',
-    state: 'CONNECTED_CONTEXT', valuationReady: false,
+    state: 'CONNECTED_CONTEXT', valuationReady: true,
     note: {
-      ar: 'سجلات رسمية متصلة ومختبرة حيًا؛ نحتاج فلترة التحويلات غير السوقية ومطابقة Building Class قبل اعتماد المقارنات.',
-      en: 'Official records are connected and live-verified; non-market transfers and building-class comparability still require filtering.',
-      fr: 'Données officielles connectées et vérifiées ; les transferts non marchands et les classes de bâtiments doivent encore être filtrés.',
+      ar: 'تقييم آلي مشروط للمنازل الفردية والأراضي السكنية الخالية بعد اختيار البلدية والحي والمساحة. تُستبعد التحويلات الرمزية والفئات غير المطابقة؛ حالة العقار وعلاقة أطراف البيع غير متحققة بشكل مستقل.',
+      en: 'Conditional automated comparison for one-family houses and residential vacant land, using borough, neighborhood and area. Nominal transfers and mismatched classes are excluded; condition and arm’s-length status are not independently verified.',
+      fr: 'Comparaison automatique conditionnelle des maisons individuelles et terrains résidentiels nus par arrondissement, quartier et surface. Transferts symboliques et classes incompatibles exclus ; état et relations entre parties non vérifiés.',
     },
   },
   {
@@ -62,11 +62,11 @@ export const REAL_ESTATE_MARKET_COVERAGE: readonly RealEstateMarketCoverageEntry
     jurisdiction: { ar: 'الولايات المتحدة · شيكاغو / Cook County', en: 'United States · Chicago / Cook County', fr: 'États-Unis · Chicago / Cook County' },
     sourceName: 'Cook County Assessor Parcel Sales',
     sourceUrl: 'https://datacatalog.cookcountyil.gov/d/wvhk-k5uv',
-    state: 'CONNECTED_CONTEXT', valuationReady: false,
+    state: 'CONNECTED_CONTEXT', valuationReady: true,
     note: {
-      ar: 'سجلات المبيعات الرسمية متصلة ومختبرة حيًا مع فلاتر المقاطعة المنشورة؛ الصفقات غير السوقية المحتملة ونقص مساحة موثوقة ما زالا يمنعان اعتمادها كتقييم آلي.',
-      en: 'Official sales are connected and live-verified with the County’s published filters; possible non-arm’s-length transfers and missing dependable area still block automatic valuation use.',
-      fr: 'Les ventes officielles sont connectées et vérifiées avec les filtres publiés par le comté ; les transferts potentiellement non marchands et l’absence de surface fiable bloquent encore la valorisation automatique.',
+      ar: 'تقييم آلي مشروط للمنازل الفردية في شيكاغو: ربط الصفقات بمساحة المبنى حسب رقم العقار وسنة البيع، مع رمز حي المقيم وفلاتر الصفقات الرسمية. قد تبقى تحويلات غير سوقية أو فجوات في السجلات.',
+      en: 'Conditional automated comparison for Chicago one-family houses: sale-year building area joined by parcel ID, exact assessor neighborhood and published sales filters. Non-market transfers and reporting gaps can remain.',
+      fr: 'Comparaison automatique conditionnelle des maisons individuelles de Chicago : surface du bâtiment reliée à la parcelle et à l’année de vente, quartier exact et filtres officiels. Des transferts non marchands et lacunes peuvent subsister.',
     },
   },
   {
