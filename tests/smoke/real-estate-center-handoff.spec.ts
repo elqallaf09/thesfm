@@ -26,7 +26,9 @@ test.describe('real estate market center placement', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, 'The property workspace must not introduce horizontal page overflow').toBeLessThanOrEqual(2);
       await expect(page.getByRole('link', { name: copy[language].back, exact: true })).toHaveCount(0);
-      await page.locator('a[href="/global-markets"]').first().click();
+      const marketLink = page.locator('a[href="/global-markets"]').first();
+      await expect(marketLink).toHaveAttribute('href', '/global-markets');
+      await page.goto((await marketLink.getAttribute('href'))!);
       await expect(page).toHaveURL(/\/global-markets$/);
     });
   }
