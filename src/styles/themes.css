@@ -732,3 +732,36 @@
   --sidebar-accent: var(--sidebar-hover);
   --sidebar-accent-foreground: var(--sidebar-foreground);
 }
+
+/* Markets TV: independently selectable display theme, also bundled on TVs.
+ * Static shadows retain compatibility with Chromium 85 television engines. */
+.tv-screen {
+  --tv-bg: #091015;
+  --tv-panel: #111b23;
+  --tv-panel2: #16232d;
+  --tv-text: #ecf3f6;
+  --tv-muted: #9eafb9;
+  --tv-line: #2a3943;
+  --tv-accent: #ffc279;
+  --tv-up: #62d9b2;
+  --tv-down: #ff8d95;
+  --tv-backdrop: #000b;
+  --tv-qr-background: #fff;
+  --tv-focus-shadow: 0 0 0 7px var(--tv-bg);
+  --tv-active-shadow: inset 0 -3px var(--tv-accent);
+  --tv-toast-shadow: 0 15px 50px #0006;
+  --tv-dialog-shadow: 0 24px 100px #0008;
+  --tv-map-shadow: 0 8px 24px #0007;
+}
+.tv-light {
+  --tv-bg: #f1f5f7;
+  --tv-panel: #fff;
+  --tv-panel2: #e7edf0;
+  --tv-text: #14222d;
+  --tv-muted: #516472;
+  --tv-line: #ccd8df;
+  --tv-accent: #854705;
+  --tv-up: #0a7052;
+  --tv-down: #b22537;
+  color-scheme: light;
+}

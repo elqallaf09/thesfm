@@ -223,7 +223,8 @@ test.describe('Phase 3.1 permission-gated Administration workspace', () => {
     await setLanguage(page, 'en');
 
     const workspaceNavigation = page.locator('header.sfm-global-header .sfm-workspace-navigation');
-    await expect(workspaceNavigation.locator('.sfm-workspace-tab')).toHaveCount(4);
+    await expect(workspaceNavigation.locator('.sfm-workspace-tab')).toHaveCount(5);
+    await expect(workspaceNavigation.getByRole('link', { name: 'SFM TV — Market strips', exact: true })).toHaveAttribute('href', '/tv/strips');
     for (const workspace of ENGLISH_WORKSPACES) {
       const tab = workspaceNavigation.locator(`[data-workspace-id="${workspace.id}"]`);
       await expect(tab).toHaveCount(1);

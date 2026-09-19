@@ -3,6 +3,7 @@ import {
   getCandlesWithFallback,
   getQuoteWithFallback,
   type MarketDataProviderContext,
+  type MarketDataProviderName,
   type NormalizedMarketCandle,
   type NormalizedMarketQuote,
   type ProviderAttemptFailure,
@@ -26,6 +27,7 @@ export type SfmMarketRequest = {
   market?: string | null;
   assetType?: string | null;
   forceFresh?: boolean;
+  excludeProviders?: MarketDataProviderName[];
 };
 
 function providerContext(
@@ -33,6 +35,7 @@ function providerContext(
   market: string | null,
   assetType: string | null | undefined,
   forceFresh: boolean | undefined,
+  excludeProviders: MarketDataProviderName[] = [],
 ): MarketDataProviderContext {
   return {
     symbol,
@@ -42,7 +45,7 @@ function providerContext(
     // Product decision: the SFM-owned market contract must never silently
     // fall back to Yahoo. If our other lawful feeds cannot supply evidence,
     // the engine returns unavailable/partial rather than changing source.
-    excludeProviders: [...SFM_MARKET_BLOCKED_TRANSITIONAL_PROVIDERS],
+    excludeProviders: [...SFM_MARKET_BLOCKED_TRANSITIONAL_PROVIDERS, ...excludeProviders],
   };
 }
 
@@ -217,6 +220,7 @@ export async function getSfmMarketQuote(symbolInput: string, request: SfmMarketR
     request.market ?? null,
     normalized.assetType,
     request.forceFresh,
+    request.excludeProviders,
   );
   const result = await getQuoteWithFallback(normalized.symbol, request.market ?? null, context);
   if (!result.ok) return null;
@@ -262,6 +266,7 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
     request.market ?? null,
     normalized.assetType,
     request.forceFresh,
+    request.excludeProviders,
   );
   const supportsSecEvidence = normalized.assetType === 'stock' || normalized.assetType === 'etf';
   const secPromise = supportsSecEvidence

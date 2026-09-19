@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ArrowDown, ArrowUp, Clock3, Globe, RefreshCcw, Search, TrendingDown, TrendingUp, X } from 'lucide-react';
 import Link from 'next/link';
+import { worldStockQuoteKey } from '@/lib/world-stocks/quoteKey';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { useLanguage } from '@/hooks/useLanguage';
 import { WORLD_STOCK_REGIONS } from '@/lib/world-stocks/regions';
-import type { WorldStock, WorldStockAssetType, WorldStockQuotesResponse, WorldStockSearchResponse } from '@/lib/world-stocks/types';
+import type { WorldStock, WorldStockMarket, WorldStockAssetType, WorldStockQuotesResponse, WorldStockSearchResponse } from '@/lib/world-stocks/types';
 import { sortWorldStocks, type WorldStockSort } from '@/lib/world-stocks/sort';
+import { WorldStockEvidence } from './WorldStockEvidence';
 import { WorldStocksAdvancedFilters } from './WorldStocksAdvancedFilters';
 import styles from './WorldStocksPage.module.css';
 
@@ -19,7 +21,8 @@ const COPY = {
   ar: {
     title: 'مستكشف الأسهم العالمية',
     subtitle: 'ابحث واستكشف الشركات المدرجة الحقيقية في الأسواق المدعومة دون بيانات وهمية.',
-    coverageNote: 'التغطية الحالية: الكويت، سوق دبي المالي، ناسداك دبي، والأسواق الأمريكية.',
+    coverageNote: 'كل الأسهم في الأدلة المتاحة، مع تحديث الأسواق العالمية من المزود. اختر السوق للاطلاع على قائمته؛ توفر الدليل لا يعني توفر الأسعار الحية.',
+    directoryOffline: 'تعذر تحديث دليل المزود العالمي؛ المعروض حاليًا هو الأدلة المحفوظة والمتاحة.',
     searchPlaceholder: 'ابحث بالاسم أو الرمز أو السوق...',
     searchClear: 'مسح البحث',
     regionAll: 'كل الأسواق',
@@ -53,7 +56,8 @@ const COPY = {
   en: {
     title: 'World Stocks Explorer',
     subtitle: 'Search and explore real listed companies across supported markets -- no fabricated data.',
-    coverageNote: 'Current coverage: Kuwait, Dubai Financial Market, Nasdaq Dubai, and US markets.',
+    coverageNote: 'All listings in available directories, with worldwide markets synchronized from the provider. Select a market to browse its listings; directory coverage does not imply live price access.',
+    directoryOffline: 'The worldwide provider directory could not refresh; available saved directories are shown.',
     searchPlaceholder: 'Search by name, symbol, or exchange...',
     searchClear: 'Clear search',
     regionAll: 'All markets',
@@ -87,7 +91,8 @@ const COPY = {
   fr: {
     title: 'Explorateur des actions mondiales',
     subtitle: 'Recherchez et explorez de vraies entreprises cotées sur les marchés pris en charge -- aucune donnée fabriquée.',
-    coverageNote: 'Couverture actuelle : Koweït, Dubai Financial Market, Nasdaq Dubaï et marchés américains.',
+    coverageNote: 'Toutes les actions des répertoires disponibles et les marchés mondiaux synchronisés. Sélectionnez une bourse ; un répertoire ne garantit pas l’accès aux cours en direct.',
+    directoryOffline: 'Le répertoire mondial est indisponible ; les répertoires enregistrés sont affichés.',
     searchPlaceholder: 'Rechercher par nom, symbole ou marché...',
     searchClear: 'Effacer la recherche',
     regionAll: 'Tous les marchés',
@@ -151,6 +156,8 @@ export function WorldStocksPage() {
   const ui = copyFor(lang);
   const locale = localeFor(lang);
 
+  const [markets, setMarkets] = useState<WorldStockMarket[]>(WORLD_STOCK_REGIONS.map(m => ({ ...m, count: null, status: 'directory' })));
+  const [directoryStatus, setDirectoryStatus] = useState('');
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
   const [region, setRegion] = useState<string | null>(null);
@@ -190,8 +197,9 @@ export function WorldStocksPage() {
       const json = await response.json().catch(() => ({})) as WorldStockQuotesResponse;
       if (!response.ok || !json.success) return;
 
+      const scoped = Object.keys(json.quotes).some(key => key.includes(':'));
       setResults(previous => previous.map(stock => {
-        const quote = json.quotes[stock.canonicalSymbol];
+        const quote = scoped ? json.quotes[worldStockQuoteKey(stock.region, stock.canonicalSymbol)] : json.quotes[stock.canonicalSymbol];
         if (!quote) return stock;
         return {
           ...stock,
@@ -234,6 +242,8 @@ export function WorldStocksPage() {
       }
       setResults(previous => (append ? [...previous, ...json.results] : json.results));
       setTotalCount(json.totalCount);
+      if (json.markets) setMarkets(json.markets);
+      setDirectoryStatus(json.directoryStatus || '');
       setHasMore(json.hasMore);
       void fetchQuotesForPage(json.results);
     } catch (loadError) {
@@ -290,6 +300,7 @@ export function WorldStocksPage() {
           <h1>{ui.title}</h1>
           <p>{ui.subtitle}</p>
           <small>{ui.coverageNote}</small>
+          {directoryStatus === "unavailable" && <p role="status">{ui.directoryOffline}</p>}
         </div>
       </header>
 
@@ -313,7 +324,7 @@ export function WorldStocksPage() {
         <button type="button" role="tab" aria-selected={region === null} className={region === null ? styles.active : ''} onClick={() => setRegion(null)}>
           {ui.regionAll}
         </button>
-        {WORLD_STOCK_REGIONS.map(item => (
+        {markets.map(item => (
           <button
             key={item.id}
             type="button"
@@ -422,7 +433,7 @@ export function WorldStocksPage() {
                       </td>
                       <td className={styles.numericCol}>
                         {stock.quoteStatus === 'available' ? (
-                          <span dir="ltr">{formatPrice(stock.price, stock.currency)}</span>
+                          <><span dir="ltr">{formatPrice(stock.price, stock.currency)}</span><WorldStockEvidence stock={stock} lang={lang}/></>
                         ) : (
                           <span className={styles.priceUnavailable}>{ui.priceUnavailable}</span>
                         )}
@@ -465,7 +476,7 @@ export function WorldStocksPage() {
                     <div className={styles.resultPrice}>
                       {stock.quoteStatus === 'available' ? (
                         <>
-                          <strong dir="ltr">{formatPrice(stock.price, stock.currency)}</strong>
+                          <strong dir="ltr">{formatPrice(stock.price, stock.currency)}</strong><WorldStockEvidence stock={stock} lang={lang}/>
                           {stock.changePercent !== null ? (
                             <span className={`${styles.change} ${styles[tone]}`} dir="ltr">
                               {formatChangePercent(stock.changePercent)}

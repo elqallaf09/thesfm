@@ -99,7 +99,8 @@ test.describe('mobile workspace switcher affordance', () => {
 
     const navigation = page.locator('header.sfm-global-header .sfm-workspace-navigation');
     const tabs = navigation.locator('.sfm-workspace-tab');
-    await expect(tabs).toHaveCount(3);
+    await expect(tabs).toHaveCount(4);
+    await expect(navigation.getByRole('link', { name: 'SFM TV — Market strips', exact: true })).toHaveAttribute('href', '/tv/strips');
 
     for (const workspace of WORKSPACES) {
       const tab = navigation.locator(`[data-workspace-id="${workspace.id}"]`);

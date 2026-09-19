@@ -1,0 +1,47 @@
+name: Markets TV packages
+on:
+  pull_request:
+    branches: [main]
+    paths: ['apps/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', 'pnpm-lock.yaml', '.github/workflows/markets-tv.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: markets-tv-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  packages:
+    name: CI/Markets TV packages and Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:tv
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Compile and lint Android TV application
+        working-directory: apps/markets-tv/android
+        run: gradle --no-daemon assembleDebug assembleRelease lint
+      - uses: actions/upload-artifact@v7
+        with:
+          name: markets-tv-${{ github.sha }}
+          include-hidden-files: true
+          if-no-files-found: error
+          path: |
+            .tv-build/tizen
+            .tv-build/webos
+            apps/markets-tv/android/app/build/outputs/apk
+            apps/markets-tv/android/app/build/reports/lint-results-*.html
