@@ -87,7 +87,7 @@ export function MarketTickerStrip({
   const viewportRef = useRef<HTMLDivElement>(null);
   const tickerItems = Children.toArray(children);
   const hasTickerItems = tickerItems.length > 0;
-  const repeatCount = tickerItems.length > 0 ? Math.max(2, Math.ceil(minimumItems / tickerItems.length)) : 1;
+  const repeatCount = tickerItems.length > 0 ? Math.max(1, Math.ceil(minimumItems / tickerItems.length)) : 1;
   const animationName = resolvedDirection === 'rtl' ? 'sfmMarketTickerScrollRtl' : 'sfmMarketTickerScrollLtr';
   const measuredDuration = pixelsPerSecond ? tickerDurationSeconds(loopDistance, pixelsPerSecond) : durationSeconds;
   const style = {

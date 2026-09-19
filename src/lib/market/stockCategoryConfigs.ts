@@ -1,3 +1,4 @@
+import { GROWTH_WATCHLIST } from './growthWatchlist';
 import type { TR } from '@/lib/translations';
 
 export type StockCategoryId =
@@ -152,36 +153,7 @@ export const STOCK_CATEGORY_CONFIGS: StockCategoryConfig[] = [
       { key: 'innovative_healthcare', labelKey: 'stock_category_filter_innovative_healthcare', keywords: ['robotic surgery', 'medical technology', 'innovative healthcare'] },
       { key: 'digital_consumption', labelKey: 'stock_category_filter_digital_consumption', keywords: ['digital consumption', 'advertising', 'streaming', 'travel platform'] },
     ],
-    watchlist: [
-      { symbol: 'AMZN', name: 'Amazon', filter: 'ecommerce', filters: ['ecommerce', 'cloud', 'digital_consumption'] },
-      { symbol: 'TSLA', name: 'Tesla', filter: 'electric_vehicles', filters: ['electric_vehicles', 'digital_consumption'] },
-      { symbol: 'SHOP', name: 'Shopify', filter: 'ecommerce' },
-      { symbol: 'CRM', name: 'Salesforce', filter: 'software' },
-      { symbol: 'NOW', name: 'ServiceNow', filter: 'software' },
-      { symbol: 'SNOW', name: 'Snowflake', filter: 'cloud', filters: ['software', 'cloud'] },
-      { symbol: 'DDOG', name: 'Datadog', filter: 'cloud', filters: ['software', 'cloud'] },
-      { symbol: 'NET', name: 'Cloudflare', filter: 'cloud' },
-      { symbol: 'PLTR', name: 'Palantir', filter: 'artificial_intelligence', filters: ['software', 'artificial_intelligence'] },
-      { symbol: 'UBER', name: 'Uber', filter: 'digital_consumption' },
-      { symbol: 'SQ', name: 'Block', filter: 'fintech', aliases: ['Block', 'Square'] },
-      { symbol: 'MELI', name: 'MercadoLibre', filter: 'ecommerce', aliases: ['Mercado Libre'] },
-      { symbol: 'RBLX', name: 'Roblox', filter: 'digital_consumption' },
-      { symbol: 'ABNB', name: 'Airbnb', filter: 'digital_consumption' },
-      { symbol: 'ISRG', name: 'Intuitive Surgical', filter: 'innovative_healthcare' },
-      { symbol: 'TTD', name: 'The Trade Desk', filter: 'digital_consumption' },
-      { symbol: 'DXCM', name: 'DexCom', filter: 'innovative_healthcare' },
-      { symbol: 'CRWD', name: 'CrowdStrike', filter: 'cybersecurity', filters: ['software', 'cybersecurity'] },
-      { symbol: 'ZS', name: 'Zscaler', filter: 'cybersecurity', filters: ['software', 'cybersecurity'] },
-      { symbol: 'MDB', name: 'MongoDB', filter: 'software', filters: ['software', 'cloud'] },
-      { symbol: 'NVDA', name: 'NVIDIA', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'semiconductors'] },
-      { symbol: 'AMD', name: 'Advanced Micro Devices', filter: 'semiconductors', filters: ['semiconductors', 'artificial_intelligence'], aliases: ['AMD'] },
-      { symbol: 'AVGO', name: 'Broadcom', filter: 'semiconductors' },
-      { symbol: 'AAPL', name: 'Apple', filter: 'digital_consumption', filters: ['digital_consumption', 'software'], aliases: ['Apple Intelligence', 'iPhone'] },
-      { symbol: 'META', name: 'Meta Platforms', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'digital_consumption'], aliases: ['Meta', 'Facebook', 'Instagram'] },
-      { symbol: 'MSFT', name: 'Microsoft', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'cloud', 'software'], aliases: ['Microsoft Copilot'] },
-      { symbol: 'GOOGL', name: 'Alphabet', filter: 'artificial_intelligence', filters: ['artificial_intelligence', 'cloud', 'digital_consumption'], aliases: ['Google', 'Gemini'] },
-      { symbol: 'PYPL', name: 'PayPal', filter: 'fintech' },
-    ],
+    watchlist: GROWTH_WATCHLIST,
   },
   {
     id: 'dividend',
