@@ -122,7 +122,7 @@ create table public.sfm_teams (
 create table public.sfm_team_members (
  team_id uuid not null references public.sfm_teams(id) on delete cascade,
  user_id uuid not null references auth.users(id) on delete cascade,
- role text not null check(role in ('owner','member')), joined_at timestamptz not null default now(),
+ role text not null check(role in ('owner','member')), display_name text not null check(length(trim(display_name)) between 2 and 60), joined_at timestamptz not null default now(),
  primary key(team_id,user_id)
 );
 create index sfm_members_user on public.sfm_team_members(user_id,team_id);
@@ -154,7 +154,7 @@ create policy team_read on public.sfm_teams for select to authenticated using(sf
 create policy member_read on public.sfm_team_members for select to authenticated using(sfm_private.is_team_member(team_id));
 create policy note_read on public.sfm_team_notes for select to authenticated using(sfm_private.is_team_member(team_id));
 
-create function public.sfm_team_action(p_action text, p_team uuid default null, p_value text default null) returns jsonb
+create function public.sfm_team_action(p_action text, p_team uuid default null, p_value text default null, p_name text default 'Member') returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); target uuid; team_owner uuid; token text; result jsonb;
 begin
@@ -163,14 +163,14 @@ begin
  if p_action='create' then
    if (select count(*) from public.sfm_teams where owner_id=actor)>=20 then raise exception 'TEAM_LIMIT'; end if;
    insert into public.sfm_teams(owner_id,name) values(actor,trim(p_value)) returning id into target;
-   insert into public.sfm_team_members(team_id,user_id,role) values(target,actor,'owner');
+   insert into public.sfm_team_members(team_id,user_id,role,display_name) values(target,actor,'owner',trim(p_name));
    return jsonb_build_object('id',target);
  end if;
  if p_action='join' then
    select team_id into target from public.sfm_team_invites
      where token_hash=encode(sha256(convert_to(p_value,'UTF8')),'hex') and used_at is null and expires_at>now() for update;
    if target is null then raise exception 'INVITE_UNAVAILABLE'; end if;
-   insert into public.sfm_team_members(team_id,user_id,role) values(target,actor,'member') on conflict do nothing;
+   insert into public.sfm_team_members(team_id,user_id,role,display_name) values(target,actor,'member',trim(p_name)) on conflict do nothing;
    update public.sfm_team_invites set used_at=now() where token_hash=encode(sha256(convert_to(p_value,'UTF8')),'hex');
    return jsonb_build_object('id',target);
  end if;
@@ -197,8 +197,8 @@ begin
  else raise exception 'INVALID_ACTION'; end if;
  return '{}'::jsonb;
 end $$;
-revoke all on function public.sfm_team_action(text,uuid,text) from public,anon;
-grant execute on function public.sfm_team_action(text,uuid,text) to authenticated;
+revoke all on function public.sfm_team_action(text,uuid,text,text) from public,anon;
+grant execute on function public.sfm_team_action(text,uuid,text,text) to authenticated;
 
 -- SFMer is opt-in, authenticated text publishing; no personal ledger is shared.
 create table public.sfmer_posts (
@@ -257,4 +257,32 @@ begin
 end $$;
 revoke all on function public.sfmer_action(text,uuid,text,text) from public,anon;
 grant execute on function public.sfmer_action(text,uuid,text,text) to authenticated;
+notify pgrst,'reload schema';
+
+-- A restricted review queue makes reports actionable without exposing reporters.
+alter table public.sfmer_reports add column resolved_at timestamptz,
+ add column resolution text check(resolution in ('hide','dismiss')),
+ add column moderator_id uuid references auth.users(id) on delete set null;
+create function public.sfmer_moderate(p_action text default 'list',p_report uuid default null) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare result jsonb; target uuid;
+begin
+ if auth.uid() is null or not app_private.is_current_user_admin_role('super_admin') then raise exception 'ADMIN_REQUIRED'; end if;
+ if p_action='list' then
+  select coalesce(jsonb_agg(to_jsonb(r)),'[]'::jsonb) into result from (
+   select report.id, report.reason, report.created_at, post.body, post.display_name
+   from public.sfmer_reports report join public.sfmer_posts post on post.id=report.post_id
+   where report.resolved_at is null order by report.created_at,report.id limit 50
+  ) r;
+  return result;
+ end if;
+ if p_action not in ('hide','dismiss') then raise exception 'INVALID_ACTION'; end if;
+ select post_id into target from public.sfmer_reports where id=p_report and resolved_at is null for update;
+ if target is null then raise exception 'REPORT_UNAVAILABLE'; end if;
+ if p_action='hide' then update public.sfmer_posts set hidden_at=now() where id=target; end if;
+ update public.sfmer_reports set resolved_at=now(),resolution=p_action,moderator_id=auth.uid() where id=p_report;
+ return '{}'::jsonb;
+end $$;
+revoke all on function public.sfmer_moderate(text,uuid) from public,anon;
+grant execute on function public.sfmer_moderate(text,uuid) to authenticated;
 notify pgrst,'reload schema';

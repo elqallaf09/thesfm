@@ -157,6 +157,10 @@ jobs:
             echo ""
             echo "Applied all $count files in \`supabase/migrations/\` once, in order, against a genuinely empty Postgres 17 database. No second replay is performed — historical apply-once migration files are not required to be idempotent against an already-populated schema."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify month close and collaboration isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/platform-core.sql
 
   build:
     name: CI/Production build

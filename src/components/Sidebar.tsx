@@ -1,8 +1,5 @@
 'use client';
 
-// Keep the tablet breakpoint contract explicit for the responsive shell: window.matchMedia('(min-width: 768px)').
-
-
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';

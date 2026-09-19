@@ -193,7 +193,9 @@ describe('workspace navigation direction and presentation contract', () => {
   });
 
   it('keeps tablet navigation persistent and uses the drawer only on phones', () => {
-    expect(sidebar).toContain("window.matchMedia('(min-width: 768px)')");
+    const chrome = readFileSync(join(process.cwd(), 'src/app/workspace-chrome-critical.css'), 'utf8');
+    expect(chrome).toMatch(/@media \(min-width: 768px\)\s*\{\s*:root\[data-sfm-sidebar-collapsed="true"\]\s*\{ --sidebar-w: 72px;/);
+    expect(sidebar).toContain('useSidebarPreference()');
     expect(sidebar).toContain('@media(max-width:767px){.sfm-shared-sidebar{display:none}}');
     expect(header).toContain('@media (max-width: 767px)');
     expect(workspaceShell).toContain('@media (max-width: 767px)');

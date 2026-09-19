@@ -5,6 +5,7 @@ type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string
 export const TR_NAV: Record<string, TranslationEntry> = {
   nav_month_close: { ar:'إقفال الشهر', en:'Month close', fr:'Clôture mensuelle' },
   nav_teams: { ar:'فرق العمل', en:'Teams', fr:'Équipes' },
+  nav_sfmer_review: { ar:'بلاغات SFMer', en:'SFMer reports', fr:'Signalements SFMer' },
   nav_sfmer: { ar:'SFMer', en:'SFMer', fr:'SFMer' },
   nav_group_main: { ar:'الرئيسية', en:'Main', fr:'Principal' },
   nav_group_personal_finance: { ar:'المال الشخصي', en:'Personal Finance', fr:'Finances personnelles' },

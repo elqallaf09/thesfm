@@ -283,6 +283,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'admin-news-providers', icon: Newspaper, href: '/sfm-admin-control/news-providers', labelKey: 'nav_admin_news_providers', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'admin-shariah', icon: ShieldCheck, href: '/sfm-admin-control/shariah', labelKey: 'admin_shariah_title', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', adminOnly: true, adminPermission: 'instagram_automation' },
+      { id: 'admin-community', icon: UsersRound, href: '/sfm-admin-control/community', labelKey: 'nav_sfmer_review', adminOnly: true, superAdminOnly: true },
       { id: 'admin-permissions', icon: UsersRound, href: '/sfm-admin-control/admin-permissions', labelKey: 'nav_admin_permissions', adminOnly: true, superAdminOnly: true },
     ],
   },
