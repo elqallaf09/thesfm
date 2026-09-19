@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { implicitMarketAssetCandidates } from '@/lib/ai-analyst/marketAssetCandidate';
 import {
   ChatDomainMismatchError,
   MARKET_CHAT_DOMAINS,
   assertChatDomain,
   buildMarketChatSystemPrompt,
-  implicitMarketAssetCandidate,
   type VerifiedChatAsset,
   type VerifiedChatMarketSnapshot,
 } from '@/lib/ai-analyst/marketChat';
@@ -71,16 +71,28 @@ describe('assertChatDomain — fail-closed cross-domain guard', () => {
   });
 });
 
-describe('implicitMarketAssetCandidate — multilingual verified resolver handoff', () => {
-  it('accepts ticker-like and one-token localized company aliases without trusting them yet', () => {
-    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'NVDA' }])).toBe('NVDA');
-    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'بوبيان' }])).toBe('بوبيان');
-    expect(implicitMarketAssetCandidate([{ role: 'assistant', content: 'x' }, { role: 'user', content: 'بيتكوين' }])).toBe('بيتكوين');
+describe('implicitMarketAssetCandidates — multilingual verified resolver handoff', () => {
+  it('extracts direct symbols and localized names without trusting them yet', () => {
+    expect(implicitMarketAssetCandidates([{ role: 'user', content: 'NVDA' }])).toEqual(['NVDA']);
+    expect(implicitMarketAssetCandidates([{ role: 'user', content: 'بوبيان' }])).toEqual(['بوبيان']);
+    expect(implicitMarketAssetCandidates([{ role: 'assistant', content: 'x' }, { role: 'user', content: 'بيتكوين' }])).toEqual(['بيتكوين']);
   });
 
-  it('does not classify a normal sentence/question as an implicit asset', () => {
-    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'شنو وضع السوق اليوم؟' }])).toBeNull();
-    expect(implicitMarketAssetCandidate([{ role: 'user', content: 'compare NVDA with AMD' }])).toBeNull();
+  it('extracts the asset from longer explicit analysis requests and drops request qualifiers', () => {
+    expect(implicitMarketAssetCandidates([
+      { role: 'user', content: 'حلل سهم بيتك اليوم باختصار واذكر فقط البيانات الحالية الموثقة.' },
+    ])).toContain('بيتك');
+    expect(implicitMarketAssetCandidates([
+      { role: 'user', content: 'Analyze Apple stock today and mention only verified data.' },
+    ])).toContain('Apple');
+    expect(implicitMarketAssetCandidates([
+      { role: 'user', content: 'شنو رايك في EURUSD؟' },
+    ])).toContain('EURUSD');
+  });
+
+  it('does not collapse general questions or comparisons into one guessed asset', () => {
+    expect(implicitMarketAssetCandidates([{ role: 'user', content: 'شنو وضع السوق اليوم؟' }])).toEqual([]);
+    expect(implicitMarketAssetCandidates([{ role: 'user', content: 'compare NVDA with AMD' }])).toEqual([]);
   });
 });
 

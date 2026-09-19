@@ -29,3 +29,13 @@ export function buildWelcomeMessage(
 export function buildChatTranscript(messages: readonly ChatMessage[], welcome: ChatMessage): ChatMessage[] {
   return messages.length > 0 ? [...messages] : [welcome];
 }
+
+
+export function normalizeAssistantChatText(value: string) {
+  return value
+    .replace(/\*\*([^*\n]+)\*\*/gu, '$1')
+    .replace(/__([^_\n]+)__/gu, '$1')
+    .replace(/^#{1,6}\s+/gmu, '')
+    .replace(/`([^`\n]+)`/gu, '$1')
+    .trim();
+}

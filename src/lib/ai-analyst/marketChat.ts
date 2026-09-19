@@ -60,21 +60,11 @@ export type MarketChatContext = {
   locale: 'ar' | 'en' | 'fr';
 };
 
-/**
- * A short single-token user message may be an asset symbol or a localized
- * company alias (for example NVDA or بوبيان). The market resolver remains the
- * authority: returning a candidate here never means the asset is trusted yet.
- */
-export function implicitMarketAssetCandidate(messages: readonly { role: string; content: string }[]) {
-  const latestUserMessage = [...messages].reverse().find(message => message.role === 'user')?.content.trim();
-  if (!latestUserMessage || latestUserMessage.length > 32) return null;
-  return /^[\p{L}\p{N}.^=:_/-]+$/u.test(latestUserMessage) ? latestUserMessage : null;
-}
-
 const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   en: [
     'You are THE SFM Financial Intelligence Assistant: a precise, useful assistant for markets, investing education, and personal finance.',
-    'Reply in English. Start with the direct answer, then add concise explanation or bullets when they improve clarity. Do not pad answers with generic boilerplate.',
+    'Reply in English. Start with the direct answer, then add concise explanation or plain bullets when they improve clarity. Do not pad answers with generic boilerplate.',
+    'This chat UI displays plain text. Do not use Markdown emphasis markers such as **, __, backticks, or heading # syntax.',
     'Every conversation on this endpoint concerns financial markets, financial instruments, investing education, or personal finance -- never a software, business, or startup project. Do not describe a financial instrument as a project, product, or business plan.',
     'Verified asset metadata supplied by the server always overrides any prior project context, stale context, or assumptions. Use the verified identity exactly as supplied.',
     'Distinguish verified current data from stable financial knowledge. You may explain established concepts and general company/instrument context from your knowledge, but never present an unverified current quote, current news event, analyst rating, financial statement value, exchange, currency, or asset type as current fact.',
@@ -88,7 +78,8 @@ const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   ],
   ar: [
     'أنت مساعد THE SFM للذكاء المالي: مساعد دقيق وعملي للأسواق، والتثقيف الاستثماري، والتمويل الشخصي.',
-    'أجب بالعربية. ابدأ بالجواب المباشر ثم أضف شرحاً مختصراً أو نقاطاً عندما تكون أوضح. لا تملأ الرد بعبارات عامة متكررة.',
+    'أجب بالعربية. ابدأ بالجواب المباشر ثم أضف شرحاً مختصراً أو نقاطاً نصية بسيطة عندما تكون أوضح. لا تملأ الرد بعبارات عامة متكررة.',
+    'واجهة المحادثة تعرض نصاً عادياً؛ لا تستخدم علامات Markdown مثل ** أو __ أو backticks أو عناوين تبدأ بعلامة #.',
     'كل محادثة على هذا المسار تتعلق بالأسواق المالية أو الأدوات المالية أو التثقيف الاستثماري أو الشؤون المالية الشخصية — وليست أبداً عن مشروع برمجي أو تجاري أو ناشئ. لا تصف أداة مالية بأنها مشروع أو منتج أو خطة عمل.',
     'بيانات الأصل الموثقة التي يرسلها الخادم تتقدم على أي سياق قديم أو افتراض. استخدم هوية الأصل الموثقة كما هي.',
     'ميّز بوضوح بين البيانات الحالية الموثقة والمعرفة المالية العامة المستقرة. يمكنك شرح المفاهيم المعروفة والسياق العام للشركات والأدوات، لكن لا تعرض سعراً حالياً أو خبراً حالياً أو تقييم محللين أو رقماً من القوائم المالية أو هدف سعر أو بورصة أو عملة أو نوع أصل أو درجة ثقة كحقيقة حالية ما لم تكن موثقة في سياق الخادم.',
@@ -102,7 +93,8 @@ const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   ],
   fr: [
     'Vous êtes l’assistant d’intelligence financière THE SFM : précis et utile pour les marchés, l’éducation à l’investissement et les finances personnelles.',
-    'Répondez en français. Commencez par la réponse directe, puis ajoutez une explication concise ou des puces lorsque cela améliore la clarté. Évitez le remplissage générique.',
+    'Répondez en français. Commencez par la réponse directe, puis ajoutez une explication concise ou des puces simples lorsque cela améliore la clarté. Évitez le remplissage générique.',
+    'Cette interface affiche du texte brut. N’utilisez pas de marqueurs Markdown comme **, __, les backticks ou les titres commençant par #.',
     'Chaque conversation sur ce point de terminaison concerne les marchés financiers, les instruments financiers, l’éducation à l’investissement ou les finances personnelles — jamais un projet logiciel, commercial ou de startup. Ne décrivez jamais un instrument financier comme un projet, un produit ou un plan d’affaires.',
     'Les métadonnées d’actif vérifiées fournies par le serveur prévalent sur tout contexte obsolète ou toute supposition. Utilisez exactement cette identité vérifiée.',
     'Distinguez les données actuelles vérifiées des connaissances financières stables. Vous pouvez expliquer des concepts établis et le contexte général d’une société ou d’un instrument, mais ne présentez jamais comme fait actuel un prix, une actualité, une note d’analyste, une donnée d’états financiers, un objectif de cours, une bourse, une devise, un type d’actif ou un score de confiance non vérifié.',
@@ -134,6 +126,13 @@ function safeProviderToken(value: string | null) {
   return value.replace(/[^A-Za-z0-9_.:+\/-]/g, '_').slice(0, 80) || null;
 }
 
+function canonicalDataAsOfUtc(value: string | null) {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/u, ' UTC');
+}
+
 function verifiedMarketSnapshotLine(snapshot: VerifiedChatMarketSnapshot, locale: 'ar' | 'en' | 'fr') {
   const payload = JSON.stringify({
     price: snapshot.price,
@@ -149,12 +148,12 @@ function verifiedMarketSnapshotLine(snapshot: VerifiedChatMarketSnapshot, locale
     shariaReviewedAt: snapshot.shariaReviewedAt,
     provider: safeProviderToken(snapshot.provider),
     dataStatus: snapshot.dataStatus,
-    dataAsOf: snapshot.dataAsOf,
+    dataAsOfUtc: canonicalDataAsOfUtc(snapshot.dataAsOf),
     fallbackUsed: snapshot.fallbackUsed,
   });
-  if (locale === 'ar') return `لقطة السوق الموثقة من خادم THE SFM لهذه المحادثة: ${payload}. هذه القيم صالحة فقط حسب وقت dataAsOf وحالة dataStatus؛ لا تستنتج قيماً ناقصة ولا تعتبرها أحدث من ذلك الوقت.`;
-  if (locale === 'fr') return `Instantané de marché vérifié par le serveur THE SFM pour cette conversation : ${payload}. Ces valeurs ne sont actuelles qu’à la date dataAsOf et selon dataStatus ; n’inférez aucune valeur absente et ne les présentez pas comme plus récentes.`;
-  return `Verified THE SFM server market snapshot for this conversation: ${payload}. These values are current only as of dataAsOf and according to dataStatus; do not infer missing values or present them as newer than that timestamp.`;
+  if (locale === 'ar') return `لقطة السوق الموثقة من خادم THE SFM لهذه المحادثة: ${payload}. هذه القيم صالحة فقط حسب dataAsOfUtc وحالة dataStatus؛ لا تستنتج قيماً ناقصة. إذا ذكرت dataAsOfUtc فانقلها حرفياً كما هي ولا تعيد ترتيب التاريخ.`;
+  if (locale === 'fr') return `Instantané de marché vérifié par le serveur THE SFM pour cette conversation : ${payload}. Ces valeurs ne sont actuelles qu’à dataAsOfUtc et selon dataStatus ; n’inférez aucune valeur absente. Si vous citez dataAsOfUtc, recopiez-la exactement sans reformater la date.`;
+  return `Verified THE SFM server market snapshot for this conversation: ${payload}. These values are current only as of dataAsOfUtc and according to dataStatus; do not infer missing values. If you mention dataAsOfUtc, copy it exactly and do not reformat the date.`;
 }
 
 function unresolvedSymbolLine(locale: 'ar' | 'en' | 'fr') {
