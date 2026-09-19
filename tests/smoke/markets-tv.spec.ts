@@ -81,4 +81,50 @@ test('TV market selection changes the main screen and promotes its independent t
   await expect(page.locator('.tv-quote').first()).toContainText('US-0');
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','US');
   await expect(page.locator('.tv-world-stocks-link')).toHaveAttribute('href', /\/world-stocks$/);
+  await page.getByRole('link', { name: 'الأشرطة فقط', exact: true }).click();
+  await expect(page).toHaveURL(/\/tv\/strips$/);
+  await expect(page.locator('.tv-strips-only')).toBeVisible();
+});
+
+test('strips page fills the viewport, browses all rows and omits dashboard requests', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', request => { if (request.url().includes('/api/tv/')) requests.push(request.url()); });
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ ticker: false, autoRotate: true })));
+  const markets = Array.from({ length: 30 }, (_, index) => ({ id: `QA${index}`, group: 'us', labelAr: `سوق اختبار ${index}`, labelEn: `QA market ${index}`, labelFr: `Marché test ${index}`, count: 120, status: 'directory' }));
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets } }));
+  await page.route('**/api/tv/snapshot?*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: { group: 'us', directoryTotal: 120, total: 1, available: 1, quotes: [{
+      symbol: `${params.get('market')}-${params.get('page')}`, name: 'Synthetic QA', nameAr: 'اختبار', price: 123.45, currency: 'USD', changePercent: 1.2,
+      source: 'Synthetic QA fixture', observedAt: new Date().toISOString(), status: 'available', exchange: 'QA',
+    }] } });
+  });
+  await page.goto('/tv/strips');
+  await expect(page.locator('.tv-market-strip')).toHaveCount(30);
+  await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA0-0');
+  await expect(page.locator('.tv-quote-grid,.tv-news-panel,.tv-markets-nav,.tv-footer')).toHaveCount(0);
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const bounds = await page.locator('.tv-market-strips').boundingBox();
+    expect(bounds!.height).toBeGreaterThan(viewport.height * .85);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 2);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.locator('[data-market="QA29"] .tv-market-strip-heading').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'QA29');
+  await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-0');
+  await page.locator('.tv-strip-next').first().click();
+  await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-1');
+  await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
+  expect(requests.some(url => url.includes('/news'))).toBe(false);
+  expect(requests.filter(url => url.includes('/snapshot')).every(url => new URL(url).searchParams.get('pageSize') === '12')).toBe(true);
+  await page.getByRole('link', { name: 'TV dashboard', exact: true }).click();
+  await expect(page).toHaveURL(/\/tv$/);
+  await expect(page.locator('.tv-strips-only')).toHaveCount(0);
 });

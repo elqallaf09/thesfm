@@ -74,6 +74,8 @@ export const TV_TEXT = {
   nothingRanked: ['لا تتوفر بيانات حديثة كافية للترتيب', 'Not enough recent data to rank', 'Données récentes insuffisantes pour classer'],
   refresh: ['تحديث', 'Refresh', 'Actualiser'], connected: ['الاتصال متاح', 'Connected', 'Connecté'],
   stripMarkets: ['أشرطة الأسواق', 'Market strips', 'Bandes des marchés'],
+  stripsOnly: ['الأشرطة فقط', 'Strips only', 'Bandes uniquement'],
+  dashboard: ['لوحة التلفزيون', 'TV dashboard', 'Tableau TV'],
 } satisfies Record<string, [string, string, string]>;
 export type TvTextKey = keyof typeof TV_TEXT;
 export function tvText(language: TvLanguage, key: TvTextKey) { return TV_TEXT[key][language === 'ar' ? 0 : language === 'fr' ? 2 : 1]; }

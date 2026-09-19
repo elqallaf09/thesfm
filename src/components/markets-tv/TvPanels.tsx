@@ -9,20 +9,22 @@ import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { useTvResource } from './useTvResource';
 
-export function TvSettingsPanel({ settings, change }: { settings: TvSettings; change: (value: TvSettings) => void }) {
+export function TvSettingsPanel({ settings, change, stripsOnly = false }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
   const toggle = (key: 'autoRotate' | 'ticker' | 'sound') => change({ ...settings, [key]: !settings[key] });
   return <div className="tv-settings">
     <div className="tv-setting-row"><span>{t('language')}</span><div className="tv-segment">{(['ar','en','fr'] as const).map((lang,i) => <button key={lang} aria-pressed={settings.language === lang} onClick={() => change({ ...settings, language: lang })}>{['العربية','English','Français'][i]}</button>)}</div></div>
     <div className="tv-setting-row"><span>{t('theme')}</span><div className="tv-segment">{(['dark','light'] as const).map(theme => <button key={theme} aria-pressed={settings.theme === theme} onClick={() => change({ ...settings, theme })}>{t(theme)}</button>)}</div></div>
+    {!stripsOnly && <>
     <div className="tv-setting-row"><span>{t('layout')}</span><div className="tv-segment">{(['balanced','quotes'] as const).map(layout => <button key={layout} aria-pressed={settings.layout === layout} onClick={() => change({ ...settings, layout })}>{t(layout)}</button>)}</div></div>
     {(['autoRotate','ticker','sound'] as const).map(key => <div className="tv-setting-row" key={key}><span>{t(key)}</span><button role="switch" aria-checked={settings[key]} onClick={() => toggle(key)}>{t(settings[key] ? 'enabled' : 'disabled')}</button></div>)}
     <div className="tv-setting-row"><span>{t('rotationSeconds')}</span><div className="tv-segment">{[20,30,60,120].map(seconds => <button key={seconds} aria-pressed={settings.rotationSeconds === seconds} onClick={() => change({ ...settings, rotationSeconds: seconds })}>{seconds}</button>)}</div></div>
+    </>}
     <h3>{t('visibleMarkets')}</h3><div className="tv-group-options">{TV_GROUPS.map(group => <button key={group} aria-pressed={settings.groups.includes(group)} onClick={() => {
       const groups = settings.groups.includes(group) ? settings.groups.filter(g => g !== group) : [...settings.groups, group];
       if (groups.length) change({ ...settings, groups });
     }}>{t(group)}</button>)}</div>
-    <p className="tv-muted">{t('alertScope')}</p>
+    {!stripsOnly && <p className="tv-muted">{t('alertScope')}</p>}
   </div>;
 }
 export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLinked: (token: string) => void }) {

@@ -136,6 +136,14 @@ Official platform references: [Samsung engine matrix](https://developer.samsung.
 
 ## Complete listing discovery and exchange strips
 
+`/tv/strips` is a dedicated full-height market-strip page, linked from `/tv` by
+“Strips only”. It keeps a compact toolbar for the dashboard, pairing, settings
+and fullscreen; the remaining viewport belongs to stacked independently scrolling
+market rows. The page retains language, theme and market preferences, always
+shows its strips even if the dashboard ticker is disabled, and avoids dashboard
+snapshot/news requests and automatic group rotation. Offscreen rows still pause
+polling. Packaged TV clients switch to this view in place without leaving the app.
+
 `/world-stocks` now browses the full synchronized US universe alongside the
 checked-in Kuwait, Dubai, Shanghai and Shenzhen directories. All-market browse
 includes US rows, search no longer inherits the 20-result autocomplete limit,
