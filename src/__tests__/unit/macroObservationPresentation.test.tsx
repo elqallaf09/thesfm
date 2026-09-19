@@ -23,6 +23,16 @@ describe('macro evidence display', () => {
     expect(html).toContain(locale === 'ar' ? 'سياق طويل الأجل' : locale === 'fr' ? 'contexte à long terme' : 'long-term context');
     expect((html.match(/<details>/g) ?? [])).toHaveLength(1);
   });
+  it('ignores internal metadata without hiding actual calendar events', () => {
+    const metadata = { ...factor, evidence: [...factor.evidence, { ...factor.evidence[0]!, id: 'method', labelKey: 'intelligence_evidence_macro_methodology', value: 'rules-v1', source: 'local' }] };
+    const html = renderToStaticMarkup(<ContextFactorEvidence factor={metadata} locale="en" />);
+    expect((html.match(/<details>/g) ?? [])).toHaveLength(1);
+    const calendar = { ...metadata, evidence: [...metadata.evidence, { ...factor.evidence[0]!, id: 'event', labelKey: 'intelligence_evidence_macro_event_title', value: 'CPI release', source: 'BLS' }] };
+    const events = renderToStaticMarkup(<ContextFactorEvidence factor={calendar} locale="en" />);
+    expect(events).toContain('Economic events');
+    expect(events).toContain('CPI release');
+    expect((events.match(/<details>/g) ?? [])).toHaveLength(2);
+  });
   it('does not turn an unsafe source into a link', () => {
     const unsafe = { ...factor, evidence: factor.evidence.map(item => item.id === 'macro:source:GDP_ANNUAL' ? { ...item, value: 'javascript:alert(1)' } : item) };
     expect(renderToStaticMarkup(<ContextFactorEvidence factor={unsafe} locale="en" />)).not.toContain('href=');

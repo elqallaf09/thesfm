@@ -16,9 +16,12 @@ export function ContextFactorEvidence({ factor, locale }: { factor: FactorResult
   const failure = factor.failureReason ?? '';
   const labels: Record<string, string> = { sentiment_sample_size: copy.sample, positive_sentiment_percent: copy.positive, negative_sentiment_percent: copy.negative, news_article_count: copy.news, macro_event_count: copy.events, next_macro_event: copy.next, sharia_review_reason: copy.reason };
   const hasObservations = factor.evidence.some(item => item.labelKey.startsWith('intelligence_evidence_macro_observation_'));
-  const hasOtherEvidence = factor.evidence.some(item => !/intelligence_evidence_macro_(observation|previous|country|source_url)/.test(item.labelKey));
+  const hasOtherEvidence = factor.evidence.some(item => {
+    const key = item.labelKey.replace(/^intelligence_evidence_/, '');
+    return Boolean(labels[key]) || ['latest_news_headline', 'macro_event_title'].includes(key);
+  });
   return <>{hasObservations ? <MacroObservationEvidence factor={factor} locale={locale} /> : null}
-    {!hasObservations || hasOtherEvidence ? <details><summary>{copy.details}</summary>
+    {!hasObservations || hasOtherEvidence ? <details><summary>{hasObservations ? ({ ar: 'الأحداث الاقتصادية', en: 'Economic events', fr: 'Événements économiques' })[locale] : copy.details}</summary>
     {factor.availability === 'UNAVAILABLE' ? <p>{factor.factor === 'SHARIA' ? copy.sharia : /access_denied|not_entitled/i.test(failure) ? copy.entitlement : /STALE|UNDATED/i.test(failure) ? copy.stale : copy.unavailable}</p> : null}
     <ul>{factor.evidence.map(item => {
       const key = item.labelKey.replace(/^intelligence_evidence_/, '');
