@@ -14,7 +14,7 @@ test.use({ storageState: userAuthStatePath, trace: 'off', screenshot: 'off', vid
 
 test.describe('real estate market center placement', () => {
   for (const language of ['ar', 'en', 'fr'] as const) {
-    test(`${language}: Global Markets -> Real Estate Market Center`, async ({ page }) => {
+    test(`${language}: Global Markets -> Real Estate Market Center`, async ({ page, isMobile }) => {
       test.skip(!userAuthConfigured, 'Authenticated browser coverage requires the configured isolated Preview fixture.');
       test.setTimeout(60_000);
       await page.addInitScript(lang => { localStorage.setItem('sfm_lang', lang); }, language);
@@ -26,9 +26,15 @@ test.describe('real estate market center placement', () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, 'The property workspace must not introduce horizontal page overflow').toBeLessThanOrEqual(2);
       await expect(page.getByRole('link', { name: copy[language].back, exact: true })).toHaveCount(0);
-      const marketLink = page.locator('a[href="/global-markets"]').first();
+      if (isMobile) {
+        await page.locator('button[aria-controls="sfm-mobile-menu"]').click();
+        await expect(page.locator('#sfm-mobile-menu')).toBeVisible();
+      }
+      const navigation = page.locator(isMobile ? '#sfm-mobile-menu' : 'aside.sfm-shared-sidebar');
+      const marketLink = navigation.locator('a[href="/global-markets"]').first();
+      await expect(marketLink).toBeVisible();
       await expect(marketLink).toHaveAttribute('href', '/global-markets');
-      await page.goto((await marketLink.getAttribute('href'))!);
+      await marketLink.click();
       await expect(page).toHaveURL(/\/global-markets$/);
     });
   }
