@@ -8,7 +8,7 @@ const repoId = 1236791806;
 // Called only after the release checks. Reuse the same immutable deployment on
 // retries; never force a rebuild or modify Production environment variables.
 export async function ensureReleasePreview({ github, context, core, env = process.env,
-  fetchImpl = fetch, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
+  fetchImpl = fetch, configureOnly = false, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const pr = context.payload.pull_request;
   const sha = pr?.head?.sha;
   const branch = pr?.head?.ref;
@@ -36,7 +36,13 @@ export async function ensureReleasePreview({ github, context, core, env = proces
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
     } catch { throw new Error('Vercel request failed; no automatic mutation retry was attempted.'); }
-    if (!response.ok) throw new Error(`Vercel request failed HTTP ${response.status}.`);
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null);
+      const code = /^[a-z][a-z0-9_:-]{0,79}$/.test(failure?.error?.code ?? '') ? failure.error.code : 'unclassified';
+      // Error messages/bodies may echo values. Log only the API code and our
+      // own variable name, never the submitted value or provider message.
+      throw new Error(`Vercel ${body?.key ?? url.pathname} failed HTTP ${response.status} (${code}).`);
+    }
     const data = await response.json().catch(() => null);
     if (!data || data.error || data.failed?.length) throw new Error('Vercel returned an unsuccessful response.');
     return data;
@@ -78,6 +84,7 @@ export async function ensureReleasePreview({ github, context, core, env = proces
     const candidate = candidates.sort((a, b) => b.created - a.created)[0];
     if (!/^dpl_[A-Za-z0-9]+$/.test(candidate.uid ?? candidate.id ?? '')) throw new Error('Invalid deployment identifier.');
     deployment = await request(`/v13/deployments/${candidate.uid ?? candidate.id}`);
+    if (configureOnly) return;
   } else {
     const serviceKey = await resolvePreviewCredentials(env, fetchImpl);
     core.setSecret(serviceKey);
@@ -121,6 +128,10 @@ export async function ensureReleasePreview({ github, context, core, env = proces
       }
     }
     await assertCurrent();
+    if (configureOnly) {
+      core.info('Isolated Preview configuration verified; no deployment was created.');
+      return;
+    }
     deployment = await request('/v13/deployments', {
       name: 'thesfm', project,
       // Omitted target means Preview. Production branch was rejected above.

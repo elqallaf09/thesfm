@@ -6,7 +6,12 @@ The required authenticated Preview check must still run before merging.
 The CI authenticated-preview job now creates a single isolated Preview only after
 typecheck, lint, translations, launch guards, unit tests, the full migration chain,
 production build, browser tests and the Lighthouse advisory have completed.
-It uses the existing protected `Preview` environment and its `VERCEL_TOKEN` and
+An earlier configuration-only preflight runs after code and migration checks to
+report branch-scoped environment errors before the browser suite finishes. It
+never creates a deployment or marks a release successful. Both jobs use the
+same per-PR concurrency group to serialize configuration.
+
+The workflow uses the existing protected `Preview` environment and its `VERCEL_TOKEN` and
 `SUPABASE_ACCESS_TOKEN`; no new secret is committed or exported as an artifact.
 
 - Only same-repository feature branches are eligible; stale PR heads and the

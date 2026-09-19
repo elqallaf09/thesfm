@@ -1,5 +1,6 @@
 const { test } = process.env.VITEST ? await import('vitest') : await import('node:test');
 import assert from 'node:assert/strict';
+import { preflightReleasePreview } from '../preflight-release-preview.mjs';
 import { ensureReleasePreview } from '../ensure-release-preview.mjs';
 
 const sha = 'a'.repeat(40);
@@ -105,4 +106,57 @@ test('does not expose network exceptions or retry a failed API mutation', async 
   const fixture = setup({ fail: true });
   await assert.rejects(ensureReleasePreview(fixture.args), error => !error.message.includes('credential-that-must-not-escape'));
   assert.equal(fixture.calls.length, 1);
+});
+
+
+test('configuration preflight never creates a deployment or reports a release URL', async () => {
+  const fixture = setup();
+  await ensureReleasePreview({ ...fixture.args, configureOnly: true });
+  assert.equal(fixture.calls.filter(([path]) => path.endsWith('/env')).length, 8);
+  assert.ok(!fixture.calls.some(([path]) => path === '/v13/deployments' || path.startsWith('github-')));
+  assert.deepEqual(fixture.outputs, []);
+});
+
+test('HTTP diagnostics expose only the variable name and sanitized API code', async () => {
+  for (const code of ['invalid_request', 'secret value with whitespace']) {
+    const fixture = setup();
+    const original = fixture.args.fetchImpl;
+    fixture.args.fetchImpl = async (url, init) => new URL(url).pathname.endsWith('/env')
+      ? { ok: false, status: 400, json: async () => ({ error: { code, message: jwt('service_role') } }) }
+      : original(url, init);
+    await assert.rejects(ensureReleasePreview(fixture.args), error => {
+      assert.equal(error.message, `Vercel NEXT_PUBLIC_SUPABASE_URL failed HTTP 400 (${code === 'invalid_request' ? code : 'unclassified'}).`);
+      return true;
+    });
+    assert.deepEqual(fixture.outputs, []);
+  }
+});
+
+test('preflight resolves only the exact-SHA Supabase integration and configures without deploying', async () => {
+  const fixture = setup(); let polls = 0;
+  fixture.args.github.rest.checks = { listForRef: async request => {
+    assert.equal(request.ref, sha); polls += 1;
+    return { data: { check_runs: polls === 1 ? [] : [{ name: 'Supabase Preview', app: { slug: 'supabase' },
+      status: 'completed', conclusion: 'success', details_url: `https://supabase.com/dashboard/project/${ref}` }] } };
+  } };
+  await preflightReleasePreview(fixture.args);
+  assert.equal(polls, 2);
+  assert.equal(fixture.calls.filter(([path]) => path.endsWith('/env')).length, 8);
+  assert.ok(!fixture.calls.some(([path]) => path === '/v13/deployments'));
+});
+
+test('preflight rejects untrusted, malformed, ambiguous and Production database checks', async () => {
+  const check = { name: 'Supabase Preview', app: { slug: 'supabase' }, status: 'completed', conclusion: 'success',
+    details_url: `https://supabase.com/dashboard/project/${ref}` };
+  for (const checks of [
+    [{ ...check, app: { slug: 'other-app' } }],
+    [{ ...check, details_url: 'https://attacker.example/project/' + ref }],
+    [check, { ...check, details_url: 'https://supabase.com/dashboard/project/' + 'd'.repeat(20) }],
+    [{ ...check, details_url: 'https://supabase.com/dashboard/project/' + 'c'.repeat(20) }],
+  ]) {
+    const fixture = setup();
+    fixture.args.github.rest.checks = { listForRef: async () => ({ data: { check_runs: checks } }) };
+    await assert.rejects(preflightReleasePreview(fixture.args));
+    assert.equal(fixture.calls.length, 0);
+  }
 });
