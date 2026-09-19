@@ -130,6 +130,7 @@ describe('buildMarketChatSystemPrompt — verified financial-instrument framing'
     expect(prompt).toContain('"dataAsOf":"2026-09-16T18:00:00.000Z"');
     expect(prompt).toContain('"shariaStatus":"compliant"');
     expect(prompt).toMatch(/do not infer missing values/i);
+    expect(prompt).toMatch(/copy it exactly/i);
   });
 
   it('never fabricates instructions permitting invented prices, targets, or confidence values', () => {
