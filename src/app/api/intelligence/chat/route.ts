@@ -100,6 +100,10 @@ async function loadVerifiedMarketSnapshot(input: {
       forceRefresh: false,
     }, input.asset);
 
+    const derivedFields = snapshot.warnings
+      .filter(code => code.startsWith('DERIVED_'))
+      .map(code => code.replace(/^DERIVED_|_FROM_VERIFIED_CANDLES$/g, '').toLowerCase());
+
     return {
       provider: snapshot.provider,
       dataAsOf: snapshot.dataAsOf,
@@ -113,9 +117,11 @@ async function loadVerifiedMarketSnapshot(input: {
       resistance: snapshot.levels.resistance,
       reportedRiskLevel: snapshot.reportedRiskLevel,
       currency: snapshot.asset.quoteCurrency,
-      shariaStatus: snapshot.sharia.status,
+      shariaStatus: snapshot.sharia.status ?? (['STOCK', 'FUND'].includes(input.asset.assetType) ? 'unclassified' : null),
+      shariaReason: snapshot.sharia.reason,
       shariaSource: snapshot.sharia.source,
       shariaReviewedAt: snapshot.sharia.reviewedAt,
+      derivedFields,
     };
   } catch {
     // Chat remains useful with verified identity/general knowledge if live market

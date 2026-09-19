@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildChatTranscript, buildWelcomeMessage, type ChatMessage } from '@/components/ai-analyst/chatTranscript';
+import { buildChatTranscript, buildWelcomeMessage, normalizeAssistantChatText, type ChatMessage } from '@/components/ai-analyst/chatTranscript';
 
 const COPY = {
   welcomeGeneric: 'Hi, ask me anything.',
@@ -46,5 +46,13 @@ describe('buildChatTranscript — exactly one welcome bubble', () => {
     const transcript = buildChatTranscript(real, welcome);
     transcript.push({ role: 'assistant', content: 'mutated' });
     expect(real).toHaveLength(1);
+  });
+});
+
+
+describe('normalizeAssistantChatText — plain chat rendering', () => {
+  it('removes common Markdown markers while preserving the answer text', () => {
+    expect(normalizeAssistantChatText('السعر **1.1489** والتغير **0.16%**')).toBe('السعر 1.1489 والتغير 0.16%');
+    expect(normalizeAssistantChatText('## Summary\nUse `verified data` only.')).toBe('Summary\nUse verified data only.');
   });
 });

@@ -1,3 +1,4 @@
+import { implicitMarketAssetCandidates } from '@/lib/ai-analyst/marketAssetCandidate';
 import { describe, expect, it } from 'vitest';
 import {
   ChatDomainMismatchError,
@@ -84,6 +85,25 @@ describe('implicitMarketAssetCandidate — multilingual verified resolver handof
   });
 });
 
+
+describe('implicitMarketAssetCandidates — natural-language asset extraction', () => {
+  it('extracts the asset from longer explicit analysis requests without trusting the rest of the sentence', () => {
+    expect(implicitMarketAssetCandidates([
+      { role: 'user', content: 'حلل سهم بيتك اليوم باختصار واذكر فقط البيانات الحالية الموثقة.' },
+    ])).toContain('بيتك');
+    expect(implicitMarketAssetCandidates([
+      { role: 'user', content: 'Analyze Apple stock today and mention only verified data.' },
+    ])).toContain('Apple');
+    expect(implicitMarketAssetCandidates([
+      { role: 'user', content: 'شنو رايك في EURUSD؟' },
+    ])).toContain('EURUSD');
+  });
+
+  it('does not collapse a general market question into a guessed asset', () => {
+    expect(implicitMarketAssetCandidates([{ role: 'user', content: 'شنو وضع السوق اليوم؟' }])).toEqual([]);
+  });
+});
+
 describe('buildMarketChatSystemPrompt — verified financial-instrument framing', () => {
   it.each(['ar', 'en', 'fr'] as const)('always states the domain is financial, never a project, in %s', (locale) => {
     const prompt = buildMarketChatSystemPrompt({ domain: 'market', asset: null, requestedUnresolvedSymbol: false, locale });
@@ -115,7 +135,8 @@ describe('buildMarketChatSystemPrompt — verified financial-instrument framing'
     expect(prompt).toContain('"currency":"USD"');
     expect(prompt).toContain('"provider":"finnhub"');
     expect(prompt).toContain('"dataStatus":"LIVE"');
-    expect(prompt).toContain('"dataAsOf":"2026-09-16T18:00:00.000Z"');
+    expect(prompt).toContain('"dataAsOfUtc":"2026-09-16 18:00:00 UTC"');
+    expect(prompt).toMatch(/copy it exactly/i);
     expect(prompt).toContain('"shariaStatus":"compliant"');
     expect(prompt).toMatch(/do not infer missing values/i);
   });
