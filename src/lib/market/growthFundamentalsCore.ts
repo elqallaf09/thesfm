@@ -14,6 +14,7 @@ export type GrowthFundamentals = {
   earningsGrowthPercent: number | null;
   netMarginPercent: number | null;
   freeCashFlow: number | null;
+  freeCashFlowBasis?: 'property_equipment' | 'property_equipment_and_intangibles' | null;
 };
 type Fact = { start?: string; end?: string; filed?: string; val?: number; form?: string; accn?: string };
 type CompanyFacts = { cik?: number | string; facts?: Record<string, Record<string, { units?: Record<string, Fact[]> }>> };
@@ -22,7 +23,7 @@ const tags = {
   revenue: ['RevenueFromContractWithCustomerExcludingAssessedTax', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'Revenues', 'SalesRevenueNet'],
   income: ['NetIncomeLoss', 'ProfitLoss'],
   cash: ['NetCashProvidedByUsedInOperatingActivities'],
-  capex: ['PaymentsToAcquirePropertyPlantAndEquipment'],
+  capex: ['PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsToAcquirePropertyPlantAndEquipmentAndIntangibleAssets'],
 };
 export function emptyGrowthFundamentals(symbol: string, reason: GrowthFundamentals['reason'], now = Date.now()): GrowthFundamentals {
   return { symbol, status: 'unavailable', reason, period: null, previousPeriod: null, filedAt: null,
@@ -52,6 +53,16 @@ function metric(candidates: Row[], anchor: Row) {
   if (!matches.length || new Set(matches.map(row => row.val)).size !== 1) return null;
   return matches[0].val!;
 }
+function preferredMetric(candidates: Row[], anchor: Row, names: string[]) {
+  // NetIncomeLoss is attributable to the parent; ProfitLoss can include non-controlling
+  // interests. They are different concepts, not conflicting copies of one fact.
+  for (const tag of names) {
+    const matches = candidates.filter(row => row.tag === tag && row.start === anchor.start
+      && row.end === anchor.end && row.currency === anchor.currency && row.accn === anchor.accn);
+    if (matches.length) return { value: metric(matches, anchor), tag };
+  }
+  return { value: null, tag: null };
+}
 function growth(current: number | null, previous: number | null) {
   // A loss/zero base is not a meaningful conventional percentage growth rate.
   return current !== null && previous !== null && previous > 0 ? (current / previous - 1) * 100 : null;
@@ -71,18 +82,21 @@ export function parseGrowthCompanyFacts(payload: CompanyFacts, symbol: string, c
     return row.currency === current.currency && endGap >= 330 && endGap <= 380 && Math.abs(endGap - startGap) <= 10;
   }).sort((a, b) => Number(b.accn === current.accn) - Number(a.accn === current.accn) || date(b.filed) - date(a.filed))[0];
   const incomeRows = rows(payload, tags.income, now);
-  const income = metric(incomeRows, current);
+  const selectedIncome = preferredMetric(incomeRows, current, tags.income);
+  const income = selectedIncome.value;
   const cash = metric(rows(payload, tags.cash, now), current);
-  const capex = metric(rows(payload, tags.capex, now), current);
+  const selectedCapex = preferredMetric(rows(payload, tags.capex, now), current, tags.capex);
+  const capex = selectedCapex.value;
   const values = {
     revenueGrowthPercent: growth(revenue, prior ? metric(revenueRows, prior) : null),
-    earningsGrowthPercent: growth(income, prior ? metric(incomeRows, prior) : null),
+    earningsGrowthPercent: growth(income, prior ? metric(incomeRows.filter(row => row.tag === selectedIncome.tag), prior) : null),
     netMarginPercent: income !== null ? income / revenue * 100 : null,
     freeCashFlow: cash !== null && capex !== null && capex >= 0 ? cash - capex : null,
   };
   const count = Object.values(values).filter(value => value !== null && Number.isFinite(value)).length;
   return { ...result, ...values, status: count === 4 ? 'complete' : count ? 'partial' : 'unavailable',
     reason: count ? null : 'annual_data_unavailable', period: current.end!, previousPeriod: prior?.end ?? null,
+    freeCashFlowBasis: values.freeCashFlow === null ? null : selectedCapex.tag === tags.capex[0] ? 'property_equipment' : 'property_equipment_and_intangibles',
     filedAt: current.filed!, currency: current.currency, sourceUrl: `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik.padStart(10, '0')}.json` };
 }
 export function growthMetricCount(data: GrowthFundamentals | null | undefined) {

@@ -12,6 +12,29 @@ function payload() {
   } } };
 }
 describe('reported growth fundamentals', () => {
+  it('distinguishes parent earnings from total profit including minority interests', () => {
+    const data = payload();
+    Object.assign(data.facts['us-gaap'], { ProfitLoss: { units: { USD: [fact(26), fact(21, 2024)] } } });
+    const result = parseGrowthCompanyFacts(data, 'TEST', '1', now);
+    expect(result.netMarginPercent).toBe(20);
+    expect(result.earningsGrowthPercent).toBeCloseTo(20);
+    expect(result.status).toBe('complete');
+  });
+  it('accepts combined capex with an explicit basis, without adding overlapping totals', () => {
+    const data = payload();
+    Object.assign(data.facts['us-gaap'], { PaymentsToAcquirePropertyPlantAndEquipmentAndIntangibleAssets: { units: { USD: [fact(8)] } } });
+    expect(parseGrowthCompanyFacts(data, 'TEST', '1', now)).toMatchObject({ freeCashFlow: 25, freeCashFlowBasis: 'property_equipment' });
+    data.facts['us-gaap'].PaymentsToAcquirePropertyPlantAndEquipment.units.USD = [];
+    expect(parseGrowthCompanyFacts(data, 'TEST', '1', now)).toMatchObject({ freeCashFlow: 22, freeCashFlowBasis: 'property_equipment_and_intangibles' });
+  });
+  it('never switches earnings concepts between years or ignores a same-tag conflict', () => {
+    const data = payload();
+    data.facts['us-gaap'].NetIncomeLoss.units.USD = [fact(24)];
+    Object.assign(data.facts['us-gaap'], { ProfitLoss: { units: { USD: [fact(26), fact(21, 2024)] } } });
+    expect(parseGrowthCompanyFacts(data, 'TEST', '1', now).earningsGrowthPercent).toBeNull();
+    data.facts['us-gaap'].NetIncomeLoss.units.USD.push(fact(99));
+    expect(parseGrowthCompanyFacts(data, 'TEST', '1', now).netMarginPercent).toBeNull();
+  });
   it('calculates comparable annual growth, margin and cash flow from the same filing/currency', () => {
     const result = parseGrowthCompanyFacts(payload(), 'TEST', '0000000001', now);
     expect(result).toMatchObject({ status: 'complete', period: '2025-12-31', previousPeriod: '2024-12-31', freeCashFlow: 25, netMarginPercent: 20, currency: 'USD' });
