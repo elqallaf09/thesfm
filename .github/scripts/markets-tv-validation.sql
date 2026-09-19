@@ -14,6 +14,12 @@ set local role service_role;
 do $$
 declare device_id uuid; affected integer; rejected boolean := false;
 begin
+  -- Compile/execute the actual owner-filtered column projections as the API
+  -- role. Testing device-table permissions alone misses source read failures.
+  perform symbol from public.market_watchlist
+    where user_id='11111111-1111-4111-8111-111111111111' order by created_at desc limit 50;
+  perform id,symbol,alert_type,threshold,currency,status from public.market_price_alerts
+    where user_id='11111111-1111-4111-8111-111111111111' and status in ('saved','active') limit 50;
   device_id := public.create_markets_tv_pair('CI TV', repeat('a',64), repeat('b',64), repeat('c',64));
   update public.markets_tv_devices set user_id='11111111-1111-4111-8111-111111111111', state='approved', code_hash=null
     where id=device_id and code_hash=repeat('b',64) and state='pending' and user_id is null and expires_at>now();

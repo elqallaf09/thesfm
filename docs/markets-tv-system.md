@@ -89,7 +89,9 @@ accounts, signing keys and store approvals are not provided by this repository.
 ## Database and deployment
 
 `20260919064721_markets_tv_devices.sql` is additive. It creates the device table,
-indexes and service-only pairing RPC. Apply it through the established release
+indexes and service-only pairing RPC. `20260919085912_markets_tv_source_read_access.sql`
+grants the server role SELECT on only the watchlist/alert columns the TV uses;
+owner filters remain mandatory and client RLS/grants are unchanged. Apply both through the established release
 migration process after the full clean-chain gate passes. Do not reset or replay
 Production to resolve unrelated historical migration drift. Both the existing
 public Supabase settings and `SUPABASE_SERVICE_ROLE_KEY` are needed by the server;
