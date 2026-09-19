@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createMarketFeatureDiagnostic } from '@/lib/market/featureDiagnostics';
-import { addUtcDays, formatIsoDate, validIsoDate, type ProviderApiResponse } from '@/lib/providers/shared';
+import { addUtcDays, formatIsoDate, validIsoDate } from '@/lib/providers/shared';
 import { getEconomicCalendar } from '@/lib/providers/economic-calendar';
-import type { EconomicCalendarEvent, EconomicCalendarQuery } from '@/lib/providers/economic-calendar/types';
+import type { EconomicCalendarEvent, EconomicCalendarQuery, EconomicCalendarResponse } from '@/lib/providers/economic-calendar/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,8 @@ function safeCode(messageCode: string | null, fallback: string) {
   return (messageCode || fallback).toUpperCase().replace(/[^A-Z0-9_]+/g, '_');
 }
 
-function providerDisplayName(provider: ProviderApiResponse<EconomicCalendarEvent[]>['provider']) {
+function providerDisplayName(provider: EconomicCalendarResponse['provider']) {
+  if (provider === 'sfm') return 'THE SFM';
   if (provider === 'finnhub') return 'Finnhub';
   if (provider === 'tradingeconomics') return 'Trading Economics';
   if (provider === 'fmp') return 'Financial Modeling Prep';
@@ -29,7 +30,7 @@ function parseDateRange(searchParams: URLSearchParams) {
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const defaultFrom = formatIsoDate(today);
-  const defaultTo = formatIsoDate(addUtcDays(today, 7));
+  const defaultTo = formatIsoDate(addUtcDays(today, 30));
   const from = searchParams.get('from')?.trim() || defaultFrom;
   const to = searchParams.get('to')?.trim() || defaultTo;
 
@@ -100,8 +101,9 @@ function toUiEvent(event: EconomicCalendarEvent) {
 }
 
 function jsonResponse(
-  result: ProviderApiResponse<EconomicCalendarEvent[]>,
+  result: EconomicCalendarResponse,
   status = 200,
+  force = false,
 ) {
   const items = result.data.map(toUiEvent);
   const code = result.status === 'success'
@@ -110,7 +112,7 @@ function jsonResponse(
   const diagnostic = createMarketFeatureDiagnostic({
     feature: 'economic_calendar',
     provider: providerDisplayName(result.provider) ?? result.provider,
-    providerStatus: result.status,
+    providerStatus: result.partial && result.data.length ? 'partial' : result.status,
     data: items,
     lastUpdated: result.lastSuccessfulUpdate,
   });
@@ -118,6 +120,10 @@ function jsonResponse(
   return NextResponse.json({
     ...diagnostic,
     providerId: result.provider,
+    sources: result.sources ?? [],
+    checkedAt: result.checkedAt,
+    lastCheckedAt: result.checkedAt,
+    partial: result.partial,
     data: items,
     items,
     events: items,
@@ -133,7 +139,7 @@ function jsonResponse(
     legacyStatus: result.status,
   }, {
     status,
-    headers: result.status === 'success' ? SUCCESS_HEADERS : ERROR_HEADERS,
+    headers: !force && result.status === 'success' && !result.stale ? SUCCESS_HEADERS : ERROR_HEADERS,
   });
 }
 
@@ -176,5 +182,5 @@ export async function GET(request: NextRequest) {
   };
 
   const result = await getEconomicCalendar(query);
-  return jsonResponse(result);
+  return jsonResponse(result, 200, Boolean(query.force));
 }

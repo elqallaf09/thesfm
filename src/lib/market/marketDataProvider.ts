@@ -677,7 +677,7 @@ function analysisFromProviderQuote(input: {
     exchange,
     country: typeof input.country === 'string' ? input.country : undefined,
     market: market ?? undefined,
-    lastUpdated: quote.lastUpdated ?? new Date().toISOString(),
+    lastUpdated: quote.lastUpdated ?? '',
     latestPrice,
     changePercent,
     quote: {
@@ -685,7 +685,7 @@ function analysisFromProviderQuote(input: {
       change,
       changePercent,
       currency: quote.currency,
-      timestamp: quote.lastUpdated ?? new Date().toISOString(),
+      timestamp: quote.lastUpdated ?? '',
     },
     fundamentals: undefined,
     fundamentalsAvailable: false,
@@ -769,10 +769,10 @@ async function analyzeWithYahooFallback(input: {
   exchange?: unknown;
   country?: unknown;
   providerCurrency?: unknown;
-  providerCode: string;
+  providerCode: string; forceFresh?: boolean;
   providerFromCache?: boolean;
 }): Promise<(MarketAnalysis & { displaySymbol?: string; marketDataService?: ProxyState }) | null> {
-  const yahoo = await fetchYahooHistory(input.providerSymbol, input.assetType, '1y', '1d');
+  const yahoo = await fetchYahooHistory(input.providerSymbol, input.assetType, '1y', '1d', input.forceFresh);
   if (!yahoo.success || yahoo.history.length === 0) return null;
 
   const closes = yahoo.history
@@ -894,7 +894,7 @@ function analysisFromYahooQuote(input: {
   exchange?: unknown;
   country?: unknown;
   providerCurrency?: unknown;
-  providerCode: string;
+  providerCode: string; forceFresh?: boolean;
 }): (MarketAnalysis & { displaySymbol?: string; marketDataService?: ProxyState }) | null {
   const { quote, displaySymbol, providerSymbol, assetType } = input;
   if (!quote.available || quote.price === null || !Number.isFinite(quote.price) || quote.price <= 0) return null;
@@ -1009,12 +1009,12 @@ async function analyzeWithYahooQuoteFallback(input: {
   exchange?: unknown;
   country?: unknown;
   providerCurrency?: unknown;
-  providerCode: string;
+  providerCode: string; forceFresh?: boolean;
 }) {
   const quote = await fetchYahooNormalizedQuote({
     requestedSymbol: input.displaySymbol,
     symbols: yahooQuoteSymbols(input.providerSymbol, input.displaySymbol, input.assetType),
-    name: input.friendlyName || input.displaySymbol,
+    name: input.friendlyName || input.displaySymbol, forceFresh: input.forceFresh,
     debugContext: {
       route: '/api/market/analyze',
       fallback: 'legacy_to_yahoo_quote',
@@ -1037,7 +1037,7 @@ export async function proxyHealth() {
 export async function proxyAnalyze(
   symbolInput: unknown,
   assetTypeInput: unknown,
-  metaInput?: { displaySymbol?: unknown; name?: unknown; exchange?: unknown; country?: unknown; currency?: unknown },
+  metaInput?: { displaySymbol?: unknown; name?: unknown; exchange?: unknown; country?: unknown; currency?: unknown; forceFresh?: boolean },
 ): Promise<MarketResult & { displaySymbol?: string; source?: string; fallback?: boolean; marketDataService?: ProxyState }> {
   const normalizedSymbol = normalizeMarketSymbolInput(symbolInput, assetTypeInput);
   if (!normalizedSymbol.valid) {
@@ -1056,7 +1056,7 @@ export async function proxyAnalyze(
     friendlyName,
     exchange: metaInput?.exchange,
     country: metaInput?.country,
-    providerCurrency: metaInput?.currency,
+    providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
   });
   if (providerPrimary) {
     return {
@@ -1073,7 +1073,7 @@ export async function proxyAnalyze(
     friendlyName,
     exchange: metaInput?.exchange,
     country: metaInput?.country,
-    providerCurrency: metaInput?.currency,
+    providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
     providerCode: 'yahoo_primary',
     providerFromCache: false,
   });
@@ -1092,7 +1092,7 @@ export async function proxyAnalyze(
     friendlyName,
     exchange: metaInput?.exchange,
     country: metaInput?.country,
-    providerCurrency: metaInput?.currency,
+    providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
     providerCode: 'yahoo_quote_primary',
   });
   if (yahooQuotePrimary) {
@@ -1104,7 +1104,7 @@ export async function proxyAnalyze(
   }
 
   const params = new URLSearchParams({ symbol: providerSymbol, assetType });
-  const result = await fetchRemoteMarketProvider('/market/analyze', params, { timeoutMs: MARKET_DATA_TIMEOUT_MS });
+  const result = await fetchRemoteMarketProvider('/market/analyze', params, { timeoutMs: MARKET_DATA_TIMEOUT_MS, ...(metaInput?.forceFresh ? { cacheTtlMs: 0 } : {}) });
   const startedLog = {
     requestedSymbol: String(symbolInput ?? ''),
     normalizedSymbol: providerSymbol,
@@ -1130,7 +1130,7 @@ export async function proxyAnalyze(
         friendlyName,
         exchange: metaInput?.exchange,
         country: metaInput?.country,
-        providerCurrency: metaInput?.currency,
+        providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
         providerCode: code,
         providerFromCache: result.fromCache,
       });
@@ -1143,7 +1143,7 @@ export async function proxyAnalyze(
         friendlyName,
         exchange: metaInput?.exchange,
         country: metaInput?.country,
-        providerCurrency: metaInput?.currency,
+        providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
         providerCode: code,
       });
       if (yahooQuoteFallback) return yahooQuoteFallback;
@@ -1182,7 +1182,7 @@ export async function proxyAnalyze(
     friendlyName,
     exchange: metaInput?.exchange,
     country: metaInput?.country,
-    providerCurrency: metaInput?.currency,
+    providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
     providerCode: code,
     providerFromCache: result.configured && result.available ? result.fromCache : false,
   });
@@ -1195,7 +1195,7 @@ export async function proxyAnalyze(
     friendlyName,
     exchange: metaInput?.exchange,
     country: metaInput?.country,
-    providerCurrency: metaInput?.currency,
+    providerCurrency: metaInput?.currency, forceFresh: metaInput?.forceFresh,
     providerCode: code,
   });
   if (yahooQuoteFallback) return yahooQuoteFallback;
@@ -1207,7 +1207,7 @@ export async function proxyAnalyze(
   });
 }
 
-export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown, periodInput: unknown, intervalInput?: unknown) {
+export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown, periodInput: unknown, intervalInput?: unknown, forceFresh = false) {
   const symbol = normalizeProviderSymbol(symbolInput);
   if (!symbol) return { success: false, code: 'invalid_symbol', error: errorMessageForCode('invalid_symbol') };
 
@@ -1215,7 +1215,7 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const period = String(periodInput ?? '6m');
   const interval = String(intervalInput ?? '').trim();
   const providerHistory = await getCandlesWithFallback(symbol, undefined, interval || '1day', {
-    symbol, historyPeriod: period,
+    symbol, historyPeriod: period, forceFresh,
     assetType,
   });
   if (providerHistory.ok && providerHistory.data.length > 0) {
@@ -1244,7 +1244,7 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
     };
   }
 
-  const yahoo = await fetchYahooHistory(symbol, assetType, period, interval || undefined);
+  const yahoo = await fetchYahooHistory(symbol, assetType, period, interval || undefined, forceFresh);
   if (yahoo.success && yahoo.history.length > 0) {
     return {
       ...yahoo,
@@ -1255,7 +1255,7 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
 
   const params = new URLSearchParams({ symbol, assetType, period });
   if (interval) params.set('interval', interval);
-  const result = await fetchRemoteMarketProvider('/market/history', params, { timeoutMs: MARKET_DATA_TIMEOUT_MS });
+  const result = await fetchRemoteMarketProvider('/market/history', params, { timeoutMs: MARKET_DATA_TIMEOUT_MS, ...(forceFresh ? { cacheTtlMs: 0 } : {}) });
   const remoteProviderHistory = Array.isArray(result.configured && result.available ? result.data?.history : null)
     ? result.configured && result.available ? result.data.history : []
     : [];

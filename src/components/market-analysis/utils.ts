@@ -380,7 +380,7 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
   try {
     const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
     const payload = await response.json().catch(() => ({})) as {
-      items?: T[];
+      items?: T[]; sources?: ApiListState<T>['calendarSources'];
       events?: T[];
       data?: T[];
       message?: string;
@@ -461,7 +461,7 @@ export async function fetchMarketToolState<T>(url: string, label = url): Promise
         ?? (sourceAvailable && items.length > 0 ? payload.updatedAt : null),
       lastCheckedAt: payload.lastCheckedAt ?? payload.checkedAt ?? payload.generatedAt ?? undefined,
       checkedAt: payload.checkedAt ?? payload.lastCheckedAt ?? payload.generatedAt ?? undefined,
-      providerMessage: payload.providerMessage,
+      providerMessage: payload.providerMessage, calendarSources: Array.isArray(payload.sources) ? payload.sources : undefined,
       buyPercent: payload.buyPercent,
       sellPercent: payload.sellPercent,
       sentimentLabel: payload.sentimentLabel,

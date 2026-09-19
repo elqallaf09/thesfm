@@ -1,4 +1,5 @@
 import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
+import { getEconomicCalendarHealth } from '@/lib/providers/economic-calendar';
 import { getOperationsCenterState } from '@/lib/admin/opsCenter/aggregateOperationsCenter';
 
 export const runtime = 'nodejs';
@@ -10,7 +11,8 @@ export const GET = createAdminApiRoute({
 }, async ({ request, json }) => {
   const url = new URL(request.url);
   const forceFresh = url.searchParams.get('forceFresh') === '1';
-  const state = await getOperationsCenterState({ forceFresh });
+  const [state, calendarHealth] = await Promise.all([getOperationsCenterState({ forceFresh }), getEconomicCalendarHealth()]);
+  state.calendarHealth = calendarHealth;
 
   return json({ ok: true, generatedAt: state.generatedAt, state });
 });

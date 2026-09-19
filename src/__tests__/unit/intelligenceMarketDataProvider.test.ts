@@ -107,12 +107,12 @@ describe('ExistingMarketDataIntelligenceProvider', () => {
 
     const snapshot = await new ExistingMarketDataIntelligenceProvider().getSnapshot(request, asset);
 
-    expect(proxyHistoryMock).toHaveBeenCalledWith('BOUBYAN.KW', 'stock', '1y', '1d');
+    expect(proxyHistoryMock).toHaveBeenCalledWith('BOUBYAN.KW', 'stock', '1y', '1d', false);
     expect(contextEvidenceMock).toHaveBeenCalledWith(request, asset);
     expect(snapshot.candles).toHaveLength(60);
     expect(snapshot.candles.at(-1)?.close).toBeCloseTo(0.669);
     expect(snapshot.candles.at(-1)?.high).toBeCloseTo(0.673);
-    expect(snapshot.dataAsOf).toBe('2026-09-15T06:00:00.000Z');
+    expect(snapshot.dataAsOf).toBe('2026-09-14T00:00:00.000Z');
     expect(snapshot.quote.price).toBe(0.665);
     expect(snapshot.dataStatus).toBe('DELAYED');
     expect(snapshot.fallbackUsed).toBe(true);
