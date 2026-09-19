@@ -25,13 +25,13 @@ export async function ensureReleasePreview({ github, context, core, env = proces
   }
   if (!env.VERCEL_TOKEN?.trim()) throw new Error('VERCEL_TOKEN is required in the protected Preview environment.');
 
-  const request = async (path, body) => {
+  const request = async (path, body, method = body ? 'POST' : 'GET') => {
     const url = new URL(path, 'https://api.vercel.com');
     url.searchParams.set('teamId', team);
     let response;
     try {
       response = await fetchImpl(url, {
-        method: body ? 'POST' : 'GET', redirect: 'error', signal: AbortSignal.timeout(30_000),
+        method, redirect: 'error', signal: AbortSignal.timeout(30_000),
         headers: { Authorization: `Bearer ${env.VERCEL_TOKEN}`, 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
@@ -118,12 +118,26 @@ export async function ensureReleasePreview({ github, context, core, env = proces
       TRADER_NATIVE_EDUCATION_ENABLED: 'true',
     };
     await assertCurrent();
+    const existingEnv = await request(`/v9/projects/${project}/env?gitBranch=${encodeURIComponent(branch)}&decrypt=false`);
+    if (!Array.isArray(existingEnv.envs)) throw new Error('Invalid branch environment lookup.');
     for (const [key, value] of Object.entries(variables)) {
-      const result = await request(`/v10/projects/${project}/env?upsert=true`, {
-        key, value, type: key.includes('SERVICE_ROLE') ? 'sensitive' : 'plain', target: ['preview'], gitBranch: branch,
-      });
-      if (result.created?.key !== key || result.created?.gitBranch !== branch
-        || result.created?.target?.length !== 1 || result.created.target[0] !== 'preview') {
+      const matches = existingEnv.envs.filter(item => item.key === key && item.gitBranch === branch);
+      if (matches.length > 1) throw new Error(`Ambiguous branch configuration for ${key}.`);
+      const current = matches[0];
+      if (current && (current.target?.length !== 1 || current.target[0] !== 'preview'
+        || current.customEnvironmentIds?.length || current.configurationId || current.type === 'system'
+        || !/^[A-Za-z0-9_-]+$/.test(current.id ?? ''))) {
+        throw new Error(`Branch variable ${key} has shared or integration-managed scope; manual configuration review required.`);
+      }
+      const body = { key, value, type: key.includes('SERVICE_ROLE') ? 'sensitive' : 'plain', target: ['preview'], gitBranch: branch };
+      // Update a verified branch-only record by ID. Never delete variables or
+      // edit a global/shared record to resolve a name conflict.
+      const response = current
+        ? await request(`/v9/projects/${project}/env/${current.id}`, body, 'PATCH')
+        : await request(`/v10/projects/${project}/env`, body);
+      const result = current ? response : response.created;
+      if (result?.key !== key || result.gitBranch !== branch
+        || result.target?.length !== 1 || result.target[0] !== 'preview') {
         throw new Error('Environment update did not confirm the isolated branch scope.');
       }
     }

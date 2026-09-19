@@ -36,6 +36,7 @@ function setup({ existing = false, transform = value => value, stale = false, be
     if (fail) throw new Error('credential-that-must-not-escape');
     let data;
     if (url.hostname === 'api.supabase.com') data = ['anon', 'service_role'].map(role => ({ name: role, type: 'legacy', api_key: jwt(role) }));
+    else if (url.pathname.endsWith('/env') && init.method === 'GET') data = { envs: [] };
     else if (url.pathname.startsWith('/v9/projects/')) data = { id: project, link: { productionBranch: 'main' } };
     else if (url.pathname === '/v6/deployments') data = { deployments: existing ? [{ uid: ready.id, meta, target: null }] : [] };
     else if (url.pathname.endsWith('/env')) data = { created: body };
@@ -48,7 +49,7 @@ function setup({ existing = false, transform = value => value, stale = false, be
 test('creates one pinned Preview with branch-only configuration and no production deployment', async () => {
   const fixture = setup();
   assert.equal(await ensureReleasePreview(fixture.args), 'https://isolated-test.vercel.app');
-  const variables = fixture.calls.filter(([path]) => path.endsWith('/env')).map(([, body]) => body);
+  const variables = fixture.calls.filter(([path, body]) => path.endsWith('/env') && body).map(([, body]) => body);
   assert.equal(variables.length, 8);
   for (const item of variables) {
     assert.deepEqual(item.target, ['preview']); assert.equal(item.gitBranch, 'feat/test');
@@ -112,7 +113,7 @@ test('does not expose network exceptions or retry a failed API mutation', async 
 test('configuration preflight never creates a deployment or reports a release URL', async () => {
   const fixture = setup();
   await ensureReleasePreview({ ...fixture.args, configureOnly: true });
-  assert.equal(fixture.calls.filter(([path]) => path.endsWith('/env')).length, 8);
+  assert.equal(fixture.calls.filter(([path, body]) => path.endsWith('/env') && body).length, 8);
   assert.ok(!fixture.calls.some(([path]) => path === '/v13/deployments' || path.startsWith('github-')));
   assert.deepEqual(fixture.outputs, []);
 });
@@ -121,7 +122,7 @@ test('HTTP diagnostics expose only the variable name and sanitized API code', as
   for (const code of ['invalid_request', 'ENV_CONFLICT', 'secret value with whitespace']) {
     const fixture = setup();
     const original = fixture.args.fetchImpl;
-    fixture.args.fetchImpl = async (url, init) => new URL(url).pathname.endsWith('/env')
+    fixture.args.fetchImpl = async (url, init) => init.method === 'POST' && new URL(url).pathname.endsWith('/env')
       ? { ok: false, status: 400, json: async () => ({ error: { code, message: jwt('service_role') } }) }
       : original(url, init);
     await assert.rejects(ensureReleasePreview(fixture.args), error => {
@@ -141,7 +142,7 @@ test('preflight resolves only the exact-SHA Supabase integration and configures 
   } };
   await preflightReleasePreview(fixture.args);
   assert.equal(polls, 2);
-  assert.equal(fixture.calls.filter(([path]) => path.endsWith('/env')).length, 8);
+  assert.equal(fixture.calls.filter(([path, body]) => path.endsWith('/env') && body).length, 8);
   assert.ok(!fixture.calls.some(([path]) => path === '/v13/deployments'));
 });
 
@@ -158,5 +159,22 @@ test('preflight rejects untrusted, malformed, ambiguous and Production database 
     fixture.args.github.rest.checks = { listForRef: async () => ({ data: { check_runs: checks } }) };
     await assert.rejects(preflightReleasePreview(fixture.args));
     assert.equal(fixture.calls.length, 0);
+  }
+});
+
+
+test('updates only an existing branch-only variable by ID and rejects shared or managed scope', async () => {
+  for (const unsafe of [null, { target: ['preview', 'production'] }, { configurationId: 'integration' }, { customEnvironmentIds: ['custom'] }]) {
+    const fixture = setup(); const original = fixture.args.fetchImpl; const writes = [];
+    fixture.args.fetchImpl = async (url, init) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [{
+        key: 'NEXT_PUBLIC_SUPABASE_URL', id: 'env_test', gitBranch: 'feat/test', target: ['preview'], type: 'plain', ...unsafe,
+      }] }) };
+      if (init.method === 'PATCH') { writes.push(path); return { ok: true, json: async () => JSON.parse(init.body) }; }
+      return original(url, init);
+    };
+    if (unsafe) { await assert.rejects(ensureReleasePreview(fixture.args), /scope/); assert.deepEqual(writes, []); }
+    else { await ensureReleasePreview({ ...fixture.args, configureOnly: true }); assert.deepEqual(writes, [`/v9/projects/${project}/env/env_test`]); }
   }
 });
