@@ -76,6 +76,7 @@ export function PriceHistoryChart({
   };
 
   const numberOrNull = (value: unknown) => {
+    if (value === null || value === undefined || typeof value === 'boolean' || (typeof value === 'string' && !value.trim())) return null;
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
   };
@@ -244,6 +245,7 @@ export function PriceHistoryChart({
             <strong dir="ltr">{chartMoney(last?.close ?? 0)}</strong>
           </div>
           <svg
+            direction="ltr"
             viewBox={`0 0 ${width} ${height}`}
             role="img"
             aria-label={t('market_price_chart')}
@@ -307,7 +309,7 @@ export function PriceHistoryChart({
                 {chartType === 'area' && areaPath ? <path d={areaPath} className="price-chart-area-path" fill={`url(#${areaGradientId})`} /> : null}
                 {(chartType === 'line' || chartType === 'area') ? (
                   <>
-                    <path d={path} className="price-chart-line-path" stroke={`url(#${lineGradientId})`} />
+                    <path d={path} className="price-chart-line-path" fill="none" strokeWidth="2.6" stroke={`url(#${lineGradientId})`} />
                     {last ? <circle cx={xFor(activePoints.length - 1)} cy={yFor(last.close)} r="4.2" className="price-chart-last-dot" /> : null}
                   </>
                 ) : null}
@@ -373,6 +375,8 @@ export function PriceHistoryChart({
                 width={chartRight - chartLeft}
                 height={chartBottom - chartTop}
                 className="price-chart-hit-zone"
+                fill="transparent"
+                pointerEvents="all"
                 onMouseMove={handlePointerMove}
                 onMouseLeave={clearHover}
               />

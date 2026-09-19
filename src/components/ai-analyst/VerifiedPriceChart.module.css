@@ -1,0 +1,16 @@
+.chart { min-inline-size: 0; inline-size: 100%; }
+.chart :global(.price-history-chart) {
+  position: relative;
+  display: grid;
+  min-inline-size: 0;
+  inline-size: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.chart :global(.price-history-chart > svg) { display: block; inline-size: 100%; max-inline-size: 100%; }
+.chart :global(.price-chart-values), .chart :global(.price-chart-axis) {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+}
+.chart :global(.price-chart-values strong) { font-family: var(--font-data); }
+.chart :global(.price-chart-axis) { direction: ltr; color: var(--foreground-muted); font-size: .75rem; }

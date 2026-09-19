@@ -154,7 +154,7 @@ type IntelligencePanelProps = {
   showStatus?: boolean;
 };
 
-export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, emptyMessage }: Omit<IntelligencePanelProps, 'showStatus'>) {
+export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, emptyMessage, compact = false }: Omit<IntelligencePanelProps, 'showStatus'> & { compact?: boolean }) {
   const { lang, dir } = useLanguage();
   const locale = localeOf(lang);
   const copy = COPY[locale];
@@ -191,16 +191,17 @@ export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, e
   if (!result.providerProvenance.selectedProvider) entries.push({ key: 'provider', tone: 'warning', text: copy.providerUnavailable });
   if (result.persistenceStatus === 'FAILED') entries.push({ key: 'persistence', tone: 'warning', text: copy.persistenceFailed });
   result.factors
-    .filter(factor => factor.availability === 'UNAVAILABLE')
+    .filter(factor => !compact && factor.availability === 'UNAVAILABLE')
     .forEach(factor => entries.push({
       key: `factor-${factor.factor}`,
       tone: 'info',
       text: `${FACTORS[locale][factor.factor]}: ${statusCopy.factorUnavailable}`,
     }));
 
+  if (compact && !entries.length) return null;
   return (
-    <section className={`${styles.panel} ${styles.unifiedStatus}`} dir={dir} aria-labelledby="intelligence-status-title" data-testid="intelligence-status-panel">
-      <header className={styles.statusHeader}>
+    <section className={`${styles.panel} ${styles.unifiedStatus}`} dir={dir} aria-labelledby={compact ? undefined : "intelligence-status-title"} data-testid="intelligence-status-panel">
+      {!compact ? <header className={styles.statusHeader}>
         <div>
           <span id="intelligence-status-title"><Database size={16} aria-hidden="true" />{statusCopy.title}</span>
           <small>{entries.length ? copy.subtitle : statusCopy.available}</small>
@@ -209,7 +210,7 @@ export function IntelligenceStatusPanel({ result, loading, errorCode, onRetry, e
           {entries.length ? <AlertTriangle aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
           {entries.length ? copy.partial : statusCopy.available}
         </span>
-      </header>
+      </header> : null}
       {entries.length ? (
         <ul className={styles.statusList}>
           {entries.map(entry => <li className={entry.tone === 'warning' ? styles.warning : styles.info} key={entry.key}>{entry.text}</li>)}

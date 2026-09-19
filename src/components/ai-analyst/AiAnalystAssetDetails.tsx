@@ -60,13 +60,13 @@ export function AiAnalystAssetDetails({ symbol, assetType, embedded = false }: {
   ] : [];
   return (
     <div className={styles.grid} data-testid="ai-analyst-asset-details">
-      <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="asset-details-title">
-        <header className={styles.cardHeader}><div><h2 id="asset-details-title">{copy.title}</h2><p>{copy.body}</p></div></header>
+      {(!embedded || !asset) ? <section className={`${styles.card} ${styles.spanFull}`} aria-label={embedded ? copy.title : undefined} aria-labelledby={embedded ? undefined : "asset-details-title"}>
+        {!embedded ? <header className={styles.cardHeader}><div><h2 id="asset-details-title">{copy.title}</h2><p>{copy.body}</p></div></header> : null}
         {!embedded ? <AiAnalystAssetPicker key={`${symbol}:${assetType}`} initialSymbol={symbol} initialAssetType={assetType} destination="details" submitLabel={copy.select} compact /> : null}
         {!symbol ? <p className={styles.mutedText}>{copy.empty}</p> : null}
         {loading ? <p className={styles.statusRail} role="status">{copy.loading}</p> : null}
         {failed ? <div className={styles.statusRail} role="alert">{copy.error}<button className={styles.linkAction} onClick={() => setRevision(value => value + 1)}>{copy.retry}</button></div> : null}
-      </section>
+      </section> : null}
       {asset ? <section className={`${styles.card} ${styles.spanFull}`} aria-label={asset.name}>
         <h2 className={styles.panelTitle}>{asset.name}</h2>
         <dl className={detailStyles.facts}>{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
