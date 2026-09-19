@@ -1,5 +1,7 @@
 import 'server-only';
+import { normalizePropertyLocation } from '../propertyLocation';
 import type { ValuationEvidence } from './contracts';
+import { qualifiedTransactionEvidence } from './transactionEvidence';
 import type { RealEstateAssetInput } from './real-estate';
 import { collectRealEstateEvidence } from './sources';
 import { getRealEstateSourceAdapters } from './source-registry';
@@ -19,6 +21,9 @@ export interface RealEstateAnalystResult {
   evidenceCount: number;
   message: string;
   officialContext?: OfficialPropertyContext;
+  requestedCurrency?: string;
+  nativeCurrencyFallback?: boolean;
+  qualifiedEvidenceCount?: number;
 }
 
 async function collectOfficialContext(asset: RealEstateAssetInput): Promise<OfficialPropertyContext | undefined> {
@@ -38,8 +43,12 @@ async function collectOfficialContext(asset: RealEstateAssetInput): Promise<Offi
 }
 
 export async function analyzeRealEstateAsset(asset: RealEstateAssetInput, outputCurrency: string, fxQuotes: FxQuote[] = [], purpose: 'valuation' | 'market_context' = 'valuation'): Promise<RealEstateAnalystResult> {
-  const adapters = purpose === 'market_context' ? [] : getRealEstateSourceAdapters(asset.countryCode);
-  const officialContext = await collectOfficialContext(asset);
+  asset = normalizePropertyLocation(asset);
+  const adapters = purpose === 'market_context' ? [] : getRealEstateSourceAdapters(asset.countryCode).filter(adapter => !adapter.supportsAsset || adapter.supportsAsset(asset));
+  const [officialContext, collected] = await Promise.all([
+    collectOfficialContext(asset),
+    adapters.length ? collectRealEstateEvidence(asset, adapters) : Promise.resolve({ evidence: [] as ValuationEvidence[], failures: [] as Array<{ adapterId: string; reason: string }> }),
+  ]);
   const contextFailures = officialContext?.status === 'UNAVAILABLE'
     ? [{ adapterId: officialContext.providerId, reason: 'Official public source could not be verified. No fallback prices were supplied.' }] : [];
   if (adapters.length === 0) {
@@ -50,12 +59,21 @@ export async function analyzeRealEstateAsset(asset: RealEstateAssetInput, output
       ...(officialContext ? { officialContext } : {}),
     };
   }
-  const collected = await collectRealEstateEvidence(asset, adapters);
   // Context rows must NEVER pass to the valuation engine or snapshot persistence.
-  const valuation = buildRealEstateValuationRange(asset, collected.evidence, outputCurrency, fxQuotes);
+  let valuation = buildRealEstateValuationRange(asset, collected.evidence, outputCurrency, fxQuotes);
+  const qualified = qualifiedTransactionEvidence(collected.evidence);
+  // A display-currency preference must not suppress a valid native-currency estimate.
+  // Never mix currencies or guess an exchange rate; label the fallback explicitly.
+  const currencies = [...new Set(qualified.map(item => item.currency!))];
+  let nativeCurrencyFallback = false;
+  if (valuation.status !== 'VALUED' && currencies.length === 1 && currencies[0] !== outputCurrency) {
+    const native = buildRealEstateValuationRange(asset, collected.evidence, currencies[0]);
+    if (native.status === 'VALUED') { valuation = native; nativeCurrencyFallback = true; }
+  }
   return {
     status: valuation.status, valuation, evidence: collected.evidence,
     sourceFailures: [...contextFailures, ...collected.failures], evidenceCount: collected.evidence.length,
+    requestedCurrency: outputCurrency, nativeCurrencyFallback, qualifiedEvidenceCount: valuation.evidenceIds.length,
     message: valuation.status === 'VALUED' ? 'Valuation range is backed by the listed evidence and methodology version.' : 'Available evidence is not sufficient for a defensible current valuation.',
     ...(officialContext ? { officialContext } : {}),
   };

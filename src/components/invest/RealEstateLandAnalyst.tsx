@@ -8,8 +8,13 @@ import { useCurrency } from '@/lib/useCurrency';
 import { assessRealEstateReadiness } from '@/lib/investments/intelligence/readiness';
 import type { RealEstateAssetInput } from '@/lib/investments/intelligence/real-estate';
 import type { RealEstateAnalystResult } from '@/lib/investments/intelligence/analyst';
+import { CurrencySelect } from '@/components/CurrencySelect';
+import { getCurrency } from '@/lib/currencies';
+import { PropertyLocationMap } from './PropertyLocationMap';
+import { normalizePropertyLocation } from '@/lib/investments/propertyLocation';
 import { QatarPropertyLocationPicker } from './QatarPropertyLocationPicker';
 import { OfficialPropertyContextPanel } from './OfficialPropertyContextPanel';
+import { PropertyValuationFeedback } from './PropertyValuationFeedback';
 
 // Input choices only, NOT claims of provider or valuation coverage.
 const COUNTRY_CODES = 'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW'.split(' ');
@@ -35,6 +40,7 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [evidenceLimit, setEvidenceLimit] = useState(10);
   const requestRef = useRef<AbortController | null>(null);
   const revisionRef = useRef(0);
   const readiness = useMemo(() => assessRealEstateReadiness(asset, analysis?.evidence ?? []), [asset, analysis]);
@@ -51,12 +57,12 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
 
   function update(patch: Partial<RealEstateAssetInput>) {
     revisionRef.current += 1; requestRef.current?.abort();
-    setAsset(current => ({ ...current, ...patch }));
+    setAsset(current => ({ ...current, ...(['countryCode', 'region', 'city', 'municipality', 'district'].some(key => key in patch) ? { latitude: undefined, longitude: undefined } : {}), ...patch }));
     setAnalysis(null); setSaved(false); setError(false); setLoading(false); setSaving(false);
   }
   function money(value?: number, valueCurrency = currency) {
     if (typeof value !== 'number' || !Number.isFinite(value) || !/^[A-Z]{3}$/.test(valueCurrency)) return '—';
-    return new Intl.NumberFormat(lang, { style: 'currency', currency: valueCurrency, numberingSystem: 'latn', maximumFractionDigits: 2 }).format(value);
+    return new Intl.NumberFormat(lang, { style: 'currency', currency: valueCurrency, numberingSystem: 'latn', maximumFractionDigits: getCurrency(valueCurrency).decimals }).format(value);
   }
   async function analyze() {
     const token = session?.access_token;
@@ -64,12 +70,12 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
     requestRef.current?.abort();
     const controller = new AbortController(); requestRef.current = controller;
     const revision = ++revisionRef.current;
-    setLoading(true); setError(false); setSaved(false); setAnalysis(null);
+    setLoading(true); setError(false); setSaved(false); setAnalysis(null); setEvidenceLimit(10);
     try {
       const response = await fetch('/api/investments/real-estate/analyze', {
         method: 'POST', cache: 'no-store', signal: controller.signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ asset, outputCurrency: currency.toUpperCase(), purpose: marketResearch ? 'market_context' : 'valuation' }),
+        body: JSON.stringify({ asset, outputCurrency: currency.toUpperCase(), purpose: marketResearch && !readiness.checks.area ? 'market_context' : 'valuation' }),
       });
       const payload = await response.json() as { ok?: boolean; analysis?: RealEstateAnalystResult };
       if (!response.ok || !payload.ok || !payload.analysis || !Array.isArray(payload.analysis.evidence)) throw new Error('ANALYSIS_FAILED');
@@ -104,7 +110,9 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
       : analysis?.status === 'SOURCE_COVERAGE_UNAVAILABLE'
         ? L('لم تُربط مصادر فعلية لهذه الدولة بعد', 'Live sources are not connected for this country yet', 'Les sources réelles ne sont pas encore connectées pour ce pays')
         : L('الأدلة غير كافية للتقييم', 'Insufficient valuation evidence', 'Preuves insuffisantes pour une estimation');
-  const canAnalyze = Boolean(session?.access_token && !isGuest && asset.propertyType && readiness.checks.assetIdentity && (marketResearch || readiness.checks.area)
+  const normalizedLocation = normalizePropertyLocation(asset);
+  const needsNycDistrict = asset.countryCode === 'US' && ['new york', 'new york city'].includes((normalizedLocation.city ?? normalizedLocation.municipality ?? '').toLowerCase()) && !asset.district?.trim();
+  const canAnalyze = !needsNycDistrict && Boolean(session?.access_token && !isGuest && asset.propertyType && readiness.checks.assetIdentity && (marketResearch || readiness.checks.area)
     && (asset.countryCode !== 'QA' || asset.district));
 
   return <section className="real-estate-analyst" dir={dir} aria-label={L('بيانات العقار وأدلته', 'Property details and evidence', 'Détails et preuves du bien')}>
@@ -112,18 +120,18 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
       <form className="real-estate-analyst__form" onSubmit={event => { event.preventDefault(); if (canAnalyze && !loading && !saving) void analyze(); }}>
         {marketResearch ? <div className="real-estate-analyst__research">
           <h2>{L('ابحث في بيانات السوق الرسمية', 'Research official market records', 'Rechercher les données officielles du marché')}</h2>
-          <p>{L('ابدأ بأحد الأسواق المتصلة. لا تحتاج مساحة أو سعر شراء للبحث؛ التقييم الآلي للعقار ما زال غير متاح.', 'Start with a connected market. Research needs no area or purchase price; automated property valuation is not available yet.', 'Choisissez un marché connecté. La recherche ne nécessite ni surface ni prix d’achat ; la valorisation automatique n’est pas encore disponible.')}</p>
+          <p>{L('ابحث في السجلات الرسمية، وأضف المساحة لتشغيل التقييم الآلي في الأسواق المدعومة. تظهر النتيجة مع الصفقات المقارنة وحدود الثقة.', 'Search official records. Add the relevant area to run automatic valuation in supported markets, with comparable sales and confidence limits.', 'Consultez les données officielles. Ajoutez la surface pertinente pour lancer une estimation automatique sur les marchés couverts, avec ventes comparables et limites de confiance.')}</p>
           <div className="real-estate-analyst__market-shortcuts">
             {[
               { countryCode: 'QA', city: '', label: L('قطر', 'Qatar', 'Qatar') },
               { countryCode: 'GB', city: 'London', label: L('لندن', 'London', 'Londres') },
               { countryCode: 'US', city: 'New York City', label: L('نيويورك', 'New York City', 'New York') },
               { countryCode: 'US', city: 'Chicago', label: L('شيكاغو', 'Chicago', 'Chicago') },
-            ].map(market => <button key={`${market.countryCode}:${market.city}`} type="button" disabled={loading || saving} onClick={() => update({ countryCode: market.countryCode, city: market.city, region: '', municipality: '', district: '', address: '', parcelIdentifier: '' })}>{market.label}</button>)}
+            ].map(market => <button key={`${market.countryCode}:${market.city}`} type="button" aria-pressed={asset.countryCode === market.countryCode && (asset.city ?? '') === market.city} disabled={loading || saving} onClick={() => update({ countryCode: market.countryCode, city: market.city, region: '', municipality: '', district: '', address: '', parcelIdentifier: '' })}>{market.label}</button>)}
           </div>
         </div> : null}
         <fieldset disabled={loading || saving}>
-          <legend>{L('بيانات الأرض والعقار', 'Land and property details', 'Détails du terrain et du bien')}</legend>
+          <legend><span className="real-estate-analyst__step">1</span> {L('الموقع ونوع العقار', 'Location and property type', 'Localisation et type de bien')}</legend>
           <div className="real-estate-analyst__grid">
             <label>{L('الدولة', 'Country', 'Pays')}<select aria-label={L('الدولة', 'Country', 'Pays')} value={asset.countryCode} required onChange={event => update({ countryCode: event.target.value, city: '', municipality: '', district: '', region: '', address: '', parcelIdentifier: '' })}><option value="">{L('اختر الدولة', 'Select country', 'Choisir un pays')}</option>{countries.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
             <label>{L('نوع الأصل', 'Asset type', 'Type d’actif')}<select aria-label={L('نوع الأصل', 'Asset type', 'Type d’actif')} value={asset.propertyType} required onChange={event => update({ propertyType: event.target.value })}><option value="">{L('اختر النوع', 'Select type', 'Choisir un type')}</option><option value="LAND">{L('أرض', 'Land', 'Terrain')}</option><option value="APARTMENT">{L('شقة', 'Apartment', 'Appartement')}</option><option value="HOUSE">{L('منزل / فيلا', 'House / villa', 'Maison / villa')}</option><option value="COMMERCIAL">{L('تجاري', 'Commercial', 'Commercial')}</option><option value="BUILDING">{L('مبنى', 'Building', 'Immeuble')}</option></select></label>
@@ -132,18 +140,31 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
               <label>{L('المدينة / البلدية', 'City / municipality', 'Ville / municipalité')}<input value={asset.city ?? asset.municipality ?? ''} maxLength={160} onChange={event => update({ city: event.target.value, municipality: undefined })} /></label>
               <label>{L('الحي / المنطقة السكنية', 'District / neighborhood', 'Quartier')}<input value={asset.district ?? ''} maxLength={160} onChange={event => update({ district: event.target.value })} /></label>
             </>}
+            {asset.countryCode === 'US' && ['new york', 'new york city'].includes((normalizedLocation.city ?? '').toLowerCase()) ? <label>{L('بلدية نيويورك للتقييم', 'NYC borough for valuation', 'Arrondissement de New York pour estimation')}<select aria-label={L('بلدية نيويورك للتقييم', 'NYC borough for valuation', 'Arrondissement de New York pour estimation')} value={asset.municipality ?? ''} onChange={event => update({ municipality: event.target.value })}><option value="">{L('اختر البلدية', 'Select borough', 'Choisir un arrondissement')}</option>{['Manhattan', 'Bronx', 'Brooklyn', 'Queens', 'Staten Island'].map(borough => <option key={borough} value={borough}>{borough}</option>)}</select></label> : null}
             <label>{L('رقم القطعة', 'Parcel / plot ID', 'Référence de parcelle')}<input value={asset.parcelIdentifier ?? ''} maxLength={160} onChange={event => update({ parcelIdentifier: event.target.value })} /></label>
+          </div>
+          <PropertyLocationMap key={asset.countryCode} asset={asset} countryName={countries.find(item => item.code === asset.countryCode)?.name ?? ''} onChange={update} />
+          {needsNycDistrict ? <p className="real-estate-analyst__hint">{L('للبحث العام أدخل البلدية. للتقييم اختر البلدية وأدخل اسم الحي الرسمي مثل MARINE PARK.', 'For research, enter a borough. For valuation, select the borough and enter an official neighborhood, e.g. MARINE PARK.', 'Pour consulter, indiquez un arrondissement. Pour estimer, choisissez l’arrondissement et un quartier officiel, par ex. MARINE PARK.')}</p> : null}
+          {asset.countryCode === 'US' && (normalizedLocation.city ?? '').toLowerCase() === 'chicago' ? <p className="real-estate-analyst__hint">{L('لتقييم المنزل أدخل رمز حي المقيم العقاري من 5 أرقام (مثل 71030)، ومساحة المبنى. لا تكفي مساحة الأرض.', 'For a house estimate, enter the five-digit assessor neighborhood code (e.g. 71030) and building floor area. Land area alone is insufficient.', 'Pour estimer une maison, indiquez le code de quartier de l’évaluateur (5 chiffres, par ex. 71030) et la surface du bâtiment.')}</p> : null}
+        </fieldset>
+        <fieldset disabled={loading || saving}>
+          <legend><span className="real-estate-analyst__step">2</span> {L('المساحة وبيانات الشراء', 'Area and purchase details', 'Surface et détails d’achat')}</legend>
+          <p className="real-estate-analyst__hint">{marketResearch ? L('اختيارية للبحث في السوق. اختر عملة الشراء الأصلية؛ لا تتغير بتغيير عملة عرض حسابك.', 'Optional for market research. Choose the original purchase currency; it is independent of your account display currency.', 'Facultatif pour la recherche. La devise d’achat reste indépendante de la devise d’affichage du compte.') : L('أدخل المساحة وبيانات الشراء المسجلة.', 'Enter the recorded area and purchase details.', 'Saisissez la surface et les détails d’achat enregistrés.')}</p>
+          <div className="real-estate-analyst__grid">
+            <label>{L('مساحة الأرض', 'Land area', 'Surface du terrain')}<input type="number" inputMode="decimal" min="0" step="any" required={!marketResearch && asset.propertyType === 'LAND'} value={asset.landArea ?? ''} onChange={event => update({ landArea: positiveNumber(event.target.value) })} /></label>
+            <label>{L('وحدة المساحة', 'Area unit', 'Unité de surface')}<select aria-label={L('وحدة المساحة', 'Area unit', 'Unité de surface')} value={asset.landAreaUnit ?? ''} required onChange={event => update({ landAreaUnit: event.target.value as 'M2' | 'FT2' })}><option value="">{L('اختر الوحدة', 'Select unit', 'Choisir une unité')}</option><option value="M2">m²</option><option value="FT2">ft²</option></select></label>
+            {asset.propertyType !== 'LAND' ? <>
+              <label>{L('مساحة المبنى', 'Building floor area', 'Surface du bâtiment')}<input type="number" inputMode="decimal" min="0" step="any" required={!marketResearch} value={asset.builtArea ?? ''} onChange={event => update({ builtArea: positiveNumber(event.target.value), builtAreaUnit: asset.builtAreaUnit ?? 'M2' })} /></label>
+              <label>{L('وحدة مساحة المبنى', 'Building area unit', 'Unité de surface du bâtiment')}<select aria-label={L('وحدة مساحة المبنى', 'Building area unit', 'Unité de surface du bâtiment')} value={asset.builtAreaUnit ?? 'M2'} onChange={event => update({ builtAreaUnit: event.target.value as 'M2' | 'FT2' })}><option value="M2">m²</option><option value="FT2">ft²</option></select></label>
+            </> : null}
             <label>{L('تاريخ الشراء', 'Purchase date', 'Date d’achat')}<input type="date" value={asset.purchaseDate ?? ''} onChange={event => update({ purchaseDate: event.target.value || undefined })} /></label>
             <label>{L('إجمالي سعر الشراء', 'Total purchase price', 'Prix d’achat total')}<input type="number" inputMode="decimal" min="0" step="any" value={asset.purchasePrice ?? ''} onChange={event => update({ purchasePrice: positiveNumber(event.target.value) })} /></label>
-            <label>{L('عملة الشراء', 'Purchase currency', 'Devise d’achat')}<input dir="ltr" value={asset.purchaseCurrency ?? ''} pattern="[A-Z]{3}" maxLength={3} onChange={event => update({ purchaseCurrency: event.target.value.toUpperCase() })} /></label>
-            <label>{L('مساحة الأرض', 'Land area', 'Surface du terrain')}<input type="number" inputMode="decimal" min="0" step="any" required={!marketResearch} value={asset.landArea ?? ''} onChange={event => update({ landArea: positiveNumber(event.target.value) })} /></label>
-            <label>{L('وحدة المساحة', 'Area unit', 'Unité de surface')}<select aria-label={L('وحدة المساحة', 'Area unit', 'Unité de surface')} value={asset.landAreaUnit ?? ''} required onChange={event => update({ landAreaUnit: event.target.value as 'M2' | 'FT2' })}><option value="">{L('اختر الوحدة', 'Select unit', 'Choisir une unité')}</option><option value="M2">m²</option><option value="FT2">ft²</option></select></label>
-            <label>{L('العنوان', 'Address', 'Adresse')}<input value={asset.address ?? ''} maxLength={500} onChange={event => update({ address: event.target.value })} /></label>
+            <CurrencySelect value={asset.purchaseCurrency || currency.toUpperCase()} lang={lang} label={L('عملة الشراء', 'Purchase currency', 'Devise d’achat')} ariaLabel={L('عملة الشراء', 'Purchase currency', 'Devise d’achat')} onChange={value => update({ purchaseCurrency: value })} />
           </div>
         </fieldset>
         <button className="real-estate-analyst__analyze" type="submit" disabled={!canAnalyze || loading || saving}>
           {loading ? <Loader2 size={18} aria-hidden="true" /> : <Search size={18} aria-hidden="true" />}
-          {loading ? L('جارٍ البحث…', 'Searching…', 'Recherche…') : marketResearch ? L('بحث بيانات السوق الرسمية', 'Search official market records', 'Rechercher les données officielles') : L('البحث عن أدلة موثقة', 'Search verified evidence', 'Rechercher des preuves vérifiées')}
+          {loading ? L('جارٍ البحث…', 'Searching…', 'Recherche…') : readiness.checks.area ? L('بحث وتقييم العقار', 'Search and value property', 'Rechercher et estimer le bien') : marketResearch ? L('بحث بيانات السوق الرسمية', 'Search official market records', 'Rechercher les données officielles') : L('البحث عن أدلة موثقة', 'Search verified evidence', 'Rechercher des preuves vérifiées')}
         </button>
         {!readiness.checks.assetIdentity || (asset.countryCode === 'QA' && !asset.district) ? <p>{L('اختر الدولة والمدينة أو المنطقة لإتاحة البحث؛ قطر تتطلب تحديد المنطقة من القائمة.', 'Select a country and city or region to search; Qatar also needs a district from the list.', 'Sélectionnez le pays et la ville ou la région ; au Qatar, choisissez aussi un quartier dans la liste.')}</p> : null}
         {valuation && positionId ? <button className="real-estate-analyst__save" type="button" onClick={() => void save()} disabled={saving || saved}><Save size={18} aria-hidden="true" />{saved ? L('تم الحفظ', 'Saved', 'Enregistré') : L('حفظ التقييم وأدلته', 'Save valuation and evidence', 'Enregistrer l’estimation et ses preuves')}</button> : null}
@@ -154,16 +175,19 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
       </form>
       <aside className="real-estate-analyst__results" aria-live="polite" aria-busy={loading}>
         <h2 className="real-estate-analyst__section-title"><Database size={18} aria-hidden="true" />{L('الأدلة والتقييم', 'Evidence and valuation', 'Preuves et estimation')}</h2>
-        <div className="real-estate-analyst__empty-result"><LandPlot size={30} aria-hidden="true" /><h3>{analysis ? status : L('لا يوجد تقييم بعد', 'No valuation yet', 'Aucune estimation pour le moment')}</h3><p>{L('يظهر نطاق القيمة فقط بعد اجتياز فحوص الأدلة. سعر الإعلان ليس صفقة بيع مكتملة.', 'A range appears only after evidence checks pass. An asking price is not a completed sale.', 'Une fourchette apparaît uniquement après validation des preuves. Un prix demandé n’est pas une vente conclue.')}</p></div>
+        <div className="real-estate-analyst__empty-result"><LandPlot size={30} aria-hidden="true" /><h3>{analysis ? status : L('ابدأ باستكشاف المنطقة', 'Start exploring an area', 'Explorez un quartier')}</h3><p>{!analysis ? L('حدد الدولة والمدينة، ثم ابحث لعرض السجلات الرسمية وتواريخها. يمكنك إضافة تفاصيل العقار والشراء متى توفرت.', 'Choose a country and city, then search for official records and dates. Add property and purchase details when available.', 'Choisissez un pays et une ville, puis consultez les transactions officielles et leurs dates. Ajoutez les détails disponibles.') : L('يظهر نطاق القيمة فقط بعد اجتياز فحوص الأدلة. سعر الإعلان ليس صفقة بيع مكتملة.', 'A range appears only after evidence checks pass. An asking price is not a completed sale.', 'Une fourchette apparaît uniquement après validation des preuves. Un prix demandé n’est pas une vente conclue.')}</p></div>
         {analysis ? <div className="real-estate-analyst__future-grid">
           <div><span>{L('نطاق القيمة', 'Estimated range', 'Fourchette estimée')}</span><strong dir="ltr">{valuation ? `${money(valuation.lowValue, valuation.currency)} – ${money(valuation.highValue, valuation.currency)}` : '—'}</strong></div>
           <div><span>{L('القيمة الوسطية', 'Midpoint', 'Valeur médiane')}</span><strong dir="ltr">{money(valuation?.midpointValue, valuation?.currency)}</strong></div>
-          <div><span>{L('الأدلة الصالحة لمحرك التقييم', 'Valuation engine evidence', 'Preuves pour le moteur de valorisation')}</span><strong>{analysis.evidenceCount}</strong></div>
+          <div><span>{L('الأدلة الصالحة لمحرك التقييم', 'Valuation engine evidence', 'Preuves pour le moteur de valorisation')}</span><strong>{analysis.qualifiedEvidenceCount ?? analysis.evidenceCount}</strong></div>
           <div><span>{L('المصادر المتعذرة', 'Unavailable sources', 'Sources indisponibles')}</span><strong>{analysis.sourceFailures.length}</strong></div>
         </div> : null}
+        {loading ? <p role="status" className="real-estate-analyst__hint">{L('جارٍ الاتصال بالمصدر والتحقق من سجلات المنطقة…', 'Connecting to the source and checking local records…', 'Connexion à la source et vérification des transactions locales…')}</p> : null}
+        {analysis ? <PropertyValuationFeedback analysis={analysis} /> : null}
         {analysis?.officialContext ? <OfficialPropertyContextPanel report={analysis.officialContext} /> : null}
         {valuation ? <p>{L('جودة الأدلة وليست احتمالًا:', 'Evidence quality, not probability:', 'Qualité des preuves, pas une probabilité :')} {valuation.confidence}</p> : null}
-        {analysis?.evidence.map(item => {
+        {analysis?.evidence.length ? <details><summary>{L('الصفقات المقارنة ومصادرها', 'Comparable sales and sources', 'Ventes comparables et sources')} ({analysis.evidence.length})</summary>
+        {analysis.evidence.slice(0, evidenceLimit).map(item => {
           const href = sourceHref(item.sourceUrl);
           return <article key={item.id} className="real-estate-analyst__evidence-row">
             <div><strong>{item.sourceName}</strong><span>{item.type.replaceAll('_', ' ')}</span><small>{L('تاريخ الدليل', 'Observation date', 'Date de constat')} : {item.observedOn ?? '—'}</small><small>{L('تاريخ الاسترجاع', 'Retrieved', 'Récupéré')} : {item.retrievedAt.slice(0, 10)}</small></div>
@@ -171,6 +195,8 @@ export function RealEstateLandAnalyst({ positionId, initialAsset, onSnapshotSave
             {href ? <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`${L('فتح المصدر', 'Open source', 'Ouvrir la source')} ${item.sourceName}`}><ExternalLink size={18} aria-hidden="true" /></a> : null}
           </article>;
         })}
+        {evidenceLimit < analysis.evidence.length ? <button type="button" onClick={() => setEvidenceLimit(limit => limit + 20)}>{L('عرض المزيد من الصفقات', 'Show more sales', 'Afficher plus de ventes')}</button> : null}
+        </details> : null}
       </aside>
     </div>
   </section>;

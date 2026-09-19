@@ -17,6 +17,8 @@ export interface RealEstateAssetInput {
   builtAreaUnit?: 'M2' | 'FT2';
   parcelIdentifier?: string;
   address?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface NormalizedComparable {
@@ -28,6 +30,15 @@ export interface NormalizedComparable {
 }
 
 const SQFT_PER_SQM = 10.76391041671;
+
+/** Never substitute land area for a dwelling's floor area. */
+export function valuationArea(asset: RealEstateAssetInput): { value: number; basis: 'LAND' | 'BUILT' } | null {
+  const basis = asset.propertyType === 'LAND' ? 'LAND' : 'BUILT';
+  const value = basis === 'LAND' ? asset.landArea : asset.builtArea;
+  const unit = basis === 'LAND' ? asset.landAreaUnit : asset.builtAreaUnit;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 && unit
+    ? { value: areaToSquareMeters(value, unit), basis } : null;
+}
 
 export function areaToSquareMeters(value: number, unit: 'M2' | 'FT2'): number {
   if (!Number.isFinite(value) || value <= 0) throw new Error('Area must be a positive finite number.');
