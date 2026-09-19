@@ -1,4 +1,4 @@
-import type { WatchlistRow } from '@/lib/trader/watchlistEngine';
+import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 import type { TvQuote } from './types';
 export function quoteStatus(quote: Pick<TvQuote, 'price' | 'observedAt' | 'status'>, now = Date.now()): TvQuote['status'] {
   if (quote.price === null || !Number.isFinite(quote.price) || quote.price <= 0) return 'unavailable';
@@ -7,16 +7,20 @@ export function quoteStatus(quote: Pick<TvQuote, 'price' | 'observedAt' | 'statu
   if (now - observed > 15 * 60_000 || quote.status === 'stale') return 'stale';
   return quote.status;
 }
-export function toTvQuote(row: WatchlistRow, nameAr?: string, now = Date.now()): TvQuote {
-  const valid = row.available === true && typeof row.price === 'number' && Number.isFinite(row.price)
-    && row.price > 0 && typeof row.currency === 'string' && /^[A-Z]{3}$/.test(row.currency) && Boolean(row.source);
+export function toTvQuote(symbol: string, row: SfmMarketQuote | null, nameAr?: string, now = Date.now()): TvQuote {
+  const valid = row?.quality.state !== 'unavailable' && typeof row?.price === 'number' && Number.isFinite(row.price)
+    && row.price > 0 && typeof row.currency === 'string' && /^[A-Z]{3}$/.test(row.currency) && Boolean(row.provenance.upstreamProvider);
+  const evidence = row?.provenance;
+  const referenceOnly = row?.quality.state === 'stale' || evidence?.observation?.marketOpen === false
+    || evidence?.observation?.precision === 'date';
   const quote: TvQuote = {
-    symbol: row.requestedSymbol, name: row.name || row.requestedSymbol, nameAr: nameAr || row.name || row.requestedSymbol,
-    price: valid ? row.price! : null, currency: valid ? row.currency! : null,
-    changePercent: valid && typeof row.changePercent === 'number' && Number.isFinite(row.changePercent) ? row.changePercent : null,
-    source: row.provider || row.source || null, observedAt: row.engine.asOf, receivedAt: row.engine.fetchedAt,
-    exchange: row.exchange || null, country: row.country || null,
-    status: ['stale', 'last_known'].includes(row.engine.quoteStatus) ? 'stale' : row.delayed ? 'delayed' : 'available',
+    symbol, name: row?.name || symbol, nameAr: nameAr || row?.name || symbol,
+    price: valid ? row!.price : null, currency: valid ? row!.currency : null,
+    changePercent: valid && typeof row?.changePercent === 'number' && Number.isFinite(row.changePercent) ? row.changePercent : null,
+    source: evidence?.upstreamProviderName || evidence?.upstreamProvider || null,
+    observedAt: evidence?.observation?.precision === 'unknown' ? null : evidence?.observedAt || null,
+    receivedAt: evidence?.receivedAt || null, exchange: row?.exchange || null, country: row?.country || null,
+    status: referenceOnly ? 'stale' : evidence?.delayType !== 'realtime' ? 'delayed' : 'available',
   };
   quote.status = quoteStatus(quote, now);
   return quote;

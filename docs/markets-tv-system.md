@@ -9,9 +9,9 @@ the owner's instruction to build it now. Store publication is a separate gate.
 
 | Area | Implementation | Boundary |
 | --- | --- | --- |
-| Display | `/tv`, remote directional navigation, modal focus/Back, 1080p/4K scaling, Arabic/English/French, dark/light, two layouts | Physical TV acceptance remains required |
+| Display | `/tv`, remote directional navigation, modal focus/Back, 720p/1080p/4K scaling, Arabic/English/French, dark/light, two layouts | Physical TV acceptance remains required |
 | Markets | Curated US, six Gulf countries, Europe, Asia, global indices, crypto, FX and commodities | Selected assets; not every exchange listing |
-| Evidence | Existing watchlist quote engine; source, observation time, missing/unknown/delayed/stale states on cards and ticker | Provider rights and coverage remain those of the upstream sources; no generated prices |
+| Evidence | Canonical SFM market engine; source, observation time, missing/unknown/delayed/stale states on cards and ticker | Provider rights and coverage remain those of the upstream sources; no generated prices |
 | News | Existing financial-news aggregator, source/time and phone QR | Headlines are not relabeled as verified breaking news |
 | Map / hours | Region clocks/map; official regular cash-equity hours for Kuwait, Saudi Arabia, NYSE and Tokyo, reviewed 2026-09-19 | No verified holiday/exception feed; deliberately no fabricated “open now” assertion |
 | Brief | Coverage and top three gainers/losers within the displayed, timestamped sample | Not a scheduled delivered Daily Brief or a claim to rank the entire market |
@@ -46,7 +46,7 @@ them in login query parameters. Settings and private device responses are
 cache. RLS denies client access to the device table; server-only queries are
 scoped by the verified user ID or hashed device token.
 
-Public sources reuse the canonical quote cache. Quote/device polling is once per
+Public sources reuse the canonical SFM market engine and its provider cache. The TV preserves closing/daily reference prices with a stale label; they never enter current-price movers or alerts. The engine excludes the platform's prohibited fallback providers. Four quote workers share a 40-second request budget; unavailable assets remain explicit missing states. Quote/device polling is once per
 minute, news once per three minutes, and saved analyses once per five minutes.
 Polls do not overlap and suspend in hidden screens. Missing prices remain missing;
 retained prices age in place. Screen state never substitutes a retrieval time for
@@ -114,7 +114,7 @@ monitoring ownership, canary evidence and explicit acceptance of any open gaps.
 - The clean-chain CI job also runs `markets-tv-validation.sql` in disposable
   PostgreSQL: one-use approval/claim, owner isolation, token expiry/revocation,
   durable rate limit and denied client table/RPC privileges. Fixtures roll back.
-- Local packaged-browser checks exercised 1920×1080, 3840×2160, mobile width,
+- Local packaged-browser checks exercised 1280×720, 1920×1080, 3840×2160, mobile width,
   remote navigation, dialog Back, QR rendering, AR/EN/FR and theme switching.
   Synthetic data used for these geometry tests is confined to QA and never
   shipped as a provider fallback.

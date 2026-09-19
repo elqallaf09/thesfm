@@ -4,28 +4,39 @@ import { quoteStatus, safeTvUrl, toTvQuote, tvMovers } from '@/lib/markets-tv/qu
 import { tvPackagedOrigin, tvCorsHeaders } from '@/lib/markets-tv/cors';
 import { nearestTvTarget } from '@/lib/markets-tv/navigation';
 import { tvAssets } from '@/lib/markets-tv/catalog';
-import type { WatchlistRow } from '@/lib/trader/watchlistEngine';
+import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 const now = Date.parse('2026-09-19T09:00:00Z');
-const row = (overrides = {}): WatchlistRow => ({ symbol: 'AAPL', requestedSymbol: 'AAPL', name: 'Apple', available: true, price: 100, changePercent: 0,
-  currency: 'USD', source: 'Yahoo Finance', provider: 'yahoo', delayed: true,
-  engine: { version: 1, asOf: new Date(now - 60000).toISOString(), fetchedAt: new Date(now).toISOString(), quoteStatus: 'available', analysisStatus: 'pending', reason: null }, ...overrides } as WatchlistRow);
+const row = (overrides = {}): SfmMarketQuote => ({ symbol: 'AAPL', name: 'Apple', price: 100, changePercent: 0,
+  currency: 'USD', quality: { state: 'complete' },
+  provenance: { upstreamProvider: 'twelve_data', upstreamProviderName: 'Twelve Data', delayType: 'delayed',
+    observedAt: new Date(now - 60000).toISOString(), receivedAt: new Date(now).toISOString(), observation: { precision: 'instant', marketOpen: true } },
+  ...overrides } as SfmMarketQuote);
 describe('TV evidence contracts', () => {
   it('does not turn missing numbers into zero or retrieval time into source time', () => {
-    const q = toTvQuote(row({ price: null }), undefined, now); expect(q.price).toBeNull(); expect(q.status).toBe('unavailable');
-    const unknown = toTvQuote(row({ engine: { ...row().engine, asOf: null } }), undefined, now);
+    const q = toTvQuote('AAPL', row({ price: null }), undefined, now); expect(q.price).toBeNull(); expect(q.status).toBe('unavailable');
+    const unknown = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observedAt: null } }), undefined, now);
     expect(unknown.observedAt).toBeNull(); expect(unknown.status).toBe('unknown_time');
   });
   it('ages retained prices even when the source stops updating', () => {
-    const q = toTvQuote(row(), undefined, now); expect(q.status).toBe('delayed'); expect(quoteStatus(q, now + 20 * 60000)).toBe('stale');
-    expect(toTvQuote(row({ currency: null }), undefined, now).price).toBeNull();
+    const q = toTvQuote('AAPL', row(), undefined, now); expect(q.status).toBe('delayed'); expect(quoteStatus(q, now + 20 * 60000)).toBe('stale');
+    expect(toTvQuote('AAPL', row({ currency: null }), undefined, now).price).toBeNull();
   });
   it('rejects future times and excludes stale prices from mover ranking', () => {
-    const future = toTvQuote(row({ engine: { ...row().engine, asOf: new Date(now + 3600000).toISOString() } }), undefined, now);
+    const future = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observedAt: new Date(now + 3600000).toISOString() } }), undefined, now);
     expect(future.status).toBe('unknown_time');
-    const pos = toTvQuote(row({ changePercent: 2 }), undefined, now);
-    const neg = toTvQuote(row({ requestedSymbol: 'MSFT', changePercent: -2 }), undefined, now);
+    const pos = toTvQuote('AAPL', row({ changePercent: 2 }), undefined, now);
+    const neg = toTvQuote('MSFT', row({ symbol: 'MSFT', changePercent: -2 }), undefined, now);
     expect(tvMovers([pos, neg], now).gainers).toEqual([pos]); expect(tvMovers([pos, neg], now).losers).toEqual([neg]);
     expect(tvMovers([pos, neg], now + 3600000)).toEqual({ gainers: [], losers: [] });
+  });
+  it('shows closing/reference prices as stale without entering current movers', () => {
+    const closed = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observation: { precision: 'instant', marketOpen: false } }, changePercent: 3 }), undefined, now);
+    expect(closed.price).toBe(100); expect(closed.status).toBe('stale'); expect(closed.source).toBe('Twelve Data');
+    expect(tvMovers([closed], now).gainers).toEqual([]);
+    const daily = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observation: { precision: 'date' } } }), undefined, now);
+    expect(daily.status).toBe('stale');
+    expect(toTvQuote('AAPL', row({ quality: { state: 'unavailable' } }), undefined, now).price).toBeNull();
+    expect(toTvQuote('AAPL', row({ provenance: { ...row().provenance, upstreamProvider: null } }), undefined, now).price).toBeNull();
   });
   it('uses bounded real asset lists and retains all six Gulf countries', () => {
     const symbols=tvAssets('gulf').map(a=>a.symbol);
