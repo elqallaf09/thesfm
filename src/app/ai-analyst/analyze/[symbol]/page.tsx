@@ -9,6 +9,7 @@ type PageProps = {
   searchParams: Promise<{
     assetType?: string | string[];
     horizon?: string | string[];
+    horizons?: string | string[];
     autoRun?: string | string[];
     investmentId?: string | string[];
     investmentAssetType?: string | string[];
@@ -39,7 +40,7 @@ export default async function AiAnalystAssetPage({ params, searchParams }: PageP
   });
   return (
     <AiAnalystShell activeTab="analysis">
-      <AiAnalystResearchWorkspace symbol={symbol} assetType={assetType} horizon={horizon} investmentContext={investmentContext} />
+      <AiAnalystResearchWorkspace symbol={symbol} assetType={assetType} horizon={horizon} allHorizons={single(query.horizons) === 'all'} investmentContext={investmentContext} />
     </AiAnalystShell>
   );
 }

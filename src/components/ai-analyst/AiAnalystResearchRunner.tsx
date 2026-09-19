@@ -154,7 +154,7 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: {
         </div>
       </section> : null}
 
-      {result ? <InvestmentCheckCard symbol={symbol} assetType={assetType} horizon={horizon} providedResult={result} /> : null}
+      {result ? <InvestmentCheckCard symbol={symbol} assetType={assetType} horizon={horizon} providedResult={result} onResearchRefresh={() => void requestAnalysis(true)} /> : null}
       <AiAnalystRuleEngine result={result} />
       {result ? <div className={styles.spanFull} data-testid="ai-analyst-canonical-result">
         <IntelligencePanel result={presentedResult} loading={false} errorCode={null} onRetry={() => void requestAnalysis(false)} showStatus={false} />

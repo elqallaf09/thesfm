@@ -188,7 +188,22 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'COMEX',
     country: 'Global',
     currency: 'USD',
-    aliases: ['xag', 'xagusd', 'xag/usd', 'silver', 'silver usd'],
+    aliases: ['xag', 'xagusd', 'xag/usd', 'silver', 'silver usd', 'فضة', 'الفضة', 'فضه', 'الفضه'],
+  },
+  {
+    symbol: 'HG=F', providerSymbol: 'HG=F', name: 'Copper Futures', assetType: 'commodity',
+    exchange: 'COMEX', country: 'Global', currency: 'USD',
+    aliases: ['copper', 'نحاس', 'النحاس'],
+  },
+  {
+    symbol: 'PL=F', providerSymbol: 'PL=F', name: 'Platinum Futures', assetType: 'commodity',
+    exchange: 'NYMEX', country: 'Global', currency: 'USD',
+    aliases: ['platinum', 'بلاتين', 'البلاتين', 'بلاتينيوم', 'البلاتينيوم', 'بلاتنيوم'],
+  },
+  {
+    symbol: 'PA=F', providerSymbol: 'PA=F', name: 'Palladium Futures', assetType: 'commodity',
+    exchange: 'NYMEX', country: 'Global', currency: 'USD',
+    aliases: ['palladium', 'بلاديوم', 'البلاديوم', 'بالاديوم'],
   },
   {
     symbol: 'EURUSD',
@@ -198,7 +213,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'FX',
     country: 'Global',
     currency: 'USD',
-    aliases: ['eurusd', 'eur/usd', 'euro dollar'],
+    aliases: ['eurusd', 'eur/usd', 'euro dollar', 'يورو دولار', 'اليورو دولار', 'اليورو مقابل الدولار'],
   },
   {
     symbol: 'GBPUSD',
@@ -208,7 +223,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'FX',
     country: 'Global',
     currency: 'USD',
-    aliases: ['gbpusd', 'gbp/usd', 'pound dollar'],
+    aliases: ['gbpusd', 'gbp/usd', 'pound dollar', 'جنيه دولار', 'الجنيه مقابل الدولار', 'الباوند مقابل الدولار'],
   },
   {
     symbol: 'USDJPY',
@@ -218,7 +233,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'FX',
     country: 'Global',
     currency: 'JPY',
-    aliases: ['usdjpy', 'usd/jpy', 'jpy=x', 'dollar yen'],
+    aliases: ['usdjpy', 'usd/jpy', 'jpy=x', 'dollar yen', 'دولار ين', 'الدولار مقابل الين'],
   },
   {
     symbol: 'BTCUSD',
@@ -238,7 +253,7 @@ const SYMBOL_ALIASES: CanonicalAlias[] = [
     exchange: 'Crypto',
     country: 'Global',
     currency: 'USD',
-    aliases: ['eth', 'ethusd', 'eth/usd', 'ethereum', 'ethereum usd'],
+    aliases: ['eth', 'ethusd', 'eth/usd', 'ethereum', 'ethereum usd', 'ايثريوم', 'إيثريوم', 'ايثيريوم', 'إيثيريوم', 'اثيريوم'],
   },
 ];
 
