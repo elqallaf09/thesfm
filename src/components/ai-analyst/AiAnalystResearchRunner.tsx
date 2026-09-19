@@ -10,7 +10,7 @@ import { IntelligencePanel, IntelligenceStatusPanel } from '@/components/intelli
 import { useLanguage } from '@/hooks/useLanguage';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { AssetTypeBadge } from './AssetTypeBadge';
-import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale, aiAnalystTimestamp } from './copy';
+import { AI_ANALYST_COPY, HORIZON_LABELS, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 import { AiAnalystRuleEngine } from './AiAnalystRuleEngine';
 import { InvestmentCheckCard } from './InvestmentCheckCard';
@@ -76,7 +76,7 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: {
   const sourceCopy = SOURCE_COPY[locale];
   const { user, isGuest, result, loading, errorCode, retryAfterSeconds, taskState, requestAnalysis } = useResearchTask({ symbol, assetType, horizon, locale });
   const presentedResult = useMemo(() => result ? withSfmAnalyticalSource(result) : null, [result]);
-  const [chartOpen, setChartOpen] = useState(false);
+  const [chartOpen, setChartOpen] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [accuracyOpen, setAccuracyOpen] = useState(false);
 
@@ -98,14 +98,12 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: {
       <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="ai-analyst-analysis-title">
         <header className={styles.cardHeader}>
           <div>
-            <p className={styles.sectionEyebrow}>{symbol}</p>
             <h2 id="ai-analyst-analysis-title">{researchCopy.research}</h2>
-            <p>{copy.analysis.sections}</p>
             <AssetTypeBadge asset={result?.asset} loading={loading} errorCode={errorCode} />
           </div>
           <span className={styles.metricPill}>{HORIZON_LABELS[locale][horizon]}</span>
         </header>
-        <div className={styles.statusRail}><BarChart3 size={16} aria-hidden="true" />{copy.analysis.disclaimer}</div>
+        {!result ? <div className={styles.statusRail}><BarChart3 size={16} aria-hidden="true" />{copy.analysis.disclaimer}</div> : null}
         <div className={styles.cardHeader}>
           <button className={styles.primaryAction} type="button" disabled={loading} onClick={() => void requestAnalysis(false)}>
             <RefreshCw size={16} aria-hidden="true" />{researchCopy.run}
@@ -124,12 +122,13 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: {
           <Link className={styles.linkAction} href={assistantHref}><MessageCircle size={16} aria-hidden="true" />{copy.chat.askAboutAsset}</Link>
         </div>
         <p className={styles.mutedText} role="status" data-testid="ai-agent-task-status">{researchCopy[taskState]}</p>
-        {result ? <p className={styles.mutedText}>{copy.analysis.lastRefresh}: <span dir="ltr">{aiAnalystTimestamp(locale, result.generatedAt)}</span></p> : null}
         {retryMessage ? <p className={styles.statusRail} role="status">{retryMessage}</p> : null}
       </section>
 
+      {!result ? <AiAnalystRuleEngine /> : null}
       <div className={styles.spanFull}>
         <IntelligenceStatusPanel
+          compact
           result={result}
           loading={loading}
           errorCode={errorCode}
@@ -138,27 +137,11 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: {
         />
       </div>
 
-      {result ? <section className={`${styles.card} ${styles.spanFull}`} aria-labelledby="sfm-intelligence-source-title" data-testid="sfm-intelligence-source">
-        <header className={styles.cardHeader}>
-          <div>
-            <p className={styles.sectionEyebrow}>{sourceCopy.eyebrow}</p>
-            <h2 id="sfm-intelligence-source-title" className={styles.panelTitle}>{SFM_MARKET_INTELLIGENCE_ENGINE_NAME}</h2>
-            <p>{sourceCopy.body}</p>
-          </div>
-          <span className={styles.metricPill} dir="ltr">v{result.engineVersion}</span>
-        </header>
-        <div className={styles.statusRail}>
-          <span>{sourceCopy.dataProvider}: <b dir="ltr">{result.providerProvenance.selectedProvider ?? sourceCopy.unavailable}</b></span>
-          <span>·</span>
-          <span>{sourceCopy.attempts}: <b dir="ltr">{result.providerProvenance.attempts.length}</b></span>
-        </div>
-      </section> : null}
-
-      {result ? <InvestmentCheckCard symbol={symbol} assetType={assetType} horizon={horizon} providedResult={result} onResearchRefresh={() => void requestAnalysis(true)} /> : null}
-      <AiAnalystRuleEngine result={result} />
       {result ? <div className={styles.spanFull} data-testid="ai-analyst-canonical-result">
         <IntelligencePanel result={presentedResult} loading={false} errorCode={null} onRetry={() => void requestAnalysis(false)} showStatus={false} />
       </div> : null}
+
+      {result ? <InvestmentCheckCard compact symbol={symbol} assetType={assetType} horizon={horizon} providedResult={result} onResearchRefresh={() => void requestAnalysis(true)} /> : null}
 
       {result ? <section className={`${styles.card} ${styles.spanSeven}`} aria-labelledby="ai-analyst-chart-title">
         <div className={styles.disclosure}>
@@ -205,6 +188,24 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: {
           {timelineOpen ? <IntelligenceTimelinePanel asset={result.asset} horizon={result.horizon} activeAnalysisId={result.analysisId} /> : null}
         </div>
       </section> : null}
+      {result ? <details className={`${styles.card} ${styles.spanFull}`} aria-labelledby="sfm-intelligence-source-title" data-testid="sfm-intelligence-source">
+        <summary className={styles.panelTitle}>{sourceCopy.eyebrow} · {researchCopy.rules}</summary>
+        <header className={styles.cardHeader}>
+          <div>
+            <p className={styles.sectionEyebrow}>{sourceCopy.eyebrow}</p>
+            <h2 id="sfm-intelligence-source-title" className={styles.panelTitle}>{SFM_MARKET_INTELLIGENCE_ENGINE_NAME}</h2>
+            <p>{sourceCopy.body}</p>
+          </div>
+          <span className={styles.metricPill} dir="ltr">v{result.engineVersion}</span>
+        </header>
+        <div className={styles.statusRail}>
+          <span>{sourceCopy.dataProvider}: <b dir="ltr">{result.providerProvenance.selectedProvider ?? sourceCopy.unavailable}</b></span>
+          <span>·</span>
+          <span>{sourceCopy.attempts}: <b dir="ltr">{result.providerProvenance.attempts.length}</b></span>
+        </div>
+        <AiAnalystRuleEngine result={result} />
+      </details> : null}
+
     </div>
   );
 }

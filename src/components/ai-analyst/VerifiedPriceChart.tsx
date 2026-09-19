@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
+import { MarketChartStyles } from '@/components/market-analysis/MarketChartStyles';
+import chartStyles from './VerifiedPriceChart.module.css';
 import { PriceHistoryChart } from '@/components/market-analysis/MarketChartComponents';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
@@ -24,14 +25,14 @@ function marketAssetType(assetType: AnalysisResult['asset']['assetType']) {
   return assetType.toLowerCase();
 }
 
-function pointsFromResponse(value: unknown) {
+export function pointsFromResponse(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.flatMap(raw => {
     const point = raw && typeof raw === 'object' ? raw as HistoryPoint : null;
     const close = Number(point?.close);
     const date = String(point?.time ?? point?.date ?? '').trim();
-    if (!point || !date || !Number.isFinite(close)) return [];
-    const optional = (item: unknown) => Number.isFinite(Number(item)) ? Number(item) : undefined;
+    if (!point || !date || !Number.isFinite(Date.parse(date)) || !Number.isFinite(close) || close <= 0) return [];
+    const optional = (item: unknown) => (typeof item === 'number' || (typeof item === 'string' && item.trim())) && Number.isFinite(Number(item)) ? Number(item) : undefined;
     return [{
       date,
       close,
@@ -70,6 +71,8 @@ export function VerifiedPriceChart({ result }: { result: AnalysisResult }) {
     let active = true;
     setLoading(true);
     setError(false);
+    setHistory([]);
+    const timer = setTimeout(() => controller.abort(), 20_000);
     void fetch(url, { credentials: 'same-origin', headers: { accept: 'application/json' }, signal: controller.signal })
       .then(async response => ({ response, payload: await response.json().catch(() => ({})) as HistoryResponse }))
       .then(({ response, payload }) => {
@@ -80,18 +83,18 @@ export function VerifiedPriceChart({ result }: { result: AnalysisResult }) {
         setCurrency(typeof payload.currency === 'string' ? payload.currency : result.asset.quoteCurrency);
         setError(points.length < 2);
       })
-      .catch(error => {
-        if (!active || (error instanceof DOMException && error.name === 'AbortError')) return;
+      .catch(() => {
+        if (!active) return;
         setHistory([]);
         setError(true);
       })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; controller.abort(); };
+      .finally(() => { clearTimeout(timer); if (active) setLoading(false); });
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
   }, [result.asset.quoteCurrency, retryToken, url]);
 
   return (
-    <div className={styles.disclosureBody} data-testid="ai-analyst-verified-chart">
-      {error && !loading ? <p className={styles.errorText} role="status"><AlertTriangle size={15} aria-hidden="true" />{copy.analysis.chartUnavailable}</p> : null}
+    <div className={`${styles.disclosureBody} ${chartStyles.chart}`} data-testid="ai-analyst-verified-chart">
+      <MarketChartStyles />
       <PriceHistoryChart
         history={history}
         loading={loading}
@@ -106,7 +109,6 @@ export function VerifiedPriceChart({ result }: { result: AnalysisResult }) {
         onRetry={() => setRetryToken(value => value + 1)}
         t={t}
       />
-      {error ? <button className={styles.secondaryAction} type="button" onClick={() => setRetryToken(value => value + 1)}><RefreshCw size={15} aria-hidden="true" />{copy.actions.retry}</button> : null}
     </div>
   );
 }

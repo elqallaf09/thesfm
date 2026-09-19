@@ -1215,7 +1215,7 @@ export async function proxyHistory(symbolInput: unknown, assetTypeInput: unknown
   const period = String(periodInput ?? '6m');
   const interval = String(intervalInput ?? '').trim();
   const providerHistory = await getCandlesWithFallback(symbol, undefined, interval || '1day', {
-    symbol,
+    symbol, historyPeriod: period,
     assetType,
   });
   if (providerHistory.ok && providerHistory.data.length > 0) {

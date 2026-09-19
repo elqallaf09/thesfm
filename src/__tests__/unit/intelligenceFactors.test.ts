@@ -69,6 +69,16 @@ describe('intelligence factor normalization', () => {
     expect(macro.evidence.some(item => item.labelKey === 'intelligence_evidence_next_macro_event')).toBe(true);
     expect(macro.evidence.some(item => item.labelKey === 'intelligence_evidence_macro_actual' && item.value === 3.2)).toBe(true);
   });
+  it('exposes observed official funding rates without inventing forecasts or a directional recommendation', () => {
+    const input = contextualSnapshot();
+    input.contextEvidence.macro = { provider: 'New York Fed', observedAt: new Date(now).toISOString(), events: [], stale: false, failureCode: null, observations: [{ series: 'SOFR', country: 'US', currency: 'USD', value: 3.5, previous: 3.25, previousPeriod: '2026-07-16', unit: '%', period: '2026-07-17', retrievedAt: new Date(now).toISOString(), provider: 'New York Fed', sourceUrl: 'https://www.newyorkfed.org/markets/reference-rates/sofr' }] };
+    const [factor] = run(input, ['MACRO']);
+    expect(factor.availability).toBe('PARTIAL'); expect(factor.normalizedScore).toBeNull(); expect(factor.failureReason).toBeNull();
+    expect(factor.evidence).toEqual(expect.arrayContaining([expect.objectContaining({ labelKey: 'intelligence_evidence_macro_observation_sofr', value: 3.5, unit: '%', observedAt: '2026-07-17' })]));
+    expect(factor.evidence.some(item => item.labelKey.endsWith('macro_forecast'))).toBe(false);
+    input.contextEvidence.macro.observations![0].period = '2025-01-01';
+    expect(run(input, ['MACRO'])[0].availability).toBe('UNAVAILABLE');
+  });
   it('does not count an upcoming event as directional evidence or as an observed zero surprise', () => {
     const input = contextualSnapshot(); input.contextEvidence.macro.events = [input.contextEvidence.macro.events[1]];
     const [macro] = run(input, ['MACRO']);
