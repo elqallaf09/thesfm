@@ -327,6 +327,7 @@ export async function safeFetchText(
   const controller = new AbortController();
   const externalAbort = () => controller.abort();
   options.signal?.addEventListener('abort', externalAbort, { once: true });
+  if (options.signal?.aborted) controller.abort();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let currentUrl = assertSafePublicHttpUrl(input, providerId);
@@ -336,6 +337,7 @@ export async function safeFetchText(
 
   try {
     while (true) {
+      controller.signal.throwIfAborted();
       // Validate DNS immediately before every request, including redirects.
       // This fails closed when a hostname resolves to any private/link-local
       // address and prevents configured feeds from targeting internal services.
