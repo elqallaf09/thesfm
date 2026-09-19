@@ -32,7 +32,7 @@ function normalizeRelatedSymbols(article: FinnhubArticle, query: MarketNewsQuery
     .split(/[,;\s]+/)
     .map(normalizeSymbol)
     .filter(Boolean);
-  const querySymbol = normalizeSymbol(query.symbol);
+  const querySymbol = query.scope === 'asset' ? normalizeSymbol(query.symbol) : '';
   return [...new Set([querySymbol, ...related].filter(Boolean))].slice(0, 10);
 }
 
@@ -97,25 +97,18 @@ export function createFinnhubNewsProvider(apiKey: string): MarketNewsProvider {
   return {
     provider: 'finnhub',
     async getArticles(query) {
-      const requests: Promise<unknown>[] = [];
-
-      const generalUrl = new URL('https://finnhub.io/api/v1/news');
-      generalUrl.searchParams.set('category', 'general');
-      generalUrl.searchParams.set('token', apiKey);
-      requests.push(fetchFinnhubJson(generalUrl, query.force));
-
       const symbol = normalizeSymbol(query.symbol);
-      if (symbol) {
-        const companyUrl = new URL('https://finnhub.io/api/v1/company-news');
-        companyUrl.searchParams.set('symbol', symbol);
-        companyUrl.searchParams.set('from', query.from);
-        companyUrl.searchParams.set('to', query.to);
-        companyUrl.searchParams.set('token', apiKey);
-        requests.push(fetchFinnhubJson(companyUrl, query.force));
+      const url = new URL(query.scope === 'asset' && symbol ? 'https://finnhub.io/api/v1/company-news' : 'https://finnhub.io/api/v1/news');
+      url.searchParams.set('token', apiKey);
+      if (query.scope === 'asset' && symbol) {
+        url.searchParams.set('symbol', symbol);
+        url.searchParams.set('from', query.from);
+        url.searchParams.set('to', query.to);
+      } else {
+        url.searchParams.set('category', 'general');
       }
-
-      const payloads = await Promise.all(requests);
-      const rawArticles = payloads.flatMap(payload => Array.isArray(payload) ? payload as FinnhubArticle[] : []);
+      const payload = await fetchFinnhubJson(url, query.force);
+      const rawArticles = Array.isArray(payload) ? payload as FinnhubArticle[] : [];
       return dedupeMarketNewsArticles(
         rawArticles
           .map((item, index) => normalizeFinnhubNewsArticle(item, index, query))
