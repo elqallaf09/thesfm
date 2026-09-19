@@ -9,11 +9,12 @@ import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { useTvResource } from './useTvResource';
 
-export function TvSettingsPanel({ settings, change, stripsOnly = false }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean }) {
+export function TvSettingsPanel({ settings, change, stripsOnly = false, customize }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; customize: () => void }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
   const toggle = (key: 'autoRotate' | 'ticker' | 'sound') => change({ ...settings, [key]: !settings[key] });
   return <div className="tv-settings">
-    <div className="tv-setting-row"><span>{t('language')}</span><div className="tv-segment">{(['ar','en','fr'] as const).map((lang,i) => <button key={lang} aria-pressed={settings.language === lang} onClick={() => change({ ...settings, language: lang })}>{['العربية','English','Français'][i]}</button>)}</div></div>
+    <label className="tv-setting-row tv-language-setting"><span>{t('language')}</span><select value={settings.language} onChange={event => change({ ...settings, language: event.target.value as TvLanguage })}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select></label>
+    <div className="tv-setting-row"><span>{t('displayInstruments')}</span><button onClick={customize}>{t('customizeMarkets')}</button></div>
     <div className="tv-setting-row"><span>{t('theme')}</span><div className="tv-segment">{(['dark','light'] as const).map(theme => <button key={theme} aria-pressed={settings.theme === theme} onClick={() => change({ ...settings, theme })}>{t(theme)}</button>)}</div></div>
     {!stripsOnly && <>
     <div className="tv-setting-row"><span>{t('layout')}</span><div className="tv-segment">{(['balanced','quotes'] as const).map(layout => <button key={layout} aria-pressed={settings.layout === layout} onClick={() => change({ ...settings, layout })}>{t(layout)}</button>)}</div></div>

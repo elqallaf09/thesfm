@@ -1,5 +1,18 @@
 import type { TvLanguage } from './types';
 export const TV_TEXT = {
+  customizeInstruments: ['تخصيص الأسهم والأصول', 'Customize instruments', 'Personnaliser les titres'],
+  displayInstruments: ['الأسهم والأصول المعروضة', 'Displayed instruments', 'Titres affichés'],
+  allInstruments: ['جميع الأسهم والأصول', 'All instruments', 'Tous les titres'],
+  specificInstruments: ['أسهم وأصول محددة', 'Selected instruments', 'Titres sélectionnés'],
+  selectedInstruments: ['المختار للعرض', 'Selected to display', 'Sélection pour affichage'],
+  searchInstruments: ['ابحث بالرمز أو اسم الشركة', 'Search symbol or company name', 'Rechercher un symbole ou une société'],
+  selectPage: ['اختيار نتائج هذه الصفحة', 'Select this page', 'Sélectionner cette page'],
+  backMarkets: ['رجوع للأسواق', 'Back to markets', 'Retour aux marchés'],
+  noMatchingInstruments: ['لا توجد أسهم مطابقة', 'No matching instruments', 'Aucun titre correspondant'],
+  matchingInstruments: ['نتائج البحث', 'Matching results', 'Résultats correspondants'],
+  noSelectedInstruments: ['لم تختر أي سهم لهذا الشريط', 'No instruments selected for this strip', 'Aucun titre sélectionné pour ce bandeau'],
+  instrumentSelectionSaved: ['تُحفظ اختيارات الأسهم على هذه الشاشة', 'Instrument choices are saved on this screen', 'La sélection est enregistrée sur cet écran'],
+  selectionStorageUnavailable: ['تعذر حفظ اختيارات الأسهم على الجهاز؛ تبقى متاحة في هذه الجلسة', 'Could not save instrument choices on this device; they remain active for this session', 'Impossible d’enregistrer la sélection sur cet appareil ; elle reste active pour cette session'],
   BUY: ['شراء', 'Buy', 'Acheter'], SELL: ['بيع', 'Sell', 'Vendre'], WAIT: ['انتظار', 'Wait', 'Attendre'], INSUFFICIENT_DATA: ['بيانات غير كافية', 'Insufficient data', 'Données insuffisantes'],
   LOW: ['منخفضة', 'Low', 'Faible'], MEDIUM: ['متوسطة', 'Medium', 'Modéré'], HIGH: ['مرتفعة', 'High', 'Élevé'], VERY_HIGH: ['مرتفعة جدًا', 'Very high', 'Très élevé'], UNAVAILABLE: ['غير متاحة', 'Unavailable', 'Indisponible'],
   regularDays: ['أيام الجلسة الاعتيادية', 'Regular trading days', 'Jours de séance habituels'],

@@ -51,4 +51,12 @@ describe('TV canonical market snapshots', () => {
     expect(catalog.tvDirectoryAssets).toHaveBeenCalledWith('us', 'US');
   });
 
+  it('resolves chosen stocks anywhere in the market without requesting other listings', async () => {
+    vi.spyOn(catalog, 'tvDirectoryAssets').mockResolvedValue(Array.from({ length: 2000 }, (_, i) => ({ symbol: `QA${i}`, name: 'Synthetic QA listing' })));
+    vi.mocked(getSfmMarketQuote).mockResolvedValue(null);
+    const result = await loadTvSnapshot('us', [], { market: 'US', pageSize: 12, symbols: ['QA1999','QA8','FOREIGN'] });
+    expect(result.quotes.map(q => q.symbol)).toEqual(['QA8','QA1999']);
+    expect(getSfmMarketQuote).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(getSfmMarketQuote).mock.calls.map(c => c[0])).toEqual(['QA8','QA1999']);
+  });
 });

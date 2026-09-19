@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Building2, Coins, Globe2 } from 'lucide-react';
 import { getAssetVisualMeta, resolveAssetIdentity } from '@/lib/assetVisuals';
 import type { TvGroup, TvQuote } from '@/lib/markets-tv/types';
-export function TvAssetIcon({ quote, group }: { quote: TvQuote; group: TvGroup }) {
+export function TvAssetIcon({ quote, group }: { quote: Pick<TvQuote, 'symbol' | 'name' | 'exchange'>; group: TvGroup }) {
   const [failed, setFailed] = useState('');
   const visual = useMemo(() => {
     const input = { symbol: group === 'crypto' ? `${quote.symbol.split('/')[0]}-USD` : quote.symbol.replace('/', ''), name: quote.name, exchange: quote.exchange, assetType: ['crypto','forex'].includes(group) ? group : group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : 'stock' };

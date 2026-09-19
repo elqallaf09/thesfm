@@ -7,7 +7,7 @@ export type TvSettings = {
   marketIds?: string[]; stripDensity?: 'comfortable' | 'compact'; stripSpeed?: number;
 };
 export type TvQuote = {
-  symbol: string; name: string; nameAr: string; currency: string | null; price: number | null;
+  symbol: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
   changePercent: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
   status: 'available' | 'delayed' | 'stale' | 'reference' | 'unknown_time' | 'unavailable';
   exchange: string | null; country: string | null;

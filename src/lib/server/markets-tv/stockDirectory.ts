@@ -25,7 +25,7 @@ export async function tvStockAssets(region: string): Promise<TvAsset[]> {
     const row = marketSearchItemToWorldStock(item, 'en');
     if (!row || row.region !== region) continue;
     const key = `${row.region}:${row.canonicalSymbol}`;
-    if (!rows.has(key)) rows.set(key, { symbol: row.providerSymbol, name: row.displayName, region, currency: row.currency, country: row.countryCode });
+    if (!rows.has(key)) rows.set(key, { symbol: row.providerSymbol, name: row.displayName, nameAr: marketSearchItemToWorldStock(item, 'ar')?.displayName, region, currency: row.currency, country: row.countryCode });
   }
   return [...rows.values()].sort((a,b) => a.name.localeCompare(b.name) || a.symbol.localeCompare(b.symbol));
 }

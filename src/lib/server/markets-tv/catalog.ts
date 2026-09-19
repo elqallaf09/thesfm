@@ -8,7 +8,8 @@ import { tvText } from '@/lib/markets-tv/i18n';
 import type { WorldStock } from '@/lib/world-stocks/types';
 import { tvInstrumentAssets } from './instruments';
 import { tvStockAssets } from './stockDirectory';
-export type TvAsset = { symbol: string; name: string; nameAr?: string; region?: string; currency?: string | null; country?: string | null; mic?: string; providerSymbol?: string; baseCurrency?: string };
+import { localizeTvAsset } from './names';
+export type TvAsset = { symbol: string; displaySymbol?: string; name: string; nameAr?: string; region?: string; currency?: string | null; country?: string | null; mic?: string; providerSymbol?: string; baseCurrency?: string };
 const GULF = new Set(['KW', 'SA', 'AE', 'QA', 'BH', 'OM']);
 const EUROPE = new Set(['GB','DE','FR','CH','NL','BE','ES','IT','PT','AT','DK','SE','NO','FI','IE','PL','GR','TR','CZ','HU','RO']);
 const ASIA = new Set(['CN','JP','HK','KR','IN','TW','SG','TH','MY','ID','PH','VN','PK','BD']);
@@ -24,12 +25,12 @@ async function universe() {
   return pending;
 }
 function stockAsset(stock: WorldStock): TvAsset {
-  return { symbol: stock.providerSymbol, name: stock.displayName, region: stock.region, currency: stock.currency, country: stock.countryCode };
+  return localizeTvAsset({ symbol: stock.providerSymbol, name: stock.displayName, region: stock.region, currency: stock.currency, country: stock.countryCode });
 }
 export async function tvDirectoryAssets(group: TvGroup, market?: string): Promise<TvAsset[]> {
   if (group === 'crypto' || group === 'forex') return tvInstrumentAssets(group);
   if (['global','commodities'].includes(group)) return tvAssetsAll(group);
-  if (market) return tvStockAssets(market);
+  if (market) return (await tvStockAssets(market)).map(localizeTvAsset);
   const data = await universe();
   const rows = data.results.filter(stock => (!market || stock.region === market) && (group === 'world' || tvCountryGroup(stock.countryCode) === group));
   return rows.map(stockAsset);

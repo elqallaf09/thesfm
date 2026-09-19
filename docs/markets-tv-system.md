@@ -1,5 +1,11 @@
 # The SFM Markets TV
 
+## Per-market instrument choices
+
+Display settings expose an AR/EN/FR language selector and a direct market-customization entry. Each market supports all instruments or individually selected symbols, with Arabic/English name and ticker search across its full directory. `/api/tv/instruments` returns 50 identity-only rows per page; browsing does not fetch prices. Selected strips send only their current batch (at most 12 symbols) to `/api/tv/snapshot`, which resolves those symbols within the specified market before fetching any quote. Empty selection stays empty; choosing all restores ordinary directory pagination.
+
+Instrument choices persist locally per TV/screen, independently of the linked device's small synchronized settings payload. They do not change the account watchlist. Names reuse existing exchange-scoped Arabic metadata, including `NBK.KW` → `NBK` / `بنك الكويت الوطني`; the original provider symbol still controls quotes. Moving cards display the asset icon, symbol and name, price/currency, direction/percentage, and original source/time evidence in both themes. Unknown translations or logos use the existing name/generic icon rather than an invented identity.
+
 An independent television client sharing The SFM's existing market-data,
 watchlist, alerts and saved-intelligence contracts. Development is mandatory in
 [the platform roadmap](platform-master-roadmap.md), and was brought forward by

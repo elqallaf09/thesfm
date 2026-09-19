@@ -117,6 +117,14 @@ export type VerifiedAssetLogo = {
 
 const VERIFIED_ASSET_LOGO_DIRECTORY: readonly VerifiedAssetLogo[] = [
   {
+    canonicalTicker: 'NBK',
+    logoUrl: 'https://www.google.com/s2/favicons?domain_url=https://www.nbk.com&sz=128',
+    expectedHost: 'www.google.com',
+    tickerAliases: ['NBK.KW'],
+    markets: ['KW'],
+    nameAliases: ['national bank of kuwait', 'بنك الكويت الوطني'],
+  },
+  {
     canonicalTicker: 'TSM',
     logoUrl: 'https://www.google.com/s2/favicons?domain_url=https://www.tsmc.com&sz=128',
     expectedHost: 'www.google.com',

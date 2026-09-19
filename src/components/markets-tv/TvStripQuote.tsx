@@ -17,7 +17,7 @@ export const TvStripQuote = memo(function TvStripQuote({ quote: q, group, langua
   const status = quoteStatus(q, now), evidence = `${q.source || tvText(language,'unavailable')} · ${tvTime(q.observedAt,language,true)} · ${tvText(language,status)}`;
   return <button className="tv-market-strip-item" tabIndex={duplicate ? -1 : 0} onClick={() => onQuote(q)} data-tick={tick} title={`${language === 'ar' ? q.nameAr : q.name}\n${evidence}`}>
     <TvAssetIcon quote={q} group={group}/>
-    <span className="tv-strip-symbol"><b dir="ltr">{q.symbol}</b><span>{language === 'ar' ? q.nameAr : q.name}</span></span>
+    <span className="tv-strip-symbol"><b dir="ltr">{q.displaySymbol || q.symbol}</b><span dir="auto">{language === 'ar' ? q.nameAr : q.name}</span></span>
     <strong className="tv-strip-price" dir="ltr">{tvPrice(q.price,q.currency)} <span>{q.currency}</span></strong>
     <span className="tv-strip-change" dir="ltr" data-trend={trend} aria-label={`${tvText(language,trend === 'up' ? 'rising' : trend === 'down' ? 'falling' : 'unchanged')}: ${q.changePercent ?? '—'}%`}>
       {trend === 'up' ? <ArrowUpRight aria-hidden="true"/> : trend === 'down' ? <ArrowDownRight aria-hidden="true"/> : <Minus aria-hidden="true"/>}

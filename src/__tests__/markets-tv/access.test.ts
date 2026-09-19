@@ -46,12 +46,24 @@ describe('TV authorization boundary', () => {
   });
   it('keeps public snapshots on bounded groups and private no-store responses', async () => {
     mocks.snapshot.mockResolvedValue({ quotes: [], total: 0, available: 0 });
-    const response = await snapshot(request('snapshot?group=us&symbols=ATTACKER'));
+    const response = await snapshot(request('snapshot?group=us'));
     expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(mocks.snapshot).toHaveBeenCalledWith('us', [], { page: 0, pageSize: 6, market: undefined });
+    expect(mocks.snapshot).toHaveBeenCalledWith('us', [], { page: 0, pageSize: 6, market: undefined, symbols: undefined });
+    expect((await snapshot(request('snapshot?group=us&symbols=ATTACKER'))).status).toBe(400);
     expect((await snapshot(request('snapshot?group=invalid'))).status).toBe(400);
     expect((await snapshot(request('snapshot?group=us&pageSize=1000'))).status).toBe(400);
     expect((await snapshot(request('snapshot?group=us&page=-1'))).status).toBe(400);
+  });
+  it('accepts bounded market choices and cannot use them to bypass a private watchlist', async () => {
+    mocks.snapshot.mockResolvedValue({ quotes: [], total: 0, available: 0 });
+    const query = new URLSearchParams({ group: 'us', market: 'US', symbols: JSON.stringify(['AAPL','MSFT','AAPL']) });
+    expect((await snapshot(request(`snapshot?${query}`))).status).toBe(200);
+    expect(mocks.snapshot).toHaveBeenCalledWith('us', [], expect.objectContaining({ market: 'US', symbols: ['AAPL','MSFT'] }));
+    for (const values of [[], ['<script>'], Array.from({ length: 13 }, (_, i) => `QA${i}`)]) {
+      query.set('symbols', JSON.stringify(values)); expect((await snapshot(request(`snapshot?${query}`))).status).toBe(400);
+    }
+    query.set('symbols', '["AAPL"]'); query.set('group', 'watchlist');
+    expect((await snapshot(request(`snapshot?${query}`))).status).toBe(400);
   });
   it('bounds streamed JSON bodies, including missing content-length', async () => {
     expect(await tvBody(request('pair', 'POST', { 'content-type': 'application/json' }, JSON.stringify({ name: 'a'.repeat(9000) })))).toBeNull();
