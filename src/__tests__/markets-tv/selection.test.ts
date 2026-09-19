@@ -7,7 +7,7 @@ import { localizeTvAsset } from '@/lib/server/markets-tv/names';
 import { tvDirectoryAssets } from '@/lib/server/markets-tv/catalog';
 import { GET } from '@/app/api/tv/instruments/route';
 import { resolveAssetIdentity } from '@/lib/assetVisuals';
-afterEach(() => vi.resetAllMocks());
+afterEach(() => { vi.resetAllMocks(); });
 describe('TV market instrument choices', () => {
   it('preserves 2,000 choices, empty choices, and market isolation through storage', () => {
     const selection = normalizeTvSelections(JSON.parse(JSON.stringify({ US: Array.from({ length: 2000 }, (_, i) => `QA${i}`), DFM: [], BOURSA_KUWAIT: ['NBK.KW','NBK.KW','<script>'] })));
@@ -20,6 +20,9 @@ describe('TV market instrument choices', () => {
     expect(localizeTvAsset({ symbol: 'NBK', name: 'Different issuer', region: 'US' }).nameAr).toBe('Different issuer');
     expect(resolveAssetIdentity({ symbol: 'NBK.KW', exchange: 'BOURSA_KUWAIT' }).verified?.logoUrl).toContain('www.nbk.com');
     expect(resolveAssetIdentity({ symbol: 'NBK', exchange: 'NYSE' }).verified).toBeNull();
+    expect(localizeTvAsset({ symbol: 'AAPL', name: 'Apple Inc.', region: 'US' }).nameAr).toBe('أبل');
+    expect(localizeTvAsset({ symbol: 'NVDA', name: 'NVIDIA Corporation', region: 'US' }).nameAr).toBe('إنفيديا');
+    expect(localizeTvAsset({ symbol: 'AAPL', name: 'Different issuer', region: 'TD_XPAR' }).nameAr).toBe('Different issuer');
   });
   it('paginates the full directory and searches Arabic names without loading quotes', async () => {
     vi.mocked(tvDirectoryAssets).mockResolvedValue([...Array.from({ length: 2000 }, (_, i) => ({ symbol: `QA${i}`, name: 'QA' })), { symbol: 'NBK.KW', name: 'National Bank of Kuwait', nameAr: 'بنك الكويت الوطني' }]);
