@@ -3,7 +3,10 @@ import type { MarketSearchItem } from '@/lib/market/marketService';
 
 export type ProviderListing = MarketSearchItem & { exchange: string; source: string; exchangeName: string; mic: string };
 export type ProviderDirectory = { rows: ProviderListing[]; status: 'directory' | 'snapshot' | 'unavailable'; asOf: string | null };
-const SOURCE = 'https://api.twelvedata.com/stocks';
+// The unfiltered endpoint also includes non-equity catalogs and exceeds the
+// response budget. Request ordinary company shares explicitly. US funds and
+// other share classes continue to come from the complete Nasdaq directory.
+const SOURCE = 'https://api.twelvedata.com/stocks?type=Common%20Stock';
 const COUNTRIES: Record<string, string> = {
   'United States': 'US', China: 'CN', Kuwait: 'KW', 'United Arab Emirates': 'AE', 'Saudi Arabia': 'SA', Qatar: 'QA', Bahrain: 'BH', Oman: 'OM',
   Japan: 'JP', India: 'IN', 'South Korea': 'KR', 'Hong Kong': 'HK', Canada: 'CA', Australia: 'AU', 'United Kingdom': 'GB', Germany: 'DE', France: 'FR',
@@ -40,10 +43,21 @@ export async function getProviderDirectory(): Promise<ProviderDirectory> {
     try {
       // One catalog request per day per warm process; no quote fanout. A failed
       // refresh retains the last directory and reports snapshot status.
-      const response = await fetch(SOURCE, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+      const response = await fetch(SOURCE, { cache: 'no-store', signal: AbortSignal.timeout(35000) });
       if (!response.ok) throw new Error('DIRECTORY_UNAVAILABLE');
-      const payload = await response.text();
-      if (payload.length > 40_000_000) throw new Error('DIRECTORY_TOO_LARGE');
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('EMPTY_DIRECTORY');
+      const decoder = new TextDecoder(), parts: string[] = []; let size = 0;
+      try {
+        for (;;) {
+          const chunk = await reader.read(); if (chunk.done) break;
+          size += chunk.value.byteLength;
+          if (size > 64_000_000) { await reader.cancel(); throw new Error('DIRECTORY_TOO_LARGE'); }
+          parts.push(decoder.decode(chunk.value, { stream: true }));
+        }
+        parts.push(decoder.decode());
+      } finally { reader.releaseLock(); }
+      const payload = parts.join('');
       const rows = parseProviderDirectory(JSON.parse(payload));
       if (!rows.length) throw new Error('EMPTY_DIRECTORY');
       saved = { rows, status: 'directory', asOf: new Date().toISOString() }; expires = Date.now() + 86400000;

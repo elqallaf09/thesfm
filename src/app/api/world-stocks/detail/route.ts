@@ -6,6 +6,7 @@ import { isSupportedWorldStockRegion } from '@/lib/world-stocks/regions';
 import type { WorldStock } from '@/lib/world-stocks/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const querySchema = z.object({
   symbol: z.string().trim().min(1).max(32),

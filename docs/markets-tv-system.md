@@ -161,3 +161,11 @@ exchange quotes validate symbol, MIC and currency and require a server-side
 Twelve Data key. Missing access produces an unavailable price. The standalone
 TV package opens the world-stock browser via QR; its embedded directory and
 remote market selection work without Next.js routing.
+
+Worldwide discovery requests `type=Common Stock` explicitly. A source probe
+returned 161,581 rows across 87 MICs/58 countries (42.5 MB); the unfiltered feed
+exceeded the old 40 MB budget. The streamed equity response now has a 64 MB
+limit, a 35-second source timeout, and a daily single-flight process cache. TV
+quote work shares a 50-second total deadline with directory loading. These
+source counts precede identity validation, deduplication and primary-directory
+replacement; they are not a claim that every returned row has quote access.

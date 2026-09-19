@@ -6,6 +6,7 @@ import { isSupportedWorldStockRegion } from '@/lib/world-stocks/regions';
 import type { WorldStockSearchResponse } from '@/lib/world-stocks/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const MAX_QUERY_LENGTH = 64;
 const DEFAULT_PAGE_SIZE = 25;
