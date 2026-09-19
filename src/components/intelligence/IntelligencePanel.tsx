@@ -24,7 +24,7 @@ const COPY = {
   ar: {
     title: 'سجل الأدلة الذكي', subtitle: 'تحليل حتمي مبني على البيانات المتاحة فعلياً', loading: 'جارٍ بناء التحليل من مصادر البيانات المتاحة…',
     retry: 'إعادة المحاولة', error: 'تعذر إنشاء التحليل الذكي حالياً.', providerUnavailable: 'تعذر الوصول إلى مزود البيانات. لم يتم إنشاء قيم بديلة.',
-    unsupported: 'هذا الأصل غير مدعوم حالياً.', partial: 'التحليل جزئي لأن بعض عوامل البيانات غير متاحة.', stale: 'هذه نتيجة قديمة وموسومة بوضوح؛ تعذر تحديث البيانات الحية.',
+    unsupported: 'هذا الأصل غير مدعوم حالياً.', partial: 'التحليل جزئي لأن بعض عوامل البيانات غير متاحة.', stale: 'بيانات الأسعار أقدم من الحد المعتمد لهذا الأفق؛ راجع وقت المصدر. لا تصدر توصية حتى تتوفر بيانات مناسبة.',
     insufficient: 'الأدلة المتاحة لا تكفي لإصدار توصية اتجاهية.', conflict: 'توجد إشارات قوية متعارضة؛ تم خفض الثقة.',
     recommendation: 'القراءة', confidence: 'ثقة التحليل', confidenceNote: 'تعكس اكتمال الأدلة وحداثتها واتساقها، وليست احتمالاً مضموناً للربح.',
     quality: 'جودة الأدلة', risk: 'المخاطر', horizon: 'الأفق', generated: 'وقت التحليل', dataAsOf: 'البيانات حتى', freshness: 'الحداثة',
@@ -38,7 +38,7 @@ const COPY = {
   en: {
     title: 'Intelligence evidence ledger', subtitle: 'Deterministic analysis from data that is actually available', loading: 'Building analysis from available verified sources…',
     retry: 'Try again', error: 'Financial intelligence is unavailable right now.', providerUnavailable: 'The data provider is unavailable. No replacement values were generated.',
-    unsupported: 'This asset is not supported yet.', partial: 'This analysis is partial because some data factors are unavailable.', stale: 'This is an explicitly stale result; live refresh failed.',
+    unsupported: 'This asset is not supported yet.', partial: 'This analysis is partial because some data factors are unavailable.', stale: 'Price observations exceed this horizon’s freshness limit. Check the source time; a recommendation requires suitable data.',
     insufficient: 'Available evidence is insufficient for a directional recommendation.', conflict: 'Strong signals conflict, so confidence was reduced.',
     recommendation: 'Reading', confidence: 'Analysis confidence', confidenceNote: 'Reflects evidence completeness, freshness, and consistency—not a guaranteed probability of profit.',
     quality: 'Evidence quality', risk: 'Risk', horizon: 'Horizon', generated: 'Generated', dataAsOf: 'Data as of', freshness: 'Freshness',
@@ -52,7 +52,7 @@ const COPY = {
   fr: {
     title: 'Registre des preuves intelligentes', subtitle: 'Analyse déterministe fondée sur les données réellement disponibles', loading: 'Construction de l’analyse à partir des sources vérifiées disponibles…',
     retry: 'Réessayer', error: 'L’intelligence financière est indisponible pour le moment.', providerUnavailable: 'Le fournisseur de données est indisponible. Aucune valeur de remplacement n’a été générée.',
-    unsupported: 'Cet actif n’est pas encore pris en charge.', partial: 'Cette analyse est partielle car certains facteurs sont indisponibles.', stale: 'Ce résultat est explicitement ancien ; l’actualisation en direct a échoué.',
+    unsupported: 'Cet actif n’est pas encore pris en charge.', partial: 'Cette analyse est partielle car certains facteurs sont indisponibles.', stale: 'Les prix dépassent la limite de fraîcheur de cet horizon. Vérifiez la date de la source ; une recommandation exige des données adaptées.',
     insufficient: 'Les preuves disponibles sont insuffisantes pour une recommandation directionnelle.', conflict: 'Des signaux forts sont contradictoires ; la confiance a été réduite.',
     recommendation: 'Lecture', confidence: 'Confiance de l’analyse', confidenceNote: 'Reflète la complétude, la fraîcheur et la cohérence des preuves, pas une probabilité garantie de gain.',
     quality: 'Qualité des preuves', risk: 'Risque', horizon: 'Horizon', generated: 'Générée le', dataAsOf: 'Données au', freshness: 'Fraîcheur',

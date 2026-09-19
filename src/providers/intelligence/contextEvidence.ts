@@ -268,7 +268,7 @@ async function loadMacro(request: AnalysisRequest, asset: CanonicalAssetIdentity
   if (!response || response.stale || response.status !== 'success') return enrich(await official ?? { ...EMPTY_MACRO, provider: response?.provider ?? null, stale: Boolean(response?.stale), failureCode: response?.messageCode ?? 'MACRO_PROVIDER_FAILED' });
   const events = response.data.filter(event => {
     const at = contextIso(event.dateTimeUtc);
-    if (!at || Date.parse(at) < now - 3 * DAY || Date.parse(at) > now + 7 * DAY || !currencies.includes(symbol(event.currency ?? ''))) return false;
+    if (event.stale || !at || Date.parse(at) < now - 3 * DAY || Date.parse(at) > now + 7 * DAY || !currencies.includes(symbol(event.currency ?? ''))) return false;
     return !['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || country(event.country) === assetCountry;
   }).sort((a, b) => Math.abs(Date.parse(a.dateTimeUtc) - now) - Math.abs(Date.parse(b.dateTimeUtc) - now))
     .slice(0, 24).sort((a, b) => Date.parse(a.dateTimeUtc) - Date.parse(b.dateTimeUtc));

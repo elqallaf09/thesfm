@@ -103,6 +103,7 @@ export function buildTruthfulFeatureHealth(ops: OperationsCenterState): FeatureH
 
   for (const base of ops.featureHealth) {
     let status = marketFeatureStatus(ops.market, base.feature) ?? base.status;
+    if (base.feature === 'economic_calendar') status = ops.calendarHealth ?? 'maintenance';
     if (base.feature === 'news') status = newsStatus(ops);
     if (base.feature === 'email') status = emailStatus(ops);
 

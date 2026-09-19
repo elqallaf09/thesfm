@@ -81,7 +81,8 @@ export function calculateFreshness(input: {
       ? 'DELAYED'
       : 'STALE';
 
-  if (input.providerState === 'CACHED') state = ageSeconds > input.thresholdSeconds * 3 ? 'STALE' : 'DELAYED';
+  // Cache delivery does not age a still-current observation; the source timestamp does.
+  if (input.providerState === 'CACHED' && ageSeconds > input.thresholdSeconds) state = ageSeconds > input.thresholdSeconds * 3 ? 'STALE' : 'DELAYED';
   if (input.providerState === 'DELAYED' && state === 'FRESH') state = 'DELAYED';
 
   return {
@@ -97,7 +98,7 @@ export function isDecisionFreshnessEligible(input: {
   freshnessState: FreshnessState;
   horizon: IntelligenceHorizon;
 }) {
-  if (input.providerState === 'LIVE') return input.freshnessState === 'FRESH';
+  if (input.providerState === 'LIVE' || input.providerState === 'CACHED') return input.freshnessState === 'FRESH';
   if (input.providerState !== 'DELAYED' || !DELAYED_DECISION_HORIZONS.has(input.horizon)) return false;
   return input.freshnessState === 'FRESH' || input.freshnessState === 'DELAYED';
 }
