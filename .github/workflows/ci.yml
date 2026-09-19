@@ -396,7 +396,7 @@ jobs:
     # Never expose Preview credentials to an automated dependency PR. A
     # maintainer can validate an approved exact SHA with the fail-closed manual
     # authenticated-preview-validate.yml workflow instead.
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain, build, smoke, lighthouse]
     runs-on: ubuntu-latest
     concurrency:
@@ -407,6 +407,7 @@ jobs:
       contents: read
       deployments: write
       checks: read
+      pull-requests: read
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
