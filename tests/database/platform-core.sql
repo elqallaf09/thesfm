@@ -75,8 +75,13 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 select public.finance_close_month('2020-01-01');
 reset role;
--- Profiles use a historical non-cascading FK; the account-erasure route clears them first.
+-- Mirror /api/account/delete: legacy finance/profile FKs do not all cascade.
+-- Only the privileged, authenticated account-erasure route removes these locks.
+delete from public.finance_month_closes where user_id='00000000-0000-4000-8000-000000000001';
+delete from public.finance_month_events where user_id='00000000-0000-4000-8000-000000000001';
+delete from public.monthly_income_sources where user_id='00000000-0000-4000-8000-000000000001';
+delete from public.expense_items where user_id='00000000-0000-4000-8000-000000000001';
 delete from public.profiles where id='00000000-0000-4000-8000-000000000001';
 delete from auth.users where id='00000000-0000-4000-8000-000000000001';
-select pg_temp.assert_true((select count(*)=0 from public.expense_items where user_id='00000000-0000-4000-8000-000000000001'),'account deletion cascades through closed ledger');
+select pg_temp.assert_true((select count(*)=0 from public.expense_items where user_id='00000000-0000-4000-8000-000000000001'),'explicit account erasure removes closed ledger');
 rollback;
