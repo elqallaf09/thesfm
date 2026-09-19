@@ -22,12 +22,17 @@ $headers = @{ Authorization = "Bearer $key" }
 $modelsUri = "http://127.0.0.1:$port/v1/models"
 $chatUri = "http://127.0.0.1:$port/v1/chat/completions"
 
-function Invoke-SfmLocal([string]$Uri, [string]$Method, [string]$Body = $null) {
+function Invoke-SfmLocal {
+  param(
+    [Parameter(Mandatory = $true)][string]$Uri,
+    [Parameter(Mandatory = $true)][string]$Method,
+    [AllowNull()][object]$Body = $null
+  )
   try {
     if ($null -eq $Body) {
       return Invoke-RestMethod -Uri $Uri -Headers $headers -Method $Method -TimeoutSec 30
     }
-    return Invoke-RestMethod -Uri $Uri -Headers $headers -ContentType 'application/json; charset=utf-8' -Method $Method -Body $Body -TimeoutSec 60
+    return Invoke-RestMethod -Uri $Uri -Headers $headers -ContentType 'application/json; charset=utf-8' -Method $Method -Body ([string]$Body) -TimeoutSec 60
   } catch {
     $status = $null
     if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
