@@ -124,7 +124,7 @@ describe('buildMarketChatSystemPrompt — verified financial-instrument framing'
     const prompt = buildMarketChatSystemPrompt({
       domain: 'market', asset: AAPL, marketSnapshot: LIVE_AAPL, requestedUnresolvedSymbol: false, locale: 'en',
     });
-    expect(prompt).toContain('Verified THE SFM server market snapshot');
+    expect(prompt).toContain('Verified THE SFM market evidence');
     expect(prompt).toContain('"price":189.25');
     expect(prompt).toContain('"currency":"USD"');
     expect(prompt).toContain('"provider":"finnhub"');
