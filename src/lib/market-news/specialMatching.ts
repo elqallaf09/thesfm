@@ -1,10 +1,10 @@
 import type { ConsolidatedNewsStory } from './types';
 import { TOPICS, type TopicId } from './specialTopics';
+import { isMetalsMarketNews } from '../news/metalsNews';
 
 const FED_PATTERN = /\b(federal reserve|fomc|fed chair|jerome powell|powell)\b|الاحتياطي الفيدرالي|الفدرالي|باول/iu;
 const HEALTHCARE_PATTERN = /\b(healthcare|health care|biotech|biotechnology|pharma|pharmaceutical|medical device|fda|clinical trial|drug approval|diagnostic|hospital)\b|الرعاية الصحية|الأدوية|الدواء|التكنولوجيا الحيوية|تجارب سريرية/iu;
 const NEW_LISTING_PATTERN = /\b(ipo|initial public offering|newly listed|new listing|market debut|trading debut|direct listing|public debut|begins trading)\b|اكتتاب|طرح عام|إدراج جديد/iu;
-const METALS_PATTERN = /\b(gold|silver|copper|platinum|palladium|precious metal|industrial metal|bullion|xau|xag|comex|metal price)\b|الذهب|الفضة|النحاس|البلاتين|البلاديوم/iu;
 const EARNINGS_PATTERN = /\b(earnings|quarterly results|revenue|eps|guidance|profit|margin|beat estimates|missed estimates)\b|أرباح|إيرادات|نتائج مالية|نتائج الأعمال/iu;
 const ANALYST_PATTERN = /\b(analyst|upgrade|downgrade|price target|rating|initiated coverage|overweight|underweight)\b|السعر المستهدف|توصية السهم|رفع التوصية|خفض التوصية/iu;
 const MA_PATTERN = /\b(merger|acquisition|takeover|buyout|acquire|acquired|strategic combination)\b|استحواذ|اندماج/iu;
@@ -27,7 +27,7 @@ export function matchesTopic(topic: TopicId, story: ConsolidatedNewsStory) {
     return hasCompany && HEALTHCARE_PATTERN.test(text);
   }
   if (topic === 'new-stocks') return story.eventType === 'ipo_listing' || NEW_LISTING_PATTERN.test(text);
-  if (topic === 'metals-news') return METALS_PATTERN.test(text);
+  if (topic === 'metals-news') return isMetalsMarketNews(story);
   if (topic === 'earnings-news') return ['earnings_results', 'earnings_guidance'].includes(story.eventType) || EARNINGS_PATTERN.test(text);
   if (topic === 'analyst-ratings-news') return story.eventType === 'analyst_rating_change' || ANALYST_PATTERN.test(text);
   if (topic === 'mergers-acquisitions-news') return ['merger_acquisition', 'acquisition_offer'].includes(story.eventType) || MA_PATTERN.test(text);

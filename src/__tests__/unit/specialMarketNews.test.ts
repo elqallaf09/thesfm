@@ -70,6 +70,19 @@ describe('special news data and independent quotes', () => {
     expect(mocked.aggregate).not.toHaveBeenCalled();
   });
 
+  it('filters sports and lifestyle stories out of the metals API even with GOLD metadata', async () => {
+    mocked.aggregate.mockResolvedValue({
+      stories: [
+        story('Sabres announce rosters for Blue and Gold Scrimmage', { symbols: ['GOLD'], companyNames: ['Gold'] }),
+        story('Forever Young wins Jockey Club Gold Cup', { symbols: ['GOLD'] }),
+        story('Silver futures gain as industrial demand grows', { id: 'silver' }),
+        story('Gold miners increase production', { id: 'gold' }),
+      ], liveUpdatesAvailable: true,
+    });
+    const payload = await (await GET(request('topic=metals-news&lang=ar'))).json();
+    expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['silver', 'gold']);
+  });
+
   it('does not label a hardcoded watchlist as current IPO or merger news', async () => {
     for (const topic of ['new-stocks', 'mergers-acquisitions-news', 'unusual-moves-news']) {
       const payload = await (await GET(request(`topic=${topic}&part=ticker`))).json();

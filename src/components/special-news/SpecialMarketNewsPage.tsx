@@ -22,7 +22,8 @@ import {
 import { StockTickerStrip, type StockTickerStripItem } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
-import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
+import { dedupeNewsItems, newsArticleKey, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
+import { filterSpecialNews } from '@/lib/news/specialNewsSearch';
 import type { NewsPageBackgroundCategory } from '@/lib/news/pageBackground';
 import styles from './SpecialMarketNewsPage.module.css';
 
@@ -45,6 +46,7 @@ type SpecialNewsItem = {
   headline?: string | null;
   summary?: string | null;
   titleOriginal?: string | null;
+  summaryOriginal?: string | null;
   source?: string | null;
   sourceName?: string | null;
   isOfficial?: boolean;
@@ -594,8 +596,8 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
         }).then(response => response.ok ? response.json() as Promise<SpecialNewsResponse> : null)
           .then(translated => {
             if (!isCurrent() || !translated?.items?.length) return;
-            const byId = new Map(translated.items.map(item => [item.id, item]));
-            startTransition(() => setItems(current => current.map(item => byId.get(item.id) ?? item)));
+            const byArticle = new Map(translated.items.map(item => [newsArticleKey(item), item]));
+            startTransition(() => setItems(current => current.map(item => byArticle.get(newsArticleKey(item)) ?? item)));
           }).catch(() => undefined);
       }
     } catch (loadError) {
@@ -616,21 +618,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
     return () => activeRequest.current?.abort();
   }, [load]);
 
-  const filteredItems = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
-    return items.filter(item => [
-      item.title,
-      item.headline,
-      item.summary,
-      item.source,
-      item.sourceName,
-      item.ticker,
-      ...(item.symbols ?? []),
-      ...(item.companyNames ?? []),
-      ...(item.sectors ?? []),
-    ].some(value => String(value ?? '').toLowerCase().includes(normalized)));
-  }, [items, query]);
+  const filteredItems = useMemo(() => filterSpecialNews(items, query, topic), [items, query, topic]);
 
   const tickerStripItems = useMemo<StockTickerStripItem[]>(() => tickerItems.map(item => ({
     symbol: item.symbol,
@@ -751,7 +739,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
                   : 'flat';
 
               return (
-                <article className={styles.card} key={item.id}>
+                <article className={styles.card} key={newsArticleKey(item)}>
                   <div className={styles.cardTopline}>
                     <span className={styles.source}><Building2 size={14} /> {source}</span>
                     <span className={styles.date}><Clock3 size={14} /> {formattedDate(item.publishedAt, lang)}</span>
