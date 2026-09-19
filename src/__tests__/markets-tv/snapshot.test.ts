@@ -7,6 +7,14 @@ import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); });
 describe('TV canonical market snapshots', () => {
+  it('passes the actual asset class for indices, commodities and currency groups', async () => {
+    vi.mocked(getSfmMarketQuote).mockResolvedValue(null);
+    for (const [group, assetType] of [['global', 'index'], ['commodities', 'commodity'], ['crypto', 'crypto'], ['forex', 'forex']] as const) {
+      vi.mocked(getSfmMarketQuote).mockClear();
+      await loadTvSnapshot(group);
+      expect(vi.mocked(getSfmMarketQuote).mock.calls.every(call => call[1]?.assetType === assetType)).toBe(true);
+    }
+  });
   it('preserves owned-symbol order and reference evidence while isolating source failures', async () => {
     vi.mocked(getSfmMarketQuote).mockImplementation(async symbol => {
       if (symbol === 'MISSING') throw new Error('upstream unavailable');
