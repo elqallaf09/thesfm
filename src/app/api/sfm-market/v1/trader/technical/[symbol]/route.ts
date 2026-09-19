@@ -60,32 +60,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const forceFresh = ['1', 'true'].includes(request.nextUrl.searchParams.get('refresh') ?? '');
   const result = await fetchSfmTraderQuotesDetailed([decoded], { forceFresh });
   const quote = result.quotes[0] as SfmTraderQuote | undefined;
-  if (!quote || !quote.available) return unavailable(decoded, quote?.unavailableReason ?? result.reason);
+  if (!quote) return unavailable(decoded, result.reason);
 
+  const research = quote.research;
+  const historical = research?.technicalSummary.indicators;
   const indicators = {
-    rsi: quote.rsi ?? null,
+    rsi: historical ? historical.rsi14 : quote.rsi ?? null,
     sma20: quote.sma20 ?? null,
     sma50: quote.sma50 ?? null,
-    ema20: quote.ema20 ?? null,
-    ema50: quote.ema50 ?? null,
-    ema200: quote.ema200 ?? null,
-    macd: quote.macd ?? null,
-    macdSignal: quote.macdSignal ?? null,
-    priceMomentum20: quote.priceMomentum20 ?? null,
-    support: quote.support ?? null,
-    resistance: quote.resistance ?? null,
-    volumeRatio: quote.volumeRatio ?? null,
-    atr: quote.atr ?? null,
+    ema20: historical ? historical.ema20 : quote.ema20 ?? null,
+    ema50: historical ? historical.ema50 : quote.ema50 ?? null,
+    ema200: historical ? historical.ema200 : quote.ema200 ?? null,
+    macd: historical ? historical.macd : quote.macd ?? null,
+    macdSignal: historical ? historical.macdSignal : quote.macdSignal ?? null,
+    priceMomentum20: historical ? historical.priceMomentum20 : quote.priceMomentum20 ?? null,
+    support: historical ? historical.support : quote.support ?? null,
+    resistance: historical ? historical.resistance : quote.resistance ?? null,
+    volumeRatio: historical ? historical.volumeRatio : quote.volumeRatio ?? null,
+    atr: historical ? historical.atr : quote.atr ?? null,
   };
   const missingFields = Object.entries(indicators)
     .filter(([, value]) => value === null)
     .map(([key]) => key);
-  const sampleCount = quote.samples ?? 0;
-  const technicalAvailable = Boolean(quote.technicalAvailable && sampleCount >= 20);
-  const trend = quote.price !== null && indicators.ema20 !== null && indicators.ema50 !== null
-    ? quote.price > indicators.ema20 && indicators.ema20 > indicators.ema50
+  const sampleCount = research?.samples ?? quote.samples ?? 0;
+  const technicalAvailable = Boolean((research?.available ?? quote.technicalAvailable) && sampleCount >= 20);
+  const comparisonPrice = research?.referenceClose ?? quote.price;
+  const trend = comparisonPrice !== null && indicators.ema20 !== null && indicators.ema50 !== null
+    ? comparisonPrice > indicators.ema20 && indicators.ema20 > indicators.ema50
       ? 'bullish'
-      : quote.price < indicators.ema20 && indicators.ema20 < indicators.ema50
+      : comparisonPrice < indicators.ema20 && indicators.ema20 < indicators.ema50
         ? 'bearish'
         : 'neutral'
     : null;
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     ok: true,
     success: true,
     feature: 'technical_analysis',
-    status: technicalAvailable ? 'available' : 'partial',
+    status: technicalAvailable ? 'available' : sampleCount ? 'partial' : 'empty',
     available: technicalAvailable,
     technicalAvailable,
     symbol: quote.displaySymbol || quote.symbol,
@@ -112,8 +115,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     rsi: indicators.rsi,
     movingAverages: { sma20: indicators.sma20, sma50: indicators.sma50 },
     indicators,
-    samples: sampleCount,
-    dataQuality: quote.dataQuality,
+    samples: sampleCount, research, technicalSummary: research?.technicalSummary ?? quote.technicalSummary,
+    technicalAsOf: research?.asOf ?? quote.technicalAsOf, priceReference: quote.priceReference,
+    lastKnownPrice: quote.lastKnownPrice, quoteAvailable: quote.available,
+    dataQuality: research?.dataQualityStatus.status ?? quote.dataQuality,
     missingFields,
     source: SFM_MARKET_ENGINE_NAME,
     analyticalSource: SFM_MARKET_ENGINE_NAME,
@@ -127,7 +132,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       providerSymbolUsed: quote.sfmProvenance.providerSymbol,
       fallbackUsed: quote.sfmProvenance.attemptCount > 1,
       lastUpdated: quote.sfmProvenance.observedAt,
-      dataQuality: quote.dataQuality,
+      dataQuality: research?.dataQualityStatus.status ?? quote.dataQuality,
     },
     engineVersion: SFM_MARKET_ENGINE_VERSION,
     schemaVersion: SFM_MARKET_SCHEMA_VERSION,

@@ -358,7 +358,7 @@ function normalizeQuote(input: {
     exchange: textOrNull(input.exchange ?? input.context?.exchange),
     exchangeCode: textOrNull(input.exchangeCode ?? input.context?.exchangeCode),
     country: textOrNull(input.country ?? input.context?.country),
-    assetType: textOrNull(input.assetType ?? input.context?.assetType),
+    assetType,
     provider: input.provider,
     providerName: input.providerName,
     delayType: input.delayType,

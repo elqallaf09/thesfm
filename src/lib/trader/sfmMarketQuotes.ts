@@ -4,6 +4,7 @@ import {
   type ShariahClassification,
 } from '@/lib/market/shariah-screening';
 import { isValidPrice } from '@/lib/market/quoteNormalization';
+import { buildResearchEvidence, cleanResearchHistory, type ResearchEvidence } from './researchEvidence';
 import { isCurrentSfmQuote, referenceQuote } from '@/lib/trader/quoteEvidence';
 import { getSfmMarketHistory } from '@/lib/sfm-market/history';
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
@@ -39,6 +40,7 @@ export type SfmTraderQuote = TraderQuote & {
   lastKnownPrice?: number | null;
   priceReference?: ReturnType<typeof referenceQuote>;
   technicalAsOf?: string | null;
+  research?: ResearchEvidence;
   sfmQuality: SfmMarketQuote['quality'];
   sfmProvenance: SfmMarketQuote['provenance'];
 };
@@ -239,7 +241,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     forceFresh: options.forceFresh,
   };
   const [quote, historyResult] = await Promise.all([
-    getSfmMarketQuote(meta?.symbol ?? symbol, request),
+    getSfmMarketQuote(meta?.symbol ?? symbol, request).catch(() => null),
     options.includeHistory === false
       ? Promise.resolve({ ok: false as const, candles: [], reason: 'history_not_requested' })
       : getSfmMarketHistory(meta?.symbol ?? symbol, request).catch(() => ({
@@ -247,11 +249,25 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
       })),
   ]);
 
+  const history = cleanResearchHistory(historyPoints(historyResult.candles));
+  const historyProvider = 'provider' in historyResult ? historyResult.provider : null;
+  const research = buildResearchEvidence(history, historyProvider ?? null, traderAssetType(quote?.assetType ?? meta?.assetType));
   if (!quote || !isValidPrice(quote.price)) {
-    return unavailableQuote(symbol, meta, historyResult.ok ? 'sfm_quote_unavailable' : historyResult.reason ?? 'sfm_market_data_unavailable');
+    const empty = unavailableQuote(symbol, meta, historyResult.ok ? 'sfm_quote_unavailable' : historyResult.reason ?? 'sfm_market_data_unavailable');
+    const indicators = research.technicalSummary.indicators;
+    return { ...empty, research, history, upstreamSource: providerDisplayName(historyProvider ?? null), samples: history.length, chartAvailable: history.length >= 2,
+      technicalAvailable: research.available, technicalAsOf: research.asOf, technicalSummary: research.technicalSummary,
+      strategies: research.strategies, strategyAgreement: research.strategyAgreement, strategyCount: research.strategyCount,
+      dataSufficiency: research.dataSufficiency, dataQualityStatus: research.dataQualityStatus,
+      rsi: indicators.rsi14, ema20: indicators.ema20, ema50: indicators.ema50, ema200: indicators.ema200,
+      macd: indicators.macd, macdSignal: indicators.macdSignal, atr: indicators.atr,
+      support: indicators.support, resistance: indicators.resistance, volumeRatio: indicators.volumeRatio,
+      sparkline: history.slice(-30).map(point => point.close), lastKnownPrice: research.referenceClose,
+      priceReference: research.referenceClose === null ? null : { kind: 'daily', price: research.referenceClose,
+        change: null, changePercent: null, volume: history.at(-1)?.volume ?? null, previousClose: history.at(-2)?.close ?? null,
+        observedAt: research.asOf, precision: 'date', quality: 'partial' },
+    };
   }
-
-  const history = historyPoints(historyResult.candles);
   const quality = recommendationDataQuality(quote);
   const delayed = quote.provenance.cached || Boolean(quote.provenance.delayType && quote.provenance.delayType !== 'realtime');
   const recommendation = buildMultiFactorRecommendation({
@@ -264,7 +280,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     newsSentiment: UNAVAILABLE_NEWS_SENTIMENT,
   });
   const quoteAvailable = isCurrentSfmQuote(quote);
-  const sufficient = recommendation.dataSufficiency.sufficient && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
+  const sufficient = recommendation.dataSufficiency.sufficient && research.freshness === 'recent' && quoteAvailable && recommendation.finalRecommendation !== 'Insufficient data';
   const indicators = recommendation.technicalSummary.indicators;
   const provider = traderProvider(quote.provenance.upstreamProvider);
   const upstreamName = quote.provenance.upstreamProviderName ?? providerDisplayName(quote.provenance.upstreamProvider);
@@ -298,7 +314,7 @@ async function loadOne(symbol: string, meta: TraderCatalogSymbol | undefined, op
     assetType,
     price: quoteAvailable ? quote.price : null,
     lastKnownPrice: quoteAvailable ? null : quote.price,
-    priceReference: referenceQuote(quote), technicalAsOf: history.at(-1)?.date ?? null,
+    priceReference: referenceQuote(quote), technicalAsOf: history.at(-1)?.date ?? null, research,
     change: quoteAvailable ? quote.change : null,
     changePercent: quoteAvailable ? quote.changePercent : null,
     previousClose: quoteAvailable ? quote.previousClose : null,
@@ -444,7 +460,7 @@ export async function fetchSfmTraderQuotesDetailed(
   let skippedDueToRateLimit = 0;
 
   for (const quote of quotes) {
-    const provider = traderProvider(quote.sfmProvenance.upstreamProvider);
+    const provider = traderProvider(quote.sfmProvenance.upstreamProvider ?? quote.research?.provider ?? null);
     if (provider && isValidPrice(quote.price ?? quote.lastKnownPrice)) selectedProvider ??= provider;
     if (quote.sfmProvenance.cached) cachedSymbols += 1;
     if (provider && quote.available && isValidPrice(quote.price)) {

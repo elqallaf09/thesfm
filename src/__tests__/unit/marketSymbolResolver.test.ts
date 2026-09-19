@@ -108,3 +108,27 @@ describe('market symbol resolver exact ticker support', () => {
     });
   });
 });
+
+
+describe('Arabic market names', () => {
+  it.each([
+    ['ذهب', 'XAUUSD', 'gold'], ['الذَّهَب', 'XAUUSD', 'gold'], ['فضّة', 'XAGUSD', 'commodity'],
+    ['الفضه', 'XAGUSD', 'commodity'], ['سعر الذهب', 'XAUUSD', 'gold'],
+    ['أبل', 'AAPL', 'stock'], ['سهم آبل', 'AAPL', 'stock'], ['شركة مايكروسوفت', 'MSFT', 'stock'],
+    ['إنفيديا', 'NVDA', 'stock'], ['تيسلا', 'TSLA', 'stock'], ['أمازون', 'AMZN', 'stock'],
+    ['بيت كوين', 'BTC/USD', 'crypto'], ['عملة إيثريوم', 'ETH/USD', 'crypto'],
+    ['سولانا', 'SOL/USD', 'crypto'], ['اليورو مقابل الدولار', 'EURUSD', 'forex'],
+    ['دولار ين', 'USDJPY', 'forex'], ['بنك الكويت الوطني', 'NBK.KW', 'stock'],
+  ])('resolves %s to its canonical identity', async (input, symbol, assetType) => {
+    const result = await resolveMarketSymbol(input);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.asset).toMatchObject({ symbol, assetType });
+    expect(result.asset.aliases?.length).toBeGreaterThan(0);
+  });
+  it('offers choices for an ambiguous Kuwait bank name instead of selecting the first bank', async () => {
+    const result = await resolveMarketSymbol('بنك');
+    expect(result.ok).toBe(false);
+    expect(result.suggestions.length).toBeGreaterThan(1);
+  });
+});

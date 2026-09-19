@@ -1,3 +1,4 @@
+import { localizedMarketAliases, normalizeMarketName } from '@/lib/market/localizedMarketNames';
 import {
   marketSymbolSuggestions,
   normalizeAssetType,
@@ -280,12 +281,7 @@ const EXCHANGE_SUFFIX_META: Record<string, { exchange: string; country: string }
 };
 
 function normalizeText(value: unknown) {
-  return String(value ?? '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    .toLowerCase();
+  return normalizeMarketName(value);
 }
 
 function compactText(value: unknown) {
@@ -301,7 +297,7 @@ function aliasToItem(alias: CanonicalAlias): MarketSearchItem {
     exchange: alias.exchange,
     country: alias.country,
     currency: alias.currency,
-    aliases: [...alias.aliases, ...(alias.typoAliases ?? [])],
+    aliases: [...alias.aliases, ...(alias.typoAliases ?? []), ...localizedMarketAliases(alias.symbol)],
   };
 }
 
@@ -335,7 +331,7 @@ function exactAlias(query: string, assetType?: MarketAssetType) {
   const normalized = normalizeText(query);
   const compact = compactText(query);
   return SYMBOL_ALIASES.find(alias => matchesAssetType(aliasToItem(alias), assetType)
-    && alias.aliases.some(value => normalizeText(value) === normalized || compactText(value) === compact));
+    && [...alias.aliases, ...localizedMarketAliases(alias.symbol)].some(value => normalizeText(value) === normalized || compactText(value) === compact));
 }
 
 function exactSymbolAlias(query: string, assetType?: MarketAssetType) {
@@ -558,9 +554,11 @@ export async function resolveMarketSymbol(queryInput: unknown, assetTypeInput?: 
   const exactStatic = exactStaticUsItem(bundledUsSymbols.rows, query, assetType);
   if (exactStatic) return { ok: true, asset: resolveFromItem(exactStatic, 'exact_symbol'), suggestions: [exactStatic] };
 
-  const assetAliases = dedupe(assetAliasItems(query, assetType));
+  const assetAliases = dedupe([...assetAliasItems(query, assetType), ...assetAliasItems(normalizeMarketName(query), assetType)]);
   if (assetAliases.length > 0) {
-    return { ok: true, asset: resolveFromItem(assetAliases[0]!, 'alias'), suggestions: assetAliases };
+    const exact = assetAliases.filter(item => [item.symbol, item.name, ...(item.aliases ?? [])].some(value => compactText(value) === compactText(query)));
+    if (exact.length === 1) return { ok: true, asset: resolveFromItem(exact[0]!, 'alias'), suggestions: assetAliases };
+    return { ok: false, code: 'INVALID_SYMBOL', message: marketApiMessage('INVALID_SYMBOL'), suggestions: assetAliases };
   }
 
   const exchangeSuffix = exchangeSuffixItem(query, assetType);

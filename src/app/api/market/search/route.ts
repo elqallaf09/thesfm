@@ -14,7 +14,7 @@ import { marketExchangeAliases, normalizeMarketExchange } from '@/lib/market/mar
 import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { mergeMarketSearchResults, searchUSSymbols } from '@/lib/market/usSymbolResolver';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
-import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
+import { normalizeMarketName as normalizeAssetSearchText } from '@/lib/market/localizedMarketNames';
 import { normalizeTraderSymbolMetadata } from '@/lib/trader/marketMetadata';
 
 type MarketSymbolRow = {
@@ -188,6 +188,7 @@ function mapMarketSymbol(row: MarketSymbolRow): MarketSearchItem {
     symbol,
     providerSymbol,
     name: row.company_name_en ?? row.company_name_ar ?? row.name ?? symbol,
+    aliases: [row.company_name_ar, row.company_name_en, row.name].filter((value): value is string => Boolean(value)),
     displaySymbol: metadata.displaySymbol ?? symbol,
     assetType: normalizeSearchAssetType(metadata.assetType, assetType),
     exchange: metadata.exchange ?? row.exchange ?? row.market ?? undefined,
@@ -263,6 +264,10 @@ export async function GET(request: NextRequest) {
       : resolved.suggestions
     : [];
   const resolvedItem = resolved?.ok ? normalizeSearchItem(resolved.asset) : null;
+  if (searchParams.get('resolve') === '1' && resolvedItem && !shariahStatus) {
+    const item = ensureShariahItem(resolvedItem);
+    return NextResponse.json({ ok: true, success: true, query, source: 'resolver', resolved: item, results: [item] });
+  }
 
   const directoryResults = searchBundledMarketSymbols({
     query,
