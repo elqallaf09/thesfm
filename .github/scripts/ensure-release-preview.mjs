@@ -125,9 +125,9 @@ export async function ensureReleasePreview({ github, context, core, env = proces
       if (matches.length > 1) throw new Error(`Ambiguous branch configuration for ${key}.`);
       const current = matches[0];
       if (current && (current.target?.length !== 1 || current.target[0] !== 'preview'
-        || current.customEnvironmentIds?.length || current.configurationId || current.type === 'system'
+        || current.customEnvironmentIds?.length || current.type === 'system'
         || !/^[A-Za-z0-9_-]+$/.test(current.id ?? ''))) {
-        throw new Error(`Branch variable ${key} has shared or integration-managed scope; manual configuration review required.`);
+        throw new Error(`Branch variable ${key} has shared, custom or system scope; refusing to modify it.`);
       }
       const body = { key, value, type: key.includes('SERVICE_ROLE') ? 'sensitive' : 'plain', target: ['preview'], gitBranch: branch };
       // Update a verified branch-only record by ID. Never delete variables or

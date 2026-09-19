@@ -163,13 +163,13 @@ test('preflight rejects untrusted, malformed, ambiguous and Production database 
 });
 
 
-test('updates only an existing branch-only variable by ID and rejects shared or managed scope', async () => {
-  for (const unsafe of [null, { target: ['preview', 'production'] }, { configurationId: 'integration' }, { customEnvironmentIds: ['custom'] }]) {
+test('updates only an existing branch-only variable by ID and rejects shared or custom scope', async () => {
+  for (const unsafe of [null, { target: ['preview', 'production'] }, { customEnvironmentIds: ['custom'] }]) {
     const fixture = setup(); const original = fixture.args.fetchImpl; const writes = [];
     fixture.args.fetchImpl = async (url, init) => {
       const path = new URL(url).pathname;
       if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [{
-        key: 'NEXT_PUBLIC_SUPABASE_URL', id: 'env_test', gitBranch: 'feat/test', target: ['preview'], type: 'plain', ...unsafe,
+        key: 'NEXT_PUBLIC_SUPABASE_URL', id: 'env_test', gitBranch: 'feat/test', target: ['preview'], type: 'plain', configurationId: 'integration', ...unsafe,
       }] }) };
       if (init.method === 'PATCH') { writes.push(path); return { ok: true, json: async () => JSON.parse(init.body) }; }
       return original(url, init);
