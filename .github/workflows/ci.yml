@@ -657,6 +657,7 @@ jobs:
           --config=playwright.preview.config.ts
           --project=chromium-desktop
           tests/smoke/observability-preview.spec.ts
+          tests/smoke/markets-tv-preview.spec.ts
 
       - name: Run complete authenticated remote smoke suite
         if: steps.supabase-preview.outputs.available == 'true'
