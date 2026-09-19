@@ -7,7 +7,7 @@ import type { IntelligenceAssetType } from '@/domain/intelligence/contracts';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
-import { buildChatTranscript, buildWelcomeMessage, type ChatMessage, type WelcomeAssetSummary } from './chatTranscript';
+import { buildChatTranscript, buildWelcomeMessage, normalizeAssistantChatText, type ChatMessage, type WelcomeAssetSummary } from './chatTranscript';
 import { AI_ANALYST_COPY, ASSET_TYPE_LABELS, aiAnalystLocale } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
@@ -83,7 +83,8 @@ export function AiAnalystChat({ symbol, assetType }: { symbol?: string; assetTyp
       // Transient provider failures intentionally return a localized `text`
       // alongside a non-2xx status for observability. Preserve that useful
       // message instead of replacing it with a generic fallback bubble.
-      const reply = typeof payload.text === 'string' && payload.text.trim() ? payload.text.trim() : copy.fallback;
+      const normalizedReply = typeof payload.text === 'string' ? normalizeAssistantChatText(payload.text) : '';
+      const reply = normalizedReply || copy.fallback;
       setMessages([...nextMessages, { role: 'assistant', content: reply }]);
     } catch {
       setMessages([...nextMessages, { role: 'assistant', content: copy.unavailable }]);
