@@ -68,6 +68,13 @@ function fixture(cells: ProviderCapabilityCell[]): OperationsCenterState {
 }
 
 describe('Operations Center truthful health aggregation', () => {
+  it('uses measured calendar health rather than a healthy quote provider', () => {
+    const ops = fixture([cell({ capability: 'economic_calendar' })]);
+    ops.featureHealth.push({ feature: 'economic_calendar', status: 'healthy', detailKey: null });
+    expect(buildTruthfulFeatureHealth(ops).find(row => row.feature === 'economic_calendar')?.status).toBe('maintenance');
+    ops.calendarHealth = 'failed';
+    expect(buildTruthfulFeatureHealth(ops).find(row => row.feature === 'economic_calendar')?.status).toBe('failed');
+  });
   it('keeps a capability healthy when one provider fails but a connected fallback serves it', () => {
     const ops = fixture([
       cell({ provider: 'marketstack', status: 'misconfigured', configured: false, healthy: false, lastSuccessAt: null, lastErrorReason: 'marketstack_not_configured' }),

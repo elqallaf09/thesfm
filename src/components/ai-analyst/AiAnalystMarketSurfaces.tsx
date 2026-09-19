@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchMarketToolState } from '@/components/market-analysis/utils';
+
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -640,33 +642,12 @@ function AiAnalystNewsSurface({ className }: { className?: string }) {
 
 function AiAnalystCalendarSurface({ className }: { className?: string }) {
   const { lang, dir, t } = useLanguage();
-  const locale = aiAnalystMarketSurfaceLocale(lang);
-  const copy = MARKET_SURFACE_COPY[locale];
-  const workspaceTitle = AI_ANALYST_COPY[locale].title;
   const [state, setState] = useState<ApiListState<Record<string, unknown>>>({ loading: true, items: [], message: '' });
-  const load = useCallback(async () => {
-    setState({ loading: true, items: [], message: '' });
-    try {
-      const response = await fetch('/api/economic-calendar', { headers: { Accept: 'application/json' } });
-      const payload: unknown = await response.json().catch(() => null);
-      const root = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
-      const items = Array.isArray(root.items) ? root.items.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === 'object' && !Array.isArray(item))) : [];
-      setState({
-        loading: false,
-        items,
-        message: response.ok ? '' : copy.unavailable,
-        updatedAt: typeof root.updated_at === 'string' ? root.updated_at : undefined,
-        code: typeof root.code === 'string' ? root.code : undefined,
-        source: typeof root.source === 'string' ? root.source : null,
-        provider: typeof root.providerId === 'string' ? root.providerId : null,
-        stale: root.stale === true,
-        cached: root.cached === true,
-        providerStatus: typeof root.providerStatus === 'string' ? root.providerStatus : null,
-      });
-    } catch {
-      setState({ loading: false, items: [], message: copy.unavailable, code: 'CALENDAR_UNAVAILABLE' });
-    }
-  }, [copy.unavailable]);
+  const load = useCallback(async (force = false) => {
+    setState(previous => ({ ...previous, loading: true, message: '' }));
+    const url = force ? '/api/economic-calendar?refresh=1' : '/api/economic-calendar';
+    setState(await fetchMarketToolState<Record<string, unknown>>(url, 'sfm-economic-calendar'));
+  }, []);
 
   useEffect(() => {
     void load();
@@ -674,8 +655,7 @@ function AiAnalystCalendarSurface({ className }: { className?: string }) {
 
   return (
     <section className={surfaceClassName(styles.surface, className)} dir={dir} data-ai-analyst-surface="economic-calendar">
-      <SurfaceHeader icon={<CalendarDays size={21} />} eyebrow={workspaceTitle} title={copy.calendar} body={copy.calendarBody} />
-      <EconomicCalendarPanel t={t} locale={lang} state={state} onRefresh={() => void load()} canViewDiagnostics={false} />
+      <EconomicCalendarPanel t={t} locale={lang} state={state} onRefresh={force => void load(force)} canViewDiagnostics={false} />
     </section>
   );
 }

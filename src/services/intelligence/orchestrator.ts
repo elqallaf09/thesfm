@@ -68,7 +68,7 @@ function cacheKey(request: AnalysisRequest, asset: CanonicalAssetIdentity, modul
       userId: request.userId,
     }),
     [...modules].sort().join(','),
-    INTELLIGENCE_WEIGHTING_VERSION,
+    INTELLIGENCE_WEIGHTING_VERSION, INTELLIGENCE_ENGINE_VERSION,
   ].join(':');
 }
 
@@ -214,14 +214,14 @@ export class IntelligenceOrchestrator {
       .filter(result => {
         const scope = intelligenceCacheScopeKey({ asset: result.asset, horizon: result.horizon, scope: result.scope, userId: result.scope === 'PRIVATE' ? request.userId : null });
         return result.horizon === request.horizon
-          && !result.staleData
+          && !result.staleData && result.engineVersion === INTELLIGENCE_ENGINE_VERSION
           && Date.parse(result.expiresAt) > now
           && (scope === privateScope || scope === sharedScope);
       })
       .sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt))[0];
     if (memory) return memory;
     const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
-    return stored && !stored.staleData && Date.parse(stored.expiresAt) > now ? stored : null;
+    return stored && stored.engineVersion === INTELLIGENCE_ENGINE_VERSION && !stored.staleData && Date.parse(stored.expiresAt) > now ? stored : null;
   }
 
   async analyze(request: AnalysisRequest, telemetry: IntelligenceTelemetry): Promise<AnalysisResult> {
@@ -239,7 +239,7 @@ export class IntelligenceOrchestrator {
 
     if (!request.forceRefresh) {
       const cached = this.cache.get(key);
-      if (cached && cached.expiresAt > now && !cached.result.staleData) {
+      if (cached && cached.result.engineVersion === INTELLIGENCE_ENGINE_VERSION && cached.expiresAt > now && !cached.result.staleData) {
         telemetry.record({ name: 'intelligence_cache_hit', cacheStatus: 'hit' });
         telemetry.record({ name: 'intelligence_end_to_end_latency', value: this.dependencies.now() - startedAt });
         await telemetry.flush();
@@ -248,7 +248,7 @@ export class IntelligenceOrchestrator {
       telemetry.record({ name: 'intelligence_cache_miss', cacheStatus: 'miss' });
 
       const stored = await this.dependencies.store.getLatest({ asset, horizon: request.horizon, userId: request.userId });
-      if (stored && Date.parse(stored.expiresAt) > now && !stored.staleData) {
+      if (stored && stored.engineVersion === INTELLIGENCE_ENGINE_VERSION && Date.parse(stored.expiresAt) > now && !stored.staleData) {
         this.cache.set(key, { result: stored, expiresAt: Date.parse(stored.expiresAt) });
         telemetry.record({ name: 'intelligence_cache_hit', cacheStatus: 'hit' });
         telemetry.record({ name: 'intelligence_end_to_end_latency', value: this.dependencies.now() - startedAt });

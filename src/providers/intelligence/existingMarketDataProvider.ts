@@ -31,12 +31,10 @@ function latestObservedAt(values: Array<string | null>) {
 }
 
 function dataAsOf(analysis: MarketAnalysis, candles: NormalizedIntelligenceCandle[] = []) {
-  return latestObservedAt([
-    validIso(analysis.quote?.timestamp),
-    validIso(analysis.lastUpdated),
+  return validIso(analysis.quote?.timestamp) ?? validIso(analysis.lastUpdated) ?? latestObservedAt([
     validIso(analysis.history.at(-1)?.date),
     candles.at(-1)?.at ?? null,
-  ]) ?? validIso(analysis.fetchedAt);
+  ]);
 }
 
 function normalizeCandles(analysis: MarketAnalysis): NormalizedIntelligenceCandle[] {
@@ -165,6 +163,7 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
   async getSnapshot(request: AnalysisRequest, asset: CanonicalAssetIdentity): Promise<VerifiedIntelligenceSnapshot> {
     const startedAt = Date.now();
     const marketAssetType = marketAssetTypeFromIntelligence(asset.assetType);
+    const contextEvidencePromise = loadIntelligenceContextEvidence(request, asset).catch(() => null);
     const result = await proxyAnalyze(
       asset.providerSymbol,
       marketAssetType,
@@ -174,6 +173,7 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
         exchange: asset.exchange,
         country: asset.country,
         currency: asset.quoteCurrency,
+        forceFresh: request.forceRefresh,
       },
     );
     if (!result.success) {
@@ -183,19 +183,16 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       throw new IntelligenceError('PROVIDER_UNAVAILABLE', true);
     }
 
-    // Context providers are independent of the quote/history path. Start them
-    // immediately so richer evidence does not serialize behind history recovery.
-    const contextEvidencePromise = loadIntelligenceContextEvidence(request, asset).catch(() => null);
     const price = finite(result.latestPrice);
     let candles = normalizeCandles(result);
     const hasPrimaryHistory = candles.length > 0;
     let supplementalHistoryUsed = false;
     let supplementalProvider: string | null = null;
 
-    if (candles.length === 0) {
-      const historyResult = await proxyHistory(asset.providerSymbol, marketAssetType, '1y', '1d').catch(() => null);
+    if (candles.length < 50) {
+      const historyResult = await proxyHistory(asset.providerSymbol, marketAssetType, '1y', '1d', request.forceRefresh).catch(() => null);
       const recovered = normalizeSupplementalCandles(historyResult, asset, marketAssetType);
-      if (recovered.length > 0) {
+      if (recovered.length > candles.length) {
         candles = recovered;
         supplementalHistoryUsed = true;
         supplementalProvider = supplementalProviderId(historyResult);
@@ -213,11 +210,9 @@ export class ExistingMarketDataIntelligenceProvider implements IntelligenceProvi
       ? `${primaryProvider}+${supplementalProvider}`.slice(0, 80)
       : primaryProvider;
     const fallbackUsed = result.fallback === true || supplementalHistoryUsed;
-    const dataStatus: VerifiedIntelligenceSnapshot['dataStatus'] = result.cached
-      ? 'CACHED'
-      : result.dataStatus === 'delayed'
-        ? 'DELAYED'
-        : 'LIVE';
+    const dataStatus: VerifiedIntelligenceSnapshot['dataStatus'] = result.dataStatus === 'delayed'
+      ? 'DELAYED'
+      : result.cached ? 'CACHED' : 'LIVE';
     const verifiedSharia = contextEvidence?.sharia ?? {
       status: result.shariahStatus ?? null,
       reason: result.shariahReason ?? null,

@@ -67,6 +67,7 @@ export type MarketPerformanceItem = {
 };
 export type ApiListState<T> = {
   loading: boolean;
+  calendarSources?: import('@/lib/providers/economic-calendar/types').CalendarSourceReport[];
   items: T[];
   message: string;
   updatedAt?: string;

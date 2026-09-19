@@ -1,5 +1,6 @@
 'use client';
 
+import { CalendarEventSource, EconomicCalendarSources, calendarSearchText } from './EconomicCalendarSources';
 import { useEffect, useId, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AlertTriangle, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock3, Info, Search } from 'lucide-react';
@@ -73,7 +74,7 @@ function isWithinWeek(date: Date | null) {
   return diff >= -86400000 && diff <= 7 * 86400000;
 }
 
-type CalendarTimeFilter = 'today' | 'tomorrow' | 'week';
+type CalendarTimeFilter = 'today' | 'tomorrow' | 'week' | 'month';
 type CalendarImpactFilter = 'all' | 'high' | 'medium' | 'low';
 type CalendarCurrencyFilter = 'all' | 'USD' | 'EUR' | 'GBP' | 'JPY' | 'AUD' | 'CAD' | 'CHF';
 export type CalendarAvailability =
@@ -87,7 +88,7 @@ export type CalendarAvailability =
   | 'stale'
   | 'ready';
 
-const CALENDAR_TIME_FILTERS: CalendarTimeFilter[] = ['today', 'tomorrow', 'week'];
+const CALENDAR_TIME_FILTERS: CalendarTimeFilter[] = ['today', 'tomorrow', 'week', 'month'];
 const CALENDAR_IMPACT_FILTERS: CalendarImpactFilter[] = ['all', 'high', 'medium', 'low'];
 const CALENDAR_CURRENCY_FILTERS: CalendarCurrencyFilter[] = ['all', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF'];
 const CALENDAR_PAGE_SIZE = 12;
@@ -381,11 +382,7 @@ export function EconomicCalendarPanel({
     if (currencyFilter !== 'all' && event.currency !== currencyFilter) return false;
     if (countryFilter !== 'all' && displayEconomicValue(event.country, '') !== countryFilter) return false;
     if (!query) return true;
-    return [event.eventName, event.country, event.currency, event.source]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-      .includes(query);
+    return calendarSearchText(event).includes(query);
   });
 
   useEffect(() => {
@@ -491,6 +488,7 @@ export function EconomicCalendarPanel({
         ) : null}
       </div>
 
+      <EconomicCalendarSources sources={state.calendarSources} locale={locale} />
       {calendarHasEvents ? (
         <div className="economic-calendar-summary-grid">
           <CalendarStatCard icon={<Clock3 size={18} />} label={t('market_calendar_next_event')} value={nextEvent?.eventName ?? unavailable} valueDir="auto" tone="cyan" />
@@ -570,7 +568,7 @@ export function EconomicCalendarPanel({
               options={CALENDAR_TIME_FILTERS}
               active={timeFilter}
               onSelect={setTimeFilter}
-              getLabel={item => t(item === 'today' ? 'market_calendar_filter_today' : item === 'tomorrow' ? 'market_calendar_filter_tomorrow' : 'market_calendar_filter_week')}
+              getLabel={item => item === 'month' ? (locale === 'ar' ? '30 يومًا' : locale === 'fr' ? '30 jours' : '30 days') : t(item === 'today' ? 'market_calendar_filter_today' : item === 'tomorrow' ? 'market_calendar_filter_tomorrow' : 'market_calendar_filter_week')}
             />
             <CalendarFilterGroup
               label={t('market_calendar_impact_filter')}
@@ -648,7 +646,7 @@ export function EconomicCalendarPanel({
                         <td dir="ltr">{displayEconomicValue(event.forecast, unavailable)}</td>
                         <td dir="ltr">{displayEconomicValue(event.actual, unavailable)}</td>
                         <td><span className="calendar-status-badge">{economicStatusLabel(event.status, t)}</span></td>
-                        <td><span className="calendar-source-badge" dir="auto">{displayEconomicValue(event.source, unavailable)}</span></td>
+                        <td><CalendarEventSource event={event} locale={locale} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -814,7 +812,7 @@ export function CalendarFeaturedEvent({ event, locale, t, unavailable }: { event
           <span className="calendar-currency-badge" dir="ltr">{displayEconomicValue(event.currency, unavailable)}</span>
           <CalendarImpactBadge impact={event.impact} t={t} />
           <span className="calendar-countdown-badge">{formatEconomicCalendarCountdown(eventDate, locale, t('market_calendar_now'))}</span>
-          <span className="calendar-source-badge" dir="ltr">{displayEconomicValue(event.source, unavailable)}</span>
+          <CalendarEventSource event={event} locale={locale} />
         </div>
       </div>
       <div className="economic-calendar-featured-metrics">
@@ -879,7 +877,7 @@ export function CalendarEventCard({ event, locale, t, unavailable }: { event: No
         <CalendarMetric label={t('market_calendar_previous')} value={displayEconomicValue(event.previous, unavailable)} valueDir="ltr" />
         <CalendarMetric label={t('market_calendar_forecast')} value={displayEconomicValue(event.forecast, unavailable)} valueDir="ltr" />
         <CalendarMetric label={t('market_calendar_actual')} value={displayEconomicValue(event.actual, unavailable)} valueDir="ltr" />
-        <CalendarMetric label={t('market_calendar_source')} value={displayEconomicValue(event.source, unavailable)} valueDir="ltr" />
+        <CalendarEventSource event={event} locale={locale} />
       </div>
       <EconomicEventExplanationAccordion event={event} t={t} unavailable={unavailable} />
     </article>
