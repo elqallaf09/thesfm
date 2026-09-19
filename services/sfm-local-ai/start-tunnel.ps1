@@ -18,15 +18,48 @@ $port = $settings['SFM_LOCAL_GATEWAY_PORT']
 if (-not $port) { $port = '8787' }
 if ($port -notmatch '^\d{2,5}$') { throw "Invalid SFM_LOCAL_GATEWAY_PORT." }
 
-if (-not (Get-Command cloudflared -ErrorAction SilentlyContinue)) {
+function Resolve-Cloudflared {
+  $command = Get-Command cloudflared -ErrorAction SilentlyContinue
+  if ($command -and $command.Source) { return $command.Source }
+
+  # winget/MSI can update PATH after the current Windows PowerShell process
+  # started, so refresh PATH once before falling back to common install roots.
+  $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  if ($machinePath -or $userPath) {
+    $env:Path = @($machinePath, $userPath) -join ';'
+    $command = Get-Command cloudflared -ErrorAction SilentlyContinue
+    if ($command -and $command.Source) { return $command.Source }
+  }
+
+  $candidates = @(
+    (Join-Path $env:ProgramFiles 'cloudflared\cloudflared.exe'),
+    (Join-Path ${env:ProgramFiles(x86)} 'cloudflared\cloudflared.exe')
+  ) | Where-Object { $_ -and (Test-Path $_) }
+
+  if ($candidates.Count -gt 0) { return $candidates[0] }
+
+  $wingetRoot = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+  if (Test-Path $wingetRoot) {
+    $found = Get-ChildItem -Path $wingetRoot -Filter 'cloudflared.exe' -File -Recurse -ErrorAction SilentlyContinue |
+      Select-Object -First 1 -ExpandProperty FullName
+    if ($found) { return $found }
+  }
+
+  return $null
+}
+
+$CloudflaredExe = Resolve-Cloudflared
+if (-not $CloudflaredExe) {
   Write-Host ""
-  Write-Host "cloudflared is not installed."
+  Write-Host "cloudflared was not found."
   Write-Host "Install it with:"
   Write-Host "  winget install --id Cloudflare.cloudflared"
   Write-Host ""
-  Write-Host "Then reopen PowerShell and run this script again."
+  Write-Host "Then open a new PowerShell window and run this script again."
   exit 2
 }
+Write-Host "cloudflared: $CloudflaredExe"
 
 try {
   Invoke-WebRequest -Uri "http://127.0.0.1:$port/v1/models" -Method Get -TimeoutSec 5 -UseBasicParsing | Out-Null
@@ -54,4 +87,4 @@ Write-Host "Do not paste SFM_AI_API_KEY into chat or a public issue."
 Write-Host "Keep this PowerShell window open while Preview is using your PC."
 Write-Host ""
 
-& cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:$port"
+& $CloudflaredExe tunnel --no-autoupdate --url "http://127.0.0.1:$port"
