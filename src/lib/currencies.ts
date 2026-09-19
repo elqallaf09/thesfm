@@ -1,3 +1,5 @@
+import { WORLD_CURRENCY_METADATA } from './worldCurrencies';
+
 export type CurrencyLocale = 'ar' | 'en' | 'fr';
 
 export interface Currency {
@@ -49,24 +51,14 @@ const CURATED_CURRENCIES: Currency[] = [
   { code: 'JOD', symbol: 'د.أ', symbolAr: 'د.أ', symbolEn: 'JOD', nameAr: 'دينار أردني', nameEn: 'Jordanian Dinar', nameFr: 'Dinar jordanien', decimals: 3, country: 'Jordan' },
 ];
 
-const FALLBACK_WORLD_CURRENCIES = [
-  'AED','AFN','ALL','AMD','ANG','AOA','ARS','AUD','AWG','AZN','BAM','BBD','BDT','BGN','BHD','BIF','BMD','BND','BOB','BRL','BSD','BTN','BWP','BYN','BZD',
-  'CAD','CDF','CHF','CLP','CNY','COP','CRC','CUP','CVE','CZK','DJF','DKK','DOP','DZD','EGP','ERN','ETB','EUR','FJD','FKP','GBP','GEL','GHS','GIP','GMD',
-  'GNF','GTQ','GYD','HKD','HNL','HTG','HUF','IDR','ILS','INR','IQD','IRR','ISK','JMD','JOD','JPY','KES','KGS','KHR','KMF','KPW','KRW','KWD','KYD',
-  'KZT','LAK','LBP','LKR','LRD','LSL','LYD','MAD','MDL','MGA','MKD','MMK','MNT','MOP','MRU','MUR','MVR','MWK','MXN','MYR','MZN','NAD','NGN','NIO','NOK',
-  'NPR','NZD','OMR','PAB','PEN','PGK','PHP','PKR','PLN','PYG','QAR','RON','RSD','RUB','RWF','SAR','SBD','SCR','SDG','SEK','SGD','SHP','SLE','SOS','SRD',
-  'SSP','STN','SYP','SZL','THB','TJS','TMT','TND','TOP','TRY','TTD','TWD','TZS','UAH','UGX','USD','UYU','UZS','VES','VND','VUV','WST','XAF','XCD','XOF',
-  'XPF','YER','ZAR','ZMW','ZWL',
-];
-
-function supportedCurrencyCodes() {
-  const intlWithValues = Intl as typeof Intl & { supportedValuesOf?: (key: 'currency') => string[] };
-  return intlWithValues.supportedValuesOf?.('currency') ?? FALLBACK_WORLD_CURRENCIES;
-}
+// Keep legacy and accounting records selectable without depending on the device's ICU data.
+const LEGACY_PURCHASE_CURRENCIES = ['ANG', 'BGN', 'CUC', 'HRK', 'SLL', 'ZWL', 'XDR', 'XSU'];
+const WORLD_CURRENCY_CODES = [...new Set([...Object.keys(WORLD_CURRENCY_METADATA), ...LEGACY_PURCHASE_CURRENCIES])];
 
 function currencyName(code: string, locale: CurrencyLocale) {
   try {
-    return new Intl.DisplayNames([locale], { type: 'currency' }).of(code) ?? code;
+    const name = new Intl.DisplayNames([locale], { type: 'currency' }).of(code);
+    return name && name !== code ? name : WORLD_CURRENCY_METADATA[code]?.name ?? code;
   } catch {
     return code;
   }
@@ -88,6 +80,7 @@ function currencySymbol(code: string, locale: CurrencyLocale) {
 }
 
 function currencyDecimals(code: string) {
+  if (WORLD_CURRENCY_METADATA[code]) return WORLD_CURRENCY_METADATA[code].decimals;
   if (code === 'KWD' || code === 'BHD' || code === 'OMR' || code === 'JOD' || code === 'TND' || code === 'LYD') return 3;
   if (code === 'JPY' || code === 'KRW' || code === 'VND' || code === 'CLP' || code === 'PYG') return 0;
   try {
@@ -108,11 +101,11 @@ function createCurrency(code: string): Currency {
     nameEn: currencyName(code, 'en'),
     nameFr: currencyName(code, 'fr'),
     decimals: currencyDecimals(code) ?? 2,
-    country: '',
+    country: WORLD_CURRENCY_METADATA[code]?.country ?? '',
   };
 }
 
-export const CURRENCIES: Currency[] = supportedCurrencyCodes()
+export const CURRENCIES: Currency[] = WORLD_CURRENCY_CODES
   .map(code => CURATED_CURRENCIES.find(item => item.code === code) ?? createCurrency(code));
 
 export function getCurrency(code: string = DEFAULT_CURRENCY): Currency {

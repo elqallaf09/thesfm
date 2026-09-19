@@ -12,6 +12,7 @@ export interface RealEstateSourceObservation {
   currency?: string;
   unitValue?: number;
   unitCode?: 'M2' | 'FT2';
+  areaBasis?: 'LAND' | 'BUILT';
   countryCode?: string;
   region?: string;
   city?: string;
@@ -24,6 +25,7 @@ export interface RealEstateEvidenceSourceAdapter {
   id: string;
   supportedCountries: readonly string[];
   authority: EvidenceAuthority;
+  supportsAsset?(asset: RealEstateAssetInput): boolean;
   search(asset: RealEstateAssetInput): Promise<RealEstateSourceObservation[]>;
 }
 
@@ -33,8 +35,10 @@ function normalize(value?: string): string {
 
 export function geographyMatch(asset: RealEstateAssetInput, observation: RealEstateSourceObservation): MatchQuality {
   if (observation.countryCode && observation.countryCode !== asset.countryCode) return 'WEAK';
+  if (asset.region && observation.region && normalize(asset.region) !== normalize(observation.region)) return 'WEAK';
   const assetDistrict = normalize(asset.district);
   const sourceDistrict = normalize(observation.district);
+  if (assetDistrict && sourceDistrict && assetDistrict !== sourceDistrict) return 'WEAK';
   if (assetDistrict && sourceDistrict && assetDistrict === sourceDistrict) return 'EXACT';
   const assetCity = normalize(asset.city ?? asset.municipality);
   const sourceCity = normalize(observation.city);
@@ -70,6 +74,7 @@ export function observationToEvidence(
     currency: observation.currency,
     unitValue: observation.unitValue,
     unitCode: observation.unitCode,
+    areaBasis: observation.areaBasis,
     limitations: observation.limitations,
   };
 }
@@ -78,7 +83,7 @@ export async function collectRealEstateEvidence(
   asset: RealEstateAssetInput,
   adapters: RealEstateEvidenceSourceAdapter[],
 ): Promise<{ evidence: ValuationEvidence[]; failures: Array<{ adapterId: string; reason: string }> }> {
-  const eligible = adapters.filter((adapter) => adapter.supportedCountries.includes(asset.countryCode));
+  const eligible = adapters.filter((adapter) => adapter.supportedCountries.includes(asset.countryCode) && (!adapter.supportsAsset || adapter.supportsAsset(asset)));
   const settled = await Promise.allSettled(eligible.map(async (adapter) => ({ adapter, observations: await adapter.search(asset) })));
   const evidence: ValuationEvidence[] = [];
   const failures: Array<{ adapterId: string; reason: string }> = [];

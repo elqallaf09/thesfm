@@ -10,7 +10,8 @@ import { RealEstateMarketCoverage } from '@/components/invest/RealEstateMarketCo
 describe('Real Estate Market Center coverage', () => {
   it('never marks a source as valuation-ready merely because it is connected', () => {
     expect(REAL_ESTATE_MARKET_COVERAGE.length).toBeGreaterThan(0);
-    expect(REAL_ESTATE_MARKET_COVERAGE.every(item => item.valuationReady === false)).toBe(true);
+    expect(REAL_ESTATE_MARKET_COVERAGE.filter(item => item.valuationReady).map(item => item.id)).toEqual(['us-nyc-dof', 'us-cook']);
+    expect(REAL_ESTATE_MARKET_COVERAGE.filter(item => ['qa-moj', 'gb-hmlr', 'kw-moj'].includes(item.id)).every(item => !item.valuationReady)).toBe(true);
     const connected = REAL_ESTATE_MARKET_COVERAGE.filter(item => item.state === 'CONNECTED_CONTEXT');
     expect(connected.map(item => item.id)).toEqual(expect.arrayContaining(['qa-moj', 'gb-hmlr', 'us-nyc-dof', 'us-cook']));
   });

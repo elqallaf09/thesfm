@@ -79,6 +79,13 @@
 .sectionHeading span { color: var(--foreground-muted); font-size: .75rem; }
 .factorGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
 .factor { border: 1px solid var(--border); border-radius: var(--radius-control); padding: 9px 10px; background: var(--surface-secondary); min-width: 0; }
+.macroFactor { grid-column: 1 / -1; }
+.macroFactor > div[data-testid="macro-observations"] { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 12px; margin-top: 12px; }
+.macroFactor > div[data-testid="macro-observations"] > details,
+.macroFactor > div[data-testid="macro-observations"] > p { grid-column: 1 / -1; }
+.macroFactor > div[data-testid="macro-observations"] span { font-size: .8rem; }
+.macroFactor > div[data-testid="macro-observations"] strong { font-size: .9rem; }
+.macroFactor > div[data-testid="macro-observations"] small { font-size: .75rem; }
 .factor > div { justify-content: space-between; gap: 7px; }
 .factor strong { font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .factor span,
