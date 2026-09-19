@@ -332,6 +332,38 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(4);
   });
 
+  test('shows monthly macro observations once with readable sources in all languages and mobile widths', async ({ page }) => {
+    await stubApis(page, 'partial');
+    const reading = intelligenceResult('partial');
+    const evidence = [
+      { id: 'macro:current', labelKey: 'intelligence_evidence_macro_observation_cpi_yoy', value: 3.421376, observedAt: '2026-06-30', source: 'BLS' },
+      { id: 'macro:previous', labelKey: 'intelligence_evidence_macro_previous_cpi_yoy', value: 3.2, observedAt: '2026-05-31', source: 'BLS' },
+      { id: 'macro:country', labelKey: 'intelligence_evidence_macro_country_cpi_yoy', value: 'US', observedAt: '2026-06-30', source: 'BLS' },
+      { id: 'macro:source:CPI_YOY', labelKey: 'intelligence_evidence_macro_source_url', value: 'https://data.bls.gov/timeseries/CUUR0000SA0', source: 'BLS' },
+    ];
+    const result = { ...reading, factors: [...reading.factors, { ...factor('SENTIMENT', null), factor: 'MACRO', availability: 'PARTIAL', source: 'BLS', evidence }] };
+    await page.route('**/api/intelligence/analyze', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result }) }));
+    await enterGuest(page);
+    await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&horizon=SWING');
+    await page.getByRole('button', { name: 'Run research and analysis', exact: true }).click();
+    for (const locale of ['en', 'ar', 'fr']) {
+      await page.evaluate(lang => { localStorage.setItem('sfm_lang', lang); window.dispatchEvent(new CustomEvent('sfm-language-change', { detail: { lang } })); }, locale);
+      const macro = page.getByTestId('macro-observations');
+      await expect(macro).toContainText(locale === 'ar' ? 'شهري' : locale === 'fr' ? 'Mensuel' : 'Monthly');
+      await expect(macro).toHaveCount(1);
+      await expect(macro).toContainText('2026-06');
+      await expect(macro).not.toContainText('3.421376');
+      if (await macro.locator('details').getAttribute('open') === null) await macro.locator('summary').click();
+      await expect(macro.locator('a')).toHaveCount(1);
+      await expect(macro.locator('a')).toHaveAttribute('href', 'https://data.bls.gov/timeseries/CUUR0000SA0');
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(4);
+        await expect(macro.locator('strong')).toBeVisible();
+      }
+    }
+  });
+
   test('renders insufficient-data and stale states truthfully', async ({ page }) => {
     let panel = await openAnalysis(page, 'insufficient');
     let status = page.getByTestId('intelligence-status-panel');

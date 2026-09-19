@@ -1,0 +1,7 @@
+.observations { display: grid; gap: 0.65rem; min-width: 0; }
+.observation { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0.3rem 0.5rem; }
+.observation > span { overflow-wrap: anywhere; }
+.observation > strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.observation > small { grid-column: 1 / -1; }
+.sources { display: grid; gap: 0.75rem; padding-inline-start: 1rem; }
+.sources > li { display: grid; gap: 0.2rem; }

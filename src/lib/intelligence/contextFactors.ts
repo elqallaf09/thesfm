@@ -2,6 +2,7 @@ import type { FactorResult, IntelligenceEvidence, IntelligenceFactorKey, Verifie
 import type { IntelligenceContextEvidence } from '@/providers/intelligence/contextEvidence';
 import type { FactorContext, IntelligenceFactorModule } from './coreFactors';
 import { calculateFreshness } from './freshness';
+import { currentMacroObservation } from '@/domain/intelligence/macroObservations';
 
 type ContextKey = 'NEWS' | 'SENTIMENT' | 'MACRO' | 'SHARIA';
 const DAY = 86_400;
@@ -114,12 +115,13 @@ const macroFactor: IntelligenceFactorModule = {
       return Number.isFinite(at) && at >= context.now - 3 * DAY * 1000 && at <= context.now + 7 * DAY * 1000;
     });
     const source = data?.provider ?? 'unavailable';
-    const observations = (data?.observations ?? []).filter(sample => Number.isFinite(sample.value) && validTime(sample.period, context.now, 7 * DAY) && validTime(sample.retrievedAt, context.now, 7 * DAY));
+    const observations = (data?.observations ?? []).filter(sample => currentMacroObservation(sample, context.now));
     if (!events.length && !observations.length) return result(context, 'MACRO', source, data?.observedAt ?? null, [], null, data?.failureCode ?? 'MACRO_NO_RELEVANT_EVENTS');
     const scores: number[] = [];
     const evidence: IntelligenceEvidence[] = events.length ? [item('MACRO', 'macro_event_count', events.length, data?.observedAt ?? null, source)] : [];
     for (const sample of observations) {
       evidence.push({ ...item('MACRO', `macro_observation_${sample.series.toLowerCase()}`, sample.value, sample.period, sample.provider), unit: sample.unit });
+      evidence.push({ ...item('MACRO', `macro_country_${sample.series.toLowerCase()}`, sample.country, sample.period, sample.provider) });
       if (sample.previous !== null) evidence.push({ ...item('MACRO', `macro_previous_${sample.series.toLowerCase()}`, sample.previous, sample.previousPeriod, sample.provider), unit: sample.unit });
       evidence.push({ ...item('MACRO', 'macro_source_url', sample.sourceUrl, sample.retrievedAt, sample.provider), id: `macro:source:${sample.series}` });
     }
