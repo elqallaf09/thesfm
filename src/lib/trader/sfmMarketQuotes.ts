@@ -63,11 +63,12 @@ function sfmAssetType(value: TraderAssetType | undefined) {
 }
 
 function traderProvider(value: string | null): TraderQuoteProvider | null {
-  if (value === 'finnhub' || value === 'twelve_data' || value === 'eodhd' || value === 'marketstack' || value === 'fmp') return value;
+  if (value === 'finnhub' || value === 'twelve_data' || value === 'eodhd' || value === 'marketstack' || value === 'fmp' || value === 'gold_api') return value;
   return null;
 }
 
 function providerDisplayName(value: string | null) {
+  if (value === 'gold_api') return 'Gold API';
   if (value === 'fmp') return 'Financial Modeling Prep';
   if (value === 'finnhub') return 'Finnhub';
   if (value === 'twelve_data') return 'Twelve Data';
