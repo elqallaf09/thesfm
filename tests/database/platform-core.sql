@@ -75,6 +75,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 select public.finance_close_month('2020-01-01');
 reset role;
+-- Profiles use a historical non-cascading FK; the account-erasure route clears them first.
+delete from public.profiles where id='00000000-0000-4000-8000-000000000001';
 delete from auth.users where id='00000000-0000-4000-8000-000000000001';
 select pg_temp.assert_true((select count(*)=0 from public.expense_items where user_id='00000000-0000-4000-8000-000000000001'),'account deletion cascades through closed ledger');
 rollback;
