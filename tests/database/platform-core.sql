@@ -36,6 +36,9 @@ select pg_temp.expect_error($q$delete from public.finance_month_events$q$,'permi
 select pg_temp.expect_error($q$select public.finance_reopen_month('2020-01-01','')$q$,'REASON_REQUIRED');
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',true);
 select pg_temp.assert_true((select count(*)=0 from public.finance_month_closes),'close isolation');
+-- Both closed and open victim periods must return the same ownership error.
+select pg_temp.expect_error($q$insert into public.expense_items(user_id,name,amount,currency,date) values('00000000-0000-4000-8000-000000000001','probe',1,'KWD','2020-01-10')$q$,'LEDGER_ACCESS_DENIED');
+select pg_temp.expect_error($q$insert into public.expense_items(user_id,name,amount,currency,date) values('00000000-0000-4000-8000-000000000001','probe',1,'KWD','2020-02-10')$q$,'LEDGER_ACCESS_DENIED');
 select pg_temp.expect_error($q$select public.finance_reopen_month('2020-01-01','Testing reason')$q$,'MONTH_NOT_CLOSED');
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
 select public.finance_reopen_month('2020-01-01','Correct the expense');
