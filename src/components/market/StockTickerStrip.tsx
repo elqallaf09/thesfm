@@ -34,6 +34,7 @@ type StockTickerStripProps = {
   setClassName?: string;
   direction?: TickerDirection;
   durationSeconds?: number;
+  pixelsPerSecond?: number;
   minimumItems?: number;
   status?: ReactNode;
   emptyState?: ReactNode;
@@ -125,12 +126,13 @@ export function StockTickerStrip({
   setClassName,
   direction = 'ltr',
   durationSeconds = 44,
+  pixelsPerSecond,
   minimumItems = 10,
   status,
   emptyState,
   formatPrice,
 }: StockTickerStripProps) {
-  const tickerItems = items.map(normalizeItem).filter(item => item.symbol);
+  const tickerItems = Array.from(new Map(items.map(normalizeItem).filter(item => item.symbol).map(item => [item.symbol, item])).values());
   const fallbackState = emptyState ?? (
     <div className="sfm-stock-ticker-empty">{unavailableLabel}</div>
   );
@@ -145,6 +147,7 @@ export function StockTickerStrip({
       setClassName={setClassName}
       direction={direction}
       durationSeconds={durationSeconds}
+      pixelsPerSecond={pixelsPerSecond}
       minimumItems={minimumItems}
       status={status}
       emptyState={fallbackState}
