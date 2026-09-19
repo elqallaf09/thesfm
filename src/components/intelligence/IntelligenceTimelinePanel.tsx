@@ -14,6 +14,7 @@ import type {
 import { useLanguage } from '@/hooks/useLanguage';
 import { loginHrefForCurrentLocation } from '@/lib/auth/redirects';
 import { intelligencePresentation, intelligenceStateFromError } from '@/lib/intelligence/presentation';
+import { groupedIntelligenceWarnings, signedScorePoints } from '@/lib/intelligence/warningPresentation';
 import styles from './IntelligenceTimelinePanel.module.css';
 
 type Locale = 'ar' | 'en' | 'fr';
@@ -65,6 +66,7 @@ const COPY = {
     evaluatedAt: 'وقت التقييم',
     notAvailable: 'غير متاح',
     pending: 'بانتظار اكتمال التقييم',
+    nonDirectional: 'لا توجد توصية اتجاهية للتقييم',
     comparisonTitle: 'مقارنة القراءتين المحددتين',
     from: 'من',
     to: 'إلى',
@@ -114,6 +116,7 @@ const COPY = {
     evaluatedAt: 'Evaluated',
     notAvailable: 'Unavailable',
     pending: 'Awaiting evaluation',
+    nonDirectional: 'No directional recommendation to evaluate',
     comparisonTitle: 'Selected reading comparison',
     from: 'From',
     to: 'To',
@@ -163,6 +166,7 @@ const COPY = {
     evaluatedAt: 'Évaluée le',
     notAvailable: 'Indisponible',
     pending: 'En attente de l’évaluation',
+    nonDirectional: 'Aucune recommandation directionnelle à évaluer',
     comparisonTitle: 'Comparaison des lectures sélectionnées',
     from: 'De',
     to: 'À',
@@ -256,7 +260,8 @@ function transition<T extends string>(from: T | null, to: T, labels: Record<T, s
   return `${from ? labels[from] : unavailable} → ${labels[to]}`;
 }
 
-function outcomeLabel(outcome: IntelligenceAnalysisOutcome | null, locale: Locale, copy: TimelineCopy) {
+function outcomeLabel(outcome: IntelligenceAnalysisOutcome | null, locale: Locale, copy: TimelineCopy, recommendation?: IntelligenceRecommendation) {
+  if ((recommendation === 'WAIT' || recommendation === 'INSUFFICIENT_DATA') && (!outcome || outcome.evaluationStatus === 'PENDING')) return copy.nonDirectional;
   if (!outcome) return copy.pending;
   const status = OUTCOME_STATUS_LABELS[locale][outcome.evaluationStatus];
   if (outcome.evaluationStatus !== 'EVALUATED') return status;
@@ -536,13 +541,13 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
                     </span>
                     <span className={styles.itemMetrics}>
                       <span><small>{copy.confidence}</small><b dir="ltr">{number(item.confidence)}%</b></span>
-                      <span><small>{copy.confidenceDelta}</small><b dir="ltr">{item.drift.confidenceDelta === null ? '—' : signedPercent(item.drift.confidenceDelta, '—')}</b></span>
+                      <span><small>{copy.confidenceDelta}</small><b dir="ltr">{item.drift.confidenceDelta === null ? '—' : signedScorePoints(item.drift.confidenceDelta, locale)}</b></span>
                       <span><small>{copy.risk}</small><b>{RISK_LABELS[locale][item.risk]}</b></span>
                       <span><small>{copy.freshness}</small><b>{FRESHNESS_LABELS[locale][item.freshness]}</b></span>
                     </span>
                     <span className={styles.itemFooter}>
                       <span><small>{copy.change}</small><b>{DRIFT_REASON_LABELS[locale][item.drift.primaryReasonCode]}</b></span>
-                      <span className={`${styles.outcome} ${outcomeTone(item.outcome)}`}><small>{copy.outcome}</small><b>{outcomeLabel(item.outcome, locale, copy)}</b></span>
+                      <span className={`${styles.outcome} ${outcomeTone(item.outcome)}`}><small>{copy.outcome}</small><b>{outcomeLabel(item.outcome, locale, copy, item.recommendation)}</b></span>
                     </span>
                   </button>
                   <details className={styles.details}>
@@ -573,8 +578,9 @@ export function IntelligenceTimelinePanel({ asset, horizon, activeAnalysisId }: 
 
 function TimelineItemDetails({ item, locale, copy }: { item: IntelligenceTimelineItem; locale: Locale; copy: TimelineCopy }) {
   const outcome = item.outcome;
-  const factorChanges = item.drift.factorDeltas.filter(delta => delta.scoreDelta !== null || delta.previousAvailability !== delta.currentAvailability);
-  const warningCodes = [...item.warnings.map(warning => warning.code), ...(outcome?.warnings.map(warning => warning.code) ?? [])];
+  const factorChanges = item.drift.factorDeltas.filter(delta => (delta.scoreDelta !== null && delta.scoreDelta !== 0) || delta.previousAvailability !== delta.currentAvailability);
+  const warnings = groupedIntelligenceWarnings([...item.warnings, ...(outcome?.warnings ?? [])], locale);
+  const nonDirectional = item.recommendation === 'WAIT' || item.recommendation === 'INSUFFICIENT_DATA';
 
   return (
     <div className={styles.detailsBody}>
@@ -594,7 +600,7 @@ function TimelineItemDetails({ item, locale, copy }: { item: IntelligenceTimelin
             {factorChanges.map(delta => (
               <li key={delta.factor}>
                 <span>{FACTOR_LABELS[locale][delta.factor]}</span>
-                <b dir="ltr">{delta.scoreDelta === null ? '—' : signedPercent(delta.scoreDelta, '—')}</b>
+                <b dir="ltr">{delta.scoreDelta === null ? '—' : signedScorePoints(delta.scoreDelta, locale)}</b>
               </li>
             ))}
           </ul>
@@ -603,7 +609,7 @@ function TimelineItemDetails({ item, locale, copy }: { item: IntelligenceTimelin
 
       <section className={styles.outcomeDetails}>
         <h3>{copy.outcome}</h3>
-        {!outcome ? <p>{copy.pending}</p> : (
+        {nonDirectional && (!outcome || outcome.evaluationStatus === 'PENDING') ? <p>{copy.nonDirectional}</p> : !outcome ? <p>{copy.pending}</p> : (
           <dl>
             <div><dt>{copy.outcome}</dt><dd>{outcomeLabel(outcome, locale, copy)}</dd></div>
             <div><dt>{copy.evaluationWindow}</dt><dd dir="ltr">{timestamp(outcome.evaluationWindow.startAt, locale, copy.notAvailable)} → {timestamp(outcome.evaluationWindow.endAt, locale, copy.notAvailable)}</dd></div>
@@ -622,10 +628,10 @@ function TimelineItemDetails({ item, locale, copy }: { item: IntelligenceTimelin
         )}
       </section>
 
-      {warningCodes.length ? (
+      {warnings.length ? (
         <section>
           <h3>{copy.warnings}</h3>
-          <ul className={styles.codeList}>{warningCodes.map((code, index) => <li key={`${code}:${index}`} dir="ltr">{code}</li>)}</ul>
+          <ul className={styles.codeList}>{warnings.map(warning => <li key={warning.code}>{warning.text}{warning.factors.length ? ` (${warning.factors.map(factor => FACTOR_LABELS[locale][factor]).join(locale === 'ar' ? '، ' : ', ')})` : ''}</li>)}</ul>
         </section>
       ) : null}
 
@@ -649,7 +655,7 @@ function TimelineComparison({ comparison, locale, copy, id }: { comparison: Inte
           <ComparisonReading label={copy.to} item={comparison.right} locale={locale} />
         </div>
         <dl className={styles.comparisonMetrics}>
-          <div><dt>{copy.confidenceDelta}</dt><dd dir="ltr">{drift.confidenceDelta === null ? '—' : signedPercent(drift.confidenceDelta, '—')}</dd></div>
+          <div><dt>{copy.confidenceDelta}</dt><dd dir="ltr">{drift.confidenceDelta === null ? '—' : signedScorePoints(drift.confidenceDelta, locale)}</dd></div>
           <div><dt>{copy.recommendationTransition}</dt><dd>{transition(drift.recommendationTransition.from, drift.recommendationTransition.to, RECOMMENDATION_LABELS[locale], copy.notAvailable)}</dd></div>
           <div><dt>{copy.riskTransition}</dt><dd>{transition(drift.riskTransition.from, drift.riskTransition.to, RISK_LABELS[locale], copy.notAvailable)}</dd></div>
           {drift.methodologyChanged ? <div><dt>{copy.methodChange}</dt><dd>{DRIFT_REASON_LABELS[locale].METHODOLOGY_VERSION_CHANGED}</dd></div> : null}
