@@ -86,6 +86,14 @@ describe('intelligence factor normalization', () => {
     expect(macro.warnings.some(item => item.code === 'MACRO_DIRECTION_UNCLEAR')).toBe(true);
     expect(calculateDeterministicConfidence([macro], getIntelligenceMethodologyConfig('STOCK', 'SWING')).calculation.availableDirectionalFactors).toBe(0);
   });
+  it('retains completed monthly macro periods without treating them as daily quotes or directional votes', () => {
+    const input = contextualSnapshot();
+    input.contextEvidence.macro = { provider: 'BLS', observedAt: new Date(now).toISOString(), events: [], stale: false, failureCode: null, observations: [{ series: 'CPI_YOY', country: 'US', currency: 'USD', value: 3.2, previous: 3.1, previousPeriod: '2026-05-31', unit: '%', period: '2026-06-30', retrievedAt: new Date(now).toISOString(), provider: 'BLS', sourceUrl: 'https://data.bls.gov/timeseries/CUUR0000SA0' }] };
+    const [factor] = run(input, ['MACRO']);
+    expect(factor.availability).toBe('PARTIAL'); expect(factor.normalizedScore).toBeNull();
+    expect(factor.evidence).toEqual(expect.arrayContaining([expect.objectContaining({ labelKey: 'intelligence_evidence_macro_observation_cpi_yoy', value: 3.2, observedAt: '2026-06-30' })]));
+    expect(calculateDeterministicConfidence([factor], getIntelligenceMethodologyConfig('STOCK', 'SWING')).calculation.availableDirectionalFactors).toBe(0);
+  });
   it('does not turn an unclassified headline into a predicted direction from keywords', () => {
     const input = contextualSnapshot();
     input.contextEvidence.news.articles = [{ ...input.contextEvidence.news.articles[0], headline: 'No investigation: finance company denies bankruptcy rumors', sentiment: null, sentimentSource: null }];

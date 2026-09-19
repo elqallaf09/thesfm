@@ -325,7 +325,7 @@ export function IntelligencePanel({
         </div>
         <div className={styles.factorGrid}>
           {result.factors.map(factor => (
-            <article key={factor.factor} className={styles.factor}>
+            <article key={factor.factor} className={`${styles.factor} ${factor.factor === 'MACRO' && factor.evidence.some(item => item.labelKey.startsWith('intelligence_evidence_macro_observation_')) ? styles.macroFactor : ''}`}>
               <div><strong>{FACTORS[locale][factor.factor]}</strong><span>{STATE_LABELS[locale][factor.availability]}</span></div>
               <div className={styles.factorScore}>
                 <b dir="ltr">{factor.normalizedScore === null ? '—' : `${factor.normalizedScore > 0 ? '+' : ''}${number(factor.normalizedScore, 0)}`}</b>

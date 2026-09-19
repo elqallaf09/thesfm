@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisRequest, CanonicalAssetIdentity } from '@/domain/intelligence/contracts';
 import type { MarketNewsArticle } from '@/lib/providers/news/types';
 
-const mocks = vi.hoisted(() => ({ news: vi.fn(), macro: vi.fn(), sharia: vi.fn(), myfxbook: vi.fn(), official: vi.fn(), storedNews: vi.fn(), research: vi.fn(), observations: vi.fn() }));
+const mocks = vi.hoisted(() => ({ news: vi.fn(), macro: vi.fn(), sharia: vi.fn(), myfxbook: vi.fn(), official: vi.fn(), storedNews: vi.fn(), research: vi.fn(), observations: vi.fn(), usObservations: vi.fn(), worldBank: vi.fn() }));
 vi.mock('@/lib/providers/news', () => ({ getMarketNews: mocks.news }));
 vi.mock('@/lib/providers/economic-calendar', () => ({ getEconomicCalendar: mocks.macro }));
 vi.mock('@/lib/server/intelligenceShariaEvidence', () => ({ loadStoredIntelligenceSharia: mocks.sharia }));
 vi.mock('@/lib/server/intelligenceResearchSharia', () => ({ loadResearchIntelligenceSharia: mocks.research }));
 vi.mock('@/providers/intelligence/officialMacroObservations', () => ({ loadOfficialMacroObservations: mocks.observations }));
+vi.mock('@/providers/intelligence/usMacroObservations', () => ({ loadUsMacroObservations: mocks.usObservations }));
+vi.mock('@/providers/intelligence/worldBankMacroObservations', () => ({ loadWorldBankMacroObservations: mocks.worldBank }));
 vi.mock('@/providers/intelligence/officialMacroCalendar', () => ({ loadOfficialMacroCalendar: mocks.official }));
 vi.mock('@/providers/intelligence/storedNewsEvidence', () => ({ loadStoredNewsEvidence: mocks.storedNews }));
 vi.mock('@/lib/market/providers/myfxbook', () => ({ getMyfxbookSentiment: mocks.myfxbook, resolveMyfxbookSymbol: (symbol: string) => symbol === 'EURUSD' ? { ok: true, symbol } : { ok: false } }));
@@ -24,7 +26,7 @@ beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(now); vi.clearAllMocks();
   for (const key of ['MARKET_SENTIMENT_PROVIDER', 'MARKET_SENTIMENT_API_KEY', 'FINNHUB_API_KEY', 'ALPHA_VANTAGE_API_KEY', 'MYFXBOOK_EMAIL', 'MYFXBOOK_PASSWORD']) vi.stubEnv(key, '');
   mocks.news.mockResolvedValue(success([])); mocks.macro.mockResolvedValue(success([])); mocks.sharia.mockResolvedValue(null);
-  mocks.observations.mockResolvedValue([]); mocks.official.mockResolvedValue(null); mocks.storedNews.mockResolvedValue(null); mocks.research.mockResolvedValue(null);
+  mocks.usObservations.mockResolvedValue([]); mocks.worldBank.mockResolvedValue([]); mocks.observations.mockResolvedValue([]); mocks.official.mockResolvedValue(null); mocks.storedNews.mockResolvedValue(null); mocks.research.mockResolvedValue(null);
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
@@ -44,7 +46,22 @@ describe('context evidence boundaries', () => {
   });
   it('does not substitute US funding data for a Kuwait equity', async () => {
     await loadIntelligenceContextEvidence({ ...request, requestedModules: ['MACRO'] }, { ...asset, country: 'KW', quoteCurrency: 'KWD' });
-    expect(mocks.observations).not.toHaveBeenCalled(); expect(mocks.official).not.toHaveBeenCalled();
+    expect(mocks.observations).not.toHaveBeenCalled(); expect(mocks.usObservations).not.toHaveBeenCalled(); expect(mocks.official).not.toHaveBeenCalled();
+    expect(mocks.worldBank).toHaveBeenCalledWith('KW', 'KWD');
+  });
+  it('keeps independent rate evidence if another official observation source rejects', async () => {
+    mocks.usObservations.mockRejectedValue(new Error('source outage'));
+    const sample = { series: 'SOFR', country: 'US', currency: 'USD', value: 3.5, previous: null, previousPeriod: null, unit: '%', period: '2026-09-15', retrievedAt: new Date(now).toISOString(), provider: 'New York Fed', sourceUrl: 'https://www.newyorkfed.org/markets/reference-rates/sofr' };
+    mocks.observations.mockResolvedValue([sample]);
+    const data = await loadIntelligenceContextEvidence({ ...request, requestedModules: ['MACRO'] }, asset);
+    expect(data.macro.observations).toEqual([sample]);
+  });
+  it('selects Kuwait annual context even for a Kuwait issuer quoted in dollars', async () => {
+    const sample = { series: 'GDP_ANNUAL', country: 'KW', currency: 'USD', value: 2, previous: null, previousPeriod: null, unit: '%', period: '2025-12-31', retrievedAt: new Date(now).toISOString(), provider: 'World Bank', sourceUrl: 'https://data.worldbank.org/indicator/NY.GDP.MKTP.KD.ZG?locations=KW' };
+    mocks.worldBank.mockResolvedValue([sample]);
+    const data = await loadIntelligenceContextEvidence({ ...request, requestedModules: ['MACRO'] }, { ...asset, country: 'KW' });
+    expect(data.macro.observations).toEqual([sample]); expect(mocks.usObservations).not.toHaveBeenCalled();
+    expect(mocks.observations).not.toHaveBeenCalled(); expect(mocks.worldBank).toHaveBeenCalledWith('KW', 'USD');
   });
   it('keeps real fallback news without generating a sentiment score', async () => {
     const stored = { provider: 'sfm-news', observedAt: '2026-09-16T08:00:00Z', stale: false, articles: [article()], failureCode: null };
