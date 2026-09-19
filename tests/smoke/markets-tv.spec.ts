@@ -14,6 +14,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
       status: 'available', exchange: 'QA', country: null,
     })),
   } }));
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US Markets', labelFr: 'Marchés américains', count: 1035, status: 'directory' }, { id: 'SSE', group: 'asia', labelAr: 'شنغهاي', labelEn: 'Shanghai', labelFr: 'Shanghai', count: 2359, status: 'snapshot' }] } }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
   await page.goto('/tv');
@@ -53,4 +54,31 @@ test('phone pairing keeps the QR code out of the login query', async ({ page }) 
   await expect(login).toHaveAttribute('href', '/login?next=%2Ftv%2Fpair');
   expect(await page.evaluate(() => sessionStorage.getItem('sfm-tv-pair-code'))).toBe('ABCDEF123456');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => innerWidth + 2));
+});
+
+test('TV market selection changes the main screen and promotes its independent ticker', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const markets = [
+    { id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US Markets', labelFr: 'Marchés américains', count: 1035, status: 'directory' },
+    { id: 'SSE', group: 'asia', labelAr: 'شنغهاي', labelEn: 'Shanghai', labelFr: 'Shanghai', count: 2359, status: 'snapshot' },
+  ];
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets } }));
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
+  await page.route('**/api/tv/snapshot?*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    const group = params.get('group'), market = params.get('market') || group, pageNumber = Number(params.get('page') || 0);
+    return route.fulfill({ json: { group, page: pageNumber, pageSize: Number(params.get('pageSize')), total: 6, directoryTotal: 1035, available: 0,
+      quotes: Array.from({ length: 6 }, (_, index) => ({ symbol: `${market}-${pageNumber * 6 + index}`, name: 'Synthetic QA', nameAr: 'اختبار', price: null, changePercent: null, currency: 'USD', source: null, observedAt: null, status: 'unavailable' })) } });
+  });
+  await page.goto('/tv');
+  await expect(page.locator('.tv-market-strip')).toHaveCount(2);
+  await page.locator('[data-market="SSE"] .tv-market-strip-heading').click();
+  await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','SSE');
+  await expect(page.locator('.tv-quote').first()).toContainText('SSE-0');
+  await page.getByRole('button', { name: 'التالي', exact: true }).click();
+  await expect(page.locator('.tv-quote').first()).toContainText('SSE-6');
+  await page.locator('[data-market="US"] .tv-market-strip-heading').click();
+  await expect(page.locator('.tv-quote').first()).toContainText('US-0');
+  await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','US');
+  await expect(page.locator('.tv-world-stocks-link')).toHaveAttribute('href', /\/world-stocks$/);
 });

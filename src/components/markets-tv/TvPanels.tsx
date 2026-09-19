@@ -8,6 +8,7 @@ import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { useTvResource } from './useTvResource';
+
 export function TvSettingsPanel({ settings, change }: { settings: TvSettings; change: (value: TvSettings) => void }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
   const toggle = (key: 'autoRotate' | 'ticker' | 'sound') => change({ ...settings, [key]: !settings[key] });
@@ -66,9 +67,10 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
 }
 export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; language: TvLanguage; now: number }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
-  const url = `/ai-analyst/analyze/${encodeURIComponent(quote.symbol)}`;
+  const scoped = quote.exchange?.startsWith('TD_');
+  const url = scoped ? `/world-stocks/${encodeURIComponent(quote.symbol)}?region=${encodeURIComponent(quote.exchange!)}` : `/ai-analyst/analyze/${encodeURIComponent(quote.symbol)}`;
   const assetType = quote.symbol.includes('=X') ? 'FOREX' : /-(USD|USDT)$/.test(quote.symbol) ? 'CRYPTO' : /[=]F$/.test(quote.symbol) ? 'COMMODITY' : quote.symbol.startsWith('^') ? 'INDEX' : 'STOCK';
-  const analysis = useTvResource<{ result: AnalysisResult }>(`/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
+  const analysis = useTvResource<{ result: AnalysisResult }>(scoped ? null : `/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
   const result = analysis.data?.result;
   const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
   return <div className="tv-detail">

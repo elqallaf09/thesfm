@@ -7,6 +7,12 @@ export const TV_TEXT = {
   hoursVerified: ['تاريخ مراجعة الساعات', 'Hours reviewed', 'Horaires vérifiés'], officialSchedule: ['جدول البورصة الرسمي', 'Official exchange schedule', 'Calendrier officiel de la bourse'],
   title: ['تلفزيون الأسواق', 'MARKETS TV', 'MARCHÉS TV'],
   global: ['المؤشرات العالمية', 'World indices', 'Indices mondiaux'], us: ['الولايات المتحدة', 'United States', 'États-Unis'],
+  world: ['جميع الأسهم', 'All stocks', 'Toutes les actions'],
+  directoryUnavailable: ['دليل السوق غير متاح حاليًا', 'Market directory unavailable', 'Répertoire indisponible'],
+  allMarkets: ['كل الأسواق', 'All markets', 'Tous les marchés'],
+  directory: ['عدد الأسهم في الدليل', 'Directory listings', 'Titres du répertoire'],
+  selectedCoverage: ['قائمة مختارة', 'Selected coverage', 'Sélection'],
+  worldStocks: ['جميع أسهم العالم', 'All world stocks', 'Toutes les actions du monde'],
   gulf: ['أسواق الخليج', 'Gulf markets', 'Marchés du Golfe'], europe: ['أوروبا', 'Europe', 'Europe'], asia: ['آسيا', 'Asia', 'Asie'],
   crypto: ['العملات الرقمية', 'Crypto', 'Crypto'], forex: ['الفوركس', 'Forex', 'Devises'], commodities: ['المعادن والسلع', 'Metals & commodities', 'Métaux et matières premières'],
   watchlist: ['قائمة المتابعة', 'Watchlist', 'Liste de suivi'], markets: ['الأسواق', 'Markets', 'Marchés'], map: ['خريطة الأسواق', 'Market map', 'Carte des marchés'],
@@ -67,6 +73,7 @@ export const TV_TEXT = {
   latestObservation: ['آخر ملاحظة سعرية', 'Latest price observation', 'Dernière observation du cours'],
   nothingRanked: ['لا تتوفر بيانات حديثة كافية للترتيب', 'Not enough recent data to rank', 'Données récentes insuffisantes pour classer'],
   refresh: ['تحديث', 'Refresh', 'Actualiser'], connected: ['الاتصال متاح', 'Connected', 'Connecté'],
+  stripMarkets: ['أشرطة الأسواق', 'Market strips', 'Bandes des marchés'],
 } satisfies Record<string, [string, string, string]>;
 export type TvTextKey = keyof typeof TV_TEXT;
 export function tvText(language: TvLanguage, key: TvTextKey) { return TV_TEXT[key][language === 'ar' ? 0 : language === 'fr' ? 2 : 1]; }

@@ -2,10 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/sfm-market/engine', () => ({ getSfmMarketQuote: vi.fn() }));
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
+import * as catalog from '@/lib/server/markets-tv/catalog';
 import { loadTvSnapshot } from '@/lib/server/markets-tv/snapshot';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 
-afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); });
+afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); vi.restoreAllMocks(); });
 describe('TV canonical market snapshots', () => {
   it('passes the actual asset class for indices, commodities and currency groups', async () => {
     vi.mocked(getSfmMarketQuote).mockResolvedValue(null);
@@ -33,10 +34,19 @@ describe('TV canonical market snapshots', () => {
     vi.mocked(getSfmMarketQuote).mockImplementation(() => new Promise(() => {}));
     const work = loadTvSnapshot('watchlist', Array.from({ length: 60 }, (_, i) => `TEST${i}`));
     expect(getSfmMarketQuote).toHaveBeenCalledTimes(4);
-    await vi.advanceTimersByTimeAsync(40_000);
+    await vi.advanceTimersByTimeAsync(25_000);
     const snapshot = await work;
     expect(snapshot.total).toBe(50); expect(snapshot.available).toBe(0);
-    expect(getSfmMarketQuote).toHaveBeenCalledTimes(16);
+    expect(getSfmMarketQuote).toHaveBeenCalledTimes(12);
     expect(snapshot.quotes.every(q => q.price === null)).toBe(true);
   });
+  it('paginates the entire directory and fetches only the current screen', async () => {
+    vi.spyOn(catalog, 'tvDirectoryAssets').mockResolvedValue(Array.from({ length: 1035 }, (_, i) => ({ symbol: `QA${i}`, name: 'Synthetic QA listing' })));
+    vi.mocked(getSfmMarketQuote).mockResolvedValue(null);
+    const page = await loadTvSnapshot('us', [], { page: 172, pageSize: 6, market: 'US' });
+    expect(page.directoryTotal).toBe(1035); expect(page.quotes.map(q => q.symbol)).toEqual(['QA1032','QA1033','QA1034']);
+    expect(getSfmMarketQuote).toHaveBeenCalledTimes(3);
+    expect(catalog.tvDirectoryAssets).toHaveBeenCalledWith('us', 'US');
+  });
+
 });

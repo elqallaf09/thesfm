@@ -48,8 +48,10 @@ describe('TV authorization boundary', () => {
     mocks.snapshot.mockResolvedValue({ quotes: [], total: 0, available: 0 });
     const response = await snapshot(request('snapshot?group=us&symbols=ATTACKER'));
     expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(mocks.snapshot).toHaveBeenCalledWith('us', []);
+    expect(mocks.snapshot).toHaveBeenCalledWith('us', [], { page: 0, pageSize: 6, market: undefined });
     expect((await snapshot(request('snapshot?group=invalid'))).status).toBe(400);
+    expect((await snapshot(request('snapshot?group=us&pageSize=1000'))).status).toBe(400);
+    expect((await snapshot(request('snapshot?group=us&page=-1'))).status).toBe(400);
   });
   it('bounds streamed JSON bodies, including missing content-length', async () => {
     expect(await tvBody(request('pair', 'POST', { 'content-type': 'application/json' }, JSON.stringify({ name: 'a'.repeat(9000) })))).toBeNull();

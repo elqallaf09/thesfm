@@ -1,5 +1,5 @@
 export type TvLanguage = 'ar' | 'en' | 'fr';
-export type TvGroup = 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
+export type TvGroup = 'world' | 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
 export type TvView = 'markets' | 'map' | 'sessions' | 'brief';
 export type TvSettings = {
   language: TvLanguage; theme: 'dark' | 'light'; layout: 'balanced' | 'quotes';
@@ -11,13 +11,14 @@ export type TvQuote = {
   status: 'available' | 'delayed' | 'stale' | 'unknown_time' | 'unavailable';
   exchange: string | null; country: string | null;
 };
-export type TvSnapshot = { group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number; };
+export type TvMarket = { id: string; group: TvGroup; labelAr: string; labelEn: string; labelFr: string; count: number; status: string };
+export type TvSnapshot = { page?: number; pageSize?: number; directoryTotal?: number; market?: string;  group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number; };
 export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string };
 export type TvDevice = { id: string; name: string; expiresAt: string; settings: TvSettings; };
 export type TvAlert = { id: string; symbol: string; alert_type: string; threshold: number; currency: string | null; status: string };
-export const TV_GROUPS: TvGroup[] = ['global', 'us', 'gulf', 'europe', 'asia', 'crypto', 'forex', 'commodities', 'watchlist'];
+export const TV_GROUPS: TvGroup[] = ['world', 'global', 'us', 'gulf', 'europe', 'asia', 'crypto', 'forex', 'commodities', 'watchlist'];
 export const DEFAULT_TV_SETTINGS: TvSettings = {
-  language: 'ar', theme: 'dark', layout: 'balanced', groups: ['global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
+  language: 'ar', theme: 'dark', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
   autoRotate: false, rotationSeconds: 30, ticker: true, sound: false,
 };
 export function normalizeTvSettings(value: unknown): TvSettings {

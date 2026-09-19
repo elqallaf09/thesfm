@@ -12,7 +12,7 @@ export function useTvResource<T>(path: string | null, interval: number, token = 
     async function load() {
       if (stopped || running || document.hidden || !navigator.onLine) return;
       running = true; controller = new AbortController();
-      const timeout = setTimeout(() => controller?.abort(), 35000);
+      const timeout = setTimeout(() => controller?.abort(), 55000);
       try {
         const response = await tvFetch(path!, { cache: 'no-store', signal: controller.signal, headers: token ? { 'x-sfm-tv-token': token } : {} });
         const body = await response.json();

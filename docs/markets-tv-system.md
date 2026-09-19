@@ -133,3 +133,31 @@ Official platform references: [Samsung engine matrix](https://developer.samsung.
 [Samsung remote keys](https://developer.samsung.com/smarttv/develop/guides/user-interaction/remote-control.html),
 [Android TV entry requirements](https://developer.android.com/training/tv/get-started/create),
 [Android Gradle Plugin 8.13](https://developer.android.com/build/releases/agp-8-13-0-release-notes).
+
+## Complete listing discovery and exchange strips
+
+`/world-stocks` now browses the full synchronized US universe alongside the
+checked-in Kuwait, Dubai, Shanghai and Shenzhen directories. All-market browse
+includes US rows, search no longer inherits the 20-result autocomplete limit,
+and pagination can reach beyond the former 200-page ceiling. The server also
+synchronizes the Twelve Data worldwide stock directory and exposes each returned
+MIC as its own filter. Directory availability and quote access remain separate;
+failed worldwide synchronization is visible and retains available directories.
+This does not assert that every exchange or every live price is licensed.
+
+`/api/tv/catalog` supplies market identities and counts. `/api/tv/snapshot` takes
+`group`, `market`, zero-based `page` and `pageSize` (at most 12). It fetches only
+the visible page from the full directory. Selecting a market resets the page,
+changes the main panel and promotes its strip. Each exchange has a separate
+stacked strip with constant 32 px/s motion, source/observation time, unavailable
+rows, manual next-page control and automatic advancement after each pass.
+Only visible strips poll; hidden rows and duplicate animation copies do not
+consume remote focus. Scrolling stays inside the TV layout at 720p/1080p/4K.
+
+World-stock quote keys include exchange and symbol, preventing a dual-listed
+symbol from receiving another exchange's currency/price. Observation times come
+from upstream evidence, never the time our HTTP request completed. Extended
+exchange quotes validate symbol, MIC and currency and require a server-side
+Twelve Data key. Missing access produces an unavailable price. The standalone
+TV package opens the world-stock browser via QR; its embedded directory and
+remote market selection work without Next.js routing.

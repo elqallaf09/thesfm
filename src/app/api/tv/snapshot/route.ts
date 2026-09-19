@@ -7,7 +7,11 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { prefix: 'tv-snapshot', max: 30 }); if (limited) return limited;
-  const group = new URL(request.url).searchParams.get('group') || 'global';
+  const params = new URL(request.url).searchParams;
+  const group = params.get('group') || 'global';
+  const page = Number(params.get('page') || 0), pageSize = Number(params.get('pageSize') || 6);
+  const market = params.get('market') || undefined;
+  if (!Number.isInteger(page) || page < 0 || page > 1_000_000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 12 || market && !/^[A-Z_a-z0-9]{1,32}$/.test(market)) return tvJson({ code: 'INVALID_QUERY' }, 400);
   if (!TV_GROUPS.includes(group as TvGroup)) return tvJson({ code: 'INVALID_GROUP' }, 400);
   try {
     let symbols: string[] = [];
@@ -16,6 +20,6 @@ export async function GET(request: Request) {
       if (!device?.user_id) return tvJson({ code: 'UNAUTHORIZED' }, 401);
       symbols = (await ownedTvData(device.user_id)).symbols;
     }
-    return tvJson(await loadTvSnapshot(group as TvGroup, symbols));
+    return tvJson(await loadTvSnapshot(group as TvGroup, symbols, { page, pageSize, market }));
   } catch { return tvJson({ code: 'MARKET_UNAVAILABLE' }, 503); }
 }
