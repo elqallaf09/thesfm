@@ -171,6 +171,7 @@ export async function fetchYahooHistory(
   assetType: MarketAssetType,
   period: string,
   interval?: string,
+  forceFresh = false,
 ): Promise<YahooHistoryResult> {
   const symbol = providerSymbol.trim().toUpperCase();
   if (!symbol) {
@@ -188,7 +189,7 @@ export async function fetchYahooHistory(
   const cacheKey = `${symbol}:${assetType}:${period}:${interval || ''}`;
   const now = Date.now();
   const cached = yahooHistoryCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
+  if (!forceFresh && cached && cached.expiresAt > now) {
     return {
       ...cached.data,
       cached: true,
@@ -202,7 +203,7 @@ export async function fetchYahooHistory(
 
   try {
     const response = await fetch(url, {
-      next: { revalidate: Math.round(YAHOO_HISTORY_CACHE_MS / 1000) },
+      ...(forceFresh ? { cache: 'no-store' as const } : { next: { revalidate: Math.round(YAHOO_HISTORY_CACHE_MS / 1000) } }),
       signal: AbortSignal.timeout(9000),
       headers: {
         accept: 'application/json',

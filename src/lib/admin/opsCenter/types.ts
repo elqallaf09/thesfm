@@ -150,6 +150,7 @@ export type AiUsageFeatureRow = {
 };
 
 export type OperationsCenterState = {
+  calendarHealth?: OpsFeatureHealthStatus;
   generatedAt: string;
 
   overview: {

@@ -8,6 +8,9 @@ import { loadStoredIntelligenceSharia } from '@/lib/server/intelligenceShariaEvi
 import { loadResearchIntelligenceSharia } from '@/lib/server/intelligenceResearchSharia';
 import { loadOfficialMacroCalendar } from './officialMacroCalendar';
 import { loadOfficialMacroObservations } from './officialMacroObservations';
+import { loadUsMacroObservations } from './usMacroObservations';
+import { loadWorldBankMacroObservations } from './worldBankMacroObservations';
+import type { MacroObservation } from '@/domain/intelligence/macroObservations';
 import { loadStoredNewsEvidence } from './storedNewsEvidence';
 
 export type IntelligenceContextNewsArticle = {
@@ -36,10 +39,7 @@ export type IntelligenceContextMacroEvent = {
   previous: string | number | null;
   provider: string;
 };
-export type IntelligenceContextMacroObservation = {
-  series: 'SOFR' | 'EFFR'; country: string; currency: string; value: number; previous: number | null;
-  previousPeriod: string | null; unit: '%'; period: string; retrievedAt: string; provider: string; sourceUrl: string;
-};
+export type IntelligenceContextMacroObservation = MacroObservation;
 export type IntelligenceContextEvidence = {
   news: { provider: string | null; observedAt: string | null; stale: boolean; articles: IntelligenceContextNewsArticle[]; failureCode: string | null };
   sentiment: IntelligenceContextSentiment | null;
@@ -255,20 +255,25 @@ async function loadMacro(request: AnalysisRequest, asset: CanonicalAssetIdentity
   if (!currencies.length || (['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) && !assetCountry)) return EMPTY_MACRO;
   const usdContext = currencies.includes('USD') && (!['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || assetCountry === 'US');
   const official = usdContext ? loadOfficialMacroCalendar() : Promise.resolve(null);
-  const observations = usdContext ? loadOfficialMacroObservations() : Promise.resolve([]);
+  const observations = Promise.allSettled([
+    usdContext ? loadOfficialMacroObservations() : Promise.resolve([]),
+    usdContext ? loadUsMacroObservations() : Promise.resolve([]),
+    !usdContext && assetCountry ? loadWorldBankMacroObservations(assetCountry, currency) : Promise.resolve([]),
+  ]).then(parts => parts.flatMap(part => part.status === 'fulfilled' ? part.value : []));
   const enrich = async (calendar: IntelligenceContextEvidence['macro']): Promise<IntelligenceContextEvidence['macro']> => {
     const samples = await observations;
     if (!samples.length) return calendar;
     const hasCalendar = !calendar.stale && calendar.events.length > 0;
-    return { provider: hasCalendar ? `${calendar.provider}+New York Fed` : 'New York Fed',
-      observedAt: hasCalendar ? calendar.observedAt : samples.map(item => item.retrievedAt).sort().at(-1) ?? null,
+    const providers = [...new Set([...(hasCalendar && calendar.provider ? [calendar.provider] : []), ...samples.map(item => item.provider)])];
+    return { provider: providers.join(' + '),
+      observedAt: [...(hasCalendar && calendar.observedAt ? [calendar.observedAt] : []), ...samples.map(item => item.retrievedAt)].sort().at(-1) ?? null,
       stale: false, events: hasCalendar ? calendar.events : [], observations: samples, failureCode: null };
   };
   const response = await withinBudget(() => getEconomicCalendar({ from: dateOnly(now - 3 * DAY), to: dateOnly(now + 7 * DAY), currency: currencies.length === 1 ? currency : undefined, force: request.forceRefresh }), null, 5000);
   if (!response || response.stale || response.status !== 'success') return enrich(await official ?? { ...EMPTY_MACRO, provider: response?.provider ?? null, stale: Boolean(response?.stale), failureCode: response?.messageCode ?? 'MACRO_PROVIDER_FAILED' });
   const events = response.data.filter(event => {
     const at = contextIso(event.dateTimeUtc);
-    if (!at || Date.parse(at) < now - 3 * DAY || Date.parse(at) > now + 7 * DAY || !currencies.includes(symbol(event.currency ?? ''))) return false;
+    if (event.stale || !at || Date.parse(at) < now - 3 * DAY || Date.parse(at) > now + 7 * DAY || !currencies.includes(symbol(event.currency ?? ''))) return false;
     return !['STOCK', 'FUND', 'INDEX'].includes(asset.assetType) || country(event.country) === assetCountry;
   }).sort((a, b) => Math.abs(Date.parse(a.dateTimeUtc) - now) - Math.abs(Date.parse(b.dateTimeUtc) - now))
     .slice(0, 24).sort((a, b) => Date.parse(a.dateTimeUtc) - Date.parse(b.dateTimeUtc));

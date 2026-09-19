@@ -35,6 +35,10 @@ import {
 import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
+import { GROWTH_WATCHLIST } from '@/lib/market/growthWatchlist';
+import { growthMetricCount, type GrowthFundamentals } from '@/lib/market/growthFundamentalsCore';
+import { useGrowthFundamentals } from './useGrowthFundamentals';
+import { GrowthCoverageSummary, GrowthReportedMetrics, screenMetricCount, type GrowthScreenEvidence } from './GrowthReportedMetrics';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { StockCategoryMoverItem, StockCategoryMoversResponse } from '@/lib/market/fetchStockCategoryMovers';
@@ -65,7 +69,7 @@ type DisclosureId =
   | 'rates'
   | 'peg';
 
-type GrowthTickerItem = {
+type GrowthTickerItem = GrowthScreenEvidence & {
   symbol: string;
   name: string;
   price: number | null;
@@ -138,6 +142,7 @@ type GrowthNewsResponse =
     };
 
 type GrowthStockRow = GrowthTickerItem & {
+  reported?: GrowthFundamentals;
   sectorId: Exclude<SectorId, 'all'>;
   sectorLabel: string;
   momentumLabel: string;
@@ -801,7 +806,7 @@ const SECTORS: Record<Exclude<SectorId, 'all'>, {
     },
     drivers: { ar: 'تبني المدفوعات الرقمية، التداول، خدمات الشركات الصغيرة.', en: 'Digital payments, trading, SMB services.', fr: 'Paiements numériques, trading, PME.' },
     risks: { ar: 'تنظيم، ائتمان، دورات شهية المخاطرة.', en: 'Regulation, credit, risk appetite cycles.', fr: 'Réglementation, crédit, cycles de risque.' },
-    symbols: ['COIN', 'SQ', 'PYPL'],
+    symbols: ['COIN', 'XYZ', 'PYPL'],
   },
   ev: {
     icon: LineChart,
@@ -951,15 +956,9 @@ function sectorLabel(id: SectorId, lang: LangCode) {
 }
 
 function sectorForSymbol(symbol: string): Exclude<SectorId, 'all'> {
-  return STOCK_SECTOR[symbol.toUpperCase()] ?? 'digital_platforms';
-}
-
-function estimatedValuationRiskLabel(changePercent: number | null, lang: LangCode) {
-  if (changePercent === null) return COPY[lang].unknownValuation;
-  const absoluteMove = Math.abs(changePercent);
-  if (changePercent >= 8) return localized(lang, 'تقديري: مرتفع', 'Estimated: high', 'Estimé : élevé');
-  if (absoluteMove >= 4) return localized(lang, 'تقديري: متوسط', 'Estimated: medium', 'Estimé : moyen');
-  return localized(lang, 'تقديري: منخفض', 'Estimated: low', 'Estimé : faible');
+  const filter = GROWTH_WATCHLIST.find(stock => stock.symbol === symbol.toUpperCase())?.filter;
+  const mapped: Record<string, Exclude<SectorId, 'all'>> = { artificial_intelligence: 'ai', software: 'cloud', electric_vehicles: 'ev', innovative_healthcare: 'healthcare', digital_consumption: 'digital_platforms' };
+  return filter ? mapped[filter] ?? (filter as Exclude<SectorId, 'all'>) : STOCK_SECTOR[symbol.toUpperCase()] ?? 'digital_platforms';
 }
 
 function estimatedGrowthClassification(changePercent: number | null, lang: LangCode) {
@@ -967,24 +966,24 @@ function estimatedGrowthClassification(changePercent: number | null, lang: LangC
     return localized(lang, 'تصنيف سعري مؤقت', 'Price-based provisional class', 'Classe provisoire prix');
   }
   if (changePercent >= 8) {
-    return localized(lang, 'نمو بزخم سعري قوي', 'Strong price-momentum growth', 'Croissance à fort momentum');
+    return localized(lang, 'زخم سعري قوي', 'Strong price momentum', 'Fort momentum du prix');
   }
   if (changePercent >= 2) {
-    return localized(lang, 'نمو بزخم إيجابي', 'Positive price-momentum growth', 'Croissance à momentum positif');
+    return localized(lang, 'زخم سعري إيجابي', 'Positive price momentum', 'Momentum positif du prix');
   }
   if (changePercent <= -4) {
-    return localized(lang, 'نمو تحت ضغط سعري', 'Growth under price pressure', 'Croissance sous pression');
+    return localized(lang, 'ضغط سعري', 'Price under pressure', 'Prix sous pression');
   }
-  return localized(lang, 'نمو قيد المراقبة', 'Growth under watch', 'Croissance sous surveillance');
+  return localized(lang, 'تغير سعري محدود', 'Limited price move', 'Variation limitée du prix');
 }
 
 function methodologyDescription(row: GrowthStockRow, lang: LangCode) {
   if (row.price !== null && row.changePercent !== null) {
     return localized(
       lang,
-      'تصنيف تقديري مبني على السعر الحالي، التغير اليومي والقطاع إلى حين توفر بيانات أساسية كاملة.',
-      'Provisional classification based on current price, daily move, and sector until full fundamentals are available.',
-      'Classement provisoire fondé sur le prix, la variation quotidienne et le secteur en attendant les fondamentaux complets.',
+      'الزخم يصف التغير اليومي في السعر فقط. مؤشرات النمو المعلنة موضحة بشكل مستقل مع فترة التقرير.',
+      'Momentum describes the daily price move only. Reported growth metrics are shown separately with their reporting period.',
+      'Le momentum décrit uniquement la variation quotidienne. Les indicateurs publiés sont affichés séparément avec leur période.',
     );
   }
   return COPY[lang].insufficientMethodology;
@@ -998,9 +997,11 @@ function cleanTextValue(value: unknown) {
 
 function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockRow[] {
   const rows: GrowthStockRow[] = [];
+  const seen = new Set<string>();
   for (const item of items) {
     const symbol = cleanTextValue(item.symbol).toUpperCase();
-    if (!symbol) continue;
+    if (!symbol || seen.has(symbol)) continue;
+    seen.add(symbol);
     const name = cleanTextValue(item.name) || symbol;
     const currency = cleanTextValue(item.currency) || 'USD';
     const price = typeof item.price === 'number' && Number.isFinite(item.price) ? item.price : null;
@@ -1029,10 +1030,10 @@ function buildStockRows(items: GrowthTickerItem[], lang: LangCode): GrowthStockR
       sectorLabel: sectorLabel(sectorId, lang),
       momentumLabel,
       momentumTone: tone,
-      valuationRiskLabel: estimatedValuationRiskLabel(changePercent, lang),
+      valuationRiskLabel: COPY[lang].unknownValuation,
       qualityLabel: COPY[lang].fundamentalsUnavailable,
       growthClassification: estimatedGrowthClassification(changePercent, lang),
-      dataCompleteness: price !== null && changePercent !== null ? 55 : 35,
+      dataCompleteness: Math.round(([price, changePercent].filter(value => value !== null).length / 6) * 100),
     });
   }
   return rows;
@@ -1328,6 +1329,7 @@ export function GrowthStocksNewsPage() {
   // effect after mount (see below).
   const [tab, setTab] = useState<GrowthTab>('overview');
   const tabSyncedFromUrl = useRef(false);
+  const [filingsRefresh, setFilingsRefresh] = useState(0);
   const [ticker, setTicker] = useState<GrowthTickerResponse | null>(null);
   const [news, setNews] = useState<GrowthNewsResponse | null>(null);
   const [movers, setMovers] = useState<StockCategoryMoversResponse | null>(null);
@@ -1362,12 +1364,12 @@ export function GrowthStocksNewsPage() {
 
   const loadData = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'initial') setLoading(true);
-    if (mode === 'refresh') setRefreshing(true);
+    if (mode === 'refresh') { setRefreshing(true); setFilingsRefresh(value => value + 1); }
     setError(null);
 
     try {
       const [tickerResult, newsResult, moversResult] = await Promise.allSettled([
-        fetch('/api/growth-stocks/ticker', { cache: 'no-store' }).then(response => response.json() as Promise<GrowthTickerResponse>),
+        fetch('/api/growth-stocks/ticker').then(response => response.json() as Promise<GrowthTickerResponse>).then(value => { setTicker(prev => value?.ok || !prev ? value : prev); setLoading(false); return value; }),
         fetch(`/api/growth-stocks/news?lang=${activeLang}&limit=48`, { cache: 'no-store' }).then(response => response.json() as Promise<GrowthNewsResponse>),
         fetch('/api/growth-stocks/movers?limit=5', { cache: 'no-store' }).then(response => response.json() as Promise<StockCategoryMoversResponse>),
       ]);
@@ -1418,7 +1420,8 @@ export function GrowthStocksNewsPage() {
     updateTabParam(tab);
   }, [tab]);
 
-  const stockRows = useMemo(() => buildStockRows(ticker?.ok ? ticker.items : [], activeLang), [activeLang, ticker]);
+  const reported = useGrowthFundamentals(ticker?.ok ? ticker.items.map(item => item.symbol) : [], ticker?.ok ? `${ticker.updated_at}:${filingsRefresh}` : null);
+  const stockRows = useMemo<GrowthStockRow[]>(() => buildStockRows(ticker?.ok ? ticker.items : [], activeLang).map(row => ({ ...row, reported: reported.data[row.symbol] })), [activeLang, ticker, reported.data]);
   const dedupedNews = useMemo(() => news?.success ? dedupeNewsItems(news.items) : [], [news]);
   const sectorStats = useMemo(() => buildSectorStats(stockRows, activeLang), [activeLang, stockRows]);
 
@@ -1603,8 +1606,7 @@ export function GrowthStocksNewsPage() {
             <div className="hero-panel">
               <div>
                 <span>{text.methodology}</span>
-                <strong>{text.notEnoughFundamentals}</strong>
-                <p>{text.insufficientMethodology}</p>
+                <GrowthCoverageSummary items={stockRows} loading={loading || reported.loading} lang={activeLang} />
               </div>
               <button className="refresh-button" type="button" onClick={() => void loadData('refresh')} disabled={refreshing}>
                 <RefreshCcw size={17} className={refreshing ? 'spin' : undefined} />
@@ -2330,7 +2332,6 @@ export function GrowthStocksNewsPage() {
           width: max-content;
           gap: 10px;
           direction: ltr;
-          animation: growth-ticker-marquee 36s linear infinite;
           will-change: transform;
         }
         .ticker-skeleton-track,
@@ -3220,7 +3221,8 @@ function TickerStrip({ items, loading, lang, onRetry }: { items: GrowthStockRow[
       viewportClassName="ticker-marquee"
       trackClassName="ticker-track"
       direction="ltr"
-      durationSeconds={36}
+      pixelsPerSecond={28}
+      minimumItems={1}
       emptyState={(
         <StateBox
           tone="info"
@@ -3411,6 +3413,7 @@ function ComparisonStockCard({
         <MetricLine label={text.sector} value={getSector(row, detail)} text={text} />
         <MetricLine label={text.industry} value={getIndustry(detail)} text={text} />
         <MetricLine label={text.marketCap} value={marketCap === null ? null : formatCompact(marketCap, lang)} text={text} numeric />
+        <GrowthReportedMetrics data={row.reported} screening={row} lang={lang} />
         <MetricLine label={text.revenueGrowth} value={revenueGrowth === null ? null : formatPercent(revenueGrowth, lang)} text={text} numeric />
         <MetricLine label={text.earningsGrowth} value={earningsGrowth === null ? null : formatPercent(earningsGrowth, lang)} text={text} numeric />
         <MetricLine label={text.pe} value={pe === null ? null : formatNumber(pe, lang, { maximumFractionDigits: 2 })} text={text} numeric />
@@ -4029,8 +4032,8 @@ function GrowthStockTable({
                 <th>{text.currentPrice}</th>
                 <th>{text.dailyChange}</th>
                 <th>{text.sector}</th>
-                <th>{text.valuationRisk}</th>
-                <th>{text.methodology}</th>
+                <th>{text.revenueGrowth}</th>
+                <th>{text.earningsGrowth}</th>
                 <th>{text.compare}</th>
               </tr>
             </thead>
@@ -4049,8 +4052,8 @@ function GrowthStockTable({
                   <td className="numeric">{row.price === null ? <UnavailableValue text={text} /> : formatCurrency(row.price, row.currency, lang)}</td>
                   <td>{row.changePercent === null ? <UnavailableValue text={text} /> : <span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span>}</td>
                   <td>{row.sectorLabel}</td>
-                  <td>{row.valuationRiskLabel === text.unavailable ? <UnavailableValue text={text} /> : row.valuationRiskLabel}</td>
-                  <td>{row.growthClassification}</td>
+                  <td><span dir="ltr">{formatPercent(row.reported?.period ? row.reported.revenueGrowthPercent : row.revenueGrowthPercent, lang)}</span><small className="table-muted" dir="ltr">{row.reported?.period ?? row.growthPeriod}</small></td>
+                  <td><span dir="ltr">{formatPercent(row.reported?.period ? row.reported.earningsGrowthPercent : row.earningsGrowthPercent, lang)}</span><small className="table-muted" dir="ltr">{row.reported?.period ?? row.growthPeriod}</small></td>
                   <td>
                     <div className="table-actions">
                       <button
@@ -4127,15 +4130,15 @@ function GrowthStockCard({
       <div className="metric-grid">
         <MiniMetric label={text.methodology} value={row.growthClassification} lang={lang} />
         <MiniMetric label={text.valuationRisk} value={row.valuationRiskLabel === text.unavailable ? <UnavailableValue text={text} /> : row.valuationRiskLabel} lang={lang} />
-        <MiniMetric label={text.revenueGrowth} value={<UnavailableValue text={text} />} lang={lang} />
-        <MiniMetric label={text.peg} value={<UnavailableValue text={text} />} lang={lang} />
+
         {!compact ? (
           <>
-            <MiniMetric label={text.freeCashFlow} value={<UnavailableValue text={text} />} lang={lang} />
+
             <MiniMetric label={text.volatility} value={row.momentumLabel} lang={lang} />
           </>
         ) : null}
       </div>
+      <GrowthReportedMetrics data={row.reported} screening={row} lang={lang} />
       <p className="muted">{methodologyDescription(row, lang)}</p>
       {!compact ? (
         <div className="card-actions">
@@ -4300,7 +4303,7 @@ function DataStatusPanel({ text, lang, rows, lastUpdated }: { text: typeof COPY[
     + (row.changePercent === null ? 1 : 0)
     + (row.currency ? 0 : 1)
     + (row.sectorLabel ? 0 : 1)
-    + 9, 0);
+    + (4 - Math.max(growthMetricCount(row.reported), screenMetricCount(row))), 0);
   const condition = missingFields > 0 ? text.someFieldsUnavailable : delayedCount > 0 ? text.delayedData : text.connected;
   return (
     <section className="panel">

@@ -4,7 +4,7 @@ import type {
   IntelligenceHorizon,
 } from '@/domain/intelligence/contracts';
 
-export const INTELLIGENCE_ENGINE_VERSION = '6.1.0';
+export const INTELLIGENCE_ENGINE_VERSION = '6.1.1';
 export const INTELLIGENCE_RULES_VERSION = 'recommendation-policy-v1';
 export const INTELLIGENCE_WEIGHTING_VERSION = 'asset-horizon-weights-v1';
 export const INTELLIGENCE_CONFIDENCE_VERSION = 'deterministic-confidence-v1';
