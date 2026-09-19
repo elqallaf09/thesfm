@@ -171,7 +171,11 @@ test('updates only an existing branch-only variable by ID and rejects shared or 
       if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [{
         key: 'NEXT_PUBLIC_SUPABASE_URL', id: 'env_test', gitBranch: 'feat/test', target: ['preview'], type: 'plain', configurationId: 'integration', ...unsafe,
       }] }) };
-      if (init.method === 'PATCH') { writes.push(path); return { ok: true, json: async () => JSON.parse(init.body) }; }
+      if (init.method === 'PATCH') {
+        assert.deepEqual(Object.keys(JSON.parse(init.body)), ['value']); writes.push(path);
+        return { ok: true, json: async () => ({ key: 'NEXT_PUBLIC_SUPABASE_URL', id: 'env_test',
+          gitBranch: 'feat/test', target: ['preview'], type: 'plain', ...JSON.parse(init.body) }) };
+      }
       return original(url, init);
     };
     if (unsafe) { await assert.rejects(ensureReleasePreview(fixture.args), /scope/); assert.deepEqual(writes, []); }
@@ -180,17 +184,49 @@ test('updates only an existing branch-only variable by ID and rejects shared or 
 });
 
 
-test('preserves existing encrypted server keys instead of changing their storage type', async () => {
-  const fixture = setup(); const original = fixture.args.fetchImpl; let patched = false;
-  fixture.args.fetchImpl = async (url, init) => {
-    const path = new URL(url).pathname;
-    if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [{
-      key: 'SUPABASE_SERVICE_ROLE_KEY', id: 'env_secret', gitBranch: 'feat/test', target: ['preview'], type: 'encrypted',
-    }] }) };
-    if (init.method === 'PATCH') { const body = JSON.parse(init.body); assert.equal(body.type, 'encrypted'); patched = true;
-      return { ok: true, json: async () => body }; }
-    return original(url, init);
-  };
-  await ensureReleasePreview({ ...fixture.args, configureOnly: true });
-  assert.equal(patched, true);
+test('patches only the value of encrypted and sensitive keys without resubmitting type or scope', async () => {
+  for (const type of ['encrypted', 'sensitive']) {
+    const fixture = setup(); const original = fixture.args.fetchImpl; let patched = false;
+    const current = { key: 'SUPABASE_SERVICE_ROLE_KEY', id: 'env_secret', gitBranch: 'feat/test', target: ['preview'], type };
+    fixture.args.fetchImpl = async (url, init) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [current] }) };
+      if (init.method === 'PATCH') {
+        const body = JSON.parse(init.body);
+        assert.deepEqual(body, { value: jwt('service_role') }); patched = true;
+        return { ok: true, json: async () => ({ ...current, ...body }) };
+      }
+      return original(url, init);
+    };
+    await ensureReleasePreview({ ...fixture.args, configureOnly: true });
+    assert.equal(patched, true);
+  }
+});
+
+test('fails closed on unprotected secret storage or changed response metadata', async () => {
+  for (const change of [{ type: 'plain' }, { type: 'secret' }, { id: 'env_other' },
+    { target: ['preview', 'production'] }, { customEnvironmentIds: ['custom'] }]) {
+    const fixture = setup(); const original = fixture.args.fetchImpl;
+    const current = { key: 'SUPABASE_SERVICE_ROLE_KEY', id: 'env_secret', gitBranch: 'feat/test', target: ['preview'], type: 'sensitive' };
+    fixture.args.fetchImpl = async (url, init) => {
+      const path = new URL(url).pathname;
+      if (path.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [current] }) };
+      if (init.method === 'PATCH') return { ok: true, json: async () => ({ ...current, ...change }) };
+      return original(url, init);
+    };
+    await assert.rejects(ensureReleasePreview(fixture.args), /scope and storage type/);
+    assert.ok(!fixture.calls.some(([path]) => path === '/v13/deployments'));
+  }
+  for (const type of ['plain', 'secret']) {
+    const fixture = setup(); const original = fixture.args.fetchImpl; let patched = false;
+    fixture.args.fetchImpl = async (url, init) => {
+      if (new URL(url).pathname.endsWith('/env') && init.method === 'GET') return { ok: true, json: async () => ({ envs: [{
+        key: 'SUPABASE_SERVICE_ROLE_KEY', id: 'env_secret', gitBranch: 'feat/test', target: ['preview'], type,
+      }] }) };
+      if (init.method === 'PATCH') patched = true;
+      return original(url, init);
+    };
+    await assert.rejects(ensureReleasePreview(fixture.args), /unsupported storage type/);
+    assert.equal(patched, false);
+  }
 });

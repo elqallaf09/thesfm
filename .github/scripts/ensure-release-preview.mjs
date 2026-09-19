@@ -130,19 +130,26 @@ export async function ensureReleasePreview({ github, context, core, env = proces
         throw new Error(`Branch variable ${key} has shared, custom or system scope; refusing to modify it.`);
       }
       const secret = key.includes('SERVICE_ROLE');
-      const type = current && ['encrypted', 'sensitive'].includes(current.type)
-        ? current.type : secret ? 'sensitive' : 'plain';
+      if (current && (!['plain', 'encrypted', 'sensitive'].includes(current.type)
+        || (secret && !['encrypted', 'sensitive'].includes(current.type)))) {
+        throw new Error(`Branch variable ${key} has an unsupported storage type; refusing to modify it.`);
+      }
+      const type = current?.type ?? (secret ? 'sensitive' : 'plain');
       const body = { key, value, type, target: ['preview'], gitBranch: branch };
       // Update a verified branch-only record by ID. Never delete variables or
-      // edit a global/shared record to resolve a name conflict.
+      // edit a global/shared record to resolve a name conflict. PATCH only its
+      // value, preserving the existing storage type and scope without requesting
+      // a conversion of a sensitive record.
       core.info(`Configuring ${key}: ${current ? 'existing' : 'new'} branch-only ${type} record.`);
       const response = current
-        ? await request(`/v9/projects/${project}/env/${current.id}`, body, 'PATCH')
+        ? await request(`/v9/projects/${project}/env/${current.id}`, { value }, 'PATCH')
         : await request(`/v10/projects/${project}/env`, body);
       const result = current ? response : response.created;
       if (result?.key !== key || result.gitBranch !== branch
-        || result.target?.length !== 1 || result.target[0] !== 'preview') {
-        throw new Error('Environment update did not confirm the isolated branch scope.');
+        || result.target?.length !== 1 || result.target[0] !== 'preview'
+        || result.customEnvironmentIds?.length || result.type !== type
+        || (current && result.id !== current.id)) {
+        throw new Error('Environment update did not confirm the isolated branch scope and storage type.');
       }
     }
     await assertCurrent();
