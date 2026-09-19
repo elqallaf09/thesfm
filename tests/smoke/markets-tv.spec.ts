@@ -19,6 +19,9 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await page.goto('/tv');
   await expect(page.locator('.tv-quote')).toHaveCount(6);
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(1082);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(722);
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
