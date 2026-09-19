@@ -12,6 +12,7 @@ const INTENT_PREFIXES = [
 const INSTRUMENT_PREFIX = /^(?:سهم|شركة|صندوق|مؤشر|عملة|زوج(?:\s+عملات)?|stock|share|shares|company|ticker|etf|fund|index|crypto|coin|pair|action|societe|société|indice|fonds|paire)\s+/iu;
 const TRAILING_INSTRUMENT = /\s+(?:سهم|شركة|صندوق|مؤشر|stock|share|shares|company|ticker|etf|fund|index|action|societe|société|indice|fonds)$/iu;
 const TRAILING_NOISE = /\s+(?:اليوم|الحين|الان|الآن|بسرعة|لو\s+سمحت|today|now|please|right\s+now|aujourd'hui|maintenant)$/iu;
+const REQUEST_DETAIL_CUE = /(?:\s+|[,،;])(?=(?:اليوم|الحين|الان|الآن|حاليا|حالياً|باختصار|بالتفصيل|واذكر|وأذكر|اذكر|أذكر|واعطني|وأعطني|اعطني|أعطني|عطني|فقط|بدون|مع\s+ذكر|today|now|briefly|in\s+brief|and\s+mention|mention|only|without|with\s+sources?|please|aujourd'hui|maintenant|bri[eè]vement|et\s+mentionne|mentionne|seulement|sans)(?:\s|$))/iu;
 
 function trimPunctuation(value: string) {
   return value
@@ -30,6 +31,8 @@ function cleanAssetPhrase(value: string) {
     }
   }
   cleaned = cleaned.replace(INSTRUMENT_PREFIX, '').trim();
+  const detailIndex = cleaned.search(REQUEST_DETAIL_CUE);
+  if (detailIndex >= 0) cleaned = cleaned.slice(0, detailIndex).trim();
   for (let i = 0; i < 3; i += 1) {
     const previous = cleaned;
     cleaned = trimPunctuation(cleaned.replace(TRAILING_NOISE, '').replace(TRAILING_INSTRUMENT, ''));
