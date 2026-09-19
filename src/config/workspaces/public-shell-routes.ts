@@ -1,6 +1,8 @@
 const PUBLIC_SHELL_EXACT = new Set([
   '/',
   '/login',
+  '/tv',
+  '/tv/pair',
   '/reset-password',
   '/about',
   '/contact',

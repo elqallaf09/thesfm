@@ -1,5 +1,6 @@
 const protectedApiPrefixes = [
   '/api/account',
+  '/api/tv/account',
   '/api/admin',
   '/api/ai/receipt-scan',
   '/api/business',

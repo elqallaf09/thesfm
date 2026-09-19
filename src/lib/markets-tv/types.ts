@@ -1,0 +1,33 @@
+export type TvLanguage = 'ar' | 'en' | 'fr';
+export type TvGroup = 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
+export type TvView = 'markets' | 'map' | 'sessions' | 'brief';
+export type TvSettings = {
+  language: TvLanguage; theme: 'dark' | 'light'; layout: 'balanced' | 'quotes';
+  groups: TvGroup[]; autoRotate: boolean; rotationSeconds: number; ticker: boolean; sound: boolean;
+};
+export type TvQuote = {
+  symbol: string; name: string; nameAr: string; currency: string | null; price: number | null;
+  changePercent: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
+  status: 'available' | 'delayed' | 'stale' | 'unknown_time' | 'unavailable';
+  exchange: string | null; country: string | null;
+};
+export type TvSnapshot = { group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number; };
+export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string };
+export type TvDevice = { id: string; name: string; expiresAt: string; settings: TvSettings; };
+export type TvAlert = { id: string; symbol: string; alert_type: string; threshold: number; currency: string | null; status: string };
+export const TV_GROUPS: TvGroup[] = ['global', 'us', 'gulf', 'europe', 'asia', 'crypto', 'forex', 'commodities', 'watchlist'];
+export const DEFAULT_TV_SETTINGS: TvSettings = {
+  language: 'ar', theme: 'dark', layout: 'balanced', groups: ['global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
+  autoRotate: false, rotationSeconds: 30, ticker: true, sound: false,
+};
+export function normalizeTvSettings(value: unknown): TvSettings {
+  const row = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const groups = Array.isArray(row.groups) ? [...new Set(row.groups.filter((g): g is TvGroup => TV_GROUPS.includes(g as TvGroup)))] : [];
+  return {
+    language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
+    theme: row.theme === 'light' ? 'light' : 'dark', layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
+    groups: groups.length ? groups : [...DEFAULT_TV_SETTINGS.groups], autoRotate: row.autoRotate === true,
+    rotationSeconds: [20, 30, 60, 120].includes(Number(row.rotationSeconds)) ? Number(row.rotationSeconds) : 30,
+    ticker: row.ticker !== false, sound: row.sound === true,
+  };
+}

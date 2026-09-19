@@ -38,7 +38,8 @@
     "preview": "next start",
     "preview:test": "next start",
     "qa:visual": "node scripts/qa-full-capture.mjs",
-    "routes:inventory": "node scripts/release/generate-route-inventory.mjs"
+    "routes:inventory": "node scripts/release/generate-route-inventory.mjs",
+    "build:tv": "node scripts/build-markets-tv.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.20",
@@ -80,6 +81,7 @@
     "next-themes": "^0.4.4",
     "pdf-parse": "2.4.5",
     "pptxgenjs": "^4.0.1",
+    "qrcode": "1.5.4",
     "react": "19.3.0",
     "react-day-picker": "8.10.2",
     "react-dom": "19.3.0",
@@ -100,6 +102,7 @@
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26",
+    "@types/qrcode": "1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^2.0.0",
@@ -110,6 +113,7 @@
     "sharp": "^0.35.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "5.4.21",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^2.0.0"
   }
