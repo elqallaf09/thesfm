@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_OIL_SCENARIO_INPUT,
   calculateOilScenario,
+  calculateOilTargetStress,
   sanitizeOilScenarioInput,
 } from '@/lib/market/oilScenarioEngine';
 
@@ -100,6 +101,36 @@ describe('oil scenario engine', () => {
     });
     expect(result.context.mode).toBe('percentage_proxy');
     expect(result.drivers.find(driver => driver.key === 'hormuz')?.impliedDisruptionMbd).toBeNull();
+  });
+
+  it('reverse-solves a target price as single-variable sensitivity equivalents', () => {
+    const result = calculateOilTargetStress({
+      ...DEFAULT_OIL_SCENARIO_INPUT,
+      referencePrice: 100,
+    }, 130, {
+      hormuzReferenceMbd: 4.9,
+      babElMandebReferenceMbd: 8.1,
+      sourceLabel: 'EIA',
+      referencePeriod: '2Q26',
+    });
+
+    expect(result.methodology).toBe('single_variable_reverse_sensitivity_v1');
+    expect(result.requiredImpactPct).toBe(30);
+    expect(result.direction).toBe('up');
+    expect(result.modelReachable).toBe(true);
+    expect(result.context.mode).toBe('official_flow_baseline');
+    expect(result.equivalents.find(item => item.key === 'offlineProduction')?.insideConfiguredRange).toBe(true);
+    expect(result.equivalents.find(item => item.key === 'hormuz')?.insideConfiguredRange).toBe(false);
+  });
+
+  it('marks targets beyond the central model impact cap as outside the configured model', () => {
+    const result = calculateOilTargetStress({
+      ...DEFAULT_OIL_SCENARIO_INPUT,
+      referencePrice: 100,
+    }, 300);
+    expect(result.requiredImpactPct).toBe(200);
+    expect(result.modelReachable).toBe(false);
+    expect(result.equivalents.every(item => item.insideConfiguredRange === false)).toBe(true);
   });
 
   it('keeps the methodology explicit so output is not represented as a forecast', () => {
