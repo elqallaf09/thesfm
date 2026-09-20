@@ -45,7 +45,7 @@ type EnergyResponse = {
 
 type OilEvidenceItem = {
   id: string;
-  kind: 'news' | 'calendar' | 'inventory';
+  kind: 'news' | 'calendar' | 'inventory' | 'chokepoint' | 'policy';
   title: string;
   detail: string | null;
   source: string;
@@ -79,6 +79,34 @@ type OilIntelligenceResponse = {
     source: string;
     sourceUrl: string;
   } | null;
+  chokepoints: {
+    source: string;
+    sourceUrl: string;
+    releaseDate: string | null;
+    aisReliabilityCaveat: boolean;
+    caveat: string | null;
+    hormuz: {
+      period: string;
+      millionBarrelsPerDay: number;
+      previousPeriod: string | null;
+      previousMillionBarrelsPerDay: number | null;
+    };
+    babElMandeb: {
+      period: string;
+      millionBarrelsPerDay: number;
+      previousPeriod: string | null;
+      previousMillionBarrelsPerDay: number | null;
+    };
+  } | null;
+  opecPolicy: {
+    source: string;
+    sourceUrl: string;
+    title: string;
+    publishedDate: string;
+    decision: 'maintain' | 'increase' | 'decrease' | 'adjust' | 'unknown';
+    explicitAdjustmentThousandBarrelsPerDay: number | null;
+    summary: string | null;
+  } | null;
   evidence: {
     categories: OilEvidenceCategory[];
     items: OilEvidenceItem[];
@@ -89,6 +117,8 @@ type OilIntelligenceResponse = {
     newsStories: number;
     calendarEvents: number;
     eiaInventory: boolean;
+    eiaChokepoints: boolean;
+    opecPolicy: boolean;
     newsPartialFailure: boolean;
     calendarPartial: boolean;
   };
@@ -160,6 +190,22 @@ const COPY = {
     evidenceLoadError: 'تعذر تحديث مراقب الأدلة الآن. تبقى فرضيات السيناريو يدوية.',
     inventoryLatest: 'المخزون التجاري الأمريكي',
     weeklyChange: 'التغير الأسبوعي',
+    evidenceChokepoints: 'ممرات EIA',
+    evidenceOpec: 'قرار OPEC+',
+    officialReferences: 'المراجع الرسمية',
+    chokepointBaseline: 'أحدث خط أساس رسمي للممرات',
+    baselineFlow: 'التدفق المرجعي',
+    impliedDisruption: 'حجم التعطل في فرضيتك',
+    quarterlyReference: 'تقدير ربعي وليس حركة لحظية',
+    aisCaveat: 'تنبيه EIA: بيانات AIS لهرمز في 2026 أقل موثوقية وتُراجع بشكل متكرر.',
+    opecLatest: 'أحدث بيان إنتاج رسمي من OPEC',
+    policyDecision: 'حالة القرار',
+    decisionMaintain: 'الإبقاء على الإنتاج المطلوب',
+    decisionIncrease: 'زيادة إنتاج مذكورة',
+    decisionDecrease: 'خفض إنتاج مذكور',
+    decisionAdjust: 'تعديل إنتاج مذكور',
+    decisionUnknown: 'لا يوجد اتجاه رقمي صريح',
+    scenarioMath: 'حساب من خط الأساس فقط',
   },
   en: {
     back: 'Back to Global Markets',
@@ -226,6 +272,22 @@ const COPY = {
     evidenceLoadError: 'The evidence monitor could not refresh. Scenario assumptions remain manual.',
     inventoryLatest: 'U.S. commercial crude stocks',
     weeklyChange: 'Weekly change',
+    evidenceChokepoints: 'EIA chokepoints',
+    evidenceOpec: 'OPEC+ policy',
+    officialReferences: 'Official references',
+    chokepointBaseline: 'Latest official chokepoint baseline',
+    baselineFlow: 'Reference flow',
+    impliedDisruption: 'Implied disrupted volume',
+    quarterlyReference: 'Quarterly estimate, not live vessel traffic',
+    aisCaveat: 'EIA caveat: 2026 Hormuz AIS data are less reliable and revised frequently.',
+    opecLatest: 'Latest official OPEC production statement',
+    policyDecision: 'Policy state',
+    decisionMaintain: 'Required production maintained',
+    decisionIncrease: 'Production increase stated',
+    decisionDecrease: 'Production cut stated',
+    decisionAdjust: 'Production adjustment stated',
+    decisionUnknown: 'No explicit numerical direction',
+    scenarioMath: 'Baseline arithmetic only',
   },
   fr: {
     back: 'Retour au Centre des marchés mondiaux',
@@ -292,6 +354,22 @@ const COPY = {
     evidenceLoadError: 'Le moniteur de preuves ne peut pas être actualisé. Les hypothèses restent manuelles.',
     inventoryLatest: 'Stocks commerciaux de brut aux États-Unis',
     weeklyChange: 'Variation hebdomadaire',
+    evidenceChokepoints: 'Détroits EIA',
+    evidenceOpec: 'Politique OPEP+',
+    officialReferences: 'Références officielles',
+    chokepointBaseline: 'Dernière référence officielle des détroits',
+    baselineFlow: 'Flux de référence',
+    impliedDisruption: 'Volume perturbé implicite',
+    quarterlyReference: 'Estimation trimestrielle, pas trafic maritime en direct',
+    aisCaveat: 'Note EIA : les données AIS 2026 pour Ormuz sont moins fiables et souvent révisées.',
+    opecLatest: 'Dernier communiqué officiel OPEP sur la production',
+    policyDecision: 'État de la décision',
+    decisionMaintain: 'Production requise maintenue',
+    decisionIncrease: 'Hausse de production indiquée',
+    decisionDecrease: 'Baisse de production indiquée',
+    decisionAdjust: 'Ajustement de production indiqué',
+    decisionUnknown: 'Aucune direction chiffrée explicite',
+    scenarioMath: 'Calcul à partir de la référence uniquement',
   },
 } as const;
 
@@ -385,6 +463,17 @@ function formatTime(value: string | null, lang: string) {
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
   const locale = lang === 'fr' ? 'fr-FR-u-nu-latn' : lang === 'ar' ? 'ar-KW-u-nu-latn' : 'en-US';
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
+function policyDecisionLabel(
+  decision: NonNullable<OilIntelligenceResponse['opecPolicy']>['decision'],
+  copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr,
+) {
+  if (decision === 'maintain') return copy.decisionMaintain;
+  if (decision === 'increase') return copy.decisionIncrease;
+  if (decision === 'decrease') return copy.decisionDecrease;
+  if (decision === 'adjust') return copy.decisionAdjust;
+  return copy.decisionUnknown;
 }
 
 export function OilScenarioEngine() {
@@ -546,6 +635,8 @@ export function OilScenarioEngine() {
                 <div><span>{c.evidenceStories}</span><strong dir="ltr">{intelligence.coverage.newsStories}</strong></div>
                 <div><span>{c.evidenceCalendar}</span><strong dir="ltr">{intelligence.coverage.calendarEvents}</strong></div>
                 <div><span>{c.evidenceInventory}</span><strong>{intelligence.coverage.eiaInventory ? '✓' : '—'}</strong></div>
+                <div><span>{c.evidenceChokepoints}</span><strong>{intelligence.coverage.eiaChokepoints ? '✓' : '—'}</strong></div>
+                <div><span>{c.evidenceOpec}</span><strong>{intelligence.coverage.opecPolicy ? '✓' : '—'}</strong></div>
               </div>
 
               {intelligence.inventory ? (
@@ -561,6 +652,41 @@ export function OilScenarioEngine() {
                     </strong>
                   </div>
                   <a href={intelligence.inventory.sourceUrl} target="_blank" rel="noreferrer">{intelligence.inventory.source}</a>
+                </div>
+              ) : null}
+
+              {intelligence.chokepoints || intelligence.opecPolicy ? (
+                <div className={styles.officialGrid} aria-label={c.officialReferences}>
+                  {intelligence.chokepoints ? (
+                    <article className={styles.officialCard}>
+                      <div>
+                        <strong>{c.chokepointBaseline}</strong>
+                        <small>{c.quarterlyReference}</small>
+                      </div>
+                      <dl>
+                        <div><dt>{EVIDENCE_CATEGORY_LABELS[locale].hormuz}</dt><dd dir="ltr">{number(intelligence.chokepoints.hormuz.millionBarrelsPerDay, 1)} mb/d · {intelligence.chokepoints.hormuz.period}</dd></div>
+                        <div><dt>{EVIDENCE_CATEGORY_LABELS[locale].bab_el_mandeb}</dt><dd dir="ltr">{number(intelligence.chokepoints.babElMandeb.millionBarrelsPerDay, 1)} mb/d · {intelligence.chokepoints.babElMandeb.period}</dd></div>
+                      </dl>
+                      {intelligence.chokepoints.aisReliabilityCaveat ? <p>{c.aisCaveat}</p> : null}
+                      <a href={intelligence.chokepoints.sourceUrl} target="_blank" rel="noreferrer">{c.evidenceOpen}</a>
+                    </article>
+                  ) : null}
+                  {intelligence.opecPolicy ? (
+                    <article className={styles.officialCard}>
+                      <div>
+                        <strong>{c.opecLatest}</strong>
+                        <small>{formatTime(intelligence.opecPolicy.publishedDate + 'T00:00:00.000Z', locale)}</small>
+                      </div>
+                      <p dir="auto">{intelligence.opecPolicy.title}</p>
+                      <dl>
+                        <div><dt>{c.policyDecision}</dt><dd>{policyDecisionLabel(intelligence.opecPolicy.decision, c)}</dd></div>
+                        {intelligence.opecPolicy.explicitAdjustmentThousandBarrelsPerDay !== null ? (
+                          <div><dt>{c.mbd}</dt><dd dir="ltr">{number(intelligence.opecPolicy.explicitAdjustmentThousandBarrelsPerDay / 1000, 3)} mb/d</dd></div>
+                        ) : null}
+                      </dl>
+                      <a href={intelligence.opecPolicy.sourceUrl} target="_blank" rel="noreferrer">{c.evidenceOpen}</a>
+                    </article>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -609,6 +735,12 @@ export function OilScenarioEngine() {
               {CONTROL_DEFINITIONS.map(control => {
                 const value = input[control.key];
                 const unit = control.unit === 'mbd' ? c.mbd : control.unit === 'bps' ? c.bps : control.unit === 'days' ? c.days : '%';
+                const chokepoint = control.key === 'hormuzDisruptionPct'
+                  ? intelligence?.chokepoints?.hormuz
+                  : control.key === 'babElMandebDisruptionPct'
+                    ? intelligence?.chokepoints?.babElMandeb
+                    : null;
+                const impliedDisruption = chokepoint ? chokepoint.millionBarrelsPerDay * value / 100 : null;
                 return (
                   <label key={control.key} className={styles.control}>
                     <div><span>{c[control.label]}</span><output dir="ltr">{number(value, control.step < 1 ? 1 : 0)} {unit}</output></div>
@@ -630,6 +762,13 @@ export function OilScenarioEngine() {
                       onChange={event => setField(control.key, Number(event.target.value))}
                       aria-label={c[control.label]}
                     />
+                    {chokepoint ? (
+                      <small className={styles.controlEvidence}>
+                        <span>{c.baselineFlow}: <b dir="ltr">{number(chokepoint.millionBarrelsPerDay, 1)} mb/d · {chokepoint.period}</b></span>
+                        <span>{c.impliedDisruption}: <b dir="ltr">{number(impliedDisruption ?? 0, 2)} mb/d</b></span>
+                        <em>{c.scenarioMath}</em>
+                      </small>
+                    ) : null}
                   </label>
                 );
               })}
