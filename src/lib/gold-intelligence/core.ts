@@ -10,12 +10,14 @@ import type {
 } from './types';
 
 export const GOLD_HORIZON_DAYS: Record<GoldHorizon, number> = {
+  // Volatility is annualized on 252 trading sessions, so horizon scaling must
+  // use trading-session equivalents rather than calendar days.
   '24h': 1,
-  '7d': 7,
-  '1m': 30,
-  '3m': 90,
-  '6m': 180,
-  '12m': 365,
+  '7d': 5,
+  '1m': 21,
+  '3m': 63,
+  '6m': 126,
+  '12m': 252,
 };
 
 const DEFAULT_SHOCKS: GoldWhatIfShocks = {
