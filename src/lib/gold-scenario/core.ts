@@ -106,6 +106,12 @@ function macroDriver(args: {
   };
 }
 
+function averageFinite(values: Array<number | null | undefined>) {
+  const finite = values.filter((value): value is number => Number.isFinite(value));
+  if (!finite.length) return null;
+  return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+}
+
 function annualizedVolatility(history: number[]) {
   const closes = history.filter(value => Number.isFinite(value) && value > 0).slice(-90);
   if (closes.length < 12) return null;
@@ -409,9 +415,7 @@ export function buildGoldScenarioSnapshot(
       label: 'Oil complex',
       labelAr: 'مجمع النفط',
       category: 'energy',
-      changePercent: [market.quotes.wti?.changePercent, market.quotes.brent?.changePercent]
-        .filter((value): value is number => Number.isFinite(value))
-        .reduce((sum, value, _, values) => sum + value / values.length, 0) || null,
+      changePercent: averageFinite([market.quotes.wti?.changePercent, market.quotes.brent?.changePercent]),
       divisor: 4,
       weight: 0.08,
       value: market.quotes.wti?.value ?? market.quotes.brent?.value ?? null,
