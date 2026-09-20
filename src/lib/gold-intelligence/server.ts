@@ -18,6 +18,12 @@ function find(quotes: TraderQuote[], symbol: string) {
   const key = symbol.toUpperCase();
   return quotes.find(q => [q.symbol, q.requestedSymbol, q.displaySymbol, q.canonicalSymbol].some(value => String(value ?? '').toUpperCase() === key));
 }
+function finiteNumber(value: unknown) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string') return null;
+  const parsed = Number(value.replace(/[%,$\s]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+}
 function marketScore(change: number | null | undefined, divisor: number, inverse = false) {
   if (typeof change !== 'number' || !Number.isFinite(change)) return null;
   const score = clamp(change / divisor, -1, 1); return inverse ? -score : score;
@@ -62,7 +68,7 @@ export async function buildGoldScenarioSnapshot(): Promise<GoldScenarioSnapshot>
     makeDriver({ id: 'nominal_rates', label: 'Nominal-rate proxy', labelAr: 'مؤشر الفائدة الاسمية', weight: WEIGHT.nominal_rates, score: marketScore(tlt?.changePercent, 2.5), value: tlt?.price ?? null, unit: tlt?.currency ?? null, change: tlt?.changePercent ?? null, source: tlt ? `${tlt.source} · TLT proxy` : null, asOf: tlt?.lastUpdated ?? null, quality: quality(tlt), ...explanation('TLT is a proxy, not the yield itself.', 'TLT مؤشر بديل وليس العائد نفسه.') }),
     makeDriver({ id: 'oil', label: 'Oil / inflation pressure', labelAr: 'النفط وضغط التضخم', weight: WEIGHT.oil, score: oilMove === null ? null : clamp(oilMove / 4, -1, 1), value: wti?.price ?? brent?.price ?? null, unit: 'USD', change: oilMove, source: [wti?.source, brent?.source].filter(Boolean).join(' / ') || null, asOf: wti?.lastUpdated ?? brent?.lastUpdated ?? null, quality: quality(wti) === 'unavailable' ? quality(brent) : quality(wti), ...explanation('WTI and Brent carry a low model weight.', 'WTI وBrent بوزن منخفض في النموذج.') }),
     makeDriver({ id: 'etf_proxy', label: 'Gold ETF market proxy', labelAr: 'مؤشر سوق صناديق الذهب', weight: WEIGHT.etf_proxy, score: marketScore(gld?.changePercent, 2), value: gld?.price ?? null, unit: gld?.currency ?? null, change: gld?.changePercent ?? null, source: gld ? `${gld.source} · GLD price proxy` : null, asOf: gld?.lastUpdated ?? null, quality: quality(gld), ...explanation('GLD price is a proxy, not fund-flow data.', 'سعر GLD مؤشر بديل وليس بيانات تدفقات.') }),
-    makeDriver({ id: 'macro_policy', label: 'Macro policy direction', labelAr: 'اتجاه السياسة الاقتصادية', weight: WEIGHT.macro_policy, score: typeof policyDelta === 'number' ? clamp(-policyDelta / .5, -1, 1) : null, value: policy ? Number(policy.value) : null, unit: policy?.change?.unit ?? null, change: policyDelta, source: policy?.source ?? macro.source, asOf: policy?.date ?? macro.updated_at, quality: macro.status === 'available' ? 'live' : 'unavailable', ...explanation('Policy direction has a deliberately low weight.', 'اتجاه السياسة له وزن منخفض عمداً.') }),
+    makeDriver({ id: 'macro_policy', label: 'Macro policy direction', labelAr: 'اتجاه السياسة الاقتصادية', weight: WEIGHT.macro_policy, score: typeof policyDelta === 'number' ? clamp(-policyDelta / .5, -1, 1) : null, value: finiteNumber(policy?.value), unit: policy?.change?.unit ?? null, change: policyDelta, source: policy?.source ?? macro.source, asOf: policy?.date ?? macro.updated_at, quality: macro.status === 'available' ? 'live' : 'unavailable', ...explanation('Policy direction has a deliberately low weight.', 'اتجاه السياسة له وزن منخفض عمداً.') }),
   ];
 
   const factor = calculateGoldFactorScore(drivers);
