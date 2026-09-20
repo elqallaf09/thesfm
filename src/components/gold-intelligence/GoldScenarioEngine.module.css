@@ -55,9 +55,9 @@
 .driverTop > div { min-width: 0; display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
 .driverTop small, .eventMeta span { border-radius: var(--radius-pill); background: var(--surface); color: var(--foreground-muted); padding: .16rem .4rem; font-size: .7rem; }
 .driverTop > b, .eventMeta b { border-radius: var(--radius-pill); padding: .2rem .45rem; font-size: .74rem; white-space: nowrap; }
-[data-tone="supportive"] { color: var(--success); background: var(--success-soft); }
-[data-tone="restrictive"] { color: var(--danger); background: var(--danger-soft); }
-[data-tone="neutral"] { color: var(--foreground-muted); background: var(--surface); }
+.driverTop > b[data-tone="supportive"], .eventMeta b[data-tone="supportive"] { color: var(--success); background: var(--success-soft); }
+.driverTop > b[data-tone="restrictive"], .eventMeta b[data-tone="restrictive"] { color: var(--danger); background: var(--danger-soft); }
+.driverTop > b[data-tone="neutral"], .eventMeta b[data-tone="neutral"] { color: var(--foreground-muted); background: var(--surface); }
 .driver p, .event p { margin: .5rem 0; color: var(--foreground-secondary); font-size: .8rem; line-height: 1.5; }
 .driver > small, .event > small { color: var(--foreground-muted); font-size: .7rem; }
 .eventMeta { display: flex; gap: .3rem; align-items: center; flex-wrap: wrap; }
