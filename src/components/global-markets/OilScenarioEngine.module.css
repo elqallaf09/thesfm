@@ -39,11 +39,12 @@
 .control input[type="range"] { width: 100%; accent-color: var(--primary); }
 .numberInput { width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: var(--radius-control); padding: .45rem .5rem; background: var(--background); color: var(--foreground); font: inherit; font-size: .8rem; }
 .resultsPanel { position: sticky; top: 1rem; }
-.modelStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin-bottom: .75rem; }
+.modelStats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-bottom: .75rem; }
 .modelStats > div { display: grid; gap: .25rem; border: 1px solid var(--border); border-radius: var(--radius-control); padding: .65rem; background: var(--surface-muted); }
 .modelStats span { color: var(--foreground-muted); font-size: .72rem; }
 .modelStats strong { font-size: .95rem; }
 .modelStats small { color: var(--foreground-muted); font-size: .68rem; }
+.modelStats > div:last-child { grid-column: 1 / -1; }
 .scenarioList { display: grid; gap: .65rem; }
 .scenarioCard { display: grid; gap: .65rem; border: 1px solid var(--border); border-radius: var(--radius-card); padding: .8rem; background: var(--background); }
 .scenarioTitle { display: flex; align-items: center; gap: .45rem; }
