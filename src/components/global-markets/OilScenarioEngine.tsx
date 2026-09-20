@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
+import { OilTargetStressTest } from '@/components/global-markets/OilTargetStressTest';
 import { useLanguage } from '@/hooks/useLanguage';
 import {
   DEFAULT_OIL_SCENARIO_INPUT,
@@ -822,6 +823,8 @@ export function OilScenarioEngine() {
             )}
           </aside>
         </section>
+
+        <OilTargetStressTest input={input} context={scenarioContext} lang={locale} />
 
         <section className={styles.driversPanel}>
           <div className={styles.sectionHead}><div><h2>{c.drivers}</h2></div></div>
