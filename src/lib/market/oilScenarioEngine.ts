@@ -12,6 +12,13 @@ export type OilScenarioInput = {
   durationDays: number;
 };
 
+export type OilScenarioContext = {
+  hormuzReferenceMbd?: number | null;
+  babElMandebReferenceMbd?: number | null;
+  sourceLabel?: string | null;
+  referencePeriod?: string | null;
+};
+
 export type OilScenarioId = 'lower' | 'central' | 'higher';
 
 export type OilScenarioDriverKey =
@@ -28,6 +35,8 @@ export type OilScenarioDriverKey =
 export type OilScenarioDriver = {
   key: OilScenarioDriverKey;
   contributionPct: number;
+  referenceVolumeMbd?: number | null;
+  impliedDisruptionMbd?: number | null;
 };
 
 export type OilScenarioBand = {
@@ -39,8 +48,15 @@ export type OilScenarioBand = {
 };
 
 export type OilScenarioResult = {
-  methodology: 'transparent_sensitivity_model_v1';
+  methodology: 'transparent_sensitivity_model_v2';
   input: OilScenarioInput;
+  context: {
+    mode: 'official_flow_baseline' | 'percentage_proxy';
+    hormuzReferenceMbd: number | null;
+    babElMandebReferenceMbd: number | null;
+    sourceLabel: string | null;
+    referencePeriod: string | null;
+  };
   durationFactor: number;
   centralImpactPct: number;
   drivers: OilScenarioDriver[];
@@ -111,13 +127,48 @@ function priceFromImpact(referencePrice: number, impactPct: number) {
   return Math.max(0.01, referencePrice * (1 + impactPct / 100));
 }
 
-export function calculateOilScenario(raw: OilScenarioInput): OilScenarioResult {
+function referenceFlow(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? clamp(parsed, 0, 40) : null;
+}
+
+function scenarioContext(context: OilScenarioContext | undefined) {
+  const hormuzReferenceMbd = referenceFlow(context?.hormuzReferenceMbd);
+  const babElMandebReferenceMbd = referenceFlow(context?.babElMandebReferenceMbd);
+  const hasOfficialFlow = hormuzReferenceMbd !== null && babElMandebReferenceMbd !== null;
+  return {
+    mode: hasOfficialFlow ? 'official_flow_baseline' as const : 'percentage_proxy' as const,
+    hormuzReferenceMbd,
+    babElMandebReferenceMbd,
+    sourceLabel: hasOfficialFlow ? String(context?.sourceLabel ?? '').trim().slice(0, 160) || null : null,
+    referencePeriod: hasOfficialFlow ? String(context?.referencePeriod ?? '').trim().slice(0, 24) || null : null,
+  };
+}
+
+export function calculateOilScenario(raw: OilScenarioInput, rawContext?: OilScenarioContext): OilScenarioResult {
   const input = sanitizeOilScenarioInput(raw);
+  const context = scenarioContext(rawContext);
   const durationFactor = clamp(0.65 + (Math.min(input.durationDays, 180) / 180) * 0.7, 0.65, 1.35);
+  const hormuzDisruptionMbd = context.hormuzReferenceMbd === null
+    ? null
+    : context.hormuzReferenceMbd * input.hormuzDisruptionPct / 100;
+  const babElMandebDisruptionMbd = context.babElMandebReferenceMbd === null
+    ? null
+    : context.babElMandebReferenceMbd * input.babElMandebDisruptionPct / 100;
 
   const rawDrivers: OilScenarioDriver[] = [
-    { key: 'hormuz', contributionPct: input.hormuzDisruptionPct * 0.18 },
-    { key: 'babElMandeb', contributionPct: input.babElMandebDisruptionPct * 0.08 },
+    {
+      key: 'hormuz',
+      contributionPct: hormuzDisruptionMbd === null ? input.hormuzDisruptionPct * 0.18 : hormuzDisruptionMbd * 2.8,
+      referenceVolumeMbd: context.hormuzReferenceMbd,
+      impliedDisruptionMbd: hormuzDisruptionMbd,
+    },
+    {
+      key: 'babElMandeb',
+      contributionPct: babElMandebDisruptionMbd === null ? input.babElMandebDisruptionPct * 0.08 : babElMandebDisruptionMbd,
+      referenceVolumeMbd: context.babElMandebReferenceMbd,
+      impliedDisruptionMbd: babElMandebDisruptionMbd,
+    },
     { key: 'offlineProduction', contributionPct: input.offlineProductionMbd * 2.4 },
     { key: 'spareCapacity', contributionPct: input.spareCapacityResponseMbd * -1.8 },
     { key: 'stockRelease', contributionPct: input.stockReleaseMbd * -1.5 },
@@ -152,8 +203,9 @@ export function calculateOilScenario(raw: OilScenarioInput): OilScenarioResult {
   });
 
   return {
-    methodology: 'transparent_sensitivity_model_v1',
+    methodology: 'transparent_sensitivity_model_v2',
     input,
+    context,
     durationFactor: round(durationFactor, 3),
     centralImpactPct: round(centralImpactPct),
     drivers,
