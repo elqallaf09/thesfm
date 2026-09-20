@@ -15,6 +15,9 @@ const COPY = {
   current20: { ar: 'عائد 20 جلسة الحالي', en: 'Current 20-session return', fr: 'Rendement actuel 20 séances' },
   medianForward: { ar: 'وسيط الـ20 جلسة التالية', en: 'Median next-20 return', fr: 'Médiane des 20 séances suivantes' },
   positiveShare: { ar: 'نسبة النتائج الإيجابية', en: 'Positive outcome share', fr: 'Part des résultats positifs' },
+  match: { ar: 'تشابه', en: 'match', fr: 'similarité' },
+  volatilityShort: { ar: 'تذبذب', en: 'vol', fr: 'vol' },
+  next20: { ar: 'الـ20 جلسة التالية', en: 'next 20D', fr: '20 séances suivantes' },
   confidence: { ar: 'الثقة', en: 'Confidence', fr: 'Confiance' },
   strength: { ar: 'القوة', en: 'Strength', fr: 'Force' },
   factor: { ar: 'درجة العوامل', en: 'Factor score', fr: 'Score facteurs' },
@@ -98,10 +101,10 @@ export function GoldAdvancedPanels({ snapshot, locale }: { snapshot: GoldScenari
           {advanced.historicalAnalogs.analogs.map((item, index) => (
             <article key={`${item.anchorIndex}-${index}`}>
               <strong>#{index + 1}</strong>
-              <span>{item.similarity}% match</span>
+              <span>{item.similarity}% {t('match')}</span>
               <span>20D {signed(item.prior20Return)}%</span>
-              <span>vol {item.prior20Volatility.toFixed(1)}%</span>
-              <b dir="ltr">next 20D {signed(item.forward20Return)}%</b>
+              <span>{t('volatilityShort')} {item.prior20Volatility.toFixed(1)}%</span>
+              <b dir="ltr">{t('next20')} {signed(item.forward20Return)}%</b>
             </article>
           ))}
         </div>
