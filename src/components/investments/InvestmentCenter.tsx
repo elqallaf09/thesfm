@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowUpRight, CircleAlert, FileText, FolderClock, Plus, ShieldCheck, WalletCards } from 'lucide-react';
+import { ArrowUpRight, BrainCircuit, CircleAlert, FileText, FolderClock, Plus, ShieldCheck, WalletCards } from 'lucide-react';
 import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { PlatformIdentity } from '@/components/invest/PlatformIdentity';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
@@ -63,6 +63,9 @@ const COPY: Record<string, Copy> = {
   stocks: { ar: 'الأسهم', en: 'Stocks', fr: 'Actions' },
   realEstate: { ar: 'العقارات', en: 'Real Estate', fr: 'Immobilier' },
   goldSilver: { ar: 'الذهب والفضة', en: 'Gold & Silver', fr: 'Or et argent' },
+  goldIntelligence: { ar: 'ذكاء الذهب وسيناريوهات السعر', en: 'Gold intelligence & price scenarios', fr: 'Intelligence et scénarios sur l’or' },
+  goldIntelligenceBody: { ar: 'محرك SFM يربط الذهب بالدولار والعوائد والنفط والمخاطر والأحداث العالمية، ثم يبني نطاقات واحتمالات قابلة للتفسير.', en: 'SFM connects gold with the dollar, yields, oil, risk and global events, then builds explainable probability-weighted ranges.', fr: 'SFM relie l’or au dollar, aux rendements, au pétrole, au risque et aux événements mondiaux pour construire des scénarios explicables.' },
+  openGoldEngine: { ar: 'فتح محرك الذهب', en: 'Open Gold Engine', fr: 'Ouvrir le moteur Or' },
   crypto: { ar: 'العملات الرقمية', en: 'Crypto', fr: 'Crypto' },
   funds: { ar: 'الصناديق', en: 'Funds', fr: 'Fonds' },
   bonds: { ar: 'السندات', en: 'Bonds', fr: 'Obligations' },
@@ -222,6 +225,20 @@ export function InvestmentCenter({ assetClass = 'overview' }: { assetClass?: Inv
                   <FileText size={18} aria-hidden="true" /><h2>{text('documents')}</h2><p>{text('documentsBody')}</p>
                 </section>
               </div>
+            ) : null}
+
+            {assetClass === 'gold-silver' ? (
+              <section className={styles.intelligenceLaunch} aria-label={text('goldIntelligence')}>
+                <span className={styles.intelligenceIcon}><BrainCircuit size={22} aria-hidden="true" /></span>
+                <div>
+                  <p>SFM Gold Intelligence · GSE 1.0</p>
+                  <h2>{text('goldIntelligence')}</h2>
+                  <span>{text('goldIntelligenceBody')}</span>
+                </div>
+                <Link href="/investments/gold-silver/intelligence" className={styles.primaryAction}>
+                  <ArrowUpRight size={16} aria-hidden="true" />{text('openGoldEngine')}
+                </Link>
+              </section>
             ) : null}
 
             <section className={styles.holdings} aria-label={text(LABEL_KEY_BY_CLASS[assetClass])}>
