@@ -4,6 +4,7 @@ import {
   applyGoldWhatIf,
   buildGoldHorizonForecast,
   calculateGoldFactorScore,
+  GOLD_HORIZON_DAYS,
 } from '@/lib/gold-intelligence/core';
 import type { GoldDriver, GoldScenarioSnapshot } from '@/lib/gold-intelligence/types';
 
@@ -25,6 +26,17 @@ const driver = (id: GoldDriver['id'], weight: number, score: number | null): Gol
 });
 
 describe('gold scenario engine core', () => {
+  it('scales annualized volatility with trading-session horizon equivalents', () => {
+    expect(GOLD_HORIZON_DAYS).toEqual({
+      '24h': 1,
+      '7d': 5,
+      '1m': 21,
+      '3m': 63,
+      '6m': 126,
+      '12m': 252,
+    });
+  });
+
   it('reweights around missing evidence instead of treating it as zero', () => {
     const result = calculateGoldFactorScore([
       driver('usd', 0.5, 1),
