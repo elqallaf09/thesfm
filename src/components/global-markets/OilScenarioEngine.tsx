@@ -43,6 +43,57 @@ type EnergyResponse = {
   items?: EnergyQuote[];
 };
 
+type OilEvidenceItem = {
+  id: string;
+  kind: 'news' | 'calendar' | 'inventory';
+  title: string;
+  detail: string | null;
+  source: string;
+  url: string | null;
+  publishedAt: string;
+  urgency: 'high' | 'medium' | 'low' | 'unknown';
+  direction: 'tightening' | 'easing' | 'mixed' | 'unknown';
+  verificationStatus: string | null;
+  stale: boolean;
+};
+
+type OilEvidenceCategory = {
+  id: 'hormuz' | 'bab_el_mandeb' | 'production' | 'inventories' | 'shipping' | 'demand_rates' | 'geopolitics';
+  attention: 'high' | 'medium' | 'low' | 'unknown';
+  direction: 'tightening' | 'easing' | 'mixed' | 'unknown';
+  evidenceCount: number;
+  latestAt: string | null;
+  items: OilEvidenceItem[];
+};
+
+type OilIntelligenceResponse = {
+  ok: boolean;
+  generatedAt: string;
+  inventory: {
+    latest: number;
+    previous: number;
+    weeklyChange: number;
+    weeklyChangePct: number;
+    asOf: string;
+    releaseDate: string | null;
+    source: string;
+    sourceUrl: string;
+  } | null;
+  evidence: {
+    categories: OilEvidenceCategory[];
+    items: OilEvidenceItem[];
+  };
+  coverage: {
+    liveQuotes: number;
+    evidenceSources: number;
+    newsStories: number;
+    calendarEvents: number;
+    eiaInventory: boolean;
+    newsPartialFailure: boolean;
+    calendarPartial: boolean;
+  };
+};
+
 const COPY = {
   ar: {
     back: 'العودة إلى مركز الأسواق العالمية',
@@ -95,6 +146,20 @@ const COPY = {
     liveDataNote: 'أي سعر حي يعتمد على سلسلة مزودي THE SFM الحالية وقد يكون متأخراً. عند تعذر البيانات لا يتم اختلاق سعر بديل.',
     reset: 'تصفير الافتراضات',
     loadError: 'تعذر جلب سعر النفط حالياً. يمكنك إدخال سعر مرجعي يدوياً.',
+    evidenceTitle: 'مراقب الأدلة الحية',
+    evidenceHint: 'يجمع إشارات هرمز وباب المندب والإنتاج والمخزون والشحن والطلب من الأخبار المتحققة والتقويم الاقتصادي ومصادر رسمية. الأدلة لا تتحول تلقائياً إلى نسب تعطّل.',
+    evidenceRefresh: 'تحديث الأدلة',
+    evidenceCoverage: 'تغطية الأدلة',
+    evidenceSources: 'مصادر',
+    evidenceStories: 'خبر مرتبط',
+    evidenceCalendar: 'حدث اقتصادي',
+    evidenceInventory: 'مخزون EIA',
+    evidenceUnavailable: 'لا تتوفر أدلة حديثة كافية لهذه الفئة حالياً.',
+    evidenceOpen: 'فتح المصدر',
+    evidenceGuard: 'الأدلة الحية تساعدك في بناء الفرضية، لكن نسب السيناريو تبقى تحت تحكمك حتى لا يحول المحرك عنواناً إخبارياً إلى رقم وهمي.',
+    evidenceLoadError: 'تعذر تحديث مراقب الأدلة الآن. تبقى فرضيات السيناريو يدوية.',
+    inventoryLatest: 'المخزون التجاري الأمريكي',
+    weeklyChange: 'التغير الأسبوعي',
   },
   en: {
     back: 'Back to Global Markets',
@@ -147,6 +212,20 @@ const COPY = {
     liveDataNote: 'Any live quote depends on THE SFM’s current provider chain and may be delayed. If data is unavailable, no replacement price is fabricated.',
     reset: 'Reset assumptions',
     loadError: 'The oil quote is unavailable right now. You can enter a reference price manually.',
+    evidenceTitle: 'Live evidence monitor',
+    evidenceHint: 'Combines Hormuz, Bab el-Mandeb, production, inventories, shipping and demand evidence from verified news, the economic calendar and official sources. Evidence never auto-converts into disruption percentages.',
+    evidenceRefresh: 'Refresh evidence',
+    evidenceCoverage: 'Evidence coverage',
+    evidenceSources: 'sources',
+    evidenceStories: 'related stories',
+    evidenceCalendar: 'calendar events',
+    evidenceInventory: 'EIA inventory',
+    evidenceUnavailable: 'No sufficiently recent evidence is available for this category right now.',
+    evidenceOpen: 'Open source',
+    evidenceGuard: 'Live evidence helps you form an assumption, but scenario percentages stay under your control so a headline is never converted into a fabricated number.',
+    evidenceLoadError: 'The evidence monitor could not refresh. Scenario assumptions remain manual.',
+    inventoryLatest: 'U.S. commercial crude stocks',
+    weeklyChange: 'Weekly change',
   },
   fr: {
     back: 'Retour au Centre des marchés mondiaux',
@@ -199,7 +278,57 @@ const COPY = {
     liveDataNote: 'Tout cours de marché dépend de la chaîne actuelle de fournisseurs THE SFM et peut être différé. Aucune valeur de remplacement n’est inventée en cas d’indisponibilité.',
     reset: 'Réinitialiser les hypothèses',
     loadError: 'Le cours du pétrole est indisponible pour le moment. Vous pouvez saisir un prix manuellement.',
+    evidenceTitle: 'Moniteur de preuves en direct',
+    evidenceHint: 'Combine des signaux sur Ormuz, Bab el-Mandeb, la production, les stocks, le transport et la demande à partir d’actualités vérifiées, du calendrier économique et de sources officielles. Les preuves ne deviennent jamais automatiquement des pourcentages de perturbation.',
+    evidenceRefresh: 'Actualiser les preuves',
+    evidenceCoverage: 'Couverture des preuves',
+    evidenceSources: 'sources',
+    evidenceStories: 'articles liés',
+    evidenceCalendar: 'événements calendrier',
+    evidenceInventory: 'stocks EIA',
+    evidenceUnavailable: 'Aucune preuve récente suffisante pour cette catégorie.',
+    evidenceOpen: 'Ouvrir la source',
+    evidenceGuard: 'Les preuves en direct aident à former une hypothèse, mais les pourcentages du scénario restent sous votre contrôle afin qu’un titre ne devienne jamais un chiffre inventé.',
+    evidenceLoadError: 'Le moniteur de preuves ne peut pas être actualisé. Les hypothèses restent manuelles.',
+    inventoryLatest: 'Stocks commerciaux de brut aux États-Unis',
+    weeklyChange: 'Variation hebdomadaire',
   },
+} as const;
+
+const EVIDENCE_CATEGORY_LABELS = {
+  ar: {
+    hormuz: 'مضيق هرمز',
+    bab_el_mandeb: 'باب المندب والبحر الأحمر',
+    production: 'الإنتاج و OPEC+',
+    inventories: 'المخزونات',
+    shipping: 'الناقلات والشحن والتأمين',
+    demand_rates: 'الطلب والفائدة',
+    geopolitics: 'المخاطر الجيوسياسية',
+  },
+  en: {
+    hormuz: 'Strait of Hormuz',
+    bab_el_mandeb: 'Bab el-Mandeb / Red Sea',
+    production: 'Production & OPEC+',
+    inventories: 'Inventories',
+    shipping: 'Tankers, freight & insurance',
+    demand_rates: 'Demand & rates',
+    geopolitics: 'Geopolitical risk',
+  },
+  fr: {
+    hormuz: 'Détroit d’Ormuz',
+    bab_el_mandeb: 'Bab el-Mandeb / mer Rouge',
+    production: 'Production et OPEP+',
+    inventories: 'Stocks',
+    shipping: 'Navires, fret et assurance',
+    demand_rates: 'Demande et taux',
+    geopolitics: 'Risque géopolitique',
+  },
+} as const;
+
+const EVIDENCE_STATE_LABELS = {
+  ar: { high: 'مرتفع', medium: 'متوسط', low: 'منخفض', unknown: 'غير مؤكد', tightening: 'تشدد الإمداد', easing: 'تخفيف الضغط', mixed: 'مختلط' },
+  en: { high: 'High', medium: 'Medium', low: 'Low', unknown: 'Unknown', tightening: 'Tightening', easing: 'Easing', mixed: 'Mixed' },
+  fr: { high: 'Élevé', medium: 'Moyen', low: 'Faible', unknown: 'Inconnu', tightening: 'Resserrement', easing: 'Détente', mixed: 'Mixte' },
 } as const;
 
 const CONTROL_DEFINITIONS: Array<{
@@ -268,6 +397,9 @@ export function OilScenarioEngine() {
   const [quoteSource, setQuoteSource] = useState('');
   const [loadingQuote, setLoadingQuote] = useState(true);
   const [quoteError, setQuoteError] = useState(false);
+  const [intelligence, setIntelligence] = useState<OilIntelligenceResponse | null>(null);
+  const [loadingEvidence, setLoadingEvidence] = useState(true);
+  const [evidenceError, setEvidenceError] = useState(false);
 
   async function loadQuotes(syncReference = false) {
     setLoadingQuote(true);
@@ -294,8 +426,24 @@ export function OilScenarioEngine() {
     }
   }
 
+  async function loadEvidence() {
+    setLoadingEvidence(true);
+    setEvidenceError(false);
+    try {
+      const response = await fetch('/api/market/oil-intelligence');
+      const payload = await response.json() as OilIntelligenceResponse;
+      if (!response.ok || !payload.ok) throw new Error('oil_intelligence_unavailable');
+      setIntelligence(payload);
+    } catch {
+      setEvidenceError(true);
+    } finally {
+      setLoadingEvidence(false);
+    }
+  }
+
   useEffect(() => {
     void loadQuotes(false);
+    void loadEvidence();
     // Initial market quote only. Manual assumptions must not be overwritten by background changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -375,6 +523,80 @@ export function OilScenarioEngine() {
             <span>{c.updated}: {formatTime(selectedQuote?.lastUpdated ?? null, locale)}</span>
           </div>
           {quoteError ? <p className={styles.quoteError}><CircleAlert size={15} aria-hidden="true" />{c.loadError}</p> : null}
+        </section>
+
+        <section className={styles.evidencePanel} aria-label={c.evidenceTitle}>
+          <div className={styles.evidenceHeader}>
+            <div>
+              <h2>{c.evidenceTitle}</h2>
+              <p>{c.evidenceHint}</p>
+            </div>
+            <button type="button" disabled={loadingEvidence} onClick={() => void loadEvidence()}>
+              <RefreshCcw size={16} aria-hidden="true" className={loadingEvidence ? styles.spinning : ''} />
+              {c.evidenceRefresh}
+            </button>
+          </div>
+
+          {evidenceError ? <p className={styles.evidenceError}><CircleAlert size={16} aria-hidden="true" />{c.evidenceLoadError}</p> : null}
+
+          {intelligence ? (
+            <>
+              <div className={styles.coverageGrid} aria-label={c.evidenceCoverage}>
+                <div><span>{c.evidenceSources}</span><strong dir="ltr">{intelligence.coverage.evidenceSources}</strong></div>
+                <div><span>{c.evidenceStories}</span><strong dir="ltr">{intelligence.coverage.newsStories}</strong></div>
+                <div><span>{c.evidenceCalendar}</span><strong dir="ltr">{intelligence.coverage.calendarEvents}</strong></div>
+                <div><span>{c.evidenceInventory}</span><strong>{intelligence.coverage.eiaInventory ? '✓' : '—'}</strong></div>
+              </div>
+
+              {intelligence.inventory ? (
+                <div className={styles.inventoryStrip}>
+                  <div>
+                    <span>{c.inventoryLatest}</span>
+                    <strong dir="ltr">{number(intelligence.inventory.latest, 1)} M bbl</strong>
+                  </div>
+                  <div>
+                    <span>{c.weeklyChange}</span>
+                    <strong dir="ltr" className={intelligence.inventory.weeklyChange < 0 ? styles.up : styles.down}>
+                      {intelligence.inventory.weeklyChange > 0 ? '+' : ''}{number(intelligence.inventory.weeklyChange, 1)} M bbl
+                    </strong>
+                  </div>
+                  <a href={intelligence.inventory.sourceUrl} target="_blank" rel="noreferrer">{intelligence.inventory.source}</a>
+                </div>
+              ) : null}
+
+              <div className={styles.evidenceGrid}>
+                {intelligence.evidence.categories.map(category => {
+                  const latest = category.items[0];
+                  const stateLabels = EVIDENCE_STATE_LABELS[locale];
+                  return (
+                    <article className={styles.evidenceCard} key={category.id}>
+                      <div className={styles.evidenceCardHead}>
+                        <div>
+                          <strong>{EVIDENCE_CATEGORY_LABELS[locale][category.id]}</strong>
+                          <small dir="ltr">{category.evidenceCount}</small>
+                        </div>
+                        <span className={category.attention === 'high' ? styles.attentionHigh : category.attention === 'medium' ? styles.attentionMedium : styles.attentionLow}>
+                          {stateLabels[category.attention]}
+                        </span>
+                      </div>
+                      <p className={styles.direction}>{stateLabels[category.direction]}</p>
+                      {latest ? (
+                        <div className={styles.latestEvidence}>
+                          <p dir="auto">{latest.title}</p>
+                          <div>
+                            <span>{latest.source}</span>
+                            <time dateTime={latest.publishedAt}>{formatTime(latest.publishedAt, locale)}</time>
+                          </div>
+                          {latest.url ? <a href={latest.url} target="_blank" rel="noreferrer">{c.evidenceOpen}</a> : null}
+                        </div>
+                      ) : <p className={styles.noEvidence}>{c.evidenceUnavailable}</p>}
+                    </article>
+                  );
+                })}
+              </div>
+              <p className={styles.evidenceGuard}><ShieldCheck size={16} aria-hidden="true" />{c.evidenceGuard}</p>
+            </>
+          ) : loadingEvidence ? <div className={styles.evidenceLoading}>{c.evidenceRefresh}…</div> : null}
         </section>
 
         <section className={styles.workspace}>
