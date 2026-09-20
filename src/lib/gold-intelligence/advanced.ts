@@ -10,6 +10,7 @@ import type {
   GoldRegimeAnalysis,
   GoldRegimeId,
   GoldStressCase,
+  GoldHistoricalAnalogAnalysis,
 } from './advancedTypes';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -342,11 +343,109 @@ export function diagnoseGoldModel(closes: number[]): GoldModelDiagnostics {
   };
 }
 
+function windowReturn(closes: number[], start: number, length: number) {
+  const first = closes[start];
+  const last = closes[start + length - 1];
+  return first > 0 && last > 0 ? (last / first - 1) * 100 : null;
+}
+
+export function findGoldHistoricalAnalogs(closes: number[]): GoldHistoricalAnalogAnalysis {
+  const usable = closes.filter(value => Number.isFinite(value) && value > 0);
+  const lookback = 20;
+  const forward = 20;
+  if (usable.length < lookback * 3 + forward) {
+    return {
+      status: usable.length >= 40 ? 'thin' : 'unavailable',
+      current20Return: null,
+      current20Volatility: null,
+      medianForward20Return: null,
+      positiveForwardShare: null,
+      analogs: [],
+      note: 'Not enough verified history for reliable analog search.',
+      noteAr: 'لا يوجد تاريخ موثق كافٍ للبحث الموثوق عن فترات مشابهة.',
+    };
+  }
+
+  const currentStart = usable.length - lookback;
+  const currentReturn = windowReturn(usable, currentStart, lookback);
+  const currentVol = annualizedVolatilityFromCloses(usable.slice(currentStart));
+  if (currentReturn === null || currentVol === null) {
+    return {
+      status: 'unavailable',
+      current20Return: currentReturn,
+      current20Volatility: currentVol,
+      medianForward20Return: null,
+      positiveForwardShare: null,
+      analogs: [],
+      note: 'Current regime features are unavailable.',
+      noteAr: 'خصائص النظام الحالي غير متاحة.',
+    };
+  }
+
+  const candidates: Array<{
+    anchorIndex: number;
+    distance: number;
+    prior20Return: number;
+    prior20Volatility: number;
+    forward20Return: number;
+  }> = [];
+
+  for (let start = 0; start + lookback + forward <= currentStart; start += 2) {
+    const priorReturn = windowReturn(usable, start, lookback);
+    const priorVol = annualizedVolatilityFromCloses(usable.slice(start, start + lookback));
+    const forwardReturn = windowReturn(usable, start + lookback - 1, forward + 1);
+    if (priorReturn === null || priorVol === null || forwardReturn === null) continue;
+    const returnScale = Math.max(2, Math.abs(currentReturn), currentVol / 5);
+    const volScale = Math.max(4, currentVol);
+    const distance = Math.abs(priorReturn - currentReturn) / returnScale
+      + Math.abs(priorVol - currentVol) / volScale;
+    candidates.push({ anchorIndex: start, distance, prior20Return: priorReturn, prior20Volatility: priorVol, forward20Return: forwardReturn });
+  }
+
+  candidates.sort((left, right) => left.distance - right.distance);
+  const selected: typeof candidates = [];
+  for (const candidate of candidates) {
+    if (selected.some(item => Math.abs(item.anchorIndex - candidate.anchorIndex) < lookback)) continue;
+    selected.push(candidate);
+    if (selected.length >= 5) break;
+  }
+
+  const analogs = selected.map(item => ({
+    anchorIndex: item.anchorIndex,
+    similarity: Math.round(clamp(100 / (1 + item.distance), 0, 100)),
+    prior20Return: round(item.prior20Return, 2),
+    prior20Volatility: round(item.prior20Volatility, 2),
+    forward20Return: round(item.forward20Return, 2),
+  }));
+  const forwards = analogs.map(item => item.forward20Return).sort((a, b) => a - b);
+  const middle = Math.floor(forwards.length / 2);
+  const median = forwards.length
+    ? forwards.length % 2
+      ? forwards[middle]
+      : (forwards[middle - 1] + forwards[middle]) / 2
+    : null;
+  const positiveShare = forwards.length
+    ? forwards.filter(value => value > 0).length / forwards.length * 100
+    : null;
+
+  return {
+    status: analogs.length >= 3 ? 'available' : 'thin',
+    current20Return: round(currentReturn, 2),
+    current20Volatility: round(currentVol, 2),
+    medianForward20Return: median === null ? null : round(median, 2),
+    positiveForwardShare: positiveShare === null ? null : round(positiveShare, 1),
+    analogs,
+    note: 'Historical analogs compare 20-session return and volatility. Forward outcomes are descriptive precedents, not forecast probabilities.',
+    noteAr: 'الفترات المشابهة تقارن عائد 20 جلسة والتذبذب. النتائج اللاحقة سوابق وصفية وليست احتمالات توقع.',
+  };
+}
+
 export function buildGoldAdvancedAnalysis(snapshot: GoldScenarioSnapshot, closes: number[]): GoldAdvancedAnalysis {
   return {
     regime: detectGoldRegime(snapshot),
     causalChains: buildGoldCausalChains(snapshot),
     stressTests: buildGoldStressTests(snapshot),
     diagnostics: diagnoseGoldModel(closes),
+    historicalAnalogs: findGoldHistoricalAnalogs(closes),
   };
 }
