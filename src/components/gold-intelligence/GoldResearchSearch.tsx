@@ -30,6 +30,12 @@ const COPY = {
   confidenceWord:{ar:'ثقة',en:'confidence',fr:'confiance'},
 } as const;
 
+const PRESETS=[
+  {query:'Federal Reserve rate cuts gold',ar:'خفض الفيدرالي',en:'Fed rate cuts',fr:'Baisse des taux Fed'},
+  {query:'White House tariffs dollar inflation gold',ar:'رسوم البيت الأبيض',en:'White House tariffs',fr:'Tarifs Maison-Blanche'},
+  {query:'Middle East conflict oil gold',ar:'الشرق الأوسط والنفط',en:'Middle East & oil',fr:'Moyen-Orient & pétrole'},
+  {query:'central bank gold purchases reserves',ar:'مشتريات البنوك المركزية',en:'Central-bank buying',fr:'Achats banques centrales'},
+] as const;
 function localeCode(locale:Locale){return locale==='ar'?'ar-KW':locale==='fr'?'fr-FR':'en-US';}
 function date(value:string,locale:Locale){return Number.isFinite(Date.parse(value))?new Intl.DateTimeFormat(localeCode(locale),{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'—';}
 
@@ -63,6 +69,9 @@ export function GoldResearchSearch() {
     <section className={styles.shell} dir={dir}>
       <header><div><p><Search size={15}/>SFM Research Search</p><h2>{t('title')}</h2><span>{t('body')}</span></div></header>
       <form onSubmit={run}>
+        <div className={styles.presets}>
+          {PRESETS.map(item=><button key={item.query} type="button" onClick={()=>setQuery(item.query)}>{item[locale]}</button>)}
+        </div>
         <div className={styles.searchBox}><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t('placeholder')} maxLength={140}/><button type="submit" disabled={loading||query.trim().length<2}>{loading?'…':t('search')}</button></div>
         <div className={styles.filters}>
           <div role="group" aria-label={t('results')}>
