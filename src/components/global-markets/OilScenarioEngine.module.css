@@ -2,13 +2,13 @@
 .main { display: grid; gap: 1rem; min-width: 0; padding-block: .6rem 2rem; }
 .back { display: inline-flex; width: fit-content; align-items: center; gap: .45rem; color: var(--foreground-secondary); font-size: .86rem; font-weight: 650; text-decoration: none; }
 .shell[dir="rtl"] .back svg { transform: rotate(180deg); }
-.back:focus-visible, .segmented button:focus-visible, .quoteActions button:focus-visible, .sectionHead button:focus-visible, .numberInput:focus-visible, .priceInput input:focus-visible, .control input[type="range"]:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.back:focus-visible, .segmented button:focus-visible, .quoteActions button:focus-visible, .sectionHead button:focus-visible, .evidenceHeader button:focus-visible, .evidenceCard a:focus-visible, .inventoryStrip a:focus-visible, .numberInput:focus-visible, .priceInput input:focus-visible, .control input[type="range"]:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .header { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .9rem; align-items: start; }
 .heroIcon { display: grid; width: 3rem; height: 3rem; place-items: center; border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border)); border-radius: var(--radius-card); background: var(--primary-soft); color: var(--primary); }
 .eyebrow { margin: 0 0 .28rem; color: var(--primary); font-size: .76rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .header h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.7rem); line-height: 1.1; }
 .subtitle { max-width: 67rem; margin: .55rem 0 0; color: var(--foreground-secondary); line-height: 1.65; }
-.quotePanel, .controlsPanel, .resultsPanel, .driversPanel, .disclosure { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-xs); }
+.quotePanel, .evidencePanel, .controlsPanel, .resultsPanel, .driversPanel, .disclosure { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-xs); }
 .quotePanel { display: grid; grid-template-columns: minmax(10rem, .8fr) minmax(11rem, .8fr) minmax(12rem, 1fr) auto; gap: .85rem; align-items: end; padding: 1rem; }
 .benchmarkBlock, .priceInput, .marketQuote { display: grid; gap: .4rem; min-width: 0; }
 .benchmarkBlock > span, .priceInput > span, .marketQuote > span { color: var(--foreground-muted); font-size: .78rem; font-weight: 650; }
@@ -57,8 +57,8 @@
 .scenarioCard dd { margin: 0; color: var(--foreground-secondary); font-size: .78rem; font-weight: 650; text-align: end; }
 .emptyResult { display: grid; min-height: 13rem; place-items: center; align-content: center; gap: .45rem; color: var(--foreground-muted); text-align: center; }
 .emptyResult p { max-width: 26rem; margin: 0; line-height: 1.55; }
-.up { color: var(--success) !important; }
-.down { color: var(--danger) !important; }
+.up { color: var(--success); }
+.down { color: var(--danger); }
 .driversGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
 .driver { display: grid; gap: .28rem; border: 1px solid var(--border); border-radius: var(--radius-control); padding: .7rem; background: var(--surface-muted); }
 .driver > span { color: var(--foreground-secondary); font-size: .78rem; font-weight: 650; }
@@ -69,18 +69,54 @@
 .disclosure > svg { margin-top: .15rem; color: var(--primary); }
 .disclosure h2 { margin: 0; font-size: .95rem; }
 .disclosure p { margin: .35rem 0 0; color: var(--foreground-secondary); font-size: .82rem; line-height: 1.55; }
+.evidencePanel { display: grid; gap: .85rem; padding: 1rem; }
+.evidenceHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.evidenceHeader h2 { margin: 0; font-size: 1.05rem; }
+.evidenceHeader p { max-width: 65rem; margin: .3rem 0 0; color: var(--foreground-secondary); font-size: .84rem; line-height: 1.55; }
+.evidenceHeader button { display: inline-flex; min-height: 40px; flex: 0 0 auto; align-items: center; justify-content: center; gap: .4rem; border: 1px solid var(--border-strong); border-radius: var(--radius-control); padding: .55rem .75rem; background: var(--surface); color: var(--foreground); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.evidenceHeader button:disabled { cursor: not-allowed; opacity: .5; }
+.evidenceError { display: flex; align-items: center; gap: .4rem; margin: 0; color: var(--warning); font-size: .82rem; }
+.coverageGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
+.coverageGrid > div { display: flex; align-items: center; justify-content: space-between; gap: .7rem; border: 1px solid var(--border); border-radius: var(--radius-control); padding: .65rem .7rem; background: var(--surface-muted); }
+.coverageGrid span { color: var(--foreground-muted); font-size: .74rem; }
+.coverageGrid strong { font-size: .9rem; }
+.inventoryStrip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: .7rem; align-items: center; border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border)); border-radius: var(--radius-control); padding: .7rem; background: color-mix(in srgb, var(--primary-soft) 36%, var(--surface)); }
+.inventoryStrip > div { display: grid; gap: .2rem; }
+.inventoryStrip span { color: var(--foreground-muted); font-size: .73rem; }
+.inventoryStrip strong { font-size: .9rem; }
+.inventoryStrip a, .evidenceCard a { color: var(--primary); font-size: .76rem; font-weight: 700; text-decoration: none; }
+.evidenceGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
+.evidenceCard { display: grid; align-content: start; gap: .55rem; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); padding: .75rem; background: var(--background); }
+.evidenceCardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+.evidenceCardHead > div { display: flex; min-width: 0; align-items: center; gap: .4rem; }
+.evidenceCardHead strong { overflow: hidden; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.evidenceCardHead small { min-width: 1.55rem; border-radius: var(--radius-pill); padding: .12rem .35rem; background: var(--surface-muted); color: var(--foreground-muted); text-align: center; }
+.evidenceCardHead > span { flex: 0 0 auto; border-radius: var(--radius-pill); padding: .18rem .42rem; font-size: .68rem; font-weight: 700; }
+.attentionHigh { background: var(--danger-soft); color: var(--danger); }
+.attentionMedium { background: var(--warning-soft); color: var(--warning); }
+.attentionLow { background: var(--surface-muted); color: var(--foreground-muted); }
+.direction { margin: 0; color: var(--foreground-muted); font-size: .72rem; }
+.latestEvidence { display: grid; gap: .4rem; min-width: 0; border-top: 1px solid var(--border); padding-top: .55rem; }
+.latestEvidence > p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--foreground-secondary); font-size: .78rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.latestEvidence > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .6rem; color: var(--foreground-muted); font-size: .68rem; }
+.noEvidence { margin: 0; border-top: 1px solid var(--border); padding-top: .55rem; color: var(--foreground-muted); font-size: .75rem; line-height: 1.45; }
+.evidenceGuard { display: flex; align-items: flex-start; gap: .45rem; margin: 0; border-top: 1px solid var(--border); padding-top: .7rem; color: var(--foreground-secondary); font-size: .8rem; line-height: 1.5; }
+.evidenceGuard svg { flex: 0 0 auto; color: var(--primary); margin-top: .1rem; }
+.evidenceLoading { padding: .9rem; color: var(--foreground-muted); text-align: center; }
+
 @media (max-width: 1100px) {
   .quotePanel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workspace { grid-template-columns: minmax(0, 1fr); }
   .resultsPanel { position: static; }
-  .driversGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .driversGrid, .evidenceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .coverageGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .main { gap: .8rem; }
   .header { grid-template-columns: minmax(0, 1fr); }
   .heroIcon { width: 2.6rem; height: 2.6rem; }
-  .quotePanel, .controlsPanel, .resultsPanel, .driversPanel, .disclosure { padding: .8rem; }
-  .quotePanel, .controlsGrid, .driversGrid { grid-template-columns: minmax(0, 1fr); }
+  .quotePanel, .evidencePanel, .controlsPanel, .resultsPanel, .driversPanel, .disclosure { padding: .8rem; }
+  .quotePanel, .controlsGrid, .driversGrid, .evidenceGrid, .coverageGrid { grid-template-columns: minmax(0, 1fr); }
   .quoteActions { justify-content: stretch; }
   .quoteActions button { flex: 1 1 9rem; }
   .quoteMeta, .quoteError { grid-column: auto; }
@@ -88,4 +124,7 @@
   .sectionHead button { width: 100%; }
   .control { grid-template-columns: minmax(0, 1fr) 5rem; }
   .modelStats { grid-template-columns: minmax(0, 1fr); }
+  .evidenceHeader { align-items: stretch; flex-direction: column; }
+  .evidenceHeader button { width: 100%; }
+  .inventoryStrip { grid-template-columns: minmax(0, 1fr); }
 }
