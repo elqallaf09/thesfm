@@ -31,7 +31,21 @@
 .card dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: .65rem; border-top: 1px solid var(--border); padding-top: .35rem; }
 .card dt { color: var(--foreground-muted); font-size: .69rem; }
 .card dd { margin: 0; color: var(--foreground-secondary); font-size: .74rem; font-weight: 650; text-align: end; overflow-wrap: anywhere; }
+
+.basket { display: grid; gap: .7rem; border-top: 1px solid var(--border); padding-top: .8rem; }
+.basketSummary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.basketSummary article { display: grid; gap: .28rem; border: 1px solid var(--border); border-radius: var(--radius-control); padding: .7rem; background: var(--surface-muted); }
+.basketSummary span { color: var(--foreground-muted); font-size: .71rem; line-height: 1.4; }
+.basketSummary strong { font-size: .9rem; overflow-wrap: anywhere; }
+.basketGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
+.basketCard { display: grid; gap: .55rem; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); padding: .7rem; background: var(--background); }
+.basketCard > strong { font-size: .8rem; }
+.basketCard dl { display: grid; gap: .34rem; margin: 0; }
+.basketCard dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; border-top: 1px solid var(--border); padding-top: .34rem; }
+.basketCard dt { color: var(--foreground-muted); font-size: .67rem; }
+.basketCard dd { margin: 0; color: var(--foreground-secondary); font-size: .72rem; font-weight: 650; text-align: end; overflow-wrap: anywhere; }
+
 .caveat { margin: 0; border-top: 1px solid var(--border); padding-top: .7rem; color: var(--foreground-muted); font-size: .73rem; line-height: 1.5; }
 .inputRow input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-@media (max-width: 1100px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 700px) { .panel { padding: .8rem; } .header { grid-template-columns: minmax(0, 1fr); } .inputRow, .metrics, .cards { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 1100px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cards, .basketGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .basketSummary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .panel { padding: .8rem; } .header { grid-template-columns: minmax(0, 1fr); } .inputRow, .metrics, .cards, .basketGrid, .basketSummary { grid-template-columns: minmax(0, 1fr); } }
