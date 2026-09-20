@@ -96,7 +96,7 @@ export type GoldScenarioSnapshot = {
   upcomingEvents: GoldCalendarRisk[];
   sourceStatus: GoldSourceStatus;
   warnings: string[];
-  advanced: import('./advancedTypes').GoldAdvancedAnalysis;
+  advanced?: import('./advancedTypes').GoldAdvancedAnalysis;
 };
 
 export type GoldWhatIfShocks = {
