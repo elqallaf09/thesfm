@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { annualizedVolatilityFromCloses, buildGoldForecastSet, calculateGoldFactorScore, confidenceFromEvidence } from './core';
+import { buildGoldAdvancedAnalysis } from './advanced';
 import { eventBiasScore, eventRiskScore, loadGoldCalendar, loadGoldEvents, loadRealYield } from './evidence';
 import type { GoldDataQuality, GoldDriver, GoldScenarioSnapshot } from './types';
 import { getEconomicCycleIndicators } from '@/lib/providers/economic-data';
@@ -76,19 +77,21 @@ export async function buildGoldScenarioSnapshot(): Promise<GoldScenarioSnapshot>
   const highImpact = calendar.data.filter(event => event.impact === 'high').length;
   const horizons = buildGoldForecastSet({ price: gold.price, annualizedVolatility: volatility, factorScore: factor.score, eventRisk, upcomingHighImpactCount: highImpact });
   const confidence = confidenceFromEvidence({ coverage: factor.coverage, annualizedVolatility: volatility, eventCount: news.events.length, calendarAvailable: calendar.quality !== 'unavailable', quoteQuality: quality(gold) });
+  const historyCloses = gold.history.map(point => point.close);
+  const baseSnapshot = {
   const warnings: string[] = [];
   if (volatility === null) warnings.push('Insufficient verified history for statistical price ranges.');
   drivers.filter(item => !item.available).forEach(item => warnings.push(`${item.label} unavailable; excluded from score.`));
   if (news.partial) warnings.push('News coverage is partial.');
   if (calendar.partial) warnings.push('Economic-calendar coverage is partial.');
 
-  return {
-    engine: 'SFM Gold Scenario Engine', engineVersion: '1.0.0', methodology: 'explainable-quant-v1',
-    status: factor.coverage >= .75 && volatility !== null ? 'available' : 'partial', generatedAt: new Date().toISOString(),
-    spot: { symbol: 'XAUUSD', price: gold.price, currency: gold.currency ?? 'USD', changePercent: gold.changePercent, source: gold.source, asOf: gold.lastUpdated },
+    engine: 'SFM Gold Scenario Engine' as const, engineVersion: '1.1.0' as const, methodology: 'explainable-quant-v1' as const,
+    status: factor.coverage >= .75 && volatility !== null ? 'available' as const : 'partial' as const, generatedAt: new Date().toISOString(),
+    spot: { symbol: 'XAUUSD' as const, price: gold.price, currency: gold.currency ?? 'USD', changePercent: gold.changePercent, source: gold.source, asOf: gold.lastUpdated },
     factorScore: factor.score, confidence, dataCoverage: Math.round(factor.coverage * 100), annualizedVolatility: volatility,
     drivers, horizons, events: news.events, upcomingEvents: calendar.data,
-    sourceStatus: { quotes: quality(gold), macro: macro.status === 'available' ? 'live' : 'unavailable', realYields: realYield ? 'live' : 'unavailable', news: news.quality, calendar: calendar.quality },
+    sourceStatus: { quotes: quality(gold), macro: macro.status === 'available' ? 'live' as const : 'unavailable' as const, realYields: realYield ? 'live' as const : 'unavailable' as const, news: news.quality, calendar: calendar.quality },
     warnings,
   };
+  return { ...baseSnapshot, advanced: buildGoldAdvancedAnalysis(baseSnapshot as GoldScenarioSnapshot, historyCloses) };
 }
