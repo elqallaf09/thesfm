@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { GoldAdvancedPanels } from './GoldAdvancedPanels';
+import { GoldResearchSearch } from './GoldResearchSearch';
 import { useLanguage } from '@/hooks/useLanguage';
 import type {
   GoldHorizon,
@@ -297,6 +298,7 @@ export function GoldScenarioEngine() {
         </div>
 
         <GoldAdvancedPanels snapshot={snapshot} locale={locale} />
+        <GoldResearchSearch />
 
         <section className={styles.whatIf}>
           <div className={styles.sectionHead}><div><span>{t('whatIfBody')}</span><h2>{t('whatIf')}</h2></div><SlidersHorizontal size={20} /></div>
