@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { GoldAdvancedPanels } from './GoldAdvancedPanels';
 import { useLanguage } from '@/hooks/useLanguage';
 import type {
   GoldHorizon,
@@ -294,6 +295,8 @@ export function GoldScenarioEngine() {
             ) : <p className={styles.empty}>{t('unavailable')}</p>}
           </section>
         </div>
+
+        <GoldAdvancedPanels snapshot={snapshot} locale={locale} />
 
         <section className={styles.whatIf}>
           <div className={styles.sectionHead}><div><span>{t('whatIfBody')}</span><h2>{t('whatIf')}</h2></div><SlidersHorizontal size={20} /></div>
