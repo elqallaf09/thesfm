@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { CircleAlert, EqualApproximately, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import {
+  calculateOilBalancedTargetBasket,
   calculateOilTargetStress,
   type OilScenarioContext,
   type OilScenarioDriverKey,
@@ -38,6 +39,14 @@ const COPY = {
     configuredRange: 'نطاق الأداة',
     impliedVolume: 'براميل متأثرة ضمنياً',
     noSingle: 'لا يوجد عامل واحد ضمن النطاقات الحالية يكفي وحده للوصول إلى الهدف؛ الوصول إليه داخل النموذج يتطلب مزيجاً من الصدمات.',
+    basketTitle: 'مزيج صدمات متوازن حسابياً',
+    basketHint: 'إذا احتاج الهدف أكثر من عامل، يوزع هذا المثال الفجوة باستخدام النسبة نفسها من المساحة المتبقية لكل عامل قادر على التحرك في الاتجاه المطلوب. هذا اختيار رياضي محايد وليس سيناريو مرجحاً.',
+    basketReachable: 'يمكن الوصول للهدف داخل نطاقات المزيج الحالية',
+    basketNotReachable: 'حتى أقصى نطاقات المزيج الحالية لا تصل إلى الهدف',
+    fullRangeLimit: 'سعر المركز عند استخدام كامل المساحة المتاحة',
+    utilization: 'نسبة استخدام المساحة المتبقية',
+    contribution: 'مساهمة التغير',
+    basketRequired: 'القيمة في المزيج',
     caveat: 'هذه مساواة حسابية للحساسية وليست تقديراً لاحتمال وقوع الحدث أو توصية تداول.',
     referenceNeeded: 'أدخل سعراً مرجعياً صالحاً في محرك النفط أولاً.',
     hormuz: 'تعطل هرمز',
@@ -77,6 +86,14 @@ const COPY = {
     configuredRange: 'Tool range',
     impliedVolume: 'Implied affected barrels',
     noSingle: 'No single lever within the current ranges can reach the target alone; reaching it inside the model would require a combination of shocks.',
+    basketTitle: 'Balanced mathematical shock basket',
+    basketHint: 'When the target needs more than one lever, this example fills the gap by using the same fraction of each lever’s remaining directional range. It is a neutral arithmetic construction, not a likely scenario.',
+    basketReachable: 'Target is reachable inside the current basket ranges',
+    basketNotReachable: 'Even the full current basket ranges do not reach the target',
+    fullRangeLimit: 'Central price at full available range',
+    utilization: 'Remaining-range utilization',
+    contribution: 'Impact contribution',
+    basketRequired: 'Basket value',
     caveat: 'This is sensitivity arithmetic, not an estimate of event probability or a trading recommendation.',
     referenceNeeded: 'Enter a valid reference price in the oil engine first.',
     hormuz: 'Hormuz disruption',
@@ -116,6 +133,14 @@ const COPY = {
     configuredRange: 'Plage de l’outil',
     impliedVolume: 'Barils affectés implicites',
     noSingle: 'Aucun levier unique dans les plages actuelles ne suffit seul ; la cible nécessiterait une combinaison de chocs dans le modèle.',
+    basketTitle: 'Panier de chocs mathématiquement équilibré',
+    basketHint: 'Lorsque la cible exige plusieurs leviers, cet exemple comble l’écart en utilisant la même fraction de la plage directionnelle restante de chaque levier. C’est une construction arithmétique neutre, pas un scénario probable.',
+    basketReachable: 'La cible est atteignable dans les plages actuelles du panier',
+    basketNotReachable: 'Même les plages maximales actuelles du panier n’atteignent pas la cible',
+    fullRangeLimit: 'Prix central avec toute la plage disponible',
+    utilization: 'Utilisation de la plage restante',
+    contribution: 'Contribution à l’impact',
+    basketRequired: 'Valeur du panier',
     caveat: 'Il s’agit d’une égalité de sensibilité, pas d’une estimation de probabilité ni d’une recommandation de trading.',
     referenceNeeded: 'Saisissez d’abord un prix de référence valide dans le moteur pétrolier.',
     hormuz: 'Perturbation d’Ormuz',
@@ -163,7 +188,7 @@ function signed(value: number, digits = 1) {
   return (value > 0 ? '+' : '') + number(value, digits);
 }
 
-function unitLabel(item: OilTargetEquivalent, copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr) {
+function unitLabel(item: { unit: OilTargetEquivalent['unit'] }, copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr) {
   if (item.unit === 'mbd') return copy.mbd;
   if (item.unit === 'bps') return copy.bps;
   return copy.pct;
@@ -190,6 +215,13 @@ export function OilTargetStressTest({
   const result = useMemo(
     () => input.referencePrice > 0 && targetPrice > 0
       ? calculateOilTargetStress(input, targetPrice, context)
+      : null,
+    [context, input, targetPrice],
+  );
+
+  const basket = useMemo(
+    () => input.referencePrice > 0 && targetPrice > 0
+      ? calculateOilBalancedTargetBasket(input, targetPrice, context)
       : null,
     [context, input, targetPrice],
   );
@@ -272,6 +304,42 @@ export function OilTargetStressTest({
                 ))}
               </div>
               {result.modelReachable && !anyInsideRange ? <p className={styles.notice}><CircleAlert size={17} aria-hidden="true" />{copy.noSingle}</p> : null}
+            </div>
+          ) : null}
+
+          {basket && result.direction !== 'flat' ? (
+            <div className={styles.basket}>
+              <div className={styles.sectionHead}>
+                <h3>{copy.basketTitle}</h3>
+                <p>{copy.basketHint}</p>
+              </div>
+              <div className={styles.basketSummary}>
+                <article>
+                  <span>{basket.targetReachableWithBasket ? copy.basketReachable : copy.basketNotReachable}</span>
+                  <strong dir="ltr">{money(basket.achievedCentralPrice)}</strong>
+                </article>
+                <article>
+                  <span>{copy.fullRangeLimit}</span>
+                  <strong dir="ltr">{money(basket.fullRangeCentralPrice)}</strong>
+                </article>
+                <article>
+                  <span>{copy.utilization}</span>
+                  <strong dir="ltr">{number(basket.appliedRangeUtilizationPct, 1)}%</strong>
+                </article>
+              </div>
+              <div className={styles.basketGrid}>
+                {basket.items.filter(item => Math.abs(item.delta) >= 0.001).map(item => (
+                  <article className={styles.basketCard} key={item.key}>
+                    <strong>{leverLabels[item.key]}</strong>
+                    <dl>
+                      <div><dt>{copy.basketRequired}</dt><dd dir="ltr">{formattedValue(item, item.requiredValue, copy)}</dd></div>
+                      <div><dt>{copy.delta}</dt><dd dir="ltr">{signed(item.delta, item.unit === 'bps' ? 0 : 2)} {unitLabel(item, copy)}</dd></div>
+                      <div><dt>{copy.contribution}</dt><dd dir="ltr">{signed(item.contributionDeltaPct, 2)} pp</dd></div>
+                      {item.impliedDisruptionMbd !== null ? <div><dt>{copy.impliedVolume}</dt><dd dir="ltr">{number(item.impliedDisruptionMbd, 2)} {copy.mbd}</dd></div> : null}
+                    </dl>
+                  </article>
+                ))}
+              </div>
             </div>
           ) : null}
 
