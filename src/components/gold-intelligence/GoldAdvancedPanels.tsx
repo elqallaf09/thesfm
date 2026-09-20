@@ -11,6 +11,10 @@ const COPY = {
   causal: { ar: 'محرك العلاقات السببية', en: 'Causal Chain Engine', fr: 'Moteur causal' },
   stress: { ar: 'مصفوفة اختبارات الضغط', en: 'Stress-Test Matrix', fr: 'Matrice de stress' },
   diagnostics: { ar: 'تشخيص ومعايرة النموذج', en: 'Model Diagnostics & Calibration', fr: 'Diagnostic et calibration' },
+  analogs: { ar: 'محرك الفترات التاريخية المشابهة', en: 'Historical Analog Engine', fr: 'Moteur des analogues historiques' },
+  current20: { ar: 'عائد 20 جلسة الحالي', en: 'Current 20-session return', fr: 'Rendement actuel 20 séances' },
+  medianForward: { ar: 'وسيط الـ20 جلسة التالية', en: 'Median next-20 return', fr: 'Médiane des 20 séances suivantes' },
+  positiveShare: { ar: 'نسبة النتائج الإيجابية', en: 'Positive outcome share', fr: 'Part des résultats positifs' },
   confidence: { ar: 'الثقة', en: 'Confidence', fr: 'Confiance' },
   strength: { ar: 'القوة', en: 'Strength', fr: 'Force' },
   factor: { ar: 'درجة العوامل', en: 'Factor score', fr: 'Score facteurs' },
@@ -81,6 +85,27 @@ export function GoldAdvancedPanels({ snapshot, locale }: { snapshot: GoldScenari
             </article>
           ))}
         </div>
+      </section>
+
+      <section className={[styles.panel, styles.wide].join(' ')}>
+        <header><div><Activity size={18} /><h2>{t('analogs')}</h2></div><b>{advanced.historicalAnalogs.status}</b></header>
+        <div className={styles.analogSummary}>
+          <Metric label={t('current20')} value={pct(advanced.historicalAnalogs.current20Return)} />
+          <Metric label={t('medianForward')} value={pct(advanced.historicalAnalogs.medianForward20Return)} />
+          <Metric label={t('positiveShare')} value={pct(advanced.historicalAnalogs.positiveForwardShare)} />
+        </div>
+        <div className={styles.analogs}>
+          {advanced.historicalAnalogs.analogs.map((item, index) => (
+            <article key={`${item.anchorIndex}-${index}`}>
+              <strong>#{index + 1}</strong>
+              <span>{item.similarity}% match</span>
+              <span>20D {signed(item.prior20Return)}%</span>
+              <span>vol {item.prior20Volatility.toFixed(1)}%</span>
+              <b dir="ltr">next 20D {signed(item.forward20Return)}%</b>
+            </article>
+          ))}
+        </div>
+        <p>{locale === 'ar' ? advanced.historicalAnalogs.noteAr : advanced.historicalAnalogs.note}</p>
       </section>
 
       <section className={[styles.panel, styles.wide].join(' ')}>
