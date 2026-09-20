@@ -64,9 +64,29 @@ export type GoldModelDiagnostics = {
   noteAr: string;
 };
 
+export type GoldHistoricalAnalog = {
+  anchorIndex: number;
+  similarity: number;
+  prior20Return: number;
+  prior20Volatility: number;
+  forward20Return: number;
+};
+
+export type GoldHistoricalAnalogAnalysis = {
+  status: 'available' | 'thin' | 'unavailable';
+  current20Return: number | null;
+  current20Volatility: number | null;
+  medianForward20Return: number | null;
+  positiveForwardShare: number | null;
+  analogs: GoldHistoricalAnalog[];
+  note: string;
+  noteAr: string;
+};
+
 export type GoldAdvancedAnalysis = {
   regime: GoldRegimeAnalysis;
   causalChains: GoldCausalChain[];
   stressTests: GoldStressCase[];
   diagnostics: GoldModelDiagnostics;
+  historicalAnalogs: GoldHistoricalAnalogAnalysis;
 };
