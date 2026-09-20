@@ -74,7 +74,7 @@ export type GoldSourceStatus = {
 
 export type GoldScenarioSnapshot = {
   engine: 'SFM Gold Scenario Engine';
-  engineVersion: '1.0.0';
+  engineVersion: '1.0.0' | '1.1.0';
   methodology: 'explainable-quant-v1';
   status: 'available' | 'partial';
   generatedAt: string;
@@ -96,6 +96,7 @@ export type GoldScenarioSnapshot = {
   upcomingEvents: GoldCalendarRisk[];
   sourceStatus: GoldSourceStatus;
   warnings: string[];
+  advanced: import('./advancedTypes').GoldAdvancedAnalysis;
 };
 
 export type GoldWhatIfShocks = {
