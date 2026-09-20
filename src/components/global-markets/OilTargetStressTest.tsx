@@ -194,7 +194,7 @@ function unitLabel(item: { unit: OilTargetEquivalent['unit'] }, copy: typeof COP
   return copy.pct;
 }
 
-function formattedValue(item: OilTargetEquivalent, value: number, copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr) {
+function formattedValue(item: { unit: OilTargetEquivalent['unit'] }, value: number, copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr) {
   const digits = item.unit === 'bps' ? 0 : item.unit === 'mbd' ? 2 : 1;
   return number(value, digits) + ' ' + unitLabel(item, copy);
 }
