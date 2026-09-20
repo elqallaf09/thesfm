@@ -108,11 +108,14 @@ export function parseOpecPolicyDetail(
   candidate: PressReleaseCandidate,
   fetchedAt = new Date().toISOString(),
 ): OpecPolicySnapshot {
-  const plain = stripHtml(html);
-  const titleIndex = plain.toLowerCase().indexOf(candidate.title.toLowerCase());
-  const afterTitle = titleIndex >= 0 ? plain.slice(titleIndex + candidate.title.length) : plain;
-  const addressIndex = afterTitle.search(/\bAddress\b/i);
-  const body = (addressIndex >= 0 ? afterTitle.slice(0, addressIndex) : afterTitle).trim();
+  const headings = [...html.matchAll(/<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]>/gi)];
+  const articleHeading = headings.find(match => stripHtml(match[1]).toLowerCase() === candidate.title.toLowerCase());
+  const rawAfterTitle = articleHeading
+    ? html.slice((articleHeading.index ?? 0) + articleHeading[0].length)
+    : html;
+  const addressHeadingIndex = rawAfterTitle.search(/<h[1-6]\b[^>]*>\s*Address\s*<\/h[1-6]>/i);
+  const articleRaw = addressHeadingIndex >= 0 ? rawAfterTitle.slice(0, addressHeadingIndex) : rawAfterTitle;
+  const body = stripHtml(articleRaw);
   const summary = body ? body.slice(0, 2400) : null;
   const combined = candidate.title + ' ' + (summary ?? '');
 
