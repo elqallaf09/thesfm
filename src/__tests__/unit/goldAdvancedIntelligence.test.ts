@@ -5,6 +5,7 @@ import {
   buildGoldStressTests,
   detectGoldRegime,
   diagnoseGoldModel,
+  findGoldHistoricalAnalogs,
 } from '@/lib/gold-intelligence/advanced';
 import type { GoldDriver, GoldScenarioSnapshot } from '@/lib/gold-intelligence/types';
 
@@ -89,6 +90,16 @@ describe('gold advanced intelligence engines', () => {
     expect(result.volatilityBandCoverage).toBeNull();
   });
 
+  it('finds bounded historical analogs without treating them as forecast probabilities', () => {
+    const closes = Array.from({ length: 180 }, (_, index) =>
+      2500 * (1 + index * 0.0009 + Math.sin(index / 7) * 0.008 + Math.sin(index / 19) * 0.004));
+    const result = findGoldHistoricalAnalogs(closes);
+    expect(result.status).not.toBe('unavailable');
+    expect(result.analogs.length).toBeGreaterThan(0);
+    expect(result.analogs.every(item => item.similarity >= 0 && item.similarity <= 100)).toBe(true);
+    expect(result.note).toContain('not forecast probabilities');
+  });
+
   it('produces bounded diagnostics and combines all advanced engines', () => {
     const closes = Array.from({ length: 120 }, (_, index) =>
       2700 * (1 + index * 0.0012 + Math.sin(index / 5) * 0.006));
@@ -99,5 +110,6 @@ describe('gold advanced intelligence engines', () => {
     expect(result.diagnostics.calibrationScore!).toBeLessThanOrEqual(100);
     expect(result.stressTests).toHaveLength(5);
     expect(result.causalChains.length).toBeGreaterThan(0);
+    expect(result.historicalAnalogs).toBeDefined();
   });
 });
