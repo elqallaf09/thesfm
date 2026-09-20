@@ -45,7 +45,7 @@ export type OilCalendarEvidenceInput = {
 
 export type OilEvidenceItem = {
   id: string;
-  kind: 'news' | 'calendar' | 'inventory';
+  kind: 'news' | 'calendar' | 'inventory' | 'chokepoint' | 'policy';
   categories: OilEvidenceCategory[];
   title: string;
   detail: string | null;
@@ -222,6 +222,7 @@ export function buildOilEvidenceSnapshot(input: {
   news?: OilNewsEvidenceInput[];
   calendar?: OilCalendarEvidenceInput[];
   inventory?: EiaCrudeStocksSnapshot | null;
+  externalEvidence?: OilEvidenceItem[];
   now?: Date;
 }): OilEvidenceSnapshot {
   const newsItems = (input.news ?? []).flatMap(story => {
@@ -233,8 +234,9 @@ export function buildOilEvidenceSnapshot(input: {
     return item ? [item] : [];
   });
   const inventoryItems = input.inventory ? [inventoryEvidence(input.inventory)] : [];
+  const externalItems = (input.externalEvidence ?? []).filter(item => item.categories.length > 0);
 
-  const items = [...inventoryItems, ...newsItems, ...calendarItems]
+  const items = [...inventoryItems, ...externalItems, ...newsItems, ...calendarItems]
     .filter(item => Number.isFinite(Date.parse(item.publishedAt)))
     .sort((left, right) => Date.parse(right.publishedAt) - Date.parse(left.publishedAt));
 
