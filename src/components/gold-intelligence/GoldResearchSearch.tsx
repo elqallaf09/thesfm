@@ -23,6 +23,11 @@ const COPY = {
   noResults:{ar:'لا توجد نتائج مطابقة في المصادر المتاحة.',en:'No matching results in the available sources.',fr:'Aucun résultat correspondant.'},
   error:{ar:'تعذر تشغيل محرك البحث حالياً.',en:'Research search is temporarily unavailable.',fr:'Recherche temporairement indisponible.'},
   partial:{ar:'تغطية جزئية',en:'Partial coverage',fr:'Couverture partielle'},
+  officialBadge:{ar:'رسمي',en:'official',fr:'officiel'},
+  newsCount:{ar:'أخبار',en:'news',fr:'actualités'},
+  calendarCount:{ar:'تقويم',en:'calendar',fr:'calendrier'},
+  sourcesCount:{ar:'مصادر',en:'sources',fr:'sources'},
+  confidenceWord:{ar:'ثقة',en:'confidence',fr:'confiance'},
 } as const;
 
 function localeCode(locale:Locale){return locale==='ar'?'ar-KW':locale==='fr'?'fr-FR':'en-US';}
@@ -73,13 +78,13 @@ export function GoldResearchSearch() {
 
       {result ? (
         <div className={styles.results}>
-          <div className={styles.summary}><strong>{t('results')}</strong><span>{result.news.length} news · {result.calendar.length} calendar · {result.providerCoverage.filter(p=>p.status==='success').length} sources</span></div>
+          <div className={styles.summary}><strong>{t('results')}</strong><span>{result.news.length} {t('newsCount')} · {result.calendar.length} {t('calendarCount')} · {result.providerCoverage.filter(p=>p.status==='success').length} {t('sourcesCount')}</span></div>
           {result.news.map(item=>(
             <article key={`n-${item.id}`} className={styles.news}>
-              <div className={styles.meta}><span>{item.verificationStatus}</span><span>{item.expectedImpact}</span><span>{item.eventType}</span>{item.isOfficial?<b><ShieldCheck size={12}/>official</b>:null}</div>
+              <div className={styles.meta}><span>{item.verificationStatus}</span><span>{item.expectedImpact}</span><span>{item.eventType}</span>{item.isOfficial?<b><ShieldCheck size={12}/>{t('officialBadge')}</b>:null}</div>
               <h3>{item.url?<a href={item.url} target="_blank" rel="noreferrer">{item.title}<ExternalLink size={13}/></a>:item.title}</h3>
               {item.summary?<p>{item.summary}</p>:null}
-              <small>{item.source} · {date(item.publishedAt,locale)} · confidence {Math.round(item.confidenceScore*100)}%</small>
+              <small>{item.source} · {date(item.publishedAt,locale)} · {t('confidenceWord')} {Math.round(item.confidenceScore*100)}%</small>
             </article>
           ))}
           {result.calendar.map(item=>(
