@@ -160,7 +160,7 @@ function number(value: number, digits = 2) {
 
 function signed(value: number, digits = 1) {
   if (!Number.isFinite(value)) return '—';
-  return \`\${value > 0 ? '+' : ''}\${number(value, digits)}\`;
+  return (value > 0 ? '+' : '') + number(value, digits);
 }
 
 function unitLabel(item: OilTargetEquivalent, copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr) {
@@ -171,7 +171,7 @@ function unitLabel(item: OilTargetEquivalent, copy: typeof COPY.ar | typeof COPY
 
 function formattedValue(item: OilTargetEquivalent, value: number, copy: typeof COPY.ar | typeof COPY.en | typeof COPY.fr) {
   const digits = item.unit === 'bps' ? 0 : item.unit === 'mbd' ? 2 : 1;
-  return \`\${number(value, digits)} \${unitLabel(item, copy)}\`;
+  return number(value, digits) + ' ' + unitLabel(item, copy);
 }
 
 export function OilTargetStressTest({
