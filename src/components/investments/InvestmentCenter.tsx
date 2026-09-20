@@ -5,6 +5,7 @@ import { ArrowUpRight, BrainCircuit, CircleAlert, FileText, FolderClock, Plus, S
 import { AssetAvatar } from '@/components/asset/AssetAvatar';
 import { PlatformIdentity } from '@/components/invest/PlatformIdentity';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
+import { GoldScenarioEngine } from '@/components/investments/GoldScenarioEngine';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -191,6 +192,8 @@ export function InvestmentCenter({ assetClass = 'overview' }: { assetClass?: Inv
             <Link href="/login?next=%2Finvestments">{text('signIn')}</Link>
           </section>
         ) : null}
+
+        {assetClass === 'gold-silver' ? <GoldScenarioEngine /> : null}
 
         <section className={styles.migrationNotice} aria-label={text('migration')}>
           <FolderClock size={18} aria-hidden="true" />
