@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_OIL_SCENARIO_INPUT,
+  calculateOilBalancedTargetBasket,
   calculateOilScenario,
   calculateOilTargetStress,
   sanitizeOilScenarioInput,
@@ -138,6 +139,40 @@ describe('oil scenario engine', () => {
     expect(result.modelReachable).toBe(true);
     const upward = new Set(['hormuz', 'babElMandeb', 'offlineProduction', 'tankers', 'freightInsurance', 'demand']);
     expect(result.equivalents.filter(item => upward.has(item.key)).some(item => item.insideConfiguredRange)).toBe(false);
+  });
+
+  it('builds a transparent multi-factor basket using equal remaining-range utilization', () => {
+    const result = calculateOilBalancedTargetBasket({
+      ...DEFAULT_OIL_SCENARIO_INPUT,
+      referencePrice: 100,
+    }, 130, {
+      hormuzReferenceMbd: 4.9,
+      babElMandebReferenceMbd: 8.1,
+      sourceLabel: 'EIA',
+      referencePeriod: '2Q26',
+    });
+
+    expect(result.methodology).toBe('equal_remaining_range_utilization_v1');
+    expect(result.targetReachableWithBasket).toBe(true);
+    expect(result.achievedCentralPrice).toBeCloseTo(130, 1);
+    expect(result.items.length).toBeGreaterThan(1);
+    expect(new Set(result.items.map(item => item.rangeUtilizationPct)).size).toBe(1);
+  });
+
+  it('reports the full-range ceiling when a $200 target is not reachable with the current-duration basket', () => {
+    const result = calculateOilBalancedTargetBasket({
+      ...DEFAULT_OIL_SCENARIO_INPUT,
+      referencePrice: 100,
+    }, 200, {
+      hormuzReferenceMbd: 4.9,
+      babElMandebReferenceMbd: 8.1,
+      sourceLabel: 'EIA',
+      referencePeriod: '2Q26',
+    });
+
+    expect(result.targetReachableWithBasket).toBe(false);
+    expect(result.fullRangeCentralPrice).toBeLessThan(200);
+    expect(result.achievedCentralPrice).toBe(result.fullRangeCentralPrice);
   });
 
   it('marks targets beyond the central model impact cap as outside the configured model', () => {
