@@ -1,7 +1,7 @@
 import 'server-only';
 
-import { annualizedVolatilityFromCloses, buildGoldForecastSet, calculateGoldFactorScore, confidenceFromEvidence } from './core';
 import { buildGoldAdvancedAnalysis } from './advanced';
+import { annualizedVolatilityFromCloses, buildGoldForecastSet, calculateGoldFactorScore, confidenceFromEvidence } from './core';
 import { eventBiasScore, eventRiskScore, loadGoldCalendar, loadGoldEvents, loadRealYield } from './evidence';
 import type { GoldDataQuality, GoldDriver, GoldScenarioSnapshot } from './types';
 import { getEconomicCycleIndicators } from '@/lib/providers/economic-data';
@@ -15,20 +15,26 @@ function quality(quote?: TraderQuote): GoldDataQuality {
   if (!quote?.available || typeof quote.price !== 'number') return 'unavailable';
   return quote.dataQuality === 'cached' || quote.dataQuality === 'delayed' || quote.dataQuality === 'partial' || quote.delayed ? 'cached' : 'live';
 }
+
 function find(quotes: TraderQuote[], symbol: string) {
   const key = symbol.toUpperCase();
-  return quotes.find(q => [q.symbol, q.requestedSymbol, q.displaySymbol, q.canonicalSymbol].some(value => String(value ?? '').toUpperCase() === key));
+  return quotes.find(q => [q.symbol, q.requestedSymbol, q.displaySymbol, q.canonicalSymbol]
+    .some(value => String(value ?? '').toUpperCase() === key));
 }
+
 function finiteNumber(value: unknown) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value !== 'string') return null;
   const parsed = Number(value.replace(/[%,$\s]/g, ''));
   return Number.isFinite(parsed) ? parsed : null;
 }
+
 function marketScore(change: number | null | undefined, divisor: number, inverse = false) {
   if (typeof change !== 'number' || !Number.isFinite(change)) return null;
-  const score = clamp(change / divisor, -1, 1); return inverse ? -score : score;
+  const score = clamp(change / divisor, -1, 1);
+  return inverse ? -score : score;
 }
+
 function momentum(gold: TraderQuote) {
   if (!gold.available || typeof gold.price !== 'number') return null;
   const parts: number[] = [];
@@ -38,25 +44,39 @@ function momentum(gold: TraderQuote) {
   if (typeof gold.rsi === 'number') parts.push(gold.rsi >= 70 ? -.2 : gold.rsi <= 30 ? .2 : clamp((gold.rsi - 50) / 25, -.5, .5));
   return parts.length ? round(parts.reduce((sum, value) => sum + value, 0) / parts.length) : null;
 }
-function makeDriver(args: Omit<GoldDriver, 'available'>): GoldDriver { return { ...args, available: typeof args.score === 'number' }; }
+
+function makeDriver(args: Omit<GoldDriver, 'available'>): GoldDriver {
+  return { ...args, available: typeof args.score === 'number' };
+}
 
 export async function buildGoldScenarioSnapshot(): Promise<GoldScenarioSnapshot> {
   const [quotes, realYield, macro, news, calendar] = await Promise.all([
     fetchTraderQuotes(['XAUUSD', 'DXY', 'WTI', 'BRENT', '^VIX', 'TLT', 'GLD'], { includeHistory: true, includeNews: false }),
     loadRealYield(),
     getEconomicCycleIndicators({ country: 'United States' }).catch(() => ({ ok: false, status: 'error' as const, source: null, updated_at: null, indicators: [] })),
-    loadGoldEvents(), loadGoldCalendar(),
+    loadGoldEvents(),
+    loadGoldCalendar(),
   ]);
+
   const gold = find(quotes, 'XAUUSD');
   if (!gold?.available || typeof gold.price !== 'number' || gold.price <= 0) throw new Error('GOLD_PRICE_UNAVAILABLE');
-  const dxy = find(quotes, 'DXY'); const wti = find(quotes, 'WTI'); const brent = find(quotes, 'BRENT');
-  const vix = find(quotes, '^VIX'); const tlt = find(quotes, 'TLT'); const gld = find(quotes, 'GLD');
+
+  const dxy = find(quotes, 'DXY');
+  const wti = find(quotes, 'WTI');
+  const brent = find(quotes, 'BRENT');
+  const vix = find(quotes, '^VIX');
+  const tlt = find(quotes, 'TLT');
+  const gld = find(quotes, 'GLD');
   const policy = macro.indicators.find(item => item.id === 'policyRate');
-  const eventScore = eventBiasScore(news.events); const eventRisk = eventRiskScore(news.events);
-  const oilMoves = [wti?.changePercent, brent?.changePercent].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  const eventScore = eventBiasScore(news.events);
+  const eventRisk = eventRiskScore(news.events);
+  const oilMoves = [wti?.changePercent, brent?.changePercent]
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const oilMove = oilMoves.length ? oilMoves.reduce((sum, value) => sum + value, 0) / oilMoves.length : null;
   const vixScore = marketScore(vix?.changePercent, 8);
-  const riskScore = eventScore === null && vixScore === null ? null : round(clamp((eventScore ?? 0) * .72 + (vixScore ?? 0) * .28, -1, 1));
+  const riskScore = eventScore === null && vixScore === null
+    ? null
+    : round(clamp((eventScore ?? 0) * .72 + (vixScore ?? 0) * .28, -1, 1));
   const realYieldBps = realYield ? (realYield.value - realYield.previous) * 100 : null;
   const policyDelta = policy?.change?.delta ?? null;
   const explanation = (en: string, ar: string) => ({ explanation: en, explanationAr: ar });
@@ -73,25 +93,64 @@ export async function buildGoldScenarioSnapshot(): Promise<GoldScenarioSnapshot>
   ];
 
   const factor = calculateGoldFactorScore(drivers);
-  const volatility = annualizedVolatilityFromCloses(gold.history.map(point => point.close));
-  const highImpact = calendar.data.filter(event => event.impact === 'high').length;
-  const horizons = buildGoldForecastSet({ price: gold.price, annualizedVolatility: volatility, factorScore: factor.score, eventRisk, upcomingHighImpactCount: highImpact });
-  const confidence = confidenceFromEvidence({ coverage: factor.coverage, annualizedVolatility: volatility, eventCount: news.events.length, calendarAvailable: calendar.quality !== 'unavailable', quoteQuality: quality(gold) });
   const historyCloses = gold.history.map(point => point.close);
-  const baseSnapshot = {
+  const volatility = annualizedVolatilityFromCloses(historyCloses);
+  const highImpact = calendar.data.filter(event => event.impact === 'high').length;
+  const horizons = buildGoldForecastSet({
+    price: gold.price,
+    annualizedVolatility: volatility,
+    factorScore: factor.score,
+    eventRisk,
+    upcomingHighImpactCount: highImpact,
+  });
+  const confidence = confidenceFromEvidence({
+    coverage: factor.coverage,
+    annualizedVolatility: volatility,
+    eventCount: news.events.length,
+    calendarAvailable: calendar.quality !== 'unavailable',
+    quoteQuality: quality(gold),
+  });
+
   const warnings: string[] = [];
   if (volatility === null) warnings.push('Insufficient verified history for statistical price ranges.');
   drivers.filter(item => !item.available).forEach(item => warnings.push(`${item.label} unavailable; excluded from score.`));
   if (news.partial) warnings.push('News coverage is partial.');
   if (calendar.partial) warnings.push('Economic-calendar coverage is partial.');
 
-    engine: 'SFM Gold Scenario Engine' as const, engineVersion: '1.1.0' as const, methodology: 'explainable-quant-v1' as const,
-    status: factor.coverage >= .75 && volatility !== null ? 'available' as const : 'partial' as const, generatedAt: new Date().toISOString(),
-    spot: { symbol: 'XAUUSD' as const, price: gold.price, currency: gold.currency ?? 'USD', changePercent: gold.changePercent, source: gold.source, asOf: gold.lastUpdated },
-    factorScore: factor.score, confidence, dataCoverage: Math.round(factor.coverage * 100), annualizedVolatility: volatility,
-    drivers, horizons, events: news.events, upcomingEvents: calendar.data,
-    sourceStatus: { quotes: quality(gold), macro: macro.status === 'available' ? 'live' as const : 'unavailable' as const, realYields: realYield ? 'live' as const : 'unavailable' as const, news: news.quality, calendar: calendar.quality },
+  const baseSnapshot: GoldScenarioSnapshot = {
+    engine: 'SFM Gold Scenario Engine',
+    engineVersion: '1.1.0',
+    methodology: 'explainable-quant-v1',
+    status: factor.coverage >= .75 && volatility !== null ? 'available' : 'partial',
+    generatedAt: new Date().toISOString(),
+    spot: {
+      symbol: 'XAUUSD',
+      price: gold.price,
+      currency: gold.currency ?? 'USD',
+      changePercent: gold.changePercent,
+      source: gold.source,
+      asOf: gold.lastUpdated,
+    },
+    factorScore: factor.score,
+    confidence,
+    dataCoverage: Math.round(factor.coverage * 100),
+    annualizedVolatility: volatility,
+    drivers,
+    horizons,
+    events: news.events,
+    upcomingEvents: calendar.data,
+    sourceStatus: {
+      quotes: quality(gold),
+      macro: macro.status === 'available' ? 'live' : 'unavailable',
+      realYields: realYield ? 'live' : 'unavailable',
+      news: news.quality,
+      calendar: calendar.quality,
+    },
     warnings,
   };
-  return { ...baseSnapshot, advanced: buildGoldAdvancedAnalysis(baseSnapshot as GoldScenarioSnapshot, historyCloses) };
+
+  return {
+    ...baseSnapshot,
+    advanced: buildGoldAdvancedAnalysis(baseSnapshot, historyCloses),
+  };
 }
