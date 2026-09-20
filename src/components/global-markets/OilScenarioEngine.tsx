@@ -1,0 +1,473 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  CircleAlert,
+  Droplets,
+  Gauge,
+  RefreshCcw,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
+import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
+import { useLanguage } from '@/hooks/useLanguage';
+import {
+  DEFAULT_OIL_SCENARIO_INPUT,
+  calculateOilScenario,
+  type OilScenarioDriverKey,
+  type OilScenarioId,
+  type OilScenarioInput,
+} from '@/lib/market/oilScenarioEngine';
+import styles from './OilScenarioEngine.module.css';
+
+type Benchmark = 'brent' | 'wti';
+
+type EnergyQuote = {
+  category: string;
+  displayName: string;
+  nameAr: string;
+  price: number | null;
+  available: boolean;
+  source: string | null;
+  lastUpdated: string | null;
+  delayed: boolean;
+};
+
+type EnergyResponse = {
+  ok: boolean;
+  source?: string;
+  updated_at?: string | null;
+  items?: EnergyQuote[];
+};
+
+const COPY = {
+  ar: {
+    back: 'العودة إلى مركز الأسواق العالمية',
+    eyebrow: 'SFM Oil Scenario Engine',
+    title: 'محرك سيناريوهات النفط',
+    subtitle: 'اختبر كيف يمكن لاختناقات الممرات البحرية، تعطل الإنتاج، المخزون، الناقلات، التأمين، الطلب والفائدة أن تغيّر ضغط السعر. النتائج محاكاة حساسية وليست توقعاً للسعر.',
+    benchmark: 'الخام المرجعي',
+    brent: 'برنت',
+    wti: 'WTI',
+    referencePrice: 'السعر المرجعي',
+    liveQuote: 'السعر السوقي المتاح',
+    useLive: 'استخدم السعر السوقي',
+    refresh: 'تحديث السعر',
+    unavailable: 'غير متاح',
+    delayed: 'متأخر / مرجعي',
+    source: 'المصدر',
+    updated: 'آخر تحديث',
+    assumptions: 'فرضيات السيناريو',
+    assumptionsHint: 'ابدأ من الصفر ثم غيّر فقط العوامل التي تريد اختبارها. لا يفترض المحرك إغلاق أي ممر أو تعطل أي إنتاج من تلقاء نفسه.',
+    hormuz: 'تعطل مرور هرمز',
+    bab: 'تعطل باب المندب',
+    offline: 'إنتاج متعطل',
+    spare: 'طاقة فائضة تدخل السوق',
+    stocks: 'سحب من المخزون',
+    tankers: 'تعطل / نقص الناقلات',
+    insurance: 'زيادة الشحن والتأمين',
+    demand: 'تغير الطلب',
+    rates: 'تغير ضغط الفائدة',
+    duration: 'مدة الصدمة',
+    mbd: 'مليون برميل/يوم',
+    bps: 'نقطة أساس',
+    days: 'يوم',
+    results: 'نطاقات السيناريو',
+    resultsHint: 'يعرض المحرك ثلاث درجات حساسية لنفس الفرضيات بدلاً من رقم سعري واحد.',
+    lower: 'حساسية منخفضة',
+    central: 'الحساسية الأساسية',
+    higher: 'حساسية مرتفعة',
+    midpoint: 'منتصف النطاق',
+    band: 'النطاق التوضيحي',
+    modeledChange: 'تغير النموذج',
+    pressure: 'ضغط النموذج الأساسي',
+    durationFactor: 'عامل المدة',
+    drivers: 'أكبر المحركات',
+    positive: 'ضغط صعودي',
+    negative: 'ضغط هبوطي',
+    noDrivers: 'لا توجد صدمة مدخلة بعد.',
+    needPrice: 'أدخل سعراً مرجعياً صالحاً أو استخدم السعر السوقي المتاح لعرض السيناريوهات.',
+    methodology: 'منهجية واضحة',
+    methodologyBody: 'النموذج حساب حساسية ثابت وشفاف. الأوزان ليست توقعات ولا احتمالات، ولا يقرأ الأخبار ليستنتج إغلاقات أو حروباً. السعر الحي ـ إن توفر ـ يستخدم كنقطة بداية فقط، وكل باقي الافتراضات يحددها المستخدم.',
+    liveDataNote: 'أي سعر حي يعتمد على سلسلة مزودي THE SFM الحالية وقد يكون متأخراً. عند تعذر البيانات لا يتم اختلاق سعر بديل.',
+    reset: 'تصفير الافتراضات',
+    loadError: 'تعذر جلب سعر النفط حالياً. يمكنك إدخال سعر مرجعي يدوياً.',
+  },
+  en: {
+    back: 'Back to Global Markets',
+    eyebrow: 'SFM Oil Scenario Engine',
+    title: 'Oil Scenario Engine',
+    subtitle: 'Stress-test how shipping chokepoints, offline production, inventories, tankers, insurance, demand and rates could change price pressure. Outputs are sensitivity simulations, not price forecasts.',
+    benchmark: 'Benchmark',
+    brent: 'Brent',
+    wti: 'WTI',
+    referencePrice: 'Reference price',
+    liveQuote: 'Available market quote',
+    useLive: 'Use market quote',
+    refresh: 'Refresh quote',
+    unavailable: 'Unavailable',
+    delayed: 'Delayed / reference',
+    source: 'Source',
+    updated: 'Last updated',
+    assumptions: 'Scenario assumptions',
+    assumptionsHint: 'Start from zero and change only the factors you want to test. The engine never assumes a closure or production outage on its own.',
+    hormuz: 'Hormuz transit disruption',
+    bab: 'Bab el-Mandeb disruption',
+    offline: 'Offline production',
+    spare: 'Spare capacity response',
+    stocks: 'Inventory release',
+    tankers: 'Tanker disruption / shortage',
+    insurance: 'Freight & insurance increase',
+    demand: 'Demand change',
+    rates: 'Policy-rate pressure change',
+    duration: 'Shock duration',
+    mbd: 'mb/d',
+    bps: 'bps',
+    days: 'days',
+    results: 'Scenario bands',
+    resultsHint: 'Three sensitivity levels are shown for the same assumptions instead of one price claim.',
+    lower: 'Lower sensitivity',
+    central: 'Central sensitivity',
+    higher: 'Higher sensitivity',
+    midpoint: 'Midpoint',
+    band: 'Illustrative band',
+    modeledChange: 'Modeled change',
+    pressure: 'Central model pressure',
+    durationFactor: 'Duration factor',
+    drivers: 'Largest drivers',
+    positive: 'Upward pressure',
+    negative: 'Downward pressure',
+    noDrivers: 'No shock assumptions entered yet.',
+    needPrice: 'Enter a valid reference price or use an available market quote to display scenarios.',
+    methodology: 'Transparent methodology',
+    methodologyBody: 'This is a fixed, transparent sensitivity model. Its weights are not forecasts or probabilities, and it does not read headlines to infer closures or wars. A live quote, when available, is only the starting point; every other assumption is controlled by the user.',
+    liveDataNote: 'Any live quote depends on THE SFM’s current provider chain and may be delayed. If data is unavailable, no replacement price is fabricated.',
+    reset: 'Reset assumptions',
+    loadError: 'The oil quote is unavailable right now. You can enter a reference price manually.',
+  },
+  fr: {
+    back: 'Retour au Centre des marchés mondiaux',
+    eyebrow: 'SFM Oil Scenario Engine',
+    title: 'Moteur de scénarios pétroliers',
+    subtitle: 'Testez la sensibilité du prix aux détroits, à la production indisponible, aux stocks, aux navires, à l’assurance, à la demande et aux taux. Les résultats sont des simulations de sensibilité, pas des prévisions.',
+    benchmark: 'Référence',
+    brent: 'Brent',
+    wti: 'WTI',
+    referencePrice: 'Prix de référence',
+    liveQuote: 'Cours de marché disponible',
+    useLive: 'Utiliser le cours',
+    refresh: 'Actualiser',
+    unavailable: 'Indisponible',
+    delayed: 'Différé / référence',
+    source: 'Source',
+    updated: 'Dernière mise à jour',
+    assumptions: 'Hypothèses du scénario',
+    assumptionsHint: 'Partez de zéro et modifiez uniquement les facteurs à tester. Le moteur ne suppose jamais de fermeture ou d’arrêt de production de lui-même.',
+    hormuz: 'Perturbation du détroit d’Ormuz',
+    bab: 'Perturbation de Bab el-Mandeb',
+    offline: 'Production indisponible',
+    spare: 'Réponse de capacité disponible',
+    stocks: 'Libération de stocks',
+    tankers: 'Perturbation / pénurie de navires',
+    insurance: 'Hausse fret et assurance',
+    demand: 'Variation de la demande',
+    rates: 'Variation de la pression des taux',
+    duration: 'Durée du choc',
+    mbd: 'Mb/j',
+    bps: 'pb',
+    days: 'jours',
+    results: 'Bandes de scénario',
+    resultsHint: 'Trois niveaux de sensibilité sont affichés pour les mêmes hypothèses au lieu d’un prix unique.',
+    lower: 'Sensibilité faible',
+    central: 'Sensibilité centrale',
+    higher: 'Sensibilité élevée',
+    midpoint: 'Point médian',
+    band: 'Bande illustrative',
+    modeledChange: 'Variation modélisée',
+    pressure: 'Pression centrale du modèle',
+    durationFactor: 'Facteur de durée',
+    drivers: 'Principaux facteurs',
+    positive: 'Pression haussière',
+    negative: 'Pression baissière',
+    noDrivers: 'Aucune hypothèse de choc saisie.',
+    needPrice: 'Saisissez un prix de référence valide ou utilisez un cours disponible.',
+    methodology: 'Méthodologie transparente',
+    methodologyBody: 'Il s’agit d’un modèle de sensibilité fixe et transparent. Ses pondérations ne sont ni des prévisions ni des probabilités, et il n’interprète pas les actualités pour supposer des fermetures ou des guerres. Le cours de marché sert uniquement de point de départ.',
+    liveDataNote: 'Tout cours de marché dépend de la chaîne actuelle de fournisseurs THE SFM et peut être différé. Aucune valeur de remplacement n’est inventée en cas d’indisponibilité.',
+    reset: 'Réinitialiser les hypothèses',
+    loadError: 'Le cours du pétrole est indisponible pour le moment. Vous pouvez saisir un prix manuellement.',
+  },
+} as const;
+
+const CONTROL_DEFINITIONS: Array<{
+  key: Exclude<keyof OilScenarioInput, 'referencePrice'>;
+  label: 'hormuz' | 'bab' | 'offline' | 'spare' | 'stocks' | 'tankers' | 'insurance' | 'demand' | 'rates' | 'duration';
+  unit: '%' | 'mbd' | 'bps' | 'days';
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: 'hormuzDisruptionPct', label: 'hormuz', unit: '%', min: 0, max: 100, step: 1 },
+  { key: 'babElMandebDisruptionPct', label: 'bab', unit: '%', min: 0, max: 100, step: 1 },
+  { key: 'offlineProductionMbd', label: 'offline', unit: 'mbd', min: 0, max: 20, step: 0.1 },
+  { key: 'spareCapacityResponseMbd', label: 'spare', unit: 'mbd', min: 0, max: 15, step: 0.1 },
+  { key: 'stockReleaseMbd', label: 'stocks', unit: 'mbd', min: 0, max: 15, step: 0.1 },
+  { key: 'tankerDisruptionPct', label: 'tankers', unit: '%', min: 0, max: 100, step: 1 },
+  { key: 'freightInsurancePremiumPct', label: 'insurance', unit: '%', min: 0, max: 300, step: 5 },
+  { key: 'demandChangePct', label: 'demand', unit: '%', min: -15, max: 15, step: 0.1 },
+  { key: 'policyRateChangeBps', label: 'rates', unit: 'bps', min: -500, max: 1000, step: 25 },
+  { key: 'durationDays', label: 'duration', unit: 'days', min: 1, max: 365, step: 1 },
+];
+
+const DRIVER_LABELS: Record<OilScenarioDriverKey, keyof typeof COPY.ar> = {
+  hormuz: 'hormuz',
+  babElMandeb: 'bab',
+  offlineProduction: 'offline',
+  spareCapacity: 'spare',
+  stockRelease: 'stocks',
+  tankers: 'tankers',
+  freightInsurance: 'insurance',
+  demand: 'demand',
+  rates: 'rates',
+};
+
+const SCENARIO_LABELS: Record<OilScenarioId, 'lower' | 'central' | 'higher'> = {
+  lower: 'lower',
+  central: 'central',
+  higher: 'higher',
+};
+
+function number(value: number, digits = 1) {
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(value);
+}
+
+function money(value: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value);
+}
+
+function signed(value: number) {
+  return (value > 0 ? '+' : '') + number(value, 1) + '%';
+}
+
+function formatTime(value: string | null, lang: string) {
+  if (!value || !Number.isFinite(Date.parse(value))) return '—';
+  const locale = lang === 'fr' ? 'fr-FR-u-nu-latn' : lang === 'ar' ? 'ar-KW-u-nu-latn' : 'en-US';
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
+export function OilScenarioEngine() {
+  const { lang, dir } = useLanguage();
+  const locale = lang === 'en' || lang === 'fr' ? lang : 'ar';
+  const c = COPY[locale];
+  const [benchmark, setBenchmark] = useState<Benchmark>('brent');
+  const [input, setInput] = useState<OilScenarioInput>(DEFAULT_OIL_SCENARIO_INPUT);
+  const [quotes, setQuotes] = useState<Partial<Record<Benchmark, EnergyQuote>>>({});
+  const [quoteSource, setQuoteSource] = useState('');
+  const [loadingQuote, setLoadingQuote] = useState(true);
+  const [quoteError, setQuoteError] = useState(false);
+
+  async function loadQuotes(syncReference = false) {
+    setLoadingQuote(true);
+    setQuoteError(false);
+    try {
+      const response = await fetch('/api/market/energy/commodities');
+      const payload = await response.json() as EnergyResponse;
+      if (!response.ok || !payload.ok) throw new Error('oil_quote_unavailable');
+      const brent = payload.items?.find(item => item.category === 'brent' && item.available && item.price);
+      const wti = payload.items?.find(item => item.category === 'wti' && item.available && item.price);
+      const nextQuotes: Partial<Record<Benchmark, EnergyQuote>> = {};
+      if (brent) nextQuotes.brent = brent;
+      if (wti) nextQuotes.wti = wti;
+      setQuotes(nextQuotes);
+      setQuoteSource(payload.source ?? '');
+      const selected = nextQuotes[benchmark];
+      if (selected?.price && (syncReference || input.referencePrice <= 0)) {
+        setInput(current => ({ ...current, referencePrice: selected.price ?? current.referencePrice }));
+      }
+    } catch {
+      setQuoteError(true);
+    } finally {
+      setLoadingQuote(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadQuotes(false);
+    // Initial market quote only. Manual assumptions must not be overwritten by background changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectedQuote = quotes[benchmark];
+  const result = useMemo(
+    () => input.referencePrice > 0 ? calculateOilScenario(input) : null,
+    [input],
+  );
+  const activeDrivers = result?.drivers.filter(driver => Math.abs(driver.contributionPct) >= 0.05).slice(0, 7) ?? [];
+
+  function setBenchmarkAndSync(next: Benchmark) {
+    setBenchmark(next);
+    const quote = quotes[next];
+    if (quote?.price) setInput(current => ({ ...current, referencePrice: quote.price ?? current.referencePrice }));
+  }
+
+  function setField(key: keyof OilScenarioInput, value: number) {
+    setInput(current => ({ ...current, [key]: Number.isFinite(value) ? value : 0 }));
+  }
+
+  function resetAssumptions() {
+    setInput(current => ({
+      ...DEFAULT_OIL_SCENARIO_INPUT,
+      referencePrice: current.referencePrice,
+    }));
+  }
+
+  return (
+    <div className={styles.shell} dir={dir}>
+      <WorkspacePageContainer as="main" variant="wide" className={styles.main}>
+        <Link href="/global-markets" className={styles.back}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          <span>{c.back}</span>
+        </Link>
+
+        <header className={styles.header}>
+          <div className={styles.heroIcon} aria-hidden="true"><Droplets size={28} /></div>
+          <div>
+            <p className={styles.eyebrow}>{c.eyebrow}</p>
+            <h1>{c.title}</h1>
+            <p className={styles.subtitle}>{c.subtitle}</p>
+          </div>
+        </header>
+
+        <section className={styles.quotePanel} aria-label={c.referencePrice}>
+          <div className={styles.benchmarkBlock}>
+            <span>{c.benchmark}</span>
+            <div className={styles.segmented} role="group" aria-label={c.benchmark}>
+              <button type="button" aria-pressed={benchmark === 'brent'} onClick={() => setBenchmarkAndSync('brent')}>{c.brent}</button>
+              <button type="button" aria-pressed={benchmark === 'wti'} onClick={() => setBenchmarkAndSync('wti')}>{c.wti}</button>
+            </div>
+          </div>
+
+          <label className={styles.priceInput}>
+            <span>{c.referencePrice}</span>
+            <div><span aria-hidden="true">$</span><input type="number" min="0.01" max="500" step="0.01" value={input.referencePrice || ''} onChange={event => setField('referencePrice', Number(event.target.value))} /></div>
+          </label>
+
+          <div className={styles.marketQuote}>
+            <span>{c.liveQuote}</span>
+            <strong dir="ltr">{selectedQuote?.price ? money(selectedQuote.price) : c.unavailable}</strong>
+            <small>{selectedQuote?.delayed ? c.delayed : ''}</small>
+          </div>
+
+          <div className={styles.quoteActions}>
+            <button type="button" disabled={!selectedQuote?.price} onClick={() => selectedQuote?.price && setField('referencePrice', selectedQuote.price)}>
+              <Gauge size={16} aria-hidden="true" />{c.useLive}
+            </button>
+            <button type="button" disabled={loadingQuote} onClick={() => void loadQuotes(true)}>
+              <RefreshCcw size={16} aria-hidden="true" className={loadingQuote ? styles.spinning : ''} />{c.refresh}
+            </button>
+          </div>
+
+          <div className={styles.quoteMeta}>
+            <span>{c.source}: {selectedQuote?.source || quoteSource || '—'}</span>
+            <span>{c.updated}: {formatTime(selectedQuote?.lastUpdated ?? null, locale)}</span>
+          </div>
+          {quoteError ? <p className={styles.quoteError}><CircleAlert size={15} aria-hidden="true" />{c.loadError}</p> : null}
+        </section>
+
+        <section className={styles.workspace}>
+          <div className={styles.controlsPanel}>
+            <div className={styles.sectionHead}>
+              <div><h2>{c.assumptions}</h2><p>{c.assumptionsHint}</p></div>
+              <button type="button" onClick={resetAssumptions}>{c.reset}</button>
+            </div>
+            <div className={styles.controlsGrid}>
+              {CONTROL_DEFINITIONS.map(control => {
+                const value = input[control.key];
+                const unit = control.unit === 'mbd' ? c.mbd : control.unit === 'bps' ? c.bps : control.unit === 'days' ? c.days : '%';
+                return (
+                  <label key={control.key} className={styles.control}>
+                    <div><span>{c[control.label]}</span><output dir="ltr">{number(value, control.step < 1 ? 1 : 0)} {unit}</output></div>
+                    <input
+                      type="range"
+                      min={control.min}
+                      max={control.max}
+                      step={control.step}
+                      value={value}
+                      onChange={event => setField(control.key, Number(event.target.value))}
+                    />
+                    <input
+                      className={styles.numberInput}
+                      type="number"
+                      min={control.min}
+                      max={control.max}
+                      step={control.step}
+                      value={value}
+                      onChange={event => setField(control.key, Number(event.target.value))}
+                      aria-label={c[control.label]}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <aside className={styles.resultsPanel}>
+            <div className={styles.sectionHead}>
+              <div><h2>{c.results}</h2><p>{c.resultsHint}</p></div>
+            </div>
+            {!result ? (
+              <div className={styles.emptyResult}><CircleAlert size={18} aria-hidden="true" /><p>{c.needPrice}</p></div>
+            ) : (
+              <>
+                <div className={styles.modelStats}>
+                  <div><span>{c.pressure}</span><strong dir="ltr" className={result.centralImpactPct >= 0 ? styles.up : styles.down}>{signed(result.centralImpactPct)}</strong></div>
+                  <div><span>{c.durationFactor}</span><strong dir="ltr">{number(result.durationFactor, 2)}×</strong></div>
+                </div>
+                <div className={styles.scenarioList}>
+                  {result.scenarios.map(scenario => (
+                    <article key={scenario.id} className={styles.scenarioCard}>
+                      <div className={styles.scenarioTitle}>
+                        <span>{SCENARIO_LABELS[scenario.id] === 'lower' ? <TrendingDown size={16} aria-hidden="true" /> : <TrendingUp size={16} aria-hidden="true" />}</span>
+                        <strong>{c[SCENARIO_LABELS[scenario.id]]}</strong>
+                      </div>
+                      <div className={styles.midpoint}><span>{c.midpoint}</span><strong dir="ltr">{money(scenario.priceMid)}</strong></div>
+                      <dl>
+                        <div><dt>{c.band}</dt><dd dir="ltr">{money(scenario.priceLow)} – {money(scenario.priceHigh)}</dd></div>
+                        <div><dt>{c.modeledChange}</dt><dd dir="ltr" className={scenario.modeledChangePct >= 0 ? styles.up : styles.down}>{signed(scenario.modeledChangePct)}</dd></div>
+                      </dl>
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+          </aside>
+        </section>
+
+        <section className={styles.driversPanel}>
+          <div className={styles.sectionHead}><div><h2>{c.drivers}</h2></div></div>
+          {activeDrivers.length ? (
+            <div className={styles.driversGrid}>
+              {activeDrivers.map(driver => (
+                <div key={driver.key} className={styles.driver}>
+                  <span>{c[DRIVER_LABELS[driver.key]]}</span>
+                  <strong dir="ltr" className={driver.contributionPct >= 0 ? styles.up : styles.down}>{signed(driver.contributionPct)}</strong>
+                  <small>{driver.contributionPct >= 0 ? c.positive : c.negative}</small>
+                </div>
+              ))}
+            </div>
+          ) : <p className={styles.noDrivers}>{c.noDrivers}</p>}
+        </section>
+
+        <section className={styles.disclosure}>
+          <ShieldCheck size={20} aria-hidden="true" />
+          <div><h2>{c.methodology}</h2><p>{c.methodologyBody}</p><p>{c.liveDataNote}</p></div>
+        </section>
+      </WorkspacePageContainer>
+    </div>
+  );
+}
+
+export default OilScenarioEngine;
