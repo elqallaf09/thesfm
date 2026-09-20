@@ -123,6 +123,23 @@ describe('oil scenario engine', () => {
     expect(result.equivalents.find(item => item.key === 'hormuz')?.insideConfiguredRange).toBe(false);
   });
 
+  it('shows that a $200 target from a $100 reference may require combined shocks rather than one configured lever', () => {
+    const result = calculateOilTargetStress({
+      ...DEFAULT_OIL_SCENARIO_INPUT,
+      referencePrice: 100,
+    }, 200, {
+      hormuzReferenceMbd: 4.9,
+      babElMandebReferenceMbd: 8.1,
+      sourceLabel: 'EIA',
+      referencePeriod: '2Q26',
+    });
+
+    expect(result.requiredImpactPct).toBe(100);
+    expect(result.modelReachable).toBe(true);
+    const upward = new Set(['hormuz', 'babElMandeb', 'offlineProduction', 'tankers', 'freightInsurance', 'demand']);
+    expect(result.equivalents.filter(item => upward.has(item.key)).some(item => item.insideConfiguredRange)).toBe(false);
+  });
+
   it('marks targets beyond the central model impact cap as outside the configured model', () => {
     const result = calculateOilTargetStress({
       ...DEFAULT_OIL_SCENARIO_INPUT,
