@@ -206,6 +206,9 @@ const COPY = {
     decisionAdjust: 'تعديل إنتاج مذكور',
     decisionUnknown: 'لا يوجد اتجاه رقمي صريح',
     scenarioMath: 'حساب من خط الأساس فقط',
+    modelBasis: 'أساس حساب الممرات',
+    officialFlowBasis: 'تدفق EIA الرسمي',
+    proxyBasis: 'حساسية نسبية عند غياب خط الأساس',
   },
   en: {
     back: 'Back to Global Markets',
@@ -288,6 +291,9 @@ const COPY = {
     decisionAdjust: 'Production adjustment stated',
     decisionUnknown: 'No explicit numerical direction',
     scenarioMath: 'Baseline arithmetic only',
+    modelBasis: 'Chokepoint model basis',
+    officialFlowBasis: 'Official EIA flow',
+    proxyBasis: 'Percentage proxy when baseline is unavailable',
   },
   fr: {
     back: 'Retour au Centre des marchés mondiaux',
@@ -370,6 +376,9 @@ const COPY = {
     decisionAdjust: 'Ajustement de production indiqué',
     decisionUnknown: 'Aucune direction chiffrée explicite',
     scenarioMath: 'Calcul à partir de la référence uniquement',
+    modelBasis: 'Base du modèle des détroits',
+    officialFlowBasis: 'Flux officiel EIA',
+    proxyBasis: 'Sensibilité en pourcentage si la référence est indisponible',
   },
 } as const;
 
@@ -538,9 +547,15 @@ export function OilScenarioEngine() {
   }, []);
 
   const selectedQuote = quotes[benchmark];
+  const scenarioContext = useMemo(() => intelligence?.chokepoints ? {
+    hormuzReferenceMbd: intelligence.chokepoints.hormuz.millionBarrelsPerDay,
+    babElMandebReferenceMbd: intelligence.chokepoints.babElMandeb.millionBarrelsPerDay,
+    sourceLabel: intelligence.chokepoints.source,
+    referencePeriod: intelligence.chokepoints.hormuz.period,
+  } : undefined, [intelligence?.chokepoints]);
   const result = useMemo(
-    () => input.referencePrice > 0 ? calculateOilScenario(input) : null,
-    [input],
+    () => input.referencePrice > 0 ? calculateOilScenario(input, scenarioContext) : null,
+    [input, scenarioContext],
   );
   const activeDrivers = result?.drivers.filter(driver => Math.abs(driver.contributionPct) >= 0.05).slice(0, 7) ?? [];
 
@@ -786,6 +801,7 @@ export function OilScenarioEngine() {
                 <div className={styles.modelStats}>
                   <div><span>{c.pressure}</span><strong dir="ltr" className={result.centralImpactPct >= 0 ? styles.up : styles.down}>{signed(result.centralImpactPct)}</strong></div>
                   <div><span>{c.durationFactor}</span><strong dir="ltr">{number(result.durationFactor, 2)}×</strong></div>
+                  <div><span>{c.modelBasis}</span><strong>{result.context.mode === 'official_flow_baseline' ? c.officialFlowBasis : c.proxyBasis}</strong>{result.context.referencePeriod ? <small dir="ltr">{result.context.referencePeriod}</small> : null}</div>
                 </div>
                 <div className={styles.scenarioList}>
                   {result.scenarios.map(scenario => (
