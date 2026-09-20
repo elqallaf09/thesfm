@@ -4,10 +4,10 @@
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .header > div { min-width: 0; max-width: 58rem; }
 .back { display: inline-flex; align-items: center; gap: .4rem; color: var(--foreground-secondary); font-size: .84rem; font-weight: 700; text-decoration: none; }
-.eyebrow { display: flex; align-items: center; gap: .4rem; margin: .8rem 0 .35rem; color: var(--primary); font-size: .78rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.eyebrow { display: flex; align-items: center; gap: .4rem; margin: .8rem 0 .35rem; color: var(--primary); font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .header h1 { margin: 0; font-size: clamp(1.9rem, 3.2vw, 2.7rem); line-height: 1.1; }
 .header p:not(.eyebrow) { margin: .65rem 0 0; color: var(--foreground-secondary); line-height: 1.7; }
-.refresh, .primary, .secondary, .state button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: .45rem; border-radius: var(--radius-control); padding: .65rem .95rem; font: inherit; font-size: .88rem; font-weight: 750; cursor: pointer; }
+.refresh, .primary, .secondary, .state button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: .45rem; border-radius: var(--radius-control); padding: .65rem .95rem; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
 .refresh, .secondary { border: 1px solid var(--border-strong); background: var(--surface); color: var(--foreground); }
 .primary, .state button { border: 1px solid var(--primary); background: var(--primary); color: var(--primary-foreground); }
 .primary:disabled { opacity: .6; cursor: progress; }
