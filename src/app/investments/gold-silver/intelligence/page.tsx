@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { GoldScenarioEngine } from '@/components/gold-intelligence/GoldScenarioEngine';
-import { GoldResearchSearch } from '@/components/gold-intelligence/GoldResearchSearch';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function GoldScenarioIntelligencePage() {
-  return <><GoldScenarioEngine /><GoldResearchSearch /></>;
+  return <GoldScenarioEngine />;
 }
