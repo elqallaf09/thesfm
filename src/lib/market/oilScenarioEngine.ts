@@ -47,6 +47,33 @@ export type OilScenarioBand = {
   priceHigh: number;
 };
 
+export type OilTargetEquivalent = {
+  key: OilScenarioDriverKey;
+  currentValue: number;
+  requiredValue: number;
+  delta: number;
+  unit: 'pct' | 'mbd' | 'bps';
+  min: number;
+  max: number;
+  insideConfiguredRange: boolean;
+  impliedDisruptionMbd: number | null;
+};
+
+export type OilTargetStressResult = {
+  methodology: 'single_variable_reverse_sensitivity_v1';
+  referencePrice: number;
+  targetPrice: number;
+  currentCentralPrice: number;
+  currentImpactPct: number;
+  requiredImpactPct: number;
+  impactGapPct: number;
+  direction: 'up' | 'down' | 'flat';
+  modelReachable: boolean;
+  modelImpactBounds: { min: number; max: number };
+  context: OilScenarioResult['context'];
+  equivalents: OilTargetEquivalent[];
+};
+
 export type OilScenarioResult = {
   methodology: 'transparent_sensitivity_model_v2';
   input: OilScenarioInput;
@@ -210,5 +237,120 @@ export function calculateOilScenario(raw: OilScenarioInput, rawContext?: OilScen
     centralImpactPct: round(centralImpactPct),
     drivers,
     scenarios,
+  };
+}
+
+
+type TargetLeverSpec = {
+  key: OilScenarioDriverKey;
+  inputKey: keyof Pick<
+    OilScenarioInput,
+    | 'hormuzDisruptionPct'
+    | 'babElMandebDisruptionPct'
+    | 'offlineProductionMbd'
+    | 'spareCapacityResponseMbd'
+    | 'stockReleaseMbd'
+    | 'tankerDisruptionPct'
+    | 'freightInsurancePremiumPct'
+    | 'demandChangePct'
+    | 'policyRateChangeBps'
+  >;
+  unit: OilTargetEquivalent['unit'];
+  min: number;
+  max: number;
+  coefficient: number;
+  referenceVolumeMbd: number | null;
+};
+
+function targetLeverSpecs(result: OilScenarioResult): TargetLeverSpec[] {
+  const duration = result.durationFactor;
+  const hormuzReference = result.context.hormuzReferenceMbd;
+  const babReference = result.context.babElMandebReferenceMbd;
+  return [
+    {
+      key: 'hormuz',
+      inputKey: 'hormuzDisruptionPct',
+      unit: 'pct',
+      min: 0,
+      max: 100,
+      coefficient: duration * (hormuzReference === null ? 0.18 : hormuzReference * 2.8 / 100),
+      referenceVolumeMbd: hormuzReference,
+    },
+    {
+      key: 'babElMandeb',
+      inputKey: 'babElMandebDisruptionPct',
+      unit: 'pct',
+      min: 0,
+      max: 100,
+      coefficient: duration * (babReference === null ? 0.08 : babReference / 100),
+      referenceVolumeMbd: babReference,
+    },
+    { key: 'offlineProduction', inputKey: 'offlineProductionMbd', unit: 'mbd', min: 0, max: 20, coefficient: duration * 2.4, referenceVolumeMbd: null },
+    { key: 'spareCapacity', inputKey: 'spareCapacityResponseMbd', unit: 'mbd', min: 0, max: 15, coefficient: duration * -1.8, referenceVolumeMbd: null },
+    { key: 'stockRelease', inputKey: 'stockReleaseMbd', unit: 'mbd', min: 0, max: 15, coefficient: duration * -1.5, referenceVolumeMbd: null },
+    { key: 'tankers', inputKey: 'tankerDisruptionPct', unit: 'pct', min: 0, max: 100, coefficient: duration * 0.08, referenceVolumeMbd: null },
+    { key: 'freightInsurance', inputKey: 'freightInsurancePremiumPct', unit: 'pct', min: 0, max: 300, coefficient: duration * 0.025, referenceVolumeMbd: null },
+    { key: 'demand', inputKey: 'demandChangePct', unit: 'pct', min: -15, max: 15, coefficient: duration * 2, referenceVolumeMbd: null },
+    { key: 'rates', inputKey: 'policyRateChangeBps', unit: 'bps', min: -500, max: 1000, coefficient: duration * -0.003, referenceVolumeMbd: null },
+  ];
+}
+
+export function calculateOilTargetStress(
+  raw: OilScenarioInput,
+  targetPriceInput: number,
+  rawContext?: OilScenarioContext,
+): OilTargetStressResult {
+  const input = sanitizeOilScenarioInput(raw);
+  const scenario = calculateOilScenario(input, rawContext);
+  const referencePrice = Math.max(0.01, input.referencePrice);
+  const targetPrice = clamp(finite(targetPriceInput, referencePrice), 0.01, 2_000);
+  const requiredImpactPct = ((targetPrice / referencePrice) - 1) * 100;
+  const currentImpactPct = scenario.centralImpactPct;
+  const impactGapPct = requiredImpactPct - currentImpactPct;
+  const rawImpact = scenario.drivers.reduce((sum, driver) => sum + driver.contributionPct, 0);
+  const driverContribution = new Map(scenario.drivers.map(driver => [driver.key, driver.contributionPct]));
+  const modelReachable = requiredImpactPct >= -55 && requiredImpactPct <= 135;
+
+  const equivalents = targetLeverSpecs(scenario).map(spec => {
+    const currentValue = input[spec.inputKey];
+    const currentContribution = driverContribution.get(spec.key) ?? 0;
+    const otherContribution = rawImpact - currentContribution;
+    const requiredValue = spec.coefficient === 0
+      ? Number.NaN
+      : (requiredImpactPct - otherContribution) / spec.coefficient;
+    const insideConfiguredRange = modelReachable
+      && Number.isFinite(requiredValue)
+      && requiredValue >= spec.min
+      && requiredValue <= spec.max;
+    const impliedDisruptionMbd = spec.referenceVolumeMbd !== null && Number.isFinite(requiredValue)
+      ? spec.referenceVolumeMbd * requiredValue / 100
+      : null;
+
+    return {
+      key: spec.key,
+      currentValue: round(currentValue, 3),
+      requiredValue: round(requiredValue, 3),
+      delta: round(requiredValue - currentValue, 3),
+      unit: spec.unit,
+      min: spec.min,
+      max: spec.max,
+      insideConfiguredRange,
+      impliedDisruptionMbd: impliedDisruptionMbd === null ? null : round(impliedDisruptionMbd, 3),
+    };
+  });
+
+  return {
+    methodology: 'single_variable_reverse_sensitivity_v1',
+    referencePrice,
+    targetPrice: round(targetPrice),
+    currentCentralPrice: round(priceFromImpact(referencePrice, currentImpactPct)),
+    currentImpactPct: round(currentImpactPct),
+    requiredImpactPct: round(requiredImpactPct),
+    impactGapPct: round(impactGapPct),
+    direction: Math.abs(impactGapPct) < 0.05 ? 'flat' : impactGapPct > 0 ? 'up' : 'down',
+    modelReachable,
+    modelImpactBounds: { min: -55, max: 135 },
+    context: scenario.context,
+    equivalents,
   };
 }
