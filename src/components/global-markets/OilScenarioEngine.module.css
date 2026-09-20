@@ -84,7 +84,22 @@
 .inventoryStrip > div { display: grid; gap: .2rem; }
 .inventoryStrip span { color: var(--foreground-muted); font-size: .73rem; }
 .inventoryStrip strong { font-size: .9rem; }
-.inventoryStrip a, .evidenceCard a { color: var(--primary); font-size: .76rem; font-weight: 700; text-decoration: none; }
+.inventoryStrip a, .evidenceCard a, .officialCard a { color: var(--primary); font-size: .76rem; font-weight: 700; text-decoration: none; }
+.officialGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.officialCard { display: grid; align-content: start; gap: .6rem; min-width: 0; border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: var(--radius-card); padding: .75rem; background: color-mix(in srgb, var(--primary-soft) 24%, var(--surface)); }
+.officialCard > div:first-child { display: flex; align-items: flex-start; justify-content: space-between; gap: .7rem; }
+.officialCard > div:first-child strong { font-size: .84rem; }
+.officialCard > div:first-child small { color: var(--foreground-muted); font-size: .69rem; text-align: end; }
+.officialCard > p { margin: 0; color: var(--foreground-secondary); font-size: .76rem; line-height: 1.45; }
+.officialCard dl { display: grid; gap: .35rem; margin: 0; }
+.officialCard dl > div { display: flex; align-items: baseline; justify-content: space-between; gap: .7rem; border-top: 1px solid var(--border); padding-top: .35rem; }
+.officialCard dt { color: var(--foreground-muted); font-size: .7rem; }
+.officialCard dd { margin: 0; color: var(--foreground-secondary); font-size: .75rem; font-weight: 650; text-align: end; }
+.controlEvidence { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem .6rem; border-top: 1px solid var(--border); padding-top: .45rem; color: var(--foreground-muted); font-size: .68rem; font-style: normal; line-height: 1.35; }
+.controlEvidence span { min-width: 0; }
+.controlEvidence b { color: var(--foreground-secondary); font-weight: 700; }
+.controlEvidence em { grid-column: 1 / -1; color: var(--foreground-muted); font-size: .64rem; font-style: normal; }
+
 .evidenceGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
 .evidenceCard { display: grid; align-content: start; gap: .55rem; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); padding: .75rem; background: var(--background); }
 .evidenceCardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
@@ -108,7 +123,7 @@
   .quotePanel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .workspace { grid-template-columns: minmax(0, 1fr); }
   .resultsPanel { position: static; }
-  .driversGrid, .evidenceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .driversGrid, .evidenceGrid, .officialGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .coverageGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
@@ -116,13 +131,15 @@
   .header { grid-template-columns: minmax(0, 1fr); }
   .heroIcon { width: 2.6rem; height: 2.6rem; }
   .quotePanel, .evidencePanel, .controlsPanel, .resultsPanel, .driversPanel, .disclosure { padding: .8rem; }
-  .quotePanel, .controlsGrid, .driversGrid, .evidenceGrid, .coverageGrid { grid-template-columns: minmax(0, 1fr); }
+  .quotePanel, .controlsGrid, .driversGrid, .evidenceGrid, .coverageGrid, .officialGrid { grid-template-columns: minmax(0, 1fr); }
   .quoteActions { justify-content: stretch; }
   .quoteActions button { flex: 1 1 9rem; }
   .quoteMeta, .quoteError { grid-column: auto; }
   .sectionHead { align-items: stretch; flex-direction: column; }
   .sectionHead button { width: 100%; }
   .control { grid-template-columns: minmax(0, 1fr) 5rem; }
+  .controlEvidence { grid-template-columns: minmax(0, 1fr); }
+  .controlEvidence em { grid-column: auto; }
   .modelStats { grid-template-columns: minmax(0, 1fr); }
   .evidenceHeader { align-items: stretch; flex-direction: column; }
   .evidenceHeader button { width: 100%; }
