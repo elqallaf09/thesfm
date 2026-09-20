@@ -19,7 +19,7 @@ function addUtcDays(date: Date, days: number) {
   return next;
 }
 
-function compactQuote(value: Awaited<ReturnType<typeof fetchStockPrices>> extends Map<string, infer T> ? T : never) {
+function compactQuote(value: unknown) {
   if (!value || typeof value !== 'object') return null;
   const quote = value as {
     symbol?: string;
