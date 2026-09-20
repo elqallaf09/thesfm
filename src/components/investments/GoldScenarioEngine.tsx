@@ -165,7 +165,7 @@ const EMPTY_FORM = {
   oilPct: '',
   policyRateBps: '',
   inflationSurprisePct: '',
-  geopoliticalRisk: '0',
+  geopoliticalRisk: '',
 };
 
 type FormState = typeof EMPTY_FORM;
@@ -176,7 +176,12 @@ function toPayload(form: FormState): GoldWhatIfInput {
     const raw = form[key].trim();
     if (!raw) return;
     const value = Number(raw);
-    if (Number.isFinite(value)) result[key] = value;
+    if (!Number.isFinite(value)) return;
+    if (key === 'dollarIndexPct') result.dollarIndexPct = value;
+    if (key === 'oilPct') result.oilPct = value;
+    if (key === 'policyRateBps') result.policyRateBps = value;
+    if (key === 'inflationSurprisePct') result.inflationSurprisePct = value;
+    if (key === 'geopoliticalRisk') result.geopoliticalRisk = value;
   });
   return result;
 }
@@ -243,7 +248,7 @@ export function GoldScenarioEngine() {
   }
 
   function preset(values: Partial<FormState>) {
-    setForm(current => ({ ...EMPTY_FORM, ...current, ...values }));
+    setForm({ ...EMPTY_FORM, ...values });
   }
 
   if (loading && !snapshot) {
