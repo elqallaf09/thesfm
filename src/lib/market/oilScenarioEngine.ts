@@ -59,6 +59,30 @@ export type OilTargetEquivalent = {
   impliedDisruptionMbd: number | null;
 };
 
+export type OilTargetBasketItem = {
+  key: OilScenarioDriverKey;
+  currentValue: number;
+  requiredValue: number;
+  delta: number;
+  unit: OilTargetEquivalent['unit'];
+  contributionDeltaPct: number;
+  rangeUtilizationPct: number;
+  impliedDisruptionMbd: number | null;
+};
+
+export type OilTargetBasketResult = {
+  methodology: 'equal_remaining_range_utilization_v1';
+  targetPrice: number;
+  direction: 'up' | 'down' | 'flat';
+  targetReachableWithBasket: boolean;
+  requiredGapPct: number;
+  availableDirectionalHeadroomPct: number;
+  appliedRangeUtilizationPct: number;
+  achievedCentralPrice: number;
+  fullRangeCentralPrice: number;
+  items: OilTargetBasketItem[];
+};
+
 export type OilTargetStressResult = {
   methodology: 'single_variable_reverse_sensitivity_v1';
   referencePrice: number;
@@ -352,5 +376,95 @@ export function calculateOilTargetStress(
     modelImpactBounds: { min: -55, max: 135 },
     context: scenario.context,
     equivalents,
+  };
+}
+
+
+export function calculateOilBalancedTargetBasket(
+  raw: OilScenarioInput,
+  targetPriceInput: number,
+  rawContext?: OilScenarioContext,
+): OilTargetBasketResult {
+  const input = sanitizeOilScenarioInput(raw);
+  const scenario = calculateOilScenario(input, rawContext);
+  const target = calculateOilTargetStress(input, targetPriceInput, rawContext);
+  const direction = target.direction;
+
+  if (direction === 'flat') {
+    return {
+      methodology: 'equal_remaining_range_utilization_v1',
+      targetPrice: target.targetPrice,
+      direction,
+      targetReachableWithBasket: true,
+      requiredGapPct: 0,
+      availableDirectionalHeadroomPct: 0,
+      appliedRangeUtilizationPct: 0,
+      achievedCentralPrice: target.currentCentralPrice,
+      fullRangeCentralPrice: target.currentCentralPrice,
+      items: [],
+    };
+  }
+
+  const directionSign = direction === 'up' ? 1 : -1;
+  const specs = targetLeverSpecs(scenario);
+  const candidates = specs.flatMap(spec => {
+    const currentValue = input[spec.inputKey];
+    const extreme = direction === 'up'
+      ? spec.coefficient >= 0 ? spec.max : spec.min
+      : spec.coefficient >= 0 ? spec.min : spec.max;
+    const fullContributionDelta = (extreme - currentValue) * spec.coefficient;
+    const directionalHeadroom = fullContributionDelta * directionSign;
+    if (!Number.isFinite(directionalHeadroom) || directionalHeadroom <= 0.0001) return [];
+    return [{
+      spec,
+      currentValue,
+      extreme,
+      fullContributionDelta,
+      directionalHeadroom,
+    }];
+  });
+
+  const availableDirectionalHeadroomPct = candidates.reduce((sum, item) => sum + item.directionalHeadroom, 0);
+  const requiredGapPct = Math.abs(target.impactGapPct);
+  const rawUtilization = availableDirectionalHeadroomPct > 0 ? requiredGapPct / availableDirectionalHeadroomPct : Number.POSITIVE_INFINITY;
+  const appliedUtilization = Math.min(1, Math.max(0, rawUtilization));
+  const targetReachableWithBasket = target.modelReachable
+    && Number.isFinite(rawUtilization)
+    && rawUtilization <= 1 + 0.0001;
+
+  const items: OilTargetBasketItem[] = candidates.map(({ spec, currentValue, extreme, fullContributionDelta }) => {
+    const requiredValue = currentValue + (extreme - currentValue) * appliedUtilization;
+    const contributionDeltaPct = fullContributionDelta * appliedUtilization;
+    const impliedDisruptionMbd = spec.referenceVolumeMbd !== null
+      ? spec.referenceVolumeMbd * requiredValue / 100
+      : null;
+    return {
+      key: spec.key,
+      currentValue: round(currentValue, 3),
+      requiredValue: round(requiredValue, 3),
+      delta: round(requiredValue - currentValue, 3),
+      unit: spec.unit,
+      contributionDeltaPct: round(contributionDeltaPct),
+      rangeUtilizationPct: round(appliedUtilization * 100, 1),
+      impliedDisruptionMbd: impliedDisruptionMbd === null ? null : round(impliedDisruptionMbd, 3),
+    };
+  });
+
+  const appliedImpact = items.reduce((sum, item) => sum + item.contributionDeltaPct, 0);
+  const fullImpact = candidates.reduce((sum, item) => sum + item.fullContributionDelta, 0);
+  const achievedImpactPct = clamp(scenario.centralImpactPct + appliedImpact, -55, 135);
+  const fullRangeImpactPct = clamp(scenario.centralImpactPct + fullImpact, -55, 135);
+
+  return {
+    methodology: 'equal_remaining_range_utilization_v1',
+    targetPrice: target.targetPrice,
+    direction,
+    targetReachableWithBasket,
+    requiredGapPct: round(requiredGapPct),
+    availableDirectionalHeadroomPct: round(availableDirectionalHeadroomPct),
+    appliedRangeUtilizationPct: round(appliedUtilization * 100, 1),
+    achievedCentralPrice: round(priceFromImpact(target.referencePrice, achievedImpactPct)),
+    fullRangeCentralPrice: round(priceFromImpact(target.referencePrice, fullRangeImpactPct)),
+    items,
   };
 }
