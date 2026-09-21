@@ -11,7 +11,7 @@ import {
   FileText,
   FolderKanban,
   HandHeart,
-  Instagram,
+  Camera as Instagram,
   LineChart,
   LockKeyhole,
   Menu,
