@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CircleAlert, EqualApproximately, Target, TrendingDown, TrendingUp } from 'lucide-react';
+import { CircleAlert, Minus, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import {
   calculateOilBalancedTargetBasket,
   calculateOilTargetStress,
@@ -262,7 +262,7 @@ export function OilTargetStressTest({
         </label>
         {result ? (
           <div className={styles.direction}>
-            {result.direction === 'up' ? <TrendingUp size={18} aria-hidden="true" /> : result.direction === 'down' ? <TrendingDown size={18} aria-hidden="true" /> : <EqualApproximately size={18} aria-hidden="true" />}
+            {result.direction === 'up' ? <TrendingUp size={18} aria-hidden="true" /> : result.direction === 'down' ? <TrendingDown size={18} aria-hidden="true" /> : <Minus size={18} aria-hidden="true" />}
             <strong>{result.direction === 'up' ? copy.up : result.direction === 'down' ? copy.down : copy.flat}</strong>
           </div>
         ) : null}
