@@ -76,12 +76,14 @@ export async function ensureReleasePreview({ github, context, core, env = proces
   }
   if (until) throw new Error('Deployment lookup was incomplete; refusing to create a possible duplicate.');
   const candidates = found.filter(item => item.meta?.githubCommitSha === sha && item.target !== 'production');
-  if (candidates.some(item => item.meta?.sfmPreviewRef !== ref || item.meta?.sfmPreviewVersion !== '1')) {
-    throw new Error('An existing Preview lacks verified isolation metadata; inspect it before proceeding.');
+  const verifiedCandidates = candidates.filter(item => item.meta?.sfmPreviewRef === ref && item.meta?.sfmPreviewVersion === '1');
+  const unverifiedCount = candidates.length - verifiedCandidates.length;
+  if (unverifiedCount > 0) {
+    core.info(`Ignoring ${unverifiedCount} automatic Preview deployment(s) without verified SFM isolation metadata; they will never be reused for authenticated release validation.`);
   }
   let deployment;
-  if (candidates.length) {
-    const candidate = candidates.sort((a, b) => b.created - a.created)[0];
+  if (verifiedCandidates.length) {
+    const candidate = verifiedCandidates.sort((a, b) => b.created - a.created)[0];
     if (!/^dpl_[A-Za-z0-9]+$/.test(candidate.uid ?? candidate.id ?? '')) throw new Error('Invalid deployment identifier.');
     deployment = await request(`/v13/deployments/${candidate.uid ?? candidate.id}`);
     if (configureOnly) return;

@@ -12,11 +12,21 @@ export function usePrivateResource<T>(load: (userId: string) => Promise<T>) {
     const ticket = ++generation.current;
     if (!userId) { setState({ loading: false, error: false }); return; }
     setState({ owner: userId, loading: true, error: false });
-    try {
-      const data = await load(userId);
-      if (ticket === generation.current) setState({ owner: userId, data, loading: false, error: false });
-    } catch {
-      if (ticket === generation.current) setState({ owner: userId, loading: false, error: true });
+    const retryDelaysMs = [0, 400, 1_200] as const;
+    for (let attempt = 0; attempt < retryDelaysMs.length; attempt += 1) {
+      if (attempt > 0) {
+        await new Promise(resolve => setTimeout(resolve, retryDelaysMs[attempt]));
+        if (ticket !== generation.current) return;
+      }
+      try {
+        const data = await load(userId);
+        if (ticket === generation.current) setState({ owner: userId, data, loading: false, error: false });
+        return;
+      } catch {
+        if (attempt === retryDelaysMs.length - 1 && ticket === generation.current) {
+          setState({ owner: userId, loading: false, error: true });
+        }
+      }
     }
   }, [load, userId]);
   useEffect(() => {
