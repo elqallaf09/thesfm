@@ -5,12 +5,14 @@ import { detectPriceUnit, normalizeMarketPrice, resolveMarketCurrency } from '@/
 import { normalizeAssetType, type MarketAssetType, type MarketHistoryPoint, type MarketSearchItem } from '@/lib/market/marketService';
 import { isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
 import { FmpMarketDataProvider } from '@/lib/market/providers/fmpMarketData';
+import { GoldApiProvider, isSilverSpot } from '@/lib/market/providers/goldApi';
+import { fetchTwelveDataCandles } from '@/lib/market/providers/twelveDataCandles';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
 import { observationIso as toIso, twelveDataObservation, type QuoteObservation } from '@/lib/market/quoteObservation';
-export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo';
+export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo' | 'gold_api';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
 export type MarketDataProviderContext = {
   symbol?: string | null;
@@ -145,6 +147,7 @@ export interface MarketDataProvider {
   name: MarketDataProviderName;
   displayName: string;
   configured(): boolean;
+  supports?(symbol: string, context: MarketDataProviderContext): boolean;
   getQuote(symbol: string, market?: string | null, context?: MarketDataProviderContext): Promise<NormalizedMarketQuote | null>;
   getCandles(symbol: string, market?: string | null, interval?: string | null, context?: MarketDataProviderContext): Promise<NormalizedMarketCandle[]>;
   getCompanyProfile(symbol: string, market?: string | null, context?: MarketDataProviderContext): Promise<NormalizedCompanyProfile | null>;
@@ -494,7 +497,7 @@ function twelveExchangeCandidates(symbol: string, market?: string | null, contex
   if (assetType === 'gold' || assetType === 'commodity') {
     const pair = compactPair(s);
     if (pair === 'XAUUSD' || pair === 'GOLD') return [{ symbol: 'XAU/USD', exchange: null }, { symbol: 'Gold', exchange: null }];
-    if (pair === 'XAGUSD' || pair === 'SILVER') return [{ symbol: 'XAG/USD', exchange: null }];
+    if (pair === 'XAGUSD' || pair === 'SILVER') return [{ symbol: 'XAG/USD', exchange: 'COMMODITY' }, { symbol: 'XAG/USD', exchange: null }];
     if (pair === 'WTI') return [{ symbol: 'WTI/USD', exchange: null }];
   }
   return [
@@ -505,6 +508,7 @@ function twelveExchangeCandidates(symbol: string, market?: string | null, contex
 }
 
 function finnhubCandidates(symbol: string, context?: MarketDataProviderContext) {
+  if (isSilverSpot(symbol, context)) return []; // This adapter's quote endpoint does not serve OTC silver.
   const alias = providerSymbolsForProviderAlias(symbol, 'finnhub', normalizeAssetType(context?.assetType));
   const s = upper(symbol);
   const assetType = normalizeAssetType(context?.assetType);
@@ -535,7 +539,7 @@ function eodhdCandidates(symbol: string, context?: MarketDataProviderContext) {
   if (assetType === 'gold' || assetType === 'commodity') {
     const pair = compactPair(s);
     if (pair === 'XAUUSD' || pair === 'GOLD') return ['XAUUSD.FOREX', 'GC.COMM'];
-    if (pair === 'XAGUSD') return ['XAGUSD.FOREX', 'SI.COMM'];
+    if (pair === 'XAGUSD' || pair === 'SILVER') return ['XAGUSD.FOREX'];
   }
   if (/\.KW$/.test(s)) return [s, `${base}.KW`, `${base}.KSE`];
   if (/\.SR$|\.SA$/.test(s)) return [s, `${base}.SR`, `${base}.SAU`];
@@ -561,7 +565,7 @@ function yahooCandidates(symbol: string, context?: MarketDataProviderContext) {
   if (assetType === 'gold' || assetType === 'commodity') {
     const pair = compactPair(s);
     if (pair === 'XAUUSD' || pair === 'GOLD') return [...alias, 'GC=F', 'XAUUSD=X'];
-    if (pair === 'XAGUSD') return [...alias, 'SI=F', 'XAGUSD=X'];
+    if (pair === 'XAGUSD' || pair === 'SILVER') return ['XAGUSD=X'];
   }
   return [...alias, s];
 }
@@ -683,25 +687,14 @@ class TwelveDataProvider extends BaseProvider {
   async getCandles(symbol: string, market?: string | null, interval = '1day', context?: MarketDataProviderContext) {
     const key = apiKey('TWELVE_DATA_API_KEY');
     if (!key) return [];
-    const candidate = twelveExchangeCandidates(symbol, market, context)[0];
-    if (!candidate) return [];
-    const params = new URLSearchParams({ symbol: candidate.symbol, interval: providerCandleInterval(interval || '1day', 'twelve'), outputsize: '260', apikey: key });
-    if (candidate.exchange) params.set('exchange', candidate.exchange);
-    const result = await fetchJson(`https://api.twelvedata.com/time_series?${params.toString()}`, {
-      cacheKey: `candles:${this.name}:${params.get('symbol')}:${params.get('exchange') ?? ''}:${params.get('interval')}`,
-      ttlMs: CANDLES_CACHE_MS,
-      forceFresh: context?.forceFresh,
+    return fetchTwelveDataCandles({
+      candidates: twelveExchangeCandidates(symbol, market, context), key, interval,
+      forceFresh: context?.forceFresh, fetchJson,
+      onFailure: (candidate, result) => {
+        const body = result.data as Record<string, unknown> | null;
+        logProviderFailure(this.name, 'candles', symbol, providerError(this.name, String(body?.code ?? `http_${result.status}`), String(body?.message ?? 'provider_error'), candidate.symbol, result.status));
+      },
     });
-    const values = Array.isArray((result.data as Record<string, unknown> | null)?.values) ? (result.data as { values: Record<string, unknown>[] }).values : [];
-    return values.map(item => ({
-      date: String(item.datetime ?? item.date ?? ''),
-      open: numberOrNull(item.open) ?? undefined,
-      high: numberOrNull(item.high) ?? undefined,
-      low: numberOrNull(item.low) ?? undefined,
-      close: numberOrNull(item.close) ?? 0,
-      volume: numberOrNull(item.volume),
-      provider: this.name,
-    })).filter(item => item.date && item.close > 0).reverse();
   }
 
   async getSymbolSearch(query: string, market?: string | null, context?: MarketDataProviderContext) {
@@ -1146,7 +1139,7 @@ class YahooProvider extends BaseProvider {
 }
 
 export const marketDataProviders: MarketDataProvider[] = [
-  new TwelveDataProvider(),
+  new TwelveDataProvider(), new GoldApiProvider(),
   new FinnhubProvider(),
   new EodhdProvider(),
   new MarketstackProvider(), new FmpMarketDataProvider(),
@@ -1166,6 +1159,7 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
   const key = fallbackKey('quote', symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
+    if (provider.supports && !provider.supports(symbol, context)) continue;
     if (!provider.configured()) {
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;
@@ -1198,6 +1192,11 @@ export async function getCandlesWithFallback(symbol: string, market?: string | n
   const key = fallbackKey(`candles:${interval ?? ''}:${context.historyPeriod ?? ''}`, symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
+    if (provider.supports && !provider.supports(symbol, context)) continue;
+    // Gold API is intentionally quote-only; it has no historical candle
+    // capability and must not overwrite a real upstream history failure with
+    // a misleading NO_MARKET_DATA result.
+    if (provider.name === 'gold_api') continue;
     if (!provider.configured()) {
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;

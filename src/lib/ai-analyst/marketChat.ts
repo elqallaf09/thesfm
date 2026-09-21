@@ -40,11 +40,25 @@ export type VerifiedChatMarketSnapshot = {
   change: number | null;
   changePercent: number | null;
   volume: number | null;
+  volumeBasis: 'QUOTE' | 'LATEST_CANDLE' | null;
+  volumeAsOf: string | null;
   support: number | null;
   resistance: number | null;
+  levelsMethod: 'PROVIDER' | 'RECENT_40_CANDLE_RANGE' | null;
+  levelsAsOf: string | null;
   reportedRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | null;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH' | null;
+  riskMethod: 'PROVIDER' | 'ANNUALIZED_VOLATILITY' | null;
+  annualizedVolatilityPercent: number | null;
+  rsi14: number | null;
+  priceVsSma20Percent: number | null;
+  sma20VsSma50Percent: number | null;
+  recentVolumeRatio: number | null;
+  fundamentals: Record<string, number> | null;
+  fundamentalsSource: string | null;
   currency: string | null;
   shariaStatus: 'compliant' | 'non_compliant' | 'needs_review' | 'unclassified' | null;
+  shariaReason: string | null;
   shariaSource: string | null;
   shariaReviewedAt: string | null;
 };
@@ -74,7 +88,8 @@ export function implicitMarketAssetCandidate(messages: readonly { role: string; 
 const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   en: [
     'You are THE SFM Financial Intelligence Assistant: a precise, useful assistant for markets, investing education, and personal finance.',
-    'Reply in English. Start with the direct answer, then add concise explanation or bullets when they improve clarity. Do not pad answers with generic boilerplate.',
+    'Reply in English. Start with the direct answer, then add concise plain-text bullets when they improve clarity. Do not pad answers with generic boilerplate.',
+    'This UI renders plain text. Do not use Markdown emphasis markers such as **, __, backticks, or heading # syntax. Never print the literal value null. Do not enumerate missing fields unless the user explicitly asks what is unavailable.',
     'Every conversation on this endpoint concerns financial markets, financial instruments, investing education, or personal finance -- never a software, business, or startup project. Do not describe a financial instrument as a project, product, or business plan.',
     'Verified asset metadata supplied by the server always overrides any prior project context, stale context, or assumptions. Use the verified identity exactly as supplied.',
     'Distinguish verified current data from stable financial knowledge. You may explain established concepts and general company/instrument context from your knowledge, but never present an unverified current quote, current news event, analyst rating, financial statement value, exchange, currency, or asset type as current fact.',
@@ -88,7 +103,8 @@ const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   ],
   ar: [
     'أنت مساعد THE SFM للذكاء المالي: مساعد دقيق وعملي للأسواق، والتثقيف الاستثماري، والتمويل الشخصي.',
-    'أجب بالعربية. ابدأ بالجواب المباشر ثم أضف شرحاً مختصراً أو نقاطاً عندما تكون أوضح. لا تملأ الرد بعبارات عامة متكررة.',
+    'أجب بالعربية. ابدأ بالجواب المباشر ثم أضف نقاطاً نصية بسيطة عندما تكون أوضح. لا تملأ الرد بعبارات عامة متكررة.',
+    'واجهة المحادثة تعرض نصاً عادياً؛ لا تستخدم علامات Markdown مثل ** أو __ أو backticks أو عناوين تبدأ بعلامة #. لا تطبع كلمة null أبداً، ولا تسرد الحقول غير المتاحة إلا إذا سأل المستخدم عنها صراحة.',
     'كل محادثة على هذا المسار تتعلق بالأسواق المالية أو الأدوات المالية أو التثقيف الاستثماري أو الشؤون المالية الشخصية — وليست أبداً عن مشروع برمجي أو تجاري أو ناشئ. لا تصف أداة مالية بأنها مشروع أو منتج أو خطة عمل.',
     'بيانات الأصل الموثقة التي يرسلها الخادم تتقدم على أي سياق قديم أو افتراض. استخدم هوية الأصل الموثقة كما هي.',
     'ميّز بوضوح بين البيانات الحالية الموثقة والمعرفة المالية العامة المستقرة. يمكنك شرح المفاهيم المعروفة والسياق العام للشركات والأدوات، لكن لا تعرض سعراً حالياً أو خبراً حالياً أو تقييم محللين أو رقماً من القوائم المالية أو هدف سعر أو بورصة أو عملة أو نوع أصل أو درجة ثقة كحقيقة حالية ما لم تكن موثقة في سياق الخادم.',
@@ -102,7 +118,8 @@ const BASE_INSTRUCTIONS: Record<'ar' | 'en' | 'fr', string[]> = {
   ],
   fr: [
     'Vous êtes l’assistant d’intelligence financière THE SFM : précis et utile pour les marchés, l’éducation à l’investissement et les finances personnelles.',
-    'Répondez en français. Commencez par la réponse directe, puis ajoutez une explication concise ou des puces lorsque cela améliore la clarté. Évitez le remplissage générique.',
+    'Répondez en français. Commencez par la réponse directe, puis ajoutez des puces en texte brut lorsque cela améliore la clarté. Évitez le remplissage générique.',
+    'Cette interface affiche du texte brut. N’utilisez pas **, __, les backticks ou les titres #. N’affichez jamais la valeur littérale null et n’énumérez pas les champs absents sauf demande explicite.',
     'Chaque conversation sur ce point de terminaison concerne les marchés financiers, les instruments financiers, l’éducation à l’investissement ou les finances personnelles — jamais un projet logiciel, commercial ou de startup. Ne décrivez jamais un instrument financier comme un projet, un produit ou un plan d’affaires.',
     'Les métadonnées d’actif vérifiées fournies par le serveur prévalent sur tout contexte obsolète ou toute supposition. Utilisez exactement cette identité vérifiée.',
     'Distinguez les données actuelles vérifiées des connaissances financières stables. Vous pouvez expliquer des concepts établis et le contexte général d’une société ou d’un instrument, mais ne présentez jamais comme fait actuel un prix, une actualité, une note d’analyste, une donnée d’états financiers, un objectif de cours, une bourse, une devise, un type d’actif ou un score de confiance non vérifié.',
@@ -134,27 +151,67 @@ function safeProviderToken(value: string | null) {
   return value.replace(/[^A-Za-z0-9_.:+\/-]/g, '_').slice(0, 80) || null;
 }
 
+function safeText(value: string | null, max = 700) {
+  const clean = value?.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() ?? '';
+  return clean ? clean.slice(0, max) : null;
+}
+
+function utc(value: string | null) {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return null;
+  return new Date(timestamp).toISOString().replace('T', ' ').replace(/\.\d{3}Z$/u, ' UTC');
+}
+
 function verifiedMarketSnapshotLine(snapshot: VerifiedChatMarketSnapshot, locale: 'ar' | 'en' | 'fr') {
-  const payload = JSON.stringify({
+  const payload: Record<string, unknown> = {
     price: snapshot.price,
-    currency: snapshot.currency,
-    change: snapshot.change,
-    changePercent: snapshot.changePercent,
-    volume: snapshot.volume,
-    support: snapshot.support,
-    resistance: snapshot.resistance,
-    reportedRiskLevel: snapshot.reportedRiskLevel,
-    shariaStatus: snapshot.shariaStatus,
-    shariaSource: safeProviderToken(snapshot.shariaSource),
-    shariaReviewedAt: snapshot.shariaReviewedAt,
+    ...(snapshot.currency ? { currency: snapshot.currency } : {}),
+    ...(snapshot.change !== null ? { change: snapshot.change } : {}),
+    ...(snapshot.changePercent !== null ? { changePercent: snapshot.changePercent } : {}),
     provider: safeProviderToken(snapshot.provider),
     dataStatus: snapshot.dataStatus,
-    dataAsOf: snapshot.dataAsOf,
+    ...(utc(snapshot.dataAsOf) ? { dataAsOfUtc: utc(snapshot.dataAsOf) } : {}),
     fallbackUsed: snapshot.fallbackUsed,
+  };
+
+  if (snapshot.volume !== null) Object.assign(payload, {
+    volume: snapshot.volume,
+    volumeBasis: snapshot.volumeBasis,
+    ...(utc(snapshot.volumeAsOf) ? { volumeAsOfUtc: utc(snapshot.volumeAsOf) } : {}),
   });
-  if (locale === 'ar') return `لقطة السوق الموثقة من خادم THE SFM لهذه المحادثة: ${payload}. هذه القيم صالحة فقط حسب وقت dataAsOf وحالة dataStatus؛ لا تستنتج قيماً ناقصة ولا تعتبرها أحدث من ذلك الوقت.`;
-  if (locale === 'fr') return `Instantané de marché vérifié par le serveur THE SFM pour cette conversation : ${payload}. Ces valeurs ne sont actuelles qu’à la date dataAsOf et selon dataStatus ; n’inférez aucune valeur absente et ne les présentez pas comme plus récentes.`;
-  return `Verified THE SFM server market snapshot for this conversation: ${payload}. These values are current only as of dataAsOf and according to dataStatus; do not infer missing values or present them as newer than that timestamp.`;
+  if (snapshot.support !== null && snapshot.resistance !== null) Object.assign(payload, {
+    support: snapshot.support,
+    resistance: snapshot.resistance,
+    levelsMethod: snapshot.levelsMethod,
+    ...(utc(snapshot.levelsAsOf) ? { levelsAsOfUtc: utc(snapshot.levelsAsOf) } : {}),
+  });
+  if (snapshot.riskLevel) Object.assign(payload, {
+    riskLevel: snapshot.riskLevel,
+    riskMethod: snapshot.riskMethod,
+    ...(snapshot.annualizedVolatilityPercent !== null
+      ? { annualizedVolatilityPercent: snapshot.annualizedVolatilityPercent }
+      : {}),
+  });
+  if (snapshot.rsi14 !== null) payload.rsi14 = snapshot.rsi14;
+  if (snapshot.priceVsSma20Percent !== null) payload.priceVsSma20Percent = snapshot.priceVsSma20Percent;
+  if (snapshot.sma20VsSma50Percent !== null) payload.sma20VsSma50Percent = snapshot.sma20VsSma50Percent;
+  if (snapshot.recentVolumeRatio !== null) payload.recentVolumeRatio = snapshot.recentVolumeRatio;
+  if (snapshot.fundamentals) Object.assign(payload, {
+    fundamentals: snapshot.fundamentals,
+    ...(snapshot.fundamentalsSource ? { fundamentalsSource: safeProviderToken(snapshot.fundamentalsSource) } : {}),
+  });
+  if (snapshot.shariaStatus && snapshot.shariaStatus !== 'unclassified') Object.assign(payload, {
+    shariaStatus: snapshot.shariaStatus,
+    ...(safeText(snapshot.shariaReason) ? { shariaReason: safeText(snapshot.shariaReason) } : {}),
+    ...(snapshot.shariaSource ? { shariaSource: safeText(snapshot.shariaSource, 160) } : {}),
+    ...(utc(snapshot.shariaReviewedAt) ? { shariaReviewedAtUtc: utc(snapshot.shariaReviewedAt) } : {}),
+  });
+
+  const serialized = JSON.stringify(payload);
+  if (locale === 'ar') return `أدلة السوق الموثقة من خادم THE SFM لهذه المحادثة: ${serialized}. استخدم فقط الحقول الموجودة. RECENT_40_CANDLE_RANGE نطاق مشتق من آخر 40 شمعة وليس مستوى دعم/مقاومة منشوراً من مزود. ANNUALIZED_VOLATILITY تصنيف مخاطر مشتق حتمياً من التقلب السنوي. انسخ أي وقت UTC كما هو دون إعادة ترتيب التاريخ.`;
+  if (locale === 'fr') return `Données de marché vérifiées par THE SFM : ${serialized}. Utilisez uniquement les champs présents. RECENT_40_CANDLE_RANGE est une fourchette dérivée des 40 dernières bougies, pas un niveau publié par un fournisseur. ANNUALIZED_VOLATILITY est un risque dérivé de façon déterministe. Recopiez les horodatages UTC exactement.`;
+  return `Verified THE SFM market evidence for this conversation: ${serialized}. Use only fields that are present. RECENT_40_CANDLE_RANGE is a derived range from the latest 40 candles, not a provider-published support/resistance level. ANNUALIZED_VOLATILITY is a deterministic risk classification derived from annualized volatility. Copy UTC timestamps exactly.`;
 }
 
 function unresolvedSymbolLine(locale: 'ar' | 'en' | 'fr') {

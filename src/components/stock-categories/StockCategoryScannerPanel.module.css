@@ -227,14 +227,14 @@
 .grid,
 .skeletonGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 12px;
 }
 
 .card,
 .skeleton {
   min-width: 0;
-  min-height: 250px;
+
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
   background: var(--surface);
@@ -259,7 +259,7 @@
 .cardHead {
   min-width: 0;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 9px;
 }
@@ -276,9 +276,8 @@
 }
 
 .identity span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
   color: var(--foreground-secondary);
   font-size: 12px;
 }
@@ -308,7 +307,8 @@
 
 .priceRow {
   display: flex;
-  align-items: baseline;
+  align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 10px;
 }
@@ -318,11 +318,12 @@
   font-size: 18px;
 }
 
-.priceRow small {
-  max-width: 55%;
+.coverage {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  line-height: 1.6;
   color: var(--foreground-muted);
-  font-size: 10px;
-  text-align: end;
+  font-size: 11px;
 }
 
 .metrics {
@@ -416,11 +417,6 @@
 }
 
 @media (max-width: 980px) {
-  .grid,
-  .skeletonGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .toolbar {
     grid-template-columns: 1fr 1fr;
   }
@@ -471,3 +467,9 @@
     justify-self: start;
   }
 }
+
+.coverage summary { cursor: pointer; color: var(--foreground-secondary); }
+.coverage p { margin: 6px 0 0; }
+.metrics:empty { display: none; }
+.move { white-space: nowrap; flex-shrink: 0; }
+.resultMeta { flex-wrap: wrap; }

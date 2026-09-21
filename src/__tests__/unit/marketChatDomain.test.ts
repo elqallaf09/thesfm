@@ -41,11 +41,25 @@ const LIVE_AAPL: VerifiedChatMarketSnapshot = {
   change: 2.5,
   changePercent: 1.34,
   volume: 1234567,
+  volumeBasis: 'QUOTE',
+  volumeAsOf: '2026-09-16T18:00:00.000Z',
   support: 184.2,
   resistance: 192.8,
+  levelsMethod: 'PROVIDER',
+  levelsAsOf: '2026-09-16T18:00:00.000Z',
   reportedRiskLevel: 'MEDIUM',
+  riskLevel: 'MEDIUM',
+  riskMethod: 'PROVIDER',
+  annualizedVolatilityPercent: 24.4,
+  rsi14: 56.2,
+  priceVsSma20Percent: 1.4,
+  sma20VsSma50Percent: 2.1,
+  recentVolumeRatio: 1.08,
+  fundamentals: { peRatio: 28.4, eps: 6.6 },
+  fundamentalsSource: 'finnhub',
   currency: 'USD',
   shariaStatus: 'compliant',
+  shariaReason: 'verified fixture',
   shariaSource: 'verified-screening',
   shariaReviewedAt: '2026-09-15T00:00:00.000Z',
 };
@@ -110,14 +124,17 @@ describe('buildMarketChatSystemPrompt — verified financial-instrument framing'
     const prompt = buildMarketChatSystemPrompt({
       domain: 'market', asset: AAPL, marketSnapshot: LIVE_AAPL, requestedUnresolvedSymbol: false, locale: 'en',
     });
-    expect(prompt).toContain('Verified THE SFM server market snapshot');
+    expect(prompt).toContain('Verified THE SFM market evidence');
     expect(prompt).toContain('"price":189.25');
     expect(prompt).toContain('"currency":"USD"');
     expect(prompt).toContain('"provider":"finnhub"');
     expect(prompt).toContain('"dataStatus":"LIVE"');
-    expect(prompt).toContain('"dataAsOf":"2026-09-16T18:00:00.000Z"');
+    expect(prompt).toContain('"dataAsOfUtc":"2026-09-16 18:00:00 UTC"');
     expect(prompt).toContain('"shariaStatus":"compliant"');
-    expect(prompt).toMatch(/do not infer missing values/i);
+    expect(prompt).toContain('"rsi14":56.2');
+    expect(prompt).toContain('"riskLevel":"MEDIUM"');
+    expect(prompt).not.toContain(':null');
+    expect(prompt).toMatch(/Use only fields that are present/i);
   });
 
   it('never fabricates instructions permitting invented prices, targets, or confidence values', () => {
