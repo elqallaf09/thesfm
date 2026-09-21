@@ -30,7 +30,7 @@ import {
   HandHeart,
   HeartHandshake,
   Info,
-  Instagram,
+  Camera as Instagram,
   Landmark,
   LayoutDashboard,
   Library,
