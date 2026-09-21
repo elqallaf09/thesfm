@@ -32,7 +32,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Check that the probe rejects remote endpoints
         run: node --test scripts/economic-intelligence/local-rls-guard.test.mjs
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@v3
         with:
           version: 2.113.0
       - name: Start a fresh local Supabase with this checkout's migrations
