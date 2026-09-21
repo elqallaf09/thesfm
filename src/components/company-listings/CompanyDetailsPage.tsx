@@ -18,8 +18,8 @@ import {
   ExternalLink,
   FileText,
   Globe2,
-  Instagram,
-  Linkedin,
+  Camera as Instagram,
+  BriefcaseBusiness as Linkedin,
   Mail,
   MapPin,
   MessageCircle,
@@ -29,7 +29,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
-  Twitter,
+  AtSign as Twitter,
   XCircle,
 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
