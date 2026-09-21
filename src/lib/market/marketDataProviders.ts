@@ -1192,6 +1192,11 @@ export async function getCandlesWithFallback(symbol: string, market?: string | n
   const key = fallbackKey(`candles:${interval ?? ''}:${context.historyPeriod ?? ''}`, symbol, market, context);
   for (const provider of marketDataProviders) {
     if (providerExcluded(provider, context)) continue;
+    if (provider.supports && !provider.supports(symbol, context)) continue;
+    // Gold API is intentionally quote-only; it has no historical candle
+    // capability and must not overwrite a real upstream history failure with
+    // a misleading NO_MARKET_DATA result.
+    if (provider.name === 'gold_api') continue;
     if (!provider.configured()) {
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;
