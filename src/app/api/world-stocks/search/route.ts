@@ -6,11 +6,12 @@ import { isSupportedWorldStockRegion } from '@/lib/world-stocks/regions';
 import type { WorldStockSearchResponse } from '@/lib/world-stocks/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const MAX_QUERY_LENGTH = 64;
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 30;
-const MAX_PAGE = 200;
+const MAX_PAGE = 1_000_000;
 
 const querySchema = z.object({
   query: z.string().trim().max(MAX_QUERY_LENGTH).optional().default(''),
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { results, totalCount, source } = await searchWorldStocks({
+    const { results, totalCount, source, markets, directoryStatus } = await searchWorldStocks({
       query,
       region: normalizedRegion,
       assetType: assetType ?? null,
@@ -78,6 +79,8 @@ export async function GET(request: Request) {
       hasMore: page * pageSize < totalCount,
       source,
       results,
+      markets,
+      directoryStatus,
     };
     return NextResponse.json(response, {
       headers: { 'cache-control': 'public, s-maxage=120, stale-while-revalidate=300' },

@@ -41,12 +41,18 @@ export function syncServerAuthSession(
   const key = syncKey(session, guest);
   if (inFlightSync?.key === key) return inFlightSync.promise;
   if (
+    !inFlightSync &&
     !options.force &&
     lastCompletedSync?.key === key &&
     Date.now() - lastCompletedSync.at < RECENT_SYNC_WINDOW_MS
   ) return Promise.resolve(lastCompletedSync.result);
 
-  const promise = requestServerSessionSync(session, guest)
+  // Serialize cookie mutations: an older POST must finish before logout DELETE.
+  const pending = inFlightSync?.promise;
+  const request = pending
+    ? pending.then(() => requestServerSessionSync(session, guest))
+    : requestServerSessionSync(session, guest);
+  const promise = request
     .catch((): ServerSessionSyncResult => ({ ok: false, code: 'AUTH_UNAVAILABLE' }))
     .then(result => {
       lastCompletedSync = { key, result, at: Date.now() };

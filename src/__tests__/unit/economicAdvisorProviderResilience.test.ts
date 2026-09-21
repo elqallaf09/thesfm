@@ -2,22 +2,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const mocks = vi.hoisted(() => ({
-  user: vi.fn(), rate: vi.fn(), usage: vi.fn(), grounding: vi.fn(), configured: vi.fn(), reply: vi.fn(),
+  user: vi.fn(), rate: vi.fn(), usage: vi.fn(), grounding: vi.fn(), configured: vi.fn(), reply: vi.fn(), plan: vi.fn(),
 }));
 
 vi.mock('@/lib/server/aiProvider', () => ({ aiProviderConfigured: mocks.configured, generateAssistantReply: mocks.reply }));
 vi.mock('@/lib/server/adminAccess', () => ({ getCurrentUserFromRequest: mocks.user }));
 vi.mock('@/lib/server/rateLimiter', () => ({ checkRateLimitWithMetadata: mocks.rate }));
 vi.mock('@/lib/server/aiUsage', () => ({ consumeAiUsage: mocks.usage, aiUsageLimitResponse: () => Response.json({ ok: false }, { status: 429 }) }));
+vi.mock('@/domain/economic-intelligence/advisorCapabilities.server', () => ({ loadCapabilityReport: mocks.plan }));
 vi.mock('@/domain/economic-intelligence/advisors.server', () => ({ loadAdvisorGrounding: mocks.grounding }));
 vi.mock('@/lib/ai-analyst/economicAdvisorPrompt', () => ({ buildEconomicAdvisorPrompt: () => 'Owner-scoped verified financial facts only' }));
 
 import { POST } from '@/app/api/economic-intelligence/advisor-chat/route';
 
-const req = () => new NextRequest('https://example.test/api/economic-intelligence/advisor-chat', {
+const req = (plan?:Record<string,unknown>) => new NextRequest('https://example.test/api/economic-intelligence/advisor-chat', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ advisor: 'finance', currency: 'KWD', locale: 'ar', messages: [{ role: 'user', content: 'اشرح التنويع' }] }),
+  body: JSON.stringify({ plan, advisor: 'finance', currency: 'KWD', locale: 'ar', messages: [{ role: 'user', content: 'اشرح التنويع' }] }),
 });
 
 beforeEach(() => {
@@ -74,4 +75,14 @@ describe('economic advisor shared SFM private transport', () => {
     expect(failed.headers.get('cache-control')).toBe('private, no-store');
     expect(mocks.reply).not.toHaveBeenCalled();
   });
+  it('rejects conflicting plan currency before consuming AI allowance',async()=>{
+    const response=await POST(req({capability:'coach',currency:'USD',month:'2026-09'}));
+    expect(response.status).toBe(400);expect(mocks.usage).not.toHaveBeenCalled();
+  });
+  it('does not charge allowance when the capability source is unavailable',async()=>{
+    mocks.plan.mockRejectedValueOnce(new Error('source failed'));
+    const response=await POST(req({capability:'coach',currency:'KWD',month:'2026-09'}));
+    expect(response.status).toBe(503);expect(mocks.usage).not.toHaveBeenCalled();expect(mocks.reply).not.toHaveBeenCalled();
+  });
+
 });

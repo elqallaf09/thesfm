@@ -1,5 +1,7 @@
 const protectedApiPrefixes = [
+  '/api/integrations',
   '/api/account',
+  '/api/tv/account',
   '/api/admin',
   '/api/ai/receipt-scan',
   '/api/business',
@@ -47,6 +49,7 @@ export function isProtectedApiPath(pathname: string) {
 }
 
 const cronApiPaths = new Set([
+  '/api/notifications/dispatch',
   '/api/business/subscriptions/reminders',
   '/api/debts/generate-monthly-expenses',
   '/api/intelligence/outcomes/evaluate',

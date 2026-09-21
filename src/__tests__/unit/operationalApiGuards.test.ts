@@ -67,7 +67,8 @@ describe('operational API production guards', () => {
     expect(investorViewRoute).toContain('await verifyInvestorPasswordAsync(password, link.password_hash)');
     expect(investorViewRoute).not.toContain('verifyInvestorPassword(password, link.password_hash)');
     expect(investorViewRoute).not.toContain("reason: 'wrong_password'");
-    expect(investorViewRoute).toContain('not atomic');
+    expect(investorViewRoute).toContain("supabase.rpc('sfm_record_investor_open', { p_link: link.id })");
+    expect(investorViewRoute).not.toContain('access_count:');
   });
 
   it('bounds the in-memory limiter and does not keep a serverless process alive', () => {

@@ -231,7 +231,7 @@ describe('workspace navigation ownership', () => {
 
   it('keeps account navigation global without business company management', () => {
     const account = NAV_GROUPS.find(group => group.id === 'account');
-    expect(account?.items.map(item => item.id)).toEqual(['profile', 'security', 'logout']);
+    expect(account?.items.map(item => item.id)).toEqual(['profile', 'apps', 'integrations', 'security', 'logout']);
   });
 
   it('keeps legacy Personal Finance page menus free of cross-workspace routes', () => {

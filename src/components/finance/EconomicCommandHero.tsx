@@ -10,6 +10,7 @@ const COPY = {
     title: 'مركز القيادة الاقتصادية',
     description: 'مساحة موحدة للتوأم المالي، والأولويات اليومية، والتعارضات بين المساحات، والقرارات، والأسواق، وتمويل الأعمال، والنتائج المرصودة.',
     aria: 'إجراءات الذكاء الاقتصادي السريعة',
+    advisors: 'المستشارون العشرة',
     decisionLab: 'مختبر القرارات',
     marketIntelligence: 'ذكاء الأسواق',
     business: 'الأعمال',
@@ -21,6 +22,7 @@ const COPY = {
     title: 'Economic Command Center',
     description: 'One workspace for your financial twin, daily priorities, cross-workspace conflicts, decisions, markets, business funding, and observed outcomes.',
     aria: 'Economic Intelligence quick actions',
+    advisors: 'Ten advisors',
     decisionLab: 'Decision Lab',
     marketIntelligence: 'Market Intelligence',
     business: 'Business',
@@ -32,6 +34,7 @@ const COPY = {
     title: 'Centre de commandement économique',
     description: 'Un espace unifié pour votre jumeau financier, les priorités quotidiennes, les conflits entre espaces, les décisions, les marchés, le financement des entreprises et les résultats observés.',
     aria: 'Actions rapides de l’intelligence économique',
+    advisors: 'Dix conseillers',
     decisionLab: 'Laboratoire de décision',
     marketIntelligence: 'Intelligence des marchés',
     business: 'Entreprise',
@@ -53,6 +56,7 @@ export function EconomicCommandHero() {
         <p>{text.description}</p>
       </div>
       <nav aria-label={text.aria}>
+        <Link href="/economic-intelligence/advisors"><BrainCircuit size={16} />{text.advisors}</Link>
         <Link href="/decisions/simulator"><Landmark size={16} />{text.decisionLab}</Link>
         <Link href="/ai-analyst"><LineChart size={16} />{text.marketIntelligence}</Link>
         <Link href="/business-hub"><ChartNoAxesCombined size={16} />{text.business}</Link>

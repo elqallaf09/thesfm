@@ -99,7 +99,8 @@ test.describe('mobile workspace switcher affordance', () => {
 
     const navigation = page.locator('header.sfm-global-header .sfm-workspace-navigation');
     const tabs = navigation.locator('.sfm-workspace-tab');
-    await expect(tabs).toHaveCount(3);
+    await expect(tabs).toHaveCount(4);
+    await expect(navigation.getByRole('link', { name: 'SFM TV — Market strips', exact: true })).toHaveAttribute('href', '/tv/strips');
 
     for (const workspace of WORKSPACES) {
       const tab = navigation.locator(`[data-workspace-id="${workspace.id}"]`);
@@ -310,8 +311,8 @@ test.describe('workspace switcher RTL mobile-webkit overflow regression', () => 
     const middle = WORKSPACES[Math.floor(WORKSPACES.length / 2)];
     const last = WORKSPACES[WORKSPACES.length - 1];
     const viewportWidth = page.viewportSize()!.width;
-    for (const workspace of [first, middle, last]) {
-      const tab = navigation.locator(`[data-workspace-id="${workspace.id}"]`);
+    for (const workspace of [first, middle, last, { id: 'sfm-tv' }]) {
+      const tab = navigation.locator(workspace.id === 'sfm-tv' ? '[data-nav-destination="sfm-tv"]' : `[data-workspace-id="${workspace.id}"]`);
       await tab.scrollIntoViewIfNeeded();
       await expect(tab).toBeVisible();
       const box = await tab.boundingBox();

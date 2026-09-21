@@ -6,13 +6,23 @@ import type { WorldStock, WorldStockAssetType } from './types';
 const COUNTRY_NAMES: Record<string, { ar: string; en: string; fr: string }> = {
   KW: { ar: 'الكويت', en: 'Kuwait', fr: 'Koweït' },
   AE: { ar: 'الإمارات العربية المتحدة', en: 'United Arab Emirates', fr: 'Émirats arabes unis' },
+  CN: { ar: 'الصين', en: 'China', fr: 'Chine' },
   US: { ar: 'الولايات المتحدة', en: 'United States', fr: 'États-Unis' },
 };
+
+const countryFormatters = new Map<string, Intl.DisplayNames>();
 
 export function worldStockCountryName(countryCode: string | null, locale: 'ar' | 'en' | 'fr'): string | null {
   if (!countryCode) return null;
   const entry = COUNTRY_NAMES[countryCode.toUpperCase()];
-  if (!entry) return countryCode;
+  if (!entry) {
+    if (!/^[A-Z]{2}$/.test(countryCode) || countryCode === 'ZZ') return countryCode;
+    try {
+      let formatter = countryFormatters.get(locale);
+      if (!formatter) { formatter = new Intl.DisplayNames([locale], { type: 'region' }); countryFormatters.set(locale, formatter); }
+      return formatter.of(countryCode) || countryCode;
+    } catch { return countryCode; }
+  }
   return entry[locale];
 }
 
@@ -36,21 +46,22 @@ export function marketSearchItemToWorldStock(item: MarketSearchItem | MarketSymb
   const assetType = toWorldStockAssetType(item.assetType);
   if (!assetType) return null;
 
-  const exchangeId = normalizeMarketExchange(item.exchange) ?? normalizeMarketExchange((item as MarketSymbolSearchResult).exchangeId);
+  const exchangeId = item.exchange?.startsWith('TD_') ? null : normalizeMarketExchange(item.exchange) ?? normalizeMarketExchange((item as MarketSymbolSearchResult).exchangeId)
+    ?? (item.country === 'US' && !item.exchange?.startsWith('TD_') ? 'US' : null);
   const exchangeOption = getMarketExchangeOption(exchangeId);
   const countryCode = item.country ?? exchangeOption?.country ?? null;
 
   return {
     canonicalSymbol: String(item.symbol ?? '').toUpperCase(),
     providerSymbol: String(item.providerSymbol ?? item.symbol ?? '').toUpperCase(),
-    displayName: item.name || item.symbol,
+    displayName: locale === 'ar' ? (item as MarketSymbolSearchResult).companyNameAr || item.name || item.symbol : item.name || item.symbol,
     exchangeCode: exchangeId ?? item.exchange ?? '',
     exchangeName: exchangeOption
       ? (locale === 'ar' ? exchangeOption.labelAr : exchangeOption.labelEn)
-      : (item.exchange ?? ''),
+      : ((item as MarketSearchItem & { exchangeName?: string }).exchangeName ?? item.exchange ?? ''),
     countryCode,
     countryName: worldStockCountryName(countryCode, locale),
-    region: exchangeId ?? 'US',
+    region: exchangeId ?? item.exchange ?? 'US',
     currency: item.currency ?? exchangeOption?.currency ?? null,
     // Neither the bundled-directory nor the Supabase market_symbols search
     // path (see marketSymbolRecordToSearchItem / mapMarketSymbol) currently
