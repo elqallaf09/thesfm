@@ -13,8 +13,8 @@ vi.mock('@/components/market/StockTickerStrip', () => ({
 
 import { SpecialMarketNewsPage } from '@/components/special-news/SpecialMarketNewsPage';
 
-beforeEach(() => vi.stubGlobal('React', React));
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => { vi.stubGlobal('React', React); });
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('IPO news page context', () => {
   it.each(['ar', 'en', 'fr'])('omits the unverified stock ticker in %s while keeping other news tickers', lang => {
