@@ -1,5 +1,7 @@
 import { searchBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
 import { searchUSSymbols } from '@/lib/market/usSymbolResolver';
+import { globalDirectoryMarketItems } from './globalDirectory';
+import { getProviderDirectory, providerRegion } from './providerDirectory';
 import { marketSearchItemToWorldStock } from './normalize';
 import { isSupportedWorldStockRegion } from './regions';
 import type { WorldStock } from './types';
@@ -15,9 +17,12 @@ export async function getWorldStockDetail(canonicalSymbol: string, region: strin
   const symbol = canonicalSymbol.trim().toUpperCase();
   if (!symbol) return null;
 
-  const candidates = region === 'US'
+  const candidates = providerRegion(region) ? (await getProviderDirectory()).rows.filter(row => row.exchange === region) : region === 'US'
     ? (await searchUSSymbols(symbol)).results
-    : searchBundledMarketSymbols({ query: symbol, exchange: region, limit: 50 });
+    : [
+      ...globalDirectoryMarketItems({ query: symbol, exchange: region }),
+      ...searchBundledMarketSymbols({ query: symbol, exchange: region, limit: 50 }),
+    ];
 
   const exactMatch = candidates.find(item => String(item.symbol ?? '').toUpperCase() === symbol);
   if (!exactMatch) return null;

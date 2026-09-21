@@ -158,6 +158,12 @@ jobs:
             echo "Applied all $count files in \`supabase/migrations/\` once, in order, against a genuinely empty Postgres 17 database. No second replay is performed — historical apply-once migration files are not required to be idempotent against an already-populated schema."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Validate TV pairing, token lifecycle and access isolation
+        env:
+          PGPASSWORD: postgres
+          PGOPTIONS: '-c sfm.disposable_ci=1'
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f .github/scripts/markets-tv-validation.sql
+
   build:
     name: CI/Production build
     runs-on: ubuntu-latest
@@ -651,6 +657,7 @@ jobs:
           --config=playwright.preview.config.ts
           --project=chromium-desktop
           tests/smoke/observability-preview.spec.ts
+          tests/smoke/markets-tv-preview.spec.ts
 
       - name: Run complete authenticated remote smoke suite
         if: steps.supabase-preview.outputs.available == 'true'
