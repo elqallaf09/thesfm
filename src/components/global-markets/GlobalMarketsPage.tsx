@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Building2, Globe2, RefreshCcw, Settings2 } from 'lucide-react';
+import { Building2, Droplets, Globe2, RefreshCcw, Settings2 } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import { MarketStrip } from '@/components/market/MarketStrip';
@@ -53,6 +53,7 @@ export function GlobalMarketsPage() {
   const refreshLabel = lang === 'ar' ? 'تحديث الأسعار' : lang === 'fr' ? 'Actualiser les cours' : 'Refresh prices';
   const selectedLabel = lang === 'ar' ? 'الأسواق المختارة' : lang === 'fr' ? 'Marchés sélectionnés' : 'Selected markets';
   const realEstateLabel = lang === 'ar' ? 'مركز السوق العقاري' : lang === 'fr' ? 'Centre du marché immobilier' : 'Real Estate Market Center';
+  const oilScenarioLabel = lang === 'ar' ? 'محرك سيناريوهات النفط' : lang === 'fr' ? 'Scénarios pétroliers' : 'Oil Scenario Engine';
 
   const load = useCallback(async (showLoader: boolean, idsKey: string) => {
     activeRequestRef.current?.abort();
@@ -111,6 +112,9 @@ export function GlobalMarketsPage() {
             </span>
             <Link href="/global-markets/real-estate" className={marketLinkStyles.link} aria-label={realEstateLabel}>
               <Building2 size={16} aria-hidden="true" /><span>{realEstateLabel}</span>
+            </Link>
+            <Link href="/global-markets/oil-scenarios" className={marketLinkStyles.link} aria-label={oilScenarioLabel}>
+              <Droplets size={16} aria-hidden="true" /><span>{oilScenarioLabel}</span>
             </Link>
             <button
               type="button"
