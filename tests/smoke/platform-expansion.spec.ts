@@ -2,6 +2,10 @@ import {expect,test} from '@playwright/test';
 import {userAuthStatePath} from './auth-state';
 const authenticated=Boolean(process.env.E2E_USER_EMAIL&&process.env.E2E_USER_PASSWORD);
 test.use({storageState:userAuthStatePath,trace:'off',screenshot:'off',video:'off'});
+// These authenticated pages share one isolated Preview fixture. Keep the language
+// variants serial so concurrent requests cannot turn transient fixture contention
+// into user-visible error states while still requiring every page to load cleanly.
+test.describe.configure({mode:'serial'});
 const pages=[
  {url:'/economic-intelligence/advisors',titles:['المستشارون العشرة','Ten advisors','Dix conseillers']},
  {url:'/notifications/channels',titles:['قنوات التنبيهات','Notification channels','Canaux de notification']},
