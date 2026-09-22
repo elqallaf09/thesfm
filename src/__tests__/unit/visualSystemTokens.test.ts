@@ -164,9 +164,9 @@ describe('central visual-system contract', () => {
   it('keeps dark interactive surfaces on the canonical dark palette', () => {
     const dark = themeBlock('.dark');
 
-    expect(dark).toContain('--surface-hover: #182452;');
-    expect(dark).toContain('--surface-active: #1E2B61;');
-    expect(dark).toContain('--surface-disabled: #0F1737;');
+    expect(dark).toContain('--surface-hover: #1B2029;');
+    expect(dark).toContain('--surface-active: #222833;');
+    expect(dark).toContain('--surface-disabled: #101319;');
     expect(dark).toContain('--border-strong: #6E79A8;');
   });
 
