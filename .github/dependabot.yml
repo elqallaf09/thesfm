@@ -29,4 +29,3 @@ updates:
       time: "06:30"
       timezone: Etc/UTC
     open-pull-requests-limit: 3
-      - github-actions
