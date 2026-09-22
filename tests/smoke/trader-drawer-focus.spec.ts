@@ -78,7 +78,9 @@ for (const language of ['ar', 'en', 'fr']) {
       test('backdrop covers the viewport, outside click closes and close target is usable', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
-        await frame.locator("#drawer-more-toggle").click();
+        const moreToggle = frame.locator('#drawer-more-toggle');
+        await expect(moreToggle).toBeVisible();
+        await moreToggle.click();
         const geometry = await frame.evaluate(() => {
           const rect = (selector: string) => {
             const r = document.querySelector(selector)!.getBoundingClientRect();
@@ -105,7 +107,9 @@ for (const language of ['ar', 'en', 'fr']) {
       test('external preference refresh preserves modal focus and internal scroll', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
-        await frame.locator("#drawer-more-toggle").click();
+        const moreToggle = frame.locator('#drawer-more-toggle');
+        await expect(moreToggle).toBeVisible();
+        await moreToggle.click();
         const position = await frame.evaluate(() => {
           const share = document.querySelector<HTMLButtonElement>('[data-drawer-share]')!;
           share.focus({ preventScroll: true });
@@ -129,7 +133,9 @@ for (const language of ['ar', 'en', 'fr']) {
       test('Tab ignores negative/hidden controls and Escape respects a consumed key', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
-        await frame.locator("#drawer-more-toggle").click();
+        const moreToggle = frame.locator('#drawer-more-toggle');
+        await expect(moreToggle).toBeVisible();
+        await moreToggle.click();
         const result = await frame.evaluate(() => {
           const drawer = document.querySelector<HTMLElement>('[data-symbol-drawer]')!;
           // Adversarial DOM controls: never become part of the modal tab order.
