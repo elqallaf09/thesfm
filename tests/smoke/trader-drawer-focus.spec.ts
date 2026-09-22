@@ -46,7 +46,11 @@ for (const language of ['ar', 'en', 'fr']) {
       test('compare and watchlist redraw preserve the activated action', async ({ page }, testInfo) => {
         const frame = await openTraderDrawerFixture(page, fixture.origin, language, theme);
         await frame.locator('[data-symbol-details="AAPL"]').first().click();
-        await frame.locator("#drawer-more-toggle").click();
+        // WebKit can paint the drawer before the overflow control is attached.
+        // Wait for the real interactive control instead of racing the redraw.
+        const moreToggle = frame.locator('#drawer-more-toggle');
+        await expect(moreToggle).toBeVisible();
+        await moreToggle.click();
         const result = await frame.evaluate(() => {
           const compare = document.querySelector<HTMLButtonElement>('[data-drawer-compare]')!;
           compare.focus(); compare.click();
