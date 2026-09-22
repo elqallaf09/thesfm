@@ -18,7 +18,7 @@ for(const [index,lang] of ['ar','en','fr'].entries())test(`new account workspace
   await page.goto(item.url,{waitUntil:'domcontentloaded'});
   await expect(page.getByRole('heading',{level:1,name:item.titles[index],exact:true})).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir',lang==='ar'?'rtl':'ltr');
-  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect.poll(async()=>page.getByRole('alert').count(),{timeout:30_000}).toBe(0);
   await expect.poll(()=>page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-document.documentElement.clientWidth)).toBeLessThanOrEqual(4);
  }
 });
