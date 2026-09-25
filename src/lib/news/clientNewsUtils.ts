@@ -45,14 +45,22 @@ export function normalizeNewsTitle(value: string | null | undefined): string {
     .trim();
 }
 
+// Legacy aggregation IDs can collide across distinct stories. Use the article
+// URL for rendering and translation joins, matching the deduplication identity.
+export function newsArticleKey(item: DedupeNewsItem): string {
+  const url = canonicalExternalNewsUrl(item.url);
+  return url ? `url:${url}` : item.id ? `id:${item.id}`
+    : `${item.source ?? ''}:${normalizeNewsTitle(item.titleOriginal || item.title || item.headline)}`;
+}
+
 export function dedupeNewsItems<T extends DedupeNewsItem>(items: T[]): T[] {
   const seen = new Set<string>();
   const result: T[] = [];
 
   for (const item of items) {
-    const url = safeExternalNewsUrl(item.url);
+    const url = canonicalExternalNewsUrl(item.url);
     const title = normalizeNewsTitle(item.titleOriginal || item.title || item.headline);
-    const key = url ? `url:${url}` : item.id ? `id:${item.id}` : `${item.source ?? ''}:${title}`;
+    const key = newsArticleKey(item);
 
     if (!url && !title) continue;
     if (seen.has(key) || seen.has(`title:${title}`)) continue;

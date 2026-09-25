@@ -176,7 +176,7 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
     expect(tooltip).toContain('portalled = false');
     expect(sidebar).toContain('portalled');
     expect(commandButton).toContain('forwardRef<HTMLButtonElement');
-    expect(sidebar).toContain('.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-badge{position:absolute');
+    expect(sidebar).toMatch(/\.sfm-shared-sidebar\[data-collapsed="true"\] \.sfm-shared-badge(?:,[^{]+)?\{position:absolute/);
     expect(sidebar).toContain('aria-hidden="true"');
     expect(mobile).toContain('className="sfm-mobile-badge" aria-hidden="true"');
     expect(sidebar).toContain('.sfm-shared-sidebar[data-collapsed="true"] .sfm-shared-support-label');

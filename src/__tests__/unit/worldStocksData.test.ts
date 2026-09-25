@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@/lib/world-stocks/providerDirectory', () => ({ getProviderDirectory: vi.fn(async () => ({ rows: [], status: 'unavailable', asOf: null })), providerRegion: (value: string) => /^TD_[A-Z0-9]{4}$/.test(value) }));
 import type { MarketSearchItem } from '@/lib/market/marketService';
 import { isSupportedWorldStockRegion, WORLD_STOCK_REGIONS } from '@/lib/world-stocks/regions';
 import { marketSearchItemToWorldStock } from '@/lib/world-stocks/normalize';
@@ -19,7 +20,7 @@ function item(overrides: Partial<MarketSearchItem> = {}): MarketSearchItem {
 describe('World Stocks region truth table', () => {
   it('supports only exchanges with a real bundled or dynamic-official data pipeline', () => {
     const ids = WORLD_STOCK_REGIONS.map(region => region.id).sort();
-    expect(ids).toEqual(['BOURSA_KUWAIT', 'DFM', 'NASDAQ_DUBAI', 'US']);
+    expect(ids).toEqual(['BOURSA_KUWAIT', 'DFM', 'NASDAQ_DUBAI', 'SSE', 'SZSE', 'US']);
   });
 
   it('rejects every exchange whose coverage is requires_sync', () => {
@@ -29,7 +30,7 @@ describe('World Stocks region truth table', () => {
   });
 
   it('accepts every exchange with real coverage', () => {
-    for (const supported of ['BOURSA_KUWAIT', 'DFM', 'NASDAQ_DUBAI', 'US']) {
+    for (const supported of ['BOURSA_KUWAIT', 'DFM', 'NASDAQ_DUBAI', 'SSE', 'SZSE', 'US']) {
       expect(isSupportedWorldStockRegion(supported)).toBe(true);
     }
   });
@@ -55,6 +56,10 @@ describe('marketSearchItemToWorldStock', () => {
     expect(marketSearchItemToWorldStock(item({ assetType: 'forex' }), 'en')).toBeNull();
     expect(marketSearchItemToWorldStock(item({ assetType: 'commodity' }), 'en')).toBeNull();
     expect(marketSearchItemToWorldStock(item({ assetType: 'index' }), 'en')).toBeNull();
+  });
+
+  it('keeps every Nasdaq Trader venue in the US directory', () => {
+    for (const exchange of ['Cboe BZX','IEX','NYSE American']) expect(marketSearchItemToWorldStock(item({ exchange }), 'en')?.region).toBe('US');
   });
 
   it('accepts stock and etf', () => {
@@ -110,6 +115,16 @@ describe('fetchWorldStockQuotes', () => {
     ]);
 
     expect(vi.mocked(getQuoteWithFallback)).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps identical ticker text on different exchanges separate and preserves source time', async () => {
+    vi.doMock('@/lib/market/marketDataProviders', () => ({
+      getQuoteWithFallback: vi.fn(async (_symbol, market) => ({ ok: true, data: { price: market === 'DFM' ? 4 : 1, currency: market === 'DFM' ? 'AED' : 'KWD', lastUpdated: '2026-09-18T10:00:00Z', providerName: 'Synthetic QA', delayType: 'delayed' } })),
+    }));
+    const { fetchWorldStockQuotes } = await import('@/lib/world-stocks/quotes');
+    const result = await fetchWorldStockQuotes(['DFM','BOURSA_KUWAIT'].map(exchangeCode => ({ canonicalSymbol: 'DUAL', providerSymbol: 'DUAL', exchangeCode, assetType: 'stock' as const, currency: null })));
+    expect(result.quotes['DFM:DUAL'].price).toBe(4); expect(result.quotes['BOURSA_KUWAIT:DUAL'].price).toBe(1);
+    expect(result.quotes.DUAL).toBeUndefined(); expect(result.quotes['DFM:DUAL'].quoteTimestamp).toBe('2026-09-18T10:00:00.000Z');
   });
 
   it('marks quoteStatus unavailable (never a fabricated price) when every provider fails, and flags partialFailure', async () => {

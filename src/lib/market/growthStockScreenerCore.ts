@@ -14,6 +14,8 @@ export type GrowthUniverseRow = {
   marketCap: number | null;
   price: number | null;
   volume: number | null;
+  beta?: number | null;
+  lastAnnualDividend?: number | null;
 };
 
 export type GrowthStatementRow = {
@@ -111,7 +113,9 @@ export function normalizeGrowthUniverseRows(rows: Array<Record<string, unknown>>
       currency: String(row.currency ?? '').trim().toUpperCase() || null,
       marketCap: finite(row.marketCap ?? row.mktCap),
       price: finite(row.price),
-      volume: finite(row.volume ?? row.avgVolume),
+      volume: finite(row.volume),
+      beta: finite(row.beta),
+      lastAnnualDividend: finite(row.lastAnnualDividend),
     });
   }
 

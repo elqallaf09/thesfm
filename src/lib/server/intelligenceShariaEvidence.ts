@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { CanonicalAssetIdentity, VerifiedIntelligenceSnapshot } from '@/domain/intelligence/contracts';
+import { createClient } from '@supabase/supabase-js';
 import { classifyShariahCompliance, type ShariahScreeningInput } from '@/lib/market/shariah-screening';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
@@ -69,14 +70,25 @@ export function validateStoredIntelligenceSharia(
   };
 }
 
+function createPublicMarketCatalogClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) return null;
+  return createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
 export async function loadStoredIntelligenceSharia(asset: CanonicalAssetIdentity): Promise<VerifiedIntelligenceSnapshot['sharia'] | null> {
   if (!['STOCK', 'FUND'].includes(asset.assetType) || !asset.providerSymbol.trim()) return null;
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return null;
+  // Prefer the server-role client when configured. Preview/local deployments
+  // may intentionally omit it; market_symbols already has RLS-limited public
+  // SELECT for active symbols, so the anon client is a safe read-only fallback.
+  const client = createServerSupabaseAdmin() ?? createPublicMarketCatalogClient();
+  if (!client) return null;
   try {
     // Limit to two, not one: maybeSingle must reject ambiguous identities instead of picking arbitrarily.
-    const result = await admin.from('market_symbols').select(COLUMNS)
+    const result = await client.from('market_symbols').select(COLUMNS)
       .eq('provider_symbol', asset.providerSymbol)
+      .eq('is_active', true)
       .limit(2)
       .abortSignal(AbortSignal.timeout(2500))
       .maybeSingle();

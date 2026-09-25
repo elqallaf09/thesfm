@@ -1,3 +1,4 @@
+import { parseYahooChartSnapshot, type YahooChartResult } from './yahooChartSnapshot';
 import { fetchYahooNormalizedQuote } from '@/lib/market/fetchYahooQuote';
 import { fetchYahooHistory } from '@/lib/market/fetchYahooHistory';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
@@ -107,21 +108,6 @@ type ProviderQuote = {
   volume?: number | null;
   raw?: Record<string, unknown> | null;
   updatedAt: string | null;
-};
-
-type YahooChartResult = {
-  symbol: string | null;
-  name: string | null;
-  price: number | null;
-  previousClose: number | null;
-  currency: string | null;
-  exchange: string | null;
-  exchangeCode: string | null;
-  market: string | null;
-  assetType: string | null;
-  closes: number[];
-  history: TraderHistoryPoint[];
-  marketTime: string | null;
 };
 
 const FMP_BASE_URL = 'https://financialmodelingprep.com/stable';
@@ -1396,52 +1382,7 @@ async function fetchChart(yahooSymbol: string, forceFresh?: boolean): Promise<Ya
   // تحصين: بيئات الاختبار أو أغلفة fetch قد تعيد قيمة غير معرفة بدل رمي استثناء
   if (!response?.ok) return null;
 
-  const body = await response.json().catch(() => null) as { chart?: { result?: Array<Record<string, any>> } } | null;
-  const result = body?.chart?.result?.[0];
-  if (!result) return null;
-
-  const meta = (result.meta ?? {}) as Record<string, any>;
-  const quote = result.indicators?.quote?.[0] ?? {};
-  const timestamps = Array.isArray(result.timestamp) ? result.timestamp : [];
-  const closesRaw = quote.close;
-  const closes = Array.isArray(closesRaw)
-    ? closesRaw.map(numberOrNull).filter((value): value is number => value !== null && value > 0)
-    : [];
-  const history = timestamps
-    .map((timestamp: unknown, index: number): TraderHistoryPoint | null => {
-      const close = numberOrNull(quote.close?.[index]);
-      if (close === null || close <= 0) return null;
-      const marketTime = numberOrNull(timestamp);
-      return {
-        date: marketTime ? new Date(marketTime * 1000).toISOString() : null,
-        open: numberOrNull(quote.open?.[index]),
-        high: numberOrNull(quote.high?.[index]),
-        low: numberOrNull(quote.low?.[index]),
-        close,
-        volume: numberOrNull(quote.volume?.[index]),
-      };
-    })
-    .filter((point): point is TraderHistoryPoint => point !== null);
-  const price = numberOrNull(meta.regularMarketPrice) ?? (closes.length ? closes[closes.length - 1] : null);
-  const previousClose = numberOrNull(meta.chartPreviousClose)
-    ?? numberOrNull(meta.previousClose)
-    ?? (closes.length >= 2 ? closes[closes.length - 2] : null);
-  const marketTime = numberOrNull(meta.regularMarketTime);
-
-  return {
-    symbol: textOrNull(meta.symbol),
-    name: textOrNull(meta.longName ?? meta.shortName),
-    price,
-    previousClose,
-    currency: typeof meta.currency === 'string' ? meta.currency : null,
-    exchange: textOrNull(meta.fullExchangeName ?? meta.exchangeName ?? meta.exchange ?? meta.quoteSourceName),
-    exchangeCode: textOrNull(meta.exchange),
-    market: textOrNull(meta.market),
-    assetType: textOrNull(meta.quoteType ?? meta.instrumentType),
-    closes,
-    history,
-    marketTime: marketTime ? new Date(marketTime * 1000).toISOString() : null,
-  };
+  return parseYahooChartSnapshot(await response.json().catch(() => null));
 }
 
 async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forceFresh?: boolean): Promise<TraderQuote> {
@@ -1614,12 +1555,14 @@ async function fetchYahooQuote(display: string, meta?: TraderCatalogSymbol, forc
     providerSymbolUsed: normalizedQuote.providerSymbolUsed,
     provider: 'yahoo',
     fallbackUsed: true,
-    name: canonical?.name ?? meta?.name ?? display,
+    name: canonical?.name ?? chart.name ?? meta?.name ?? display,
     assetType,
     price: normalizedQuote.price,
     change: normalizedQuote.change,
     changePercent: normalizedQuote.changePercent,
     previousClose: normalizedQuote.previousClose,
+    marketCap: chart.marketCap,
+    volume: chart.volume,
     currency,
     ...metadataQuoteFields(metadata),
     signal: 'watch',

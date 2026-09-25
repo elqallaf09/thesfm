@@ -3,6 +3,13 @@ import type { Lang } from '../translations';
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
 export const TR_NAV: Record<string, TranslationEntry> = {
+  nav_sfm_apps: { ar:'تطبيق THE SFM', en:'THE SFM app', fr:'Application THE SFM' },
+  nav_sfm_integrations: { ar:'التكاملات', en:'Integrations', fr:'Intégrations' },
+  nav_ten_advisors: { ar:'المستشارون العشرة', en:'Ten advisors', fr:'Dix conseillers' },
+  nav_month_close: { ar:'إقفال الشهر', en:'Month close', fr:'Clôture mensuelle' },
+  nav_teams: { ar:'فرق العمل', en:'Teams', fr:'Équipes' },
+  nav_sfmer_review: { ar:'بلاغات SFMer', en:'SFMer reports', fr:'Signalements SFMer' },
+  nav_sfmer: { ar:'SFMer', en:'SFMer', fr:'SFMer' },
   nav_group_main: { ar:'الرئيسية', en:'Main', fr:'Principal' },
   nav_group_personal_finance: { ar:'المال الشخصي', en:'Personal Finance', fr:'Finances personnelles' },
   nav_group_financial_ai: { ar:'الذكاء المالي', en:'Financial Intelligence', fr:'Intelligence financière' },
@@ -38,6 +45,9 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_ai_analyst: { ar:'إس إف إم المحلل الذكي', en:'SFM AI Analyst', fr:'Analyste IA SFM' },
   nav_global_markets: { ar:'مركز الأسواق العالمية', en:'Global Markets Hub', fr:'Centre des marchés mondiaux' },
   nav_real_estate_market: { ar:'مركز السوق العقاري', en:'Real Estate Market Center', fr:'Centre du marché immobilier' },
+  nav_forecast_engines: { ar:'محركات التوقعات', en:'Forecast Engines', fr:'Moteurs de prévision' },
+  nav_gold_forecast_engine: { ar:'محرك توقعات الذهب', en:'Gold Forecast Engine', fr:'Moteur de prévision de l’or' },
+  nav_oil_forecast_engine: { ar:'محرك توقعات النفط', en:'Oil Forecast Engine', fr:'Moteur de prévision du pétrole' },
   nav_gulf_news: { ar:'أخبار أسواق الخليج', en:'Gulf Market News', fr:'Actualités des marchés du Golfe' },
   nav_europe_news: { ar:'أخبار الأسواق الأوروبية', en:'European Market News', fr:'Actualités des marchés européens' },
   nav_tech_news: { ar:'أخبار السوق التقني', en:'Tech Market News', fr:'Actualités du marché technologique' },

@@ -14,6 +14,19 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe('category scanner provider resilience', () => {
+  it('preserves real quote volume and company names instead of replacing them with the ticker', async () => {
+    mocks.fetch.mockResolvedValue(new Response(JSON.stringify([{ symbol: 'TEST', companyName: 'Test Energy', sector: 'Energy', price: 10, volume: 30 }])));
+    mocks.quotes.mockResolvedValue([{ symbol: 'TEST', name: 'TEST', price: 11, available: true, volume: 500, marketCap: 12000 }]);
+    const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
+    expect((await screenStockCategory('energy')).items[0]).toMatchObject({ name: 'Test Energy', volume: 500, marketCap: 12000 });
+  });
+  it('retains all supplied growth market fields, including explicit zero dividends', async () => {
+    const { screenGrowthStocks } = await import('@/lib/market/growthStockScreener');
+    vi.mocked(screenGrowthStocks).mockResolvedValue({ mode: 'fundamental_screener', source: 'fixture', updatedAt: '2026-09-19', universeCount: 1, matchedCount: 1, returnedCount: 1, availableCount: 1, periods: [], criteria: {} as never, degradedReason: null,
+      items: [{ symbol: 'TEST', name: 'Test', price: 10, volume: 500, beta: 1.2, dividendYieldPercent: 0, lastAnnualDividend: 0, available: true } as never] });
+    const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
+    expect((await screenStockCategory('growth')).items[0]).toMatchObject({ volume: 500, beta: 1.2, dividendYieldPercent: 0 });
+  });
   it('shares a scan across simultaneous ticker and panel requests and keeps their limits', async () => {
     mocks.fetch.mockImplementation(async (url: URL) => new Response(JSON.stringify(
       Array.from({ length: 30 }, (_, index) => ({ symbol: `${url.searchParams.get('exchange')}${index}`, companyName: `Energy ${index}`, sector: 'Energy', country: 'US', price: 10, marketCap: index + 1 })),

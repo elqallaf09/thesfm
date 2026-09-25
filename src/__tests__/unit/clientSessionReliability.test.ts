@@ -52,4 +52,26 @@ describe('client session synchronization', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
     await expect(syncServerAuthSession(session)).resolves.toEqual({ ok: false, code: 'AUTH_UNAVAILABLE' });
   });
+  it('clears cookies only after an older sign-in request settles', async () => {
+    let finish!: (response: Response) => void;
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }))
+      .mockImplementation(async () => Response.json({ ok: true }));
+    const oldLogin = syncServerAuthSession(session);
+    const logout = syncServerAuthSession(null, { force: true });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    finish(Response.json({ ok: true }));
+    await Promise.all([oldLogin, logout]);
+    expect(fetchSpy.mock.calls.map(call => call[1]?.method)).toEqual(['POST', 'DELETE']);
+  });
+
+  it('does not reuse an old completed state while a different state is pending', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ ok: true }));
+    await syncServerAuthSession(session);
+    const logout = syncServerAuthSession(null);
+    const login = syncServerAuthSession(session);
+    await Promise.all([logout, login]);
+    expect(fetchSpy.mock.calls.map(call => call[1]?.method)).toEqual(['POST', 'DELETE', 'POST']);
+  });
+
 });

@@ -40,7 +40,7 @@ export function evaluateLinkState(link: LinkRow, now: number = Date.now()): Inve
   const raw = String(link.expires_at ?? '').trim();
   if (raw) {
     const expiry = new Date(raw).getTime();
-    if (Number.isFinite(expiry) && expiry <= now) return 'expired';
+    if (!Number.isFinite(expiry) || expiry <= now) return 'expired';
   }
   return 'active';
 }
@@ -68,4 +68,13 @@ export function sectionAllowed(link: { visible_sections?: unknown }, section: In
 export function documentSharable(row: Record<string, unknown>): boolean {
   const visibility = String(row.visibility ?? '').trim().toLowerCase();
   return visibility === 'investor' || visibility === 'public' || visibility === 'shared';
+}
+
+/** External document links must never become script or credential-bearing links. */
+export function safeInvestorDocumentUrl(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 4000) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
 }

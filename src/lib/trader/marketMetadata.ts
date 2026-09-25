@@ -67,7 +67,7 @@ export const TRADER_PROVIDER_LABELS: Record<string, string> = {
   twelvedata: 'Twelve Data',
   'twelve data': 'Twelve Data',
   eodhd: 'EODHD',
-  marketstack: 'Marketstack',
+  marketstack: 'Marketstack', gold_api: 'Gold API',
   tradingeconomics: 'Trading Economics',
   trading_economics: 'Trading Economics',
   rss: 'RSS Feeds',
