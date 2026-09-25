@@ -52,7 +52,7 @@ jobs:
           E2E_BASE_URL: https://trader-contrast.invalid
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/trader-contrast/report.json
         run: pnpm exec playwright test tests/smoke/trader-text-contrast.spec.ts tests/smoke/trader-control-visibility.spec.ts tests/smoke/trader-drawer-focus.spec.ts tests/smoke/trader-drawer-host-focus.spec.ts --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --no-deps --workers=2 --retries=0 --reporter=list,json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: trader-text-contrast-${{ github.sha }}
