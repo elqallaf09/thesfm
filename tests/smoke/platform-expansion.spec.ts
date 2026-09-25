@@ -14,11 +14,14 @@ const pages=[
 for(const [index,lang] of ['ar','en','fr'].entries())test(`new account workspaces retain language, labels and mobile reflow: ${lang}`,async({page})=>{
  test.skip(!authenticated,'Requires the isolated authenticated Preview fixture.');test.slow();
  await page.addInitScript(language=>localStorage.setItem('sfm_lang',language),lang);
+ // Next.js mounts a visually hidden route announcer with role="alert" in a shadow
+ // root once the App Router hydrates. It is not an error state, so exclude it.
+ const pageAlerts=page.getByRole('alert').and(page.locator(':not(#__next-route-announcer__)'));
  for(const item of pages){
   await page.goto(item.url,{waitUntil:'domcontentloaded'});
   await expect(page.getByRole('heading',{level:1,name:item.titles[index],exact:true})).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir',lang==='ar'?'rtl':'ltr');
-  await expect.poll(async()=>page.getByRole('alert').count(),{timeout:30_000}).toBe(0);
+  await expect.poll(async()=>pageAlerts.count(),{timeout:30_000}).toBe(0);
   await expect.poll(()=>page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-document.documentElement.clientWidth)).toBeLessThanOrEqual(4);
  }
 });
