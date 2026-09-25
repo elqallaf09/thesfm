@@ -93,10 +93,10 @@ describe('Preview-only authentication fixtures', () => {
   it('keeps secret-backed browser checks away from Dependabot while retaining manual validation', () => {
     const smokeJob = workflow.slice(workflow.indexOf('  smoke:'), workflow.indexOf('  lighthouse:'));
     expect(smokeJob).toContain(
-      "if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'",
+      "if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'",
     );
     expect(authenticatedPreviewJob).toContain(
-      "if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'",
+      "if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
     );
     expect(manualAuthenticatedPreviewWorkflow).toContain('workflow_dispatch:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('target_sha:');
