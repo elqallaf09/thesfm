@@ -1,0 +1,9 @@
+.root { min-width: 0; display: grid; gap: 8px; }
+.heading, .note { margin: 0; font-size: 11px; line-height: 1.6; color: var(--foreground-secondary); }
+.grid { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.metric { min-width: 0; padding: 10px; border-radius: var(--radius-control); border: 1px solid var(--border); background: var(--surface-muted); }
+.metric dt { font-size: 11px; line-height: 1.5; color: var(--foreground-secondary); }
+.metric dd { margin: 5px 0 0; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.source { font-size: 11px; color: var(--primary); }
+.note summary { cursor: pointer; }
+.note p { margin: 5px 0 0; }

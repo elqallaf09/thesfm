@@ -15,6 +15,11 @@
   --app-header-gap-block: 0px;
 }
 
+@media (min-width: 768px) {
+  :root[data-sfm-sidebar-collapsed="true"] { --sidebar-w: 72px; }
+  :root[data-sfm-sidebar-collapsed="true"] .sfm-shared-sidebar { width: 72px; }
+}
+
 .sfm-global-header {
   position: sticky;
   inset-block-start: 0;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import type { CanonicalAssetIdentity } from '@/domain/intelligence/contracts';
+import type { AnalysisRequest, CanonicalAssetIdentity } from '@/domain/intelligence/contracts';
 import { aiProviderConfigured, generateAssistantReply, type ChatMessage } from '@/lib/server/aiProvider';
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
@@ -15,6 +15,7 @@ import {
   type VerifiedChatMarketSnapshot,
 } from '@/lib/ai-analyst/marketChat';
 import { intelligenceAssetTypeFromMarket } from '@/lib/intelligence/assetTypes';
+import { buildVerifiedChatMarketSnapshot, CHAT_GROUNDING_MODULES } from '@/lib/ai-analyst/marketChatGrounding';
 import { INTELLIGENCE_RESPONSE_HEADERS, readBoundedJson } from '@/lib/intelligence/api';
 import { resolveMarketSymbol } from '@/lib/market/symbolResolver';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
@@ -82,7 +83,7 @@ async function loadVerifiedMarketSnapshot(input: {
   correlationId: string;
 }): Promise<VerifiedChatMarketSnapshot | null> {
   try {
-    const snapshot = await new ExistingMarketDataIntelligenceProvider().getSnapshot({
+    const analysisRequest: AnalysisRequest = {
       userId: input.userId,
       asset: {
         symbol: input.asset.displaySymbol || input.asset.canonicalSymbol,
@@ -93,30 +94,14 @@ async function loadVerifiedMarketSnapshot(input: {
       },
       horizon: 'SWING',
       locale: input.locale,
-      requestedModules: [],
+      requestedModules: [...CHAT_GROUNDING_MODULES],
       providerPreferences: null,
       source: 'INTERNAL',
       correlationId: input.correlationId,
       forceRefresh: false,
-    }, input.asset);
-
-    return {
-      provider: snapshot.provider,
-      dataAsOf: snapshot.dataAsOf,
-      dataStatus: snapshot.dataStatus,
-      fallbackUsed: snapshot.fallbackUsed,
-      price: snapshot.quote.price,
-      change: snapshot.quote.change,
-      changePercent: snapshot.quote.changePercent,
-      volume: snapshot.quote.volume,
-      support: snapshot.levels.support,
-      resistance: snapshot.levels.resistance,
-      reportedRiskLevel: snapshot.reportedRiskLevel,
-      currency: snapshot.asset.quoteCurrency,
-      shariaStatus: snapshot.sharia.status,
-      shariaSource: snapshot.sharia.source,
-      shariaReviewedAt: snapshot.sharia.reviewedAt,
     };
+    const snapshot = await new ExistingMarketDataIntelligenceProvider().getSnapshot(analysisRequest, input.asset);
+    return buildVerifiedChatMarketSnapshot(snapshot, analysisRequest);
   } catch {
     // Chat remains useful with verified identity/general knowledge if live market
     // evidence is unavailable; the system prompt forbids inventing missing facts.

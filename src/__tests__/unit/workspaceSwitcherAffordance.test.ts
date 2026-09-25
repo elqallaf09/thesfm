@@ -43,7 +43,7 @@ describe('workspace switcher interaction affordance contract', () => {
     expect(switcher).toContain('cursor: pointer');
     expect(switcher).toContain('touch-action: manipulation');
     expect(switcher).toContain('overflow-x: auto');
-    expect(switcher).toContain('scroll-snap-type: inline mandatory');
+    expect(switcher).toContain('scroll-snap-type: none');
 
     // Exactly one indicator element, positioned behind the items (z-index 0
     // vs. 1) and driven by JS-measured custom properties rather than a

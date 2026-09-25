@@ -21,7 +21,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 export function UserChip({ displayName }: { displayName?: string }) {
   const { signOut, user, loading: authLoading } = useAuth();
   const currentUser = useCurrentUserProfile();
-  const { t, dir } = useLanguage();
+  const { t, dir, lang } = useLanguage();
   const router = useRouter();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -183,6 +183,10 @@ export function UserChip({ displayName }: { displayName?: string }) {
       <button type="button" role="menuitem" className="sfm-user-menu-item danger" onClick={handleSignOut}>
         <LogOut size={17} />
         <span>{t('nav_logout')}</span>
+      </button>
+      <button type="button" role="menuitem" className="sfm-user-menu-item" onClick={() => { setOpen(false); router.push('/profile/accounts'); }}>
+        <UserRound size={17} />
+        <span>{lang === 'en' ? 'Switch account' : lang === 'fr' ? 'Changer de compte' : 'تبديل الحساب'}</span>
       </button>
     </div>,
     document.body,

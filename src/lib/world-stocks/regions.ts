@@ -1,17 +1,14 @@
 import { MARKET_EXCHANGE_OPTIONS, type MarketExchangeId, type MarketExchangeOption } from '@/lib/market/marketExchangeOptions';
 
 /** A World Stocks "region" is one real, currently-syncable exchange. This
- * intentionally does not group Kuwait/UAE under a "GCC" umbrella label --
- * scripts/sync-market-symbols.mjs only fetches Boursa Kuwait and DFM; Tadawul
- * (Saudi), ADX, QSE, Bahrain Bourse, and Muscat are labeled in
- * marketExchangeOptions.ts (coverage: 'requires_sync') but have no real sync
- * pipeline or bundled data anywhere in this repo. Presenting a "GCC" region
- * that silently includes exchanges with zero real listings would violate the
- * "never claim coverage beyond what's actually supported" requirement, so
- * those five stay excluded here entirely -- not hidden behind a truthful
- * empty state, simply not offered as a selectable region at all. */
+ * intentionally does not group Kuwait/UAE under a "GCC" umbrella label.
+ * Tadawul, ADX, QSE, Bahrain Bourse and Muscat remain excluded until their
+ * official directories are synchronized. The checked-in official directory
+ * snapshot also includes Shanghai and Shenzhen, while the US directory is
+ * fetched from Nasdaq Trader. Every result is paginated; the browser never
+ * receives the whole universe in one response. */
 export type WorldStockRegion = {
-  id: MarketExchangeId;
+  id: string;
   labelAr: string;
   labelEn: string;
   labelFr: string;
@@ -24,6 +21,8 @@ const FR_LABELS: Partial<Record<MarketExchangeId, string>> = {
   DFM: 'Marché financier de Dubaï',
   NASDAQ_DUBAI: 'Nasdaq Dubaï',
   US: 'Marchés américains',
+  SSE: 'Bourse de Shanghai',
+  SZSE: 'Bourse de Shenzhen',
 };
 
 function isSupported(option: MarketExchangeOption) {
@@ -43,8 +42,8 @@ export const WORLD_STOCK_REGIONS: WorldStockRegion[] = MARKET_EXCHANGE_OPTIONS
 
 const REGION_BY_ID = new Map(WORLD_STOCK_REGIONS.map(region => [region.id, region]));
 
-export function isSupportedWorldStockRegion(value: unknown): value is MarketExchangeId {
-  return typeof value === 'string' && REGION_BY_ID.has(value as MarketExchangeId);
+export function isSupportedWorldStockRegion(value: unknown): value is string {
+  return typeof value === 'string' && (REGION_BY_ID.has(value) || /^TD_[A-Z0-9]{4}$/.test(value));
 }
 
 export function worldStockRegion(id: MarketExchangeId) {

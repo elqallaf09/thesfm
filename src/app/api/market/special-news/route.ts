@@ -68,6 +68,9 @@ function companyNameForSymbol(stories: ConsolidatedNewsStory[], symbol: string) 
 }
 
 function stockTickerFromStories(topic: TopicId, stories: ConsolidatedNewsStory[], prices: Map<string, SpecialQuote>) {
+  // Mentioned companies may be investors, peers or underwriters. The news
+  // payload has no verified listing date, so it cannot power a new-stock ticker.
+  if (topic === 'new-stocks') return [];
   const symbols = uniqueStorySymbols(stories, 18);
   let items = symbols.map(symbol => {
     const quote = prices.get(symbol);
@@ -207,6 +210,9 @@ export async function GET(request: NextRequest) {
   try {
     // Prices have their own request budget and never hold up the news feed.
     if (part === 'ticker') {
+      if (topic === 'new-stocks') {
+        return NextResponse.json({ success: true, topic, tickerItems: [] }, { headers });
+      }
       const symbols = (request.nextUrl.searchParams.get('symbols') ?? '').split(',')
         .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
       const prices = await fetchSpecialQuotes(symbols);
@@ -240,6 +246,7 @@ export async function GET(request: NextRequest) {
     });
 
     let stories = result.stories.filter(story => matchesTopic(topic, story));
+    if (topic === 'new-stocks') stories.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
     let prices = new Map<string, SpecialQuote>();
     if (topic === 'stocks-under-1') {
       stories = await resolveUnderOneSymbols(stories);

@@ -2580,7 +2580,7 @@ export function GrowthStocksNewsPage() {
           word-break: normal;
           overflow-wrap: break-word;
         }
-        .metric-grid {
+        .growth-metric-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 10px;
@@ -4127,19 +4127,12 @@ function GrowthStockCard({
         <strong className="numeric">{row.price === null ? <UnavailableValue text={text} /> : formatCurrency(row.price, row.currency, lang)}</strong>
         {row.changePercent === null ? <UnavailableValue text={text} /> : <span className={badgeClass(row.momentumTone)}>{formatPercent(row.changePercent, lang)}</span>}
       </div>
-      <div className="metric-grid">
+      {!compact ? <div className="growth-metric-grid">
         <MiniMetric label={text.methodology} value={row.growthClassification} lang={lang} />
-        <MiniMetric label={text.valuationRisk} value={row.valuationRiskLabel === text.unavailable ? <UnavailableValue text={text} /> : row.valuationRiskLabel} lang={lang} />
-
-        {!compact ? (
-          <>
-
-            <MiniMetric label={text.volatility} value={row.momentumLabel} lang={lang} />
-          </>
-        ) : null}
-      </div>
+        <MiniMetric label={text.volatility} value={row.momentumLabel} lang={lang} />
+      </div> : null}
       <GrowthReportedMetrics data={row.reported} screening={row} lang={lang} />
-      <p className="muted">{methodologyDescription(row, lang)}</p>
+      {!compact ? <p className="muted">{methodologyDescription(row, lang)}</p> : null}
       {!compact ? (
         <div className="card-actions">
           <button
@@ -4202,7 +4195,7 @@ function NewsCard({ item, text, lang, showOriginal, toggleOriginal, lead }: { it
       </div>
       <h3 className="article-title" dir="auto">{title}</h3>
       {summary ? <p className="article-summary" dir="auto">{summary}</p> : null}
-      <div className="metric-grid">
+      <div className="growth-metric-grid">
         <MiniMetric label={text.relatedSymbol} value={item.ticker ? item.ticker.toUpperCase() : text.unavailable} lang={lang} valueDir={item.ticker ? 'ltr' : undefined} />
         <MiniMetric label={text.marketContext} value={typeof item.changePercent === 'number' ? formatPercent(item.changePercent, lang) : text.priceUnavailable} lang={lang} />
       </div>
@@ -4308,7 +4301,7 @@ function DataStatusPanel({ text, lang, rows, lastUpdated }: { text: typeof COPY[
   return (
     <section className="panel">
       <SectionHeader title={text.dataStatusTitle} description={text.marketClosedNote} />
-      <div className="metric-grid">
+      <div className="growth-metric-grid">
         <MiniMetric label={text.dataProvider} value={sources.join(', ') || <UnavailableValue text={text} />} lang={lang} />
         <MiniMetric label={text.lastQuoteUpdate} value={formatDateTime(lastUpdated, lang)} lang={lang} />
         <MiniMetric label={text.availableStocks} value={`${availableCount}/${rows.length}`} lang={lang} valueDir="ltr" />
@@ -4395,7 +4388,7 @@ function SectorCard({ sector, lang, expanded }: { sector: ReturnType<typeof buil
       <span className="sector-icon"><Icon size={20} /></span>
       <h3 className="sector-title">{sector.label}</h3>
       <p className="muted">{sector.description}</p>
-      <div className="metric-grid">
+      <div className="growth-metric-grid">
         <MiniMetric label={COPY[lang].trackedStocks} value={String(sector.count || sector.symbols.length)} lang={lang} valueDir="ltr" />
         <MiniMetric label={COPY[lang].dailyChange} value={formatPercent(sector.averageChange, lang)} lang={lang} />
         {expanded ? (

@@ -136,6 +136,8 @@ test('compact card preserves identity, financial hierarchy, accessible actions, 
   expect((menuBox?.x ?? 0) + (menuBox?.width ?? 0)).toBeLessThanOrEqual(320);
   expect((menuBox?.y ?? 0) + (menuBox?.height ?? 0)).toBeLessThanOrEqual(900);
   await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await expect(card.getByRole('button', { name: 'More actions' })).toBeFocused();
 
   const compactHeight = await card.evaluate(element => element.getBoundingClientRect().height);
   expect(compactHeight).toBeLessThan(620);
@@ -143,7 +145,10 @@ test('compact card preserves identity, financial hierarchy, accessible actions, 
   const expand = card.getByRole('button', { name: 'Expand card details' });
   await expect(expand).toHaveAttribute('aria-controls', /.+/);
   await expand.click();
-  await expect(card.getByRole('button', { name: 'Collapse card details' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(card.locator('.invest-expanded-section').first()).toBeVisible();
+  const collapse = card.getByRole('button', { name: 'Collapse card details' });
+  await expect(collapse).toBeVisible();
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   for (const heading of ['Asset overview', 'Price history', 'Allocation', 'Performance', 'Notes']) {
     await expect(card.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }

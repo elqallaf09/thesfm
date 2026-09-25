@@ -22,7 +22,8 @@ import {
 import { StockTickerStrip, type StockTickerStripItem } from '@/components/market/StockTickerStrip';
 import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
-import { dedupeNewsItems, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
+import { dedupeNewsItems, newsArticleKey, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
+import { filterSpecialNews } from '@/lib/news/specialNewsSearch';
 import type { NewsPageBackgroundCategory } from '@/lib/news/pageBackground';
 import styles from './SpecialMarketNewsPage.module.css';
 
@@ -45,6 +46,7 @@ type SpecialNewsItem = {
   headline?: string | null;
   summary?: string | null;
   titleOriginal?: string | null;
+  summaryOriginal?: string | null;
   source?: string | null;
   sourceName?: string | null;
   isOfficial?: boolean;
@@ -198,7 +200,7 @@ const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
       title: 'أخبار الأسهم الجديدة',
       subtitle: 'متابعة الطروحات العامة IPO والإدراجات الجديدة والإدراج المباشر وبدايات التداول في الأسواق الأمريكية.',
       badge: 'IPO والإدراجات الجديدة',
-      method: 'المقصود بالأسهم الجديدة الشركات حديثة الإدراج والطروحات الجديدة، وليس قائمة أسهم مقترحة للشراء.',
+      method: 'أخبار الطروحات والإدراجات المنشورة خلال آخر 30 يومًا، من الأحدث إلى الأقدم. ذكر شركة ضمن خبر اكتتاب لا يعني أنها حديثة الإدراج.',
       empty: 'لا توجد أخبار إدراجات أو طروحات جديدة مطابقة حاليًا.',
       emptyHint: 'تظهر الأخبار عند وجود طرح أو إدراج أو بداية تداول موثقة.',
       search: 'ابحث عن IPO أو شركة حديثة الإدراج...',
@@ -208,7 +210,7 @@ const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
       title: 'New Stocks News',
       subtitle: 'Track IPOs, newly listed companies, direct listings, and US market trading debuts.',
       badge: 'IPOs & new listings',
-      method: '“New stocks” means newly listed companies and IPOs here; it is not a list of stocks suggested for purchase.',
+      method: 'IPO and new-listing stories published within the past 30 days, newest first. A company mentioned in an IPO story is not necessarily newly listed.',
       empty: 'No matching IPO or new-listing news is available right now.',
       emptyHint: 'Stories appear when a documented offering, listing, or trading debut is available.',
       search: 'Search IPOs or newly listed companies...',
@@ -218,7 +220,7 @@ const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
       title: 'Actualités des nouvelles actions',
       subtitle: 'Suivez les IPO, nouvelles cotations, cotations directes et débuts de négociation aux États-Unis.',
       badge: 'IPO et nouvelles cotations',
-      method: '« Nouvelles actions » désigne les sociétés récemment cotées et les IPO, pas une liste de recommandations.',
+      method: 'Actualités des IPO et nouvelles cotations publiées depuis 30 jours, des plus récentes aux plus anciennes. Une société citée dans un article sur une IPO n’est pas nécessairement nouvellement cotée.',
       empty: 'Aucune actualité correspondante sur une IPO ou une nouvelle cotation.',
       emptyHint: 'Les articles apparaissent lorsqu’une offre ou une cotation documentée est disponible.',
       search: 'Rechercher une IPO ou une société récemment cotée...',
@@ -580,7 +582,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
       startTransition(() => setItems(nextItems));
       setPartialFailure(Boolean(payload.partialFailure));
       setLastUpdated(payload.updatedAt ?? payload.lastSuccessfulUpdate ?? null);
-      if (!fixedTicker) {
+      if (!fixedTicker && topic !== 'new-stocks') {
         if (payload.tickerItems?.length) setTickerItems(payload.tickerItems);
         const symbols = [...new Set(nextItems.flatMap(item => item.symbols ?? []).map(symbol => symbol.toUpperCase()))]
           .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
@@ -594,8 +596,8 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
         }).then(response => response.ok ? response.json() as Promise<SpecialNewsResponse> : null)
           .then(translated => {
             if (!isCurrent() || !translated?.items?.length) return;
-            const byId = new Map(translated.items.map(item => [item.id, item]));
-            startTransition(() => setItems(current => current.map(item => byId.get(item.id) ?? item)));
+            const byArticle = new Map(translated.items.map(item => [newsArticleKey(item), item]));
+            startTransition(() => setItems(current => current.map(item => byArticle.get(newsArticleKey(item)) ?? item)));
           }).catch(() => undefined);
       }
     } catch (loadError) {
@@ -616,21 +618,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
     return () => activeRequest.current?.abort();
   }, [load]);
 
-  const filteredItems = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) return items;
-    return items.filter(item => [
-      item.title,
-      item.headline,
-      item.summary,
-      item.source,
-      item.sourceName,
-      item.ticker,
-      ...(item.symbols ?? []),
-      ...(item.companyNames ?? []),
-      ...(item.sectors ?? []),
-    ].some(value => String(value ?? '').toLowerCase().includes(normalized)));
-  }, [items, query]);
+  const filteredItems = useMemo(() => filterSpecialNews(items, query, topic), [items, query, topic]);
 
   const tickerStripItems = useMemo<StockTickerStripItem[]>(() => tickerItems.map(item => ({
     symbol: item.symbol,
@@ -677,7 +665,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
           </div>
         </section>
 
-        <section className={styles.tickerSection} aria-label={copy.tickerLabel}>
+        {topic !== 'new-stocks' ? <section className={styles.tickerSection} aria-label={copy.tickerLabel}>
           <StockTickerStrip
             ariaLabel={copy.tickerLabel}
             items={tickerStripItems}
@@ -687,7 +675,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
             durationSeconds={34}
             minimumItems={10}
           />
-        </section>
+        </section> : null}
 
         {partialFailure ? (
           <div className={styles.notice} role="status">
@@ -751,7 +739,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
                   : 'flat';
 
               return (
-                <article className={styles.card} key={item.id}>
+                <article className={styles.card} key={newsArticleKey(item)}>
                   <div className={styles.cardTopline}>
                     <span className={styles.source}><Building2 size={14} /> {source}</span>
                     <span className={styles.date}><Clock3 size={14} /> {formattedDate(item.publishedAt, lang)}</span>
@@ -760,8 +748,8 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
                   <div className={styles.tags}>
                     {item.isOfficial ? <span><ShieldCheck size={13} /> {common.official}</span> : null}
                     {item.priceVerified ? <span><CircleDollarSign size={13} /> {common.verified}</span> : null}
-                    {item.ticker ? <span className={styles.ticker}>{item.ticker}</span> : null}
-                    {!item.ticker ? symbols.map(symbol => <span className={styles.ticker} key={symbol}>{symbol}</span>) : null}
+                    {topic !== 'new-stocks' && item.ticker ? <span className={styles.ticker}>{item.ticker}</span> : null}
+                    {topic !== 'new-stocks' && !item.ticker ? symbols.map(symbol => <span className={styles.ticker} key={symbol}>{symbol}</span>) : null}
                   </div>
 
                   {price ? (

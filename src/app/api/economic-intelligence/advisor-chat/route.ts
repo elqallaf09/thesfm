@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
 import { z } from 'zod';
+import { advisorRequestSchema } from '@/domain/economic-intelligence/advisorCapabilities';
+import { loadCapabilityReport } from '@/domain/economic-intelligence/advisorCapabilities.server';
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
 import { getCurrentUserFromRequest } from '@/lib/server/adminAccess';
@@ -21,6 +23,7 @@ const messageSchema = z.object({
 
 const requestSchema = z.object({
   advisor: z.enum(['finance', 'investment', 'business']),
+  plan: advisorRequestSchema.omit({ save: true }).optional(),
   messages: z.array(messageSchema).min(1).max(40),
   currency: z.string().trim().regex(/^[A-Za-z]{3}$/).transform((value) => value.toUpperCase()),
   country: z.string().trim().min(2).max(64).regex(/^[\p{L}\s.-]+$/u).optional(),
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ ok: false, error: { code: 'INVALID_REQUEST' }, correlationId }, { status: 400, headers: NO_STORE });
 
   const { advisor, messages, currency, country, locale } = parsed.data;
+  if (parsed.data.plan && parsed.data.plan.currency !== currency) return NextResponse.json({ ok: false, error: { code: 'INVALID_REQUEST' }, correlationId }, { status: 400, headers: NO_STORE });
   let grounding;
   try {
     grounding = await loadAdvisorGrounding({
@@ -80,6 +84,15 @@ export async function POST(request: NextRequest) {
     }, { status: 503, headers: NO_STORE });
   }
 
+  let planContext = '';
+  if (parsed.data.plan) {
+    try {
+      const report = await loadCapabilityReport(user.id, { ...parsed.data.plan, save: false });
+      planContext = `\nThe following server-calculated capability report is authoritative over aggregate grounding for this month. Explain this task only. Values are recorded evidence and fixed-assumption simulations; never invent missing inputs or probability/confidence scores. Report: ${JSON.stringify(report)}`;
+    } catch {
+      return NextResponse.json({ ok: false, error: { code: 'GROUNDING_UNAVAILABLE' }, correlationId }, { status: 503, headers: NO_STORE });
+    }
+  }
   let usage;
   try {
     usage = await consumeAiUsage({
@@ -102,7 +115,7 @@ export async function POST(request: NextRequest) {
   }
 
   const generation = await generateAssistantReply({
-    system: buildEconomicAdvisorPrompt(grounding, locale),
+    system: buildEconomicAdvisorPrompt(grounding, locale) + planContext,
     messages: messages.map(message => ({ role: message.role, content: message.content })),
     correlationId,
     maxTokens: 900,

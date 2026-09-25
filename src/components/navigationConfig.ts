@@ -133,6 +133,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     id: 'personal-finance',
     labelKey: 'nav_group_personal_finance',
     items: [
+      { id: 'month-close', icon: CalendarDays, href: '/income/month-close', labelKey: 'nav_month_close' },
       { id: 'income', icon: Wallet, href: '/income', labelKey: 'nav_income' },
       {
         id: 'expenses',
@@ -165,6 +166,8 @@ export const NAV_GROUPS: NavigationGroup[] = [
     id: 'investment-market',
     labelKey: 'nav_group_invest_market',
     items: [
+      { id: 'ten-advisors', icon: BrainCircuit, href: '/economic-intelligence/advisors', labelKey: 'nav_ten_advisors' },
+      { id: 'sfmer', icon: UsersRound, href: '/market-analysis/sfmer', labelKey: 'nav_sfmer' },
       { id: 'invest', icon: TrendingUp, href: '/investments', labelKey: 'nav_invest' },
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
       { id: 'global-markets', icon: Globe, href: '/global-markets', labelKey: 'nav_global_markets' },
@@ -248,6 +251,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_business_projects',
     items: [
       { id: 'projects', icon: FolderKanban, href: '/projects', labelKey: 'nav_projects' },
+      { id: 'teams', icon: UsersRound, href: '/business/teams', labelKey: 'nav_teams' },
       { id: 'business-hub', icon: BriefcaseBusiness, href: '/business-hub', labelKey: 'nav_business_hub' },
       { id: 'investment-offers', icon: Presentation, href: '/investment-offers', labelKey: 'nav_pitch_decks' },
       { id: 'business-subscriptions', icon: CreditCard, href: '/business/subscriptions', labelKey: 'nav_clients_subscriptions' },
@@ -290,6 +294,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'admin-news-providers', icon: Newspaper, href: '/sfm-admin-control/news-providers', labelKey: 'nav_admin_news_providers', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'admin-shariah', icon: ShieldCheck, href: '/sfm-admin-control/shariah', labelKey: 'admin_shariah_title', adminOnly: true, adminPermission: 'admin_dashboard' },
       { id: 'instagram-automation', icon: Instagram, href: '/sfm-admin-control/instagram-automation', labelKey: 'nav_instagram_automation', adminOnly: true, adminPermission: 'instagram_automation' },
+      { id: 'admin-community', icon: UsersRound, href: '/sfm-admin-control/community', labelKey: 'nav_sfmer_review', adminOnly: true, superAdminOnly: true },
       { id: 'admin-permissions', icon: UsersRound, href: '/sfm-admin-control/admin-permissions', labelKey: 'nav_admin_permissions', adminOnly: true, superAdminOnly: true },
     ],
   },
@@ -299,6 +304,8 @@ export const NAV_GROUPS: NavigationGroup[] = [
     defaultOpen: false,
     items: [
       { id: 'profile', icon: CircleUser, href: '/profile', labelKey: 'nav_profile' },
+      { id: 'apps', icon: Settings, href: '/settings/apps', labelKey: 'nav_sfm_apps' },
+      { id: 'integrations', icon: Activity, href: '/settings/integrations', labelKey: 'nav_sfm_integrations' },
       { id: 'security', icon: ShieldCheck, href: '/security', labelKey: 'nav_security' },
       { id: 'logout', icon: LogOut, action: 'logout', labelKey: 'nav_logout' },
     ],

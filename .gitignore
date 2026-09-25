@@ -26,3 +26,10 @@ DerivedData/
 xcuserdata/
 ios-native/**/xcuserdata/
 ios-native/**/*.xcworkspace/xcuserdata/
+
+# Generated TV platform assets and packages
+.tv-build/
+apps/markets-tv/android/.gradle/
+apps/markets-tv/android/**/build/
+apps/markets-tv/android/app/src/main/assets/
+apps/markets-tv/android/local.properties

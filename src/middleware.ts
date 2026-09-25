@@ -1,3 +1,4 @@
+import { tvPackagedOrigin, tvCorsHeaders } from '@/lib/markets-tv/cors';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isCronApiPath, isCronAuthorized, isProtectedApiPath } from '@/lib/auth/accessPolicy';
@@ -152,6 +153,10 @@ async function sessionForRequest(request: NextRequest): Promise<SessionSecurityR
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const response = secured(NextResponse.next(), pathname);
+  if (tvPackagedOrigin(request)) {
+    for (const [key, value] of Object.entries(tvCorsHeaders(request.headers.get('origin')!))) response.headers.set(key, value);
+    if (request.method === 'OPTIONS') return new NextResponse(null, { status: 204, headers: response.headers });
+  }
 
   if (pathname.startsWith('/api/')) {
     if (!isProtectedApiPath(pathname)) return response;

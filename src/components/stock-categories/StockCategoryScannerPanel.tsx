@@ -17,8 +17,12 @@ import {
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
 import { StockTickerStrip, type StockTickerStripItem } from '@/components/market/StockTickerStrip';
 import { useLanguage } from '@/hooks/useLanguage';
-import type { StockCategoryId } from '@/lib/market/stockCategoryConfigs';
+import { getStockCategoryConfig, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
 import styles from './StockCategoryScannerPanel.module.css';
+import { TR } from '@/lib/translations';
+import { GrowthReportedMetrics } from '@/components/growth-stocks/GrowthReportedMetrics';
+import { useGrowthFundamentals } from '@/components/growth-stocks/useGrowthFundamentals';
+import type { GrowthFundamentals } from '@/lib/market/growthFundamentalsCore';
 
 type Lang = 'ar' | 'en' | 'fr';
 type SortKey = 'marketCap' | 'change' | 'volume' | 'yield' | 'name';
@@ -122,6 +126,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     sortYield: 'عائد التوزيع',
     sortName: 'الاسم',
     liveTicker: 'نبض أسعار الأسهم المطابقة',
+    missingFields: 'لم يوفر المصدر:', dailyChange: 'التغيّر اليومي', fallback: 'قائمة مراقبة · لم يُثبت اجتياز شروط التصنيف', screened: 'اجتاز فحص النمو', dataDetails: 'التغطية ومصدر البيانات',
   },
   en: {
     title: 'Full market scanner',
@@ -158,6 +163,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     sortYield: 'Dividend yield',
     sortName: 'Name',
     liveTicker: 'Matching-stock price pulse',
+    missingFields: 'Not supplied:', dailyChange: 'Daily change', fallback: 'Watchlist · screening criteria not confirmed', screened: 'Passed growth screen', dataDetails: 'Data coverage and source',
   },
   fr: {
     title: 'Scanner complet du marché',
@@ -194,8 +200,14 @@ const COPY: Record<Lang, Record<string, string>> = {
     sortYield: 'Rendement',
     sortName: 'Nom',
     liveTicker: 'Pouls des cours correspondants',
+    missingFields: 'Non fourni :', dailyChange: 'Variation du jour', fallback: 'Liste de suivi · critères non confirmés', screened: 'Critères de croissance remplis', dataDetails: 'Couverture et source',
   },
 };
+
+function sectorLabel(value: string, category: StockCategoryId, lang: Lang) {
+  const key = getStockCategoryConfig(category)?.filters.find(filter => filter.key === value)?.labelKey;
+  return key ? TR[key][lang] : value.replaceAll('_', ' ');
+}
 
 function langCode(value: string): Lang {
   return value === 'en' || value === 'fr' ? value : 'ar';
@@ -318,7 +330,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
 
     return rows.sort((left, right) => {
       if (sort === 'name') return left.name.localeCompare(right.name);
-      if (sort === 'change') return Math.abs(right.changePercent ?? -Infinity) - Math.abs(left.changePercent ?? -Infinity);
+      if (sort === 'change') return (finite(right.changePercent) ? Math.abs(right.changePercent) : -1) - (finite(left.changePercent) ? Math.abs(left.changePercent) : -1);
       if (sort === 'volume') return (right.volume ?? -1) - (left.volume ?? -1);
       if (sort === 'yield') return (right.dividendYieldPercent ?? -1) - (left.dividendYieldPercent ?? -1);
       return (right.marketCap ?? -1) - (left.marketCap ?? -1);
@@ -338,6 +350,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
   })), [items]);
 
   const pageRows = filtered.slice(0, visible);
+  const fundamentals = useGrowthFundamentals(category === 'growth' ? pageRows.map(item => item.symbol) : [], data?.updated_at ?? null);
 
   return (
     <section className={styles.shell} dir={dir} data-category={category}>
@@ -385,8 +398,8 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
               locale={locale}
               unavailableLabel={copy.unavailable}
               direction="ltr"
-              durationSeconds={38}
-              minimumItems={12}
+              pixelsPerSecond={28}
+              minimumItems={1}
             />
           </div>
         ) : null}
@@ -400,7 +413,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
             <Filter size={16} />
             <select value={sector} onChange={event => setSector(event.target.value)}>
               <option value="all">{copy.allSectors}</option>
-              {sectors.map(value => <option key={value} value={value}>{value}</option>)}
+              {sectors.map(value => <option key={value} value={value}>{sectorLabel(value, category, lang)}</option>)}
             </select>
           </label>
           <select className={styles.sort} value={sort} onChange={event => setSort(event.target.value as SortKey)} aria-label="sort">
@@ -414,7 +427,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
 
         <div className={styles.resultMeta}>
           <strong>{filtered.length}</strong> {copy.results}
-          {data?.screening_mode ? <span>{data.screening_mode.replaceAll('_', ' ')}</span> : null}
+          {data?.screening_mode ? <span>{data.screening_mode === 'fallback_watchlist' ? copy.fallback : categoryLabel}</span> : null}
         </div>
 
         {loading && !data ? (
@@ -423,7 +436,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
           <div className={styles.empty}>{copy.noData}</div>
         ) : (
           <div className={styles.grid}>
-            {pageRows.map(item => <ScannerCard key={item.symbol} item={item} copy={copy} lang={lang} locale={locale} />)}
+            {pageRows.map(item => <ScannerCard key={item.symbol} item={item} copy={copy} lang={lang} locale={locale} reported={fundamentals.data[item.symbol]} />)}
           </div>
         )}
 
@@ -441,7 +454,7 @@ function Stat({ label, value }: { label: string; value?: number }) {
   return <div className={styles.stat}><span>{label}</span><strong>{typeof value === 'number' ? value.toLocaleString('en-US') : '—'}</strong></div>;
 }
 
-function ScannerCard({ item, copy, lang, locale }: { item: ScannerItem; copy: Record<string, string>; lang: Lang; locale: string }) {
+function ScannerCard({ item, copy, lang, locale, reported }: { item: ScannerItem; copy: Record<string, string>; lang: Lang; locale: string; reported?: GrowthFundamentals }) {
   const direction = finite(item.changePercent) ? (item.changePercent > 0 ? 'up' : item.changePercent < 0 ? 'down' : 'flat') : 'flat';
   const price = formatPrice(item.price, item.currency, locale);
   const change = formatPercent(item.changePercent, locale);
@@ -457,37 +470,42 @@ function ScannerCard({ item, copy, lang, locale }: { item: ScannerItem; copy: Re
   return (
     <article className={styles.card} data-direction={direction}>
       <div className={styles.cardHead}>
-        <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" variant="badge" size="sm" showName={false} />
+        <AssetIdentity symbol={item.symbol} name={item.name} assetType="stock" size="sm" />
         <div className={styles.identity}>
           <strong dir="ltr">{item.symbol}</strong>
-          <span>{item.name}</span>
+          <span dir="auto" title={item.name}>{item.name}</span>
         </div>
-        <span className={styles.move} data-direction={direction}><TrendIcon size={14} /> {change ?? copy.unavailable}</span>
       </div>
 
       <div className={styles.priceRow}>
         <strong dir="ltr">{price ?? copy.unavailable}</strong>
-        <small>{item.source}</small>
+        <span className={styles.move} data-direction={direction} title={copy.dailyChange} dir="ltr"><TrendIcon size={14} /> {change ?? copy.unavailable}</span>
       </div>
 
       <dl className={styles.metrics}>
-        <Metric label={copy.marketCap} value={cap} />
-        <Metric label={copy.volume} value={volume} />
-        <Metric label={copy.beta} value={beta} />
-        <Metric label={copy.dividendYield} value={yieldText} />
-        {revenueGrowth ? <Metric label={copy.growth} value={revenueGrowth} /> : null}
-        {earningsGrowth ? <Metric label={copy.earningsGrowth} value={earningsGrowth} /> : null}
+        {cap !== null ? <Metric label={copy.marketCap} value={cap} /> : null}
+        {volume !== null ? <Metric label={copy.volume} value={volume} /> : null}
+        {beta !== null ? <Metric label={copy.beta} value={beta} /> : null}
+        {yieldText !== null ? <Metric label={copy.dividendYield} value={yieldText} /> : null}
+        {item.category !== 'growth' && revenueGrowth ? <Metric label={copy.growth} value={revenueGrowth} /> : null}
+        {item.category !== 'growth' && earningsGrowth ? <Metric label={copy.earningsGrowth} value={earningsGrowth} /> : null}
         {sharia ? <Metric label={copy.shariaStatus} value={sharia} /> : null}
       </dl>
 
+      {item.category === 'growth' ? <GrowthReportedMetrics data={reported} screening={item} lang={lang} /> : null}
       <div className={styles.tags}>
         {item.exchange ? <span><Building2 size={12} /> {item.exchange}</span> : null}
-        {item.sector ? <span>{item.sector}</span> : null}
+        {item.sector ? <span>{sectorLabel(item.sector, item.category, lang)}</span> : null}
         {item.industry ? <span>{item.industry}</span> : null}
         {item.shariahStatus === 'compliant' ? <span className={styles.compliant}><ShieldCheck size={12} /> {sharia}</span> : null}
       </div>
 
-      <p className={styles.reason}>{item.classificationReason}</p>
+      <details className={styles.coverage}>
+        <summary>{copy.dataDetails}</summary>
+        <p>{copy.source}: {item.source}</p>
+        {[cap, volume, beta, yieldText].some(value => value === null) ? <p>{copy.missingFields} {[[copy.marketCap, cap], [copy.volume, volume], [copy.beta, beta], [copy.dividendYield, yieldText]].filter(([, value]) => value === null).map(([label]) => label).join(' · ')}</p> : null}
+        <p>{item.screenBasis === 'fallback_watchlist' ? copy.fallback : item.category === 'growth' ? `${copy.screened} · ${item.growthPeriod ?? ''}` : item.classificationReason}</p>
+      </details>
     </article>
   );
 }

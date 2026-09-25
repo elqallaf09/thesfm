@@ -451,7 +451,9 @@ function supportingSource(item: NormalizedNewsItem): NewsSupportingSource {
 }
 
 function clusterId(items: NormalizedNewsItem[]) {
-  const seed = items.map(item => item.eventFingerprint || item.contentHash || item.canonicalUrl || item.id).sort().join('|');
+  // Event fingerprints are deliberately coarse (symbol/event/day). Distinct
+  // clusters, especially unknown events, must not share a database/React ID.
+  const seed = items.map(item => item.canonicalUrl || item.contentHash || item.id).sort().join('|');
   return `story-${createHash('sha256').update(seed).digest('hex').slice(0, 24)}`;
 }
 
