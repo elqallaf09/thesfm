@@ -36,6 +36,10 @@ export type GrowthScreenerItem = {
   industry: string | null;
   exchange: string | null;
   marketCap: number | null;
+  volume?: number | null;
+  beta?: number | null;
+  lastAnnualDividend?: number | null;
+  dividendYieldPercent?: number | null;
   revenueGrowthPercent: number | null;
   earningsGrowthPercent: number | null;
   operatingIncomeGrowthPercent: number | null;
@@ -157,7 +161,12 @@ function mapCandidate(candidate: GrowthScreenCandidate, quote: TraderQuote | und
     sector: candidate.sector,
     industry: candidate.industry,
     exchange: candidate.exchange,
-    marketCap: candidate.marketCap,
+    marketCap: finite(quote?.marketCap) ?? candidate.marketCap,
+    volume: finite(quote?.volume) ?? candidate.volume,
+    beta: candidate.beta ?? null,
+    lastAnnualDividend: candidate.lastAnnualDividend ?? null,
+    dividendYieldPercent: candidate.lastAnnualDividend != null && candidate.lastAnnualDividend >= 0 && price !== null && price > 0
+      ? candidate.lastAnnualDividend / price * 100 : null,
     revenueGrowthPercent: percent(candidate.revenueGrowth),
     earningsGrowthPercent: percent(candidate.epsDilutedGrowth ?? candidate.epsGrowth),
     operatingIncomeGrowthPercent: percent(candidate.operatingIncomeGrowth),
@@ -193,6 +202,7 @@ async function fallbackWatchlist(reason: string): Promise<GrowthScreenerResult> 
       industry: null,
       exchange: quote?.exchange ?? null,
       marketCap: finite(quote?.marketCap),
+      volume: finite(quote?.volume),
       revenueGrowthPercent: null,
       earningsGrowthPercent: null,
       operatingIncomeGrowthPercent: null,

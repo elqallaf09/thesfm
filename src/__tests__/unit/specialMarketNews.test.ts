@@ -70,11 +70,76 @@ describe('special news data and independent quotes', () => {
     expect(mocked.aggregate).not.toHaveBeenCalled();
   });
 
+  it('filters sports and lifestyle stories out of the metals API even with GOLD metadata', async () => {
+    mocked.aggregate.mockResolvedValue({
+      stories: [
+        story('Sabres announce rosters for Blue and Gold Scrimmage', { symbols: ['GOLD'], companyNames: ['Gold'] }),
+        story('Forever Young wins Jockey Club Gold Cup', { symbols: ['GOLD'] }),
+        story('Silver futures gain as industrial demand grows', { id: 'silver' }),
+        story('Gold miners increase production', { id: 'gold' }),
+      ], liveUpdatesAvailable: true,
+    });
+    const payload = await (await GET(request('topic=metals-news&lang=ar'))).json();
+    expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['silver', 'gold']);
+  });
+
   it('does not label a hardcoded watchlist as current IPO or merger news', async () => {
     for (const topic of ['new-stocks', 'mergers-acquisitions-news', 'unusual-moves-news']) {
       const payload = await (await GET(request(`topic=${topic}&part=ticker`))).json();
       expect(payload.tickerItems).toEqual([]);
     }
+  });
+
+  it('does not turn investors mentioned in IPO articles into newly listed stocks', async () => {
+    mocked.aggregate.mockResolvedValue({
+      stories: [story('Example Labs files for an IPO with backing from Nvidia and Microsoft', {
+        symbols: ['NVDA', 'MSFT'], companyNames: ['Nvidia', 'Microsoft'],
+      })], liveUpdatesAvailable: true,
+    });
+    const news = await (await GET(request('topic=new-stocks'))).json();
+    expect(news.items).toHaveLength(1);
+    expect(news.tickerItems).toEqual([]);
+    const ticker = await (await GET(request('topic=new-stocks&part=ticker&symbols=NVDA,MSFT,AAPL'))).json();
+    expect(ticker.tickerItems).toEqual([]);
+    expect(mocked.quotes).not.toHaveBeenCalled();
+  });
+
+  it('requires IPO evidence in the headline rather than summary mentions or classifier labels', () => {
+    expect(matchesTopic('new-stocks', story('Microsoft reports quarterly results', {
+      summary: 'Its investment in Example Labs could benefit from an IPO.', eventType: 'ipo_listing',
+    }))).toBe(false);
+    expect(matchesTopic('new-stocks', story('Example Labs announces its initial public offering'))).toBe(true);
+    expect(matchesTopic('new-stocks', story('بدء اكتتاب شركة جديدة في السوق الأمريكية'))).toBe(true);
+    expect(matchesTopic('new-stocks', story('Example Labs begins trading on Nasdaq'))).toBe(true);
+    expect(matchesTopic('new-stocks', story('Example Labs plans a direct listing'))).toBe(true);
+  });
+
+  it('excludes retrospective IPO returns stories about established stocks', () => {
+    expect(matchesTopic('new-stocks', story('Nvidia returns since its IPO'))).toBe(false);
+    expect(matchesTopic('new-stocks', story('If you invested $1,000 in Apple at its IPO'))).toBe(false);
+    expect(matchesTopic('new-stocks', story('عوائد سهم أبل منذ اكتتاب الشركة'))).toBe(false);
+  });
+
+  it('uses original publication dates and returns only recent IPO news newest first', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-19T12:00:00Z'));
+    mocked.aggregate.mockResolvedValue({
+      liveUpdatesAvailable: false, storedFallbackUsed: true,
+      stories: [
+        story('Older IPO announcement', { id: 'older', publishedAt: '2026-09-18T10:00:00Z' }),
+        story('Stale IPO announcement', { id: 'stale', publishedAt: '2026-08-01T10:00:00Z', latestUpdatedAt: '2026-09-19T11:00:00Z' }),
+        story('Newest IPO announcement', { id: 'newest', publishedAt: '2026-09-19T10:00:00Z' }),
+        story('Undated IPO announcement', { id: 'undated', publishedAt: 'invalid' }),
+        story('Future IPO announcement', { id: 'future', publishedAt: '2026-09-20T10:00:00Z' }),
+        story('Recycled IPO announcement', { id: 'recycled', publishedAt: '2026-09-19T10:00:00Z', earliestPublishedAt: '2026-01-01T10:00:00Z' }),
+      ],
+    });
+    const payload = await (await GET(request('topic=new-stocks'))).json();
+    expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['newest', 'older']);
+    mocked.translate.mockImplementation(async items => items);
+    const translated = await (await GET(request('topic=new-stocks&part=translation'))).json();
+    expect(translated.items.map((item: { id: string }) => item.id)).toEqual(['newest', 'older']);
+    vi.useRealTimers();
   });
 
   it('uses explicit OR alternatives and accepts Arabic topic evidence', () => {

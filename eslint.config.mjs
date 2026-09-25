@@ -13,6 +13,9 @@ const eslintConfig = [
   {
     ignores: [
       ".next/**",
+      ".tv-build/**",
+      "apps/markets-tv/android/app/src/main/assets/**",
+      "apps/markets-tv/android/**/build/**",
       "artifacts/**",
       "next-env.d.ts",
     ],

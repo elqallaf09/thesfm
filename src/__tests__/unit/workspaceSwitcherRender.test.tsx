@@ -96,6 +96,23 @@ describe('rendered workspace switcher', () => {
     expect(reviewerMarkup).toContain('Administration');
   });
 
+  it('offers the public SFM TV shortcut in every language without changing workspace selection', () => {
+    navigationState.authenticated = false;
+    for (const lang of ['ar', 'en', 'fr'] as const) {
+      navigationState.lang = lang;
+      navigationState.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      const markup = renderSwitcher();
+      const shortcut = markup.match(/<a[^>]*data-nav-destination="sfm-tv"[^>]*>[\s\S]*?<\/a>/)?.[0] ?? '';
+      expect(shortcut).toContain('href="/tv/strips"');
+      expect(shortcut).toContain('aria-label="SFM TV');
+      expect(shortcut).toContain('<svg');
+      expect(shortcut).toContain('dir="ltr">SFM TV</span>');
+      expect(shortcut).not.toContain('aria-current');
+      expect(markup.match(/aria-current="page"/g)).toHaveLength(1);
+      expect(markup).not.toContain('data-workspace-id="administration"');
+    }
+  });
+
   it('renders logical direction and full translated labels without changing route ownership', () => {
     const englishMarkup = renderSwitcher();
     expect(englishMarkup).toContain('dir="ltr"');

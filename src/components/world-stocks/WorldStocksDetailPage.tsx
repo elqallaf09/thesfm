@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { worldStockQuoteKey } from '@/lib/world-stocks/quoteKey';
 import { AlertTriangle, ArrowLeft, ArrowRight, BrainCircuit, LineChart, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { AssetIdentity } from '@/components/asset/AssetIdentity';
@@ -152,7 +153,7 @@ export function WorldStocksDetailPage({ symbol, region }: WorldStocksDetailPageP
         });
         const quoteJson = await quoteResponse.json().catch(() => ({})) as WorldStockQuotesResponse;
         if (quoteJson.success) {
-          const quote = quoteJson.quotes[json.stock.canonicalSymbol];
+          const quote = quoteJson.quotes[worldStockQuoteKey(json.stock.region, json.stock.canonicalSymbol)] ?? quoteJson.quotes[json.stock.canonicalSymbol];
           if (quote) {
             setStock(previous => previous && ({
               ...previous,

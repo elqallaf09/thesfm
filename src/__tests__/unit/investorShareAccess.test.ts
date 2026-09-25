@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   documentSharable,
+  safeInvestorDocumentUrl,
   evaluateLinkState,
   INVESTOR_SECTIONS,
   normalizeSections,
@@ -17,6 +18,12 @@ import {
 const NOW = new Date('2026-07-12T12:00:00Z').getTime();
 
 describe('investor link state', () => {
+  it('rejects malformed expiry and unsafe document URLs', () => {
+    expect(evaluateLinkState({ expires_at: 'bad-date' }, NOW)).toBe('expired');
+    expect(safeInvestorDocumentUrl('javascript:alert(1)')).toBeNull();
+    expect(safeInvestorDocumentUrl('https://user:pass@example.com/a')).toBeNull();
+    expect(safeInvestorDocumentUrl('https://example.com/report.pdf')).toBe('https://example.com/report.pdf');
+  });
   it('treats a link without expiry or revocation as active', () => {
     expect(evaluateLinkState({}, NOW)).toBe('active');
     expect(evaluateLinkState({ expires_at: '2026-08-01T00:00:00Z' }, NOW)).toBe('active');

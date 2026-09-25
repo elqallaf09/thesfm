@@ -299,6 +299,21 @@ describe('multi-stage deduplication, independence, and conflicts', () => {
     expect(areDuplicateStories(first, later)).toBe(false);
   });
 
+  it('assigns distinct IDs to unrelated stories sharing a coarse event fingerprint', () => {
+    const articles = [
+      ['gold-one', 'Gold demand changes across central banks'],
+      ['gold-two', 'New technology transforms gold mining operations'],
+    ].map(([id, title]) => normalizeNewsItem(item({
+      id, title, summary: '', symbols: ['GOLD'], companyNames: ['Gold'],
+      eventType: 'unknown', eventFingerprint: 'same-symbol-event-and-day',
+    })));
+    const stories = clusterRelatedStories(articles);
+    expect(stories).toHaveLength(2);
+    expect(new Set(stories.map(story => story.id)).size).toBe(2);
+    expect(clusterRelatedStories(articles.slice().reverse()).map(story => story.id).sort())
+      .toEqual(stories.map(story => story.id).sort());
+  });
+
   it('does not count syndicated copies from one publisher network as independent confirmation', () => {
     const stories = clusterRelatedStories([
       normalizeNewsItem(item({ id: 'a', providerId: 'wire-a', sourceId: 'wire-a', sourceNetworkId: 'network-one' })),

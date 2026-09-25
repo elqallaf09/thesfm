@@ -4,6 +4,7 @@ import { hashInvestorToken, verifyInvestorPasswordAsync } from '@/lib/server/inv
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import {
   documentSharable,
+  safeInvestorDocumentUrl,
   evaluateLinkState,
   normalizeSections,
   type InvestorSection,
@@ -35,7 +36,7 @@ function safeDocument(row: Row, allowDownloads: boolean) {
     category: String(row.category ?? row.document_type ?? '').trim() || null,
     updated_at: row.updated_at ?? row.uploaded_at ?? row.created_at ?? null,
     // URLs only when the owner explicitly allowed downloads for this link.
-    url: allowDownloads ? String(row.source_url ?? row.sourceUrl ?? '').trim() || null : null,
+    url: allowDownloads ? safeInvestorDocumentUrl(row.source_url ?? row.sourceUrl ?? row.file_url) : null,
   };
 }
 
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
   if (token.length > 256) return NextResponse.json({ error: 'invalid_token' }, { status: 400 });
 
   const action = String(body.action ?? 'view');
+  if (!['view', 'event', 'question'].includes(action)) return NextResponse.json({ error: 'invalid_action' }, { status: 400 });
   if (action === 'event') {
     const limited = rateLimitRequest(request, {
       max: 30,
@@ -131,9 +133,19 @@ export async function POST(request: NextRequest) {
 
   if (action === 'event') {
     const eventType = String(body.eventType ?? '').trim();
-    const section = String(body.section ?? '').trim() || null;
-    if (['pitch_deck_viewed', 'document_downloaded'].includes(eventType)) {
-      await logEvent(supabase, link, eventType, section);
+    const section = eventType === 'document_downloaded' ? 'documents' : 'pitch_deck';
+    const allowed = eventType === 'pitch_deck_viewed' ? sections.includes('pitch_deck') : eventType === 'document_downloaded' && sections.includes('documents') && link.allow_downloads === true;
+    if (allowed) {
+      const metadata: Record<string, unknown> = {};
+      if (eventType === 'document_downloaded') {
+        const documentId = String(body.documentId ?? '').trim();
+        if (!/^[0-9a-f-]{36}$/i.test(documentId)) return NextResponse.json({ error: 'invalid_document' }, { status: 400 });
+        const document = await supabase.from('project_documents').select('*').eq('id', documentId).eq('project_id', link.project_id).eq('user_id', link.user_id).maybeSingle();
+        if (document.error) return NextResponse.json({ error: 'source_unavailable' }, { status: 503 });
+        if (!document.data || !documentSharable(document.data) || !safeDocument(document.data, true).url) return NextResponse.json({ error: 'invalid_document' }, { status: 400 });
+        metadata.document_id = documentId;
+      }
+      await logEvent(supabase, link, eventType, section, metadata);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: 'invalid_event' }, { status: 400 });
@@ -171,6 +183,8 @@ export async function POST(request: NextRequest) {
     scoped('project_documents').limit(200),
     scoped('project_risks').limit(200),
   ]);
+
+  if ([projectRes, feasibilityRes, financialRes, fundingRes, deckRes, documentsRes, risksRes].some(result => result.error)) return NextResponse.json({ error: 'source_unavailable' }, { status: 503, headers: { 'Cache-Control': 'private, no-store' } });
 
   const project = (projectRes.data ?? null) as Row | null;
   if (!project) return NextResponse.json({ error: 'link_not_found' }, { status: 404 });
@@ -249,16 +263,7 @@ export async function POST(request: NextRequest) {
   }
 
   await logEvent(supabase, link, 'offer_opened', null);
-  try {
-    // This read-modify-write counter is best-effort and not atomic. Making it atomic requires
-    // a database function/migration, which is intentionally outside this production-hardening pass.
-    await supabase
-      .from('project_investor_links')
-      .update({ last_accessed_at: new Date().toISOString(), access_count: Number(link.access_count ?? 0) + 1 })
-      .eq('id', link.id);
-  } catch {
-    // Access metadata is best-effort.
-  }
+  await supabase.rpc('sfm_record_investor_open', { p_link: link.id });
 
-  return NextResponse.json(payload);
+  return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } });
 }

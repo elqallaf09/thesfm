@@ -25,7 +25,7 @@ export function AiAnalystCompare() {
         </header>
         <AiAnalystAssetPicker destination="history" autoRun={false} />
       </section>
-      <article className={`${styles.card} ${styles.placeholderCard} ${styles.spanFull}`} data-testid="ai-analyst-rule-engine">
+      <article className={`${styles.card} ${styles.placeholderCard} ${styles.spanFull}`} data-testid="ai-analyst-rule-engine-placeholder">
         <Sparkles size={20} aria-hidden="true" className={styles.placeholderIcon} />
         <h2>{copy.compare.ruleEngine}</h2>
         <p>{copy.compare.openTimeline}</p>

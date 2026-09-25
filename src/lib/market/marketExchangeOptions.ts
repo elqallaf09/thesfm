@@ -7,6 +7,8 @@ export type MarketExchangeId =
   | 'QSE'
   | 'BAHRAIN_BOURSE'
   | 'MUSCAT'
+  | 'SSE'
+  | 'SZSE'
   | 'US';
 
 export type MarketExchangeCoverage = 'bundled_official' | 'dynamic_official' | 'requires_sync';
@@ -102,6 +104,26 @@ export const MARKET_EXCHANGE_OPTIONS: MarketExchangeOption[] = [
     coverage: 'requires_sync',
     sourceUrl: 'https://www.msx.om/companies',
     aliases: ['MUSCAT', 'MSX', 'OMAN', 'OM', 'بورصة مسقط'],
+  },
+  {
+    id: 'SSE',
+    labelAr: 'بورصة شنغهاي',
+    labelEn: 'Shanghai Stock Exchange',
+    country: 'CN',
+    currency: 'CNY',
+    coverage: 'bundled_official',
+    sourceUrl: 'https://www.sse.com.cn/assortment/stock/list/share/',
+    aliases: ['SSE', 'SHANGHAI', 'SHANGHAI STOCK EXCHANGE', 'SS', 'بورصة شنغهاي'],
+  },
+  {
+    id: 'SZSE',
+    labelAr: 'بورصة شنتشن',
+    labelEn: 'Shenzhen Stock Exchange',
+    country: 'CN',
+    currency: 'CNY',
+    coverage: 'bundled_official',
+    sourceUrl: 'https://www.szse.cn/English/siteMarketData/siteMarketDatas/',
+    aliases: ['SZSE', 'SHENZHEN', 'SHENZHEN STOCK EXCHANGE', 'SZ', 'بورصة شنتشن'],
   },
   {
     id: 'US',

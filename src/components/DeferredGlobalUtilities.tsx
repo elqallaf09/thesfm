@@ -26,7 +26,7 @@ export function DeferredGlobalUtilities() {
   // navigation host. Keep the global toast and document-wide effects lazy for
   // application routes, but do not spend a post-paint task loading them on
   // Lighthouse's landing-page target.
-  const needsApplicationUtilities = pathname !== '/';
+  const needsApplicationUtilities = pathname !== '/' && !pathname.startsWith('/tv');
 
   useEffect(() => {
     const mountUtilities = () => setShouldMount(true);

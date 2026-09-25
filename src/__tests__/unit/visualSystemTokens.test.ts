@@ -11,7 +11,7 @@ const layout = read('src/app/layout.tsx');
 const loginPage = read('src/app/(auth)/login/page.tsx');
 const loginStyles = loginPage.slice(loginPage.indexOf('<style jsx global>'));
 const landingPage = read('src/app/page.tsx');
-const landingStyles = landingPage.slice(landingPage.indexOf('const landingStyles = `'));
+const landingStyles = read('src/components/public/PublicLandingPage.module.css');
 const traderAccessGate = read('src/app/thesfm-trader-own/TraderAccessGate.tsx');
 const dashboard = read('src/app/dashboard/page.tsx');
 const dashboardStyles = read('src/app/dashboard/dashboard.module.css');
@@ -164,9 +164,9 @@ describe('central visual-system contract', () => {
   it('keeps dark interactive surfaces on the canonical dark palette', () => {
     const dark = themeBlock('.dark');
 
-    expect(dark).toContain('--surface-hover: #182452;');
-    expect(dark).toContain('--surface-active: #1E2B61;');
-    expect(dark).toContain('--surface-disabled: #0F1737;');
+    expect(dark).toContain('--surface-hover: #1B2029;');
+    expect(dark).toContain('--surface-active: #222833;');
+    expect(dark).toContain('--surface-disabled: #101319;');
     expect(dark).toContain('--border-strong: #6E79A8;');
   });
 
@@ -393,7 +393,7 @@ describe('central visual-system contract', () => {
     expect(landingStyles).toContain('color: var(--foreground-secondary)');
     expect(landingStyles).toContain('color: var(--foreground-muted)');
     expect(landingStyles).toContain('font-family: var(--font-ui)');
-    expect(landingStyles).toContain('background: var(--surface-elevated)');
+    expect(landingStyles).toContain('background: var(--surface)');
     expect(landingStyles).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|\bTajawal\b|\bArial\b/i);
     expect(landingStyles).not.toContain('html.dark .landing-page');
     expect(landingStyles).not.toMatch(/(?:linear|radial|conic)-gradient\(/i);

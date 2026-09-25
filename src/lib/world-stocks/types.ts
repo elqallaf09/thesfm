@@ -1,3 +1,5 @@
+import type { WorldStockRegion } from './regions';
+export type WorldStockMarket = WorldStockRegion & { count: number | null; status: string };
 import type { MarketAssetType } from '@/lib/market/marketService';
 
 export type WorldStockAssetType = Extract<MarketAssetType, 'stock' | 'etf'>;
@@ -48,6 +50,8 @@ export type WorldStockSearchResponse = {
   hasMore: boolean;
   source: string;
   results: WorldStock[];
+  markets?: WorldStockMarket[];
+  directoryStatus?: string;
 } | {
   ok: false;
   success: false;

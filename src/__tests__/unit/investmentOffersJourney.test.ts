@@ -148,12 +148,13 @@ describe('Investor secure sharing (phase 2.9)', () => {
     expect(viewRoute).not.toContain('internal_note');
     expect(migration).toContain('internal_note text');
     // Download URLs require the owner's explicit allow_downloads choice.
-    expect(viewRoute).toContain("allowDownloads ? String(row.source_url ?? row.sourceUrl ?? '').trim() || null : null");
+    expect(viewRoute).toContain("allowDownloads ? safeInvestorDocumentUrl(row.source_url ?? row.sourceUrl ?? row.file_url) : null");
   });
 
   it('logs real access events and only known event types', () => {
     expect(viewRoute).toContain("logEvent(supabase, link, 'offer_opened', null)");
-    expect(viewRoute).toContain("['pitch_deck_viewed', 'document_downloaded'].includes(eventType)");
+    expect(viewRoute).toContain("eventType === 'pitch_deck_viewed' ? sections.includes('pitch_deck')");
+    expect(viewRoute).toContain("sections.includes('documents') && link.allow_downloads === true");
     expect(viewRoute).toContain("logEvent(supabase, link, 'access_denied', null, { reason: state })");
   });
 

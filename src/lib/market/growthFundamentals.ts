@@ -22,7 +22,7 @@ const loadReported = unstable_cache(async (symbol: string) => {
   const facts = await loadSecCompanyFacts(company.cik, AbortSignal.timeout(12_000));
   const result = parseGrowthCompanyFacts(facts.payload, symbol, company.cik);
   return { ...result, retrievedAt: facts.retrievedAt };
-}, ['growth-reported-annual-v1'], { revalidate: 43_200 });
+}, ['growth-reported-annual-v2'], { revalidate: 43_200 });
 
 export function loadGrowthFundamentals(symbol: string): Promise<GrowthFundamentals> {
   const failed = failures.get(symbol);
