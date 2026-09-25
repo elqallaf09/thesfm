@@ -23,6 +23,7 @@ import {
   FileSearch,
   FileText,
   Files,
+  Fuel,
   FolderKanban,
   Globe,
   GraduationCap,
@@ -171,6 +172,15 @@ export const NAV_GROUPS: NavigationGroup[] = [
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
       { id: 'global-markets', icon: Globe, href: '/global-markets', labelKey: 'nav_global_markets' },
       { id: 'real-estate-market', icon: Building2, href: '/global-markets/real-estate', labelKey: 'nav_real_estate_market' },
+      {
+        id: 'forecast-engines',
+        icon: Radar,
+        labelKey: 'nav_forecast_engines',
+        children: [
+          { id: 'gold-forecast-engine', icon: CircleDollarSign, href: '/investments/gold-silver/intelligence', labelKey: 'nav_gold_forecast_engine' },
+          { id: 'oil-forecast-engine', icon: Fuel, href: '/global-markets/oil-scenarios', labelKey: 'nav_oil_forecast_engine' },
+        ],
+      },
     ],
   },
   {
