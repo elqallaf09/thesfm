@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateInvestorToken, hashInvestorPassword, hashInvestorToken } from '@/lib/server/investorShare';
+import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { normalizeSections } from '@/lib/investor/shareAccess';
 
 export const runtime = 'nodejs';
@@ -31,6 +32,9 @@ export async function POST(request: NextRequest) {
   const { data: userData, error: userError } = await supabase.auth.getUser(authToken);
   const user = userData?.user;
   if (userError || !user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+  const limited = rateLimitRequest(request, { max: 10, windowMs: 60000, prefix: 'investor-link-create' });
+  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try {
@@ -64,6 +68,7 @@ export async function POST(request: NextRequest) {
   }
 
   const password = typeof body.password === 'string' ? body.password : '';
+  if (Buffer.byteLength(password, 'utf8') > 1024) return NextResponse.json({ error: 'password_too_long' }, { status: 400 });
   if (password && password.length < 6) {
     return NextResponse.json({ error: 'password_too_short' }, { status: 400 });
   }
@@ -91,5 +96,5 @@ export async function POST(request: NextRequest) {
   }
 
   // The only time the raw token ever leaves the server.
-  return NextResponse.json({ link: created, token: rawToken });
+  return NextResponse.json({ link: created, token: rawToken }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

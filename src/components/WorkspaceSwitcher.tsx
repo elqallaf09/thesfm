@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { MonitorPlay } from 'lucide-react';
 import {
   availableWorkspaces,
   getWorkspaceEntryRoute,
@@ -18,9 +19,9 @@ import { WorkspaceActiveIndicator } from '@/components/header/WorkspaceActiveInd
 import { MobileWorkspaceRail } from '@/components/header/MobileWorkspaceRail';
 
 const WORKSPACE_NAV_COPY = {
-  ar: { label: 'مساحات العمل' },
-  en: { label: 'Workspaces' },
-  fr: { label: 'Espaces de travail' },
+  ar: { label: 'مساحات العمل', tv: 'SFM TV — أشرطة الأسواق' },
+  en: { label: 'Workspaces', tv: 'SFM TV — Market strips' },
+  fr: { label: 'Espaces de travail', tv: 'SFM TV — Bandeaux des marchés' },
 } as const;
 
 type WorkspaceSwitcherProps = {
@@ -151,6 +152,17 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
             </Link>
           );
         })}
+        <Link
+          href="/tv/strips"
+          prefetch={false}
+          className="sfm-workspace-tab"
+          data-nav-destination="sfm-tv"
+          aria-label={WORKSPACE_NAV_COPY[locale].tv}
+          title={WORKSPACE_NAV_COPY[locale].tv}
+        >
+          <MonitorPlay size={16} aria-hidden="true" />
+          <span className="sfm-workspace-label-full" dir="ltr">SFM TV</span>
+        </Link>
       </MobileWorkspaceRail>
 
       <style jsx global>{`
@@ -183,7 +195,10 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           background: var(--workspace-switcher-bg);
           scrollbar-width: none;
           scroll-padding-inline: 16px;
-          scroll-snap-type: inline mandatory;
+          /* Snapping may choose a neighbouring tab after scrollIntoView and
+             leave the requested destination clipped in RTL. Keep the rail
+             freely scrollable; active-tab positioning is handled above. */
+          scroll-snap-type: none;
           -webkit-overflow-scrolling: touch;
           /* Edge-fade scroll affordance: symmetric on both ends regardless
              of RTL/LTR, since both rail edges should read as scrollable

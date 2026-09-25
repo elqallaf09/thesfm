@@ -16,6 +16,8 @@ vi.mock('@/lib/sfm-market/history', () => ({
 }));
 
 import { fetchSfmTraderQuotesDetailed } from '@/lib/trader/sfmMarketQuotes';
+import { normalizeGoldApiSilver } from '@/lib/market/providers/goldApi';
+import { assessSfmQuoteQuality } from '@/lib/sfm-market/quality';
 
 function quote(patch: Partial<SfmMarketQuote> = {}): SfmMarketQuote {
   return {
@@ -82,6 +84,22 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe('SFM trader quote adapter', () => {
+  it('shows a valid silver fallback price with honest provider status and no invented analysis', async () => {
+    const normalized = normalizeGoldApiSilver({ symbol: 'XAG', currency: 'USD', price: 66.37, updatedAt: '2026-09-16T19:00:00Z' });
+    if (!normalized) throw new Error('Expected silver fixture');
+    mocks.quote.mockResolvedValue(quote({ ...normalized, assetType: 'commodity', quality: assessSfmQuoteQuality(normalized, new Date(Date.now())),
+      provenance: { ...quote().provenance, upstreamProvider: 'gold_api', upstreamProviderName: 'Gold API', providerSymbol: 'XAG',
+        observedAt: normalized.lastUpdated, observation: normalized.observation, derivedFields: [] },
+    }));
+    mocks.history.mockResolvedValue({ ok: false, candles: [], attempts: [], reason: 'NO_MARKET_DATA' });
+    const result = await fetchSfmTraderQuotesDetailed(['XAGUSD']);
+    expect(result.provider).toBe('gold_api');
+    expect(result.summary.loadedSymbols).toBe(1);
+    expect(result.quotes[0]).toMatchObject({ available: true, price: 66.37, upstreamSource: 'Gold API',
+      change: null, technicalAvailable: false, signalAvailable: false, confidence: null, targetPrice: null,
+      research: { samples: 0, confidence: null, risk: { atrPercent: null, annualizedVolatilityPercent: null } },
+    });
+  });
   it.each([
     [{ precision: 'date' as const, marketOpen: true }, 'daily'],
     [{ precision: 'instant' as const, marketOpen: false }, 'market_closed'],

@@ -6,6 +6,7 @@ describe('implicitMarketAssetCandidates', () => {
     ['NVDA', 'NVDA'],
     ['بوبيان', 'بوبيان'],
     ['حلل سهم بوبيان اليوم؟', 'بوبيان'],
+    ['حلل سهم بيتك اليوم باختصار واذكر فقط البيانات الحالية الموثقة.', 'بيتك'],
     ['Analyze Apple stock today', 'Apple'],
     ['شنو رايك في EURUSD الحين؟', 'EURUSD'],
     ['Tell me about Kuwait Finance House', 'Kuwait Finance House'],

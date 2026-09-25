@@ -98,6 +98,11 @@ describe('Preview-only authentication fixtures', () => {
     expect(authenticatedPreviewJob).toContain(
       "if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
     );
+    const previewConfigurationJob = workflow.slice(workflow.indexOf('  preview-configuration:'), workflow.indexOf('  authenticated-preview:'));
+    expect(previewConfigurationJob).toContain(
+      "if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
+    );
+    expect(workflow).not.toContain("github.actor != 'dependabot[bot]'");
     expect(manualAuthenticatedPreviewWorkflow).toContain('workflow_dispatch:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('target_sha:');
     expect(manualAuthenticatedPreviewWorkflow).toContain('preview_ref:');

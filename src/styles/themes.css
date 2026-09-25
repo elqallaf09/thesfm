@@ -382,33 +382,33 @@
   color-scheme: dark;
 
   /* Canvas and layered surfaces */
-  --background: #0A1230;
-  --surface: #101A3F;
-  --surface-secondary: #0C1436;
-  --surface-elevated: #17224E;
-  --surface-muted: #0E1839;
-  --surface-hover: #182452;
-  --surface-active: #1E2B61;
-  --surface-disabled: #0F1737;
-  --card: #101A3F;
+  --background: #0B0D12;
+  --surface: #12151C;
+  --surface-secondary: #0F1218;
+  --surface-elevated: #181C24;
+  --surface-muted: #10141A;
+  --surface-hover: #1B2029;
+  --surface-active: #222833;
+  --surface-disabled: #101319;
+  --card: #12151C;
   --card-foreground: #EAF1FB;
-  --card-elevated: #17224E;
-  --modal: #17224E;
-  --popover: #17224E;
+  --card-elevated: #181C24;
+  --modal: #181C24;
+  --popover: #181C24;
   --popover-foreground: #EAF1FB;
-  --tooltip: #232C5C;
+  --tooltip: #20252E;
   --tooltip-foreground: #EAF1FB;
-  --header: #0B1334;
-  --footer: #0B1334;
-  --navigation: #101A3F;
-  --pricing-card: #101A3F;
+  --header: #0D1016;
+  --footer: #0D1016;
+  --navigation: #12151C;
+  --pricing-card: #12151C;
 
   /* Text */
   --foreground: #EAF1FB;
   --foreground-secondary: #C3CCE8;
   --foreground-muted: #98A2C9;
   --foreground-subtle: #98A2C9;
-  --foreground-inverse: #0A1230;
+  --foreground-inverse: #0B0D12;
   --placeholder: #8F99C0;
   --link: #A5B4FC;
   --link-hover: #C7D2FE;
@@ -416,9 +416,9 @@
   --link-visited: #C4B5FD;
 
   /* Borders and dividers */
-  --border: #202A52;
+  --border: #292E38;
   --border-strong: #6E79A8;
-  --divider: #1F2850;
+  --divider: #252A33;
 
   /* Brand */
   --primary: #818CF8;
@@ -466,15 +466,15 @@
   --shadow-color: #000000;
 
   /* Sidebar and application chrome */
-  --sidebar-background: #0B1334;
+  --sidebar-background: #0D1016;
   --sidebar-foreground: #E7ECFB;
   --sidebar-muted: #9AA4CB;
   --sidebar-border: #232D5D;
-  --sidebar-hover: #182452;
-  --sidebar-expanded: #131C44;
+  --sidebar-hover: #1B2029;
+  --sidebar-expanded: #161A22;
   --sidebar-active: #3730A3;
   --sidebar-active-foreground: #FFFFFF;
-  --sidebar-glass-bg-fallback: #0B1334;
+  --sidebar-glass-bg-fallback: #0D1016;
   --sidebar-glass-bg: linear-gradient(158deg, rgba(23, 32, 80, 0.9), rgba(10, 18, 48, 0.94) 58%, rgba(7, 13, 38, 0.97));
   --sidebar-glass-bg-elevated: linear-gradient(145deg, rgba(38, 48, 110, 0.72), rgba(13, 21, 55, 0.8));
   --sidebar-glass-border: rgba(139, 150, 235, 0.28);
@@ -731,4 +731,37 @@
   --sidebar: var(--sidebar-background);
   --sidebar-accent: var(--sidebar-hover);
   --sidebar-accent-foreground: var(--sidebar-foreground);
+}
+
+/* Markets TV: independently selectable display theme, also bundled on TVs.
+ * Static shadows retain compatibility with Chromium 85 television engines. */
+.tv-screen {
+  --tv-bg: #091015;
+  --tv-panel: #111b23;
+  --tv-panel2: #16232d;
+  --tv-text: #ecf3f6;
+  --tv-muted: #9eafb9;
+  --tv-line: #2a3943;
+  --tv-accent: #ffc279;
+  --tv-up: #62d9b2;
+  --tv-down: #ff8d95;
+  --tv-backdrop: #000b;
+  --tv-qr-background: #fff;
+  --tv-focus-shadow: 0 0 0 7px var(--tv-bg);
+  --tv-active-shadow: inset 0 -3px var(--tv-accent);
+  --tv-toast-shadow: 0 15px 50px #0006;
+  --tv-dialog-shadow: 0 24px 100px #0008;
+  --tv-map-shadow: 0 8px 24px #0007;
+}
+.tv-light {
+  --tv-bg: #f1f5f7;
+  --tv-panel: #fff;
+  --tv-panel2: #e7edf0;
+  --tv-text: #14222d;
+  --tv-muted: #516472;
+  --tv-line: #ccd8df;
+  --tv-accent: #854705;
+  --tv-up: #0a7052;
+  --tv-down: #b22537;
+  color-scheme: light;
 }

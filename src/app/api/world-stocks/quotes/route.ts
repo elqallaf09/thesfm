@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic';
 const MAX_SYMBOLS = 30;
 
 const symbolRequestSchema = z.object({
-  canonicalSymbol: z.string().trim().min(1).max(24),
-  providerSymbol: z.string().trim().min(1).max(24),
+  canonicalSymbol: z.string().trim().min(1).max(32),
+  providerSymbol: z.string().trim().min(1).max(32),
   exchangeCode: z.string().trim().min(1).max(32),
   assetType: z.enum(['stock', 'etf']),
   currency: z.string().trim().max(8).nullable().optional(),

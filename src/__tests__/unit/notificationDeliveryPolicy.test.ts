@@ -1,0 +1,9 @@
+import { describe,it,expect } from 'vitest';
+import { allowedPushEndpoint,inQuietHours,deliveryOutcome } from '@/lib/notifications/deliveryPolicy';
+import { integrationSnapshotSchema } from '@/lib/notifications/integrationSnapshot';
+describe('notification delivery boundaries',()=>{
+ it('accepts browser push services, rejects SSRF, credentials, ports and lookalikes',()=>{expect(allowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')).toBe(true);for(const value of ['http://fcm.googleapis.com/a','https://localhost/a','https://127.0.0.1/a','https://fcm.googleapis.com.attacker.example/a','https://x@fcm.googleapis.com/a','https://fcm.googleapis.com:8443/a'])expect(allowedPushEndpoint(value)).toBe(false);});
+ it('handles midnight quiet hours and their exact boundaries in user timezone',()=>{expect(inQuietHours(22*60,7*60,'Asia/Kuwait',new Date('2026-09-01T19:00:00Z'))).toBe(true);expect(inQuietHours(22*60,7*60,'Asia/Kuwait',new Date('2026-09-02T04:00:00Z'))).toBe(false);expect(inQuietHours(null,null,'UTC')).toBe(false);});
+ it('retries explicit throttling but not an ambiguous delivery',()=>{expect(deliveryOutcome(429)).toBe('retry');expect(deliveryOutcome(410)).toBe('failed');expect(deliveryOutcome(null)).toBe('uncertain');expect(deliveryOutcome(500)).toBe('uncertain');});
+ it('validates real connector snapshots and rejects absent currency or future observations',()=>{const p={source:'mt5',externalId:'a',observedAt:'2026-01-01T00:00:00Z',currency:'KWD',balance:0,equity:null,positions:[]};expect(integrationSnapshotSchema.safeParse(p).success).toBe(true);expect(integrationSnapshotSchema.safeParse({...p,currency:''}).success).toBe(false);expect(integrationSnapshotSchema.safeParse({...p,observedAt:'2099-01-01T00:00:00Z'}).success).toBe(false);expect(integrationSnapshotSchema.safeParse({...p,balance:'123'}).success).toBe(false);});
+});

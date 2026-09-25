@@ -5,6 +5,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { isEmail } from '@/lib/authSecurity';
 import { trackEvent } from '@/lib/analytics';
 import { activateGuestServerSession, syncServerAuthSession } from '@/lib/auth/clientSession';
+import { listenForAccountSwitch } from '@/lib/auth/accountSwitch';
 
 // The Supabase browser SDK is a large dependency that most of this module only
 // needs after the initial paint (session restore, sign-in/out). Loading it via
@@ -37,7 +38,7 @@ interface AuthContextValue {
     mfaType?: 'email' | 'totp';
   }>;
   signUp: (username: string, password: string, email: string, age: string, gender?: string, securityQuestion?: string, securityAnswer?: string) => Promise<{ error: Error | null }>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { scope: 'local' | 'global' }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -110,6 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const authInitializationRef = useRef(true);
+
+  useEffect(() => listenForAccountSwitch(() => window.location.replace('/login?next=%2Ftoday')), []);
 
   const continueAsGuest = useCallback(() => {
     if (guestActivationInFlight) return guestActivationInFlight;
@@ -378,13 +381,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: new Error(err.message || 'فشل الاتصال بالخادم') };
       }
     },
-    signOut: async () => {
+    signOut: async (options) => {
       void trackEvent('logout', { module: 'auth' });
       const { supabase } = await loadSupabaseModule();
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut(options);
+      if (error) throw new Error('AUTH_SIGNOUT_FAILED');
       clearStoredGuestMode();
       syncGuestCookie(false);
-      await syncServerAuthSession(null);
+      const sync = await syncServerAuthSession(null, { force: true });
+      if (!sync.ok) throw new Error('AUTH_COOKIE_CLEAR_FAILED');
       setSession(null);
       setUser(null);
       setIsGuest(false);
