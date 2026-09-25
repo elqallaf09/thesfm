@@ -201,7 +201,7 @@ jobs:
     # checks running, but route secret-backed browser validation through the
     # manually dispatched authenticated-preview-validate.yml workflow after a
     # maintainer has reviewed the dependency changes.
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -410,7 +410,7 @@ jobs:
 
   preview-configuration:
     name: CI/Isolated Preview configuration
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -442,7 +442,7 @@ jobs:
     # Never expose Preview credentials to an automated dependency PR. A
     # maintainer can validate an approved exact SHA with the fail-closed manual
     # authenticated-preview-validate.yml workflow instead.
-    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' && github.event.pull_request.head.repo.full_name == github.repository
     needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain, build, smoke, lighthouse, preview-configuration]
     runs-on: ubuntu-latest
     concurrency:
