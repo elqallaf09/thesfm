@@ -6,6 +6,8 @@ import { ASSETS } from '../../domain/macro-simulator/engine';
 import { ROUND_IDS, advanceRound, draftAllocation, gameSummary, roundInput, settleRound, startGame, valueOf, type Allocation, type GameState } from '../../domain/macro-simulator/game';
 import { assetLabels, caseLabels, eventLabels, regimeLabels, units } from './copy';
 import { gameCopy, roundCopy, type GameCopyKey, type GameLanguage } from './game-copy';
+import { GameSessionControls } from './GameSessionControls';
+import { type RestoredGame } from '../../domain/macro-simulator/game-session';
 import styles from './game.module.css';
 
 const initialWeights = () => draftAllocation(startGame().holdings);
@@ -35,7 +37,7 @@ function BalanceChart({ game, lang }: { game: GameState; lang: GameLanguage }) {
   </figure>;
 }
 
-export function MacroGame() {
+export function MacroGame({ userKey }: { userKey: string }) {
   const { lang: selectedLanguage } = useLanguage();
   const lang: GameLanguage = selectedLanguage === 'en' || selectedLanguage === 'fr' ? selectedLanguage : 'ar';
   const t = (key: GameCopyKey) => gameCopy[key][lang];
@@ -55,6 +57,10 @@ export function MacroGame() {
   const assumptions = roundInput(game?.roundIndex ?? 0);
   const locked = !!game && game.phase !== 'planning';
   const result = game?.phase === 'revealed' ? game.history[game.history.length - 1] : null;
+  function resume(saved: RestoredGame) {
+    setGame(saved.game); setCapital(saved.game.initialCapital); setAction(saved.draft.action);
+    setWeights(saved.draft.weights); setRationale(saved.draft.rationale); setError(null); setConfirmReset(false);
+  }
   function begin() {
     try { const next = startGame(capital); setGame(next); setWeights(draftAllocation(next.holdings)); setAction('hold'); setRationale(''); setError(null); }
     catch { setError('invalid'); }
@@ -76,7 +82,8 @@ export function MacroGame() {
   return <WorkspacePageContainer variant="full" className={styles.page}>
     <div data-testid="macro-game" lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} className={styles.stack}>
       <header className={styles.hero}><p className={styles.eyebrow} dir="ltr">SFM / SIM LAB · GAME</p><h1>{t('title')}</h1><p>{t('subtitle')}</p></header>
-      <p className={styles.notice}>{t('disclaimer')}</p><p className={styles.muted}>{t('local')}</p>
+      <p className={styles.notice}>{t('disclaimer')}</p>
+      <GameSessionControls userKey={userKey} lang={lang} game={game} draft={{ action, rationale, weights }} onResume={resume} />
       {error ? <p role="alert" className={styles.error}>{t(error)}</p> : null}
       <ol className={styles.rounds} aria-label={t('round')}>{ROUND_IDS.map((round, index) => <li key={round} aria-current={game && game.roundIndex === index && game.phase !== 'finished' ? 'step' : undefined} className={styles.round}><span className={styles.number} dir="ltr">0{index + 1}</span><strong>{roundCopy[round].title[lang]}</strong></li>)}</ol>
       {!game ? <section className={styles.card}><h2>{t('start')}</h2><p>{t('incremental')}</p><form onSubmit={event => { event.preventDefault(); begin(); }} className={styles.startForm}><label className={styles.field}>{t('capital')}<input type="number" required min={1} max={1e9} step="any" dir="ltr" value={numericValue(capital)} onChange={event => setCapital(event.target.valueAsNumber)} /></label><button className={styles.primary} type="submit">{t('start')}</button></form></section> : <>
