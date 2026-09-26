@@ -167,6 +167,7 @@ export const NAV_GROUPS: NavigationGroup[] = [
     labelKey: 'nav_group_invest_market',
     items: [
       { id: 'ten-advisors', icon: BrainCircuit, href: '/economic-intelligence/advisors', labelKey: 'nav_ten_advisors' },
+      { id: 'macro-simulator', icon: BrainCircuit, href: '/economic-intelligence/simulator', labelKey: 'nav_macro_simulator' },
       { id: 'sfmer', icon: UsersRound, href: '/market-analysis/sfmer', labelKey: 'nav_sfmer' },
       { id: 'invest', icon: TrendingUp, href: '/investments', labelKey: 'nav_invest' },
       { id: 'ai-analyst', icon: BrainCircuit, href: '/ai-analyst/overview', labelKey: 'nav_ai_analyst' },
