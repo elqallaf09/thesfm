@@ -91,7 +91,11 @@ const TRANSMISSION: Record<Exclude<EventKind, 'gold'>, Factors> = {
 };
 const STRENGTH: Record<CaseId, number> = { contained: 0.55, reference: 1, amplified: 1.6 };
 const TIME_RESPONSE: Record<'0' | Horizon, number> = { '0': 0, '5m': 0.28, '1h': 0.48, '1d': 0.68, '1w': 0.87, '1m': 1, '3m': 1.06, '12m': 0.82 };
-const clamp = (n: number) => Math.max(-95, Math.min(200, n));
+const clamp = (n: number) => {
+  const bounded = Math.max(-95, Math.min(200, n));
+  // Multiplication by a zero surprise can produce -0; a flat asset has one canonical zero.
+  return bounded === 0 ? 0 : bounded;
+};
 export function surprise(shock: Shock): number {
   if (shock.kind === 'rates') return (shock.magnitude - shock.expected) / 25;
   const scale = shock.kind === 'inflation' ? 0.5 : shock.kind === 'oilSupply' ? 10 : 1;
