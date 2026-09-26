@@ -11,6 +11,8 @@ type Mode = 'lab' | 'challenge' | 'method';
 type Guess = '' | 'positive' | 'negative' | 'neutral';
 const direction = (value: number): Exclude<Guess, ''> => Math.abs(value) < 0.05 ? 'neutral' : value > 0 ? 'positive' : 'negative';
 const fieldValue = (value: number) => Number.isFinite(value) ? value : '';
+// Oil inputs use a 5-point step; a default of 1 would fail native form validation.
+const initialShock = (kind: EventKind): Shock => ({ kind, magnitude: kind === 'rates' ? 25 : kind === 'oilSupply' ? 10 : 1, expected: 0, pricedIn: 0 });
 export function MacroLab({ userKey }: { userKey: string }) {
   const { lang: activeLanguage } = useLanguage();
   const lang: Language = activeLanguage === 'en' || activeLanguage === 'fr' ? activeLanguage : 'ar';
@@ -32,7 +34,11 @@ export function MacroLab({ userKey }: { userKey: string }) {
   const number = (n: number, digits = 1) => new Intl.NumberFormat(`${lang}-u-nu-latn`, { maximumFractionDigits: digits }).format(n);
   const percent = (n: number) => `${n >= 0.05 ? '+' : ''}${number(Math.abs(n) < 0.05 ? 0 : n)}%`;
   const money = (n: number) => new Intl.NumberFormat(`${lang}-u-nu-latn`, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-  function edit(patch: Partial<Input>) { setInput(previous => ({ ...previous, ...patch })); setError(null); setStatus(null); }
+  function edit(patch: Partial<Input>) {
+    setInput(previous => ({ ...previous, ...patch })); setError(null); setStatus(null);
+    // Each edited challenge must be explicitly revealed again, unlike lab-mode stale output.
+    if (mode === 'challenge') setReport(null);
+  }
   function editShock(index: number, patch: Partial<Shock>) { edit({ shocks: input.shocks.map((s, i) => i === index ? { ...s, ...patch } : s) }); }
   function replace(next: Input) { setInput(next); setReport(null); setGuess(''); setError(null); setStatus(null); }
   function run() {
@@ -41,10 +47,14 @@ export function MacroLab({ userKey }: { userKey: string }) {
     try { setReport(simulate(input)); } catch { setError(weightsValid ? 'invalid' : 'weights'); }
   }
   function save() {
-    try { const data = snapshot(input); window.sessionStorage.setItem(storageKey, data); setStatus('saved'); setError(null); }
-    catch { setError(weightsValid ? 'storageError' : 'weights'); }
+    setStatus(null); setError(null);
+    let data: string;
+    try { data = snapshot(input); } catch { setError(weightsValid ? 'invalid' : 'weights'); return; }
+    try { window.sessionStorage.setItem(storageKey, data); setStatus('saved'); }
+    catch { setError('storageError'); }
   }
   function restore() {
+    setStatus(null); setError(null);
     try { const value = window.sessionStorage.getItem(storageKey); if (!value) { setStatus('noSave'); return; } replace(readSnapshot(value)); setStatus('loaded'); }
     catch { setError('invalid'); }
   }
@@ -82,7 +92,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
               <label className={styles.field}>{t('scenarioName')}<input maxLength={100} value={input.title} placeholder={t('untitled')} onChange={e => edit({ title: e.target.value })} /></label>
               {input.shocks.map((shock, index) => <fieldset className={styles.shock} key={shock.kind}>
                 <legend>{number(index + 1, 0)} · {eventLabels[shock.kind][lang]}</legend>
-                <label className={styles.field}>{t('event')}<select value={shock.kind} onChange={e => editShock(index, { kind: e.target.value as EventKind, magnitude: e.target.value === 'rates' ? 25 : 1, expected: 0, pricedIn: 0 })}>
+                <label className={styles.field}>{t('event')}<select value={shock.kind} onChange={e => editShock(index, initialShock(e.target.value as EventKind))}>
                   {EVENT_KINDS.map(kind => <option value={kind} key={kind} disabled={input.shocks.some((s, i) => i !== index && s.kind === kind)}>{eventLabels[kind][lang]}</option>)}
                 </select></label>
                 <div className={styles.fieldGrid}>
@@ -95,7 +105,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
               </fieldset>)}
               <button type="button" className={styles.button} disabled={input.shocks.length >= 4} onClick={() => {
                 const kind = EVENT_KINDS.find(k => !input.shocks.some(s => s.kind === k));
-                if (kind) edit({ shocks: [...input.shocks, { kind, magnitude: kind === 'rates' ? 25 : 1, expected: 0, pricedIn: 0 }] });
+                if (kind) edit({ shocks: [...input.shocks, initialShock(kind)] });
               }}>+ {t('add')}</button>
               <label className={styles.field}>{t('notes')}<textarea rows={3} maxLength={1200} value={input.notes} onChange={e => edit({ notes: e.target.value })} /></label><p className={styles.muted}>{t('notesHelp')}</p>
             </section>
