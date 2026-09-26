@@ -38,7 +38,7 @@ test('macro game checkpoint resumes without double credit and validates transfer
   await expect(rows).toHaveCount(0); await expect(result).toHaveCount(0);
   await game.getByTestId('macro-game-reveal').click();
   await expect(rows).toHaveCount(1);
-  const beforeReload = await rows.first().innerText();
+  const beforeReload = (await rows.first().textContent()) ?? ''; // Match the assertion's textContent semantics.
   await button('save').click();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await button('restore').click(); await button('confirmRestore').click();
