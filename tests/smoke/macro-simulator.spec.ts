@@ -26,6 +26,7 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     const form = lab.locator('form');
     const button = (key: CopyKey) => lab.getByRole('button', { name: t(key), exact: true });
     const validForm = () => form.evaluate(element => (element as HTMLFormElement).checkValidity());
+    await expect(lab).toHaveCount(1);
     await expect(lab).toBeVisible();
     await expect(lab).toHaveAttribute('lang', locale);
     await expect(lab).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
@@ -37,7 +38,8 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
       await page.keyboard.press('Enter');
       await expect(results).toBeVisible();
       await expect(results.locator('article')).toHaveCount(3);
-      const markets = lab.locator('section').filter({ has: lab.getByRole('heading', { name: t('markets'), exact: true }) });
+      const markets = lab.locator('section').filter({ has: page.getByRole('heading', { name: t('markets'), exact: true }) });
+      await expect(markets).toHaveCount(1);
       await expect(markets.locator('article')).toHaveCount(ASSETS.length);
       await expect(results.getByText(t('noProbability'), { exact: true })).toBeVisible();
       await button('pin').click();
@@ -96,7 +98,12 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
       await run.click();
       await expect(lab.getByRole('alert')).toHaveText(t('challengeRequired'));
       await expect(results).toHaveCount(0);
-      await lab.getByLabel(t('notes'), { exact: true }).fill('Hypothesis recorded before revealing the educational result.');
+      const notes = lab.getByLabel(t('notes'), { exact: true });
+      await notes.fill('Hypothesis recorded before revealing the educational result.');
+      await expect(notes).toHaveValue('Hypothesis recorded before revealing the educational result.');
+      await expect(notes).toHaveAccessibleName(t('notes'));
+      await lab.getByText(t('notes'), { exact: true }).click();
+      await expect(notes).toBeFocused();
       await run.click();
       await expect(results).toBeVisible();
       await lab.getByLabel(t('magnitude'), { exact: false }).first().fill('25');
