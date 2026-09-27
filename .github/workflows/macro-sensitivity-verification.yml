@@ -1,4 +1,4 @@
-name: Macro panel evidence
+name: Macro final failure summary
 on:
   push:
     branches: [diagnostics/macro-sensitivity-verification]
@@ -10,27 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Extract original assertion and panel measurements without rerunning tests
+      - name: Read original focused and required browser results
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node --input-type=module <<'NODE'
-          const headers = {Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json'};
-          async function lines(id) {
-            const response=await fetch(`https://api.github.com/repos/elqallaf09/thesfm/actions/jobs/${id}/logs`,{headers,signal:AbortSignal.timeout(40000)});
-            if(!response.ok) throw new Error('HTTP '+response.status);
-            return (await response.text()).split('\n').map(line=>line.replace(/\u001b\[[0-9;]*m/g,'').replace(/^\d{4}-\d{2}-\d{2}T\S+\s*/,''));
+          const headers={Authorization:`Bearer ${process.env.GH_TOKEN}`,Accept:'application/vnd.github+json'};
+          for (const id of [108675690669,108675647448]) {
+            const res=await fetch(`https://api.github.com/repos/elqallaf09/thesfm/actions/jobs/${id}/logs`,{headers,signal:AbortSignal.timeout(45000)});
+            if(!res.ok)throw new Error('HTTP '+res.status);
+            const lines=(await res.text()).split('\n').map(line=>line.replace(/\u001b\[[0-9;]*m/g,'').replace(/^\d{4}-\d{2}-\d{2}T\S+\s*/,''));
+            console.log('JOB '+id);
+            for(let i=0;i<lines.length;i++)if(/^\s*\d+\) \[/.test(lines[i]))console.log(lines.slice(i,i+30).join('\n'));
+            console.log('TOTALS\n'+lines.filter(line=>/^\s*\d+ (passed|failed|flaky|skipped)|Error:|Expected:|Received:/.test(line)).slice(-35).join('\n'));
           }
-          const failed=await lines(108675690669);
-          const first=failed.findIndex(line=>/^\s*1\) \[/.test(line));
-          console.log('ORIGINAL_FAILURE\n'+failed.slice(first,first+42).join('\n'));
-          const evidence=[];
-          for(const line of await lines(108679944531)) {
-            const m=line.match(/EXACT (ar|en|fr) (\d+) ([\w-]+) (\{.*\})/);
-            if(!m)continue;
-            const g=JSON.parse(m[4]);
-            const panel=g.fields.find(field=>field.tag==='SECTION');
-            evidence.push({locale:m[1],width:m[2],variant:m[3],page:g.pageOverflow,panelDelta:panel?panel.sw-panel.cw:null,panel});
-          }
-          console.log('PANEL_EVIDENCE\n'+JSON.stringify(evidence,null,2));
           NODE
