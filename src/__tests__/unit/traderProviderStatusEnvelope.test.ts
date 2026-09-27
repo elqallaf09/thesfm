@@ -25,14 +25,16 @@ describe('/api/trader/provider-status additive envelope (trader-app JS regressio
     for (const key of preExistingKeys) {
       expect(route).toContain(key);
     }
-    expect(route).toContain('state,');
+    expect(route).toContain('state: displayState,');
     expect(route).toContain("getMarketSystemState");
   });
 
-  it('computes `state` additively before the response object, not by replacing any existing computation', () => {
+  it('computes and sanitizes `state` additively before the response object, not by replacing any existing computation', () => {
     const stateIndex = route.indexOf('const state = await getMarketSystemState');
+    const publicStateIndex = route.indexOf('const displayState = isAdmin ? state : sanitizeMarketSystemStateForPublic(state);');
     const responseIndex = route.indexOf('const response = {');
     expect(stateIndex).toBeGreaterThan(-1);
+    expect(publicStateIndex).toBeGreaterThan(stateIndex);
     expect(responseIndex).toBeGreaterThan(-1);
     expect(stateIndex).toBeLessThan(responseIndex);
   });

@@ -1,8 +1,8 @@
-import type { Lang } from '../translations';
+import type { Lang } from '../translations'; import { TR_MARKET_DIAGNOSTICS } from './marketDiagnostics';
 
 type TranslationEntry = Partial<Record<Lang, string>> & { ar: string; en: string };
 
-export const TR_MARKET: Record<string, TranslationEntry> = {
+export const TR_MARKET: Record<string, TranslationEntry> = { ...TR_MARKET_DIAGNOSTICS,
   market_news_research_label: { ar:'غرفة أخبار السوق', en:'Market newsroom', fr:'Salle d’actualité marché' },
   market_news_workspace_description: { ar:'تابع أخباراً مالية موحدة من مصادر مستقلة، مع حالة تحقق واضحة وتأثير متوقع دون تكرار القصة.', en:'Track consolidated financial news from independent sources with clear verification and estimated impact, without duplicate stories.', fr:'Suivez des actualités financières consolidées issues de sources indépendantes, avec vérification claire et impact estimé, sans doublons.' },
   market_news_status_summary: { ar:'ملخص حالة الأخبار', en:'News status summary', fr:'Résumé de l’état des actualités' },

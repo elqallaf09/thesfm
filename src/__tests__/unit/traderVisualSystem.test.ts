@@ -220,6 +220,19 @@ describe('standalone Trader visual-system contract', () => {
     expect(finalLayer).toMatch(/\.provider-status-banner\.warn[^)]*\.provider-metric-card\.warn[^)]*\.provider-market-state\.warn[^)]*\.provider-warning[^)]*\)\s*\{[^}]*background:\s*var\(--warning-soft\)\s*!important/);
   });
 
+  it('limits the higher-contrast chart, session, and heatmap treatment to Trader light mode', () => {
+    const lightMarketVisuals = [
+      'html[data-theme="light"] :is(.session-bar, .market-session-terminal .st-seg)',
+      'html[data-theme="light"] .heatmap-tile.tone-positive',
+      'html[data-theme="light"] .heatmap-tile.tone-negative',
+      'html[data-theme="light"] :is(.detail-chart-wrap, .chart-shell, .chart-panel, .chart-empty)',
+    ];
+    for (const selector of lightMarketVisuals) expect(finalLayer, selector).toContain(selector);
+    expect(finalLayer).toContain('--session-segment-background: color-mix(in srgb, var(--session-color) 14%, var(--surface));');
+    expect(finalLayer).toContain('--heat-bg: var(--success-soft);');
+    expect(finalLayer).toContain('--heat-bg: var(--danger-soft);');
+  });
+
   it('keeps sidebar edge and scroll spacing logical for RTL and LTR', () => {
     expect(cinema).toContain('border-inline-end: 1px solid var(--border);');
     expect(cinema).not.toContain('var(--terminal-border)');

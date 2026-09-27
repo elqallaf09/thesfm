@@ -434,14 +434,14 @@ test.describe('SFM Trader premium workspace smoke coverage', () => {
         backgroundColor: getComputedStyle(tile).backgroundColor,
         backgroundImage: getComputedStyle(tile).backgroundImage,
         semanticSuccess: semanticColor('var(--success)'),
-        semanticHeroForeground: semanticColor('var(--hero-foreground)'),
+        semanticSuccessSoft: semanticColor('var(--success-soft)'),
         textColors: selectors.map(selector => getComputedStyle(tile.querySelector(selector) as Element).color),
         performanceBackground: performance ? getComputedStyle(performance).backgroundColor : '',
       };
     });
     expect(lightTileVisual.backgroundImage).toBe('none');
-    expect(lightTileVisual.backgroundColor).toBe(lightTileVisual.semanticSuccess);
-    expect(lightTileVisual.textColors.every(color => color === lightTileVisual.semanticHeroForeground)).toBe(true);
+    expect(lightTileVisual.backgroundColor).toBe(lightTileVisual.semanticSuccessSoft);
+    expect(lightTileVisual.textColors).toEqual(Array(lightTileVisual.textColors.length).fill(lightTileVisual.semanticSuccess));
     expect(lightTileVisual.performanceBackground).toBe('rgba(0, 0, 0, 0)');
 
     const search = heatmap.locator('input[name="heatmapSearch"]');
