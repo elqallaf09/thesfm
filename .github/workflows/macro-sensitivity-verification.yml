@@ -1,4 +1,4 @@
-name: Macro sensitivity geometry diagnosis
+name: Macro sensitivity exact geometry
 on:
   push:
     branches: [diagnostics/macro-sensitivity-verification]
@@ -23,67 +23,53 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Select public exact-SHA preview or build local fallback
-        id: target
+      - name: Build exact source
+        run: |
+          pnpm build
+          install -d -m 700 "$RUNNER_TEMP/playwright-tls"
+          openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+          chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+      - name: Instrument original journey without changing application
         run: |
-          preview=https://thesfm-rp9x5an5r-mohammed-alqallaf-s-projects.vercel.app
-          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$preview/login?mode=register")
-          echo "Preview public access: HTTP $status"
-          if [ "$status" = 200 ]; then
-            echo "url=$preview" >> "$GITHUB_OUTPUT"
-          else
-            pnpm build
-            install -d -m 700 "$RUNNER_TEMP/playwright-tls"
-            openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
-            chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
-          fi
-      - name: Create temporary scoped geometry probe
-        run: |
-          cat > tests/smoke/macro-geometry.local.spec.ts <<'TS'
-          import { test, expect } from '@playwright/test';
-          import { templateLabels } from '../../src/components/macro-simulator/copy';
-          test.use({trace:'off',screenshot:'off',video:'off'});
-          test('measure synthetic simulator geometry only', async ({page}, info) => {
-            test.setTimeout(120000);
-            await page.addInitScript(() => { localStorage.setItem('sfm_lang','en'); localStorage.setItem('the-sfm-theme','light'); });
-            await page.goto('/login?mode=register');
-            await page.locator('button.guest-btn').first().click();
-            await page.waitForURL(/\/dashboard(?:\?|$)/);
-            await page.goto('/economic-intelligence/simulator');
-            const lab=page.getByTestId('macro-lab');
-            await expect(lab).toHaveCount(1); await expect(lab).toHaveAttribute('data-hydrated','true');
-            await lab.getByRole('button',{name:templateLabels.compound.en,exact:true}).click();
-            await lab.getByTestId('macro-run').click();
-            await expect(lab.getByTestId('macro-sensitivity')).toBeVisible();
-            for(const width of [820,390]) {
-              await page.setViewportSize({width,height:1000});
-              for(const [name,css] of [
-                ['base',' '],
-                ['grid','[data-testid="macro-sensitivity"], [data-testid="macro-sensitivity"] figure{grid-template-columns:minmax(0,1fr)}'],
-                ['children','[data-testid="macro-sensitivity"] > *, [data-testid="macro-sensitivity"] svg{min-inline-size:0;max-inline-size:100%}'],
-                ['hidden-panel','[data-testid="macro-sensitivity"]{display:none}']
-              ]) {
-                const style=await page.addStyleTag({content:css});
-                const result=await page.evaluate(() => {
-                  const lab=document.querySelector('[data-testid="macro-lab"]')!;
-                  const describe=(e:Element) => { const r=e.getBoundingClientRect(); const s=getComputedStyle(e); return {tag:e.tagName,cls:e.getAttribute('class'),x:Math.round(r.x),w:Math.round(r.width),sw:e.scrollWidth,cw:e.clientWidth,min:s.minWidth,grid:s.gridTemplateColumns,overflow:s.overflowX}; };
-                  return {viewport:innerWidth,pageOverflow:document.documentElement.scrollWidth-innerWidth,panel:[...lab.querySelectorAll('[data-testid="macro-sensitivity"], [data-testid="macro-sensitivity"] > *, [data-testid="macro-sensitivity"] svg')].map(describe),wide:[...lab.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect();return r.width && (r.right>innerWidth+4 || r.x < -4)}).slice(0,22).map(describe)};
-                });
-                console.log('GEOMETRY '+width+' '+name+' '+JSON.stringify(result));
-                await style.evaluate(e=>e.remove());
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const file='tests/smoke/macro-simulator-sensitivity.spec.ts';
+          let spec=readFileSync(file,'utf8');
+          const start=spec.indexOf('    const widths =');
+          const end=spec.indexOf('    await testInfo.attach(',start);
+          if(start<0 || end<0) throw new Error('probe anchor');
+          spec=spec.slice(0,start)+`
+              for (const width of [1440,820,390,360]) {
+                await page.setViewportSize({width,height:1000});
+                for (const [name,css] of [
+                  ['base',' '],
+                  ['grid','[data-testid="macro-sensitivity"], [data-testid="macro-sensitivity"] figure{grid-template-columns:minmax(0,1fr)}'],
+                  ['children','[data-testid="macro-sensitivity"] > *, [data-testid="macro-sensitivity"] svg{min-inline-size:0;max-inline-size:100%}'],
+                  ['notes','[data-testid="macro-lab"] textarea{min-inline-size:0;max-inline-size:100%}'],
+                  ['hidden-panel','[data-testid="macro-sensitivity"]{display:none}']
+                ]) {
+                  const style=await page.addStyleTag({content:css});
+                  const geometry=await page.evaluate(() => {
+                    const lab=document.querySelector('[data-testid="macro-lab"]')!;
+                    const describe=(e:Element) => {const r=e.getBoundingClientRect();const s=getComputedStyle(e);return {tag:e.tagName,cls:e.getAttribute('class'),x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),sw:e.scrollWidth,cw:e.clientWidth,min:s.minWidth,max:s.maxWidth,grid:s.gridTemplateColumns,overflow:s.overflowX};};
+                    const clipped=(e:Element) => {for(let p=e.parentElement;p && p!==lab;p=p.parentElement){if(['auto','scroll','hidden','clip'].includes(getComputedStyle(p).overflowX))return true;}return false;};
+                    return {viewport:innerWidth,pageOverflow:document.documentElement.scrollWidth-innerWidth,scrollX,active:document.activeElement && lab.contains(document.activeElement)?describe(document.activeElement):null,fields:[...lab.querySelectorAll('textarea,form,[data-testid="macro-sensitivity"]')].map(describe),wide:[...lab.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect();return r.width && (r.right>innerWidth+4 || r.x < -4) && !clipped(e)}).slice(0,14).map(describe)};
+                  });
+                  console.log('EXACT '+locale+' '+width+' '+name+' '+JSON.stringify(geometry));
+                  await style.evaluate(e=>e.remove());
+                }
               }
-            }
-            await info.attach('synthetic-overflow',{body:await lab.getByTestId('macro-sensitivity').screenshot(),contentType:'image/png'});
-          });
-          TS
-      - name: Read-only geometry probe
+              await testInfo.attach('exact-synthetic-panel-'+locale,{body:await panel.screenshot(),contentType:'image/png'});
+          `+spec.slice(end);
+          writeFileSync('tests/smoke/macro-geometry.local.spec.ts',spec);
+          NODE
+      - name: Original synthetic interactions with scoped geometry
         run: pnpm exec playwright test tests/smoke/macro-geometry.local.spec.ts --no-deps --project=chromium-desktop --retries=0 --reporter=list
         env:
-          E2E_BASE_URL: ${{ steps.target.outputs.url }}
           PLAYWRIGHT_NO_COPY_PROMPT: '1'
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
           PLAYWRIGHT_WEB_SERVER_COMMAND: node scripts/playwright-https-proxy.mjs
@@ -98,7 +84,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: macro-geometry-94203ff
+          name: macro-exact-geometry-94203ff
           path: test-results/
           if-no-files-found: warn
           retention-days: 1
