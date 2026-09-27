@@ -1,17 +1,17 @@
-name: Macro WebKit diagnosis
+name: Macro sensitivity final verification
 on:
   push:
     branches: [diagnostics/macro-sensitivity-verification]
 permissions:
   contents: read
 jobs:
-  webkit:
+  focused:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: 94203ff71047d2922e9fac774fba8ac3ae598176
+          ref: 64ebd8423cdc4c53e558deb31848640aebc49b14
           persist-credentials: false
       - uses: pnpm/action-setup@v6
         with:
@@ -22,57 +22,23 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps webkit
-      - name: Build the unchanged application
+      - name: Simulator model, game, sessions and runtime translations
+        run: pnpm exec vitest run src/__tests__/unit/macroSimulator.test.ts src/__tests__/unit/macroGame.test.ts src/__tests__/unit/macroGameSession.test.ts src/__tests__/unit/macroSensitivity.test.ts src/__tests__/unit/workspaceTranslationBundles.test.ts
+      - run: pnpm typecheck && pnpm lint && pnpm check:i18n && pnpm check:maintainability && pnpm check:visual-system
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Ephemeral loopback TLS
         run: |
-          pnpm build
           install -d -m 700 "$RUNNER_TEMP/playwright-tls"
           openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
           chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
+      - name: Build exact candidate and enforce budgets
+        run: pnpm build && pnpm check:performance-budget
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      - name: Add temporary WebKit measurement to the existing sensitivity test
-        run: |
-          node --input-type=module <<'NODE'
-          import {readFileSync,writeFileSync} from 'node:fs';
-          let s=readFileSync('tests/smoke/macro-simulator-sensitivity.spec.ts','utf8');
-          s=s.replace('await scenarioCards.allTextContents()',"(await scenarioCards.allTextContents()).map(text=>text.replace(/[\\u061C\\u200E\\u200F]/g,''))");
-          s=s.replace('expect(await scenarioCards.allTextContents())',"expect((await scenarioCards.allTextContents()).map(text=>text.replace(/[\\u061C\\u200E\\u200F]/g,'')))");
-          const start=s.indexOf('    const widths =');
-          const end=s.indexOf("    await lab.getByRole('button', { name: copy.challenge",start);
-          if(start<0||end<0)throw new Error('anchor');
-          s=s.slice(0,start)+`
-            for (const width of [390,360]) {
-              await page.setViewportSize({width,height:1000});
-              for (const [variant,css] of [
-                ['base',' '],
-                ['grid','[data-testid="macro-sensitivity"], [data-testid="macro-sensitivity"] figure{grid-template-columns:minmax(0,1fr)}'],
-                ['children','[data-testid="macro-sensitivity"] > *{min-inline-size:0;max-inline-size:100%}'],
-                ['inputs','[data-testid="macro-lab"] select,[data-testid="macro-lab"] input{max-inline-size:100%;box-sizing:border-box}'],
-                ['svg','[data-testid="macro-sensitivity"] svg{overflow:hidden;min-inline-size:0;max-inline-size:100%}'],
-                ['headings','[data-testid="macro-lab"] h2{display:block;overflow-wrap:anywhere}'],
-                ['blur',' ']
-              ]) {
-                if(variant==='blur')await page.evaluate(()=>{if(document.activeElement instanceof HTMLElement)document.activeElement.blur()});
-                const style=await page.addStyleTag({content:css});
-                const g=await panel.evaluate(panel=>{
-                  const lab=document.querySelector('[data-testid="macro-lab"]')!;
-                  const box=panel.getBoundingClientRect();
-                  const d=(e:Element)=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {tag:e.tagName,cls:e.getAttribute('class'),x:Math.round(r.x*10)/10,w:Math.round(r.width*10)/10,sw:e.scrollWidth,cw:e.clientWidth,overflow:s.overflowX,grid:s.gridTemplateColumns,font:s.fontSize,outline:s.outlineWidth+' '+s.outlineOffset};};
-                  return {page:document.documentElement.scrollWidth-innerWidth,lab:lab.scrollWidth-lab.clientWidth,panel:panel.scrollWidth-panel.clientWidth,section:d(panel),children:[...panel.children].map(d),wide:[...panel.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect();return r.width && (r.left<box.left || r.right>box.right)}).slice(0,16).map(d)};
-                });
-                console.log('WK '+locale+' '+width+' '+variant+' '+JSON.stringify(g));
-                await style.evaluate(e=>e.remove());
-              }
-            }
-            await panel.screenshot({path:testInfo.outputPath('webkit-'+locale+'.png')});
-          `+s.slice(end);
-          writeFileSync('tests/smoke/macro-webkit.local.spec.ts',s);
-          NODE
-      - name: Run WebKit probe only; not a release pass
-        run: pnpm exec playwright test tests/smoke/macro-webkit.local.spec.ts --no-deps --project=mobile-webkit --retries=0 --reporter=list > /tmp/macro-webkit.log 2>&1; status=$?; cat /tmp/macro-webkit.log; exit $status
+      - name: All 24 simulator journeys without retry
+        run: pnpm exec playwright test tests/smoke/macro-simulator.spec.ts tests/smoke/macro-simulator-game.spec.ts tests/smoke/macro-simulator-session.spec.ts tests/smoke/macro-simulator-sensitivity.spec.ts --no-deps --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --retries=0 --reporter=list
         env:
           PLAYWRIGHT_NO_COPY_PROMPT: '1'
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
@@ -82,25 +48,13 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      - name: Compact geometry summary
-        if: always()
-        run: |
-          node --input-type=module <<'NODE'
-          import {readFileSync} from 'node:fs';
-          for(const line of readFileSync('/tmp/macro-webkit.log','utf8').split('\n')){
-            const m=line.match(/WK (ar|en|fr) (\d+) (\w+) (\{.*\})/);if(!m)continue;
-            const g=JSON.parse(m[4]);console.log(JSON.stringify({locale:m[1],width:m[2],variant:m[3],page:g.page,lab:g.lab,panel:g.panel,...(m[3]==='base'?{section:g.section,children:g.children,wide:g.wide}:{})}));
-          }
-          NODE
-      - name: Remove DOM contexts
+      - name: Remove DOM error contexts
         if: always()
         run: find test-results -type f -name error-context.md -delete 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: macro-webkit-diagnosis
-          path: |
-            test-results/**/*.png
-            /tmp/macro-webkit.log
+          name: macro-sensitivity-64ebd84
+          path: test-results/
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 3
