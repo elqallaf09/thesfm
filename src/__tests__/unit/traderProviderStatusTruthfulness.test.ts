@@ -1,4 +1,7 @@
+import { NextResponse } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AdminApiContext, AdminApiRouteOptions } from '@/lib/server/adminApiRoute';
+import type { MarketSystemState } from '@/lib/market-state/types';
 
 const getMarketSystemState = vi.fn();
 const getTraderMarketCatalog = vi.fn();
@@ -6,6 +9,15 @@ const getTraderProviderStatus = vi.fn();
 const getFmpRuntimeStatus = vi.fn();
 const synchronizeFmpSharedCooldown = vi.fn();
 const rateLimitRequest = vi.fn();
+type AdminStatusHandler = (context: AdminApiContext) => Promise<Response> | Response;
+const createAdminApiRoute = vi.fn(
+  (_options: AdminApiRouteOptions, handler: AdminStatusHandler) => async (request: Request) => handler({
+    request,
+    requestId: 'test-admin-request',
+    auth: {} as AdminApiContext['auth'],
+    json: (payload, init) => NextResponse.json(payload, init),
+  }),
+);
 
 vi.mock('@/lib/market-state/aggregateMarketState', () => ({
   getMarketSystemState: (...args: unknown[]) => getMarketSystemState(...args),
@@ -26,7 +38,9 @@ vi.mock('@/lib/trader/providers/fmpRuntime', () => ({
 vi.mock('@/lib/trader/providers/fmpRuntime.server', () => ({
   synchronizeFmpSharedCooldown: (...args: unknown[]) => synchronizeFmpSharedCooldown(...args),
 }));
-vi.mock('@/lib/server/adminApiRoute', () => ({ createAdminApiRoute: vi.fn(() => vi.fn()) }));
+vi.mock('@/lib/server/adminApiRoute', () => ({
+  createAdminApiRoute: (...args: [AdminApiRouteOptions, AdminStatusHandler]) => createAdminApiRoute(...args),
+}));
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: (...args: unknown[]) => rateLimitRequest(...args) }));
 
 function capability(overrides: Record<string, unknown> = {}) {
@@ -243,5 +257,31 @@ describe('trader provider status truthfulness', () => {
       provider: 'fmp',
       status: 'rate_limited',
     });
+  });
+
+  it('sanitizes the public unified state without removing the authenticated admin state', async () => {
+    const fullState = stateFixture({ fmp: 'rate_limited', yahoo: 'unknown' }) as MarketSystemState;
+    fullState.configuration = [{ provider: 'fmp', envVar: 'FMP_API_KEY', configured: true }];
+    fullState.capabilityMatrix[0]!.lastErrorReason = 'private upstream detail';
+    fullState.delivery = {
+      source: 'persistent_cache',
+      cached: true,
+      delayed: false,
+      reason: 'aggregate_persistent_cache_hit',
+    };
+    getMarketSystemState.mockResolvedValue(fullState);
+
+    const { GET, POST } = await import('@/app/api/trader/provider-status/route');
+    const publicBody = await (await GET(new Request('https://thesfm.test/api/trader/provider-status'))).json();
+    const adminBody = await (await POST(new Request('https://thesfm.test/api/trader/provider-status', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'status' }),
+      headers: { 'content-type': 'application/json' },
+    }))).json();
+
+    expect(publicBody.state.configuration).toBeNull();
+    expect(publicBody.state.capabilityMatrix[0].lastErrorReason).toBeNull();
+    expect(publicBody.state.delivery.reason).toBeNull();
+    expect(adminBody.state).toEqual(fullState);
   });
 });
