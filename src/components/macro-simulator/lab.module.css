@@ -31,7 +31,8 @@
 .field { display: grid; gap: .4rem; min-inline-size: 0; font-size: .82rem; line-height: 1.6; }
 .field input, .field select, .field textarea, .allocation input { inline-size: 100%; min-inline-size: 0; min-block-size: 44px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--background); color: var(--foreground); padding: .55rem .65rem; }
 .field textarea { resize: vertical; }
-.fieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+/* Size fields against their card, not the viewport: native WebKit controls need room. */
+.fieldGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .75rem; }
 .shock { display: grid; gap: .75rem; min-inline-size: 0; border: 1px solid var(--border); border-radius: var(--radius-control); padding: .8rem; }
 .shock legend { padding-inline: .4rem; color: var(--foreground-secondary); font-size: .8rem; }
 .muted, .market small { color: var(--foreground-muted); font-size: .78rem; line-height: 1.7; }

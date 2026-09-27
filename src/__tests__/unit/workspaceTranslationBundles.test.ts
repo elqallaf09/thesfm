@@ -16,6 +16,15 @@ describe('workspace translation bundles', () => {
     expect(resolveWorkspaceRouteId('/unknown')).toBeNull();
   });
 
+  it('includes the simulator navigation key in the actual markets runtime bundle', () => {
+    expect(resolveWorkspaceRouteId('/economic-intelligence/simulator')).toBe('markets-trading');
+    expect(resolveWorkspaceRouteId('/economic-intelligence/simulator/game')).toBe('markets-trading');
+    for (const locale of ['ar', 'en', 'fr'] as const) {
+      expect(MARKETS_TRADING_TRANSLATIONS.nav_macro_simulator[locale]).toBe(TR.nav_macro_simulator[locale]);
+      expect(MARKETS_TRADING_TRANSLATIONS.nav_macro_simulator[locale].trim()).not.toBe('');
+    }
+  });
+
   it('keeps shared shell copy in every workspace and domain copy isolated', () => {
     const bundles: TranslationDictionary[] = [
       PERSONAL_FINANCE_TRANSLATIONS,
