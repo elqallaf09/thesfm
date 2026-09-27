@@ -5,6 +5,7 @@ import { TR_COMMON } from '@/lib/translations/common';
 import { TR_CRYPTO } from '@/lib/translations/crypto';
 import { TR_DEFENSIVE } from '@/lib/translations/defensive';
 import { TR_INVEST } from '@/lib/translations/invest';
+import { TR_MACRO_SIMULATOR } from '@/lib/translations/macro-simulator';
 import { TR_MARKET } from '@/lib/translations/market';
 import { TR_NAV } from '@/lib/translations/nav';
 import { TR_NEWS } from '@/lib/translations/news';
@@ -23,6 +24,7 @@ export const MARKETS_TRADING_TRANSLATIONS = {
   ...TR_DEFENSIVE,
   ...TR_INVEST,
   ...TR_MARKET,
+  ...TR_MACRO_SIMULATOR,
   ...TR_NAV,
   ...TR_NEWS,
   ...TR_SHARIA_RESEARCH,

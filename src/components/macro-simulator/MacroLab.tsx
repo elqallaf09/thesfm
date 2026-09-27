@@ -6,6 +6,7 @@ import { ASSETS, EVENT_KINDS, FACTORS, HORIZONS, LIMITS, MODEL_VERSION, TEMPLATE
 import { assetLabels, caseLabels, copy, eventLabels, explanations, factorLabels, horizonLabels, regimeLabels, templateLabels, units, type CopyKey, type Language } from './copy';
 import { Methodology } from './Methodology';
 import { Timeline } from './Timeline';
+import { SensitivityExplorer } from './SensitivityExplorer';
 import styles from './lab.module.css';
 type Mode = 'lab' | 'challenge' | 'method';
 type Guess = '' | 'positive' | 'negative' | 'neutral';
@@ -139,6 +140,11 @@ export function MacroLab({ userKey }: { userKey: string }) {
               </section>
               <section className={styles.card}><h2>{t('markets')}</h2><div className={styles.markets}>{ASSETS.map(id => <article className={styles.market} key={id}><span>{assetLabels[id][lang]}</span><strong dir="ltr" className={styles[direction(reference.returns[id])]}>{percent(reference.returns[id])}</strong><small>{t('simulated')}</small></article>)}</div></section>
               <section className={styles.card}><div className={styles.sectionHeading}><h2>{t('timeline')}</h2><div className={styles.field}><label htmlFor={chartAssetId}>{t('chartAsset')}</label><select id={chartAssetId} value={asset} onChange={e => setAsset(e.target.value as Asset | 'portfolio')}><option value="portfolio">{t('portfolio')}</option>{ASSETS.map(id => <option key={id} value={id}>{assetLabels[id][lang]}</option>)}</select></div></div><Timeline report={report} asset={asset} lang={lang} /></section>
+              {mode === 'lab' ? <SensitivityExplorer report={report} lang={lang} stale={stale} onApply={(kind, magnitude) => {
+                if (stale) return;
+                const index = input.shocks.findIndex(shock => shock.kind === kind);
+                if (index >= 0) editShock(index, { magnitude });
+              }} /> : null}
               <section className={styles.card}><h2>{t('transmission')}</h2><p className={styles.muted}>{t('transmissionNote')}</p><div className={styles.eventChips}>{report.input.shocks.map(s => <span className={styles.badge} key={s.kind}>{eventLabels[s.kind][lang]}</span>)}</div><div className={styles.flow}>{FACTORS.map(f => <article key={f}><span>{factorLabels[f][lang]}</span><strong>{t(direction(reference.factors[f]))}</strong><span aria-hidden="true">↓</span></article>)}</div><p>{t('portfolioImpact')}: <bdi>{percent(reference.impact)}</bdi></p></section>
               <section className={styles.card}><h2>{t('interpreter')}</h2><p className={styles.muted}>{t('ruleBased')}</p>{report.input.shocks.map(s => <div className={styles.explanation} key={s.kind}><h3>{eventLabels[s.kind][lang]}</h3><p>{explanations[s.kind][lang]}</p></div>)}<h3>{t('reversal')}</h3><p>{t('reversalText')}</p><details><summary>{t('contribution')}</summary><div className={styles.scroll}><table className={styles.table}><caption>{t('contribution')}</caption><thead><tr><th>{t('chartAsset')}</th><th>{t('simulated')}</th></tr></thead><tbody>{ASSETS.map(a => <tr key={a}><th scope="row">{assetLabels[a][lang]}</th><td dir="ltr">{number(reference.contributions[a], 2)}</td></tr>)}</tbody></table></div></details></section>
             </>}

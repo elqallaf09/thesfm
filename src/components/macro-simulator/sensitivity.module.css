@@ -1,0 +1,18 @@
+.figure { display: grid; gap: .6rem; min-inline-size: 0; margin: 0; }
+.figure figcaption { font-size: .85rem; font-weight: 600; line-height: 1.6; }
+.chart { display: block; inline-size: 100%; block-size: auto; direction: ltr; }
+.chart text { fill: var(--foreground-muted); font: 12px var(--font-data); }
+.grid { stroke: var(--border); }
+.baseline { stroke: var(--foreground-muted); stroke-dasharray: 2 5; }
+.gold { color: var(--primary); stroke: var(--primary); }
+.oil { color: var(--accent); stroke: var(--accent); stroke-dasharray: 7 4; }
+.portfolio { color: var(--warning); stroke: var(--warning); stroke-dasharray: 2 4; }
+.legend { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; font-size: .8rem; }
+.legend span { border-block-start: 2px solid currentColor; padding-block-start: .35rem; }
+.legend .oil { border-block-start-style: dashed; }
+.legend .portfolio { border-block-start-style: dotted; }
+.table { min-inline-size: 38rem; }
+.table [data-baseline="true"] { background: var(--primary-soft); }
+.table bdi { font-family: var(--font-data); }
+.table button { white-space: nowrap; }
+.badge { display: block; margin-block-start: .25rem; color: var(--foreground-muted); font-size: .72rem; font-weight: 400; }
