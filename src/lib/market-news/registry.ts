@@ -14,6 +14,7 @@ import {
   type NewsSourceType,
   type ProviderRegistryIssue,
 } from './types';
+import { createDfmEfsahNewsProvider } from './providers/dfmEfsah';
 import { createFinnhubNewsProvider } from './providers/finnhub';
 import { createNewsApiProvider } from './providers/newsapi';
 import { createRssNewsProvider, type RssNewsProviderConfig } from './providers/rss';
@@ -542,6 +543,20 @@ export function buildFinancialNewsProviderRegistry(
     } catch {
       configurationIssues.push({ providerId: config.id, code: FinancialNewsProviderErrorCode.INVALID_REQUEST });
     }
+  }
+
+  // DFM exposes a public JSON disclosure endpoint rather than RSS. It is
+  // registered independently so its documents retain first-party provenance.
+  try {
+    const provider = createDfmEfsahNewsProvider();
+    if (seenIds.has(provider.id)) {
+      configurationIssues.push({ providerId: provider.id, code: FinancialNewsProviderErrorCode.INVALID_REQUEST });
+    } else {
+      seenIds.add(provider.id);
+      if (matchesParams(provider, params)) providers.push(provider);
+    }
+  } catch {
+    configurationIssues.push({ providerId: 'official-dfm-disclosures', code: FinancialNewsProviderErrorCode.INVALID_REQUEST });
   }
 
   const finnhubKey = cleanCredential(environment.FINNHUB_API_KEY);
