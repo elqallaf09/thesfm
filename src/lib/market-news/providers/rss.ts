@@ -221,6 +221,8 @@ export class RssFinancialNewsProvider implements FinancialNewsProvider {
         cache: params.forceRefresh ? 'no-store' : undefined,
         revalidateSeconds: params.forceRefresh ? undefined : (this.config.revalidateSeconds ?? 300),
         headers: {
+          // Keep the runtime's default Fetch user agent. Boursa Kuwait's
+          // official RSS endpoints rely on that accepted request profile.
           accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9',
         },
       });
