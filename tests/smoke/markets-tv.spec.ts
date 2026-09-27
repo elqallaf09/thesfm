@@ -198,6 +198,14 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip')).toHaveCount(1);
   await expect(page.locator('.tv-market-strip')).toHaveAttribute('data-market', 'QA7');
   await expect(page.locator('.tv-strip-price').first()).toContainText('123.45');
+  // Opening a quote must not pause the strips merely because its detail overlay
+  // is displayed.
+  await page.mouse.move(10, 10);
+  await expect(page.locator('.tv-market-strip-track').first()).toHaveCSS('animation-play-state', 'running');
+  await page.locator('.tv-market-strip-item').first().evaluate(element => (element as HTMLButtonElement).click());
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.locator('.tv-market-strip-track').first()).toHaveCSS('animation-play-state', 'running');
+  await page.keyboard.press('Escape');
   quotePrice = 124.45;
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.locator('.tv-strip-price').first()).toContainText('124.45');
