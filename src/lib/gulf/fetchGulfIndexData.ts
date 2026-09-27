@@ -299,9 +299,9 @@ async function fetchMuscatOfficialMarketData(market: GulfMarket): Promise<GulfMa
   const availableQuote = result.ok && value !== null && value > 0 && sourceTime.ok;
   const unavailableReason = !result.ok
     ? `provider_http_${result.status}`
-    : value === null || value <= 0
-      ? 'provider_returned_empty_quote'
-      : sourceTime.ok ? 'provider_returned_empty_quote' : sourceTime.unavailableReason;
+    : !sourceTime.ok
+      ? sourceTime.unavailableReason
+      : 'provider_returned_empty_quote';
 
   debugLog('[GulfNews] Official index attempt', {
     marketCode: market.code,
