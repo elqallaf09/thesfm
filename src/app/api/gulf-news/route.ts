@@ -43,7 +43,6 @@ export async function GET(request: Request) {
   const limit = parseNewsLimit(url.searchParams.get('limit'));
   const [newsResult, marketDataResult] = await Promise.allSettled([
     aggregateFinancialNews({
-      query: 'stocks OR market OR earnings OR disclosures OR shares OR economy OR أسهم OR السوق OR أرباح OR إفصاح OR الاقتصاد OR شركات OR بورصة',
       symbols: GULF_MARKETS.flatMap(market => market.yahooSymbols),
       marketCodes: ['gulf', ...GULF_MARKETS.map(market => market.id)],
       exchangeCodes: GULF_MARKETS.map(market => market.exchangeCode),

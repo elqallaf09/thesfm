@@ -37,6 +37,8 @@ export type RssFeedMetadata = {
   companyNames?: string[];
   assetTypes?: FinancialAssetType[];
   currencies?: string[];
+  /** Keep a stable fragment when the source uses it as the article identifier. */
+  preserveArticleHash?: boolean;
 };
 
 export type RssFeedRejectionReason = 'missing_title' | 'missing_or_unsafe_url' | 'missing_or_invalid_date';
@@ -146,6 +148,23 @@ function normalizedTitle(value: string) {
     .trim();
 }
 
+function canonicalArticleUrl(originalUrl: string, metadata: RssFeedMetadata) {
+  const canonical = normalizeCanonicalUrl(originalUrl, metadata.providerId);
+  if (!canonical || !metadata.preserveArticleHash) return canonical;
+  try {
+    const original = new URL(originalUrl);
+    const fragment = original.hash.slice(1);
+    // Most fragments are in-page anchors and should remain removable. Boursa
+    // Kuwait uses a compact identifier such as BK54055 as the news item id.
+    if (!/^[A-Za-z0-9_-]{2,120}$/.test(fragment)) return canonical;
+    const identified = new URL(canonical);
+    identified.hash = fragment;
+    return identified.toString();
+  } catch {
+    return canonical;
+  }
+}
+
 function stableHash(...values: string[]) {
   return createHash('sha256').update(values.join('\u001f')).digest('hex');
 }
@@ -206,7 +225,7 @@ export function parseFinancialNewsFeed(
     const summary = tagText(block, ['description', 'summary', 'content:encoded', 'content'], 800) || null;
     const language = tagText(block, ['dc:language', 'language'], 32) || metadata.originalLanguage || 'unknown';
     const attribution = sourceAttribution(block, metadata);
-    const canonicalUrl = normalizeCanonicalUrl(originalUrl, metadata.providerId);
+    const canonicalUrl = canonicalArticleUrl(originalUrl, metadata);
     const titleKey = normalizedTitle(title);
     const contentHash = stableHash(titleKey, normalizedTitle(summary ?? ''), publishedAt.slice(0, 10));
     const id = `${metadata.providerId}-${stableHash(canonicalUrl ?? originalUrl, titleKey).slice(0, 24)}`;

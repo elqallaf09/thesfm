@@ -183,6 +183,26 @@ describe('market-news normalization and security', () => {
     expect(sanitizeExternalText('<img src=x onerror=alert(1)>Clean')).toBe('Clean');
   });
 
+  it('keeps a source-specific stable hash when it is the article identifier', () => {
+    const xml = `<?xml version="1.0"?><rss><channel>
+      <item><title>إعلان أول</title><link>https://www.boursakuwait.com.kw/ar/news/view#BK54055</link><pubDate>Sun, 27 Sep 2026 10:17:39 +0300</pubDate></item>
+      <item><title>إعلان ثان</title><link>https://www.boursakuwait.com.kw/ar/news/view#BK54056</link><pubDate>Sun, 27 Sep 2026 10:18:39 +0300</pubDate></item>
+    </channel></rss>`;
+    const parsed = parseFinancialNewsFeed(xml, {
+      providerId: 'boursa-kuwait', providerName: 'Boursa Kuwait', sourceId: 'boursa-kuwait', sourceName: 'Boursa Kuwait',
+      sourceType: 'official_exchange', sourceDomain: 'boursakuwait.com.kw', sourceNetworkId: 'boursakuwait.com.kw',
+      sourceReliability: 0.99, sourcePriority: 1, isOfficial: true, preserveArticleHash: true,
+    }, NOW);
+
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items.map(item => item.canonicalUrl)).toEqual(expect.arrayContaining([
+      'https://www.boursakuwait.com.kw/ar/news/view#BK54055',
+      'https://www.boursakuwait.com.kw/ar/news/view#BK54056',
+    ]));
+    expect(normalizeNewsItem(parsed.items[0]).canonicalUrl).toBe('https://boursakuwait.com.kw/ar/news/view#BK54055');
+    expect(normalizeNewsItem(parsed.items[1]).canonicalUrl).toBe('https://boursakuwait.com.kw/ar/news/view#BK54056');
+  });
+
   it('requires every custom RSS hostname to be explicitly allowlisted', () => {
     const custom = JSON.stringify([{ id: 'issuer', name: 'Issuer IR', url: 'https://ir.example.com/feed.xml' }]);
     const rejected = buildFinancialNewsProviderRegistry({}, { FINANCIAL_NEWS_RSS_FEEDS_JSON: custom });
@@ -201,6 +221,17 @@ describe('market-news normalization and security', () => {
     expect(generalIds.some(id => id.includes('crypto'))).toBe(false);
     expect(generalIds.some(id => id.includes('arab-news') || id.includes('gulf-today'))).toBe(false);
     expect(cryptoIds).toEqual(expect.arrayContaining(['rss-coindesk-crypto', 'rss-cointelegraph-crypto']));
+  });
+
+  it('includes Boursa Kuwait official feeds when Gulf news is requested', () => {
+    const providers = buildFinancialNewsProviderRegistry({ marketCodes: ['gulf', 'kuwait'] }).providers;
+    const boursa = providers.filter(provider => provider.id.startsWith('official-boursa-kuwait-'));
+    expect(boursa.map(provider => provider.id)).toEqual(expect.arrayContaining([
+      'official-boursa-kuwait-disclosures',
+      'official-boursa-kuwait-announcements',
+    ]));
+    expect(boursa.every(provider => provider.officialSource && provider.sourceType === 'official_exchange')).toBe(true);
+    expect(boursa.every(provider => provider.supportedMarkets.includes('KUWAIT'))).toBe(true);
   });
 });
 

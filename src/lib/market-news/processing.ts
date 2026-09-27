@@ -141,7 +141,12 @@ export function resolveCanonicalUrl(value: string | null | undefined) {
     const url = new URL(String(value ?? '').trim());
     if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
     if (url.username || url.password) return null;
-    url.hash = '';
+    // Boursa Kuwait uses a compact `#BK…` (or numeric) fragment as the sole
+    // identifier for individual issuer notices. Preserve that documented item
+    // identity while continuing to strip ordinary in-page anchors everywhere.
+    const preservesBoursaIdentity = /(^|\.)boursakuwait\.com\.kw$/i.test(url.hostname)
+      && /^#(?:BK)?\d{2,}$/i.test(url.hash);
+    if (!preservesBoursaIdentity) url.hash = '';
     [...url.searchParams.keys()].forEach(key => {
       if (TRACKING_PARAMETERS.has(key.toLowerCase()) || key.toLowerCase().startsWith('utm_')) url.searchParams.delete(key);
     });

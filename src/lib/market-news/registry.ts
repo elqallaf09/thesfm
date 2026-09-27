@@ -160,6 +160,47 @@ const CORE_MARKET_RSS_PROVIDERS: RssNewsProviderConfig[] = [
 
 const GULF_RSS_PROVIDERS: RssNewsProviderConfig[] = [
   {
+    id: 'official-boursa-kuwait-disclosures',
+    name: 'Boursa Kuwait — Company Disclosures',
+    // Boursa Kuwait documents this as its Arabic company-disclosures RSS feed.
+    // It is a first-party disclosure channel, so it must not depend on a
+    // regional publisher mentioning Kuwait in the headline.
+    url: 'https://rss.boursakuwait.com.kw/A/rss/FeedFull.aspx?T=4',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.99,
+    officialSource: true,
+    sourceNetworkId: 'boursakuwait.com.kw',
+    supportedMarkets: ['GULF', 'KW', 'KUWAIT'],
+    marketCodes: ['GULF', 'KW', 'KUWAIT'],
+    exchangeCodes: ['Boursa Kuwait'],
+    countries: ['KW'],
+    assetTypes: ['equity', 'fund'],
+    originalLanguage: 'ar',
+    revalidateSeconds: 180,
+    preserveArticleHash: true,
+  },
+  {
+    id: 'official-boursa-kuwait-announcements',
+    name: 'Boursa Kuwait — Issuer Announcements',
+    // First-party issuer announcements complement the disclosures feed and
+    // cover timely exchange notices that do not use the disclosure type.
+    url: 'https://rss.boursakuwait.com.kw/A/rss/feedboursa.aspx',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.99,
+    officialSource: true,
+    sourceNetworkId: 'boursakuwait.com.kw',
+    supportedMarkets: ['GULF', 'KW', 'KUWAIT'],
+    marketCodes: ['GULF', 'KW', 'KUWAIT'],
+    exchangeCodes: ['Boursa Kuwait'],
+    countries: ['KW'],
+    assetTypes: ['equity', 'fund'],
+    originalLanguage: 'ar',
+    revalidateSeconds: 180,
+    preserveArticleHash: true,
+  },
+  {
     id: 'rss-arab-news-economy',
     name: 'Arab News Business & Economy',
     url: 'https://www.arabnews.com/cat/4/rss.xml',

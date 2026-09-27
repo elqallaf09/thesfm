@@ -22,6 +22,7 @@ import type { GulfMarketData } from '@/lib/gulf/fetchDelayedMarketData';
 import type { GulfNewsItem } from '@/lib/gulf/parseRssFeeds';
 import { GulfExchangeSelector } from '@/components/gulf-news/GulfExchangeSelector';
 import { GulfMarketSummary } from '@/components/gulf-news/GulfMarketSummary';
+import { GulfDailyMarketBrief } from '@/components/gulf-news/GulfDailyMarketBrief';
 import { GulfNewsCard } from '@/components/gulf-news/GulfNewsCard';
 import { GulfNewsHeader } from '@/components/gulf-news/GulfNewsHeader';
 import { GulfNewsSkeleton } from '@/components/gulf-news/GulfNewsSkeleton';
@@ -483,6 +484,28 @@ export function GulfNewsPage() {
           formatPercent={formatPercent}
         />
 
+        <GulfDailyMarketBrief
+          marketLabel={marketLabels[selectedMarket]}
+          marketData={marketData[selectedMarket]}
+          stories={selectedMarketItems}
+          formatNumber={formatNumber}
+          formatPercent={formatPercent}
+          labels={{
+            title: t('gulf_daily_brief_title'),
+            subtitle: t('gulf_daily_brief_subtitle'),
+            index: (market, value, movement) => t('gulf_daily_brief_index').replace('{market}', market).replace('{value}', value).replace('{movement}', movement),
+            movementUp: value => t('gulf_daily_brief_up').replace('{value}', value),
+            movementDown: value => t('gulf_daily_brief_down').replace('{value}', value),
+            movementFlat: t('gulf_daily_brief_flat'),
+            unavailable: t('gulf_daily_brief_unavailable'),
+            news: (total, official) => t('gulf_daily_brief_news').replace('{total}', String(total)).replace('{official}', String(official)),
+            noNews: t('gulf_daily_brief_no_news'),
+            latest: title => t('gulf_daily_brief_latest').replace('{title}', title),
+            source: source => t('gulf_daily_brief_source').replace('{source}', source),
+            disclaimer: t('gulf_daily_brief_disclaimer'),
+          }}
+        />
+
         <section className="gulf-news-market-pulse" aria-label={ui.marketPulse}>
           <div className="gulf-news-section-heading compact">
             <span>
@@ -775,6 +798,7 @@ export function GulfNewsPage() {
         .gulf-news-exchange-name{font-size:14px}
         .gulf-news-exchange-value{font-size:15px}
         .gulf-news-summary{border-radius:var(--radius-panel);padding:18px 20px;box-shadow:var(--shadow-card)}
+        .gulf-daily-brief{display:grid;gap:14px;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);padding:18px 20px;box-shadow:var(--shadow-card)}.gulf-daily-brief-heading{display:flex;align-items:flex-start;gap:12px}.gulf-daily-brief-heading>span{width:42px;height:42px;display:grid;place-items:center;flex:0 0 auto;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--accent-soft);color:var(--accent)}.gulf-daily-brief h2{margin:0;color:var(--foreground);font-size:20px;font-weight:600;line-height:1.3}.gulf-daily-brief p,.gulf-daily-brief small{margin:4px 0 0;color:var(--foreground-secondary);font-size:13px;font-weight:400;line-height:1.65}.gulf-daily-brief ul{display:grid;gap:9px;margin:0;padding:0;list-style:none}.gulf-daily-brief li{display:flex;align-items:flex-start;gap:9px;color:var(--foreground);font-size:13px;line-height:1.65}.gulf-daily-brief li>svg{margin-top:3px;flex:0 0 auto;color:var(--accent)}.gulf-daily-brief li.gulf-daily-brief-source{padding-top:8px;border-top:1px solid var(--border);color:var(--foreground-muted);font-size:12px}.gulf-daily-brief>small{padding-top:2px;color:var(--foreground-muted);font-size:12px}
         .gulf-news-market-pulse{display:grid;grid-template-columns:minmax(240px,.65fr) 1fr;gap:16px;align-items:stretch;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);padding:18px;box-shadow:var(--shadow-card)}
         .gulf-news-section-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;min-width:0}
         .gulf-news-section-heading.compact{justify-content:flex-start}
