@@ -19,8 +19,11 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     await page.waitForURL(/\/dashboard(?:\?|$)/);
     await page.goto('/economic-intelligence/simulator', { waitUntil: 'domcontentloaded' });
     const lab = page.getByTestId('macro-lab');
-    await expect(lab).toHaveCount(1);
-    await expect(lab).toHaveAttribute('data-hydrated', 'true');
+    // Wait for a single hydrated canvas atomically; transient replacement DOM
+    // must not cause a strict-locator failure, while persistent duplicates fail.
+    await expect.poll(() => lab.evaluateAll(nodes => ({
+      count: nodes.length, hydrated: nodes.map(node => node.getAttribute('data-hydrated')),
+    }))).toEqual({ count: 1, hydrated: ['true'] });
     await expect(lab).toHaveAttribute('lang', locale);
     await expect(page.locator('.sfm-global-brand-copy')).toContainText(TR_MACRO_SIMULATOR.nav_macro_simulator[locale]);
     await expect(page.locator('.sfm-global-brand-copy')).not.toContainText('nav_macro_simulator');
@@ -38,7 +41,10 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     const results = lab.getByTestId('macro-results');
     const scenarioCards = results.locator('article');
     await expect(scenarioCards).toHaveCount(3);
-    const originalResults = await scenarioCards.allTextContents();
+    // Intl formatters can differ in invisible bidi marks across browser engines.
+    // Keep every visible character, digit, sign and currency in the comparison.
+    const outcomeText = async () => (await scenarioCards.allTextContents()).map(text => text.replace(/[\u061C\u200E\u200F]/g, ''));
+    const originalResults = await outcomeText();
     await panel.locator('tr[data-magnitude="30"]').getByRole('button').click();
     await expect(lab.getByLabel(copy.magnitude[locale], { exact: false }).nth(1)).toHaveValue('30');
     await expect(lab.getByLabel(copy.expected[locale], { exact: false })).toHaveValue('25');
@@ -47,7 +53,7 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     await expect(lab.getByText(copy.stale[locale], { exact: true })).toBeVisible();
     // The intentional stale warning may change section text, but never its outcomes.
     await expect(scenarioCards).toHaveCount(3);
-    expect(await scenarioCards.allTextContents()).toEqual(originalResults);
+    expect(await outcomeText()).toEqual(originalResults);
     await run.click();
     await expect(panel.getByTestId('macro-sensitivity-stale')).toHaveCount(0);
     await expect(panel.locator('tr[data-baseline="true"]')).toHaveAttribute('data-magnitude', '30');
@@ -60,9 +66,13 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(4);
       await expect.poll(() => panel.evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(4);
     }
-    await testInfo.attach(`sensitivity-light-${locale}`, { body: await panel.screenshot(), contentType: 'image/png' });
+    const lightPath = testInfo.outputPath(`sensitivity-light-${locale}.png`);
+    await panel.screenshot({ path: lightPath });
+    await testInfo.attach(`sensitivity-light-${locale}`, { path: lightPath, contentType: 'image/png' });
     await page.evaluate(() => { document.documentElement.classList.remove('light'); document.documentElement.classList.add('dark'); });
-    await testInfo.attach(`sensitivity-dark-${locale}`, { body: await panel.screenshot(), contentType: 'image/png' });
+    const darkPath = testInfo.outputPath(`sensitivity-dark-${locale}.png`);
+    await panel.screenshot({ path: darkPath });
+    await testInfo.attach(`sensitivity-dark-${locale}`, { path: darkPath, contentType: 'image/png' });
 
     await lab.getByRole('button', { name: copy.challenge[locale], exact: true }).click();
     await expect(panel).toHaveCount(0);
