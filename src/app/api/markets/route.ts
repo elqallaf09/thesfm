@@ -6,9 +6,10 @@ import { buildErrorEnvelope, buildFeatureEnvelope } from '@/lib/market-state/env
 import { computeFreshness } from '@/lib/market-state/freshness';
 import { normalizeFeatureDataStatus, normalizeProviderConnectionStatus } from '@/lib/market-state/normalizeStatus';
 import { normalizeShariahStatus } from '@/lib/market/shariah-screening';
-import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
+import { resolveTraderMarketContext } from '@/lib/trader/marketMetadata';
 import { getConnectedProvider } from '@/lib/trader/marketQuotes';
 import { getSymbolsForMarketOrSector, getTraderMarketCatalog, type TraderCatalogSymbol } from '@/lib/trader/marketCatalog';
+import { observedQuoteProviderNames } from '@/lib/trader/providerAvailability';
 import { TRADER_FUND_FILTERS, fundMatchesFilter, normalizeFundFilter } from '@/lib/trader/fundTypes';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
@@ -19,14 +20,6 @@ function clampInteger(value: string | null, fallback: number, min: number, max: 
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(parsed)));
-}
-
-function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string }>) {
-  return Array.from(new Set(Object.entries(capabilityMatrix)
-    .filter(([, capability]) => capability.supportsQuotes !== false
-      && (capability.configured === true || capability.healthy === true || capability.status === 'healthy'))
-    .map(([provider]) => traderProviderDisplayName(provider))
-    .filter((provider): provider is string => Boolean(provider))));
 }
 
 function normalizeMarketCategory(value: string | null) {
@@ -260,7 +253,7 @@ async function handleMarkets(request: Request) {
 
   const offset = (page - 1) * pageSize;
   const pagedRows = sortedRows.slice(offset, offset + pageSize);
-  const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
+  const observedQuoteProviders = observedQuoteProviderNames(catalog.capabilityMatrix);
   const universeEntryBySymbol = new Map((universe?.entries ?? []).map(entry => [normalizeSymbol(entry.symbol), entry]));
   const groups = catalog.markets.map(market => ({
     id: market.id,
@@ -276,7 +269,7 @@ async function handleMarkets(request: Request) {
     marketContext: resolveTraderMarketContext({
       marketId: market.id,
       currency: market.currency,
-      availableProviders: configuredQuoteProviders,
+      availableProviders: observedQuoteProviders,
     }),
   }));
 
@@ -293,7 +286,7 @@ async function handleMarkets(request: Request) {
       country: symbol.country,
       exchange: symbol.exchange,
       selectedSymbol: symbol.symbol,
-      availableProviders: configuredQuoteProviders,
+      availableProviders: observedQuoteProviders,
     });
     const displaySymbol = normalizeDisplaySymbol(symbol.symbol, symbol.assetType);
     const providerSymbol = normalizeSymbol(symbol.providerSymbol);
@@ -356,7 +349,7 @@ async function handleMarkets(request: Request) {
     : groups[0];
   const marketContext = selectedGroup?.marketContext ?? resolveTraderMarketContext({
     marketId: selectedUniverseMarket ?? selectedUniverseSector ?? undefined,
-    availableProviders: configuredQuoteProviders,
+    availableProviders: observedQuoteProviders,
   });
   const provider = catalog.diagnostics.provider || getConnectedProvider().active || 'Market catalog';
   const pageRequested = Math.min(pageSize, Math.max(0, sortedRows.length - offset));
@@ -415,7 +408,7 @@ async function handleMarkets(request: Request) {
     markets,
     groups,
     marketContext,
-    availableProviders: configuredQuoteProviders,
+    availableProviders: observedQuoteProviders,
     dataProvider: getConnectedProvider(),
     capabilityMatrix: publicCapabilityMatrix,
     diagnostics: catalog.diagnostics,

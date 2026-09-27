@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ fetch: vi.fn(), quotes: vi.fn() }));
 vi.mock('server-only', () => ({}));
 vi.mock('@/lib/server/adminAccess', () => ({ createServerSupabaseAdmin: vi.fn() }));
-vi.mock('@/lib/trader/providers/fmpRuntime', () => ({ fmpQueuedFetch: mocks.fetch }));
+vi.mock('@/lib/trader/providers/fmpRuntime.server', () => ({ fmpQueuedFetch: mocks.fetch }));
 vi.mock('@/lib/trader/marketQuotes', () => ({ fetchTraderQuotes: mocks.quotes }));
 vi.mock('@/lib/market/growthStockScreener', () => ({ screenGrowthStocks: vi.fn() }));
 

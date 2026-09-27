@@ -26,7 +26,7 @@ type DividendCalendarDiagnostics = {
   configured: boolean;
   finnhubConfigured: boolean;
   fmpConfigured: boolean;
-  status: 'available' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
+  status: 'unknown' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
   lastFetchStatus: string | null;
   lastFetchTime: string | null;
   lastSuccessfulUpdate: string | null;
@@ -89,6 +89,14 @@ function updateDiagnostics(partial: Partial<DividendCalendarDiagnostics>) {
   };
 }
 
+function observedStatusForConfig(config: DividendCalendarProviderConfig): DividendCalendarDiagnostics['status'] {
+  if (!config.configured) return 'not_configured';
+
+  // Credentials allow a request but are not proof that the provider is
+  // reachable. Keep any measured result, including a rate-limit cooldown.
+  return diagnostics.status === 'not_configured' ? 'unknown' : diagnostics.status;
+}
+
 function logProviderStatus(config: DividendCalendarProviderConfig) {
   const status = {
     provider: config.provider,
@@ -109,7 +117,7 @@ export function getDividendCalendarProviderStatus() {
     configured: config.configured,
     finnhubConfigured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
     fmpConfigured: Boolean(cleanEnv(process.env.FMP_API_KEY)),
-    status: config.configured ? diagnostics.status === 'not_configured' ? 'available' : diagnostics.status : 'not_configured',
+    status: observedStatusForConfig(config),
   });
   return {
     configured: config.configured,
@@ -131,7 +139,7 @@ export async function getDividendCalendar(query: DividendCalendarQuery): Promise
     configured: config.configured,
     finnhubConfigured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
     fmpConfigured: Boolean(cleanEnv(process.env.FMP_API_KEY)),
-    status: config.configured ? 'available' : 'not_configured',
+    status: observedStatusForConfig(config),
   });
 
   if (!config.configured) {

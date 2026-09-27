@@ -11,9 +11,11 @@ import {
   getFmpRuntimeStatus,
   resetFmpRateLimitCooldown,
 } from '@/lib/trader/providers/fmpRuntime';
+import { synchronizeFmpSharedCooldown } from '@/lib/trader/providers/fmpRuntime.server';
 import type { CatalogDiagnostics, ProviderCapability } from '@/lib/trader/marketCatalog';
 import type { FmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
-import type { NormalizedTraderProviderStatus, TraderProviderFeature } from '@/lib/trader/providers/types';
+import type { MarketProviderId, MarketSystemState } from '@/lib/market-state/types';
+import type { NormalizedTraderProviderStatus, TraderFeatureStatus, TraderProviderFeature } from '@/lib/trader/providers/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,10 +34,26 @@ function mapLegacyStatusToDisplay(status: string): 'configured' | 'missing' | 'e
   return status === 'configured' ? status : status === 'error' ? 'error' : 'missing';
 }
 
-function publicProviderStatus(status: string) {
-  if (status === 'healthy') return 'healthy';
+type PublicProviderStatus = 'healthy' | 'rate_limited' | 'not_configured' | 'degraded' | 'unknown';
+
+type ProviderObservation = {
+  configured: boolean;
+  healthy: boolean;
+  rateLimited: boolean;
+  status: PublicProviderStatus;
+  lastSuccessfulFetch: string | null;
+  lastError: string | null;
+  lastErrorAt: string | null;
+  rateLimitedUntil: string | null;
+  nextRetryAt: string | null;
+  cacheAvailable: boolean;
+};
+
+function publicProviderStatus(status: string): PublicProviderStatus {
+  if (status === 'healthy' || status === 'connected' || status === 'success') return 'healthy';
   if (status === 'rate_limited') return 'rate_limited';
-  if (status === 'not_configured') return 'not_configured';
+  if (status === 'not_configured' || status === 'misconfigured') return 'not_configured';
+  if (status === 'unknown' || status === 'unsupported') return 'unknown';
   return 'degraded';
 }
 
@@ -86,13 +104,119 @@ function routeLabel(value: string | null | undefined) {
   return labels[key] ?? (key || 'provider route');
 }
 
-function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string; rateLimited?: boolean }>) {
-  return Array.from(new Set(Object.entries(capabilityMatrix)
-    .filter(([, capability]) => capability.supportsQuotes !== false
-      && capability.status !== 'rate_limited'
-      && capability.rateLimited !== true
-      && (capability.configured === true || capability.healthy === true || capability.status === 'healthy'))
-    .map(([provider]) => traderProviderDisplayName(provider))
+function observedProviderState(
+  state: Partial<MarketSystemState>,
+  provider: MarketProviderId,
+  configured: boolean,
+): ProviderObservation {
+  const summary = state.providers?.[provider];
+  const quoteCell = state.capabilityMatrix?.find(cell => cell.provider === provider && cell.capability === 'quotes');
+  const profile = state.providerProfiles?.find(item => item.provider === provider);
+  const rawStatus = summary?.status ?? quoteCell?.status ?? profile?.status ?? (configured ? 'unknown' : 'not_configured');
+  const status = publicProviderStatus(rawStatus);
+  const lastSuccessfulFetch = quoteCell?.lastSuccessAt ?? profile?.lastSuccessAt ?? null;
+  const lastError = quoteCell?.lastErrorReason ?? (configured ? null : `${provider}_not_configured`);
+  const rateLimitedUntil = quoteCell?.rateLimitedUntil ?? profile?.rateLimitedUntil ?? null;
+  const nextRetryAt = quoteCell?.nextRetryAt ?? rateLimitedUntil;
+
+  return {
+    configured,
+    healthy: status === 'healthy',
+    rateLimited: status === 'rate_limited',
+    status,
+    lastSuccessfulFetch,
+    lastError,
+    lastErrorAt: quoteCell?.lastErrorAt ?? profile?.lastErrorAt ?? null,
+    rateLimitedUntil,
+    nextRetryAt,
+    // A market-state snapshot currently carries no cache proof for an individual provider.
+    cacheAvailable: false,
+  };
+}
+
+function calendarProviderObservation(
+  features: Partial<Record<TraderProviderFeature, TraderFeatureStatus>> | undefined,
+  provider: 'finnhub' | 'tradingeconomics',
+  configured: boolean,
+): ProviderObservation {
+  const matching = Object.values(features ?? {}).filter((feature): feature is TraderFeatureStatus => Boolean(feature && feature.provider === provider));
+  const rateLimited = matching.find(feature => feature.status === 'rate_limited');
+  const failed = matching.find(feature => !['success', 'available', 'unknown', 'not_configured'].includes(feature.status));
+  const successful = matching
+    .filter(feature => feature.status === 'success')
+    .sort((left, right) => String(right.lastSuccessfulUpdate ?? '').localeCompare(String(left.lastSuccessfulUpdate ?? '')))[0];
+
+  if (rateLimited) {
+    return {
+      configured,
+      healthy: false,
+      rateLimited: true,
+      status: 'rate_limited',
+      lastSuccessfulFetch: successful?.lastSuccessfulUpdate ?? null,
+      lastError: rateLimited.failureReason,
+      lastErrorAt: rateLimited.lastUpdated,
+      rateLimitedUntil: null,
+      nextRetryAt: null,
+      cacheAvailable: false,
+    };
+  }
+
+  if (failed) {
+    return {
+      configured,
+      healthy: false,
+      rateLimited: false,
+      status: publicProviderStatus(failed.status),
+      lastSuccessfulFetch: successful?.lastSuccessfulUpdate ?? null,
+      lastError: failed.failureReason,
+      lastErrorAt: failed.lastUpdated,
+      rateLimitedUntil: null,
+      nextRetryAt: null,
+      cacheAvailable: false,
+    };
+  }
+
+  if (successful) {
+    return {
+      configured,
+      healthy: true,
+      rateLimited: false,
+      status: 'healthy',
+      lastSuccessfulFetch: successful.lastSuccessfulUpdate ?? successful.lastUpdated,
+      lastError: null,
+      lastErrorAt: null,
+      rateLimitedUntil: null,
+      nextRetryAt: null,
+      cacheAvailable: false,
+    };
+  }
+
+  return {
+    configured,
+    healthy: false,
+    rateLimited: false,
+    status: configured ? 'unknown' : 'not_configured',
+    lastSuccessfulFetch: null,
+    lastError: configured ? null : `${provider}_not_configured`,
+    lastErrorAt: null,
+    rateLimitedUntil: null,
+    nextRetryAt: null,
+    cacheAvailable: false,
+  };
+}
+
+function mergeProviderObservations(state: ProviderObservation, calendar: ProviderObservation): ProviderObservation {
+  // A live quote observation (including a failure) is more recent/broader than
+  // an unprobed calendar state. Calendar data fills only the explicit unknown gap.
+  return state.status === 'unknown' && calendar.status !== 'unknown' ? calendar : state;
+}
+
+function availableQuoteProviders(capabilityMatrix: MarketSystemState['capabilityMatrix'] | undefined) {
+  return Array.from(new Set((capabilityMatrix ?? [])
+    .filter(capability => capability.capability === 'quotes'
+      && capability.status === 'connected'
+      && capability.healthy === true)
+    .map(capability => traderProviderDisplayName(capability.provider))
     .filter((provider): provider is string => Boolean(provider))));
 }
 
@@ -110,6 +234,8 @@ function normalizeFmpStatus(args: {
     ? 'missing'
     : args.runtime.rateLimited
       ? 'rate_limited'
+      : args.runtime.status === 'unknown'
+        ? 'unknown'
       : failedCount > 0 && loadedCount > 0
         ? 'partial'
         : failedCount > 0 || Boolean(args.runtime.lastError)
@@ -134,10 +260,12 @@ function normalizeFmpStatus(args: {
     failedCount,
     cachedCount,
     skippedCount,
-    lastUpdated: args.runtime.lastSuccessfulFetch ?? args.generatedAt,
-    lastAttemptAt: args.runtime.lastErrorAt ?? args.runtime.lastSuccessfulFetch ?? args.generatedAt,
+    lastUpdated: args.runtime.lastSuccessfulFetch,
+    lastAttemptAt: args.runtime.lastErrorAt ?? args.runtime.lastSuccessfulFetch,
     nextRetryAt: args.runtime.nextRetryAt ?? args.runtime.rateLimitedUntil,
-    fallbackAttempted: args.runtime.rateLimited || cachedCount > 0 || args.diagnostics.summary.skippedDueToRateLimit > 0,
+    // A cached catalog or a configured alternate provider is not evidence that
+    // this status request actually performed a successful fallback.
+    fallbackAttempted: false,
     affectedSymbolsCount: failedCount + skippedCount,
     errorSummary,
   };
@@ -204,7 +332,7 @@ function advancedDiagnostics(args: {
     affected.push({ symbol: 'FMP', reason: RATE_LIMIT_REASON });
   }
 
-  if (!args.runtime.rateLimited && affected.length === 0 && args.normalized.status === 'available') return [];
+  if (!args.runtime.rateLimited && affected.length === 0 && (args.normalized.status === 'available' || args.normalized.status === 'unknown')) return [];
 
   return [{
     provider: 'FMP',
@@ -231,6 +359,10 @@ async function buildProviderStatusResponse(options: {
     discover = false,
     marketId = null,
   } = options;
+  // Populate this instance's runtime view before reading any legacy or unified
+  // provider fields. Without this, the response could report FMP as available
+  // while its embedded market state correctly reports a shared cooldown.
+  await synchronizeFmpSharedCooldown();
   const status = getTraderProviderStatus();
   const catalog = await getTraderMarketCatalog({
     forceFresh,
@@ -242,6 +374,19 @@ async function buildProviderStatusResponse(options: {
   const tradingEconomicsConfigured = normalizeEnvValue(process.env.TRADING_ECONOMICS_API_KEY);
   const fmpRuntime = getFmpRuntimeStatus(fmpConfigured, catalog.diagnostics.cacheStatus === 'hit' || catalog.diagnostics.cacheStatus === 'stale');
   const now = new Date().toISOString();
+  // Obtain real quote observations before rendering the legacy provider fields.
+  // The route deliberately does not turn environment configuration or catalog
+  // declarations into a health result.
+  const state = await getMarketSystemState({ forceFresh });
+  const yahooObservation = observedProviderState(state, 'yahoo', true);
+  const finnhubObservation = mergeProviderObservations(
+    observedProviderState(state, 'finnhub', finnhubConfigured),
+    calendarProviderObservation(status.features, 'finnhub', finnhubConfigured),
+  );
+  const tradingEconomicsObservation = mergeProviderObservations(
+    observedProviderState(state, 'tradingeconomics', tradingEconomicsConfigured),
+    calendarProviderObservation(status.features, 'tradingeconomics', tradingEconomicsConfigured),
+  );
   const normalizedStatus = normalizeFmpStatus({
     configured: fmpConfigured,
     runtime: fmpRuntime,
@@ -253,16 +398,19 @@ async function buildProviderStatusResponse(options: {
   const safeCapabilityMatrix = sanitizeCapabilityMatrix(catalog.capabilityMatrix);
   const providerSummary = {
     fmp: publicProviderStatus(fmpRuntime.status),
-    yahoo: 'healthy',
-    finnhub: finnhubConfigured ? 'healthy' : 'not_configured',
+    yahoo: yahooObservation.status,
+    finnhub: finnhubObservation.status,
+    tradingEconomics: tradingEconomicsObservation.status,
     loadedSymbols: catalog.diagnostics.totalSymbolsLoaded,
     failedSymbols: catalog.diagnostics.failedSymbols.length,
     cachedSymbols: catalog.diagnostics.summary.cachedSymbols,
     skippedDueToRateLimit: catalog.diagnostics.summary.skippedDueToRateLimit,
     nextRetryAt: fmpRuntime.nextRetryAt,
   };
-  const availableProviders = availableQuoteProviders(catalog.capabilityMatrix);
-  const fallbackAttempted = fmpRuntime.rateLimited && availableProviders.some(provider => provider !== 'FMP');
+  const availableProviders = availableQuoteProviders(state.capabilityMatrix);
+  // This endpoint observes health; it never performs a quote fallback itself.
+  // Do not present an eligible provider as though it was actually used.
+  const fallbackAttempted = false;
   const advancedDiagnosticsSummary = advancedDiagnostics({
     diagnostics: catalog.diagnostics,
     normalized: {
@@ -275,17 +423,7 @@ async function buildProviderStatusResponse(options: {
   });
 
   const dataProvider = fmpRuntime.rateLimited
-    ? fallbackAttempted
-      ? {
-          ...status.dataProvider,
-          configured: true,
-          active: 'yahoo',
-          provider: 'yahoo',
-          status: 'available',
-          failureReason: null,
-          supportedFeatures: ['prices'],
-        }
-      : {
+    ? {
         ...status.dataProvider,
         configured: fmpConfigured,
         active: 'fmp',
@@ -297,12 +435,6 @@ async function buildProviderStatusResponse(options: {
         ...status.dataProvider,
         failureReason: cleanProviderReason(status.dataProvider.failureReason),
       };
-
-  // Additive-only field — every key below this line already existed and is byte-compatible with
-  // the vanilla-JS trader terminal, which calls this exact route (see
-  // traderProviderStatusEnvelope.test.ts for the regression guard). `state` is the new unified
-  // market-state view; existing consumers can ignore it.
-  const state = await getMarketSystemState({ forceFresh });
 
   const response = {
     ok: true,
@@ -322,7 +454,7 @@ async function buildProviderStatusResponse(options: {
           quotes: Boolean(fmpConfigured),
           symbols: Boolean(fmpConfigured),
         },
-        lastChecked: now,
+        lastChecked: fmpRuntime.lastSuccessfulFetch ?? fmpRuntime.lastErrorAt,
         lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
         lastError: isAdmin ? cleanProviderReason(fmpRuntime.lastError) : null,
         rateLimitedUntil: fmpRuntime.rateLimitedUntil,
@@ -331,26 +463,26 @@ async function buildProviderStatusResponse(options: {
         error: isAdmin ? (fmpRuntime.rateLimited ? RATE_LIMIT_REASON : cleanProviderReason(fmpRuntime.lastError)) : null,
       },
       yahoo: {
-        configured: true,
-        healthy: true,
-        rate_limited: false,
-        status: 'healthy',
+        configured: yahooObservation.configured,
+        healthy: yahooObservation.healthy,
+        rate_limited: yahooObservation.rateLimited,
+        status: yahooObservation.status,
         legacyStatus: mapLegacyStatusToDisplay('configured'),
         features: {
           quotes: true,
           technicalAnalysis: true,
         },
-        lastChecked: now,
-        lastSuccessfulFetch: null,
-        lastError: null,
-        cacheAvailable: true,
-        error: null,
+        lastChecked: yahooObservation.lastSuccessfulFetch ?? yahooObservation.lastErrorAt,
+        lastSuccessfulFetch: yahooObservation.lastSuccessfulFetch,
+        lastError: isAdmin ? cleanProviderReason(yahooObservation.lastError) : null,
+        cacheAvailable: yahooObservation.cacheAvailable,
+        error: isAdmin ? cleanProviderReason(yahooObservation.lastError) : null,
       },
       finnhub: {
-        configured: finnhubConfigured,
-        healthy: finnhubConfigured,
-        rate_limited: false,
-        status: finnhubConfigured ? 'healthy' : 'not_configured',
+        configured: finnhubObservation.configured,
+        healthy: finnhubObservation.healthy,
+        rate_limited: finnhubObservation.rateLimited,
+        status: finnhubObservation.status,
         legacyStatus: mapLegacyStatusToDisplay(finnhubConfigured ? 'configured' : 'missing'),
         features: {
           earnings: Boolean(finnhubConfigured),
@@ -358,26 +490,30 @@ async function buildProviderStatusResponse(options: {
           news: Boolean(finnhubConfigured),
           economicCalendar: Boolean(finnhubConfigured),
         },
-        lastChecked: finnhubConfigured ? now : null,
-        lastSuccessfulFetch: null,
-        lastError: finnhubConfigured ? null : 'finnhub_not_configured',
-        cacheAvailable: false,
-        error: null,
+        lastChecked: finnhubObservation.lastSuccessfulFetch ?? finnhubObservation.lastErrorAt,
+        lastSuccessfulFetch: finnhubObservation.lastSuccessfulFetch,
+        lastError: isAdmin ? cleanProviderReason(finnhubObservation.lastError) : null,
+        rateLimitedUntil: finnhubObservation.rateLimitedUntil,
+        nextRetryAt: finnhubObservation.nextRetryAt,
+        cacheAvailable: finnhubObservation.cacheAvailable,
+        error: isAdmin ? cleanProviderReason(finnhubObservation.lastError) : null,
       },
       tradingEconomics: {
-        configured: tradingEconomicsConfigured,
-        healthy: tradingEconomicsConfigured,
-        rate_limited: false,
-        status: tradingEconomicsConfigured ? 'healthy' : 'not_configured',
+        configured: tradingEconomicsObservation.configured,
+        healthy: tradingEconomicsObservation.healthy,
+        rate_limited: tradingEconomicsObservation.rateLimited,
+        status: tradingEconomicsObservation.status,
         legacyStatus: mapLegacyStatusToDisplay(tradingEconomicsConfigured ? 'configured' : 'missing'),
         features: {
           economicCalendar: Boolean(tradingEconomicsConfigured),
         },
-        lastChecked: tradingEconomicsConfigured ? now : null,
-        lastSuccessfulFetch: null,
-        lastError: tradingEconomicsConfigured ? null : 'tradingeconomics_not_configured',
-        cacheAvailable: false,
-        error: null,
+        lastChecked: tradingEconomicsObservation.lastSuccessfulFetch ?? tradingEconomicsObservation.lastErrorAt,
+        lastSuccessfulFetch: tradingEconomicsObservation.lastSuccessfulFetch,
+        lastError: isAdmin ? cleanProviderReason(tradingEconomicsObservation.lastError) : null,
+        rateLimitedUntil: tradingEconomicsObservation.rateLimitedUntil,
+        nextRetryAt: tradingEconomicsObservation.nextRetryAt,
+        cacheAvailable: tradingEconomicsObservation.cacheAvailable,
+        error: isAdmin ? cleanProviderReason(tradingEconomicsObservation.lastError) : null,
       },
     },
     normalizedStatus: {
@@ -409,24 +545,37 @@ async function buildProviderStatusResponse(options: {
         supportedFeatures: fmpRuntime.supportedFeatures,
       },
       yahoo: {
-        configured: true,
-        healthy: true,
-        rate_limited: false,
-        status: 'healthy',
-        lastSuccessfulFetch: null,
-        lastError: null,
-        cacheAvailable: true,
+        configured: yahooObservation.configured,
+        healthy: yahooObservation.healthy,
+        rate_limited: yahooObservation.rateLimited,
+        status: yahooObservation.status,
+        lastSuccessfulFetch: yahooObservation.lastSuccessfulFetch,
+        lastError: isAdmin ? cleanProviderReason(yahooObservation.lastError) : null,
+        nextRetryAt: yahooObservation.nextRetryAt,
+        cacheAvailable: yahooObservation.cacheAvailable,
         supportedFeatures: ['quotes', 'technicalAnalysis'],
       },
       finnhub: {
-        configured: finnhubConfigured,
-        healthy: finnhubConfigured,
-        rate_limited: false,
-        status: finnhubConfigured ? 'healthy' : 'not_configured',
-        lastSuccessfulFetch: null,
-        lastError: finnhubConfigured ? null : 'finnhub_not_configured',
-        cacheAvailable: false,
+        configured: finnhubObservation.configured,
+        healthy: finnhubObservation.healthy,
+        rate_limited: finnhubObservation.rateLimited,
+        status: finnhubObservation.status,
+        lastSuccessfulFetch: finnhubObservation.lastSuccessfulFetch,
+        lastError: isAdmin ? cleanProviderReason(finnhubObservation.lastError) : null,
+        nextRetryAt: finnhubObservation.nextRetryAt,
+        cacheAvailable: finnhubObservation.cacheAvailable,
         supportedFeatures: ['earnings', 'dividends', 'economicCalendar', 'news'],
+      },
+      tradingEconomics: {
+        configured: tradingEconomicsObservation.configured,
+        healthy: tradingEconomicsObservation.healthy,
+        rate_limited: tradingEconomicsObservation.rateLimited,
+        status: tradingEconomicsObservation.status,
+        lastSuccessfulFetch: tradingEconomicsObservation.lastSuccessfulFetch,
+        lastError: isAdmin ? cleanProviderReason(tradingEconomicsObservation.lastError) : null,
+        nextRetryAt: tradingEconomicsObservation.nextRetryAt,
+        cacheAvailable: tradingEconomicsObservation.cacheAvailable,
+        supportedFeatures: ['economicCalendar'],
       },
     },
     capabilityMatrix: safeCapabilityMatrix,
@@ -449,9 +598,9 @@ async function buildProviderStatusResponse(options: {
 
   console.info('[trader-provider-status] provider health', {
     fmp: { configured: fmpConfigured, status: fmpRuntime.status },
-    yahoo: { configured: true, status: 'healthy' },
-    finnhub: { configured: finnhubConfigured, status: finnhubConfigured ? 'healthy' : 'not_configured' },
-    tradingEconomics: { configured: tradingEconomicsConfigured },
+    yahoo: { configured: yahooObservation.configured, status: yahooObservation.status },
+    finnhub: { configured: finnhubObservation.configured, status: finnhubObservation.status },
+    tradingEconomics: { configured: tradingEconomicsObservation.configured, status: tradingEconomicsObservation.status },
   });
 
   return NextResponse.json(response, {

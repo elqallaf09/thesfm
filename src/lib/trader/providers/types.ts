@@ -107,7 +107,7 @@ export type TraderFeatureStatus = {
   feature: TraderProviderFeature;
   configured: boolean;
   provider: TraderProviderName | null;
-  status: ProviderApiStatus | 'available';
+  status: ProviderApiStatus | 'available' | 'unknown';
   resultCount: number | null;
   lastUpdated: string | null;
   lastSuccessfulUpdate: string | null;
@@ -119,7 +119,7 @@ export type TraderFeatureStatus = {
 export type NormalizedTraderProviderStatus = {
   provider: 'FMP';
   configured: boolean;
-  status: 'available' | 'rate_limited' | 'partial' | 'missing' | 'error';
+  status: 'available' | 'rate_limited' | 'partial' | 'missing' | 'error' | 'unknown';
   supportedFeatures: TraderProviderFeature[];
   loadedCount: number;
   failedCount: number;
@@ -145,7 +145,7 @@ export type TraderProviderStatusResponse = {
     configured: boolean;
     active: TraderProviderName | null;
     provider: TraderProviderName | null;
-    status: ProviderApiStatus | 'available';
+    status: ProviderApiStatus | 'available' | 'unknown';
     supportedFeatures: TraderProviderFeature[];
     lastUpdated: string | null;
     resultCount: number | null;

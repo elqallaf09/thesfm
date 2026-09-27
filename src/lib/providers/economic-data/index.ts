@@ -217,10 +217,18 @@ export async function getEconomicCycleIndicators(options: {
 
 export function getEconomicDataProviderStatus(): EconomicDataProviderStatus {
   const provider = selectProvider();
+  const status = !provider
+    ? 'not_configured'
+    : lastFetchStatus === null
+      ? 'unknown'
+      : lastFetchStatus === 'success' || lastFetchStatus === 'empty'
+        ? 'available'
+        : 'error';
+
   return {
     provider: provider?.name ?? null,
     configured: Boolean(provider),
-    status: provider ? 'available' : 'not_configured',
+    status,
     lastFetchStatus,
     lastFetchTime,
   };

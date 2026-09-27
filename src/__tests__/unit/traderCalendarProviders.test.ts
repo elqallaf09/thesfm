@@ -74,6 +74,11 @@ describe('trader calendar providers', () => {
     });
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('financialmodelingprep.com/stable/earnings-calendar');
     expect(JSON.stringify(infoSpy.mock.calls)).not.toContain('test-fmp-key');
+    expect(getTraderProviderStatus().features.earnings).toMatchObject({
+      provider: 'fmp',
+      status: 'success',
+      lastSuccessfulUpdate: expect.any(String),
+    });
   });
 
   it('does not treat missing/default zero actual EPS as meaningful future earnings data', async () => {
@@ -322,7 +327,7 @@ describe('trader calendar providers', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('reports configured provider status without returning secrets', () => {
+  it('reports configured provider status as unobserved without returning secrets', () => {
     clearProviderEnvs();
     vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
     vi.stubEnv('TRADING_ECONOMICS_API_KEY', 'test-te-key');
@@ -334,7 +339,7 @@ describe('trader calendar providers', () => {
       finnhubConfigured: false,
       tradingEconomicsConfigured: true,
     });
-    expect(status.features.earnings.status).toBe('available');
+    expect(status.features.earnings.status).toBe('unknown');
     expect(status.features.economic.provider).toBe('tradingeconomics');
     expect(JSON.stringify(status)).not.toContain('test-fmp-key');
     expect(JSON.stringify(status)).not.toContain('test-te-key');

@@ -5480,7 +5480,9 @@
   // لا أسماء مزودات، لا أخطاء خام، لا عدّ مسارات، لا تفاصيل حد استخدام.
   function publicSystemStatus() {
     const normalized = normalizedProviderStatus();
-    const online = normalized.status === 'available' || normalized.status === 'healthy' || normalized.configured === true;
+    // Configuration allows an attempt, but only an observed healthy/available
+    // result may tell a customer that market data is connected.
+    const online = normalized.status === 'available' || normalized.status === 'healthy';
     const loaded = Number(normalized.loadedCount) || 0;
     const connected = online && loaded > 0;
     const tone = connected ? 'ok' : 'warn';
@@ -5505,7 +5507,7 @@
     const cards = [
       [settingsT("providerStatus", lang), providerStatus.label, tone],
       [settingsT("providerName", lang), normalized.provider, ""],
-      [settingsT("providerConnection", lang), normalized.configured ? settingsT("configured", lang) : settingsT("notConfigured", lang), normalized.configured ? "ok" : "warn"],
+      [settingsT("providerConnection", lang), normalized.configured ? settingsT("configured", lang) : settingsT("notConfigured", lang), normalized.status === "available" || normalized.status === "healthy" ? "ok" : normalized.configured ? "" : "warn"],
       [settingsT("loadedSymbols", lang), countTextLocalized(normalized.loadedCount, lang), normalized.loadedCount > 0 ? "ok" : "warn"],
       [settingsT("discoveredSymbols", lang), countTextLocalized(normalized.discoveredCount, lang), ""],
       [settingsT("cachedSymbols", lang), countTextLocalized(normalized.cachedCount, lang), normalized.cachedCount > 0 ? "ok" : ""],
@@ -5533,6 +5535,9 @@
     const rateLimitCopy = ps.userMessages && ps.userMessages.rateLimit && (ps.userMessages.rateLimit[normalizeLanguage(lang)] || ps.userMessages.rateLimit.en || ps.userMessages.rateLimit.ar);
     if (normalized.status === "rate_limited" || isRateLimitText(normalized.errorSummary)) {
       return rateLimitCopy || settingsT("rateLimitNotice", lang);
+    }
+    if (normalized.status === "unknown") {
+      return getProviderStatusMessage("provider_status_unknown", lang);
     }
     return formatProviderError(normalized.errorSummary, { empty: "" }) || providerStatus.explanation;
   }
@@ -7461,8 +7466,8 @@
     if (state.loading && !Object.keys(state.providerStatus || {}).length) return providerStatusCopy("provider_status_loading", { provider: p.active || p.provider });
     if (state.providerStatus && state.providerStatus.ok === false) return providerStatusCopy("provider_status_failed", { provider: p.active || p.provider });
     const configured = p.configured === true || Boolean(p.active);
-    const raw = (normalized && normalized.status) || p.status || (configured ? "configured" : "not_configured");
-    const ok = configured && ["success", "available", "configured", "connected", "healthy"].includes(String(raw));
+    const raw = (normalized && normalized.status) || p.status || (configured ? "unknown" : "not_configured");
+    const ok = ["success", "available", "connected", "healthy"].includes(String(raw));
     return providerStatusCopy(ok ? "provider_status_available" : raw, { provider: p.active || p.provider });
   }
   function h(v) { return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;"); }

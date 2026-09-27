@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const getTraderMarketCatalog = vi.fn();
 const getConfiguredProviderDescriptors = vi.fn();
 const getFmpRuntimeStatus = vi.fn();
+const synchronizeFmpSharedCooldown = vi.fn();
 const createServerSupabaseAdmin = vi.fn();
 const getPersistentCache = vi.fn();
 const setPersistentCache = vi.fn();
@@ -11,6 +12,7 @@ const getProviderHealth = vi.fn();
 vi.mock('@/lib/trader/marketCatalog', () => ({ getTraderMarketCatalog: (...args: unknown[]) => getTraderMarketCatalog(...args) }));
 vi.mock('@/lib/market-news/registry', () => ({ getConfiguredProviderDescriptors: (...args: unknown[]) => getConfiguredProviderDescriptors(...args) }));
 vi.mock('@/lib/trader/providers/fmpRuntime', () => ({ getFmpRuntimeStatus: (...args: unknown[]) => getFmpRuntimeStatus(...args) }));
+vi.mock('@/lib/trader/providers/fmpRuntime.server', () => ({ synchronizeFmpSharedCooldown: (...args: unknown[]) => synchronizeFmpSharedCooldown(...args) }));
 vi.mock('@/lib/server/adminAccess', () => ({ createServerSupabaseAdmin: (...args: unknown[]) => createServerSupabaseAdmin(...args) }));
 vi.mock('@/lib/trader/persistentCache', () => ({
   getPersistentCache: (...args: unknown[]) => getPersistentCache(...args),
@@ -68,6 +70,7 @@ describe('market system state — no contradictory combinations (the core bug fr
       lastSuccessfulFetch: null, lastError: null, lastErrorAt: null, rateLimitedUntil: null,
       nextRetryAt: null, cacheAvailable: false, supportedFeatures: [], skippedDueToRateLimit: 0, consecutiveRateLimitCount: 0,
     });
+    synchronizeFmpSharedCooldown.mockReset().mockResolvedValue(undefined);
     createServerSupabaseAdmin.mockReset().mockReturnValue(null);
     getPersistentCache.mockReset().mockResolvedValue(null);
     setPersistentCache.mockReset().mockResolvedValue(undefined);
