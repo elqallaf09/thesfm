@@ -3,6 +3,7 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { buildCapabilityMatrixView, DRAWER_CAPABILITY_ROWS } from '@/lib/market-state/capabilityMatrixView';
+import { getProviderDiagnostic } from '@/lib/market-state/diagnostics';
 import type { MarketCapabilityKey, MarketSystemState } from '@/lib/market-state/types';
 import { ConfigurationStatusList } from './ConfigurationStatusList';
 import { ProviderCard } from './ProviderCard';
@@ -78,13 +79,17 @@ export function CapabilityMatrixSection({ system }: { system: MarketSystemState 
                 const statusLabel = t(`market_state_status_${cellStatus}`);
                 const providerName = traderProviderDisplayName(provider) ?? provider;
                 const capabilityLabel = t(capabilityLabelKey(capability));
+                const diagnostic = getProviderDiagnostic(cellStatus);
+                const detail = diagnostic
+                  ? ` ${t(diagnostic.reasonKey)} ${t(diagnostic.actionKey)}`
+                  : '';
                 return (
                   <span
                     role="cell"
                     aria-colindex={colIndex + 2}
                     key={provider}
                     data-label={providerName}
-                    title={`${providerName} · ${capabilityLabel}: ${statusLabel}`}
+                    title={`${providerName} · ${capabilityLabel}: ${statusLabel}.${detail}`}
                   >
                     <span className={`market-status-badge ${tone}`}>
                       <Icon size={13} aria-hidden="true" /> {statusLabel}

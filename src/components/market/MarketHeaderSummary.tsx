@@ -1,13 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { Info, Settings2 } from 'lucide-react';
+import { AlertTriangle, Info, RefreshCw, Settings2 } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { formatDateTime } from '@/lib/locale';
 import { computeFreshness } from '@/lib/market-state/freshness';
 import { useMarketSystemContext } from './MarketSystemStateProvider';
 import { ProviderDetailsDrawer } from './ProviderDetailsDrawer';
 import { PROVIDER_STATUS_ICON, PROVIDER_STATUS_TONE } from './statusPresentation';
+
+function headerDeliveryPresentation(system: NonNullable<ReturnType<typeof useMarketSystemContext>['system']>) {
+  const freshness = computeFreshness(system.lastSynchronizedAt, 'quotes');
+  if (system.delivery?.source === 'unavailable') return { key: 'market_header_data_unavailable', tone: 'danger' as const };
+  if (system.featuresFailed.length > 0) return { key: 'market_header_partial', tone: 'warning' as const };
+  if (!system.lastSynchronizedAt) return { key: 'market_header_not_configured', tone: 'muted' as const };
+  if (freshness.isStale || system.delivery?.cached) return { key: 'market_header_cached', tone: 'warning' as const };
+  if (freshness.isDelayed || system.delivery?.delayed) return { key: 'market_header_delayed', tone: 'warning' as const };
+  return { key: 'market_header_live', tone: 'success' as const };
+}
 
 /**
  * One compact market-data status header: a summary box, a freshness box, a feature-health box,
@@ -20,7 +30,7 @@ export function MarketHeaderSummary() {
   const { system, status, isLoading, retry } = useMarketSystemContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  if (isLoading || !system) {
+  if (isLoading) {
     return (
       <div className="market-header-summary" role="status">
         <div className="market-header-box tone-muted">
@@ -31,24 +41,33 @@ export function MarketHeaderSummary() {
     );
   }
 
+  if (!system) {
+    const unavailable = status === 'error' || status === 'unavailable';
+    return (
+      <div className="market-header-summary" role={unavailable ? 'alert' : 'status'}>
+        <div className={`market-header-box tone-${unavailable ? 'danger' : 'muted'}`}>
+          <span className="market-status-icon"><AlertTriangle size={16} /></span>
+          <div>
+            <small dir="auto">{t(unavailable ? 'market_state_load_failed_title' : 'market_service_checking_short')}</small>
+            {unavailable ? <p dir="auto">{t('market_state_load_failed_body')}</p> : null}
+          </div>
+        </div>
+        {unavailable ? (
+          <button type="button" className="market-header-details-button" onClick={retry}>
+            <RefreshCw size={14} /> {t('market_state_retry')}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
   const tone = PROVIDER_STATUS_TONE[system.overall];
   const Icon = PROVIDER_STATUS_ICON[system.overall];
   const lastSync = system.lastSynchronizedAt ? formatDateTime(system.lastSynchronizedAt, lang) : '';
 
   const configuredProviders = system.providerProfiles.filter(profile => profile.configured);
-  const healthyConfigured = configuredProviders.filter(profile => profile.status === 'connected').length;
-
-  // Reuses the same shared freshness math the rest of the app uses for quotes (15s fresh / 60s
-  // stale) — never an independently-invented threshold.
-  const freshness = computeFreshness(system.lastSynchronizedAt, 'quotes');
-  const freshnessKey = !system.lastSynchronizedAt
-    ? 'market_header_not_configured'
-    : freshness.isStale
-      ? 'market_header_cached'
-      : freshness.isDelayed
-        ? 'market_header_delayed'
-        : 'market_header_live';
-  const freshnessTone = freshnessKey === 'market_header_live' ? 'success' : freshnessKey === 'market_header_delayed' ? 'warning' : 'muted';
+  const availableConfigured = configuredProviders.filter(profile => profile.status === 'connected' || profile.status === 'degraded').length;
+  const delivery = headerDeliveryPresentation(system);
 
   const microLabelKey = system.overall === 'degraded'
     ? (system.featuresFailed.length > 0 ? 'market_header_partial' : 'market_header_temporarily_limited')
@@ -67,13 +86,13 @@ export function MarketHeaderSummary() {
               <span className={`market-status-badge ${tone}`}>{t(`market_state_status_${system.overall}`)}</span>
               {microLabelKey ? <span className={`market-status-badge ${tone}`}>{t(microLabelKey)}</span> : null}
             </p>
-            <p dir="auto">{t('market_header_active_sources')}: {healthyConfigured}/{configuredProviders.length}</p>
+            <p dir="auto">{t('market_header_active_sources')}: {availableConfigured}/{configuredProviders.length}</p>
           </div>
         </div>
 
-        <div className="market-header-box tone-muted">
+        <div className={`market-header-box tone-${delivery.tone}`}>
           <div>
-            <small dir="auto">{t(freshnessKey)}</small>
+            <small dir="auto">{t(delivery.key)}</small>
             {lastSync ? <p dir="auto">{t('market_state_last_sync')}: {lastSync}</p> : null}
           </div>
         </div>
