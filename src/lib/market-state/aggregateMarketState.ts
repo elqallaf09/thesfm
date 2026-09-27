@@ -1,8 +1,13 @@
+import { randomUUID } from 'crypto';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { getConfiguredProviderDescriptors } from '@/lib/market-news/registry';
 import { getProviderHealth } from '@/lib/market/marketDataProviders';
+import { cleanEnv } from '@/lib/market/providerConfig';
 import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
+import { getFmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
+import { synchronizeFmpSharedCooldown } from '@/lib/trader/providers/fmpRuntime.server';
+import { acquireScanLock, releaseScanLock } from '@/lib/trader/scannerLock';
 import { buildProviderProfiles, summarizeProviderStatus } from './capabilityMatrixView';
 import { classifyCatalogCompleteness } from './completeness';
 import { normalizeProviderConnectionStatus } from './normalizeStatus';
@@ -22,6 +27,16 @@ import {
 const SNAPSHOT_CACHE_KEY = 'market_system_state_snapshot';
 const SNAPSHOT_TTL_MS = 10 * 60 * 1000;
 const AGGREGATE_CACHE_MS = 30_000;
+// A persisted snapshot is retained for ten minutes as an outage fallback, but is
+// only fresh enough to suppress a live probe for the same short window as the
+// in-process cache. This prevents cold serverless instances from amplifying
+// provider traffic without presenting a ten-minute-old health result as live.
+const PERSISTENT_SNAPSHOT_FRESH_MS = AGGREGATE_CACHE_MS;
+const SNAPSHOT_REFRESH_LOCK_KEY = 'market_system_state_refresh_lock';
+// A live health probe is capped at four seconds. The lease leaves enough room
+// for catalog aggregation and persistence while ensuring a crashed instance
+// cannot suppress refreshes for long.
+const SNAPSHOT_REFRESH_LOCK_TTL_MS = 20_000;
 /** Bounds the live getProviderHealth() probe (real network calls) so one slow provider can't
  *  stall every page that now reads this aggregation. */
 const HEALTH_PROBE_TIMEOUT_MS = 4_000;
@@ -170,11 +185,14 @@ async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSyst
   for (const [capabilityKey, context] of DERIVED_CAPABILITIES) {
     for (const provider of priorityListFor(capabilityKey, context)) {
       if (cells.some(cell => cell.capability === capabilityKey && cell.provider === provider)) continue;
-      const probedConfiguration = healthResults.find(result => normalizeMarketDataProviderName(result.provider) === provider);
-      const status = probedConfiguration
+      // A quote probe is evidence about quotes only. Do not turn it (or a key)
+      // into a degraded/successful result for unrelated capabilities. It can
+      // still safely establish whether a key was configured on this process.
+      const quoteProbe = healthResults.find(result => normalizeMarketDataProviderName(result.provider) === provider);
+      const status = quoteProbe
         ? normalizeProviderConnectionStatus({
-            configured: probedConfiguration.configured,
-            status: probedConfiguration.configured ? 'degraded' : 'not_configured',
+            configured: quoteProbe.configured,
+            status: quoteProbe.configured ? 'unknown' : 'not_configured',
           })
         : getProviderCapabilityStatus(provider);
       cells.push(emptyCell(provider, capabilityKey, status));
@@ -299,6 +317,59 @@ function emptySystemState(now: number): MarketSystemState {
   };
 }
 
+function isFreshPersistentSnapshot(snapshot: MarketSystemState, now: number): boolean {
+  const generatedAt = Date.parse(snapshot.generatedAt);
+  return Number.isFinite(generatedAt)
+    && generatedAt <= now
+    && now - generatedAt <= PERSISTENT_SNAPSHOT_FRESH_MS;
+}
+
+/**
+ * A recent aggregate snapshot is safe for catalog metadata, but it cannot
+ * override a live shared FMP pause.  This deliberately only promotes an
+ * active cooldown: a new server with no local observations must not erase the
+ * last measured snapshot status merely because it has not made a request yet.
+ */
+function applyActiveFmpCooldown(state: MarketSystemState): MarketSystemState {
+  const runtime = getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)));
+  if (!runtime.rateLimited || !state.capabilityMatrix.some(cell => cell.provider === 'fmp')) return state;
+
+  const status = normalizeProviderConnectionStatus({
+    configured: runtime.configured,
+    healthy: runtime.healthy,
+    rateLimited: runtime.rateLimited,
+    status: runtime.status,
+  });
+  const capabilityMatrix = state.capabilityMatrix.map(cell => {
+    if (cell.provider !== 'fmp') return cell;
+    return {
+      ...cell,
+      status,
+      configured: runtime.configured,
+      healthy: runtime.healthy,
+      lastSuccessAt: runtime.lastSuccessfulFetch ?? cell.lastSuccessAt,
+      lastErrorAt: runtime.lastErrorAt ?? cell.lastErrorAt,
+      lastErrorReason: runtime.lastError ?? 'provider_rate_limited',
+      rateLimitedUntil: runtime.rateLimitedUntil,
+      nextRetryAt: runtime.nextRetryAt,
+    };
+  });
+  const providers = buildProviderSummary(capabilityMatrix);
+  const providerProfiles = buildProviderProfiles(capabilityMatrix);
+  const { succeeded, degraded, failed } = bucketFeatures(capabilityMatrix);
+
+  return {
+    ...state,
+    overall: computeOverallStatus(failed, degraded),
+    providers,
+    capabilityMatrix,
+    providerProfiles,
+    featuresSucceeded: succeeded,
+    featuresDegraded: degraded,
+    featuresFailed: failed,
+  };
+}
+
 async function writeCapabilityRows(matrix: CapabilityMatrix) {
   try {
     const admin = createServerSupabaseAdmin();
@@ -330,17 +401,41 @@ async function persistSnapshot(state: MarketSystemState) {
   await writeCapabilityRows(state.capabilityMatrix);
 }
 
+function persistSnapshotThenReleaseLock(state: MarketSystemState, runId: string | null) {
+  void (async () => {
+    try {
+      await persistSnapshot(state);
+    } catch {
+      // Persistence is already best-effort, and failure must not turn a
+      // successful market-state response into an unhandled rejection.
+    } finally {
+      if (!runId) return;
+      try {
+        await releaseScanLock(SNAPSHOT_REFRESH_LOCK_KEY, runId);
+      } catch {
+        // The short lease expires automatically if the release call fails.
+      }
+    }
+  })();
+}
+
 /**
  * The single system-wide aggregator. Composes EXISTING health-check/status functions (never
  * changes how any of them fetch data) into one canonical MarketSystemState. Cached in-memory for
- * AGGREGATE_CACHE_MS to bound both upstream calls and Supabase writes; persists a last-known-good
- * snapshot so a cold start or a thrown error falls back to real prior data instead of a blank
- * state. Persistence writes are fire-and-forget and never block the response.
+ * AGGREGATE_CACHE_MS to bound both upstream calls and Supabase writes. A recent persisted snapshot
+ * also covers cold serverless instances for that same short window. When a snapshot is older, a
+ * short distributed lease lets only one instance perform the refresh; other instances return the
+ * last snapshot explicitly marked delayed rather than multiplying provider probes. Persistence
+ * writes are fire-and-forget and never block the response.
  */
 export async function getMarketSystemState(options: { forceFresh?: boolean } = {}): Promise<MarketSystemState> {
   const now = Date.now();
+  // Do this before every cache branch. The lookup is bounded and cached by the
+  // FMP runtime, while a shared pause is safety-critical state that must not be
+  // hidden behind an otherwise fresh aggregate snapshot.
+  await synchronizeFmpSharedCooldown();
   if (!options.forceFresh && memoryCache && memoryCache.expiresAt > now) {
-    return {
+    return applyActiveFmpCooldown({
       ...memoryCache.value,
       delivery: {
         source: 'memory_cache',
@@ -348,7 +443,7 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
         delayed: memoryCache.value.delivery?.delayed ?? false,
         reason: 'aggregate_cache_hit',
       },
-    };
+    });
   }
   // Dedup concurrent callers onto one in-flight compute — without this, N requests racing a
   // cache-expiry window would each trigger their own full aggregation (including the live
@@ -356,16 +451,72 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
   if (pendingCompute) return pendingCompute;
 
   pendingCompute = (async () => {
+    let persisted: MarketSystemState | null = null;
+    let refreshLockRunId: string | null = null;
+    if (!options.forceFresh) {
+      persisted = await getPersistentCache<MarketSystemState>(SNAPSHOT_CACHE_KEY);
+      if (persisted && isFreshPersistentSnapshot(persisted, now)) {
+        const generatedAt = Date.parse(persisted.generatedAt);
+        memoryCache = { value: persisted, expiresAt: generatedAt + PERSISTENT_SNAPSHOT_FRESH_MS };
+        return applyActiveFmpCooldown({
+          ...persisted,
+          delivery: {
+            source: 'persistent_cache',
+            cached: true,
+            delayed: false,
+            reason: 'aggregate_persistent_cache_hit',
+          },
+        });
+      }
+
+      const runId = randomUUID();
+      let lock: Awaited<ReturnType<typeof acquireScanLock>>;
+      try {
+        lock = await acquireScanLock(SNAPSHOT_REFRESH_LOCK_KEY, runId, SNAPSHOT_REFRESH_LOCK_TTL_MS);
+      } catch {
+        // The distributed lease prevents duplicate work, but must never turn
+        // an otherwise healthy provider probe into an unavailable response.
+        lock = { acquired: false, unavailable: true } as const;
+      }
+      if (!lock.acquired && !('unavailable' in lock)) {
+        if (persisted) {
+          return applyActiveFmpCooldown({
+            ...persisted,
+            delivery: {
+              source: 'persistent_cache',
+              cached: true,
+              delayed: true,
+              reason: 'aggregate_refresh_in_progress',
+            },
+          });
+        }
+        return {
+          ...emptySystemState(now),
+          delivery: {
+            source: 'unavailable',
+            cached: false,
+            delayed: true,
+            reason: 'aggregate_refresh_in_progress',
+          },
+        };
+      }
+      if (lock.acquired) refreshLockRunId = runId;
+    }
     try {
-      const state = await computeMarketSystemState(Boolean(options.forceFresh));
+      const state = applyActiveFmpCooldown(await computeMarketSystemState(Boolean(options.forceFresh)));
       memoryCache = { value: state, expiresAt: Date.now() + AGGREGATE_CACHE_MS };
-      void persistSnapshot(state);
+      persistSnapshotThenReleaseLock(state, refreshLockRunId);
+      refreshLockRunId = null;
       return state;
     } catch {
+      if (refreshLockRunId) {
+        void releaseScanLock(SNAPSHOT_REFRESH_LOCK_KEY, refreshLockRunId).catch(() => undefined);
+        refreshLockRunId = null;
+      }
       const fallback = await getPersistentCache<MarketSystemState>(SNAPSHOT_CACHE_KEY);
       if (fallback) {
         const synchronizedAt = fallback.lastSynchronizedAt ? Date.parse(fallback.lastSynchronizedAt) : Number.NaN;
-        return {
+        return applyActiveFmpCooldown({
           ...fallback,
           delivery: {
             source: 'persistent_cache',
@@ -373,7 +524,7 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
             delayed: !Number.isFinite(synchronizedAt) || Date.now() - synchronizedAt > SNAPSHOT_TTL_MS,
             reason: 'live_aggregation_failed',
           },
-        };
+        });
       }
       return emptySystemState(now);
     } finally {

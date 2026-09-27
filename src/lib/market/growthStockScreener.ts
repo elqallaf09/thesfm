@@ -12,7 +12,7 @@ import {
   type GrowthScreenPeriod,
 } from '@/lib/market/growthStockScreenerCore';
 import { fetchTraderQuotes, type TraderQuote } from '@/lib/trader/marketQuotes';
-import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime.server';
 
 const FMP_STABLE_BASE = 'https://financialmodelingprep.com/stable';
 const US_EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX'] as const;

@@ -93,11 +93,11 @@ function createInitialFeatureState(): Record<TraderProviderFeature, TraderFeatur
       feature: 'prices',
       configured: true,
       provider: 'fmp',
-      status: 'available',
+      status: 'unknown',
       resultCount: null,
       lastUpdated: null,
       lastSuccessfulUpdate: null,
-      failureReason: null,
+      failureReason: 'health_not_measured',
       supportedProviders: ['fmp', 'yahoo', 'finnhub'],
       supportedFeatures: PROVIDER_FEATURES.fmp,
     },
@@ -105,11 +105,11 @@ function createInitialFeatureState(): Record<TraderProviderFeature, TraderFeatur
       feature: 'news',
       configured: true,
       provider: 'multi-source',
-      status: 'available',
+      status: 'unknown',
       resultCount: null,
       lastUpdated: null,
       lastSuccessfulUpdate: null,
-      failureReason: null,
+      failureReason: 'health_not_measured',
       supportedProviders: ['multi-source', 'finnhub'],
       supportedFeatures: PROVIDER_FEATURES['multi-source'],
     },
@@ -419,10 +419,12 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
   updateFeatureStatus(feature, {
     configured: candidates.length > 0,
     provider: firstConfiguredProvider,
-    status: candidates.length > 0 ? 'available' : 'not_configured',
+    // Credentials only make an attempt possible; callers must not see an
+    // unobserved provider as available before a request completes.
+    status: candidates.length > 0 ? 'unknown' : 'not_configured',
     supportedProviders,
     supportedFeatures: [feature],
-    failureReason: candidates.length > 0 ? null : 'provider_not_configured',
+    failureReason: candidates.length > 0 ? 'health_not_measured' : 'provider_not_configured',
   });
 
   if (candidates.length === 0) {
@@ -457,6 +459,18 @@ export async function getTraderCalendar<K extends TraderCalendarFeature>(
         const cached = cache.get(key);
         if (cached && cached.expiresAt > Date.now() && !query.force) {
           if (cached.data.length > 0) {
+            // This in-memory entry originates only from a completed successful
+            // request in this process, so it is valid prior success evidence.
+            updateFeatureStatus(feature, {
+              configured: true,
+              provider: cached.provider,
+              status: 'success',
+              resultCount: cached.data.length,
+              lastUpdated: cached.updatedAt,
+              lastSuccessfulUpdate: cached.updatedAt,
+              failureReason: null,
+              supportedFeatures: supportedFeaturesForProvider(cached.provider),
+            });
             return toResult(feature, query, cached.provider, 'success', cached.data, {
               cached: true,
               updatedAt: cached.updatedAt,
@@ -567,9 +581,11 @@ function statusForCalendarFeature(feature: TraderCalendarFeature): TraderFeature
     configured: configuredProviders.length > 0,
     provider: current.provider ?? configuredProviders[0] ?? null,
     status: configuredProviders.length > 0
-      ? current.status === 'not_configured' ? 'available' : current.status
+      ? current.status === 'not_configured' ? 'unknown' : current.status
       : 'not_configured',
-    failureReason: configuredProviders.length > 0 ? current.failureReason : 'provider_not_configured',
+    failureReason: configuredProviders.length > 0
+      ? current.status === 'not_configured' ? 'health_not_measured' : current.failureReason
+      : 'provider_not_configured',
     supportedProviders,
   };
 }
@@ -578,6 +594,15 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
   const keys = configuredKeys();
   const fmpRuntime = getFmpRuntimeStatus(Boolean(keys.fmp));
   const priceProvider: TraderProviderName = keys.fmp ? 'fmp' : 'yahoo';
+  const priceStatus = priceProvider === 'fmp'
+    ? fmpRuntime.rateLimited
+      ? 'rate_limited'
+      : fmpRuntime.status === 'healthy'
+        ? 'available'
+        : fmpRuntime.status === 'degraded'
+          ? 'provider_error'
+          : 'unknown'
+    : 'unknown';
   const features: Record<TraderProviderFeature, TraderFeatureStatus> = {
     earnings: statusForCalendarFeature('earnings'),
     dividends: statusForCalendarFeature('dividends'),
@@ -587,8 +612,10 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
       ...featureState.prices,
       configured: true,
       provider: priceProvider,
-      status: priceProvider === 'fmp' && fmpRuntime.rateLimited ? 'rate_limited' : 'available',
-      failureReason: priceProvider === 'fmp' ? fmpRuntime.lastError : null,
+      status: priceStatus,
+      failureReason: priceProvider === 'fmp'
+        ? fmpRuntime.lastError ?? (priceStatus === 'unknown' ? 'health_not_measured' : null)
+        : 'health_not_measured',
       supportedProviders: ['fmp', 'yahoo', 'finnhub'],
       supportedFeatures: PROVIDER_FEATURES[priceProvider],
     },
@@ -596,8 +623,8 @@ export function getTraderProviderStatus(): TraderProviderStatusResponse {
       ...featureState.news,
       configured: true,
       provider: 'multi-source',
-      status: 'available',
-      failureReason: null,
+      status: 'unknown',
+      failureReason: 'health_not_measured',
       supportedProviders: ['multi-source', ...(keys.finnhub ? ['finnhub' as const] : [])],
       supportedFeatures: PROVIDER_FEATURES['multi-source'],
     },

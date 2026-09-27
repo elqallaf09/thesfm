@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { deriveProviderRole, priorityListFor, resolveProviderForCapability } from '@/lib/market-state/providerResolver';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { deriveProviderRole, getProviderCapabilityStatus, priorityListFor, resolveProviderForCapability } from '@/lib/market-state/providerResolver';
 import type { ProviderConnectionStatus } from '@/lib/market-state/types';
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('priorityListFor', () => {
   it('declares Twelve Data first and Yahoo strictly last for general-context quotes (mirrors marketDataProviders.ts, test-enforced there)', () => {
@@ -52,6 +56,20 @@ describe('resolveProviderForCapability', () => {
     const resolution = resolveProviderForCapability('quotes', 'general', statusMap({ twelvedata: 'connected' }));
     expect(resolution.fallbackUsed).toBe(false);
     expect(resolution.attempted).toHaveLength(1);
+  });
+});
+
+describe('getProviderCapabilityStatus', () => {
+  it('keeps configured Finnhub unknown until a live health observation is supplied', () => {
+    vi.stubEnv('FINNHUB_API_KEY', 'test-finnhub-key');
+
+    expect(getProviderCapabilityStatus('finnhub')).toBe('unknown');
+    expect(getProviderCapabilityStatus('finnhub', {
+      healthResults: [{ provider: 'finnhub', configured: true, status: 'healthy' }],
+    })).toBe('connected');
+
+    vi.stubEnv('FINNHUB_API_KEY', '');
+    expect(getProviderCapabilityStatus('finnhub')).toBe('misconfigured');
   });
 });
 

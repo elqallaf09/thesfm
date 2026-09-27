@@ -9,6 +9,7 @@ const RATE_LIMITED_KEYWORDS = ['rate_limited', 'rate limit', '429', 'too_many_re
 const MISCONFIGURED_KEYWORDS = ['not_configured', 'misconfigured', 'missing_api_key', 'no_api_key'];
 const DISABLED_KEYWORDS = ['disabled', 'not_entitled', 'forbidden'];
 const DEGRADED_KEYWORDS = ['degraded', 'slow', 'partial'];
+const UNKNOWN_KEYWORDS = ['unknown', 'not_measured', 'not_checked'];
 const DISCONNECTED_KEYWORDS = [
   // 'unhealthy' must be checked before the connected list below — otherwise its "healthy"
   // substring would falsely match as connected.
@@ -24,6 +25,7 @@ function classifyStatusText(text: string | null | undefined): ProviderConnection
   if (RATE_LIMITED_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'rate_limited';
   if (MISCONFIGURED_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'misconfigured';
   if (DISABLED_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'disabled';
+  if (UNKNOWN_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'unknown';
   if (DEGRADED_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'degraded';
   if (DISCONNECTED_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'disconnected';
   if (CONNECTED_KEYWORDS.some(keyword => normalized.includes(keyword))) return 'connected';

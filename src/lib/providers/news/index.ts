@@ -42,10 +42,13 @@ function successResponse(data: MarketNewsArticle[], cached: boolean, stale = fal
 }
 
 export function getMarketNewsProviderStatus() {
+  const configured = Boolean(cleanEnv(process.env.FINNHUB_API_KEY));
   return {
-    configured: Boolean(cleanEnv(process.env.FINNHUB_API_KEY)),
+    configured,
     provider: 'finnhub' as const,
-    status: cleanEnv(process.env.FINNHUB_API_KEY) ? 'available' : 'not_configured',
+    // A credential is configuration, not evidence that the upstream has
+    // accepted a request. getMarketNews() carries the observed result.
+    status: configured ? 'unknown' as const : 'not_configured' as const,
   };
 }
 
