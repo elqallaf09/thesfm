@@ -1,40 +1,132 @@
-name: Macro browser failure diagnostics
+name: Macro browser targeted repair verification
 on:
   push:
     branches: [diagnostics/macro-browser-failures]
 permissions:
   contents: read
-  actions: read
-  checks: read
 jobs:
-  diagnose:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    permissions:
+      contents: write
+    outputs:
+      lab_sha: ${{ steps.patch.outputs.lab_sha }}
+      game_sha: ${{ steps.patch.outputs.game_sha }}
     steps:
-      - name: Summarize existing failed jobs without rerunning tests
+      - name: Create reviewable commits without moving any branch
+        id: patch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node --input-type=module <<'NODE'
           import { appendFileSync } from 'node:fs';
-          const repo = 'elqallaf09/thesfm';
-          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-          const clean = s => s.replace(/\u001b\[[0-9;]*m/g, '').replace(/^\d{4}-\d{2}-\d{2}T\S+\s*/, '').replace(/https?:\/\/\S+/g, '[url]').slice(0, 700);
-          for (const id of [108483952589, 108490869526]) {
-            const res = await fetch(`https://api.github.com/repos/${repo}/actions/jobs/${id}/logs`, { headers, signal: AbortSignal.timeout(45000) });
-            if (!res.ok) throw new Error(`Job ${id}: HTTP ${res.status}`);
-            const lines = (await res.text()).split('\n').map(clean);
-            const markers = lines.map((line, index) => /\d+\) \[.*\].*›/.test(line) ? index : -1).filter(index => index >= 0);
-            const selected = [];
-            for (const index of markers.slice(-16)) {
-              selected.push(lines[index]);
-              for (const line of lines.slice(index + 1, index + 24)) {
-                if (/Error:|Timeout|timeout|Expected:|Received:|Locator:|waiting for|Call log:|\.spec\.ts:\d+|toBe|toHave/.test(line)) selected.push(line);
-              }
+          const root = 'https://api.github.com/repos/elqallaf09/thesfm';
+          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28' };
+          async function api(path, body) {
+            const response = await fetch(root + path, { headers, method: body ? 'POST' : 'GET', body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
+            if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+            return response.json();
+          }
+          const once = (text, before, after) => {
+            if (text.split(before).length !== 2) throw new Error('Expected exactly one patch anchor: ' + before.slice(0, 100));
+            return text.replace(before, after);
+          };
+          const labPath = 'src/components/macro-simulator/MacroLab.tsx';
+          const testPath = 'tests/smoke/macro-simulator.spec.ts';
+          const gamePath = 'src/components/macro-simulator/MacroGame.tsx';
+          function patchLab(text) {
+            text = once(text, 'import { useRef, useState }', 'import { useId, useRef, useState }');
+            text = once(text, 'export function MacroLab({ userKey }: { userKey: string }) {', 'export function MacroLab({ userKey }: { userKey: string }) {\n  const notesId = useId();');
+            return once(text,
+              '<label className={styles.field}>{t(\'notes\')}<textarea rows={3} maxLength={1200} value={input.notes} onChange={e => edit({ notes: e.target.value })} /></label>',
+              '<div className={styles.field}><label htmlFor={notesId}>{t(\'notes\')}</label><textarea id={notesId} rows={3} maxLength={1200} value={input.notes} onChange={e => edit({ notes: e.target.value })} /></div>');
+          }
+          function patchTest(text) {
+            text = once(text, '    await expect(lab).toBeVisible();', '    await expect(lab).toHaveCount(1);\n    await expect(lab).toBeVisible();');
+            text = once(text, "has: lab.getByRole('heading', { name: t('markets'), exact: true })", "has: page.getByRole('heading', { name: t('markets'), exact: true })");
+            text = once(text, "      await expect(markets.locator('article')).toHaveCount(ASSETS.length);", "      await expect(markets).toHaveCount(1);\n      await expect(markets.locator('article')).toHaveCount(ASSETS.length);");
+            return once(text,
+              "      await lab.getByLabel(t('notes'), { exact: true }).fill('Hypothesis recorded before revealing the educational result.');",
+              "      const notes = lab.getByLabel(t('notes'), { exact: true });\n      await notes.fill('Hypothesis recorded before revealing the educational result.');\n      await expect(notes).toHaveValue('Hypothesis recorded before revealing the educational result.');\n      await expect(notes).toHaveAccessibleName(t('notes'));\n      await lab.getByText(t('notes'), { exact: true }).click();\n      await expect(notes).toBeFocused();");
+          }
+          function patchGame(text) {
+            text = once(text, 'export function MacroGame({ userKey }: { userKey: string }) {', 'export function MacroGame({ userKey }: { userKey: string }) {\n  const rationaleId = useId();');
+            return once(text,
+              '<label className={styles.field}>{t(\'rationale\')}<textarea rows={4} maxLength={600} disabled={locked} value={rationale} onChange={event => { setRationale(event.target.value); setError(null); }} aria-describedby="macro-game-rationale-hint" /></label><p id="macro-game-rationale-hint" className={styles.muted}>{t(\'rationaleHint\')}</p>',
+              '<div className={styles.field}><label htmlFor={rationaleId}>{t(\'rationale\')}</label><textarea id={rationaleId} rows={4} maxLength={600} disabled={locked} value={rationale} onChange={event => { setRationale(event.target.value); setError(null); }} aria-describedby={`${rationaleId}-hint`} /></div><p id={`${rationaleId}-hint`} className={styles.muted}>{t(\'rationaleHint\')}</p>');
+          }
+          for (const task of [
+            { key: 'lab', branch: 'feat/macro-simulation-lab-v2', head: 'eecee5225ed0a78d49cd346ae9fcfe77403c2c54', paths: [labPath, testPath] },
+            { key: 'game', branch: 'feat/macro-simulator-decision-game', head: '1b720119127562ac8c66ecc5534a48a8457ab030', paths: [labPath, testPath, gamePath] }
+          ]) {
+            const ref = await api('/git/ref/heads/' + task.branch);
+            if (ref.object.sha !== task.head) throw new Error('Concurrent branch change: ' + task.branch);
+            const parent = await api('/git/commits/' + task.head);
+            const tree = [];
+            for (const path of task.paths) {
+              const file = await api('/contents/' + path + '?ref=' + task.head);
+              const text = Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8');
+              const content = path === labPath ? patchLab(text) : path === testPath ? patchTest(text) : patchGame(text);
+              tree.push({ path, mode: '100644', type: 'blob', content });
+              console.log(task.key + ': patched ' + path);
             }
-            if (!selected.length) selected.push(...lines.filter(line => /macro-simulator|Error:|failed|Test timeout/.test(line)).slice(-35));
-            const body = `JOB ${id}\n${selected.join('\n').slice(0, 12500)}\n`;
-            console.log(body);
-            appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\n\`\`\`text\n${body}\`\`\`\n`);
+            const nextTree = await api('/git/trees', { base_tree: parent.tree.sha, tree });
+            const commit = await api('/git/commits', { message: 'fix(simulator): stable textarea labels and correctly scoped browser assertions', tree: nextTree.sha, parents: [task.head] });
+            console.log(task.key + '_sha=' + commit.sha);
+            appendFileSync(process.env.GITHUB_OUTPUT, task.key + '_sha=' + commit.sha + '\n');
           }
           NODE
+  focused:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.game_sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Simulator unit and accessibility contracts
+        run: pnpm exec vitest run src/__tests__/unit/macroSimulator.test.ts src/__tests__/unit/macroSimulatorGame.test.ts src/__tests__/unit/macroSimulatorSession.test.ts
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Ephemeral local TLS
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/playwright-tls"
+          openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+          chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
+      - name: Build exact candidate
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+        run: |
+          set +e
+          pnpm build > "$RUNNER_TEMP/macro-build.log" 2>&1
+          result=$?
+          tail -n 25 "$RUNNER_TEMP/macro-build.log"
+          exit "$result"
+      - name: Exact simulator browser journeys
+        env:
+          PLAYWRIGHT_NO_COPY_PROMPT: '1'
+          PLAYWRIGHT_HTTPS_LOOPBACK: '1'
+          PLAYWRIGHT_WEB_SERVER_COMMAND: node scripts/playwright-https-proxy.mjs
+          PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
+          PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+        run: |
+          set +e
+          pnpm exec playwright test tests/smoke/macro-simulator.spec.ts tests/smoke/macro-simulator-game.spec.ts tests/smoke/macro-simulator-session.spec.ts --reporter=list --retries=0 > "$RUNNER_TEMP/macro-focused.log" 2>&1
+          result=$?
+          tail -c 18000 "$RUNNER_TEMP/macro-focused.log"
+          exit "$result"
