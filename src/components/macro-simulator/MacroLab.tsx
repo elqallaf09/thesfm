@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ASSETS, EVENT_KINDS, FACTORS, HORIZONS, LIMITS, MODEL_VERSION, TEMPLATES, defaultInput, readSnapshot, simulate, snapshot, template, type Asset, type EventKind, type Horizon, type Input, type Regime, type Report, type Shock } from '../../domain/macro-simulator/engine';
@@ -14,6 +14,7 @@ const fieldValue = (value: number) => Number.isFinite(value) ? value : '';
 // Oil inputs use a 5-point step; a default of 1 would fail native form validation.
 const initialShock = (kind: EventKind): Shock => ({ kind, magnitude: kind === 'rates' ? 25 : kind === 'oilSupply' ? 10 : 1, expected: 0, pricedIn: 0 });
 export function MacroLab({ userKey }: { userKey: string }) {
+  const notesId = useId();
   const { lang: activeLanguage } = useLanguage();
   const lang: Language = activeLanguage === 'en' || activeLanguage === 'fr' ? activeLanguage : 'ar';
   const t = (key: CopyKey) => copy[key][lang];
@@ -107,7 +108,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
                 const kind = EVENT_KINDS.find(k => !input.shocks.some(s => s.kind === k));
                 if (kind) edit({ shocks: [...input.shocks, initialShock(kind)] });
               }}>+ {t('add')}</button>
-              <label className={styles.field}>{t('notes')}<textarea rows={3} maxLength={1200} value={input.notes} onChange={e => edit({ notes: e.target.value })} /></label><p className={styles.muted}>{t('notesHelp')}</p>
+              <div className={styles.field}><label htmlFor={notesId}>{t('notes')}</label><textarea id={notesId} rows={3} maxLength={1200} value={input.notes} onChange={e => edit({ notes: e.target.value })} /></div><p className={styles.muted}>{t('notesHelp')}</p>
             </section>
             <section className={styles.card}><h2><span className={styles.step}>02</span>{t('world')}</h2>
               <label className={styles.field}>{t('world')}<select value={input.regime} onChange={e => edit({ regime: e.target.value as Regime })}>{(Object.keys(regimeLabels) as Regime[]).map(id => <option value={id} key={id}>{regimeLabels[id][lang]}</option>)}</select></label><p className={styles.muted}>{t('worldNote')}</p>
