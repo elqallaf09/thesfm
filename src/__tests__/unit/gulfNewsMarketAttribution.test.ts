@@ -23,6 +23,22 @@ describe('Gulf news market attribution', () => {
     }))).toBe('uae-adx');
   });
 
+  it('keeps canonical DFM provider tags assigned to DFM', () => {
+    expect(resolveGulfNewsMarket(story({
+      marketCodes: ['GULF', 'DFM', 'AE', 'UAE', 'uae-dfm'],
+      exchangeCodes: ['DFM'],
+      countries: ['AE'],
+    }))).toBe('uae-dfm');
+  });
+
+  it('leaves a merged multi-exchange story unassigned instead of choosing DFM by list order', () => {
+    expect(resolveGulfNewsMarket(story({
+      marketCodes: ['GULF', 'ADX', 'DFM', 'AE'],
+      exchangeCodes: ['ADX', 'DFM'],
+      countries: ['AE'],
+    }))).toBeNull();
+  });
+
   it('does not assign a shared country-only item to either UAE exchange', () => {
     expect(resolveGulfNewsMarket(story({ countries: ['AE'] }))).toBeNull();
   });

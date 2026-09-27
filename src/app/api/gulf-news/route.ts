@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic';
 function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
+
 export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { max: 60, prefix: 'gulf-news' });
   if (limited) return limited;
