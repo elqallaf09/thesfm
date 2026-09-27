@@ -116,4 +116,26 @@ describe('MSX official source timestamps', () => {
     });
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('markets/MSM'))).toBe(false);
   });
+
+  it('does not fall back when a successful MSX response has no official row or observation time', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const fetchMock = vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes('msx.om')) return response({ d: [] });
+      if (url.includes('mubasher.info')) return response('<div class="market-summary__last-price">7,543.59</div>');
+      return response('', 503);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const marketData = await fetchDelayedGulfMarketData();
+
+    expect(marketData.oman).toMatchObject({
+      available: false,
+      value: null,
+      marketTime: null,
+      unavailableReason: 'official_source_time_missing',
+    });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('markets/MSM'))).toBe(false);
+  });
 });
