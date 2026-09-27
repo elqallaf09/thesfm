@@ -470,8 +470,15 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
       }
 
       const runId = randomUUID();
-      const lock = await acquireScanLock(SNAPSHOT_REFRESH_LOCK_KEY, runId, SNAPSHOT_REFRESH_LOCK_TTL_MS);
-      if (!lock.acquired) {
+      let lock: Awaited<ReturnType<typeof acquireScanLock>>;
+      try {
+        lock = await acquireScanLock(SNAPSHOT_REFRESH_LOCK_KEY, runId, SNAPSHOT_REFRESH_LOCK_TTL_MS);
+      } catch {
+        // The distributed lease prevents duplicate work, but must never turn
+        // an otherwise healthy provider probe into an unavailable response.
+        lock = { acquired: false, unavailable: true } as const;
+      }
+      if (!lock.acquired && !('unavailable' in lock)) {
         if (persisted) {
           return applyActiveFmpCooldown({
             ...persisted,
@@ -493,7 +500,7 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
           },
         };
       }
-      refreshLockRunId = runId;
+      if (lock.acquired) refreshLockRunId = runId;
     }
     try {
       const state = applyActiveFmpCooldown(await computeMarketSystemState(Boolean(options.forceFresh)));
