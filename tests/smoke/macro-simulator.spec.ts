@@ -26,9 +26,14 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     const form = lab.locator('form');
     const button = (key: CopyKey) => lab.getByRole('button', { name: t(key), exact: true });
     const validForm = () => form.evaluate(element => (element as HTMLFormElement).checkValidity());
-    await expect(lab).toHaveCount(1);
+    // Guest authentication can replace the initial route tree while its user
+    // identity resolves. Observe count and hydration together so the test
+    // cannot bind to that short-lived replacement DOM; a lasting duplicate
+    // still fails this assertion.
+    await expect.poll(() => lab.evaluateAll(nodes => ({
+      count: nodes.length, hydrated: nodes.map(node => node.getAttribute('data-hydrated')),
+    }))).toEqual({ count: 1, hydrated: ['true'] });
     await expect(lab).toBeVisible();
-    await expect(lab).toHaveAttribute('data-hydrated', 'true');
     await expect(lab).toHaveAttribute('lang', locale);
     await expect(lab).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
     await expect(lab.getByText(t('disclaimer'), { exact: true })).toBeVisible();
