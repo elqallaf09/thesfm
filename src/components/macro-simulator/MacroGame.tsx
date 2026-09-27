@@ -38,6 +38,7 @@ function BalanceChart({ game, lang }: { game: GameState; lang: GameLanguage }) {
 }
 
 export function MacroGame({ userKey }: { userKey: string }) {
+  const actionId = useId();
   const rationaleId = useId();
   const { lang: selectedLanguage } = useLanguage();
   const lang: GameLanguage = selectedLanguage === 'en' || selectedLanguage === 'fr' ? selectedLanguage : 'ar';
@@ -100,7 +101,7 @@ export function MacroGame({ userKey }: { userKey: string }) {
             </section>
             <form className={styles.card} onSubmit={event => { event.preventDefault(); reveal(); }} data-testid="macro-game-decision">
               <h2>{t('action')}</h2>
-              <label className={styles.field}>{t('action')}<select value={action} disabled={locked} onChange={event => { setAction(event.target.value as 'hold' | 'rebalance'); setError(null); }}><option value="hold">{t('hold')}</option><option value="rebalance">{t('rebalance')}</option></select></label>
+              <div className={styles.field}><label htmlFor={actionId}>{t('action')}</label><select id={actionId} value={action} disabled={locked} onChange={event => { setAction(event.target.value as 'hold' | 'rebalance'); setError(null); }}><option value="hold">{t('hold')}</option><option value="rebalance">{t('rebalance')}</option></select></div>
               <fieldset className={styles.allocations} disabled={locked || action === 'hold'}><legend>{t('allocation')}</legend>{ASSETS.map(asset => <label className={styles.allocation} key={asset}><span>{assetLabels[asset][lang]}</span><input type="number" dir="ltr" required min={0} max={100} step="any" aria-label={`${assetLabels[asset][lang]} (%)`} value={numericValue(weights[asset])} onChange={event => { setWeights(previous => ({ ...previous, [asset]: event.target.valueAsNumber })); setError(null); }} /><span>%</span></label>)}</fieldset>
               <p className={styles.muted}>{t('allocationNote')}</p><p className={validWeights ? styles.muted : styles.error}>{t('total')}: <bdi>{Number.isFinite(total) ? percentage(lang, total, false) : '—'}</bdi></p>
               {action === 'rebalance' && !validWeights ? <p className={styles.error}>{t('weightsError')}</p> : null}
