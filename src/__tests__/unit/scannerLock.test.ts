@@ -9,6 +9,7 @@ vi.mock('@/lib/server/adminAccess', () => ({
 function buildQueryChain(overrides: {
   insertError?: { code: string } | null;
   selectData?: { payload: unknown; expires_at: string; updated_at?: string } | null;
+  selectError?: { code: string } | null;
   updateError?: { code: string } | null;
   updateData?: Array<{ cache_key: string }>;
 } = {}) {
@@ -27,7 +28,7 @@ function buildQueryChain(overrides: {
     }),
     select: vi.fn(() => chain),
     eq: vi.fn(() => chain),
-    maybeSingle: vi.fn(async () => ({ data: overrides.selectData ?? null, error: null })),
+    maybeSingle: vi.fn(async () => ({ data: overrides.selectData ?? null, error: overrides.selectError ?? null })),
     update: vi.fn(() => chain),
     delete: vi.fn(() => chain),
   };
@@ -78,7 +79,7 @@ describe('acquireScanLock', () => {
     const { acquireScanLock } = await import('@/lib/trader/scannerLock');
     const result = await acquireScanLock('scanner:lock:US', 'run-2', 60_000);
     expect(result.acquired).toBe(false);
-    if (!result.acquired) {
+    if (!result.acquired && !('unavailable' in result)) {
       expect(result.existing.runId).toBe('run-holder');
     }
   });
@@ -110,6 +111,20 @@ describe('acquireScanLock', () => {
     const { acquireScanLock } = await import('@/lib/trader/scannerLock');
     const result = await acquireScanLock('scanner:lock:US', 'run-6', 60_000);
     expect(result.acquired).toBe(false);
+  });
+
+  it('reports an unavailable lock store instead of fabricating a competing holder', async () => {
+    const { chain } = buildQueryChain({
+      insertError: { code: 'network_error' },
+      selectError: { code: 'network_error' },
+    });
+    createServerSupabaseAdmin.mockReturnValue({ from: () => chain });
+
+    const { acquireScanLock } = await import('@/lib/trader/scannerLock');
+    await expect(acquireScanLock('scanner:lock:US', 'run-7', 60_000)).resolves.toEqual({
+      acquired: false,
+      unavailable: true,
+    });
   });
 
   it('fails open (acquires) when Supabase is not configured, so local/dev never deadlocks', async () => {

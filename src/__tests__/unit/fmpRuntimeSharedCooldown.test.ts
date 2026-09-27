@@ -2,24 +2,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getPersistentCache = vi.fn();
 const setPersistentCache = vi.fn();
-const acquireScanLock = vi.fn();
-const releaseScanLock = vi.fn();
+const createServerSupabaseAdmin = vi.fn();
 
 vi.mock('@/lib/trader/persistentCache', () => ({
   getPersistentCache: (...args: unknown[]) => getPersistentCache(...args),
   setPersistentCache: (...args: unknown[]) => setPersistentCache(...args),
 }));
-vi.mock('@/lib/trader/scannerLock', () => ({
-  acquireScanLock: (...args: unknown[]) => acquireScanLock(...args),
-  releaseScanLock: (...args: unknown[]) => releaseScanLock(...args),
+vi.mock('@/lib/server/adminAccess', () => ({
+  createServerSupabaseAdmin: (...args: unknown[]) => createServerSupabaseAdmin(...args),
 }));
 
 beforeEach(() => {
   vi.resetModules();
   getPersistentCache.mockReset().mockResolvedValue(null);
   setPersistentCache.mockReset().mockResolvedValue(undefined);
-  acquireScanLock.mockReset().mockResolvedValue({ acquired: true });
-  releaseScanLock.mockReset().mockResolvedValue(undefined);
+  createServerSupabaseAdmin.mockReset().mockReturnValue({
+    rpc: vi.fn().mockResolvedValue({ data: new Date(Date.now() + 60_000).toISOString(), error: null }),
+  });
 });
 
 afterEach(() => {
@@ -69,19 +68,25 @@ describe('shared FMP cooldown', () => {
     });
   });
 
-  it('publishes the longest active cooldown so a shorter response cannot reopen the provider early', async () => {
+  it('uses the database atomic maximum so a shorter response cannot reopen the provider early', async () => {
     const longerExistingUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    getPersistentCache.mockResolvedValue({ version: 1, until: longerExistingUntil, reason: 'provider_rate_limited' });
+    const rpc = vi.fn().mockResolvedValue({ data: longerExistingUntil, error: null });
+    createServerSupabaseAdmin.mockReturnValue({ rpc });
 
     const { markFmpRateLimited } = await import('@/lib/trader/providers/fmpRuntime.server');
     markFmpRateLimited(new Response(null, { headers: { 'retry-after': '1' } }));
 
-    await vi.waitFor(() => expect(setPersistentCache).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(rpc).toHaveBeenCalledTimes(1));
 
-    const [key, payload, ttlMs] = setPersistentCache.mock.calls[0] as [string, { until: string; reason: string; version: number }, number];
-    expect(key).toBe('market_provider_cooldown:fmp');
-    expect(payload).toMatchObject({ version: 1, until: longerExistingUntil, reason: 'provider_rate_limited' });
-    expect(ttlMs).toBeGreaterThan(9 * 60 * 1000);
-    expect(releaseScanLock).toHaveBeenCalledWith('market_provider_cooldown:fmp:write', expect.any(String));
+    expect(rpc).toHaveBeenCalledWith('extend_trader_cache_cooldown', expect.objectContaining({
+      p_cache_key: 'market_provider_cooldown:fmp',
+      p_reason: 'provider_rate_limited',
+    }));
+
+    const { getFmpRuntimeStatus } = await import('@/lib/trader/providers/fmpRuntime');
+    expect(getFmpRuntimeStatus(true)).toMatchObject({
+      status: 'rate_limited',
+      nextRetryAt: longerExistingUntil,
+    });
   });
 });

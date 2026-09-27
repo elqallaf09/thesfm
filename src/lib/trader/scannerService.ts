@@ -463,7 +463,7 @@ export async function triggerScan(
   const runId = randomUUID();
   const runPromise = (async () => {
     const lock = await acquireScanLock(lockKey(market), runId, SCANNER_LOCK_TTL_MS);
-    if (!lock.acquired) {
+    if (!lock.acquired && !('unavailable' in lock)) {
       logReliabilityEvent('info', 'trader_scanner.already_running', {
         runId,
         market,
