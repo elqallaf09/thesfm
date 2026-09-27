@@ -38,6 +38,7 @@ function BalanceChart({ game, lang }: { game: GameState; lang: GameLanguage }) {
 }
 
 export function MacroGame({ userKey }: { userKey: string }) {
+  const rationaleId = useId();
   const { lang: selectedLanguage } = useLanguage();
   const lang: GameLanguage = selectedLanguage === 'en' || selectedLanguage === 'fr' ? selectedLanguage : 'ar';
   const t = (key: GameCopyKey) => gameCopy[key][lang];
@@ -103,7 +104,7 @@ export function MacroGame({ userKey }: { userKey: string }) {
               <fieldset className={styles.allocations} disabled={locked || action === 'hold'}><legend>{t('allocation')}</legend>{ASSETS.map(asset => <label className={styles.allocation} key={asset}><span>{assetLabels[asset][lang]}</span><input type="number" dir="ltr" required min={0} max={100} step="any" aria-label={`${assetLabels[asset][lang]} (%)`} value={numericValue(weights[asset])} onChange={event => { setWeights(previous => ({ ...previous, [asset]: event.target.valueAsNumber })); setError(null); }} /><span>%</span></label>)}</fieldset>
               <p className={styles.muted}>{t('allocationNote')}</p><p className={validWeights ? styles.muted : styles.error}>{t('total')}: <bdi>{Number.isFinite(total) ? percentage(lang, total, false) : '—'}</bdi></p>
               {action === 'rebalance' && !validWeights ? <p className={styles.error}>{t('weightsError')}</p> : null}
-              <label className={styles.field}>{t('rationale')}<textarea rows={4} maxLength={600} disabled={locked} value={rationale} onChange={event => { setRationale(event.target.value); setError(null); }} aria-describedby="macro-game-rationale-hint" /></label><p id="macro-game-rationale-hint" className={styles.muted}>{t('rationaleHint')}</p>
+              <div className={styles.field}><label htmlFor={rationaleId}>{t('rationale')}</label><textarea id={rationaleId} rows={4} maxLength={600} disabled={locked} value={rationale} onChange={event => { setRationale(event.target.value); setError(null); }} aria-describedby={`${rationaleId}-hint`} /></div><p id={`${rationaleId}-hint`} className={styles.muted}>{t('rationaleHint')}</p>
               {locked ? <p className={styles.notice}>{t('locked')}</p> : <button type="submit" className={styles.primary} disabled={action === 'rebalance' && !validWeights} data-testid="macro-game-reveal">{t('reveal')}</button>}
             </form>
           </div>
