@@ -6,7 +6,7 @@ import {
   stableId,
 } from '@/lib/providers/shared';
 import { createFmpCalendarProvider } from '@/lib/providers/economic-calendar/fmp';
-import { fmpQueuedFetch, markFmpRateLimited } from './fmpRuntime';
+import { fmpQueuedFetch, markFmpRateLimited } from './fmpRuntime.server';
 import type {
   TraderCalendarQuery,
   TraderDividendEvent,

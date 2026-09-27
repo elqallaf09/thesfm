@@ -16,7 +16,8 @@ export type FmpRuntimeStatus = {
   configured: boolean;
   healthy: boolean;
   rateLimited: boolean;
-  status: 'healthy' | 'rate_limited' | 'not_configured' | 'degraded';
+  /** A configured key is not evidence of reachability; it remains unknown until a request is observed. */
+  status: 'healthy' | 'rate_limited' | 'not_configured' | 'degraded' | 'unknown';
   lastSuccessfulFetch: string | null;
   lastError: string | null;
   lastErrorAt: string | null;
@@ -32,6 +33,12 @@ const FMP_MAX_CONCURRENT = 2;
 const FMP_MIN_START_GAP_MS = process.env.NODE_ENV === 'test' ? 0 : 450;
 const FMP_DEFAULT_BACKOFF_MS = 90_000;
 const FMP_MAX_BACKOFF_MS = 15 * 60 * 1000;
+const FMP_MANUAL_RETRY_BYPASS_MS = 5_000;
+
+type FmpSharedCooldownAdapter = {
+  synchronize: () => Promise<void>;
+  publish: (untilMs: number) => void;
+};
 
 const queue: QueueEntry<unknown>[] = [];
 const cacheKeys = new Set<string>();
@@ -44,6 +51,8 @@ let lastError: string | null = null;
 let lastErrorAt: string | null = null;
 let skippedDueToRateLimit = 0;
 let consecutiveRateLimitCount = 0;
+let sharedCooldownAdapter: FmpSharedCooldownAdapter | null = null;
+let sharedCooldownBypassUntilMs = 0;
 
 export class FmpRateLimitError extends ProviderError {
   constructor(message = 'provider_rate_limited') {
@@ -109,6 +118,18 @@ export function getFmpRateLimitedUntil() {
   return isFmpRateLimited() ? new Date(rateLimitedUntilMs).toISOString() : null;
 }
 
+/** Installed only by fmpRuntime.server.ts; keeps this runtime safe for client-side diagnostics. */
+export function setFmpSharedCooldownAdapter(adapter: FmpSharedCooldownAdapter | null) {
+  sharedCooldownAdapter = adapter;
+}
+
+export function applySharedFmpCooldown(untilMs: number) {
+  if (!Number.isFinite(untilMs) || untilMs <= Date.now()) return;
+  rateLimitedUntilMs = Math.max(rateLimitedUntilMs, untilMs);
+  lastError = 'provider_rate_limited';
+  lastErrorAt = new Date().toISOString();
+}
+
 export function markFmpCacheAvailable(key: string) {
   cacheKeys.add(key);
 }
@@ -136,10 +157,15 @@ export function markFmpRateLimited(response: Response | null, message: unknown =
   rateLimitedUntilMs = Math.max(rateLimitedUntilMs, Date.now() + backoffMs);
   lastError = shortText(message, 180) || 'provider_rate_limited';
   lastErrorAt = new Date().toISOString();
+  sharedCooldownAdapter?.publish(rateLimitedUntilMs);
 }
 
 export function resetFmpRateLimitCooldown() {
   rateLimitedUntilMs = 0;
+  // A deliberate admin retry should reach the provider once instead of being
+  // immediately re-blocked by the shared cooldown. The persistent entry is
+  // retained so other instances remain protected if the retry still fails.
+  sharedCooldownBypassUntilMs = Date.now() + FMP_MANUAL_RETRY_BYPASS_MS;
 }
 
 export function clearFmpRuntimeCacheMarkers() {
@@ -147,12 +173,14 @@ export function clearFmpRuntimeCacheMarkers() {
 }
 
 export async function fmpQueuedFetch(input: RequestInfo | URL, init?: NextFetchInit) {
+  if (Date.now() >= sharedCooldownBypassUntilMs) await sharedCooldownAdapter?.synchronize();
   if (isFmpRateLimited()) {
     skippedDueToRateLimit += 1;
     throw new FmpRateLimitError();
   }
 
   return enqueue(async () => {
+    if (Date.now() >= sharedCooldownBypassUntilMs) await sharedCooldownAdapter?.synchronize();
     if (isFmpRateLimited()) {
       skippedDueToRateLimit += 1;
       throw new FmpRateLimitError();
@@ -174,7 +202,9 @@ export function getFmpRuntimeStatus(configured: boolean, cacheAvailable = false)
       ? 'rate_limited'
       : lastError
         ? 'degraded'
-        : 'healthy';
+        : lastSuccessfulFetch
+          ? 'healthy'
+          : 'unknown';
 
   return {
     configured,
@@ -204,4 +234,5 @@ export function __resetFmpRuntimeForTests() {
   lastErrorAt = null;
   skippedDueToRateLimit = 0;
   consecutiveRateLimitCount = 0;
+  sharedCooldownBypassUntilMs = 0;
 }

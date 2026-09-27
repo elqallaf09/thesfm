@@ -89,7 +89,11 @@ export type EconomicCalendarQuery = {
 export type EconomicDataProviderStatus = {
   provider: EconomicDataProviderName | null;
   configured: boolean;
-  status: 'available' | 'not_configured' | 'error';
+  /**
+   * `unknown` means a credential is configured, but this process has not yet
+   * observed a provider result. Configuration alone is not availability.
+   */
+  status: 'available' | 'unknown' | 'not_configured' | 'error';
   lastFetchStatus: string | null;
   lastFetchTime: string | null;
 };

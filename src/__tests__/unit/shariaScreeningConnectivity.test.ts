@@ -13,8 +13,19 @@ describe('sharia-stocks screening source connectivity', () => {
     vi.resetModules();
   });
 
-  it('no longer hardcodes sourceConnected:false — reflects a real configured provider as connected', async () => {
+  it('does not present a configured but unobserved provider as connected', async () => {
     process.env.FMP_API_KEY = 'test-fmp-key';
+    const { getShariahScreeningSourceStatus } = await import('@/lib/market/shariahUniverse');
+    const status = getShariahScreeningSourceStatus();
+    expect(status.connected).toBe(false);
+    expect(status.source).toBeNull();
+    expect(status.sourceName).toBeNull();
+  });
+
+  it('reflects an observed FMP success as connected', async () => {
+    process.env.FMP_API_KEY = 'test-fmp-key';
+    const { markFmpSuccess } = await import('@/lib/trader/providers/fmpRuntime');
+    markFmpSuccess();
     const { getShariahScreeningSourceStatus } = await import('@/lib/market/shariahUniverse');
     const status = getShariahScreeningSourceStatus();
     expect(status.connected).toBe(true);

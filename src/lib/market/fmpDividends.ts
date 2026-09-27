@@ -1,6 +1,8 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { addUtcDays, formatIsoDate, type ProviderApiStatus } from '@/lib/providers/shared';
 import type { DividendCalendarEvent } from '@/lib/providers/dividend-calendar/types';
+import { FmpRateLimitError } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime.server';
 
 const FMP_TIMEOUT_MS = 9000;
 const FMP_CALENDAR_STABLE_ENDPOINT = 'https://financialmodelingprep.com/stable/dividends-calendar';
@@ -229,7 +231,7 @@ export function normalizeFmpDividendEvent(raw: unknown, index = 0): FmpDividendE
 async function fetchFmpEndpoint(url: URL, force = false): Promise<{ payload: unknown; diagnostics: FmpDividendDiagnostics['attempts'][number] }> {
   const endpoint = endpointLabel(url);
   try {
-    const response = await fetch(url, {
+    const response = await fmpQueuedFetch(url, {
       cache: force ? 'no-store' : undefined,
       next: force ? undefined : { revalidate: 1800 },
       signal: AbortSignal.timeout(FMP_TIMEOUT_MS),
@@ -254,15 +256,20 @@ async function fetchFmpEndpoint(url: URL, force = false): Promise<{ payload: unk
       },
     };
   } catch (error) {
+    const rateLimited = error instanceof FmpRateLimitError;
     return {
       payload: null,
       diagnostics: {
         endpoint,
-        responseStatus: null,
+        responseStatus: rateLimited ? 429 : null,
         rawResultCount: 0,
         normalizedResultCount: 0,
-        status: 'provider_error',
-        errorMessage: error instanceof Error ? error.message : 'fmp_network_error',
+        status: rateLimited ? 'rate_limited' : 'provider_error',
+        errorMessage: rateLimited
+          ? 'provider_rate_limited'
+          : error instanceof Error
+            ? error.message
+            : 'fmp_network_error',
       },
     };
   }

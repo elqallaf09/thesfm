@@ -8,7 +8,7 @@ import {
 } from '../shared';
 import { logEconomicCalendarProviderRequest } from './diagnostics';
 import type { EconomicCalendarEvent, EconomicCalendarProvider, EconomicCalendarQuery } from './types';
-import { fmpQueuedFetch, markFmpRateLimited } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch, markFmpRateLimited } from '@/lib/trader/providers/fmpRuntime.server';
 
 const FMP_TIMEOUT_MS = 9000;
 

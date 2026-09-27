@@ -20,6 +20,7 @@ import { TRADER_FUND_FILTERS, fundTypeLabel, normalizeFundFilter } from '@/lib/t
 import { isValidPrice } from '@/lib/market/quoteNormalization';
 import { resolveTraderMarketContext, traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { fetchTraderQuotesDetailed, getConnectedProvider, resolveTraderMarketDynamic } from '@/lib/trader/marketQuotes';
+import { observedQuoteProviderNames } from '@/lib/trader/providerAvailability';
 import { prioritizeDashboardUniverse } from '@/lib/trader/dashboardUniverse';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
@@ -59,15 +60,6 @@ function providerAttempts(quoteLoad: Awaited<ReturnType<typeof fetchTraderQuotes
   quoteLoad.failed.forEach(item => add(item.provider, 'failed', item.reason));
   quoteLoad.loaded.forEach(item => add(item.provider, 'success', null));
   return Array.from(attempts.values());
-}
-
-function availableQuoteProviders(capabilityMatrix: Record<string, { configured?: boolean; healthy?: boolean; supportsQuotes?: boolean; status?: string }>) {
-  return Array.from(new Set(Object.entries(capabilityMatrix)
-    .filter(([, capability]) => capability.supportsQuotes !== false
-      && capability.status !== 'rate_limited'
-      && (capability.configured === true || capability.healthy === true || capability.status === 'healthy'))
-    .map(([provider]) => traderProviderDisplayName(provider))
-    .filter((provider): provider is string => Boolean(provider))));
 }
 
 const SELECTION_EMPTY_STATE = {
@@ -573,7 +565,10 @@ async function handleRecommendations(request: Request) {
     .map(row => ({ symbol: row.symbol, name: row.name, reason: row.unavailableReason ?? 'provider_returned_empty_quote' }));
   const primaryQuote = available.find(q => q.available && isValidPrice(q.price)) ?? available[0] ?? null;
   const primaryMeta = selectedMeta[0] ?? universe.symbolMeta[0] ?? null;
-  const configuredQuoteProviders = availableQuoteProviders(catalog.capabilityMatrix);
+  const observedQuoteProviders = observedQuoteProviderNames(
+    catalog.capabilityMatrix,
+    quoteLoad.loaded.map(item => item.provider),
+  );
   const fundUniverseSelected = market.id === 'etfs' || selectedCategory === 'fund' || selectedFundType !== 'all';
   const emptyStateCopy = fundUniverseSelected ? FUND_EMPTY_STATE : SELECTION_EMPTY_STATE;
   const strictMarketContext = strictMarketContextForSelection(marketFilterSelection);
@@ -596,7 +591,7 @@ async function handleRecommendations(request: Request) {
     exchange: selectedExchange,
     selectedSymbol: primaryQuote?.symbol,
     selectedProvider: usedProvider,
-    availableProviders: configuredQuoteProviders,
+    availableProviders: observedQuoteProviders,
     fallbackUsed: primaryQuote?.fallbackUsed ?? primaryQuote?.providerStatus.fallbackUsed,
   });
   const providerUsage = {

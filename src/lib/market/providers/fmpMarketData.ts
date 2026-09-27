@@ -1,5 +1,5 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
-import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime.server';
 import type {
   MarketDataProvider, MarketDataProviderContext, NormalizedMarketCandle,
   NormalizedMarketQuote, ProviderHealthResult,

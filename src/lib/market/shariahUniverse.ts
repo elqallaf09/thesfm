@@ -25,14 +25,12 @@ export type ShariahScreeningItem = ShariahUniverseItem & {
 
 /**
  * Previously a hardcoded `false` regardless of real provider status — a literal instance of the
- * platform-wide "contradictory state" bug (this screen would show "not connected" even while FMP
- * was healthy elsewhere). Now computed from the same provider-resolution layer every other market
- * surface reads, via the `shariah_financials` capability (FMP is the sole declared provider — see
- * providerResolver.ts PROVIDER_PRIORITY).
+ * platform-wide "contradictory state" bug. It now uses the same provider-resolution layer as
+ * other market surfaces, and treats only an observed connected result as connectivity.
  */
 export function getShariahScreeningSourceStatus(): { connected: boolean; source: 'fmp' | null; sourceName: string | null } {
   const status = getProviderCapabilityStatus('fmp');
-  const connected = status === 'connected' || status === 'degraded';
+  const connected = status === 'connected';
   return {
     connected,
     source: connected ? 'fmp' : null,
