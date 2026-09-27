@@ -5,28 +5,108 @@ on:
 permissions:
   contents: read
 jobs:
-  source:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.patch.outputs.sha }}
+    steps:
+      - name: Assemble a reviewable commit without moving a branch
+        id: patch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          const root = 'https://api.github.com/repos/elqallaf09/thesfm';
+          const parent = 'c802021728cae73523fc389830f9c9bd309e3e40';
+          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28' };
+          async function api(path, body) {
+            const res = await fetch(root + path, { headers, method: body ? 'POST' : 'GET', body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
+            if (!res.ok) throw new Error(path + ': HTTP ' + res.status);
+            return res.json();
+          }
+          function once(text, from, to) {
+            if (text.split(from).length !== 2) throw new Error('Non-unique patch anchor: ' + from.slice(0, 60));
+            return text.replace(from, to);
+          }
+          const patches = [
+            ['src/components/macro-simulator/MacroLab.tsx', text => {
+              text = once(text, "import { Timeline } from './Timeline';", "import { Timeline } from './Timeline';\nimport { SensitivityExplorer } from './SensitivityExplorer';");
+              const anchor = "              <section className={styles.card}><h2>{t('transmission')}</h2>";
+              return once(text, anchor, "              {mode === 'lab' ? <SensitivityExplorer report={report} lang={lang} stale={stale} onApply={(kind, magnitude) => {\n                if (stale) return;\n                const index = input.shocks.findIndex(shock => shock.kind === kind);\n                if (index >= 0) editShock(index, { magnitude });\n              }} /> : null}\n" + anchor);
+            }],
+            ['src/lib/translations/bundles/marketsTrading.ts', text => {
+              text = once(text, 'import { TR_MARKET }', "import { TR_MACRO_SIMULATOR } from '@/lib/translations/macro-simulator';\nimport { TR_MARKET }");
+              return once(text, '  ...TR_MARKET,', '  ...TR_MARKET,\n  ...TR_MACRO_SIMULATOR,');
+            }],
+            ['src/__tests__/unit/workspaceTranslationBundles.test.ts', text => once(text, "  it('keeps shared shell", "  it('includes the simulator navigation key in the actual markets runtime bundle', () => {\n    expect(resolveWorkspaceRouteId('/economic-intelligence/simulator')).toBe('markets-trading');\n    expect(resolveWorkspaceRouteId('/economic-intelligence/simulator/game')).toBe('markets-trading');\n    for (const locale of ['ar', 'en', 'fr'] as const) {\n      expect(MARKETS_TRADING_TRANSLATIONS.nav_macro_simulator[locale]).toBe(TR.nav_macro_simulator[locale]);\n      expect(MARKETS_TRADING_TRANSLATIONS.nav_macro_simulator[locale].trim()).not.toBe('');\n    }\n  });\n\n  it('keeps shared shell")],
+          ];
+          const tree = [];
+          for (const [path, patch] of patches) {
+            const file = await api('/contents/' + path + '?ref=' + parent);
+            const content = patch(Buffer.from(file.content.replace(/\s/g, ''), 'base64').toString('utf8'));
+            tree.push({ path, mode: '100644', type: 'blob', content });
+          }
+          const nextTree = await api('/git/trees', { base_tree: 'e309c66510ad6477e8efad126fa8eeb334913521', tree });
+          const commit = await api('/git/commits', { message: 'feat(simulator): event sensitivity explorer and runtime navigation translation', tree: nextTree.sha, parents: [parent] });
+          console.log('candidate_sha=' + commit.sha);
+          appendFileSync(process.env.GITHUB_OUTPUT, 'sha=' + commit.sha + '\n');
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, 'Exact candidate: `' + commit.sha + '`. No branch or production ref was moved.\n');
+          NODE
+  focused:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: c802021728cae73523fc389830f9c9bd309e3e40
+          ref: ${{ needs.prepare.outputs.sha }}
           persist-credentials: false
-      - name: Package tracked text source only
-        run: |
-          python3 - <<'PY'
-          import pathlib, subprocess, zipfile
-          roots = ('src/', 'tests/', 'scripts/', 'docs/', '.github/workflows/')
-          extensions = {'.ts', '.tsx', '.css', '.json', '.mjs', '.cjs', '.yml', '.yaml', '.md'}
-          with zipfile.ZipFile('macro-source.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-              for name in subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0'):
-                  path = pathlib.Path(name)
-                  if name and (name.startswith(roots) or '/' not in name) and path.suffix in extensions and path.is_file() and path.stat().st_size < 2_000_000:
-                      archive.write(path, name)
-          PY
-      - uses: actions/upload-artifact@v7
+      - uses: pnpm/action-setup@v6
         with:
-          name: macro-source-c802021
-          path: macro-source.zip
-          retention-days: 1
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Simulator model, session and runtime translations
+        run: pnpm exec vitest run src/__tests__/unit/macroSimulator.test.ts src/__tests__/unit/macroSimulatorGame.test.ts src/__tests__/unit/macroSimulatorSession.test.ts src/__tests__/unit/macroSensitivity.test.ts src/__tests__/unit/workspaceTranslationBundles.test.ts
+      - run: pnpm typecheck && pnpm lint && pnpm check:i18n && pnpm check:maintainability && pnpm check:visual-system
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Ephemeral loopback TLS
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/playwright-tls"
+          openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+          chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
+      - name: Build exact candidate and enforce budgets
+        run: pnpm build && pnpm check:performance-budget
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+      - name: Simulator guest journeys on three browser projects
+        run: pnpm exec playwright test tests/smoke/macro-simulator.spec.ts tests/smoke/macro-simulator-game.spec.ts tests/smoke/macro-simulator-session.spec.ts tests/smoke/macro-simulator-sensitivity.spec.ts --no-deps --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --reporter=list
+        env:
+          PLAYWRIGHT_NO_COPY_PROMPT: '1'
+          PLAYWRIGHT_HTTPS_LOOPBACK: '1'
+          PLAYWRIGHT_WEB_SERVER_COMMAND: node scripts/playwright-https-proxy.mjs
+          PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
+          PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
+      - name: Remove DOM error contexts
+        if: always()
+        run: find test-results -type f -name error-context.md -delete 2>/dev/null || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: macro-sensitivity-${{ needs.prepare.outputs.sha }}
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 3
