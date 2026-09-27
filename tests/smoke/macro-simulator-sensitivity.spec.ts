@@ -36,13 +36,18 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     await panel.getByLabel(t('shock'), { exact: true }).selectOption('oilSupply');
     await expect(panel.locator('tr[data-baseline="true"]')).toHaveAttribute('data-magnitude', '25');
     const results = lab.getByTestId('macro-results');
-    const originalResults = await results.innerText();
+    const scenarioCards = results.locator('article');
+    await expect(scenarioCards).toHaveCount(3);
+    const originalResults = await scenarioCards.allTextContents();
     await panel.locator('tr[data-magnitude="30"]').getByRole('button').click();
     await expect(lab.getByLabel(copy.magnitude[locale], { exact: false }).nth(1)).toHaveValue('30');
     await expect(lab.getByLabel(copy.expected[locale], { exact: false })).toHaveValue('25');
     await expect(panel.getByTestId('macro-sensitivity-stale')).toBeVisible();
     for (const button of await panel.getByRole('button').all()) await expect(button).toBeDisabled();
-    expect(await results.innerText()).toBe(originalResults);
+    await expect(lab.getByText(copy.stale[locale], { exact: true })).toBeVisible();
+    // The intentional stale warning may change section text, but never its outcomes.
+    await expect(scenarioCards).toHaveCount(3);
+    expect(await scenarioCards.allTextContents()).toEqual(originalResults);
     await run.click();
     await expect(panel.getByTestId('macro-sensitivity-stale')).toHaveCount(0);
     await expect(panel.locator('tr[data-baseline="true"]')).toHaveAttribute('data-magnitude', '30');
