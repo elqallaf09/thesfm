@@ -1,13 +1,13 @@
-name: Macro sensitivity verification
+name: Macro sensitivity geometry diagnosis
 on:
   push:
     branches: [diagnostics/macro-sensitivity-verification]
 permissions:
   contents: read
 jobs:
-  focused:
+  geometry:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
         with:
@@ -22,24 +22,68 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Simulator model, game, sessions and runtime translations
-        run: pnpm exec vitest run src/__tests__/unit/macroSimulator.test.ts src/__tests__/unit/macroGame.test.ts src/__tests__/unit/macroGameSession.test.ts src/__tests__/unit/macroSensitivity.test.ts src/__tests__/unit/workspaceTranslationBundles.test.ts
-      - run: pnpm typecheck && pnpm lint && pnpm check:i18n && pnpm check:maintainability && pnpm check:visual-system
-      - run: pnpm exec playwright install --with-deps chromium webkit
-      - name: Ephemeral loopback TLS
-        run: |
-          install -d -m 700 "$RUNNER_TEMP/playwright-tls"
-          openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
-          chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
-      - name: Build exact candidate and enforce budgets
-        run: pnpm build && pnpm check:performance-budget
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Select public exact-SHA preview or build local fallback
+        id: target
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      - name: Simulator guest journeys on three browser projects
-        run: pnpm exec playwright test tests/smoke/macro-simulator.spec.ts tests/smoke/macro-simulator-game.spec.ts tests/smoke/macro-simulator-session.spec.ts tests/smoke/macro-simulator-sensitivity.spec.ts --no-deps --project=chromium-desktop --project=mobile-chrome --project=mobile-webkit --reporter=list
+        run: |
+          preview=https://thesfm-rp9x5an5r-mohammed-alqallaf-s-projects.vercel.app
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "$preview/login?mode=register")
+          echo "Preview public access: HTTP $status"
+          if [ "$status" = 200 ]; then
+            echo "url=$preview" >> "$GITHUB_OUTPUT"
+          else
+            pnpm build
+            install -d -m 700 "$RUNNER_TEMP/playwright-tls"
+            openssl req -x509 -newkey rsa:2048 -sha256 -days 1 -nodes -keyout "$RUNNER_TEMP/playwright-tls/key.pem" -out "$RUNNER_TEMP/playwright-tls/cert.pem" -subj '/CN=127.0.0.1' -addext 'subjectAltName=IP:127.0.0.1'
+            chmod 600 "$RUNNER_TEMP/playwright-tls/"*.pem
+          fi
+      - name: Create temporary scoped geometry probe
+        run: |
+          cat > tests/smoke/macro-geometry.local.spec.ts <<'TS'
+          import { test, expect } from '@playwright/test';
+          import { templateLabels } from '../../src/components/macro-simulator/copy';
+          test.use({trace:'off',screenshot:'off',video:'off'});
+          test('measure synthetic simulator geometry only', async ({page}, info) => {
+            test.setTimeout(120000);
+            await page.addInitScript(() => { localStorage.setItem('sfm_lang','en'); localStorage.setItem('the-sfm-theme','light'); });
+            await page.goto('/login?mode=register');
+            await page.locator('button.guest-btn').first().click();
+            await page.waitForURL(/\/dashboard(?:\?|$)/);
+            await page.goto('/economic-intelligence/simulator');
+            const lab=page.getByTestId('macro-lab');
+            await expect(lab).toHaveCount(1); await expect(lab).toHaveAttribute('data-hydrated','true');
+            await lab.getByRole('button',{name:templateLabels.compound.en,exact:true}).click();
+            await lab.getByTestId('macro-run').click();
+            await expect(lab.getByTestId('macro-sensitivity')).toBeVisible();
+            for(const width of [820,390]) {
+              await page.setViewportSize({width,height:1000});
+              for(const [name,css] of [
+                ['base',' '],
+                ['grid','[data-testid="macro-sensitivity"], [data-testid="macro-sensitivity"] figure{grid-template-columns:minmax(0,1fr)}'],
+                ['children','[data-testid="macro-sensitivity"] > *, [data-testid="macro-sensitivity"] svg{min-inline-size:0;max-inline-size:100%}'],
+                ['hidden-panel','[data-testid="macro-sensitivity"]{display:none}']
+              ]) {
+                const style=await page.addStyleTag({content:css});
+                const result=await page.evaluate(() => {
+                  const lab=document.querySelector('[data-testid="macro-lab"]')!;
+                  const describe=(e:Element) => { const r=e.getBoundingClientRect(); const s=getComputedStyle(e); return {tag:e.tagName,cls:e.getAttribute('class'),x:Math.round(r.x),w:Math.round(r.width),sw:e.scrollWidth,cw:e.clientWidth,min:s.minWidth,grid:s.gridTemplateColumns,overflow:s.overflowX}; };
+                  return {viewport:innerWidth,pageOverflow:document.documentElement.scrollWidth-innerWidth,panel:[...lab.querySelectorAll('[data-testid="macro-sensitivity"], [data-testid="macro-sensitivity"] > *, [data-testid="macro-sensitivity"] svg')].map(describe),wide:[...lab.querySelectorAll('*')].filter(e=>{const r=e.getBoundingClientRect();return r.width && (r.right>innerWidth+4 || r.x < -4)}).slice(0,22).map(describe)};
+                });
+                console.log('GEOMETRY '+width+' '+name+' '+JSON.stringify(result));
+                await style.evaluate(e=>e.remove());
+              }
+            }
+            await info.attach('synthetic-overflow',{body:await lab.getByTestId('macro-sensitivity').screenshot(),contentType:'image/png'});
+          });
+          TS
+      - name: Read-only geometry probe
+        run: pnpm exec playwright test tests/smoke/macro-geometry.local.spec.ts --no-deps --project=chromium-desktop --retries=0 --reporter=list
         env:
+          E2E_BASE_URL: ${{ steps.target.outputs.url }}
           PLAYWRIGHT_NO_COPY_PROMPT: '1'
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
           PLAYWRIGHT_WEB_SERVER_COMMAND: node scripts/playwright-https-proxy.mjs
@@ -48,13 +92,13 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-      - name: Remove DOM error contexts
+      - name: Remove DOM contexts
         if: always()
         run: find test-results -type f -name error-context.md -delete 2>/dev/null || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: macro-sensitivity-94203ff
+          name: macro-geometry-94203ff
           path: test-results/
           if-no-files-found: warn
-          retention-days: 3
+          retention-days: 1
