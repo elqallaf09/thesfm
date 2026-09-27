@@ -23,6 +23,7 @@ const COPY = {
     subtitle: 'ابحث واستكشف الشركات المدرجة الحقيقية في الأسواق المدعومة دون بيانات وهمية.',
     coverageNote: 'كل الأسهم في الأدلة المتاحة، مع تحديث الأسواق العالمية من المزود. اختر السوق للاطلاع على قائمته؛ توفر الدليل لا يعني توفر الأسعار الحية.',
     directoryOffline: 'تعذر تحديث دليل المزود العالمي؛ المعروض حاليًا هو الأدلة المحفوظة والمتاحة.',
+    directoryPending: 'يجري تحديث دليل المزود العالمي؛ نعرض الآن الكتالوجات الموثقة المتاحة دون انتظار.',
     searchPlaceholder: 'ابحث بالاسم أو الرمز أو السوق...',
     searchClear: 'مسح البحث',
     regionAll: 'كل الأسواق',
@@ -58,6 +59,7 @@ const COPY = {
     subtitle: 'Search and explore real listed companies across supported markets -- no fabricated data.',
     coverageNote: 'All listings in available directories, with worldwide markets synchronized from the provider. Select a market to browse its listings; directory coverage does not imply live price access.',
     directoryOffline: 'The worldwide provider directory could not refresh; available saved directories are shown.',
+    directoryPending: 'The worldwide provider directory is still refreshing. Verified available catalogs are shown without waiting.',
     searchPlaceholder: 'Search by name, symbol, or exchange...',
     searchClear: 'Clear search',
     regionAll: 'All markets',
@@ -93,6 +95,7 @@ const COPY = {
     subtitle: 'Recherchez et explorez de vraies entreprises cotées sur les marchés pris en charge -- aucune donnée fabriquée.',
     coverageNote: 'Toutes les actions des répertoires disponibles et les marchés mondiaux synchronisés. Sélectionnez une bourse ; un répertoire ne garantit pas l’accès aux cours en direct.',
     directoryOffline: 'Le répertoire mondial est indisponible ; les répertoires enregistrés sont affichés.',
+    directoryPending: 'Le répertoire mondial est encore en cours d’actualisation. Les catalogues vérifiés disponibles sont affichés sans attente.',
     searchPlaceholder: 'Rechercher par nom, symbole ou marché...',
     searchClear: 'Effacer la recherche',
     regionAll: 'Tous les marchés',
@@ -301,6 +304,7 @@ export function WorldStocksPage() {
           <p>{ui.subtitle}</p>
           <small>{ui.coverageNote}</small>
           {directoryStatus === "unavailable" && <p role="status">{ui.directoryOffline}</p>}
+          {directoryStatus === "pending" && <p role="status">{ui.directoryPending}</p>}
         </div>
       </header>
 

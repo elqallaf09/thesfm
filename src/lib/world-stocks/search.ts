@@ -1,5 +1,5 @@
 import { searchBundledMarketSymbols, listBundledMarketSymbols } from '@/lib/market/marketSymbolDirectory';
-import { searchUSSymbols, getUSSymbolUniverse } from '@/lib/market/usSymbolResolver';
+import { filterUsSymbolUniverse, getBundledUsSymbolUniverse, getUSSymbolUniverse } from '@/lib/market/usSymbolResolver';
 import type { MarketSearchItem } from '@/lib/market/marketService';
 import { globalDirectoryMarketItems } from './globalDirectory';
 import { getProviderDirectory } from './providerDirectory';
@@ -31,6 +31,52 @@ export type WorldStockSearchResult = {
 // sends only the requested page. Quotes are fetched separately for that page,
 // so browsing thousands of symbols never triggers a bulk provider request.
 const BUNDLED_FETCH_LIMIT = 10_000;
+const OPTIONAL_DIRECTORY_BUDGET_MS = 1_500;
+
+type TimelyProviderDirectory = Awaited<ReturnType<typeof getProviderDirectory>> | {
+  rows: [];
+  status: 'pending';
+  asOf: null;
+};
+
+/**
+ * A slow optional directory must not hide already-verified catalog entries.
+ * The original promise is deliberately left running, so a warm server can use
+ * its refreshed cache on the next request without fabricating a replacement.
+ */
+function respondWithinBudget<T>(work: Promise<T>, fallback: () => T | Promise<T>, budgetMs = OPTIONAL_DIRECTORY_BUDGET_MS): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      void Promise.resolve(fallback()).then(resolve, reject);
+    }, budgetMs);
+
+    work.then(value => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    }).catch(error => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
+}
+
+function responsiveProviderDirectory(): Promise<TimelyProviderDirectory> {
+  return respondWithinBudget<TimelyProviderDirectory>(getProviderDirectory(), () => ({ rows: [], status: 'pending', asOf: null }));
+}
+
+function responsiveUsSymbolUniverse() {
+  return respondWithinBudget(
+    getUSSymbolUniverse().then(({ rows, source }) => ({ rows, source })),
+    getBundledUsSymbolUniverse,
+  );
+}
 
 function bundledRegionIds(): string[] {
   return ['BOURSA_KUWAIT', 'DFM', 'NASDAQ_DUBAI', 'SSE', 'SZSE'];
@@ -56,19 +102,12 @@ export async function collectCandidates(params: WorldStockSearchParams): Promise
   let us: MarketSearchItem[] = [];
   let usSource = 'none';
   if (wantsUS) {
-    if (query) {
-      const [universe, searched] = await Promise.all([getUSSymbolUniverse(), searchUSSymbols(query)]);
-      const needle = normalizeAssetSearchText(query);
-      us = [...searched.results, ...universe.rows.filter(row => normalizeAssetSearchText(`${row.symbol} ${row.name}`).includes(needle))];
-      usSource = universe.source;
-    } else {
-      // Pure browse of the US universe: sort alphabetically and let the
-      // caller paginate -- never send the whole (multi-thousand-row)
-      // universe to the browser, only ever the slice a page needs.
-      const universe = await getUSSymbolUniverse();
-      us = [...universe.rows].sort((a, b) => a.symbol.localeCompare(b.symbol));
-      usSource = universe.source;
-    }
+    // A single universe request prevents the former duplicate Nasdaq
+    // downloads for every non-empty search. When the remote catalog is slow,
+    // this returns the verified bundled catalog inside the response budget.
+    const universe = await responsiveUsSymbolUniverse();
+    us = filterUsSymbolUniverse(universe.rows, query);
+    usSource = universe.source;
   }
 
   const sources = [globalDirectory.length ? 'official-directory-snapshot' : '', bundled.length ? 'bundled' : '', wantsUS ? usSource : '']
@@ -77,7 +116,7 @@ export async function collectCandidates(params: WorldStockSearchParams): Promise
 }
 
 export async function searchWorldStocks(params: WorldStockSearchParams): Promise<WorldStockSearchResult> {
-  const [{ items, source }, provider] = await Promise.all([collectCandidates(params), getProviderDirectory()]);
+  const [{ items, source }, provider] = await Promise.all([collectCandidates(params), responsiveProviderDirectory()]);
   const needle = normalizeAssetSearchText(params.query);
   const extended = provider.rows.filter(row => (!params.region || row.exchange === params.region) && (!needle || normalizeAssetSearchText(`${row.symbol} ${row.name} ${row.exchangeName}`).includes(needle)));
   const markets: WorldStockMarket[] = WORLD_STOCK_REGIONS.map(region => ({ ...region, count: null, status: region.id === 'US' && source.includes('nasdaqtrader') ? 'directory' : 'snapshot' }));

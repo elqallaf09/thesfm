@@ -128,6 +128,16 @@ async function staticUniverse() {
   return (catalog.rows as USSymbolRecord[]).map(withCanonicalUsSymbolOverride);
 }
 
+/**
+ * Returns the checked-in, source-backed US catalog without waiting for the
+ * remote Nasdaq directory. Callers use this only as a truthful degraded
+ * response while a slow upstream directory continues to refresh in the
+ * background; it is never presented as a live directory.
+ */
+export async function getBundledUsSymbolUniverse() {
+  return { rows: await staticUniverse(), source: 'static' as const };
+}
+
 export async function getUSSymbolUniverse() {
   const now = Date.now();
   if (cachedUniverse && cachedUniverse.expiresAt > now) return cachedUniverse;
@@ -151,7 +161,8 @@ export async function getUSSymbolUniverse() {
         message: error instanceof Error ? error.message : String(error),
       });
     }
-    cachedUniverse = { rows: await staticUniverse(), source: 'static', expiresAt: now + 300000 };
+    const bundled = await getBundledUsSymbolUniverse();
+    cachedUniverse = { ...bundled, expiresAt: now + 300000 };
     return cachedUniverse;
   }
 }
@@ -180,18 +191,26 @@ function scoreSymbol(row: USSymbolRecord, query: string, aliases: string[]) {
   return 0;
 }
 
-export async function searchUSSymbols(queryInput: unknown, assetTypeInput?: MarketAssetType) {
+/**
+ * Filters an already-loaded universe so callers can preserve aliases without
+ * issuing a second remote directory request.
+ */
+export function filterUsSymbolUniverse(rows: readonly USSymbolRecord[], queryInput: unknown, assetTypeInput?: MarketAssetType) {
   const query = cleanQuery(queryInput);
   const assetType = assetTypeInput ? normalizeAssetType(assetTypeInput) : undefined;
-  const { rows, source } = await getUSSymbolUniverse();
   const aliasSymbols = aliasMap[normalizedText(query)] ?? [];
-  const results = rows
+  return rows
     .filter(row => !assetType || row.assetType === assetType)
     .map(row => ({ row, score: scoreSymbol(row, query, aliasSymbols) }))
     .filter(entry => entry.score > 0)
     .sort((a, b) => b.score - a.score || a.row.symbol.localeCompare(b.row.symbol))
-    .slice(0, 20)
     .map(({ row }) => row);
+}
+
+export async function searchUSSymbols(queryInput: unknown, assetTypeInput?: MarketAssetType) {
+  const query = cleanQuery(queryInput);
+  const { rows, source } = await getUSSymbolUniverse();
+  const results = filterUsSymbolUniverse(rows, query, assetTypeInput).slice(0, 20);
 
   return { success: true, query, source, results };
 }

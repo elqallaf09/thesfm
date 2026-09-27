@@ -60,6 +60,22 @@ describe('createFetchStore', () => {
     expect(store.getState().error).toBe('network down');
   });
 
+  it('returns to idle when the first request is aborted instead of remaining loading', async () => {
+    const store = createFetchStore<string>((signal) => new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+      void resolve;
+    }));
+
+    const request = store.fetch({ force: true });
+    store.dispose();
+    await request;
+    expect(store.getState()).toMatchObject({ data: null, status: 'idle', error: null });
+  });
+
   it('notifies subscribers on every state transition', async () => {
     const store = createFetchStore(async () => 'value');
     const notifications: string[] = [];

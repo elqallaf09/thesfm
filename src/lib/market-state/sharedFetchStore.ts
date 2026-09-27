@@ -53,7 +53,13 @@ export function createFetchStore<T>(
         const data = await fetcher(controller!.signal);
         setState({ data, status: 'success', lastFetchedAt: Date.now(), error: null });
       } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
+        if (error instanceof Error && error.name === 'AbortError') {
+          // An aborted request is neither a successful refresh nor a user-visible failure. Do
+          // not leave consumers indefinitely in `loading`, which previously happened after a
+          // route/filter change cancelled the first request.
+          setState({ status: state.data === null ? 'idle' : 'success', error: null });
+          return;
+        }
         setState({ status: 'error', error: error instanceof Error ? error.message : 'unknown_error' });
       } finally {
         inFlight = null;

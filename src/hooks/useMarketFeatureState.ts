@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { deriveMarketFeatureClientState } from '@/lib/market-state/featureClientState';
 import type { MarketFeatureEnvelope } from '@/lib/market-state/types';
+import { isValidFeatureDataStatus } from '@/lib/market-state/envelope';
 import { getOrCreateFetchStore } from '@/lib/market-state/sharedFetchStore';
 import {
   beginRetry,
@@ -15,7 +17,13 @@ import {
 
 async function fetchEnvelope<T>(url: string, signal: AbortSignal): Promise<MarketFeatureEnvelope<T>> {
   const response = await fetch(url, { signal });
-  return (await response.json()) as MarketFeatureEnvelope<T>;
+  const payload = await response.json() as Partial<MarketFeatureEnvelope<T>>;
+  const errorCode = payload.errors?.[0]?.code ?? `market_feature_request_${response.status}`;
+  if (!response.ok) throw new Error(errorCode);
+  if (!isValidFeatureDataStatus(payload.status) || typeof payload.feature !== 'string') {
+    throw new Error('market_feature_response_invalid');
+  }
+  return payload as MarketFeatureEnvelope<T>;
 }
 
 /**
@@ -28,6 +36,7 @@ export function useMarketFeatureState<T>(feature: string, url: string, options: 
   const enabled = options.enabled ?? true;
   const store = useMemo(() => getOrCreateFetchStore<MarketFeatureEnvelope<T>>(url, (signal) => fetchEnvelope<T>(url, signal)), [url]);
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
+  const featureState = deriveMarketFeatureClientState(state);
   const [retryState, setRetryState] = useState<RetryState>(INITIAL_RETRY_STATE);
 
   useEffect(() => {
@@ -53,8 +62,9 @@ export function useMarketFeatureState<T>(feature: string, url: string, options: 
     try {
       await store.fetch({ force: true });
       const latest = store.getState();
-      if (latest.status === 'error') {
-        setRetryState(current => completeRetryFailure(current, latest.error ?? 'unknown_error'));
+      const responseFailure = latest.data?.status === 'error' || latest.data?.status === 'unavailable';
+      if (latest.status === 'error' || responseFailure) {
+        setRetryState(current => completeRetryFailure(current, latest.error ?? latest.data?.errors[0]?.code ?? 'unknown_error'));
       } else {
         setRetryState(completeRetrySuccess());
       }
@@ -68,8 +78,7 @@ export function useMarketFeatureState<T>(feature: string, url: string, options: 
   }, []);
 
   return {
-    envelope: state.data,
-    status: state.status,
+    ...featureState,
     error: state.error,
     retry,
     cancel,
