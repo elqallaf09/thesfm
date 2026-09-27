@@ -1,3 +1,5 @@
+import { parseEnglishCivilDate } from './civilDate';
+
 const EIA_GLOBAL_ENERGY_SECURITY_URL = 'https://www.eia.gov/outlooks/steo/report/energysecurity/article.php';
 
 export type EiaChokepointFlow = {
@@ -72,9 +74,7 @@ function period(value: string) {
 }
 
 function monthDateToIso(value: string) {
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) return null;
-  return new Date(timestamp).toISOString().slice(0, 10);
+  return parseEnglishCivilDate(value);
 }
 
 function releaseDateNearSecurityHeading(html: string) {

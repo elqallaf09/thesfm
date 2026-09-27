@@ -1,3 +1,5 @@
+import { parseEnglishCivilDate } from './civilDate';
+
 const OPEC_HOME_URL = 'https://www.opec.org/';
 
 export type OpecPolicyDecision = 'maintain' | 'increase' | 'decrease' | 'adjust' | 'unknown';
@@ -39,8 +41,7 @@ function stripHtml(value: string) {
 }
 
 function dateToIso(value: string) {
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : null;
+  return parseEnglishCivilDate(value);
 }
 
 function safeOpecUrl(href: string) {

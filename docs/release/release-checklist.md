@@ -23,6 +23,7 @@ record. Do not mark an unavailable control as passed.
 
 - [ ] Typecheck, lint, i18n, maintainability, unit/integration, build, and performance-budget CI jobs pass.
 - [ ] The complete migration chain passes once against a fresh Postgres database.
+- [ ] The linked Production Supabase migration ledger is compared with the repository using `supabase migration list --linked | node scripts/check-supabase-migration-drift.mjs`; any mismatch has a named, reviewed reconciliation record. A clean local chain alone is not evidence that Production is aligned.
 - [ ] Forward migration, compatibility with the previous app version, and recovery steps are documented.
 - [ ] A restorable backup exists for destructive or irreversible data changes.
 - [ ] Provider degradation, empty data, rate limiting, and retry behavior were exercised where relevant.
