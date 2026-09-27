@@ -490,8 +490,13 @@ test.describe('Phase 6.1 intelligence panel', () => {
     await page.keyboard.press('ArrowDown');
     await expect(readings.nth(1)).toBeFocused();
     await readings.nth(0).click();
+    await expect(readings.nth(0)).toHaveAttribute('aria-selected', 'true');
     await readings.nth(1).click();
-    await timeline.getByRole('button', { name: 'Compare selected readings' }).click();
+    await expect(readings.nth(0)).toHaveAttribute('aria-selected', 'true');
+    await expect(readings.nth(1)).toHaveAttribute('aria-selected', 'true');
+    const compare = timeline.getByRole('button', { name: 'Compare selected readings' });
+    await expect(compare).toBeEnabled();
+    await compare.click();
     await expect(timeline.getByText('Selected reading comparison', { exact: true })).toBeVisible();
     await expect(timeline.getByText('Technical signals strengthened', { exact: true }).first()).toBeVisible();
   });
