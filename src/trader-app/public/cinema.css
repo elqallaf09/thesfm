@@ -12027,11 +12027,11 @@ html[data-theme="light"] .heatmap-tile.tone-unavailable {
 }
 html[data-theme="light"] .heatmap-tile.tone-unavailable :is(strong, small, em, .heatmap-change) { color: var(--hero-foreground); }
 html[data-theme="light"] .heatmap-tile:not(.tone-unavailable) :is(strong, small, em, .heatmap-change, .heatmap-tile-performance, .heatmap-tile-meta b) { color: var(--hero-foreground); }
-html[data-theme="light"] .heatmap-tile.opportunity-cell:not(.tone-unavailable) :is(.heatmap-tile-head strong, .heatmap-tile-head small, .heatmap-tile-meta em, .heatmap-tile-meta b) { color: var(--hero-foreground) !important; }
+html[data-theme="light"] .heatmap-tile.opportunity-cell:not(.tone-unavailable) :is(.heatmap-tile-head strong, .heatmap-tile-head small, .heatmap-tile-meta em, .heatmap-tile-meta b) { color: var(--heat-foreground, var(--hero-foreground)) !important; }
 html[data-theme="light"] .heatmap-tile.opportunity-cell:not(.tone-unavailable) .heatmap-tile-performance {
   border-color: transparent !important;
   background: transparent !important;
-  color: var(--hero-foreground) !important;
+  color: var(--heat-foreground, var(--hero-foreground)) !important;
 }
 
 html[data-theme="light"] .symbol-drawer-backdrop { background: var(--background-overlay); }
@@ -13430,8 +13430,8 @@ html[data-theme] :is(.empty-state, .market-card-empty, .trade-empty-state, .mark
 }
 
 html[data-theme] :is(.detail-chart-wrap, .chart-shell, .chart-panel, .chart-empty) {
-  border-color: var(--border) !important;
-  background: var(--surface-muted) !important;
+  border-color: var(--chart-surface-border, var(--border)) !important;
+  background: var(--chart-surface, var(--surface-muted)) !important;
   color: var(--foreground) !important;
 }
 
@@ -13544,11 +13544,7 @@ html[data-theme] :is(.session-track, .market-session-terminal .st-track) {
   background: var(--surface-muted) !important;
 }
 
-html[data-theme] :is(.session-bar, .market-session-terminal .st-seg) {
-  border-color: color-mix(in srgb, var(--session-color) 70%, var(--border)) !important;
-  background: color-mix(in srgb, var(--session-color) 72%, transparent) !important;
-  box-shadow: var(--shadow-xs) !important;
-}
+html[data-theme] :is(.session-bar, .market-session-terminal .st-seg) { --session-segment-border: color-mix(in srgb, var(--session-color) 70%, var(--border)); --session-segment-background: color-mix(in srgb, var(--session-color) 72%, transparent); --session-segment-foreground: var(--foreground); border-color: var(--session-segment-border) !important; background: var(--session-segment-background) !important; color: var(--session-segment-foreground) !important; box-shadow: var(--shadow-xs) !important; }
 
 html[data-theme] .session-now-label {
   background: var(--danger) !important;
@@ -13562,33 +13558,29 @@ html[data-theme] :is(.session-tooltip, .heatmap-tooltip) {
   box-shadow: var(--shadow-popover) !important;
 }
 
-html[data-theme] .heatmap-tile {
-  border-color: var(--heat-edge) !important;
-  background: var(--heat-bg) !important;
-  color: var(--hero-foreground) !important;
-  box-shadow: var(--shadow-xs) !important;
-}
+html[data-theme] .heatmap-tile { border-color: var(--heat-edge) !important; background: var(--heat-bg) !important; color: var(--heat-foreground, var(--hero-foreground)) !important; box-shadow: var(--shadow-xs) !important; }
 
 html[data-theme] .heatmap-tile.tone-positive { --heat-bg: var(--success); }
 html[data-theme] .heatmap-tile.tone-negative { --heat-bg: var(--danger); }
 html[data-theme] :is(.heatmap-tile.tone-neutral, .heatmap-tile.tone-unavailable) { --heat-bg: var(--foreground-muted); }
-html[data-theme] .heatmap-tile :is(strong, small, em, .heatmap-change, .heatmap-tile-performance, .heatmap-tile-meta b) { color: var(--hero-foreground) !important; }
-
+html[data-theme] .heatmap-tile :is(strong, small, em, .heatmap-change, .heatmap-tile-performance, .heatmap-tile-meta b) { color: var(--heat-foreground, var(--hero-foreground)) !important; }
+html[data-theme="light"] :is(.session-bar, .market-session-terminal .st-seg) { --session-segment-border: color-mix(in srgb, var(--session-color) 36%, var(--border)); --session-segment-background: color-mix(in srgb, var(--session-color) 14%, var(--surface)); }
+html[data-theme="light"] .heatmap-tile.tone-positive { --heat-bg: var(--success-soft); --heat-edge: color-mix(in srgb, var(--success) 38%, var(--border)); --heat-foreground: var(--success); }
+html[data-theme="light"] .heatmap-tile.tone-negative { --heat-bg: var(--danger-soft); --heat-edge: color-mix(in srgb, var(--danger) 38%, var(--border)); --heat-foreground: var(--danger); }
+html[data-theme="light"] :is(.heatmap-tile.tone-neutral, .heatmap-tile.tone-unavailable) { --heat-bg: var(--surface-muted); --heat-edge: var(--border-strong); --heat-foreground: var(--foreground-secondary); }
+html[data-theme="light"] :is(.detail-chart-wrap, .chart-shell, .chart-panel, .chart-empty) { --chart-surface-border: var(--border-strong); --chart-surface: var(--surface); }
 html[data-theme] .mobile-more-menu {
   border-color: var(--border) !important;
   background: var(--surface-elevated) !important;
   color: var(--foreground) !important;
   box-shadow: var(--shadow-popover) !important;
 }
-
 html[data-theme] .mobile-more-menu a { color: var(--foreground-secondary) !important; }
 html[data-theme] .mobile-more-menu a:is(:hover, :focus-visible, .is-active) {
   background: var(--surface-hover) !important;
   color: var(--foreground) !important;
 }
-
 html[data-theme] .form-field-error { color: var(--danger) !important; }
-
 html[data-theme] :is(
   .trader-command-deck,
   .analysis-terminal,
@@ -13599,7 +13591,6 @@ html[data-theme] :is(
 ) :is(h1, h2, h3, h4, b, strong) {
   font-weight: 600 !important;
 }
-
 html[data-theme] :is(
   .trader-command-deck,
   .analysis-terminal,
@@ -13610,7 +13601,6 @@ html[data-theme] :is(
 ) :is(p, span, small, label, button, a) {
   font-weight: 500;
 }
-
 @media (prefers-reduced-motion: reduce) {
   html[data-theme] *,
   html[data-theme] *::before,
@@ -13620,7 +13610,6 @@ html[data-theme] :is(
     transition-duration: 0.01ms !important;
   }
 }
-
 /* Phase 3.4 authoritative interaction lock; this must remain last. */
 html[data-theme] :is(
   .action-btn,

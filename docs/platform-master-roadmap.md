@@ -77,14 +77,14 @@
 
 | البند | الحالة والدليل | المتبقي / القبول |
 | --- | --- | --- |
-| توحيد Market State وProvider State | موجود كأساس — `src/components/market/MarketSystemStateProvider.tsx` و`src/lib/market-state/` | تدقيق المستهلكين القدامى ومنع حالات متعارضة بين Header والكرت والصفحة. |
+| توحيد Market State وProvider State | موجود كأساس محسن في هذه الدفعة — `src/components/market/MarketSystemStateProvider.tsx` و`src/lib/market-state/`، و`/api/market/providers/health` يشتق بطاقاته من اللقطة الموحدة | تدقيق المستهلكين القدامى ومنع حالات متعارضة بين Header والكرت والصفحة، واختبار الحية لكل مصدر. |
 | توحيد Retry | موجود كأساس — `src/lib/market-state/retryCoordinator.ts` | حد محاولات/backoff واحد؛ إلغاء طلبات الشاشة السابقة وعدم مضاعفة الحصة. |
-| Loading / Error / Partial / Stale | موجود كأساس — envelope/freshness/errorClassification في market-state | اختبار كل حالة على المصادر الحية، ومنع الصفر البديل للبيانات الناقصة. |
-| تحسين Light Mode لـSFM Trader فقط | جزئي — واجهة Trader وتقارير التصميم الحالية | قبول بصري AR/EN/FR على الهاتف واللوحي وسطح المكتب؛ لا تعميم تعديل Trader على بقية المنصة. |
+| Loading / Error / Partial / Stale | موجود كأساس محسن — envelope/freshness/errorClassification و`MarketHeaderSummary` يفرق بين التحميل وتعذر تحميل الحالة والبيانات الجزئية/المخزنة | اختبار كل حالة على المصادر الحية، ومنع الصفر البديل للبيانات الناقصة. |
+| تحسين Light Mode لـSFM Trader فقط | جزئي محسن — قواعد `cinema.css` ترفع قراءة الـHeatmap والجلسات ومساحات الرسم في Light Mode فقط عبر Design Tokens | قبول بصري AR/EN/FR على الهاتف واللوحي وسطح المكتب؛ لا تعميم تعديل Trader على بقية المنصة. |
 | توحيد Design Tokens | موجود — `src/styles/tokens.css` و`docs/ui-consistency-audit.md` | متابعة الاستثناءات والدين في CSS؛ لا تكرار قيم الشكل بين الصفحات. |
-| Provider Header واحد | موجود — `src/components/market/MarketSystemStatusHeader.tsx` | حذف أي تشخيص مكرر داخل الرحلة نفسها دون إخفاء نقص البيانات. |
-| Provider Drawer | موجود — `src/components/market/ProviderDetailsDrawer.tsx` | لوحة مفاتيح/focus/RTL وأسماء مصادر وأسباب قابلة للفهم. |
-| Capability Matrix وDiagnostics | موجود — `src/lib/market-state/capabilityMatrixView.ts` وإدارة market-diagnostics | التمييز بين المهيأ والمسموح باشتراكه والمختبر فعليًا. |
+| Provider Header واحد | موجود — `src/components/market/MarketHeaderSummary.tsx`؛ أزيل المكوّن الميت المكرر في هذه الدفعة | حذف أي تشخيص مكرر داخل الرحلة نفسها دون إخفاء نقص البيانات. |
+| Provider Drawer | موجود ومحسن — `src/components/market/ProviderDetailsDrawer.tsx` وبطاقات المزود تعرض «سبب الحالة» و«ما سيحدث لاحقاً» بنص آمن | لوحة مفاتيح/focus/RTL وأسماء مصادر وأسباب قابلة للفهم. |
+| Capability Matrix وDiagnostics | موجود ومحسن — `src/lib/market-state/capabilityMatrixView.ts` وتشخيص موحد لكل حالة في `diagnostics.ts`؛ تظل التفاصيل الداخلية محجوبة عن اللقطة العامة | التمييز بين المهيأ والمسموح باشتراكه والمختبر فعليًا. |
 
 ### المرحلة 2 — UX
 

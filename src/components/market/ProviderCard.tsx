@@ -3,6 +3,7 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import { formatDateTime } from '@/lib/locale';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
+import { getProviderDiagnostic } from '@/lib/market-state/diagnostics';
 import type { ProviderProfile, ProviderRole } from '@/lib/market-state/types';
 import { PROVIDER_STATUS_ICON, PROVIDER_STATUS_TONE } from './statusPresentation';
 
@@ -24,6 +25,7 @@ export function ProviderCard({ profile }: { profile: ProviderProfile }) {
   const tone = PROVIDER_STATUS_TONE[profile.status];
   const Icon = PROVIDER_STATUS_ICON[profile.status];
   const name = traderProviderDisplayName(profile.provider) ?? profile.provider;
+  const diagnostic = getProviderDiagnostic(profile.status);
 
   const stats: Array<{ label: string; value: string }> = [];
   if (profile.latencyMs !== null) {
@@ -61,6 +63,12 @@ export function ProviderCard({ profile }: { profile: ProviderProfile }) {
             </div>
           ))}
         </dl>
+      ) : null}
+      {diagnostic ? (
+        <section className="market-provider-diagnostic" aria-label={t('market_provider_diagnostic_title')}>
+          <p><strong>{t('market_provider_diagnostic_reason')}:</strong> {t(diagnostic.reasonKey)}</p>
+          <p><strong>{t('market_provider_diagnostic_action')}:</strong> {t(diagnostic.actionKey)}</p>
+        </section>
       ) : null}
     </article>
   );

@@ -6498,6 +6498,28 @@ body :is(
   overflow-wrap: anywhere;
 }
 
+.market-provider-diagnostic {
+  display: grid;
+  gap: 5px;
+  border-inline-start: 3px solid var(--border-strong);
+  padding-inline-start: 9px;
+}
+
+.market-provider-card.tone-warning .market-provider-diagnostic { border-inline-start-color: var(--warning); }
+.market-provider-card.tone-danger .market-provider-diagnostic { border-inline-start-color: var(--danger); }
+
+.market-provider-diagnostic p {
+  margin: 0;
+  color: var(--foreground-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.market-provider-diagnostic strong {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
 .market-provider-drawer-empty {
   margin: 0;
   padding: 12px 14px;
