@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TvStripQuote } from './TvStripQuote';
@@ -10,7 +10,7 @@ import { useTvResource } from './useTvResource';
 import { hasTvPrice, tvStripCoverage } from '@/lib/markets-tv/coverage';
 
 type Props = { selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; pricedOnly?: boolean; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
-function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, selections, pricedOnly = false }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
+const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, selections, pricedOnly = false }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
   const root = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false), [page, setPage] = useState(0), [duration, setDuration] = useState(90), [paused, setPaused] = useState(false);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -63,8 +63,8 @@ function Strip({ market, active, language, token, now, onSelect, onQuote, speed 
     </div>
     <button className="tv-strip-next" aria-label={`${t('next')}: ${market.labelEn}`} onClick={next} disabled={pages === 1 || resource.loading}><ChevronRight aria-hidden="true"/></button>
   </div>;
-}
-export function TvMarketStrips(props: Props) {
+});
+export const TvMarketStrips = memo(function TvMarketStrips(props: Props) {
   const container = useRef<HTMLElement>(null);
   useEffect(() => { container.current?.scrollTo({ top: 0 }); }, [props.activeGroup, props.activeMarket]);
   const markets = props.token && props.groups.includes('watchlist') ? [...props.markets, { id: 'watchlist', group: 'watchlist' as const, labelAr: tvText('ar','watchlist'), labelEn: tvText('en','watchlist'), labelFr: tvText('fr','watchlist'), count: props.watchlistCount, status: 'directory' }] : props.markets;
@@ -77,4 +77,4 @@ export function TvMarketStrips(props: Props) {
     {!sorted.length && <p className="tv-strips-empty">{tvText(props.language,'chooseMarkets')}</p>}
     {sorted.map(market => <Strip key={market.group === 'watchlist' ? `${market.id}:${props.token}` : `${market.id}:${props.selections[market.id]?.join(',') ?? 'all'}`} {...props} speed={props.marketSpeeds?.[market.id] ?? props.speed} market={market} active={market.id === props.activeMarket || !props.activeMarket && market.group === props.activeGroup}/>)}
   </section>;
-}
+});

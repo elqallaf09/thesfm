@@ -120,10 +120,13 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const shown = quotes.slice(0, 6);
   const displayed = quotes.filter(q => q.price !== null);
   const freshCount = displayed.filter(q => ['available','delayed'].includes(quoteStatus(q, now || Date.now()))).length;
+  // The strip rows only use time for price freshness. Rounding prevents the
+  // second-by-second dashboard clock from rerendering every strip and card.
+  const stripNow = Math.floor((now || Date.now()) / 15_000) * 15_000;
   const displayLink = <a className="tv-display-link" aria-label={t(stripsOnly ? 'dashboard' : 'stripsOnly')} href={stripsOnly ? '/tv' : '/tv/strips'} onClick={event => {
     if (tvOrigin() !== window.location.origin) { event.preventDefault(); setStripsOnly(value => !value); }
   }}>{stripsOnly ? <Monitor aria-hidden="true"/> : <Rows3 aria-hidden="true"/>}<span>{t(stripsOnly ? 'dashboard' : 'stripsOnly')}</span></a>;
-  const strips = <TvMarketStrips selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || modal} markets={catalog.data?.markets || []} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={now || Date.now()} />;
+  const strips = <TvMarketStrips selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused} markets={catalog.data?.markets || []} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} />;
   return <div ref={root} data-tv-root className={`tv-screen tv-${settings.theme}${stripsOnly ? ' tv-strips-only' : ''} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     {stripsOnly ? <>
       <header className="tv-strips-toolbar" data-controls-hidden={controls.hidden}><div className="tv-strip-brand"><img src={ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="48" height="48"/><div><strong dir="ltr">THE SFM <span>MARKETS TV</span></strong><h1>{t('stripMarkets')}</h1></div></div><div className="tv-header-actions" hidden={controls.hidden}>
