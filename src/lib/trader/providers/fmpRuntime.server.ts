@@ -1,14 +1,13 @@
 import 'server-only';
 
-import { randomUUID } from 'crypto';
 import {
   applySharedFmpCooldown,
   fmpQueuedFetch as fmpQueuedFetchLocal,
   markFmpRateLimited as markFmpRateLimitedLocal,
   setFmpSharedCooldownAdapter,
 } from './fmpRuntime';
-import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
-import { acquireScanLock, releaseScanLock } from '@/lib/trader/scannerLock';
+import { getPersistentCache } from '@/lib/trader/persistentCache';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 
 type NextFetchInit = RequestInit & {
   next?: {
@@ -23,7 +22,6 @@ type SharedFmpCooldown = {
 };
 
 const FMP_SHARED_COOLDOWN_CACHE_KEY = 'market_provider_cooldown:fmp';
-const FMP_SHARED_COOLDOWN_LOCK_KEY = 'market_provider_cooldown:fmp:write';
 const FMP_SHARED_COOLDOWN_LOOKUP_TIMEOUT_MS = 300;
 const FMP_SHARED_COOLDOWN_REFRESH_MS = process.env.NODE_ENV === 'test' ? 0 : 5_000;
 
@@ -70,23 +68,25 @@ async function synchronizeSharedFmpCooldown(now = Date.now()) {
 
 function publishSharedFmpCooldown(untilMs: number) {
   void (async () => {
-    const runId = randomUUID();
-    const lock = await acquireScanLock(FMP_SHARED_COOLDOWN_LOCK_KEY, runId, 3_000);
-    if (!lock.acquired) return;
-
     try {
-      const current = await readSharedFmpCooldown();
-      const currentUntil = parsedFutureTimestamp(current?.until) ?? 0;
-      const effectiveUntil = Math.max(untilMs, currentUntil);
-      await setPersistentCache(
-        FMP_SHARED_COOLDOWN_CACHE_KEY,
-        { version: 1, until: new Date(effectiveUntil).toISOString(), reason: 'provider_rate_limited' } satisfies SharedFmpCooldown,
-        Math.max(1_000, effectiveUntil - Date.now()),
-      );
-    } finally {
-      await releaseScanLock(FMP_SHARED_COOLDOWN_LOCK_KEY, runId);
+      const admin = createServerSupabaseAdmin();
+      if (!admin) return;
+      // This RPC performs the compare-and-set in PostgreSQL. A client-side
+      // read followed by upsert can overwrite a longer Retry-After value when
+      // two serverless instances are rate-limited at the same time.
+      const { data, error } = await admin.rpc('extend_trader_cache_cooldown', {
+        p_cache_key: FMP_SHARED_COOLDOWN_CACHE_KEY,
+        p_candidate_until: new Date(untilMs).toISOString(),
+        p_reason: 'provider_rate_limited',
+      });
+      if (error || typeof data !== 'string') return;
+      const effectiveUntil = parsedFutureTimestamp(data);
+      if (effectiveUntil) applySharedFmpCooldown(effectiveUntil);
+    } catch {
+      // A local cooldown has already been applied. Shared persistence is
+      // best-effort and must not weaken that local backoff when unavailable.
     }
-  })().catch(() => undefined);
+  })();
 }
 
 setFmpSharedCooldownAdapter({

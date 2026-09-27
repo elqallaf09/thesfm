@@ -294,6 +294,29 @@ describe('getMarketSystemState', () => {
     });
   });
 
+  it('fails open to live provider probes when the optional distributed refresh lock is unavailable', async () => {
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+    acquireScanLock.mockResolvedValue({ acquired: false, unavailable: true });
+
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState();
+
+    expect(getTraderMarketCatalog).toHaveBeenCalledTimes(1);
+    expect(getProviderHealth).toHaveBeenCalledTimes(1);
+    expect(state.delivery).toMatchObject({ source: 'live', cached: false, delayed: false });
+  });
+
+  it('fails open to live provider probes when acquiring the distributed refresh lock throws', async () => {
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+    acquireScanLock.mockRejectedValue(new Error('lock store unreachable'));
+
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState();
+
+    expect(getTraderMarketCatalog).toHaveBeenCalledTimes(1);
+    expect(state.delivery).toMatchObject({ source: 'live', cached: false, delayed: false });
+  });
+
   it('bypasses a fresh persisted snapshot when an administrator requests forceFresh', async () => {
     getPersistentCache.mockResolvedValue({ generatedAt: new Date().toISOString() });
     getTraderMarketCatalog.mockResolvedValue(catalogFixture());
