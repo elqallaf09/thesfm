@@ -14,6 +14,7 @@ import {
   type NewsSourceType,
   type ProviderRegistryIssue,
 } from './types';
+import { createDfmEfsahNewsProvider } from './providers/dfmEfsah';
 import { createFinnhubNewsProvider } from './providers/finnhub';
 import { createNewsApiProvider } from './providers/newsapi';
 import { createRssNewsProvider, type RssNewsProviderConfig } from './providers/rss';
@@ -199,6 +200,159 @@ const GULF_RSS_PROVIDERS: RssNewsProviderConfig[] = [
     originalLanguage: 'ar',
     revalidateSeconds: 180,
     preserveArticleHash: true,
+  },
+  {
+    id: 'official-msx-company-disclosures',
+    name: 'Muscat Stock Exchange — Company Disclosures',
+    // MSX publishes its issuer announcements in a first-party RSS feed.
+    url: 'https://www.msx.om/rss.aspx?t=Company',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.99,
+    officialSource: true,
+    sourceNetworkId: 'msx.om',
+    supportedMarkets: ['GULF', 'OM', 'OMAN', 'oman'],
+    marketCodes: ['GULF', 'OM', 'OMAN'],
+    exchangeCodes: ['MSX'],
+    countries: ['OM'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    revalidateSeconds: 180,
+  },
+  {
+    id: 'official-msx-circulars',
+    name: 'Muscat Stock Exchange — Circulars',
+    // Circulars cover exchange notices and material market decisions.
+    url: 'https://www.msx.om/rss.aspx?t=Circulars',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.99,
+    officialSource: true,
+    sourceNetworkId: 'msx.om',
+    supportedMarkets: ['GULF', 'OM', 'OMAN', 'oman'],
+    marketCodes: ['GULF', 'OM', 'OMAN'],
+    exchangeCodes: ['MSX'],
+    countries: ['OM'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    revalidateSeconds: 180,
+  },
+  {
+    id: 'official-saudi-exchange-announcements',
+    name: 'Saudi Exchange — Issuer Announcements',
+    // Saudi Exchange does not expose a stable server-readable RSS endpoint.
+    // This feed is constrained to its first-party domain, and the parser only
+    // labels an item official when the item's publisher remains that domain.
+    url: 'https://news.google.com/rss/search?q=site%3Asaudiexchange.sa%20%28announcement%20OR%20disclosure%20OR%20financial%20results%29&hl=en&gl=SA&ceid=SA%3Aen',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.96,
+    officialSource: true,
+    officialSourceDomains: ['saudiexchange.sa'],
+    sourceNetworkId: 'saudiexchange.sa',
+    supportedMarkets: ['GULF', 'SA', 'SAUDI', 'saudi'],
+    marketCodes: ['GULF', 'SA', 'SAUDI'],
+    exchangeCodes: ['Tadawul'],
+    countries: ['SA'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    revalidateSeconds: 300,
+  },
+  {
+    id: 'official-qatar-exchange-announcements',
+    name: 'Qatar Stock Exchange — Disclosures',
+    // QSE's official disclosure records are indexed from its first-party
+    // domain; source-domain validation prevents a non-QSE result being shown
+    // as an official exchange notice.
+    url: 'https://news.google.com/rss/search?q=site%3Aqe.com.qa%20%28disclosure%20OR%20announcement%20OR%20financial%20results%29&hl=en&gl=QA&ceid=QA%3Aen',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.94,
+    officialSource: true,
+    officialSourceDomains: ['qe.com.qa'],
+    sourceNetworkId: 'qe.com.qa',
+    supportedMarkets: ['GULF', 'QA', 'QATAR', 'qatar'],
+    marketCodes: ['GULF', 'QA', 'QATAR'],
+    exchangeCodes: ['QSE'],
+    countries: ['QA'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    revalidateSeconds: 300,
+  },
+  {
+    id: 'official-bahrain-bourse-announcements',
+    name: 'Bahrain Bourse — Announcements',
+    url: 'https://news.google.com/rss/search?q=site%3Abahrainbourse.com%20%28disclosure%20OR%20announcement%20OR%20financial%20results%29&hl=en&gl=BH&ceid=BH%3Aen',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.94,
+    officialSource: true,
+    officialSourceDomains: ['bahrainbourse.com'],
+    sourceNetworkId: 'bahrainbourse.com',
+    supportedMarkets: ['GULF', 'BH', 'BAHRAIN', 'bahrain'],
+    marketCodes: ['GULF', 'BH', 'BAHRAIN'],
+    exchangeCodes: ['Bahrain Bourse'],
+    countries: ['BH'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    revalidateSeconds: 300,
+  },
+  {
+    id: 'official-adx-announcements',
+    name: 'Abu Dhabi Securities Exchange — Announcements',
+    url: 'https://news.google.com/rss/search?q=site%3Aadx.ae%20%28disclosure%20OR%20announcement%20OR%20financial%20results%29&hl=en&gl=AE&ceid=AE%3Aen',
+    sourceType: 'official_exchange',
+    priority: 1,
+    reliabilityScore: 0.93,
+    officialSource: true,
+    officialSourceDomains: ['adx.ae'],
+    sourceNetworkId: 'adx.ae',
+    supportedMarkets: ['GULF', 'ADX', 'AE', 'UAE', 'uae-adx'],
+    marketCodes: ['GULF', 'ADX', 'AE', 'UAE'],
+    exchangeCodes: ['ADX'],
+    countries: ['AE'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    eventType: 'exchange_announcement',
+    revalidateSeconds: 300,
+  },
+  {
+    id: 'rss-adx-market-news-fallback',
+    name: 'ADX Market News',
+    // A reputable-news fallback keeps the ADX panel useful if the exchange's
+    // own public results have not published a recent notice.
+    url: 'https://news.google.com/rss/search?q=%28ADX%20OR%20%22Abu%20Dhabi%20Securities%20Exchange%22%29%20%28announcement%20OR%20disclosure%20OR%20financial%20results%29&hl=en&gl=AE&ceid=AE%3Aen',
+    sourceType: 'regional_market_publication',
+    priority: 3,
+    reliabilityScore: 0.76,
+    officialSource: false,
+    sourceNetworkId: 'news.google.com',
+    supportedMarkets: ['GULF', 'ADX', 'AE', 'UAE', 'uae-adx'],
+    marketCodes: ['GULF', 'ADX', 'AE', 'UAE'],
+    exchangeCodes: ['ADX'],
+    countries: ['AE'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    eventType: 'exchange_announcement',
+    revalidateSeconds: 300,
+  },
+  {
+    id: 'rss-qatar-exchange-market-news-fallback',
+    name: 'Qatar Stock Exchange Market News',
+    url: 'https://news.google.com/rss/search?q=%22Qatar%20Stock%20Exchange%22%20%28announcement%20OR%20disclosure%20OR%20financial%20results%29&hl=en&gl=QA&ceid=QA%3Aen',
+    sourceType: 'regional_market_publication',
+    priority: 3,
+    reliabilityScore: 0.76,
+    officialSource: false,
+    sourceNetworkId: 'news.google.com',
+    supportedMarkets: ['GULF', 'QA', 'QATAR', 'qatar'],
+    marketCodes: ['GULF', 'QA', 'QATAR'],
+    exchangeCodes: ['QSE'],
+    countries: ['QA'],
+    assetTypes: ['equity', 'fund', 'bond'],
+    originalLanguage: 'en',
+    eventType: 'exchange_announcement',
+    revalidateSeconds: 300,
   },
   {
     id: 'rss-arab-news-economy',
@@ -542,6 +696,21 @@ export function buildFinancialNewsProviderRegistry(
     } catch {
       configurationIssues.push({ providerId: config.id, code: FinancialNewsProviderErrorCode.INVALID_REQUEST });
     }
+  }
+
+  // DFM exposes a public JSON disclosure endpoint rather than RSS. Register it
+  // alongside the feed providers so Gulf screens always use the exchange's
+  // first-party notices where that interface is available.
+  try {
+    const provider = createDfmEfsahNewsProvider();
+    if (seenIds.has(provider.id)) {
+      configurationIssues.push({ providerId: provider.id, code: FinancialNewsProviderErrorCode.INVALID_REQUEST });
+    } else {
+      seenIds.add(provider.id);
+      if (matchesParams(provider, params)) providers.push(provider);
+    }
+  } catch {
+    configurationIssues.push({ providerId: 'official-dfm-disclosures', code: FinancialNewsProviderErrorCode.INVALID_REQUEST });
   }
 
   const finnhubKey = cleanCredential(environment.FINNHUB_API_KEY);

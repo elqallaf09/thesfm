@@ -203,6 +203,22 @@ describe('market-news normalization and security', () => {
     expect(normalizeNewsItem(parsed.items[1]).canonicalUrl).toBe('https://boursakuwait.com.kw/ar/news/view#BK54056');
   });
 
+  it('only marks a site-restricted exchange result official when its publisher is the exchange', () => {
+    const xml = `<?xml version="1.0"?><rss><channel>
+      <item><title>Official disclosure</title><link>https://news.google.com/rss/articles/one</link><pubDate>Thu, 10 Jul 2026 10:00:00 GMT</pubDate><source url="https://www.saudiexchange.sa">Saudi Exchange</source></item>
+      <item><title>Unrelated report</title><link>https://news.google.com/rss/articles/two</link><pubDate>Thu, 10 Jul 2026 11:00:00 GMT</pubDate><source url="https://example.com">Example</source></item>
+    </channel></rss>`;
+    const parsed = parseFinancialNewsFeed(xml, {
+      providerId: 'official-saudi', providerName: 'Saudi Exchange', sourceId: 'official-saudi', sourceName: 'Saudi Exchange',
+      sourceType: 'official_exchange', sourceDomain: 'news.google.com', sourceNetworkId: 'saudiexchange.sa',
+      sourceReliability: 0.96, sourcePriority: 1, isOfficial: true, officialSourceDomains: ['saudiexchange.sa'],
+    }, NOW);
+
+    expect(parsed.items.map(item => item.isOfficial)).toEqual([true, false]);
+    expect(parsed.items[0].verificationStatus).toBe('official');
+    expect(parsed.items[1].sourceType).toBe('public_rss');
+  });
+
   it('requires every custom RSS hostname to be explicitly allowlisted', () => {
     const custom = JSON.stringify([{ id: 'issuer', name: 'Issuer IR', url: 'https://ir.example.com/feed.xml' }]);
     const rejected = buildFinancialNewsProviderRegistry({}, { FINANCIAL_NEWS_RSS_FEEDS_JSON: custom });
@@ -232,6 +248,19 @@ describe('market-news normalization and security', () => {
     ]));
     expect(boursa.every(provider => provider.officialSource && provider.sourceType === 'official_exchange')).toBe(true);
     expect(boursa.every(provider => provider.supportedMarkets.includes('KUWAIT'))).toBe(true);
+  });
+
+  it.each([
+    ['saudi', 'official-saudi-exchange-announcements'],
+    ['kuwait', 'official-boursa-kuwait-disclosures'],
+    ['oman', 'official-msx-company-disclosures'],
+    ['bahrain', 'official-bahrain-bourse-announcements'],
+    ['uae-dfm', 'official-dfm-disclosures'],
+    ['uae-adx', 'official-adx-announcements'],
+    ['qatar', 'official-qatar-exchange-announcements'],
+  ])('covers the %s market with an exchange-specific provider', (market, providerId) => {
+    const providers = buildFinancialNewsProviderRegistry({ marketCodes: [market] }).providers;
+    expect(providers.map(provider => provider.id)).toContain(providerId);
   });
 });
 

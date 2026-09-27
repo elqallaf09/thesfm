@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 
 import {
   type FinancialAssetType,
+  type FinancialEventType,
   type NewsSourceType,
   type NormalizedNewsItem,
 } from './types';
@@ -39,6 +40,9 @@ export type RssFeedMetadata = {
   currencies?: string[];
   /** Keep a stable fragment when the source uses it as the article identifier. */
   preserveArticleHash?: boolean;
+  /** Domains that may qualify individual feed items as first-party exchange news. */
+  officialSourceDomains?: string[];
+  eventType?: FinancialEventType;
 };
 
 export type RssFeedRejectionReason = 'missing_title' | 'missing_or_unsafe_url' | 'missing_or_invalid_date';
@@ -118,13 +122,20 @@ function sourceAttribution(block: string, metadata: RssFeedMetadata) {
   const metadataNetwork = publisherNetworkKey(metadata.sourceNetworkId ?? metadata.sourceDomain);
   const distinctPublisher = Boolean(sourceNetworkId && sourceNetworkId !== metadataNetwork);
   const evidence = distinctPublisher ? publisherEvidenceProfile(sourceDomain) : null;
+  const allowedOfficialDomains = (metadata.officialSourceDomains ?? [metadata.sourceDomain])
+    .map(value => publisherNetworkKey(value))
+    .filter(Boolean);
+  const sourceNetwork = publisherNetworkKey(sourceDomain ?? metadata.sourceDomain);
+  const isOfficial = metadata.isOfficial
+    && allowedOfficialDomains.some(domain => sourceNetwork === domain || sourceNetwork.endsWith(`.${domain}`));
   return {
     sourceId: distinctPublisher && sourceNetworkId ? publisherSourceId(sourceNetworkId) : metadata.sourceId,
     sourceName,
     sourceDomain,
     sourceNetworkId,
-    sourceType: evidence?.sourceType ?? metadata.sourceType,
-    sourceReliability: evidence?.reliability ?? metadata.sourceReliability,
+    sourceType: isOfficial ? metadata.sourceType : (metadata.isOfficial ? 'public_rss' : (evidence?.sourceType ?? metadata.sourceType)),
+    sourceReliability: isOfficial ? metadata.sourceReliability : (evidence?.reliability ?? Math.min(metadata.sourceReliability, 0.75)),
+    isOfficial,
   };
 }
 
@@ -252,7 +263,7 @@ export function parseFinancialNewsFeed(
       sourceNetwork: attribution.sourceNetworkId,
       sourceReliability: attribution.sourceReliability,
       sourcePriority: metadata.sourcePriority,
-      isOfficial: metadata.isOfficial,
+      isOfficial: attribution.isOfficial,
       publishedAt,
       updatedAt: updatedAt && updatedAt !== publishedAt ? updatedAt : null,
       fetchedAt,
@@ -265,7 +276,7 @@ export function parseFinancialNewsFeed(
       companyNames: unique(metadata.companyNames),
       assetTypes: unique(metadata.assetTypes),
       currencies: unique(metadata.currencies).map(currency => currency.toUpperCase()),
-      eventType: 'unknown',
+      eventType: metadata.eventType ?? 'unknown',
       relevanceScore: 0,
       importanceScore: 0,
       entityConfidenceScore: metadata.symbols?.length ? 0.65 : 0,
@@ -276,7 +287,7 @@ export function parseFinancialNewsFeed(
       impactDirection: 'unknown',
       impactHorizon: 'unknown',
       impactReason: null,
-      verificationStatus: metadata.isOfficial ? 'official' : 'single_source',
+      verificationStatus: attribution.isOfficial ? 'official' : 'single_source',
       corroboratingSourceCount: 0,
       duplicateGroupId: null,
       contentHash,
