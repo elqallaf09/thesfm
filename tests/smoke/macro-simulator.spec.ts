@@ -28,6 +28,7 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     const validForm = () => form.evaluate(element => (element as HTMLFormElement).checkValidity());
     await expect(lab).toHaveCount(1);
     await expect(lab).toBeVisible();
+    await expect(lab).toHaveAttribute('data-hydrated', 'true');
     await expect(lab).toHaveAttribute('lang', locale);
     await expect(lab).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
     await expect(lab.getByText(t('disclaimer'), { exact: true })).toBeVisible();
@@ -42,7 +43,9 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
       await expect(markets).toHaveCount(1);
       await expect(markets.locator('article')).toHaveCount(ASSETS.length);
       await expect(results.getByText(t('noProbability'), { exact: true })).toBeVisible();
+      const comparison = lab.getByRole('heading', { name: t('comparison'), exact: true });
       await button('pin').click();
+      await expect(comparison).toBeVisible();
       const goldWeight = lab.getByLabel(`${assetLabels.gold[locale]} (%)`, { exact: true });
       await goldWeight.fill(String(defaultInput().weights.gold + 1));
       await expect(run).toBeDisabled();
@@ -53,7 +56,7 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
       await expect(button('pin')).toBeDisabled();
       await run.click();
       await expect(lab.getByText(t('stale'), { exact: true })).toHaveCount(0);
-      await expect(lab.getByRole('heading', { name: t('comparison'), exact: true })).toBeVisible();
+      await expect(comparison).toBeVisible();
       await lab.getByLabel(t('capital'), { exact: true }).fill('200000');
       await run.click();
       await expect(lab.getByText(t('incomparable'), { exact: true })).toBeVisible();

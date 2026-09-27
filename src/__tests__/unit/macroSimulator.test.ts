@@ -74,6 +74,21 @@ describe('macro simulation educational model', () => {
     expect(() => readSnapshot(JSON.stringify({ version: 999, model: MODEL_VERSION, input }))).toThrow('version');
     expect(() => readSnapshot(JSON.stringify({ version: 1, model: MODEL_VERSION, input: { ...input, capital: 0 } }))).toThrow();
   });
+  it('rejects imported values that the native controls cannot run', () => {
+    const versioned = (input: unknown) => JSON.stringify({ version: 1, model: MODEL_VERSION, input });
+    const rate = defaultInput(); rate.shocks[0].magnitude = 51;
+    expect(() => readSnapshot(versioned(rate))).toThrow('invalid');
+    const rateExpectation = defaultInput(); rateExpectation.shocks[0].expected = 51;
+    expect(() => readSnapshot(versioned(rateExpectation))).toThrow('invalid');
+    const oil = template('supply'); oil.shocks[0].magnitude = 13;
+    expect(() => readSnapshot(versioned(oil))).toThrow('invalid');
+    const priced = template('supply'); priced.shocks[0].pricedIn = 0.5;
+    expect(() => readSnapshot(versioned(priced))).toThrow('invalid');
+    const hiddenExpected = template('supply'); hiddenExpected.shocks[0].expected = 0.5;
+    expect(readSnapshot(versioned(hiddenExpected))).toEqual(hiddenExpected);
+    const hiddenPricedIn = defaultInput(); hiddenPricedIn.shocks[0].pricedIn = 0.5;
+    expect(readSnapshot(versioned(hiddenPricedIn))).toEqual(hiddenPricedIn);
+  });
   it('is deterministic, does not mutate input, and stays finite at supported extremes', () => {
     const input = defaultInput(); const original = JSON.stringify(input);
     expect(simulate(input)).toEqual(simulate(input)); expect(JSON.stringify(input)).toBe(original);

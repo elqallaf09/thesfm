@@ -40,8 +40,9 @@ function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid');
   return value as Record<string, unknown>;
 }
-function number(value: unknown, min: number, max: number): number {
+function number(value: unknown, min: number, max: number, step?: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) throw new Error('invalid');
+  if (step !== undefined && Math.abs((value - min) / step - Math.round((value - min) / step)) > 1e-9) throw new Error('invalid');
   return value;
 }
 function text(value: unknown, max: number): string {
@@ -58,8 +59,9 @@ export function parseInput(value: unknown): Input {
   if (!Array.isArray(raw.shocks) || raw.shocks.length < 1 || raw.shocks.length > 4) throw new Error('invalid');
   const shocks = raw.shocks.map((item): Shock => {
     const shock = object(item); const kind = oneOf(shock.kind, EVENT_KINDS); const limits = LIMITS[kind];
-    return { kind, magnitude: number(shock.magnitude, limits.min, limits.max),
-      expected: number(shock.expected, -200, 200), pricedIn: number(shock.pricedIn, 0, 100) };
+    return { kind, magnitude: number(shock.magnitude, limits.min, limits.max, limits.step),
+      expected: number(shock.expected, -200, 200, kind === 'rates' ? 25 : undefined),
+      pricedIn: number(shock.pricedIn, 0, 100, kind === 'rates' ? undefined : 1) };
   });
   if (new Set(shocks.map(s => s.kind)).size !== shocks.length) throw new Error('duplicate');
   const allocation = Object.fromEntries(ASSETS.map(id => [id, number(weights[id], 0, 100)])) as Record<Asset, number>;
