@@ -1,0 +1,40 @@
+name: Macro browser failure diagnostics
+on:
+  push:
+    branches: [diagnostics/macro-browser-failures]
+permissions:
+  contents: read
+  actions: read
+  checks: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Summarize existing failed jobs without rerunning tests
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          const repo = 'elqallaf09/thesfm';
+          const headers = { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+          const clean = s => s.replace(/\u001b\[[0-9;]*m/g, '').replace(/^\d{4}-\d{2}-\d{2}T\S+\s*/, '').replace(/https?:\/\/\S+/g, '[url]').slice(0, 700);
+          for (const id of [108483952589, 108490869526]) {
+            const res = await fetch(`https://api.github.com/repos/${repo}/actions/jobs/${id}/logs`, { headers, signal: AbortSignal.timeout(45000) });
+            if (!res.ok) throw new Error(`Job ${id}: HTTP ${res.status}`);
+            const lines = (await res.text()).split('\n').map(clean);
+            const markers = lines.map((line, index) => /\d+\) \[.*\].*›/.test(line) ? index : -1).filter(index => index >= 0);
+            const selected = [];
+            for (const index of markers.slice(-16)) {
+              selected.push(lines[index]);
+              for (const line of lines.slice(index + 1, index + 24)) {
+                if (/Error:|Timeout|timeout|Expected:|Received:|Locator:|waiting for|Call log:|\.spec\.ts:\d+|toBe|toHave/.test(line)) selected.push(line);
+              }
+            }
+            if (!selected.length) selected.push(...lines.filter(line => /macro-simulator|Error:|failed|Test timeout/.test(line)).slice(-35));
+            const body = `JOB ${id}\n${selected.join('\n').slice(0, 12500)}\n`;
+            console.log(body);
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n\n\`\`\`text\n${body}\`\`\`\n`);
+          }
+          NODE
