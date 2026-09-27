@@ -59,6 +59,7 @@ export type RssNewsProviderConfig = {
   revalidateSeconds?: number;
   timeoutMs?: number;
   maxBytes?: number;
+  preserveArticleHash?: boolean;
 };
 
 function overlap(requested: string[] | undefined, supported: string[]) {
@@ -203,6 +204,7 @@ export class RssFinancialNewsProvider implements FinancialNewsProvider {
       companyNames: this.config.companyNames,
       assetTypes: this.config.assetTypes,
       currencies: this.config.currencies,
+      preserveArticleHash: this.config.preserveArticleHash,
     };
   }
 
@@ -219,8 +221,9 @@ export class RssFinancialNewsProvider implements FinancialNewsProvider {
         cache: params.forceRefresh ? 'no-store' : undefined,
         revalidateSeconds: params.forceRefresh ? undefined : (this.config.revalidateSeconds ?? 300),
         headers: {
+          // Keep the runtime's default Fetch user agent. Boursa Kuwait's
+          // official RSS endpoints rely on that accepted request profile.
           accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9',
-          'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',
         },
       });
       if (!/<(?:rss|feed|rdf:RDF)\b/i.test(response.text)) {

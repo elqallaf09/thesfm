@@ -51,7 +51,10 @@ function ingestionBatches(): NewsFetchParams[] {
     { ...common, marketCodes: ['global', 'US'], query: 'financial markets stocks economy' },
     { ...common, marketCodes: ['europe'], countries: ['GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'CH'], query: 'European markets OR European stocks OR ECB OR eurozone economy' },
     { ...common, marketCodes: ['crypto'], assetTypes: ['crypto'], query: 'cryptocurrency markets regulation ETF' },
-    { ...common, marketCodes: ['gulf'], countries: ['KW', 'SA', 'AE', 'QA', 'BH', 'OM'], query: 'stocks OR market OR earnings OR disclosures OR economy OR أسهم OR السوق OR أرباح OR إفصاح OR الاقتصاد OR شركات OR بورصة' },
+    // Market scope selects the right providers. A generic text query here
+    // would discard official issuer notices whose titles do not contain our
+    // chosen keywords (for example a property purchase announcement).
+    { ...common, marketCodes: ['gulf'], countries: ['KW', 'SA', 'AE', 'QA', 'BH', 'OM'] },
   ];
 }
 
