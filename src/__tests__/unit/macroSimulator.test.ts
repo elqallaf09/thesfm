@@ -68,6 +68,18 @@ describe('macro simulation educational model', () => {
     expect(() => parseInput({ ...defaultInput(), shocks: [] })).toThrow();
     expect(() => parseInput({ ...defaultInput(), regime: 'unknown' })).toThrow();
   });
+  it('rejects imported shocks that the native numeric controls cannot represent', () => {
+    const invalidSnapshot = (input: ReturnType<typeof defaultInput>) => JSON.stringify({ version: 1, model: MODEL_VERSION, input });
+    const oil = template('supply'); oil.shocks[0].magnitude = 13;
+    expect(() => parseInput(oil)).toThrow('invalid');
+    expect(() => readSnapshot(invalidSnapshot(oil))).toThrow('invalid');
+    const rateMagnitude = defaultInput(); rateMagnitude.shocks[0].magnitude = 51;
+    expect(() => parseInput(rateMagnitude)).toThrow('invalid');
+    const rateExpectation = defaultInput(); rateExpectation.shocks[0].expected = 51;
+    expect(() => parseInput(rateExpectation)).toThrow('invalid');
+    const pricedIn = template('supply'); pricedIn.shocks[0].pricedIn = 12.5;
+    expect(() => parseInput(pricedIn)).toThrow('invalid');
+  });
   it('round-trips only versioned validated assumptions, never imported outputs', () => {
     const input = template('compound'); expect(readSnapshot(snapshot(input))).toEqual(input);
     expect(() => readSnapshot('{')).toThrow(); expect(() => readSnapshot('x'.repeat(20001))).toThrow();
