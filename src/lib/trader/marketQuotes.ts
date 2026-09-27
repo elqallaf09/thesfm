@@ -36,12 +36,11 @@ import {
 import { normalizeTraderSymbolMetadata, type TraderSymbolMetadataDiagnostics } from '@/lib/trader/marketMetadata';
 import {
   FmpRateLimitError,
-  fmpQueuedFetch,
   getFmpRuntimeStatus,
   isFmpRateLimited,
   markFmpCacheAvailable,
-  markFmpRateLimited,
 } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch, markFmpRateLimited } from '@/lib/trader/providers/fmpRuntime.server';
 import {
   buildMultiFactorRecommendation,
   UNAVAILABLE_NEWS_SENTIMENT,

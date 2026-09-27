@@ -166,7 +166,7 @@ type DividendEvent = {
 type DividendCalendarProviderStatus = {
   configured: boolean;
   provider: 'finnhub' | 'fmp' | null;
-  status: 'available' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
+  status: 'unknown' | 'not_configured' | 'success' | 'provider_error' | 'rate_limited';
   finnhubConfigured?: boolean;
   fmpConfigured?: boolean;
   lastFetchStatus?: string | null;

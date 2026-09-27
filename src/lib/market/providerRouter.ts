@@ -49,7 +49,7 @@ export type AssetClass =
   | 'etf'     // Exchange-traded funds
   | 'other';  // Fallback
 
-type ProviderKey = 'twelvedata' | 'eodhd' | 'fmp' | 'yahoo' | 'finnhub';
+type ProviderKey = 'twelvedata' | 'eodhd' | 'yahoo';
 
 // First provider is tried first; sequential fallback on failure or bad data.
 const PROVIDER_PRIORITY: Record<AssetClass, ProviderKey[]> = {
@@ -279,9 +279,7 @@ function isConfigured(provider: ProviderKey): boolean {
   switch (provider) {
     case 'twelvedata': return isTwelveDataConfigured();
     case 'eodhd':      return isEodhdConfigured();
-    case 'fmp':        return Boolean(process.env.FMP_API_KEY?.trim());
     case 'yahoo':      return true;  // Always available — no API key required
-    case 'finnhub':    return Boolean(process.env.FINNHUB_API_KEY?.trim());
   }
 }
 
@@ -412,49 +410,6 @@ async function fetchViaYahoo(symbol: string): Promise<RouterQuote | null> {
 }
 
 
-async function fetchViaFmp(symbol: string): Promise<RouterQuote | null> {
-  const apiKey = process.env.FMP_API_KEY?.trim();
-  if (!apiKey) return null;
-  try {
-    const url = `https://financialmodelingprep.com/api/v3/quote/${encodeURIComponent(symbol)}?apikey=${apiKey}`;
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) {
-      logDiag('warn', 'fmp_http_error', { symbol, status: res.status });
-      return null;
-    }
-    type FmpQuote = {
-      symbol?: string; name?: string; exchange?: string;
-      price?: number; currency?: string;
-      change?: number; changesPercentage?: number; timestamp?: number;
-    };
-    const data = await res.json() as FmpQuote[];
-    const q = Array.isArray(data) ? data[0] : null;
-    if (!q || !isValidPrice(q.price)) return null;
-    if (!isValidChangePercent(q.changesPercentage)) {
-      logDiag('warn', 'fmp_invalid_change_percent', { symbol });
-      return null;
-    }
-    return normalize(symbol, {
-      name:          q.name,
-      market:        q.exchange,
-      price:         q.price!,
-      currency:      q.currency ?? 'USD',
-      change:        q.change ?? null,
-      changePercent: q.changesPercentage ?? null,
-      lastUpdated:   q.timestamp ? new Date(q.timestamp * 1000).toISOString() : new Date().toISOString(),
-    });
-  } catch (err) {
-    logDiag('warn', 'fmp_fetch_error', {
-      symbol,
-      message: err instanceof Error ? err.message : String(err),
-    });
-    return null;
-  }
-}
-
 // ─── Batch helpers ────────────────────────────────────────────────────────────
 
 async function batchViaTwelveData(
@@ -502,47 +457,6 @@ async function batchViaEodhd(
   return result;
 }
 
-async function batchViaFmp(symbols: string[]): Promise<Map<string, RouterQuote>> {
-  const apiKey = process.env.FMP_API_KEY?.trim();
-  const result = new Map<string, RouterQuote>();
-  if (!apiKey || symbols.length === 0) return result;
-  try {
-    const joined = symbols.map(encodeURIComponent).join(',');
-    const url = `https://financialmodelingprep.com/api/v3/quote/${joined}?apikey=${apiKey}`;
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!res.ok) return result;
-    type FmpQuote = {
-      symbol?: string; name?: string; exchange?: string;
-      price?: number; currency?: string;
-      change?: number; changesPercentage?: number; timestamp?: number;
-    };
-    const data = await res.json() as FmpQuote[];
-    if (!Array.isArray(data)) return result;
-    for (const q of data) {
-      if (!q.symbol || !isValidPrice(q.price)) continue;
-      if (!isValidChangePercent(q.changesPercentage)) continue;
-      result.set(q.symbol.toUpperCase(), normalize(q.symbol, {
-        name:          q.name,
-        market:        q.exchange,
-        price:         q.price!,
-        currency:      q.currency ?? 'USD',
-        change:        q.change ?? null,
-        changePercent: q.changesPercentage ?? null,
-        lastUpdated:   q.timestamp ? new Date(q.timestamp * 1000).toISOString() : new Date().toISOString(),
-      }));
-    }
-  } catch (err) {
-    logDiag('warn', 'fmp_batch_error', {
-      count: symbols.length,
-      message: err instanceof Error ? err.message : String(err),
-    });
-  }
-  return result;
-}
-
 // ─── Main single-symbol router ────────────────────────────────────────────────
 
 /**
@@ -585,8 +499,6 @@ export async function routeQuote(
         case 'twelvedata': quote = await fetchViaTwelveData(sym, assetClass);               break;
         case 'eodhd':      quote = await fetchViaEodhd(sym, assetClass, options.exchange);  break;
         case 'yahoo':      quote = await fetchViaYahoo(sym);                                break;
-        case 'fmp':        quote = await fetchViaFmp(sym);                                  break;
-        case 'finnhub':    quote = null; break; // reserved
       }
     } catch (error) {
       const failure = classifyRuntimeFailure(error);

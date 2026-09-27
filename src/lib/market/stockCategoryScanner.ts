@@ -4,7 +4,7 @@ import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { getStockCategoryConfig, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
 import { screenGrowthStocks } from '@/lib/market/growthStockScreener';
 import { fetchTraderQuotes, type TraderQuote } from '@/lib/trader/marketQuotes';
-import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime.server';
 
 const FMP_STABLE_BASE = 'https://financialmodelingprep.com/stable';
 const US_EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX'] as const;

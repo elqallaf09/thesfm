@@ -79,11 +79,9 @@ export type ProviderHealthLike = {
 
 /**
  * Cheap, non-network status for a single provider. FMP and Trading Economics use their existing
- * lightweight in-memory trackers (no network call). The other quote/data providers default to a
- * configured-key check (cheap) unless live `healthResults` (from marketDataProviders.ts's
- * healthCheck(), which does issue real network probes) are explicitly supplied by the caller —
- * callers should only fetch those when a live probe was actually requested (forceFresh), to keep
- * this aggregation cheap on the hot path.
+ * lightweight in-memory trackers (no network call). The other quote/data providers remain
+ * explicitly unknown until live `healthResults` (from marketDataProviders.ts's healthCheck()) are
+ * supplied by the caller. A configured key authorizes an attempt; it does not prove reachability.
  */
 export function getProviderCapabilityStatus(
   provider: MarketProviderId,
@@ -101,7 +99,8 @@ export function getProviderCapabilityStatus(
   }
 
   if (provider === 'tradingeconomics') {
-    return normalizeProviderConnectionStatus({ configured: Boolean(cleanEnv(process.env.TRADING_ECONOMICS_API_KEY)) });
+    const configured = Boolean(cleanEnv(process.env.TRADING_ECONOMICS_API_KEY));
+    return normalizeProviderConnectionStatus({ configured, status: configured ? 'unknown' : 'not_configured' });
   }
 
   const liveResult = options.healthResults?.find(result => normalizeMarketDataProviderName(result.provider) === provider);
@@ -119,7 +118,7 @@ export function getProviderCapabilityStatus(
     newsapi: process.env.NEWS_API_KEY,
   };
   const configured = Boolean(cleanEnv(envKeyByProvider[provider]));
-  return normalizeProviderConnectionStatus({ configured, status: configured ? 'degraded' : 'not_configured' });
+  return normalizeProviderConnectionStatus({ configured, status: configured ? 'unknown' : 'not_configured' });
 }
 
 /**

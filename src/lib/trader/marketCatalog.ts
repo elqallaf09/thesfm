@@ -30,10 +30,10 @@ import {
 } from '@/lib/trader/fundTypes';
 import {
   FmpRateLimitError,
-  fmpQueuedFetch,
   getFmpRuntimeStatus,
   markFmpCacheAvailable,
 } from '@/lib/trader/providers/fmpRuntime';
+import { fmpQueuedFetch, synchronizeFmpSharedCooldown } from '@/lib/trader/providers/fmpRuntime.server';
 import { getBundledUsSymbolCatalog } from '@/lib/server/usSymbolCatalog';
 
 export type TraderAssetType = 'stock' | 'crypto' | 'forex' | 'commodity' | 'index' | 'fund';
@@ -96,7 +96,7 @@ export type ProviderCapability = {
   provider: TraderQuoteProvider;
   configured: boolean;
   healthy: boolean;
-  status: 'healthy' | 'rate_limited' | 'not_configured' | 'degraded' | 'provider_error';
+  status: 'healthy' | 'rate_limited' | 'not_configured' | 'degraded' | 'provider_error' | 'unknown';
   rateLimited: boolean;
   lastSuccessfulFetch: string | null;
   lastError: string | null;
@@ -945,7 +945,8 @@ function capabilityMatrix(cacheAvailable = false) {
     provider,
     configured,
     healthy: false,
-    status: configured ? 'degraded' : 'not_configured',
+    // A configured key permits a request but does not prove availability.
+    status: configured ? 'unknown' : 'not_configured',
     rateLimited: false,
     lastSuccessfulFetch: null,
     lastError: configured ? null : `${provider}_not_configured`,
@@ -993,13 +994,13 @@ function capabilityMatrix(cacheAvailable = false) {
       supportsDividends: true,
       supportsIpos: true,
       supportsEconomicCalendar: true,
-      reason: fmpConfigured ? fmpStatus.lastError : 'fmp_not_configured',
+      reason: !fmpConfigured ? 'fmp_not_configured' : fmpStatus.lastError ?? (fmpStatus.status === 'unknown' ? 'health_not_measured' : null),
     },
     yahoo: {
       provider: 'yahoo',
       configured: true,
       healthy: false,
-      status: 'degraded',
+      status: 'unknown',
       rateLimited: false,
       lastSuccessfulFetch: null,
       lastError: null,
@@ -1047,15 +1048,38 @@ function catalogCacheKey(options: { includeFmpDiscovery?: boolean; marketId?: st
 }
 
 export async function getTraderMarketCatalog(options: { forceFresh?: boolean; includeFmpDiscovery?: boolean; marketId?: string | null } = {}): Promise<TraderMarketCatalog> {
+  // Sync the shared FMP cooldown so cached metadata cannot imply a live provider.
+  await synchronizeFmpSharedCooldown();
   const now = Date.now();
   const key = catalogCacheKey(options);
   const cached = catalogCache.get(key);
   if (!options.forceFresh && cached && cached.expiresAt > now) {
+    const fmpRuntime = getFmpRuntimeStatus(Boolean(cleanEnv(process.env.FMP_API_KEY)), true);
     return {
       ...cached.value,
       diagnostics: {
         ...cached.value.diagnostics,
         cacheStatus: 'hit',
+        summary: {
+          ...cached.value.diagnostics.summary,
+          skippedDueToRateLimit: fmpRuntime.skippedDueToRateLimit,
+          fmpStatus: fmpRuntime.status,
+        },
+      },
+      capabilityMatrix: {
+        ...cached.value.capabilityMatrix,
+        fmp: {
+          ...cached.value.capabilityMatrix.fmp,
+          configured: fmpRuntime.configured,
+          healthy: fmpRuntime.healthy,
+          status: fmpRuntime.status,
+          rateLimited: fmpRuntime.rateLimited,
+          lastSuccessfulFetch: fmpRuntime.lastSuccessfulFetch,
+          lastError: fmpRuntime.lastError,
+          nextRetryAt: fmpRuntime.nextRetryAt,
+          cacheAvailable: fmpRuntime.cacheAvailable,
+          reason: !fmpRuntime.configured ? 'fmp_not_configured' : fmpRuntime.lastError ?? (fmpRuntime.status === 'unknown' ? 'health_not_measured' : null),
+        },
       },
     };
   }

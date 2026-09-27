@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
+import { clearTraderMarketCatalogCache, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { __resetTraderQuoteCacheForTests, fetchTraderQuotesDetailed } from '@/lib/trader/marketQuotes';
 import { __resetFmpRuntimeForTests } from '@/lib/trader/providers/fmpRuntime';
+import { __resetFmpServerRuntimeForTests } from '@/lib/trader/providers/fmpRuntime.server';
 
 function clearProviderEnvs() {
   vi.stubEnv('FMP_API_KEY', '');
@@ -13,7 +14,9 @@ function clearProviderEnvs() {
 }
 
 afterEach(() => {
+  clearTraderMarketCatalogCache();
   __resetFmpRuntimeForTests();
+  __resetFmpServerRuntimeForTests();
   __resetTraderQuoteCacheForTests();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -54,6 +57,25 @@ describe('trader provider rate-limit protection', () => {
     expect(catalog.diagnostics.reason).toBe('provider_rate_limited');
     expect(catalog.capabilityMatrix.fmp.status).toBe('rate_limited');
     expect(JSON.stringify(catalog.diagnostics.failedSymbols)).not.toContain('http_429');
+  });
+
+  it('keeps cached catalog metadata but refreshes its FMP health from an active shared cooldown', async () => {
+    clearProviderEnvs();
+    vi.stubEnv('FMP_API_KEY', 'test-fmp-key');
+
+    await getTraderMarketCatalog({ forceFresh: true });
+    const { markFmpRateLimited } = await import('@/lib/trader/providers/fmpRuntime');
+    markFmpRateLimited(new Response(null, { headers: { 'retry-after': '60' } }));
+
+    const catalog = await getTraderMarketCatalog();
+
+    expect(catalog.diagnostics.cacheStatus).toBe('hit');
+    expect(catalog.diagnostics.summary.fmpStatus).toBe('rate_limited');
+    expect(catalog.capabilityMatrix.fmp).toMatchObject({
+      healthy: false,
+      rateLimited: true,
+      status: 'rate_limited',
+    });
   });
 
   it('returns stale quote cache with cached data quality when FMP becomes rate-limited', async () => {

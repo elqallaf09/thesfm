@@ -8,11 +8,19 @@ vi.mock('@/lib/server/adminAccess', () => ({
 
 function buildQueryChain(overrides: {
   insertError?: { code: string } | null;
-  selectData?: { payload: unknown; expires_at: string } | null;
+  selectData?: { payload: unknown; expires_at: string; updated_at?: string } | null;
   updateError?: { code: string } | null;
+  updateData?: Array<{ cache_key: string }>;
 } = {}) {
   const calls: string[] = [];
-  const chain = {
+  const chain: {
+    insert: ReturnType<typeof vi.fn>;
+    select: ReturnType<typeof vi.fn>;
+    eq: ReturnType<typeof vi.fn>;
+    maybeSingle: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  } = {
     insert: vi.fn(async () => {
       calls.push('insert');
       return { error: overrides.insertError ?? null };
@@ -23,19 +31,20 @@ function buildQueryChain(overrides: {
     update: vi.fn(() => chain),
     delete: vi.fn(() => chain),
   };
-  // update(...).eq(...) must resolve to { error }
-  chain.update = vi.fn(() => ({
-    eq: vi.fn(async () => {
+  const updateResult = {} as { eq: ReturnType<typeof vi.fn>; select: ReturnType<typeof vi.fn> };
+  updateResult.eq = vi.fn(() => updateResult);
+  updateResult.select = vi.fn(async () => {
       calls.push('update');
-      return { error: overrides.updateError ?? null };
-    }),
-  })) as unknown as typeof chain.update;
-  chain.delete = vi.fn(() => ({
-    eq: vi.fn(async () => {
+      return { data: overrides.updateData ?? [{ cache_key: 'scanner:lock:US' }], error: overrides.updateError ?? null };
+    });
+  chain.update = vi.fn(() => updateResult);
+  const deleteResult = {} as { eq: ReturnType<typeof vi.fn>; then: (resolve: (value: { error: null }) => unknown) => Promise<unknown> };
+  deleteResult.eq = vi.fn(() => deleteResult);
+  deleteResult.then = (resolve: (value: { error: null }) => unknown) => {
       calls.push('delete');
-      return { error: null };
-    }),
-  })) as unknown as typeof chain.delete;
+      return Promise.resolve({ error: null }).then(resolve);
+  };
+  chain.delete = vi.fn(() => deleteResult);
   return { chain, calls };
 }
 
@@ -89,6 +98,20 @@ describe('acquireScanLock', () => {
     expect(calls).toContain('update');
   });
 
+  it('does not acquire a stale lease when another instance changed it before the compare-and-set update', async () => {
+    const past = new Date(Date.now() - 60_000).toISOString();
+    const { chain } = buildQueryChain({
+      insertError: { code: '23505' },
+      selectData: { payload: { runId: 'crashed-run', lockedAt: past }, expires_at: past },
+      updateData: [],
+    });
+    createServerSupabaseAdmin.mockReturnValue({ from: () => chain });
+
+    const { acquireScanLock } = await import('@/lib/trader/scannerLock');
+    const result = await acquireScanLock('scanner:lock:US', 'run-6', 60_000);
+    expect(result.acquired).toBe(false);
+  });
+
   it('fails open (acquires) when Supabase is not configured, so local/dev never deadlocks', async () => {
     createServerSupabaseAdmin.mockReturnValue(null);
     const { acquireScanLock } = await import('@/lib/trader/scannerLock');
@@ -100,7 +123,7 @@ describe('acquireScanLock', () => {
 describe('releaseScanLock', () => {
   it('deletes the lock row only when it still belongs to this run', async () => {
     const { chain, calls } = buildQueryChain({
-      selectData: { payload: { runId: 'run-5', lockedAt: new Date().toISOString() }, expires_at: new Date().toISOString() },
+      selectData: { payload: { runId: 'run-5', lockedAt: new Date().toISOString() }, expires_at: new Date().toISOString(), updated_at: new Date().toISOString() },
     });
     createServerSupabaseAdmin.mockReturnValue({ from: () => chain });
 
@@ -111,7 +134,7 @@ describe('releaseScanLock', () => {
 
   it('does not delete a lock row owned by a different run', async () => {
     const { chain, calls } = buildQueryChain({
-      selectData: { payload: { runId: 'someone-else', lockedAt: new Date().toISOString() }, expires_at: new Date().toISOString() },
+      selectData: { payload: { runId: 'someone-else', lockedAt: new Date().toISOString() }, expires_at: new Date().toISOString(), updated_at: new Date().toISOString() },
     });
     createServerSupabaseAdmin.mockReturnValue({ from: () => chain });
 
