@@ -10,6 +10,7 @@ import {
   FinancialNewsProviderError,
   FinancialNewsProviderErrorCode,
   type FinancialAssetType,
+  type FinancialEventType,
   type FinancialNewsProvider,
   type NewsFetchParams,
   type NewsSearchParams,
@@ -60,6 +61,9 @@ export type RssNewsProviderConfig = {
   timeoutMs?: number;
   maxBytes?: number;
   preserveArticleHash?: boolean;
+  /** Domains that are allowed to retain first-party exchange attribution per item. */
+  officialSourceDomains?: string[];
+  eventType?: FinancialEventType;
 };
 
 function overlap(requested: string[] | undefined, supported: string[]) {
@@ -205,6 +209,8 @@ export class RssFinancialNewsProvider implements FinancialNewsProvider {
       assetTypes: this.config.assetTypes,
       currencies: this.config.currencies,
       preserveArticleHash: this.config.preserveArticleHash,
+      officialSourceDomains: this.config.officialSourceDomains,
+      eventType: this.config.eventType,
     };
   }
 

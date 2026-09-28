@@ -203,6 +203,23 @@ describe('market-news normalization and security', () => {
     expect(normalizeNewsItem(parsed.items[1]).canonicalUrl).toBe('https://boursakuwait.com.kw/ar/news/view#BK54056');
   });
 
+  it('does not attribute search-indexed exchange links as official when the publisher is not the exchange', () => {
+    const xml = `<?xml version="1.0"?><rss><channel>
+      <item><title>Indexed market item</title><link>https://news.google.com/rss/articles/example</link><source url="https://example.com/article">Example publisher</source><pubDate>Thu, 10 Jul 2026 10:00:00 GMT</pubDate></item>
+    </channel></rss>`;
+    const parsed = parseFinancialNewsFeed(xml, {
+      providerId: 'official-adx', providerName: 'ADX', sourceId: 'official-adx', sourceName: 'ADX',
+      sourceType: 'official_exchange', sourceDomain: 'news.google.com', sourceNetworkId: 'adx.ae',
+      sourceReliability: 0.93, sourcePriority: 1, isOfficial: true, officialSourceDomains: ['adx.ae'],
+    }, NOW);
+
+    expect(parsed.items[0]).toMatchObject({
+      isOfficial: false,
+      sourceType: 'public_rss',
+      verificationStatus: 'single_source',
+    });
+  });
+
   it('requires every custom RSS hostname to be explicitly allowlisted', () => {
     const custom = JSON.stringify([{ id: 'issuer', name: 'Issuer IR', url: 'https://ir.example.com/feed.xml' }]);
     const rejected = buildFinancialNewsProviderRegistry({}, { FINANCIAL_NEWS_RSS_FEEDS_JSON: custom });
@@ -232,6 +249,19 @@ describe('market-news normalization and security', () => {
     ]));
     expect(boursa.every(provider => provider.officialSource && provider.sourceType === 'official_exchange')).toBe(true);
     expect(boursa.every(provider => provider.supportedMarkets.includes('KUWAIT'))).toBe(true);
+  });
+
+  it('registers an exchange-specific source for every Gulf market', () => {
+    const ids = buildFinancialNewsProviderRegistry({ marketCodes: ['GULF'] }).providers.map(provider => provider.id);
+    expect(ids).toEqual(expect.arrayContaining([
+      'official-boursa-kuwait-disclosures',
+      'official-msx-company-disclosures',
+      'official-saudi-exchange-announcements',
+      'official-bahrain-bourse-announcements',
+      'official-adx-announcements',
+      'official-qatar-exchange-announcements',
+      'official-dfm-disclosures',
+    ]));
   });
 });
 
