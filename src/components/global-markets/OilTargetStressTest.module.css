@@ -51,10 +51,10 @@
 @media (max-width: 700px) { .panel { padding: .8rem; } .header { grid-template-columns: minmax(0, 1fr); } .inputRow, .metrics, .cards, .basketGrid, .basketSummary { grid-template-columns: minmax(0, 1fr); } }
 
 /* Keep the target analysis visually connected to the oil decision workspace. */
-.panel { border-color: var(--oil-line, var(--border)); background: var(--warning-soft); }
-.icon { border-color: var(--oil-line, var(--border)); background: color-mix(in srgb, var(--warning) 11%, var(--surface)); color: var(--warning); }
-.inputRow label > div { border-color: var(--oil-line, var(--border-strong)); }
+.panel { border-color: color-mix(in srgb, var(--warning) 28%, var(--border)); background: var(--warning-soft); }
+.icon { border-color: color-mix(in srgb, var(--warning) 28%, var(--border)); background: color-mix(in srgb, var(--warning) 11%, var(--surface)); color: var(--warning); }
+.inputRow label > div { border-color: color-mix(in srgb, var(--warning) 28%, var(--border-strong)); }
 .direction, .metrics article, .card, .basketCard { background: color-mix(in srgb, var(--surface-muted) 68%, var(--surface)); }
-.metrics article, .basketSummary article { border-color: var(--oil-line, var(--border)); }
+.metrics article, .basketSummary article { border-color: color-mix(in srgb, var(--warning) 28%, var(--border)); }
 .inside { background: color-mix(in srgb, var(--warning) 13%, var(--surface)); color: var(--warning); }
-.caveat { border-color: var(--oil-line, var(--border)); }
+.caveat { border-color: color-mix(in srgb, var(--warning) 28%, var(--border)); }
