@@ -26,10 +26,15 @@ type MsxOfficialSourceMetadataResult =
   | { ok: true; metadata: MsxOfficialSourceMetadata }
   | { ok: false; unavailableReason: 'official_source_time_missing' | 'official_source_time_invalid' | 'official_source_time_stale' };
 
+type GulfSourceTimestampResult =
+  | { ok: true; timestamp: string }
+  | { ok: false; unavailableReason: 'provider_source_time_missing' | 'provider_source_time_invalid' | 'provider_source_time_future' };
+
 const MSX_UTC_OFFSET_MS = 4 * 60 * 60 * 1000;
 const MSX_MAX_SOURCE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const MSX_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 const MSX_MIDNIGHT_ROLLOVER_MS = 12 * 60 * 60 * 1000;
+const GULF_SOURCE_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 const MSX_MONTH_INDEX: Record<string, number> = {
   jan: 0,
@@ -159,6 +164,17 @@ export function parseMsxOfficialSourceMetadata(row: Pick<MsxMarketTodayRow, 'Dat
   };
 }
 
+export function validateGulfSourceTimestamp(value: unknown, now = Date.now()): GulfSourceTimestampResult {
+  const rawTimestamp = typeof value === 'string' ? value.trim() : '';
+  if (!rawTimestamp) return { ok: false, unavailableReason: 'provider_source_time_missing' };
+
+  const timestamp = Date.parse(rawTimestamp);
+  if (!Number.isFinite(timestamp)) return { ok: false, unavailableReason: 'provider_source_time_invalid' };
+  if (timestamp > now + GULF_SOURCE_FUTURE_TOLERANCE_MS) return { ok: false, unavailableReason: 'provider_source_time_future' };
+
+  return { ok: true, timestamp: new Date(timestamp).toISOString() };
+}
+
 function unavailable(market: GulfMarket, unavailableReason = 'provider_symbol_not_configured'): GulfMarketData {
   return {
     market: market.id,
@@ -182,11 +198,14 @@ function unavailable(market: GulfMarket, unavailableReason = 'provider_symbol_no
   };
 }
 
+type AvailableGulfMarketData = Omit<GulfMarketData,
+  'market' | 'code' | 'exchangeCode' | 'name' | 'status' | 'available' | 'delayed' | 'updatedAt' | 'marketTime'
+> & { marketTime: string };
+
 function available(
   market: GulfMarket,
-  data: Omit<GulfMarketData, 'market' | 'code' | 'exchangeCode' | 'name' | 'status' | 'available' | 'delayed' | 'updatedAt'>,
+  data: AvailableGulfMarketData,
 ): GulfMarketData {
-  const now = new Date().toISOString();
   return {
     market: market.id,
     code: market.code,
@@ -195,7 +214,7 @@ function available(
     status: 'available',
     available: true,
     delayed: true,
-    updatedAt: data.marketTime ?? now,
+    updatedAt: data.marketTime,
     ...data,
   };
 }
@@ -252,7 +271,15 @@ async function fetchYahooMarketData(market: GulfMarket, source: Extract<GulfInde
     },
   });
 
-  const stale = quote.available && isStaleMarketTime(quote.marketTime);
+  const sourceTimestamp = validateGulfSourceTimestamp(quote.marketTime);
+  const stale = quote.available && sourceTimestamp.ok && isStaleMarketTime(sourceTimestamp.timestamp);
+  const unavailableReason = !quote.available
+    ? quote.unavailableReason ?? 'provider_returned_empty_quote'
+    : !sourceTimestamp.ok
+      ? sourceTimestamp.unavailableReason
+      : stale
+        ? 'provider_returned_stale_quote'
+        : null;
   debugLog('[GulfNews] Yahoo index attempt', {
     marketCode: market.code,
     selectedMarket: market.id,
@@ -262,13 +289,11 @@ async function fetchYahooMarketData(market: GulfMarket, source: Extract<GulfInde
     parsedValue: quote.price,
     parsedChange: quote.change,
     parsedChangePercent: quote.changePercent,
-    marketTime: quote.marketTime,
-    unavailableReason: stale ? 'provider_returned_stale_quote' : quote.unavailableReason ?? null,
+    marketTime: sourceTimestamp.ok ? sourceTimestamp.timestamp : null,
+    unavailableReason,
   });
 
-  if (!quote.available || stale) {
-    return unavailable(market, stale ? 'provider_returned_stale_quote' : quote.unavailableReason ?? 'provider_returned_empty_quote');
-  }
+  if (!quote.available || !sourceTimestamp.ok || stale) return unavailable(market, unavailableReason ?? 'provider_returned_empty_quote');
 
   return available(market, {
     indexName: source.label ?? market.indexName,
@@ -278,9 +303,10 @@ async function fetchYahooMarketData(market: GulfMarket, source: Extract<GulfInde
     change: quote.change,
     changePercent: quote.changePercent,
     currency: quote.currency,
-    marketTime: quote.marketTime,
+    marketTime: sourceTimestamp.timestamp,
     source: quote.source,
     sourceLabel: source.label,
+    sourceAsOf: sourceTimestamp.timestamp,
   });
 }
 
@@ -382,8 +408,12 @@ async function fetchMubasherMarketData(market: GulfMarket, source: Extract<GulfI
     : 'https://www.mubasher.info/markets/MSM/indices/MSX30/';
   const result = await fetchHtml(url);
   const parsed = parseMubasherMarketSummary(result.body);
-  const availableQuote = result.ok && parsed.value !== null && parsed.value > 0;
-  const unavailableReason = result.ok ? 'provider_returned_empty_quote' : `provider_http_${result.status}`;
+  const hasIndexValue = result.ok && parsed.value !== null && parsed.value > 0;
+  const unavailableReason = !result.ok
+    ? `provider_http_${result.status}`
+    : hasIndexValue
+      ? 'provider_source_time_missing'
+      : 'provider_returned_empty_quote';
 
   debugLog('[GulfNews] Mubasher index attempt', {
     marketCode: market.code,
@@ -396,23 +426,10 @@ async function fetchMubasherMarketData(market: GulfMarket, source: Extract<GulfI
     parsedValue: parsed.value,
     parsedChange: parsed.change,
     parsedChangePercent: parsed.changePercent,
-    unavailableReason: availableQuote ? null : unavailableReason,
+    unavailableReason,
   });
 
-  if (!availableQuote) return unavailable(market, unavailableReason);
-
-  return available(market, {
-    indexName: source.label ?? market.indexName,
-    requestedSymbol: source.symbol,
-    symbolUsed: source.symbol,
-    value: parsed.value,
-    change: parsed.change,
-    changePercent: parsed.changePercent,
-    currency: market.id === 'oman' ? 'OMR' : 'BHD',
-    marketTime: null,
-    source: 'Mubasher',
-    sourceLabel: source.label,
-  });
+  return unavailable(market, unavailableReason);
 }
 
 async function fetchInvestingMarketData(market: GulfMarket, source: Extract<GulfIndexSourceStrategy, { provider: 'Investing' }>): Promise<GulfMarketData> {
