@@ -184,6 +184,13 @@ export function WorldStocksPage() {
     quoteControllersRef.current.clear();
   }, []);
 
+  const beginRequestGeneration = useCallback(() => {
+    const generation = requestGenerationRef.current + 1;
+    requestGenerationRef.current = generation;
+    abortPendingRequests();
+    return generation;
+  }, [abortPendingRequests]);
+
   const fetchQuotesForPage = useCallback(async (pageResults: WorldStock[], generation: number) => {
     if (pageResults.length === 0 || generation !== requestGenerationRef.current) return;
     const controller = new AbortController();
@@ -276,9 +283,11 @@ export function WorldStocksPage() {
   }, [assetType, debouncedQuery, fetchQuotesForPage, lang, region, ui.error]);
 
   useEffect(() => {
-    const generation = requestGenerationRef.current + 1;
-    requestGenerationRef.current = generation;
-    abortPendingRequests();
+    return () => abortPendingRequests();
+  }, [abortPendingRequests]);
+
+  useEffect(() => {
+    const generation = beginRequestGeneration();
     setPage(1);
     void load(1, false, generation);
     return () => {
@@ -292,6 +301,12 @@ export function WorldStocksPage() {
     const nextPage = page + 1;
     setPage(nextPage);
     void load(nextPage, true);
+  };
+
+  const retry = () => {
+    const generation = beginRequestGeneration();
+    setPage(1);
+    void load(1, false, generation);
   };
 
   const clearFilters = () => {
@@ -391,7 +406,7 @@ export function WorldStocksPage() {
         <section className={styles.state} role="alert">
           <AlertTriangle size={22} />
           <p>{error}</p>
-          <button type="button" onClick={() => void load(1, false)}>
+          <button type="button" onClick={retry}>
             <RefreshCcw size={15} />
             {ui.retry}
           </button>
