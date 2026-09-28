@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
-import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchDelayedGulfMarketData, gulfMarketDataToApiMarkets } from '@/lib/gulf/fetchGulfIndexData';
-import { GULF_MARKETS, type GulfMarketId } from '@/lib/gulf/gulfMarkets';
+import { GULF_MARKETS } from '@/lib/gulf/gulfMarkets';
+import { resolveGulfNewsMarket } from '@/lib/gulf/resolveNewsMarket';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems } from '@/lib/translation/translateNewsText';
 import { parseNewsLimit } from '@/lib/news/apiPayload';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
@@ -13,27 +13,6 @@ export const dynamic = 'force-dynamic';
 function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
-function storyMarket(story: ConsolidatedNewsStory): GulfMarketId | null {
-  const values = [...story.marketCodes, ...story.exchangeCodes, ...story.countries].map(value => value.toLowerCase());
-  const mapped = GULF_MARKETS.find(market => values.some(value => [market.id, market.code, market.countryCode, market.exchangeCode].map(item => item.toLowerCase()).includes(value)))?.id;
-  if (mapped) return mapped;
-
-  // Only use explicit, unambiguous market references. Generic GCC/UAE
-  // coverage must not be silently assigned to Saudi Arabia, DFM, or ADX.
-  const text = `${story.title} ${story.summary ?? ''}`.toLocaleLowerCase();
-  const aliases: Record<GulfMarketId, string[]> = {
-    kuwait: ['boursa kuwait', 'kuwait stock exchange', 'بورصة الكويت', 'سوق الكويت'],
-    saudi: ['saudi exchange', 'tadawul', 'تداول السعودية', 'السوق السعودية', 'السوق السعودي'],
-    oman: ['muscat stock exchange', 'msx', 'بورصة مسقط'],
-    bahrain: ['bahrain bourse', 'بورصة البحرين'],
-    'uae-dfm': ['dubai financial market', 'dfm', 'سوق دبي المالي'],
-    'uae-adx': ['abu dhabi securities exchange', 'adx', 'سوق أبوظبي للأوراق المالية'],
-    qatar: ['qatar stock exchange', 'qse', 'بورصة قطر'],
-  };
-  const matches = GULF_MARKETS.filter(market => aliases[market.id].some(alias => text.includes(alias))).map(market => market.id);
-  return matches.length === 1 ? matches[0] : null;
-}
-
 export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { max: 60, prefix: 'gulf-news' });
   if (limited) return limited;
@@ -57,7 +36,7 @@ export async function GET(request: Request) {
   const aggregated = newsResult.status === 'fulfilled' ? newsResult.value : null;
   let unmappedStoryCount = 0;
   const rawItems = (aggregated?.stories ?? []).flatMap(story => {
-    const market = storyMarket(story);
+    const market = resolveGulfNewsMarket(story);
     if (!market) {
       unmappedStoryCount += 1;
       return [];
