@@ -633,6 +633,16 @@ function matchesParams(provider: FinancialNewsProvider, params: Partial<NewsFetc
   return intersects(params.marketCodes, provider.supportedMarkets);
 }
 
+function compareFetchPriority(left: FinancialNewsProvider, right: FinancialNewsProvider) {
+  // On a bounded request, direct exchange/regulator evidence must be fetched
+  // before supplementary publisher coverage. This preserves a useful page
+  // even when one upstream RSS endpoint is slow or unavailable.
+  return Number(right.officialSource) - Number(left.officialSource)
+    || left.priority - right.priority
+    || right.reliabilityScore - left.reliabilityScore
+    || left.name.localeCompare(right.name);
+}
+
 function descriptor(provider: FinancialNewsProvider, requiredEnvironmentVariable: ConfiguredProviderDescriptor['requiredEnvironmentVariable'] = null): ConfiguredProviderDescriptor {
   return {
     id: provider.id,
@@ -727,9 +737,11 @@ export function buildFinancialNewsProviderRegistry(
     configurationIssues.push({ providerId: 'newsapi', code: FinancialNewsProviderErrorCode.NOT_CONFIGURED });
   }
 
+  const prioritizedProviders = providers.sort(compareFetchPriority);
+
   return {
-    providers,
-    sources: providers.map(provider => ({
+    providers: prioritizedProviders,
+    sources: prioritizedProviders.map(provider => ({
       sourceId: provider.sourceId,
       sourceName: provider.sourceName,
       sourceType: provider.sourceType,

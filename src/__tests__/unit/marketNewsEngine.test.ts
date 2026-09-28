@@ -281,6 +281,7 @@ describe('market-news normalization and security', () => {
       expect(independent?.officialSource).toBe(false);
       expect(independent?.sourceNetworkId).toBe(plan.independentNetwork);
       expect(official?.sourceNetworkId).not.toBe(independent?.sourceNetworkId);
+      expect(ids.indexOf(plan.official)).toBeLessThan(ids.indexOf(plan.independent));
     }
   });
 });
