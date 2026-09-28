@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deriveProviderRole, getProviderCapabilityStatus, priorityListFor, resolveProviderForCapability } from '@/lib/market-state/providerResolver';
+import { deriveProviderRole, getProviderCapabilityStatus, normalizeMarketDataProviderName, priorityListFor, resolveProviderForCapability } from '@/lib/market-state/providerResolver';
 import type { ProviderConnectionStatus } from '@/lib/market-state/types';
 
 afterEach(() => {
@@ -71,6 +71,11 @@ describe('getProviderCapabilityStatus', () => {
     vi.stubEnv('FINNHUB_API_KEY', '');
     expect(getProviderCapabilityStatus('finnhub')).toBe('misconfigured');
   });
+
+  it('recognizes the public official DFM disclosure endpoint without treating it as a credential-backed provider', () => {
+    expect(normalizeMarketDataProviderName('official-dfm-disclosures')).toBe('official-dfm-disclosures');
+    expect(getProviderCapabilityStatus('official-dfm-disclosures')).toBe('unknown');
+  });
 });
 
 describe('deriveProviderRole', () => {
@@ -94,9 +99,14 @@ describe('deriveProviderRole', () => {
     expect(deriveProviderRole('newsapi', 'general')).toBe('news_only');
   });
 
+  it('gives the official DFM disclosure endpoint a news_only role without promoting it into an unscoped news fallback', () => {
+    expect(deriveProviderRole('official-dfm-disclosures', 'general')).toBe('news_only');
+    expect(priorityListFor('news', 'general')).not.toContain('official-dfm-disclosures');
+  });
+
   it('never returns a role other than the 6 declared ProviderRole values for any known provider', () => {
     const roles = ['primary', 'secondary', 'fallback', 'discovery_only', 'news_only', 'metadata_only'];
-    const providers: Array<Parameters<typeof deriveProviderRole>[0]> = ['fmp', 'twelvedata', 'eodhd', 'finnhub', 'marketstack', 'yahoo', 'tradingeconomics', 'newsapi', 'rss'];
+    const providers: Array<Parameters<typeof deriveProviderRole>[0]> = ['fmp', 'twelvedata', 'eodhd', 'finnhub', 'marketstack', 'yahoo', 'tradingeconomics', 'newsapi', 'rss', 'official-dfm-disclosures'];
     for (const provider of providers) {
       expect(roles).toContain(deriveProviderRole(provider, 'general'));
       expect(roles).toContain(deriveProviderRole(provider, 'trader_terminal'));

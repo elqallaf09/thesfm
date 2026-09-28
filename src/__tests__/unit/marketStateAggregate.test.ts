@@ -98,6 +98,28 @@ describe('getMarketSystemState', () => {
     expect(['connected', 'degraded']).toContain(state.overall);
   });
 
+  it('preserves the official DFM disclosure provider identity instead of collapsing it into generic RSS', async () => {
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+    getConfiguredProviderDescriptors.mockReturnValue([{
+      id: 'official-dfm-disclosures',
+      enabled: true,
+      configured: true,
+    }]);
+
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState({ forceFresh: true });
+
+    expect(state.capabilityMatrix).toContainEqual(expect.objectContaining({
+      provider: 'official-dfm-disclosures',
+      capability: 'news',
+      status: 'unknown',
+    }));
+    expect(state.providerProfiles).toContainEqual(expect.objectContaining({
+      provider: 'official-dfm-disclosures',
+      role: 'news_only',
+    }));
+  });
+
   it('applies the shared FMP cooldown before deriving the capability matrix', async () => {
     getTraderMarketCatalog.mockResolvedValue(catalogFixture());
     getFmpRuntimeStatus.mockReturnValue({

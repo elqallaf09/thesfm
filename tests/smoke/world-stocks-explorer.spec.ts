@@ -44,6 +44,26 @@ function searchPayload(results: ReturnType<typeof stock>[], overrides: Record<st
   };
 }
 
+function quotePayload(symbol: string, price: number, quoteTimestamp: string) {
+  return {
+    ok: true,
+    success: true,
+    partialFailure: false,
+    quotes: {
+      [`US:${symbol}`]: {
+        price,
+        change: 1,
+        changePercent: 1,
+        currency: 'USD',
+        quoteTimestamp,
+        delayed: true,
+        dataSource: 'Synthetic QA',
+        status: 'available',
+      },
+    },
+  };
+}
+
 async function mockWorldStocksApi(page: Page, results: ReturnType<typeof stock>[] = [stock(), stock({ canonicalSymbol: 'MSFT', displayName: 'Microsoft Corp', providerSymbol: 'MSFT' })]) {
   await page.route('**/api/world-stocks/search**', route => route.fulfill({
     status: 200,
@@ -324,4 +344,151 @@ test('a later page cannot overwrite a same-symbol listing on another exchange', 
   await expect(us).not.toContainText('200');
   await expect(us).toContainText('Synthetic QA');
   await expect(us.locator('time')).toHaveAttribute('datetime', '2026-09-18T10:00:00Z');
+});
+
+test('keeps page-one quotes alive while page two is loading', async ({ page }) => {
+  await useEnglish(page);
+
+  let releaseFirstQuote: () => void = () => { throw new Error('The first quote gate was not initialized.'); };
+  const firstQuoteGate = new Promise<void>(resolve => { releaseFirstQuote = resolve; });
+  let markFirstQuoteStarted: () => void = () => { throw new Error('The first quote request did not start.'); };
+  const firstQuoteStarted = new Promise<void>(resolve => { markFirstQuoteStarted = resolve; });
+  let releaseSecondQuote: () => void = () => { throw new Error('The second quote gate was not initialized.'); };
+  const secondQuoteGate = new Promise<void>(resolve => { releaseSecondQuote = resolve; });
+  let markSecondQuoteStarted: () => void = () => { throw new Error('The second quote request did not start.'); };
+  const secondQuoteStarted = new Promise<void>(resolve => { markSecondQuoteStarted = resolve; });
+  const failedFirstQuoteRequests: string[] = [];
+
+  page.on('requestfailed', request => {
+    if (request.url().includes('/api/world-stocks/quotes') && request.postData()?.includes('PAGE_ONE')) {
+      failedFirstQuoteRequests.push(request.failure()?.errorText ?? 'unknown failure');
+    }
+  });
+
+  await page.route('**/api/world-stocks/search**', route => {
+    const isSecondPage = new URL(route.request().url()).searchParams.get('page') === '2';
+    return route.fulfill({
+      json: searchPayload([
+        stock({
+          canonicalSymbol: isSecondPage ? 'PAGE_TWO' : 'PAGE_ONE',
+          providerSymbol: isSecondPage ? 'PAGE_TWO' : 'PAGE_ONE',
+          displayName: isSecondPage ? 'Page two company' : 'Page one company',
+        }),
+      ], { page: isSecondPage ? 2 : 1, totalCount: 26, hasMore: !isSecondPage }),
+    });
+  });
+  await page.route('**/api/world-stocks/quotes', async route => {
+    const symbol = route.request().postDataJSON().symbols[0].canonicalSymbol;
+    const isSecondPage = symbol === 'PAGE_TWO';
+    if (isSecondPage) {
+      markSecondQuoteStarted();
+      await secondQuoteGate;
+    } else {
+      markFirstQuoteStarted();
+      await firstQuoteGate;
+    }
+
+    const quote = {
+      price: isSecondPage ? 222 : 111,
+      change: 1,
+      changePercent: 1,
+      currency: 'USD',
+      quoteTimestamp: '2026-09-28T10:00:00Z',
+      delayed: true,
+      dataSource: 'Synthetic QA',
+      status: 'available',
+    };
+    await route.fulfill({ json: { ok: true, success: true, partialFailure: false, quotes: { [`US:${symbol}`]: quote } } }).catch(() => undefined);
+  });
+
+  await page.goto('/world-stocks');
+  await firstQuoteStarted;
+  await expect(visibleText(page, 'Page one company')).toBeVisible();
+  await expect(visibleText(page, 'Price unavailable').first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Load more', exact: true }).click();
+  await secondQuoteStarted;
+  releaseSecondQuote();
+  await expect(visibleText(page, '$222.00').first()).toBeVisible();
+
+  releaseFirstQuote();
+  await expect(visibleText(page, '$111.00').first()).toBeVisible();
+  expect(failedFirstQuoteRequests).toEqual([]);
+});
+
+test('retry invalidates a delayed quote and restarts pagination from page one', async ({ page }) => {
+  await useEnglish(page);
+
+  let releaseStaleQuote: () => void = () => { throw new Error('The stale quote gate was not initialized.'); };
+  const staleQuoteGate = new Promise<void>(resolve => { releaseStaleQuote = resolve; });
+  let markStaleQuoteStarted: () => void = () => { throw new Error('The stale quote request did not start.'); };
+  const staleQuoteStarted = new Promise<void>(resolve => { markStaleQuoteStarted = resolve; });
+  let markRefreshedQuoteStarted: () => void = () => { throw new Error('The refreshed quote request did not start.'); };
+  const refreshedQuoteStarted = new Promise<void>(resolve => { markRefreshedQuoteStarted = resolve; });
+  let staleQuoteFulfilled = false;
+  let pageTwoSearches = 0;
+  let pageOneQuoteRequests = 0;
+
+  await page.route('**/api/world-stocks/search**', route => {
+    const requestedPage = new URL(route.request().url()).searchParams.get('page') ?? '1';
+    if (requestedPage === '2') {
+      pageTwoSearches += 1;
+      if (pageTwoSearches === 1) {
+        return route.fulfill({
+          status: 503,
+          json: { ok: false, success: false, code: 'provider_temporarily_unavailable', message: 'World stock search is temporarily unavailable.' },
+        });
+      }
+    }
+
+    const isSecondPage = requestedPage === '2';
+    return route.fulfill({
+      json: searchPayload([
+        stock({
+          canonicalSymbol: isSecondPage ? 'PAGE_TWO' : 'PAGE_ONE',
+          providerSymbol: isSecondPage ? 'PAGE_TWO' : 'PAGE_ONE',
+          displayName: isSecondPage ? 'Page two company' : 'Page one company',
+        }),
+      ], { page: Number(requestedPage), totalCount: 26, hasMore: !isSecondPage }),
+    });
+  });
+  await page.route('**/api/world-stocks/quotes', async route => {
+    const symbol = route.request().postDataJSON().symbols[0].canonicalSymbol;
+    if (symbol === 'PAGE_ONE') {
+      pageOneQuoteRequests += 1;
+      if (pageOneQuoteRequests === 1) {
+        markStaleQuoteStarted();
+        await staleQuoteGate;
+        staleQuoteFulfilled = true;
+        await route.fulfill({ json: quotePayload('PAGE_ONE', 111, '2026-09-28T10:00:00Z') }).catch(() => undefined);
+        return;
+      }
+
+      markRefreshedQuoteStarted();
+      await route.fulfill({ json: quotePayload('PAGE_ONE', 222, '2026-09-28T10:01:00Z') });
+      return;
+    }
+
+    await route.fulfill({ json: quotePayload('PAGE_TWO', 333, '2026-09-28T10:02:00Z') });
+  });
+
+  await page.goto('/world-stocks');
+  await staleQuoteStarted;
+  await expect(visibleText(page, 'Page one company')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Load more', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await refreshedQuoteStarted;
+  await expect(visibleText(page, '$222.00').first()).toBeVisible();
+
+  releaseStaleQuote();
+  await expect.poll(() => staleQuoteFulfilled).toBe(true);
+  await expect(visibleText(page, '$111.00')).toHaveCount(0);
+  await expect(visibleText(page, '$222.00').first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Load more', exact: true }).click();
+  await expect.poll(() => pageTwoSearches).toBe(2);
+  await expect(visibleText(page, 'Page two company')).toBeVisible();
 });

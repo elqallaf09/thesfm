@@ -2,14 +2,23 @@ import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 
 import { GULF_MARKETS, type GulfMarketId } from './gulfMarkets';
 
+function explicitMarketMatches(values: readonly string[]): GulfMarketId[] {
+  const codes = new Set(values.map(value => value.trim().toLocaleLowerCase('und')).filter(Boolean));
+  return GULF_MARKETS
+    .filter(market => [market.id, market.code, market.exchangeCode]
+      .some(code => codes.has(code.toLocaleLowerCase('und'))))
+    .map(market => market.id);
+}
+
 /** Resolve Gulf news to one exchange without treating shared country codes as exchange identifiers. */
 export function resolveGulfNewsMarket(story: ConsolidatedNewsStory): GulfMarketId | null {
-  const marketAndExchangeCodes = new Set([...story.marketCodes, ...story.exchangeCodes].map(value => value.toLowerCase()));
   // UAE markets share a country code. Always resolve the market/exchange code
-  // first, otherwise ADX notices can be incorrectly assigned to DFM.
-  const mapped = GULF_MARKETS.find(market => [market.id, market.code, market.exchangeCode]
-    .some(code => marketAndExchangeCodes.has(code.toLowerCase())))?.id;
-  if (mapped) return mapped;
+  // first, otherwise ADX notices can be incorrectly assigned to DFM. A merged
+  // story that names multiple exchanges is deliberately left unassigned rather
+  // than being attributed according to the static market list order.
+  const explicitMatches = explicitMarketMatches([...story.marketCodes, ...story.exchangeCodes]);
+  if (explicitMatches.length === 1) return explicitMatches[0];
+  if (explicitMatches.length > 1) return null;
 
   const countryCodes = new Set(story.countries.map(value => value.toLowerCase()));
   const countryMatches = GULF_MARKETS.filter(market => countryCodes.has(market.countryCode.toLowerCase()));

@@ -77,6 +77,7 @@ export const MARKET_PROVIDER_IDS = [
   'tradingeconomics',
   'newsapi',
   'rss',
+  'official-dfm-disclosures',
 ] as const;
 export type MarketProviderId = typeof MARKET_PROVIDER_IDS[number];
 
