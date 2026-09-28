@@ -118,6 +118,17 @@ function emptyCell(provider: MarketProviderId, capability: MarketCapabilityKey, 
   };
 }
 
+function providerIdForNewsDescriptor(descriptorId: string): MarketProviderId {
+  switch (descriptorId) {
+    case 'finnhub':
+    case 'newsapi':
+    case 'official-dfm-disclosures':
+      return descriptorId;
+    default:
+      return 'rss';
+  }
+}
+
 const DERIVED_CAPABILITIES: Array<[MarketCapabilityKey, ProviderPriorityContext]> = [
   ['historical_prices', 'general'],
   ['profiles', 'general'],
@@ -145,7 +156,7 @@ async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSyst
 
   for (const descriptor of getConfiguredProviderDescriptors()) {
     if (!descriptor.enabled) continue;
-    const provider: MarketProviderId = descriptor.id === 'finnhub' ? 'finnhub' : descriptor.id === 'newsapi' ? 'newsapi' : 'rss';
+    const provider = providerIdForNewsDescriptor(descriptor.id);
     cells.push(emptyCell(provider, 'news', normalizeProviderConnectionStatus({ configured: descriptor.configured })));
   }
 

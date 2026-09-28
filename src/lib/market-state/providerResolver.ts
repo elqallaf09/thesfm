@@ -1,6 +1,7 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { getFmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
 import { normalizeProviderConnectionStatus } from './normalizeStatus';
+import { MARKET_PROVIDER_IDS } from './types';
 import type {
   MarketCapabilityKey,
   MarketProviderId,
@@ -67,7 +68,7 @@ export function normalizeMarketDataProviderName(name: string): MarketProviderId 
   return null;
 }
 
-const MARKET_PROVIDER_ID_SET = new Set<MarketProviderId>(['fmp', 'twelvedata', 'eodhd', 'finnhub', 'marketstack', 'yahoo', 'tradingeconomics', 'newsapi', 'rss']);
+const MARKET_PROVIDER_ID_SET = new Set<MarketProviderId>(MARKET_PROVIDER_IDS);
 
 export type ProviderHealthLike = {
   provider: string;
@@ -108,7 +109,7 @@ export function getProviderCapabilityStatus(
     return normalizeProviderConnectionStatus({ configured: liveResult.configured, status: liveResult.status });
   }
 
-  if (provider === 'yahoo' || provider === 'rss') return 'unknown';
+  if (provider === 'yahoo' || provider === 'rss' || provider === 'official-dfm-disclosures') return 'unknown';
 
   const envKeyByProvider: Partial<Record<MarketProviderId, string | undefined>> = {
     twelvedata: process.env.TWELVE_DATA_API_KEY,
@@ -129,6 +130,10 @@ export function getProviderCapabilityStatus(
  * instead, since calling e.g. RSS "secondary" would be misleading (it never serves quotes at all).
  */
 export function deriveProviderRole(provider: MarketProviderId, context: ProviderPriorityContext = 'general'): ProviderRole {
+  // The direct DFM endpoint is limited to Dubai disclosures. Keep it out of the
+  // generic news resolution order while still presenting its true, news-only role.
+  if (provider === 'official-dfm-disclosures') return 'news_only';
+
   let bestIndex: number | null = null;
   const capabilitiesServed = new Set<MarketCapabilityKey>();
 

@@ -49,6 +49,7 @@ describe('trader market metadata', () => {
     expect(context.availableProviders).toEqual(['FMP', 'Finnhub', 'Yahoo Finance']);
     expect(context.fallbackUsed).toBe(true);
     expect(traderProviderDisplayName('twelve_data')).toBe('Twelve Data');
+    expect(traderProviderDisplayName('official-dfm-disclosures')).toBe('Dubai Financial Market — Disclosures');
   });
 
   it('uses catalog exchange metadata ahead of provider quote fields', () => {

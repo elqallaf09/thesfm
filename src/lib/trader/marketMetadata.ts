@@ -71,6 +71,7 @@ export const TRADER_PROVIDER_LABELS: Record<string, string> = {
   tradingeconomics: 'Trading Economics',
   trading_economics: 'Trading Economics',
   rss: 'RSS Feeds',
+  official_dfm_disclosures: 'Dubai Financial Market — Disclosures',
   newsapi: 'NewsAPI',
 };
 
