@@ -6,9 +6,56 @@ type MsxMarketTodayResponse = {
     MSX30?: string;
     Change?: string;
     ChangeValue?: string;
-    AsOnDateEn?: string | null;
-    AsOnTimeEn?: string | null;
+    DateEn?: string | null;
+    TimeEn?: string | null;
+    DelayTimeEn?: string | null;
+    StatusEn?: string | null;
   }>;
+};
+
+type MsxMarketTodayRow = NonNullable<MsxMarketTodayResponse['d']>[number];
+
+type MsxOfficialSourceMetadata = {
+  sourceAsOf: string;
+  sourceReportedAt: string;
+  sourceDelayMinutes: number;
+  sourceStatus: string | null;
+};
+
+type MsxOfficialSourceMetadataResult =
+  | { ok: true; metadata: MsxOfficialSourceMetadata }
+  | { ok: false; unavailableReason: 'official_source_time_missing' | 'official_source_time_invalid' | 'official_source_time_stale' };
+
+const MSX_UTC_OFFSET_MS = 4 * 60 * 60 * 1000;
+const MSX_MAX_SOURCE_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const MSX_FUTURE_TOLERANCE_MS = 5 * 60 * 1000;
+const MSX_MIDNIGHT_ROLLOVER_MS = 12 * 60 * 60 * 1000;
+
+const MSX_MONTH_INDEX: Record<string, number> = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
 };
 
 export type GulfMarketData = {
@@ -26,6 +73,10 @@ export type GulfMarketData = {
   marketTime: string | null;
   source: string;
   sourceLabel?: string;
+  sourceAsOf?: string | null;
+  sourceReportedAt?: string | null;
+  sourceDelayMinutes?: number | null;
+  sourceStatus?: string | null;
   status: 'available' | 'unavailable';
   available: boolean;
   delayed: true;
@@ -51,6 +102,61 @@ function numberOrNull(value: unknown) {
   if (!normalized) return null;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function msxText(value: string | null | undefined) {
+  const normalized = value?.trim() ?? '';
+  return normalized || null;
+}
+
+function msxLocalTimestamp(dateText: string, timeText: string) {
+  const date = dateText.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+  const time = timeText.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!date || !time) return null;
+
+  const month = MSX_MONTH_INDEX[date[1].toLowerCase()];
+  const day = Number(date[2]);
+  const year = Number(date[3]);
+  const minute = Number(time[2]);
+  const meridiem = time[3].toUpperCase();
+  const rawHour = Number(time[1]);
+  if (month === undefined || !Number.isInteger(day) || !Number.isInteger(year) || minute > 59 || rawHour < 1 || rawHour > 12) return null;
+
+  const hour = rawHour % 12 + (meridiem === 'PM' ? 12 : 0);
+  const localUtc = Date.UTC(year, month, day, hour, minute);
+  const localDate = new Date(localUtc);
+  if (localDate.getUTCFullYear() !== year || localDate.getUTCMonth() !== month || localDate.getUTCDate() !== day) return null;
+
+  return localUtc - MSX_UTC_OFFSET_MS;
+}
+
+export function parseMsxOfficialSourceMetadata(row: Pick<MsxMarketTodayRow, 'DateEn' | 'TimeEn' | 'DelayTimeEn' | 'StatusEn'>, now = Date.now()): MsxOfficialSourceMetadataResult {
+  const date = msxText(row.DateEn);
+  const reportedTime = msxText(row.TimeEn);
+  const delayedTime = msxText(row.DelayTimeEn);
+  if (!date || !reportedTime || !delayedTime) return { ok: false, unavailableReason: 'official_source_time_missing' };
+
+  const reportedAt = msxLocalTimestamp(date, reportedTime);
+  let sourceAsOf = msxLocalTimestamp(date, delayedTime);
+  if (reportedAt === null || sourceAsOf === null) return { ok: false, unavailableReason: 'official_source_time_invalid' };
+
+  if (sourceAsOf > reportedAt) {
+    if (sourceAsOf - reportedAt < MSX_MIDNIGHT_ROLLOVER_MS) return { ok: false, unavailableReason: 'official_source_time_invalid' };
+    sourceAsOf -= 24 * 60 * 60 * 1000;
+  }
+
+  if (sourceAsOf > now + MSX_FUTURE_TOLERANCE_MS) return { ok: false, unavailableReason: 'official_source_time_invalid' };
+  if (now - sourceAsOf > MSX_MAX_SOURCE_AGE_MS) return { ok: false, unavailableReason: 'official_source_time_stale' };
+
+  return {
+    ok: true,
+    metadata: {
+      sourceAsOf: new Date(sourceAsOf).toISOString(),
+      sourceReportedAt: new Date(reportedAt).toISOString(),
+      sourceDelayMinutes: Math.round((reportedAt - sourceAsOf) / 60000),
+      sourceStatus: msxText(row.StatusEn),
+    },
+  };
 }
 
 function unavailable(market: GulfMarket, unavailableReason = 'provider_symbol_not_configured'): GulfMarketData {
@@ -189,8 +295,13 @@ async function fetchMuscatOfficialMarketData(market: GulfMarket): Promise<GulfMa
   const value = numberOrNull(row?.MSX30);
   const changePercent = numberOrNull(row?.Change);
   const change = numberOrNull(row?.ChangeValue);
-  const availableQuote = result.ok && value !== null && value > 0;
-  const unavailableReason = result.ok ? 'provider_returned_empty_quote' : `provider_http_${result.status}`;
+  const sourceTime = row ? parseMsxOfficialSourceMetadata(row) : { ok: false as const, unavailableReason: 'official_source_time_missing' as const };
+  const availableQuote = result.ok && value !== null && value > 0 && sourceTime.ok;
+  const unavailableReason = !result.ok
+    ? `provider_http_${result.status}`
+    : !sourceTime.ok
+      ? sourceTime.unavailableReason
+      : 'provider_returned_empty_quote';
 
   debugLog('[GulfNews] Official index attempt', {
     marketCode: market.code,
@@ -203,10 +314,15 @@ async function fetchMuscatOfficialMarketData(market: GulfMarket): Promise<GulfMa
     parsedValue: value,
     parsedChange: change,
     parsedChangePercent: changePercent,
+    sourceAsOf: sourceTime.ok ? sourceTime.metadata.sourceAsOf : null,
+    sourceReportedAt: sourceTime.ok ? sourceTime.metadata.sourceReportedAt : null,
+    sourceDelayMinutes: sourceTime.ok ? sourceTime.metadata.sourceDelayMinutes : null,
+    sourceStatus: sourceTime.ok ? sourceTime.metadata.sourceStatus : null,
     unavailableReason: availableQuote ? null : unavailableReason,
   });
 
-  if (!availableQuote) return unavailable(market, unavailableReason);
+  if (!availableQuote || !sourceTime.ok) return unavailable(market, unavailableReason);
+  const { metadata } = sourceTime;
 
   return available(market, {
     indexName: market.indexName,
@@ -216,9 +332,13 @@ async function fetchMuscatOfficialMarketData(market: GulfMarket): Promise<GulfMa
     change,
     changePercent,
     currency: 'OMR',
-    marketTime: null,
+    marketTime: metadata.sourceAsOf,
     source: 'Muscat Stock Exchange',
     sourceLabel: 'Muscat Stock Exchange',
+    sourceAsOf: metadata.sourceAsOf,
+    sourceReportedAt: metadata.sourceReportedAt,
+    sourceDelayMinutes: metadata.sourceDelayMinutes,
+    sourceStatus: metadata.sourceStatus,
   });
 }
 
@@ -321,6 +441,7 @@ async function fetchMarketData(market: GulfMarket): Promise<GulfMarketData> {
   for (const source of market.preferredSources) {
     const result = await fetchSourceMarketData(market, source);
     if (result.available) return result;
+    if (market.id === 'oman' && source.provider === 'Muscat Stock Exchange' && result.unavailableReason?.startsWith('official_source_time_')) return result;
     lastUnavailableReason = result.unavailableReason ?? lastUnavailableReason;
   }
   return unavailable(market, lastUnavailableReason);
@@ -354,6 +475,10 @@ export function gulfMarketDataToApiMarkets(marketData: Record<GulfMarketId, Gulf
       marketTime: data.marketTime,
       source: data.source,
       sourceLabel: data.sourceLabel,
+      sourceAsOf: data.sourceAsOf ?? null,
+      sourceReportedAt: data.sourceReportedAt ?? null,
+      sourceDelayMinutes: data.sourceDelayMinutes ?? null,
+      sourceStatus: data.sourceStatus ?? null,
       delayed: data.delayed,
       available: data.available,
       unavailableReason: data.unavailableReason,

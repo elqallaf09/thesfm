@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
+import { sanitizeMarketSystemStateForPublic } from '@/lib/market-state/publicState';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import { clearTraderMarketCatalogCache, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { clearTraderQuoteCache } from '@/lib/trader/marketQuotes';
@@ -436,9 +437,13 @@ async function buildProviderStatusResponse(options: {
         failureReason: cleanProviderReason(status.dataProvider.failureReason),
       };
 
+  // The trader terminal needs the canonical state shape, while public callers
+  // must not receive provider internals or raw diagnostic configuration.
+  const displayState = isAdmin ? state : sanitizeMarketSystemStateForPublic(state);
+
   const response = {
     ok: true,
-    state,
+    state: displayState,
     providers: {
       fmp: {
         configured: fmpConfigured,

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Activity, AlertTriangle, Clock3, Database, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
+import { PROVIDER_CONNECTION_STATUSES, type ProviderConnectionStatus } from '@/lib/market-state/types';
 import { AI_ANALYST_COPY, aiAnalystLocale, aiAnalystNumber, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 
@@ -10,7 +11,7 @@ type ProviderItem = {
   provider: string;
   displayName: string;
   configured: boolean;
-  status: string;
+  status: ProviderConnectionStatus;
   latencyMs: number | null;
   lastCheckedAt: string | null;
 };
@@ -22,18 +23,18 @@ function providerItem(value: unknown): ProviderItem | null {
   const row = value as Record<string, unknown>;
   const provider = typeof row.provider === 'string' ? row.provider.trim() : '';
   const displayName = typeof row.displayName === 'string' ? row.displayName.trim() : '';
-  const status = typeof row.status === 'string' ? row.status.trim().toUpperCase() : '';
+  const status = typeof row.status === 'string' ? row.status.trim() : '';
   const latency = Number(row.latencyMs);
   const lastCheckedAt = typeof row.lastCheckedAt === 'string' && Number.isFinite(Date.parse(row.lastCheckedAt)) ? row.lastCheckedAt : null;
-  if (!provider || !displayName || !status || typeof row.configured !== 'boolean') return null;
-  return { provider, displayName, configured: row.configured, status, latencyMs: Number.isFinite(latency) ? latency : null, lastCheckedAt };
+  if (!provider || !displayName || !PROVIDER_CONNECTION_STATUSES.includes(status as ProviderConnectionStatus) || typeof row.configured !== 'boolean') return null;
+  return { provider, displayName, configured: row.configured, status: status as ProviderConnectionStatus, latencyMs: Number.isFinite(latency) ? latency : null, lastCheckedAt };
 }
 
 function toneForProvider(item: ProviderItem): 'available' | 'degraded' | 'unavailable' | 'unknown' {
-  if (!item.configured || item.status === 'NOT_CONFIGURED') return 'unknown';
-  if (item.status === 'HEALTHY') return 'available';
-  if (item.status === 'RATE_LIMITED' || item.status === 'MAINTENANCE' || item.status === 'NO_DATA') return 'degraded';
-  return 'unavailable';
+  if (item.status === 'connected') return 'available';
+  if (item.status === 'degraded' || item.status === 'rate_limited') return 'degraded';
+  if (item.status === 'disconnected') return 'unavailable';
+  return 'unknown';
 }
 
 export function ProviderHealthPanel({ className = '' }: { className?: string }) {
@@ -82,11 +83,10 @@ export function ProviderHealthPanel({ className = '' }: { className?: string }) 
               <li className={styles.providerItem} key={provider.provider}>
                 <span className={styles.providerIdentity}>
                   <strong>{provider.displayName}</strong>
-                  <small className={styles.numeric} dir="ltr">{provider.lastCheckedAt ? aiAnalystTimestamp(locale, provider.lastCheckedAt) : provider.provider}</small>
+                  {provider.lastCheckedAt ? <small className={styles.numeric} dir="ltr">{aiAnalystTimestamp(locale, provider.lastCheckedAt)}</small> : null}
                 </span>
                 <span className={styles.providerMetrics}>
                   <span className={styles.statusPill} data-tone={tone}>{copy.status[tone]}</span>
-                  <span className={styles.tag} dir="ltr">{provider.status}</span>
                   {provider.latencyMs !== null ? <span className={styles.metricPill} dir="ltr">{aiAnalystNumber(locale, provider.latencyMs)} ms</span> : null}
                 </span>
               </li>

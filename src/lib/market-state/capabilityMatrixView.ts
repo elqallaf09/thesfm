@@ -115,6 +115,7 @@ export type MatrixCell = {
   provider: MarketProviderId;
   capability: MarketCapabilityKey;
   status: ProviderConnectionStatus;
+  nextRetryAt: string | null;
 };
 
 /**
@@ -129,6 +130,11 @@ export function buildCapabilityMatrixView(
 ): MatrixCell[][] {
   return rows.map(capability => providers.map(provider => {
     const cell = cells.find(item => item.capability === capability && item.provider === provider);
-    return { provider, capability, status: cell?.status ?? 'unsupported' };
+    return {
+      provider,
+      capability,
+      status: cell?.status ?? 'unsupported',
+      nextRetryAt: cell?.nextRetryAt ?? null,
+    };
   }));
 }
