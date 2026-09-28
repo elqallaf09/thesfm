@@ -354,6 +354,31 @@ describe('multi-stage deduplication, independence, and conflicts', () => {
     expect(areDuplicateStories(first, similar)).toBe(true);
   });
 
+  it('does not merge generic disclosure headlines from different exchanges', () => {
+    const dfm = item({
+      id: 'dfm-disclosure',
+      title: 'Board Decisions by Passing',
+      normalizedTitle: 'board decisions by passing',
+      originalUrl: 'https://dfm.ae/disclosures/1',
+      canonicalUrl: 'https://dfm.ae/disclosures/1',
+      marketCodes: ['GULF', 'DFM'],
+      exchangeCodes: ['DFM'],
+      countries: ['AE'],
+    });
+    const qatar = item({
+      id: 'qse-disclosure',
+      title: 'Board Decisions by Passing',
+      normalizedTitle: 'board decisions by passing',
+      originalUrl: 'https://qe.com.qa/disclosures/1',
+      canonicalUrl: 'https://qe.com.qa/disclosures/1',
+      marketCodes: ['GULF', 'QA', 'QATAR'],
+      exchangeCodes: ['QSE'],
+      countries: ['QA'],
+    });
+
+    expect(areDuplicateStories(dfm, qatar)).toBe(false);
+  });
+
   it('does not collapse recurring identical headlines published weeks apart', () => {
     const first = normalizeNewsItem(item({ id: 'period-one', originalUrl: 'https://example.com/period-one', publishedAt: '2026-06-01T10:00:00.000Z' }));
     const later = normalizeNewsItem(item({ id: 'period-two', originalUrl: 'https://other.example/period-two', publishedAt: '2026-07-01T10:00:00.000Z' }));
