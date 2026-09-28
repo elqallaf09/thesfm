@@ -25,7 +25,7 @@
 .consent { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: .6rem; color: var(--foreground-secondary); font-size: .77rem; line-height: 1.65; cursor: pointer; }
 .consent input { inline-size: 1rem; block-size: 1rem; margin-block: .2rem 0; accent-color: var(--primary); }
 .composerActions, .reportForm > div, .postActions, .pagination { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
-.profile { border: 1px solid var(--border) !important; border-radius: var(--radius-panel); background: var(--surface-secondary); box-shadow: none; }
+.profile.profile { border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--surface-secondary); box-shadow: none; }
 .profile summary { color: var(--foreground); font-size: .88rem; font-weight: 700; cursor: pointer; }
 .profile form { display: grid; gap: .75rem; margin-block-start: 1rem; }
 .profile input, .profile textarea { box-sizing: border-box; inline-size: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--background); color: var(--foreground); padding: .65rem .75rem; font: inherit; }
