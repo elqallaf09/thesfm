@@ -325,3 +325,73 @@ test('a later page cannot overwrite a same-symbol listing on another exchange', 
   await expect(us).toContainText('Synthetic QA');
   await expect(us.locator('time')).toHaveAttribute('datetime', '2026-09-18T10:00:00Z');
 });
+
+test('keeps page-one quotes alive while page two is loading', async ({ page }) => {
+  await useEnglish(page);
+
+  let releaseFirstQuote = () => { throw new Error('The first quote gate was not initialized.'); };
+  const firstQuoteGate = new Promise<void>(resolve => { releaseFirstQuote = resolve; });
+  let markFirstQuoteStarted = () => { throw new Error('The first quote request did not start.'); };
+  const firstQuoteStarted = new Promise<void>(resolve => { markFirstQuoteStarted = resolve; });
+  let releaseSecondQuote = () => { throw new Error('The second quote gate was not initialized.'); };
+  const secondQuoteGate = new Promise<void>(resolve => { releaseSecondQuote = resolve; });
+  let markSecondQuoteStarted = () => { throw new Error('The second quote request did not start.'); };
+  const secondQuoteStarted = new Promise<void>(resolve => { markSecondQuoteStarted = resolve; });
+  const failedFirstQuoteRequests: string[] = [];
+
+  page.on('requestfailed', request => {
+    if (request.url().includes('/api/world-stocks/quotes') && request.postData()?.includes('PAGE_ONE')) {
+      failedFirstQuoteRequests.push(request.failure()?.errorText ?? 'unknown failure');
+    }
+  });
+
+  await page.route('**/api/world-stocks/search**', route => {
+    const isSecondPage = new URL(route.request().url()).searchParams.get('page') === '2';
+    return route.fulfill({
+      json: searchPayload([
+        stock({
+          canonicalSymbol: isSecondPage ? 'PAGE_TWO' : 'PAGE_ONE',
+          providerSymbol: isSecondPage ? 'PAGE_TWO' : 'PAGE_ONE',
+          displayName: isSecondPage ? 'Page two company' : 'Page one company',
+        }),
+      ], { page: isSecondPage ? 2 : 1, totalCount: 26, hasMore: !isSecondPage }),
+    });
+  });
+  await page.route('**/api/world-stocks/quotes', async route => {
+    const symbol = route.request().postDataJSON().symbols[0].canonicalSymbol;
+    const isSecondPage = symbol === 'PAGE_TWO';
+    if (isSecondPage) {
+      markSecondQuoteStarted();
+      await secondQuoteGate;
+    } else {
+      markFirstQuoteStarted();
+      await firstQuoteGate;
+    }
+
+    const quote = {
+      price: isSecondPage ? 222 : 111,
+      change: 1,
+      changePercent: 1,
+      currency: 'USD',
+      quoteTimestamp: '2026-09-28T10:00:00Z',
+      delayed: true,
+      dataSource: 'Synthetic QA',
+      status: 'available',
+    };
+    await route.fulfill({ json: { ok: true, success: true, partialFailure: false, quotes: { [`US:${symbol}`]: quote } } }).catch(() => undefined);
+  });
+
+  await page.goto('/world-stocks');
+  await firstQuoteStarted;
+  await expect(visibleText(page, 'Page one company')).toBeVisible();
+  await expect(visibleText(page, 'Price unavailable').first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Load more', exact: true }).click();
+  await secondQuoteStarted;
+  releaseSecondQuote();
+  await expect(visibleText(page, '$222.00').first()).toBeVisible();
+
+  releaseFirstQuote();
+  await expect(visibleText(page, '$111.00').first()).toBeVisible();
+  expect(failedFirstQuoteRequests).toEqual([]);
+});

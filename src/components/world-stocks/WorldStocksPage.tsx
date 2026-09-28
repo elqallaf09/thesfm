@@ -173,14 +173,22 @@ export function WorldStocksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const abortRef = useRef<AbortController | null>(null);
-  const quotesAbortRef = useRef<AbortController | null>(null);
+  const searchControllersRef = useRef(new Set<AbortController>());
+  const quoteControllersRef = useRef(new Set<AbortController>());
+  const requestGenerationRef = useRef(0);
 
-  const fetchQuotesForPage = useCallback(async (pageResults: WorldStock[]) => {
-    if (pageResults.length === 0) return;
-    quotesAbortRef.current?.abort();
+  const abortPendingRequests = useCallback(() => {
+    for (const controller of searchControllersRef.current) controller.abort();
+    searchControllersRef.current.clear();
+    for (const controller of quoteControllersRef.current) controller.abort();
+    quoteControllersRef.current.clear();
+  }, []);
+
+  const fetchQuotesForPage = useCallback(async (pageResults: WorldStock[], generation: number) => {
+    if (pageResults.length === 0 || generation !== requestGenerationRef.current) return;
     const controller = new AbortController();
-    quotesAbortRef.current = controller;
+    quoteControllersRef.current.add(controller);
+    const isCurrentRequest = () => generation === requestGenerationRef.current && !controller.signal.aborted;
 
     try {
       const response = await fetch('/api/world-stocks/quotes', {
@@ -198,33 +206,39 @@ export function WorldStocksPage() {
         }),
       });
       const json = await response.json().catch(() => ({})) as WorldStockQuotesResponse;
-      if (!response.ok || !json.success) return;
+      if (!response.ok || !json.success || !isCurrentRequest()) return;
 
       const scoped = Object.keys(json.quotes).some(key => key.includes(':'));
-      setResults(previous => previous.map(stock => {
-        const quote = scoped ? json.quotes[worldStockQuoteKey(stock.region, stock.canonicalSymbol)] : json.quotes[stock.canonicalSymbol];
-        if (!quote) return stock;
-        return {
-          ...stock,
-          price: quote.price,
-          change: quote.change,
-          changePercent: quote.changePercent,
-          currency: quote.currency ?? stock.currency,
-          quoteTimestamp: quote.quoteTimestamp,
-          delayed: quote.delayed,
-          dataSource: quote.dataSource,
-          quoteStatus: quote.status,
-        };
-      }));
+      setResults(previous => {
+        if (!isCurrentRequest()) return previous;
+        return previous.map(stock => {
+          const quote = scoped ? json.quotes[worldStockQuoteKey(stock.region, stock.canonicalSymbol)] : json.quotes[stock.canonicalSymbol];
+          if (!quote) return stock;
+          return {
+            ...stock,
+            price: quote.price,
+            change: quote.change,
+            changePercent: quote.changePercent,
+            currency: quote.currency ?? stock.currency,
+            quoteTimestamp: quote.quoteTimestamp,
+            delayed: quote.delayed,
+            dataSource: quote.dataSource,
+            quoteStatus: quote.status,
+          };
+        });
+      });
     } catch (quoteError) {
       if (quoteError instanceof DOMException && quoteError.name === 'AbortError') return;
+    } finally {
+      quoteControllersRef.current.delete(controller);
     }
   }, []);
 
-  const load = useCallback(async (targetPage: number, append: boolean) => {
-    abortRef.current?.abort();
+  const load = useCallback(async (targetPage: number, append: boolean, generation = requestGenerationRef.current) => {
+    if (generation !== requestGenerationRef.current) return;
     const controller = new AbortController();
-    abortRef.current = controller;
+    searchControllersRef.current.add(controller);
+    const isCurrentRequest = () => generation === requestGenerationRef.current && !controller.signal.aborted;
 
     setLoading(true);
     setError('');
@@ -243,32 +257,38 @@ export function WorldStocksPage() {
       if (!response.ok || !json.success) {
         throw new Error(!json.success ? json.message : ui.error);
       }
-      setResults(previous => (append ? [...previous, ...json.results] : json.results));
+      if (!isCurrentRequest()) return;
+      setResults(previous => isCurrentRequest() ? (append ? [...previous, ...json.results] : json.results) : previous);
       setTotalCount(json.totalCount);
       if (json.markets) setMarkets(json.markets);
       setDirectoryStatus(json.directoryStatus || '');
       setHasMore(json.hasMore);
-      void fetchQuotesForPage(json.results);
+      void fetchQuotesForPage(json.results, generation);
     } catch (loadError) {
       if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
+      if (!isCurrentRequest()) return;
       if (!append) setResults([]);
       setError(loadError instanceof Error ? loadError.message : ui.error);
     } finally {
-      if (abortRef.current === controller) setLoading(false);
+      searchControllersRef.current.delete(controller);
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [assetType, debouncedQuery, fetchQuotesForPage, lang, region, ui.error]);
 
   useEffect(() => {
+    const generation = requestGenerationRef.current + 1;
+    requestGenerationRef.current = generation;
+    abortPendingRequests();
     setPage(1);
-    void load(1, false);
+    void load(1, false, generation);
     return () => {
-      abortRef.current?.abort();
-      quotesAbortRef.current?.abort();
+      if (requestGenerationRef.current === generation) abortPendingRequests();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, region, assetType, lang]);
 
   const loadMore = () => {
+    if (loading || !hasMore) return;
     const nextPage = page + 1;
     setPage(nextPage);
     void load(nextPage, true);
