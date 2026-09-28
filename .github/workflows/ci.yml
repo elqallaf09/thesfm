@@ -203,6 +203,10 @@ jobs:
     # maintainer has reviewed the dependency changes.
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    # Shared secret-backed E2E accounts require one smoke session at a time.
+    concurrency:
+      group: thesfm-secret-backed-playwright-smoke
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
