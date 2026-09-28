@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useId, useRef, useState } from 'react';
+import { BookOpen, Download, FlaskConical, FolderOpen, Play, RotateCcw, Save, Target, Upload } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ASSETS, EVENT_KINDS, FACTORS, HORIZONS, LIMITS, MODEL_VERSION, TEMPLATES, defaultInput, readSnapshot, simulate, snapshot, template, type Asset, type EventKind, type Horizon, type Input, type Regime, type Report, type Shock } from '../../domain/macro-simulator/engine';
@@ -23,7 +24,9 @@ export function MacroLab({ userKey }: { userKey: string }) {
   const lang: Language = activeLanguage === 'en' || activeLanguage === 'fr' ? activeLanguage : 'ar';
   const t = (key: CopyKey) => copy[key][lang];
   const [input, setInput] = useState<Input>(defaultInput);
-  const [report, setReport] = useState<Report | null>(null);
+  // A valid base case is useful context, not a forecast: it makes the first
+  // visit a readable workspace while every edit still asks the user to rerun.
+  const [report, setReport] = useState<Report | null>(() => simulate(defaultInput()));
   const [pinned, setPinned] = useState<Report | null>(null);
   const [mode, setMode] = useState<Mode>('lab');
   const [asset, setAsset] = useState<Asset | 'portfolio'>('gold');
@@ -46,7 +49,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
     if (mode === 'challenge') setReport(null);
   }
   function editShock(index: number, patch: Partial<Shock>) { edit({ shocks: input.shocks.map((s, i) => i === index ? { ...s, ...patch } : s) }); }
-  function replace(next: Input) { setInput(next); setReport(null); setGuess(''); setError(null); setStatus(null); }
+  function replace(next: Input) { setInput(next); setReport(mode === 'lab' ? simulate(next) : null); setGuess(''); setError(null); setStatus(null); }
   function run() {
     setError(null); setStatus(null);
     if (mode === 'challenge' && (!guess || input.notes.trim().length < 3)) { setError('challengeRequired'); return; }
@@ -75,14 +78,17 @@ export function MacroLab({ userKey }: { userKey: string }) {
   return <WorkspacePageContainer variant="full" className={styles.lab}>
     <div dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} data-hydrated={hydrated ? 'true' : 'false'} data-testid="macro-lab">
       <header className={styles.hero}>
-        <div><p className={styles.eyebrow} dir="ltr">SFM / SIM LAB · V2</p><h1>{t('title')}</h1><p>{t('subtitle')}</p></div>
-        <div className={styles.heroBadges}><span className={styles.badge}>{t('badge')}</span><span className={styles.muted}>{t('noLive')}</span></div>
+        <div className={styles.heroCopy}><p className={styles.eyebrow} dir="ltr">SFM / SIM LAB · V2</p><h1>{t('title')}</h1><p>{t('subtitle')}</p></div>
+        <div className={styles.heroBadges}><span className={styles.badge}><FlaskConical size={15} />{t('badge')}</span><span className={styles.muted}><Target size={14} />{t('noLive')}</span></div>
       </header>
       <p className={styles.notice}>{t('disclaimer')}</p>
       <div className={styles.toolbar}>
-        <nav className={styles.tabs} aria-label={t('title')}>{(['lab', 'challenge', 'method'] as const).map(tab => <button type="button" key={tab} aria-pressed={mode === tab} onClick={() => { setMode(tab); setReport(null); setGuess(''); setError(null); setStatus(null); }}>{t(tab)}</button>)}</nav>
-        <button type="button" className={styles.button} onClick={save}>{t('save')}</button><button type="button" className={styles.button} onClick={restore}>{t('load')}</button>
-        <button type="button" className={styles.button} onClick={download}>{t('export')}</button><button type="button" className={styles.button} onClick={() => importRef.current?.click()}>{t('import')}</button>
+        <nav className={styles.tabs} aria-label={t('title')}>{(['lab', 'challenge', 'method'] as const).map(tab => {
+          const Icon = tab === 'lab' ? FlaskConical : tab === 'challenge' ? Target : BookOpen;
+          return <button type="button" key={tab} aria-pressed={mode === tab} onClick={() => { setMode(tab); setReport(tab === 'lab' ? simulate(input) : null); setGuess(''); setError(null); setStatus(null); }}><Icon size={15} />{t(tab)}</button>;
+        })}</nav>
+        <div className={styles.toolbarActions}><button type="button" className={styles.button} onClick={save}><Save size={15} />{t('save')}</button><button type="button" className={styles.button} onClick={restore}><FolderOpen size={15} />{t('load')}</button>
+          <button type="button" className={styles.button} onClick={download}><Download size={15} />{t('export')}</button><button type="button" className={styles.button} onClick={() => importRef.current?.click()}><Upload size={15} />{t('import')}</button></div>
         <input ref={importRef} type="file" hidden accept="application/json,.json" aria-label={t('import')} onChange={async event => {
           const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
           try { if (file.size > 20000) throw new Error('size'); replace(readSnapshot(await file.text())); setStatus('loaded'); } catch { setError('invalid'); }
@@ -91,7 +97,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
       {status ? <p role="status" className={styles.notice}>{t(status)}</p> : null}
       {error ? <p role="alert" className={styles.error}>{t(error)}</p> : null}
       {mode === 'method' ? <Methodology lang={lang} /> : <>
-        <section className={styles.presets} aria-label={t('presets')}>{TEMPLATES.map(id => <button type="button" key={id} onClick={() => replace(template(id))}>{templateLabels[id][lang]}</button>)}</section>
+        <section className={styles.presets} aria-label={t('presets')}><span className={styles.presetLabel}>{t('presets')}</span>{TEMPLATES.map((id, index) => <button type="button" key={id} onClick={() => replace(template(id))}><span>0{index + 1}</span><b>{templateLabels[id][lang]}</b></button>)}</section>
         <div className={styles.workspace}>
           <form className={styles.controls} onSubmit={event => { event.preventDefault(); run(); }}>
             <section className={styles.card}><h2><span className={styles.step}>01</span>{t('builder')}</h2>
@@ -126,8 +132,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
               <p className={weightsValid ? styles.muted : styles.error}>{t('total')}: <b dir="ltr">{Number.isFinite(weightsTotal) ? number(weightsTotal, 2) : '—'}%</b></p>{!weightsValid ? <p>{t('weights')}</p> : null}
             </section>
             {mode === 'challenge' ? <section className={styles.card}><h2>{t('challengeTitle')}</h2><p>{t('challengeText')}</p><div className={styles.field}><label htmlFor={`${fieldIds}-guess`}>{t('guess')}</label><select id={`${fieldIds}-guess`} value={guess} required onChange={e => { setGuess(e.target.value as Guess); setReport(null); }}><option value="">{t('choose')}</option>{(['positive', 'negative', 'neutral'] as const).map(id => <option key={id} value={id}>{t(id)}</option>)}</select></div></section> : null}
-            <button data-testid="macro-run" className={styles.primary} type="button" onClick={run} disabled={!weightsValid}>{mode === 'challenge' ? t('reveal') : t('run')} <span aria-hidden="true">↗</span></button>
-            <button className={styles.button} type="button" onClick={() => { replace(defaultInput()); setPinned(null); }}>{t('reset')}</button>
+            <div className={styles.runDock}><button data-testid="macro-run" className={styles.primary} type="button" onClick={run} disabled={!weightsValid}><Play size={17} fill="currentColor" />{mode === 'challenge' ? t('reveal') : t('run')}</button><button className={styles.button} type="button" onClick={() => { replace(defaultInput()); setPinned(null); }}><RotateCcw size={15} />{t('reset')}</button></div>
           </form>
           <div className={styles.canvas}>
             {!report || !reference ? <section className={`${styles.card} ${styles.empty}`}><div className={styles.orbit} aria-hidden="true">SFM</div><h2>{mode === 'challenge' ? t('challengeTitle') : t('empty')}</h2><p>{mode === 'challenge' ? t('challengeText') : t('noProbability')}</p><div className={styles.statusGrid}><span>{t('noLive')}</span><span>{t('noCalibration')}</span></div></section> : <>

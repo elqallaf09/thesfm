@@ -33,3 +33,6 @@ apps/markets-tv/android/.gradle/
 apps/markets-tv/android/**/build/
 apps/markets-tv/android/app/src/main/assets/
 apps/markets-tv/android/local.properties
+
+.vercel
+.env*

@@ -586,11 +586,19 @@ export function OilScenarioEngine() {
         </Link>
 
         <header className={styles.header}>
-          <div className={styles.heroIcon} aria-hidden="true"><Droplets size={28} /></div>
-          <div>
-            <p className={styles.eyebrow}>{c.eyebrow}</p>
-            <h1>{c.title}</h1>
-            <p className={styles.subtitle}>{c.subtitle}</p>
+          <div className={styles.heroIntro}>
+            <div className={styles.heroIcon} aria-hidden="true"><Droplets size={28} /></div>
+            <div>
+              <p className={styles.eyebrow}>{c.eyebrow}</p>
+              <h1>{c.title}</h1>
+              <p className={styles.subtitle}>{c.subtitle}</p>
+            </div>
+          </div>
+          <div className={styles.marketBeacon}>
+            <span>{c.liveQuote}</span>
+            <strong dir="ltr">{selectedQuote?.price ? money(selectedQuote.price) : c.unavailable}</strong>
+            <small>{benchmark === 'brent' ? c.brent : c.wti} · {selectedQuote?.source || quoteSource || '—'}</small>
+            <div className={styles.pressureTrail} aria-hidden="true"><i /><i /><i /><i /><i /></div>
           </div>
         </header>
 
@@ -790,6 +798,8 @@ export function OilScenarioEngine() {
               })}
             </div>
           </div>
+
+          <div className={styles.transmissionRail} aria-hidden="true"><span /><i /><i /><i /><span /></div>
 
           <aside className={styles.resultsPanel}>
             <div className={styles.sectionHead}>

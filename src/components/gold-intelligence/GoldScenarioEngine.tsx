@@ -214,18 +214,30 @@ export function GoldScenarioEngine() {
     bear: styles.bear,
     tail: styles.tail,
   };
+  const selectedHorizon = HORIZONS.find(item => item.id === horizon);
 
   return (
     <div className={styles.shell} dir={dir}>
       <DashboardPageShell ariaLabel={t('title')} className={styles.main} contentClassName={styles.content}>
         <header className={styles.header}>
-          <div>
+          <div className={styles.heroCopy}>
             <Link href="/investments/gold-silver" className={styles.back}><ArrowLeft size={16} />{t('back')}</Link>
             <p className={styles.eyebrow}><Sparkles size={15} />SFM Gold Intelligence</p>
             <h1>{t('title')}</h1>
             <p>{t('body')}</p>
           </div>
-          <button type="button" className={styles.refresh} onClick={() => void load()}><RefreshCw size={16} />{t('refresh')}</button>
+          <div className={styles.heroActions}>
+            <div className={styles.marketBeacon}>
+              <div>
+                <span>{t('spot')}</span>
+                <strong dir="ltr">{formatPrice(snapshot.spot.price, snapshot.spot.currency, locale)}</strong>
+                <small>{signed(snapshot.spot.changePercent)}% · {snapshot.spot.source}</small>
+              </div>
+              <div className={styles.priceTrail} aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
+              <b>{selectedHorizon?.[locale]}</b>
+            </div>
+            <button type="button" className={styles.refresh} onClick={() => void load()}><RefreshCw size={16} />{t('refresh')}</button>
+          </div>
         </header>
 
         {error ? <div className={styles.notice} role="alert">{error}</div> : null}
@@ -237,8 +249,11 @@ export function GoldScenarioEngine() {
           <Metric icon={<Database size={18} />} label={t('coverage')} value={snapshot.dataCoverage + '%'} detail={t('volatility') + ': ' + (snapshot.annualizedVolatility === null ? t('unavailable') : snapshot.annualizedVolatility.toFixed(1) + '%')} />
         </section>
 
-        <section className={styles.panel}>
-          <div className={styles.sectionHead}><div><span>SFM GSE · 24H → 12M</span><h2>{t('scenarios')}</h2></div></div>
+        <section className={[styles.panel, styles.scenarioPanel].join(' ')}>
+          <div className={styles.sectionHead}>
+            <div><span>SFM GSE · 24H → 12M</span><h2>{t('scenarios')}</h2></div>
+            <b className={styles.horizonChip}>{selectedHorizon?.[locale]}</b>
+          </div>
           <div className={styles.tabs} role="tablist" aria-label={t('scenarios')}>
             {HORIZONS.map(item => (
               <button key={item.id} type="button" role="tab" aria-selected={horizon === item.id} onClick={() => { setHorizon(item.id); setSimulation(null); }}>
@@ -262,6 +277,16 @@ export function GoldScenarioEngine() {
             ))}
           </div>
         </section>
+
+        <div className={styles.decisionPath} aria-label={t('scenarios')}>
+          <div><span>{t('drivers')}</span><b dir="ltr">{snapshot.drivers.filter(driver => driver.available).length}</b></div>
+          <i aria-hidden="true" />
+          <div><span>{t('factor')}</span><b dir="ltr">{signed(simulation?.simulatedFactorScore ?? snapshot.factorScore, 2)}</b></div>
+          <i aria-hidden="true" />
+          <div><span>{t('confidence')}</span><b dir="ltr">{snapshot.confidence}%</b></div>
+          <i aria-hidden="true" />
+          <div><span>{t('scenarios')}</span><b dir="ltr">{active?.scenarios.length ?? 0}</b></div>
+        </div>
 
         <div className={styles.columns}>
           <section className={styles.panel}>
