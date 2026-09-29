@@ -14,3 +14,13 @@
 }
 .chart :global(.price-chart-values strong) { font-family: var(--font-data); }
 .chart :global(.price-chart-axis) { direction: ltr; color: var(--foreground-muted); font-size: .75rem; }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-block-end: 16px; }
+.toolbar > bdi { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 12px; font-size: 14px; font-weight: 650; color: var(--foreground); }
+.ranges { display: flex; gap: 4px; flex-wrap: wrap; background: var(--background); border-radius: var(--radius-sm); padding: 4px; }
+.ranges button { min-inline-size: 44px; min-block-size: 44px; padding: 6px 12px; border: 0; border-radius: var(--radius-xs); background: transparent; color: var(--foreground-muted); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.ranges button[aria-pressed='true'] { background: var(--primary); color: var(--primary-foreground); }
+.ranges button:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+.chart[data-dashboard='true'] :global(.price-history-chart) { border-color: var(--border); border-radius: var(--radius-control); min-block-size: 300px; }
+.chart[data-dashboard='true'] :global(.price-history-chart > svg) { min-block-size: 260px; }
+.chart[data-dashboard='true'] :global(.price-chart-axis) { color: var(--foreground-muted); font-size: 13px; }
+@media (max-width: 600px) { .chart[data-dashboard='true'] :global(.price-history-chart) { min-block-size: 260px; } .chart[data-dashboard='true'] :global(.price-history-chart > svg) { min-block-size: 220px; } .ranges button { padding-inline: 9px; } }

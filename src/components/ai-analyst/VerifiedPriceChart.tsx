@@ -7,18 +7,17 @@ import chartStyles from './VerifiedPriceChart.module.css';
 import { PriceHistoryChart } from '@/components/market-analysis/MarketChartComponents';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AI_ANALYST_COPY, aiAnalystLocale } from './copy';
+import { rangeForHorizon, type DashboardRange, type VerifiedChartSnapshot } from './analysisDashboardModel';
 import styles from './AiAnalystWorkspace.module.css';
 
 type HistoryPoint = { time?: unknown; date?: unknown; open?: unknown; high?: unknown; low?: unknown; close?: unknown; volume?: unknown };
 type HistoryResponse = { ok?: boolean; success?: boolean; code?: unknown; points?: unknown; updated_at?: unknown; currency?: unknown };
-
-function chartRangeForHorizon(horizon: AnalysisResult['horizon']): '1D' | '1W' | '1M' | '1Y' | 'ALL' {
-  if (horizon === 'INTRADAY') return '1D';
-  if (horizon === 'SHORT_TERM') return '1W';
-  if (horizon === 'SWING') return '1M';
-  if (horizon === 'POSITION') return '1Y';
-  return 'ALL';
-}
+const RANGE_LABELS = {
+  ar: { '1D': 'يوم', '1W': 'أسبوع', '1M': 'شهر', '1Y': 'سنة', ALL: 'الكل' },
+  en: { '1D': '1D', '1W': '1W', '1M': '1M', '1Y': '1Y', ALL: 'All' },
+  fr: { '1D': '1J', '1W': '1S', '1M': '1M', '1Y': '1A', ALL: 'Tout' },
+} as const;
+const RANGES: DashboardRange[] = ['1D', '1W', '1M', '1Y', 'ALL'];
 
 function marketAssetType(assetType: AnalysisResult['asset']['assetType']) {
   if (assetType === 'FUND') return 'etf';
@@ -33,82 +32,59 @@ export function pointsFromResponse(value: unknown) {
     const date = String(point?.time ?? point?.date ?? '').trim();
     if (!point || !date || !Number.isFinite(Date.parse(date)) || !Number.isFinite(close) || close <= 0) return [];
     const optional = (item: unknown) => (typeof item === 'number' || (typeof item === 'string' && item.trim())) && Number.isFinite(Number(item)) ? Number(item) : undefined;
-    return [{
-      date,
-      close,
-      open: optional(point.open),
-      high: optional(point.high),
-      low: optional(point.low),
-      volume: optional(point.volume) ?? null,
-    }];
+    return [{ date, close, open: optional(point.open), high: optional(point.high), low: optional(point.low), volume: optional(point.volume) ?? null }];
   });
 }
 
-export function VerifiedPriceChart({ result }: { result: AnalysisResult }) {
+export function VerifiedPriceChart({ result, interactive = false, initialRange, onSnapshot }: {
+  result: AnalysisResult;
+  interactive?: boolean;
+  initialRange?: DashboardRange;
+  onSnapshot?: (snapshot: VerifiedChartSnapshot | null) => void;
+}) {
   const { lang, t } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale];
-  const range = chartRangeForHorizon(result.horizon);
+  const [selectedRange, setSelectedRange] = useState<DashboardRange>(initialRange ?? rangeForHorizon(result.horizon));
+  const range = interactive ? selectedRange : rangeForHorizon(result.horizon);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [history, setHistory] = useState<ReturnType<typeof pointsFromResponse>>([]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string | null>(result.asset.quoteCurrency);
   const [retryToken, setRetryToken] = useState(0);
-
   const url = useMemo(() => {
-    const params = new URLSearchParams({
-      symbol: result.asset.displaySymbol,
-      providerSymbol: result.asset.providerSymbol,
-      assetType: marketAssetType(result.asset.assetType),
-      range,
-    });
+    const params = new URLSearchParams({ symbol: result.asset.displaySymbol, providerSymbol: result.asset.providerSymbol, assetType: marketAssetType(result.asset.assetType), range });
     return `/api/market/history?${params.toString()}`;
   }, [range, result.asset.assetType, result.asset.displaySymbol, result.asset.providerSymbol]);
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    setLoading(true);
-    setError(false);
-    setHistory([]);
+    setLoading(true); setError(false); setHistory([]); setUpdatedAt(null);
+    onSnapshot?.(null);
     const timer = setTimeout(() => controller.abort(), 20_000);
     void fetch(url, { credentials: 'same-origin', headers: { accept: 'application/json' }, signal: controller.signal })
       .then(async response => ({ response, payload: await response.json().catch(() => ({})) as HistoryResponse }))
       .then(({ response, payload }) => {
         if (!active) return;
-        const points = response.ok && payload.ok === true && payload.success === true ? pointsFromResponse(payload.points) : [];
-        setHistory(points);
-        setUpdatedAt(typeof payload.updated_at === 'string' ? payload.updated_at : null);
-        setCurrency(typeof payload.currency === 'string' ? payload.currency : result.asset.quoteCurrency);
-        setError(points.length < 2);
+        const points = response.ok && payload.ok === true && payload.success === true ? pointsFromResponse(payload.points).sort((a, b) => Date.parse(a.date) - Date.parse(b.date)) : [];
+        const asOf = typeof payload.updated_at === 'string' ? payload.updated_at : null;
+        const quoteCurrency = typeof payload.currency === 'string' ? payload.currency : result.asset.quoteCurrency;
+        setHistory(points); setUpdatedAt(asOf); setCurrency(quoteCurrency); setError(points.length < 2);
+        onSnapshot?.(points.length >= 2 ? { range, points, currency: quoteCurrency, updatedAt: asOf } : null);
       })
       .catch(() => {
         if (!active) return;
-        setHistory([]);
-        setError(true);
+        setHistory([]); setError(true); onSnapshot?.(null);
       })
       .finally(() => { clearTimeout(timer); if (active) setLoading(false); });
     return () => { active = false; clearTimeout(timer); controller.abort(); };
-  }, [result.asset.quoteCurrency, retryToken, url]);
+  }, [result.analysisId, result.asset.quoteCurrency, retryToken, url, onSnapshot, range]);
 
-  return (
-    <div className={`${styles.disclosureBody} ${chartStyles.chart}`} data-testid="ai-analyst-verified-chart">
-      <MarketChartStyles />
-      <PriceHistoryChart
-        history={history}
-        loading={loading}
-        message={error ? copy.analysis.chartUnavailable : ''}
-        timeframe={range}
-        chartType="area"
-        locale={locale}
-        currency={currency}
-        exchange={result.asset.exchange}
-        symbol={result.asset.displaySymbol}
-        updatedAt={updatedAt}
-        onRetry={() => setRetryToken(value => value + 1)}
-        t={t}
-      />
-    </div>
-  );
+  return <div className={`${styles.disclosureBody} ${chartStyles.chart}`} data-testid="ai-analyst-verified-chart" data-dashboard={interactive}>
+    <MarketChartStyles />
+    {interactive ? <div className={chartStyles.toolbar}><bdi>{result.asset.displaySymbol}</bdi><div className={chartStyles.ranges} role="group" aria-label={copy.analysis.chart}>{RANGES.map(value => <button key={value} type="button" aria-pressed={range === value} onClick={() => setSelectedRange(value)}>{RANGE_LABELS[locale][value]}</button>)}</div></div> : null}
+    <PriceHistoryChart history={history} loading={loading} message={error ? copy.analysis.chartUnavailable : ''} timeframe={range} chartType="area" locale={locale} currency={currency} exchange={result.asset.exchange} symbol={result.asset.displaySymbol} updatedAt={updatedAt} onRetry={() => setRetryToken(value => value + 1)} t={t} />
+  </div>;
 }

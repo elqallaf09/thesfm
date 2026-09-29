@@ -6,125 +6,58 @@ import { BrainCircuit, ChevronDown, Menu, X } from 'lucide-react';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { useLanguage } from '@/hooks/useLanguage';
 import { isAiAnalystFeatureEnabled } from '@/lib/ai-analyst/features';
-import {
-  AI_ANALYST_COPY,
-  aiAnalystLocale,
-  type AiAnalystNavigationGroup,
-  type AiAnalystNavigationKey,
-} from './copy';
+import { AI_ANALYST_COPY, aiAnalystLocale, type AiAnalystNavigationGroup, type AiAnalystNavigationKey } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
+import analysisStyles from './AiAnalystShellAnalysis.module.css';
 
 export type AiAnalystTab = AiAnalystNavigationKey | 'timeline';
-
-type NavigationItem = {
-  key: AiAnalystNavigationKey;
-  href: string;
-  activeTabs?: readonly AiAnalystTab[];
-};
-
-type NavigationGroup = {
-  key: AiAnalystNavigationGroup;
-  items: readonly NavigationItem[];
-};
+type NavigationItem = { key: AiAnalystNavigationKey; href: string; activeTabs?: readonly AiAnalystTab[] };
+type NavigationGroup = { key: AiAnalystNavigationGroup; items: readonly NavigationItem[] };
 
 export const AI_ANALYST_NAVIGATION_GROUPS = [
-  {
-    key: 'analysis',
-    items: [
-      { key: 'overview', href: '/ai-analyst/overview' },
-      { key: 'analysis', href: '/ai-analyst/analyze', activeTabs: ['analysis', 'agent', 'assetDetails'] },
-      { key: 'assistant', href: '/ai-analyst/assistant' },
-      { key: 'compare', href: '/ai-analyst/compare' },
-      { key: 'path', href: '/ai-analyst/path', activeTabs: ['path', 'timeline'] },
-      { key: 'history', href: '/ai-analyst/history?view=history' },
-      { key: 'future', href: '/ai-analyst/opportunities' },
-    ],
-  },
-  {
-    key: 'markets',
-    items: [
-      { key: 'marketLeadership', href: '/ai-analyst/market-leadership' },
-      { key: 'markets', href: '/ai-analyst/markets' },
-      { key: 'marketSessions', href: '/ai-analyst/markets/sessions' },
-      { key: 'marketMap', href: '/ai-analyst/markets?view=map' },
-    ],
-  },
-  {
-    key: 'monitoring',
-    items: [
-      { key: 'watchlist', href: '/ai-analyst/watchlist' },
-      { key: 'portfolio', href: '/ai-analyst/portfolio' },
-      { key: 'alerts', href: '/ai-analyst/alerts' },
-      { key: 'recommendations', href: '/ai-analyst/recommendations' },
-      { key: 'tradePerformance', href: '/ai-analyst/trade-performance' },
-    ],
-  },
-  {
-    key: 'knowledge',
-    items: [
-      { key: 'news', href: '/ai-analyst/news' },
-      { key: 'calendar', href: '/ai-analyst/calendar' },
-      { key: 'education', href: '/ai-analyst/education' },
-    ],
-  },
-  {
-    key: 'configuration',
-    items: [
-      { key: 'settings', href: '/ai-analyst/settings' },
-    ],
-  },
+  { key: 'analysis', items: [
+    { key: 'overview', href: '/ai-analyst/overview' },
+    { key: 'analysis', href: '/ai-analyst/analyze', activeTabs: ['analysis', 'agent', 'assetDetails'] },
+    { key: 'assistant', href: '/ai-analyst/assistant' },
+    { key: 'compare', href: '/ai-analyst/compare' },
+    { key: 'path', href: '/ai-analyst/path', activeTabs: ['path', 'timeline'] },
+    { key: 'history', href: '/ai-analyst/history?view=history' },
+    { key: 'future', href: '/ai-analyst/opportunities' },
+  ] },
+  { key: 'markets', items: [
+    { key: 'marketLeadership', href: '/ai-analyst/market-leadership' },
+    { key: 'markets', href: '/ai-analyst/markets' },
+    { key: 'marketSessions', href: '/ai-analyst/markets/sessions' },
+    { key: 'marketMap', href: '/ai-analyst/markets?view=map' },
+  ] },
+  { key: 'monitoring', items: [
+    { key: 'watchlist', href: '/ai-analyst/watchlist' },
+    { key: 'portfolio', href: '/ai-analyst/portfolio' },
+    { key: 'alerts', href: '/ai-analyst/alerts' },
+    { key: 'recommendations', href: '/ai-analyst/recommendations' },
+    { key: 'tradePerformance', href: '/ai-analyst/trade-performance' },
+  ] },
+  { key: 'knowledge', items: [
+    { key: 'news', href: '/ai-analyst/news' },
+    { key: 'calendar', href: '/ai-analyst/calendar' },
+    { key: 'education', href: '/ai-analyst/education' },
+  ] },
+  { key: 'configuration', items: [{ key: 'settings', href: '/ai-analyst/settings' }] },
 ] as const satisfies readonly NavigationGroup[];
 
-function isActive(item: NavigationItem, activeTab: AiAnalystTab) {
-  return (item.activeTabs ?? [item.key]).includes(activeTab);
-}
-
+function isActive(item: NavigationItem, activeTab: AiAnalystTab) { return (item.activeTabs ?? [item.key]).includes(activeTab); }
 function visibleNavigationGroups(): NavigationGroup[] {
-  return AI_ANALYST_NAVIGATION_GROUPS
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => {
-        if (item.key === 'marketMap') return isAiAnalystFeatureEnabled('marketMap');
-        if (item.key === 'future') return isAiAnalystFeatureEnabled('futureTools');
-        return true;
-      }),
-    }))
-    .filter(group => group.items.length > 0)
-    .map(group => ({ ...group, items: [...group.items] }));
+  return AI_ANALYST_NAVIGATION_GROUPS.map(group => ({ ...group, items: group.items.filter(item => {
+    if (item.key === 'marketMap') return isAiAnalystFeatureEnabled('marketMap');
+    if (item.key === 'future') return isAiAnalystFeatureEnabled('futureTools');
+    return true;
+  }) })).filter(group => group.items.length > 0).map(group => ({ ...group, items: [...group.items] }));
 }
 
-function NavigationLinks({
-  group,
-  activeTab,
-  onNavigate,
-}: {
-  group: NavigationGroup;
-  activeTab: AiAnalystTab;
-  onNavigate?: () => void;
-}) {
+function NavigationLinks({ group, activeTab, onNavigate }: { group: NavigationGroup; activeTab: AiAnalystTab; onNavigate?: () => void }) {
   const { lang } = useLanguage();
   const copy = AI_ANALYST_COPY[aiAnalystLocale(lang)];
-
-  return (
-    <ul className={styles.navigationLinks}>
-      {group.items.map(item => {
-        const active = isActive(item, activeTab);
-        return (
-          <li key={item.key}>
-            <Link
-              href={item.href}
-              prefetch={false}
-              className={styles.navigationLink}
-              aria-current={active ? 'page' : undefined}
-              onClick={onNavigate}
-            >
-              {copy.navigation.items[item.key]}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
+  return <ul className={styles.navigationLinks}>{group.items.map(item => <li key={item.key}><Link href={item.href} prefetch={false} className={styles.navigationLink} aria-current={isActive(item, activeTab) ? 'page' : undefined} onClick={onNavigate}>{copy.navigation.items[item.key]}</Link></li>)}</ul>;
 }
 
 export function AiAnalystShell({ activeTab, children }: { activeTab: AiAnalystTab; children: ReactNode }) {
@@ -133,90 +66,29 @@ export function AiAnalystShell({ activeTab, children }: { activeTab: AiAnalystTa
   const copy = AI_ANALYST_COPY[locale];
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const navigationGroups = visibleNavigationGroups();
-
+  const analysisView = activeTab === 'analysis';
   useEffect(() => {
     if (!mobileNavigationOpen) return;
-    const closeMobileNavigationOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileNavigationOpen(false);
-    };
+    const closeMobileNavigationOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileNavigationOpen(false); };
     document.addEventListener('keydown', closeMobileNavigationOnEscape);
     return () => document.removeEventListener('keydown', closeMobileNavigationOnEscape);
   }, [mobileNavigationOpen]);
+  const navigation = <nav className={styles.workspaceNavigation} aria-label={copy.navigation.label} data-testid="ai-analyst-tabs">{navigationGroups.map(group => <section className={styles.navigationGroup} key={group.key} aria-labelledby={`ai-analyst-nav-${group.key}`}><h2 id={`ai-analyst-nav-${group.key}`} className={styles.navigationGroupTitle}>{copy.navigation.groups[group.key]}</h2><NavigationLinks group={group} activeTab={activeTab} /></section>)}</nav>;
 
-  return (
-    <WorkspacePageContainer
-      as="main"
-      variant="full"
-      className={styles.shell}
-      dir={dir}
-      data-testid="ai-analyst-workspace"
-    >
-      <header className={styles.header} aria-labelledby="ai-analyst-title">
-        <span className={styles.brandIcon} aria-hidden="true"><BrainCircuit size={22} /></span>
-        <div>
-          <p className={styles.eyebrow}>{copy.eyebrow}</p>
-          <h1 id="ai-analyst-title">{copy.title}</h1>
-          <p>{copy.subtitle}</p>
-        </div>
-      </header>
-      <nav className={styles.workspaceNavigation} aria-label={copy.navigation.label} data-testid="ai-analyst-tabs">
-        {navigationGroups.map(group => (
-          <section className={styles.navigationGroup} key={group.key} aria-labelledby={`ai-analyst-nav-${group.key}`}>
-            <h2 id={`ai-analyst-nav-${group.key}`} className={styles.navigationGroupTitle}>{copy.navigation.groups[group.key]}</h2>
-            <NavigationLinks group={group} activeTab={activeTab} />
-          </section>
-        ))}
+  return <WorkspacePageContainer as="main" variant="full" className={`${styles.shell} ${analysisView ? analysisStyles.shell : ''}`} dir={dir} data-testid="ai-analyst-workspace">
+    <header className={styles.header} aria-labelledby="ai-analyst-title"><span className={styles.brandIcon} aria-hidden="true"><BrainCircuit size={22} /></span><div><p className={styles.eyebrow}>{copy.eyebrow}</p><h1 id="ai-analyst-title">{copy.title}</h1><p>{copy.subtitle}</p></div></header>
+    {analysisView ? <div className={analysisStyles.toolbar}>
+      <nav className={analysisStyles.quickLinks} aria-label={copy.navigation.label}>{navigationGroups.flatMap(group => group.items).filter(item => ['overview', 'analysis', 'assistant', 'watchlist', 'news'].includes(item.key)).map(item => <Link href={item.href} key={item.key} prefetch={false} aria-current={isActive(item, activeTab) ? 'page' : undefined}>{copy.navigation.items[item.key]}</Link>)}</nav>
+      <details className={analysisStyles.allTools}><summary><Menu size={17} aria-hidden="true" />{copy.navigation.open}<ChevronDown size={16} aria-hidden="true" /></summary>{navigation}</details>
+    </div> : navigation}
+    <button className={styles.mobileNavigationToggle} type="button" aria-expanded={mobileNavigationOpen} aria-controls="ai-analyst-mobile-navigation" onClick={() => setMobileNavigationOpen(open => !open)}><Menu size={18} aria-hidden="true" />{copy.navigation.open}</button>
+    {mobileNavigationOpen ? <>
+      <button type="button" className={styles.mobileNavigationBackdrop} aria-label={copy.navigation.close} onClick={() => setMobileNavigationOpen(false)} />
+      <nav id="ai-analyst-mobile-navigation" className={styles.mobileNavigationDrawer} aria-label={copy.navigation.label} data-testid="ai-analyst-mobile-navigation">
+        <div className={styles.mobileNavigationHeader}><strong>{copy.title}</strong><button className={styles.mobileNavigationClose} type="button" aria-label={copy.navigation.close} onClick={() => setMobileNavigationOpen(false)}><X size={18} aria-hidden="true" /></button></div>
+        <div className={styles.mobileNavigationGroups}>{navigationGroups.map(group => <details key={group.key} className={styles.mobileNavigationGroup} open={group.items.some(item => isActive(item, activeTab))}><summary><span>{copy.navigation.groups[group.key]}</span><ChevronDown size={16} aria-hidden="true" /></summary><NavigationLinks group={group} activeTab={activeTab} onNavigate={() => setMobileNavigationOpen(false)} /></details>)}</div>
       </nav>
-      <button
-        className={styles.mobileNavigationToggle}
-        type="button"
-        aria-expanded={mobileNavigationOpen}
-        aria-controls="ai-analyst-mobile-navigation"
-        onClick={() => setMobileNavigationOpen(open => !open)}
-      >
-        <Menu size={18} aria-hidden="true" />
-        {copy.navigation.open}
-      </button>
-      {mobileNavigationOpen ? (
-        <>
-          <button
-            type="button"
-            className={styles.mobileNavigationBackdrop}
-            aria-label={copy.navigation.close}
-            onClick={() => setMobileNavigationOpen(false)}
-          />
-          <nav
-            id="ai-analyst-mobile-navigation"
-            className={styles.mobileNavigationDrawer}
-            aria-label={copy.navigation.label}
-            data-testid="ai-analyst-mobile-navigation"
-          >
-            <div className={styles.mobileNavigationHeader}>
-              <strong>{copy.title}</strong>
-              <button
-                className={styles.mobileNavigationClose}
-                type="button"
-                aria-label={copy.navigation.close}
-                onClick={() => setMobileNavigationOpen(false)}
-              >
-                <X size={18} aria-hidden="true" />
-              </button>
-            </div>
-            <div className={styles.mobileNavigationGroups}>
-              {navigationGroups.map(group => (
-                <details key={group.key} className={styles.mobileNavigationGroup} open={group.items.some(item => isActive(item, activeTab))}>
-                  <summary>
-                    <span>{copy.navigation.groups[group.key]}</span>
-                    <ChevronDown size={16} aria-hidden="true" />
-                  </summary>
-                  <NavigationLinks group={group} activeTab={activeTab} onNavigate={() => setMobileNavigationOpen(false)} />
-                </details>
-              ))}
-            </div>
-          </nav>
-        </>
-      ) : null}
-      <section className={styles.content}>{children}</section>
-    </WorkspacePageContainer>
-  );
+    </> : null}
+    <section className={styles.content}>{children}</section>
+  </WorkspacePageContainer>;
 }
