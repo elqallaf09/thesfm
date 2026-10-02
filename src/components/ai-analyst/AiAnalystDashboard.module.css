@@ -18,7 +18,7 @@
 .dashboard svg { flex-shrink: 0; }
 .pageHeader { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 4px 2px; }
 .assetHeading { display: grid; gap: 5px; min-width: 0; }
-.assetHeading h2 { font-size: clamp(24px, 2.1vw, 32px); line-height: 1.45; font-weight: 750; letter-spacing: -.02em; color: var(--foreground); }
+.assetHeading h2 { font-size: clamp(24px, 2.1vw, 32px); line-height: 1.45; font-weight: 700; letter-spacing: -.02em; color: var(--foreground); }
 .assetHeading p { color: var(--foreground-muted); font-size: 15px; }
 .headerActions { display: grid; gap: 6px; justify-items: start; flex-shrink: 0; max-inline-size: 360px; }
 .sourceStamp { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
@@ -42,7 +42,7 @@
 .trend strong { font-size: 28px; line-height: 1.4; }
 .trend p { color: var(--foreground-muted); font-size: 14px; }
 .quote { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-width: 0; padding: 16px 20px; }
-.price { display: block; font-size: clamp(28px, 3.2vw, 44px); line-height: 1.4; font-weight: 750; letter-spacing: -.025em; color: var(--foreground); overflow-wrap: anywhere; }
+.price { display: block; font-size: clamp(28px, 3.2vw, 44px); line-height: 1.4; font-weight: 700; letter-spacing: -.025em; color: var(--foreground); overflow-wrap: anywhere; }
 .change { border-radius: var(--radius-control); padding: 10px 12px; text-align: center; flex-shrink: 0; }
 .change strong { display: block; font-size: 22px; line-height: 1.4; }
 .change span { display: block; font-size: 12px; }
@@ -52,7 +52,7 @@
 .metric { display: flex; flex-direction: column; gap: 12px; padding: 18px; align-items: stretch; }
 .metricLabel { display: flex; align-items: center; gap: 9px; }
 .metricLabel h3 { font-size: 15px; font-weight: 700; color: var(--foreground); }
-.metricValue { display: flex; flex-direction: column; align-items: stretch; gap: 10px; font-size: 22px; font-weight: 750; text-align: center; line-height: 1.5; }
+.metricValue { display: flex; flex-direction: column; align-items: stretch; gap: 10px; font-size: 22px; font-weight: 700; text-align: center; line-height: 1.5; }
 .metric .note { text-align: center; font-size: 13px; }
 .metric progress { inline-size: 100%; block-size: 7px; appearance: none; border: 0; border-radius: var(--radius-control); overflow: hidden; background: var(--primary-soft); color: var(--primary); }
 .metric progress::-webkit-progress-bar { background: var(--primary-soft); }
