@@ -32,7 +32,7 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: { symbol
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale];
   const researchCopy = RESEARCH_COPY[locale];
-  const dashboardCopy = DASHBOARD_COPY[locale];
+  const sourceCopy = DASHBOARD_COPY[locale];
   const { user, isGuest, result, loading, errorCode, retryAfterSeconds, taskState, requestAnalysis } = useResearchTask({ symbol, assetType, horizon, locale });
   const presentedResult = useMemo(() => result ? withSfmAnalyticalSource(result) : null, [result]);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -70,7 +70,7 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: { symbol
     {result ? <>
       <div data-testid="ai-analyst-canonical-result"><AiAnalystDashboard key={result.analysisId} result={result} actions={actions} onOpenEvidence={openEvidence} /></div>
       <details data-testid="analyst-evidence-detail" ref={evidenceRef} className={`${styles.card} ${dashboardStyles.detailsPanel}`} open={evidenceOpen} onToggle={event => setEvidenceOpen(event.currentTarget.open)}>
-        <summary className={dashboardStyles.detailSummary}>{dashboardCopy.evidence}<ChevronDown size={18} aria-hidden="true" /></summary>
+        <summary className={dashboardStyles.detailSummary}>{sourceCopy.evidence}<ChevronDown size={18} aria-hidden="true" /></summary>
         {evidenceOpen ? <IntelligencePanel result={presentedResult} loading={false} errorCode={null} onRetry={() => void requestAnalysis(false)} showStatus={false} /> : null}
       </details>
       <InvestmentCheckCard compact symbol={symbol} assetType={assetType} horizon={horizon} providedResult={result} onResearchRefresh={() => void requestAnalysis(true)} />
@@ -86,9 +86,9 @@ export function AiAnalystResearchRunner({ symbol, assetType, horizon }: { symbol
         </section>
       </div>
       <details className={`${styles.card} ${dashboardStyles.detailsPanel}`} aria-labelledby={sourceTitleId} data-testid="sfm-intelligence-source">
-        <summary id={sourceTitleId} className={dashboardStyles.detailSummary}>{dashboardCopy.engine} · {researchCopy.rules}<ChevronDown size={18} aria-hidden="true" /></summary>
-        <header className={styles.cardHeader}><div><h2 className={styles.panelTitle}>{SFM_MARKET_INTELLIGENCE_ENGINE_NAME}</h2><p>{dashboardCopy.engineNote}</p></div><span className={styles.metricPill} dir="ltr">v{result.engineVersion}</span></header>
-        <div className={styles.statusRail}>{dashboardCopy.provider}: <b dir="ltr">{result.providerProvenance.selectedProvider ?? dashboardCopy.unavailable}</b></div>
+        <summary id={sourceTitleId} className={dashboardStyles.detailSummary}>{sourceCopy.engine} · {researchCopy.rules}<ChevronDown size={18} aria-hidden="true" /></summary>
+        <header className={styles.cardHeader}><div><h2 className={styles.panelTitle}>{SFM_MARKET_INTELLIGENCE_ENGINE_NAME}</h2><p>{sourceCopy.engineNote}</p></div><span className={styles.metricPill} dir="ltr">v{result.engineVersion}</span></header>
+        <div className={styles.statusRail}>{sourceCopy.provider}: <b dir="ltr">{result.providerProvenance.selectedProvider ?? sourceCopy.unavailable}</b></div>
         <AiAnalystRuleEngine result={result} />
       </details>
     </> : null}
