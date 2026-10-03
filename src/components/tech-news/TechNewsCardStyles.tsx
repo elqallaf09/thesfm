@@ -110,9 +110,23 @@ export function TechNewsCardStyles() {
 
       .tech-news-read-link:focus-visible,.tech-side-list a:focus-visible,.tech-news-translation-toggle:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
 
+      /* Tablet / MatePad: collapse the desktop side rail before the app navigation
+         and article columns compete for horizontal space.  Landscape Android tablets
+         often expose a CSS viewport wider than 1280px even though the usable content
+         area is much narrower because the workspace navigation stays visible. */
+      @media(max-width:1440px){
+        .tech-news-layout{grid-template-columns:minmax(0,1fr)}
+        .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
+        .tech-news-editorial-grid{grid-template-columns:minmax(0,1.35fr) minmax(260px,.8fr)}
+        .tech-news-standard-results.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      }
       @media(max-width:1280px){
         .tech-news-layout{grid-template-columns:1fr}
         .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
+      }
+      @media(max-width:1180px){
+        .tech-news-editorial-grid{grid-template-columns:1fr}
+        .tech-news-side-panel{grid-template-columns:1fr}
       }
       @media(max-width:1024px){
         .tech-news-editorial-grid{grid-template-columns:1fr}
