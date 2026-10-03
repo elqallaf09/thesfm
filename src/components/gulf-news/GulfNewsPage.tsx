@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -128,6 +128,7 @@ export function GulfNewsPage() {
   const [lastLoadedAt, setLastLoadedAt] = useState(Date.now());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const loadInFlightRef = useRef(false);
   const [deliveryStatus, setDeliveryStatus] = useState({
     partialFailure: false,
     liveUpdatesAvailable: true,
@@ -224,6 +225,8 @@ export function GulfNewsPage() {
   }, [lang]);
 
   const load = useCallback(async (showLoader = true) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     if (showLoader) setLoading(true);
     setError('');
     try {
@@ -245,6 +248,7 @@ export function GulfNewsPage() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('gulf_news_error'));
     } finally {
+      loadInFlightRef.current = false;
       if (showLoader) setLoading(false);
     }
   }, [lang, t]);
