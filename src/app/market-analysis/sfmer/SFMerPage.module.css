@@ -1,6 +1,6 @@
 .page { display: grid; gap: clamp(1rem, 2vw, 1.75rem); padding-block: clamp(1rem, 2vw, 1.75rem) 2.5rem; }
 .hero { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(16rem, .42fr); gap: 1.5rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border)); border-radius: var(--radius-panel); padding: clamp(1.25rem, 2.8vw, 2.5rem); background: color-mix(in srgb, var(--primary-soft) 58%, var(--card)); box-shadow: var(--shadow-sm); }
-.hero::after { position: absolute; inset: auto -5rem -8rem auto; inline-size: 19rem; block-size: 19rem; border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--primary-soft) 22%, transparent); content: ''; pointer-events: none; }
+.hero::after { position: absolute; inset: auto -5rem -8rem auto; inline-size: 19rem; block-size: 19rem; border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent); border-radius: var(--radius-circle); background: color-mix(in srgb, var(--primary-soft) 22%, transparent); content: ''; pointer-events: none; }
 .heroCopy, .heroSignal { position: relative; z-index: 1; min-inline-size: 0; }
 .heroCopy { display: grid; align-content: start; gap: .7rem; }
 .heroCopy h1 { margin: 0; color: var(--foreground); font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 700; letter-spacing: -.045em; line-height: 1; }
@@ -41,7 +41,7 @@
 .post { display: grid; gap: .8rem; padding: 1.05rem; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-secondary); transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
 .post:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--border)); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .postHeader { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .7rem; }
-.avatar { display: grid; place-items: center; inline-size: 2.35rem; block-size: 2.35rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)); border-radius: var(--radius-control); background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+.avatar { display: grid; place-items: center; inline-size: 2.35rem; block-size: 2.35rem; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border)); border-radius: var(--radius-circle); background: var(--primary-soft); color: var(--primary); font-weight: 700; }
 .postHeader h3 { margin: 0; color: var(--foreground); font-size: .92rem; font-weight: 700; line-height: 1.35; }
 .postHeader span, .postHeader time { color: var(--foreground-muted); font-family: var(--font-data); font-size: .72rem; }
 .postHeader time { text-align: end; white-space: nowrap; }
