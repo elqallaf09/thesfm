@@ -251,8 +251,9 @@ describe('market-news normalization and security', () => {
     expect(boursa.every(provider => provider.supportedMarkets.includes('KUWAIT'))).toBe(true);
   });
 
-  it('registers an exchange-specific source for every Gulf market', () => {
-    const ids = buildFinancialNewsProviderRegistry({ marketCodes: ['GULF'] }).providers.map(provider => provider.id);
+  it('registers verified official and independent coverage for every Gulf market', () => {
+    const providers = buildFinancialNewsProviderRegistry({ marketCodes: ['GULF'] }).providers;
+    const ids = providers.map(provider => provider.id);
     expect(ids).toEqual(expect.arrayContaining([
       'official-boursa-kuwait-disclosures',
       'official-msx-company-disclosures',
@@ -262,6 +263,26 @@ describe('market-news normalization and security', () => {
       'official-qatar-exchange-announcements',
       'official-dfm-disclosures',
     ]));
+
+    const sourcePlans = [
+      { official: 'official-kuwait-cma-market-notices', independent: 'rss-kuwait-times-boursa-kuwait', officialNetwork: 'cma.gov.kw', independentNetwork: 'kuwaittimes.com' },
+      { official: 'official-saudi-cma-market-notices', independent: 'rss-argaam-tadawul-market', officialNetwork: 'cma.gov.sa', independentNetwork: 'argaam.com' },
+      { official: 'official-msx-company-disclosures', independent: 'rss-times-of-oman-msx-market', officialNetwork: 'msx.om', independentNetwork: 'timesofoman.com' },
+      { official: 'official-bahrain-cbb-market-notices', independent: 'rss-tradearabia-bahrain-bourse', officialNetwork: 'cbb.gov.bh', independentNetwork: 'tradearabia.com' },
+      { official: 'official-qatar-qfma-market-notices', independent: 'rss-gulf-times-qatar-exchange', officialNetwork: 'qfma.org.qa', independentNetwork: 'gulf-times.com' },
+      { official: 'official-uae-sca-market-notices', independent: 'rss-the-national-adx-market', officialNetwork: 'sca.gov.ae', independentNetwork: 'thenationalnews.com' },
+      { official: 'official-uae-sca-market-notices', independent: 'rss-the-national-dfm-market', officialNetwork: 'sca.gov.ae', independentNetwork: 'thenationalnews.com' },
+    ];
+    for (const plan of sourcePlans) {
+      const official = providers.find(provider => provider.id === plan.official);
+      const independent = providers.find(provider => provider.id === plan.independent);
+      expect(official?.officialSource).toBe(true);
+      expect(official?.sourceNetworkId).toBe(plan.officialNetwork);
+      expect(independent?.officialSource).toBe(false);
+      expect(independent?.sourceNetworkId).toBe(plan.independentNetwork);
+      expect(official?.sourceNetworkId).not.toBe(independent?.sourceNetworkId);
+      expect(ids.indexOf(plan.official)).toBeLessThan(ids.indexOf(plan.independent));
+    }
   });
 });
 
@@ -352,6 +373,31 @@ describe('multi-stage deduplication, independence, and conflicts', () => {
     }));
     expect(areDuplicateStories(first, exact)).toBe(true);
     expect(areDuplicateStories(first, similar)).toBe(true);
+  });
+
+  it('does not merge generic disclosure headlines from different exchanges', () => {
+    const dfm = item({
+      id: 'dfm-disclosure',
+      title: 'Board Decisions by Passing',
+      normalizedTitle: 'board decisions by passing',
+      originalUrl: 'https://dfm.ae/disclosures/1',
+      canonicalUrl: 'https://dfm.ae/disclosures/1',
+      marketCodes: ['GULF', 'DFM'],
+      exchangeCodes: ['DFM'],
+      countries: ['AE'],
+    });
+    const qatar = item({
+      id: 'qse-disclosure',
+      title: 'Board Decisions by Passing',
+      normalizedTitle: 'board decisions by passing',
+      originalUrl: 'https://qe.com.qa/disclosures/1',
+      canonicalUrl: 'https://qe.com.qa/disclosures/1',
+      marketCodes: ['GULF', 'QA', 'QATAR'],
+      exchangeCodes: ['QSE'],
+      countries: ['QA'],
+    });
+
+    expect(areDuplicateStories(dfm, qatar)).toBe(false);
   });
 
   it('does not collapse recurring identical headlines published weeks apart', () => {

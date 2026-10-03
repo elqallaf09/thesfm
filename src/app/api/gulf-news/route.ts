@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
 import { fetchDelayedGulfMarketData, gulfMarketDataToApiMarkets } from '@/lib/gulf/fetchGulfIndexData';
 import { GULF_MARKETS } from '@/lib/gulf/gulfMarkets';
@@ -10,8 +10,26 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
+// A Gulf-news page should paint partial, source-labelled coverage quickly.
+// Slow upstream feeds continue to be monitored through provider coverage, but
+// never hold the entire page (including stored disclosures) hostage.
+const GULF_NEWS_PROVIDER_BUDGET_MS = 6_500;
+const GULF_MARKET_DATA_BUDGET_MS = 6_500;
+
 function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
+async function withinBudget<T>(operation: Promise<T>, budgetMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<null>(resolve => {
+    timer = setTimeout(() => resolve(null), budgetMs);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export async function GET(request: Request) {
@@ -31,8 +49,14 @@ export async function GET(request: Request) {
       to: new Date().toISOString().slice(0, 10),
       language,
       limit: 180,
-    }, { page: 1, pageSize: limit, sort: 'importance' }),
-    fetchDelayedGulfMarketData(),
+    }, {
+      page: 1,
+      pageSize: limit,
+      sort: 'importance',
+      providerBudgetMs: GULF_NEWS_PROVIDER_BUDGET_MS,
+      schedulePersistence: task => after(task),
+    }),
+    withinBudget(fetchDelayedGulfMarketData(), GULF_MARKET_DATA_BUDGET_MS),
   ]);
   const aggregated = newsResult.status === 'fulfilled' ? newsResult.value : null;
   let unmappedStoryCount = 0;
@@ -76,7 +100,7 @@ export async function GET(request: Request) {
     }];
   });
   const items = await translateNewsItems(rawItems, language);
-  const marketData = marketDataResult.status === 'fulfilled' ? marketDataResult.value : {};
+  const marketData = marketDataResult.status === 'fulfilled' && marketDataResult.value ? marketDataResult.value : {};
 
   return NextResponse.json({
     success: Boolean(aggregated?.liveUpdatesAvailable || aggregated?.storedFallbackUsed || items.length > 0),
@@ -88,7 +112,7 @@ export async function GET(request: Request) {
     limit,
     lastUpdated: aggregated?.lastUpdated ?? null,
     lastSuccessfulUpdate: aggregated?.lastSuccessfulUpdate ?? null,
-    markets: marketDataResult.status === 'fulfilled' ? gulfMarketDataToApiMarkets(marketDataResult.value) : [],
+    markets: marketDataResult.status === 'fulfilled' && marketDataResult.value ? gulfMarketDataToApiMarkets(marketDataResult.value) : [],
     items,
     marketData,
     providerCoverage: aggregated?.providerCoverage ?? [],

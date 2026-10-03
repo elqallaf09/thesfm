@@ -42,4 +42,19 @@ describe('Gulf news market attribution', () => {
   it('does not assign a shared country-only item to either UAE exchange', () => {
     expect(resolveGulfNewsMarket(story({ countries: ['AE'] }))).toBeNull();
   });
+
+  it('prioritizes the named exchange source over unrelated enrichment tags', () => {
+    expect(resolveGulfNewsMarket(story({
+      marketCodes: ['GULF', 'KUWAIT'],
+      exchangeCodes: ['DFM', 'BOURSA_KUWAIT'],
+      countries: ['AE', 'KW'],
+      sourceName: 'Dubai Financial Market — Disclosures',
+      sourceDomain: 'dfm.ae',
+    }))).toBe('uae-dfm');
+  });
+
+  it('uses QSE and ADX exchange codes for their own panels', () => {
+    expect(resolveGulfNewsMarket(story({ exchangeCodes: ['QSE'], countries: ['QA'] }))).toBe('qatar');
+    expect(resolveGulfNewsMarket(story({ exchangeCodes: ['ADX'], countries: ['AE'] }))).toBe('uae-adx');
+  });
 });

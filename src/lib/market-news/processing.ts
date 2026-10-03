@@ -315,6 +315,17 @@ export function normalizeNewsItem(item: NormalizedNewsItem, params: Partial<News
   return { ...withScores, ...analyzeExpectedImpact(withScores) };
 }
 
+function exchangeIdentity(value: string) {
+  return value.normalize('NFKC').toLocaleLowerCase('und').replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function declaresDifferentExchanges(left: NormalizedNewsItem, right: NormalizedNewsItem) {
+  const leftExchanges = new Set(left.exchangeCodes.map(exchangeIdentity).filter(Boolean));
+  const rightExchanges = new Set(right.exchangeCodes.map(exchangeIdentity).filter(Boolean));
+  if (leftExchanges.size === 0 || rightExchanges.size === 0) return false;
+  return ![...leftExchanges].some(exchange => rightExchanges.has(exchange));
+}
+
 function timeDistanceHours(a: NormalizedNewsItem, b: NormalizedNewsItem) {
   const left = publishedTimestamp(a.publishedAt) ?? 0;
   const right = publishedTimestamp(b.publishedAt) ?? 0;
@@ -322,6 +333,10 @@ function timeDistanceHours(a: NormalizedNewsItem, b: NormalizedNewsItem) {
 }
 
 export function areDuplicateStories(left: NormalizedNewsItem, right: NormalizedNewsItem) {
+  // Exchange notice titles are often deliberately generic (for example,
+  // "Board decisions"). Do not collapse disclosures from different exchanges
+  // into one story simply because their titles and dates happen to match.
+  if (declaresDifferentExchanges(left, right)) return false;
   if (left.canonicalUrl && right.canonicalUrl && left.canonicalUrl === right.canonicalUrl) return true;
   if (left.contentHash && right.contentHash && left.contentHash === right.contentHash) return true;
   if (left.normalizedTitle && left.normalizedTitle === right.normalizedTitle && timeDistanceHours(left, right) <= 168) return true;
