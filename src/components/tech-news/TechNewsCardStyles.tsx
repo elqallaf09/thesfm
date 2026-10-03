@@ -120,13 +120,13 @@ export function TechNewsCardStyles() {
         .tech-news-editorial-grid{grid-template-columns:minmax(0,1.35fr) minmax(260px,.8fr)}
         .tech-news-standard-results.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       }
-      @media(max-width:1180px){
-        .tech-news-editorial-grid{grid-template-columns:1fr}
-        .tech-news-side-panel{grid-template-columns:1fr}
-      }
       @media(max-width:1280px){
         .tech-news-layout{grid-template-columns:1fr}
         .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
+      }
+      @media(max-width:1180px){
+        .tech-news-editorial-grid{grid-template-columns:1fr}
+        .tech-news-side-panel{grid-template-columns:1fr}
       }
       @media(max-width:1024px){
         .tech-news-editorial-grid{grid-template-columns:1fr}
