@@ -1,3 +1,8 @@
+import {
+  aiGenerationFailureCode, aiGenerationIdentity, recordAiGenerationOutcome,
+  type AiGenerationFailureCode,
+} from './aiProviderTelemetry';
+
 const DEFAULT_TIMEOUT_MS = 22_000;
 const MAX_RESPONSE_TOKENS = 1_200;
 const MAX_VISION_DATA_URL_CHARS = 16_000_000;
@@ -13,13 +18,16 @@ type ProviderCandidate = {
   model: string;
 };
 
-type ProviderHealth = {
+export type ProviderHealth = {
   provider: SfmPrivateProvider;
   configured: boolean;
   reachable: boolean;
   model: string | null;
   latencyMs: number | null;
   status: number | null;
+  modelAvailable: boolean;
+  checkedAt: string;
+  reasonCode: string | null;
 };
 
 export function aiProviderEnv(name: string) {
@@ -131,9 +139,18 @@ export function privateAiVisionConfigured() {
   return configuredVisionCandidates().length > 0;
 }
 
-async function withProviderTimeout<T>(task: (signal: AbortSignal) => Promise<T>) {
+export function aiGenerationIdentities() {
+  const text = configuredCandidates();
+  const vision = configuredVisionCandidates();
+  return [
+    ...(text.length ? [aiGenerationIdentity(text, 'text')] : []),
+    ...(vision.length ? [aiGenerationIdentity(vision, 'vision')] : []),
+  ];
+}
+
+async function withProviderTimeout<T>(task: (signal: AbortSignal) => Promise<T>, deadlineMs?: number) {
   const controller = new AbortController();
-  const timeoutMs = providerTimeoutMs();
+  const timeoutMs = deadlineMs ?? providerTimeoutMs();
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const timeoutTask = new Promise<never>((_, reject) => {
     timeout = setTimeout(() => {
@@ -239,6 +256,9 @@ async function requestCompletion(input: {
   messages: unknown[];
   capability: 'text' | 'vision';
 }): Promise<GenerationResult | null> {
+  const startedAt = Date.now();
+  const identity = aiGenerationIdentity(input.candidates, input.capability);
+  let lastFailure: { provider: SfmPrivateProvider; reasonCode: AiGenerationFailureCode } | null = null;
   for (const current of input.candidates) {
     try {
       // A provider can send headers and then stall while generating its body.
@@ -252,10 +272,21 @@ async function requestCompletion(input: {
         return textFromCompletion(await response.json().catch(() => null));
       });
       if (!text) throw new Error('AI_PROVIDER_EMPTY_RESPONSE');
+      recordAiGenerationOutcome({
+        ...identity, provider: current.provider, outcome: 'success',
+        checkedAt: new Date().toISOString(), latencyMs: Date.now() - startedAt, reasonCode: null,
+      });
       return { text, provider: current.provider, model: current.model };
     } catch (error) {
+      lastFailure = { provider: current.provider, reasonCode: aiGenerationFailureCode(error) };
       logProviderFailure({ correlationId: input.correlationId, provider: current.provider, model: current.model, error, capability: input.capability });
     }
+  }
+  if (lastFailure) {
+    recordAiGenerationOutcome({
+      ...identity, ...lastFailure, outcome: 'failure',
+      checkedAt: new Date().toISOString(), latencyMs: Date.now() - startedAt,
+    });
   }
   return null;
 }
@@ -318,37 +349,52 @@ export async function generatePrivateVisionReply(input: {
   });
 }
 
-export async function checkPrivateAiHealth(): Promise<ProviderHealth[]> {
+/** Read-only model discovery. This proves neither generation nor the correctness of an answer. */
+export async function checkPrivateAiHealth(options: { timeoutMs?: number } = {}): Promise<ProviderHealth[]> {
   const configured = configuredCandidates();
-  const results: ProviderHealth[] = [];
-  for (const current of configured) {
+  const timeoutMs = Math.min(4_000, Math.max(250, options.timeoutMs ?? 3_500));
+  return Promise.all(configured.map(async (current): Promise<ProviderHealth> => {
     const started = Date.now();
     try {
-      const response = await withProviderTimeout(signal => fetch(modelsURL(current.baseURL), {
-        method: 'GET',
-        headers: headers(current.apiKey),
-        redirect: 'error',
-        cache: 'no-store',
-        signal,
-      }));
-      results.push({
+      const result = await withProviderTimeout(async signal => {
+        const response = await fetch(modelsURL(current.baseURL), {
+          method: 'GET', headers: headers(current.apiKey), redirect: 'error', cache: 'no-store', signal,
+        });
+        if (!response.ok) {
+          await response.body?.cancel().catch(() => undefined);
+          return { reachable: false, modelAvailable: false, status: response.status, reasonCode: aiGenerationFailureCode(providerHttpError(response.status)) };
+        }
+        // A 200 HTML proxy page is not a successful model discovery. Consume the body inside
+        // the same deadline and require the configured model in the OpenAI-compatible list.
+        const payload: unknown = await response.json().catch(() => null);
+        const data = payload && typeof payload === 'object' ? (payload as { data?: unknown }).data : null;
+        const modelAvailable = Array.isArray(data) && data.some(model =>
+          model && typeof model === 'object' && (model as { id?: unknown }).id === current.model);
+        return {
+          reachable: Array.isArray(data), modelAvailable, status: response.status,
+          reasonCode: !Array.isArray(data) ? 'AI_PROVIDER_INVALID_MODELS_RESPONSE' : !modelAvailable ? 'AI_PROVIDER_MODEL_NOT_LISTED' : null,
+        };
+      }, timeoutMs);
+      return {
         provider: current.provider,
         configured: true,
-        reachable: response.ok,
         model: current.model,
         latencyMs: Date.now() - started,
-        status: response.status,
-      });
-    } catch {
-      results.push({
+        checkedAt: new Date().toISOString(),
+        ...result,
+      };
+    } catch (error) {
+      return {
         provider: current.provider,
         configured: true,
         reachable: false,
+        modelAvailable: false,
         model: current.model,
         latencyMs: Date.now() - started,
         status: null,
-      });
+        checkedAt: new Date().toISOString(),
+        reasonCode: aiGenerationFailureCode(error),
+      };
     }
-  }
-  return results;
+  }));
 }

@@ -22,7 +22,7 @@ const TAB_ID_BASE = 'ops-center';
 
 function OperationsCenterContent() {
   const { t, lang, dir } = useLanguage();
-  const { ops, isLoading } = useOperationsCenterContext();
+  const { ops, isLoading, error, retry } = useOperationsCenterContext();
   const [activeTab, setActiveTab] = useUrlTabState<TabId>({
     param: 'tab',
     values: TAB_IDS,
@@ -31,6 +31,8 @@ function OperationsCenterContent() {
   });
 
   const attentionCount = ops ? ops.overview.criticalIssueCount + ops.overview.warningCount : undefined;
+  const errorMessageKey = error === 'ops_center_request_access_denied' ? error
+    : ops ? 'ops_center_refresh_failed_kept_snapshot' : 'ops_center_load_failed';
   const tabs: PageTabItem[] = [
     { id: 'overview', label: t('ops_center_tab_overview') },
     { id: 'providers', label: t('ops_center_tab_providers') },
@@ -48,9 +50,16 @@ function OperationsCenterContent() {
       <header className="market-diagnostics-hero">
         <div>
           <h1>{t('ops_center_title')}</h1>
-          <p>{ops?.overview.lastSyncAt ? `${t('market_state_last_sync')}: ${formatDateTime(ops.overview.lastSyncAt, lang)}` : ''}</p>
+          <p>{ops?.generatedAt ? `${t('ops_center_snapshot_at')}: ${formatDateTime(ops.generatedAt, lang)}` : ''}</p>
         </div>
       </header>
+
+      {error ? (
+        <div className="ops-center-request-error" role="alert">
+          <p>{t(errorMessageKey)}</p>
+          <button type="button" onClick={retry} disabled={isLoading}>{t('market_state_retry')}</button>
+        </div>
+      ) : null}
 
       <PageTabs
         idBase={TAB_ID_BASE}
@@ -98,6 +107,14 @@ function OperationsCenterContent() {
         .market-diagnostics-hero p { margin: 6px 0 0; color: var(--foreground-muted); font-size: 13px; }
         .ops-center-tab-panel { min-width: 0; display: grid; gap: 16px; }
         .ops-center-loading { margin: 0; padding: 20px; text-align: center; color: var(--foreground-muted); font-size: 13px; }
+        .ops-tab-section { display: grid; gap: 14px; min-width: 0; }
+        .ops-section-title { margin: 0; color: var(--foreground); font-size: 14px; font-weight: 600; }
+        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: 13px; border: 1px dashed var(--border); border-radius: var(--radius-control); }
+        .ops-center-request-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--danger); border-radius: var(--radius-card); padding: 12px; background: var(--surface); }
+        .ops-center-request-error p { margin: 0; color: var(--foreground-secondary); font-size: 13px; line-height: 1.6; }
+        .ops-center-request-error button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-elevated); color: var(--foreground); font: 600 12px var(--font-ui); cursor: pointer; }
+        .ops-center-request-error button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
+        .ops-center-request-error button:disabled { cursor: not-allowed; opacity: .55; }
       `}</style>
     </section>
   );

@@ -131,9 +131,25 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
   return result;
 }
 
-export async function getEconomicCalendarHealth() {
+/** A bounded, read-only diagnostic snapshot; events and user search filters are not returned. */
+export async function getEconomicCalendarHealthReport() {
   const health = await bounded(getPersistentCache<EconomicCalendarResponse & { eventCount: number }>(HEALTH_KEY), 500, null);
-  if (!health?.checkedAt || Date.now() - Date.parse(health.checkedAt) > 15 * 60_000) return 'maintenance' as const;
+  if (!health?.checkedAt) return null;
+  const checkedAt = Date.parse(health.checkedAt);
+  if (!Number.isFinite(checkedAt) || checkedAt > Date.now() || Date.now() - checkedAt > 15 * 60_000) return null;
+  return {
+    status: health.status,
+    checkedAt: health.checkedAt,
+    lastSuccessfulUpdate: health.lastSuccessfulUpdate ?? null,
+    stale: Boolean(health.stale),
+    partial: Boolean(health.partial),
+    sources: health.sources ?? [],
+  };
+}
+
+export async function getEconomicCalendarHealth() {
+  const health = await getEconomicCalendarHealthReport();
+  if (!health) return 'unmeasured' as const;
   if (health.stale) return 'partial' as const;
   if (health.status !== 'success') return 'failed' as const;
   return health.partial ? 'partial' as const : 'healthy' as const;
