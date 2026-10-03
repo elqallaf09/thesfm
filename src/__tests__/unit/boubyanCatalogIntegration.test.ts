@@ -163,6 +163,23 @@ describe('publication availability is independent of catalog storage', () => {
     expect(shariahUniverseCatalogItem('AAPL', rows, now)?.shariahStatus).toBe('needs_review');
   });
 
+  it('does not transfer a stored decision to another issuer or instrument with the same venue and ticker', () => {
+    const mismatches: CatalogRow[] = [
+      { ...apple, name: 'Completely Different Issuer' },
+      { ...apple, asset_type: 'etf' },
+    ];
+    for (const mismatch of mismatches) {
+      const rows = mergeShariahPublicCatalog([{ ...mismatch, shariah_status: 'compliant', shariah_manual_override: true,
+        shariah_source: 'Documented manual review', shariah_reason: 'Review for the stored security',
+        shariah_last_reviewed_at: now.toISOString() }], now);
+      expect(rows.find(item => item.canonicalSecurityId === 'NASDAQ:AAPL')?.shariahStatus).toBe('compliant');
+      const selected = shariahUniverseCatalogItem('AAPL', rows, now);
+      expect(selected?.shariahStatus).toBe('needs_review');
+      expect(selected?.reason.en).toContain('cannot be linked');
+      expect(selected?.screeningSource).not.toBe('Documented manual review');
+    }
+  });
+
   it('does not transfer sponsor designation to an unrelated issuer or unknown venue', () => {
     const duringSponsorReview = new Date('2026-09-20T00:00:00Z');
     for (const exchange of ['NASDAQ', null]) {

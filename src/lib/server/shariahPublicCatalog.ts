@@ -78,11 +78,12 @@ export function shariahUniverseCatalogItem(
     country: identity.country, sector: universe.sector };
   const key = boubyanSecurityKey({ ...identity, exchange: row.exchange });
   const matches = key ? items.filter(item => item.canonicalSecurityId === key) : [];
-  if (matches.length === 1) return matches[0];
+  if (matches.length === 1 && matches[0].assetType === identity.assetType
+    && normalizeBoubyanCompanyName(matches[0].name) === normalizeBoubyanCompanyName(identity.name)) return matches[0];
   const fallback = withPublishedFund(row, publicCatalogItem(row, now), now);
-  // An unresolved stored decision must not be bypassed with a ticker-only
-  // reference fallback, including when it may contain a manual override.
-  if (matches.length > 1 || items.some(item => !item.canonicalSecurityId && item.symbol.toUpperCase() === symbol.toUpperCase())) {
+  // A stored decision for another issuer or instrument, or an unresolved identity,
+  // must not be bypassed with a ticker-only fallback that may hide a manual override.
+  if (matches.length > 0 || items.some(item => !item.canonicalSecurityId && item.symbol.toUpperCase() === symbol.toUpperCase())) {
     return { ...fallback, shariahStatus: 'needs_review', statusLabelAr: 'يحتاج مراجعة',
       reason: unresolvedCatalogReason, notes: unresolvedCatalogReason };
   }
