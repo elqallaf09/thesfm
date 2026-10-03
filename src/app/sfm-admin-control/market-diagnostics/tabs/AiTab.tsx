@@ -3,22 +3,31 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import { useOperationsCenterContext } from '../OperationsCenterStateProvider';
 import { NotInstrumentedNote } from '../components/NotInstrumentedNote';
+import { FeatureHealthGrid } from '../components/FeatureHealthGrid';
 
 export function AiTab() {
   const { t } = useLanguage();
   const { ops } = useOperationsCenterContext();
   if (!ops) return null;
   const { aiUsage } = ops;
+  const healthRows = ops.featureHealth.filter(row => row.feature === 'ai_services');
+  const usageUnavailable = Boolean(ops.degradedSources.aiUsage);
 
   return (
     <section className="ops-tab-section" aria-label={t('ops_center_tab_ai')}>
+      <h3 className="ops-section-title">{t('ops_center_ai_service_measurements')}</h3>
+      {healthRows.length > 0 ? <FeatureHealthGrid rows={healthRows} evidenceLimit={3} /> : <NotInstrumentedNote value={aiUsage.healthScore} label={t('ops_center_ai_health_score')} />}
+
+      <h3 className="ops-section-title">{t('ops_center_ai_usage_title')}</h3>
+      <p className="ops-ai-usage-scope">{t('ops_center_ai_usage_scope')}</p>
+      {usageUnavailable ? <p className="ops-empty-note" role="status">{t('ops_center_ai_usage_unavailable')}</p> : <>
       <div className="ops-ai-usage-summary">
         <article>
-          <strong>{aiUsage.distinctUsersToday.toLocaleString()}</strong>
+          <strong><bdi dir="ltr">{aiUsage.distinctUsersToday.toLocaleString('en-US')}</bdi></strong>
           <span>{t('ops_center_ai_distinct_users_today')}</span>
         </article>
         <article>
-          <strong>{aiUsage.blockedUsersCount.toLocaleString()}</strong>
+          <strong><bdi dir="ltr">{aiUsage.blockedUsersCount.toLocaleString('en-US')}</bdi></strong>
           <span>{t('ops_center_ai_blocked_users')}</span>
         </article>
       </div>
@@ -32,7 +41,7 @@ export function AiTab() {
           {aiUsage.last24h.map(row => (
             <div className="ops-ai-usage-row" key={row.feature}>
               <span dir="ltr">{row.feature}</span>
-              <span>{row.eventCount24h.toLocaleString()}</span>
+              <span><bdi dir="ltr">{row.eventCount24h.toLocaleString('en-US')}</bdi></span>
             </div>
           ))}
         </div>
@@ -40,10 +49,11 @@ export function AiTab() {
         <p className="ops-empty-note">{t('ops_center_ai_no_usage_today')}</p>
       )}
 
-      <NotInstrumentedNote value={aiUsage.healthScore} label={t('ops_center_ai_health_score')} />
+      </>}
 
       <style jsx global>{`
         .ops-ai-usage-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .ops-ai-usage-scope { margin: 0; color: var(--foreground-secondary); font-size: 12px; line-height: 1.7; }
         .ops-ai-usage-summary article { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; }
         .ops-ai-usage-summary strong { display: block; color: var(--foreground); font: 600 20px var(--font-data); }
         .ops-ai-usage-summary span { display: block; margin-top: 4px; color: var(--foreground-muted); font-size: 12px; font-weight: 700; }

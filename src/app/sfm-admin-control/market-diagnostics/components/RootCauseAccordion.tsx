@@ -5,11 +5,20 @@ import { formatDateTime } from '@/lib/locale';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 import type { OpsFeatureKey, RootCauseIssue } from '@/lib/admin/opsCenter/types';
 import { SEVERITY_ICON, SEVERITY_TONE } from '@/lib/admin/opsCenter/severityPresentation';
+import { diagnosticCapabilityKey } from './diagnosticLabels';
 
 /** Native <details>/<summary> — no extra accordion dependency, matches the plain-CSS admin convention. */
 export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]; limit?: number }) {
   const { t, lang } = useLanguage();
   const shown = typeof limit === 'number' ? issues.slice(0, limit) : issues;
+
+  function parameterLabel(key: string, value: string | number): string {
+    if (typeof value === 'number') return String(value);
+    if (key === 'feature') return t(`ops_center_feature_${value}`);
+    if (key === 'capability') return t(diagnosticCapabilityKey(value));
+    if (key === 'provider') return traderProviderDisplayName(value) ?? value;
+    return value.startsWith('ops_center_') ? t(value) : value;
+  }
 
   if (shown.length === 0) return <p className="ops-empty-note">{t('ops_center_root_cause_empty')}</p>;
 
@@ -26,7 +35,7 @@ export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]
               <span className="ops-root-cause-problem">
                 {t(issue.problemKey)}
                 {Object.entries(issue.problemParams).map(([key, value]) => (
-                  <b key={key} dir="ltr">{String(value)}</b>
+                  <b key={key}><bdi dir="auto">{parameterLabel(key, value)}</bdi></b>
                 ))}
               </span>
               <span className={`market-status-badge ${tone}`}>{t(`ops_center_severity_${issue.severity}`)}</span>
@@ -34,7 +43,7 @@ export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]
             <dl>
               <div>
                 <dt>{t('ops_center_root_cause_col_root_cause')}</dt>
-                <dd>{t(issue.rootCauseKey)} <code dir="ltr">{String(issue.rootCauseParams.reason ?? '')}</code></dd>
+                <dd>{t(issue.rootCauseKey)} {issue.rootCauseParams.reason ? <code dir="auto">{parameterLabel('reason', issue.rootCauseParams.reason)}</code> : null}</dd>
               </div>
               <div>
                 <dt>{t('ops_center_root_cause_col_feature')}</dt>
@@ -70,10 +79,10 @@ export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]
       })}
       <style jsx global>{`
         .ops-root-cause-list { display: grid; gap: 8px; }
-        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: 13px; border: 1px dashed var(--border); border-radius: var(--radius-control); }
         .ops-root-cause-item { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); overflow: hidden; }
         .ops-root-cause-item summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
         .ops-root-cause-item summary::-webkit-details-marker { display: none; }
+        .ops-root-cause-item summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -3px; }
         .ops-root-cause-icon { flex: 0 0 auto; }
         .ops-root-cause-item.tone-danger .ops-root-cause-icon { color: var(--danger); }
         .ops-root-cause-item.tone-warning .ops-root-cause-icon { color: var(--warning); }

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { buildTruthfulOverview } from '@/lib/admin/opsCenter/healthTruth';
+import type { FeatureHealthRow, OperationsCenterState } from '@/lib/admin/opsCenter/types';
 
 const projectRoot = process.cwd();
 const read = (relativePath: string) => readFileSync(join(projectRoot, relativePath), 'utf8');
@@ -37,10 +39,11 @@ describe('Operations Center never fabricates data for unmeasured concepts', () =
     }
   });
 
-  it('marks the AI health score as not-instrumented — only real usage/quota counts are shown', () => {
+  it('does not fabricate an AI success percentage and displays actual service evidence separately', () => {
     expect(aggregate).toMatch(/healthScore:\s*notInstrumented\(/);
     expect(aiTab).toContain('aiUsage.healthScore');
     expect(aiTab).not.toMatch(/aiUsage\.healthScore\.value/);
+    expect(aiTab).toContain('FeatureHealthGrid');
   });
 
   it('every NotInstrumented-consuming component renders the shared NotInstrumentedNote rather than inventing its own placeholder text', () => {
@@ -70,8 +73,17 @@ describe('Operations Center never fabricates data for unmeasured concepts', () =
   });
 
   it('the health score is computed via a documented arithmetic formula over real counts, never a hardcoded/random number', () => {
-    expect(aggregate).not.toContain('Math.random');
-    expect(aggregate).toMatch(/function computeHealthScore/);
+    const base = { overview: { healthScorePercent: 99 } } as OperationsCenterState;
+    const rows: FeatureHealthRow[] = [
+      { feature: 'market_data', status: 'healthy', detailKey: null },
+      { feature: 'economic_calendar', status: 'partial', detailKey: null },
+      { feature: 'ai_services', status: 'unmeasured', detailKey: null },
+    ];
+    const result = buildTruthfulOverview(base, rows, []);
+    expect(result.healthScorePercent).toBe(75);
+    expect(result.measurementCoveragePercent).toBe(67);
+    expect(result.measuredServiceCount).toBe(2);
+    expect(buildTruthfulOverview(base, [rows[2]], []).healthScorePercent).toBeNull();
   });
 });
 

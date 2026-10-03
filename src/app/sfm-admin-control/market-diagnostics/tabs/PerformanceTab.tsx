@@ -19,27 +19,27 @@ export function PerformanceTab() {
     <section className="ops-tab-section" aria-label={t('ops_center_tab_performance')}>
       <div className="ops-performance-process">
         <article>
-          <strong>{performance.processUptimeSeconds.toLocaleString(undefined, { maximumFractionDigits: 0 })}s</strong>
+          <strong><bdi dir="ltr">{performance.processUptimeSeconds.toLocaleString('en-US', { maximumFractionDigits: 0 })} s</bdi></strong>
           <span>{t('ops_center_performance_uptime')}</span>
           <em>{t('ops_center_scope_process')}</em>
         </article>
         <article>
-          <strong>{formatBytes(performance.memory.rssBytes)}</strong>
+          <strong><bdi dir="ltr">{formatBytes(performance.memory.rssBytes)}</bdi></strong>
           <span>{t('ops_center_performance_memory_rss')}</span>
           <em>{t('ops_center_scope_process')}</em>
         </article>
         <article>
-          <strong>{formatBytes(performance.memory.heapUsedBytes)} / {formatBytes(performance.memory.heapTotalBytes)}</strong>
+          <strong><bdi dir="ltr">{formatBytes(performance.memory.heapUsedBytes)} / {formatBytes(performance.memory.heapTotalBytes)}</bdi></strong>
           <span>{t('ops_center_performance_memory_heap')}</span>
           <em>{t('ops_center_scope_process')}</em>
         </article>
         <article>
-          <strong dir="ltr">{performance.loadAvg ? performance.loadAvg.map(value => value.toFixed(2)).join(' / ') : t('market_state_catalog_not_measured')}</strong>
+          <strong>{performance.loadAvg ? <bdi dir="ltr">{performance.loadAvg.map(value => value.toFixed(2)).join(' / ')}</bdi> : t('market_state_catalog_not_measured')}</strong>
           <span>{t('ops_center_performance_load_avg')}</span>
           <em>{performance.loadAvg ? t('ops_center_scope_process') : t('ops_center_performance_load_avg_unsupported_os')}</em>
         </article>
         <article>
-          <strong>{performance.averageProviderLatencyMs === null ? t('market_state_catalog_not_measured') : `${performance.averageProviderLatencyMs} ms`}</strong>
+          <strong>{performance.averageProviderLatencyMs === null ? t('market_state_catalog_not_measured') : <bdi dir="ltr">{performance.averageProviderLatencyMs} ms</bdi>}</strong>
           <span>{t('ops_center_performance_average_latency')}</span>
           <em>{t('ops_center_scope_provider')}</em>
         </article>
@@ -52,7 +52,7 @@ export function PerformanceTab() {
             {performance.slowestProviders.map(entry => (
               <li key={entry.provider}>
                 <span dir="ltr">{traderProviderDisplayName(entry.provider) ?? entry.provider}</span>
-                <b dir="ltr">{entry.latencyMs} ms</b>
+                <b><bdi dir="ltr">{entry.latencyMs} ms</bdi></b>
               </li>
             ))}
           </ul>
@@ -67,9 +67,9 @@ export function PerformanceTab() {
       </div>
 
       <style jsx global>{`
-        .ops-performance-process { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-        .ops-performance-process article { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 12px; display: grid; gap: 4px; }
-        .ops-performance-process strong { color: var(--foreground); font: 600 16px var(--font-data); }
+        .ops-performance-process { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+        .ops-performance-process article { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 12px; display: grid; gap: 4px; }
+        .ops-performance-process strong { color: var(--foreground); font: 600 16px var(--font-data); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
         .ops-performance-process span { color: var(--foreground-muted); font-size: 12px; font-weight: 700; }
         .ops-performance-process em { color: var(--foreground-muted); font-size: 12px; font-style: normal; opacity: .8; }
         .ops-performance-slowest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
