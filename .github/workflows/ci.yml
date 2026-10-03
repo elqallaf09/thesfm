@@ -202,11 +202,18 @@ jobs:
     # manually dispatched authenticated-preview-validate.yml workflow after a
     # maintainer has reviewed the dependency changes.
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+    # Do not allocate the shared E2E accounts until every unprivileged gate
+    # has already passed for this exact revision.
+    needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     # Shared secret-backed E2E accounts require one smoke session at a time.
     concurrency:
       group: thesfm-secret-backed-playwright-smoke
       cancel-in-progress: false
+      # Keep ready revisions queued rather than replacing an older pending
+      # smoke job whenever another pull request is updated.
+      queue: max
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
