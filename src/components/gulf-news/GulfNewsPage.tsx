@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -74,17 +74,6 @@ function localeFor(lang: string) {
   return 'ar-KW-u-nu-latn';
 }
 
-function secondsUntilNextRefresh(lastLoadedAt: number) {
-  const elapsed = Math.floor((Date.now() - lastLoadedAt) / 1000);
-  return Math.max(0, 300 - elapsed);
-}
-
-function formatCountdown(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
 const INITIAL_NEWS_LIMIT = 12;
 
 type GulfNewsSort = 'recent' | 'oldest' | 'source';
@@ -137,10 +126,9 @@ export function GulfNewsPage() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_NEWS_LIMIT);
   const [lastUpdated, setLastUpdated] = useState('');
   const [lastLoadedAt, setLastLoadedAt] = useState(Date.now());
-  const [countdown, setCountdown] = useState(300);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const loadInFlightRef = useRef(false);
   const [deliveryStatus, setDeliveryStatus] = useState({
     partialFailure: false,
     liveUpdatesAvailable: true,
@@ -237,8 +225,9 @@ export function GulfNewsPage() {
   }, [lang]);
 
   const load = useCallback(async (showLoader = true) => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     if (showLoader) setLoading(true);
-    setRefreshing(!showLoader);
     setError('');
     try {
       const response = await fetch(`/api/gulf-news?lang=${encodeURIComponent(lang)}&limit=50`);
@@ -256,12 +245,11 @@ export function GulfNewsPage() {
         providerCount: json.providerCoverage?.length ?? 0,
       });
       setLastLoadedAt(Date.now());
-      setCountdown(300);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t('gulf_news_error'));
     } finally {
+      loadInFlightRef.current = false;
       if (showLoader) setLoading(false);
-      setRefreshing(false);
     }
   }, [lang, t]);
 
@@ -272,11 +260,6 @@ export function GulfNewsPage() {
     }, 300000);
     return () => window.clearInterval(refresh);
   }, [load]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setCountdown(secondsUntilNextRefresh(lastLoadedAt)), 1000);
-    return () => window.clearInterval(timer);
-  }, [lastLoadedAt]);
 
   const selectedMarketConfig = getGulfMarket(selectedMarket);
   const unavailableHelperByMarket: Partial<Record<GulfMarketId, string>> = {
@@ -437,8 +420,7 @@ export function GulfNewsPage() {
         <GulfNewsHeader
           title={t('gulf_news_title')}
           subtitle={t('gulf_news_header_subtitle')}
-          refreshing={refreshing}
-          onRefresh={() => void load(false)}
+          onRefresh={() => load(false)}
         />
 
         <GulfNewsStatusBar
@@ -449,7 +431,7 @@ export function GulfNewsPage() {
             source: t('gulf_news_source_rss'),
           }}
           lastUpdated={lastUpdated}
-          nextUpdate={formatCountdown(countdown)}
+          lastLoadedAt={lastLoadedAt}
           formatDateTime={formatDateTime}
         />
 
