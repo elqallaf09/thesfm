@@ -47,7 +47,7 @@
 .emptyIntro > div:last-child { display: grid; gap: .45rem; }
 .emptyIntro h2 { font-size: clamp(1.2rem, 2vw, 1.55rem); }
 .emptyIntro p { color: var(--foreground-secondary); }
-.orbit { display: grid; place-items: center; inline-size: 4.5rem; block-size: 4.5rem; border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border)); border-radius: var(--radius-panel); color: var(--primary); background: var(--primary-soft); box-shadow: var(--shadow-sm); font-family: var(--font-data); font-size: 1rem; font-weight: 700; letter-spacing: .15em; }
+.orbit { display: grid; place-items: center; inline-size: 4.5rem; block-size: 4.5rem; border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border)); border-radius: var(--radius-circle); color: var(--primary); background: var(--primary-soft); box-shadow: var(--shadow-sm); font-family: var(--font-data); font-size: 1rem; font-weight: 700; letter-spacing: .15em; }
 .previewGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; margin: .25rem 0; }
 .previewGrid > div { display: grid; gap: .3rem; min-inline-size: 0; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-control); background: color-mix(in srgb, var(--surface-secondary) 84%, var(--card)); }
 .previewGrid dt { color: var(--foreground-muted); font-size: .72rem; font-weight: 650; }
@@ -57,7 +57,7 @@
 .outputPreview ol { display: grid; gap: .55rem; margin: 0; padding: 0; list-style: none; }
 .outputPreview li { display: grid; grid-template-columns: 1.65rem minmax(0, 1fr); align-items: start; gap: .65rem; padding: .65rem 0; border-block-start: 1px solid var(--border); }
 .outputPreview li:first-child { border-block-start: 0; }
-.outputPreview li > span { display: grid; place-items: center; inline-size: 1.65rem; block-size: 1.65rem; border-radius: var(--radius-control); background: var(--primary-soft); color: var(--primary); font-family: var(--font-data); font-size: .68rem; font-weight: 700; }
+.outputPreview li > span { display: grid; place-items: center; inline-size: 1.65rem; block-size: 1.65rem; border-radius: var(--radius-circle); background: var(--primary-soft); color: var(--primary); font-family: var(--font-data); font-size: .68rem; font-weight: 700; }
 .outputPreview li > div { display: grid; gap: .2rem; }
 .outputPreview b { color: var(--foreground); font-size: .8rem; }
 .outputPreview p { color: var(--foreground-muted); font-size: .76rem; line-height: 1.65; }
