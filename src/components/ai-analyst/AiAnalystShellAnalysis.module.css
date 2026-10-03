@@ -1,0 +1,12 @@
+.shell { gap: 16px; max-inline-size: 1600px; margin-inline: auto; }
+.toolbar { display: grid; gap: 10px; min-inline-size: 0; }
+.quickLinks { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-block: 6px; border-block-end: 1px solid var(--border); }
+.quickLinks a { display: inline-flex; align-items: center; min-block-size: 44px; padding: 9px 14px; color: var(--foreground-secondary); font-size: 15px; font-weight: 650; border-radius: var(--radius-sm); text-decoration: none; }
+.quickLinks a[aria-current='page'] { color: var(--primary); background: var(--primary-soft); border-block-end: 2px solid var(--primary); }
+.quickLinks a:hover { color: var(--primary); background: var(--primary-soft); }
+.quickLinks a:focus-visible, .allTools summary:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+.allTools > summary { display: flex; align-items: center; gap: 8px; inline-size: fit-content; min-block-size: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 14px; font-weight: 600; color: var(--foreground-secondary); list-style: none; }
+.allTools > summary::-webkit-details-marker { display: none; }
+.allTools[open] > nav { margin-block-start: 12px; }
+@media (max-width: 760px) { .allTools { display: none; } }
+@media (max-width: 600px) { .quickLinks { gap: 4px; } .quickLinks a { padding-inline: 10px; font-size: 14px; } }
