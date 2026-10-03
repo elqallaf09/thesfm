@@ -5,18 +5,14 @@ import type { ReactNode, RefObject } from 'react';
 import {
   Activity,
   AlertTriangle,
-  ArrowUpRight,
-  BarChart3,
   BookOpen,
   Building2,
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock3,
   ExternalLink,
   Eye,
   FileSearch,
-  Filter,
   Gauge,
   Info,
   Landmark,
@@ -41,135 +37,24 @@ import { CompanyLogo } from '@/components/asset/CompanyLogo';
 import { StockTickerStrip } from '@/components/market/StockTickerStrip';
 import { ShariaResearchPage } from '@/components/shariah-stocks/ShariaResearchPage';
 import { useLanguage } from '@/hooks/useLanguage';
-import type { ShariahAssetType, ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
+import type { ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
+import {
+  reconcileShariahSecurities, createShariahNewsLookup, securityKey, securityMarket,
+  securityAnalysisSymbol, securityResearchQuery, screeningCatalogWarning, matchesSecurityAnalysisResult,
+  type DataCompleteness, type ScreeningItem, type ScreeningResponse, type SecurityRow,
+  type ShariahNewsItem, type ShariahNewsResponse, type ShariahTickerResponse,
+  type SecurityIdentity, type SecurityAnalysisSelection,
+} from './shariahStockPresentation';
+import { PublishedShariahDisclosure } from './PublishedShariahDisclosure';
 import styles from './ShariahStocksNewsPage.module.css';
 
 type LangCode = 'ar' | 'en' | 'fr';
 type ShariahTab = 'overview' | 'screener' | 'research' | 'funds' | 'news' | 'methodology';
-type DataCompleteness = 'complete' | 'partial' | 'insufficient' | 'not_screened';
 type SortKey = 'latest_screening' | 'data_quality' | 'performance' | 'name';
 type NewsSortKey = 'latest' | 'source' | 'symbol';
 type QuickTimeframe = '15m' | '1h' | '4h' | '1D' | '1W';
 
-type ShariahQuote = {
-  symbol: string;
-  name: string;
-  sector: string;
-  industry: string;
-  assetType: ShariahAssetType;
-  exchange: string | null;
-  price: number | null;
-  currency: string;
-  change: number | null;
-  changePercent: number | null;
-  source: string;
-  available?: boolean;
-  delayed: true;
-  shariahStatus: ShariahScreeningStatus;
-  statusLabelAr: string;
-  screeningSource: string | null;
-  screeningMethodology: string;
-  lastScreenedAt: string | null;
-};
-
-type ShariahTickerResponse =
-  | {
-      ok: true;
-      source: string;
-      updated_at: string;
-      screeningSourceConnected: boolean;
-      items: ShariahQuote[];
-    }
-  | {
-      ok: false;
-      code: string;
-      source: string | null;
-      updated_at: string | null;
-      screeningSourceConnected: boolean;
-      items: ShariahQuote[];
-    };
-
-type ScreeningItem = {
-  symbol: string;
-  name: string;
-  sector: string;
-  industry: string;
-  assetType: ShariahAssetType;
-  shariahStatus: ShariahScreeningStatus;
-  statusLabelAr: string;
-  reason: { ar: string; en: string; fr: string };
-  screeningSource: string | null;
-  methodology: { ar: string; en: string; fr: string };
-  lastScreenedAt: string | null;
-  notes: { ar: string; en: string; fr: string };
-};
-
-type ScreeningResponse = {
-  ok: boolean;
-  updated_at: string;
-  sourceConnected: boolean;
-  screeningSource: string | null;
-  sourceName: string | null;
-  methodology: { ar: string; en: string; fr: string };
-  emptyMessage: { ar: string; en: string; fr: string };
-  counts: Record<ShariahScreeningStatus, number>;
-  items: ScreeningItem[];
-};
-
-type ShariahNewsItem = {
-  id: string;
-  title?: string;
-  headline?: string;
-  summary?: string;
-  titleOriginal?: string;
-  summaryOriginal?: string;
-  languageOriginal?: string;
-  source: string;
-  url: string;
-  publishedAt: string;
-  isTranslated?: boolean;
-  translatedTo?: string;
-  companyName?: string;
-  ticker?: string;
-  sector?: string;
-  sectors?: string[];
-  price?: number | null;
-  change?: number | null;
-  changePercent?: number | null;
-  priceSource?: string | null;
-  delayed?: true;
-  shariahStatus?: ShariahScreeningStatus;
-  screeningSource?: string | null;
-};
-
-type ShariahNewsResponse =
-  | {
-      success: true;
-      category: 'sharia';
-      source: string;
-      priceSource: string;
-      lastUpdated: string;
-      language: string;
-      translationEnabled: boolean;
-      screeningSourceConnected: boolean;
-      items: ShariahNewsItem[];
-      limit: number;
-      message?: string;
-    }
-  | {
-      success: false;
-      error?: string;
-      reason?: string;
-      screeningSourceConnected?: boolean;
-    };
-
-type SecurityRow = ScreeningItem & {
-  quote?: ShariahQuote;
-  dataCompleteness: DataCompleteness;
-  stale: boolean;
-};
-
-type QuickAnalysisState = {
+type QuickAnalysisState = SecurityIdentity & {
   symbol: string;
   companyName?: string;
   assetType: 'stock';
@@ -222,7 +107,7 @@ const COPY = {
     sourceConnected: 'مصدر الفحص متاح',
     sourceLimited: 'بيانات الفحص محدودة',
     method: 'منهجية الفحص',
-    screeningDate: 'تاريخ الفحص',
+    screeningDate: 'آخر تحقق من التصنيف',
     quoteDate: 'تاريخ السعر',
     financialPeriod: 'فترة القوائم',
     statementUnavailable: 'غير متاحة من المزود الحالي',
@@ -359,7 +244,7 @@ const COPY = {
     sourceConnected: 'Screening source available',
     sourceLimited: 'Limited screening data',
     method: 'Methodology',
-    screeningDate: 'Screening date',
+    screeningDate: 'Classification last checked',
     quoteDate: 'Quote date',
     financialPeriod: 'Statement period',
     statementUnavailable: 'Not available from current provider',
@@ -496,7 +381,7 @@ const COPY = {
     sourceConnected: 'Source de filtrage disponible',
     sourceLimited: 'Données de filtrage limitées',
     method: 'Méthodologie',
-    screeningDate: 'Date du filtrage',
+    screeningDate: 'Dernière vérification du classement',
     quoteDate: 'Date du cours',
     financialPeriod: 'Période financière',
     statementUnavailable: 'Non fournie par la source actuelle',
@@ -731,20 +616,6 @@ function hasMojibake(value: string | undefined) {
   return /[ØÙÃÂ]/.test(String(value ?? ''));
 }
 
-function isStaleScreening(value: string | null | undefined) {
-  if (!value) return false;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
-  return Date.now() - date.getTime() > 365 * 24 * 60 * 60 * 1000;
-}
-
-function deriveCompleteness(item: ScreeningItem): DataCompleteness {
-  if (!item.lastScreenedAt && item.shariahStatus === 'unclassified') return 'not_screened';
-  if (item.shariahStatus === 'unclassified') return 'insufficient';
-  if (item.shariahStatus === 'needs_review') return 'partial';
-  return 'complete';
-}
-
 function explainReason(item: ScreeningItem, lang: LangCode) {
   const localized = item.reason?.[lang];
   if (localized && !hasMojibake(localized)) return localized;
@@ -872,16 +743,16 @@ export function ShariahStocksNewsPage() {
     setHydrated(true);
   }, []);
 
-  const openDocumentedResearch = useCallback((row?: Pick<SecurityRow, 'symbol'>) => {
+  const openDocumentedResearch = useCallback((row?: SecurityIdentity) => {
     if (row?.symbol) {
-      setResearchQuery(row.symbol);
+      setResearchQuery(securityResearchQuery(row));
       setResearchResultId('');
     }
     setSelectedSecurity(null);
     setActiveTab('research');
   }, []);
 
-  const openCompanyNews = useCallback((row: Pick<SecurityRow, 'symbol'>) => {
+  const openCompanyNews = useCallback((row: SecurityIdentity) => {
     setNewsSearch(row.symbol);
     setNewsVisible(NEWS_PAGE_SIZE);
     setSelectedSecurity(null);
@@ -901,6 +772,7 @@ export function ShariahStocksNewsPage() {
       const screeningJson = (await screeningRaw.json()) as ScreeningResponse;
       setTickerResponse(tickerJson);
       setScreening(screeningJson);
+      setCoreError(screeningCatalogWarning(screeningJson, locale));
     } catch {
       setCoreError(locale === 'ar' ? 'تعذر تحديث بيانات الفحص حالياً. يتم عرض آخر نتيجة متاحة إن وجدت.' : 'Unable to refresh screening data right now.');
     } finally {
@@ -980,56 +852,13 @@ export function ShariahStocksNewsPage() {
     if (next !== current) window.history.replaceState(null, '', next);
   }, [activeTab, assetTypeFilter, hydrated, marketFilter, newsSearch, newsSortKey, newsSourceFilter, newsStatusFilter, researchResultId, sectorFilter, sortKey, statusFilter, stockSearch]);
 
-  const quoteBySymbol = useMemo(() => {
-    const map = new Map<string, ShariahQuote>();
-    for (const quote of tickerResponse?.items ?? []) map.set(quote.symbol.toUpperCase(), quote);
-    return map;
-  }, [tickerResponse]);
-
-  const securities = useMemo<SecurityRow[]>(() => {
-    const source = screening?.items ?? [];
-    const rows = source.map(item => {
-      const quote = quoteBySymbol.get(item.symbol.toUpperCase());
-      return {
-        ...item,
-        quote,
-        dataCompleteness: deriveCompleteness(item),
-        stale: isStaleScreening(item.lastScreenedAt),
-      };
-    });
-    const symbols = new Set(rows.map(row => row.symbol.toUpperCase()));
-    for (const quote of tickerResponse?.items ?? []) {
-      if (symbols.has(quote.symbol.toUpperCase())) continue;
-      rows.push({
-        symbol: quote.symbol,
-        name: quote.name,
-        sector: quote.sector,
-        industry: quote.industry,
-        assetType: quote.assetType,
-        shariahStatus: quote.shariahStatus,
-        statusLabelAr: quote.statusLabelAr,
-        reason: { ar: '', en: '', fr: '' },
-        screeningSource: quote.screeningSource,
-        methodology: {
-          ar: quote.screeningMethodology,
-          en: quote.screeningMethodology,
-          fr: quote.screeningMethodology,
-        },
-        lastScreenedAt: quote.lastScreenedAt,
-        notes: { ar: '', en: '', fr: '' },
-        quote,
-        dataCompleteness: quote.lastScreenedAt ? 'partial' : 'not_screened',
-        stale: isStaleScreening(quote.lastScreenedAt),
-      });
-    }
-    return rows;
-  }, [quoteBySymbol, screening?.items, tickerResponse?.items]);
+  const securities = useMemo(() => reconcileShariahSecurities(screening?.items ?? [], tickerResponse?.items ?? []), [screening?.items, tickerResponse?.items]);
 
   const sectors = useMemo(() => {
     return Array.from(new Set(securities.map(item => item.sector).filter(Boolean))).sort();
   }, [securities]);
   const markets = useMemo(() => {
-    return Array.from(new Set(securities.map(item => item.quote?.exchange).filter((value): value is string => Boolean(value)))).sort();
+    return Array.from(new Set(securities.map(securityMarket).filter((value): value is string => Boolean(value)))).sort();
   }, [securities]);
 
   const stockRows = useMemo(() => securities.filter(item => item.assetType === 'stock'), [securities]);
@@ -1038,10 +867,10 @@ export function ShariahStocksNewsPage() {
   const filteredStocks = useMemo(() => {
     const query = normalizedText(stockSearch);
     const filtered = securities.filter(item => {
-      const haystack = normalizedText(`${item.name} ${item.symbol} ${item.sector} ${item.industry} ${item.quote?.exchange ?? ''}`);
+      const haystack = normalizedText(`${item.name} ${item.symbol} ${item.sector} ${item.industry} ${securityMarket(item) ?? ''}`);
       const statusOk = statusFilter === 'all' || item.shariahStatus === statusFilter;
       const sectorOk = sectorFilter === 'all' || item.sector === sectorFilter;
-      const marketOk = marketFilter === 'all' || item.quote?.exchange === marketFilter;
+      const marketOk = marketFilter === 'all' || securityMarket(item) === securityMarket({ symbol: item.symbol, exchange: marketFilter });
       const assetOk = assetTypeFilter === 'all' || item.assetType === assetTypeFilter;
       return (!query || haystack.includes(query)) && statusOk && sectorOk && marketOk && assetOk;
     });
@@ -1127,9 +956,10 @@ export function ShariahStocksNewsPage() {
     setNewsVisible(NEWS_PAGE_SIZE);
   };
 
-  const openQuickAnalysis = useCallback((row: Pick<SecurityRow, 'symbol' | 'name'>, timeframe: QuickTimeframe = '1D') => {
+  const openQuickAnalysis = useCallback((row: SecurityAnalysisSelection, timeframe: QuickTimeframe = '1D') => {
     quickAbortRef.current?.abort();
-    setQuickAnalysis({ symbol: row.symbol.trim().toUpperCase(), companyName: row.name, assetType: 'stock', timeframe });
+    if (!securityAnalysisSymbol(row)) return;
+    setQuickAnalysis({ ...row, symbol: row.symbol.trim().toUpperCase(), companyName: row.name, assetType: 'stock', timeframe });
     setQuickResult(null);
     setQuickError('');
   }, []);
@@ -1144,7 +974,7 @@ export function ShariahStocksNewsPage() {
 
   useEffect(() => {
     if (!quickAnalysis) return;
-    const cacheKey = `${quickAnalysis.symbol}:${quickAnalysis.timeframe}`;
+    const cacheKey = `${securityKey(quickAnalysis)}:${quickAnalysis.timeframe}`;
     const cached = quickCacheRef.current.get(cacheKey);
     if (cached) {
       setQuickResult(cached);
@@ -1161,7 +991,7 @@ export function ShariahStocksNewsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        symbol: quickAnalysis.symbol,
+        symbol: securityAnalysisSymbol(quickAnalysis),
         assetType: quickAnalysis.assetType,
         timeframe: quickAnalysis.timeframe,
       }),
@@ -1169,7 +999,7 @@ export function ShariahStocksNewsPage() {
     })
       .then(async response => {
         const json = (await response.json()) as QuickAnalysisResult;
-        if (!response.ok || json.ok === false) {
+        if (!response.ok || json.ok === false || !matchesSecurityAnalysisResult(quickAnalysis, json)) {
           throw new Error(json.message || json.error || json.code || c.quickError);
         }
         quickCacheRef.current.set(cacheKey, json);
@@ -1195,7 +1025,9 @@ export function ShariahStocksNewsPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [closeQuickAnalysis, quickAnalysis]);
 
-  const marketAnalysisHref = (symbol: string, timeframe: QuickTimeframe = '1D') => {
+  const marketAnalysisHref = (selection: SecurityIdentity, timeframe: QuickTimeframe = '1D') => {
+    const symbol = securityAnalysisSymbol(selection);
+    if (!symbol) return undefined;
     const params = new URLSearchParams({
       symbol: symbol.trim().toUpperCase(),
       assetType: 'stock',
@@ -1421,13 +1253,13 @@ export function ShariahStocksNewsPage() {
         onClose={closeQuickAnalysis}
         onRefresh={() => {
           if (!quickAnalysis) return;
-          quickCacheRef.current.delete(`${quickAnalysis.symbol}:${quickAnalysis.timeframe}`);
+          quickCacheRef.current.delete(`${securityKey(quickAnalysis)}:${quickAnalysis.timeframe}`);
           setQuickResult(null);
           setQuickAnalysis({ ...quickAnalysis });
         }}
         onTimeframe={(timeframe) => {
           if (!quickAnalysis) return;
-          openQuickAnalysis({ symbol: quickAnalysis.symbol, name: quickAnalysis.companyName ?? quickAnalysis.symbol }, timeframe);
+          openQuickAnalysis({ ...quickAnalysis, name: quickAnalysis.companyName ?? quickAnalysis.symbol }, timeframe);
         }}
         marketAnalysisHref={marketAnalysisHref}
       />
@@ -1608,8 +1440,8 @@ function OverviewTab({
   onTab: (tab: ShariahTab) => void;
   onResearch: () => void;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   return (
     <div className={styles.overviewGrid}>
@@ -1625,7 +1457,7 @@ function OverviewTab({
           </div>
           <div className={styles.compactStockGrid} aria-busy={loading}>
             {leadingStocks.length ? leadingStocks.map(row => (
-              <SecurityMiniCard key={row.symbol} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />
+              <SecurityMiniCard key={securityKey(row)} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />
             )) : <EmptyState text={loading ? `${c.refreshing}...` : c.noStocks} />}
           </div>
         </section>
@@ -1757,8 +1589,8 @@ function ScreenerTab(props: {
   clearFilters: () => void;
   onLoadMore: () => void;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   const { c, locale, rows, visible, loading } = props;
   const pageRows = rows.slice(0, visible);
@@ -1874,8 +1706,8 @@ function SecurityTable({
   rows: SecurityRow[];
   loading: boolean;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   if (loading) return <SkeletonRows />;
   if (!rows.length) return <EmptyState text={c.noStocks} />;
@@ -1899,10 +1731,10 @@ function SecurityTable({
           </thead>
           <tbody>
             {rows.map(row => (
-                <tr key={row.symbol}>
+                <tr key={securityKey(row)}>
                   <td>
                     <button type="button" className={styles.companyButton} onClick={() => onDetails(row)}>
-                      <CompanyLogo symbol={row.symbol} name={row.name} assetType={row.assetType} size="sm" decorative />
+                      <CompanyLogo symbol={row.symbol} name={row.name} assetType={row.assetType} exchange={securityMarket(row)} size="sm" decorative />
                       <span className={styles.companyButtonText}>
                       <strong>{row.name}</strong>
                       <b dir="ltr">{row.symbol}</b>
@@ -1911,7 +1743,7 @@ function SecurityTable({
                 </td>
                 <td><StatusBadge status={row.shariahStatus} label={statusLabel(row.shariahStatus, locale)} /></td>
                 <td>{row.sector}<small>{row.industry}</small></td>
-                <td dir="ltr">{row.quote?.exchange || c.notAvailable}</td>
+                <td dir="ltr">{securityMarket(row) || c.notAvailable}</td>
                 <td>{row.assetType === 'etf' ? c.etf : c.stock}</td>
                 <td>{formatDate(row.lastScreenedAt, locale)}</td>
                 <td><DataQualityBadge value={row.dataCompleteness} stale={row.stale} c={c} locale={locale} /></td>
@@ -1920,8 +1752,8 @@ function SecurityTable({
                 <td>
                   <div className={styles.rowActions}>
                     <button type="button" onClick={() => onDetails(row)}>{c.details}</button>
-                    <button type="button" onClick={() => onQuick(row)}>{c.quickAnalyze}</button>
-                    <a href={marketAnalysisHref(row.symbol)}>{c.fullAnalyze}</a>
+                    <button type="button" onClick={() => onQuick(row)} disabled={!securityAnalysisSymbol(row)}>{c.quickAnalyze}</button>
+                    <a href={marketAnalysisHref(row)} aria-disabled={!securityAnalysisSymbol(row)} title={!securityAnalysisSymbol(row) ? c.notAvailable : undefined}>{c.fullAnalyze}</a>
                   </div>
                 </td>
               </tr>
@@ -1931,7 +1763,7 @@ function SecurityTable({
       </div>
       <div className={styles.mobileCardList}>
         {rows.map(row => (
-          <SecurityMobileCard key={row.symbol} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />
+          <SecurityMobileCard key={securityKey(row)} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />
         ))}
       </div>
     </>
@@ -1952,8 +1784,8 @@ function FundsTab({
   rows: SecurityRow[];
   loading: boolean;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   return (
     <section className={styles.panel}>
@@ -1970,7 +1802,7 @@ function FundsTab({
       </div>
       {loading ? <SkeletonRows /> : rows.length ? (
         <div className={styles.fundGrid}>
-          {rows.map(row => <SecurityMiniCard key={row.symbol} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />)}
+          {rows.map(row => <SecurityMiniCard key={securityKey(row)} row={row} c={c} locale={locale} onDetails={onDetails} onQuick={onQuick} marketAnalysisHref={marketAnalysisHref} />)}
         </div>
       ) : <EmptyState text={c.noFunds} />}
     </section>
@@ -2018,10 +1850,10 @@ function NewsTab({
   onClear: () => void;
   securities: SecurityRow[];
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
+  onQuick: (row: SecurityAnalysisSelection) => void;
 }) {
   const visibleItems = items.slice(0, visible);
-  const bySymbol = useMemo(() => new Map(securities.map(row => [row.symbol.toUpperCase(), row])), [securities]);
+  const relatedSecurity = useMemo(() => createShariahNewsLookup(securities), [securities]);
   return (
     <section className={styles.panel} data-testid="sharia-news-section">
       <div className={styles.sectionHead}>
@@ -2061,7 +1893,7 @@ function NewsTab({
               item={item}
               c={c}
               locale={locale}
-              related={item.ticker ? bySymbol.get(item.ticker.toUpperCase()) : undefined}
+              related={relatedSecurity(item)}
               onDetails={onDetails}
               onQuick={onQuick}
             />
@@ -2227,14 +2059,14 @@ function SecurityMiniCard({
   c: typeof COPY[LangCode];
   locale: LangCode;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   return (
     <article className={styles.securityCard}>
       <header>
         <div className={styles.securityCardIdentity}>
-          <CompanyLogo symbol={row.symbol} name={row.name} assetType={row.assetType} size="lg" decorative />
+          <CompanyLogo symbol={row.symbol} name={row.name} assetType={row.assetType} exchange={securityMarket(row)} size="lg" decorative />
           <div>
             <strong>{row.name}</strong>
             <span className={styles.securityTicker} dir="ltr">{row.symbol}</span>
@@ -2246,14 +2078,14 @@ function SecurityMiniCard({
         <MetricTile label={c.price} value={formatPrice(row.quote?.price, row.quote?.currency, locale)} ltr />
         <MetricTile label={c.change} value={formatPercent(row.quote?.changePercent, locale)} ltr />
         <MetricTile label={c.screeningDate} value={formatDate(row.lastScreenedAt, locale)} />
-        <MetricTile label={c.market} value={row.quote?.exchange || c.notAvailable} ltr />
+        <MetricTile label={c.market} value={securityMarket(row) || c.notAvailable} ltr />
         <MetricTile label={c.assetType} value={row.assetType === 'etf' ? c.etf : c.stock} />
       </div>
       <p className={styles.securityReason}>{explainReason(row, locale)}</p>
       <div className={styles.cardActions}>
         <button type="button" onClick={() => onDetails(row)}>{c.details}</button>
-        <button type="button" onClick={() => onQuick(row)}>{c.quickAnalyze}</button>
-        <a href={marketAnalysisHref(row.symbol)}>{c.fullAnalyze}</a>
+        <button type="button" onClick={() => onQuick(row)} disabled={!securityAnalysisSymbol(row)}>{c.quickAnalyze}</button>
+        <a href={marketAnalysisHref(row)} aria-disabled={!securityAnalysisSymbol(row)} title={!securityAnalysisSymbol(row) ? c.notAvailable : undefined}>{c.fullAnalyze}</a>
       </div>
     </article>
   );
@@ -2264,8 +2096,8 @@ function SecurityMobileCard(props: {
   c: typeof COPY[LangCode];
   locale: LangCode;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   return <SecurityMiniCard {...props} />;
 }
@@ -2283,7 +2115,7 @@ function NewsCard({
   locale: LangCode;
   related?: SecurityRow;
   onDetails: (row: SecurityRow) => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
+  onQuick: (row: SecurityAnalysisSelection) => void;
 }) {
   const title = item.title || item.headline || item.titleOriginal || c.notAvailable;
   const summary = item.summary || item.summaryOriginal || '';
@@ -2309,7 +2141,7 @@ function NewsCard({
       <footer>
         {href ? <a href={href} target="_blank" rel="noopener noreferrer nofollow">{c.readArticle}<ExternalLink size={14} /></a> : null}
         {related ? <button type="button" onClick={() => onDetails(related)}>{c.openCompanyScreen}</button> : null}
-        {related ? <button type="button" onClick={() => onQuick(related)}>{c.analyzeRelated}</button> : null}
+        {related ? <button type="button" onClick={() => onQuick(related)} disabled={!securityAnalysisSymbol(related)}>{c.analyzeRelated}</button> : null}
       </footer>
     </article>
   );
@@ -2376,10 +2208,10 @@ function ScreeningDetailsDrawer({
   locale: LangCode;
   row: SecurityRow | null;
   onClose: () => void;
-  onQuick: (row: Pick<SecurityRow, 'symbol' | 'name'>) => void;
-  onResearch: (row: Pick<SecurityRow, 'symbol'>) => void;
-  onCompanyNews: (row: Pick<SecurityRow, 'symbol'>) => void;
-  marketAnalysisHref: (symbol: string) => string;
+  onQuick: (row: SecurityAnalysisSelection) => void;
+  onResearch: (row: SecurityIdentity) => void;
+  onCompanyNews: (row: SecurityIdentity) => void;
+  marketAnalysisHref: (selection: SecurityIdentity) => string | undefined;
 }) {
   if (!row) return null;
   const ratioRows = [
@@ -2411,6 +2243,7 @@ function ScreeningDetailsDrawer({
               <MetricTile label={c.dataQuality} value={completenessLabel(row.dataCompleteness, locale)} />
             </div>
           </section>
+          <PublishedShariahDisclosure row={row} locale={locale} />
           <section>
             <h3>{c.ratios}</h3>
             <div className={styles.ratioTable}>
@@ -2419,7 +2252,7 @@ function ScreeningDetailsDrawer({
                   <strong>{label}</strong>
                   <span>{c.ratioValue}: {c.unavailableRatio}</span>
                   <span>{c.threshold}: {c.noThreshold}</span>
-                  <span>{c.ratioStatus}: {row.dataCompleteness === 'complete' ? statusLabel(row.shariahStatus, locale) : completenessLabel(row.dataCompleteness, locale)}</span>
+                  <span>{c.ratioStatus}: {row.publishedShariahReference ? c.unavailableRatio : row.dataCompleteness === 'complete' ? statusLabel(row.shariahStatus, locale) : completenessLabel(row.dataCompleteness, locale)}</span>
                 </div>
               ))}
             </div>
@@ -2432,8 +2265,8 @@ function ScreeningDetailsDrawer({
         <footer className={styles.drawerFooter}>
           <button type="button" onClick={() => onResearch(row)}>{c.deepResearchAction}</button>
           <button type="button" onClick={() => onCompanyNews(row)}>{c.companyNews}</button>
-          <button type="button" onClick={() => onQuick(row)}>{c.quickAnalyze}</button>
-          <a href={marketAnalysisHref(row.symbol)}>{c.fullAnalyze}</a>
+          <button type="button" onClick={() => onQuick(row)} disabled={!securityAnalysisSymbol(row)}>{c.quickAnalyze}</button>
+          <a href={marketAnalysisHref(row)} aria-disabled={!securityAnalysisSymbol(row)} title={!securityAnalysisSymbol(row) ? c.notAvailable : undefined}>{c.fullAnalyze}</a>
         </footer>
       </aside>
     </div>
@@ -2463,7 +2296,7 @@ function QuickAnalysisDrawer({
   onClose: () => void;
   onRefresh: () => void;
   onTimeframe: (timeframe: QuickTimeframe) => void;
-  marketAnalysisHref: (symbol: string, timeframe?: QuickTimeframe) => string;
+  marketAnalysisHref: (selection: SecurityIdentity, timeframe?: QuickTimeframe) => string | undefined;
 }) {
   if (!state) return null;
   const indicators = result?.indicators ?? {};
@@ -2538,7 +2371,7 @@ function QuickAnalysisDrawer({
         </div>
         <footer className={styles.drawerFooter}>
           <button type="button" onClick={onRefresh} disabled={loading}>{c.refreshAnalysis}</button>
-          <a href={marketAnalysisHref(state.symbol, state.timeframe)}>{c.openFull}</a>
+          <a href={marketAnalysisHref(state, state.timeframe)}>{c.openFull}</a>
         </footer>
       </aside>
     </div>
