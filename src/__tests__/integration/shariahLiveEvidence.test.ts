@@ -6,7 +6,9 @@ import { enrichShariahScreeningData } from '@/lib/market/shariahFundamentals';
 import { analyzeShariaEvidence } from '@/lib/sharia-research/shariaAnalyzer';
 import { SFM_FTSE_POINT_IN_TIME } from '@/lib/sharia-research/methodologies';
 import { catalogPatchForResearch } from '@/lib/sharia-research/catalogSync';
-import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
+import { publicCatalogItem, type CatalogRow } from '@/lib/sharia-research/publicCatalog';
+import { resolveCatalogBoubyanReference } from '@/lib/market/boubyanReference.server';
+import { BOUBYAN_METHODOLOGY } from '@/lib/market/boubyanReferenceMetadata';
 import { validFinancialValue } from '@/lib/sharia-research/evidenceValidation';
 import { loadSecCompanyFacts, loadSecSubmissions } from '@/lib/sharia-research/secData';
 
@@ -45,10 +47,48 @@ describe.skipIf(!enabled)('live public SEC evidence â†’ actual SQL persistence â
       insert into public.shariah_refresh_runs(id) values (${literal(run)});`);
     const claimed = JSON.parse(sql(`select row_to_json(m) from public.claim_shariah_refresh_batch(${literal(run)},1,true,${literal(id)}) m;`));
     expect(Number(sql(`select public.finish_shariah_refresh(${literal(run)},${literal(id)},${literal(claimed.updated_at)}::timestamptz,${literal(JSON.stringify(patch))}::jsonb,null);`))).toBe(1);
-    const saved = JSON.parse(sql(`select row_to_json(m) from public.market_symbols m where id=${literal(id)};`));
+    const saved = JSON.parse(sql(`select row_to_json(m) from public.market_symbols m where id=${literal(id)};`)) as CatalogRow;
     expect(saved.shariah_screening_data).toEqual(patch.shariah_screening_data);
     expect(saved.shariah_status).toBe(patch.shariah_status);
-    expect(publicCatalogItem(saved).shariahStatus).toBe(patch.shariah_status);
+    // Persistence retains the live independent result. A separately reviewed
+    // publication may determine the public label without rewriting that result.
+    const displayedAt = new Date();
+    const publication = resolveCatalogBoubyanReference({ symbol: saved.symbol, providerSymbol: saved.provider_symbol,
+      name: saved.name, assetType: saved.asset_type, exchange: saved.exchange, country: saved.country }, { now: displayedAt });
+    const displayed = publicCatalogItem(saved, displayedAt);
+    expect(displayed.publishedShariahReference).toEqual(publication.reference);
+    if (publication.reference) expect(displayed.independentScreening).not.toBeNull();
+    else expect(displayed.independentScreening).toBeNull();
+    const independent = displayed.independentScreening ?? displayed;
+    expect(independent.shariahStatus).toBe(patch.shariah_status);
+    expect(independent.screeningSource).toBe(patch.shariah_source);
+    expect(Date.parse(independent.lastScreenedAt ?? '')).toBe(Date.parse(patch.shariah_last_reviewed_at));
+    expect(independent.methodology.en).toBe(SFM_FTSE_POINT_IN_TIME.name);
+    expect(independent.financialRatios).toEqual(patch.shariah_screening_data.screeningRules.financial);
+    expect(independent.fieldCoverage).toEqual(patch.shariah_screening_data.fieldCoverage);
+    expect(independent.missingFinancialFields).toEqual(patch.shariah_screening_data.missingFinancialFields);
+    const publishedSourceApplies = publication.reference && (publication.state === 'listed'
+      || patch.shariah_status === 'needs_review' && (publication.state === 'review_due' || publication.reasonCode === 'excluded_from_publication'));
+    if (publishedSourceApplies) {
+      expect(displayed.canonicalSecurityId).toBe(publication.reference!.canonicalId);
+      expect(displayed.screeningSource).toBe(publication.reference!.sourceName);
+      expect(displayed.lastScreenedAt).toBe(publication.reference!.checkedAt);
+      expect(displayed.methodology).toEqual(BOUBYAN_METHODOLOGY);
+      expect(displayed.financialRatios).toBeNull();
+      expect(displayed.fieldCoverage).toEqual([]);
+      expect(displayed.shariahStatus).toBe(patch.shariah_status === 'non_compliant' ? 'needs_review' : publication.shariahStatus);
+      if (publication.state === 'listed' && patch.shariah_status === 'non_compliant') {
+        expect(displayed.sourceConflict).toMatchObject({ kind: 'source_disagreement', retainedStatus: 'non_compliant',
+          retainedSource: patch.shariah_source, publishedStatus: 'compliant' });
+      } else expect(displayed.sourceConflict).toBeNull();
+    } else {
+      // Missing/ambiguous or overdue opinions cannot replace a current,
+      // independently verified determination.
+      expect(displayed.shariahStatus).toBe(patch.shariah_status);
+      expect(displayed.screeningSource).toBe(patch.shariah_source);
+      expect(displayed.financialRatios).toEqual(independent.financialRatios);
+      expect(displayed.sourceConflict).toBeNull();
+    }
     sql(`update public.shariah_refresh_runs set status='completed',finished_at=clock_timestamp(),result='{"updated":1}' where id=${literal(run)};`);
   }, 110_000);
 });

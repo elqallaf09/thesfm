@@ -6,7 +6,7 @@ import { GET } from '@/app/api/sharia-stocks/screening/route';
 
 function catalog(shariahStatus: string, manualOverride = false) {
   const row = {
-    symbol: 'HLAL', name: 'Wahed FTSE USA Shariah ETF', asset_type: 'etf',
+    symbol: 'HLAL', provider_symbol: 'HLAL', name: 'Wahed FTSE USA Shariah ETF', asset_type: 'etf', exchange: 'NASDAQ', country: 'US',
     shariah_status: shariahStatus, shariah_manual_override: manualOverride,
     shariah_last_reviewed_at: '2026-09-17T00:00:00Z',
     shariah_source: 'Reviewed fund evidence', shariah_reason: 'Stored reviewed decision',
