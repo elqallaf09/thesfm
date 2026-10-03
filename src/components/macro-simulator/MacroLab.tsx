@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { WorkspacePageContainer } from '@/components/layout/WorkspacePageContainer';
 import { ASSETS, EVENT_KINDS, FACTORS, HORIZONS, LIMITS, MODEL_VERSION, TEMPLATES, defaultInput, readSnapshot, simulate, snapshot, template, type Asset, type EventKind, type Horizon, type Input, type Regime, type Report, type Shock } from '../../domain/macro-simulator/engine';
@@ -15,9 +15,12 @@ const fieldValue = (value: number) => Number.isFinite(value) ? value : '';
 // Oil inputs use a 5-point step; a default of 1 would fail native form validation.
 const initialShock = (kind: EventKind): Shock => ({ kind, magnitude: kind === 'rates' ? 25 : kind === 'oilSupply' ? 10 : 1, expected: 0, pricedIn: 0 });
 export function MacroLab({ userKey }: { userKey: string }) {
-  const notesId = useId();
-  const chartAssetId = useId();
-  const fieldIds = useId();
+  // This workspace is mounted once per page. Stable names avoid an SSR/client
+  // hydration mismatch that can occur when generated React IDs inherit a
+  // different route prefix on the server and client.
+  const notesId = 'macro-lab-notes';
+  const chartAssetId = 'macro-lab-chart-asset';
+  const fieldIds = 'macro-lab-field';
   const [hydrated, setHydrated] = useState(false);
   const { lang: activeLanguage } = useLanguage();
   const lang: Language = activeLanguage === 'en' || activeLanguage === 'fr' ? activeLanguage : 'ar';
@@ -34,6 +37,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
   const storageKey = `sfm:macro-simulation:1:${userKey}`;
   const weightsTotal = ASSETS.reduce((sum, id) => sum + input.weights[id], 0);
   const weightsValid = Number.isFinite(weightsTotal) && Math.abs(weightsTotal - 100) < 0.001;
+  const activeEvents = input.shocks.map(shock => eventLabels[shock.kind][lang]).join(' + ');
   const stale = !!report && JSON.stringify(report.input) !== JSON.stringify(input);
   const reference = report?.scenarios.find(s => s.id === 'reference');
   const number = (n: number, digits = 1) => new Intl.NumberFormat(`${lang}-u-nu-latn`, { maximumFractionDigits: digits }).format(n);
@@ -72,7 +76,7 @@ export function MacroLab({ userKey }: { userKey: string }) {
     } catch { setError('invalid'); }
   }
   const comparable = report && pinned && report.input.capital === pinned.input.capital && report.input.horizon === pinned.input.horizon && ASSETS.every(a => report.input.weights[a] === pinned.input.weights[a]);
-  return <WorkspacePageContainer variant="full" className={styles.lab}>
+  return <WorkspacePageContainer variant="wide" className={styles.lab}>
     <div dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} data-hydrated={hydrated ? 'true' : 'false'} data-testid="macro-lab">
       <header className={styles.hero}>
         <div><p className={styles.eyebrow} dir="ltr">SFM / SIM LAB · V2</p><h1>{t('title')}</h1><p>{t('subtitle')}</p></div>
@@ -130,7 +134,12 @@ export function MacroLab({ userKey }: { userKey: string }) {
             <button className={styles.button} type="button" onClick={() => { replace(defaultInput()); setPinned(null); }}>{t('reset')}</button>
           </form>
           <div className={styles.canvas}>
-            {!report || !reference ? <section className={`${styles.card} ${styles.empty}`}><div className={styles.orbit} aria-hidden="true">SFM</div><h2>{mode === 'challenge' ? t('challengeTitle') : t('empty')}</h2><p>{mode === 'challenge' ? t('challengeText') : t('noProbability')}</p><div className={styles.statusGrid}><span>{t('noLive')}</span><span>{t('noCalibration')}</span></div></section> : <>
+            {!report || !reference ? <section className={`${styles.card} ${styles.empty}`}>
+              <div className={styles.emptyIntro}><div className={styles.orbit} aria-hidden="true">SFM</div><div><p className={styles.eyebrow}>{t('previewLabel')}</p><h2>{mode === 'challenge' ? t('challengeTitle') : t('empty')}</h2><p>{mode === 'challenge' ? t('challengeText') : t('noProbability')}</p></div></div>
+              <dl className={styles.previewGrid}><div><dt>{t('previewEvent')}</dt><dd>{activeEvents}</dd></div><div><dt>{t('previewHorizon')}</dt><dd>{horizonLabels[input.horizon][lang]}</dd></div><div><dt>{t('previewPortfolio')}</dt><dd dir="ltr">{number(weightsTotal, 0)}%</dd></div></dl>
+              <div className={styles.outputPreview}><h3>{t('previewOutputs')}</h3><ol><li><span>01</span><div><b>{t('previewPaths')}</b><p>{t('previewPathsDetail')}</p></div></li><li><span>02</span><div><b>{t('previewAssets')}</b><p>{t('previewAssetsDetail')}</p></div></li><li><span>03</span><div><b>{t('previewTimeline')}</b><p>{t('previewTimelineDetail')}</p></div></li></ol></div>
+              <div className={styles.statusGrid}><span>{t('noLive')}</span><span>{t('noCalibration')}</span></div>
+            </section> : <>
               {stale ? <p className={styles.notice} role="status">{t('stale')}</p> : null}
               {mode === 'challenge' ? <p className={styles.notice}>{t(guess === direction(reference.returns.gold) ? 'matched' : 'unmatched')}</p> : null}
               <section className={styles.card} data-testid="macro-results" aria-live="polite"><div className={styles.sectionHeading}><div><p className={styles.eyebrow}>{report.input.title || t('untitled')}</p><h2>{t('results')}</h2></div><span className={styles.badge}>{horizonLabels[report.input.horizon][lang]} · <bdi>{report.input.eventTime} UTC+3</bdi></span></div>
