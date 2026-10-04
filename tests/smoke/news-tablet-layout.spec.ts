@@ -63,14 +63,28 @@ async function expectReadableLayout(page: Page, category: 'tech' | 'gulf') {
     if (!main || !feed || !side) return null;
     const feedRect = feed.getBoundingClientRect();
     const sideRect = side.getBoundingClientRect();
+    const columnCount = (selector: string) => {
+      const grid = document.querySelector(selector);
+      return grid ? getComputedStyle(grid).gridTemplateColumns.split(/\s+/).length : 0;
+    };
     return {
       mainWidth: main.clientWidth,
       feedBox: { y: feedRect.y, height: feedRect.height, width: feedRect.width },
       sideBox: { y: sideRect.y, width: sideRect.width },
+      columns: {
+        featured: columnCount(kind === 'tech' ? '.tech-news-editorial-grid' : '.gulf-news-featured-grid'),
+        standard: columnCount(kind === 'tech' ? '.tech-news-standard-results.grid' : '.gulf-news-grid.grid'),
+        secondary: columnCount('.tech-news-secondary-stack'),
+      },
     };
   }, category);
   expect(geometry).not.toBeNull();
-  const { mainWidth, feedBox, sideBox } = geometry!;
+  const { mainWidth, feedBox, sideBox, columns } = geometry!;
+  expect(columns.featured).toBe(feedBox.width >= 800 ? 2 : 1);
+  expect(columns.standard).toBe(feedBox.width >= 1080 ? 3 : feedBox.width >= 640 ? 2 : 1);
+  if (category === 'tech') {
+    expect(columns.secondary).toBe(feedBox.width >= 640 && feedBox.width < 800 ? 2 : 1);
+  }
   if (mainWidth < 1240) {
     expect(sideBox.y).toBeGreaterThanOrEqual(feedBox.y + feedBox.height - 1);
     expect(Math.abs(sideBox.width - feedBox.width)).toBeLessThanOrEqual(2);
