@@ -6,20 +6,22 @@ import { getMarketNewsAdminProviderStatus, type MarketNewsAdminProviderStatus } 
 import { computeShariahCounts } from '@/lib/market/shariahAdminCatalog';
 import type { ShariahStatus } from '@/lib/market/shariah-screening';
 import type { MarketCapabilityKey, MarketSystemState } from '@/lib/market-state/types';
+import type { TraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { buildRootCauseIssues } from './rootCauseDiagnostics';
 import { buildSymbolCoverage } from './symbolCoverage';
+import { buildOperationsHealthSummary } from './healthTruth';
+import { getCalendarHealthMeasurement } from './calendarHealth';
+import { getOperationalServiceHealth } from './serviceHealth';
+import { sanitizeOpsDiagnosticReason } from './diagnosticSafety';
 import {
   notInstrumented,
   type DataQualityBucket,
-  type ErrorCenterCategory,
-  type ErrorCenterEntry,
   type FeatureHealthRow,
   type JobSourceStats,
   type OperationsCenterState,
   type OpsAction,
   type OpsFeatureHealthStatus,
-  type OpsFeatureKey,
-  type OpsHealthLevel,
+  type OpsFeatureMeasurement,
 } from './types';
 
 const EMPTY_MARKET_STATE: MarketSystemState = {
@@ -46,16 +48,21 @@ type ReminderRunRow = OperationsCenterState['subscriptionReminders']['recentRuns
 type FetchLogRow = { id: string; status: string; startedAt: string | null; durationMs: number | null };
 
 async function withTimeout<T>(promise: Promise<T>): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_resolve, reject) => {
-      setTimeout(() => reject(new Error('ops_center_query_timeout')), QUERY_TIMEOUT_MS);
-    }),
-  ]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('ops_center_query_timeout')), QUERY_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return sanitizeOpsDiagnosticReason(error instanceof Error ? error.message : String(error)) ?? 'ops_center_query_failed';
 }
 
 async function fetchRecentShariahJobs(admin: SupabaseClient): Promise<ShariahJobRow[]> {
@@ -119,6 +126,7 @@ async function fetchAiUsageSummary(admin: SupabaseClient) {
     admin.from('ai_usage_limits').select('user_id').eq('is_blocked', true).limit(5000),
   ]);
   if (eventsResult.error) throw new Error(eventsResult.error.message);
+  if (limitsResult.error) throw new Error(limitsResult.error.message);
 
   const byFeature = new Map<string, number>();
   const distinctUsers = new Set<string>();
@@ -127,9 +135,7 @@ async function fetchAiUsageSummary(admin: SupabaseClient) {
     byFeature.set(feature, (byFeature.get(feature) ?? 0) + 1);
     if (row.user_id) distinctUsers.add(String(row.user_id));
   }
-  const blockedUsersCount = limitsResult.error
-    ? 0
-    : new Set((limitsResult.data ?? []).map(row => String(row.user_id))).size;
+  const blockedUsersCount = new Set((limitsResult.data ?? []).map(row => String(row.user_id))).size;
 
   return {
     last24h: Array.from(byFeature.entries()).map(([feature, eventCount24h]) => ({ feature: feature as OperationsCenterState['aiUsage']['last24h'][number]['feature'], eventCount24h })),
@@ -255,15 +261,15 @@ function buildFeatureHealth(market: MarketSystemState, shariahJobs: ShariahJobRo
       status: recentFailedShariahJobs > 0 ? 'partial' : capabilityBucketStatus(market, ['shariah_financials']),
       detailKey: recentFailedShariahJobs > 0 ? 'ops_center_feature_detail_shariah_jobs_failing' : null,
     },
-    { feature: 'ai_services', status: 'disabled', detailKey: 'ops_center_feature_detail_ai_quota_only' },
+    { feature: 'ai_services', status: 'unmeasured', detailKey: 'ops_center_service_probe_incomplete' },
     { feature: 'authentication', status: 'healthy', detailKey: 'ops_center_feature_detail_auth_request_scoped' },
     {
       feature: 'email',
       status: recentFailedReminderRuns > 0 ? 'partial' : reminderRuns.length === 0 ? 'disabled' : 'healthy',
       detailKey: 'ops_center_feature_detail_email_subscription_only',
     },
-    { feature: 'notifications', status: 'disabled', detailKey: 'ops_center_feature_detail_not_instrumented' },
-    { feature: 'storage', status: 'disabled', detailKey: 'ops_center_feature_detail_not_instrumented' },
+    { feature: 'notifications', status: 'unmeasured', detailKey: 'ops_center_service_probe_incomplete' },
+    { feature: 'storage', status: 'unmeasured', detailKey: 'ops_center_service_probe_incomplete' },
     {
       feature: 'database',
       status: !adminConfigured ? 'failed' : databaseReachable ? 'healthy' : 'partial',
@@ -271,49 +277,6 @@ function buildFeatureHealth(market: MarketSystemState, shariahJobs: ShariahJobRo
     },
   ];
   return rows;
-}
-
-function computeOverall(market: MarketSystemState, criticalIssueCount: number, warningCount: number): OpsHealthLevel {
-  if (market.overall === 'unknown') return 'maintenance';
-  if (market.overall === 'disconnected' || criticalIssueCount > 0) return 'critical';
-  if (market.overall === 'degraded' || warningCount > 0) return 'degraded';
-  return 'healthy';
-}
-
-function computeHealthScore(market: MarketSystemState): number {
-  const succeeded = market.featuresSucceeded.length;
-  const degraded = market.featuresDegraded.length;
-  const failed = market.featuresFailed.length;
-  const total = succeeded + degraded + failed;
-  if (total === 0) return 100;
-  return Math.round(((succeeded + degraded * 0.5) / total) * 100);
-}
-
-function buildErrorCenter(
-  rootCause: OperationsCenterState['rootCause'],
-  reminderRuns: ReminderRunRow[],
-): OperationsCenterState['errorCenter'] {
-  const byCategory: Record<ErrorCenterCategory, ErrorCenterEntry[]> = { provider: [], api: [], shariah: [], email: [], ai: [] };
-  for (const issue of rootCause) {
-    const category: ErrorCenterCategory | null =
-      issue.id.startsWith('market:') ? 'provider'
-      : issue.id.startsWith('market_news:') ? 'provider'
-      : issue.id.startsWith('shariah_job:') ? 'shariah'
-      : issue.id.startsWith('reminder_run:') ? 'email'
-      : null;
-    if (!category) continue;
-    byCategory[category].push({
-      id: issue.id,
-      category,
-      severity: issue.severity,
-      occurredAt: issue.lastOccurrence,
-      retryAvailable: issue.retryAvailable,
-      logKey: issue.rootCauseKey,
-      recommendationKey: issue.suggestedFixKey,
-    });
-  }
-  void reminderRuns;
-  return { byCategory, notInstrumented: ['database', 'frontend', 'notifications'] };
 }
 
 function buildDataQuality(market: MarketSystemState): Record<DataQualityBucket, number> {
@@ -330,37 +293,63 @@ function buildDataQuality(market: MarketSystemState): Record<DataQualityBucket, 
   return buckets;
 }
 
-function buildActions(rootCause: OperationsCenterState['rootCause']): OpsAction[] {
-  const hasProviderIssue = rootCause.some(issue => issue.id.startsWith('market:') && issue.retryAvailable);
+function buildActions(): OpsAction[] {
   return [
-    { id: 'retry_market_providers', labelKey: 'ops_center_action_retry_providers', kind: 'retry_market_providers', available: hasProviderIssue },
+    { id: 'check_service_health', labelKey: 'ops_center_action_check_services', kind: 'check_service_health', available: true },
+    { id: 'retry_market_providers', labelKey: 'ops_center_action_retry_providers', kind: 'retry_market_providers', available: true },
     { id: 'refresh_symbol_catalog', labelKey: 'ops_center_action_refresh_catalog', kind: 'refresh_symbol_catalog', available: true },
+    { id: 'refresh_economic_calendar', labelKey: 'ops_center_action_refresh_calendar', kind: 'refresh_economic_calendar', available: true },
     { id: 'retry_shariah_job', labelKey: 'ops_center_action_retry_shariah_job', kind: 'retry_shariah_job', available: false, disabledReasonKey: 'ops_center_action_disabled_no_retry_endpoint' },
     { id: 'recalculate_recommendations', labelKey: 'ops_center_action_recalculate_recommendations', kind: 'recalculate_recommendations', available: false, disabledReasonKey: 'ops_center_action_disabled_computed_live' },
   ];
 }
 
+function databaseReadMeasurement(
+  configured: boolean,
+  checkedAt: string,
+  observations: Array<{ source: string; result: PromiseSettledResult<unknown> }>,
+): OpsFeatureMeasurement {
+  if (!configured) return {
+    status: 'failed', detailKey: 'ops_center_feature_detail_database_not_configured',
+    evidence: [{ source: 'supabase', scope: 'configuration', status: 'failed', checkedAt, lastSuccessAt: null,
+      reasonKey: 'ops_center_feature_detail_database_not_configured', reason: null }],
+  };
+  const successes = observations.filter(item => item.result.status === 'fulfilled').length;
+  return {
+    status: successes === observations.length ? 'healthy' : successes > 0 ? 'partial' : 'failed',
+    detailKey: 'ops_center_database_read_scope',
+    evidence: observations.map(({ source, result }) => ({
+      source, provider: 'supabase', scope: 'runtime', status: result.status === 'fulfilled' ? 'healthy' : 'failed',
+      checkedAt, lastSuccessAt: result.status === 'fulfilled' ? checkedAt : null,
+      reasonKey: result.status === 'fulfilled' ? 'ops_center_database_read_succeeded' : 'ops_center_database_read_failed',
+      reason: result.status === 'rejected' ? describeError(result.reason) : null,
+    })),
+  };
+}
+
 /**
  * The single Operations Center composer. Every field is either read straight from an existing
  * exported function (`getMarketSystemState`, `getMarketNewsAdminProviderStatus`,
- * `computeShariahCounts`) or from one of 3 new bounded, read-only Supabase queries. Uses
+ * `computeShariahCounts`) or from bounded, read-only service and Supabase observations. Uses
  * Promise.allSettled so one failing sub-source degrades only its own section (recorded in
  * `degradedSources`), never the whole payload — mirrors the bounded-timeout pattern already used
  * for the live provider-health probe in aggregateMarketState.ts.
  */
-export async function getOperationsCenterState(options: { forceFresh?: boolean } = {}): Promise<OperationsCenterState> {
+export async function getOperationsCenterState(options: { forceFresh?: boolean; forceServiceHealth?: boolean; prefetchedCatalog?: TraderMarketCatalog } = {}): Promise<OperationsCenterState> {
   const generatedAt = new Date().toISOString();
   const admin = createServerSupabaseAdmin();
   const degradedSources: OperationsCenterState['degradedSources'] = {};
 
-  const [marketSettled, marketNewsSettled, shariahCountsSettled, shariahJobsSettled, reminderRunsSettled, fetchLogsSettled, aiUsageSettled] = await Promise.allSettled([
-    getMarketSystemState({ forceFresh: options.forceFresh }),
+  const [marketSettled, marketNewsSettled, shariahCountsSettled, shariahJobsSettled, reminderRunsSettled, fetchLogsSettled, aiUsageSettled, servicesSettled, calendarSettled] = await Promise.allSettled([
+    getMarketSystemState({ forceFresh: options.forceFresh, ...(options.prefetchedCatalog ? { prefetchedCatalog: options.prefetchedCatalog } : {}) }),
     withTimeout(getMarketNewsAdminProviderStatus(admin ?? undefined)),
     admin ? withTimeout(computeShariahCounts(admin)) : Promise.reject(new Error('supabase_admin_not_configured')),
     admin ? withTimeout(fetchRecentShariahJobs(admin)) : Promise.reject(new Error('supabase_admin_not_configured')),
     admin ? withTimeout(fetchRecentReminderRuns(admin)) : Promise.reject(new Error('supabase_admin_not_configured')),
     admin ? withTimeout(fetchRecentMarketNewsFetchLogs(admin)) : Promise.reject(new Error('supabase_admin_not_configured')),
     admin ? withTimeout(fetchAiUsageSummary(admin)) : Promise.reject(new Error('supabase_admin_not_configured')),
+    getOperationalServiceHealth({ admin, forceFresh: options.forceServiceHealth ?? options.forceFresh ?? false }),
+    getCalendarHealthMeasurement(),
   ]);
 
   // getMarketSystemState() never actually rejects (it has its own internal persisted-snapshot /
@@ -379,11 +368,30 @@ export async function getOperationsCenterState(options: { forceFresh?: boolean }
   const aiUsage = aiUsageSettled.status === 'fulfilled' ? aiUsageSettled.value : (() => { degradedSources.aiUsage = describeError(aiUsageSettled.reason); return { last24h: [], blockedUsersCount: 0, distinctUsersToday: 0 }; })();
 
   const rootCause = buildRootCauseIssues({ market, marketNews, shariahJobs, reminderRuns });
-  const criticalIssueCount = rootCause.filter(issue => issue.severity === 'critical').length;
-  const warningCount = rootCause.filter(issue => issue.severity === 'warning').length;
-  const databaseReachable = Object.keys(degradedSources).length === 0;
-  const featureHealth = buildFeatureHealth(market, shariahJobs, reminderRuns, databaseReachable, Boolean(admin));
-  const healthyServiceCount = featureHealth.filter(row => row.status === 'healthy').length;
+  const database = databaseReadMeasurement(Boolean(admin), new Date().toISOString(), [
+    { source: 'ops_center_source_database_shariah_catalog', result: shariahCountsSettled },
+    { source: 'sharia_research_jobs', result: shariahJobsSettled },
+    { source: 'subscription_reminder_runs', result: reminderRunsSettled },
+    { source: 'market_news_fetch_logs', result: fetchLogsSettled },
+    { source: 'ai_usage_events / ai_usage_limits', result: aiUsageSettled },
+  ]);
+  const featureHealth = buildFeatureHealth(market, shariahJobs, reminderRuns, database.status === 'healthy', Boolean(admin));
+  const unavailableMeasurement: OpsFeatureMeasurement = {
+    status: 'unmeasured', detailKey: 'ops_center_service_probe_incomplete',
+    evidence: [{ source: 'Operations Center', scope: 'none', checkedAt: null, lastSuccessAt: null, reasonKey: 'ops_center_service_probe_incomplete', reason: null }],
+  };
+  const featureMeasurements = {
+    ...(servicesSettled.status === 'fulfilled' ? servicesSettled.value : {
+      ai_services: unavailableMeasurement, notifications: unavailableMeasurement, storage: unavailableMeasurement,
+    }),
+    economic_calendar: calendarSettled.status === 'fulfilled' ? calendarSettled.value : unavailableMeasurement,
+    database,
+    authentication: {
+      status: 'healthy' as const, detailKey: 'ops_center_feature_detail_auth_request_scoped',
+      evidence: [{ source: 'ops_center_evidence_source_request', scope: 'runtime' as const, status: 'healthy' as const,
+        checkedAt: generatedAt, lastSuccessAt: generatedAt, reasonKey: 'ops_center_feature_detail_auth_request_scoped', reason: null }],
+    },
+  };
 
   const memory = process.memoryUsage();
   const loadAvg = os.platform() === 'win32' ? null : (os.loadavg() as [number, number, number]);
@@ -394,14 +402,16 @@ export async function getOperationsCenterState(options: { forceFresh?: boolean }
     .slice(0, 5)
     .map(cell => ({ provider: cell.provider, latencyMs: cell.latencyMs as number }));
 
-  return {
+  const snapshot: OperationsCenterState = {
     generatedAt,
+    featureMeasurements,
+    calendarHealth: featureMeasurements.economic_calendar.status,
     overview: {
-      overall: computeOverall(market, criticalIssueCount, warningCount),
-      healthScorePercent: computeHealthScore(market),
-      criticalIssueCount,
-      warningCount,
-      healthyServiceCount,
+      overall: 'unmeasured',
+      healthScorePercent: null,
+      criticalIssueCount: 0,
+      warningCount: 0,
+      healthyServiceCount: 0,
       lastSyncAt: market.lastSynchronizedAt,
       processUptimeSeconds: process.uptime(),
     },
@@ -418,7 +428,7 @@ export async function getOperationsCenterState(options: { forceFresh?: boolean }
       subscriptionReminders: bucketReminderRuns(reminderRuns),
       genericQueue: notInstrumented('ops_center_not_instrumented_reason_no_queue_system', 'ops_center_not_instrumented_infra_job_queue', 'unavailable'),
     },
-    errorCenter: buildErrorCenter(rootCause, reminderRuns),
+    errorCenter: { byCategory: { provider: [], api: [], shariah: [], email: [], ai: [], database: [], notifications: [], storage: [] }, notInstrumented: ['frontend'] },
     dataQuality: buildDataQuality(market),
     performance: {
       processUptimeSeconds: process.uptime(),
@@ -437,7 +447,9 @@ export async function getOperationsCenterState(options: { forceFresh?: boolean }
       distinctUsersToday: aiUsage.distinctUsersToday,
       healthScore: notInstrumented('ops_center_not_instrumented_reason_ai_quota_only', 'ops_center_not_instrumented_infra_ai_call_tracking', 'unavailable'),
     },
-    actions: buildActions(rootCause),
+    actions: buildActions(),
     degradedSources,
   };
+  // The response and every tab share this one summary, including measurement gaps and incidents.
+  return { ...snapshot, ...buildOperationsHealthSummary(snapshot) };
 }

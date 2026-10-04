@@ -3,7 +3,7 @@ import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { getConfiguredProviderDescriptors } from '@/lib/market-news/registry';
 import { getProviderHealth } from '@/lib/market/marketDataProviders';
 import { cleanEnv } from '@/lib/market/providerConfig';
-import { getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
+import { getTraderMarketCatalog, type TraderMarketCatalog } from '@/lib/trader/marketCatalog';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { getFmpRuntimeStatus } from '@/lib/trader/providers/fmpRuntime';
 import { synchronizeFmpSharedCooldown } from '@/lib/trader/providers/fmpRuntime.server';
@@ -141,9 +141,9 @@ const DERIVED_CAPABILITIES: Array<[MarketCapabilityKey, ProviderPriorityContext]
   ['gcc_markets', 'general'],
 ];
 
-async function computeMarketSystemState(forceFresh: boolean): Promise<MarketSystemState> {
+async function computeMarketSystemState(forceFresh: boolean, prefetchedCatalog?: TraderMarketCatalog): Promise<MarketSystemState> {
   const generatedAt = new Date().toISOString();
-  const catalog = await getTraderMarketCatalog({ forceFresh });
+  const catalog = forceFresh && prefetchedCatalog ? prefetchedCatalog : await getTraderMarketCatalog({ forceFresh });
   const cells: ProviderCapabilityCell[] = [];
 
   for (const [rawProvider, cap] of Object.entries(catalog.capabilityMatrix) as Array<[string, ProviderCapabilityLike]>) {
@@ -439,7 +439,7 @@ function persistSnapshotThenReleaseLock(state: MarketSystemState, runId: string 
  * last snapshot explicitly marked delayed rather than multiplying provider probes. Persistence
  * writes are fire-and-forget and never block the response.
  */
-export async function getMarketSystemState(options: { forceFresh?: boolean } = {}): Promise<MarketSystemState> {
+export async function getMarketSystemState(options: { forceFresh?: boolean; prefetchedCatalog?: TraderMarketCatalog } = {}): Promise<MarketSystemState> {
   const now = Date.now();
   // Do this before every cache branch. The lookup is bounded and cached by the
   // FMP runtime, while a shared pause is safety-critical state that must not be
@@ -514,7 +514,7 @@ export async function getMarketSystemState(options: { forceFresh?: boolean } = {
       if (lock.acquired) refreshLockRunId = runId;
     }
     try {
-      const state = applyActiveFmpCooldown(await computeMarketSystemState(Boolean(options.forceFresh)));
+      const state = applyActiveFmpCooldown(await computeMarketSystemState(Boolean(options.forceFresh), options.prefetchedCatalog));
       memoryCache = { value: state, expiresAt: Date.now() + AGGREGATE_CACHE_MS };
       persistSnapshotThenReleaseLock(state, refreshLockRunId);
       refreshLockRunId = null;

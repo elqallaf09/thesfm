@@ -11,6 +11,7 @@ export const OPS_HEALTH_TONE: Record<OpsHealthLevel, StatusTone> = {
   degraded: 'warning',
   critical: 'danger',
   maintenance: 'info',
+  unmeasured: 'muted',
 };
 
 export const OPS_HEALTH_ICON: Record<OpsHealthLevel, typeof CheckCircle2> = {
@@ -18,6 +19,7 @@ export const OPS_HEALTH_ICON: Record<OpsHealthLevel, typeof CheckCircle2> = {
   degraded: AlertTriangle,
   critical: XCircle,
   maintenance: Info,
+  unmeasured: HelpCircle,
 };
 
 export const FEATURE_HEALTH_TONE: Record<OpsFeatureHealthStatus, StatusTone> = {
@@ -26,6 +28,8 @@ export const FEATURE_HEALTH_TONE: Record<OpsFeatureHealthStatus, StatusTone> = {
   failed: 'danger',
   disabled: 'muted',
   maintenance: 'info',
+  unmeasured: 'muted',
+  uninstrumented: 'muted',
 };
 
 export const FEATURE_HEALTH_ICON: Record<OpsFeatureHealthStatus, typeof CheckCircle2> = {
@@ -34,6 +38,8 @@ export const FEATURE_HEALTH_ICON: Record<OpsFeatureHealthStatus, typeof CheckCir
   failed: XCircle,
   disabled: MinusCircle,
   maintenance: Info,
+  unmeasured: HelpCircle,
+  uninstrumented: HelpCircle,
 };
 
 export const SEVERITY_TONE: Record<OpsSeverity, StatusTone> = {
