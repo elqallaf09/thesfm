@@ -54,16 +54,26 @@ async function mockNews(page: Page, category: 'tech' | 'gulf') {
 
 async function expectReadableLayout(page: Page, category: 'tech' | 'gulf') {
   const layout = page.locator(category === 'tech' ? '.tech-news-layout' : '.gulf-news-content-layout');
-  const feed = page.locator(category === 'tech' ? '.tech-news-content-column' : '.gulf-news-news-column');
-  const side = page.locator(category === 'tech' ? '.tech-news-side-panel' : '.gulf-news-side-panel');
-  const mainWidth = await page.locator('[data-news-page-shell] > main').evaluate(element => element.clientWidth);
-  const feedBox = await feed.boundingBox();
-  const sideBox = await side.boundingBox();
-  expect(feedBox).not.toBeNull();
-  expect(sideBox).not.toBeNull();
+  // Header wrapping and scroll anchoring can update between protocol calls.
+  // Read both boxes in one browser task so they share the same layout frame.
+  const geometry = await page.evaluate(kind => {
+    const main = document.querySelector<HTMLElement>('[data-news-page-shell] > main');
+    const feed = document.querySelector(kind === 'tech' ? '.tech-news-content-column' : '.gulf-news-news-column');
+    const side = document.querySelector(kind === 'tech' ? '.tech-news-side-panel' : '.gulf-news-side-panel');
+    if (!main || !feed || !side) return null;
+    const feedRect = feed.getBoundingClientRect();
+    const sideRect = side.getBoundingClientRect();
+    return {
+      mainWidth: main.clientWidth,
+      feedBox: { y: feedRect.y, height: feedRect.height, width: feedRect.width },
+      sideBox: { y: sideRect.y, width: sideRect.width },
+    };
+  }, category);
+  expect(geometry).not.toBeNull();
+  const { mainWidth, feedBox, sideBox } = geometry!;
   if (mainWidth < 1240) {
-    expect(sideBox!.y).toBeGreaterThanOrEqual(feedBox!.y + feedBox!.height - 1);
-    expect(Math.abs(sideBox!.width - feedBox!.width)).toBeLessThanOrEqual(2);
+    expect(sideBox.y).toBeGreaterThanOrEqual(feedBox.y + feedBox.height - 1);
+    expect(Math.abs(sideBox.width - feedBox.width)).toBeLessThanOrEqual(2);
   }
   const overflow = await layout.locator(
     `${category === 'tech' ? '.tech-news-card, .tech-side-card, .tech-side-ranked-list li' : '.gulf-news-card'}, h2, p, a, .gulf-news-card-body, .gulf-news-meta`,
@@ -99,8 +109,18 @@ test.describe('News geometry with workspace navigation', () => {
       });
       await mockNews(page, category);
       await page.setViewportSize({ width: 1536, height: 1010 });
+      const newsResponse = page.waitForResponse(response => (
+        response.url().includes(`/api/${category}-news`) && response.request().method() === 'GET'
+      ));
       await page.goto(`/${category}-news`);
-      if (category === 'gulf') await page.locator('.gulf-news-exchange-grid button', { hasText: 'KW' }).click();
+      // The client fetch runs after hydration; wait before using market controls.
+      await newsResponse;
+      await expect.poll(() => page.evaluate(() => document.documentElement.dataset.sfmLang)).toBe('ar');
+      if (category === 'gulf') {
+        const kuwait = page.locator('.gulf-news-exchange-grid button', { hasText: 'KW' });
+        await kuwait.click();
+        await expect(kuwait).toHaveAttribute('aria-pressed', 'true');
+      }
       await expect(page.locator(`.${category}-news-card`).first()).toBeVisible();
       await expect(page.locator('aside.sfm-shared-sidebar')).toHaveAttribute('data-collapsed', 'false');
 
