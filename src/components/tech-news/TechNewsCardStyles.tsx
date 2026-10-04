@@ -6,7 +6,7 @@
 export function TechNewsCardStyles() {
   return (
     <style jsx global>{`
-      .tech-news-editorial-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,.85fr);gap:16px;align-items:stretch;min-width:0}
+      .tech-news-editorial-grid{display:grid;gap:16px;align-items:stretch;min-width:0}
       .tech-news-secondary-stack{display:grid;gap:12px;min-width:0}
       .tech-news-evidence-card{display:grid;gap:8px;min-width:0;align-content:start}
       .tech-news-editorial-grid>.tech-news-evidence-card:first-child,.tech-news-evidence-card>.tech-news-card-lead{height:100%}
@@ -72,12 +72,10 @@ export function TechNewsCardStyles() {
       .tech-news-read-link:hover,.tech-news-read-link:focus-visible{outline:none;box-shadow:var(--focus-shadow)}
       .tech-news-read-link.disabled{background:var(--surface-muted);border-color:var(--border);color:var(--foreground-muted);box-shadow:none}
 
-      .tech-news-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+      .tech-news-layout{display:grid;gap:22px;align-items:start}
       .tech-news-content-column{display:grid;gap:14px;min-width:0}
       .tech-news-feed{display:grid;gap:14px;min-width:0}
       .tech-news-standard-results{display:grid;gap:14px;min-width:0}
-      .tech-news-standard-results.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      @media(min-width:1500px){.tech-news-standard-results.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
       .tech-news-standard-results.list{grid-template-columns:1fr}
 
       .tech-news-side-panel{position:sticky;top:calc(var(--global-header-height) + 1rem);display:grid;gap:14px;min-width:0}
@@ -110,32 +108,9 @@ export function TechNewsCardStyles() {
 
       .tech-news-read-link:focus-visible,.tech-side-list a:focus-visible,.tech-news-translation-toggle:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
 
-      /* Tablet / MatePad: collapse the desktop side rail before the app navigation
-         and article columns compete for horizontal space.  Landscape Android tablets
-         often expose a CSS viewport wider than 1280px even though the usable content
-         area is much narrower because the workspace navigation stays visible. */
-      @media(max-width:1440px){
-        .tech-news-layout{grid-template-columns:minmax(0,1fr)}
-        .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
-        .tech-news-editorial-grid{grid-template-columns:minmax(0,1.35fr) minmax(260px,.8fr)}
-        .tech-news-standard-results.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      }
-      @media(max-width:1280px){
-        .tech-news-layout{grid-template-columns:1fr}
-        .tech-news-side-panel{position:static;grid-template-columns:repeat(3,minmax(0,1fr))}
-      }
-      @media(max-width:1180px){
-        .tech-news-editorial-grid{grid-template-columns:1fr}
-        .tech-news-side-panel{grid-template-columns:1fr}
-      }
-      @media(max-width:1024px){
-        .tech-news-editorial-grid{grid-template-columns:1fr}
-        .tech-news-secondary-stack{grid-template-columns:repeat(2,minmax(0,1fr))}
-        .tech-news-side-panel{grid-template-columns:1fr}
-      }
+      /* Column geometry lives in styles/market-news-layout.css and responds
+         to the actual workspace and feed widths. */
       @media(max-width:760px){
-        .tech-news-secondary-stack{grid-template-columns:1fr}
-        .tech-news-standard-results.grid{grid-template-columns:1fr}
         .tech-news-card-footer{display:grid}
         .tech-news-read-link{width:100%}
         .tech-news-stock-context{display:grid}

@@ -312,7 +312,7 @@ test.describe('Tech Market News redesigned experience', () => {
   test('aligns the desktop side panel with the lead and moves all side content below the complete feed on mobile', async ({ page }) => {
     await useEnglish(page);
     await mockTechNews(page);
-    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.setViewportSize({ width: 1920, height: 1000 });
     await page.goto('/tech-news');
 
     await expect(page.getByTestId('tech-news-unified-feed')).toBeVisible();

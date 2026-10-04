@@ -60,7 +60,8 @@ describe('market news visual-system contract', () => {
       const source = readPageSource(relativePath);
       expect(source, relativePath).toMatch(/WorkspacePageContainer[^>]+variant="wide"/);
       expect(source, relativePath).toMatch(/<NewsPageShell[^>]+\bwide>/);
-      expect(source, relativePath).toContain('@media(min-width:1500px)');
+      const responsiveSource = source + read('src/styles/market-news-layout.css');
+      expect(responsiveSource, relativePath).toMatch(/@(?:media|container)[^{]+min-width:/);
       expect(source, relativePath).not.toMatch(/\b(?:max-w-[3456]xl|w-screen)\b|calc\(100vw/i);
     }
   });

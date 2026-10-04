@@ -12,6 +12,7 @@ import { WebVitalsReporter } from '@/components/observability/WebVitalsReporter'
 import { pageMetadata } from '@/lib/seo';
 import { SIDEBAR_BOOTSTRAP } from '@/lib/navigation/sidebarPreference';
 import './globals.css';
+import '../styles/market-news-layout.css';
 import './workspace-chrome-critical.css';
 import './temporary-product-flags.css';
 
