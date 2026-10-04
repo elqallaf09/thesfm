@@ -11,15 +11,20 @@ const CATEGORY_LABEL_KEY: Record<ErrorCenterCategory, string> = {
   shariah: 'ops_center_error_category_shariah',
   email: 'ops_center_error_category_email',
   ai: 'ops_center_error_category_ai',
+  database: 'ops_center_error_category_database',
+  notifications: 'ops_center_error_category_notifications',
+  storage: 'ops_center_error_category_storage',
 };
 
 const NOT_INSTRUMENTED_CATEGORY_LABEL_KEY: Record<NotInstrumentedErrorCategory, string> = {
   database: 'ops_center_error_category_database',
   frontend: 'ops_center_error_category_frontend',
   notifications: 'ops_center_error_category_notifications',
+  storage: 'ops_center_error_category_storage',
+  ai: 'ops_center_error_category_ai',
 };
 
-const CATEGORY_ORDER: ErrorCenterCategory[] = ['provider', 'shariah', 'email', 'api', 'ai'];
+const CATEGORY_ORDER: ErrorCenterCategory[] = ['provider', 'shariah', 'email', 'api', 'ai', 'database', 'notifications', 'storage'];
 
 export function ErrorCenterTable({ byCategory, notInstrumentedCategories }: {
   byCategory: Record<ErrorCenterCategory, ErrorCenterEntry[]>;
@@ -31,14 +36,17 @@ export function ErrorCenterTable({ byCategory, notInstrumentedCategories }: {
     <div className="ops-error-center">
       <div className="ops-error-center-grid">
         {CATEGORY_ORDER.map(category => {
-          const entries = byCategory[category];
+          const entries = (byCategory[category] ?? []).filter(entry => entry.kind !== 'measurement_gap');
+          const gapCount = (byCategory[category] ?? []).filter(entry => entry.kind === 'measurement_gap').length;
+          const monitoringUnavailable = notInstrumentedCategories.some(value => value === category);
           const criticalCount = entries.filter(entry => entry.severity === 'critical').length;
           const warningCount = entries.filter(entry => entry.severity === 'warning').length;
           return (
             <article key={category} className="ops-error-center-card">
               <strong>{t(CATEGORY_LABEL_KEY[category])}</strong>
-              <span>{entries.length} {t('ops_center_error_total')}</span>
-              {entries.length > 0 && <span>{criticalCount} {t('ops_center_critical_issues')} · {warningCount} {t('ops_center_warnings')}</span>}
+              {monitoringUnavailable && entries.length === 0 ? <span>{t('ops_center_feature_health_uninstrumented')}</span> : <span><bdi dir="ltr">{entries.length}</bdi> {t('ops_center_error_total')}</span>}
+              {entries.length > 0 && <span><bdi dir="ltr">{criticalCount}</bdi> {t('ops_center_critical_issues')} · <bdi dir="ltr">{warningCount}</bdi> {t('ops_center_warnings')}</span>}
+              {gapCount > 0 ? <span><bdi dir="ltr">{gapCount}</bdi> {t('ops_center_measurement_gaps')}</span> : null}
             </article>
           );
         })}
@@ -54,7 +62,7 @@ export function ErrorCenterTable({ byCategory, notInstrumentedCategories }: {
       </div>
       <style jsx global>{`
         .ops-error-center { display: grid; gap: 12px; }
-        .ops-error-center-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .ops-error-center-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); gap: 10px; }
         .ops-error-center-card { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; display: grid; gap: 4px; }
         .ops-error-center-card strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
         .ops-error-center-card span { color: var(--foreground-muted); font-size: 12px; font-weight: 700; }

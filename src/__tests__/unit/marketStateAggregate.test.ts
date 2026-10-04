@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TraderMarketCatalog } from '@/lib/trader/marketCatalog';
 
 const getTraderMarketCatalog = vi.fn();
 const getConfiguredProviderDescriptors = vi.fn();
@@ -168,6 +169,26 @@ describe('getMarketSystemState', () => {
     const state = await getMarketSystemState({ forceFresh: true });
     expect(state.catalog.discovered).toBe(13307);
     expect(state.catalog.liveQuoteAvailable).toBeNull();
+  });
+
+  it('reuses the actual manual catalog refresh while still collecting fresh provider health', async () => {
+    const catalog = catalogFixture() as unknown as TraderMarketCatalog;
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState({ forceFresh: true, prefetchedCatalog: catalog });
+    expect(getTraderMarketCatalog).not.toHaveBeenCalled();
+    expect(getProviderHealth).toHaveBeenCalledTimes(1);
+    expect(synchronizeFmpSharedCooldown).toHaveBeenCalledTimes(1);
+    expect(state.catalog.discovered).toBe(catalog.diagnostics.totalSymbolsDiscovered);
+  });
+
+  it('ignores a prefetched catalog on ordinary reads', async () => {
+    const provided = catalogFixture() as unknown as TraderMarketCatalog;
+    provided.diagnostics.totalSymbolsDiscovered = 1;
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const state = await getMarketSystemState({ prefetchedCatalog: provided });
+    expect(getTraderMarketCatalog).toHaveBeenCalledWith({ forceFresh: false });
+    expect(state.catalog.discovered).toBe(13307);
   });
 
   it('uses a recent persisted snapshot on a cold start instead of repeating provider probes', async () => {

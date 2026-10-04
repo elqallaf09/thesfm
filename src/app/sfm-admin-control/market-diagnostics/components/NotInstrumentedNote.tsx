@@ -31,9 +31,6 @@ export function NotInstrumentedNote({ value, label }: { value: NotInstrumented; 
         <p>{t('ops_center_scope_label')}: {t(SCOPE_LABEL_KEY[value.scope])}</p>
       </div>
       <style jsx global>{`
-        .ops-tab-section { display: grid; gap: 14px; min-width: 0; }
-        .ops-section-title { margin: 0; color: var(--foreground); font-size: 14px; font-weight: 600; }
-        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: 13px; border: 1px dashed var(--border); border-radius: var(--radius-control); }
         .ops-not-instrumented { display: flex; gap: 10px; border: 1px dashed var(--border); border-radius: var(--radius-card); background: var(--surface-muted); padding: 12px; }
         .ops-not-instrumented-icon { flex: 0 0 auto; color: var(--foreground-muted); margin-top: 2px; }
         .ops-not-instrumented-body { min-width: 0; display: grid; gap: 4px; }

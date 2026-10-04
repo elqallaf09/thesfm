@@ -100,6 +100,15 @@ describe('buildRootCauseIssues', () => {
     expect(issues).toEqual([]);
   });
 
+  it('does not discard a measured failure merely because its adapter omitted the error text', () => {
+    const issues = buildRootCauseIssues({
+      market: market([cell({ status: 'disconnected', lastErrorReason: null, lastErrorAt: '2026-07-11T01:00:00.000Z' })]),
+      marketNews: [], shariahJobs: [], reminderRuns: [],
+    });
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ severity: 'critical', kind: 'incident', rootCauseKey: 'ops_center_root_cause_reason_not_reported', rootCauseParams: {}, firstOccurrence: null, lastOccurrence: '2026-07-11T01:00:00.000Z' });
+  });
+
   it('surfaces a real market-news provider failure with lastFailedFetch as the last occurrence when no healthy alternative exists', () => {
     const newsProvider: MarketNewsAdminProviderStatus = {
       providerId: 'rss-example', providerName: 'Example RSS', sourceType: 'public_rss', sourceDomain: 'example.com',
