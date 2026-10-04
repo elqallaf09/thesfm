@@ -5475,44 +5475,6 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
   gap: var(--workspace-page-section-gap);
 }
 
-@media (min-width: 1181px) {
-  .news-page-shell[data-news-page-shell="true"] :is(
-    .tech-news-layout,
-    .crypto-content-grid,
-    .gulf-news-content-layout,
-    .europe-news-content-layout,
-    .bankContentGrid
-  ) {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.32fr) !important;
-  }
-}
-
-@media (max-width: 1180px) {
-  .news-page-shell[data-news-page-shell="true"] :is(
-    .tech-news-layout,
-    .crypto-content-grid,
-    .gulf-news-content-layout,
-    .europe-news-content-layout,
-    .bankContentGrid,
-    .energyOverviewGrid,
-    .overviewGrid
-  ) {
-    grid-template-columns: 1fr !important;
-  }
-
-  .news-page-shell[data-news-page-shell="true"] :is(
-    .tech-news-side-panel,
-    .crypto-sidebar,
-    .gulf-news-side-panel,
-    .europe-news-side-panel,
-    .bankSideRail,
-    .overviewAside
-  ) {
-    position: static !important;
-    top: auto !important;
-  }
-}
-
 .news-page-shell[data-news-page-shell="true"] :is(
   .tech-news-disclaimer,
   .crypto-disclaimer,

@@ -1,0 +1,198 @@
+/* News layouts use the space left by the workspace navigation, rather than
+   the device viewport. Single-column defaults also work without container
+   query support. The shell selector outranks page-local styled-jsx rules. */
+.news-page-shell[data-news-page-shell="true"] > main {
+  container: market-news / inline-size;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-layout,
+  .crypto-content-grid,
+  .gulf-news-content-layout,
+  .europe-news-content-layout,
+  .bankContentGrid
+) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-side-panel,
+  .crypto-sidebar,
+  .gulf-news-side-panel,
+  .europe-news-side-panel,
+  .bankSideRail
+) {
+  position: static;
+  top: auto;
+  order: 0;
+  min-width: 0;
+}
+
+.news-page-shell[data-news-page-shell="true"] .tech-news-side-panel {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+@container market-news (max-width: 1180px) {
+  .news-page-shell[data-news-page-shell="true"] :is(.energyOverviewGrid, .overviewGrid) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .news-page-shell[data-news-page-shell="true"] .overviewAside {
+    position: static;
+    top: auto;
+  }
+}
+
+@container market-news (min-width: 1240px) {
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-layout,
+    .crypto-content-grid,
+    .gulf-news-content-layout,
+    .europe-news-content-layout,
+    .bankContentGrid
+  ) {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-side-panel,
+    .crypto-sidebar,
+    .gulf-news-side-panel,
+    .europe-news-side-panel,
+    .bankSideRail
+  ) {
+    position: sticky;
+    top: calc(var(--global-header-height) + 1rem);
+  }
+}
+
+/* The feed has its own width once a page-level side rail is present. */
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-content-column,
+  .gulf-news-news-column
+) {
+  container: news-feed / inline-size;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-editorial-grid,
+  .tech-news-secondary-stack,
+  .tech-news-standard-results.grid,
+  .gulf-news-featured-grid,
+  .gulf-news-grid.grid,
+  .gulf-news-grid.list .gulf-news-card
+) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] .gulf-news-featured-grid .gulf-news-card.featured {
+  grid-row: auto;
+}
+
+.news-page-shell[data-news-page-shell="true"] .gulf-news-grid.list .gulf-news-meta {
+  min-width: 0;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 13px;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-card-top,
+  .tech-news-card-footer,
+  .gulf-news-meta
+) {
+  flex-wrap: wrap;
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-news-card h2,
+  .tech-news-card p,
+  .tech-side-card,
+  .gulf-news-card-body,
+  .gulf-news-card-kicker,
+  .gulf-news-meta
+) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.news-page-shell[data-news-page-shell="true"] .tech-side-list {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-side-card,
+  .tech-side-list a,
+  .tech-side-news-item
+) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-side-card > *,
+  .tech-side-list a,
+  .tech-side-news-item
+) {
+  min-width: 0;
+}
+
+.news-page-shell[data-news-page-shell="true"] .market-movers-header {
+  flex-wrap: wrap;
+}
+
+.news-page-shell[data-news-page-shell="true"] .market-movers-title {
+  flex: 1 1 14rem;
+}
+
+.news-page-shell[data-news-page-shell="true"] .market-movers-title > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.news-page-shell[data-news-page-shell="true"] .tech-side-ranked-list li {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] .tech-side-ranked-list em {
+  grid-column: 2;
+  justify-self: start;
+}
+
+@container news-feed (min-width: 640px) {
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-secondary-stack,
+    .tech-news-standard-results.grid,
+    .gulf-news-grid.grid
+  ) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container news-feed (min-width: 800px) {
+  .news-page-shell[data-news-page-shell="true"] .tech-news-editorial-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
+  }
+
+  .news-page-shell[data-news-page-shell="true"] .tech-news-secondary-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .news-page-shell[data-news-page-shell="true"] .gulf-news-featured-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+
+  .news-page-shell[data-news-page-shell="true"] .gulf-news-featured-grid .gulf-news-card.featured {
+    grid-row: span 2;
+  }
+}
+
+@container news-feed (min-width: 1080px) {
+  .news-page-shell[data-news-page-shell="true"] :is(
+    .tech-news-standard-results.grid,
+    .gulf-news-grid.grid
+  ) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
