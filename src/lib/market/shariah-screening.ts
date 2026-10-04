@@ -1,4 +1,7 @@
 import type { MarketAssetType } from '@/lib/market/marketService';
+import type { resolveBoubyanReference } from './boubyanReference';
+import { decideBoubyanReference } from './boubyanDecision';
+import { BOUBYAN_METHODOLOGY } from './boubyanReferenceMetadata';
 
 export const SHARIAH_STATUSES = ['compliant', 'non_compliant', 'needs_review', 'unclassified'] as const;
 
@@ -43,6 +46,7 @@ export type ShariahClassification = {
 
 export type ShariahScreeningInput = {
   symbol?: string | null;
+  providerSymbol?: string | null;
   name?: string | null;
   assetType?: MarketAssetType | 'fund' | string | null;
   exchange?: string | null;
@@ -57,6 +61,15 @@ export type ShariahScreeningInput = {
   shariahManualOverride?: boolean | null;
   shariahReviewedBy?: string | null;
   shariahScreeningData?: ShariahScreeningData | null;
+};
+
+export type ShariahScreeningContext = {
+  now?: Date;
+  /** Server callers inject the published reference; client bundles keep no full list. */
+  resolvePublishedReference?: (
+    input: Parameters<typeof resolveBoubyanReference>[0],
+    options?: { now?: Date },
+  ) => ReturnType<typeof resolveBoubyanReference>;
 };
 
 export const SHARIAH_SCREENING_THRESHOLDS = {
@@ -118,7 +131,7 @@ function defaultReason(status: ShariahStatus, assetType: MarketAssetType | 'fund
   return 'No verified Shariah screening data is available.';
 }
 
-function statusFromTrustedInput(input: ShariahScreeningInput) {
+function statusFromTrustedInput(input: ShariahScreeningInput, now: Date) {
   const status = normalizeShariahStatus(input.shariahStatus, null);
   if (!status) return null;
   const manual = booleanFromDb(input.shariahManualOverride);
@@ -126,8 +139,8 @@ function statusFromTrustedInput(input: ShariahScreeningInput) {
   const data = normalizeScreeningData(input.shariahScreeningData);
   const verifiedAutomatic = data.evidenceVersion === 'sfm-evidence-v2';
   const reviewed = Date.parse(input.shariahLastReviewedAt ?? '');
-  const current = Number.isFinite(reviewed) && reviewed <= Date.now() && Date.now() - reviewed < 7 * 86_400_000;
-  const trusted = (manual && hasText(source) && hasText(input.shariahReason) && Number.isFinite(reviewed) && reviewed <= Date.now()) || (verifiedAutomatic && current && hasText(source));
+  const current = Number.isFinite(reviewed) && reviewed <= now.getTime() && now.getTime() - reviewed < 7 * 86_400_000;
+  const trusted = (manual && hasText(source) && hasText(input.shariahReason) && Number.isFinite(reviewed) && reviewed <= now.getTime()) || (verifiedAutomatic && current && hasText(source));
   if (!trusted && status === 'compliant') return null;
   if (!trusted && status !== 'unclassified') return null;
 
@@ -202,8 +215,8 @@ export function getExternalShariahProviderConfig() {
   };
 }
 
-export function classifyShariahCompliance(input: ShariahScreeningInput): ShariahClassification {
-  const trusted = statusFromTrustedInput(input);
+function classifyExistingShariahEvidence(input: ShariahScreeningInput, now: Date): ShariahClassification {
+  const trusted = statusFromTrustedInput(input, now);
   if (trusted) return trusted;
 
   const assetType = normalizeAssetKind(input.assetType);
@@ -220,6 +233,54 @@ export function classifyShariahCompliance(input: ShariahScreeningInput): Shariah
   return [input.name, data.sector, data.industry, data.businessDescription].some(hasText)
     ? needsReview('No current source-verified screening decision is available. Descriptions and unsourced ratios are not a classification.', data)
     : unclassified('No business activity or financial screening data is available.', data);
+}
+
+export function classifyShariahCompliance(
+  input: ShariahScreeningInput,
+  context: ShariahScreeningContext = {},
+): ShariahClassification {
+  const now = context.now ?? new Date();
+  const current = classifyExistingShariahEvidence(input, now);
+  if (!context.resolvePublishedReference) return current;
+  const decision = decideBoubyanReference(context.resolvePublishedReference(input, { now }), {
+    status: current.shariahStatus,
+    source: current.shariahSource,
+    reviewedAt: current.shariahLastReviewedAt,
+    manualOverride: booleanFromDb(input.shariahManualOverride),
+    verifiedFailure: current.shariahStatus === 'non_compliant',
+  }, now);
+  if (!decision.resolution) return current;
+  const referenceFields = {
+    publishedShariahReference: decision.reference,
+    boubyanReferenceState: decision.resolution.state,
+    boubyanReferenceReason: decision.resolution.reason,
+    sourceConflict: decision.conflict,
+  };
+  if (!decision.applies || !decision.reference) {
+    return { ...current, shariahScreeningData: { ...current.shariahScreeningData, ...referenceFields } };
+  }
+  return {
+    shariahStatus: decision.status,
+    shariahReason: decision.reason?.en ?? null,
+    shariahSource: decision.reference.sourceName,
+    shariahLastReviewedAt: decision.reference.checkedAt,
+    shariahManualOverride: false,
+    shariahReviewedBy: 'published:boubyan-capital',
+    shariahMethod: 'external_provider',
+    shariahScreeningData: {
+      ...referenceFields,
+      methodologyId: 'BOUBYAN_PUBLISHED_LISTS',
+      methodologyVersion: decision.reference.reportingPeriod,
+      methodology: BOUBYAN_METHODOLOGY,
+      independentScreening: current.shariahLastReviewedAt ? {
+        status: current.shariahStatus,
+        source: current.shariahSource,
+        reviewedAt: current.shariahLastReviewedAt,
+        reason: current.shariahReason,
+        evidence: current.shariahScreeningData,
+      } : null,
+    },
+  };
 }
 
 export function pickPreferredShariahClassification(

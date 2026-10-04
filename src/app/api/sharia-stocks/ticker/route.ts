@@ -1,90 +1,61 @@
 import { NextResponse } from 'next/server';
 import { fetchStockPrices } from '@/lib/market/fetchStockPrices';
-import {
-  buildUnknownShariahScreening,
-  SHARIAH_UNIVERSE,
-  shariahStatusLabelAr,
-} from '@/lib/market/shariahUniverse';
-import { publishedShariahFundProfile } from '@/lib/market/shariahPublishedFundProfiles';
+import { SHARIAH_UNIVERSE } from '@/lib/market/shariahUniverse';
 import { TICKER_FALLBACK_SOURCE, toResilientTickerItem } from '@/lib/market/tickerItems';
-import { loadSecCompanyDirectory } from '@/lib/sharia-research/secData';
+import { boubyanReferenceAvailability } from '@/lib/market/boubyanReference.server';
+import { loadShariahPublicCatalog, shariahUniverseCatalogItem } from '@/lib/server/shariahPublicCatalog';
+import { publicCatalogItem } from '@/lib/sharia-research/publicCatalog';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const buildItems = (
-    prices?: Awaited<ReturnType<typeof fetchStockPrices>>,
-    exchanges = new Map<string, string>(),
-  ) =>
-    SHARIAH_UNIVERSE.map(asset => {
-      const screening = buildUnknownShariahScreening(asset);
-      const publishedFund = asset.assetType === 'etf' ? publishedShariahFundProfile(asset.symbol) : null;
-      const status = publishedFund ? 'compliant' as const : screening.shariahStatus;
-      return {
-        ...toResilientTickerItem(asset, prices?.get(asset.symbol)),
-        sector: asset.sector,
-        industry: asset.industry,
-        assetType: asset.assetType,
-        exchange: exchanges.get(asset.symbol.toUpperCase()) ?? null,
-        shariahStatus: status,
-        statusLabelAr: publishedFund ? 'معلن متوافق شرعياً' : shariahStatusLabelAr(status),
-        screeningSource: publishedFund?.sourceName ?? screening.screeningSource,
-        screeningMethodology: publishedFund?.methodology ?? screening.methodology,
-        lastScreenedAt: publishedFund?.verifiedAt ?? screening.lastScreenedAt,
-        publishedShariahFund: publishedFund ? {
-          provider: publishedFund.provider,
-          officialUrl: publishedFund.officialUrl,
-          verifiedAt: publishedFund.verifiedAt,
-          designation: 'provider_published_shariah',
-          independentSfmCertification: false,
-        } : null,
-      };
-    });
-
-  try {
-    const [prices, directory] = await Promise.all([
-      fetchStockPrices(SHARIAH_UNIVERSE, process.env.FINNHUB_API_KEY),
-      loadSecCompanyDirectory().catch(() => []),
-    ]);
-    const exchanges = new Map(directory.map(item => [item.ticker.toUpperCase(), item.exchange]));
-    // Always return every screened asset; missing quotes are flagged unavailable.
-    const items = buildItems(prices, exchanges);
-
-    return NextResponse.json(
-      {
-        ok: true,
-        source: TICKER_FALLBACK_SOURCE,
-        updated_at: new Date().toISOString(),
-        screeningSourceConnected: false,
-        available_count: items.filter(item => item.available).length,
-        items,
-      },
-      {
-        headers: {
-          'cache-control': 'public, s-maxage=300, stale-while-revalidate=600',
-        },
-      },
-    );
-  } catch (error) {
-    console.error('[ShariahStocksTicker] Failed to load ticker', {
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return NextResponse.json(
-      {
-        ok: true,
-        code: 'SHARIAH_TICKER_DEGRADED',
-        source: TICKER_FALLBACK_SOURCE,
-        updated_at: new Date().toISOString(),
-        screeningSourceConnected: false,
-        available_count: 0,
-        items: buildItems(),
-      },
-      {
-        headers: {
-          'cache-control': 'public, s-maxage=60, stale-while-revalidate=600',
-        },
-      },
-    );
-  }
+  const now = new Date();
+  const reference = boubyanReferenceAvailability(now);
+  const [catalog, pricing] = await Promise.all([
+    loadShariahPublicCatalog({ scope: 'universe', now }),
+    fetchStockPrices(SHARIAH_UNIVERSE, process.env.FINNHUB_API_KEY)
+      .then(prices => ({ prices, degraded: false }))
+      .catch(() => ({ prices: undefined, degraded: true })),
+  ]);
+  const items = SHARIAH_UNIVERSE.map(asset => {
+    const decision = shariahUniverseCatalogItem(asset.symbol, catalog.items, now)
+      ?? publicCatalogItem({ symbol: asset.symbol, name: asset.name, asset_type: asset.assetType, sector: asset.sector }, now);
+    return {
+      ...toResilientTickerItem(asset, pricing.prices?.get(asset.symbol)),
+      sector: asset.sector,
+      industry: asset.industry,
+      assetType: asset.assetType,
+      exchange: decision.exchange,
+      country: decision.country,
+      providerSymbol: decision.providerSymbol,
+      canonicalSecurityId: decision.canonicalSecurityId,
+      shariahStatus: decision.shariahStatus,
+      statusLabelAr: decision.statusLabelAr,
+      screeningSource: decision.screeningSource,
+      screeningMethodology: decision.methodology.en,
+      lastScreenedAt: decision.lastScreenedAt,
+      reason: decision.reason,
+      publishedShariahReference: decision.publishedShariahReference,
+      boubyanReferenceState: decision.boubyanReferenceState,
+      boubyanReferenceReason: decision.boubyanReferenceReason,
+      sourceConflict: decision.sourceConflict,
+      independentScreening: decision.independentScreening,
+      publishedShariahFund: decision.publishedShariahDesignation ?? decision.fundReview,
+    };
+  });
+  const degraded = pricing.degraded || !catalog.storage.complete;
+  return NextResponse.json({
+    ok: true,
+    ...(degraded ? { code: 'SHARIAH_TICKER_DEGRADED' } : {}),
+    source: TICKER_FALLBACK_SOURCE,
+    updated_at: now.toISOString(),
+    screeningSourceConnected: reference.sourceAvailable || items.some(item => item.screeningSource !== null),
+    screeningReference: reference,
+    catalogStorage: catalog.storage,
+    available_count: items.filter(item => item.available).length,
+    items,
+  }, {
+    headers: { 'cache-control': degraded ? 'public, s-maxage=60, stale-while-revalidate=600' : 'public, s-maxage=300, stale-while-revalidate=600' },
+  });
 }
