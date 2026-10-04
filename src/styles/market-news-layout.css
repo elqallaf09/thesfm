@@ -74,14 +74,18 @@
   container: news-feed / inline-size;
 }
 
+/* Mode classes must not raise every :is() branch above the container rules. */
 .news-page-shell[data-news-page-shell="true"] :is(
   .tech-news-editorial-grid,
   .tech-news-secondary-stack,
-  .tech-news-standard-results.grid,
+  .tech-news-standard-results:where(.grid),
   .gulf-news-featured-grid,
-  .gulf-news-grid.grid,
-  .gulf-news-grid.list .gulf-news-card
+  .gulf-news-grid:where(.grid)
 ) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] .gulf-news-grid.list .gulf-news-card {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -163,8 +167,8 @@
 @container news-feed (min-width: 640px) {
   .news-page-shell[data-news-page-shell="true"] :is(
     .tech-news-secondary-stack,
-    .tech-news-standard-results.grid,
-    .gulf-news-grid.grid
+    .tech-news-standard-results:where(.grid),
+    .gulf-news-grid:where(.grid)
   ) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -190,8 +194,8 @@
 
 @container news-feed (min-width: 1080px) {
   .news-page-shell[data-news-page-shell="true"] :is(
-    .tech-news-standard-results.grid,
-    .gulf-news-grid.grid
+    .tech-news-standard-results:where(.grid),
+    .gulf-news-grid:where(.grid)
   ) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
