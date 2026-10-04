@@ -70,7 +70,13 @@ async function expectReadableLayout(page: Page, category: 'tech' | 'gulf') {
   ).evaluateAll(elements => elements
     .filter(element => element.getBoundingClientRect().width > 0)
     .filter(element => element.scrollWidth > element.clientWidth + 2)
-    .map(element => ({ className: element.className, width: element.clientWidth, scrollWidth: element.scrollWidth })));
+    .map(element => ({
+      tag: element.tagName,
+      className: element.className,
+      text: element.textContent?.slice(0, 80),
+      width: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    })));
   expect(overflow).toEqual([]);
   const minimumCardWidth = await layout.locator(category === 'tech' ? '.tech-news-card' : '.gulf-news-card')
     .evaluateAll(elements => Math.min(...elements.map(element => element.getBoundingClientRect().width)));

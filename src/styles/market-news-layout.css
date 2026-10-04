@@ -119,6 +119,36 @@
 
 .news-page-shell[data-news-page-shell="true"] .tech-side-list {
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-side-card,
+  .tech-side-list a,
+  .tech-side-news-item
+) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.news-page-shell[data-news-page-shell="true"] :is(
+  .tech-side-card > *,
+  .tech-side-list a,
+  .tech-side-news-item
+) {
+  min-width: 0;
+}
+
+.news-page-shell[data-news-page-shell="true"] .market-movers-header {
+  flex-wrap: wrap;
+}
+
+.news-page-shell[data-news-page-shell="true"] .market-movers-title {
+  flex: 1 1 14rem;
+}
+
+.news-page-shell[data-news-page-shell="true"] .market-movers-title > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .news-page-shell[data-news-page-shell="true"] .tech-side-ranked-list li {
