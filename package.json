@@ -109,7 +109,7 @@
     "@vitest/coverage-v8": "^2.0.0",
     "@vitest/ui": "^2.0.0",
     "eslint": "^9",
-    "eslint-config-next": "15.5.24",
+    "eslint-config-next": "16.3.8",
     "eslint-plugin-react-hooks": "5.2.0",
     "sharp": "^0.35.0",
     "tailwindcss": "^4",
