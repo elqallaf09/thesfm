@@ -278,7 +278,7 @@ export default function SecurityPage() {
       `Email: ${user?.email || profile?.email || 'unknown'}`,
       `Requested at: ${new Date().toISOString()}`,
     ].join('\n'));
-    window.location.href = `${SUPPORT_EMAIL_MAILTO}?subject=${encodeURIComponent(text.deleteAccount)}&body=${body}`;
+    window.location.href = new URL(`${SUPPORT_EMAIL_MAILTO}?subject=${encodeURIComponent(text.deleteAccount)}&body=${body}`).href;
     setDeleteOpen(false);
     setDeletePhrase('');
   }
