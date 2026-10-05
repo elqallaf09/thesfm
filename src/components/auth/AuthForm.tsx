@@ -129,7 +129,8 @@ export function AuthForm() {
     setError('');
     try {
       await continueAsGuest();
-      window.location.href = '/dashboard';
+      // Reload the document after changing identity so cached session state is reset.
+      window.location.href = new URL('/dashboard', window.location.origin).href;
     } catch (err) {
       setGuestLoading(false);
       setError(err instanceof Error ? err.message : t.operationFailed);
@@ -204,11 +205,11 @@ export function AuthForm() {
         return;
       }
       if (result.code === 'mfa_email_required') {
-        window.location.href = '/login?mfa=email';
+        window.location.href = new URL('/login?mfa=email', window.location.origin).href;
         return;
       }
       if (result.code === 'mfa_totp_required') {
-        window.location.href = '/mfa/verify?next=/dashboard';
+        window.location.href = new URL('/mfa/verify?next=/dashboard', window.location.origin).href;
         return;
       }
       router.push('/dashboard');

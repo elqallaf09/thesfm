@@ -834,7 +834,7 @@ function LoginContent() {
     try {
       await continueAsGuest();
       redirectingRef.current = true;
-      window.location.href = '/dashboard';
+      window.location.href = new URL('/dashboard', window.location.origin).href;
     } catch (error) {
       setGuestSubmitting(false);
       setMessage({
