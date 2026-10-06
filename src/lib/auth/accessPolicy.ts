@@ -20,6 +20,7 @@ const protectedApiPrefixes = [
   '/api/invoices/analyze',
   '/api/intelligence/outcomes/evaluate',
   '/api/market-agent',
+  '/api/mobile',
   '/api/market/refresh-investment-price',
   '/api/market/ai-insight',
   '/api/market/shariah',

@@ -2,12 +2,16 @@ import Foundation
 
 struct APIClient {
     static let shared = APIClient(
-        baseURL: URL(string: "https://www.the-sfm.com")!,
+        baseURL: SupabaseConfig.apiBaseURL,
         tokenProvider: { nil }
     )
 
     let baseURL: URL
     let tokenProvider: () async -> String?
+
+    static func authorized(accessToken: String) -> APIClient {
+        APIClient(baseURL: SupabaseConfig.apiBaseURL, tokenProvider: { accessToken })
+    }
 
     func get<Response: Decodable>(_ path: String) async throws -> Response {
         let url = baseURL.appending(path: path.trimmingCharacters(in: CharacterSet(charactersIn: "/")))

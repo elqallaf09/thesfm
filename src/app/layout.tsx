@@ -9,6 +9,7 @@ import { AppLayout } from '@/components/AppLayout';
 import { DeferredGlobalUtilities } from '@/components/DeferredGlobalUtilities';
 import { LocalizedSkipLink } from '@/components/LocalizedSkipLink';
 import { WebVitalsReporter } from '@/components/observability/WebVitalsReporter';
+import { PwaServiceWorkerRegistrar } from '@/components/PwaServiceWorkerRegistrar';
 import { pageMetadata } from '@/lib/seo';
 import { SIDEBAR_BOOTSTRAP } from '@/lib/navigation/sidebarPreference';
 import './globals.css';
@@ -71,6 +72,7 @@ export default function RootLayout({
             <AuthProvider>
               <AdaptiveLanguageProvider>
                 <WebVitalsReporter />
+                <PwaServiceWorkerRegistrar />
                 <LocalizedSkipLink />
                 <CurrencyProvider>
                   <AppLayout>{children}</AppLayout>

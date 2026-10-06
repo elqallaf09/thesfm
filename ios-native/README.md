@@ -1,6 +1,6 @@
-# THE SFM iOS Native
+# THE SFM Finance for iOS
 
-This folder contains the first native iOS foundation for THE SFM.
+This folder contains the first native iOS product for THE SFM: personal finance.
 
 ## Goal
 
@@ -8,12 +8,13 @@ Build a SwiftUI iOS app that uses the existing THE SFM backend, Supabase data, a
 
 ## Current Status
 
-- Native SwiftUI project scaffold.
+- Native SwiftUI application project.
 - App router.
-- Auth session placeholder.
-- API client foundation.
+- Email/password Supabase Auth with renewable access and refresh tokens stored in the device Keychain.
+- Device lock on return from the background, using Face ID / device passcode.
+- A protected native financial summary that returns aggregates only; it never embeds account rows in the client.
 - Supabase config placeholder.
-- Arabic-first login and dashboard shell.
+- Arabic-first login and personal-finance dashboard.
 - No mock financial data.
 
 ## Open In Xcode
@@ -28,24 +29,20 @@ Then set the bundle identifier and signing team in Xcode before running on a sim
 
 ## Configuration
 
-Update these values before connecting the app to production data:
+Set the following build settings in Xcode or the target's generated Info.plist before connecting the app to production data:
 
-- `TheSFM/Core/Supabase/SupabaseConfig.swift`
-- `TheSFM/Core/Networking/APIClient.swift`
+- `SFM_SUPABASE_URL`
+- `SFM_SUPABASE_ANON_KEY`
+- `SFM_API_BASE_URL` (defaults to `https://www.the-sfm.com` in this project)
 
-Required values:
+The anonymous key is a public client key. Do not place a service-role key, provider key, or Stripe secret in this app.
 
-- Supabase URL
-- Supabase anon key
-- API base URL, usually `https://www.the-sfm.com`
+## Next Build Milestone
 
-## First Build Milestone
-
-1. Connect Supabase Auth.
-2. Replace the placeholder sign-in action with real login.
-3. Read user profile and dashboard totals from Supabase.
-4. Compare dashboard totals with the web dashboard.
-5. Add expenses, subscriptions, debts, and investments screens.
+1. Supply the production Supabase client settings through the release configuration.
+2. Build and compare the summary against the web dashboard on an iPhone device.
+3. Add native expenses, subscriptions, debts, and investments screens, each backed by a narrowly-scoped protected API.
+4. Configure signing, privacy labels, App Store metadata, and device QA.
 
 ## Rules
 

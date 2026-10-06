@@ -12,7 +12,7 @@ struct LoginView: View {
             ScrollView {
                 VStack(alignment: .trailing, spacing: 24) {
                     VStack(alignment: .trailing, spacing: 10) {
-                        Text("THE SFM")
+                        Text("THE SFM Finance")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundStyle(AppTheme.Colors.accent)
 
@@ -20,7 +20,7 @@ struct LoginView: View {
                             .font(.system(size: 38, weight: .heavy, design: .rounded))
                             .foregroundStyle(AppTheme.Colors.textPrimary)
 
-                        Text("ادخل إلى حسابك لإدارة أموالك ومشاريعك من التطبيق.")
+                        Text("ادخل إلى حسابك لإدارة أموالك والتزاماتك من التطبيق.")
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
                             .foregroundStyle(AppTheme.Colors.textSecondary)
                     }
@@ -28,8 +28,8 @@ struct LoginView: View {
 
                     SFMCard {
                         VStack(alignment: .trailing, spacing: 16) {
-                            TextField("اسم المستخدم أو البريد الإلكتروني", text: $usernameOrEmail)
-                                .textContentType(.username)
+                            TextField("البريد الإلكتروني", text: $usernameOrEmail)
+                                .textContentType(.emailAddress)
                                 .keyboardType(.emailAddress)
                                 .textInputAutocapitalization(.never)
                                 .padding()
@@ -43,17 +43,34 @@ struct LoginView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
                             Button {
-                                authSession.signInWithPlaceholderSession()
+                                Task {
+                                    await authSession.signIn(email: usernameOrEmail, password: password)
+                                }
                             } label: {
-                                Label("دخول تجريبي للواجهة", systemImage: "arrow.left.circle.fill")
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
+                                Group {
+                                    if authSession.isAuthenticating {
+                                        ProgressView()
+                                            .tint(.white)
+                                    } else {
+                                        Label("تسجيل الدخول", systemImage: "arrow.left.circle.fill")
+                                    }
+                                }
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .frame(maxWidth: .infinity)
+                                .padding()
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(AppTheme.Colors.accent)
+                            .disabled(authSession.isAuthenticating)
 
-                            Text("هذه شاشة تأسيسية. سيتم استبدال الدخول التجريبي بربط Supabase Auth.")
+                            if let errorMessage = authSession.errorMessage {
+                                Text(errorMessage)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.red)
+                                    .multilineTextAlignment(.trailing)
+                            }
+
+                            Text("تُحفظ جلسة تسجيل الدخول في سلسلة مفاتيح الجهاز ولا تُخزن كلمة المرور.")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundStyle(AppTheme.Colors.textSecondary)
                                 .multilineTextAlignment(.trailing)

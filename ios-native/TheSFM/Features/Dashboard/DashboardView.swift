@@ -3,13 +3,20 @@ import SwiftUI
 struct DashboardView: View {
     @EnvironmentObject private var authSession: AuthSessionStore
     @State private var selectedTab: MainTab = .home
+    @State private var summary: MobileFinanceSummary?
+    @State private var isSummaryLoading = true
+    @State private var summaryError: String?
 
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
-                HomeDashboardScreen {
-                    authSession.signOut()
-                }
+                HomeDashboardScreen(
+                    summary: summary,
+                    isLoading: isSummaryLoading,
+                    errorMessage: summaryError,
+                    onRefresh: { Task { await loadSummary() } },
+                    signOut: authSession.signOut
+                )
             }
             .tabItem { Label("الرئيسية", systemImage: "house.fill") }
             .tag(MainTab.home)
@@ -69,6 +76,35 @@ struct DashboardView: View {
         }
         .tint(AppTheme.Colors.accent)
         .environment(\.layoutDirection, .rightToLeft)
+        .task(id: authSession.accessToken) {
+            await loadSummary()
+        }
+    }
+
+    private func loadSummary() async {
+        guard let token = authSession.accessToken else {
+            summary = nil
+            isSummaryLoading = false
+            return
+        }
+
+        isSummaryLoading = true
+        summaryError = nil
+        defer { isSummaryLoading = false }
+
+        do {
+            let response: MobileFinanceSummaryResponse = try await APIClient.authorized(accessToken: token)
+                .get("/api/mobile/finance/summary")
+            guard response.ok, let receivedSummary = response.summary else {
+                summary = nil
+                summaryError = "تعذر تحميل ملخصك المالي الآن."
+                return
+            }
+            summary = receivedSummary
+        } catch {
+            summary = nil
+            summaryError = "تعذر الاتصال ببياناتك المالية. تحقق من الشبكة ثم أعد المحاولة."
+        }
     }
 }
 
@@ -81,6 +117,10 @@ private enum MainTab: Hashable {
 }
 
 private struct HomeDashboardScreen: View {
+    let summary: MobileFinanceSummary?
+    let isLoading: Bool
+    let errorMessage: String?
+    let onRefresh: () -> Void
     let signOut: () -> Void
 
     var body: some View {
@@ -88,23 +128,36 @@ private struct HomeDashboardScreen: View {
             VStack(spacing: 18) {
                 SFMHeroSection(
                     title: "الصفحة الرئيسية",
-                    subtitle: "نظرة تنفيذية على أموالك ومشاريعك واستثماراتك، جاهزة للربط مع بيانات THE SFM.",
+                    subtitle: "نظرة تنفيذية على أموالك والتزاماتك من بيانات THE SFM.",
                     systemImage: "sparkles",
                     primaryAction: "عرض كل المهام"
                 )
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                    SFMMetricTile(title: "إجمالي الأصول", value: "بانتظار الربط", symbol: "banknote")
-                    SFMMetricTile(title: "المشاريع النشطة", value: "لا توجد بيانات", symbol: "briefcase")
-                    SFMMetricTile(title: "المصاريف المتكررة", value: "جاهزة", symbol: "repeat")
-                    SFMMetricTile(title: "التنبيهات", value: "0", symbol: "bell")
+                    SFMMetricTile(title: "المركز المالي", value: money(summary?.trackedPosition), symbol: "banknote")
+                    SFMMetricTile(title: "الدخل الشهري", value: money(summary?.monthlyIncome), symbol: "arrow.down.left.circle")
+                    SFMMetricTile(title: "المصروفات الشهرية", value: money(summary?.monthlyExpenses), symbol: "arrow.up.right.circle")
+                    SFMMetricTile(title: "صافي الشهر", value: money(summary?.monthlyNet), symbol: "chart.line.uptrend.xyaxis")
                 }
 
-                SFMActionCard(
-                    title: "تجربة iOS Native",
-                    bodyText: "هذه الواجهة مبنية بتبويبات SwiftUI، بطاقات قابلة للقراءة، وأزرار مناسبة للمس على الهاتف. الخطوة التالية هي ربطها بنفس API وSupabase المستخدمين في الموقع.",
-                    symbol: "iphone"
-                )
+                if isLoading {
+                    ProgressView("جارٍ تحديث ملخصك المالي…")
+                        .tint(AppTheme.Colors.accent)
+                } else if let errorMessage {
+                    SFMActionCard(title: "تعذر تحميل البيانات", bodyText: errorMessage, symbol: "wifi.exclamationmark")
+                } else {
+                    SFMActionCard(
+                        title: "بياناتك المالية",
+                        bodyText: "يعرض التطبيق ملخصًا من نفس القواعد المستخدمة في لوحة الموقع، من دون حفظ الأرقام على الجهاز.",
+                        symbol: "lock.shield"
+                    )
+                }
+
+                Button(action: onRefresh) {
+                    Label("تحديث البيانات", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SFMSecondaryButtonStyle())
 
                 Button(role: .destructive, action: signOut) {
                     Label("تسجيل الخروج", systemImage: "rectangle.portrait.and.arrow.right")
@@ -115,8 +168,36 @@ private struct HomeDashboardScreen: View {
             .padding(20)
         }
         .background(AppTheme.Colors.background.ignoresSafeArea())
-        .navigationTitle("THE SFM")
+        .navigationTitle("THE SFM Finance")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func money(_ amount: Double?) -> String {
+        guard let amount, let currency = summary?.currency else { return "—" }
+        return MoneyFormatter.format(Decimal(amount), currencyCode: currency)
+    }
+}
+
+private struct MobileFinanceSummaryResponse: Decodable {
+    let ok: Bool
+    let summary: MobileFinanceSummary?
+}
+
+private struct MobileFinanceSummary: Decodable {
+    let currency: String?
+    let monthlyIncome: Double?
+    let monthlyExpenses: Double?
+    let monthlyNet: Double?
+    let trackedPosition: Double?
+    let activeDebtCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case currency
+        case monthlyIncome = "monthlyIncome"
+        case monthlyExpenses = "monthlyExpenses"
+        case monthlyNet = "monthlyNet"
+        case trackedPosition = "trackedPosition"
+        case activeDebtCount = "activeDebtCount"
     }
 }
 
@@ -221,7 +302,7 @@ private struct SFMHeroSection: View {
 
                 Spacer()
 
-                Text("THE SFM")
+                Text("THE SFM Finance")
                     .font(.system(.headline, design: .rounded).weight(.heavy))
                     .foregroundStyle(AppTheme.Colors.accent)
             }
