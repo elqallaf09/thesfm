@@ -11,6 +11,7 @@ describe('SFM installable application shell', () => {
     const worker = read('public/sfm-notifications-sw.js');
 
     expect(registrar).toContain("register('/sfm-notifications-sw.js', { scope: '/' })");
+    expect(registrar).toContain("new Set(['127.0.0.1', '::1', 'localhost'])");
     expect(worker).toContain("CACHE_NAME = 'the-sfm-shell-v1'");
     expect(worker).toContain("caches.match('/offline.html')");
     expect(worker).toContain("self.addEventListener('push'");
