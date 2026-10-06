@@ -17,6 +17,17 @@
 		1A0001080000000000000008 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000080000000000000008 /* LoginView.swift */; };
 		1A0001090000000000000009 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000090000000000000009 /* DashboardView.swift */; };
 		1A0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
+		1B0001010000000000000001 /* TheSFMInvestorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0000010000000000000001 /* TheSFMInvestorApp.swift */; };
+		1B0001020000000000000002 /* InvestorMarketDirectory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0000020000000000000002 /* InvestorMarketDirectory.swift */; };
+		1B0001030000000000000003 /* InvestorDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0000030000000000000003 /* InvestorDashboardView.swift */; };
+		1B0001040000000000000004 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000005 /* SupabaseConfig.swift */; };
+		1B0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
+		1C0001010000000000000001 /* TheSFMBusinessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0000010000000000000001 /* TheSFMBusinessApp.swift */; };
+		1C0001020000000000000002 /* BusinessHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0000020000000000000002 /* BusinessHomeView.swift */; };
+		1C0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
+		1D0001010000000000000001 /* TheSFMtvApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0000010000000000000001 /* TheSFMtvApp.swift */; };
+		1D0001020000000000000002 /* MarketsTVHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0000020000000000000002 /* MarketsTVHomeView.swift */; };
+		1D0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +42,16 @@
 		1A0000090000000000000009 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		1A0000100000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A0000110000000000000011 /* TheSFM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheSFM.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1B0000010000000000000001 /* TheSFMInvestorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheSFMInvestorApp.swift; sourceTree = "<group>"; };
+		1B0000020000000000000002 /* InvestorMarketDirectory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestorMarketDirectory.swift; sourceTree = "<group>"; };
+		1B0000030000000000000003 /* InvestorDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvestorDashboardView.swift; sourceTree = "<group>"; };
+		1B0000110000000000000011 /* TheSFMInvestor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheSFMInvestor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C0000010000000000000001 /* TheSFMBusinessApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheSFMBusinessApp.swift; sourceTree = "<group>"; };
+		1C0000020000000000000002 /* BusinessHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessHomeView.swift; sourceTree = "<group>"; };
+		1C0000110000000000000011 /* TheSFMBusiness.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheSFMBusiness.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1D0000010000000000000001 /* TheSFMtvApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheSFMtvApp.swift; sourceTree = "<group>"; };
+		1D0000020000000000000002 /* MarketsTVHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketsTVHomeView.swift; sourceTree = "<group>"; };
+		1D0000110000000000000011 /* TheSFMtv.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheSFMtv.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,6 +60,25 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1B0002010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1C0002010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D0002010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -67,6 +107,9 @@
 			isa = PBXGroup;
 			children = (
 				1A0000110000000000000011 /* TheSFM.app */,
+				1B0000110000000000000011 /* TheSFMInvestor.app */,
+				1C0000110000000000000011 /* TheSFMBusiness.app */,
+				1D0000110000000000000011 /* TheSFMtv.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -97,6 +140,9 @@
 			children = (
 				1A0003130000000000000013 /* Login */,
 				1A0003140000000000000014 /* Dashboard */,
+				1B0003140000000000000014 /* Investor */,
+				1C0003140000000000000014 /* Business */,
+				1D0003140000000000000014 /* TV */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -165,6 +211,34 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
+		1B0003140000000000000014 /* Investor */ = {
+			isa = PBXGroup;
+			children = (
+				1B0000010000000000000001 /* TheSFMInvestorApp.swift */,
+				1B0000020000000000000002 /* InvestorMarketDirectory.swift */,
+				1B0000030000000000000003 /* InvestorDashboardView.swift */,
+			);
+			path = Investor;
+			sourceTree = "<group>";
+		};
+		1C0003140000000000000014 /* Business */ = {
+			isa = PBXGroup;
+			children = (
+				1C0000010000000000000001 /* TheSFMBusinessApp.swift */,
+				1C0000020000000000000002 /* BusinessHomeView.swift */,
+			);
+			path = Business;
+			sourceTree = "<group>";
+		};
+		1D0003140000000000000014 /* TV */ = {
+			isa = PBXGroup;
+			children = (
+				1D0000010000000000000001 /* TheSFMtvApp.swift */,
+				1D0000020000000000000002 /* MarketsTVHomeView.swift */,
+			);
+			path = TV;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -185,6 +259,53 @@
 			productReference = 1A0000110000000000000011 /* TheSFM.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1B0004010000000000000001 /* TheSFMInvestor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B0007010000000000000001 /* Build configuration list for PBXNativeTarget "TheSFMInvestor" */;
+			buildPhases = (
+				1B0005010000000000000001 /* Sources */,
+				1B0002010000000000000001 /* Frameworks */,
+				1B0005020000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TheSFMInvestor;
+			productName = TheSFMInvestor;
+			productReference = 1B0000110000000000000011 /* TheSFMInvestor.app */;
+			productType = "com.apple.product-type.application";
+		};
+		1C0004010000000000000001 /* TheSFMBusiness */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1C0007010000000000000001 /* Build configuration list for PBXNativeTarget "TheSFMBusiness" */;
+			buildPhases = (
+				1C0005010000000000000001 /* Sources */,
+				1C0002010000000000000001 /* Frameworks */,
+				1C0005020000000000000002 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = TheSFMBusiness;
+			productName = TheSFMBusiness;
+			productReference = 1C0000110000000000000011 /* TheSFMBusiness.app */;
+			productType = "com.apple.product-type.application";
+		};
+		1D0004010000000000000001 /* TheSFMtv */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D0007010000000000000001 /* Build configuration list for PBXNativeTarget "TheSFMtv" */;
+			buildPhases = (
+				1D0005010000000000000001 /* Sources */,
+				1D0002010000000000000001 /* Frameworks */,
+				1D0005020000000000000002 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = TheSFMtv;
+			productName = TheSFMtv;
+			productReference = 1D0000110000000000000011 /* TheSFMtv.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -198,6 +319,15 @@
 					1A0004010000000000000001 = {
 						CreatedOnToolsVersion = 16.0;
 					};
+				1B0004010000000000000001 = {
+					CreatedOnToolsVersion = 16.0;
+				};
+				1C0004010000000000000001 = {
+					CreatedOnToolsVersion = 16.0;
+				};
+				1D0004010000000000000001 = {
+					CreatedOnToolsVersion = 16.0;
+				};
 				};
 			};
 			buildConfigurationList = 1A0007020000000000000002 /* Build configuration list for PBXProject "TheSFM" */;
@@ -216,6 +346,9 @@
 			projectRoot = "";
 			targets = (
 				1A0004010000000000000001 /* TheSFM */,
+				1B0004010000000000000001 /* TheSFMInvestor */,
+				1C0004010000000000000001 /* TheSFMBusiness */,
+				1D0004010000000000000001 /* TheSFMtv */,
 			);
 		};
 /* End PBXProject section */
@@ -226,6 +359,30 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A0001100000000000000010 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1B0005020000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1B0001100000000000000010 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1C0005020000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C0001100000000000000010 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D0005020000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D0001100000000000000010 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -245,6 +402,35 @@
 				1A0001070000000000000007 /* MoneyFormatter.swift in Sources */,
 				1A0001080000000000000008 /* LoginView.swift in Sources */,
 				1A0001090000000000000009 /* DashboardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1B0005010000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1B0001010000000000000001 /* TheSFMInvestorApp.swift in Sources */,
+				1B0001020000000000000002 /* InvestorMarketDirectory.swift in Sources */,
+				1B0001030000000000000003 /* InvestorDashboardView.swift in Sources */,
+				1B0001040000000000000004 /* SupabaseConfig.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1C0005010000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C0001010000000000000001 /* TheSFMBusinessApp.swift in Sources */,
+				1C0001020000000000000002 /* BusinessHomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1D0005010000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D0001010000000000000001 /* TheSFMtvApp.swift in Sources */,
+				1D0001020000000000000002 /* MarketsTVHomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -376,7 +562,11 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM";
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Finance";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "يستخدم THE SFM Finance Face ID لحماية ملخصك المالي.";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
+				INFOPLIST_KEY_SFM_SUPABASE_ANON_KEY = "";
+				INFOPLIST_KEY_SFM_SUPABASE_URL = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -389,7 +579,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.native;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.finance;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -410,7 +600,11 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM";
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Finance";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "يستخدم THE SFM Finance Face ID لحماية ملخصك المالي.";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
+				INFOPLIST_KEY_SFM_SUPABASE_ANON_KEY = "";
+				INFOPLIST_KEY_SFM_SUPABASE_URL = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -423,7 +617,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.native;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.finance;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -431,6 +625,178 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		1B0008030000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Investor";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.investor;
+				PRODUCT_NAME = "THE SFM Investor";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1B0008040000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Investor";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.investor;
+				PRODUCT_NAME = "THE SFM Investor";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		1C0008030000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Business";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.business;
+				PRODUCT_NAME = "THE SFM Business";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		1C0008040000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Business";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.business;
+				PRODUCT_NAME = "THE SFM Business";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		1D0008030000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM TV";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				SDKROOT = appletvos;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.tv;
+				PRODUCT_NAME = "THE SFM TV";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
+			};
+			name = Debug;
+		};
+		1D0008040000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM TV";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				SDKROOT = appletvos;
+				TVOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.tv;
+				PRODUCT_NAME = "THE SFM TV";
+				SUPPORTED_PLATFORMS = "appletvos appletvsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Release;
 		};
@@ -451,6 +817,33 @@
 			buildConfigurations = (
 				1A0008010000000000000001 /* Debug */,
 				1A0008020000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1B0007010000000000000001 /* Build configuration list for PBXNativeTarget "TheSFMInvestor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1B0008030000000000000003 /* Debug */,
+				1B0008040000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1C0007010000000000000001 /* Build configuration list for PBXNativeTarget "TheSFMBusiness" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1C0008030000000000000003 /* Debug */,
+				1C0008040000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1D0007010000000000000001 /* Build configuration list for PBXNativeTarget "TheSFMtv" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1D0008030000000000000003 /* Debug */,
+				1D0008040000000000000004 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

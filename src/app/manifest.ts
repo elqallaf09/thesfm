@@ -15,6 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { name: 'SFM Business', url: '/business-hub' },
     ],
     display: 'standalone',
+    categories: ['finance', 'productivity'],
     background_color: STATIC_LIGHT_VISUAL_TOKENS.background,
     theme_color: STATIC_LIGHT_VISUAL_TOKENS.foreground,
     icons: [

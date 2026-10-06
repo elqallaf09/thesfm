@@ -1,0 +1,32 @@
+{
+  "name": "the-sfm-expo-go",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.1.3",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "start:finance": "cross-env SFM_PRODUCT=finance expo start",
+    "start:investor": "cross-env SFM_PRODUCT=investor expo start",
+    "start:business": "cross-env SFM_PRODUCT=business expo start",
+    "start:finance:tunnel": "cross-env SFM_PRODUCT=finance expo start --tunnel",
+    "start:investor:tunnel": "cross-env SFM_PRODUCT=investor expo start --tunnel",
+    "start:business:tunnel": "cross-env SFM_PRODUCT=business expo start --tunnel",
+    "doctor": "pnpm dlx expo-doctor",
+    "check:expo-updates": "expo install --check",
+    "validate": "tsc --noEmit && pnpm install --frozen-lockfile && expo export --platform android --output-dir .expo-validation/validate --clear"
+  },
+  "dependencies": {
+    "expo": "57.0.26",
+    "expo-constants": "~57.0.20",
+    "expo-secure-store": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "cross-env": "^10.1.0",
+    "typescript": "~6.0.3"
+  }
+}

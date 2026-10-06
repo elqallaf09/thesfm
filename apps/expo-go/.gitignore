@@ -1,0 +1,8 @@
+node_modules/
+.expo/
+.expo-validation/
+.expo-validation-*.json
+.env
+*.keystore
+*.p8
+*.mobileprovision

@@ -31,6 +31,7 @@
     "**/*.backup-*.ts",
     "**/*.backup-*.tsx",
     "**/*_backup_*/**",
+    "apps/expo-go/**",
     "wakeel-admin/**",
     "wakeel-tracking/**"
   ]
