@@ -52,10 +52,13 @@ type Instrument = {
   sector?: string;
   shariahStatus?: string;
 };
+type ApiBody = Record<string, unknown> & { ok?: boolean; code?: string };
 
 const extra = Constants.expoConfig?.extra ?? {};
 const product = (extra.sfmProduct ?? 'finance') as ProductId;
 const apiBaseUrl = String(extra.apiBaseUrl ?? 'https://www.the-sfm.com').replace(/\/$/, '');
+const FINANCE_SESSION_KEY = 'sfm-finance-session';
+const BUSINESS_SESSION_KEY = 'sfm-business-session';
 const colors = product === 'business'
   ? { accent: '#A78BFA', surface: '#171127', card: '#2A2040' }
   : product === 'investor'
@@ -79,10 +82,10 @@ function FinanceApp() {
 
   const restoreSession = useCallback(async () => {
     try {
-      const saved = await SecureStore.getItemAsync('sfm-finance-session');
-      if (saved) setSession(await refreshSession(JSON.parse(saved) as Session));
+      const saved = await SecureStore.getItemAsync(FINANCE_SESSION_KEY);
+      if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, FINANCE_SESSION_KEY));
     } catch {
-      await SecureStore.deleteItemAsync('sfm-finance-session');
+      await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY);
     } finally {
       setLoading(false);
     }
@@ -98,18 +101,25 @@ function FinanceApp() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const active = await refreshSession(session);
+      const active = await refreshSession(session, FINANCE_SESSION_KEY);
       if (active.accessToken !== session.accessToken) setSession(active);
 
-      const response = await fetch(`${apiBaseUrl}/api/mobile/finance/summary`, {
+      const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/finance/summary`, {
         headers: { Authorization: `Bearer ${active.accessToken}` },
       });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error('SUMMARY_UNAVAILABLE');
+      const data = await responseJson(response);
+      if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE');
 
       setSummary(data.summary as FinanceSummary);
       setLastUpdatedAt(new Date());
-    } catch {
+    } catch (error) {
+      if (isSessionError(error)) {
+        await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY);
+        setSession(null);
+        setSummary(null);
+        Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بياناتك المالية.');
+        return;
+      }
       setErrorMessage('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
     } finally {
       setLoading(false);
@@ -130,28 +140,30 @@ function FinanceApp() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: { apikey: key, 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      if (!response.ok) throw new Error('INVALID_CREDENTIALS');
+      const payload = await responseJson(response);
+      if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
 
-      const next = toSession(await response.json());
-      await SecureStore.setItemAsync('sfm-finance-session', JSON.stringify(next));
+      const next = toSession(payload);
+      await SecureStore.setItemAsync(FINANCE_SESSION_KEY, JSON.stringify(next));
       setSummary(null);
       setErrorMessage(null);
       setLastUpdatedAt(null);
+      setPassword('');
       setSession(next);
-    } catch {
-      Alert.alert('تعذر تسجيل الدخول', 'تحقق من البريد وكلمة المرور والإعدادات.');
+    } catch (error) {
+      Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error));
     } finally {
       setLoading(false);
     }
   }
 
   async function signOut() {
-    await SecureStore.deleteItemAsync('sfm-finance-session');
+    await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY);
     setSession(null);
     setSummary(null);
     setErrorMessage(null);
@@ -234,10 +246,10 @@ function InvestorApp() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/markets?limit=60&quality=complete`);
-      const body = await response.json();
-      if (!response.ok) throw new Error('MARKETS_UNAVAILABLE');
-      setItems(body.markets ?? []);
+      const response = await fetchWithTimeout(`${apiBaseUrl}/api/markets?limit=60&quality=complete`);
+      const body = await responseJson(response);
+      if (!response.ok || !body) throw new Error('MARKETS_UNAVAILABLE');
+      setItems(Array.isArray(body.markets) ? body.markets as Instrument[] : []);
       setLastUpdatedAt(new Date());
     } catch {
       setErrorMessage('تعذر تحميل الأسواق. تحقق من الشبكة ثم أعد المحاولة.');
@@ -333,10 +345,10 @@ function BusinessApp() {
 
   const restoreSession = useCallback(async () => {
     try {
-      const saved = await SecureStore.getItemAsync('sfm-business-session');
-      if (saved) setSession(await refreshSession(JSON.parse(saved) as Session));
+      const saved = await SecureStore.getItemAsync(BUSINESS_SESSION_KEY);
+      if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, BUSINESS_SESSION_KEY));
     } catch {
-      await SecureStore.deleteItemAsync('sfm-business-session');
+      await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY);
     } finally {
       setLoading(false);
     }
@@ -352,15 +364,22 @@ function BusinessApp() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const active = await refreshSession(session);
+      const active = await refreshSession(session, BUSINESS_SESSION_KEY);
       if (active.accessToken !== session.accessToken) setSession(active);
-      const response = await fetch(`${apiBaseUrl}/api/mobile/business/summary`, {
+      const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/business/summary`, {
         headers: { Authorization: `Bearer ${active.accessToken}` },
       });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error('SUMMARY_UNAVAILABLE');
+      const data = await responseJson(response);
+      if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE');
       setSummary(data.summary as BusinessSummary);
-    } catch {
+    } catch (error) {
+      if (isSessionError(error)) {
+        await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY);
+        setSession(null);
+        setSummary(null);
+        Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بيانات أعمالك.');
+        return;
+      }
       setErrorMessage('تعذر تحميل ملخص أعمالك. تحقق من الشبكة ثم أعد المحاولة.');
     } finally {
       setLoading(false);
@@ -381,25 +400,27 @@ function BusinessApp() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: { apikey: key, 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      if (!response.ok) throw new Error('INVALID_CREDENTIALS');
-      const next = toSession(await response.json());
-      await SecureStore.setItemAsync('sfm-business-session', JSON.stringify(next));
+      const payload = await responseJson(response);
+      if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
+      const next = toSession(payload);
+      await SecureStore.setItemAsync(BUSINESS_SESSION_KEY, JSON.stringify(next));
       setErrorMessage(null);
+      setPassword('');
       setSession(next);
-    } catch {
-      Alert.alert('تعذر تسجيل الدخول', 'تحقق من البريد وكلمة المرور والإعدادات.');
+    } catch (error) {
+      Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error));
     } finally {
       setLoading(false);
     }
   }
 
   async function signOut() {
-    await SecureStore.deleteItemAsync('sfm-business-session');
+    await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY);
     setSession(null);
     setSummary(null);
     setErrorMessage(null);
@@ -512,27 +533,60 @@ function formatUpdatedAt(value: Date | null) {
   return value ? value.toLocaleTimeString('ar-KW', { hour: '2-digit', minute: '2-digit' }) : '—';
 }
 
-function toSession(token: { access_token: string; refresh_token: string; expires_in: number }): Session {
-  return { accessToken: token.access_token, refreshToken: token.refresh_token, expiresAt: Date.now() + token.expires_in * 1000 };
+function toSession(token: ApiBody): Session {
+  const accessToken = typeof token.access_token === 'string' ? token.access_token : '';
+  const refreshToken = typeof token.refresh_token === 'string' ? token.refresh_token : '';
+  const expiresIn = typeof token.expires_in === 'number' ? token.expires_in : 0;
+  if (!accessToken || !refreshToken || expiresIn <= 0) throw new Error('INVALID_SESSION');
+  return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000 };
 }
 
-async function refreshSession(active: Session) {
+async function refreshSession(active: Session, sessionKey: string) {
   if (active.expiresAt > Date.now() + 60_000) return active;
   const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
   const key = String(extra.supabaseAnonKey ?? '');
   if (!url || !key) throw new Error('SUPABASE_NOT_CONFIGURED');
 
-  const response = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
+  const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
     headers: { apikey: key, 'Content-Type': 'application/json' },
     body: JSON.stringify({ refresh_token: active.refreshToken }),
   });
-  if (!response.ok) throw new Error('SESSION_EXPIRED');
+  const token = await responseJson(response);
+  if (!response.ok || !token) throw new Error('SESSION_EXPIRED');
 
-  const token = await response.json();
   const refreshed = toSession(token);
-  await SecureStore.setItemAsync('sfm-finance-session', JSON.stringify(refreshed));
+  await SecureStore.setItemAsync(sessionKey, JSON.stringify(refreshed));
   return refreshed;
+}
+
+async function fetchWithTimeout(url: string, options?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function responseJson(response: Response): Promise<ApiBody | null> {
+  try {
+    const body = await response.json();
+    return body && typeof body === 'object' ? body as ApiBody : null;
+  } catch {
+    return null;
+  }
+}
+
+function isSessionError(error: unknown) {
+  return error instanceof Error && ['SESSION_EXPIRED', 'UNAUTHORIZED'].includes(error.message);
+}
+
+function signInErrorMessage(error: unknown) {
+  if (error instanceof Error && ['AUTH_400', 'AUTH_401'].includes(error.message)) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+  if (error instanceof Error && error.message === 'AUTH_429') return 'تمت محاولات كثيرة. انتظر قليلًا ثم أعد المحاولة.';
+  return 'تحقق من اتصال الإنترنت ثم أعد المحاولة.';
 }
 
 const styles = StyleSheet.create({

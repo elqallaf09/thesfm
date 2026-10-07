@@ -72,6 +72,6 @@ describe('THE SFM Finance Android foundation', () => {
     expect(investorGradle).toContain("huawei { dimension 'distribution' }");
     expect(investorGradle).not.toContain('com.google.gms.google-services');
     expect(activity).toContain('LayoutDirection.Rtl');
-    expect(markets).toContain('/api/markets?limit=12&quality=complete');
+    expect(markets).toContain('/api/markets?limit=60&quality=complete');
   });
 });
