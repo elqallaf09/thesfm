@@ -2,68 +2,28 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 type ProductId = 'finance' | 'investor' | 'business';
 type Session = { accessToken: string; refreshToken: string; expiresAt: number };
-type FinanceSummary = {
-  currency: string | null;
-  monthlyIncome: number | null;
-  monthlyExpenses: number | null;
-  monthlyNet: number | null;
-  trackedPosition: number | null;
-  activeDebtCount: number;
-};
-type BusinessSummary = {
-  currency: string | null;
-  projectCount: number;
-  customerCount: number;
-  supplierCount: number;
-  activeEmployeeCount: number;
-  invoiceCount: number;
-  openInvoiceCount: number;
-  overdueInvoiceCount: number;
-  outstandingInvoiceAmount: number | null;
-  monthlySales: number | null;
-  monthlyOperatingExpenses: number | null;
-  monthlyOperatingNet: number | null;
-  refreshedAt: string;
-};
-type Instrument = {
-  displaySymbol?: string;
-  symbol: string;
-  displayName?: string;
-  name: string;
-  assetType?: string;
-  marketName?: string;
-  currency?: string;
-  source?: string;
-  sector?: string;
-  shariahStatus?: string;
-};
+type FinanceSummary = { currency: string | null; monthlyIncome: number | null; monthlyExpenses: number | null; monthlyNet: number | null; trackedPosition: number | null; activeDebtCount: number };
+type BusinessSummary = { currency: string | null; projectCount: number; customerCount: number; supplierCount: number; activeEmployeeCount: number; invoiceCount: number; openInvoiceCount: number; overdueInvoiceCount: number; outstandingInvoiceAmount: number | null; monthlySales: number | null; monthlyOperatingExpenses: number | null; monthlyOperatingNet: number | null; refreshedAt: string };
+type Instrument = { displaySymbol?: string; symbol: string; displayName?: string; name: string; assetType?: string; marketName?: string; currency?: string; source?: string; sector?: string; shariahStatus?: string };
 type ApiBody = Record<string, unknown> & { ok?: boolean; code?: string };
+type IconName = 'home' | 'wallet' | 'chart' | 'business' | 'target' | 'file' | 'user' | 'refresh' | 'search' | 'shield' | 'arrow' | 'check' | 'bell';
 
 const extra = Constants.expoConfig?.extra ?? {};
 const product = (extra.sfmProduct ?? 'finance') as ProductId;
 const apiBaseUrl = String(extra.apiBaseUrl ?? 'https://www.the-sfm.com').replace(/\/$/, '');
 const FINANCE_SESSION_KEY = 'sfm-finance-session';
 const BUSINESS_SESSION_KEY = 'sfm-business-session';
-const colors = product === 'business'
-  ? { accent: '#A78BFA', surface: '#171127', card: '#2A2040' }
-  : product === 'investor'
-    ? { accent: '#38BDF8', surface: '#08131C', card: '#102634' }
-    : { accent: '#19C5B7', surface: '#07191A', card: '#103033' };
+const C = { canvas: '#0B0D12', surface: '#12151C', raised: '#181C24', border: '#292E38', borderStrong: '#59648A', text: '#EAF1FB', second: '#C3CCE8', muted: '#98A2C9', indigo: '#818CF8', teal: '#5EEAD4', sky: '#79ADEF', violet: '#A78BFA', success: '#59C98A', danger: '#FB7185', warning: '#E9B65B' };
+const glyph: Record<IconName, string> = { home: '⌂', wallet: '▣', chart: '⌁', business: '▤', target: '◎', file: '▤', user: '◌', refresh: '↻', search: '⌕', shield: '◇', arrow: '←', check: '✓', bell: '◔' };
+const productInfo: Record<ProductId, { label: string; accent: string; soft: string; icon: IconName }> = {
+  finance: { label: 'المال الشخصي', accent: C.teal, soft: '#0E3336', icon: 'wallet' },
+  investor: { label: 'الأسواق والاستثمار', accent: C.sky, soft: '#142A44', icon: 'chart' },
+  business: { label: 'الأعمال والمشاريع', accent: C.violet, soft: '#281946', icon: 'business' },
+};
 
 export default function App() {
   if (product === 'finance') return <FinanceApp />;
@@ -79,550 +39,202 @@ function FinanceApp() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [tab, setTab] = useState('home');
 
   const restoreSession = useCallback(async () => {
     try {
       const saved = await SecureStore.getItemAsync(FINANCE_SESSION_KEY);
       if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, FINANCE_SESSION_KEY));
-    } catch {
-      await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY);
-    } finally {
-      setLoading(false);
-    }
+    } catch { await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY); } finally { setLoading(false); }
   }, []);
-
-  useEffect(() => {
-    void restoreSession();
-  }, [restoreSession]);
+  useEffect(() => { void restoreSession(); }, [restoreSession]);
 
   const loadSummary = useCallback(async () => {
     if (!session) return;
-
-    setLoading(true);
-    setErrorMessage(null);
+    setLoading(true); setErrorMessage(null);
     try {
       const active = await refreshSession(session, FINANCE_SESSION_KEY);
       if (active.accessToken !== session.accessToken) setSession(active);
-
-      const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/finance/summary`, {
-        headers: { Authorization: `Bearer ${active.accessToken}` },
-      });
+      const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/finance/summary`, { headers: { Authorization: `Bearer ${active.accessToken}` } });
       const data = await responseJson(response);
       if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE');
-
-      setSummary(data.summary as FinanceSummary);
-      setLastUpdatedAt(new Date());
+      setSummary(data.summary as FinanceSummary); setLastUpdatedAt(new Date());
     } catch (error) {
-      if (isSessionError(error)) {
-        await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY);
-        setSession(null);
-        setSummary(null);
-        Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بياناتك المالية.');
-        return;
-      }
+      if (isSessionError(error)) { await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY); setSession(null); setSummary(null); Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بياناتك المالية.'); return; }
       setErrorMessage('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [session]);
+  useEffect(() => { if (session) void loadSummary(); }, [session, loadSummary]);
 
-  useEffect(() => {
-    if (session) void loadSummary();
-  }, [session, loadSummary]);
-
-  async function signIn() {
-    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
-    const key = String(extra.supabaseAnonKey ?? '');
-    if (!url || !key) {
-      Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.');
-      return;
-    }
-
+  const signIn = useCallback(async () => {
+    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, ''); const key = String(extra.supabaseAnonKey ?? '');
+    if (!url || !key) { Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.'); return; }
     setLoading(true);
     try {
-      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: { apikey: key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const payload = await responseJson(response);
-      if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
+      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }) });
+      const payload = await responseJson(response); if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
+      const next = toSession(payload); await SecureStore.setItemAsync(FINANCE_SESSION_KEY, JSON.stringify(next)); setPassword(''); setSummary(null); setSession(next);
+    } catch (error) { Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error)); } finally { setLoading(false); }
+  }, [email, password]);
+  async function signOut() { await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY); setSession(null); setSummary(null); setErrorMessage(null); setLastUpdatedAt(null); setTab('home'); }
 
-      const next = toSession(payload);
-      await SecureStore.setItemAsync(FINANCE_SESSION_KEY, JSON.stringify(next));
-      setSummary(null);
-      setErrorMessage(null);
-      setLastUpdatedAt(null);
-      setPassword('');
-      setSession(next);
-    } catch (error) {
-      Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }
+  if (loading && !session) return <Loading productId="finance" />;
+  if (!session) return <Landing productId="finance" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} />;
+  return <Shell productId="finance" tab={tab} setTab={setTab}>
+    {tab === 'home' ? <FinanceDashboard summary={summary} loading={loading} error={errorMessage} lastUpdatedAt={lastUpdatedAt} refresh={loadSummary} /> : null}
+    {tab === 'plan' ? <DetailScreen productId="finance" kicker="التخطيط" title="حوّل أهدافك إلى خطوات." body="الدخل والمصروفات والمدخرات والأهداف في مساحات واضحة، مرتبطة ببيانات حسابك." items={[['الأهداف المالية', 'تابع التقدم والموعد المستهدف', 'target', '/goals'], ['المدخرات', 'رتّب أرصدتك حسب الغرض', 'wallet', '/savings'], ['إقفال الشهر', 'راجع الحركة قبل البدء من جديد', 'check', '/income/month-close']]} /> : null}
+    {tab === 'insights' ? <DetailScreen productId="finance" kicker="الرؤى" title="قراءة مبنية على بياناتك." body={summary?.monthlyNet == null ? 'أضف سجلات الشهر لتظهر لك قراءة مالية واضحة.' : summary.monthlyNet >= 0 ? 'صافي الشهر موجب حسب السجلات المتاحة.' : 'المصروفات الحالية تتجاوز الدخل المسجل لهذا الشهر.'} items={[['التقارير', 'مخرجات مالية من سجلاتك', 'file', '/reports-center'], ['الاستثمارات', 'مركز الاستثمار والمتابعة', 'chart', '/invest'], ['الإشعارات', 'اضبط ما تريد متابعته', 'bell', '/notifications']]} /> : null}
+    {tab === 'account' ? <Account productId="finance" signOut={signOut} /> : null}
+  </Shell>;
+}
 
-  async function signOut() {
-    await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY);
-    setSession(null);
-    setSummary(null);
-    setErrorMessage(null);
-    setLastUpdatedAt(null);
-  }
-
-  if (loading && !session) return <LoadingScreen />;
-
-  if (!session) {
-    return (
-      <Shell title="THE SFM Finance">
-        <Text style={styles.heading}>المال الشخصي</Text>
-        <Text style={styles.muted}>سجّل دخولك للوصول إلى ملخص مالي محمي.</Text>
-        <TextInput
-          accessibilityLabel="البريد الإلكتروني"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          placeholder="البريد الإلكتروني"
-          placeholderTextColor="#90A4A5"
-          style={styles.input}
-          textAlign="right"
-          value={email}
-        />
-        <TextInput
-          accessibilityLabel="كلمة المرور"
-          autoComplete="password"
-          onChangeText={setPassword}
-          placeholder="كلمة المرور"
-          placeholderTextColor="#90A4A5"
-          secureTextEntry
-          style={styles.input}
-          textAlign="right"
-          value={password}
-        />
-        <Action title="تسجيل الدخول" onPress={signIn} />
-        <Text style={styles.note}>تُحفظ الجلسة في التخزين الآمن للجهاز؛ لا تُحفظ كلمة المرور.</Text>
-      </Shell>
-    );
-  }
-
-  return (
-    <Shell title="THE SFM Finance">
-      <Text style={styles.heading}>ملخصك المالي</Text>
-      <Text style={styles.muted}>يُحدّث الملخص تلقائيًا عند فتح التطبيق.</Text>
-      <Action title={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onPress={loadSummary} disabled={loading} />
-      {errorMessage ? <InlineNotice message={errorMessage} /> : null}
-      {summary ? (
-        <>
-          <View style={styles.grid}>
-            {metric('المركز المالي', money(summary.trackedPosition, summary.currency))}
-            {metric('الدخل الشهري', money(summary.monthlyIncome, summary.currency))}
-            {metric('المصروفات', money(summary.monthlyExpenses, summary.currency))}
-            {metric('صافي الشهر', money(summary.monthlyNet, summary.currency))}
-          </View>
-          <View style={[styles.metric, styles.metricWide]}>
-            <Text style={styles.muted}>الديون النشطة</Text>
-            <Text style={styles.value}>{summary.activeDebtCount.toLocaleString('ar-KW')}</Text>
-          </View>
-          <Text style={styles.note}>آخر تحديث: {formatUpdatedAt(lastUpdatedAt)}</Text>
-        </>
-      ) : (
-        <EmptyState message={loading ? 'جارٍ جلب ملخصك المحمي…' : 'لا توجد بيانات معروضة بعد. اضغط تحديث للمحاولة مرة أخرى.'} />
-      )}
-      <Action title="تسجيل الخروج" onPress={signOut} secondary />
-    </Shell>
-  );
+function FinanceDashboard({ summary, loading, error, lastUpdatedAt, refresh }: { summary: FinanceSummary | null; loading: boolean; error: string | null; lastUpdatedAt: Date | null; refresh: () => void }) {
+  const income = summary?.monthlyIncome ?? 0; const expense = summary?.monthlyExpenses ?? 0; const max = Math.max(income, expense, 1);
+  return <>
+    <Hero kicker="مساحة المال الشخصي" title="صورة أوضح لمالك." body="نفس الرؤية المالية في THE SFM، مرتبة لتناسب شاشة هاتفك." action={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onAction={refresh} />
+    {error ? <Notice message={error} /> : null}
+    <Heading title="ملخصك المالي" note={lastUpdatedAt ? `آخر تحديث: ${time(lastUpdatedAt)}` : 'يظهر من بيانات حسابك الفعلية'} />
+    <MetricGrid>
+      <Metric label="المركز المالي" value={money(summary?.trackedPosition ?? null, summary?.currency ?? null)} icon="wallet" color={C.indigo} hint="بعد الالتزامات" />
+      <Metric label="الدخل الشهري" value={money(summary?.monthlyIncome ?? null, summary?.currency ?? null)} icon="chart" color={C.success} hint="السجلات المتاحة" />
+      <Metric label="المصروفات" value={money(summary?.monthlyExpenses ?? null, summary?.currency ?? null)} icon="file" color={C.danger} hint="الشهر الحالي" />
+      <Metric label={(summary?.monthlyNet ?? 0) < 0 ? 'عجز الشهر' : 'صافي الشهر'} value={money(Math.abs(summary?.monthlyNet ?? 0), summary?.currency ?? null)} icon="target" color={(summary?.monthlyNet ?? 0) < 0 ? C.danger : C.teal} hint="الدخل ناقص المصروفات" />
+    </MetricGrid>
+    <View style={styles.panel}><PanelHead title="تدفقك الشهري" copy="الدخل مقابل المصروفات المسجلة" icon="chart" color={C.indigo} />
+      {summary?.currency ? <><Progress label="الدخل" value={income} max={max} color={C.teal} detail={money(income, summary.currency)} /><Progress label="المصروفات" value={expense} max={max} color={C.danger} detail={money(expense, summary.currency)} /><Text style={styles.dataNote}>تُعرض النسب من سجلاتك ولا تُستبدل بتوقعات.</Text></> : <Empty icon="chart" title="أضف دخلك ومصروفاتك لرؤية التدفق" body="لا نعرض أرقامًا تقديرية بدل بياناتك." />}
+    </View>
+    <Heading title="ابدأ من حيث تحتاج" note="مساحات العمل نفسها في الموقع" />
+    <QuickGrid items={[
+      ['الدخل والمصروفات', 'سجّل الحركة اليومية', 'file', '/income'], ['المدخرات والأهداف', 'تابع التقدم بوضوح', 'target', '/goals'], ['الزكاة والحاسبات', 'أدوات عامة ومساحة مخصصة', 'check', '/zakat-calculator'], ['الديون', `${summary?.activeDebtCount.toLocaleString('ar-KW') ?? '٠'} التزامات نشطة`, 'wallet', '/debts'],
+    ]} />
+    <Trust />
+  </>;
 }
 
 function InvestorApp() {
-  const [items, setItems] = useState<Instrument[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [assetType, setAssetType] = useState('all');
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
-
+  const [items, setItems] = useState<Instrument[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(''); const [assetType, setAssetType] = useState('all'); const [updatedAt, setUpdatedAt] = useState<Date | null>(null); const [tab, setTab] = useState('home');
   const load = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const response = await fetchWithTimeout(`${apiBaseUrl}/api/markets?limit=60&quality=complete`);
-      const body = await responseJson(response);
-      if (!response.ok || !body) throw new Error('MARKETS_UNAVAILABLE');
-      setItems(Array.isArray(body.markets) ? body.markets as Instrument[] : []);
-      setLastUpdatedAt(new Date());
-    } catch {
-      setErrorMessage('تعذر تحميل الأسواق. تحقق من الشبكة ثم أعد المحاولة.');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError(null);
+    try { const response = await fetchWithTimeout(`${apiBaseUrl}/api/markets?limit=60&quality=complete`); const body = await responseJson(response); if (!response.ok || !body) throw new Error('MARKETS_UNAVAILABLE'); setItems(Array.isArray(body.markets) ? body.markets as Instrument[] : []); setUpdatedAt(new Date()); }
+    catch { setError('تعذر تحميل الأسواق. تحقق من الشبكة ثم أعد المحاولة.'); } finally { setLoading(false); }
   }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const assetTypes = useMemo(() => [...new Set(items.map((item) => item.assetType).filter(Boolean))] as string[], [items]);
-
-  const filteredItems = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase();
-    return items.filter((item) => {
-      const matchesType = assetType === 'all' || item.assetType === assetType;
-      const matchesSearch = !normalized || [item.displaySymbol, item.symbol, item.displayName, item.name, item.marketName, item.sector]
-      .filter(Boolean)
-      .some((value) => value?.toLocaleLowerCase().includes(normalized));
-      return matchesType && matchesSearch;
-    });
-  }, [assetType, items, query]);
-
-  return (
-    <Shell title="THE SFM Investor" scroll={false}>
-      <Text style={styles.heading}>الأسواق</Text>
-      <Text style={styles.muted}>دليل سوق أصلي. المعلومات ليست توصية استثمارية.</Text>
-      <TextInput
-        accessibilityLabel="البحث في الأسواق"
-        onChangeText={setQuery}
-        placeholder="ابحث بالاسم أو الرمز"
-        placeholderTextColor="#90A4A5"
-        style={styles.input}
-        textAlign="right"
-        value={query}
-      />
-      <Action title={loading ? 'جارٍ التحديث…' : 'تحديث القائمة'} onPress={load} disabled={loading} />
-      {errorMessage ? <InlineNotice message={errorMessage} /> : null}
-      <FlatList
-        data={filteredItems}
-        keyExtractor={(item) => item.displaySymbol ?? item.symbol}
-        style={styles.marketList}
-        contentContainerStyle={styles.marketListContent}
-        ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
-        ListHeaderComponent={items.length > 0 ? (
-          <View style={styles.marketHeader}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              <FilterPill active={assetType === 'all'} label="الكل" onPress={() => setAssetType('all')} />
-              {assetTypes.map((type) => <FilterPill active={assetType === type} key={type} label={type} onPress={() => setAssetType(type)} />)}
-            </ScrollView>
-            <Text style={styles.note}>{filteredItems.length.toLocaleString('ar-KW')} أداة متاحة · آخر تحديث: {formatUpdatedAt(lastUpdatedAt)}</Text>
-          </View>
-        ) : null}
-        ListEmptyComponent={
-          loading
-            ? <ActivityIndicator color={colors.accent} size="large" />
-            : <EmptyState message={query ? 'لا توجد أداة تطابق بحثك.' : 'لا توجد أدوات سوق متاحة الآن.'} />
-        }
-        renderItem={({ item }) => (
-          <View style={styles.row} accessibilityLabel={`${item.displayName || item.name}، ${item.displaySymbol || item.symbol}`}>
-            <View style={styles.rowMain}>
-              <Text style={styles.rowTitle}>{item.displayName || item.name}</Text>
-              <Text style={styles.muted}>{[item.marketName || 'سوق عالمي', item.sector, item.shariahStatus].filter(Boolean).join(' · ')}</Text>
-            </View>
-            <View style={styles.rowCode}>
-              <Text style={styles.code}>{item.displaySymbol || item.symbol}</Text>
-              <Text style={styles.muted}>{[item.assetType, item.currency, item.source].filter(Boolean).join(' · ')}</Text>
-            </View>
-          </View>
-        )}
-      />
-    </Shell>
-  );
-}
-
-function FilterPill({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.filterPill, active && styles.filterPillActive]}>
-      <Text style={[styles.filterPillText, active && styles.filterPillTextActive]}>{label}</Text>
-    </Pressable>
-  );
+  useEffect(() => { void load(); }, [load]);
+  const types = useMemo(() => [...new Set(items.map(item => item.assetType).filter(Boolean))] as string[], [items]);
+  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return items.filter(item => (assetType === 'all' || item.assetType === assetType) && (!q || [item.displaySymbol, item.symbol, item.displayName, item.name, item.marketName, item.sector].filter(Boolean).some(value => value?.toLowerCase().includes(q)))); }, [assetType, items, query]);
+  if (tab === 'discover') return <Shell productId="investor" tab={tab} setTab={setTab}><DetailScreen productId="investor" kicker="أدوات المستثمر" title="من الدليل إلى قرار أوضح." body="استكشف الأدوات ومصدر البيانات والحالة الشرعية من مساحات THE SFM المتخصصة." items={[['الأسواق العالمية', 'الأدوات والقطاعات ومعلومات المصدر', 'chart', '/global-markets'], ['فحص شرعي', 'الحالة والمنهجية المتاحة', 'shield', '/sharia-stocks'], ['أخبار السوق', 'أخبار مع مصادر وتواريخ', 'file', '/market-news'], ['قائمة المتابعة', 'رتب الأدوات التي تهمك', 'target', '/market-watchlist']]} /></Shell>;
+  if (tab === 'account') return <Shell productId="investor" tab={tab} setTab={setTab}><Account productId="investor" /></Shell>;
+  return <Shell productId="investor" tab={tab} setTab={setTab} fixed>
+    <FlatList data={tab === 'watch' ? filtered.slice(0, 8) : filtered} keyExtractor={(item, index) => `${item.displaySymbol ?? item.symbol}-${index}`} style={styles.list} contentContainerStyle={styles.listContent}
+      ListHeaderComponent={<><View style={styles.investHero}><Text style={styles.kicker}>مستكشف الأسواق</Text><Text style={styles.heroTitle}>أسواق واضحة،<Text style={{ color: C.sky }}> بلا ضوضاء.</Text></Text><Text style={styles.heroBody}>دليل أدوات THE SFM. المعلومات المعروضة تصف الأداة ومصدرها ولا تمثل توصية استثمارية.</Text><View style={styles.meta}><Text style={styles.metaText}>{items.length.toLocaleString('ar-KW')} أداة</Text><Text style={styles.metaText}>{updatedAt ? `تحديث ${time(updatedAt)}` : 'جارٍ التحديث'}</Text></View><Pressable accessibilityRole="button" onPress={load} disabled={loading} style={[styles.heroButton, loading && styles.disabled]}><Icon name="refresh" color={C.canvas} /><Text style={styles.heroButtonText}>{loading ? 'جارٍ التحديث…' : 'تحديث القائمة'}</Text></Pressable></View>
+      <TextInput accessibilityLabel="البحث في الأسواق" onChangeText={setQuery} placeholder="ابحث بالاسم أو الرمز" placeholderTextColor={C.muted} style={styles.input} textAlign="right" value={query} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}><FilterPill active={assetType === 'all'} label="الكل" onPress={() => setAssetType('all')} />{types.map(type => <FilterPill active={assetType === type} key={type} label={type} onPress={() => setAssetType(type)} />)}</ScrollView>
+      {error ? <Notice message={error} /> : null}{tab === 'watch' ? <Notice message="هذه معاينة من الدليل؛ أنشئ قائمة متابعة كاملة من الموقع." /> : null}<Heading title={tab === 'watch' ? 'أدوات للمتابعة' : 'دليل الأسواق'} note={`${filtered.length.toLocaleString('ar-KW')} نتيجة`} /></>}
+      renderItem={({ item }) => <InstrumentRow item={item} />} ItemSeparatorComponent={() => <View style={{ height: 9 }} />} ListEmptyComponent={loading ? <ActivityIndicator color={C.sky} size="large" style={{ margin: 32 }} /> : <Empty icon="search" title={query ? 'لا توجد أداة تطابق بحثك' : 'لا توجد أدوات سوق متاحة الآن'} body="حاول التحديث أو غيّر الفلتر." />} ListFooterComponent={<View style={{ marginTop: 18, gap: 12 }}><Trust /><WebButton label="فتح التحليلات والصفحات الكاملة" path="/global-markets" /></View>} />
+  </Shell>;
 }
 
 function BusinessApp() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [summary, setSummary] = useState<BusinessSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const restoreSession = useCallback(async () => {
-    try {
-      const saved = await SecureStore.getItemAsync(BUSINESS_SESSION_KEY);
-      if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, BUSINESS_SESSION_KEY));
-    } catch {
-      await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void restoreSession();
-  }, [restoreSession]);
-
+  const [session, setSession] = useState<Session | null>(null); const [summary, setSummary] = useState<BusinessSummary | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showSignIn, setShowSignIn] = useState(false); const [tab, setTab] = useState('home');
+  const restoreSession = useCallback(async () => { try { const saved = await SecureStore.getItemAsync(BUSINESS_SESSION_KEY); if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, BUSINESS_SESSION_KEY)); } catch { await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY); } finally { setLoading(false); } }, []);
+  useEffect(() => { void restoreSession(); }, [restoreSession]);
   const loadSummary = useCallback(async () => {
-    if (!session) return;
-
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const active = await refreshSession(session, BUSINESS_SESSION_KEY);
-      if (active.accessToken !== session.accessToken) setSession(active);
-      const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/business/summary`, {
-        headers: { Authorization: `Bearer ${active.accessToken}` },
-      });
-      const data = await responseJson(response);
-      if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE');
-      setSummary(data.summary as BusinessSummary);
-    } catch (error) {
-      if (isSessionError(error)) {
-        await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY);
-        setSession(null);
-        setSummary(null);
-        Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بيانات أعمالك.');
-        return;
-      }
-      setErrorMessage('تعذر تحميل ملخص أعمالك. تحقق من الشبكة ثم أعد المحاولة.');
-    } finally {
-      setLoading(false);
-    }
+    if (!session) return; setLoading(true); setError(null);
+    try { const active = await refreshSession(session, BUSINESS_SESSION_KEY); if (active.accessToken !== session.accessToken) setSession(active); const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/business/summary`, { headers: { Authorization: `Bearer ${active.accessToken}` } }); const data = await responseJson(response); if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE'); setSummary(data.summary as BusinessSummary); }
+    catch (reason) { if (isSessionError(reason)) { await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY); setSession(null); setSummary(null); Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بيانات أعمالك.'); return; } setError('تعذر تحميل ملخص أعمالك. تحقق من الشبكة ثم أعد المحاولة.'); } finally { setLoading(false); }
   }, [session]);
-
-  useEffect(() => {
-    if (session) void loadSummary();
-  }, [session, loadSummary]);
-
-  async function signIn() {
-    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
-    const key = String(extra.supabaseAnonKey ?? '');
-    if (!url || !key) {
-      Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: { apikey: key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      const payload = await responseJson(response);
-      if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
-      const next = toSession(payload);
-      await SecureStore.setItemAsync(BUSINESS_SESSION_KEY, JSON.stringify(next));
-      setErrorMessage(null);
-      setPassword('');
-      setSession(next);
-    } catch (error) {
-      Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function signOut() {
-    await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY);
-    setSession(null);
-    setSummary(null);
-    setErrorMessage(null);
-  }
-
-  if (loading && !session) return <LoadingScreen title="THE SFM Business" />;
-
-  if (!session) {
-    return (
-      <Shell title="THE SFM Business">
-        <Text style={styles.heading}>مساحة العمل</Text>
-        <Text style={styles.muted}>سجّل دخولك لعرض بيانات أعمالك المحمية.</Text>
-        <TextInput accessibilityLabel="البريد الإلكتروني" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="البريد الإلكتروني" placeholderTextColor="#90A4A5" style={styles.input} textAlign="right" value={email} />
-        <TextInput accessibilityLabel="كلمة المرور" autoComplete="password" onChangeText={setPassword} placeholder="كلمة المرور" placeholderTextColor="#90A4A5" secureTextEntry style={styles.input} textAlign="right" value={password} />
-        <Action title="تسجيل الدخول" onPress={signIn} />
-        <Text style={styles.note}>تُحفظ الجلسة في التخزين الآمن للجهاز؛ لا تُحفظ كلمة المرور.</Text>
-      </Shell>
-    );
-  }
-
-  return (
-    <Shell title="THE SFM Business">
-      <Text style={styles.heading}>ملخص أعمالك</Text>
-      <Text style={styles.muted}>نظرة مختصرة على السجلات التي يملكها حسابك فقط.</Text>
-      <Action title={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onPress={loadSummary} disabled={loading} />
-      {errorMessage ? <InlineNotice message={errorMessage} /> : null}
-      {summary ? (
-        <>
-          <View style={styles.grid}>
-            {metric('المشاريع', summary.projectCount.toLocaleString('ar-KW'))}
-            {metric('العملاء', summary.customerCount.toLocaleString('ar-KW'))}
-            {metric('الموظفون النشطون', summary.activeEmployeeCount.toLocaleString('ar-KW'))}
-            {metric('الفواتير المفتوحة', summary.openInvoiceCount.toLocaleString('ar-KW'))}
-          </View>
-          <View style={styles.businessCard}>
-            <Text style={styles.rowTitle}>الأداء الشهري</Text>
-            <Text style={styles.muted}>المبيعات: {money(summary.monthlySales, summary.currency)}</Text>
-            <Text style={styles.muted}>المصروفات التشغيلية: {money(summary.monthlyOperatingExpenses, summary.currency)}</Text>
-            <Text style={styles.muted}>الصافي التشغيلي: {money(summary.monthlyOperatingNet, summary.currency)}</Text>
-          </View>
-          <View style={styles.businessCard}>
-            <Text style={styles.rowTitle}>متابعة التحصيل</Text>
-            <Text style={styles.muted}>المستحق: {money(summary.outstandingInvoiceAmount, summary.currency)}</Text>
-            <Text style={styles.muted}>الفواتير المتأخرة: {summary.overdueInvoiceCount.toLocaleString('ar-KW')}</Text>
-            <Text style={styles.note}>آخر تحديث: {formatUpdatedAt(new Date(summary.refreshedAt))}</Text>
-          </View>
-        </>
-      ) : (
-        <EmptyState message={loading ? 'جارٍ جلب ملخص أعمالك المحمي…' : 'لا توجد بيانات معروضة بعد. اضغط تحديث للمحاولة مرة أخرى.'} />
-      )}
-      <Action title="تسجيل الخروج" onPress={signOut} secondary />
-    </Shell>
-  );
+  useEffect(() => { if (session) void loadSummary(); }, [session, loadSummary]);
+  const signIn = useCallback(async () => {
+    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, ''); const key = String(extra.supabaseAnonKey ?? ''); if (!url || !key) { Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.'); return; } setLoading(true);
+    try { const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }) }); const payload = await responseJson(response); if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`); const next = toSession(payload); await SecureStore.setItemAsync(BUSINESS_SESSION_KEY, JSON.stringify(next)); setPassword(''); setSession(next); }
+    catch (reason) { Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(reason)); } finally { setLoading(false); }
+  }, [email, password]);
+  async function signOut() { await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY); setSession(null); setSummary(null); setError(null); setTab('home'); }
+  if (loading && !session) return <Loading productId="business" />;
+  if (!session) return <Landing productId="business" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} />;
+  return <Shell productId="business" tab={tab} setTab={setTab}>
+    {tab === 'home' ? <BusinessDashboard summary={summary} loading={loading} error={error} refresh={loadSummary} /> : null}
+    {tab === 'operations' ? <DetailScreen productId="business" kicker="العمليات" title="كل ما تحتاجه لتسيير العمل." body="المشاريع والعملاء والموردون والموظفون والفواتير في مساحات متصلة." items={[['المبيعات', 'تابع الفرص والمبيعات المسجلة', 'chart', '/sales'], ['الموردون والمصروفات', 'رتّب التكاليف التشغيلية', 'file', '/suppliers'], ['الفريق', 'إدارة الموظفين وسجل النشاط', 'user', '/employees']]} /> : null}
+    {tab === 'reports' ? <DetailScreen productId="business" kicker="التقارير" title="مخرجات جاهزة من بياناتك." body="افتح مركز التقارير والمستندات ودراسات الجدوى من مساحة THE SFM الكاملة." items={[['مركز التقارير', 'تقارير ومستندات موحدة', 'file', '/reports-center'], ['دراسات الجدوى', 'تفاصيل المشروع وخطته', 'chart', '/projects'], ['مركز القرارات', 'حوّل البيانات إلى خطوات', 'target', '/decisions']]} /> : null}
+    {tab === 'account' ? <Account productId="business" signOut={signOut} /> : null}
+  </Shell>;
 }
 
-function Shell({ title, children, scroll = true }: { title: string; children: ReactNode; scroll?: boolean }) {
-  return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="light" />
-      {scroll ? (
-        <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-          <Text style={styles.brand}>{title}</Text>
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={styles.fixedPage}>
-          <Text style={styles.brand}>{title}</Text>
-          {children}
-        </View>
-      )}
-    </SafeAreaView>
-  );
+function BusinessDashboard({ summary, loading, error, refresh }: { summary: BusinessSummary | null; loading: boolean; error: string | null; refresh: () => void }) {
+  const sales = summary?.monthlySales ?? 0; const expense = summary?.monthlyOperatingExpenses ?? 0; const max = Math.max(sales, expense, 1);
+  return <><Hero kicker="مساحة الأعمال" title="عملك اليوم، بوضوح." body="المشاريع والعملاء والفواتير والتقارير من نفس سجلات THE SFM." action={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onAction={refresh} />{error ? <Notice message={error} /> : null}<Heading title="نظرة تشغيلية" note={summary ? `آخر تحديث: ${time(new Date(summary.refreshedAt))}` : 'يظهر من بيانات حساب الشركة'} />
+    <MetricGrid><Metric label="المشاريع" value={count(summary?.projectCount)} icon="business" color={C.indigo} hint="سجل المشاريع" /><Metric label="العملاء" value={count(summary?.customerCount)} icon="user" color={C.teal} hint="جهات مسجلة" /><Metric label="الفواتير المفتوحة" value={count(summary?.openInvoiceCount)} icon="file" color={C.warning} hint={`من ${count(summary?.invoiceCount)} فاتورة`} /><Metric label="الموظفون النشطون" value={count(summary?.activeEmployeeCount)} icon="user" color={C.success} hint="ضمن السجل الحالي" /></MetricGrid>
+    <View style={styles.panel}><PanelHead title="الأداء الشهري" copy="قراءة من المبيعات والمصروفات التشغيلية" icon="chart" color={C.violet} />{summary?.currency ? <><Progress label="المبيعات" value={sales} max={max} color={C.violet} detail={money(sales, summary.currency)} /><Progress label="المصروفات التشغيلية" value={expense} max={max} color={C.danger} detail={money(expense, summary.currency)} /><Text style={[styles.net, { color: (summary.monthlyOperatingNet ?? 0) >= 0 ? C.success : C.danger }]}>الصافي التشغيلي: {money(summary.monthlyOperatingNet, summary.currency)}</Text></> : <Empty icon="chart" title="أضف سجلات المبيعات والمصروفات" body="نظهر الأداء الحقيقي فقط بعد توفر السجلات." />}</View>
+    <Heading title="تنفيذ اليوم" note="اختصارات لمساحات العمل" /><QuickGrid items={[['الفواتير والتحصيل', `${count(summary?.overdueInvoiceCount)} فواتير متأخرة`, 'file', '/invoices'], ['العملاء', 'العلاقات والبيانات الأساسية', 'user', '/customers'], ['المشاريع', 'المتابعة والتقدم', 'business', '/projects'], ['التقارير', 'مخرجات أعمالك الموحدة', 'file', '/reports-center']]} /><Trust /></>;
 }
 
-function LoadingScreen({ title = 'THE SFM Finance' }: { title?: string }) {
-  return <Shell title={title}><ActivityIndicator accessibilityLabel="جارٍ التحميل" color={colors.accent} size="large" /></Shell>;
+function Landing({ productId, showSignIn, setShowSignIn, email, password, setEmail, setPassword, signIn, loading }: { productId: ProductId; showSignIn: boolean; setShowSignIn: (value: boolean) => void; email: string; password: string; setEmail: (value: string) => void; setPassword: (value: string) => void; signIn: () => void; loading: boolean }) {
+  const meta = productInfo[productId]; const business = productId === 'business';
+  const rows: [string, string, IconName, string][] = business ? [['المشاريع والعمليات', 'من التخطيط إلى التنفيذ', 'business', '/projects'], ['العملاء والفواتير', 'تابع العلاقة والتحصيل', 'user', '/invoices'], ['التقارير والمستندات', 'مخرجات أعمالك في مكان واحد', 'file', '/reports-center']] : [['الدخل والمصروفات', 'نظّم اليوم وخطط لما بعده', 'file', '/income'], ['المدخرات والأهداف', 'تابع التقدم نحو ما يهمك', 'target', '/goals'], ['الزكاة والحاسبات', 'أدوات عامة ومساحة مخصصة', 'check', '/zakat-calculator']];
+  return <SafeAreaView style={styles.safe}><StatusBar style="light" /><ScrollView contentContainerStyle={styles.landing} keyboardShouldPersistTaps="handled"><Brand productId={productId} publicMode /><View style={styles.landingHero}><Text style={[styles.kicker, { color: meta.accent }]}>{business ? 'منصة أعمال منظمة' : 'ذكاء مالي مبني للخليج'}</Text><Text style={styles.landingTitle}>{business ? 'مشاريعك وعملياتك. رؤية واحدة.' : 'أموالك في صورة واحدة.'}</Text><Text style={styles.heroBody}>{business ? 'تابع العملاء والفواتير والمشاريع والتقارير في مساحة عمل عربية واضحة.' : 'تابع الدخل والمصروفات والمدخرات والزكاة من واجهة عربية مرتبطة ببيانات حسابك.'}</Text><Pressable accessibilityRole="button" onPress={() => setShowSignIn(true)} style={styles.primary}><Text style={styles.primaryText}>دخول إلى مساحتي</Text><Icon name="arrow" color={C.canvas} /></Pressable><Pressable accessibilityRole="button" onPress={() => openSite(business ? '/business-operations' : '/zakat-calculator')} style={styles.outline}><Text style={styles.outlineText}>استكشف THE SFM</Text><Icon name="arrow" color={C.second} /></Pressable></View>
+    <View style={styles.preview}><View style={styles.previewTop}><Text style={styles.previewBrand}>THE SFM <Text style={{ color: C.indigo }}>/</Text> استكشف الأدوات</Text><Icon name="chart" color={C.muted} /></View><View style={styles.previewTabs}><Text style={styles.activePreviewTab}>{meta.label}</Text><Text style={styles.previewTab}>الأسواق</Text><Text style={styles.previewTab}>الأعمال</Text></View><View style={styles.previewBody}><Badge icon={meta.icon} color={meta.accent} soft={meta.soft} /><Text style={styles.previewTitle}>{business ? 'العمل بتركيز.' : 'أموالك في بؤرة الاهتمام.'}</Text><Text style={styles.previewCopy}>ابدأ بالمساحة التي تحتاجها، ثم أضف بياناتك عند تسجيل الدخول.</Text>{rows.map(([title, body, icon, path]) => <Pressable accessibilityRole="button" key={title} onPress={() => openSite(path)} style={styles.previewRow}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.rowCopy}>{body}</Text></View><Icon name="arrow" color={C.indigo} /></Pressable>)}</View></View>
+    <View style={styles.landingTrust}><Icon name="check" color={C.teal} /><Text style={styles.trustText}>واجهة عربية وإنجليزية وفرنسية · بياناتك أساس كل قراءة</Text></View>
+    {showSignIn ? <View style={styles.auth}><View style={styles.authHead}><View><Text style={styles.authTitle}>تسجيل الدخول</Text><Text style={styles.rowCopy}>استخدم حساب THE SFM نفسه.</Text></View><Pressable accessibilityRole="button" onPress={() => setShowSignIn(false)}><Text style={styles.close}>×</Text></Pressable></View><TextInput accessibilityLabel="البريد الإلكتروني" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="البريد الإلكتروني" placeholderTextColor={C.muted} style={styles.input} textAlign="right" value={email} /><TextInput accessibilityLabel="كلمة المرور" autoComplete="password" onChangeText={setPassword} placeholder="كلمة المرور" placeholderTextColor={C.muted} secureTextEntry style={styles.input} textAlign="right" value={password} /><Pressable accessibilityRole="button" disabled={loading} onPress={signIn} style={[styles.primary, loading && styles.disabled]}><Text style={styles.primaryText}>{loading ? 'جارٍ التحقق…' : 'تسجيل الدخول'}</Text><Icon name="arrow" color={C.canvas} /></Pressable><Text style={styles.dataNote}>تُحفظ الجلسة في التخزين الآمن للجهاز ولا تُحفظ كلمة المرور.</Text></View> : null}
+  </ScrollView></SafeAreaView>;
 }
 
-function Action({ title, onPress, disabled, secondary }: { title: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) {
-  return (
-    <Pressable
-      accessibilityLabel={title}
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.button, secondary && styles.secondary, disabled && styles.disabled]}
-    >
-      <Text style={[styles.buttonText, secondary && styles.secondaryText]}>{title}</Text>
-    </Pressable>
-  );
+function Shell({ productId, tab, setTab, children, fixed = false }: { productId: ProductId; tab: string; setTab: (value: string) => void; children: ReactNode; fixed?: boolean }) {
+  const { width } = useWindowDimensions(); const pad = width < 360 ? 14 : width < 600 ? 18 : 24; const nav = productId === 'finance' ? [['home', 'الرئيسية', 'home'], ['plan', 'التخطيط', 'target'], ['insights', 'الرؤى', 'chart'], ['account', 'حسابي', 'user']] : productId === 'business' ? [['home', 'الرئيسية', 'home'], ['operations', 'العمليات', 'business'], ['reports', 'التقارير', 'file'], ['account', 'حسابي', 'user']] : [['home', 'الأسواق', 'home'], ['watch', 'المتابعة', 'target'], ['discover', 'استكشف', 'chart'], ['account', 'الموقع', 'user']];
+  const content = <View style={[styles.content, { paddingHorizontal: pad, maxWidth: width >= 700 ? 760 : undefined, alignSelf: width >= 700 ? 'center' : undefined, width: '100%' }]}>{children}</View>;
+  return <SafeAreaView style={styles.safe}><StatusBar style="light" /><Brand productId={productId} /><Rail productId={productId} />{fixed ? <View style={styles.fixed}>{children}</View> : <ScrollView contentContainerStyle={styles.scroll}>{content}</ScrollView>}<View style={styles.bottom}>{nav.map(([id, label, icon]) => <Pressable accessibilityRole="tab" accessibilityState={{ selected: tab === id }} key={id} onPress={() => setTab(id)} style={styles.bottomItem}><View style={[styles.bottomIcon, tab === id && styles.bottomIconOn]}><Icon name={icon as IconName} color={tab === id ? C.canvas : C.muted} small /></View><Text style={[styles.bottomText, tab === id && styles.bottomTextOn]}>{label}</Text></Pressable>)}</View></SafeAreaView>;
 }
 
-function EmptyState({ message }: { message: string }) {
-  return <View style={styles.emptyState}><Text style={styles.muted}>{message}</Text></View>;
-}
+function Brand({ productId, publicMode = false }: { productId: ProductId; publicMode?: boolean }) { const meta = productInfo[productId]; return <View style={styles.brandBar}><View style={styles.lockup}><View style={styles.logo}><Image accessibilityLabel="THE SFM" source={{ uri: `${apiBaseUrl}/sfm-logo.png` }} style={styles.logoImage} /><Text style={styles.logoText}>S</Text></View><View><Text style={styles.wordmark}>THE SFM</Text>{!publicMode ? <Text style={styles.brandSub}>{meta.label}</Text> : null}</View></View><View style={styles.productTag}><Icon name={meta.icon} color={meta.accent} small /><Text style={[styles.productTagText, { color: meta.accent }]}>{publicMode ? (productId === 'finance' ? 'Finance' : 'Business') : 'متصل'}</Text></View></View>; }
+function Rail({ productId }: { productId: ProductId }) { const active = productId === 'finance' ? 0 : productId === 'investor' ? 1 : 2; return <View style={styles.rail}>{[['المال', 'wallet'], ['الأسواق', 'chart'], ['الأعمال', 'business']].map(([label, icon], index) => <View key={label} style={[styles.railItem, index === active && { backgroundColor: productInfo[productId].soft, borderColor: productInfo[productId].accent }]}><Icon name={icon as IconName} color={index === active ? productInfo[productId].accent : C.muted} small /><Text style={[styles.railText, index === active && { color: C.text }]}>{label}</Text></View>)}</View>; }
+function Hero({ kicker, title, body, action, onAction }: { kicker: string; title: string; body: string; action: string; onAction: () => void }) { return <View style={styles.hero}><Text style={styles.kicker}>{kicker}</Text><Text style={styles.heroTitle}>{title}</Text><Text style={styles.heroBody}>{body}</Text><Pressable accessibilityRole="button" onPress={onAction} style={styles.heroButton}><Icon name="refresh" color={C.canvas} /><Text style={styles.heroButtonText}>{action}</Text></Pressable></View>; }
+function DetailScreen({ productId, kicker, title, body, items }: { productId: ProductId; kicker: string; title: string; body: string; items: [string, string, IconName, string][] }) { const meta = productInfo[productId]; return <><View style={[styles.detailHero, { borderColor: meta.accent }]}><Badge icon={meta.icon} color={meta.accent} soft={meta.soft} /><Text style={styles.kicker}>{kicker}</Text><Text style={styles.detailTitle}>{title}</Text><Text style={styles.heroBody}>{body}</Text></View><Heading title="مساحات العمل" note="افتح التفاصيل الكاملة عند الحاجة" /><View style={styles.detailList}>{items.map(([title2, body2, icon, path]) => <Pressable accessibilityRole="button" key={title2} onPress={() => openSite(path)} style={styles.detailRow}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title2}</Text><Text style={styles.rowCopy}>{body2}</Text></View><Icon name="arrow" color={C.indigo} /></Pressable>)}</View><Trust /></>; }
+function Account({ productId, signOut }: { productId: ProductId; signOut?: () => void }) { const meta = productInfo[productId]; return <><View style={styles.detailHero}><Badge icon="shield" color={C.indigo} /><Text style={styles.detailTitle}>بياناتك، ووصولك بيدك.</Text><Text style={styles.heroBody}>تحمي THE SFM بياناتك بجلسات مصادقة وصلاحيات وصول. افتح إعدادات الحساب لإدارة التفاصيل.</Text></View><View style={styles.detailList}><Row title="الملف الشخصي" body="البيانات والخيارات العامة" icon="user" path="/profile" /><Row title="الأمان والجلسات" body="المصادقة وإدارة الوصول" icon="shield" path="/security" /></View><View style={[styles.accountNote, { borderColor: meta.accent }]}><Icon name="check" color={meta.accent} /><Text style={styles.trustText}>لا نعرض بيانات مالية تجريبية بدل بيانات حسابك الفعلية.</Text></View>{signOut ? <Pressable accessibilityRole="button" onPress={signOut} style={styles.signOut}><Text style={styles.signOutText}>تسجيل الخروج</Text></Pressable> : <WebButton label="فتح حسابي في THE SFM" path="/login" />}</>; }
+function Row({ title, body, icon, path }: { title: string; body: string; icon: IconName; path: string }) { return <Pressable accessibilityRole="button" onPress={() => openSite(path)} style={styles.detailRow}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.rowCopy}>{body}</Text></View><Icon name="arrow" color={C.indigo} /></Pressable>; }
+function Heading({ title, note }: { title: string; note: string }) { return <View style={styles.heading}><Text style={styles.headingTitle}>{title}</Text><Text style={styles.headingNote}>{note}</Text></View>; }
+function MetricGrid({ children }: { children: ReactNode }) { const { width } = useWindowDimensions(); return <View style={[styles.metrics, width >= 700 && styles.metricsWide]}>{children}</View>; }
+function Metric({ label, value, icon, color, hint }: { label: string; value: string; icon: IconName; color: string; hint: string }) { return <View style={styles.metric}><View style={styles.metricTop}><Text style={styles.metricLabel}>{label}</Text><Badge icon={icon} color={color} small /></View><Text style={[styles.metricValue, { color }]} numberOfLines={1}>{value}</Text><Text style={styles.metricHint}>{hint}</Text></View>; }
+function PanelHead({ title, copy, icon, color }: { title: string; copy: string; icon: IconName; color: string }) { return <View style={styles.panelHead}><View><Text style={styles.panelTitle}>{title}</Text><Text style={styles.rowCopy}>{copy}</Text></View><Badge icon={icon} color={color} /></View>; }
+function Progress({ label, value, max, color, detail }: { label: string; value: number; max: number; color: string; detail: string }) { return <View style={styles.progress}><View style={styles.progressTop}><Text style={styles.rowTitle}>{label}</Text><Text style={styles.progressValue}>{detail}</Text></View><View style={styles.track}><View style={[styles.fill, { width: `${Math.max(4, Math.min(100, (value / max) * 100))}%`, backgroundColor: color }]} /></View></View>; }
+function QuickGrid({ items }: { items: [string, string, IconName, string][] }) { return <View style={styles.quickGrid}>{items.map(([title, body, icon, path]) => <Pressable accessibilityRole="button" key={title} onPress={() => openSite(path)} style={styles.quick}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.rowCopy}>{body}</Text></View><Icon name="arrow" color={C.muted} /></Pressable>)}</View>; }
+function InstrumentRow({ item }: { item: Instrument }) { const shariah = shariahTag(item.shariahStatus); return <Pressable accessibilityRole="button" onPress={() => openSite(`/symbol-details/${encodeURIComponent(item.displaySymbol ?? item.symbol)}`)} style={styles.instrument}><View style={styles.instrumentTop}><View style={{ flex: 1 }}><Text style={styles.instrumentTitle} numberOfLines={1}>{item.displayName || item.name}</Text><Text style={styles.rowCopy} numberOfLines={1}>{[item.marketName || 'سوق عالمي', item.sector].filter(Boolean).join(' · ')}</Text></View><View style={styles.symbol}><Text style={styles.symbolText}>{item.displaySymbol || item.symbol}</Text></View></View><View style={styles.instrumentFoot}><View style={styles.tags}><Tag label={item.assetType || 'أداة'} /><Tag label={item.currency || '—'} />{shariah ? <Tag label={shariah.label} color={shariah.color} /> : null}</View><Icon name="arrow" color={C.indigo} /></View></Pressable>; }
+function FilterPill({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.filter, active && styles.filterOn]}><Text style={[styles.filterText, active && styles.filterTextOn]}>{label}</Text></Pressable>; }
+function Badge({ icon, color, soft = '#222A5E', small = false }: { icon: IconName; color: string; soft?: string; small?: boolean }) { return <View style={[styles.badge, small && styles.badgeSmall, { backgroundColor: soft }]}><Icon name={icon} color={color} small={small} /></View>; }
+function Icon({ name, color, small = false }: { name: IconName; color: string; small?: boolean }) { return <Text style={[styles.icon, small && styles.iconSmall, { color }]}>{glyph[name]}</Text>; }
+function Tag({ label, color }: { label: string; color?: string }) { return <View style={[styles.tag, color ? { borderColor: color, backgroundColor: `${color}22` } : null]}><Text style={[styles.tagText, color ? { color } : null]}>{label}</Text></View>; }
+function Notice({ message }: { message: string }) { return <View accessibilityRole="alert" style={styles.notice}><Icon name="bell" color={C.warning} small /><Text style={styles.noticeText}>{message}</Text></View>; }
+function Empty({ icon, title, body }: { icon: IconName; title: string; body: string }) { return <View style={styles.empty}><Badge icon={icon} color={C.indigo} /><Text style={styles.emptyTitle}>{title}</Text><Text style={styles.emptyBody}>{body}</Text></View>; }
+function Trust() { return <View style={styles.trust}><Icon name="shield" color={C.teal} /><Text style={styles.trustText}>تُبنى القراءات على سجلاتك ومصادر البيانات المتاحة. لا نملأ الفجوات بأرقام مختلقة.</Text></View>; }
+function WebButton({ label, path }: { label: string; path: string }) { return <Pressable accessibilityRole="button" onPress={() => openSite(path)} style={styles.primary}><Text style={styles.primaryText}>{label}</Text><Icon name="arrow" color={C.canvas} /></Pressable>; }
+function Loading({ productId }: { productId: ProductId }) { return <SafeAreaView style={styles.safe}><StatusBar style="light" /><View style={styles.loading}><Badge icon={productInfo[productId].icon} color={productInfo[productId].accent} /><Text style={styles.loadingText}>THE SFM</Text><ActivityIndicator accessibilityLabel="جارٍ التحميل" color={productInfo[productId].accent} size="large" /></View></SafeAreaView>; }
 
-function InlineNotice({ message }: { message: string }) {
-  return <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View>;
-}
-
-function metric(label: string, value: string) {
-  return <View style={styles.metric} key={label}><Text style={styles.muted}>{label}</Text><Text style={styles.value}>{value}</Text></View>;
-}
-
-function money(value: number | null, currency: string | null) {
-  return value == null || !currency ? '—' : `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`;
-}
-
-function formatUpdatedAt(value: Date | null) {
-  return value ? value.toLocaleTimeString('ar-KW', { hour: '2-digit', minute: '2-digit' }) : '—';
-}
-
-function toSession(token: ApiBody): Session {
-  const accessToken = typeof token.access_token === 'string' ? token.access_token : '';
-  const refreshToken = typeof token.refresh_token === 'string' ? token.refresh_token : '';
-  const expiresIn = typeof token.expires_in === 'number' ? token.expires_in : 0;
-  if (!accessToken || !refreshToken || expiresIn <= 0) throw new Error('INVALID_SESSION');
-  return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000 };
-}
-
-async function refreshSession(active: Session, sessionKey: string) {
-  if (active.expiresAt > Date.now() + 60_000) return active;
-  const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
-  const key = String(extra.supabaseAnonKey ?? '');
-  if (!url || !key) throw new Error('SUPABASE_NOT_CONFIGURED');
-
-  const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST',
-    headers: { apikey: key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: active.refreshToken }),
-  });
-  const token = await responseJson(response);
-  if (!response.ok || !token) throw new Error('SESSION_EXPIRED');
-
-  const refreshed = toSession(token);
-  await SecureStore.setItemAsync(sessionKey, JSON.stringify(refreshed));
-  return refreshed;
-}
-
-async function fetchWithTimeout(url: string, options?: RequestInit) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function responseJson(response: Response): Promise<ApiBody | null> {
-  try {
-    const body = await response.json();
-    return body && typeof body === 'object' ? body as ApiBody : null;
-  } catch {
-    return null;
-  }
-}
-
-function isSessionError(error: unknown) {
-  return error instanceof Error && ['SESSION_EXPIRED', 'UNAUTHORIZED'].includes(error.message);
-}
-
-function signInErrorMessage(error: unknown) {
-  if (error instanceof Error && ['AUTH_400', 'AUTH_401'].includes(error.message)) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
-  if (error instanceof Error && error.message === 'AUTH_429') return 'تمت محاولات كثيرة. انتظر قليلًا ثم أعد المحاولة.';
-  return 'تحقق من اتصال الإنترنت ثم أعد المحاولة.';
-}
+function openSite(path: string) { void Linking.openURL(`${apiBaseUrl}${path}`); }
+function count(value: number | undefined) { return (value ?? 0).toLocaleString('ar-KW'); }
+function money(value: number | null, currency: string | null) { return value == null || !currency ? '—' : `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`; }
+function time(value: Date | null) { return value ? value.toLocaleTimeString('ar-KW', { hour: '2-digit', minute: '2-digit' }) : '—'; }
+function shariahTag(value?: string) { if (!value) return null; const normalized = value.toLowerCase(); if (normalized.includes('compliant') || normalized.includes('متوافق')) return { label: 'متوافق', color: C.success }; if (normalized.includes('review') || normalized.includes('مراجعة')) return { label: 'قيد المراجعة', color: C.warning }; if (normalized.includes('non') || normalized.includes('غير')) return { label: 'غير متوافق', color: C.danger }; return { label: value, color: C.muted }; }
+function toSession(token: ApiBody): Session { const accessToken = typeof token.access_token === 'string' ? token.access_token : ''; const refreshToken = typeof token.refresh_token === 'string' ? token.refresh_token : ''; const expiresIn = typeof token.expires_in === 'number' ? token.expires_in : 0; if (!accessToken || !refreshToken || expiresIn <= 0) throw new Error('INVALID_SESSION'); return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000 }; }
+async function refreshSession(active: Session, sessionKey: string) { if (active.expiresAt > Date.now() + 60_000) return active; const url = String(extra.supabaseUrl ?? '').replace(/\/$/, ''); const key = String(extra.supabaseAnonKey ?? ''); if (!url || !key) throw new Error('SUPABASE_NOT_CONFIGURED'); const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=refresh_token`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: active.refreshToken }) }); const token = await responseJson(response); if (!response.ok || !token) throw new Error('SESSION_EXPIRED'); const refreshed = toSession(token); await SecureStore.setItemAsync(sessionKey, JSON.stringify(refreshed)); return refreshed; }
+async function fetchWithTimeout(url: string, options?: RequestInit) { const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15_000); try { return await fetch(url, { ...options, signal: controller.signal }); } finally { clearTimeout(timeout); } }
+async function responseJson(response: Response): Promise<ApiBody | null> { try { const body = await response.json(); return body && typeof body === 'object' ? body as ApiBody : null; } catch { return null; } }
+function isSessionError(error: unknown) { return error instanceof Error && ['SESSION_EXPIRED', 'UNAUTHORIZED'].includes(error.message); }
+function signInErrorMessage(error: unknown) { if (error instanceof Error && ['AUTH_400', 'AUTH_401'].includes(error.message)) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'; if (error instanceof Error && error.message === 'AUTH_429') return 'تمت محاولات كثيرة. انتظر قليلًا ثم أعد المحاولة.'; return 'تحقق من اتصال الإنترنت ثم أعد المحاولة.'; }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
-  page: { padding: 22, gap: 14, direction: 'rtl' },
-  fixedPage: { flex: 1, padding: 22, gap: 14, direction: 'rtl' },
-  brand: { color: colors.accent, fontSize: 18, fontWeight: '800', textAlign: 'right' },
-  heading: { color: '#F5FBFB', fontSize: 30, fontWeight: '800', textAlign: 'right', marginTop: 12 },
-  muted: { color: '#B7CDD0', fontSize: 15, lineHeight: 22, textAlign: 'right' },
-  note: { color: '#90A4A5', fontSize: 13, lineHeight: 19, textAlign: 'right', marginTop: 8 },
-  input: { minHeight: 52, backgroundColor: colors.card, color: '#F5FBFB', borderRadius: 14, paddingHorizontal: 14, fontSize: 16 },
-  button: { minHeight: 52, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent, borderRadius: 14, paddingHorizontal: 18 },
-  secondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: '#456064' },
-  disabled: { opacity: 0.55 },
-  buttonText: { color: '#061416', fontSize: 16, fontWeight: '800' },
-  secondaryText: { color: '#F5FBFB' },
-  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
-  metric: { width: '47%', minHeight: 102, backgroundColor: colors.card, borderRadius: 18, padding: 14, justifyContent: 'space-between' },
-  metricWide: { width: '100%', minHeight: 78 },
-  value: { color: '#F5FBFB', fontSize: 17, fontWeight: '800', textAlign: 'right' },
-  row: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 15 },
-  rowMain: { flex: 1, paddingLeft: 12 },
-  rowCode: { alignItems: 'flex-start', minWidth: 64 },
-  rowTitle: { color: '#F5FBFB', fontSize: 17, fontWeight: '700', textAlign: 'right', marginBottom: 4 },
-  code: { color: colors.accent, fontSize: 15, fontWeight: '800', textAlign: 'left' },
-  businessCard: { backgroundColor: colors.card, borderRadius: 18, padding: 18, gap: 4 },
-  notice: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.accent, padding: 14 },
-  noticeText: { color: '#F5FBFB', fontSize: 14, lineHeight: 21, textAlign: 'right' },
-  emptyState: { minHeight: 96, alignItems: 'center', justifyContent: 'center', padding: 16 },
-  marketList: { flex: 1 },
-  marketListContent: { paddingVertical: 4, paddingBottom: 24 },
-  marketHeader: { gap: 10, paddingBottom: 10 },
-  filterRow: { gap: 8, direction: 'rtl' },
-  filterPill: { backgroundColor: colors.card, borderColor: '#456064', borderRadius: 18, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 },
-  filterPillActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  filterPillText: { color: '#F5FBFB', fontWeight: '700' },
-  filterPillTextActive: { color: '#061416' },
-  rowSeparator: { height: 10 },
+  safe: { flex: 1, backgroundColor: C.canvas }, fixed: { flex: 1 }, scroll: { paddingBottom: 10 }, content: { paddingTop: 18, paddingBottom: 28, gap: 16 }, landing: { paddingHorizontal: 18, paddingBottom: 40, gap: 18 },
+  brandBar: { minHeight: 66, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: -18, paddingHorizontal: 18, backgroundColor: '#0D1016', borderBottomWidth: 1, borderBottomColor: C.border }, lockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 }, logo: { width: 34, height: 34, borderRadius: 10, overflow: 'hidden', backgroundColor: '#111C40', borderWidth: 1, borderColor: '#334172', alignItems: 'center', justifyContent: 'center' }, logoImage: { width: 34, height: 34, position: 'absolute' }, logoText: { color: C.indigo, fontSize: 17, fontWeight: '900' }, wordmark: { color: C.text, fontSize: 15, fontWeight: '900', letterSpacing: .2 }, brandSub: { color: C.muted, fontSize: 11 }, productTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 6 }, productTagText: { fontSize: 11, fontWeight: '800' },
+  rail: { minHeight: 54, flexDirection: 'row-reverse', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface }, railItem: { flex: 1, borderWidth: 1, borderColor: 'transparent', borderRadius: 11, minHeight: 37, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 4 }, railText: { color: C.muted, fontSize: 11, fontWeight: '800' },
+  hero: { padding: 19, borderWidth: 1, borderColor: '#3A439B', backgroundColor: '#121A38', borderRadius: 20 }, investHero: { padding: 18, borderWidth: 1, borderColor: '#24466A', backgroundColor: '#101A2A', borderRadius: 19, marginTop: 16 }, kicker: { color: C.indigo, fontSize: 12, fontWeight: '900', textAlign: 'right', marginBottom: 7 }, heroTitle: { color: C.text, fontSize: 27, fontWeight: '900', lineHeight: 38, textAlign: 'right' }, heroBody: { color: C.second, fontSize: 14, lineHeight: 23, textAlign: 'right', marginTop: 8 }, heroButton: { alignSelf: 'flex-end', minHeight: 44, marginTop: 15, borderRadius: 12, backgroundColor: C.indigo, paddingHorizontal: 14, flexDirection: 'row-reverse', justifyContent: 'center', alignItems: 'center', gap: 7 }, heroButtonText: { color: C.canvas, fontSize: 13, fontWeight: '900' }, meta: { flexDirection: 'row-reverse', gap: 12, marginTop: 12 }, metaText: { color: C.second, fontSize: 11 },
+  heading: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginTop: 7 }, headingTitle: { color: C.text, fontSize: 18, fontWeight: '900', textAlign: 'right' }, headingNote: { color: C.muted, fontSize: 11, flex: 1, textAlign: 'left' },
+  metrics: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 }, metricsWide: { justifyContent: 'space-between' }, metric: { width: '48.5%', minHeight: 128, borderRadius: 17, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 13, justifyContent: 'space-between' }, metricTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 5 }, metricLabel: { color: C.second, fontSize: 12, fontWeight: '800', textAlign: 'right', flex: 1 }, metricValue: { fontSize: 17, fontWeight: '900', textAlign: 'right', marginTop: 10 }, metricHint: { color: C.muted, fontSize: 10, textAlign: 'right', marginTop: 5 },
+  badge: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, badgeSmall: { width: 31, height: 31, borderRadius: 10 }, icon: { fontSize: 21, fontWeight: '900' }, iconSmall: { fontSize: 14 },
+  panel: { borderRadius: 19, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 17, gap: 14 }, panelHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }, panelTitle: { color: C.text, fontSize: 16, fontWeight: '900', textAlign: 'right' }, progress: { gap: 7 }, progressTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 8 }, progressValue: { color: C.text, fontSize: 12, fontWeight: '800' }, track: { height: 8, borderRadius: 99, overflow: 'hidden', backgroundColor: '#232D5D', direction: 'rtl' }, fill: { height: '100%', borderRadius: 99 }, dataNote: { color: C.muted, fontSize: 11, lineHeight: 18, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border, textAlign: 'right' }, net: { fontSize: 14, fontWeight: '900', textAlign: 'right', paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border },
+  quickGrid: { gap: 10 }, quick: { minHeight: 70, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 12 }, rowTitle: { color: C.text, fontSize: 14, fontWeight: '900', textAlign: 'right' }, rowCopy: { color: C.muted, fontSize: 11, marginTop: 3, lineHeight: 17, textAlign: 'right' },
+  trust: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 9, padding: 14, borderRadius: 15, borderWidth: 1, borderColor: '#244947', backgroundColor: '#0E2225', marginTop: 3 }, trustText: { color: C.second, fontSize: 12, lineHeight: 19, textAlign: 'right', flex: 1 },
+  detailHero: { padding: 20, borderRadius: 20, borderWidth: 1, backgroundColor: C.surface, gap: 8 }, detailTitle: { color: C.text, fontSize: 25, fontWeight: '900', lineHeight: 35, textAlign: 'right' }, detailList: { gap: 10 }, detailRow: { minHeight: 76, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 12 }, accountNote: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 9, padding: 14, borderRadius: 15, borderWidth: 1, backgroundColor: C.raised }, signOut: { minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#73313E', backgroundColor: '#28131B' }, signOutText: { color: C.danger, fontSize: 15, fontWeight: '900' },
+  list: { flex: 1 }, listContent: { paddingHorizontal: 18, paddingBottom: 28 }, input: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, backgroundColor: '#101A3F', color: C.text, fontSize: 15, paddingHorizontal: 14, marginTop: 14 }, filterRow: { gap: 8, paddingVertical: 11, direction: 'rtl' }, filter: { minHeight: 37, borderRadius: 99, borderWidth: 1, borderColor: C.borderStrong, backgroundColor: C.surface, justifyContent: 'center', paddingHorizontal: 13 }, filterOn: { backgroundColor: C.indigo, borderColor: C.indigo }, filterText: { color: C.second, fontSize: 12, fontWeight: '800' }, filterTextOn: { color: C.canvas },
+  instrument: { borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 14 }, instrumentTop: { flexDirection: 'row-reverse', alignItems: 'flex-start', justifyContent: 'space-between', gap: 9 }, instrumentTitle: { color: C.text, fontSize: 15, fontWeight: '900', textAlign: 'right' }, symbol: { borderRadius: 9, backgroundColor: '#222A5E', paddingHorizontal: 8, paddingVertical: 6 }, symbolText: { color: C.indigo, fontSize: 11, fontWeight: '900', direction: 'ltr' }, instrumentFoot: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 12 }, tags: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 5, flex: 1 }, tag: { borderRadius: 99, borderWidth: 1, borderColor: '#3A439B', backgroundColor: '#161D42', paddingHorizontal: 7, paddingVertical: 4 }, tagText: { color: C.second, fontSize: 9, fontWeight: '800' },
+  bottom: { minHeight: 68, paddingBottom: 5, flexDirection: 'row-reverse', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, borderTopColor: C.border, backgroundColor: '#0D1016' }, bottomItem: { minWidth: 57, minHeight: 53, justifyContent: 'center', alignItems: 'center', gap: 3 }, bottomIcon: { width: 30, height: 25, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, bottomIconOn: { backgroundColor: C.indigo }, bottomText: { color: C.muted, fontSize: 10, fontWeight: '700' }, bottomTextOn: { color: C.text },
+  landingHero: { paddingTop: 25, gap: 9 }, landingTitle: { color: C.text, fontSize: 38, fontWeight: '900', lineHeight: 51, textAlign: 'right' }, primary: { minHeight: 52, borderRadius: 14, backgroundColor: C.indigo, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 15, marginTop: 12 }, primaryText: { color: C.canvas, fontSize: 15, fontWeight: '900' }, outline: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 15 }, outlineText: { color: C.text, fontSize: 15, fontWeight: '800' },
+  preview: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: C.border, backgroundColor: C.surface }, previewTop: { minHeight: 57, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: C.border, paddingHorizontal: 15 }, previewBrand: { color: C.muted, fontSize: 11, fontWeight: '700' }, previewTabs: { flexDirection: 'row-reverse', gap: 4, padding: 4, margin: 12, borderRadius: 12, backgroundColor: '#10141A', borderWidth: 1, borderColor: C.border }, activePreviewTab: { flex: 1, minHeight: 38, borderRadius: 8, backgroundColor: C.raised, color: C.text, textAlign: 'center', textAlignVertical: 'center', fontSize: 10, fontWeight: '800' }, previewTab: { flex: 1, minHeight: 38, color: C.muted, textAlign: 'center', textAlignVertical: 'center', fontSize: 10, fontWeight: '700' }, previewBody: { padding: 17, gap: 8 }, previewTitle: { color: C.text, fontSize: 21, fontWeight: '900', marginTop: 8, textAlign: 'right' }, previewCopy: { color: C.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', marginBottom: 5 }, previewRow: { minHeight: 58, flexDirection: 'row-reverse', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: C.border, paddingVertical: 8 }, landingTrust: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: -4 }, auth: { borderRadius: 20, borderWidth: 1, borderColor: C.borderStrong, backgroundColor: C.raised, padding: 17, gap: 11 }, authHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start' }, authTitle: { color: C.text, fontSize: 20, fontWeight: '900', textAlign: 'right' }, close: { color: C.second, fontSize: 25, lineHeight: 27 },
+  notice: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, borderRadius: 14, borderWidth: 1, borderColor: '#674E1D', backgroundColor: '#2B220F', padding: 13 }, noticeText: { color: '#F5DCA1', fontSize: 12, lineHeight: 19, textAlign: 'right', flex: 1 }, empty: { minHeight: 155, alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 22, borderRadius: 17, borderWidth: 1, borderColor: C.borderStrong, borderStyle: 'dashed', backgroundColor: C.surface }, emptyTitle: { color: C.text, fontSize: 15, fontWeight: '900', textAlign: 'center' }, emptyBody: { color: C.muted, fontSize: 12, lineHeight: 19, textAlign: 'center' }, disabled: { opacity: .55 }, loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }, loadingText: { color: C.text, fontSize: 20, fontWeight: '900', letterSpacing: 1 },
 });
