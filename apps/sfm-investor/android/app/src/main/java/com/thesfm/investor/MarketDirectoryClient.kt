@@ -7,15 +7,19 @@ import java.net.URL
 data class MarketInstrument(
     val symbol: String,
     val name: String,
+    val assetType: String?,
     val marketName: String?,
     val currency: String?,
+    val source: String?,
+    val sector: String?,
+    val shariahStatus: String?,
 )
 
 /** Public market-directory data only; portfolio and alerts remain behind protected mobile endpoints. */
 object MarketDirectoryClient {
     fun fetch(): Result<List<MarketInstrument>> = runCatching {
         require(BuildConfig.SFM_API_BASE_URL.isNotBlank()) { "لم تُضبط خدمة الأسواق لهذا الإصدار بعد." }
-        val endpoint = BuildConfig.SFM_API_BASE_URL.trimEnd('/') + "/api/markets?limit=12&quality=complete"
+        val endpoint = BuildConfig.SFM_API_BASE_URL.trimEnd('/') + "/api/markets?limit=60&quality=complete"
         val connection = URL(endpoint).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "GET"
@@ -34,8 +38,12 @@ object MarketDirectoryClient {
                     add(MarketInstrument(
                         symbol = symbol,
                         name = row.optString("displayName", row.optString("name", symbol)).trim().ifBlank { symbol },
+                        assetType = row.optString("assetType").trim().ifBlank { null },
                         marketName = row.optString("marketName").trim().ifBlank { null },
                         currency = row.optString("currency").trim().ifBlank { null },
+                        source = row.optString("source").trim().ifBlank { null },
+                        sector = row.optString("sector").trim().ifBlank { null },
+                        shariahStatus = row.optString("shariahStatus").trim().ifBlank { null },
                     ))
                 }
             }

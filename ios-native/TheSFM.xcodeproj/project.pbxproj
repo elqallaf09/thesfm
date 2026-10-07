@@ -24,9 +24,13 @@
 		1B0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
 		1C0001010000000000000001 /* TheSFMBusinessApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0000010000000000000001 /* TheSFMBusinessApp.swift */; };
 		1C0001020000000000000002 /* BusinessHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C0000020000000000000002 /* BusinessHomeView.swift */; };
+		1C0001030000000000000003 /* AuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000003 /* AuthSessionStore.swift */; };
+		1C0001040000000000000004 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000004 /* APIClient.swift */; };
+		1C0001050000000000000005 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000005 /* SupabaseConfig.swift */; };
 		1C0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
 		1D0001010000000000000001 /* TheSFMtvApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0000010000000000000001 /* TheSFMtvApp.swift */; };
 		1D0001020000000000000002 /* MarketsTVHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0000020000000000000002 /* MarketsTVHomeView.swift */; };
+		1D0001030000000000000003 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000005 /* SupabaseConfig.swift */; };
 		1D0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -422,6 +426,9 @@
 			files = (
 				1C0001010000000000000001 /* TheSFMBusinessApp.swift in Sources */,
 				1C0001020000000000000002 /* BusinessHomeView.swift in Sources */,
+				1C0001030000000000000003 /* AuthSessionStore.swift in Sources */,
+				1C0001040000000000000004 /* APIClient.swift in Sources */,
+				1C0001050000000000000005 /* SupabaseConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -431,6 +438,7 @@
 			files = (
 				1D0001010000000000000001 /* TheSFMtvApp.swift in Sources */,
 				1D0001020000000000000002 /* MarketsTVHomeView.swift in Sources */,
+				1D0001030000000000000003 /* SupabaseConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -703,6 +711,9 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Business";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
+				INFOPLIST_KEY_SFM_SUPABASE_ANON_KEY = "";
+				INFOPLIST_KEY_SFM_SUPABASE_URL = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -732,6 +743,9 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM Business";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
+				INFOPLIST_KEY_SFM_SUPABASE_ANON_KEY = "";
+				INFOPLIST_KEY_SFM_SUPABASE_URL = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -761,6 +775,7 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM TV";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				SDKROOT = appletvos;
@@ -785,6 +800,7 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "THE SFM TV";
+				INFOPLIST_KEY_SFM_API_BASE_URL = "https://www.the-sfm.com";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				SDKROOT = appletvos;

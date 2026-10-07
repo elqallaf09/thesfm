@@ -3,13 +3,19 @@ import SwiftUI
 struct InvestorDashboardView: View {
     @StateObject private var directory = InvestorMarketDirectoryStore()
     @State private var searchText = ""
+    @State private var assetType = "all"
+
+    private var assetTypes: [String] {
+        Array(Set(directory.instruments.compactMap(\.assetType))).sorted()
+    }
 
     private var filteredInstruments: [InvestorInstrument] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return directory.instruments }
         return directory.instruments.filter { instrument in
-            [instrument.title, instrument.code, instrument.marketName ?? ""]
+            let matchesType = assetType == "all" || instrument.assetType == assetType
+            let matchesQuery = query.isEmpty || [instrument.title, instrument.code, instrument.marketName ?? "", instrument.sector ?? ""]
                 .contains { $0.localizedCaseInsensitiveContains(query) }
+            return matchesType && matchesQuery
         }
     }
 
@@ -39,6 +45,14 @@ struct InvestorDashboardView: View {
                         systemImage: "chart.bar.xaxis"
                     )
                 } else {
+                    Section("تصفية الدليل") {
+                        Picker("فئة الأصل", selection: $assetType) {
+                            Text("الكل").tag("all")
+                            ForEach(assetTypes, id: \.self) { type in
+                                Text(type).tag(type)
+                            }
+                        }
+                    }
                     Section("أدوات الأسواق (\(filteredInstruments.count))") {
                         ForEach(filteredInstruments) { instrument in
                             HStack(spacing: 12) {
@@ -47,15 +61,20 @@ struct InvestorDashboardView: View {
                                     .accessibilityHidden(true)
                                 VStack(alignment: .trailing, spacing: 3) {
                                     Text(instrument.title).font(.headline)
-                                    Text(instrument.marketName ?? "سوق عالمي")
+                                    Text([instrument.marketName ?? "سوق عالمي", instrument.sector, instrument.shariahStatus]
+                                        .compactMap { $0 }
+                                        .joined(separator: " · "))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(instrument.code).font(.subheadline.weight(.semibold)).monospaced()
-                                    if let currency = instrument.currency {
-                                        Text(currency).font(.caption).foregroundStyle(.secondary)
+                                    let metadata = [instrument.assetType, instrument.currency, instrument.source]
+                                        .compactMap { $0 }
+                                        .joined(separator: " · ")
+                                    if !metadata.isEmpty {
+                                        Text(metadata).font(.caption).foregroundStyle(.secondary)
                                     }
                                 }
                             }

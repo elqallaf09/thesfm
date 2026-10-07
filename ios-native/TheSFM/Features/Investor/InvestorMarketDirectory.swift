@@ -5,8 +5,12 @@ struct InvestorInstrument: Decodable, Identifiable {
     let displaySymbol: String?
     let name: String
     let displayName: String?
+    let assetType: String?
     let marketName: String?
     let currency: String?
+    let source: String?
+    let sector: String?
+    let shariahStatus: String?
 
     var id: String { displaySymbol ?? symbol }
     var title: String { displayName?.isEmpty == false ? displayName! : name }
@@ -33,7 +37,7 @@ final class InvestorMarketDirectoryStore: ObservableObject {
                 throw URLError(.badURL)
             }
             components.queryItems = [
-                URLQueryItem(name: "limit", value: "12"),
+                URLQueryItem(name: "limit", value: "60"),
                 URLQueryItem(name: "quality", value: "complete"),
             ]
             guard let url = components.url else { throw URLError(.badURL) }

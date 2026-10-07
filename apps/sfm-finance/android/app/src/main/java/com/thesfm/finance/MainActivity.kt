@@ -342,6 +342,7 @@ private fun FinanceDashboard(
                 FinanceCard("الدخل الشهري", money(summary?.monthlyIncome, summary?.currency))
                 FinanceCard("المصروفات الشهرية", money(summary?.monthlyExpenses, summary?.currency))
                 FinanceCard("صافي الشهر", money(summary?.monthlyNet, summary?.currency))
+                FinanceCard("الديون النشطة", summary?.activeDebtCount?.toString() ?: "—")
                 when {
                     isLoading -> Text("جارٍ تحديث ملخصك المالي…", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     errorMessage != null -> Text(errorMessage, color = MaterialTheme.colorScheme.error)
