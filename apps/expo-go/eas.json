@@ -9,8 +9,8 @@
     "business-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "business" } }
   },
   "submit": {
-    "finance-production": { "ios": {} },
-    "investor-production": { "ios": {} },
-    "business-production": { "ios": {} }
+    "finance-production": { "ios": { "ascAppId": "6820083151" } },
+    "investor-production": { "ios": { "ascAppId": "6820084328" } },
+    "business-production": { "ios": { "ascAppId": "6820086077" } }
   }
 }
