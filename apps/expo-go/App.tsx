@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +25,14 @@ type FinanceSummary = {
   trackedPosition: number | null;
   activeDebtCount: number;
 };
-type Instrument = { displaySymbol?: string; symbol: string; displayName?: string; name: string; marketName?: string; currency?: string };
+type Instrument = {
+  displaySymbol?: string;
+  symbol: string;
+  displayName?: string;
+  name: string;
+  marketName?: string;
+  currency?: string;
+};
 
 const extra = Constants.expoConfig?.extra ?? {};
 const product = (extra.sfmProduct ?? 'finance') as ProductId;
@@ -46,6 +53,8 @@ function FinanceApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [summary, setSummary] = useState<FinanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -55,92 +64,321 @@ function FinanceApp() {
       if (saved) setSession(await refreshFinanceSession(JSON.parse(saved) as Session));
     } catch {
       await SecureStore.deleteItemAsync('sfm-finance-session');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { void restoreSession(); }, [restoreSession]);
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
+
+  const loadSummary = useCallback(async () => {
+    if (!session) return;
+
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const active = await refreshFinanceSession(session);
+      if (active.accessToken !== session.accessToken) setSession(active);
+
+      const response = await fetch(`${apiBaseUrl}/api/mobile/finance/summary`, {
+        headers: { Authorization: `Bearer ${active.accessToken}` },
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error('SUMMARY_UNAVAILABLE');
+
+      setSummary(data.summary as FinanceSummary);
+      setLastUpdatedAt(new Date());
+    } catch {
+      setErrorMessage('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
+    } finally {
+      setLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (session) void loadSummary();
+  }, [session, loadSummary]);
 
   async function signIn() {
     const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
     const key = String(extra.supabaseAnonKey ?? '');
-    if (!url || !key) return Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.');
+    if (!url || !key) {
+      Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-        method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }),
+        method: 'POST',
+        headers: { apikey: key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       if (!response.ok) throw new Error('INVALID_CREDENTIALS');
+
       const next = toSession(await response.json());
       await SecureStore.setItemAsync('sfm-finance-session', JSON.stringify(next));
+      setSummary(null);
+      setErrorMessage(null);
+      setLastUpdatedAt(null);
       setSession(next);
     } catch {
       Alert.alert('تعذر تسجيل الدخول', 'تحقق من البريد وكلمة المرور والإعدادات.');
-    } finally { setLoading(false); }
-  }
-
-  async function loadSummary() {
-    if (!session) return;
-    setLoading(true);
-    try {
-      const active = await refreshFinanceSession(session);
-      setSession(active);
-      const response = await fetch(`${apiBaseUrl}/api/mobile/finance/summary`, { headers: { Authorization: `Bearer ${active.accessToken}` } });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error('SUMMARY_UNAVAILABLE');
-      setSummary(data.summary as FinanceSummary);
-    } catch {
-      setSummary(null);
-      Alert.alert('تعذر تحميل ملخصك', 'تحقق من الشبكة ثم أعد المحاولة.');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signOut() {
     await SecureStore.deleteItemAsync('sfm-finance-session');
-    setSession(null); setSummary(null);
+    setSession(null);
+    setSummary(null);
+    setErrorMessage(null);
+    setLastUpdatedAt(null);
   }
 
   if (loading && !session) return <LoadingScreen />;
-  if (!session) return <Shell title="THE SFM Finance"><Text style={styles.heading}>المال الشخصي</Text><Text style={styles.muted}>سجّل دخولك للوصول إلى ملخص مالي محمي.</Text><TextInput value={email} onChangeText={setEmail} placeholder="البريد الإلكتروني" placeholderTextColor="#90A4A5" autoCapitalize="none" keyboardType="email-address" style={styles.input}/><TextInput value={password} onChangeText={setPassword} placeholder="كلمة المرور" placeholderTextColor="#90A4A5" secureTextEntry style={styles.input}/><Action title="تسجيل الدخول" onPress={signIn} /><Text style={styles.note}>تُحفظ الجلسة في التخزين الآمن للجهاز؛ لا تُحفظ كلمة المرور.</Text></Shell>;
-  return <Shell title="THE SFM Finance"><Text style={styles.heading}>ملخصك المالي</Text><Action title={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onPress={loadSummary} disabled={loading}/>{summary ? <View style={styles.grid}>{metric('المركز المالي', money(summary.trackedPosition, summary.currency))}{metric('الدخل الشهري', money(summary.monthlyIncome, summary.currency))}{metric('المصروفات', money(summary.monthlyExpenses, summary.currency))}{metric('صافي الشهر', money(summary.monthlyNet, summary.currency))}</View> : <Text style={styles.muted}>اضغط تحديث لطلب ملخصك من الخادم.</Text>}<Action title="تسجيل الخروج" onPress={signOut} secondary /></Shell>;
+
+  if (!session) {
+    return (
+      <Shell title="THE SFM Finance">
+        <Text style={styles.heading}>المال الشخصي</Text>
+        <Text style={styles.muted}>سجّل دخولك للوصول إلى ملخص مالي محمي.</Text>
+        <TextInput
+          accessibilityLabel="البريد الإلكتروني"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          placeholder="البريد الإلكتروني"
+          placeholderTextColor="#90A4A5"
+          style={styles.input}
+          textAlign="right"
+          value={email}
+        />
+        <TextInput
+          accessibilityLabel="كلمة المرور"
+          autoComplete="password"
+          onChangeText={setPassword}
+          placeholder="كلمة المرور"
+          placeholderTextColor="#90A4A5"
+          secureTextEntry
+          style={styles.input}
+          textAlign="right"
+          value={password}
+        />
+        <Action title="تسجيل الدخول" onPress={signIn} />
+        <Text style={styles.note}>تُحفظ الجلسة في التخزين الآمن للجهاز؛ لا تُحفظ كلمة المرور.</Text>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell title="THE SFM Finance">
+      <Text style={styles.heading}>ملخصك المالي</Text>
+      <Text style={styles.muted}>يُحدّث الملخص تلقائيًا عند فتح التطبيق.</Text>
+      <Action title={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onPress={loadSummary} disabled={loading} />
+      {errorMessage ? <InlineNotice message={errorMessage} /> : null}
+      {summary ? (
+        <>
+          <View style={styles.grid}>
+            {metric('المركز المالي', money(summary.trackedPosition, summary.currency))}
+            {metric('الدخل الشهري', money(summary.monthlyIncome, summary.currency))}
+            {metric('المصروفات', money(summary.monthlyExpenses, summary.currency))}
+            {metric('صافي الشهر', money(summary.monthlyNet, summary.currency))}
+          </View>
+          <View style={[styles.metric, styles.metricWide]}>
+            <Text style={styles.muted}>الديون النشطة</Text>
+            <Text style={styles.value}>{summary.activeDebtCount.toLocaleString('ar-KW')}</Text>
+          </View>
+          <Text style={styles.note}>آخر تحديث: {formatUpdatedAt(lastUpdatedAt)}</Text>
+        </>
+      ) : (
+        <EmptyState message={loading ? 'جارٍ جلب ملخصك المحمي…' : 'لا توجد بيانات معروضة بعد. اضغط تحديث للمحاولة مرة أخرى.'} />
+      )}
+      <Action title="تسجيل الخروج" onPress={signOut} secondary />
+    </Shell>
+  );
 }
 
 function InvestorApp() {
   const [items, setItems] = useState<Instrument[]>([]);
   const [loading, setLoading] = useState(false);
-  async function load() {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+
+  const load = useCallback(async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const response = await fetch(`${apiBaseUrl}/api/markets?limit=12&quality=complete`);
       const body = await response.json();
-      if (!response.ok) throw new Error();
+      if (!response.ok) throw new Error('MARKETS_UNAVAILABLE');
       setItems(body.markets ?? []);
-    } catch { Alert.alert('تعذر تحميل الأسواق', 'تحقق من الشبكة ثم أعد المحاولة.'); }
-    finally { setLoading(false); }
-  }
-  useEffect(() => { void load(); }, []);
-  return <Shell title="THE SFM Investor"><Text style={styles.heading}>الأسواق</Text><Text style={styles.muted}>دليل سوق أصلي. المعلومات ليست توصية استثمارية.</Text><Action title={loading ? 'جارٍ التحديث…' : 'تحديث القائمة'} onPress={load} disabled={loading}/><FlatList data={items} keyExtractor={(item) => item.displaySymbol ?? item.symbol} renderItem={({ item }) => <View style={styles.row}><View><Text style={styles.rowTitle}>{item.displayName || item.name}</Text><Text style={styles.muted}>{item.marketName || 'سوق عالمي'}</Text></View><View><Text style={styles.code}>{item.displaySymbol || item.symbol}</Text><Text style={styles.muted}>{item.currency || ''}</Text></View></View>} ListEmptyComponent={loading ? <ActivityIndicator color={colors.accent}/> : <Text style={styles.muted}>لا توجد أدوات متاحة.</Text>}/></Shell>;
+      setLastUpdatedAt(new Date());
+    } catch {
+      setErrorMessage('تعذر تحميل الأسواق. تحقق من الشبكة ثم أعد المحاولة.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filteredItems = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase();
+    if (!normalized) return items;
+    return items.filter((item) => [item.displaySymbol, item.symbol, item.displayName, item.name, item.marketName]
+      .filter(Boolean)
+      .some((value) => value?.toLocaleLowerCase().includes(normalized)));
+  }, [items, query]);
+
+  return (
+    <Shell title="THE SFM Investor" scroll={false}>
+      <Text style={styles.heading}>الأسواق</Text>
+      <Text style={styles.muted}>دليل سوق أصلي. المعلومات ليست توصية استثمارية.</Text>
+      <TextInput
+        accessibilityLabel="البحث في الأسواق"
+        onChangeText={setQuery}
+        placeholder="ابحث بالاسم أو الرمز"
+        placeholderTextColor="#90A4A5"
+        style={styles.input}
+        textAlign="right"
+        value={query}
+      />
+      <Action title={loading ? 'جارٍ التحديث…' : 'تحديث القائمة'} onPress={load} disabled={loading} />
+      {errorMessage ? <InlineNotice message={errorMessage} /> : null}
+      <FlatList
+        data={filteredItems}
+        keyExtractor={(item) => item.displaySymbol ?? item.symbol}
+        style={styles.marketList}
+        contentContainerStyle={styles.marketListContent}
+        ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
+        ListHeaderComponent={items.length > 0 ? <Text style={styles.note}>{filteredItems.length.toLocaleString('ar-KW')} أداة متاحة · آخر تحديث: {formatUpdatedAt(lastUpdatedAt)}</Text> : null}
+        ListEmptyComponent={
+          loading
+            ? <ActivityIndicator color={colors.accent} size="large" />
+            : <EmptyState message={query ? 'لا توجد أداة تطابق بحثك.' : 'لا توجد أدوات سوق متاحة الآن.'} />
+        }
+        renderItem={({ item }) => (
+          <View style={styles.row} accessibilityLabel={`${item.displayName || item.name}، ${item.displaySymbol || item.symbol}`}>
+            <View style={styles.rowMain}>
+              <Text style={styles.rowTitle}>{item.displayName || item.name}</Text>
+              <Text style={styles.muted}>{item.marketName || 'سوق عالمي'}</Text>
+            </View>
+            <View style={styles.rowCode}>
+              <Text style={styles.code}>{item.displaySymbol || item.symbol}</Text>
+              <Text style={styles.muted}>{item.currency || ''}</Text>
+            </View>
+          </View>
+        )}
+      />
+    </Shell>
+  );
 }
 
 function BusinessApp() {
-  const areas = [['المشاريع', 'ابدأ ونظّم سير العمل والمواعيد.'], ['العملاء', 'اجمع علاقات العملاء وبيانات التواصل.'], ['الفواتير', 'أنشئ وتابع التحصيل عبر مساحة مستقلة.']];
-  return <Shell title="THE SFM Business"><Text style={styles.heading}>مساحة العمل</Text><Text style={styles.muted}>إدارة الأعمال منفصلة عن المال الشخصي والاستثمار.</Text>{areas.map(([title, text]) => <View key={title} style={styles.businessCard}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.muted}>{text}</Text></View>)}<Text style={styles.note}>ستُربط هذه الوحدات بواجهات أعمال محمية قبل عرض بياناتك الحية.</Text></Shell>;
+  const areas = [
+    ['المشاريع', 'ابدأ ونظّم سير العمل والمواعيد.'],
+    ['العملاء', 'اجمع علاقات العملاء وبيانات التواصل.'],
+    ['الفواتير', 'أنشئ وتابع التحصيل عبر مساحة مستقلة.'],
+  ];
+
+  return (
+    <Shell title="THE SFM Business">
+      <Text style={styles.heading}>مساحة العمل</Text>
+      <Text style={styles.muted}>إدارة الأعمال منفصلة عن المال الشخصي والاستثمار.</Text>
+      <InlineNotice message="وحدات الأعمال جاهزة للربط، لكن لا نعرض بيانات فعلية قبل إضافة واجهة أعمال محمية خاصة بحسابك." />
+      {areas.map(([title, text]) => (
+        <View key={title} style={styles.businessCard}>
+          <Text style={styles.rowTitle}>{title}</Text>
+          <Text style={styles.muted}>{text}</Text>
+          <Text style={styles.note}>قيد تجهيز الربط الآمن</Text>
+        </View>
+      ))}
+    </Shell>
+  );
 }
 
-function Shell({ title, children }: { title: string; children: React.ReactNode }) { return <SafeAreaView style={styles.safe}><StatusBar style="light"/><ScrollView contentContainerStyle={styles.page}><Text style={styles.brand}>{title}</Text>{children}</ScrollView></SafeAreaView>; }
-function LoadingScreen() { return <Shell title="THE SFM Finance"><ActivityIndicator color={colors.accent} size="large"/></Shell>; }
-function Action({ title, onPress, disabled, secondary }: { title: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) { return <Pressable onPress={onPress} disabled={disabled} style={[styles.button, secondary && styles.secondary, disabled && styles.disabled]}><Text style={[styles.buttonText, secondary && styles.secondaryText]}>{title}</Text></Pressable>; }
-function metric(label: string, value: string) { return <View style={styles.metric} key={label}><Text style={styles.muted}>{label}</Text><Text style={styles.value}>{value}</Text></View>; }
-function money(value: number | null, currency: string | null) { return value == null || !currency ? '—' : `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`; }
-function toSession(token: { access_token: string; refresh_token: string; expires_in: number }): Session { return { accessToken: token.access_token, refreshToken: token.refresh_token, expiresAt: Date.now() + token.expires_in * 1000 }; }
+function Shell({ title, children, scroll = true }: { title: string; children: ReactNode; scroll?: boolean }) {
+  return (
+    <SafeAreaView style={styles.safe}>
+      <StatusBar style="light" />
+      {scroll ? (
+        <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+          <Text style={styles.brand}>{title}</Text>
+          {children}
+        </ScrollView>
+      ) : (
+        <View style={styles.fixedPage}>
+          <Text style={styles.brand}>{title}</Text>
+          {children}
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function LoadingScreen() {
+  return <Shell title="THE SFM Finance"><ActivityIndicator accessibilityLabel="جارٍ التحميل" color={colors.accent} size="large" /></Shell>;
+}
+
+function Action({ title, onPress, disabled, secondary }: { title: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) {
+  return (
+    <Pressable
+      accessibilityLabel={title}
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={[styles.button, secondary && styles.secondary, disabled && styles.disabled]}
+    >
+      <Text style={[styles.buttonText, secondary && styles.secondaryText]}>{title}</Text>
+    </Pressable>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return <View style={styles.emptyState}><Text style={styles.muted}>{message}</Text></View>;
+}
+
+function InlineNotice({ message }: { message: string }) {
+  return <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View>;
+}
+
+function metric(label: string, value: string) {
+  return <View style={styles.metric} key={label}><Text style={styles.muted}>{label}</Text><Text style={styles.value}>{value}</Text></View>;
+}
+
+function money(value: number | null, currency: string | null) {
+  return value == null || !currency ? '—' : `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`;
+}
+
+function formatUpdatedAt(value: Date | null) {
+  return value ? value.toLocaleTimeString('ar-KW', { hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
+function toSession(token: { access_token: string; refresh_token: string; expires_in: number }): Session {
+  return { accessToken: token.access_token, refreshToken: token.refresh_token, expiresAt: Date.now() + token.expires_in * 1000 };
+}
+
 async function refreshFinanceSession(active: Session) {
   if (active.expiresAt > Date.now() + 60_000) return active;
   const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
   const key = String(extra.supabaseAnonKey ?? '');
   if (!url || !key) throw new Error('SUPABASE_NOT_CONFIGURED');
+
   const response = await fetch(`${url}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: active.refreshToken }),
+    method: 'POST',
+    headers: { apikey: key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: active.refreshToken }),
   });
   if (!response.ok) throw new Error('SESSION_EXPIRED');
+
   const token = await response.json();
   const refreshed = toSession(token);
   await SecureStore.setItemAsync('sfm-finance-session', JSON.stringify(refreshed));
@@ -148,5 +386,33 @@ async function refreshFinanceSession(active: Session) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface }, page: { padding: 22, gap: 14, direction: 'rtl' }, brand: { color: colors.accent, fontSize: 18, fontWeight: '800', textAlign: 'right' }, heading: { color: '#F5FBFB', fontSize: 30, fontWeight: '800', textAlign: 'right', marginTop: 12 }, muted: { color: '#B7CDD0', fontSize: 15, lineHeight: 22, textAlign: 'right' }, note: { color: '#90A4A5', fontSize: 13, lineHeight: 19, textAlign: 'right', marginTop: 8 }, input: { minHeight: 52, backgroundColor: colors.card, color: '#F5FBFB', borderRadius: 14, paddingHorizontal: 14, textAlign: 'right', fontSize: 16 }, button: { minHeight: 52, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent, borderRadius: 14, paddingHorizontal: 18 }, secondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: '#456064' }, disabled: { opacity: 0.55 }, buttonText: { color: '#061416', fontSize: 16, fontWeight: '800' }, secondaryText: { color: '#F5FBFB' }, grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 }, metric: { width: '47%', minHeight: 102, backgroundColor: colors.card, borderRadius: 18, padding: 14, justifyContent: 'space-between' }, value: { color: '#F5FBFB', fontSize: 17, fontWeight: '800', textAlign: 'right' }, row: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 15, marginTop: 10 }, rowTitle: { color: '#F5FBFB', fontSize: 17, fontWeight: '700', textAlign: 'right', marginBottom: 4 }, code: { color: colors.accent, fontSize: 15, fontWeight: '800', textAlign: 'left' }, businessCard: { backgroundColor: colors.card, borderRadius: 18, padding: 18, gap: 4 },
+  safe: { flex: 1, backgroundColor: colors.surface },
+  page: { padding: 22, gap: 14, direction: 'rtl' },
+  fixedPage: { flex: 1, padding: 22, gap: 14, direction: 'rtl' },
+  brand: { color: colors.accent, fontSize: 18, fontWeight: '800', textAlign: 'right' },
+  heading: { color: '#F5FBFB', fontSize: 30, fontWeight: '800', textAlign: 'right', marginTop: 12 },
+  muted: { color: '#B7CDD0', fontSize: 15, lineHeight: 22, textAlign: 'right' },
+  note: { color: '#90A4A5', fontSize: 13, lineHeight: 19, textAlign: 'right', marginTop: 8 },
+  input: { minHeight: 52, backgroundColor: colors.card, color: '#F5FBFB', borderRadius: 14, paddingHorizontal: 14, fontSize: 16 },
+  button: { minHeight: 52, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent, borderRadius: 14, paddingHorizontal: 18 },
+  secondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: '#456064' },
+  disabled: { opacity: 0.55 },
+  buttonText: { color: '#061416', fontSize: 16, fontWeight: '800' },
+  secondaryText: { color: '#F5FBFB' },
+  grid: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 },
+  metric: { width: '47%', minHeight: 102, backgroundColor: colors.card, borderRadius: 18, padding: 14, justifyContent: 'space-between' },
+  metricWide: { width: '100%', minHeight: 78 },
+  value: { color: '#F5FBFB', fontSize: 17, fontWeight: '800', textAlign: 'right' },
+  row: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.card, borderRadius: 16, padding: 15 },
+  rowMain: { flex: 1, paddingLeft: 12 },
+  rowCode: { alignItems: 'flex-start', minWidth: 64 },
+  rowTitle: { color: '#F5FBFB', fontSize: 17, fontWeight: '700', textAlign: 'right', marginBottom: 4 },
+  code: { color: colors.accent, fontSize: 15, fontWeight: '800', textAlign: 'left' },
+  businessCard: { backgroundColor: colors.card, borderRadius: 18, padding: 18, gap: 4 },
+  notice: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.accent, padding: 14 },
+  noticeText: { color: '#F5FBFB', fontSize: 14, lineHeight: 21, textAlign: 'right' },
+  emptyState: { minHeight: 96, alignItems: 'center', justifyContent: 'center', padding: 16 },
+  marketList: { flex: 1 },
+  marketListContent: { paddingVertical: 4, paddingBottom: 24 },
+  rowSeparator: { height: 10 },
 });

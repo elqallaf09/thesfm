@@ -2,6 +2,16 @@ import SwiftUI
 
 struct InvestorDashboardView: View {
     @StateObject private var directory = InvestorMarketDirectoryStore()
+    @State private var searchText = ""
+
+    private var filteredInstruments: [InvestorInstrument] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return directory.instruments }
+        return directory.instruments.filter { instrument in
+            [instrument.title, instrument.code, instrument.marketName ?? ""]
+                .contains { $0.localizedCaseInsensitiveContains(query) }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -23,11 +33,14 @@ struct InvestorDashboardView: View {
                     HStack { Spacer(); ProgressView("جارٍ تحديث الأسواق…"); Spacer() }
                 } else if let errorMessage = directory.errorMessage {
                     ContentUnavailableView("تعذر تحميل الأسواق", systemImage: "wifi.exclamationmark", description: Text(errorMessage))
-                } else if directory.instruments.isEmpty {
-                    ContentUnavailableView("لا توجد أدوات متاحة", systemImage: "chart.bar.xaxis")
+                } else if filteredInstruments.isEmpty {
+                    ContentUnavailableView(
+                        searchText.isEmpty ? "لا توجد أدوات متاحة" : "لا توجد أداة تطابق بحثك",
+                        systemImage: "chart.bar.xaxis"
+                    )
                 } else {
-                    Section("أدوات الأسواق") {
-                        ForEach(directory.instruments) { instrument in
+                    Section("أدوات الأسواق (\(filteredInstruments.count))") {
+                        ForEach(filteredInstruments) { instrument in
                             HStack(spacing: 12) {
                                 Image(systemName: "chart.line.uptrend.xyaxis")
                                     .foregroundStyle(.tint)
@@ -52,6 +65,7 @@ struct InvestorDashboardView: View {
                 }
             }
             .navigationTitle("الأسواق")
+            .searchable(text: $searchText, prompt: "ابحث بالاسم أو الرمز")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("تحديث", systemImage: "arrow.clockwise") { Task { await directory.refresh() } }

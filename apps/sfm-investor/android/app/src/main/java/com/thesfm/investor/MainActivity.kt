@@ -22,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -91,6 +92,13 @@ private fun InvestorHome(
     errorMessage: String?,
     onRefresh: () -> Unit,
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val visibleInstruments = instruments.filter { instrument ->
+        val query = searchQuery.trim()
+        query.isBlank() || listOf(instrument.symbol, instrument.name, instrument.marketName.orEmpty())
+            .any { value -> value.contains(query, ignoreCase = true) }
+    }
+
     Scaffold(topBar = { TopAppBar(title = { Text("THE SFM Investor") }) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -104,6 +112,20 @@ private fun InvestorHome(
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Text(" تحديث القائمة")
                     }
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("ابحث بالاسم أو الرمز") },
+                        singleLine = true,
+                    )
+                    if (instruments.isNotEmpty()) {
+                        Text(
+                            "${visibleInstruments.size} أداة متاحة",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             if (isLoading) item {
@@ -111,11 +133,25 @@ private fun InvestorHome(
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                 }
             }
-            errorMessage?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
-            if (!isLoading && errorMessage == null && instruments.isEmpty()) item {
-                Text("لا تتوفر أدوات سوق مطابقة حاليًا.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            errorMessage?.let { message -> item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        Text(message, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text("إعادة المحاولة") }
+                    }
+                }
+            } }
+            if (!isLoading && errorMessage == null && visibleInstruments.isEmpty()) item {
+                Text(
+                    if (searchQuery.isBlank()) "لا تتوفر أدوات سوق حاليًا." else "لا توجد أداة تطابق بحثك.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            items(instruments, key = { it.symbol }) { instrument -> InstrumentCard(instrument) }
+            items(visibleInstruments, key = { it.symbol }) { instrument -> InstrumentCard(instrument) }
         }
     }
 }

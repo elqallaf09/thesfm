@@ -45,4 +45,13 @@ describe('THE SFM Finance iOS foundation', () => {
     expect(router).toContain('if authSession.isDeviceLocked');
     expect(app).toContain('if phase != .active');
   });
+
+  it('refreshes the Expo Go summary automatically and keeps the finance state transparent', () => {
+    const expo = read('apps/expo-go/App.tsx');
+
+    expect(expo).toContain('if (session) void loadSummary();');
+    expect(expo).toContain('activeDebtCount.toLocaleString');
+    expect(expo).toContain('آخر تحديث:');
+    expect(expo).toContain('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
+  });
 });

@@ -20,6 +20,8 @@ describe('THE SFM Investor iOS foundation', () => {
     const app = read('ios-native/TheSFM/Features/Investor/TheSFMInvestorApp.swift');
     const directory = read('ios-native/TheSFM/Features/Investor/InvestorMarketDirectory.swift');
     const view = read('ios-native/TheSFM/Features/Investor/InvestorDashboardView.swift');
+    const expo = read('apps/expo-go/App.tsx');
+    const android = read('apps/sfm-investor/android/app/src/main/java/com/thesfm/investor/MainActivity.kt');
 
     expect(app).toContain('@main');
     expect(app).toContain('.rightToLeft');
@@ -27,6 +29,10 @@ describe('THE SFM Investor iOS foundation', () => {
     expect(directory).not.toContain('service_role');
     expect(view).toContain('NavigationStack');
     expect(view).toContain('List');
+    expect(view).toContain('.searchable');
+    expect(expo).toContain('ابحث بالاسم أو الرمز');
+    expect(android).toContain('OutlinedTextField');
+    expect(android).toContain('إعادة المحاولة');
   });
 });
 
@@ -42,6 +48,8 @@ describe('THE SFM Business native foundation', () => {
     expect(android).toContain("huawei { dimension 'distribution' }");
     expect(android).not.toContain('com.google.gms.google-services');
     expect(app).toContain('LayoutDirection.Rtl');
+    expect(app).toContain('LazyColumn');
+    expect(app).toContain('BusinessConnectionStatus');
   });
 });
 
@@ -55,6 +63,7 @@ describe('THE SFM TV Apple TV foundation', () => {
     expect(project).toContain('PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.tv;');
     expect(project).toContain('SUPPORTED_PLATFORMS = "appletvos appletvsimulator";');
     expect(view).toContain('.buttonStyle(.card)');
+    expect(view).toContain('selectedChannel');
     expect(webos).toContain('com.thesfm.marketstv');
   });
 });

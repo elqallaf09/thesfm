@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BusinessCenter
 import androidx.compose.material.icons.filled.Groups
@@ -44,16 +45,41 @@ class MainActivity : ComponentActivity() {
 @androidx.compose.runtime.Composable
 private fun BusinessHome() {
     Scaffold(topBar = { TopAppBar(title = { Text("THE SFM Business") }) }) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("مساحة العمل", style = MaterialTheme.typography.headlineMedium)
-            Text("إدارة المشاريع والعملاء والفواتير من تطبيق أعمال مستقل.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            BusinessCard("المشاريع", "ابدأ وتنظّم سير العمل والمواعيد.", Icons.Default.BusinessCenter)
-            BusinessCard("العملاء", "اجمع علاقات العملاء وبيانات التواصل في مكان واحد.", Icons.Default.Groups)
-            BusinessCard("الفواتير", "أنشئ، أرسل، وتابع حالة التحصيل بأمان.", Icons.Default.ReceiptLong)
-            Text("ستُربط هذه الوحدات بواجهات أعمال محمية لكل مستخدم قبل تفعيل البيانات الحية.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            item { Text("مساحة العمل", style = MaterialTheme.typography.headlineMedium) }
+            item { Text("إدارة المشاريع والعملاء والفواتير من تطبيق أعمال مستقل.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { BusinessConnectionStatus() }
+            item { BusinessCard("المشاريع", "ابدأ وتنظّم سير العمل والمواعيد.", Icons.Default.BusinessCenter) }
+            item { BusinessCard("العملاء", "اجمع علاقات العملاء وبيانات التواصل في مكان واحد.", Icons.Default.Groups) }
+            item { BusinessCard("الفواتير", "أنشئ، أرسل، وتابع حالة التحصيل بأمان.", Icons.Default.ReceiptLong) }
+            item {
+                Text(
+                    "لا يعرض التطبيق أرقامًا أو سجلات قبل ربط واجهة أعمال محمية لكل مستخدم.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun BusinessConnectionStatus() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text("الربط الآمن قيد التجهيز", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text("الهيكل جاهز، وستظهر مشاريع وعملاء وفواتير حسابك فقط بعد اكتمال واجهة البيانات المحمية.", color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     }
 }

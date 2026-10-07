@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MarketsTVHomeView: View {
+    @State private var selectedChannel: String?
+
     private let channels = [
         ("الأسواق الكويتية", "أخبار وأسعار ومؤشرات", "building.columns.fill"),
         ("الأسواق العالمية", "المتابعة عبر المناطق والأسهم", "globe.americas.fill"),
@@ -24,7 +26,9 @@ struct MarketsTVHomeView: View {
 
                     HStack(spacing: 24) {
                         ForEach(channels, id: \.0) { channel in
-                            Button {} label: {
+                            Button {
+                                selectedChannel = channel.0
+                            } label: {
                                 VStack(alignment: .leading, spacing: 18) {
                                     Image(systemName: channel.2)
                                         .font(.system(size: 42, weight: .semibold))
@@ -35,10 +39,21 @@ struct MarketsTVHomeView: View {
                                 .frame(width: 300, height: 210, alignment: .leading)
                                 .padding(24)
                                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                        .stroke(selectedChannel == channel.0 ? Color.cyan : .clear, lineWidth: 3)
+                                )
                             }
                             .buttonStyle(.card)
-                            .accessibilityHint("قناة سوق قابلة للاختيار")
+                            .accessibilityHint(selectedChannel == channel.0 ? "القناة المختارة" : "اختر قناة السوق")
                         }
+                    }
+
+                    if let selectedChannel {
+                        Label("القناة المختارة: \(selectedChannel)", systemImage: "checkmark.circle.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.cyan)
+                            .accessibilityLabel("القناة المختارة: \(selectedChannel)")
                     }
                 }
                 .padding(60)
