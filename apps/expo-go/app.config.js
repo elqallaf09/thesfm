@@ -29,7 +29,6 @@ if (!product) throw new Error(`Unknown SFM_PRODUCT: ${productId}`);
 
 module.exports = {
   expo: {
-    cli: { appVersionSource: 'remote' },
     name: product.name,
     slug: product.slug,
     version: '0.1.0',

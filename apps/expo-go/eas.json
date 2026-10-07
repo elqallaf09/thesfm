@@ -1,10 +1,16 @@
 {
+  "cli": { "appVersionSource": "remote" },
   "build": {
     "finance-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "finance" } },
     "investor-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "investor" } },
     "business-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "business" } },
-    "finance-production": { "env": { "SFM_PRODUCT": "finance" } },
-    "investor-production": { "env": { "SFM_PRODUCT": "investor" } },
-    "business-production": { "env": { "SFM_PRODUCT": "business" } }
+    "finance-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "finance" } },
+    "investor-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "investor" } },
+    "business-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "business" } }
+  },
+  "submit": {
+    "finance-production": { "ios": {} },
+    "investor-production": { "ios": {} },
+    "business-production": { "ios": {} }
   }
 }
