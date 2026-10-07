@@ -29,13 +29,18 @@ if (!product) throw new Error(`Unknown SFM_PRODUCT: ${productId}`);
 
 module.exports = {
   expo: {
+    cli: { appVersionSource: 'remote' },
     name: product.name,
     slug: product.slug,
     version: '0.1.0',
     orientation: 'portrait',
     userInterfaceStyle: 'dark',
     scheme: product.slug,
-    ios: { bundleIdentifier: product.bundleIdentifier, supportsTablet: true },
+    ios: {
+      bundleIdentifier: product.bundleIdentifier,
+      supportsTablet: true,
+      infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    },
     android: { package: product.bundleIdentifier, adaptiveIcon: { backgroundColor: '#08131C' } },
     extra: {
       sfmProduct: productId,
