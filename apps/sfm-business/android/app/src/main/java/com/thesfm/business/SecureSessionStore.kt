@@ -17,15 +17,17 @@ class SecureSessionStore(context: Context) {
 
     private val preferences = context.getSharedPreferences("sfm-business-session", Context.MODE_PRIVATE)
 
-    fun load(): Session? = try {
-        val payload = preferences.getString(SESSION_KEY, null) ?: return null
-        val parts = payload.split(':', limit = 2)
-        if (parts.size != 2) return null
-        val json = JSONObject(decrypt(parts[0], parts[1]))
-        Session(json.getString("accessToken"), json.getString("refreshToken"), json.getLong("expiresAtMillis"))
-    } catch (_: Exception) {
-        clear()
-        null
+    fun load(): Session? {
+        return try {
+            val payload = preferences.getString(SESSION_KEY, null) ?: return null
+            val parts = payload.split(':', limit = 2)
+            if (parts.size != 2) return null
+            val json = JSONObject(decrypt(parts[0], parts[1]))
+            Session(json.getString("accessToken"), json.getString("refreshToken"), json.getLong("expiresAtMillis"))
+        } catch (_: Exception) {
+            clear()
+            null
+        }
     }
 
     fun save(session: Session): Boolean = try {

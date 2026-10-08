@@ -1,4 +1,4 @@
-import { isCurrency, rowCurrency } from '@/lib/dashboard/executiveOverview';
+import { isCurrency, numberValue, rowCurrency } from '@/lib/dashboard/executiveOverview';
 import type { FinancialRow } from '@/lib/dashboard/financialMetrics';
 
 export type MobileBusinessSummary = {
@@ -29,11 +29,6 @@ export type MobileBusinessSummaryInput = {
   now?: Date;
 };
 
-function amount(value: unknown) {
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function inCurrentMonth(value: unknown, now: Date) {
   if (typeof value !== 'string') return false;
   const date = new Date(`${value.slice(0, 10)}T12:00:00`);
@@ -49,8 +44,8 @@ function inCurrentMonth(value: unknown, now: Date) {
  */
 function totalInCurrency(rows: FinancialRow[], currency: string | null) {
   if (!currency) return null;
-  if (rows.some(row => !isCurrency(row, currency) || amount(row.amount) === null)) return null;
-  return rows.reduce((total, row) => total + (amount(row.amount) ?? 0), 0);
+  if (rows.some(row => !isCurrency(row, currency) || numberValue(row.amount) === null)) return null;
+  return rows.reduce((total, row) => total + (numberValue(row.amount) ?? 0), 0);
 }
 
 export function buildMobileBusinessSummary(input: MobileBusinessSummaryInput): MobileBusinessSummary {
