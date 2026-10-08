@@ -17,20 +17,22 @@ class SecureSessionStore(context: Context) {
 
     private val preferences = context.getSharedPreferences("sfm-finance-session", Context.MODE_PRIVATE)
 
-    fun load(): Session? = try {
-        val payload = preferences.getString(SESSION_KEY, null) ?: return null
-        val parts = payload.split(':', limit = 2)
-        if (parts.size != 2) return null
-        val decrypted = decrypt(parts[0], parts[1])
-        val json = JSONObject(decrypted)
-        Session(
-            accessToken = json.getString("accessToken"),
-            refreshToken = json.getString("refreshToken"),
-            expiresAtMillis = json.getLong("expiresAtMillis"),
-        )
-    } catch (_: Exception) {
-        clear()
-        null
+    fun load(): Session? {
+        return try {
+            val payload = preferences.getString(SESSION_KEY, null) ?: return null
+            val parts = payload.split(':', limit = 2)
+            if (parts.size != 2) return null
+            val decrypted = decrypt(parts[0], parts[1])
+            val json = JSONObject(decrypted)
+            Session(
+                accessToken = json.getString("accessToken"),
+                refreshToken = json.getString("refreshToken"),
+                expiresAtMillis = json.getLong("expiresAtMillis"),
+            )
+        } catch (_: Exception) {
+            clear()
+            null
+        }
     }
 
     fun save(session: Session): Boolean = try {

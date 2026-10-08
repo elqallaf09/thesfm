@@ -48,4 +48,38 @@ describe('mobile business summary', () => {
     expect(summary.monthlySales).toBeNull();
     expect(summary.monthlyOperatingNet).toBeNull();
   });
+
+  it.each([null, undefined, '', '   ', false, true, 'invalid', NaN])(
+    'preserves incomplete amounts (%s) instead of coercing them to zero', amount => {
+      const summary = buildMobileBusinessSummary({
+        profile: { default_currency: 'KWD' },
+        projects: [], customers: [], suppliers: [], employees: [],
+        invoices: [{ amount, currency: 'KWD', status: 'sent' }],
+        sales: [{ amount, currency: 'KWD', status: 'completed', sale_date: '2026-10-02' }],
+        operatingExpenses: [{ amount, currency: 'KWD', expense_date: '2026-10-03' }],
+        now: new Date('2026-10-06T12:00:00.000Z'),
+      });
+
+      expect(summary.outstandingInvoiceAmount).toBeNull();
+      expect(summary.monthlySales).toBeNull();
+      expect(summary.monthlyOperatingExpenses).toBeNull();
+      expect(summary.monthlyOperatingNet).toBeNull();
+    },
+  );
+
+  it('keeps a real zero and numeric database strings valid', () => {
+    const summary = buildMobileBusinessSummary({
+      profile: { default_currency: 'KWD' },
+      projects: [], customers: [], suppliers: [], employees: [],
+      invoices: [{ amount: 0, currency: 'KWD', status: 'sent' }],
+      sales: [{ amount: '12.500', currency: 'KWD', status: 'completed', sale_date: '2026-10-02' }],
+      operatingExpenses: [{ amount: 0, currency: 'KWD', expense_date: '2026-10-03' }],
+      now: new Date('2026-10-06T12:00:00.000Z'),
+    });
+
+    expect(summary.outstandingInvoiceAmount).toBe(0);
+    expect(summary.monthlyOperatingExpenses).toBe(0);
+    expect(summary.monthlySales).toBe(12.5);
+    expect(summary.monthlyOperatingNet).toBe(12.5);
+  });
 });
