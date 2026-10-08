@@ -1,10 +1,16 @@
 {
+  "cli": { "appVersionSource": "remote" },
   "build": {
     "finance-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "finance" } },
     "investor-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "investor" } },
     "business-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "business" } },
-    "finance-production": { "env": { "SFM_PRODUCT": "finance" } },
-    "investor-production": { "env": { "SFM_PRODUCT": "investor" } },
-    "business-production": { "env": { "SFM_PRODUCT": "business" } }
+    "finance-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "finance" } },
+    "investor-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "investor" } },
+    "business-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "business" } }
+  },
+  "submit": {
+    "finance-production": { "ios": { "ascAppId": "6820083151" } },
+    "investor-production": { "ios": { "ascAppId": "6820084328" } },
+    "business-production": { "ios": { "ascAppId": "6820086077" } }
   }
 }

@@ -4,6 +4,11 @@ plugins {
   id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+def releaseValue = { String name, String fallback = '' ->
+  def value = providers.gradleProperty(name).orElse(fallback).get()
+  return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+}
+
 android {
   namespace 'com.thesfm.business'
   compileSdk 36
@@ -13,13 +18,16 @@ android {
     targetSdk 36
     versionCode 1
     versionName '0.1.0'
+    buildConfigField 'String', 'SFM_API_BASE_URL', releaseValue('SFM_API_BASE_URL', 'https://www.the-sfm.com')
+    buildConfigField 'String', 'SFM_SUPABASE_URL', releaseValue('SFM_SUPABASE_URL')
+    buildConfigField 'String', 'SFM_SUPABASE_ANON_KEY', releaseValue('SFM_SUPABASE_ANON_KEY')
   }
   flavorDimensions 'distribution'
   productFlavors {
     play { dimension 'distribution' }
     huawei { dimension 'distribution' }
   }
-  buildFeatures { compose true }
+  buildFeatures { compose true; buildConfig true }
   compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
   kotlinOptions { jvmTarget = '17' }
 }

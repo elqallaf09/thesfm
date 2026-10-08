@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -20,8 +21,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -91,6 +94,17 @@ private fun InvestorHome(
     errorMessage: String?,
     onRefresh: () -> Unit,
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedAssetType by remember { mutableStateOf("all") }
+    val assetTypes = instruments.mapNotNull { it.assetType }.distinct().sorted()
+    val visibleInstruments = instruments.filter { instrument ->
+        val query = searchQuery.trim()
+        val matchesType = selectedAssetType == "all" || instrument.assetType == selectedAssetType
+        val matchesQuery = query.isBlank() || listOf(instrument.symbol, instrument.name, instrument.marketName.orEmpty(), instrument.sector.orEmpty())
+            .any { value -> value.contains(query, ignoreCase = true) }
+        matchesType && matchesQuery
+    }
+
     Scaffold(topBar = { TopAppBar(title = { Text("THE SFM Investor") }) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
@@ -104,6 +118,38 @@ private fun InvestorHome(
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Text(" تحديث القائمة")
                     }
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("ابحث بالاسم أو الرمز") },
+                        singleLine = true,
+                    )
+                    if (assetTypes.isNotEmpty()) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            item {
+                                FilterChip(
+                                    selected = selectedAssetType == "all",
+                                    onClick = { selectedAssetType = "all" },
+                                    label = { Text("الكل") },
+                                )
+                            }
+                            items(assetTypes, key = { it }) { type ->
+                                FilterChip(
+                                    selected = selectedAssetType == type,
+                                    onClick = { selectedAssetType = type },
+                                    label = { Text(type) },
+                                )
+                            }
+                        }
+                    }
+                    if (instruments.isNotEmpty()) {
+                        Text(
+                            "${visibleInstruments.size} أداة متاحة",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             if (isLoading) item {
@@ -111,11 +157,25 @@ private fun InvestorHome(
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                 }
             }
-            errorMessage?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.error) } }
-            if (!isLoading && errorMessage == null && instruments.isEmpty()) item {
-                Text("لا تتوفر أدوات سوق مطابقة حاليًا.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            errorMessage?.let { message -> item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        Text(message, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text("إعادة المحاولة") }
+                    }
+                }
+            } }
+            if (!isLoading && errorMessage == null && visibleInstruments.isEmpty()) item {
+                Text(
+                    if (searchQuery.isBlank()) "لا تتوفر أدوات سوق حاليًا." else "لا توجد أداة تطابق بحثك.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            items(instruments, key = { it.symbol }) { instrument -> InstrumentCard(instrument) }
+            items(visibleInstruments, key = { it.symbol }) { instrument -> InstrumentCard(instrument) }
         }
     }
 }
@@ -134,11 +194,16 @@ private fun InstrumentCard(instrument: MarketInstrument) {
             Icon(Icons.Default.ShowChart, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(modifier = Modifier.weight(1f)) {
                 Text(instrument.name, style = MaterialTheme.typography.titleMedium)
-                Text(instrument.marketName ?: "سوق عالمي", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    listOfNotNull(instrument.marketName ?: "سوق عالمي", instrument.sector, instrument.shariahStatus).joinToString(" · "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(instrument.symbol, style = MaterialTheme.typography.titleMedium)
-                instrument.currency?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                val metadata = listOfNotNull(instrument.assetType, instrument.currency, instrument.source).joinToString(" · ")
+                if (metadata.isNotBlank()) Text(metadata, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

@@ -45,4 +45,30 @@ describe('THE SFM Finance iOS foundation', () => {
     expect(router).toContain('if authSession.isDeviceLocked');
     expect(app).toContain('if phase != .active');
   });
+
+  it('refreshes the Expo Go summary automatically and keeps the finance state transparent', () => {
+    const expo = read('apps/expo-go/App.tsx');
+
+    expect(expo).toContain('if (session) void loadSummary();');
+    expect(expo).toContain('activeDebtCount.toLocaleString');
+    expect(expo).toContain('آخر تحديث:');
+    expect(expo).toContain('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
+  });
+
+  it('keeps Finance and Business refresh sessions in their own encrypted storage keys', () => {
+    const expo = read('apps/expo-go/App.tsx');
+
+    expect(expo).toContain("const FINANCE_SESSION_KEY = 'sfm-finance-session'");
+    expect(expo).toContain("const BUSINESS_SESSION_KEY = 'sfm-business-session'");
+    expect(expo).toContain('refreshSession(session, BUSINESS_SESSION_KEY)');
+    expect(expo).toContain('SecureStore.setItemAsync(sessionKey, JSON.stringify(refreshed))');
+  });
+
+  it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
+    const expo = read('apps/expo-go/App.tsx');
+
+    expect(expo).toContain('async function fetchWithTimeout');
+    expect(expo).toContain('controller.abort(), 15_000');
+    expect(expo).toContain('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+  });
 });

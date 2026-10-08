@@ -6,6 +6,7 @@ struct DashboardView: View {
     @State private var summary: MobileFinanceSummary?
     @State private var isSummaryLoading = true
     @State private var summaryError: String?
+    @State private var lastSummaryUpdatedAt: Date?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -14,6 +15,7 @@ struct DashboardView: View {
                     summary: summary,
                     isLoading: isSummaryLoading,
                     errorMessage: summaryError,
+                    lastUpdatedAt: lastSummaryUpdatedAt,
                     onRefresh: { Task { await loadSummary() } },
                     signOut: authSession.signOut
                 )
@@ -26,7 +28,6 @@ struct DashboardView: View {
                     title: "المصاريف",
                     subtitle: "سجل المصروفات والاشتراكات والديون الشهرية في مكان واحد.",
                     systemImage: "creditcard.fill",
-                    primaryAction: "إضافة مصروف",
                     cards: [
                         PreviewCard(title: "إجمالي المصروفات", value: "بانتظار الربط", note: "لا يتم عرض أرقام قبل جلب بياناتك."),
                         PreviewCard(title: "الاشتراكات الشهرية", value: "جاهزة للإضافة", note: "Netflix وAI والاتصالات والإنترنت."),
@@ -41,7 +42,6 @@ struct DashboardView: View {
                     title: "الاستثمار",
                     subtitle: "تابع المحفظة والأسعار والتنبيهات بشكل مباشر عند ربط البيانات.",
                     systemImage: "chart.line.uptrend.xyaxis",
-                    primaryAction: "إضافة استثمار",
                     cards: [
                         PreviewCard(title: "قيمة المحفظة", value: "بانتظار الأسعار", note: "تحديث حي عند توفر مزود البيانات."),
                         PreviewCard(title: "المخاطر", value: "غير محسوبة", note: "تحسب من تنوع الأصول وحركة السوق."),
@@ -56,7 +56,6 @@ struct DashboardView: View {
                     title: "المشاريع",
                     subtitle: "حوّل أفكارك إلى خطة عمل وعرض استثماري قابل للمشاركة.",
                     systemImage: "briefcase.fill",
-                    primaryAction: "فتح المشاريع",
                     cards: [
                         PreviewCard(title: "العروض الاستثمارية", value: "PDF وPowerPoint", note: "تصدير احترافي من بيانات المشروع."),
                         PreviewCard(title: "جاهزية المشروع", value: "تحليل منظم", note: "يعتمد على البيانات التي تضيفها فقط."),
@@ -96,13 +95,12 @@ struct DashboardView: View {
             let response: MobileFinanceSummaryResponse = try await APIClient.authorized(accessToken: token)
                 .get("/api/mobile/finance/summary")
             guard response.ok, let receivedSummary = response.summary else {
-                summary = nil
                 summaryError = "تعذر تحميل ملخصك المالي الآن."
                 return
             }
             summary = receivedSummary
+            lastSummaryUpdatedAt = .now
         } catch {
-            summary = nil
             summaryError = "تعذر الاتصال ببياناتك المالية. تحقق من الشبكة ثم أعد المحاولة."
         }
     }
@@ -120,6 +118,7 @@ private struct HomeDashboardScreen: View {
     let summary: MobileFinanceSummary?
     let isLoading: Bool
     let errorMessage: String?
+    let lastUpdatedAt: Date?
     let onRefresh: () -> Void
     let signOut: () -> Void
 
@@ -129,8 +128,7 @@ private struct HomeDashboardScreen: View {
                 SFMHeroSection(
                     title: "الصفحة الرئيسية",
                     subtitle: "نظرة تنفيذية على أموالك والتزاماتك من بيانات THE SFM.",
-                    systemImage: "sparkles",
-                    primaryAction: "عرض كل المهام"
+                    systemImage: "sparkles"
                 )
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
@@ -138,6 +136,7 @@ private struct HomeDashboardScreen: View {
                     SFMMetricTile(title: "الدخل الشهري", value: money(summary?.monthlyIncome), symbol: "arrow.down.left.circle")
                     SFMMetricTile(title: "المصروفات الشهرية", value: money(summary?.monthlyExpenses), symbol: "arrow.up.right.circle")
                     SFMMetricTile(title: "صافي الشهر", value: money(summary?.monthlyNet), symbol: "chart.line.uptrend.xyaxis")
+                    SFMMetricTile(title: "الديون النشطة", value: debtCount(summary?.activeDebtCount), symbol: "creditcard.trianglebadge.exclamationmark")
                 }
 
                 if isLoading {
@@ -151,6 +150,13 @@ private struct HomeDashboardScreen: View {
                         bodyText: "يعرض التطبيق ملخصًا من نفس القواعد المستخدمة في لوحة الموقع، من دون حفظ الأرقام على الجهاز.",
                         symbol: "lock.shield"
                     )
+                }
+
+                if let lastUpdatedAt {
+                    Text("آخر تحديث: \(lastUpdatedAt.formatted(date: .omitted, time: .shortened))")
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.Colors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
                 Button(action: onRefresh) {
@@ -175,6 +181,11 @@ private struct HomeDashboardScreen: View {
     private func money(_ amount: Double?) -> String {
         guard let amount, let currency = summary?.currency else { return "—" }
         return MoneyFormatter.format(Decimal(amount), currencyCode: currency)
+    }
+
+    private func debtCount(_ count: Int?) -> String {
+        guard let count else { return "—" }
+        return count.formatted()
     }
 }
 
@@ -205,7 +216,6 @@ private struct FinancePreviewScreen: View {
     let title: String
     let subtitle: String
     let systemImage: String
-    let primaryAction: String
     let cards: [PreviewCard]
 
     var body: some View {
@@ -214,8 +224,7 @@ private struct FinancePreviewScreen: View {
                 SFMHeroSection(
                     title: title,
                     subtitle: subtitle,
-                    systemImage: systemImage,
-                    primaryAction: primaryAction
+                    systemImage: systemImage
                 )
 
                 ForEach(cards) { card in
@@ -262,8 +271,7 @@ private struct MoreScreen: View {
                 SFMHeroSection(
                     title: "المزيد",
                     subtitle: "إعدادات الحساب، الدعم، والسياسات في واجهة واحدة واضحة.",
-                    systemImage: "square.grid.2x2.fill",
-                    primaryAction: "إدارة الحساب"
+                    systemImage: "square.grid.2x2.fill"
                 )
 
                 ForEach(links, id: \.0) { item in
@@ -288,7 +296,6 @@ private struct SFMHeroSection: View {
     let title: String
     let subtitle: String
     let systemImage: String
-    let primaryAction: String
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 18) {
@@ -321,12 +328,6 @@ private struct SFMHeroSection: View {
                     .multilineTextAlignment(.trailing)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
-
-            Button(action: {}) {
-                Label(primaryAction, systemImage: "arrow.left")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(SFMPrimaryButtonStyle())
         }
         .padding(22)
         .background(AppTheme.heroGradient)
@@ -401,22 +402,6 @@ private struct PreviewCard: Identifiable {
     let title: String
     let value: String
     let note: String
-}
-
-private struct SFMPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(.headline, design: .rounded).weight(.heavy))
-            .foregroundStyle(Color.white)
-            .padding(.vertical, 14)
-            .padding(.horizontal, 18)
-            .frame(minHeight: 52)
-            .background(
-                LinearGradient(colors: [AppTheme.Colors.accentBlue, AppTheme.Colors.accent], startPoint: .leading, endPoint: .trailing)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.button, style: .continuous))
-            .opacity(configuration.isPressed ? 0.84 : 1)
-    }
 }
 
 private struct SFMSecondaryButtonStyle: ButtonStyle {

@@ -11,11 +11,14 @@ final class AuthSessionStore: ObservableObject {
     @Published private(set) var accessToken: String?
     @Published private(set) var errorMessage: String?
 
-    private let storage = SecureSessionStorage()
+    private let storage: SecureSessionStorage
+    private let applicationName: String
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    init() {
+    init(applicationName: String = "THE SFM Finance", keychainService: String = "com.thesfm.finance") {
+        self.applicationName = applicationName
+        self.storage = SecureSessionStorage(service: keychainService)
         restoreSession()
     }
 
@@ -93,7 +96,7 @@ final class AuthSessionStore: ObservableObject {
         do {
             try await context.evaluatePolicy(
                 .deviceOwnerAuthentication,
-                localizedReason: "تأكيد هويتك لعرض ملخصك المالي في THE SFM Finance."
+                localizedReason: "تأكيد هويتك لعرض بياناتك المحمية في \(applicationName)."
             )
             isDeviceLocked = false
             errorMessage = nil
@@ -201,8 +204,12 @@ private enum AuthenticationError: LocalizedError {
 }
 
 private struct SecureSessionStorage {
-    private let service = "com.thesfm.finance"
+    private let service: String
     private let account = "supabase-session"
+
+    init(service: String) {
+        self.service = service
+    }
 
     func load() -> StoredSession? {
         var query = baseQuery
