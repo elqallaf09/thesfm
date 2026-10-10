@@ -554,8 +554,7 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   const shouldFetchExternal = options.mode === 'ingest'
     || (page === 1 && (options.forceExternal === true || !storedPageComplete
       || !stored.lastSuccessfulUpdate
-      || Date.now() - Date.parse(stored.lastSuccessfulUpdate) > INDEXED_FRESHNESS_MS
-      || Date.now() - Date.parse(newestTimestamp(stored.stories) ?? '') > INDEXED_FRESHNESS_MS));
+      || Date.now() - Date.parse(stored.lastSuccessfulUpdate) > INDEXED_FRESHNESS_MS));
   let outcomes: ProviderFetchOutcome[] = [];
   let externalItems: NormalizedNewsItem[] = [];
   let externalStories: ConsolidatedNewsStory[] = [];
