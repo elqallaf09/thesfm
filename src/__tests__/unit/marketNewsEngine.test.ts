@@ -584,6 +584,32 @@ describe('resilient provider orchestration and stored fallback', () => {
     expect(persistence.searchStoredNews).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 1, sort: 'latest' }));
   });
 
+  it('does not refetch providers when the indexed corpus was checked recently but has no new story', async () => {
+    const stored = clusterRelatedStories([normalizeNewsItem(item({
+      id: 'quiet-market-story',
+      publishedAt: '2026-07-08T10:00:00.000Z',
+      fetchedAt: '2026-07-08T10:01:00.000Z',
+    }))])[0] as ConsolidatedNewsStory;
+    persistence.searchStoredNews.mockResolvedValue({
+      stories: [stored],
+      total: 1,
+      lastSuccessfulUpdate: NOW,
+      available: true,
+    });
+    const fetchNews = vi.fn(async () => []);
+
+    const result = await aggregateFinancialNews(params, {
+      providers: [provider('recently-checked-live', fetchNews)],
+      page: 1,
+      pageSize: 1,
+    });
+
+    expect(fetchNews).not.toHaveBeenCalled();
+    expect(result.cacheStatus).toBe('stored');
+    expect(result.lastUpdated).toBe('2026-07-08T10:00:00.000Z');
+    expect(result.lastSuccessfulUpdate).toBe(NOW);
+  });
+
   it('enforces a requested company name on the consolidated result', async () => {
     const stored = clusterRelatedStories([normalizeNewsItem(item({ id: 'apple-company' }))])[0] as ConsolidatedNewsStory;
     persistence.searchStoredNews.mockResolvedValue({ stories: [stored], total: 1, lastSuccessfulUpdate: stored.publishedAt, available: true });
