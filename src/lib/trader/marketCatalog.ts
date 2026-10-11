@@ -1021,14 +1021,16 @@ function buildMarkets(symbols: TraderCatalogSymbol[]): TraderMarketDef[] {
   return TRADER_MARKET_SEEDS.map(seed => {
     const expandedSeedSymbols = seedSymbolsForMarket(seed);
     const seedOrder = new Map(expandedSeedSymbols.map((symbol, index) => [upper(symbol), index]));
-    const marketSymbols = symbols
-      .filter(symbol => symbol.marketIds.includes(seed.id))
-      .sort((a, b) => {
-        const ai = seedOrder.get(a.symbol) ?? Number.MAX_SAFE_INTEGER;
-        const bi = seedOrder.get(b.symbol) ?? Number.MAX_SAFE_INTEGER;
-        return ai - bi || a.symbol.localeCompare(b.symbol);
-      })
-      .map(symbol => symbol.symbol);
+    const marketSymbols = Array.from(new Set(
+      symbols
+        .filter(symbol => symbol.marketIds.includes(seed.id))
+        .sort((a, b) => {
+          const ai = seedOrder.get(a.symbol) ?? Number.MAX_SAFE_INTEGER;
+          const bi = seedOrder.get(b.symbol) ?? Number.MAX_SAFE_INTEGER;
+          return ai - bi || a.symbol.localeCompare(b.symbol);
+        })
+        .map(symbol => symbol.symbol),
+    ));
     const sources = new Set(symbols.filter(symbol => symbol.marketIds.includes(seed.id)).map(symbol => symbol.source));
     const metadataSeed = withMarketMetadata(seed);
     return {
