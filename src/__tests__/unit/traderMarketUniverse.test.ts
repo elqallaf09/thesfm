@@ -2,6 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { getFullSymbolUniverse, getSymbolsForMarketOrSector, getTraderMarketCatalog } from '@/lib/trader/marketCatalog';
 
 describe('trader market and sector symbol universe', () => {
+  it('deduplicates display symbols within every market group', async () => {
+    const catalog = await getTraderMarketCatalog();
+
+    for (const market of catalog.markets) {
+      expect(new Set(market.symbols).size, market.id).toBe(market.symbols.length);
+      expect(market.totalSymbols, market.id).toBe(market.symbols.length);
+    }
+  });
+
   it('expands the semiconductor universe with required real symbols and metadata', async () => {
     const universe = await getSymbolsForMarketOrSector({ market: 'semiconductors' });
 
