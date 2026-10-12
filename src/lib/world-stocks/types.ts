@@ -72,6 +72,7 @@ export type WorldStockQuotesResponse = {
 };
 
 export type WorldStockQuote = {
+  dataRecord?: import('@/lib/market-data/records.server').MarketDataRecord;
   price: number | null;
   change: number | null;
   changePercent: number | null;

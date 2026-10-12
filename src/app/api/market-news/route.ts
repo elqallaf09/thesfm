@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createMarketDataRecord } from '@/lib/market-data/records.server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
 import type {
   ConsolidatedNewsStory,
@@ -118,6 +119,8 @@ function toUiStory(story: ConsolidatedNewsStory & Record<string, unknown>, selec
     : [];
   return {
     id: story.id,
+    dataRecords: [createMarketDataRecord({ dataset: 'news', provider: story.providerId, observedAt: story.publishedAt }),
+      ...(story.supportingSources ?? []).map(source => createMarketDataRecord({ dataset: 'news', provider: 'providerId' in source && typeof source.providerId === 'string' ? source.providerId : null, observedAt: source.publishedAt }))],
     title: story.title,
     headline: story.title,
     summary: story.summary,

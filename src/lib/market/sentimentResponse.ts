@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createMarketDataRecord } from '@/lib/market-data/records.server';
 import type { SentimentAssetType } from '@/lib/market/sentimentRequest';
 
 export type UnifiedSentimentProvider = 'news' | 'myfxbook' | 'none';
@@ -197,6 +198,7 @@ export function availableSentimentResponse(input: {
     assetClass: responseAssetType,
     provider: input.provider,
     source: input.source,
+    dataRecord: createMarketDataRecord({ dataset: 'sentiment', provider: input.provider === 'myfxbook' ? 'myfxbook' : input.source, observedAt: input.updatedAt, cached: Boolean(input.cacheStatus) }),
     sentimentType: input.provider === 'myfxbook' ? 'long_short' : 'news',
     sentimentAvailable: true,
     longPercent,

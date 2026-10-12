@@ -1,4 +1,5 @@
 import { wilderRsi } from '@/lib/market/technicalIndicators';
+import { createMarketDataRecord } from '@/lib/market-data/records.server';
 import {
   getCandlesWithFallback,
   getQuoteWithFallback,
@@ -152,6 +153,7 @@ function buildSfmQuote(quote: NormalizedMarketQuote, attempts: ProviderAttemptFa
     marketCap: quote.marketCap ?? null,
     quality,
     provenance: {
+      dataRecord: createMarketDataRecord({ dataset: 'quotes', provider: quote.provider, exchange: quote.exchangeCode || quote.exchange, country: quote.country, market: quote.market, observedAt: quote.lastUpdated, reportedDelay: quote.delayType, cached: quote.cached, cacheAgeSeconds: quote.cacheAgeSeconds }),
       sourceClass: marketSourceClassForProvider(quote.provider),
       upstreamProvider: quote.provider,
       upstreamProviderName: quote.providerName,

@@ -1,4 +1,5 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
+import { createMarketDataRecord } from '@/lib/market-data/records.server';
 import { getPersistentCache, setPersistentCache } from '@/lib/trader/persistentCache';
 import { ProviderError } from '../shared';
 import { createFmpCalendarProvider } from './fmp';
@@ -114,7 +115,10 @@ async function loadSource(candidate: Candidate, force: boolean) {
 export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise<EconomicCalendarResponse> {
   const settled = await Promise.all(candidates(query).map(candidate => loadSource(candidate, Boolean(query.force))));
   const sources = settled.map(result => result.report);
-  const data = selectCalendarEvents(mergeCalendarEvents(settled.flatMap(result => result.events)), query);
+  const data = selectCalendarEvents(mergeCalendarEvents(settled.flatMap(result => result.events)), query).map(event => ({
+    ...event,
+    dataRecords: (event.sources ?? [{ provider: event.provider, retrievedAt: event.retrievedAt }]).map(source => createMarketDataRecord({ dataset: 'economic', provider: source.provider, country: event.country, observedAt: source.retrievedAt, cached: event.stale })),
+  }));
   const anyFresh = sources.some(source => source.status === 'success');
   const stale = data.length > 0 && data.every(event => event.stale);
   const updates = sources.map(source => source.lastSuccessfulUpdate).filter((value): value is string => Boolean(value)).sort();

@@ -1,4 +1,5 @@
 import 'server-only';
+import { createMarketDataRecord, type MarketDataRecord } from '@/lib/market-data/records.server';
 
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { SFM_MARKET_OBSERVATIONS_TABLE } from '@/lib/sfm-market/store';
@@ -7,6 +8,7 @@ import type { SfmMarketQualityState, SfmMarketSourceClass } from '@/lib/sfm-mark
 export const SFM_OWNED_HISTORY_SOURCE = 'sfm_market_observations' as const;
 
 export type SfmOwnedHistoryPoint = {
+  dataRecord?: MarketDataRecord;
   observationKey: string;
   symbol: string;
   observedAt: string;
@@ -120,6 +122,7 @@ export function normalizeSfmOwnedHistoryRows(rows: StoredObservation[]): SfmOwne
       upstreamProvider,
       providerSymbol: text(row.provider_symbol),
       delayType: text(row.delay_type),
+      dataRecord: createMarketDataRecord({ dataset: 'history', provider: upstreamProvider, exchange: text(row.exchange), market: text(row.market), observedAt, reportedDelay: text(row.delay_type), cached: true }),
     }];
   }).sort((a, b) => a.observedAt.localeCompare(b.observedAt));
 }
