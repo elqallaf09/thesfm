@@ -10,6 +10,7 @@ export type DataRecordInput = {
   country?: string | null;
   market?: string | null;
   observedAt?: string | null;
+  retrievedAt?: string | null;
   reportedDelay?: string | null;
   cached?: boolean;
   cacheAgeSeconds?: number | null;
@@ -35,7 +36,8 @@ export function createMarketDataRecord(input: DataRecordInput) {
       contractual: entry?.delayType ?? 'unknown',
       minutes: entry?.delayMinutes ?? null,
       observedAt: input.observedAt ?? null,
-      cached: Boolean(input.cached),
+      retrievedAt: input.retrievedAt ?? null,
+      cached: typeof input.cached === 'boolean' ? input.cached : null,
       cacheAgeSeconds: typeof input.cacheAgeSeconds === 'number' && Number.isFinite(input.cacheAgeSeconds) && input.cacheAgeSeconds >= 0 ? input.cacheAgeSeconds : null,
     },
   } as const;

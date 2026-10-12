@@ -91,7 +91,7 @@ export function createTraderCalendarRoutePayload<K extends TraderCalendarFeature
     providerId: result.provider,
     dataRecords: items.map(item => {
       const row = item as Record<string, unknown>;
-      return createMarketDataRecord({ dataset: feature, provider: typeof row.provider === 'string' ? row.provider : result.provider, exchange: typeof row.exchange === 'string' ? row.exchange : null, country: typeof row.country === 'string' ? row.country : null, observedAt: result.lastUpdated ?? result.lastSuccessfulUpdate, cached: result.cached });
+      return createMarketDataRecord({ dataset: feature, provider: typeof row.provider === 'string' ? row.provider : result.provider, exchange: typeof row.exchange === 'string' ? row.exchange : null, country: typeof row.country === 'string' ? row.country : null, retrievedAt: result.lastUpdated ?? result.lastSuccessfulUpdate, cached: result.cached });
     }),
     providerLabel: providerLabel(result.provider),
     providerStatus: status,

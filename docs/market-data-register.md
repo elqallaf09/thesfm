@@ -35,6 +35,8 @@ their individual responses do not yet carry the new metadata.
 `delay.minutes` require subscription evidence. A response timestamp, local cache
 TTL or a configured key cannot establish real-time rights. Scope uses explicit
 exchange IDs/MIC aliases. A plain symbol does not imply a US exchange.
+Calendar retrieval time is recorded separately from source observation time;
+unknown observation timestamps and cache flags stay null.
 
 ## Record actual subscription evidence
 

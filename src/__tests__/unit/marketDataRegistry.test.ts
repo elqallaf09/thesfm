@@ -26,6 +26,9 @@ describe('market data evidence registry', () => {
     expect(JSON.stringify(quote())).not.toMatch(/Private test plan|private-evidence-ref/);
     expect(marketDataRegistrySnapshot().entitlements[0]).toMatchObject({ planName: 'Private test plan', evidenceReference: 'private-evidence-ref' });
   });
+  it('does not infer observation time or cache status from a calendar retrieval', () => {
+    expect(createMarketDataRecord({ dataset: 'economic', provider: 'fmp', retrievedAt: '2026-10-12T04:00:00Z' }).delay).toMatchObject({ observedAt: null, retrievedAt: '2026-10-12T04:00:00Z', cached: null, minutes: null });
+  });
   it('does not extend Kuwait rights to Saudi Arabia, another dataset or an unknown exchange', () => {
     configure();
     for (const overrides of [{ exchange: 'TADAWUL' }, { dataset: 'history' as const }, { exchange: null }, { country: 'AE' }]) {

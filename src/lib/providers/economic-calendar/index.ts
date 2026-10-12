@@ -117,7 +117,7 @@ export async function getEconomicCalendar(query: EconomicCalendarQuery): Promise
   const sources = settled.map(result => result.report);
   const data = selectCalendarEvents(mergeCalendarEvents(settled.flatMap(result => result.events)), query).map(event => ({
     ...event,
-    dataRecords: (event.sources ?? [{ provider: event.provider, retrievedAt: event.retrievedAt }]).map(source => createMarketDataRecord({ dataset: 'economic', provider: source.provider, country: event.country, observedAt: source.retrievedAt, cached: event.stale })),
+    dataRecords: (event.sources ?? [{ provider: event.provider, retrievedAt: event.retrievedAt }]).map(source => createMarketDataRecord({ dataset: 'economic', provider: source.provider, country: event.country, retrievedAt: source.retrievedAt, cached: event.stale ? true : undefined })),
   }));
   const anyFresh = sources.some(source => source.status === 'success');
   const stale = data.length > 0 && data.every(event => event.stale);
