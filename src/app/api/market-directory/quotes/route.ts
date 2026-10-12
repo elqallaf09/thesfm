@@ -6,6 +6,8 @@ import { DIRECTORY_MAX_PAGE_SIZE } from '@/lib/market/globalMarketDirectoryTypes
 import { regionalQuoteIdentity } from '@/lib/market/regionalDirectory';
 import { getRegionalDirectoryPrice } from '@/lib/server/regionalDirectoryPrice';
 import { recordRegionalQuoteHealth } from '@/lib/server/marketSourceHealth';
+import { createMarketDataRecord } from '@/lib/market-data/records.server';
+import { directoryRecordExchange } from '@/lib/market-data/scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +36,12 @@ export async function GET(request: Request) {
     const prices = Object.fromEntries([...us, ...other, ...regionalQuotes]);
     await recordRegionalQuoteHealth(regionalQuotes.map(([, quote]) => quote));
     const partial = symbols.some(symbol => !prices[symbol]?.available);
-    return NextResponse.json({ success: true, prices }, { headers: { 'cache-control': partial ? 'public, s-maxage=30' : 'public, s-maxage=300, stale-while-revalidate=600' } });
+    const dataRecords = Object.fromEntries(Object.entries(prices).map(([symbol, quote]) => [symbol, createMarketDataRecord({
+      dataset: 'quotes', provider: quote.available ? quote.source : null,
+      exchange: directoryRecordExchange(symbol),
+      observedAt: 'asOf' in quote ? quote.asOf : null, reportedDelay: quote.delayed ? 'delayed' : 'unknown',
+    })]));
+    return NextResponse.json({ success: true, prices, dataRecords }, { headers: { 'cache-control': partial ? 'public, s-maxage=30' : 'public, s-maxage=300, stale-while-revalidate=600' } });
   } catch {
     return NextResponse.json({ success: false, error: 'quotes_temporarily_unavailable' }, { status: 503 });
   }

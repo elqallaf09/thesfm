@@ -13,6 +13,7 @@ export type EconomicCalendarQuery = {
 };
 
 export type EconomicCalendarEvent = {
+  dataRecords?: import('@/lib/market-data/records.server').MarketDataRecord[];
   id: string;
   title: string;
   country: string | null;

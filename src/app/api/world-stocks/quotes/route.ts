@@ -4,6 +4,8 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { fetchWorldStockQuotes } from '@/lib/world-stocks/quotes';
 import { isSupportedWorldStockRegion } from '@/lib/world-stocks/regions';
 import type { WorldStockQuotesResponse } from '@/lib/world-stocks/types';
+import { createMarketDataRecord } from '@/lib/market-data/records.server';
+import { worldStockQuoteKey } from '@/lib/world-stocks/quoteKey';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +58,15 @@ export async function POST(request: Request) {
       currency: entry.currency ?? null,
     })));
 
+    // Resolve records at response time so cached prices do not cache old rights.
+    for (const item of parsed.data.symbols) {
+      const quote = quotes[worldStockQuoteKey(item.exchangeCode, item.canonicalSymbol.toUpperCase())];
+      if (quote) {
+        const enriched = { ...quote, dataRecord: createMarketDataRecord({ dataset: 'quotes', provider: quote.dataSource, exchange: item.exchangeCode, observedAt: quote.quoteTimestamp, reportedDelay: quote.delayed ? 'delayed' : 'unknown' }) };
+        quotes[worldStockQuoteKey(item.exchangeCode, item.canonicalSymbol.toUpperCase())] = enriched;
+        if (quotes[item.canonicalSymbol.toUpperCase()] === quote) quotes[item.canonicalSymbol.toUpperCase()] = enriched;
+      }
+    }
     const response: WorldStockQuotesResponse = { ok: true, success: true, quotes, partialFailure };
     return NextResponse.json(response);
   } catch (error) {

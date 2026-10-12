@@ -1,5 +1,6 @@
 import type { MarketAssetType } from '@/lib/market/marketService';
 import type { QuoteObservation } from '@/lib/market/quoteObservation';
+import type { MarketDataRecord } from '@/lib/market-data/records.server';
 
 export const SFM_MARKET_ENGINE_NAME = 'THE SFM Market Data Engine' as const;
 export const SFM_MARKET_ENGINE_VERSION = '1.0.0' as const;
@@ -25,6 +26,7 @@ export type SfmMarketQuality = {
 };
 
 export type SfmMarketProvenance = {
+  dataRecord?: MarketDataRecord;
   sourceClass: SfmMarketSourceClass;
   upstreamProvider: string | null;
   upstreamProviderName: string | null;
