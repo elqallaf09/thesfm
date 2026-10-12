@@ -219,7 +219,7 @@ export function mergeMarketSearchResults(primary: MarketSearchItem[], fallback: 
   return Array.from(
     new Map(
       [...fallback, ...primary].map(item => [
-        `${item.symbol.toUpperCase()}:${normalizeAssetType(item.assetType)}`,
+        `${(item.providerSymbol || item.symbol).toUpperCase()}:${normalizeAssetType(item.assetType)}`,
         {
           ...item,
           symbol: item.symbol.toUpperCase(),
