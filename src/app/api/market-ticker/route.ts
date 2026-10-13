@@ -27,8 +27,8 @@ const YAHOO_SYMBOLS: Record<Exclude<TickerCategory, 'crypto' | 'metals'>, YahooS
   gulf: [
     { symbol: '^BKP', nameAr: 'بورصة الكويت', nameEn: 'Boursa Kuwait' },
     { symbol: '^TASI.SR', nameAr: 'تداول السعودية', nameEn: 'Saudi Tadawul' },
-    { symbol: 'DFM.AE', nameAr: 'سوق دبي المالي', nameEn: 'Dubai Financial Market' },
-    { symbol: 'QNBK.QA', nameAr: 'بورصة قطر', nameEn: 'Qatar Exchange' },
+    { symbol: 'DFMGI.AE', nameAr: 'سوق دبي المالي', nameEn: 'Dubai Financial Market' },
+    { symbol: '^GNRI.QA', nameAr: 'بورصة قطر', nameEn: 'Qatar Exchange' },
   ],
   asia: [
     { symbol: '^N225', nameAr: 'نيكي 225', nameEn: 'Nikkei 225' },
