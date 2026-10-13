@@ -31,8 +31,9 @@ module.exports = {
   expo: {
     name: product.name,
     slug: product.slug,
-    version: '0.1.0',
-    orientation: 'portrait',
+    version: '0.2.0',
+    icon: './assets/icon.png',
+    orientation: 'default',
     userInterfaceStyle: 'dark',
     scheme: product.slug,
     ios: {
@@ -40,7 +41,7 @@ module.exports = {
       supportsTablet: true,
       infoPlist: { ITSAppUsesNonExemptEncryption: false },
     },
-    android: { package: product.bundleIdentifier, adaptiveIcon: { backgroundColor: '#08131C' } },
+    android: { versionCode: 2, softwareKeyboardLayoutMode: 'resize', package: product.bundleIdentifier, adaptiveIcon: { backgroundColor: '#08131C' } },
     extra: {
       sfmProduct: productId,
       eas: { projectId: product.easProjectId },
