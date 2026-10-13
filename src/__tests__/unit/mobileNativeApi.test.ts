@@ -4,7 +4,10 @@ import { resourceFor } from '../../../apps/expo-go/native/catalog';
 const store = vi.hoisted(() => new Map<string, string>());
 vi.mock('../../../apps/expo-go/node_modules/expo-constants', () => ({ default: { expoConfig: { extra: { sfmProduct: 'business', supabaseUrl: 'https://test.supabase.co', supabaseAnonKey: 'public-test-key' } } } }));
 vi.mock('../../../apps/expo-go/node_modules/expo-secure-store', () => ({ getItemAsync: async (key: string) => store.get(key) || null, setItemAsync: async (key: string, value: string) => { store.set(key, value); } }));
-import { loadRecords, refreshSession, saveRecord } from '../../../apps/expo-go/native/api';
+// Keep the native dependency graph out of the website TypeScript program.
+// Vitest still loads and mocks the actual module at runtime.
+const nativeApiPath = '../../../apps/expo-go/native/api';
+const { loadRecords, refreshSession, saveRecord } = await import(nativeApiPath);
 
 const owner = '11111111-1111-4111-8111-111111111111';
 const recordId = '22222222-2222-4222-8222-222222222222';
