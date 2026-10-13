@@ -44,6 +44,14 @@ describe('native data access', () => {
     const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async url => String(url).endsWith('/auth/v1/user') ? response({ id: owner }) : response({ error: 'offline' }, 503));
     await expect(saveRecord(customers, { name: 'Customer' })).rejects.toThrow(); expect(fetcher).toHaveBeenCalledTimes(2);
   });
+  it('keeps refreshed Finance and Business credentials in separate secure keys', async () => {
+    const expired = { accessToken: 'old', refreshToken: 'refresh-old', expiresAt: 0 };
+    store.set('sfm-finance-session', JSON.stringify(expired));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ access_token: 'finance-new', refresh_token: 'finance-refresh', expires_in: 3600 }));
+    await refreshSession(expired, 'sfm-finance-session');
+    expect(JSON.parse(store.get('sfm-finance-session')!).accessToken).toBe('finance-new');
+    expect(JSON.parse(store.get('sfm-business-session')!).accessToken).toBe('user-jwt');
+  });
   it('serializes concurrent token refresh and persists the replacement', async () => {
     const expired = { accessToken: 'old', refreshToken: 'refresh-old', expiresAt: 0 };
     store.set('sfm-business-session', JSON.stringify(expired));

@@ -61,7 +61,8 @@ describe('THE SFM Finance iOS foundation', () => {
     expect(expo).toContain("const FINANCE_SESSION_KEY = 'sfm-finance-session'");
     expect(expo).toContain("const BUSINESS_SESSION_KEY = 'sfm-business-session'");
     expect(expo).toContain('refreshSession(session, BUSINESS_SESSION_KEY)');
-    expect(expo).toContain('SecureStore.setItemAsync(sessionKey, JSON.stringify(refreshed))');
+    expect(expo).toContain("import { refreshSession } from './native/api'");
+    expect(read('apps/expo-go/native/api.ts')).toContain('SecureStore.setItemAsync(storageKey, JSON.stringify(next))');
   });
 
   it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
