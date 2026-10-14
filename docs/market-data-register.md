@@ -118,3 +118,32 @@ keys. Never commit downloaded provider payloads or real agreements.
 - [FMP changelog, 2026-10-08](https://site.financialmodelingprep.com/developer/docs/changelog): stable disclosure pagination and exact filed calendar dates.
 - [Senate endpoint](https://site.financialmodelingprep.com/developer/docs/stable/senate-latest) and [House endpoint](https://site.financialmodelingprep.com/developer/docs/stable/house-latest): zero-based `page` and `limit`.
 - [FMP terms](https://site.financialmodelingprep.com/terms-of-service), [Finnhub terms](https://finnhub.io/terms-of-service), [Twelve Data terms](https://twelvedata.com/terms): use these together with the actual account agreement; a successful API call is not commercial display permission.
+
+## Evidence review and stricter validation (2026-10-14)
+
+See [the account-evidence review and handoff](market-data-rights-review-2026-10-14.md).
+The protected registry now includes `policyReview`, linking public policy sources
+to separate provider and exchange review rows. These references never create
+entitlements. `evidenceType: public_policy_only` and `grantsAccountRights: false`
+make the distinction explicit. Missing references mean further policy review is
+needed, not that an exchange permits reuse.
+
+Record IDs must be opaque alphanumeric/hyphen/underscore identifiers. Country
+codes must be two letters. Known exchange/country contradictions, wildcard or
+combined exchange identifiers, and inconsistent delay values invalidate the
+configuration. `delayed` requires positive `delayMinutes`; `realtime` permits
+`0` or `null`; `eod` and `unknown` require `null`. Do not infer 1440 minutes for
+EOD, or use cache age as a licensed delay. Unknown delay remains unknown.
+
+`planStatus: verified` means an active, structurally valid server-configured
+record was matched. It does **not** authenticate a provider account, inspect an
+agreement, compare the live billing plan, check cancellations, or approve a
+license. The reviewer must independently verify `planName`, licensed entity,
+feed product, permitted audience/platforms, storage, attribution and reporting
+obligations in the private evidence referenced by `evidenceReference`.
+
+The current key is provider + dataset + exchange + country. It cannot represent
+two different feed products/plans/audiences for the same tuple: duplicate tuples
+are rejected. Do not collapse conflicting agreements into one broad grant; keep
+that scope unverified until a separate feed/audience-aware review is implemented.
+This remains advisory metadata and does not enforce contractual delay or access.

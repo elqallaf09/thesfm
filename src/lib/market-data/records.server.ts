@@ -2,6 +2,7 @@ import 'server-only';
 import { canonicalDataProvider, MARKET_DATA_PROVIDERS, MARKET_DATASETS, PRIORITY_MARKET_SCOPES, type MarketDataset } from './catalog';
 import { entitlementFor, readMarketDataEntitlements } from './entitlements.server';
 import { marketDataScope } from './scope';
+import { marketDataPolicyReview } from './review.server';
 
 export type DataRecordInput = {
   dataset: MarketDataset;
@@ -54,6 +55,7 @@ export function marketDataRegistrySnapshot() {
     providers: MARKET_DATA_PROVIDERS,
     priorityMarkets: PRIORITY_MARKET_SCOPES.map(scope => ({ ...scope, symbolCompleteness: 'unverified', quoteAccess: 'unverified', commercialDisplay: 'unverified' })),
     entitlementConfiguration: entitlements.state,
+    policyReview: marketDataPolicyReview(),
     // Only the admin route receives plan names and internal evidence references.
     entitlements: entitlements.entries.map(entry => ({ ...entry, status: entitlementFor({ providerId: entry.providerId, dataset: entry.dataset, exchange: entry.scope.exchange, country: entry.scope.country }).state })),
     rules: {
@@ -62,6 +64,9 @@ export function marketDataRegistrySnapshot() {
       integrationLicenseIsNotDataLicense: true,
       sampleIsNotFullExchangeCoverage: true,
       reportedDelayIsNotContractualDelay: true,
+      publicPolicyIsNotAccountEvidence: true,
+      accountPlanRequiresIndependentReview: true,
+      availabilityEnforcementEnabled: false,
     },
   };
 }

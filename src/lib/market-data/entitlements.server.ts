@@ -1,16 +1,19 @@
 import 'server-only';
 import { z } from 'zod';
-import { canonicalDataProvider, MARKET_DATASETS, type MarketDataset } from './catalog';
+import { canonicalDataProvider, MARKET_DATASETS, PRIORITY_MARKET_SCOPES, type MarketDataset } from './catalog';
 import { marketDataScope } from './scope';
 
 const short = z.string().trim().min(1).max(160);
 const date = z.string().datetime({ offset: true });
 const schema = z.object({
-  id: short,
-  providerId: short,
+  id: short.regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/),
+  providerId: short.regex(/^[a-zA-Z0-9][a-zA-Z0-9 _:-]*$/),
   dataset: z.custom<MarketDataset>(value => typeof value === 'string' && Object.hasOwn(MARKET_DATASETS, value)),
   // Exact scope only: no '*' or regional grants inherited by every exchange.
-  scope: z.object({ exchange: short.nullable(), country: short.nullable() }).strict(),
+  scope: z.object({
+    exchange: short.regex(/^[a-zA-Z0-9][a-zA-Z0-9_ -]*$/).nullable(),
+    country: short.regex(/^[a-zA-Z]{2}$/).nullable(),
+  }).strict(),
   planName: short,
   commercialDisplay: z.enum(['allowed', 'denied', 'unverified']),
   redistribution: z.enum(['allowed', 'denied', 'unverified']),
@@ -21,7 +24,14 @@ const schema = z.object({
   validUntil: date,
 }).strict().refine(row => row.scope.exchange !== null || row.scope.country !== null)
   .refine(row => ![row.scope.exchange, row.scope.country].includes('*'))
-  .refine(row => Date.parse(row.validUntil) > Date.parse(row.reviewedAt));
+  .refine(row => Date.parse(row.validUntil) > Date.parse(row.reviewedAt))
+  .refine(row => {
+    // A cache TTL is never a contractual delay. Unknown/EOD must not carry
+    // invented minutes; a delayed feed needs an explicit positive interval.
+    if (row.delayType === 'delayed') return row.delayMinutes !== null && row.delayMinutes > 0;
+    if (row.delayType === 'realtime') return row.delayMinutes === null || row.delayMinutes === 0;
+    return row.delayMinutes === null;
+  });
 
 export type MarketDataEntitlement = z.infer<typeof schema>;
 
@@ -34,6 +44,8 @@ function parseEntitlements(raw: string | undefined) {
     for (const entry of entries) {
       entry.providerId = canonicalDataProvider(entry.providerId)!;
       entry.scope = marketDataScope(entry.scope.exchange, entry.scope.country);
+      const known = PRIORITY_MARKET_SCOPES.find(scope => scope.exchange === entry.scope.exchange);
+      if (known && entry.scope.country !== known.country) throw new Error('exchange_country_mismatch');
       if (['openbb', 'sfm'].includes(entry.providerId)) throw new Error('integration_is_not_data_owner');
       const key = JSON.stringify([entry.providerId, entry.dataset, entry.scope.exchange, entry.scope.country]);
       if (scopes.has(key) || ids.has(entry.id)) throw new Error('ambiguous_entitlement');
