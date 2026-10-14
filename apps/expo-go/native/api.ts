@@ -4,7 +4,14 @@ import { authChanged } from './navigation';
 export type { Session } from './sessionStore';
 import { businessAccess, type Product, type Resource, type Row } from './catalog';
 import { recordPayload, recordQuery } from './records';
-import { assertNativeSessionSecurity } from './sessionGate';
+import { assertNativeSessionSecurity, NativeMfaRequired } from './sessionGate';
+
+export class PendingNativeMfa extends Error {
+  readonly expiresAt = Date.now() + 10 * 60_000;
+  challenge?: string;
+  finished = false;
+  constructor(readonly kind: 'totp' | 'email', readonly session: Session, readonly version: number) { super('MFA_REQUIRED'); }
+}
 
 const extra = Constants.expoConfig?.extra ?? {};
 export const product = (extra.sfmProduct || 'finance') as Product;
@@ -65,10 +72,71 @@ export async function signIn(email: string, password: string) {
   const version = beginSessionChange(sessionKey);
   const body = await fetchJson<Record<string, unknown>>(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }) });
   const next = sessionFrom(body);
-  await assertNativeSessionSecurity(site, next.accessToken);
+  try { await assertNativeSessionSecurity(site, next.accessToken); }
+  catch (reason) {
+    assertSessionVersion(sessionKey, version);
+    if (reason instanceof NativeMfaRequired) throw new PendingNativeMfa(reason.kind, next, version);
+    throw reason;
+  }
   await persistSession(sessionKey, next, version);
   authChanged();
   return next;
+}
+function checkChallenge(pending: PendingNativeMfa) {
+  assertSessionVersion(sessionKey, pending.version);
+  if (pending.finished || pending.expiresAt <= Date.now()) throw new Error('CHALLENGE_EXPIRED');
+}
+export async function sendNativeEmailCode(pending: PendingNativeMfa) {
+  checkChallenge(pending);
+  if (pending.kind !== 'email') throw new Error('INVALID_CHALLENGE');
+  const body = await fetchJson<{ challenge?: string }>(`${site}/api/auth/mfa/mobile-email`, {
+    method: 'POST', redirect: 'error', cache: 'no-store',
+    headers: { Authorization: `Bearer ${pending.session.accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'start' }),
+  });
+  checkChallenge(pending);
+  if (!body?.challenge) throw new Error('AUTH_UNAVAILABLE');
+  pending.challenge = body.challenge;
+}
+export async function verifyNativeMfa(pending: PendingNativeMfa, code: string) {
+  checkChallenge(pending);
+  if (!/^\d{6}$/.test(code)) throw new Error('أدخل رمز التحقق المكوّن من 6 أرقام');
+  const headers = { apikey: key, Authorization: `Bearer ${pending.session.accessToken}`, 'Content-Type': 'application/json' };
+  let body: Record<string, unknown>;
+  if (pending.kind === 'totp') {
+    const account = await fetchJson<{ factors?: { id: string; factor_type: string; status: string }[] }>(`${url}/auth/v1/user`, { headers, cache: 'no-store', redirect: 'error' });
+    const factor = account.factors?.find(item => item.factor_type === 'totp' && item.status === 'verified');
+    if (!factor) throw new Error('AUTH_UNAVAILABLE');
+    checkChallenge(pending);
+    const endpoint = `${url}/auth/v1/factors/${encodeURIComponent(factor.id)}`;
+    const challenge = await fetchJson<{ id: string }>(`${endpoint}/challenge`, { method: 'POST', headers, body: '{}', redirect: 'error' });
+    checkChallenge(pending);
+    if (!challenge?.id) throw new Error('AUTH_UNAVAILABLE');
+    body = await fetchJson(`${endpoint}/verify`, { method: 'POST', headers, body: JSON.stringify({ challenge_id: challenge.id, code }), redirect: 'error' });
+  } else {
+    if (!pending.challenge) throw new Error('أرسل رمز التحقق أولاً');
+    body = await fetchJson(`${site}/api/auth/mfa/mobile-email`, {
+      method: 'POST', headers: { Authorization: headers.Authorization, 'Content-Type': 'application/json' }, redirect: 'error', cache: 'no-store',
+      body: JSON.stringify({ action: 'verify', challenge: pending.challenge, code }),
+    });
+  }
+  checkChallenge(pending);
+  const next = sessionFrom(body);
+  await assertNativeSessionSecurity(site, next.accessToken);
+  checkChallenge(pending);
+  await persistSession(sessionKey, next, pending.version);
+  pending.finished = true;
+  authChanged();
+  return next;
+}
+export function cancelNativeMfa(pending: PendingNativeMfa) {
+  if (pending.finished) return;
+  pending.finished = true;
+  // Queue deletion behind a SecureStore write already in flight. Incrementing
+  // the generation alone would leave that late write on disk after cancel.
+  if (sessionVersion(sessionKey) === pending.version) void clearSession(sessionKey, pending.version).catch(() => undefined);
+  // Cancel only this uncommitted login; never revoke another saved account.
+  void fetchJson(`${url}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: key, Authorization: `Bearer ${pending.session.accessToken}` }, redirect: 'error' }).catch(() => undefined);
 }
 export async function signOut(scope: 'local' | 'global' = 'local') {
   const version = sessionVersion(sessionKey);
@@ -141,7 +209,8 @@ export async function deleteRecord(resource: Resource, id: string) {
 }
 export function message(error: unknown) {
   if (error instanceof Error && ['SESSION_EXPIRED', 'SESSION_CHANGED'].includes(error.message)) return 'سجّل الدخول إلى حسابك للمتابعة';
-  if (error instanceof Error && error.message === 'MFA_REQUIRED') return 'يتطلب حسابك التحقق الإضافي. تسجيل الدخول بهذا الحساب غير متاح حالياً في التطبيق.';
+  if (error instanceof Error && error.message === 'MFA_REQUIRED') return 'يتطلب حسابك التحقق الإضافي. أعد تسجيل الدخول وأدخل رمز التحقق.';
+  if (error instanceof Error && error.message === 'CHALLENGE_EXPIRED') return 'انتهت مهلة التحقق. أعد تسجيل الدخول.';
   if (error instanceof Error && error.message === 'AUTH_UNAVAILABLE') return 'تعذر التحقق من أمان الجلسة. أعد المحاولة لاحقاً.';
   return error instanceof Error && error.name !== 'AbortError' ? error.message : 'تعذر الاتصال. أعد المحاولة';
 }

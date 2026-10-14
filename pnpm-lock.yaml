@@ -20,6 +20,9 @@ overrides:
   flatted: 3.4.2
   '@humanfs/node': 0.16.8
 
+patchedDependencies:
+  braces@3.0.3: e8ff639d03cd453b516b59fbf98a93bea1b4e2bf3ded5005fd344b6f9eafb57f
+
 importers:
 
   .:
@@ -4157,7 +4160,7 @@ packages:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
   xlsx@https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz:
-    resolution: {integrity: sha512-oLDq3jw7AcLqKWH2AhCpVTZl8mf6X2YReP+Neh0SJUzV/BdZYjth94tG5toiMB1PPrYtxOCfaoUCkvtuH+3AJA==, tarball: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz}
+    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz}
     version: 0.20.3
     engines: {node: '>=0.8'}
     hasBin: true
@@ -5936,7 +5939,7 @@ snapshots:
     dependencies:
       balanced-match: 4.0.4
 
-  braces@3.0.3:
+  braces@3.0.3(patch_hash=e8ff639d03cd453b516b59fbf98a93bea1b4e2bf3ded5005fd344b6f9eafb57f):
     dependencies:
       fill-range: 7.1.1
 
@@ -7191,7 +7194,7 @@ snapshots:
 
   micromatch@4.0.8:
     dependencies:
-      braces: 3.0.3
+      braces: 3.0.3(patch_hash=e8ff639d03cd453b516b59fbf98a93bea1b4e2bf3ded5005fd344b6f9eafb57f)
       picomatch: 2.3.2
 
   mime-db@1.54.0: {}

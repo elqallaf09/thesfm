@@ -39,9 +39,12 @@ Refresh and SecureStore writes are serialized across concurrent screens; a late
 refresh cannot resurrect a signed-out session or replace a newer login.
 Every native account request checks the server MFA decision first. Deploy
 `/api/mobile/session` before distributing 0.2.1: an unavailable gate fails closed.
-MFA challenge entry is not implemented; accounts requiring MFA are explicitly
-blocked in the native candidate. This app check does not replace database-level
-MFA enforcement for callers using the Supabase REST API directly.
+The candidate includes TOTP and email challenge entry. First-factor tokens stay
+in memory until server verification succeeds; cancellation rejects late replies
+and clears pending storage writes. Email verification needs the additive proof
+table and server handler before rollout. The candidate database migration adds
+MFA checks to account RLS and authenticated SECURITY DEFINER RPCs; these policies
+are not yet applied to production. Follow the security review deployment order.
 Android backup and unnecessary overlay/storage/microphone permissions are
 disabled. Screen capture/app-switcher shielding needs verification on a device. Session keys are unchanged
 for Finance and Business; Investor has its own SecureStore key.

@@ -3,13 +3,13 @@ import { resourceFor } from '../../../apps/expo-go/native/catalog';
 
 const store = vi.hoisted(() => new Map<string, string>());
 const gate = vi.hoisted(() => vi.fn());
-vi.mock('../../../apps/expo-go/native/sessionGate', () => ({ assertNativeSessionSecurity: gate }));
+vi.mock('../../../apps/expo-go/native/sessionGate', async importOriginal => ({ ...(await importOriginal<object>()), assertNativeSessionSecurity: gate }));
 vi.mock('../../../apps/expo-go/node_modules/expo-constants', () => ({ default: { expoConfig: { extra: { sfmProduct: 'business', supabaseUrl: 'https://test.supabase.co', supabaseAnonKey: 'public-test-key' } } } }));
 vi.mock('../../../apps/expo-go/node_modules/expo-secure-store', () => ({ getItemAsync: async (key: string) => store.get(key) || null, setItemAsync: async (key: string, value: string) => { store.set(key, value); }, deleteItemAsync: async (key: string) => { store.delete(key); }, WHEN_UNLOCKED_THIS_DEVICE_ONLY: 6 }));
 // Keep the native dependency graph out of the website TypeScript program.
 // Vitest still loads and mocks the actual module at runtime.
 const nativeApiPath = '../../../apps/expo-go/native/api';
-const { loadRecords, refreshSession, saveRecord, signOut, signIn, request, activeSession } = await import(nativeApiPath);
+const { loadRecords, refreshSession, saveRecord, signOut, signIn, request, activeSession, PendingNativeMfa, verifyNativeMfa, sendNativeEmailCode, cancelNativeMfa } = await import(nativeApiPath);
 
 const owner = '11111111-1111-4111-8111-111111111111';
 const recordId = '22222222-2222-4222-8222-222222222222';
@@ -23,6 +23,48 @@ beforeEach(() => {
   gate.mockReset().mockResolvedValue(undefined);
 });
 describe('native data access', () => {
+  it('verifies a TOTP challenge and rechecks server assurance before saving', async () => {
+    store.clear();
+    const gatePath = '../../../apps/expo-go/native/sessionGate';
+    const { NativeMfaRequired } = await import(gatePath);
+    gate.mockRejectedValueOnce(new NativeMfaRequired('totp')).mockResolvedValue(undefined);
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async endpoint => {
+      const url = String(endpoint);
+      if (url.includes('grant_type=password')) return response({ access_token: 'aal1', refresh_token: 'first-refresh', expires_in: 3600 });
+      if (url.endsWith('/user')) return response({ factors: [{ id: 'factor', factor_type: 'totp', status: 'verified' }] });
+      if (url.endsWith('/challenge')) return response({ id: 'challenge' });
+      return response({ access_token: 'aal2', refresh_token: 'second-refresh', expires_in: 3600 });
+    });
+    const pending = await signIn('test@example.invalid', 'password').catch((e: unknown) => e);
+    expect(pending).toBeInstanceOf(PendingNativeMfa); expect(store.size).toBe(0);
+    await verifyNativeMfa(pending, '123456');
+    expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('/factors/factor/verify'), expect.objectContaining({ body: JSON.stringify({ challenge_id: 'challenge', code: '123456' }) }));
+    expect(gate).toHaveBeenLastCalledWith('https://www.the-sfm.com', 'aal2');
+    expect(JSON.parse(store.get('sfm-business-session')!).accessToken).toBe('aal2');
+  });
+  it('never saves an MFA response after cancellation', async () => {
+    store.clear();
+    const gatePath = '../../../apps/expo-go/native/sessionGate';
+    const { NativeMfaRequired } = await import(gatePath);
+    gate.mockRejectedValueOnce(new NativeMfaRequired('email'));
+    let release!: (value: Response) => void;
+    const pendingResponse = new Promise<Response>(resolve => { release = resolve; });
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async (endpoint, options) => {
+      if (String(endpoint).includes('grant_type=password')) return response({ access_token: 'aal1', refresh_token: 'refresh', expires_in: 3600 });
+      const body = options?.body ? JSON.parse(String(options.body)) : {};
+      if (body.action === 'start') return response({ challenge: 'signed-challenge' });
+      if (body.action === 'verify') return pendingResponse;
+      return response(null);
+    });
+    const pending = await signIn('test@example.invalid', 'password').catch((e: unknown) => e);
+    await sendNativeEmailCode(pending);
+    const verifying = verifyNativeMfa(pending, '123456');
+    const rejection = expect(verifying).rejects.toThrow('SESSION_CHANGED');
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(3));
+    cancelNativeMfa(pending);
+    release(response({ access_token: 'late', refresh_token: 'late-refresh', expires_in: 3600 }));
+    await rejection; expect(store.size).toBe(0);
+  });
   it('does not send account data requests when the server requires MFA', async () => {
     gate.mockRejectedValue(new Error('MFA_REQUIRED'));
     const fetcher = vi.spyOn(globalThis, 'fetch');

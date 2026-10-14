@@ -7,6 +7,7 @@ import { shortcuts, resourceFor } from './native/catalog';
 import { openScreen as openSite } from './native/navigation';
 import { useAccountSummary } from './native/useAccountSummary';
 import { fetchJson } from './native/api';
+import { MfaPrompt } from './native/MfaPrompt';
 import { AuthGate } from './native/AccountScreen';
 import { RecordScreen } from './native/RecordScreen';
 import { absoluteKnownAmount, shariahTag } from './presentation';
@@ -37,11 +38,12 @@ export default function App() {
 }
 
 function FinanceApp() {
-  const { session, summary, loading, error: errorMessage, lastUpdatedAt, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<FinanceSummary>();
+  const { pending, cancelMfa, session, summary, loading, error: errorMessage, lastUpdatedAt, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<FinanceSummary>();
   const [showSignIn, setShowSignIn] = useState(true);
   const [tab, setTab] = useState('home');
 
   if (loading && !session) return <Loading productId="finance" />;
+  if (pending) return <MfaPrompt pending={pending} onCancel={cancelMfa} />;
   if (!session) return <>{errorMessage ? <Notice message={errorMessage} /> : null}{errorMessage ? <Pressable accessibilityRole="button" onPress={loadSummary}><Text style={{ color: C.teal, padding: 16 }}>إعادة الاتصال</Text></Pressable> : null}<Landing productId="finance" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} /></>;
   return <Shell productId="finance" tab={tab} setTab={setTab}>
     {tab === 'home' ? <FinanceDashboard summary={summary} loading={loading} error={errorMessage} lastUpdatedAt={lastUpdatedAt} refresh={loadSummary} /> : null}
@@ -98,10 +100,11 @@ function InvestorApp() {
 }
 
 function BusinessApp() {
-  const { session, summary, loading, error, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<BusinessSummary>();
+  const { pending, cancelMfa, session, summary, loading, error, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<BusinessSummary>();
   const [showSignIn, setShowSignIn] = useState(true);
   const [tab, setTab] = useState('home');
   if (loading && !session) return <Loading productId="business" />;
+  if (pending) return <MfaPrompt pending={pending} onCancel={cancelMfa} />;
   if (!session) return <>{error ? <Notice message={error} /> : null}{error ? <Pressable accessibilityRole="button" onPress={loadSummary}><Text style={{ color: C.violet, padding: 16 }}>إعادة الاتصال</Text></Pressable> : null}<Landing productId="business" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} /></>;
   return <Shell productId="business" tab={tab} setTab={setTab}>
     {tab === 'home' ? <BusinessDashboard summary={summary} loading={loading} error={error} refresh={loadSummary} /> : null}

@@ -26,6 +26,12 @@ create table if not exists auth.users (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+-- MFA stand-ins exist only in this disposable CI database.
+create table if not exists auth.sessions (id uuid primary key, user_id uuid references auth.users(id) on delete cascade);
+create table if not exists auth.mfa_factors (id uuid primary key, user_id uuid references auth.users(id) on delete cascade, factor_type text, status text);
+create or replace function auth.jwt() returns jsonb language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
+$$;
 create or replace function auth.uid() returns uuid language sql stable as $$
   select null::uuid
 $$;

@@ -104,6 +104,14 @@ jobs:
       # Native API/record tests load Expo's tsconfig and mock installed native modules.
       - name: Install mobile dependencies for native regression tests
         run: pnpm --dir apps/expo-go install --frozen-lockfile
+      - name: Audit dependencies and verify installed security backports
+        run: node scripts/audit-security-backports.mjs
+      - name: Preserve unfiltered registry audit findings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-registry-audits
+          path: artifacts/security/
       - run: pnpm test:coverage
         name: vitest with coverage
       - name: Upload coverage
@@ -207,6 +215,11 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/financial-attachment-security.sql
+
+      - name: Verify enrolled MFA and session-bound email assurance
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/enrolled-mfa-security.sql
 
       - name: Verify month close and collaboration isolation
         env:

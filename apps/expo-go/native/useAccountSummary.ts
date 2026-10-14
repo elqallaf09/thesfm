@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { accountSummary, activeSession, message, signIn as authenticate, signOut as logout, type Session } from './api';
+import { PendingNativeMfa, accountSummary, activeSession, message, signIn as authenticate, signOut as logout, type Session } from './api';
 import { onDataChanged } from './navigation';
 
 export function useAccountSummary<T>() {
@@ -11,6 +11,7 @@ export function useAccountSummary<T>() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [pending, setPending] = useState<PendingNativeMfa | null>(null);
   const mounted = useRef(false);
   const busy = useRef(false);
   const loadSummary = useCallback(async () => {
@@ -23,7 +24,7 @@ export function useAccountSummary<T>() {
       if (!body?.ok || !body.summary) throw new Error('تعذر تحميل الملخص');
       if (mounted.current) { setSession(active); setSummary(body.summary); setLastUpdatedAt(new Date()); }
     } catch (reason) {
-      if (mounted.current) setError(message(reason));
+      if (mounted.current) { setError(message(reason)); if (reason instanceof Error && reason.message === 'MFA_REQUIRED') { setSession(null); setSummary(null); } }
     } finally { busy.current = false; if (mounted.current) setLoading(false); }
   }, []);
   useEffect(() => {
@@ -42,12 +43,12 @@ export function useAccountSummary<T>() {
     if (busy.current) return;
     busy.current = true; setLoading(true); setError(null);
     try { await authenticate(email, password); if (mounted.current) setPassword(''); }
-    catch (reason) { if (mounted.current) Alert.alert('تعذر تسجيل الدخول', message(reason)); }
+    catch (reason) { if (mounted.current) { if (reason instanceof PendingNativeMfa) { setPassword(''); setPending(reason); } else Alert.alert('تعذر تسجيل الدخول', message(reason)); } }
     finally { busy.current = false; if (mounted.current) setLoading(false); }
   }, [email, password]);
   const signOut = useCallback(async () => {
     const revoked = await logout();
     if (!revoked) Alert.alert('تم تسجيل الخروج من التطبيق', 'تعذر تأكيد إلغاء الجلسة على الخادم. اتصل بالإنترنت وسجّل الدخول لإلغائها من جميع الأجهزة.');
   }, []);
-  return { session, summary, loading, error, lastUpdatedAt, email, password, setEmail, setPassword, signIn, signOut, loadSummary };
+  return { pending, cancelMfa: () => setPending(null), session, summary, loading, error, lastUpdatedAt, email, password, setEmail, setPassword, signIn, signOut, loadSummary };
 }

@@ -15,6 +15,8 @@ begin
  raise exception 'EXPECTED_RLS_DENIAL: %',statement;
 end $$;
 select pg_temp.assert_true((select count(*)=2 from storage.buckets where id in ('receipts','income-attachments') and public=false),'both financial buckets are private');
+insert into auth.users(id) values
+ ('00000000-0000-4000-8000-000000000101'), ('00000000-0000-4000-8000-000000000102');
 insert into storage.objects(bucket_id,name) values
  ('receipts','00000000-0000-4000-8000-000000000101/expense.jpg'),
  ('receipts','00000000-0000-4000-8000-000000000101/project-expenses/expense.jpg'),

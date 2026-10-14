@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
-import { message, request, signIn, signOut, user } from './api';
+import { PendingNativeMfa, message, request, signIn, signOut, user } from './api';
+import { MfaPrompt } from './MfaPrompt';
 import type { Row } from './catalog';
 import { dataChanged } from './navigation';
 import { Button, Busy, Card, Copy, ErrorNote, Input, Page, Title } from './ui';
@@ -11,7 +12,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const check = useCallback(async () => {
     setState('loading');
     try { await user(); setState('ready'); }
-    catch (reason) { setError(message(reason)); setState(reason instanceof Error && reason.message === 'SESSION_EXPIRED' ? 'login' : 'error'); }
+    catch (reason) { setError(message(reason)); setState(reason instanceof Error && ['SESSION_EXPIRED','MFA_REQUIRED'].includes(reason.message) ? 'login' : 'error'); }
   }, []);
   useEffect(() => { void check(); }, [check]);
   if (state === 'loading') return <Busy />;
@@ -21,13 +22,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
 }
 function SignInScreen({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [pending, setPending] = useState<PendingNativeMfa | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   async function submit() {
     if (busy || !email.trim() || !password) return;
     setBusy(true); setError('');
     try { await signIn(email, password); setPassword(''); onDone(); }
-    catch (reason) { setError(message(reason)); } finally { setBusy(false); }
+    catch (reason) { if (reason instanceof PendingNativeMfa) { setPassword(''); setPending(reason); } else setError(message(reason)); } finally { setBusy(false); }
   }
+  if (pending) return <MfaPrompt pending={pending} onCancel={() => setPending(null)} onDone={onDone} />;
   return <Page><Title>تسجيل الدخول</Title><Copy>استخدم حساب THE SFM لعرض سجلاتك وإدارتها داخل التطبيق.</Copy><Input label="البريد الإلكتروني" email value={email} onChange={setEmail} /><Input label="كلمة المرور" secret value={password} onChange={setPassword} /><ErrorNote text={error} /><Button title={busy ? 'جارٍ الدخول…' : 'دخول'} onPress={() => { void submit(); }} disabled={busy || !email.trim() || !password} /></Page>;
 }
 export function AccountScreen({ security = false, onSignOut }: { security?: boolean; onSignOut: () => void }) {
