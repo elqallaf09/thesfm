@@ -61,7 +61,8 @@ export function recordPayload(resource: Resource, form: Record<string, string>, 
 }
 
 export function recordQuery(resource: Resource, userId: string, id?: string, offset = 0) {
-  if (!/^[a-f0-9-]{36}$/i.test(userId) || (id && !/^[a-f0-9-]{36}$/i.test(id))) throw new Error('INVALID_ID');
+  if (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(userId) || (id && !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(id))) throw new Error('INVALID_ID');
+  if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('INVALID_OFFSET');
   const query = new URLSearchParams({ select: '*', user_id: `eq.${userId}` });
   if (id) query.set('id', `eq.${id}`);
   else { query.set('order', 'created_at.desc,id.desc'); query.set('limit', '100'); query.set('offset', String(offset)); }

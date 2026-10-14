@@ -16,14 +16,14 @@ export function NativeWorkspace({ children }: { children: ReactNode }) {
   const path = stack.at(-1);
   const back = useCallback(() => { if (consumeDetailBack()) return true; if (!path) return false; setStack(previous => previous.slice(0, -1)); return true; }, [path]);
   useEffect(() => onNavigate(next => { setStack(previous => previous.at(-1) === next ? previous : [...previous, next]); }), []);
-  useEffect(() => onAuthChanged(() => setGeneration(value => value + 1)), []);
+  useEffect(() => onAuthChanged(() => { setStack([]); setGeneration(value => value + 1); }), []);
   useEffect(() => { const sub = BackHandler.addEventListener('hardwareBackPress', back); return () => sub.remove(); }, [back]);
   const signOut = () => { setStack([]); setGeneration(value => value + 1); };
   return <View style={{ flex: 1, backgroundColor: '#0B0D12' }}>
     <View key={generation} style={{ flex: 1, display: path ? 'none' : 'flex' }}>{children}</View>
     {path ? <SafeAreaView style={{ flex: 1 }}><StatusBar style="light" /><View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="رجوع" onPress={back} style={styles.back}><Text style={{ color: accent, fontSize: 16 }}>رجوع →</Text></Pressable><Text style={styles.brand}>THE SFM {product.toUpperCase()}</Text></View>
       <ScrollView horizontal style={{ flexGrow: 0, maxHeight: 58 }} contentContainerStyle={styles.shortcuts} showsHorizontalScrollIndicator={false}>{shortcuts[product].map(([target, label]) => <Pressable key={target} accessibilityRole="tab" accessibilityState={{ selected: path === target }} onPress={() => setStack([target])} style={[styles.shortcut, path === target && { borderColor: accent }]}><Text style={{ color: path === target ? accent : '#ADB9D0' }}>{label}</Text></Pressable>)}</ScrollView>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><Screen key={path} path={path} onSignOut={signOut} /></KeyboardAvoidingView>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><Screen key={`${generation}:${path}`} path={path} onSignOut={signOut} /></KeyboardAvoidingView>
     </SafeAreaView> : null}
   </View>;
 }

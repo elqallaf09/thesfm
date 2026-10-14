@@ -1,20 +1,20 @@
 import Constants from 'expo-constants';
 import appIcon from './assets/icon.png';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { PrivacyShield } from './native/PrivacyShield';
 import { NativeWorkspace } from './native/Workspace';
 import { shortcuts, resourceFor } from './native/catalog';
-import { openScreen as openSite, onDataChanged } from './native/navigation';
-import { refreshSession } from './native/api';
+import { openScreen as openSite } from './native/navigation';
+import { useAccountSummary } from './native/useAccountSummary';
+import { fetchJson } from './native/api';
 import { AuthGate } from './native/AccountScreen';
 import { RecordScreen } from './native/RecordScreen';
 import { absoluteKnownAmount, shariahTag } from './presentation';
-import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 type ProductId = 'finance' | 'investor' | 'business';
-type Session = { accessToken: string; refreshToken: string; expiresAt: number };
 type FinanceSummary = { currency: string | null; monthlyIncome: number | null; monthlyExpenses: number | null; monthlyNet: number | null; trackedPosition: number | null; activeDebtCount: number };
 type BusinessSummary = { currency: string | null; projectCount: number; customerCount: number; supplierCount: number; activeEmployeeCount: number; invoiceCount: number; openInvoiceCount: number; overdueInvoiceCount: number; outstandingInvoiceAmount: number | null; monthlySales: number | null; monthlyOperatingExpenses: number | null; monthlyOperatingNet: number | null; refreshedAt: string };
 type Instrument = { displaySymbol?: string; symbol: string; displayName?: string; name: string; assetType?: string; marketName?: string; currency?: string; source?: string; sector?: string; shariahStatus?: string };
@@ -24,8 +24,6 @@ type IconName = 'home' | 'wallet' | 'chart' | 'business' | 'target' | 'file' | '
 const extra = Constants.expoConfig?.extra ?? {};
 const product = (extra.sfmProduct ?? 'finance') as ProductId;
 const apiBaseUrl = String(extra.apiBaseUrl ?? 'https://www.the-sfm.com').replace(/\/$/, '');
-const FINANCE_SESSION_KEY = 'sfm-finance-session';
-const BUSINESS_SESSION_KEY = 'sfm-business-session';
 const C = { canvas: '#0B0D12', surface: '#12151C', raised: '#181C24', border: '#292E38', borderStrong: '#59648A', text: '#EAF1FB', second: '#C3CCE8', muted: '#98A2C9', indigo: '#818CF8', teal: '#5EEAD4', sky: '#79ADEF', violet: '#A78BFA', success: '#59C98A', danger: '#FB7185', warning: '#E9B65B' };
 const glyph: Record<IconName, string> = { home: '⌂', wallet: '▣', chart: '⌁', business: '▤', target: '◎', file: '▤', user: '◌', refresh: '↻', search: '⌕', shield: '◇', arrow: '←', check: '✓', bell: '◔' };
 const productInfo: Record<ProductId, { label: string; accent: string; soft: string; icon: IconName }> = {
@@ -35,60 +33,16 @@ const productInfo: Record<ProductId, { label: string; accent: string; soft: stri
 };
 
 export default function App() {
-  return <SafeAreaProvider><NativeWorkspace>{product === 'finance' ? <FinanceApp /> : product === 'investor' ? <InvestorApp /> : <BusinessApp />}</NativeWorkspace></SafeAreaProvider>;
+  return <SafeAreaProvider><PrivacyShield><NativeWorkspace>{product === 'finance' ? <FinanceApp /> : product === 'investor' ? <InvestorApp /> : <BusinessApp />}</NativeWorkspace></PrivacyShield></SafeAreaProvider>;
 }
 
 function FinanceApp() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [summary, setSummary] = useState<FinanceSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { session, summary, loading, error: errorMessage, lastUpdatedAt, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<FinanceSummary>();
   const [showSignIn, setShowSignIn] = useState(true);
   const [tab, setTab] = useState('home');
 
-  const restoreSession = useCallback(async () => {
-    try {
-      const saved = await SecureStore.getItemAsync(FINANCE_SESSION_KEY);
-      if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, FINANCE_SESSION_KEY));
-    } catch { await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY); } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { void restoreSession(); }, [restoreSession]);
-
-  const loadSummary = useCallback(async () => {
-    if (!session) return;
-    setLoading(true); setErrorMessage(null);
-    try {
-      const active = await refreshSession(session, FINANCE_SESSION_KEY);
-      if (active.accessToken !== session.accessToken) setSession(active);
-      const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/finance/summary`, { headers: { Authorization: `Bearer ${active.accessToken}` } });
-      const data = await responseJson(response);
-      if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE');
-      setSummary(data.summary as FinanceSummary); setLastUpdatedAt(new Date());
-    } catch (error) {
-      if (isSessionError(error)) { await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY); setSession(null); setSummary(null); Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بياناتك المالية.'); return; }
-      setErrorMessage('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
-    } finally { setLoading(false); }
-  }, [session]);
-  useEffect(() => { if (session) void loadSummary(); }, [session, loadSummary]);
-  useEffect(() => onDataChanged(() => { if (session) void loadSummary(); }), [session, loadSummary]);
-
-  const signIn = useCallback(async () => {
-    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, ''); const key = String(extra.supabaseAnonKey ?? '');
-    if (!url || !key) { Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.'); return; }
-    setLoading(true);
-    try {
-      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }) });
-      const payload = await responseJson(response); if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
-      const next = toSession(payload); await SecureStore.setItemAsync(FINANCE_SESSION_KEY, JSON.stringify(next)); setPassword(''); setSummary(null); setSession(next);
-    } catch (error) { Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error)); } finally { setLoading(false); }
-  }, [email, password]);
-  async function signOut() { await SecureStore.deleteItemAsync(FINANCE_SESSION_KEY); setSession(null); setSummary(null); setErrorMessage(null); setLastUpdatedAt(null); setTab('home'); }
-
   if (loading && !session) return <Loading productId="finance" />;
-  if (!session) return <Landing productId="finance" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} />;
+  if (!session) return <>{errorMessage ? <Notice message={errorMessage} /> : null}{errorMessage ? <Pressable accessibilityRole="button" onPress={loadSummary}><Text style={{ color: C.teal, padding: 16 }}>إعادة الاتصال</Text></Pressable> : null}<Landing productId="finance" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} /></>;
   return <Shell productId="finance" tab={tab} setTab={setTab}>
     {tab === 'home' ? <FinanceDashboard summary={summary} loading={loading} error={errorMessage} lastUpdatedAt={lastUpdatedAt} refresh={loadSummary} /> : null}
     {tab === 'plan' ? <DetailScreen productId="finance" kicker="الحركة المالية" title="سجّل دخلك ومصروفاتك." body="الدخل والمصروفات والمدخرات والأهداف في مساحات واضحة، مرتبطة ببيانات حسابك." items={[['الدخل', 'مصادر الدخل والاستلام', 'wallet', '/income'], ['المصروفات', 'الحركة اليومية والتصنيفات', 'file', '/expenses'], ['الأهداف المالية', 'تابع التقدم والموعد المستهدف', 'target', '/goals'], ['المدخرات', 'رتّب أرصدتك حسب الغرض', 'wallet', '/savings'], ['مراجعة الشهر', 'راجع الدخل والمصروفات', 'check', '/income/month-close']]} /> : null}
@@ -124,7 +78,7 @@ function InvestorApp() {
   const [items, setItems] = useState<Instrument[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(''); const [assetType, setAssetType] = useState('all'); const [updatedAt, setUpdatedAt] = useState<Date | null>(null); const [tab, setTab] = useState('home');
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try { const response = await fetchWithTimeout(`${apiBaseUrl}/api/markets?limit=60&quality=complete`); const body = await responseJson(response); if (!response.ok || !body) throw new Error('MARKETS_UNAVAILABLE'); setItems(Array.isArray(body.markets) ? body.markets as Instrument[] : []); setUpdatedAt(new Date()); }
+    try { const body = await fetchJson<ApiBody>(`${apiBaseUrl}/api/markets?limit=60&quality=complete`); if (!body) throw new Error('MARKETS_UNAVAILABLE'); setItems(Array.isArray(body.markets) ? body.markets as Instrument[] : []); setUpdatedAt(new Date()); }
     catch { setError('تعذر تحميل الأسواق. تحقق من الشبكة ثم أعد المحاولة.'); } finally { setLoading(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -144,24 +98,11 @@ function InvestorApp() {
 }
 
 function BusinessApp() {
-  const [session, setSession] = useState<Session | null>(null); const [summary, setSummary] = useState<BusinessSummary | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [showSignIn, setShowSignIn] = useState(true); const [tab, setTab] = useState('home');
-  const restoreSession = useCallback(async () => { try { const saved = await SecureStore.getItemAsync(BUSINESS_SESSION_KEY); if (saved) setSession(await refreshSession(JSON.parse(saved) as Session, BUSINESS_SESSION_KEY)); } catch { await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY); } finally { setLoading(false); } }, []);
-  useEffect(() => { void restoreSession(); }, [restoreSession]);
-  const loadSummary = useCallback(async () => {
-    if (!session) return; setLoading(true); setError(null);
-    try { const active = await refreshSession(session, BUSINESS_SESSION_KEY); if (active.accessToken !== session.accessToken) setSession(active); const response = await fetchWithTimeout(`${apiBaseUrl}/api/mobile/business/summary`, { headers: { Authorization: `Bearer ${active.accessToken}` } }); const data = await responseJson(response); if (!response.ok || !data?.ok) throw new Error(data?.code ?? 'SUMMARY_UNAVAILABLE'); setSummary(data.summary as BusinessSummary); }
-    catch (reason) { if (isSessionError(reason)) { await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY); setSession(null); setSummary(null); Alert.alert('انتهت الجلسة', 'سجّل الدخول مرة أخرى لحماية بيانات أعمالك.'); return; } setError('تعذر تحميل ملخص أعمالك. تحقق من الشبكة ثم أعد المحاولة.'); } finally { setLoading(false); }
-  }, [session]);
-  useEffect(() => { if (session) void loadSummary(); }, [session, loadSummary]);
-  useEffect(() => onDataChanged(() => { if (session) void loadSummary(); }), [session, loadSummary]);
-  const signIn = useCallback(async () => {
-    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, ''); const key = String(extra.supabaseAnonKey ?? ''); if (!url || !key) { Alert.alert('الإعدادات ناقصة', 'أضف إعدادات Supabase العامة في ملف .env ثم أعد تشغيل Expo.'); return; } setLoading(true);
-    try { const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }) }); const payload = await responseJson(response); if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`); const next = toSession(payload); await SecureStore.setItemAsync(BUSINESS_SESSION_KEY, JSON.stringify(next)); setPassword(''); setSession(next); }
-    catch (reason) { Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(reason)); } finally { setLoading(false); }
-  }, [email, password]);
-  async function signOut() { await SecureStore.deleteItemAsync(BUSINESS_SESSION_KEY); setSession(null); setSummary(null); setError(null); setTab('home'); }
+  const { session, summary, loading, error, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<BusinessSummary>();
+  const [showSignIn, setShowSignIn] = useState(true);
+  const [tab, setTab] = useState('home');
   if (loading && !session) return <Loading productId="business" />;
-  if (!session) return <Landing productId="business" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} />;
+  if (!session) return <>{error ? <Notice message={error} /> : null}{error ? <Pressable accessibilityRole="button" onPress={loadSummary}><Text style={{ color: C.violet, padding: 16 }}>إعادة الاتصال</Text></Pressable> : null}<Landing productId="business" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} /></>;
   return <Shell productId="business" tab={tab} setTab={setTab}>
     {tab === 'home' ? <BusinessDashboard summary={summary} loading={loading} error={error} refresh={loadSummary} /> : null}
     {tab === 'operations' ? <DetailScreen productId="business" kicker="العمليات" title="كل ما تحتاجه لتسيير العمل." body="المشاريع والعملاء والموردون والموظفون والفواتير في مساحات متصلة." items={[['المبيعات', 'تابع الفرص والمبيعات المسجلة', 'chart', '/sales'], ['الموردون', 'بيانات الموردين والتواصل', 'file', '/suppliers'], ['المصروفات التشغيلية', 'سجل التكاليف التشغيلية', 'wallet', '/operating-expenses'], ['الفريق', 'إدارة الموظفين وسجل النشاط', 'user', '/employees']]} /> : null}
@@ -216,12 +157,6 @@ function Loading({ productId }: { productId: ProductId }) { return <SafeAreaView
 function count(value: number | undefined) { return value == null ? '—' : value.toLocaleString('en-US'); }
 function money(value: number | null, currency: string | null) { return value == null || !currency ? '—' : `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`; }
 function time(value: Date | null) { return value ? value.toLocaleTimeString('ar-KW-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '—'; }
-function toSession(token: ApiBody): Session { const accessToken = typeof token.access_token === 'string' ? token.access_token : ''; const refreshToken = typeof token.refresh_token === 'string' ? token.refresh_token : ''; const expiresIn = typeof token.expires_in === 'number' ? token.expires_in : 0; if (!accessToken || !refreshToken || expiresIn <= 0) throw new Error('INVALID_SESSION'); return { accessToken, refreshToken, expiresAt: Date.now() + expiresIn * 1000 }; }
-
-async function fetchWithTimeout(url: string, options?: RequestInit) { const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15_000); try { return await fetch(url, { ...options, signal: controller.signal }); } finally { clearTimeout(timeout); } }
-async function responseJson(response: Response): Promise<ApiBody | null> { try { const body = await response.json(); return body && typeof body === 'object' ? body as ApiBody : null; } catch { return null; } }
-function isSessionError(error: unknown) { return error instanceof Error && ['SESSION_EXPIRED', 'UNAUTHORIZED'].includes(error.message); }
-function signInErrorMessage(error: unknown) { if (error instanceof Error && ['AUTH_400', 'AUTH_401'].includes(error.message)) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'; if (error instanceof Error && error.message === 'AUTH_429') return 'تمت محاولات كثيرة. انتظر قليلًا ثم أعد المحاولة.'; return 'تحقق من اتصال الإنترنت ثم أعد المحاولة.'; }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.canvas }, fixed: { flex: 1 }, scroll: { paddingBottom: 10 }, content: { paddingTop: 18, paddingBottom: 28, gap: 16 }, landing: { paddingHorizontal: 18, paddingBottom: 40, gap: 18 },

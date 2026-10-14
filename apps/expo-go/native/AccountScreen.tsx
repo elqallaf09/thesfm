@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import { message, request, sessionKey, signIn, user } from './api';
+import { message, request, signIn, signOut, user } from './api';
 import type { Row } from './catalog';
-import { authChanged, dataChanged } from './navigation';
+import { dataChanged } from './navigation';
 import { Button, Busy, Card, Copy, ErrorNote, Input, Page, Title } from './ui';
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -16,7 +15,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => { void check(); }, [check]);
   if (state === 'loading') return <Busy />;
-  if (state === 'login') return <SignInScreen onDone={() => { setState('ready'); authChanged(); }} />;
+  if (state === 'login') return <SignInScreen onDone={() => { setState('ready'); }} />;
   if (state === 'error') return <Page><ErrorNote text={error} /><Button title="إعادة المحاولة" onPress={() => { void check(); }} /></Page>;
   return children;
 }
@@ -27,7 +26,7 @@ function SignInScreen({ onDone }: { onDone: () => void }) {
     if (busy || !email.trim() || !password) return;
     setBusy(true); setError('');
     try { await signIn(email, password); setPassword(''); onDone(); }
-    catch { setError('تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور والاتصال'); } finally { setBusy(false); }
+    catch (reason) { setError(message(reason)); } finally { setBusy(false); }
   }
   return <Page><Title>تسجيل الدخول</Title><Copy>استخدم حساب THE SFM لعرض سجلاتك وإدارتها داخل التطبيق.</Copy><Input label="البريد الإلكتروني" email value={email} onChange={setEmail} /><Input label="كلمة المرور" secret value={password} onChange={setPassword} /><ErrorNote text={error} /><Button title={busy ? 'جارٍ الدخول…' : 'دخول'} onPress={() => { void submit(); }} disabled={busy || !email.trim() || !password} /></Page>;
 }
@@ -54,12 +53,12 @@ export function AccountScreen({ security = false, onSignOut }: { security?: bool
   }
   function signOutAll() { Alert.alert('تسجيل الخروج من جميع الأجهزة؟', 'تحتاج تسجيل الدخول مجدداً على أجهزتك.', [{ text: 'إلغاء', style: 'cancel' }, { text: 'تسجيل الخروج', style: 'destructive', onPress: async () => {
     setBusy(true);
-    try { await request('/auth/v1/logout?scope=global', { method: 'POST' }); await SecureStore.deleteItemAsync(sessionKey); onSignOut(); }
+    try { const revoked = await signOut('global'); onSignOut(); if (!revoked) Alert.alert('تم مسح جلسة هذا التطبيق', 'تعذر تأكيد تسجيل الخروج من جميع الأجهزة. حاول مجدداً عند توفر الاتصال.'); }
     catch (reason) { setError(message(reason)); } finally { setBusy(false); }
   } }]); }
   return <Page><Title>{security ? 'الأمان' : 'الملف الشخصي'}</Title><Copy>{email}</Copy><ErrorNote text={error} />{busy ? <Busy /> : null}{notice ? <Card><Copy>{notice}</Copy></Card> : null}
     {security ? <><Input label="كلمة المرور الجديدة" value={password} onChange={setPassword} secret /><Input label="تأكيد كلمة المرور" value={confirmation} onChange={setConfirmation} secret /><Button title="تحديث كلمة المرور" onPress={() => { void save(); }} disabled={busy} /><Button title="تسجيل الخروج من جميع الأجهزة" danger onPress={signOutAll} disabled={busy} /></> : <><Input label="الاسم الظاهر" value={name} onChange={setName} /><Input label="العملة الافتراضية" value={currency} onChange={setCurrency} /><Button title="حفظ التغييرات" onPress={() => { void save(); }} disabled={busy || !profile.id} /></>}
-    <Button title="تسجيل الخروج من هذا الجهاز" secondary onPress={() => { void SecureStore.deleteItemAsync(sessionKey).then(onSignOut); }} disabled={busy} />
+    <Button title="تسجيل الخروج من هذا الجهاز" secondary onPress={() => { void signOut().then(revoked => { onSignOut(); if (!revoked) Alert.alert('تم مسح جلسة هذا التطبيق', 'تعذر تأكيد إلغاء الجلسة على الخادم.'); }).catch(reason => setError(message(reason))); }} disabled={busy} />
     {error ? <Button title="إعادة التحميل" secondary onPress={() => { void load(); }} disabled={busy} /> : null}
   </Page>;
 }

@@ -1,16 +1,18 @@
 import Constants from 'expo-constants';
-import * as SecureStore from 'expo-secure-store';
+import { assertSessionVersion, beginSessionChange, clearSession, persistSession, sessionVersion, storedSession, type Session } from './sessionStore';
+import { authChanged } from './navigation';
+export type { Session } from './sessionStore';
 import { businessAccess, type Product, type Resource, type Row } from './catalog';
 import { recordPayload, recordQuery } from './records';
+import { assertNativeSessionSecurity } from './sessionGate';
 
-export type Session = { accessToken: string; refreshToken: string; expiresAt: number };
 const extra = Constants.expoConfig?.extra ?? {};
 export const product = (extra.sfmProduct || 'finance') as Product;
 export const site = String(extra.apiBaseUrl || 'https://www.the-sfm.com').replace(/\/$/, '');
 const url = String(extra.supabaseUrl || '').replace(/\/$/, '');
 const key = String(extra.supabaseAnonKey || '');
 export const sessionKey = `sfm-${product}-session`;
-const refreshing = new Map<string, Promise<Session>>();
+const refreshing = new Map<string, { version: number; job: Promise<Session> }>();
 export async function fetchJson<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
@@ -18,7 +20,7 @@ export async function fetchJson<T>(endpoint: string, options: RequestInit = {}):
     const response = await fetch(endpoint, { ...options, signal: controller.signal });
     const body = await response.json().catch(() => null);
     if (!response.ok) {
-      if (response.status === 401 || ['refresh_token_not_found', 'refresh_token_already_used', 'session_not_found'].includes(body?.error_code) || body?.error === 'invalid_grant') throw new Error('SESSION_EXPIRED');
+      if (response.status === 401 || ['refresh_token_not_found', 'refresh_token_already_used', 'session_not_found'].includes(body?.error_code ?? body?.code) || body?.error === 'invalid_grant') throw new Error('SESSION_EXPIRED');
       if (response.status === 403) throw new Error('لا تملك صلاحية لهذه العملية');
       if (response.status === 429) throw new Error('محاولات كثيرة. انتظر قليلاً وأعد المحاولة');
       if (body?.code === '23505') throw new Error('هذا السجل موجود مسبقاً');
@@ -29,67 +31,117 @@ export async function fetchJson<T>(endpoint: string, options: RequestInit = {}):
   } finally { clearTimeout(timeout); }
 }
 function sessionFrom(body: Record<string, unknown>): Session {
-  if (typeof body.access_token !== 'string' || typeof body.refresh_token !== 'string' || typeof body.expires_in !== 'number') throw new Error('SESSION_EXPIRED');
+  if (typeof body?.access_token !== 'string' || !body.access_token || typeof body.refresh_token !== 'string' || !body.refresh_token || typeof body.expires_in !== 'number' || !Number.isFinite(body.expires_in) || body.expires_in <= 0) throw new Error('SESSION_EXPIRED');
   return { accessToken: body.access_token, refreshToken: body.refresh_token, expiresAt: Date.now() + body.expires_in * 1000 };
 }
 export async function refreshSession(active: Session, storageKey = sessionKey): Promise<Session> {
-  if (active.expiresAt > Date.now() + 60000) return active;
+  const version = sessionVersion(storageKey);
   const pending = refreshing.get(storageKey);
-  if (pending) return pending;
+  if (pending?.version === version) return pending.job;
   const job = (async () => {
-    const latest = await SecureStore.getItemAsync(storageKey);
-    if (latest) { const saved = JSON.parse(latest) as Session; if (saved.accessToken !== active.accessToken && saved.expiresAt > Date.now() + 60000) return saved; }
-    const body = await fetchJson<Record<string, unknown>>(`${url}/auth/v1/token?grant_type=refresh_token`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: active.refreshToken }) });
+    const saved = await storedSession(storageKey, version);
+    if (saved.accessToken !== active.accessToken || saved.refreshToken !== active.refreshToken) throw new Error('SESSION_CHANGED');
+    if (saved.expiresAt > Date.now() + 60000) return saved;
+    const body = await fetchJson<Record<string, unknown>>(`${url}/auth/v1/token?grant_type=refresh_token`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: saved.refreshToken }) });
+    assertSessionVersion(storageKey, version);
     const next = sessionFrom(body);
-    await SecureStore.setItemAsync(storageKey, JSON.stringify(next));
+    await persistSession(storageKey, next, version);
     return next;
   })();
-  refreshing.set(storageKey, job);
-  try { return await job; } finally { refreshing.delete(storageKey); }
+  refreshing.set(storageKey, { version, job });
+  try { return await job; } finally { if (refreshing.get(storageKey)?.job === job) refreshing.delete(storageKey); }
 }
 export async function activeSession() {
-  const saved = await SecureStore.getItemAsync(sessionKey);
-  if (!saved) throw new Error('SESSION_EXPIRED');
-  return refreshSession(JSON.parse(saved) as Session);
+  const version = sessionVersion(sessionKey);
+  const saved = await storedSession(sessionKey, version);
+  try { return await refreshSession(saved); }
+  catch (reason) {
+    if (reason instanceof Error && reason.message === 'SESSION_EXPIRED' && version === sessionVersion(sessionKey)) await clearSession(sessionKey, version);
+    throw reason;
+  }
 }
 export async function signIn(email: string, password: string) {
   if (!url || !key) throw new Error('إعدادات الاتصال غير متاحة');
+  const version = beginSessionChange(sessionKey);
   const body = await fetchJson<Record<string, unknown>>(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }) });
-  const next = sessionFrom(body); await SecureStore.setItemAsync(sessionKey, JSON.stringify(next)); return next;
+  const next = sessionFrom(body);
+  await assertNativeSessionSecurity(site, next.accessToken);
+  await persistSession(sessionKey, next, version);
+  authChanged();
+  return next;
 }
-export async function request<T>(path: string, options: RequestInit = {}) {
+export async function signOut(scope: 'local' | 'global' = 'local') {
+  const version = sessionVersion(sessionKey);
+  let session: Session | undefined;
+  try { session = await storedSession(sessionKey, version); } catch (reason) { if (reason instanceof Error && reason.message === 'SESSION_CHANGED') throw reason; }
+  // Local data disappears even when the device is offline. Report whether
+  // server revocation succeeded instead of claiming all devices were revoked.
+  await clearSession(sessionKey, version);
+  if (!session) return false;
+  try {
+    await fetchJson(`${url}/auth/v1/logout?scope=${scope}`, { method: 'POST', headers: { apikey: key, Authorization: `Bearer ${session.accessToken}` } });
+    return true;
+  } catch { return false; }
+}
+async function authenticated<T>(endpoint: string, options: RequestInit, version: number) {
+  assertSessionVersion(sessionKey, version);
   const session = await activeSession();
-  return fetchJson<T>(`${url}${path}`, { ...options, headers: { apikey: key, Authorization: `Bearer ${session.accessToken}`, 'Content-Type': 'application/json', ...options.headers } });
+  assertSessionVersion(sessionKey, version);
+  const headers = new Headers(options.headers);
+  headers.set('apikey', key); headers.set('Authorization', `Bearer ${session.accessToken}`); headers.set('Content-Type', 'application/json');
+  try {
+    await assertNativeSessionSecurity(site, session.accessToken);
+    assertSessionVersion(sessionKey, version);
+    const body = await fetchJson<T>(endpoint, { ...options, headers, cache: 'no-store', redirect: 'error' });
+    assertSessionVersion(sessionKey, version);
+    return body;
+  } catch (reason) {
+    if (reason instanceof Error && reason.message === 'SESSION_EXPIRED' && version === sessionVersion(sessionKey)) await clearSession(sessionKey, version);
+    throw reason;
+  }
 }
-export function user() { return request<{ id: string; email?: string; created_at?: string }>('/auth/v1/user'); }
-export async function roleFor(userId: string) {
-  const rows = await request<Row[]>(`/rest/v1/business_user_roles?select=role&user_id=eq.${encodeURIComponent(userId)}`);
+export async function request<T>(path: string, options: RequestInit = {}, version = sessionVersion(sessionKey)) {
+  if (!/^\/(?:auth|rest)\/v1\//.test(path) || path.includes('..') || path.includes('#')) throw new Error('INVALID_PATH');
+  return authenticated<T>(`${url}${path}`, options, version);
+}
+export function accountSummary<T>() {
+  if (product === 'investor') throw new Error('INVALID_PRODUCT');
+  return authenticated<{ ok: boolean; summary: T }>(`${site}/api/mobile/${product}/summary`, {}, sessionVersion(sessionKey));
+}
+export function user(version = sessionVersion(sessionKey)) { return request<{ id: string; email?: string; created_at?: string }>('/auth/v1/user', {}, version); }
+export async function roleFor(userId: string, version = sessionVersion(sessionKey)) {
+  const rows = await request<Row[]>(`/rest/v1/business_user_roles?select=role&user_id=eq.${encodeURIComponent(userId)}`, {}, version);
   return String(rows[0]?.role ?? 'manager');
 }
-export async function accessFor(resource: Resource, userId: string) {
+export async function accessFor(resource: Resource, userId: string, version = sessionVersion(sessionKey)) {
   if (!resource.products.includes(product)) throw new Error('هذا القسم غير متاح لهذا التطبيق');
-  if (product === 'business' && resource.path !== '/projects') return businessAccess(await roleFor(userId), resource.path);
+  if (product === 'business' && resource.path !== '/projects') return businessAccess(await roleFor(userId, version), resource.path);
   return { view: true, write: !resource.readOnly, remove: !resource.readOnly };
 }
 export async function loadRecords(resource: Resource, offset = 0) {
-  const account = await user();
-  const access = await accessFor(resource, account.id);
+  const version = sessionVersion(sessionKey); const account = await user(version);
+  const access = await accessFor(resource, account.id, version);
   if (!access.view) throw new Error('لا تملك صلاحية عرض هذا القسم');
-  return { rows: await request<Row[]>(recordQuery(resource, account.id, undefined, offset)), access };
+  return { rows: await request<Row[]>(recordQuery(resource, account.id, undefined, offset), {}, version), access };
 }
 export async function saveRecord(resource: Resource, form: Record<string, string>, original: Row = {}) {
-  const account = await user(); const access = await accessFor(resource, account.id);
+  const version = sessionVersion(sessionKey); const account = await user(version); const access = await accessFor(resource, account.id, version);
   if (!access.write || resource.readOnly) throw new Error('لا تملك صلاحية تعديل هذا القسم');
   const payload = recordPayload(resource, form, original);
   const path = original.id ? recordQuery(resource, account.id, original.id) : `/rest/v1/${resource.table}`;
-  const rows = await request<Row[]>(path, { method: original.id ? 'PATCH' : 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ ...payload, user_id: account.id }) });
+  const rows = await request<Row[]>(path, { method: original.id ? 'PATCH' : 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ ...payload, user_id: account.id }) }, version);
   if (!rows?.length) throw new Error('لم يتم حفظ السجل. أعد تحميل الصفحة');
   return rows[0];
 }
 export async function deleteRecord(resource: Resource, id: string) {
-  const account = await user(); const access = await accessFor(resource, account.id);
+  const version = sessionVersion(sessionKey); const account = await user(version); const access = await accessFor(resource, account.id, version);
   if (!access.remove || resource.readOnly) throw new Error('لا تملك صلاحية حذف السجل');
-  const rows = await request<Row[]>(recordQuery(resource, account.id, id), { method: 'DELETE', headers: { Prefer: 'return=representation' } });
+  const rows = await request<Row[]>(recordQuery(resource, account.id, id), { method: 'DELETE', headers: { Prefer: 'return=representation' } }, version);
   if (!rows?.length) throw new Error('لم يتم حذف السجل. أعد تحميل الصفحة');
 }
-export function message(error: unknown) { return error instanceof Error && error.message === 'SESSION_EXPIRED' ? 'سجّل الدخول إلى حسابك للمتابعة' : error instanceof Error && error.name !== 'AbortError' ? error.message : 'تعذر الاتصال. أعد المحاولة'; }
+export function message(error: unknown) {
+  if (error instanceof Error && ['SESSION_EXPIRED', 'SESSION_CHANGED'].includes(error.message)) return 'سجّل الدخول إلى حسابك للمتابعة';
+  if (error instanceof Error && error.message === 'MFA_REQUIRED') return 'يتطلب حسابك التحقق الإضافي. تسجيل الدخول بهذا الحساب غير متاح حالياً في التطبيق.';
+  if (error instanceof Error && error.message === 'AUTH_UNAVAILABLE') return 'تعذر التحقق من أمان الجلسة. أعد المحاولة لاحقاً.';
+  return error instanceof Error && error.name !== 'AbortError' ? error.message : 'تعذر الاتصال. أعد المحاولة';
+}

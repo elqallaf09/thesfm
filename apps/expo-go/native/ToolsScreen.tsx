@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Share, Switch, Text, View } from 'react-native';
-import { activeSession, fetchJson, message, product, site } from './api';
+import { accountSummary, message, product } from './api';
 import { shortcuts, type Row } from './catalog';
 import { openScreen } from './navigation';
 import { normalizeNumber } from './records';
@@ -14,7 +14,7 @@ export function ReportsScreen({ path }: { path: string }) {
   const [summary, setSummary] = useState<Row | null>(null); const [busy, setBusy] = useState(true); const [error, setError] = useState('');
   const load = useCallback(async () => {
     setBusy(true); setError('');
-    try { const session = await activeSession(); const body = await fetchJson<{ ok: boolean; summary: Row }>(`${site}/api/mobile/${product}/summary`, { headers: { Authorization: `Bearer ${session.accessToken}` } }); if (!body.ok) throw new Error('تعذر تحميل التقرير'); setSummary(body.summary); }
+    try { const body = await accountSummary<Row>(); if (!body.ok) throw new Error('تعذر تحميل التقرير'); setSummary(body.summary); }
     catch (reason) { setError(message(reason)); } finally { setBusy(false); }
   }, []);
   useEffect(() => { void load(); }, [load]);

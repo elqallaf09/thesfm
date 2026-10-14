@@ -1,7 +1,8 @@
-# Android 0.2.0 — independent native workspaces
+# Android 0.2.1 candidate — independent native workspaces
 
 The Expo application produces three APKs with the existing package identities.
-Version code 2 updates version code 1 when signed with the same private key.
+Version code 3 updates version codes 1/2 when signed with the same private key.
+The 0.2.1 candidate has compiled bundles, not newly signed APKs.
 `orientation: default` allows portrait and landscape. Safe-area-context reserves
 system bars/cutouts; the main tab bar becomes a side rail in landscape.
 
@@ -29,11 +30,20 @@ are separate: personal finance, investor tools, and business operations.
 ## Data and security
 
 The app uses the publishable Supabase key plus the authenticated user's token.
-RLS remains the authority; no service key, schema change, or policy relaxation
-is needed. Every record request also filters by the verified account's ID.
+RLS remains the authority; no service key is embedded. The 0.2.1 candidate adds
+restrictive business-role/related-record policies in an append-only migration.
+Every record request also filters by the verified account's ID.
 Mutation fields are allowlisted by resource. A successful HTTP response with
 no returned record is treated as failure, not a successful save.
-Refresh is serialized across concurrent screens. Session keys are unchanged
+Refresh and SecureStore writes are serialized across concurrent screens; a late
+refresh cannot resurrect a signed-out session or replace a newer login.
+Every native account request checks the server MFA decision first. Deploy
+`/api/mobile/session` before distributing 0.2.1: an unavailable gate fails closed.
+MFA challenge entry is not implemented; accounts requiring MFA are explicitly
+blocked in the native candidate. This app check does not replace database-level
+MFA enforcement for callers using the Supabase REST API directly.
+Android backup and unnecessary overlay/storage/microphone permissions are
+disabled. Screen capture/app-switcher shielding needs verification on a device. Session keys are unchanged
 for Finance and Business; Investor has its own SecureStore key.
 No account records are persisted offline, and missing amounts are not fabricated.
 
@@ -62,3 +72,7 @@ Verify package ID, version code, signer certificate, bundled product config,
 release/debug flag, zip alignment, and portrait/landscape on a device/emulator.
 Authenticated production writes require a test account and are not performed
 using the owner's real records during automated build validation.
+
+See [the October security review](../../docs/security/2026-10-14-mobile-web-review.md)
+for production findings, unapplied migrations, dependency exceptions requiring
+review, and device/signing release gates.

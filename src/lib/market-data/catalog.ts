@@ -15,11 +15,11 @@ export const MARKET_DATASETS = {
 export type MarketDataset = keyof typeof MARKET_DATASETS;
 
 export const MARKET_DATA_PROVIDERS = {
-  fmp: { name: 'Financial Modeling Prep', kind: 'provider', termsUrl: 'https://site.financialmodelingprep.com/terms-of-service', termsReviewedAt: '2026-10-12' },
-  finnhub: { name: 'Finnhub', kind: 'provider', termsUrl: 'https://finnhub.io/terms-of-service', termsReviewedAt: '2026-10-12' },
-  twelve_data: { name: 'Twelve Data', kind: 'provider', termsUrl: 'https://twelvedata.com/terms', termsReviewedAt: '2026-10-12' },
-  eodhd: { name: 'EODHD', kind: 'provider', termsUrl: null, termsReviewedAt: null },
-  marketstack: { name: 'Marketstack', kind: 'provider', termsUrl: null, termsReviewedAt: null },
+  fmp: { name: 'Financial Modeling Prep', kind: 'provider', termsUrl: 'https://site.financialmodelingprep.com/terms-of-service', termsReviewedAt: '2026-10-14' },
+  finnhub: { name: 'Finnhub', kind: 'provider', termsUrl: 'https://finnhub.io/terms-of-service', termsReviewedAt: '2026-10-14' },
+  twelve_data: { name: 'Twelve Data', kind: 'provider', termsUrl: 'https://twelvedata.com/terms', termsReviewedAt: '2026-10-14' },
+  eodhd: { name: 'EODHD', kind: 'provider', termsUrl: 'https://eodhd.com/financial-apis/commercial-vs-personal-license-use', termsReviewedAt: '2026-10-14' },
+  marketstack: { name: 'Marketstack', kind: 'provider', termsUrl: 'https://marketstack.com/agreement', termsReviewedAt: '2026-10-14' },
   yahoo: { name: 'Yahoo Finance', kind: 'provider', termsUrl: null, termsReviewedAt: null },
   gold_api: { name: 'Gold API', kind: 'provider', termsUrl: null, termsReviewedAt: null },
   myfxbook: { name: 'Myfxbook', kind: 'provider', termsUrl: null, termsReviewedAt: null },

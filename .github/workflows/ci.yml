@@ -113,6 +113,36 @@ jobs:
           name: coverage
           path: coverage/
 
+  mobile-validation:
+    name: CI/Mobile ${{ matrix.product }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [finance, investor, business]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: apps/expo-go/pnpm-lock.yaml
+      - run: pnpm --dir apps/expo-go install --frozen-lockfile
+      - run: pnpm --dir apps/expo-go exec tsc --noEmit
+      - name: Compile Android and iOS bundles
+        working-directory: apps/expo-go
+        env:
+          SFM_PRODUCT: ${{ matrix.product }}
+          EXPO_PUBLIC_SFM_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SFM_API_BASE_URL: https://www.the-sfm.com
+        run: |
+          pnpm exec expo export --platform android --output-dir .expo-validation/android
+          pnpm exec expo export --platform ios --output-dir .expo-validation/ios
+
   # Proves the full supabase/migrations chain applies cleanly, exactly once,
   # against a genuinely empty disposable Postgres instance. This is
   # deliberately independent of Supabase's own external branch-provisioning
@@ -167,6 +197,16 @@ jobs:
           PGPASSWORD: postgres
           PGOPTIONS: '-c sfm.disposable_ci=1'
         run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f .github/scripts/markets-tv-validation.sql
+
+      - name: Verify mobile business roles and cross-account relation isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/mobile-business-security.sql
+
+      - name: Verify private financial attachment storage
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/financial-attachment-security.sql
 
       - name: Verify month close and collaboration isolation
         env:
