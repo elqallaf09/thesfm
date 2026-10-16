@@ -1,6 +1,13 @@
 # Supabase production migration ledger
 
-## Current release gate — 27 September 2026
+## Update — 14 October 2026
+
+The seven byte-identical identity aliases have been repaired. Ten older gaps
+and four candidate protection migrations remain pending or unresolved. See
+[the scoped reconciliation record](supabase-ledger-2026-10-14.md). The strict
+drift guard remains enabled; this is not approval for a blanket database push.
+
+## Historical release gate — 27 September 2026
 
 Production's migration ledger and the repository's append-only migration
 filenames are not currently proven to be identical. Read-only dashboard

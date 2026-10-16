@@ -6,6 +6,7 @@ import {
   getMfaSigningSecret,
   verifyAuthPayload,
 } from '@/lib/auth/sessionSecurity';
+import { recordEmailMfaSession } from './emailMfaSessions';
 
 const AUTH_TIMEOUT_MS = 4_500;
 
@@ -128,6 +129,27 @@ export async function inspectSessionSecurity(
       sessionId &&
       proof.sessionId === sessionId,
     );
+    if (emailProofValid && proof && sessionId) {
+      // Upgrade an already verified web cookie to database-visible assurance.
+      // Preserve its original expiry; token refresh must not extend the proof.
+      if (!await recordEmailMfaSession(user.id, sessionId, proof.expiresAt)) {
+        return { status: 'unavailable', reason: 'provider' };
+      }
+    } else if (sessionId) {
+      const proofUrl = new URL(`${supabaseUrl}/rest/v1/email_mfa_sessions`);
+      proofUrl.searchParams.set('select', 'session_id');
+      proofUrl.searchParams.set('session_id', `eq.${sessionId}`);
+      proofUrl.searchParams.set('user_id', `eq.${user.id}`);
+      proofUrl.searchParams.set('limit', '1');
+      try {
+        const response = await fetchWithTimeout(proofUrl, {
+          headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${token}` }, cache: 'no-store',
+        });
+        if (!response.ok) return { status: 'unavailable', reason: 'provider' };
+        const rows: unknown = await response.json();
+        emailProofValid = Array.isArray(rows) && rows.length === 1 && rows[0]?.session_id === sessionId;
+      } catch { return { status: 'unavailable', reason: 'provider' }; }
+    }
   }
 
   const mfaRequirement = decideMfaRequirement({

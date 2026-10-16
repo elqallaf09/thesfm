@@ -16,6 +16,7 @@ import {
 } from '@/lib/server/authCookies';
 import { inspectSessionSecurity } from '@/lib/server/authSession';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
+import { recordEmailMfaSession } from '@/lib/server/emailMfaSessions';
 
 export const runtime = 'nodejs';
 
@@ -79,6 +80,9 @@ export async function POST(request: NextRequest) {
       issuedAt: now,
       expiresAt: now + maxAge,
     };
+    if (!await recordEmailMfaSession(security.userId, security.sessionId, proof.expiresAt)) {
+      return json({ ok: false, code: 'MFA_UNAVAILABLE' }, 503);
+    }
     setEmailMfaProofCookie(response, await signAuthPayload(proof, secret), maxAge);
   }
   clearEmailMfaChallengeCookie(response);
