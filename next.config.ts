@@ -4,7 +4,6 @@ import path from "node:path";
 
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
-const skipVerifiedBuildChecks = process.env.NEXT_BUILD_SKIP_CHECKS === "1";
 // Keep generated and legacy consumers compatible while preferring Supabase's
 // independently rotatable browser-safe key. Never place a secret key here.
 const SUPABASE_PUBLIC_KEY =
@@ -253,11 +252,8 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  eslint: {
-    ignoreDuringBuilds: skipVerifiedBuildChecks,
-  },
   typescript: {
-    ignoreBuildErrors: skipVerifiedBuildChecks,
+    ignoreBuildErrors: process.env.NEXT_BUILD_SKIP_CHECKS === "1",
   },
   async headers() {
     return [
