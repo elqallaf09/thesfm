@@ -1,11 +1,17 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { extractStaticAssetsFromHtml, findPrerenderedHtml } from './lib/performance-budget-assets.mjs';
 
 const root = process.cwd();
 const nextDir = path.join(root, '.next');
 const budget = JSON.parse(await readFile(path.join(root, 'performance-budget.json'), 'utf8'));
-const manifest = JSON.parse(await readFile(path.join(nextDir, 'app-build-manifest.json'), 'utf8'));
+let manifest = null;
+try {
+  manifest = JSON.parse(await readFile(path.join(nextDir, 'app-build-manifest.json'), 'utf8'));
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+}
 
 async function filesBelow(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -47,23 +53,37 @@ const fontSizes = await Promise.all(fontFiles.map(file => stat(file)));
 record(results, `built font assets (${fontFiles.length} files)`, fontSizes.reduce((sum, item) => sum + item.size, 0), budget.builtFontTotalBytes);
 
 for (const [route, routeBudget] of Object.entries(budget.routes)) {
-  const routeFiles = [...new Set([
-    ...(manifest.pages['/layout'] ?? []),
-    ...(manifest.pages[routeBudget.manifestKey] ?? []),
-  ])];
-  if (routeFiles.length === 0) throw new Error(`No build assets found for ${route}`);
+  let routeFiles;
+
+  if (manifest) {
+    routeFiles = [...new Set([
+      ...(manifest.pages['/layout'] ?? []),
+      ...(manifest.pages[routeBudget.manifestKey] ?? []),
+    ])];
+    if (routeFiles.length === 0) throw new Error('No build assets found for ' + route);
+  } else {
+    // Next.js 16 removed app-build-manifest.json because its route-size metrics
+    // were misleading. Measure the JS/CSS assets actually referenced by each
+    // prerendered route instead of disabling the budget check.
+    const htmlPath = await findPrerenderedHtml(nextDir, route);
+    const html = await readFile(htmlPath, 'utf8');
+    const assets = extractStaticAssetsFromHtml(html);
+    if (assets.js.length === 0) throw new Error('No Next.js JavaScript assets found in ' + htmlPath);
+    routeFiles = [...assets.js, ...assets.css];
+  }
 
   let javascriptBytes = 0;
   let cssBytes = 0;
-  for (const file of routeFiles) {
+  for (const file of new Set(routeFiles)) {
     if (!file.endsWith('.js') && !file.endsWith('.css')) continue;
     const compressed = gzipSync(await readFile(path.join(nextDir, file)), { level: 9 }).length;
     if (file.endsWith('.js')) javascriptBytes += compressed;
     else cssBytes += compressed;
   }
 
-  record(results, `${route} initial JavaScript (gzip)`, javascriptBytes, routeBudget.initialJavaScriptGzipBytes);
-  record(results, `${route} initial CSS (gzip)`, cssBytes, routeBudget.initialCssGzipBytes);
+  const sourceLabel = manifest ? '' : ', rendered HTML assets';
+  record(results, `${route} initial JavaScript (gzip${sourceLabel})`, javascriptBytes, routeBudget.initialJavaScriptGzipBytes);
+  record(results, `${route} initial CSS (gzip${sourceLabel})`, cssBytes, routeBudget.initialCssGzipBytes);
 }
 
 console.table(results.map(result => ({
