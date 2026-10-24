@@ -90,6 +90,8 @@ export async function handleMobileBusinessDocument(request: Request, product: st
   if (product !== 'business' || resource !== 'documents') return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
   const access = await mobileAccess(request);
   if (access.response) return access.response;
+  const limited = rateLimitRequest(request, { max: 20, windowMs: 60_000, prefix: `mobile-business-document:${access.userId}` });
+  if (limited) { limited.headers.set('Cache-Control', 'private, no-store'); return limited; }
   const permission = await businessDocumentPermission(access.client, access.userId);
   if (permission.response) return permission.response;
   if (request.method !== 'GET') return mobileResponse({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);

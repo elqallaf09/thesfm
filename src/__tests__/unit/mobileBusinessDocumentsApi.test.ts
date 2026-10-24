@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   role: 'manager',
   owner: '',
   document: null as Record<string, string> | null,
+  limited: false,
   storage: [] as string[],
   signedUrl: '',
 }));
@@ -20,7 +21,9 @@ vi.mock('@/lib/server/mobileAccess', () => ({
   mobileAccess: vi.fn(async () => state.access),
   mobileResponse: response,
 }));
-vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: () => null }));
+vi.mock('@/lib/server/rateLimiter', () => ({
+  rateLimitRequest: () => state.limited ? response({ ok: false, code: 'RATE_LIMITED' }, 429) : null,
+}));
 
 function client() {
   return {
@@ -59,6 +62,7 @@ beforeEach(() => {
   state.role = 'manager';
   state.owner = userId;
   state.document = { id: documentId, file_name: 'plan.pdf', file_path: `${userId}/projects/${projectId}/plan.pdf` };
+  state.limited = false;
   state.storage = [];
   state.signedUrl = `https://storage.example.test/storage/v1/object/sign/project-documents/${userId}/projects/${projectId}/plan.pdf?token=short`;
   state.access = { userId, client: client() };
@@ -96,6 +100,15 @@ describe('mobile business project-document boundary', () => {
     state.owner = userId;
     state.document = { ...state.document!, file_path: `${userId}/other/${projectId}/plan.pdf` };
     expect((await handleMobileBusinessDocument(request(), 'business', 'documents')).status).toBe(404);
+    expect(state.storage).toEqual([]);
+  });
+
+  it('rate-limits signed-link issuance before role, row, or Storage access', async () => {
+    const { handleMobileBusinessDocument } = await import('@/lib/server/mobileAttachments');
+    state.limited = true;
+    const result = await handleMobileBusinessDocument(request(), 'business', 'documents');
+    expect(result.status).toBe(429);
+    expect(result.headers.get('Cache-Control')).toBe('private, no-store');
     expect(state.storage).toEqual([]);
   });
 
