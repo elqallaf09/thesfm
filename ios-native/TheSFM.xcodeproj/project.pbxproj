@@ -32,6 +32,11 @@
 		1D0001020000000000000002 /* MarketsTVHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0000020000000000000002 /* MarketsTVHomeView.swift */; };
 		1D0001030000000000000003 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000050000000000000005 /* SupabaseConfig.swift */; };
 		1D0001100000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000100000000000000010 /* Assets.xcassets */; };
+		1E0001010000000000000001 /* MobileRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0000010000000000000001 /* MobileRecordsView.swift */; };
+		1E0001020000000000000002 /* MobileRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0000010000000000000001 /* MobileRecordsView.swift */; };
+		1E0001030000000000000003 /* MobileRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0000010000000000000001 /* MobileRecordsView.swift */; };
+		1E0001040000000000000004 /* AuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000003 /* AuthSessionStore.swift */; };
+		1E0001050000000000000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000004 /* APIClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +61,7 @@
 		1D0000010000000000000001 /* TheSFMtvApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TheSFMtvApp.swift; sourceTree = "<group>"; };
 		1D0000020000000000000002 /* MarketsTVHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketsTVHomeView.swift; sourceTree = "<group>"; };
 		1D0000110000000000000011 /* TheSFMtv.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheSFMtv.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1E0000010000000000000001 /* MobileRecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRecordsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -171,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				1A0000040000000000000004 /* APIClient.swift */,
+				1E0000010000000000000001 /* MobileRecordsView.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -406,6 +413,7 @@
 				1A0001070000000000000007 /* MoneyFormatter.swift in Sources */,
 				1A0001080000000000000008 /* LoginView.swift in Sources */,
 				1A0001090000000000000009 /* DashboardView.swift in Sources */,
+				1E0001010000000000000001 /* MobileRecordsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -417,6 +425,9 @@
 				1B0001020000000000000002 /* InvestorMarketDirectory.swift in Sources */,
 				1B0001030000000000000003 /* InvestorDashboardView.swift in Sources */,
 				1B0001040000000000000004 /* SupabaseConfig.swift in Sources */,
+				1E0001050000000000000005 /* APIClient.swift in Sources */,
+				1E0001040000000000000004 /* AuthSessionStore.swift in Sources */,
+				1E0001020000000000000002 /* MobileRecordsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -429,6 +440,7 @@
 				1C0001030000000000000003 /* AuthSessionStore.swift in Sources */,
 				1C0001040000000000000004 /* APIClient.swift in Sources */,
 				1C0001050000000000000005 /* SupabaseConfig.swift in Sources */,
+				1E0001030000000000000003 /* MobileRecordsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -658,6 +670,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
+				INFOPLIST_KEY_SFM_SUPABASE_URL = "";
+				INFOPLIST_KEY_SFM_SUPABASE_ANON_KEY = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.investor;
 				PRODUCT_NAME = "THE SFM Investor";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -691,6 +705,8 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
+				INFOPLIST_KEY_SFM_SUPABASE_URL = "";
+				INFOPLIST_KEY_SFM_SUPABASE_ANON_KEY = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.investor;
 				PRODUCT_NAME = "THE SFM Investor";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

@@ -15,6 +15,9 @@ final class AuthSessionStore: ObservableObject {
     private let applicationName: String
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private var sessionGeneration = UUID()
+    private var refreshTask: Task<StoredSession, Error>?
+    var identityRevision: UUID { sessionGeneration }
 
     init(applicationName: String = "THE SFM Finance", keychainService: String = "com.thesfm.finance") {
         self.applicationName = applicationName
@@ -44,6 +47,7 @@ final class AuthSessionStore: ObservableObject {
     }
 
     func signIn(email: String, password: String) async {
+        let generation = sessionGeneration
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedEmail.isEmpty, !password.isEmpty else {
             errorMessage = "أدخل البريد الإلكتروني وكلمة المرور."
@@ -63,6 +67,7 @@ final class AuthSessionStore: ObservableObject {
                 grantType: "password",
                 body: ["email": normalizedEmail, "password": password]
             )
+            guard generation == sessionGeneration else { return }
             save(session)
         } catch {
             errorMessage = error.localizedDescription
@@ -70,6 +75,9 @@ final class AuthSessionStore: ObservableObject {
     }
 
     func signOut() {
+        sessionGeneration = UUID()
+        refreshTask?.cancel()
+        refreshTask = nil
         storage.remove()
         isAuthenticated = false
         accessToken = nil
@@ -106,17 +114,30 @@ final class AuthSessionStore: ObservableObject {
     }
 
     private func refresh(_ storedSession: StoredSession) async {
+        let generation = sessionGeneration
         do {
-            let session = try await requestSession(
-                grantType: "refresh_token",
-                body: ["refresh_token": storedSession.refreshToken]
-            )
+            if refreshTask == nil {
+                refreshTask = Task { try await self.requestSession(grantType: "refresh_token", body: ["refresh_token": storedSession.refreshToken]) }
+            }
+            guard let task = refreshTask else { return }
+            let session = try await task.value
+            guard generation == sessionGeneration else { return }
+            refreshTask = nil
             save(session)
         } catch {
-            storage.remove()
-            isAuthenticated = false
-            accessToken = nil
+            guard generation == sessionGeneration else { return }
+            refreshTask = nil
+            if let error = error as? AuthenticationError, case .invalidCredentials = error { signOut() }
+            else { errorMessage = "تعذر تحديث الجلسة الآن. تحقق من الاتصال وأعد المحاولة." }
         }
+    }
+
+    func validAccessToken() async -> String? {
+        let generation = sessionGeneration
+        guard let stored = storage.load(), isAuthenticated else { return nil }
+        if stored.expiresAt <= Date().addingTimeInterval(60) { await refresh(stored) }
+        guard generation == sessionGeneration, let active = storage.load(), isAuthenticated, active.expiresAt > Date() else { return nil }
+        return active.accessToken
     }
 
     private func requestSession(grantType: String, body: [String: String]) async throws -> StoredSession {
@@ -131,6 +152,8 @@ final class AuthSessionStore: ObservableObject {
             .appending(queryItems: [URLQueryItem(name: "grant_type", value: grantType)])
 
         var request = URLRequest(url: endpoint)
+        request.timeoutInterval = 15
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -142,7 +165,7 @@ final class AuthSessionStore: ObservableObject {
             throw AuthenticationError.unavailable
         }
         guard 200..<300 ~= httpResponse.statusCode else {
-            throw AuthenticationError.invalidCredentials
+            throw [400, 401, 403].contains(httpResponse.statusCode) ? AuthenticationError.invalidCredentials : AuthenticationError.unavailable
         }
 
         let responseBody = try decoder.decode(SupabaseSessionResponse.self, from: data)

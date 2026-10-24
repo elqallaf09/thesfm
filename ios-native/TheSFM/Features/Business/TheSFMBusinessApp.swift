@@ -9,7 +9,10 @@ struct TheSFMBusinessApp: App {
 
     var body: some Scene {
         WindowGroup {
-            BusinessHomeView()
+            TabView {
+                BusinessHomeView().tabItem { Label("الرئيسية", systemImage: "house") }
+                MobileRecordsView(product: "business").tabItem { Label("إدارة الأعمال", systemImage: "briefcase") }
+            }
                 .environmentObject(authSession)
                 .environment(\.layoutDirection, .rightToLeft)
         }

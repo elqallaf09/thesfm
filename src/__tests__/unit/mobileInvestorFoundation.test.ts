@@ -20,8 +20,8 @@ describe('THE SFM Investor iOS foundation', () => {
     const app = read('ios-native/TheSFM/Features/Investor/TheSFMInvestorApp.swift');
     const directory = read('ios-native/TheSFM/Features/Investor/InvestorMarketDirectory.swift');
     const view = read('ios-native/TheSFM/Features/Investor/InvestorDashboardView.swift');
-    const expo = read('apps/expo-go/App.tsx');
-    const android = read('apps/sfm-investor/android/app/src/main/java/com/thesfm/investor/MainActivity.kt');
+    const expo = read('apps/expo-go/src/MarketsScreen.tsx');
+    const android = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
 
     expect(app).toContain('@main');
     expect(app).toContain('.rightToLeft');
@@ -33,10 +33,10 @@ describe('THE SFM Investor iOS foundation', () => {
     expect(directory).toContain('limit", value: "60"');
     expect(view).toContain('Picker("فئة الأصل"');
     expect(expo).toContain('ابحث بالاسم أو الرمز');
-    expect(expo).toContain('FilterPill');
+    expect(expo).toContain('selected={category === id}');
     expect(android).toContain('OutlinedTextField');
     expect(android).toContain('FilterChip');
-    expect(android).toContain('إعادة المحاولة');
+    expect(android).toContain('أعد المحاولة');
   });
 });
 
@@ -44,7 +44,7 @@ describe('THE SFM Business native foundation', () => {
   it('defines independent iPhone and Android/Huawei identities', () => {
     const project = read('ios-native/TheSFM.xcodeproj/project.pbxproj');
     const android = read('apps/sfm-business/android/app/build.gradle');
-    const app = read('apps/sfm-business/android/app/src/main/java/com/thesfm/business/MainActivity.kt');
+    const app = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
 
     expect(project).toContain('TheSFMBusiness */ = {');
     expect(project).toContain('PRODUCT_BUNDLE_IDENTIFIER = com.thesfm.business;');
@@ -53,8 +53,8 @@ describe('THE SFM Business native foundation', () => {
     expect(android).not.toContain('com.google.gms.google-services');
     expect(app).toContain('LayoutDirection.Rtl');
     expect(app).toContain('LazyColumn');
-    expect(app).toContain('BusinessSummaryClient.fetch');
-    expect(app).toContain('SecureSessionStore');
+    expect(app).toContain('/api/mobile/$productId/manifest');
+    expect(app).toContain('MobileSession(this, productId');
     expect(app).toContain('تسجيل الخروج');
   });
 });

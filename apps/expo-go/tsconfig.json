@@ -8,5 +8,5 @@
     "noEmit": true
   },
   "extends": "expo/tsconfig.base",
-  "include": ["App.tsx", "app.config.js"]
+  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", "app.config.js", "../../src/lib/mobile/resourceContract.ts"]
 }

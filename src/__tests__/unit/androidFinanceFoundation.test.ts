@@ -18,41 +18,42 @@ describe('THE SFM Finance Android foundation', () => {
   });
 
   it('uses native Compose UI and Android Keystore-encrypted session storage', () => {
-    const activity = read(`${root}/app/src/main/java/com/thesfm/finance/MainActivity.kt`);
-    const storage = read(`${root}/app/src/main/java/com/thesfm/finance/SecureSessionStore.kt`);
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
+    const storage = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileSession.kt');
 
     expect(activity).toContain('MaterialTheme');
     expect(activity).toContain('LayoutDirection.Rtl');
     expect(storage).toContain('AndroidKeyStore');
     expect(storage).toContain('AES/GCM/NoPadding');
-    expect(storage).toContain('preferences.edit().putString(SESSION_KEY, encrypt(json)).commit()');
+    expect(storage).toContain('putString("encrypted-session", "$iv:$encrypted").commit()');
   });
 
-  it('requests the protected financial summary instead of shipping account rows into the app', () => {
-    const activity = read(`${root}/app/src/main/java/com/thesfm/finance/MainActivity.kt`);
+  it('requests the protected financial summary and product resource manifest', () => {
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
     const summary = read(`${root}/app/src/main/java/com/thesfm/finance/FinanceSummaryClient.kt`);
 
-    expect(activity).toContain('FinanceSummaryClient.fetch(activeSession.accessToken)');
+    expect(activity).toContain('/api/mobile/$productId/summary');
+    expect(activity).toContain('/api/mobile/$productId/manifest');
     expect(summary).toContain('/api/mobile/finance/summary');
     expect(summary).toContain('Authorization", "Bearer $accessToken');
   });
 
   it('requires the device credential again after the app moves to the background', () => {
-    const activity = read(`${root}/app/src/main/java/com/thesfm/finance/MainActivity.kt`);
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
 
-    expect(activity).toContain('keyguard.createConfirmDeviceCredentialIntent');
-    expect(activity).toContain('event == Lifecycle.Event.ON_STOP');
-    expect(activity).toContain('if (isDeviceLocked)');
+    expect(activity).toContain('createConfirmDeviceCredentialIntent');
+    expect(activity).toContain('override fun onStop()');
+    expect(activity).toContain('locked.value && signedIn.value');
   });
 
   it('refreshes an expired access token using the encrypted refresh token instead of treating it as a new login', () => {
-    const activity = read(`${root}/app/src/main/java/com/thesfm/finance/MainActivity.kt`);
-    const auth = read(`${root}/app/src/main/java/com/thesfm/finance/SupabaseAuthClient.kt`);
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
+    const auth = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileSession.kt');
 
-    expect(activity).toContain('sessionNeedsRefresh(savedSession)');
-    expect(activity).toContain('SupabaseAuthClient.refresh(activeSession.refreshToken)');
-    expect(auth).toContain('grantType = "refresh_token"');
-    expect(auth).toContain('put("refresh_token", refreshToken)');
+    expect(auth).toContain('current.expiresAtMillis > System.currentTimeMillis() + 60000');
+    expect(auth).toContain('save(it, epoch)');
+    expect(auth).toContain('token("refresh_token"');
+    expect(auth).toContain('put("refresh_token", current.refreshToken)');
   });
 
   it('keeps the existing SFM TV host available for a no-GMS Huawei build', () => {
@@ -71,7 +72,7 @@ describe('THE SFM Finance Android foundation', () => {
     expect(investorGradle).toContain("applicationId 'com.thesfm.investor'");
     expect(investorGradle).toContain("huawei { dimension 'distribution' }");
     expect(investorGradle).not.toContain('com.google.gms.google-services');
-    expect(activity).toContain('LayoutDirection.Rtl');
+    expect(activity).toContain('MobileActivity');
     expect(markets).toContain('/api/markets?limit=60&quality=complete');
   });
 });
