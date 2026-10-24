@@ -101,4 +101,21 @@ describe('THE SFM Finance iOS foundation', () => {
     expect(session).toContain('AUTH_UNAVAILABLE');
     expect(ui).toContain('البريد أو كلمة المرور غير صحيحة.');
   });
+  it('keeps income attachments owner-scoped across Expo and SwiftUI without persisting signed URLs', () => {
+    const expoRecords = read('apps/expo-go/src/RecordsScreen.tsx');
+    const expoSession = read('apps/expo-go/src/session.ts');
+    const swiftRecords = read('ios-native/TheSFM/Core/Networking/MobileRecordsView.swift');
+    const api = read('ios-native/TheSFM/Core/Networking/APIClient.swift');
+
+    expect(expoRecords).toContain('DocumentPicker.getDocumentAsync');
+    expect(expoRecords).toContain('attachmentPath');
+    expect(expoRecords).toContain('Linking.openURL(result.attachment.url)');
+    expect(expoSession).toContain('init.body instanceof FormData');
+    expect(expoSession).toContain('multipart boundary');
+    expect(swiftRecords).toContain('.fileImporter(isPresented: $attachmentImporting');
+    expect(swiftRecords).toContain('MobileAttachmentAccess');
+    expect(swiftRecords).toContain('openURL(result.attachment.url)');
+    expect(api).toContain('func upload(_ path: String, fields: [String: String], file: MultipartFile) async throws');
+    expect(api).toContain('multipart/form-data; boundary=');
+  });
 });

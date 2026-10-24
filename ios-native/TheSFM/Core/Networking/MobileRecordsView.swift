@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 private struct MobileResource: Decodable, Identifiable {
     let id: String
@@ -345,6 +346,9 @@ private struct MobileRecordList: View {
     @State private var busy = false
     @State private var editor: RecordEditorSelection?
     @State private var deleting: [String: MobileValue]?
+    @State private var attachmentRecordId: String?
+    @State private var attachmentImporting = false
+    @Environment(\.openURL) private var openURL
     private var index: Int { language == "ar" ? 0 : language == "fr" ? 2 : 1 }
     private func tr(_ ar: String, _ en: String, _ fr: String) -> String { [ar, en, fr][index] }
     var body: some View {
@@ -357,6 +361,14 @@ private struct MobileRecordList: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     Section {
                         ForEach(resource.fields) { field in if let value = row[field.key], !value.text.isEmpty { LabeledContent(field.label[index], value: value.text) } }
+                        if product == "finance", resource.id == "income", let id = row["id"]?.string {
+                            if let name = row["attachment_name"]?.string, !name.isEmpty {
+                                LabeledContent(tr("مرفق", "Attachment", "Pièce jointe"), value: name)
+                                Button(tr("عرض المرفق", "View attachment", "Voir la pièce jointe")) { Task { await openAttachment(id) } }.disabled(busy)
+                                Button(tr("إزالة المرفق", "Remove attachment", "Supprimer la pièce jointe"), role: .destructive) { Task { await detachAttachment(id) } }.disabled(busy)
+                            }
+                            Button(tr("إرفاق ملف", "Attach file", "Joindre un fichier")) { attachmentRecordId = id; attachmentImporting = true }.disabled(busy)
+                        }
                         if resource.readOnly != true {
                             Button(tr("تعديل", "Edit", "Modifier")) { editor = RecordEditorSelection(row: row) }
                             Button(tr("حذف", "Delete", "Supprimer"), role: .destructive) { deleting = row }
@@ -370,6 +382,12 @@ private struct MobileRecordList: View {
         .toolbar { if !auth.isDeviceLocked && resource.readOnly != true { Button(tr("إضافة", "Add", "Ajouter")) { editor = RecordEditorSelection(row: [:]) } } }
         .task { await load() }
         .refreshable { await load() }
+        .fileImporter(isPresented: $attachmentImporting, allowedContentTypes: [.pdf, .png, .jpeg, .webP], allowsMultipleSelection: false) { result in
+            let recordId = attachmentRecordId
+            attachmentRecordId = nil
+            guard let recordId, case let .success(urls) = result, let url = urls.first else { return }
+            Task { await uploadAttachment(url, recordId: recordId) }
+        }
         .onChange(of: auth.isDeviceLocked) { _, locked in if locked { editor = nil; deleting = nil; rows = [] } }
         .onChange(of: auth.identityRevision) { _, _ in editor = nil; deleting = nil; rows = [] }
         .sheet(item: $editor) { selection in MobileRecordEditor(resource: resource, row: selection.row, language: language) { values in
@@ -396,7 +414,40 @@ private struct MobileRecordList: View {
         guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { throw APIClientError.invalidResponse }
         try await APIClient.authorized(accessToken: token).send("/api/mobile/\(product)/records/\(resource.id)", method: method, body: JSONEncoder().encode(body))
     }
+    @MainActor private func openAttachment(_ recordId: String) async {
+        guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
+        busy = true; failed = false; defer { busy = false }
+        do {
+            let result: MobileAttachmentAccess = try await APIClient.authorized(accessToken: token).get("/api/mobile/finance/records/income/attachment?recordId=\(recordId)")
+            guard result.attachment.url.scheme == "https" else { throw APIClientError.invalidResponse }
+            openURL(result.attachment.url)
+        } catch { failed = true }
+    }
+    @MainActor private func detachAttachment(_ recordId: String) async {
+        guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
+        busy = true; failed = false; defer { busy = false }
+        do {
+            try await APIClient.authorized(accessToken: token).send("/api/mobile/finance/records/income/attachment?recordId=\(recordId)", method: "DELETE", body: Data())
+            await load()
+        } catch { failed = true }
+    }
+    @MainActor private func uploadAttachment(_ url: URL, recordId: String) async {
+        guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
+        busy = true; failed = false; defer { busy = false }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let values = try url.resourceValues(forKeys: [.contentTypeKey, .fileSizeKey])
+            guard let contentType = values.contentType, [.pdf, .png, .jpeg, .webP].contains(where: { contentType.conforms(to: $0) }), let mimeType = contentType.preferredMIMEType, let size = values.fileSize, size > 0, size <= 10 * 1024 * 1024 else { throw APIClientError.invalidResponse }
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
+            guard data.count == size else { throw APIClientError.invalidResponse }
+            try await APIClient.authorized(accessToken: token).upload("/api/mobile/finance/records/income/attachment", fields: ["recordId": recordId], file: MultipartFile(name: url.lastPathComponent, mimeType: mimeType, data: data))
+            await load()
+        } catch { failed = true }
+    }
 }
+private struct MobileAttachmentAccess: Decodable { let attachment: MobileSignedAttachment }
+private struct MobileSignedAttachment: Decodable { let url: URL }
 private struct RecordEditorSelection: Identifiable { let id = UUID(); let row: [String: MobileValue] }
 private struct MobileRecordEditor: View {
     let resource: MobileResource

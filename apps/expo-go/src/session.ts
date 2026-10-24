@@ -210,7 +210,14 @@ export class MobileSessionClient {
       }
       const cached = this.cache.get(key);
       if (reading && ttlMs && cached && cached.expires > this.now()) return cached.value as T;
-      const send = () => this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}${path}`, { ...init, redirect: 'error', headers: { ...init.headers, 'Content-Type': 'application/json', Authorization: `Bearer ${session.accessToken}` } });
+      const send = () => {
+        const headers = new Headers(init.headers);
+        headers.set('Authorization', `Bearer ${session.accessToken}`);
+        // fetch must add the multipart boundary itself; JSON corrupts FormData.
+        const multipart = typeof FormData !== 'undefined' && init.body instanceof FormData;
+        if (!multipart && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+        return this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}${path}`, { ...init, redirect: 'error', headers });
+      };
       let result = await send();
       if (result.response.status === 401) {
         session = await this.activeSession(true);

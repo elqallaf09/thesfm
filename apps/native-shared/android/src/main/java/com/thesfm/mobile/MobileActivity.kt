@@ -5,7 +5,9 @@ import android.app.KeyguardManager
 import android.content.Intent
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -60,6 +62,7 @@ abstract class MobileActivity : ComponentActivity() {
     private val report = mutableStateOf<JSONObject?>(null)
     private val reportPeriod = mutableStateOf(nativeReportPeriod())
     private var pendingReportPdf: ByteArray? = null
+    private var pendingIncomeAttachmentId: String? = null
     private val credentialLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         locked.value = it.resultCode != Activity.RESULT_OK
         if (!locked.value) loadCatalog()
@@ -75,6 +78,11 @@ abstract class MobileActivity : ComponentActivity() {
                 result.onFailure { error.value = true; errorCode.value = "EXPORT_UNAVAILABLE" }
             }
         }
+    }
+    private val attachmentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val recordId = pendingIncomeAttachmentId
+        pendingIncomeAttachmentId = null
+        if (uri != null && recordId != null) uploadIncomeAttachment(recordId, uri)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -137,6 +145,49 @@ abstract class MobileActivity : ComponentActivity() {
         pendingReportPdf = bytes
         reportExportLauncher.launch("the-sfm-$productId-${reportPeriod.value}-report.pdf")
     }
+    private fun incomeAttachmentName(uri: Uri): String {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))?.let { return it }
+        }
+        return "attachment"
+    }
+    private fun incomeAttachmentBytes(uri: Uri): ByteArray {
+        return contentResolver.openInputStream(uri)?.use { input ->
+            val output = ByteArrayOutputStream(); val buffer = ByteArray(8192); var total = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count <= 0) break
+                total += count
+                if (total > 10 * 1024 * 1024) throw MobileApiError(413, "FILE_TOO_LARGE")
+                output.write(buffer, 0, count)
+            }
+            if (total == 0) throw MobileApiError(400, "INVALID_UPLOAD")
+            output.toByteArray()
+        } ?: throw MobileApiError(400, "INVALID_UPLOAD")
+    }
+    private fun uploadIncomeAttachment(recordId: String, uri: Uri) {
+        if (locked.value || !signedIn.value) return
+        work({
+            val name = incomeAttachmentName(uri)
+            val mime = contentResolver.getType(uri)?.lowercase() ?: when (name.substringAfterLast('.', "").lowercase()) {
+                "pdf" -> "application/pdf"; "png" -> "image/png"; "jpg", "jpeg" -> "image/jpeg"; "webp" -> "image/webp"; else -> "application/octet-stream"
+            }
+            auth.uploadIncomeAttachment(recordId, name, mime, incomeAttachmentBytes(uri))
+        }) { loadRecords() }
+    }
+    private fun openIncomeAttachment(recordId: String) {
+        if (locked.value || !signedIn.value) return
+        work({ auth.request("/api/mobile/finance/records/income/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}") }) { result ->
+            val url = result.optJSONObject("attachment")?.optString("url").orEmpty()
+            if (runCatching { val value = Uri.parse(url); value.scheme == "https" && value.host != null }.getOrDefault(false)) {
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { error.value = true; errorCode.value = "ATTACHMENT_UNAVAILABLE" }
+            } else { error.value = true; errorCode.value = "ATTACHMENT_UNAVAILABLE" }
+        }
+    }
+    private fun detachIncomeAttachment(recordId: String) {
+        if (locked.value || !signedIn.value) return
+        work({ auth.request("/api/mobile/finance/records/income/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}", "DELETE") }) { loadRecords() }
+    }
     private fun loadMarkets(nextPage: Int = 1) = work({ auth.publicRequest("/api/markets?quality=all&limit=50&page=$nextPage&category=$marketCategory&q=${URLEncoder.encode(marketQuery, "UTF-8")}") }) { json ->
         marketPage = nextPage; val next = json.getJSONArray("markets").objects()
         records.value = if (nextPage == 1) next else records.value + next
@@ -144,7 +195,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingIncomeAttachmentId = null
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -311,6 +362,17 @@ abstract class MobileActivity : ComponentActivity() {
                             if (records.value.isEmpty() && !busy.value) item { Text(tr("لا توجد سجلات.", "No records.", "Aucun enregistrement.")) }
                             items(records.value, key = { it.getString("id") }) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 resource.getJSONArray("fields").objects().forEach { field -> val value = row.opt(field.getString("key")); if (value != null && value != JSONObject.NULL) Text("${label(field)}: $value") }
+                                if (productId == "finance" && resource.getString("id") == "income") {
+                                    val recordId = row.getString("id")
+                                    if (row.optString("attachment_url").isNotBlank()) {
+                                        Text("${tr("مرفق", "Attachment", "Pièce jointe")}: ${row.optString("attachment_name", tr("ملف مرفق", "Attached file", "Fichier joint"))}")
+                                        Row {
+                                            TextButton(onClick = { openIncomeAttachment(recordId) }) { Text(tr("عرض المرفق", "View attachment", "Voir la pièce jointe")) }
+                                            TextButton(onClick = { detachIncomeAttachment(recordId) }) { Text(tr("إزالة المرفق", "Remove attachment", "Supprimer la pièce jointe")) }
+                                        }
+                                    }
+                                    TextButton(onClick = { pendingIncomeAttachmentId = recordId; attachmentLauncher.launch(arrayOf("application/pdf", "image/png", "image/jpeg", "image/webp")) }) { Text(tr("إرفاق ملف", "Attach file", "Joindre un fichier")) }
+                                }
                                 if (!resource.optBoolean("readOnly")) Row { TextButton(onClick = { editing = row }) { Text(tr("تعديل", "Edit", "Modifier")) }; TextButton(onClick = { deleting = row }) { Text(tr("حذف", "Delete", "Supprimer")) } }
                             } } }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadRecords(cursor.value) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }

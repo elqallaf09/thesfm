@@ -14,7 +14,15 @@ const TABLES: Record<string, string> = {
 };
 const valuationColumns = 'native_currency,native_market_value,user_currency,converted_market_value,valuation_last_updated_at';
 function selection(resource: MobileResource) {
-  return ['id', 'created_at', ...resource.fields.map(field => field.key), ...(resource.id === 'holdings' ? valuationColumns.split(',') : [])].join(',');
+  return [
+    'id',
+    'created_at',
+    ...resource.fields.map(field => field.key),
+    ...(resource.id === 'holdings' ? valuationColumns.split(',') : []),
+    // Attachment values are output-only. Generic record mutations must never
+    // accept a client-supplied attachment URL.
+    ...(resource.id === 'income' ? ['attachment_url', 'attachment_name', 'attachment_type', 'attachment_size'] : []),
+  ].join(',');
 }
 
 export async function handleMobileRecords(request: Request, product: string, resourceId: string) {

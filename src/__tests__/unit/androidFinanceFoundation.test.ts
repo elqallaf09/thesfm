@@ -47,7 +47,6 @@ describe('THE SFM Finance Android foundation', () => {
   });
 
   it('refreshes an expired access token using the encrypted refresh token instead of treating it as a new login', () => {
-    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
     const auth = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileSession.kt');
 
     expect(auth).toContain('current.expiresAtMillis > System.currentTimeMillis() + 60000');
@@ -82,6 +81,19 @@ describe('THE SFM Finance Android foundation', () => {
     expect(activity).toContain('PdfDocument()');
     expect(activity).toContain('ActivityResultContracts.CreateDocument("application/pdf")');
     expect(activity).toContain('pendingReportPdf = null');
+  });
+
+  it('uses a protected owner-scoped income attachment flow in Compose', () => {
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
+    const auth = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileSession.kt');
+
+    expect(activity).toContain('ActivityResultContracts.OpenDocument()');
+    expect(activity).toContain('uploadIncomeAttachment(recordId, uri)');
+    expect(activity).toContain('/api/mobile/finance/records/income/attachment?recordId=');
+    expect(activity).toContain('Intent(Intent.ACTION_VIEW, Uri.parse(url))');
+    expect(auth).toContain('fun uploadIncomeAttachment(recordId: String, name: String, mimeType: String, bytes: ByteArray)');
+    expect(auth).toContain('multipartRequest("/api/mobile/$product/records/income/attachment"');
+    expect(auth).toContain('multipart/form-data; boundary=$boundary');
   });
 
   it('keeps the existing SFM TV host available for a no-GMS Huawei build', () => {

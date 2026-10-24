@@ -32,6 +32,7 @@ class PendingNativeMfa(
 }
 
 class MobileApiError(val status: Int, val code: String, val mfaType: String? = null) : Exception(code)
+data class MobileMultipartFile(val name: String, val mimeType: String, val bytes: ByteArray)
 class MobileSession(context: Context, private val product: String, private val apiBase: String, private val authBase: String, private val publicKey: String) {
     // Compatible with the existing Finance / Business Keystore aliases and encrypted-session format.
     private val alias = "sfm-$product-session"
@@ -112,6 +113,29 @@ class MobileSession(context: Context, private val product: String, private val a
             if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
             assertOrPending(current, epoch)
             send("${apiBase.trimEnd('/')}$path", method, body, current.accessToken)
+        }
+        if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
+        return result
+    }
+    /** Sends a small user-selected file through the protected mobile API. */
+    fun uploadIncomeAttachment(recordId: String, name: String, mimeType: String, bytes: ByteArray): JSONObject {
+        require(product == "finance") { "FINANCE_ONLY" }
+        require(bytes.isNotEmpty() && bytes.size <= 10 * 1024 * 1024) { "INVALID_UPLOAD_SIZE" }
+        return multipartRequest("/api/mobile/$product/records/income/attachment", mapOf("recordId" to recordId), MobileMultipartFile(name, mimeType, bytes))
+    }
+    private fun multipartRequest(path: String, fields: Map<String, String>, file: MobileMultipartFile): JSONObject {
+        require(path.startsWith("/api/") && !path.contains("://"))
+        val epoch = generation
+        var current = active()
+        if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
+        assertOrPending(current, epoch)
+        val result = try { sendMultipart("${apiBase.trimEnd('/')}$path", fields, file, current.accessToken) }
+        catch (error: MobileApiError) {
+            if (error.status != 401) throw error
+            current = active(true)
+            if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
+            assertOrPending(current, epoch)
+            sendMultipart("${apiBase.trimEnd('/')}$path", fields, file, current.accessToken)
         }
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
         return result
@@ -212,6 +236,34 @@ class MobileSession(context: Context, private val product: String, private val a
                 json.optString("code", if (auth && status == 400) "INVALID_CREDENTIALS" else "REQUEST_FAILED"),
                 json.optString("mfaType").takeUnless { it.isBlank() },
             )
+            return json
+        } finally { connection.disconnect() }
+    }
+    private fun sendMultipart(url: String, fields: Map<String, String>, file: MobileMultipartFile, accessToken: String): JSONObject {
+        require(URL(url).protocol == "https") { "HTTPS_REQUIRED" }
+        val boundary = "THE-SFM-${System.nanoTime()}"
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"; connection.connectTimeout = 15000; connection.readTimeout = 30000
+            connection.useCaches = false; connection.instanceFollowRedirects = false; connection.doOutput = true
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Authorization", "Bearer $accessToken")
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            connection.chunkedStreamingMode = 8192
+            connection.outputStream.buffered().use { output ->
+                fun text(value: String) = output.write(value.toByteArray(Charsets.UTF_8))
+                fields.forEach { (key, value) ->
+                    text("--$boundary\\r\\nContent-Disposition: form-data; name=\"$key\"\\r\\n\\r\\n$value\\r\\n")
+                }
+                val safeName = file.name.replace(Regex("[\\r\\n\"]"), "-").take(160).ifBlank { "attachment" }
+                text("--$boundary\\r\\nContent-Disposition: form-data; name=\"file\"; filename=\"$safeName\"\\r\\nContent-Type: ${file.mimeType}\\r\\n\\r\\n")
+                output.write(file.bytes)
+                text("\\r\\n--$boundary--\\r\\n")
+            }
+            val status = connection.responseCode
+            val raw = (if (status in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }
+            val json = raw?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
+            if (status !in 200..299) throw MobileApiError(status, json.optString("code", "REQUEST_FAILED"), json.optString("mfaType").takeUnless { it.isBlank() })
             return json
         } finally { connection.disconnect() }
     }
