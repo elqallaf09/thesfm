@@ -50,10 +50,12 @@ abstract class MobileActivity : ComponentActivity() {
     private val records = mutableStateOf<List<JSONObject>>(emptyList())
     private val selected = mutableStateOf<JSONObject?>(null)
     private val marketMode = mutableStateOf(false)
+    private val investorFeed = mutableStateOf("markets")
     private val cursor = mutableStateOf<String?>(null)
     private val pendingLink = mutableStateOf<String?>(null)
     private var uiEpoch = 0L
     private var marketPage = 1
+    private var investorFeedPage = 1
     private var marketQuery = ""
     private var marketCategory = "all"
     private var account = mutableStateOf<JSONObject?>(null)
@@ -193,9 +195,28 @@ abstract class MobileActivity : ComponentActivity() {
         records.value = if (nextPage == 1) next else records.value + next
         cursor.value = if (json.optJSONObject("pagination")?.optBoolean("hasMore") == true) "more" else null
     }
+    private fun loadInvestorFeed(kind: String, language: String, nextPage: Int = 1) = work({
+        val path = when (kind) {
+            "news" -> "/api/market-news?language=${URLEncoder.encode(language, "UTF-8")}&page=$nextPage&pageSize=30&q=${URLEncoder.encode(marketQuery, "UTF-8")}"
+            "calendar" -> "/api/economic-calendar?timezone=Asia%2FKuwait"
+            "screening" -> "/api/sharia-stocks/screening"
+            else -> throw MobileApiError(400, "INVALID_FEED")
+        }
+        auth.publicRequest(path)
+    }) { json ->
+        investorFeedPage = nextPage
+        val next = (if (kind == "calendar") json.optJSONArray("events") else json.optJSONArray("items"))?.objects() ?: emptyList()
+        records.value = if (nextPage == 1) next else (records.value + next).distinctBy { it.optString("id", it.optString("symbol")) }
+        cursor.value = if (kind == "news" && nextPage < json.optInt("totalPages", 1)) "more" else null
+    }
+    private fun openInvestorSource(value: String) {
+        val uri = runCatching { Uri.parse(value) }.getOrNull()
+        if (uri?.scheme != "https" || uri.host.isNullOrBlank()) { error.value = true; errorCode.value = "LINK_UNAVAILABLE"; return }
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { error.value = true; errorCode.value = "LINK_UNAVAILABLE" }
+    }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; investorFeed.value = "markets"
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -282,13 +303,68 @@ abstract class MobileActivity : ComponentActivity() {
                             item { OutlinedTextField(email, { email = it }, label = { Text(tr("البريد الإلكتروني", "Email", "E-mail")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), modifier = Modifier.fillMaxWidth()) }
                             item { OutlinedTextField(password, { password = it }, label = { Text(tr("كلمة المرور", "Password", "Mot de passe")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth()) }
                             item { Button(enabled = !busy.value && email.isNotBlank() && password.isNotBlank(), onClick = { work({ auth.signIn(email, password); JSONObject() }) { password = ""; locked.value = false; loadCatalog() } }) { Text(tr("تسجيل الدخول بحساب الموقع", "Sign in with website account", "Se connecter au compte du site")) } }
-                            if (productId == "investor") item { TextButton(onClick = { marketMode.value = true; loadMarkets() }) { Text(tr("تصفح الأسواق", "Browse markets", "Explorer les marchés")) } }
-                        } else if (marketMode.value) {
+                            if (productId == "investor") item { TextButton(onClick = { investorFeed.value = "markets"; marketMode.value = true; loadMarkets() }) { Text(tr("تصفح الأسواق", "Browse markets", "Explorer les marchés")) } }
+                        } else if (marketMode.value && investorFeed.value == "markets") {
+                            item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(listOf("news", "calendar", "screening")) { kind ->
+                                    val title = when (kind) {
+                                        "news" -> tr("أخبار", "News", "Actualités")
+                                        "calendar" -> tr("تقويم", "Calendar", "Calendrier")
+                                        else -> tr("شريعة", "Shariah", "Charia")
+                                    }
+                                    FilterChip(selected = false, onClick = { investorFeed.value = kind; records.value = emptyList(); cursor.value = null; loadInvestorFeed(kind, language) }, label = { Text(title) })
+                                }
+                            } }
                             item { OutlinedTextField(marketQuery, { marketQuery = it }, label = { Text(tr("ابحث بالاسم أو الرمز", "Search name or symbol", "Rechercher un nom ou symbole")) }, modifier = Modifier.fillMaxWidth()) }
                             item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(listOf("all", "stock", "forex", "commodity", "fund")) { type -> FilterChip(selected = marketCategory == type, onClick = { marketCategory = type; loadMarkets() }, label = { Text(type) }) } } }
                             item { Button(onClick = { loadMarkets() }, enabled = !busy.value) { Text(tr("بحث وتحديث", "Search and refresh", "Rechercher et actualiser")) } }
                             items(records.value) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text(row.optString("displayName", row.optString("name"))); Text(row.optString("displaySymbol", row.optString("symbol"))); Text(row.optString("currency", "—")) } } }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadMarkets(marketPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
+                        } else if (marketMode.value) {
+                            val feed = investorFeed.value
+                            fun feedLabel(kind: String) = when (kind) {
+                                "markets" -> tr("الأسواق", "Markets", "Marchés")
+                                "news" -> tr("الأخبار المالية", "Financial news", "Actualités financières")
+                                "calendar" -> tr("التقويم الاقتصادي", "Economic calendar", "Calendrier économique")
+                                else -> tr("فحص الشريعة", "Shariah screening", "Filtrage charia")
+                            }
+                            item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(listOf("markets", "news", "calendar", "screening")) { kind ->
+                                    FilterChip(selected = feed == kind, onClick = {
+                                        investorFeed.value = kind; records.value = emptyList(); cursor.value = null
+                                        if (kind == "markets") loadMarkets() else loadInvestorFeed(kind, language)
+                                    }, label = { Text(feedLabel(kind)) })
+                                }
+                            } }
+                            item { OutlinedTextField(marketQuery, { marketQuery = it }, label = { Text(tr("بحث", "Search", "Rechercher")) }, modifier = Modifier.fillMaxWidth()) }
+                            item { Button(enabled = !busy.value, onClick = { loadInvestorFeed(feed, language) }) { Text(tr("تحديث", "Refresh", "Actualiser")) } }
+                            val visibleFeedRows = if (feed == "news" || marketQuery.isBlank()) records.value else records.value.filter { it.toString().contains(marketQuery, ignoreCase = true) }
+                            if (visibleFeedRows.isEmpty() && !busy.value) item { Text(tr("لا توجد بيانات متاحة.", "No verified data is available.", "Aucune donnée vérifiée n'est disponible.")) }
+                            items(visibleFeedRows, key = { it.optString("id", it.optString("symbol", it.toString())) }) { row ->
+                                Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    val title = when (feed) {
+                                        "news" -> row.optString("translatedTitle", row.optString("title", row.optString("headline")))
+                                        "calendar" -> row.optString("eventName", row.optString("name"))
+                                        else -> row.optString("displayName", row.optString("name", row.optString("symbol")))
+                                    }
+                                    Text(title.ifBlank { "-" }, style = MaterialTheme.typography.titleMedium)
+                                    if (feed == "news") {
+                                        row.optString("translatedSummary", row.optString("summary")).takeIf { it.isNotBlank() }?.let { Text(it) }
+                                        Text(listOf(row.optString("sourceName", row.optString("source")), row.optString("publishedAt")).filter { it.isNotBlank() }.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    } else if (feed == "calendar") {
+                                        Text(listOf(row.optString("country"), row.optString("currency"), row.optString("dateTimeUtc", row.optString("dateTime"))).filter { it.isNotBlank() }.joinToString(" · "))
+                                        listOf("actual", "forecast", "previous").filter { row.has(it) && !row.isNull(it) }.forEach { key -> Text("${key.replaceFirstChar { it.uppercase() }}: ${row.opt(key)}") }
+                                        row.optString("source", row.optString("provider")).takeIf { it.isNotBlank() }?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                    } else {
+                                        Text(row.optString("symbol", row.optString("displaySymbol")))
+                                        Text(row.optString("shariahStatus", "unclassified"))
+                                        Text(listOf(row.optString("screeningSource", row.optString("sourceName")), row.optString("lastScreenedAt")).filter { it.isNotBlank() }.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    val source = row.optString("originalUrl", row.optString("canonicalUrl", row.optString("url", row.optString("sourceUrl"))))
+                                    if (source.isNotBlank()) TextButton(onClick = { openInvestorSource(source) }) { Text(tr("المصدر الأصلي", "Original source", "Source originale")) }
+                                } }
+                            }
+                            if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadInvestorFeed(feed, language, investorFeedPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
                         } else if (reportMode.value) {
                             val currentReport = report.value
                             fun reportLabel(key: String) = when (key) {
@@ -348,7 +424,7 @@ abstract class MobileActivity : ComponentActivity() {
                             if (productId == "finance" || productId == "business") item { Button(onClick = { reportMode.value = true; report.value = null; loadReport() }, enabled = !busy.value) { Text(tr(if (productId == "finance") "مركز التقارير" else "عمليات الأعمال", if (productId == "finance") "Reports Center" else "Business operations", if (productId == "finance") "Centre des rapports" else "Opérations d’affaires")) } }
                             item { Button(onClick = { loadCatalog() }, enabled = !busy.value) { Text(tr("تحديث الأقسام", "Refresh sections", "Actualiser les rubriques")) } }
                             items(resources.value, key = { it.getString("id") }) { resource -> Button(onClick = { selected.value = resource; records.value = emptyList(); loadRecords() }, modifier = Modifier.fillMaxWidth()) { Text(label(resource)) } }
-                            if (productId == "investor") item { Button(onClick = { marketMode.value = true; records.value = emptyList(); loadMarkets() }) { Text(tr("الأسواق", "Markets", "Marchés")) } }
+                            if (productId == "investor") item { Button(onClick = { investorFeed.value = "markets"; marketMode.value = true; records.value = emptyList(); loadMarkets() }) { Text(tr("الأسواق", "Markets", "Marchés")) } }
                             item { Button(onClick = { work({ auth.request("/api/mobile/account") }) { account.value = it } }) { Text(tr("حسابي والاشتراك", "Account and subscription", "Compte et abonnement")) } }
                             account.value?.let { data -> item { Text(data.optJSONObject("user")?.optString("email") ?: "—"); Text(data.optJSONArray("subscriptions")?.objects()?.joinToString("\n") { "${it.optString("plan")} · ${it.optString("status")}" } ?: "—") } }
                         } else {
