@@ -32,7 +32,7 @@ module.exports = {
     name: product.name,
     slug: product.slug,
     version: '0.1.0',
-    orientation: 'portrait',
+    orientation: 'default',
     userInterfaceStyle: 'dark',
     scheme: product.slug,
     ios: {
