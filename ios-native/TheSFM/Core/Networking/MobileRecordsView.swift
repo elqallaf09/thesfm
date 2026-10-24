@@ -112,9 +112,26 @@ private struct MobileMonthlyReport {
                 add(row) { $0.operatingExpenses += $1 }
             }
         }
-        let count: [(String, Int)] = product == "finance"
-            ? [("Income", records["income"]?.count ?? 0), ("Expenses", records["expenses"]?.count ?? 0), ("Savings", records["savings"]?.count ?? 0), ("Debts", records["debts"]?.count ?? 0), ("Goals", records["goals"]?.count ?? 0)]
-            : [("Projects", records["projects"]?.count ?? 0), ("Customers", records["customers"]?.count ?? 0), ("Suppliers", records["suppliers"]?.count ?? 0), ("Active employees", records["employees"]?.filter { $0["status"]?.string == "active" }.count ?? 0), ("Open invoices", records["invoices"]?.filter { $0["status"]?.string == "sent" || $0["status"]?.string == "overdue" }.count ?? 0)]
+        let count: [(String, Int)]
+        if product == "finance" {
+            count = [
+                ("Income", records["income"]?.count ?? 0),
+                ("Expenses", records["expenses"]?.count ?? 0),
+                ("Savings", records["savings"]?.count ?? 0),
+                ("Debts", records["debts"]?.count ?? 0),
+                ("Goals", records["goals"]?.count ?? 0),
+            ]
+        } else {
+            let activeEmployees = (records["employees"] ?? []).filter { $0["status"]?.string == "active" }.count
+            let openInvoices = (records["invoices"] ?? []).filter { $0["status"]?.string == "sent" || $0["status"]?.string == "overdue" }.count
+            count = [
+                ("Projects", records["projects"]?.count ?? 0),
+                ("Customers", records["customers"]?.count ?? 0),
+                ("Suppliers", records["suppliers"]?.count ?? 0),
+                ("Active employees", activeEmployees),
+                ("Open invoices", openInvoices),
+            ]
+        }
         return MobileMonthlyReport(product: product, period: period, currencies: values.values.sorted { $0.id < $1.id }, counts: count, undatedRecords: undated, isPartial: isPartial)
     }
 }
