@@ -132,7 +132,7 @@ function InvestorApp() {
   const [investorPassword, setInvestorPassword] = useState('');
   const [investorSigningIn, setInvestorSigningIn] = useState(false);
   const investorSignIn = useCallback(async () => {
-    const url = String(extra.supabaseUrl ?? '').replace(/\\/$/, '');
+    const url = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
     const key = String(extra.supabaseAnonKey ?? '');
     if (!url || !key) { Alert.alert('الإعدادات ناقصة', 'إعدادات تسجيل الدخول غير متاحة.'); return; }
     setInvestorSigningIn(true);
