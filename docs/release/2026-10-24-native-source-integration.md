@@ -25,6 +25,11 @@ the canonical version and unchanged SQL hash. No application SQL was replayed.
 - Next.js was patched to 15.5.28 to resolve the registry's new critical/high
   advisories. Local security backports remain subject to their installed-package
   regression and raw-registry audit checks.
+- Expo CLI's Zod dependency is pinned to published fix 4.6.7. Installed-package
+  checks cover bounded invalid collections, the actual Expo plugin parser,
+  command validation, and strict MCP JSON schema generation. The website audit
+  has no high/critical findings; the mobile audit retains one high node-forge
+  advisory covered by the installed, tested backport.
 
 ## Subsequent rollout
 

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { constants, generateKeyPairSync, privateEncrypt } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const workspace = resolve(process.argv[2] || '.');
 const lock = readFileSync(resolve(workspace, 'pnpm-lock.yaml'), 'utf8');
@@ -65,4 +65,38 @@ if (lock.includes('  node-forge@1.4.0:')) {
   assert.throws(() => verifier.verify(digest, signature([oid, nil], [garbage])), /DigestInfo/);
   assert.equal(verifier.verify('wrong-digest', signature([oid, nil])), false);
   console.log('PASS node-forge: valid RSA signatures and rejection of nested/trailing DigestInfo garbage');
+}
+
+// Expo's two dev-tools schemas use the public Zod API. Verify their actual
+// parsers and the fixed collection limit when pinning the published Zod fix.
+const manifest = JSON.parse(readFileSync(resolve(workspace, 'package.json'), 'utf8'));
+if (manifest.dependencies?.expo) {
+  const mobileRequire = createRequire(resolve(workspace, 'package.json'));
+  const expoRequire = createRequire(mobileRequire.resolve('expo/package.json'));
+  const cliPath = expoRequire.resolve('@expo/cli/package.json');
+  const cliRequire = createRequire(cliPath);
+  assert.equal(cliRequire('zod/package.json').version, '4.6.7');
+  const { z } = cliRequire('zod');
+  const invalidCollection = z.array(z.string()).max(2).safeParse(Array(20000).fill(null));
+  assert.equal(invalidCollection.success, false);
+  assert.ok(invalidCollection.error.issues.length < 100, 'Oversized collections must not accumulate per-element issues');
+
+  const serverDir = resolve(dirname(cliPath), 'build/src/start/server');
+  const { PluginSchema } = cliRequire(resolve(serverDir, 'DevToolsPlugin.schema.js'));
+  const { createMCPDevToolsExtensionSchema } = cliRequire(resolve(serverDir, 'createMCPDevToolsExtensionSchema.js'));
+  const plugin = PluginSchema.parse({
+    packageName: 'sfm-test-plugin', packageRoot: '/tmp/sfm-test-plugin',
+    cliExtensions: {
+      description: 'Disposable compatibility fixture', entryPoint: 'index.js',
+      commands: [{ name: 'inspect', title: 'Inspect', environments: ['cli', 'mcp'], parameters: [{ name: 'count', type: 'number' }] }],
+    },
+  });
+  assert.equal(PluginSchema.safeParse({ ...plugin, packageName: '' }).success, false);
+  const schema = createMCPDevToolsExtensionSchema(plugin);
+  assert.deepEqual(schema.parse({ command: 'inspect', count: 2 }), { command: 'inspect', count: 2 });
+  for (const input of [{ command: 'unknown' }, { command: 'inspect', count: '2' }, { command: 'inspect', extra: true }]) {
+    assert.equal(schema.safeParse(input).success, false);
+  }
+  assert.equal(z.toJSONSchema(schema).additionalProperties, false);
+  console.log('PASS Expo CLI: fixed Zod collection bounds, plugin parsing and MCP schema compatibility');
 }
