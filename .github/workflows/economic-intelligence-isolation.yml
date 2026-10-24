@@ -39,9 +39,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          local_dir="$RUNNER_TEMP/sfm-isolation"
+          # Hosted runners can retain another job's disposable Supabase ports for
+          # a short time.  Isolate both the project name and the published port
+          # range per workflow run so this security probe never binds to another
+          # job's database or fails on its inbucket port.
+          project_id="sfm-isolation-${GITHUB_RUN_ID}"
+          local_dir="$RUNNER_TEMP/$project_id"
+          base_port=$((49152 + (GITHUB_RUN_ID % 14000)))
           mkdir -p "$local_dir"
           supabase init --workdir "$local_dir"
+          sed -i -E "s/^project_id = \".*\"/project_id = \"${project_id}\"/" "$local_dir/supabase/config.toml"
+          sed -i \
+            -e "s/port = 54321/port = ${base_port}/" \
+            -e "s/port = 54322/port = $((base_port + 1))/" \
+            -e "s/port = 54323/port = $((base_port + 2))/" \
+            -e "s/port = 54324/port = $((base_port + 3))/" \
+            -e "s/port = 54327/port = $((base_port + 4))/" \
+            "$local_dir/supabase/config.toml"
+          printf 'SFM_ISOLATION_DIR=%s\nSFM_ISOLATION_PROJECT=%s\n' "$local_dir" "$project_id" >> "$GITHUB_ENV"
           mkdir -p "$local_dir/supabase/migrations"
           cp supabase/migrations/*.sql "$local_dir/supabase/migrations/"
           # No linked project, production credentials, seed rows, or remote DB push.
@@ -61,7 +76,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          docker logs supabase_db_sfm-isolation 2>&1 | node --input-type=module -e '
+          docker logs "supabase_db_${SFM_ISOLATION_PROJECT}" 2>&1 | node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const log = readFileSync(0, "utf8");
             const patterns = [
@@ -89,7 +104,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if command -v supabase >/dev/null && test -f "$RUNNER_TEMP/sfm-isolation/supabase/config.toml"; then
-            supabase stop --workdir "$RUNNER_TEMP/sfm-isolation" --no-backup
+          if command -v supabase >/dev/null && test -n "${SFM_ISOLATION_DIR:-}" && test -f "$SFM_ISOLATION_DIR/supabase/config.toml"; then
+            supabase stop --workdir "$SFM_ISOLATION_DIR" --no-backup
           fi
           rm -f "$RUNNER_TEMP/sfm-local-status.json" "$RUNNER_TEMP/sfm-local-start.log"
