@@ -8,6 +8,7 @@ describe('runtime reliability diagnostics', () => {
 
   it.each([
     [{ status: 401 }, 'UNAUTHORIZED'],
+    [{ status: 402 }, 'NOT_ENTITLED'],
     [{ status: 403 }, 'FORBIDDEN'],
     [{ status: 404 }, 'NOT_FOUND'],
     [{ status: 429 }, 'RATE_LIMITED'],
@@ -18,6 +19,16 @@ describe('runtime reliability diagnostics', () => {
     [Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' }), 'PROVIDER_UNAVAILABLE'],
   ] as const)('classifies a failure as %s', (error, expected) => {
     expect(classifyRuntimeFailure(error).code).toBe(expected);
+  });
+
+  it('treats HTTP 402 as a non-retryable provider entitlement failure', () => {
+    expect(classifyRuntimeFailure({ status: 402 })).toEqual({
+      code: 'NOT_ENTITLED',
+      category: 'permission',
+      retryable: false,
+      httpStatus: 402,
+      messageKey: 'provider_access_denied',
+    });
   });
 
   it('distinguishes semantic no-data, invalid-symbol, and guest restrictions', () => {

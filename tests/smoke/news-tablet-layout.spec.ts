@@ -54,6 +54,11 @@ async function mockNews(page: Page, category: 'tech' | 'gulf') {
 
 async function expectReadableLayout(page: Page, category: 'tech' | 'gulf') {
   const layout = page.locator(category === 'tech' ? '.tech-news-layout' : '.gulf-news-content-layout');
+  // News cards can render before the dynamically imported tech side panel.
+  // Require the complete layout before measuring it; a missing panel must still
+  // fail, rather than treating a transient loading frame as final geometry.
+  await expect(layout).toBeVisible();
+  await expect(layout.locator(category === 'tech' ? '.tech-news-side-panel' : '.gulf-news-side-panel')).toBeVisible();
   // Header wrapping and scroll anchoring can update between protocol calls.
   // Read both boxes in one browser task so they share the same layout frame.
   const geometry = await page.evaluate(kind => {
