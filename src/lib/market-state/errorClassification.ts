@@ -48,7 +48,7 @@ export function classifyProviderError(error: unknown): ClassifiedError {
     const apiStatus = mapHttpProviderStatus(httpStatus);
     const category: ErrorCategory = apiStatus === 'rate_limited' ? 'rate_limit'
       : apiStatus === 'unauthorized' ? 'authentication'
-      : apiStatus === 'forbidden' ? 'permission'
+      : apiStatus === 'forbidden' || apiStatus === 'not_entitled' ? 'permission'
       : apiStatus === 'not_found' ? 'not_found'
       : apiStatus === 'maintenance' ? 'provider'
       : apiStatus === 'server_error' ? 'server'

@@ -452,6 +452,7 @@ function healthStatusForFailure(code: string): ProviderHealthStatus {
     UNAUTHORIZED: 'unauthorized',
     AUTHENTICATION_EXPIRED: 'unauthorized',
     FORBIDDEN: 'forbidden',
+    NOT_ENTITLED: 'forbidden',
     NOT_FOUND: 'not_found',
     RATE_LIMITED: 'rate_limited',
     TLS_FAILURE: 'tls_error',

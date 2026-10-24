@@ -31,6 +31,7 @@ describe('classifyProviderError', () => {
 
   it.each([
     [401, 'authentication', false],
+    [402, 'permission', false],
     [403, 'permission', false],
     [404, 'not_found', false],
     [429, 'rate_limit', true],
