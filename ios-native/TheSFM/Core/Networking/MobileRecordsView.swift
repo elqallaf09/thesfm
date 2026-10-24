@@ -115,25 +115,42 @@ private struct MobileMonthlyReport {
         let count: [(String, Int)]
         if product == "finance" {
             count = [
-                ("Income", records["income"]?.count ?? 0),
-                ("Expenses", records["expenses"]?.count ?? 0),
-                ("Savings", records["savings"]?.count ?? 0),
-                ("Debts", records["debts"]?.count ?? 0),
-                ("Goals", records["goals"]?.count ?? 0),
+                ("income", records["income"]?.count ?? 0),
+                ("expenses", records["expenses"]?.count ?? 0),
+                ("savings", records["savings"]?.count ?? 0),
+                ("debts", records["debts"]?.count ?? 0),
+                ("goals", records["goals"]?.count ?? 0),
             ]
         } else {
             let activeEmployees = (records["employees"] ?? []).filter { $0["status"]?.string == "active" }.count
             let openInvoices = (records["invoices"] ?? []).filter { $0["status"]?.string == "sent" || $0["status"]?.string == "overdue" }.count
             count = [
-                ("Projects", records["projects"]?.count ?? 0),
-                ("Customers", records["customers"]?.count ?? 0),
-                ("Suppliers", records["suppliers"]?.count ?? 0),
-                ("Active employees", activeEmployees),
-                ("Open invoices", openInvoices),
+                ("projects", records["projects"]?.count ?? 0),
+                ("customers", records["customers"]?.count ?? 0),
+                ("suppliers", records["suppliers"]?.count ?? 0),
+                ("employees", activeEmployees),
+                ("invoices", openInvoices),
             ]
         }
         return MobileMonthlyReport(product: product, period: period, currencies: values.values.sorted { $0.id < $1.id }, counts: count, undatedRecords: undated, isPartial: isPartial)
     }
+}
+
+private func mobileReportLabel(_ key: String, language: String) -> String {
+    let values: (String, String, String)
+    switch key {
+    case "income": values = ("الدخل", "Income", "Revenus")
+    case "expenses": values = ("المصروفات", "Expenses", "Dépenses")
+    case "savings": values = ("المدخرات", "Savings", "Épargne")
+    case "debts": values = ("الديون", "Debts", "Dettes")
+    case "goals": values = ("الأهداف", "Goals", "Objectifs")
+    case "projects": values = ("المشاريع", "Projects", "Projets")
+    case "customers": values = ("العملاء", "Customers", "Clients")
+    case "suppliers": values = ("الموردون", "Suppliers", "Fournisseurs")
+    case "employees": values = ("الموظفون النشطون", "Active employees", "Employés actifs")
+    default: values = ("الفواتير المفتوحة", "Open invoices", "Factures ouvertes")
+    }
+    return language == "ar" ? values.0 : language == "fr" ? values.2 : values.1
 }
 
 /// Finance and Business reports use only the protected record API and retain each recorded currency.
@@ -169,7 +186,7 @@ struct MobileReportsView: View {
             if failed { Section { Text(tr("تعذر تحميل التقرير. تحقّق من الاتصال ثم أعد المحاولة.", "Could not load the report. Check your connection and retry.", "Impossible de charger le rapport. Vérifiez la connexion puis réessayez.")).foregroundStyle(.red) } }
             if let report {
                 Section(tr("بيانات الحساب المستخدمة", "Account data used", "Données du compte utilisées")) {
-                    ForEach(Array(report.counts.enumerated()), id: \.offset) { _, value in LabeledContent(value.0, value: value.1.formatted()) }
+                    ForEach(Array(report.counts.enumerated()), id: \.offset) { _, value in LabeledContent(mobileReportLabel(value.0, language: language), value: value.1.formatted()) }
                     if report.undatedRecords > 0 { LabeledContent(tr("سجلات بلا تاريخ تقرير", "Records without a reporting date", "Enregistrements sans date de rapport"), value: report.undatedRecords.formatted()) }
                 }
                 if report.isPartial { Section { Text(tr("قد يكون التقرير جزئياً: حُمّل أول 800 سجل فقط لكل قسم. راجع السجل التفصيلي قبل استخدامه ككشف كامل.", "This report may be partial: only the first 800 records in each section were loaded. Review the detailed section before using it as a complete statement.", "Ce rapport peut être partiel : seuls les 800 premiers enregistrements de chaque section ont été chargés. Consultez le détail avant de l’utiliser comme relevé complet.")).foregroundStyle(.orange) } }
@@ -233,7 +250,7 @@ private enum MobileReportPDF {
             draw(title, at: &y, font: .boldSystemFont(ofSize: 18))
             draw(language == "ar" ? "ملخص من سجلات الحساب المحمّلة فقط. العملات منفصلة." : language == "fr" ? "Synthèse tirée uniquement des enregistrements chargés. Les devises restent séparées." : "Summary derived only from loaded account records. Currencies remain separate.", at: &y, font: .systemFont(ofSize: 10))
             if report.isPartial { draw(language == "ar" ? "تنبيه: قد يكون التقرير جزئياً؛ تم تحميل أول 800 سجل فقط لكل قسم." : language == "fr" ? "Attention : le rapport peut être partiel ; seuls les 800 premiers enregistrements par section ont été chargés." : "Notice: this report may be partial; only the first 800 records in each section were loaded.", at: &y, font: .systemFont(ofSize: 10)) }
-            for value in report.counts { draw("\(value.0): \(value.1)", at: &y, font: .systemFont(ofSize: 11)) }
+            for value in report.counts { draw("\(mobileReportLabel(value.0, language: language)): \(value.1)", at: &y, font: .systemFont(ofSize: 11)) }
             if report.undatedRecords > 0 { draw("Undated records: \(report.undatedRecords)", at: &y, font: .systemFont(ofSize: 11)) }
             for currency in report.currencies {
                 if y > 690 { context.beginPage(); y = 42 }
