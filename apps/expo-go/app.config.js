@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- Expo loads app.config.js as CommonJS.
+const { validateMobileConfig } = require('./build-security.cjs');
 const productId = process.env.SFM_PRODUCT || 'finance';
 
 const products = {
@@ -31,7 +33,8 @@ module.exports = {
   expo: {
     name: product.name,
     slug: product.slug,
-    version: '0.1.0',
+    version: '0.2.1',
+    icon: './assets/icon.png',
     orientation: 'default',
     userInterfaceStyle: 'automatic',
     scheme: product.slug,
@@ -40,11 +43,11 @@ module.exports = {
       supportsTablet: true,
       infoPlist: { ITSAppUsesNonExemptEncryption: false },
     },
-    android: { package: product.bundleIdentifier, allowBackup: false, adaptiveIcon: { backgroundColor: '#08131C' } },
     plugins: [
       'expo-secure-store',
       ['expo-local-authentication', { faceIDPermission: 'Allow THE SFM to unlock your account with Face ID.' }],
     ],
+    android: { versionCode: 3, allowBackup: false, blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW', 'android.permission.RECORD_AUDIO', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE'], softwareKeyboardLayoutMode: 'resize', package: product.bundleIdentifier, adaptiveIcon: { backgroundColor: '#08131C' } },
     extra: {
       sfmProduct: productId,
       eas: { projectId: product.easProjectId },
@@ -55,3 +58,5 @@ module.exports = {
     },
   },
 };
+
+validateMobileConfig(module.exports.expo.extra);

@@ -97,8 +97,21 @@ jobs:
         with:
           node-version: 22.13.0
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            apps/expo-go/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # Native API/record tests load Expo's tsconfig and mock installed native modules.
+      - name: Install mobile dependencies for native regression tests
+        run: pnpm --dir apps/expo-go install --frozen-lockfile
+      - name: Audit dependencies and verify installed security backports
+        run: node scripts/audit-security-backports.mjs
+      - name: Preserve unfiltered registry audit findings
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-registry-audits
+          path: artifacts/security/
       - run: pnpm test:coverage
         name: vitest with coverage
       - name: Upload coverage
@@ -107,6 +120,36 @@ jobs:
         with:
           name: coverage
           path: coverage/
+
+  mobile-validation:
+    name: CI/Mobile ${{ matrix.product }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [finance, investor, business]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: apps/expo-go/pnpm-lock.yaml
+      - run: pnpm --dir apps/expo-go install --frozen-lockfile
+      - run: pnpm --dir apps/expo-go exec tsc --noEmit
+      - name: Compile Android and iOS bundles
+        working-directory: apps/expo-go
+        env:
+          SFM_PRODUCT: ${{ matrix.product }}
+          EXPO_PUBLIC_SFM_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_PUBLIC_SFM_API_BASE_URL: https://www.the-sfm.com
+        run: |
+          pnpm exec expo export --platform android --output-dir .expo-validation/android
+          pnpm exec expo export --platform ios --output-dir .expo-validation/ios
 
   # Proves the full supabase/migrations chain applies cleanly, exactly once,
   # against a genuinely empty disposable Postgres instance. This is
@@ -162,6 +205,21 @@ jobs:
           PGPASSWORD: postgres
           PGOPTIONS: '-c sfm.disposable_ci=1'
         run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f .github/scripts/markets-tv-validation.sql
+
+      - name: Verify mobile business roles and cross-account relation isolation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/mobile-business-security.sql
+
+      - name: Verify private financial attachment storage
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/financial-attachment-security.sql
+
+      - name: Verify enrolled MFA and session-bound email assurance
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/enrolled-mfa-security.sql
 
       - name: Verify month close and collaboration isolation
         env:

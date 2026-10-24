@@ -1,5 +1,5 @@
 'use client';
-
+import { financialAttachmentUrl } from '@/lib/financialAttachments';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -479,7 +479,7 @@ export default function ProjectWorkspacePage() {
     const path = `${user.id}/project-expenses/${expenseId}-${safeName}`;
     const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: true });
     if (error) return null;
-    return supabase.storage.from('receipts').getPublicUrl(path).data.publicUrl;
+    return financialAttachmentUrl('receipts', path);
   };
 
   const saveProjectExpense = async (event: FormEvent<HTMLFormElement>) => {
@@ -495,8 +495,8 @@ export default function ProjectWorkspacePage() {
     if (shouldRemoveLinkedPersonal && !window.confirm(tr.updateLinkedPersonalExpenseConfirm)) { setProjectExpenseSaving(false); return; }
     const expenseId = editingProjectExpenseId ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`;
     const receiptUrl = projectExpenseForm.receiptFile ? await uploadProjectExpenseReceipt(projectExpenseForm.receiptFile, expenseId) : null;
-    const payload = {
-      id: expenseId, user_id: user.id, project_id: project.id, title, amount,
+    if (projectExpenseForm.receiptFile && !receiptUrl) { setProjectExpenseSaving(false); setProjectExpenseError(tr.projectExpenseSaveError); return; }
+    const payload = { id: expenseId, user_id: user.id, project_id: project.id, title, amount,
       currency: normalizeCurrencyCode(projectExpenseForm.currency, 'KWD'),
       expense_date: projectExpenseForm.expenseDate || todayInputValue(),
       category: projectExpenseForm.category || 'general',

@@ -1,0 +1,30 @@
+name: Mobile review source
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/mobile-review-source.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Archive tracked source only
+        run: |
+          mkdir -p /tmp/mobile-review
+          git rev-parse HEAD > /tmp/mobile-review/COMMIT.txt
+          git archive --format=tar.gz HEAD -o /tmp/mobile-review/source.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mobile-review-source-${{ github.event.pull_request.head.sha }}
+          path: /tmp/mobile-review/
+          retention-days: 1
+          if-no-files-found: error

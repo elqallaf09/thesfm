@@ -8,6 +8,7 @@ import { MobileWorkspace } from './src/MobileWorkspace';
 import { MobileSessionClient } from './src/session';
 import { sessionStorage } from './src/secureStorage';
 import { Button, Busy, darkColors, ErrorNotice, Label, lightColors, UIContext, useUI } from './src/ui';
+import { PrivacyShield } from './native/PrivacyShield';
 
 const extra = Constants.expoConfig?.extra ?? {};
 const product = (['finance', 'investor', 'business'].includes(String(extra.sfmProduct)) ? extra.sfmProduct : 'finance') as PhoneProduct;
@@ -67,10 +68,10 @@ export default function App() {
   }, []);
   const colors = theme === 'dark' || theme === 'system' && deviceTheme === 'dark' ? darkColors : lightColors;
   const context = useMemo(() => ({ language, colors }), [language, colors]);
-  return <UIContext.Provider value={context}><SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}><StatusBar style={colors === darkColors ? 'light' : 'dark'} />
+  return <PrivacyShield><UIContext.Provider value={context}><SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}><StatusBar style={colors === darkColors ? 'light' : 'dark'} />
     {!ready ? <Busy /> : background && signedIn ? <View style={{ flex: 1, backgroundColor: colors.bg }} /> : locked && signedIn ? <Unlock onUnlock={() => setLocked(false)} /> : <MobileWorkspace key={generation} client={client} product={product} base={apiBaseUrl} supabaseUrl={supabaseUrl} signedIn={signedIn} languageChanged={setLanguage} themeChanged={setTheme} authBrowser={authBrowser} googleEnabled={extra.googleSignInEnabled === true} pendingLink={pendingLink} />}
     {error ? <ErrorNotice code={error} /> : null}
-  </SafeAreaView></UIContext.Provider>;
+  </SafeAreaView></UIContext.Provider></PrivacyShield>;
 }
 function Unlock({ onUnlock }: { onUnlock: () => void }) {
   const { t } = useUI(); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
