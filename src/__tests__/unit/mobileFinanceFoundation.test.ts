@@ -47,28 +47,28 @@ describe('THE SFM Finance iOS foundation', () => {
   });
 
   it('refreshes the Expo Go summary automatically and keeps the finance state transparent', () => {
-    const expo = read('apps/expo-go/App.tsx');
-
-    expect(expo).toContain('if (session) void loadSummary();');
-    expect(expo).toContain('activeDebtCount.toLocaleString');
-    expect(expo).toContain('آخر تحديث:');
-    expect(expo).toContain('تعذر تحميل ملخصك. تحقق من الشبكة ثم أعد المحاولة.');
+    const screens = read('apps/expo-go/src/WorkspaceScreens.tsx');
+    expect(screens).toContain('useEffect(() => { void load(); }, [load])');
+    expect(screens).toContain('activeDebtCount');
+    expect(screens).toContain('/api/mobile/${product}/summary');
+    expect(screens).toContain('ErrorNotice');
   });
 
   it('keeps Finance and Business refresh sessions in their own encrypted storage keys', () => {
-    const expo = read('apps/expo-go/App.tsx');
-
-    expect(expo).toContain("const FINANCE_SESSION_KEY = 'sfm-finance-session'");
-    expect(expo).toContain("const BUSINESS_SESSION_KEY = 'sfm-business-session'");
-    expect(expo).toContain('refreshSession(session, BUSINESS_SESSION_KEY)');
-    expect(expo).toContain('SecureStore.setItemAsync(sessionKey, JSON.stringify(refreshed))');
+    const session = read('apps/expo-go/src/session.ts');
+    const storage = read('apps/expo-go/src/secureStorage.ts');
+    expect(session).toContain('`sfm-${config.product}-session`');
+    expect(session).toContain('await this.acceptSession(session, epoch)');
+    expect(storage).toContain('SecureStore.setItemAsync');
+    expect(storage).toContain('WHEN_UNLOCKED_THIS_DEVICE_ONLY');
   });
 
   it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
-    const expo = read('apps/expo-go/App.tsx');
-
-    expect(expo).toContain('async function fetchWithTimeout');
-    expect(expo).toContain('controller.abort(), 15_000');
-    expect(expo).toContain('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+    const session = read('apps/expo-go/src/session.ts');
+    const ui = read('apps/expo-go/src/ui.tsx');
+    expect(session).toContain('controller.abort(), 15_000');
+    expect(session).toContain('INVALID_CREDENTIALS');
+    expect(session).toContain('AUTH_UNAVAILABLE');
+    expect(ui).toContain('البريد أو كلمة المرور غير صحيحة.');
   });
 });

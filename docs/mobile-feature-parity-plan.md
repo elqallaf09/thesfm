@@ -31,3 +31,15 @@ Status: implementation workstream; not a release approval.
 6. Device QA, release builds and staged rollout.
 
 No claim of completed feature parity until each criterion is tested.
+
+## Implementation checkpoint — 2026-10-24
+
+- Preserved the six original workstream commits and merged the dependency update from main (`857eb8fb`).
+- Added 17 shared record contracts, strict mutation validation, cursor pagination, account/profile/subscription APIs, and an authenticated native manifest. Requests use the user's bearer token and existing RLS; ownership and business-role permissions are enforced on the server.
+- Replaced browser shortcuts and device-only Investor watchlists in the Expo runtime with native account-backed record screens. Added shared renewable sessions, late-response invalidation, encrypted chunk storage, device lock, AR/EN/FR UI, adaptive navigation, product deep links, and light/dark/system appearance.
+- Connected the existing Kotlin products through a shared native activity/session implementation, preserving application IDs and the previous encrypted session format. Added the SwiftUI record workflow to all three existing targets, including Investor Keychain authentication.
+- Added `.github/workflows/mobile-native.yml` for Android Play/Huawei, iOS simulator builds, and all three Expo configurations.
+- Generated the complete source route inventory in `docs/mobile-parity-inventory.md` (207 web routes). Basic record CRUD is explicitly marked partial; advanced website parity is still open.
+- Focused validation: 63 mobile tests passed; Expo Android and iOS bundle exports and TypeScript checks passed. A read-only production RLS transaction returned zero foreign-owner rows across eight core tables. Full native compilation, device QA, signed distributions, and full-suite reruns are still in progress.
+
+External requirements remain: authenticated QA accounts, signing continuity/store credentials, Expo authentication, Google redirect configuration, and verified device testing. Never describe an Expo export as a signed APK or IPA.

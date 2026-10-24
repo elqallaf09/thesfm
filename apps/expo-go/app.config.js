@@ -33,20 +33,25 @@ module.exports = {
     slug: product.slug,
     version: '0.1.0',
     orientation: 'default',
-    userInterfaceStyle: 'dark',
+    userInterfaceStyle: 'automatic',
     scheme: product.slug,
     ios: {
       bundleIdentifier: product.bundleIdentifier,
       supportsTablet: true,
       infoPlist: { ITSAppUsesNonExemptEncryption: false },
     },
-    android: { package: product.bundleIdentifier, adaptiveIcon: { backgroundColor: '#08131C' } },
+    android: { package: product.bundleIdentifier, allowBackup: false, adaptiveIcon: { backgroundColor: '#08131C' } },
+    plugins: [
+      'expo-secure-store',
+      ['expo-local-authentication', { faceIDPermission: 'Allow THE SFM to unlock your account with Face ID.' }],
+    ],
     extra: {
       sfmProduct: productId,
       eas: { projectId: product.easProjectId },
       apiBaseUrl: process.env.EXPO_PUBLIC_SFM_API_BASE_URL || 'https://www.the-sfm.com',
       supabaseUrl: process.env.EXPO_PUBLIC_SFM_SUPABASE_URL || '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY || '',
+      googleSignInEnabled: process.env.EXPO_PUBLIC_SFM_GOOGLE_SIGN_IN_ENABLED === 'true',
     },
   },
 };

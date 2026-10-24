@@ -33,3 +33,8 @@ apps/markets-tv/android/.gradle/
 apps/markets-tv/android/**/build/
 apps/markets-tv/android/app/src/main/assets/
 apps/markets-tv/android/local.properties
+
+# Native phone build outputs and local SDK configuration
+apps/sfm-*/android/.gradle/
+apps/sfm-*/android/**/build/
+apps/sfm-*/android/local.properties
