@@ -1,0 +1,71 @@
+name: Android runtime validation
+on:
+  pull_request:
+    paths: ['apps/expo-go/**', 'patches/**', 'scripts/test-security-patches.mjs', '.github/scripts/android-runtime-smoke.py', '.github/workflows/mobile-android-runtime.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  emulator:
+    name: Android runtime / ${{ matrix.product }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        product: [finance, investor, business]
+    env:
+      SFM_PRODUCT: ${{ matrix.product }}
+      EXPO_PUBLIC_SFM_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      EXPO_PUBLIC_SFM_API_BASE_URL: https://www.the-sfm.com
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+          cache-dependency-path: apps/expo-go/pnpm-lock.yaml
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: pnpm --dir apps/expo-go install --frozen-lockfile
+      - run: node scripts/test-security-patches.mjs apps/expo-go
+      - name: Generate isolated Android test project
+        working-directory: apps/expo-go
+        run: pnpm exec expo prebuild --platform android --clean --no-install
+      - name: Build an emulator-only APK with the standard debug test certificate
+        working-directory: apps/expo-go/android
+        # Expo's generated release variant uses its debug certificate until a
+        # real signing config is supplied. This artifact is NEVER distributed.
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon --max-workers=2
+      - name: Enable KVM for the disposable emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install, launch, rotate and relaunch the application
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: python3 .github/scripts/android-runtime-smoke.py
+      - name: Upload runtime evidence (no distribution APK)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-runtime-${{ matrix.product }}
+          path: artifacts/android-runtime/
+          retention-days: 14

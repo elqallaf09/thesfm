@@ -157,11 +157,14 @@ describe('trader market and sector symbol universe', () => {
   });
 
   it('keeps asset classes isolated for technology, crypto, forex, and commodities', async () => {
-    const technology = await getFullSymbolUniverse({ market: 'technology' });
-    const crypto = await getFullSymbolUniverse({ market: 'crypto' });
-    const forex = await getFullSymbolUniverse({ market: 'forex' });
-    const commodities = await getFullSymbolUniverse({ market: 'commodities' });
-    const etfs = await getFullSymbolUniverse({ market: 'etfs' });
+    // Reuse one immutable catalog: this test verifies filtering, not five
+    // repeated builds of the same full provider metadata catalog.
+    const catalog = await getTraderMarketCatalog();
+    const technology = await getFullSymbolUniverse({ market: 'technology', catalog });
+    const crypto = await getFullSymbolUniverse({ market: 'crypto', catalog });
+    const forex = await getFullSymbolUniverse({ market: 'forex', catalog });
+    const commodities = await getFullSymbolUniverse({ market: 'commodities', catalog });
+    const etfs = await getFullSymbolUniverse({ market: 'etfs', catalog });
 
     expect(technology.entries.every(entry => entry.assetType === 'stock')).toBe(true);
     expect(technology.symbols).not.toEqual(expect.arrayContaining(['BTC', 'BTCUSD', 'EURUSD', 'XAUUSD', 'WTI']));

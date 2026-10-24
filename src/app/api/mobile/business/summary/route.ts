@@ -40,6 +40,12 @@ export async function GET(request: NextRequest): Promise<NextResponse<SummaryRes
   const client = configuredUserClient(token);
   if (!client) return response({ ok: false, code: 'SERVICE_NOT_CONFIGURED' }, 503);
 
+  const roleResult = await client.from('business_user_roles').select('role').eq('user_id', user.id).maybeSingle();
+  if (roleResult.error) return response({ ok: false, code: 'SUMMARY_UNAVAILABLE' }, 503);
+  if (roleResult.data && !['manager', 'accountant'].includes(roleResult.data.role)) {
+    return response({ ok: false, code: 'FORBIDDEN' }, 403);
+  }
+
   const [profileResult, projectsResult, customersResult, suppliersResult, employeesResult, invoicesResult, salesResult, operatingExpensesResult] = await Promise.all([
     client.from('profiles').select('default_currency, preferred_currency, currency').eq('id', user.id).maybeSingle(),
     client.from('projects').select('id').eq('user_id', user.id).limit(1_000),

@@ -1,5 +1,5 @@
 'use client';
-
+import { financialAttachmentUrl, financialAttachmentDisplayUrl } from '@/lib/financialAttachments';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, BarChart3, BriefcaseBusiness, CalendarDays, CheckCircle2, CircleDollarSign, Download, Edit3, ExternalLink, FileDown, FileText, Gauge, LineChart, Paperclip, Plus, ReceiptText, Sparkles, Trash2, TrendingUp, Wallet, X } from 'lucide-react';
 import { CurrencySelect } from '@/components/CurrencySelect';
@@ -1092,9 +1092,8 @@ export default function IncomePage() {
       contentType: selectedFile.type,
     });
     if (error) throw error;
-    const { data } = supabase.storage.from('income-attachments').getPublicUrl(path);
     return {
-      attachment_url: data.publicUrl,
+      attachment_url: financialAttachmentUrl('income-attachments', path),
       attachment_name: selectedFile.name,
       attachment_type: selectedFile.type,
       attachment_size: selectedFile.size,
@@ -1760,7 +1759,7 @@ export default function IncomePage() {
                         <button type="button" aria-label={tr('confirmReceived', lang)} onClick={() => void confirmReceived(row)}><CheckCircle2 size={15} /></button>
                       )}
                       {row.attachment_url && (
-                        <button type="button" aria-label={tr('viewAttachment', lang)} onClick={() => window.open(row.attachment_url || '', '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /></button>
+                        <button type="button" aria-label={tr('viewAttachment', lang)} onClick={() => window.open(financialAttachmentDisplayUrl(row.attachment_url) || '', '_blank', 'noopener,noreferrer')}><ExternalLink size={15} /></button>
                       )}
                       <button type="button" aria-label={tr('edit', lang)} onClick={() => openEdit(row)}><Edit3 size={15} /></button>
                       <button type="button" aria-label={tr('delete', lang)} onClick={() => void deleteIncome(row)}><Trash2 size={15} /></button>

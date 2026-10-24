@@ -1,5 +1,5 @@
 'use client';
-
+import { financialAttachmentUrl, financialAttachmentDisplayUrl } from '@/lib/financialAttachments';
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
@@ -338,6 +338,7 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
   const [receiptFiles, setReceiptFiles] = useState<Array<{ file: File; previewUrl: string }>>([]);
   const [pendingReceiptExpenses, setPendingReceiptExpenses] = useState<PendingReceiptExpense[]>([]);
   const [receiptDetails, setReceiptDetails] = useState<SmartExpense | null>(null);
+  const receiptDetailsUrl = financialAttachmentDisplayUrl(receiptDetails?.receipt_image_url);
   const receiptInputRef = useRef<HTMLInputElement | null>(null);
   const [entrySaving, setEntrySaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<(MoneyItem | IncomeSource) | null>(null);
@@ -1180,15 +1181,9 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
     const path = `${user.id}/${id}-${Date.now()}-${safeName}`;
     const { error } = await supabase.storage.from('receipts').upload(path, file, { upsert: true });
-    if (error) {
-      return {
-        receiptImageUrl: previewUrl || null,
-        receiptFileName: file.name,
-      };
-    }
-    const { data: publicUrl } = supabase.storage.from('receipts').getPublicUrl(path);
+    if (error) throw error;
     return {
-      receiptImageUrl: publicUrl.publicUrl,
+      receiptImageUrl: financialAttachmentUrl('receipts', path),
       receiptFileName: file.name,
     };
   }
@@ -2578,10 +2573,10 @@ export function RouteDashboardPage({ kind }: { kind: PageKind }) {
                 <div><p>{expenseText('extractedData', lang)}</p><h3>{expenseText('receiptDetails', lang)}</h3></div>
                 <button type="button" className="icon-btn" onClick={() => setReceiptDetails(null)} aria-label={t('close')}><X size={18} /></button>
               </div>
-              {receiptDetails.receipt_image_url && (
+              {receiptDetailsUrl && (
                 <Image
                   className="receipt-detail-image"
-                  src={receiptDetails.receipt_image_url}
+                  src={receiptDetailsUrl}
                   alt={expenseText('originalImage', lang)}
                   width={900}
                   height={640}

@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  // Next preserves JSX for its own compiler; Vite's test transform must emit it
+  // before mock hoisting and import analysis.
+  oxc: { jsx: { runtime: 'automatic' } },
   resolve: {
     alias: {
       'server-only': fileURLToPath(new URL('./src/__tests__/server-only.ts', import.meta.url)),
