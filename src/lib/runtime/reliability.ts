@@ -2,6 +2,7 @@ export type RuntimeFailureCode =
   | 'UNAUTHORIZED'
   | 'AUTHENTICATION_EXPIRED'
   | 'FORBIDDEN'
+  | 'NOT_ENTITLED'
   | 'NOT_FOUND'
   | 'RATE_LIMITED'
   | 'TLS_FAILURE'
@@ -93,6 +94,7 @@ export function classifyRuntimeFailure(
   if (options.notConfigured) return { code: 'NOT_CONFIGURED', category: 'configuration', retryable: false, httpStatus, messageKey: 'provider_not_configured' };
 
   if (httpStatus === 401) return { code: 'UNAUTHORIZED', category: 'authentication', retryable: false, httpStatus, messageKey: 'unauthorized' };
+  if (httpStatus === 402) return { code: 'NOT_ENTITLED', category: 'permission', retryable: false, httpStatus, messageKey: 'provider_access_denied' };
   if (httpStatus === 403) return { code: 'FORBIDDEN', category: 'permission', retryable: false, httpStatus, messageKey: 'forbidden' };
   if (httpStatus === 404) return { code: 'NOT_FOUND', category: 'not_found', retryable: false, httpStatus, messageKey: 'not_found' };
   if (httpStatus === 429) return { code: 'RATE_LIMITED', category: 'rate_limit', retryable: true, httpStatus, messageKey: 'provider_rate_limited' };
