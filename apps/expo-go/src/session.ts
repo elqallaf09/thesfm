@@ -3,6 +3,14 @@ export type SessionStorage = { getItem(key: string): Promise<string | null>; set
 export class MobileRequestError extends Error {
   constructor(public code: string, public status = 0) { super(code); }
 }
+export type MobileMfaType = 'totp' | 'email';
+/** A first-factor session held only in memory until the server accepts MFA. */
+export class PendingMobileMfa extends Error {
+  readonly expiresAt = Date.now() + 10 * 60_000;
+  challenge: string | null = null;
+  finished = false;
+  constructor(readonly type: MobileMfaType, readonly session: MobileSession, readonly epoch: number) { super('MFA_REQUIRED'); }
+}
 type Config = { product: string; supabaseUrl: string; publicKey: string; apiBaseUrl: string; storage: SessionStorage; fetcher?: typeof fetch; now?: () => number };
 function parseSession(value: unknown, now: number): MobileSession {
   const row = value as Record<string, unknown> | null;
@@ -14,12 +22,17 @@ export class MobileSessionClient {
   private refreshFlight: Promise<MobileSession> | null = null;
   private epoch = 0;
   private listeners = new Set<() => void>();
+  private mfaRequiredListener: ((pending: PendingMobileMfa) => void) | null = null;
   private cache = new Map<string, { value: unknown; expires: number }>();
   private inflight = new Map<string, Promise<unknown>>();
   private persistTail: Promise<void> = Promise.resolve();
   private key: string;
   constructor(private config: Config) { this.key = `sfm-${config.product}-session`; }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
+  subscribeMfaRequired(listener: (pending: PendingMobileMfa) => void) {
+    this.mfaRequiredListener = listener;
+    return () => { if (this.mfaRequiredListener === listener) this.mfaRequiredListener = null; };
+  }
   get signedIn() { return this.session !== null; }
   get generation() { return this.epoch; }
   private now() { return this.config.now?.() ?? Date.now(); }
@@ -43,6 +56,23 @@ export class MobileSessionClient {
     } catch { throw new MobileRequestError('NETWORK_UNAVAILABLE'); }
     finally { clearTimeout(timeout); }
   }
+  private requirePending(pending: PendingMobileMfa) {
+    if (pending.finished || pending.expiresAt <= this.now() || pending.epoch !== this.epoch) throw new MobileRequestError('CHALLENGE_EXPIRED');
+  }
+  private async sessionSecurity(session: MobileSession, epoch: number) {
+    const { response, body } = await this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}/api/mobile/session`, { headers: { Authorization: `Bearer ${session.accessToken}` }, redirect: 'error' });
+    if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
+    if (response.status === 403 && body?.code === 'MFA_REQUIRED') {
+      const type = body.mfaType;
+      if (type === 'totp' || type === 'email') throw new PendingMobileMfa(type, session, epoch);
+      throw new MobileRequestError('MFA_REQUIRED', response.status);
+    }
+    if (!response.ok || body?.ok !== true) throw new MobileRequestError(String(body?.code ?? 'AUTH_UNAVAILABLE'), response.status);
+  }
+  private async mfaTransport(path: string, session: MobileSession, init: RequestInit = {}) {
+    this.configured();
+    return this.transport(`${this.config.supabaseUrl.replace(/\/$/, '')}${path}`, { ...init, redirect: 'error', headers: { apikey: this.config.publicKey, Authorization: `Bearer ${session.accessToken}`, 'Content-Type': 'application/json', ...init.headers } });
+  }
   async restore() {
     const epoch = this.epoch;
     const saved = await this.config.storage.getItem(this.key);
@@ -64,7 +94,9 @@ export class MobileSessionClient {
       method: 'POST', headers: { apikey: this.config.publicKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }),
     });
     if (!response.ok) throw new MobileRequestError(response.status === 400 ? 'INVALID_CREDENTIALS' : `AUTH_${response.status}`, response.status);
-    await this.acceptSession(parseSession(body, this.now()), epoch);
+    const session = parseSession(body, this.now());
+    await this.sessionSecurity(session, epoch);
+    await this.acceptSession(session, epoch);
   }
   private async acceptSession(session: MobileSession, epoch: number) {
     if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
@@ -81,7 +113,63 @@ export class MobileSessionClient {
       method: 'POST', headers: { apikey: this.config.publicKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ auth_code: code, code_verifier: verifier }),
     });
     if (!response.ok) throw new MobileRequestError('OAUTH_FAILED', response.status);
-    await this.acceptSession(parseSession(body, this.now()), epoch);
+    const session = parseSession(body, this.now());
+    await this.sessionSecurity(session, epoch);
+    await this.acceptSession(session, epoch);
+  }
+  async beginMfaIfRequired() {
+    const epoch = this.epoch;
+    const session = await this.activeSession();
+    await this.sessionSecurity(session, epoch);
+    return null;
+  }
+  async sendMfaEmail(pending: PendingMobileMfa) {
+    this.requirePending(pending);
+    if (pending.type !== 'email') throw new MobileRequestError('INVALID_CHALLENGE');
+    const { response, body } = await this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}/api/auth/mfa/mobile-email`, {
+      method: 'POST', headers: { Authorization: `Bearer ${pending.session.accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'start' }), redirect: 'error',
+    });
+    this.requirePending(pending);
+    if (!response.ok || typeof body?.challenge !== 'string' || !body.challenge) throw new MobileRequestError(String(body?.code ?? 'AUTH_UNAVAILABLE'), response.status);
+    pending.challenge = body.challenge;
+  }
+  async verifyMfa(pending: PendingMobileMfa, code: string) {
+    this.requirePending(pending);
+    if (!/^\d{6}$/.test(code)) throw new MobileRequestError('INVALID_CODE');
+    let body: Record<string, unknown> | null;
+    if (pending.type === 'totp') {
+      const account = await this.mfaTransport('/auth/v1/user', pending.session);
+      const factors = Array.isArray(account.body?.factors) ? account.body.factors as Array<{ id?: unknown; factor_type?: unknown; status?: unknown }> : [];
+      const factor = factors.find(item => typeof item.id === 'string' && item.factor_type === 'totp' && item.status === 'verified');
+      const factorId = typeof factor?.id === 'string' ? factor.id : null;
+      if (!account.response.ok || !factorId) throw new MobileRequestError('AUTH_UNAVAILABLE', account.response.status);
+      this.requirePending(pending);
+      const challenge = await this.mfaTransport(`/auth/v1/factors/${encodeURIComponent(factorId)}/challenge`, pending.session, { method: 'POST', body: '{}' });
+      if (!challenge.response.ok || typeof challenge.body?.id !== 'string') throw new MobileRequestError(String(challenge.body?.code ?? 'AUTH_UNAVAILABLE'), challenge.response.status);
+      this.requirePending(pending);
+      const verified = await this.mfaTransport(`/auth/v1/factors/${encodeURIComponent(factorId)}/verify`, pending.session, { method: 'POST', body: JSON.stringify({ challenge_id: challenge.body.id, code }) });
+      if (!verified.response.ok) throw new MobileRequestError(String(verified.body?.code ?? 'INVALID_CODE'), verified.response.status);
+      body = verified.body;
+    } else {
+      if (!pending.challenge) throw new MobileRequestError('CHALLENGE_REQUIRED');
+      const verified = await this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}/api/auth/mfa/mobile-email`, {
+        method: 'POST', headers: { Authorization: `Bearer ${pending.session.accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'verify', challenge: pending.challenge, code }), redirect: 'error',
+      });
+      if (!verified.response.ok) throw new MobileRequestError(String(verified.body?.code ?? 'INVALID_CODE'), verified.response.status);
+      body = verified.body;
+    }
+    this.requirePending(pending);
+    const session = parseSession(body, this.now());
+    await this.sessionSecurity(session, pending.epoch);
+    this.requirePending(pending);
+    await this.acceptSession(session, pending.epoch);
+    pending.finished = true;
+  }
+  async cancelMfa(pending: PendingMobileMfa) {
+    if (pending.finished) return;
+    pending.finished = true;
+    if (pending.epoch === this.epoch) await this.signOut(false);
+    await this.mfaTransport('/auth/v1/logout?scope=local', pending.session, { method: 'POST' }).catch(() => {});
   }
   private async activeSession(force = false): Promise<MobileSession> {
     const current = this.session;
@@ -111,17 +199,27 @@ export class MobileSessionClient {
     const epoch = this.epoch;
     const key = `${epoch}:${path}`;
     const reading = !init.method || init.method === 'GET';
-    const cached = this.cache.get(key);
-    if (reading && ttlMs && cached && cached.expires > this.now()) return cached.value as T;
     if (reading && this.inflight.has(key)) return this.inflight.get(key) as Promise<T>;
     const task = (async () => {
       let session = await this.activeSession();
       if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
-      const send = () => this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}${path}`, { ...init, headers: { ...init.headers, 'Content-Type': 'application/json', Authorization: `Bearer ${session.accessToken}` } });
+      try { await this.sessionSecurity(session, epoch); }
+      catch (reason) {
+        if (reason instanceof PendingMobileMfa) this.mfaRequiredListener?.(reason);
+        throw reason;
+      }
+      const cached = this.cache.get(key);
+      if (reading && ttlMs && cached && cached.expires > this.now()) return cached.value as T;
+      const send = () => this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}${path}`, { ...init, redirect: 'error', headers: { ...init.headers, 'Content-Type': 'application/json', Authorization: `Bearer ${session.accessToken}` } });
       let result = await send();
       if (result.response.status === 401) {
         session = await this.activeSession(true);
         if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
+        try { await this.sessionSecurity(session, epoch); }
+        catch (reason) {
+          if (reason instanceof PendingMobileMfa) this.mfaRequiredListener?.(reason);
+          throw reason;
+        }
         result = await send();
       }
       if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');

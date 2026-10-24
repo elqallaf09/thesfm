@@ -7,28 +7,34 @@ import { RecordsScreen } from './RecordsScreen';
 import { ToolsScreen } from './ToolsScreen';
 import { InvestorFeeds } from './InvestorFeeds';
 import { completeGoogleSignIn, startGoogleSignIn } from './oauth';
-import { MobileRequestError, type MobileSessionClient } from './session';
+import { MobileRequestError, PendingMobileMfa, type MobileSessionClient } from './session';
 import { screenForLink, type Screen } from './navigation';
 import { Button, Busy, ErrorNotice, Input, Label, Panel, useUI } from './ui';
 
-type Props = { client: MobileSessionClient; product: PhoneProduct; base: string; supabaseUrl: string; signedIn: boolean; languageChanged: (value: MobileLanguage) => void; themeChanged: (value: 'light' | 'dark' | 'system') => void; authBrowser: { current: boolean }; googleEnabled: boolean; pendingLink: { current: string | null } };
+type Props = { client: MobileSessionClient; product: PhoneProduct; base: string; supabaseUrl: string; signedIn: boolean; languageChanged: (value: MobileLanguage) => void; themeChanged: (value: 'light' | 'dark' | 'system') => void; authBrowser: { current: boolean }; googleEnabled: boolean; pendingLink: { current: string | null }; mfaRequired: (pending: PendingMobileMfa) => void };
 export function MobileWorkspace(props: Props) {
-  const { client, product, base, signedIn, languageChanged, themeChanged } = props;
+  const { client, product, base, signedIn, languageChanged, themeChanged, mfaRequired, pendingLink } = props;
   const { t, colors, rtl } = useUI(); const { width } = useWindowDimensions(); const wide = width >= 900;
   const [stack, setStack] = useState<Screen[]>(() => {
-    const pending = props.pendingLink.current;
-    if (signedIn && pending) { const result = screenForLink(pending, product); props.pendingLink.current = null; if ('screen' in result) return [result.screen]; }
+    const pending = pendingLink.current;
+    if (signedIn && pending) { const result = screenForLink(pending, product); pendingLink.current = null; if ('screen' in result) return [result.screen]; }
     return [{ kind: 'home' }];
   }); const screen = stack[stack.length - 1];
   const [guest, setGuest] = useState(false); const [linkError, setLinkError] = useState('');
   const navigate = useCallback((next: Screen) => setStack(previous => [...previous.slice(-29), next]), []);
   const openLink = useCallback((input: string) => {
-    if (input.startsWith(`the-sfm-${product}://auth/callback`)) { void completeGoogleSignIn(input, product, client).catch(error => setLinkError(error.code ?? 'OAUTH_FAILED')); return; }
+    if (input.startsWith(`the-sfm-${product}://auth/callback`)) {
+      void completeGoogleSignIn(input, product, client).catch(error => {
+        if (error instanceof PendingMobileMfa) mfaRequired(error);
+        else setLinkError(error.code ?? 'OAUTH_FAILED');
+      });
+      return;
+    }
     const result = screenForLink(input, product);
     if ('external' in result) { void Linking.openURL(result.external).catch(() => setLinkError('LINK_UNAVAILABLE')); return; }
-    if (!client.signedIn) props.pendingLink.current = input;
+    if (!client.signedIn) pendingLink.current = input;
     navigate(result.screen);
-  }, [client, navigate, product, props.pendingLink]);
+  }, [client, mfaRequired, navigate, pendingLink, product]);
   useEffect(() => {
     void Linking.getInitialURL().then(input => { if (input) openLink(input); });
     const subscription = Linking.addEventListener('url', event => openLink(event.url));
@@ -70,7 +76,7 @@ function SignIn(props: Props & { browse?: () => void }) {
   async function signIn(google = false) {
     setBusy(true); setError('');
     try { if (google) { authBrowser.current = true; await startGoogleSignIn(product, supabaseUrl, client); } else await client.signIn(email, password); setPassword(''); }
-    catch (error) { setError(error instanceof MobileRequestError ? error.code : 'AUTH_UNAVAILABLE'); }
+    catch (error) { if (error instanceof PendingMobileMfa) props.mfaRequired(error); else setError(error instanceof MobileRequestError ? error.code : 'AUTH_UNAVAILABLE'); }
     finally { setBusy(false); authBrowser.current = false; }
   }
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, gap: 18, maxWidth: 560, width: '100%', alignSelf: 'center' }}><Label large>{`THE SFM ${product === 'finance' ? 'Finance' : product === 'investor' ? 'Investor' : 'Business'}`}</Label><Label>{t(['سجّل الدخول بنفس حساب الموقع للوصول إلى بياناتك.', 'Sign in with your website account to access your data.', 'Connectez-vous avec votre compte du site pour accéder à vos données.'])}</Label><Input label={t(['البريد الإلكتروني', 'Email', 'E-mail'])} email value={email} onChange={setEmail} /><Input label={t(['كلمة المرور', 'Password', 'Mot de passe'])} secure value={password} onChange={setPassword} />{error ? <ErrorNotice code={error} /> : null}<Button label={t(['تسجيل الدخول', 'Sign in', 'Connexion'])} disabled={busy || !email.trim() || !password} onPress={() => { void signIn(); }} />{googleEnabled ? <Button label={t(['الدخول بواسطة Google', 'Continue with Google', 'Continuer avec Google'])} disabled={busy} onPress={() => { void signIn(true); }} /> : null}{browse ? <Button label={t(['تصفح الأسواق دون حساب', 'Browse markets without an account', 'Explorer les marchés sans compte'])} onPress={browse} /> : null}{busy ? <Busy /> : null}</ScrollView>;

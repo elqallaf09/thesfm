@@ -5,7 +5,8 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppState, Platform, SafeAreaView, useColorScheme, View } from 'react-native';
 import type { MobileLanguage, PhoneProduct } from '../../src/lib/mobile/resourceContract';
 import { MobileWorkspace } from './src/MobileWorkspace';
-import { MobileSessionClient } from './src/session';
+import { MobileRequestError, MobileSessionClient, PendingMobileMfa } from './src/session';
+import { MfaScreen } from './src/MfaScreen';
 import { sessionStorage } from './src/secureStorage';
 import { Button, Busy, darkColors, ErrorNotice, Label, lightColors, UIContext, useUI } from './src/ui';
 import { PrivacyShield } from './native/PrivacyShield';
@@ -23,23 +24,44 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [locked, setLocked] = useState(false);
   const [background, setBackground] = useState(false);
+  const [pendingMfa, setPendingMfa] = useState<PendingMobileMfa | null>(null);
   const [error, setError] = useState('');
   const deviceTheme = useColorScheme();
   const authBrowser = useRef(false);
   const pendingLink = useRef<string | null>(null);
-  useEffect(() => client.subscribe(update), []);
+  useEffect(() => {
+    const unsubscribe = client.subscribe(update);
+    const unsubscribeMfa = client.subscribeMfaRequired(setPendingMfa);
+    return () => { unsubscribe(); unsubscribeMfa(); };
+  }, []);
   useEffect(() => {
     let mounted = true;
-    void Promise.all([client.restore(), sessionStorage.getItem(`sfm-${product}-preferences`).then(raw => {
-      if (!raw || !mounted) return;
+    void (async () => {
       try {
-        const saved = JSON.parse(raw);
-        if (['ar', 'en', 'fr'].includes(saved.language)) setLanguage(saved.language);
-        if (['system', 'light', 'dark'].includes(saved.theme)) setTheme(saved.theme);
-      } catch { /* retain device defaults */ }
-    })]).then(() => {
-      if (mounted) { setLocked(client.signedIn && Platform.OS !== 'web'); setReady(true); }
-    }).catch(() => { if (mounted) { setError('STORAGE_UNAVAILABLE'); setReady(true); } });
+        await Promise.all([client.restore(), sessionStorage.getItem(`sfm-${product}-preferences`).then(raw => {
+          if (!raw || !mounted) return;
+          try {
+            const saved = JSON.parse(raw);
+            if (['ar', 'en', 'fr'].includes(saved.language)) setLanguage(saved.language);
+            if (['system', 'light', 'dark'].includes(saved.theme)) setTheme(saved.theme);
+          } catch { /* retain device defaults */ }
+        })]);
+        let requiresMfa = false;
+        if (client.signedIn) {
+          try { await client.beginMfaIfRequired(); }
+          catch (reason) {
+            if (reason instanceof PendingMobileMfa) {
+              requiresMfa = true;
+              if (mounted) setPendingMfa(reason);
+            } else {
+              await client.signOut(false);
+              if (mounted) setError(reason instanceof MobileRequestError ? reason.code : 'AUTH_UNAVAILABLE');
+            }
+          }
+        }
+        if (mounted) { setLocked(client.signedIn && !requiresMfa && Platform.OS !== 'web'); setReady(true); }
+      } catch { if (mounted) { setError('STORAGE_UNAVAILABLE'); setReady(true); } }
+    })();
     return () => { mounted = false; };
   }, []);
   const signedIn = client.signedIn;
@@ -69,7 +91,7 @@ export default function App() {
   const colors = theme === 'dark' || theme === 'system' && deviceTheme === 'dark' ? darkColors : lightColors;
   const context = useMemo(() => ({ language, colors }), [language, colors]);
   return <PrivacyShield><UIContext.Provider value={context}><SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}><StatusBar style={colors === darkColors ? 'light' : 'dark'} />
-    {!ready ? <Busy /> : background && signedIn ? <View style={{ flex: 1, backgroundColor: colors.bg }} /> : locked && signedIn ? <Unlock onUnlock={() => setLocked(false)} /> : <MobileWorkspace key={generation} client={client} product={product} base={apiBaseUrl} supabaseUrl={supabaseUrl} signedIn={signedIn} languageChanged={setLanguage} themeChanged={setTheme} authBrowser={authBrowser} googleEnabled={extra.googleSignInEnabled === true} pendingLink={pendingLink} />}
+    {!ready ? <Busy /> : background && (signedIn || pendingMfa) ? <View style={{ flex: 1, backgroundColor: colors.bg }} /> : pendingMfa ? <MfaScreen client={client} pending={pendingMfa} completed={() => setPendingMfa(null)} cancelled={() => setPendingMfa(null)} /> : locked && signedIn ? <Unlock onUnlock={() => setLocked(false)} /> : <MobileWorkspace key={generation} client={client} product={product} base={apiBaseUrl} supabaseUrl={supabaseUrl} signedIn={signedIn} languageChanged={setLanguage} themeChanged={setTheme} authBrowser={authBrowser} googleEnabled={extra.googleSignInEnabled === true} pendingLink={pendingLink} mfaRequired={setPendingMfa} />}
     {error ? <ErrorNotice code={error} /> : null}
   </SafeAreaView></UIContext.Provider></PrivacyShield>;
 }
