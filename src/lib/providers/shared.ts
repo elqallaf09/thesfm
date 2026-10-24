@@ -105,6 +105,7 @@ export function addUtcDays(date: Date, days: number) {
 
 export function mapHttpProviderStatus(status: number): ProviderApiStatus {
   if (status === 401) return 'unauthorized';
+  if (status === 402) return 'not_entitled';
   if (status === 403) return 'forbidden';
   if (status === 429) return 'rate_limited';
   if (status === 404) return 'not_found';
