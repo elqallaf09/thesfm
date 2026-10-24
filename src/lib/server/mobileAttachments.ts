@@ -3,21 +3,42 @@ import { recordIdSchema } from '@/lib/mobile/resourceValidation';
 import { mobileAccess, mobileResponse } from '@/lib/server/mobileAccess';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
-const incomeBucket = 'income-attachments';
 const maxUploadBytes = 10 * 1024 * 1024;
-const attachmentColumns = 'id,attachment_url,attachment_name,attachment_type,attachment_size';
 const allowedMimeTypes = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
 
-type IncomeAttachment = {
+type AttachmentRow = {
   id: string;
-  attachment_url: string | null;
-  attachment_name: string | null;
-  attachment_type: string | null;
-  attachment_size: number | null;
+  [key: string]: string | number | null;
 };
 
-function attachmentResponse(row: IncomeAttachment) {
-  return { id: row.id, url: row.attachment_url, name: row.attachment_name, type: row.attachment_type, size: row.attachment_size };
+type AttachmentResource = {
+  resource: 'income' | 'expenses';
+  table: 'monthly_income_sources' | 'expense_items';
+  bucket: 'income-attachments' | 'receipts';
+  columns: string;
+  urlColumn: 'attachment_url' | 'receipt_image_url';
+  nameColumn: 'attachment_name' | 'receipt_file_name';
+  typeColumn?: 'attachment_type';
+  sizeColumn?: 'attachment_size';
+};
+
+const attachmentResources: readonly AttachmentResource[] = [
+  { resource: 'income', table: 'monthly_income_sources', bucket: 'income-attachments', columns: 'id,attachment_url,attachment_name,attachment_type,attachment_size', urlColumn: 'attachment_url', nameColumn: 'attachment_name', typeColumn: 'attachment_type', sizeColumn: 'attachment_size' },
+  { resource: 'expenses', table: 'expense_items', bucket: 'receipts', columns: 'id,receipt_image_url,receipt_file_name', urlColumn: 'receipt_image_url', nameColumn: 'receipt_file_name' },
+];
+
+function attachmentResource(product: string, resource: string) {
+  return product === 'finance' ? attachmentResources.find(item => item.resource === resource) ?? null : null;
+}
+
+function attachmentResponse(row: AttachmentRow, config: AttachmentResource) {
+  return {
+    id: row.id,
+    url: row[config.urlColumn] ?? null,
+    name: row[config.nameColumn] ?? null,
+    type: config.typeColumn ? row[config.typeColumn] ?? null : null,
+    size: config.sizeColumn ? row[config.sizeColumn] ?? null : null,
+  };
 }
 
 function safeFileName(value: string) {
@@ -25,18 +46,18 @@ function safeFileName(value: string) {
   return result || 'attachment';
 }
 
-function stableStoragePath(value: string | null) {
+function stableStoragePath(value: string | null, bucket: AttachmentResource['bucket']) {
   const stable = financialAttachmentDisplayUrl(value);
   if (!stable) return null;
   const url = new URL(stable, 'https://mobile-attachment.invalid');
   const path = url.searchParams.get('path') || '';
-  return url.pathname === '/api/receipts/file' && url.searchParams.get('bucket') === incomeBucket && isFinancialAttachmentPath(path) ? path : null;
+  return url.pathname === '/api/receipts/file' && url.searchParams.get('bucket') === bucket && isFinancialAttachmentPath(path) ? path : null;
 }
 
-function validSignedUrl(value: string, origin: string) {
+function validSignedUrl(value: string, origin: string, bucket: AttachmentResource['bucket']) {
   try {
     const url = new URL(value);
-    return url.origin === new URL(origin).origin && url.pathname.startsWith(`/storage/v1/object/sign/${incomeBucket}/`) ? url.toString() : null;
+    return url.origin === new URL(origin).origin && url.pathname.startsWith(`/storage/v1/object/sign/${bucket}/`) ? url.toString() : null;
   } catch {
     return null;
   }
@@ -44,41 +65,45 @@ function validSignedUrl(value: string, origin: string) {
 
 /**
  * Attachment URLs are deliberately not part of the generic record input. This
- * endpoint validates the real income row, current MFA state and storage owner
+ * endpoint validates the real finance row, current MFA state and storage owner
  * prefix on every upload, unlink and short-lived download request.
  */
-export async function handleMobileIncomeAttachment(request: Request, product: string, resource: string) {
-  if (product !== 'finance' || resource !== 'income') return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
+export async function handleMobileFinanceAttachment(request: Request, product: string, resource: string) {
+  const config = attachmentResource(product, resource);
+  if (!config) return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
   const access = await mobileAccess(request);
   if (access.response) return access.response;
-  const limited = rateLimitRequest(request, { max: 20, windowMs: 60_000, prefix: `mobile-income-attachment:${access.userId}` });
+  const limited = rateLimitRequest(request, { max: 20, windowMs: 60_000, prefix: `mobile-${config.resource}-attachment:${access.userId}` });
   if (limited) { limited.headers.set('Cache-Control', 'private, no-store'); return limited; }
   const recordId = recordIdSchema.safeParse(new URL(request.url).searchParams.get('recordId'));
 
   if (request.method === 'GET') {
     if (!recordId.success) return mobileResponse({ ok: false, code: 'INVALID_ID' }, 400);
-    const record = await access.client.from('monthly_income_sources').select(attachmentColumns).eq('user_id', access.userId).eq('id', recordId.data).maybeSingle();
+    const record = await access.client.from(config.table).select(config.columns).eq('user_id', access.userId).eq('id', recordId.data).maybeSingle();
     if (record.error) return mobileResponse({ ok: false, code: 'LOAD_UNAVAILABLE' }, 503);
-    const row = record.data as IncomeAttachment | null;
-    const path = row && stableStoragePath(row.attachment_url);
+    const row = record.data as AttachmentRow | null;
+    const url = row?.[config.urlColumn];
+    const path = typeof url === 'string' ? stableStoragePath(url, config.bucket) : null;
     if (!row || !path || path.split('/')[0] !== access.userId) return mobileResponse({ ok: false, code: 'ATTACHMENT_UNAVAILABLE' }, 404);
-    const signed = await access.client.storage.from(incomeBucket).createSignedUrl(path, 60);
+    const signed = await access.client.storage.from(config.bucket).createSignedUrl(path, 60);
     const origin = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const url = signed.data?.signedUrl && origin ? validSignedUrl(signed.data.signedUrl, origin) : null;
-    if (signed.error || !url) return mobileResponse({ ok: false, code: 'ATTACHMENT_UNAVAILABLE' }, 404);
-    return mobileResponse({ ok: true, attachment: { ...attachmentResponse(row), url } });
+    const signedUrl = signed.data?.signedUrl && origin ? validSignedUrl(signed.data.signedUrl, origin, config.bucket) : null;
+    if (signed.error || !signedUrl) return mobileResponse({ ok: false, code: 'ATTACHMENT_UNAVAILABLE' }, 404);
+    return mobileResponse({ ok: true, attachment: { ...attachmentResponse(row, config), url: signedUrl } });
   }
 
   if (request.method === 'DELETE') {
     if (!recordId.success) return mobileResponse({ ok: false, code: 'INVALID_ID' }, 400);
-    const saved = await access.client.from('monthly_income_sources')
-      .update({ attachment_url: null, attachment_name: null, attachment_type: null, attachment_size: null })
-      .eq('user_id', access.userId).eq('id', recordId.data).select(attachmentColumns).maybeSingle();
+    const values: Record<string, null> = { [config.urlColumn]: null, [config.nameColumn]: null };
+    if (config.typeColumn) values[config.typeColumn] = null;
+    if (config.sizeColumn) values[config.sizeColumn] = null;
+    const saved = await access.client.from(config.table).update(values)
+      .eq('user_id', access.userId).eq('id', recordId.data).select(config.columns).maybeSingle();
     if (saved.error) return mobileResponse({ ok: false, code: 'SAVE_UNAVAILABLE' }, 503);
     if (!saved.data) return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
     // Match the existing web semantics: unlinking is reversible at the record
     // level and does not silently perform a destructive storage deletion.
-    return mobileResponse({ ok: true, attachment: attachmentResponse(saved.data as IncomeAttachment) });
+    return mobileResponse({ ok: true, attachment: attachmentResponse(saved.data as unknown as AttachmentRow, config) });
   }
 
   if (request.method !== 'POST') return mobileResponse({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
@@ -92,22 +117,27 @@ export async function handleMobileIncomeAttachment(request: Request, product: st
   if (!allowedMimeTypes.has(file.type)) return mobileResponse({ ok: false, code: 'UNSUPPORTED_FILE' }, 415);
   if (file.size < 1 || file.size > maxUploadBytes) return mobileResponse({ ok: false, code: 'FILE_TOO_LARGE' }, 413);
 
-  const existing = await access.client.from('monthly_income_sources').select('id').eq('user_id', access.userId).eq('id', formRecordId.data).maybeSingle();
+  const existing = await access.client.from(config.table).select('id').eq('user_id', access.userId).eq('id', formRecordId.data).maybeSingle();
   if (existing.error) return mobileResponse({ ok: false, code: 'LOAD_UNAVAILABLE' }, 503);
   if (!existing.data) return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
   const path = `${access.userId}/${formRecordId.data}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
   let bytes: Uint8Array;
   try { bytes = new Uint8Array(await file.arrayBuffer()); } catch { return mobileResponse({ ok: false, code: 'INVALID_UPLOAD' }, 400); }
-  const uploaded = await access.client.storage.from(incomeBucket).upload(path, bytes, { cacheControl: '3600', contentType: file.type, upsert: false });
+  const uploaded = await access.client.storage.from(config.bucket).upload(path, bytes, { cacheControl: '3600', contentType: file.type, upsert: false });
   if (uploaded.error) return mobileResponse({ ok: false, code: 'UPLOAD_UNAVAILABLE' }, 503);
-  const values = {
-    attachment_url: financialAttachmentUrl(incomeBucket, path), attachment_name: safeFileName(file.name), attachment_type: file.type, attachment_size: file.size,
+  const values: Record<string, string | number> = {
+    [config.urlColumn]: financialAttachmentUrl(config.bucket, path), [config.nameColumn]: safeFileName(file.name),
   };
-  const saved = await access.client.from('monthly_income_sources').update(values)
-    .eq('user_id', access.userId).eq('id', formRecordId.data).select(attachmentColumns).maybeSingle();
+  if (config.typeColumn) values[config.typeColumn] = file.type;
+  if (config.sizeColumn) values[config.sizeColumn] = file.size;
+  const saved = await access.client.from(config.table).update(values)
+    .eq('user_id', access.userId).eq('id', formRecordId.data).select(config.columns).maybeSingle();
   if (saved.error || !saved.data) {
-    await access.client.storage.from(incomeBucket).remove([path]).catch(() => {});
+    await access.client.storage.from(config.bucket).remove([path]).catch(() => {});
     return mobileResponse({ ok: false, code: saved.error ? 'SAVE_UNAVAILABLE' : 'NOT_FOUND' }, saved.error ? 503 : 404);
   }
-  return mobileResponse({ ok: true, attachment: attachmentResponse(saved.data as IncomeAttachment) }, 201);
+  return mobileResponse({ ok: true, attachment: attachmentResponse(saved.data as unknown as AttachmentRow, config) }, 201);
 }
+
+// Retained for existing integrations and tests that target the income route.
+export const handleMobileIncomeAttachment = handleMobileFinanceAttachment;

@@ -13,7 +13,7 @@ describe('mobile renewable user sessions', () => {
   it('coalesces refresh and duplicate reads and uses the rotated token', async () => {
     const fetcher = vi.fn(async (input, init) => String(input).includes('refresh_token')
       ? json({ access_token: 'new-access', refresh_token: 'new-refresh', expires_in: 3600 })
-      : json({ authorization: (init?.headers as Record<string, string>).Authorization }));
+      : json({ authorization: new Headers(init?.headers).get('Authorization') ?? '' }));
     const { client } = setup(fetcher); await client.restore();
     const [left, right] = await Promise.all([client.request('/api/mobile/account'), client.request('/api/mobile/account')]);
     expect(left).toEqual({ authorization: 'Bearer new-access' }); expect(right).toEqual(left); expect(fetcher).toHaveBeenCalledTimes(2);

@@ -22,6 +22,7 @@ function selection(resource: MobileResource) {
     // Attachment values are output-only. Generic record mutations must never
     // accept a client-supplied attachment URL.
     ...(resource.id === 'income' ? ['attachment_url', 'attachment_name', 'attachment_type', 'attachment_size'] : []),
+    ...(resource.id === 'expenses' ? ['receipt_image_url', 'receipt_file_name'] : []),
   ].join(',');
 }
 

@@ -58,7 +58,7 @@ function client() {
   };
 }
 
-import { handleMobileIncomeAttachment } from '@/lib/server/mobileAttachments';
+import { handleMobileFinanceAttachment, handleMobileIncomeAttachment } from '@/lib/server/mobileAttachments';
 
 function request(method: string, suffix = '', body?: FormData) {
   return new Request(`https://www.the-sfm.com/api/mobile/finance/records/income/attachment${suffix}`, {
@@ -75,6 +75,21 @@ function upload(file = new File(['receipt'], 'receipt.pdf', { type: 'application
   return request('POST', '', form);
 }
 
+function expenseRequest(method: string, suffix = '', body?: FormData) {
+  return new Request(`https://www.the-sfm.com/api/mobile/finance/records/expenses/attachment${suffix}`, {
+    method,
+    headers: { Authorization: 'Bearer verified-token' },
+    body,
+  });
+}
+
+function expenseUpload(file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' })) {
+  const form = new FormData();
+  form.set('recordId', recordId);
+  form.set('file', file);
+  return expenseRequest('POST', '', form);
+}
+
 beforeEach(() => {
   state.record = { id: recordId, attachment_url: null, attachment_name: null, attachment_type: null, attachment_size: null };
   state.owner = userId;
@@ -88,7 +103,7 @@ beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://storage.example.test');
 });
 
-describe('mobile income attachment boundary', () => {
+describe('mobile finance attachment boundary', () => {
   it('rejects MFA or anonymous requests before opening an income row or Storage', async () => {
     state.access = { response: response({ ok: false, code: 'MFA_REQUIRED' }, 403) };
     const result = await handleMobileIncomeAttachment(upload(), 'finance', 'income');
@@ -134,6 +149,25 @@ describe('mobile income attachment boundary', () => {
     const result = await handleMobileIncomeAttachment(request('DELETE', `?recordId=${recordId}`), 'finance', 'income');
     expect(result.status).toBe(200);
     expect(state.update).toEqual({ attachment_url: null, attachment_name: null, attachment_type: null, attachment_size: null });
+    expect(state.removed).toEqual([]);
+  });
+
+  it('keeps expense receipts owner-scoped in the existing private receipts bucket', async () => {
+    state.record = { id: recordId, receipt_image_url: null, receipt_file_name: null };
+    state.signedUrl = `https://storage.example.test/storage/v1/object/sign/receipts/${userId}/${recordId}/receipt.pdf?token=short`;
+    const result = await handleMobileFinanceAttachment(expenseUpload(), 'finance', 'expenses');
+    expect(result.status).toBe(201);
+    expect(state.storage).toContain('receipts');
+    expect(state.uploaded?.path).toMatch(new RegExp(`^${userId}/${recordId}/`));
+    expect(state.update).toEqual(expect.objectContaining({ receipt_image_url: expect.stringMatching(/^\/api\/receipts\/file\?/), receipt_file_name: 'receipt.pdf' }));
+
+    const signed = await handleMobileFinanceAttachment(expenseRequest('GET', `?recordId=${recordId}`), 'finance', 'expenses');
+    expect(signed.status).toBe(200);
+    expect((await signed.json()).attachment.url).toBe(state.signedUrl);
+
+    const detached = await handleMobileFinanceAttachment(expenseRequest('DELETE', `?recordId=${recordId}`), 'finance', 'expenses');
+    expect(detached.status).toBe(200);
+    expect(state.update).toEqual({ receipt_image_url: null, receipt_file_name: null });
     expect(state.removed).toEqual([]);
   });
 });

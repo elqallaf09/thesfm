@@ -42,7 +42,9 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
   useEffect(() => { const counter = sequence; void load(); return () => { ++counter.current; }; }, [load]);
   useAccountSync(() => { void load(undefined, true); });
   const attachmentPath = `${path}/attachment`;
-  const supportsAttachments = product === 'finance' && resource.id === 'income';
+  const supportsAttachments = product === 'finance' && (resource.id === 'income' || resource.id === 'expenses');
+  const attachmentUrlField = resource.id === 'income' ? 'attachment_url' : 'receipt_image_url';
+  const attachmentNameField = resource.id === 'income' ? 'attachment_name' : 'receipt_file_name';
   async function attach(record: MobileRecord) {
     const picked = await DocumentPicker.getDocumentAsync({ type: [...ATTACHMENT_TYPES], copyToCacheDirectory: false, multiple: false });
     const file = picked.assets?.[0];
@@ -68,7 +70,9 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
     finally { setBusy(false); }
   }
   function detach(record: MobileRecord) {
-    Alert.alert(t(['إزالة المرفق', 'Remove attachment', 'Supprimer la pièce jointe']), t(['سيُفصل المرفق عن سجل الدخل في حسابك على الموقع.', 'This unlinks the attachment from this income record in your website account.', 'Cette action dissocie la pièce jointe de ce revenu dans votre compte du site.']), [
+    Alert.alert(t(['إزالة المرفق', 'Remove attachment', 'Supprimer la pièce jointe']), t(resource.id === 'expenses'
+      ? ['سيُفصل الإيصال عن سجل المصروف في حسابك على الموقع.', 'This unlinks the receipt from this expense record in your website account.', 'Cette action dissocie le reçu de cette dépense dans votre compte du site.']
+      : ['سيُفصل المرفق عن سجل الدخل في حسابك على الموقع.', 'This unlinks the attachment from this income record in your website account.', 'Cette action dissocie la pièce jointe de ce revenu dans votre compte du site.']), [
       { text: t(['إلغاء', 'Cancel', 'Annuler']), style: 'cancel' },
       { text: t(['إزالة', 'Remove', 'Supprimer']), style: 'destructive', onPress: () => { setBusy(true); void client.request(`${attachmentPath}?recordId=${encodeURIComponent(record.id)}`, { method: 'DELETE' }).then(() => load()).catch(error => { setError(error instanceof MobileRequestError ? error.code : 'SAVE_UNAVAILABLE'); setBusy(false); }); } },
     ]);
@@ -90,7 +94,7 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
         {resource.id === 'holdings' && item.native_market_value != null ? <><Label>{t(['القيمة بعملة الأصل', 'Value in asset currency', 'Valeur en devise d’origine'])}: {formatValue(item.native_market_value)} {String(item.native_currency ?? '')}</Label>{item.converted_market_value != null ? <Label>{t(['القيمة المحولة', 'Converted value', 'Valeur convertie'])}: {formatValue(item.converted_market_value)} {String(item.user_currency ?? '')}</Label> : null}</> : null}
         {!resource.readOnly ? <View style={{ gap: 8 }}><Button label={t(['تعديل', 'Edit', 'Modifier'])} onPress={() => setEditing(item)} disabled={busy} /><Button danger label={t(['حذف', 'Delete', 'Supprimer'])} onPress={() => remove(item)} disabled={busy} /></View> : null}
         {supportsAttachments ? <View style={{ gap: 8 }}>
-          {item.attachment_url ? <><Label muted>{t(['مرفق', 'Attachment', 'Pièce jointe'])}: {String(item.attachment_name || t(['ملف مرفق', 'Attached file', 'Fichier joint']))}</Label><Button label={t(['عرض المرفق', 'View attachment', 'Voir la pièce jointe'])} onPress={() => { void openAttachment(item); }} disabled={busy} /><Button danger label={t(['إزالة المرفق', 'Remove attachment', 'Supprimer la pièce jointe'])} onPress={() => detach(item)} disabled={busy} /></> : null}
+          {item[attachmentUrlField] ? <><Label muted>{t(resource.id === 'expenses' ? ['إيصال', 'Receipt', 'Reçu'] : ['مرفق', 'Attachment', 'Pièce jointe'])}: {String(item[attachmentNameField] || t(['ملف مرفق', 'Attached file', 'Fichier joint']))}</Label><Button label={t(['عرض المرفق', 'View attachment', 'Voir la pièce jointe'])} onPress={() => { void openAttachment(item); }} disabled={busy} /><Button danger label={t(['إزالة المرفق', 'Remove attachment', 'Supprimer la pièce jointe'])} onPress={() => detach(item)} disabled={busy} /></> : null}
           <Button label={t(['إرفاق ملف', 'Attach file', 'Joindre un fichier'])} onPress={() => { void attach(item); }} disabled={busy} />
         </View> : null}
       </Panel>}

@@ -83,16 +83,17 @@ describe('THE SFM Finance Android foundation', () => {
     expect(activity).toContain('pendingReportPdf = null');
   });
 
-  it('uses a protected owner-scoped income attachment flow in Compose', () => {
+  it('uses protected owner-scoped income and expense attachment flows in Compose', () => {
     const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
     const auth = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileSession.kt');
 
     expect(activity).toContain('ActivityResultContracts.OpenDocument()');
-    expect(activity).toContain('uploadIncomeAttachment(recordId, uri)');
-    expect(activity).toContain('/api/mobile/finance/records/income/attachment?recordId=');
+    expect(activity).toContain('uploadAttachment(attachment.first, attachment.second, uri)');
+    expect(activity).toContain('resourceId in setOf("income", "expenses")');
+    expect(activity).toContain('/api/mobile/finance/records/$resourceId/attachment?recordId=');
     expect(activity).toContain('Intent(Intent.ACTION_VIEW, Uri.parse(url))');
-    expect(auth).toContain('fun uploadIncomeAttachment(recordId: String, name: String, mimeType: String, bytes: ByteArray)');
-    expect(auth).toContain('multipartRequest("/api/mobile/$product/records/income/attachment"');
+    expect(auth).toContain('fun uploadFinancialAttachment(resource: String, recordId: String, name: String, mimeType: String, bytes: ByteArray)');
+    expect(auth).toContain('multipartRequest("/api/mobile/$product/records/$resource/attachment"');
     expect(auth).toContain('multipart/form-data; boundary=$boundary');
   });
 

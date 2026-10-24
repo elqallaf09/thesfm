@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   user: 'c52a014b-e3fc-4e4c-9279-418377c2267e', role: 'manager', mfa: 'none',
-  rows: [] as Array<Record<string, unknown>>, calls: [] as Array<{ table: string; op: string; filters: Array<[string, unknown]>; values?: Record<string, unknown> }>,
+  rows: [] as Array<Record<string, unknown>>, calls: [] as Array<{ table: string; op: string; filters: Array<[string, unknown]>; values?: Record<string, unknown>; columns?: string }>,
 }));
 vi.mock('@/lib/server/authSession', () => ({
   bearerToken: (request: Request) => request.headers.get('authorization')?.replace(/^Bearer /, '') ?? null,
@@ -10,10 +10,10 @@ vi.mock('@/lib/server/authSession', () => ({
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: () => null }));
 vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({
   from(table: string) {
-    const call = { table, op: 'select', filters: [] as Array<[string, unknown]>, values: undefined as Record<string, unknown> | undefined };
+    const call = { table, op: 'select', filters: [] as Array<[string, unknown]>, values: undefined as Record<string, unknown> | undefined, columns: undefined as string | undefined };
     state.calls.push(call);
     const query = {
-      select: () => query, order: () => query, limit: () => query, or: () => query,
+      select: (columns?: string) => { call.columns = columns; return query; }, order: () => query, limit: () => query, or: () => query,
       eq: (field: string, value: unknown) => { call.filters.push([field, value]); return query; },
       insert: (values: Record<string, unknown>) => { call.op = 'insert'; call.values = values; return query; },
       upsert: (values: Record<string, unknown>) => { call.op = 'upsert'; call.values = values; return query; },
@@ -47,6 +47,11 @@ describe('mobile record API authorization and mutations', () => {
     expect((await response.json()).records).toHaveLength(1);
     expect(createClient).toHaveBeenLastCalledWith('https://auth.example', 'public-only', expect.objectContaining({ global: { headers: { Authorization: 'Bearer qa-token' } } }));
     expect(state.calls[0].filters).toContainEqual(['user_id', state.user]);
+  });
+  it('returns receipt metadata only as output fields and never accepts it as a record mutation', async () => {
+    await handleMobileRecords(request(), 'finance', 'expenses');
+    expect(state.calls[0].columns).toContain('receipt_image_url,receipt_file_name');
+    expect((await handleMobileRecords(request('POST', { name: 'Expense', amount: 1, currency: 'KWD', receipt_image_url: 'https://attacker.invalid' }), 'finance', 'expenses')).status).toBe(400);
   });
   it('rejects owner reassignment, computed prices, unknown resources, and invalid cursors', async () => {
     const body = { name: 'Expense', amount: 1, currency: 'KWD', user_id: 'another-user' };

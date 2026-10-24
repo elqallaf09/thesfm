@@ -361,8 +361,8 @@ private struct MobileRecordList: View {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     Section {
                         ForEach(resource.fields) { field in if let value = row[field.key], !value.text.isEmpty { LabeledContent(field.label[index], value: value.text) } }
-                        if product == "finance", resource.id == "income", let id = row["id"]?.string {
-                            if let name = row["attachment_name"]?.string, !name.isEmpty {
+                        if product == "finance", (resource.id == "income" || resource.id == "expenses"), let id = row["id"]?.string {
+                            if let name = (resource.id == "income" ? row["attachment_name"]?.string : row["receipt_file_name"]?.string), !name.isEmpty {
                                 LabeledContent(tr("مرفق", "Attachment", "Pièce jointe"), value: name)
                                 Button(tr("عرض المرفق", "View attachment", "Voir la pièce jointe")) { Task { await openAttachment(id) } }.disabled(busy)
                                 Button(tr("إزالة المرفق", "Remove attachment", "Supprimer la pièce jointe"), role: .destructive) { Task { await detachAttachment(id) } }.disabled(busy)
@@ -418,7 +418,7 @@ private struct MobileRecordList: View {
         guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
         busy = true; failed = false; defer { busy = false }
         do {
-            let result: MobileAttachmentAccess = try await APIClient.authorized(accessToken: token).get("/api/mobile/finance/records/income/attachment?recordId=\(recordId)")
+            let result: MobileAttachmentAccess = try await APIClient.authorized(accessToken: token).get(attachmentPath(recordId))
             guard result.attachment.url.scheme == "https" else { throw APIClientError.invalidResponse }
             openURL(result.attachment.url)
         } catch { failed = true }
@@ -427,7 +427,7 @@ private struct MobileRecordList: View {
         guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
         busy = true; failed = false; defer { busy = false }
         do {
-            try await APIClient.authorized(accessToken: token).send("/api/mobile/finance/records/income/attachment?recordId=\(recordId)", method: "DELETE", body: Data())
+            try await APIClient.authorized(accessToken: token).send(attachmentPath(recordId), method: "DELETE", body: Data())
             await load()
         } catch { failed = true }
     }
@@ -441,9 +441,12 @@ private struct MobileRecordList: View {
             guard let contentType = values.contentType, [.pdf, .png, .jpeg, .webP].contains(where: { contentType.conforms(to: $0) }), let mimeType = contentType.preferredMIMEType, let size = values.fileSize, size > 0, size <= 10 * 1024 * 1024 else { throw APIClientError.invalidResponse }
             let data = try Data(contentsOf: url, options: .mappedIfSafe)
             guard data.count == size else { throw APIClientError.invalidResponse }
-            try await APIClient.authorized(accessToken: token).upload("/api/mobile/finance/records/income/attachment", fields: ["recordId": recordId], file: MultipartFile(name: url.lastPathComponent, mimeType: mimeType, data: data))
+            try await APIClient.authorized(accessToken: token).upload("/api/mobile/finance/records/\(resource.id)/attachment", fields: ["recordId": recordId], file: MultipartFile(name: url.lastPathComponent, mimeType: mimeType, data: data))
             await load()
         } catch { failed = true }
+    }
+    private func attachmentPath(_ recordId: String) -> String {
+        "/api/mobile/finance/records/\(resource.id)/attachment?recordId=\(recordId)"
     }
 }
 private struct MobileAttachmentAccess: Decodable { let attachment: MobileSignedAttachment }

@@ -62,7 +62,7 @@ abstract class MobileActivity : ComponentActivity() {
     private val report = mutableStateOf<JSONObject?>(null)
     private val reportPeriod = mutableStateOf(nativeReportPeriod())
     private var pendingReportPdf: ByteArray? = null
-    private var pendingIncomeAttachmentId: String? = null
+    private var pendingAttachment: Pair<String, String>? = null
     private val credentialLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         locked.value = it.resultCode != Activity.RESULT_OK
         if (!locked.value) loadCatalog()
@@ -80,9 +80,9 @@ abstract class MobileActivity : ComponentActivity() {
         }
     }
     private val attachmentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        val recordId = pendingIncomeAttachmentId
-        pendingIncomeAttachmentId = null
-        if (uri != null && recordId != null) uploadIncomeAttachment(recordId, uri)
+        val attachment = pendingAttachment
+        pendingAttachment = null
+        if (uri != null && attachment != null) uploadAttachment(attachment.first, attachment.second, uri)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -165,28 +165,28 @@ abstract class MobileActivity : ComponentActivity() {
             output.toByteArray()
         } ?: throw MobileApiError(400, "INVALID_UPLOAD")
     }
-    private fun uploadIncomeAttachment(recordId: String, uri: Uri) {
+    private fun uploadAttachment(resourceId: String, recordId: String, uri: Uri) {
         if (locked.value || !signedIn.value) return
         work({
             val name = incomeAttachmentName(uri)
             val mime = contentResolver.getType(uri)?.lowercase() ?: when (name.substringAfterLast('.', "").lowercase()) {
                 "pdf" -> "application/pdf"; "png" -> "image/png"; "jpg", "jpeg" -> "image/jpeg"; "webp" -> "image/webp"; else -> "application/octet-stream"
             }
-            auth.uploadIncomeAttachment(recordId, name, mime, incomeAttachmentBytes(uri))
+            auth.uploadFinancialAttachment(resourceId, recordId, name, mime, incomeAttachmentBytes(uri))
         }) { loadRecords() }
     }
-    private fun openIncomeAttachment(recordId: String) {
+    private fun openAttachment(resourceId: String, recordId: String) {
         if (locked.value || !signedIn.value) return
-        work({ auth.request("/api/mobile/finance/records/income/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}") }) { result ->
+        work({ auth.request("/api/mobile/finance/records/$resourceId/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}") }) { result ->
             val url = result.optJSONObject("attachment")?.optString("url").orEmpty()
             if (runCatching { val value = Uri.parse(url); value.scheme == "https" && value.host != null }.getOrDefault(false)) {
                 runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { error.value = true; errorCode.value = "ATTACHMENT_UNAVAILABLE" }
             } else { error.value = true; errorCode.value = "ATTACHMENT_UNAVAILABLE" }
         }
     }
-    private fun detachIncomeAttachment(recordId: String) {
+    private fun detachAttachment(resourceId: String, recordId: String) {
         if (locked.value || !signedIn.value) return
-        work({ auth.request("/api/mobile/finance/records/income/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}", "DELETE") }) { loadRecords() }
+        work({ auth.request("/api/mobile/finance/records/$resourceId/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}", "DELETE") }) { loadRecords() }
     }
     private fun loadMarkets(nextPage: Int = 1) = work({ auth.publicRequest("/api/markets?quality=all&limit=50&page=$nextPage&category=$marketCategory&q=${URLEncoder.encode(marketQuery, "UTF-8")}") }) { json ->
         marketPage = nextPage; val next = json.getJSONArray("markets").objects()
@@ -195,7 +195,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingIncomeAttachmentId = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -362,16 +362,19 @@ abstract class MobileActivity : ComponentActivity() {
                             if (records.value.isEmpty() && !busy.value) item { Text(tr("لا توجد سجلات.", "No records.", "Aucun enregistrement.")) }
                             items(records.value, key = { it.getString("id") }) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 resource.getJSONArray("fields").objects().forEach { field -> val value = row.opt(field.getString("key")); if (value != null && value != JSONObject.NULL) Text("${label(field)}: $value") }
-                                if (productId == "finance" && resource.getString("id") == "income") {
+                                val resourceId = resource.getString("id")
+                                if (productId == "finance" && resourceId in setOf("income", "expenses")) {
                                     val recordId = row.getString("id")
-                                    if (row.optString("attachment_url").isNotBlank()) {
-                                        Text("${tr("مرفق", "Attachment", "Pièce jointe")}: ${row.optString("attachment_name", tr("ملف مرفق", "Attached file", "Fichier joint"))}")
+                                    val attachmentUrl = row.optString(if (resourceId == "income") "attachment_url" else "receipt_image_url")
+                                    val attachmentName = row.optString(if (resourceId == "income") "attachment_name" else "receipt_file_name")
+                                    if (attachmentUrl.isNotBlank()) {
+                                        Text("${tr(if (resourceId == "expenses") "إيصال" else "مرفق", if (resourceId == "expenses") "Receipt" else "Attachment", if (resourceId == "expenses") "Reçu" else "Pièce jointe")}: ${attachmentName.ifBlank { tr("ملف مرفق", "Attached file", "Fichier joint") }}")
                                         Row {
-                                            TextButton(onClick = { openIncomeAttachment(recordId) }) { Text(tr("عرض المرفق", "View attachment", "Voir la pièce jointe")) }
-                                            TextButton(onClick = { detachIncomeAttachment(recordId) }) { Text(tr("إزالة المرفق", "Remove attachment", "Supprimer la pièce jointe")) }
+                                            TextButton(onClick = { openAttachment(resourceId, recordId) }) { Text(tr("عرض المرفق", "View attachment", "Voir la pièce jointe")) }
+                                            TextButton(onClick = { detachAttachment(resourceId, recordId) }) { Text(tr("إزالة المرفق", "Remove attachment", "Supprimer la pièce jointe")) }
                                         }
                                     }
-                                    TextButton(onClick = { pendingIncomeAttachmentId = recordId; attachmentLauncher.launch(arrayOf("application/pdf", "image/png", "image/jpeg", "image/webp")) }) { Text(tr("إرفاق ملف", "Attach file", "Joindre un fichier")) }
+                                    TextButton(onClick = { pendingAttachment = resourceId to recordId; attachmentLauncher.launch(arrayOf("application/pdf", "image/png", "image/jpeg", "image/webp")) }) { Text(tr("إرفاق ملف", "Attach file", "Joindre un fichier")) }
                                 }
                                 if (!resource.optBoolean("readOnly")) Row { TextButton(onClick = { editing = row }) { Text(tr("تعديل", "Edit", "Modifier")) }; TextButton(onClick = { deleting = row }) { Text(tr("حذف", "Delete", "Supprimer")) } }
                             } } }

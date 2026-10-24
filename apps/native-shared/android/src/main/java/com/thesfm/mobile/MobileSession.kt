@@ -117,11 +117,11 @@ class MobileSession(context: Context, private val product: String, private val a
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
         return result
     }
-    /** Sends a small user-selected file through the protected mobile API. */
-    fun uploadIncomeAttachment(recordId: String, name: String, mimeType: String, bytes: ByteArray): JSONObject {
-        require(product == "finance") { "FINANCE_ONLY" }
+    /** Sends a small user-selected finance file through the protected mobile API. */
+    fun uploadFinancialAttachment(resource: String, recordId: String, name: String, mimeType: String, bytes: ByteArray): JSONObject {
+        require(product == "finance" && resource in setOf("income", "expenses")) { "FINANCE_ONLY" }
         require(bytes.isNotEmpty() && bytes.size <= 10 * 1024 * 1024) { "INVALID_UPLOAD_SIZE" }
-        return multipartRequest("/api/mobile/$product/records/income/attachment", mapOf("recordId" to recordId), MobileMultipartFile(name, mimeType, bytes))
+        return multipartRequest("/api/mobile/$product/records/$resource/attachment", mapOf("recordId" to recordId), MobileMultipartFile(name, mimeType, bytes))
     }
     private fun multipartRequest(path: String, fields: Map<String, String>, file: MobileMultipartFile): JSONObject {
         require(path.startsWith("/api/") && !path.contains("://"))
@@ -249,7 +249,7 @@ class MobileSession(context: Context, private val product: String, private val a
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("Authorization", "Bearer $accessToken")
             connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-            connection.chunkedStreamingMode = 8192
+            connection.setChunkedStreamingMode(8192)
             connection.outputStream.buffered().use { output ->
                 fun text(value: String) = output.write(value.toByteArray(Charsets.UTF_8))
                 fields.forEach { (key, value) ->
