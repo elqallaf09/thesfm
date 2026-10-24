@@ -56,6 +56,23 @@ describe('THE SFM Finance Android foundation', () => {
     expect(auth).toContain('put("refresh_token", current.refreshToken)');
   });
 
+  it('keeps first-factor credentials in memory until native MFA is verified', () => {
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
+    const auth = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileSession.kt');
+
+    expect(auth).toContain('class PendingNativeMfa');
+    expect(auth).toContain('fun sendMfaEmail(pending: PendingNativeMfa)');
+    expect(auth).toContain('fun verifyMfa(pending: PendingNativeMfa, code: String)');
+    expect(auth).toContain('assertSessionSecurity(verified, pending.epoch)');
+    expect(auth).toContain('save(verified, pending.epoch)');
+    expect(auth).toContain('fun cancelMfa(pending: PendingNativeMfa)');
+    expect(auth.indexOf('assertSessionSecurity(verified, pending.epoch)')).toBeLessThan(auth.indexOf('save(verified, pending.epoch)'));
+    expect(activity).toContain('pendingMfa.value != null');
+    expect(activity).toContain('auth.sendMfaEmail(pending)');
+    expect(activity).toContain('auth.verifyMfa(pending, mfaCode)');
+    expect(activity).toContain('auth.cancelMfa(pending)');
+  });
+
   it('keeps the existing SFM TV host available for a no-GMS Huawei build', () => {
     const tvGradle = read('apps/markets-tv/android/app/build.gradle');
 

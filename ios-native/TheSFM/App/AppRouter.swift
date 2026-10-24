@@ -5,7 +5,9 @@ struct AppRouter: View {
 
     var body: some View {
         Group {
-            if authSession.isAuthenticated {
+            if authSession.pendingMfaMethod != nil {
+                MfaVerificationView()
+            } else if authSession.isAuthenticated {
                 if authSession.isDeviceLocked {
                     AppUnlockView()
                 } else {

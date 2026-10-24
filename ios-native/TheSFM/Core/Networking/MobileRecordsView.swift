@@ -84,6 +84,14 @@ struct MobileRecordsView: View {
         .environment(\.layoutDirection, language == "ar" ? .rightToLeft : .leftToRight)
         .preferredColorScheme(theme == "system" ? nil : theme == "dark" ? .dark : .light)
         .onChange(of: scenePhase) { _, phase in if phase != .active { auth.lock() } }
+        .fullScreenCover(isPresented: Binding(
+            get: { auth.pendingMfaMethod != nil },
+            set: { showing in if !showing { Task { await auth.cancelMfa() } } }
+        )) {
+            MfaVerificationView()
+                .environmentObject(auth)
+                .interactiveDismissDisabled()
+        }
     }
     @MainActor private func load() async {
         let revision = auth.identityRevision

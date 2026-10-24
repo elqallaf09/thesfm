@@ -38,6 +38,8 @@ abstract class MobileActivity : ComponentActivity() {
     private val signedIn = mutableStateOf(false)
     private val busy = mutableStateOf(false)
     private val error = mutableStateOf(false)
+    private val errorCode = mutableStateOf<String?>(null)
+    private val pendingMfa = mutableStateOf<PendingNativeMfa?>(null)
     private val resources = mutableStateOf<List<JSONObject>>(emptyList())
     private val records = mutableStateOf<List<JSONObject>>(emptyList())
     private val selected = mutableStateOf<JSONObject?>(null)
@@ -67,14 +69,22 @@ abstract class MobileActivity : ComponentActivity() {
     override fun onDestroy() { executor.shutdown(); super.onDestroy() }
     private fun work(action: () -> JSONObject, done: (JSONObject) -> Unit) {
         if (busy.value) return
-        val epoch = uiEpoch; busy.value = true; error.value = false
+        val epoch = uiEpoch; busy.value = true; error.value = false; errorCode.value = null
         executor.execute {
             val result = runCatching(action)
             runOnUiThread {
                 if (epoch != uiEpoch || isDestroyed) return@runOnUiThread
                 signedIn.value = auth.session != null
                 busy.value = false
-                result.onSuccess(done).onFailure { error.value = true }
+                result.onSuccess(done).onFailure { failure ->
+                    if (failure is PendingNativeMfa) {
+                        pendingMfa.value = failure
+                        error.value = false
+                    } else {
+                        error.value = true
+                        errorCode.value = (failure as? MobileApiError)?.code
+                    }
+                }
                 if (!signedIn.value) { resources.value = emptyList(); records.value = emptyList(); account.value = null }
             }
         }
@@ -104,6 +114,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -115,10 +126,19 @@ abstract class MobileActivity : ComponentActivity() {
         fun label(json: JSONObject) = json.getJSONArray("label").optString(if (language == "ar") 0 else if (language == "en") 1 else 2)
         val dark = theme == "dark" || theme == "system" && isSystemInDarkTheme()
         var email by remember { mutableStateOf("") }; var password by remember { mutableStateOf("") }
+        var mfaCode by remember(pendingMfa.value) { mutableStateOf("") }
+        var emailCodeSent by remember(pendingMfa.value) { mutableStateOf(pendingMfa.value?.emailChallenge != null) }
         var editing by remember { mutableStateOf<JSONObject?>(null) }; var deleting by remember { mutableStateOf<JSONObject?>(null) }
         CompositionLocalProvider(LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr) {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                BackHandler(selected.value != null || marketMode.value) { selected.value = null; marketMode.value = false; records.value = emptyList(); cursor.value = null }
+                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value) {
+                    val pending = pendingMfa.value
+                    if (pending != null) {
+                        work({ auth.cancelMfa(pending); JSONObject() }) {
+                            pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
+                        }
+                    } else { selected.value = null; marketMode.value = false; records.value = emptyList(); cursor.value = null }
+                }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
                     LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max = 1100.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -126,8 +146,52 @@ abstract class MobileActivity : ComponentActivity() {
                             item { FilterChip(selected = dark, onClick = { theme = if (dark) "light" else "dark"; preferences.edit().putString("theme", theme).apply() }, label = { Text(tr("المظهر", "Theme", "Thème")) }) }
                         } }
                         if (error.value) item { Text(tr("تعذر الطلب. تحقق من الاتصال والصلاحيات وأعد المحاولة.", "Request failed. Check connection and permissions, then retry.", "Échec de la requête. Vérifiez la connexion et les droits, puis réessayez."), color = MaterialTheme.colorScheme.error) }
+                        if (errorCode.value == "INVALID_CODE") item { Text(tr("رمز التحقق غير صحيح. حاول مجدداً.", "The verification code is incorrect. Try again.", "Le code de vérification est incorrect. Réessayez."), color = MaterialTheme.colorScheme.error) }
+                        if (errorCode.value == "CHALLENGE_EXPIRED") item { Text(tr("انتهت مهلة التحقق. ألغِ العملية وسجّل الدخول مجدداً.", "Verification expired. Cancel and sign in again.", "La vérification a expiré. Annulez puis reconnectez-vous."), color = MaterialTheme.colorScheme.error) }
+                        if (errorCode.value == "CHALLENGE_REQUIRED") item { Text(tr("أرسل رمز البريد الإلكتروني أولاً.", "Send an email code first.", "Envoyez d’abord un code par e-mail."), color = MaterialTheme.colorScheme.error) }
                         if (busy.value) item { CircularProgressIndicator() }
-                        if (locked.value && signedIn.value) {
+                        if (pendingMfa.value != null) {
+                            val pending = pendingMfa.value!!
+                            item { Text(tr("تحقق إضافي", "Additional verification", "Vérification supplémentaire"), style = MaterialTheme.typography.headlineMedium) }
+                            item {
+                                Text(
+                                    if (pending.type == NativeMfaType.TOTP) tr("أدخل الرمز من تطبيق المصادقة لإكمال تسجيل الدخول.", "Enter the code from your authenticator app to finish signing in.", "Saisissez le code de votre application d’authentification pour terminer la connexion.")
+                                    else if (emailCodeSent) tr("أدخل الرمز المرسل إلى بريد حسابك.", "Enter the code sent to your account email.", "Saisissez le code envoyé à l’adresse e-mail de votre compte.")
+                                    else tr("أرسل رمزاً إلى بريد حسابك لإكمال تسجيل الدخول.", "Send a code to your account email to finish signing in.", "Envoyez un code à l’adresse e-mail de votre compte.")
+                                )
+                            }
+                            if (pending.type == NativeMfaType.EMAIL) item {
+                                Button(enabled = !busy.value, onClick = {
+                                    work({ auth.sendMfaEmail(pending); JSONObject() }) { emailCodeSent = true }
+                                }) { Text(tr(if (emailCodeSent) "إعادة إرسال الرمز" else "إرسال الرمز", if (emailCodeSent) "Send another code" else "Send code", if (emailCodeSent) "Renvoyer le code" else "Envoyer le code")) }
+                            }
+                            item {
+                                OutlinedTextField(
+                                    mfaCode,
+                                    { mfaCode = it.filter(Char::isDigit).take(6) },
+                                    label = { Text(tr("رمز التحقق", "Verification code", "Code de vérification")) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            item {
+                                Button(
+                                    enabled = !busy.value && mfaCode.length == 6 && (pending.type == NativeMfaType.TOTP || emailCodeSent),
+                                    onClick = {
+                                        work({ auth.verifyMfa(pending, mfaCode); JSONObject() }) {
+                                            pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false; locked.value = false; loadCatalog()
+                                        }
+                                    },
+                                ) { Text(tr("تحقق", "Verify", "Vérifier")) }
+                            }
+                            item {
+                                TextButton(enabled = !busy.value, onClick = {
+                                    work({ auth.cancelMfa(pending); JSONObject() }) {
+                                        pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
+                                    }
+                                }) { Text(tr("إلغاء والعودة لتسجيل الدخول", "Cancel and return to sign in", "Annuler et revenir à la connexion")) }
+                            }
+                        } else if (locked.value && signedIn.value) {
                             item { Button(onClick = {
                                 val keyguard = getSystemService(KeyguardManager::class.java)
                                 val unlock = keyguard?.createConfirmDeviceCredentialIntent("THE SFM", tr("تأكيد هويتك", "Confirm your identity", "Confirmez votre identité"))

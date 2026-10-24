@@ -6,6 +6,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import org.json.JSONObject
 import java.net.HttpURLConnection
+import java.net.URLEncoder
 import java.net.URL
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -14,7 +15,23 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 data class NativeSession(val accessToken: String, val refreshToken: String, val expiresAtMillis: Long)
-class MobileApiError(val status: Int, val code: String) : Exception(code)
+enum class NativeMfaType { TOTP, EMAIL }
+
+/**
+ * A password-only session that is deliberately kept out of encrypted storage
+ * until the server accepts its MFA proof.  Do not add this to saved state.
+ */
+class PendingNativeMfa(
+    val type: NativeMfaType,
+    val session: NativeSession,
+    val epoch: Long,
+    val expiresAtMillis: Long = System.currentTimeMillis() + 10 * 60_000,
+) : Exception("MFA_REQUIRED") {
+    @Volatile var emailChallenge: String? = null
+    @Volatile var finished = false
+}
+
+class MobileApiError(val status: Int, val code: String, val mfaType: String? = null) : Exception(code)
 class MobileSession(context: Context, private val product: String, private val apiBase: String, private val authBase: String, private val publicKey: String) {
     // Compatible with the existing Finance / Business Keystore aliases and encrypted-session format.
     private val alias = "sfm-$product-session"
@@ -53,7 +70,12 @@ class MobileSession(context: Context, private val product: String, private val a
         clear()
         val epoch = generation
         val candidate = token("password", JSONObject().put("email", email.trim()).put("password", password))
-        assertSessionSecurity(candidate, epoch)
+        try {
+            assertSessionSecurity(candidate, epoch)
+        } catch (error: MobileApiError) {
+            if (error.status == 403 && error.code == "MFA_REQUIRED") throw pendingMfa(error, candidate, epoch)
+            throw error
+        }
         save(candidate, epoch)
     }
     private fun token(grant: String, body: JSONObject): NativeSession {
@@ -65,7 +87,16 @@ class MobileSession(context: Context, private val product: String, private val a
         val current = session ?: throw MobileApiError(401, "UNAUTHORIZED")
         if (!force && current.expiresAtMillis > System.currentTimeMillis() + 60000) return@synchronized current
         val epoch = generation
-        try { token("refresh_token", JSONObject().put("refresh_token", current.refreshToken)).also { assertSessionSecurity(it, epoch); save(it, epoch) } }
+        try {
+            token("refresh_token", JSONObject().put("refresh_token", current.refreshToken)).also {
+                try { assertSessionSecurity(it, epoch) }
+                catch (error: MobileApiError) {
+                    if (error.status == 403 && error.code == "MFA_REQUIRED") throw pendingMfa(error, it, epoch)
+                    throw error
+                }
+                save(it, epoch)
+            }
+        }
         catch (error: MobileApiError) { if (error.status in listOf(400, 401, 403)) clear(); throw error }
     }
     fun request(path: String, method: String = "GET", body: JSONObject? = null): JSONObject {
@@ -73,13 +104,13 @@ class MobileSession(context: Context, private val product: String, private val a
         val epoch = generation
         var current = active()
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
-        assertSessionSecurity(current, epoch)
+        assertOrPending(current, epoch)
         val result = try { send("${apiBase.trimEnd('/')}$path", method, body, current.accessToken) }
         catch (error: MobileApiError) {
             if (error.status != 401) throw error
             current = active(true)
             if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
-            assertSessionSecurity(current, epoch)
+            assertOrPending(current, epoch)
             send("${apiBase.trimEnd('/')}$path", method, body, current.accessToken)
         }
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
@@ -91,6 +122,76 @@ class MobileSession(context: Context, private val product: String, private val a
         val result = send("${apiBase.trimEnd('/')}/api/mobile/session", "GET", null, candidate.accessToken)
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
         if (!result.optBoolean("ok", false)) throw MobileApiError(503, "AUTH_UNAVAILABLE")
+    }
+    private fun assertOrPending(candidate: NativeSession, epoch: Long) {
+        try { assertSessionSecurity(candidate, epoch) }
+        catch (error: MobileApiError) {
+            if (error.status == 403 && error.code == "MFA_REQUIRED") throw pendingMfa(error, candidate, epoch)
+            throw error
+        }
+    }
+    private fun pendingMfa(error: MobileApiError, candidate: NativeSession, epoch: Long): PendingNativeMfa = when (error.mfaType) {
+        "totp" -> PendingNativeMfa(NativeMfaType.TOTP, candidate, epoch)
+        "email" -> PendingNativeMfa(NativeMfaType.EMAIL, candidate, epoch)
+        else -> throw MobileApiError(403, "MFA_REQUIRED")
+    }
+    private fun requirePending(pending: PendingNativeMfa) {
+        if (pending.finished || pending.epoch != generation || pending.expiresAtMillis <= System.currentTimeMillis()) throw MobileApiError(401, "CHALLENGE_EXPIRED")
+    }
+    fun sendMfaEmail(pending: PendingNativeMfa) {
+        requirePending(pending)
+        if (pending.type != NativeMfaType.EMAIL) throw MobileApiError(400, "INVALID_CHALLENGE")
+        val result = send("${apiBase.trimEnd('/')}/api/auth/mfa/mobile-email", "POST", JSONObject().put("action", "start"), pending.session.accessToken)
+        requirePending(pending)
+        val challenge = result.optString("challenge")
+        if (challenge.isBlank()) throw MobileApiError(503, "AUTH_UNAVAILABLE")
+        pending.emailChallenge = challenge
+    }
+    fun verifyMfa(pending: PendingNativeMfa, code: String) {
+        requirePending(pending)
+        if (!code.matches(Regex("^\\d{6}$"))) throw MobileApiError(400, "INVALID_CODE")
+        val result = if (pending.type == NativeMfaType.TOTP) {
+            val account = send("${authBase.trimEnd('/')}/auth/v1/user", "GET", null, pending.session.accessToken, true)
+            val factors = account.optJSONArray("factors")
+            val factorId = (0 until (factors?.length() ?: 0)).asSequence()
+                .mapNotNull { factors?.optJSONObject(it) }
+                .firstOrNull { it.optString("factor_type") == "totp" && it.optString("status") == "verified" }
+                ?.optString("id").orEmpty()
+            if (factorId.isBlank()) throw MobileApiError(503, "AUTH_UNAVAILABLE")
+            requirePending(pending)
+            val factorPath = "${authBase.trimEnd('/')}/auth/v1/factors/${URLEncoder.encode(factorId, "UTF-8")}" // Supabase factor ID is path-encoded.
+            val challenge = send("$factorPath/challenge", "POST", JSONObject(), pending.session.accessToken, true)
+            requirePending(pending)
+            val challengeId = challenge.optString("id")
+            if (challengeId.isBlank()) throw MobileApiError(503, "AUTH_UNAVAILABLE")
+            send("$factorPath/verify", "POST", JSONObject().put("challenge_id", challengeId).put("code", code), pending.session.accessToken, true)
+        } else {
+            val challenge = pending.emailChallenge ?: throw MobileApiError(400, "CHALLENGE_REQUIRED")
+            send("${apiBase.trimEnd('/')}/api/auth/mfa/mobile-email", "POST", JSONObject().put("action", "verify").put("challenge", challenge).put("code", code), pending.session.accessToken)
+        }
+        requirePending(pending)
+        val verified = sessionFrom(result)
+        try { assertSessionSecurity(verified, pending.epoch) }
+        catch (error: MobileApiError) {
+            if (error.code == "MFA_REQUIRED") throw MobileApiError(403, "MFA_NOT_VERIFIED")
+            throw error
+        }
+        requirePending(pending)
+        save(verified, pending.epoch)
+        pending.finished = true
+    }
+    fun cancelMfa(pending: PendingNativeMfa) {
+        if (pending.finished) return
+        pending.finished = true
+        if (pending.epoch == generation) clear()
+        runCatching { send("${authBase.trimEnd('/')}/auth/v1/logout?scope=local", "POST", null, pending.session.accessToken, true) }
+    }
+    private fun sessionFrom(json: JSONObject): NativeSession {
+        val accessToken = json.optString("access_token")
+        val refreshToken = json.optString("refresh_token")
+        val expiresIn = json.optLong("expires_in")
+        if (accessToken.isBlank() || refreshToken.isBlank() || expiresIn <= 0) throw MobileApiError(503, "AUTH_UNAVAILABLE")
+        return NativeSession(accessToken, refreshToken, System.currentTimeMillis() + expiresIn * 1000)
     }
     private fun send(url: String, method: String, body: JSONObject?, accessToken: String?, auth: Boolean = false): JSONObject {
         require(URL(url).protocol == "https") { "HTTPS_REQUIRED" }
@@ -106,7 +207,11 @@ class MobileSession(context: Context, private val product: String, private val a
             val status = connection.responseCode
             val raw = (if (status in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }
             val json = raw?.let { runCatching { JSONObject(it) }.getOrNull() } ?: JSONObject()
-            if (status !in 200..299) throw MobileApiError(status, json.optString("code", if (auth && status == 400) "INVALID_CREDENTIALS" else "REQUEST_FAILED"))
+            if (status !in 200..299) throw MobileApiError(
+                status,
+                json.optString("code", if (auth && status == 400) "INVALID_CREDENTIALS" else "REQUEST_FAILED"),
+                json.optString("mfaType").takeUnless { it.isBlank() },
+            )
             return json
         } finally { connection.disconnect() }
     }

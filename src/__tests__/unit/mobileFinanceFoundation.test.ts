@@ -63,6 +63,22 @@ describe('THE SFM Finance iOS foundation', () => {
     expect(storage).toContain('WHEN_UNLOCKED_THIS_DEVICE_ONLY');
   });
 
+  it('does not persist a Swift first-factor session before its native MFA proof', () => {
+    const session = read('ios-native/TheSFM/Core/Auth/AuthSessionStore.swift');
+    const router = read('ios-native/TheSFM/App/AppRouter.swift');
+    const records = read('ios-native/TheSFM/Core/Networking/MobileRecordsView.swift');
+
+    expect(session).toContain('private var mfaChallenge: PendingMfa?');
+    expect(session).toContain('func sendMfaEmail() async');
+    expect(session).toContain('func verifyMfa(code: String) async');
+    expect(session).toContain('private func verifyTotp(pending: PendingMfa, code: String)');
+    expect(session).toContain('try await assertSessionSecurity(verified.accessToken)');
+    expect(session).toContain('func cancelMfa() async');
+    expect(session.indexOf('try await assertSessionSecurity(verified.accessToken)')).toBeLessThan(session.indexOf('save(verified)'));
+    expect(router).toContain('if authSession.pendingMfaMethod != nil');
+    expect(records).toContain('.fullScreenCover(isPresented: Binding(');
+  });
+
   it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
     const session = read('apps/expo-go/src/session.ts');
     const ui = read('apps/expo-go/src/ui.tsx');

@@ -12,7 +12,9 @@ struct BusinessHomeView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if !authSession.isAuthenticated {
+                if authSession.pendingMfaMethod != nil {
+                    MfaVerificationView()
+                } else if !authSession.isAuthenticated {
                     BusinessLoginView()
                 } else if authSession.isDeviceLocked {
                     BusinessUnlockView(summaryStore: summaryStore)
