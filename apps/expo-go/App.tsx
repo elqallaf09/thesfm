@@ -17,6 +17,7 @@ const extra = Constants.expoConfig?.extra ?? {};
 const product = (extra.sfmProduct ?? 'finance') as ProductId;
 const apiBaseUrl = String(extra.apiBaseUrl ?? 'https://www.the-sfm.com').replace(/\/$/, '');
 const FINANCE_SESSION_KEY = 'sfm-finance-session';
+const INVESTOR_SESSION_KEY = 'sfm-investor-session';
 const BUSINESS_SESSION_KEY = 'sfm-business-session';
 const C = { canvas: '#0B0D12', surface: '#12151C', raised: '#181C24', border: '#292E38', borderStrong: '#59648A', text: '#EAF1FB', second: '#C3CCE8', muted: '#98A2C9', indigo: '#818CF8', teal: '#5EEAD4', sky: '#79ADEF', violet: '#A78BFA', success: '#59C98A', danger: '#FB7185', warning: '#E9B65B' };
 const glyph: Record<IconName, string> = { home: '⌂', wallet: '▣', chart: '⌁', business: '▤', target: '◎', file: '▤', user: '◌', refresh: '↻', search: '⌕', shield: '◇', arrow: '←', check: '✓', bell: '◔' };
@@ -114,6 +115,8 @@ function FinanceDashboard({ summary, loading, error, lastUpdatedAt, refresh }: {
 }
 
 function InvestorApp() {
+  const [investorSession, setInvestorSession] = useState<Session | null>(null);
+  useEffect(() => { let mounted = true; void SecureStore.getItemAsync(INVESTOR_SESSION_KEY).then(async raw => { if (!raw) return; const session = await refreshSession(JSON.parse(raw) as Session, INVESTOR_SESSION_KEY); if (mounted) setInvestorSession(session); }).catch(() => { void SecureStore.deleteItemAsync(INVESTOR_SESSION_KEY); }); return () => { mounted = false; }; }, []);
   const [items, setItems] = useState<Instrument[]>([]); const [savedSymbols, setSavedSymbols] = useState<string[]>([]); const [watchReady, setWatchReady] = useState(false); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(''); const [assetType, setAssetType] = useState('all'); const [updatedAt, setUpdatedAt] = useState<Date | null>(null); const [tab, setTab] = useState('home');
   useEffect(() => { let mounted = true; void SecureStore.getItemAsync('sfm-investor-local-watchlist').then(raw => { if (mounted && raw) { const parsed: unknown = JSON.parse(raw); if (Array.isArray(parsed)) setSavedSymbols(parsed.filter((s): s is string => typeof s === 'string').slice(0, 500)); } }).catch(() => {}).finally(() => { if (mounted) setWatchReady(true); }); return () => { mounted = false; }; }, []);
   const toggleSaved = useCallback((symbol: string) => { setSavedSymbols(current => { const next = current.includes(symbol) ? current.filter(s => s !== symbol) : [...current, symbol].slice(0, 500); void SecureStore.setItemAsync('sfm-investor-local-watchlist', JSON.stringify(next)).catch(() => Alert.alert('تعذر الحفظ', 'لم يتم حفظ التغيير على الجهاز.')); return next; }); }, []);
@@ -125,8 +128,26 @@ function InvestorApp() {
   useEffect(() => { void load(); }, [load]);
   const types = useMemo(() => [...new Set(items.map(item => item.assetType).filter(Boolean))] as string[], [items]);
   const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return items.filter(item => (assetType === 'all' || item.assetType === assetType) && (!q || [item.displaySymbol, item.symbol, item.displayName, item.name, item.marketName, item.sector].filter(Boolean).some(value => value?.toLowerCase().includes(q)))); }, [assetType, items, query]);
+  const [investorEmail, setInvestorEmail] = useState('');
+  const [investorPassword, setInvestorPassword] = useState('');
+  const [investorSigningIn, setInvestorSigningIn] = useState(false);
+  const investorSignIn = useCallback(async () => {
+    const url = String(extra.supabaseUrl ?? '').replace(/\\/$/, '');
+    const key = String(extra.supabaseAnonKey ?? '');
+    if (!url || !key) { Alert.alert('الإعدادات ناقصة', 'إعدادات تسجيل الدخول غير متاحة.'); return; }
+    setInvestorSigningIn(true);
+    try {
+      const response = await fetchWithTimeout(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: investorEmail.trim(), password: investorPassword }) });
+      const payload = await responseJson(response);
+      if (!response.ok || !payload) throw new Error(`AUTH_${response.status}`);
+      const next = toSession(payload);
+      await SecureStore.setItemAsync(INVESTOR_SESSION_KEY, JSON.stringify(next));
+      setInvestorPassword(''); setInvestorSession(next);
+    } catch (error) { Alert.alert('تعذر تسجيل الدخول', signInErrorMessage(error)); }
+    finally { setInvestorSigningIn(false); }
+  }, [investorEmail, investorPassword]);
+  if (tab === 'account') return <Shell productId="investor" tab={tab} setTab={setTab}>{investorSession ? <><Account productId="investor" signOut={() => { void SecureStore.deleteItemAsync(INVESTOR_SESSION_KEY).then(() => setInvestorSession(null)); }} /><Notice message="حساب الموقع متصل. مزامنة قائمة المتابعة ما زالت قيد التطوير." /></> : <View style={{ gap: 12 }}><Heading title="حساب THE SFM" note="سجّل الدخول بنفس حساب الموقع" /><TextInput accessibilityLabel="البريد الإلكتروني" autoCapitalize="none" keyboardType="email-address" value={investorEmail} onChangeText={setInvestorEmail} placeholder="البريد الإلكتروني" placeholderTextColor={C.muted} style={styles.input} /><TextInput accessibilityLabel="كلمة المرور" secureTextEntry value={investorPassword} onChangeText={setInvestorPassword} placeholder="كلمة المرور" placeholderTextColor={C.muted} style={styles.input} /><Pressable accessibilityRole="button" disabled={investorSigningIn || !investorEmail.trim() || !investorPassword} onPress={() => { void investorSignIn(); }} style={styles.primary}><Text style={styles.primaryText}>{investorSigningIn ? 'جارٍ الدخول…' : 'تسجيل الدخول'}</Text></Pressable></View>}</Shell>;
   if (tab === 'discover') return <Shell productId="investor" tab={tab} setTab={setTab}><DetailScreen productId="investor" kicker="أدوات المستثمر" title="من الدليل إلى قرار أوضح." body="استكشف الأدوات ومصدر البيانات والحالة الشرعية من مساحات THE SFM المتخصصة." items={[['الأسواق العالمية', 'الأدوات والقطاعات ومعلومات المصدر', 'chart', '/global-markets'], ['فحص شرعي', 'الحالة والمنهجية المتاحة', 'shield', '/sharia-stocks'], ['أخبار السوق', 'أخبار مع مصادر وتواريخ', 'file', '/market-news'], ['قائمة المتابعة', 'رتب الأدوات التي تهمك', 'target', '/market-watchlist']]} /></Shell>;
-  if (tab === 'account') return <Shell productId="investor" tab={tab} setTab={setTab}><Account productId="investor" /></Shell>;
   return <Shell productId="investor" tab={tab} setTab={setTab} fixed>
     <FlatList data={tab === 'watch' ? filtered.filter(item => savedSymbols.includes(item.symbol)) : filtered} keyExtractor={(item, index) => `${item.displaySymbol ?? item.symbol}-${index}`} style={styles.list} contentContainerStyle={styles.listContent}
       ListHeaderComponent={<><View style={styles.investHero}><Text style={styles.kicker}>مستكشف الأسواق</Text><Text style={styles.heroTitle}>أسواق واضحة،<Text style={{ color: C.sky }}> بلا ضوضاء.</Text></Text><Text style={styles.heroBody}>دليل أدوات THE SFM. المعلومات المعروضة تصف الأداة ومصدرها ولا تمثل توصية استثمارية.</Text><View style={styles.meta}><Text style={styles.metaText}>{items.length.toLocaleString('en-US')} أداة</Text><Text style={styles.metaText}>{updatedAt ? `تحديث ${time(updatedAt)}` : 'جارٍ التحديث'}</Text></View><Pressable accessibilityRole="button" onPress={load} disabled={loading} style={[styles.heroButton, loading && styles.disabled]}><Icon name="refresh" color={C.canvas} /><Text style={styles.heroButtonText}>{loading ? 'جارٍ التحديث…' : 'تحديث القائمة'}</Text></Pressable></View>
