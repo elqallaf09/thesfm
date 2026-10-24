@@ -144,6 +144,9 @@ private struct BusinessDashboardView: View {
             }
 
             Section {
+                NavigationLink("Reports Center") {
+                    MobileReportsView(product: "business")
+                }
                 Button("تحديث البيانات", systemImage: "arrow.clockwise") {
                     Task {
                         guard let token = authSession.accessToken else { return }

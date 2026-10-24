@@ -26,6 +26,10 @@ struct DashboardView: View {
             MobileRecordsView(product: "finance")
                 .tabItem { Label("أموالي", systemImage: "wallet.pass") }
                 .tag(MainTab.expenses)
+
+            MobileReportsView(product: "finance")
+                .tabItem { Label("Reports", systemImage: "chart.bar.doc.horizontal") }
+                .tag(MainTab.reports)
         }
         .tint(AppTheme.Colors.accent)
         .environment(\.layoutDirection, .rightToLeft)
@@ -63,6 +67,7 @@ struct DashboardView: View {
 private enum MainTab: Hashable {
     case home
     case expenses
+    case reports
     case investments
     case projects
     case more

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private struct MobileResource: Decodable, Identifiable {
     let id: String
@@ -33,6 +34,203 @@ private enum MobileValue: Codable {
         switch self { case .text(let value): return value; case .number(let value): return value.formatted(.number.locale(Locale(identifier: "en_US"))); case .bool(let value): return value ? "true" : "false"; case .null: return "" }
     }
     var editableText: String { if case .number(let value) = self { return String(value) }; return text }
+    var amount: Double? {
+        switch self { case .number(let value): return value.isFinite && value >= 0 ? value : nil; case .text(let value): guard let number = Double(value), number.isFinite, number >= 0 else { return nil }; return number; default: return nil }
+    }
+    var string: String? { if case .text(let value) = self { return value }; return nil }
+}
+
+private struct MobileCurrencyReport: Identifiable {
+    let id: String
+    var receivedIncome = 0.0
+    var expectedIncome = 0.0
+    var expenses = 0.0
+    var savings = 0.0
+    var debtOutstanding = 0.0
+    var completedSales = 0.0
+    var pendingSales = 0.0
+    var paidInvoices = 0.0
+    var outstandingInvoices = 0.0
+    var overdueInvoices = 0.0
+    var operatingExpenses = 0.0
+}
+
+private struct MobileMonthlyReport {
+    let product: String
+    let period: String
+    let currencies: [MobileCurrencyReport]
+    let counts: [(String, Int)]
+    let undatedRecords: Int
+    let isPartial: Bool
+
+    static func make(product: String, period: String, records: [String: [[String: MobileValue]]], isPartial: Bool) -> MobileMonthlyReport {
+        var values: [String: MobileCurrencyReport] = [:]
+        var undated = 0
+        func currency(_ row: [String: MobileValue]) -> String? {
+            guard let value = row["currency"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(), value.count == 3, value.allSatisfy({ $0.isASCII && $0.isLetter }) else { return nil }
+            return value
+        }
+        func inPeriod(_ row: [String: MobileValue], _ key: String) -> Bool { row[key]?.string?.hasPrefix("\(period)-") == true }
+        func add(_ row: [String: MobileValue], _ mutate: (inout MobileCurrencyReport, Double) -> Void) {
+            guard let code = currency(row), let amount = row["amount"]?.amount else { return }
+            var total = values[code] ?? MobileCurrencyReport(id: code)
+            mutate(&total, amount); values[code] = total
+        }
+        func addRemainingDebt(_ row: [String: MobileValue]) {
+            guard let code = currency(row), let amount = row["remaining_amount"]?.amount else { return }
+            var total = values[code] ?? MobileCurrencyReport(id: code)
+            total.debtOutstanding += amount; values[code] = total
+        }
+        if product == "finance" {
+            for row in records["income"] ?? [] {
+                guard inPeriod(row, "received_date") else { if row["received_date"]?.string == nil { undated += 1 }; continue }
+                add(row) { total, amount in if row["status"]?.string == "expected" { total.expectedIncome += amount } else { total.receivedIncome += amount } }
+            }
+            for row in records["expenses"] ?? [] {
+                guard inPeriod(row, "date") else { if row["date"]?.string == nil { undated += 1 }; continue }
+                add(row) { $0.expenses += $1 }
+            }
+            for row in records["savings"] ?? [] {
+                guard inPeriod(row, "saved_at") else { if row["saved_at"]?.string == nil { undated += 1 }; continue }
+                add(row) { $0.savings += $1 }
+            }
+            for row in records["debts"] ?? [] { addRemainingDebt(row) }
+        } else {
+            for row in records["sales"] ?? [] {
+                guard inPeriod(row, "sale_date") else { if row["sale_date"]?.string == nil { undated += 1 }; continue }
+                add(row) { total, amount in if row["status"]?.string == "completed" { total.completedSales += amount } else if row["status"]?.string == "pending" { total.pendingSales += amount } }
+            }
+            for row in records["invoices"] ?? [] {
+                guard inPeriod(row, "invoice_date") else { if row["invoice_date"]?.string == nil { undated += 1 }; continue }
+                add(row) { total, amount in
+                    if row["status"]?.string == "paid" { total.paidInvoices += amount }
+                    else if row["status"]?.string == "sent" || row["status"]?.string == "overdue" { total.outstandingInvoices += amount; if row["status"]?.string == "overdue" { total.overdueInvoices += amount } }
+                }
+            }
+            for row in records["operating-expenses"] ?? [] {
+                guard inPeriod(row, "expense_date") else { if row["expense_date"]?.string == nil { undated += 1 }; continue }
+                add(row) { $0.operatingExpenses += $1 }
+            }
+        }
+        let count: [(String, Int)] = product == "finance"
+            ? [("Income", records["income"]?.count ?? 0), ("Expenses", records["expenses"]?.count ?? 0), ("Savings", records["savings"]?.count ?? 0), ("Debts", records["debts"]?.count ?? 0), ("Goals", records["goals"]?.count ?? 0)]
+            : [("Projects", records["projects"]?.count ?? 0), ("Customers", records["customers"]?.count ?? 0), ("Suppliers", records["suppliers"]?.count ?? 0), ("Active employees", records["employees"]?.filter { $0["status"]?.string == "active" }.count ?? 0), ("Open invoices", records["invoices"]?.filter { $0["status"]?.string == "sent" || $0["status"]?.string == "overdue" }.count ?? 0)]
+        return MobileMonthlyReport(product: product, period: period, currencies: values.values.sorted { $0.id < $1.id }, counts: count, undatedRecords: undated, isPartial: isPartial)
+    }
+}
+
+/// Finance and Business reports use only the protected record API and retain each recorded currency.
+struct MobileReportsView: View {
+    let product: String
+    @EnvironmentObject private var auth: AuthSessionStore
+    @AppStorage("sfm-language") private var language = "ar"
+    @State private var period = String(Calendar.current.dateComponents([.year, .month], from: .now).year ?? 2026) + "-" + String(format: "%02d", Calendar.current.component(.month, from: .now))
+    @State private var report: MobileMonthlyReport?
+    @State private var isLoading = false
+    @State private var failed = false
+    @State private var exportURL: URL?
+    private var index: Int { language == "ar" ? 0 : language == "fr" ? 2 : 1 }
+    private func tr(_ ar: String, _ en: String, _ fr: String) -> String { [ar, en, fr][index] }
+    private var resourceIDs: [String] { product == "finance" ? ["income", "expenses", "savings", "debts", "goals"] : ["projects", "customers", "suppliers", "sales", "invoices", "employees", "operating-expenses"] }
+
+    var body: some View {
+        List {
+            Section {
+                Text(tr("يعتمد هذا التقرير على سجلات حسابك المحمّلة فقط، ولا يجمع بين العملات.", "This report uses only loaded records from your account and never combines currencies.", "Ce rapport utilise uniquement les enregistrements chargés depuis votre compte et ne combine jamais les devises."))
+                    .font(.footnote).foregroundStyle(.secondary)
+                HStack {
+                    Button(tr("الشهر السابق", "Previous month", "Mois précédent")) { changeMonth(-1) }
+                    Spacer()
+                    Text(period).font(.headline.monospacedDigit())
+                    Spacer()
+                    Button(tr("الشهر التالي", "Next month", "Mois suivant")) { changeMonth(1) }
+                }
+                Button(tr("تحديث من حسابي", "Refresh from my account", "Actualiser depuis mon compte"), systemImage: "arrow.clockwise") { Task { await load() } }
+                    .disabled(isLoading || auth.isDeviceLocked)
+            }
+            if isLoading { Section { ProgressView(tr("جارٍ إعداد التقرير…", "Preparing report…", "Préparation du rapport…")) } }
+            if failed { Section { Text(tr("تعذر تحميل التقرير. تحقّق من الاتصال ثم أعد المحاولة.", "Could not load the report. Check your connection and retry.", "Impossible de charger le rapport. Vérifiez la connexion puis réessayez.")).foregroundStyle(.red) } }
+            if let report {
+                Section(tr("بيانات الحساب المستخدمة", "Account data used", "Données du compte utilisées")) {
+                    ForEach(Array(report.counts.enumerated()), id: \.offset) { _, value in LabeledContent(value.0, value: value.1.formatted()) }
+                    if report.undatedRecords > 0 { LabeledContent(tr("سجلات بلا تاريخ تقرير", "Records without a reporting date", "Enregistrements sans date de rapport"), value: report.undatedRecords.formatted()) }
+                }
+                if report.isPartial { Section { Text(tr("قد يكون التقرير جزئياً: حُمّل أول 800 سجل فقط لكل قسم. راجع السجل التفصيلي قبل استخدامه ككشف كامل.", "This report may be partial: only the first 800 records in each section were loaded. Review the detailed section before using it as a complete statement.", "Ce rapport peut être partiel : seuls les 800 premiers enregistrements de chaque section ont été chargés. Consultez le détail avant de l’utiliser comme relevé complet.")).foregroundStyle(.orange) } }
+                if report.currencies.isEmpty { Section { Text(tr("لا توجد سجلات نقدية مؤرخة لهذا الشهر.", "No dated monetary records are available for this month.", "Aucun enregistrement monétaire daté n’est disponible pour ce mois.")) } }
+                ForEach(report.currencies) { currency in Section(currency.id) {
+                    if product == "finance" {
+                        money(tr("الدخل المستلم", "Received income", "Revenus reçus"), currency.receivedIncome, currency.id); money(tr("الدخل المتوقع", "Expected income", "Revenus prévus"), currency.expectedIncome, currency.id); money(tr("المصروفات", "Expenses", "Dépenses"), currency.expenses, currency.id); money(tr("النقد بعد المصروفات", "Cash after expenses", "Trésorerie après dépenses"), currency.receivedIncome - currency.expenses, currency.id); money(tr("المدخرات المضافة", "Savings added", "Épargne ajoutée"), currency.savings, currency.id); money(tr("الدين المتبقي", "Debt remaining", "Dette restante"), currency.debtOutstanding, currency.id)
+                    } else {
+                        money(tr("المبيعات المكتملة", "Completed sales", "Ventes finalisées"), currency.completedSales, currency.id); money(tr("المبيعات المعلقة", "Pending sales", "Ventes en attente"), currency.pendingSales, currency.id); money(tr("مصروفات التشغيل", "Operating expenses", "Charges d’exploitation"), currency.operatingExpenses, currency.id); money(tr("صافي التشغيل", "Operating net", "Solde d’exploitation"), currency.completedSales - currency.operatingExpenses, currency.id); money(tr("الفواتير المدفوعة", "Paid invoices", "Factures payées"), currency.paidInvoices, currency.id); money(tr("الفواتير المستحقة", "Outstanding invoices", "Factures impayées"), currency.outstandingInvoices, currency.id); money(tr("الفواتير المتأخرة", "Overdue invoices", "Factures en retard"), currency.overdueInvoices, currency.id)
+                    }
+                } }
+                Section {
+                    Button(tr("إعداد PDF للمشاركة", "Prepare PDF to share", "Préparer le PDF à partager"), systemImage: "square.and.arrow.up") { export(report) }
+                    if let exportURL { ShareLink(item: exportURL, preview: SharePreview("THE SFM \(product.capitalized) \(period)")) { Label(tr("مشاركة PDF", "Share PDF", "Partager le PDF"), systemImage: "square.and.arrow.up") } }
+                }
+            }
+        }
+        .navigationTitle(product == "finance" ? tr("مركز التقارير", "Reports Center", "Centre des rapports") : tr("عمليات الأعمال", "Business operations", "Opérations d’affaires"))
+        .task { await load() }
+        .onChange(of: auth.identityRevision) { _, _ in report = nil; exportURL = nil }
+    }
+
+    @ViewBuilder private func money(_ title: String, _ value: Double, _ currency: String) -> some View { LabeledContent(title, value: "\(value.formatted(.number.precision(.fractionLength(0...3)))) \(currency)") }
+    private func changeMonth(_ offset: Int) {
+        let values = period.split(separator: "-").compactMap { Int($0) }
+        guard values.count == 2, let date = Calendar(identifier: .gregorian).date(from: DateComponents(year: values[0], month: values[1])), let next = Calendar(identifier: .gregorian).date(byAdding: .month, value: offset, to: date) else { return }
+        period = String(Calendar(identifier: .gregorian).component(.year, from: next)) + "-" + String(format: "%02d", Calendar(identifier: .gregorian).component(.month, from: next)); exportURL = nil
+    }
+    @MainActor private func load() async {
+        guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
+        let revision = auth.identityRevision; isLoading = true; failed = false; defer { isLoading = false }
+        do {
+            var loaded: [String: [[String: MobileValue]]] = [:]; var partial = false
+            for resource in resourceIDs {
+                var rows: [[String: MobileValue]] = []; var cursor: String?; var pages = 0
+                repeat {
+                    var components = URLComponents(); components.path = "/api/mobile/\(product)/records/\(resource)"; components.queryItems = [URLQueryItem(name: "limit", value: "100")]
+                    if let cursor { components.queryItems?.append(URLQueryItem(name: "cursor", value: cursor)) }
+                    let page: MobileRecordPage = try await APIClient.authorized(accessToken: token).get(components.string!)
+                    rows.append(contentsOf: page.records); cursor = page.nextCursor; pages += 1
+                } while cursor != nil && pages < 8
+                partial = partial || cursor != nil; loaded[resource] = rows
+            }
+            guard revision == auth.identityRevision, auth.isAuthenticated, !auth.isDeviceLocked else { return }
+            report = MobileMonthlyReport.make(product: product, period: period, records: loaded, isPartial: partial); exportURL = nil
+        } catch { failed = true }
+    }
+    @MainActor private func export(_ report: MobileMonthlyReport) {
+        do { exportURL = try MobileReportPDF.create(report: report, language: language) } catch { failed = true }
+    }
+}
+
+private enum MobileReportPDF {
+    static func create(report: MobileMonthlyReport, language: String) throws -> URL {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("the-sfm-\(report.product)-\(report.period)-report.pdf")
+        try? FileManager.default.removeItem(at: file)
+        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 612, height: 792))
+        try renderer.writePDF(to: file) { context in
+            context.beginPage(); var y: CGFloat = 42
+            let title = "THE SFM \(report.product.capitalized) — \(report.period)"
+            draw(title, at: &y, font: .boldSystemFont(ofSize: 18))
+            draw(language == "ar" ? "ملخص من سجلات الحساب المحمّلة فقط. العملات منفصلة." : language == "fr" ? "Synthèse tirée uniquement des enregistrements chargés. Les devises restent séparées." : "Summary derived only from loaded account records. Currencies remain separate.", at: &y, font: .systemFont(ofSize: 10))
+            if report.isPartial { draw(language == "ar" ? "تنبيه: قد يكون التقرير جزئياً؛ تم تحميل أول 800 سجل فقط لكل قسم." : language == "fr" ? "Attention : le rapport peut être partiel ; seuls les 800 premiers enregistrements par section ont été chargés." : "Notice: this report may be partial; only the first 800 records in each section were loaded.", at: &y, font: .systemFont(ofSize: 10)) }
+            for value in report.counts { draw("\(value.0): \(value.1)", at: &y, font: .systemFont(ofSize: 11)) }
+            if report.undatedRecords > 0 { draw("Undated records: \(report.undatedRecords)", at: &y, font: .systemFont(ofSize: 11)) }
+            for currency in report.currencies {
+                if y > 690 { context.beginPage(); y = 42 }
+                draw(currency.id, at: &y, font: .boldSystemFont(ofSize: 14))
+                let lines = report.product == "finance" ? ["Received income: \(currency.receivedIncome)", "Expected income: \(currency.expectedIncome)", "Expenses: \(currency.expenses)", "Cash after expenses: \(currency.receivedIncome - currency.expenses)", "Savings added: \(currency.savings)", "Debt remaining: \(currency.debtOutstanding)"] : ["Completed sales: \(currency.completedSales)", "Pending sales: \(currency.pendingSales)", "Operating expenses: \(currency.operatingExpenses)", "Operating net: \(currency.completedSales - currency.operatingExpenses)", "Paid invoices: \(currency.paidInvoices)", "Outstanding invoices: \(currency.outstandingInvoices)", "Overdue invoices: \(currency.overdueInvoices)"]
+                for line in lines { draw("\(line) \(currency.id)", at: &y, font: .systemFont(ofSize: 10)) }
+            }
+        }
+        return file
+    }
+    private static func draw(_ value: String, at y: inout CGFloat, font: UIFont) {
+        let rect = CGRect(x: 42, y: y, width: 528, height: 38)
+        value.draw(in: rect, withAttributes: [.font: font, .foregroundColor: UIColor.label]); y += 19
+    }
 }
 
 /// Shared native SwiftUI resource workflow driven by the same versioned API as Expo and Kotlin.

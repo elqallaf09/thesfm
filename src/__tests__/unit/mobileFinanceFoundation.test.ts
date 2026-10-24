@@ -79,6 +79,20 @@ describe('THE SFM Finance iOS foundation', () => {
     expect(records).toContain('.fullScreenCover(isPresented: Binding(');
   });
 
+  it('derives Finance and Business native report PDFs from the protected record API without combining currencies', () => {
+    const records = read('ios-native/TheSFM/Core/Networking/MobileRecordsView.swift');
+    const dashboard = read('ios-native/TheSFM/Features/Dashboard/DashboardView.swift');
+    const business = read('ios-native/TheSFM/Features/Business/BusinessHomeView.swift');
+
+    expect(records).toContain('struct MobileReportsView: View');
+    expect(records).toContain('/api/mobile/\\(product)/records/\\(resource)');
+    expect(records).toContain('value.count == 3');
+    expect(records).toContain('report.isPartial');
+    expect(records).toContain('MobileReportPDF.create');
+    expect(dashboard).toContain('MobileReportsView(product: "finance")');
+    expect(business).toContain('MobileReportsView(product: "business")');
+  });
+
   it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
     const session = read('apps/expo-go/src/session.ts');
     const ui = read('apps/expo-go/src/ui.tsx');
