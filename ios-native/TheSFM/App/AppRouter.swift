@@ -51,7 +51,7 @@ private struct AppUnlockView: View {
                     Label("فتح التطبيق", systemImage: "faceid")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(SFMPrimaryButtonStyle())
+                .buttonStyle(.borderedProminent)
                 .accessibilityHint("يستخدم Face ID أو رمز مرور الجهاز")
 
                 if let errorMessage = authSession.errorMessage {

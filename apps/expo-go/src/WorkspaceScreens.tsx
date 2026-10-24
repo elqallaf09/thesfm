@@ -34,6 +34,7 @@ export function CatalogScreen({ product, navigate, embedded = false }: { product
   const content = <View style={{ gap: 12 }}>
     {MOBILE_RESOURCES.filter(resource => resource.products.includes(product)).map(resource => <Button key={resource.id} label={localized(resource.label, language)} onPress={() => navigate({ kind: 'records', resource: resource.id })} />)}
     {product === 'investor' ? <Button label={t(['الأسواق العالمية', 'Global markets', 'Marchés mondiaux'])} onPress={() => navigate({ kind: 'markets' })} /> : null}
+    {product === 'investor' ? <><Button label={t(['الأخبار المالية', 'Financial news', 'Actualités financières'])} onPress={() => navigate({ kind: 'news' })} /><Button label={t(['التقويم الاقتصادي', 'Economic calendar', 'Calendrier économique'])} onPress={() => navigate({ kind: 'calendar' })} /><Button label={t(['الفحص الشرعي', 'Shariah screening', 'Filtrage charia'])} onPress={() => navigate({ kind: 'screening' })} /></> : null}
     <Button label={t(['الحاسبات المالية', 'Financial calculators', 'Calculateurs financiers'])} onPress={() => navigate({ kind: 'tools' })} />
   </View>;
   return embedded ? content : <ScrollView contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>{content}</ScrollView>;

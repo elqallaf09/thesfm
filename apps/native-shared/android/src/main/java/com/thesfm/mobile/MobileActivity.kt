@@ -66,27 +66,28 @@ abstract class MobileActivity : ComponentActivity() {
     override fun onStop() { super.onStop(); if (::auth.isInitialized && auth.session != null) locked.value = true }
     override fun onDestroy() { executor.shutdown(); super.onDestroy() }
     private fun work(action: () -> JSONObject, done: (JSONObject) -> Unit) {
+        if (busy.value) return
         val epoch = uiEpoch; busy.value = true; error.value = false
         executor.execute {
             val result = runCatching(action)
             runOnUiThread {
                 if (epoch != uiEpoch || isDestroyed) return@runOnUiThread
                 signedIn.value = auth.session != null
+                busy.value = false
                 result.onSuccess(done).onFailure { error.value = true }
                 if (!signedIn.value) { resources.value = emptyList(); records.value = emptyList(); account.value = null }
-                busy.value = false
             }
         }
     }
     private fun loadCatalog() = work({ auth.request("/api/mobile/$productId/manifest") }) { json ->
         resources.value = json.getJSONArray("resources").objects()
-        if (productId != "investor") work({ auth.request("/api/mobile/$productId/summary") }) { summary.value = it.optJSONObject("summary") }
         pendingLink.value?.let { input ->
             val uri = android.net.Uri.parse(input)
             val path = if (uri.scheme == "the-sfm-$productId") "/${uri.host.orEmpty()}${uri.path.orEmpty()}" else uri.path.orEmpty()
             resources.value.find { resource -> resource.getJSONArray("paths").strings().contains(path.trimEnd('/')) }?.let { resource -> selected.value = resource; loadRecords() }
             pendingLink.value = null
         }
+        if (selected.value == null && productId != "investor") work({ auth.request("/api/mobile/$productId/summary") }) { summary.value = it.optJSONObject("summary") }
     }
     private fun loadRecords(after: String? = null) {
         val resource = selected.value ?: return

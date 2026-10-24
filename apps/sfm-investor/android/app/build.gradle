@@ -12,6 +12,7 @@ def releaseValue = { String name, String fallback = '' ->
 android {
   namespace 'com.thesfm.investor'
   compileSdk 36
+  buildToolsVersion '36.0.0'
 
   defaultConfig {
     applicationId 'com.thesfm.investor'

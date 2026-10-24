@@ -5,6 +5,7 @@ import { AccountScreen, CatalogScreen, HomeScreen, NotificationsScreen } from '.
 import { MarketsScreen, SymbolScreen } from './MarketsScreen';
 import { RecordsScreen } from './RecordsScreen';
 import { ToolsScreen } from './ToolsScreen';
+import { InvestorFeeds } from './InvestorFeeds';
 import { completeGoogleSignIn, startGoogleSignIn } from './oauth';
 import { MobileRequestError, type MobileSessionClient } from './session';
 import { screenForLink, type Screen } from './navigation';
@@ -56,6 +57,7 @@ export function MobileWorkspace(props: Props) {
   else if (screen.kind === 'symbol' && screen.symbol) content = <SymbolScreen base={base} symbol={screen.symbol} />;
   else if (screen.kind === 'notifications') content = <NotificationsScreen client={client} openLink={openLink} />;
   else if (screen.kind === 'tools') content = <ToolsScreen initialPath={screen.path} />;
+  else if (screen.kind === 'news' || screen.kind === 'calendar' || screen.kind === 'screening') content = <InvestorFeeds key={screen.kind} base={base} kind={screen.kind} />;
   else content = <Panel><Label>{t(['هذه الوظيفة لم تكتمل في نسخة التطبيق الحالية.', 'This feature is not complete in this app version.', 'Cette fonction n’est pas encore complète dans cette version.'])}</Label><Button label={t(['فتح الأقسام', 'Open sections', 'Ouvrir les rubriques'])} onPress={() => navigate({ kind: 'catalog' })} /></Panel>;
   return <View style={{ flex: 1 }}><View style={{ minHeight: 66, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, gap: 8, flexDirection: rtl ? 'row-reverse' : 'row', alignItems: 'center', flexWrap: 'wrap' }}><View style={{ flex: 1 }}><Label large>{`THE SFM ${product === 'finance' ? 'Finance' : product === 'investor' ? 'Investor' : 'Business'}`}</Label></View>{stack.length > 1 ? <Button label={t(['رجوع', 'Back', 'Retour'])} onPress={() => setStack(previous => previous.slice(0, -1))} /> : null}{signedIn ? <Button label={t(['الإشعارات', 'Notifications', 'Notifications'])} onPress={() => navigate({ kind: 'notifications' })} /> : null}</View>
     <View style={{ flex: 1, flexDirection: wide ? rtl ? 'row-reverse' : 'row' : 'column' }}>{wide ? nav : null}<View style={{ flex: 1, width: '100%', maxWidth: 1180, alignSelf: 'center', padding: wide ? 22 : 14, gap: 12 }}>{linkError ? <ErrorNotice code={linkError} /> : null}{content}</View>{!wide ? nav : null}</View>

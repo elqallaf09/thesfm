@@ -1,5 +1,5 @@
 import { MOBILE_RESOURCES, type PhoneProduct } from '../../../src/lib/mobile/resourceContract';
-export type Screen = { kind: 'home' | 'catalog' | 'account' | 'notifications' | 'markets' | 'tools' | 'records' | 'symbol' | 'unavailable'; resource?: string; symbol?: string; path?: string };
+export type Screen = { kind: 'home' | 'catalog' | 'account' | 'notifications' | 'markets' | 'tools' | 'records' | 'symbol' | 'news' | 'calendar' | 'screening' | 'unavailable'; resource?: string; symbol?: string; path?: string };
 export function screenForLink(input: string, product: PhoneProduct): { screen: Screen } | { external: string } {
   let path = input;
   if (!input.startsWith('/')) {
@@ -17,6 +17,9 @@ export function screenForLink(input: string, product: PhoneProduct): { screen: S
   const resource = MOBILE_RESOURCES.find(item => item.products.includes(product) && item.paths.includes(path));
   if (resource) return { screen: { kind: 'records', resource: resource.id } };
   if (product === 'investor' && ['/global-markets', '/world-stocks', '/ai-analyst/markets'].includes(path)) return { screen: { kind: 'markets' } };
+  if (product === 'investor' && ['/market-news', '/ai-analyst/news', '/gulf-news', '/europe-news'].includes(path)) return { screen: { kind: 'news' } };
+  if (product === 'investor' && ['/economic-calendar', '/ai-analyst/calendar'].includes(path)) return { screen: { kind: 'calendar' } };
+  if (product === 'investor' && path === '/sharia-stocks') return { screen: { kind: 'screening' } };
   if (product === 'investor' && /^\/(symbol-details|world-stocks)\/[^/]+$/.test(path)) {
     try { return { screen: { kind: 'symbol', symbol: decodeURIComponent(path.split('/')[2]) } }; } catch { /* invalid link */ }
   }
