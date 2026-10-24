@@ -43,6 +43,7 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
   useAccountSync(() => { void load(undefined, true); });
   const attachmentPath = `${path}/attachment`;
   const supportsAttachments = product === 'finance' && (resource.id === 'income' || resource.id === 'expenses');
+  const supportsPrivateDocuments = product === 'business' && resource.id === 'documents';
   const attachmentUrlField = resource.id === 'income' ? 'attachment_url' : 'receipt_image_url';
   const attachmentNameField = resource.id === 'income' ? 'attachment_name' : 'receipt_file_name';
   async function attach(record: MobileRecord) {
@@ -96,6 +97,10 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
         {supportsAttachments ? <View style={{ gap: 8 }}>
           {item[attachmentUrlField] ? <><Label muted>{t(resource.id === 'expenses' ? ['إيصال', 'Receipt', 'Reçu'] : ['مرفق', 'Attachment', 'Pièce jointe'])}: {String(item[attachmentNameField] || t(['ملف مرفق', 'Attached file', 'Fichier joint']))}</Label><Button label={t(['عرض المرفق', 'View attachment', 'Voir la pièce jointe'])} onPress={() => { void openAttachment(item); }} disabled={busy} /><Button danger label={t(['إزالة المرفق', 'Remove attachment', 'Supprimer la pièce jointe'])} onPress={() => detach(item)} disabled={busy} /></> : null}
           <Button label={t(['إرفاق ملف', 'Attach file', 'Joindre un fichier'])} onPress={() => { void attach(item); }} disabled={busy} />
+        </View> : null}
+        {supportsPrivateDocuments ? <View style={{ gap: 8 }}>
+          <Label muted>{t(['مستند مشروع خاص من حسابك في الموقع.', 'Private project document from your website account.', 'Document de projet privé provenant de votre compte du site.'])}</Label>
+          <Button label={t(['عرض المستند', 'View document', 'Voir le document'])} onPress={() => { void openAttachment(item); }} disabled={busy} />
         </View> : null}
       </Panel>}
       ListFooterComponent={cursor ? <Button label={busy ? t(['جارٍ التحميل', 'Loading', 'Chargement']) : t(['تحميل المزيد', 'Load more', 'Charger la suite'])} onPress={() => { if (cursor) void load(cursor); }} disabled={busy} /> : null} />

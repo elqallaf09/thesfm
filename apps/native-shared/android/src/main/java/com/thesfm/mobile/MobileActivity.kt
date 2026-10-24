@@ -179,7 +179,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun openAttachment(resourceId: String, recordId: String) {
         if (locked.value || !signedIn.value) return
-        work({ auth.request("/api/mobile/finance/records/$resourceId/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}") }) { result ->
+        work({ auth.request("/api/mobile/$productId/records/$resourceId/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}") }) { result ->
             val url = result.optJSONObject("attachment")?.optString("url").orEmpty()
             if (runCatching { val value = Uri.parse(url); value.scheme == "https" && value.host != null }.getOrDefault(false)) {
                 runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }.onFailure { error.value = true; errorCode.value = "ATTACHMENT_UNAVAILABLE" }
@@ -451,6 +451,10 @@ abstract class MobileActivity : ComponentActivity() {
                                         }
                                     }
                                     TextButton(onClick = { pendingAttachment = resourceId to recordId; attachmentLauncher.launch(arrayOf("application/pdf", "image/png", "image/jpeg", "image/webp")) }) { Text(tr("إرفاق ملف", "Attach file", "Joindre un fichier")) }
+                                }
+                                if (productId == "business" && resourceId == "documents") {
+                                    Text(tr("مستند مشروع خاص من حسابك في الموقع.", "Private project document from your website account.", "Document de projet privé provenant de votre compte du site."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    TextButton(onClick = { openAttachment(resourceId, row.getString("id")) }) { Text(tr("عرض المستند", "View document", "Voir le document")) }
                                 }
                                 if (!resource.optBoolean("readOnly")) Row { TextButton(onClick = { editing = row }) { Text(tr("تعديل", "Edit", "Modifier")) }; TextButton(onClick = { deleting = row }) { Text(tr("حذف", "Delete", "Supprimer")) } }
                             } } }

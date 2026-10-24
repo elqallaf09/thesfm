@@ -369,6 +369,11 @@ private struct MobileRecordList: View {
                             }
                             Button(tr("إرفاق ملف", "Attach file", "Joindre un fichier")) { attachmentRecordId = id; attachmentImporting = true }.disabled(busy)
                         }
+                        if product == "business", resource.id == "documents", let id = row["id"]?.string {
+                            Text(tr("مستند مشروع خاص من حسابك في الموقع.", "Private project document from your website account.", "Document de projet privé provenant de votre compte du site."))
+                                .font(.footnote).foregroundStyle(.secondary)
+                            Button(tr("عرض المستند", "View document", "Voir le document")) { Task { await openAttachment(id) } }.disabled(busy)
+                        }
                         if resource.readOnly != true {
                             Button(tr("تعديل", "Edit", "Modifier")) { editor = RecordEditorSelection(row: row) }
                             Button(tr("حذف", "Delete", "Supprimer"), role: .destructive) { deleting = row }
@@ -419,7 +424,7 @@ private struct MobileRecordList: View {
         busy = true; failed = false; defer { busy = false }
         do {
             let result: MobileAttachmentAccess = try await APIClient.authorized(accessToken: token).get(attachmentPath(recordId))
-            guard result.attachment.url.scheme == "https" else { throw APIClientError.invalidResponse }
+            guard result.attachment.url.scheme == "https", result.attachment.url.host != nil else { throw APIClientError.invalidResponse }
             openURL(result.attachment.url)
         } catch { failed = true }
     }
@@ -446,7 +451,7 @@ private struct MobileRecordList: View {
         } catch { failed = true }
     }
     private func attachmentPath(_ recordId: String) -> String {
-        "/api/mobile/finance/records/\(resource.id)/attachment?recordId=\(recordId)"
+        "/api/mobile/\(product)/records/\(resource.id)/attachment?recordId=\(recordId)"
     }
 }
 private struct MobileAttachmentAccess: Decodable { let attachment: MobileSignedAttachment }

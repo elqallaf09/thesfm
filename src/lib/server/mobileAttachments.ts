@@ -1,4 +1,6 @@
 import { financialAttachmentDisplayUrl, financialAttachmentUrl, isFinancialAttachmentPath } from '@/lib/financialAttachments';
+import { businessPermissions, type BusinessRole } from '@/lib/businessOperations';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordIdSchema } from '@/lib/mobile/resourceValidation';
 import { mobileAccess, mobileResponse } from '@/lib/server/mobileAccess';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
@@ -54,13 +56,55 @@ function stableStoragePath(value: string | null, bucket: AttachmentResource['buc
   return url.pathname === '/api/receipts/file' && url.searchParams.get('bucket') === bucket && isFinancialAttachmentPath(path) ? path : null;
 }
 
-function validSignedUrl(value: string, origin: string, bucket: AttachmentResource['bucket']) {
+function validSignedUrl(value: string, origin: string, bucket: string) {
   try {
     const url = new URL(value);
     return url.origin === new URL(origin).origin && url.pathname.startsWith(`/storage/v1/object/sign/${bucket}/`) ? url.toString() : null;
   } catch {
     return null;
   }
+}
+
+function projectDocumentPath(value: unknown, userId: string) {
+  if (typeof value !== 'string') return null;
+  const parts = value.split('/');
+  const projectId = recordIdSchema.safeParse(parts[2]);
+  if (parts.length !== 4 || parts[0] !== userId || parts[1] !== 'projects' || !projectId.success || !parts[3] || parts.some(part => !part || part === '.' || part === '..')) return null;
+  return value;
+}
+
+async function businessDocumentPermission(client: SupabaseClient, userId: string) {
+  const role = await client.from('business_user_roles').select('role').eq('user_id', userId).maybeSingle();
+  if (role.error) return { response: mobileResponse({ ok: false, code: 'ACCESS_UNAVAILABLE' }, 503) };
+  const value = role.data?.role ?? 'manager';
+  if (!['manager', 'accountant', 'employee'].includes(value) || !businessPermissions(value as BusinessRole).canViewBusinessModules) {
+    return { response: mobileResponse({ ok: false, code: 'FORBIDDEN' }, 403) };
+  }
+  return { role: value as BusinessRole };
+}
+
+/** Private project documents are view-only on mobile until their complete web
+ * editing workflow has native parity. The server owns role, row and path
+ * checks; clients see only a short-lived signed URL. */
+export async function handleMobileBusinessDocument(request: Request, product: string, resource: string) {
+  if (product !== 'business' || resource !== 'documents') return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
+  const access = await mobileAccess(request);
+  if (access.response) return access.response;
+  const permission = await businessDocumentPermission(access.client, access.userId);
+  if (permission.response) return permission.response;
+  if (request.method !== 'GET') return mobileResponse({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
+  const documentId = recordIdSchema.safeParse(new URL(request.url).searchParams.get('recordId'));
+  if (!documentId.success) return mobileResponse({ ok: false, code: 'INVALID_ID' }, 400);
+  const document = await access.client.from('project_documents').select('id,file_path,file_name')
+    .eq('user_id', access.userId).eq('id', documentId.data).maybeSingle();
+  if (document.error) return mobileResponse({ ok: false, code: 'LOAD_UNAVAILABLE' }, 503);
+  const path = projectDocumentPath(document.data?.file_path, access.userId);
+  if (!document.data || !path) return mobileResponse({ ok: false, code: 'ATTACHMENT_UNAVAILABLE' }, 404);
+  const signed = await access.client.storage.from('project-documents').createSignedUrl(path, 60);
+  const origin = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const signedUrl = signed.data?.signedUrl && origin ? validSignedUrl(signed.data.signedUrl, origin, 'project-documents') : null;
+  if (signed.error || !signedUrl) return mobileResponse({ ok: false, code: 'ATTACHMENT_UNAVAILABLE' }, 404);
+  return mobileResponse({ ok: true, attachment: { id: document.data.id, name: document.data.file_name ?? null, url: signedUrl } });
 }
 
 /**
@@ -141,3 +185,8 @@ export async function handleMobileFinanceAttachment(request: Request, product: s
 
 // Retained for existing integrations and tests that target the income route.
 export const handleMobileIncomeAttachment = handleMobileFinanceAttachment;
+
+export async function handleMobileAttachment(request: Request, product: string, resource: string) {
+  if (product === 'business' && resource === 'documents') return handleMobileBusinessDocument(request, product, resource);
+  return handleMobileFinanceAttachment(request, product, resource);
+}
