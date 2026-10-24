@@ -3,6 +3,7 @@ import { Alert, FlatList, Modal, SafeAreaView, ScrollView, Switch, View } from '
 import { localized, type MobileField, type MobilePage, type MobileRecord, type MobileResource, type PhoneProduct } from '../../../src/lib/mobile/resourceContract';
 import { MobileRequestError, type MobileSessionClient } from './session';
 import { Button, Busy, Empty, ErrorNotice, formatValue, Input, Label, Panel, useUI } from './ui';
+import { useAccountSync } from './accountSync';
 
 export function RecordsScreen({ client, product, resource }: { client: MobileSessionClient; product: PhoneProduct; resource: MobileResource }) {
   const { t, language, colors } = useUI();
@@ -10,22 +11,26 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<MobileRecord | 'new' | null>(null);
   const sequence = useRef(0);
   const path = `/api/mobile/${product}/records/${resource.id}`;
-  const load = useCallback(async (after?: string) => {
+  const load = useCallback(async (after?: string, silent = false) => {
     const requestId = ++sequence.current;
-    setBusy(true); setError('');
+    if (!silent) { setBusy(true); setError(''); }
     try {
       const page = await client.request<MobilePage>(`${path}?limit=50${after ? `&cursor=${encodeURIComponent(after)}` : ''}`);
       if (requestId !== sequence.current) return;
       setRecords(previous => after ? [...previous, ...page.records.filter(row => !previous.some(existing => existing.id === row.id))] : page.records);
       setCursor(page.nextCursor);
-    } catch (error) { if (requestId === sequence.current) setError(error instanceof MobileRequestError ? error.code : 'LOAD_UNAVAILABLE'); }
-    finally { if (requestId === sequence.current) setBusy(false); }
+      setLastSyncedAt(Date.now());
+      setError('');
+    } catch (error) { if (!silent && requestId === sequence.current) setError(error instanceof MobileRequestError ? error.code : 'LOAD_UNAVAILABLE'); }
+    finally { if (!silent && requestId === sequence.current) setBusy(false); }
   }, [client, path]);
   useEffect(() => { const counter = sequence; void load(); return () => { ++counter.current; }; }, [load]);
+  useAccountSync(() => { void load(undefined, true); });
   const remove = (record: MobileRecord) => Alert.alert(t(['حذف السجل', 'Delete record', 'Supprimer']), t(['سيُحذف السجل من حساب الموقع أيضًا. هل تريد المتابعة؟', 'This also deletes the record from your website account. Continue?', 'Cet enregistrement sera aussi supprimé de votre compte sur le site. Continuer ?']), [
     { text: t(['إلغاء', 'Cancel', 'Annuler']), style: 'cancel' },
     { text: t(['حذف', 'Delete', 'Supprimer']), style: 'destructive', onPress: () => { setBusy(true); void client.request(path, { method: 'DELETE', body: JSON.stringify({ id: record.id }) }).then(() => load()).catch(error => { setError(error.code ?? 'SAVE_UNAVAILABLE'); setBusy(false); }); } },
@@ -33,6 +38,7 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
   const visible = records.filter(row => resource.fields.some(field => String(row[field.key] ?? '').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())));
   return <View style={{ flex: 1, gap: 12 }}>
     <Label large>{localized(resource.label, language)}</Label>
+    {lastSyncedAt ? <Label muted>{t(['تمت المزامنة مع حسابك', 'Synced with your account', 'Synchronisé avec votre compte'])}: {new Date(lastSyncedAt).toLocaleTimeString(language === 'ar' ? 'ar-KW' : language === 'fr' ? 'fr-FR' : 'en-US')}</Label> : null}
     <Input label={t(['البحث في السجلات المحملة', 'Search loaded records', 'Rechercher les enregistrements chargés'])} value={query} onChange={setQuery} />
     {!resource.readOnly ? <Button label={t(['إضافة سجل', 'Add record', 'Ajouter'])} onPress={() => setEditing('new')} disabled={busy} /> : null}
     {error ? <ErrorNotice code={error} retry={() => { void load(); }} /> : null}

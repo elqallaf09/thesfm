@@ -4,6 +4,7 @@ import { type MobileRecord, type MobilePage } from '../../../src/lib/mobile/reso
 import type { Screen } from './navigation';
 import { MobileRequestError, type MobileSessionClient } from './session';
 import { Button, Busy, Empty, ErrorNotice, formatValue, Input, Label, Panel, useUI } from './ui';
+import { useAccountSync } from './accountSync';
 export async function publicRequest<T>(base: string, path: string): Promise<T> {
   const abort = new AbortController(); const timeout = setTimeout(() => abort.abort(), 15_000);
   try {
@@ -20,6 +21,7 @@ export function MarketsScreen({ base, client, navigate }: { base: string; client
   const [query, setQuery] = useState(''); const [category, setCategory] = useState('all'); const [market, setMarket] = useState('');
   const [page, setPage] = useState(1); const [more, setMore] = useState(false); const [busy, setBusy] = useState(false); const [saving, setSaving] = useState(false); const [error, setError] = useState('');
   const sequence = useRef(0);
+  const watchlistSequence = useRef(0);
   const load = useCallback(async (next = 1) => {
     const requestId = ++sequence.current; setBusy(true); setError('');
     try {
@@ -30,17 +32,23 @@ export function MarketsScreen({ base, client, navigate }: { base: string; client
     finally { if (requestId === sequence.current) setBusy(false); }
   }, [base, category, market, query]);
   useEffect(() => { const counter = sequence; const timer = setTimeout(() => { void load(); }, 300); return () => { clearTimeout(timer); ++counter.current; }; }, [load]);
-  useEffect(() => {
+  const loadWatchlist = useCallback(async (silent = false) => {
+    const requestId = ++watchlistSequence.current;
     if (!client.signedIn) { setWatchlist([]); return; }
-    let mounted = true;
-    async function readAll() {
+    try {
       const rows: MobileRecord[] = []; let cursor: string | null = null;
-      do { const data: MobilePage = await client.request(`/api/mobile/investor/records/watchlist?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`); rows.push(...data.records); cursor = data.nextCursor; } while (cursor && mounted);
-      if (mounted) setWatchlist(rows);
+      do {
+        const data: MobilePage = await client.request(`/api/mobile/investor/records/watchlist?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+        rows.push(...data.records); cursor = data.nextCursor;
+      } while (cursor && requestId === watchlistSequence.current);
+      if (requestId !== watchlistSequence.current) return;
+      setWatchlist(rows); setError('');
+    } catch (error) {
+      if (!silent && requestId === watchlistSequence.current) setError(error instanceof MobileRequestError ? error.code : 'LOAD_UNAVAILABLE');
     }
-    void readAll().catch(error => { if (mounted) setError(error.code ?? 'LOAD_UNAVAILABLE'); });
-    return () => { mounted = false; };
-  }, [client, client.generation]);
+  }, [client]);
+  useEffect(() => { const counter = watchlistSequence; void loadWatchlist(); return () => { ++counter.current; }; }, [loadWatchlist]);
+  useAccountSync(() => { void loadWatchlist(true); });
   async function toggle(item: Instrument) {
     if (!client.signedIn) { Alert.alert(t(['يلزم تسجيل الدخول للمزامنة', 'Sign in to sync your watchlist', 'Connectez-vous pour synchroniser votre suivi'])); return; }
     setSaving(true); setError('');

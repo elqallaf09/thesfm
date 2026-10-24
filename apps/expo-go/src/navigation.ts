@@ -1,5 +1,5 @@
 import { MOBILE_RESOURCES, type PhoneProduct } from '../../../src/lib/mobile/resourceContract';
-export type Screen = { kind: 'home' | 'catalog' | 'account' | 'notifications' | 'markets' | 'tools' | 'records' | 'symbol' | 'news' | 'calendar' | 'screening' | 'unavailable'; resource?: string; symbol?: string; path?: string };
+export type Screen = { kind: 'home' | 'catalog' | 'account' | 'notifications' | 'channels' | 'markets' | 'tools' | 'records' | 'symbol' | 'news' | 'calendar' | 'screening' | 'unavailable'; resource?: string; symbol?: string; path?: string };
 export function screenForLink(input: string, product: PhoneProduct): { screen: Screen } | { external: string } {
   let path = input;
   if (!input.startsWith('/')) {
@@ -13,6 +13,7 @@ export function screenForLink(input: string, product: PhoneProduct): { screen: S
   path = path.split(/[?#]/)[0].replace(/\/+$/, '') || '/';
   if (['/', '/today', '/dashboard', '/business-hub'].includes(path)) return { screen: { kind: 'home' } };
   if (['/settings', '/profile', '/security', '/profile/accounts'].includes(path)) return { screen: { kind: 'account' } };
+  if (path === '/notifications/channels') return { screen: { kind: 'channels' } };
   if (['/notifications', '/notif'].includes(path)) return { screen: { kind: 'notifications' } };
   const resource = MOBILE_RESOURCES.find(item => item.products.includes(product) && item.paths.includes(path));
   if (resource) return { screen: { kind: 'records', resource: resource.id } };
