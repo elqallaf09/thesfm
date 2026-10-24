@@ -25,7 +25,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
+      # The action defaults to the retired SDK `tools` package. Request only
+      # the still-published platform tools needed by Gradle.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install Android SDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Compile Play and Huawei variants
