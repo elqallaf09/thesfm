@@ -68,6 +68,7 @@ final class AuthSessionStore: ObservableObject {
                 body: ["email": normalizedEmail, "password": password]
             )
             guard generation == sessionGeneration else { return }
+            try await assertSessionSecurity(session.accessToken)
             save(session)
         } catch {
             errorMessage = error.localizedDescription
@@ -123,6 +124,7 @@ final class AuthSessionStore: ObservableObject {
             let session = try await task.value
             guard generation == sessionGeneration else { return }
             refreshTask = nil
+            try await assertSessionSecurity(session.accessToken)
             save(session)
         } catch {
             guard generation == sessionGeneration else { return }
@@ -137,7 +139,21 @@ final class AuthSessionStore: ObservableObject {
         guard let stored = storage.load(), isAuthenticated else { return nil }
         if stored.expiresAt <= Date().addingTimeInterval(60) { await refresh(stored) }
         guard generation == sessionGeneration, let active = storage.load(), isAuthenticated, active.expiresAt > Date() else { return nil }
+        do { try await assertSessionSecurity(active.accessToken) }
+        catch { errorMessage = error.localizedDescription; return nil }
         return active.accessToken
+    }
+
+    private func assertSessionSecurity(_ token: String) async throws {
+        let endpoint = SupabaseConfig.apiBaseURL.appendingPathComponent("api/mobile/session")
+        var request = URLRequest(url: endpoint, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AuthenticationError.unavailable }
+        if http.statusCode == 403 { throw AuthenticationError.mfaRequired }
+        guard 200..<300 ~= http.statusCode else { throw http.statusCode == 401 ? AuthenticationError.invalidCredentials : AuthenticationError.unavailable }
     }
 
     private func requestSession(grantType: String, body: [String: String]) async throws -> StoredSession {
@@ -213,6 +229,7 @@ private enum AuthenticationError: LocalizedError {
     case missingConfiguration
     case unavailable
     case invalidCredentials
+    case mfaRequired
 
     var errorDescription: String? {
         switch self {
@@ -222,6 +239,8 @@ private enum AuthenticationError: LocalizedError {
             return "تعذر الاتصال بخدمة تسجيل الدخول. حاول مرة أخرى."
         case .invalidCredentials:
             return "البريد الإلكتروني أو كلمة المرور غير صحيحين."
+        default:
+            return "Additional account verification is required before private data can be displayed."
         }
     }
 }

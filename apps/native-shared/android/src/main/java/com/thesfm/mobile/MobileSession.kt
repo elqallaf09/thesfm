@@ -50,8 +50,11 @@ class MobileSession(context: Context, private val product: String, private val a
     }
     @Synchronized fun clear() { generation++; session = null; preferences.edit().remove("encrypted-session").commit() }
     fun signIn(email: String, password: String) {
+        clear()
         val epoch = generation
-        save(token("password", JSONObject().put("email", email.trim()).put("password", password)), epoch)
+        val candidate = token("password", JSONObject().put("email", email.trim()).put("password", password))
+        assertSessionSecurity(candidate, epoch)
+        save(candidate, epoch)
     }
     private fun token(grant: String, body: JSONObject): NativeSession {
         if (authBase.isBlank() || publicKey.isBlank()) throw MobileApiError(503, "AUTH_NOT_CONFIGURED")
@@ -62,7 +65,7 @@ class MobileSession(context: Context, private val product: String, private val a
         val current = session ?: throw MobileApiError(401, "UNAUTHORIZED")
         if (!force && current.expiresAtMillis > System.currentTimeMillis() + 60000) return@synchronized current
         val epoch = generation
-        try { token("refresh_token", JSONObject().put("refresh_token", current.refreshToken)).also { save(it, epoch) } }
+        try { token("refresh_token", JSONObject().put("refresh_token", current.refreshToken)).also { assertSessionSecurity(it, epoch); save(it, epoch) } }
         catch (error: MobileApiError) { if (error.status in listOf(400, 401, 403)) clear(); throw error }
     }
     fun request(path: String, method: String = "GET", body: JSONObject? = null): JSONObject {
@@ -70,17 +73,25 @@ class MobileSession(context: Context, private val product: String, private val a
         val epoch = generation
         var current = active()
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
+        assertSessionSecurity(current, epoch)
         val result = try { send("${apiBase.trimEnd('/')}$path", method, body, current.accessToken) }
         catch (error: MobileApiError) {
             if (error.status != 401) throw error
             current = active(true)
             if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
+            assertSessionSecurity(current, epoch)
             send("${apiBase.trimEnd('/')}$path", method, body, current.accessToken)
         }
         if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
         return result
     }
     fun publicRequest(path: String): JSONObject = send("${apiBase.trimEnd('/')}$path", "GET", null, null)
+    /** The server is the authority for MFA; do not persist or use a first-factor-only session. */
+    private fun assertSessionSecurity(candidate: NativeSession, epoch: Long) {
+        val result = send("${apiBase.trimEnd('/')}/api/mobile/session", "GET", null, candidate.accessToken)
+        if (epoch != generation) throw MobileApiError(409, "STALE_SESSION")
+        if (!result.optBoolean("ok", false)) throw MobileApiError(503, "AUTH_UNAVAILABLE")
+    }
     private fun send(url: String, method: String, body: JSONObject?, accessToken: String?, auth: Boolean = false): JSONObject {
         require(URL(url).protocol == "https") { "HTTPS_REQUIRED" }
         val connection = URL(url).openConnection() as HttpURLConnection
