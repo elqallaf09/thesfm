@@ -36,6 +36,8 @@ describe('native navigation', () => {
     expect(screenForLink('https://www.the-sfm.com/income', 'finance')).toEqual({ screen: { kind: 'records', resource: 'income' } });
     expect(screenForLink('the-sfm-investor://market-watchlist', 'investor')).toEqual({ screen: { kind: 'records', resource: 'watchlist' } });
     expect(screenForLink('https://www.the-sfm.com/notifications/channels', 'finance')).toEqual({ screen: { kind: 'channels' } });
+    expect(screenForLink('https://www.the-sfm.com/reports-center', 'finance')).toEqual({ screen: { kind: 'reports' } });
+    expect(screenForLink('the-sfm-business://business-operations', 'business')).toEqual({ screen: { kind: 'reports' } });
     expect(screenForLink('https://www.the-sfm.com/invoices', 'finance')).toEqual({ screen: { kind: 'unavailable', path: '/invoices' } });
     expect(screenForLink('https://www.the-sfm.com.evil.example/income', 'finance')).toHaveProperty('external');
     expect(screenForLink('javascript:alert(1)', 'finance')).toHaveProperty('screen.kind', 'unavailable');

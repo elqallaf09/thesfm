@@ -32,6 +32,8 @@ export function HomeScreen({ client, product, navigate, wide }: { client: Mobile
     {summary && typeof summary.monthlyIncome === 'number' && typeof summary.monthlyExpenses === 'number' ? <Panel><Label>{t(['التدفق الشهري', 'Monthly cash flow', 'Flux mensuel'])}</Label>{['monthlyIncome', 'monthlyExpenses'].map(key => <View key={key} style={{ gap: 6 }}><Label muted>{localized(metrics[key as 'monthlyIncome' | 'monthlyExpenses'], language)}</Label><View style={{ height: 12, backgroundColor: colors.raised, borderRadius: 6, overflow: 'hidden' }}><View style={{ height: 12, width: `${Math.max(0, Math.min(100, Number(summary[key]) / Math.max(Number(summary.monthlyIncome), Number(summary.monthlyExpenses), 1) * 100))}%`, backgroundColor: key === 'monthlyIncome' ? colors.accent : colors.danger }} /></View></View>)}</Panel> : null}
     {product === 'investor' ? <InvestorPortfolio client={client} navigate={navigate} /> : null}
     {product !== 'investor' ? <Button label={t(['تحديث الملخص', 'Refresh summary', 'Actualiser le résumé'])} onPress={() => { void load(); }} disabled={busy} /> : <Button label={t(['استكشاف الأسواق', 'Explore markets', 'Explorer les marchés'])} onPress={() => navigate({ kind: 'markets' })} />}
+    {product === 'finance' ? <Button label={t(['مراجعة التقارير', 'Review reports', 'Consulter les rapports'])} onPress={() => navigate({ kind: 'reports' })} /> : null}
+    {product === 'business' ? <Button label={t(['مراجعة العمليات', 'Review operations', 'Consulter les opérations'])} onPress={() => navigate({ kind: 'reports' })} /> : null}
     <CatalogScreen product={product} navigate={navigate} embedded />
   </ScrollView>;
 }
@@ -75,6 +77,8 @@ export function CatalogScreen({ product, navigate, embedded = false }: { product
   const { language, t } = useUI();
   const content = <View style={{ gap: 12 }}>
     {MOBILE_RESOURCES.filter(resource => resource.products.includes(product)).map(resource => <Button key={resource.id} label={localized(resource.label, language)} onPress={() => navigate({ kind: 'records', resource: resource.id })} />)}
+    {product === 'finance' ? <Button label={t(['مركز التقارير', 'Reports Center', 'Centre des rapports'])} onPress={() => navigate({ kind: 'reports' })} /> : null}
+    {product === 'business' ? <Button label={t(['عمليات الأعمال', 'Business operations', "Opérations d'entreprise"])} onPress={() => navigate({ kind: 'reports' })} /> : null}
     {product === 'investor' ? <Button label={t(['الأسواق العالمية', 'Global markets', 'Marchés mondiaux'])} onPress={() => navigate({ kind: 'markets' })} /> : null}
     {product === 'investor' ? <><Button label={t(['الأخبار المالية', 'Financial news', 'Actualités financières'])} onPress={() => navigate({ kind: 'news' })} /><Button label={t(['التقويم الاقتصادي', 'Economic calendar', 'Calendrier économique'])} onPress={() => navigate({ kind: 'calendar' })} /><Button label={t(['الفحص الشرعي', 'Shariah screening', 'Filtrage charia'])} onPress={() => navigate({ kind: 'screening' })} /></> : null}
     <Button label={t(['الحاسبات المالية', 'Financial calculators', 'Calculateurs financiers'])} onPress={() => navigate({ kind: 'tools' })} />
