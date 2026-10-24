@@ -3,6 +3,8 @@ package com.thesfm.mobile
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Intent
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -25,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
+import java.io.ByteArrayOutputStream
+import java.util.Calendar
 import java.util.concurrent.Executors
 
 abstract class MobileActivity : ComponentActivity() {
@@ -52,9 +56,25 @@ abstract class MobileActivity : ComponentActivity() {
     private var marketCategory = "all"
     private var account = mutableStateOf<JSONObject?>(null)
     private val summary = mutableStateOf<JSONObject?>(null)
+    private val reportMode = mutableStateOf(false)
+    private val report = mutableStateOf<JSONObject?>(null)
+    private val reportPeriod = mutableStateOf(nativeReportPeriod())
+    private var pendingReportPdf: ByteArray? = null
     private val credentialLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         locked.value = it.resultCode != Activity.RESULT_OK
         if (!locked.value) loadCatalog()
+    }
+    private val reportExportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val pdf = pendingReportPdf
+        pendingReportPdf = null
+        if (uri == null || pdf == null) return@registerForActivityResult
+        executor.execute {
+            val result = runCatching { contentResolver.openOutputStream(uri)?.use { it.write(pdf) } ?: error("OUTPUT_UNAVAILABLE") }
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                result.onFailure { error.value = true; errorCode.value = "EXPORT_UNAVAILABLE" }
+            }
+        }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,6 +127,16 @@ abstract class MobileActivity : ComponentActivity() {
             cursor.value = json.optString("nextCursor").takeUnless { it.isBlank() || it == "null" }
         }
     }
+    private fun loadReport() = work({ nativeMonthlyReport(auth, productId, reportPeriod.value) }) { report.value = it }
+    private fun changeReportPeriod(offset: Int) {
+        shiftNativeReportPeriod(reportPeriod.value, offset)?.let { reportPeriod.value = it; report.value = null; loadReport() }
+    }
+    private fun exportReport(language: String) {
+        val current = report.value ?: return
+        val bytes = runCatching { nativeReportPdf(current, productId, reportPeriod.value, language) }.getOrElse { error.value = true; errorCode.value = "EXPORT_UNAVAILABLE"; return }
+        pendingReportPdf = bytes
+        reportExportLauncher.launch("the-sfm-$productId-${reportPeriod.value}-report.pdf")
+    }
     private fun loadMarkets(nextPage: Int = 1) = work({ auth.publicRequest("/api/markets?quality=all&limit=50&page=$nextPage&category=$marketCategory&q=${URLEncoder.encode(marketQuery, "UTF-8")}") }) { json ->
         marketPage = nextPage; val next = json.getJSONArray("markets").objects()
         records.value = if (nextPage == 1) next else records.value + next
@@ -114,7 +144,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -131,13 +161,13 @@ abstract class MobileActivity : ComponentActivity() {
         var editing by remember { mutableStateOf<JSONObject?>(null) }; var deleting by remember { mutableStateOf<JSONObject?>(null) }
         CompositionLocalProvider(LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr) {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value) {
+                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value) {
                     val pending = pendingMfa.value
                     if (pending != null) {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
-                    } else { selected.value = null; marketMode.value = false; records.value = emptyList(); cursor.value = null }
+                    } else { selected.value = null; marketMode.value = false; reportMode.value = false; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
                     LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max = 1100.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -208,6 +238,48 @@ abstract class MobileActivity : ComponentActivity() {
                             item { Button(onClick = { loadMarkets() }, enabled = !busy.value) { Text(tr("بحث وتحديث", "Search and refresh", "Rechercher et actualiser")) } }
                             items(records.value) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text(row.optString("displayName", row.optString("name"))); Text(row.optString("displaySymbol", row.optString("symbol"))); Text(row.optString("currency", "—")) } } }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadMarkets(marketPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
+                        } else if (reportMode.value) {
+                            val currentReport = report.value
+                            fun reportLabel(key: String) = when (key) {
+                                "income" -> tr("??????", "Income", "Revenus")
+                                "expenses" -> tr("?????????", "Expenses", "Dépenses")
+                                "savings" -> tr("????????", "Savings", "Épargne")
+                                "debts" -> tr("??????", "Debts", "Dettes")
+                                "goals" -> tr("???????", "Goals", "Objectifs")
+                                "projects" -> tr("????????", "Projects", "Projets")
+                                "customers" -> tr("???????", "Customers", "Clients")
+                                "suppliers" -> tr("????????", "Suppliers", "Fournisseurs")
+                                "employees" -> tr("???????? ????????", "Active employees", "Employés actifs")
+                                else -> tr("???????? ????????", "Open invoices", "Factures ouvertes")
+                            }
+                            fun amount(value: Double) = if (value % 1.0 == 0.0) value.toLong().toString() else String.format(java.util.Locale.US, "%.3f", value).trimEnd('0').trimEnd('.')
+                            item { Text(tr(if (productId == "finance") "???? ????????" else "???? ??????? ???????", if (productId == "finance") "Reports Center" else "Business operations", if (productId == "finance") "Centre des rapports" else "Opérations d’affaires"), style = MaterialTheme.typography.headlineMedium) }
+                            item { Text(tr("?????? ??? ????? ??????? ?? ??????? ???????? ??? ?? ????? ????? ????? ????????.", "This report uses only protected account records and never combines currencies.", "Ce rapport utilise uniquement les enregistrements protégés du compte et ne combine jamais les devises.")) }
+                            item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(enabled = !busy.value, onClick = { changeReportPeriod(-1) }) { Text(tr("?????? ???????", "Previous month", "Mois précédent")) }
+                                Text(reportPeriod.value, modifier = Modifier.padding(12.dp))
+                                Button(enabled = !busy.value, onClick = { changeReportPeriod(1) }) { Text(tr("?????? ???????", "Next month", "Mois suivant")) }
+                            } }
+                            item { Button(enabled = !busy.value, onClick = { loadReport() }) { Text(tr("????? ?? ??????", "Refresh from my account", "Actualiser depuis mon compte")) } }
+                            if (currentReport != null) {
+                                val counts = currentReport.getJSONArray("counts").objects()
+                                item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    Text(tr("?????? ????????", "Account data used", "Données du compte utilisées"), style = MaterialTheme.typography.titleMedium)
+                                    counts.forEach { row -> Text("${reportLabel(row.getString("key"))}: ${row.getInt("count")}") }
+                                    if (currentReport.optInt("undated") > 0) Text(tr("????? ??? ?????? ???????: ${currentReport.optInt("undated")}", "Records without a reporting date: ${currentReport.optInt("undated")}", "Enregistrements sans date de rapport : ${currentReport.optInt("undated")}"))
+                                } } }
+                                if (currentReport.optBoolean("partial")) item { Text(tr("??? ????? ??????? ????????: ?? ?????? ??? 800 ??? ?? ?? ???. ????? ??????? ???????? ??? ???????? ???????.", "This report may be partial: only the first 800 records in each section were loaded. Review detailed records before using it as a complete statement.", "Ce rapport peut être partiel : seuls les 800 premiers enregistrements de chaque section ont été chargés. Consultez le détail avant de l’utiliser comme relevé complet."), color = MaterialTheme.colorScheme.error) }
+                                val currencies = currentReport.getJSONArray("currencies").objects()
+                                if (currencies.isEmpty()) item { Text(tr("?? ???? ?????? ?????? ???? ???? ????????.", "No dated monetary records are available for this month.", "Aucun enregistrement monétaire daté n’est disponible pour ce mois.")) }
+                                items(currencies, key = { it.getString("currency") }) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    val currency = row.getString("currency"); Text(currency, style = MaterialTheme.typography.titleMedium)
+                                    val lines = if (productId == "finance") listOf(
+                                        tr("????? ???????", "Received income", "Revenus reçus") to row.optDouble("receivedIncome"), tr("????? ????????", "Expected income", "Revenus prévus") to row.optDouble("expectedIncome"), tr("?????????", "Expenses", "Dépenses") to row.optDouble("expenses"), tr("?????? ????? ???????", "Cash after expenses", "Trésorerie après dépenses") to row.optDouble("receivedIncome") - row.optDouble("expenses"), tr("????????", "Savings added", "Épargne ajoutée") to row.optDouble("savings"), tr("??? ??????", "Debt remaining", "Dette restante") to row.optDouble("debtOutstanding")) else listOf(
+                                        tr("???????? ????????", "Completed sales", "Ventes finalisées") to row.optDouble("completedSales"), tr("????????? ???????", "Pending sales", "Ventes en attente") to row.optDouble("pendingSales"), tr("????????? ?????????", "Operating expenses", "Charges d’exploitation") to row.optDouble("operatingExpenses"), tr("???? ???????", "Operating net", "Solde d’exploitation") to row.optDouble("completedSales") - row.optDouble("operatingExpenses"), tr("???????? ??????????", "Paid invoices", "Factures payées") to row.optDouble("paidInvoices"), tr("???????? ????????", "Outstanding invoices", "Factures impayées") to row.optDouble("outstandingInvoices"), tr("???????? ????????", "Overdue invoices", "Factures en retard") to row.optDouble("overdueInvoices"))
+                                    lines.forEach { (label, value) -> Text("$label: ${amount(value)} $currency") }
+                                } } }
+                                item { Button(enabled = !busy.value, onClick = { exportReport(language) }) { Text(tr("????? PDF ????? ????????", "Prepare PDF to save or share", "Préparer le PDF à enregistrer ou partager")) } }
+                            }
                         } else if (selected.value == null) {
                             summary.value?.let { data ->
                                 val metrics = listOf(
@@ -222,6 +294,7 @@ abstract class MobileActivity : ComponentActivity() {
                                 ).filter { data.has(it.first) }
                                 items(metrics) { (key, label) -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text(label); Text(if (data.isNull(key)) "—" else data.optString(key) + if (key.endsWith("Count")) "" else " ${data.optString("currency", "")}") } } }
                             }
+                            if (productId == "finance" || productId == "business") item { Button(onClick = { reportMode.value = true; report.value = null; loadReport() }, enabled = !busy.value) { Text(tr(if (productId == "finance") "مركز التقارير" else "عمليات الأعمال", if (productId == "finance") "Reports Center" else "Business operations", if (productId == "finance") "Centre des rapports" else "Opérations d’affaires")) } }
                             item { Button(onClick = { loadCatalog() }, enabled = !busy.value) { Text(tr("تحديث الأقسام", "Refresh sections", "Actualiser les rubriques")) } }
                             items(resources.value, key = { it.getString("id") }) { resource -> Button(onClick = { selected.value = resource; records.value = emptyList(); loadRecords() }, modifier = Modifier.fillMaxWidth()) { Text(label(resource)) } }
                             if (productId == "investor") item { Button(onClick = { marketMode.value = true; records.value = emptyList(); loadMarkets() }) { Text(tr("الأسواق", "Markets", "Marchés")) } }
@@ -257,6 +330,74 @@ abstract class MobileActivity : ComponentActivity() {
 }
 private fun JSONArray.objects() = (0 until length()).map { getJSONObject(it) }
 private fun JSONArray.strings() = (0 until length()).map { getString(it) }
+
+private fun nativeReportPeriod(): String {
+    val calendar = Calendar.getInstance()
+    return "%04d-%02d".format(java.util.Locale.US, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
+}
+
+private fun shiftNativeReportPeriod(period: String, offset: Int): String? {
+    val match = Regex("^(\\d{4})-(0[1-9]|1[0-2])$").matchEntire(period) ?: return null
+    val calendar = Calendar.getInstance().apply { clear(); set(match.groupValues[1].toInt(), match.groupValues[2].toInt() - 1, 1); add(Calendar.MONTH, offset) }
+    return "%04d-%02d".format(java.util.Locale.US, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1)
+}
+
+private fun nativeMonthlyReport(auth: MobileSession, product: String, period: String): JSONObject {
+    val resourceIds = if (product == "finance") listOf("income", "expenses", "savings", "debts", "goals") else listOf("projects", "customers", "suppliers", "sales", "invoices", "employees", "operating-expenses")
+    val data = mutableMapOf<String, List<JSONObject>>(); var partial = false
+    resourceIds.forEach { resource ->
+        val rows = mutableListOf<JSONObject>(); var cursor: String? = null; var pages = 0
+        do {
+            val page = auth.request("/api/mobile/$product/records/$resource?limit=100" + (cursor?.let { "&cursor=${URLEncoder.encode(it, "UTF-8")}" } ?: ""))
+            rows += page.getJSONArray("records").objects(); cursor = page.optString("nextCursor").takeUnless { it.isBlank() || it == "null" }; pages += 1
+        } while (cursor != null && pages < 8)
+        partial = partial || cursor != null; data[resource] = rows
+    }
+    val totals = mutableMapOf<String, MutableMap<String, Double>>(); var undated = 0
+    fun value(row: JSONObject, key: String) = row.opt(key).let { input -> (input as? Number)?.toDouble()?.takeIf { it.isFinite() && it >= 0 } }
+    fun text(row: JSONObject, key: String) = row.opt(key) as? String
+    fun currency(row: JSONObject): String? { val input = text(row, "currency")?.trim()?.uppercase() ?: return null; return input.takeIf { Regex("^[A-Z]{3}$").matches(it) } }
+    fun periodRow(row: JSONObject, key: String) = text(row, key)?.startsWith("$period-") == true
+    fun total(code: String) = totals.getOrPut(code) { mutableMapOf("receivedIncome" to 0.0, "expectedIncome" to 0.0, "expenses" to 0.0, "savings" to 0.0, "debtOutstanding" to 0.0, "completedSales" to 0.0, "pendingSales" to 0.0, "paidInvoices" to 0.0, "outstandingInvoices" to 0.0, "overdueInvoices" to 0.0, "operatingExpenses" to 0.0) }
+    fun add(row: JSONObject, key: String) { val code = currency(row) ?: return; val amount = value(row, "amount") ?: return; val bucket = total(code); bucket[key] = (bucket[key] ?: 0.0) + amount }
+    if (product == "finance") {
+        data["income"].orEmpty().forEach { row -> if (!periodRow(row, "received_date")) { if (text(row, "received_date") == null) undated += 1 } else add(row, if (text(row, "status") == "expected") "expectedIncome" else "receivedIncome") }
+        data["expenses"].orEmpty().forEach { row -> if (!periodRow(row, "date")) { if (text(row, "date") == null) undated += 1 } else add(row, "expenses") }
+        data["savings"].orEmpty().forEach { row -> if (!periodRow(row, "saved_at")) { if (text(row, "saved_at") == null) undated += 1 } else add(row, "savings") }
+        data["debts"].orEmpty().forEach { row -> val code = currency(row) ?: return@forEach; val amount = value(row, "remaining_amount") ?: return@forEach; val bucket = total(code); bucket["debtOutstanding"] = (bucket["debtOutstanding"] ?: 0.0) + amount }
+    } else {
+        data["sales"].orEmpty().forEach { row -> if (!periodRow(row, "sale_date")) { if (text(row, "sale_date") == null) undated += 1 } else if (text(row, "status") == "completed") add(row, "completedSales") else if (text(row, "status") == "pending") add(row, "pendingSales") }
+        data["invoices"].orEmpty().forEach { row -> if (!periodRow(row, "invoice_date")) { if (text(row, "invoice_date") == null) undated += 1 } else when (text(row, "status")) { "paid" -> add(row, "paidInvoices"); "sent", "overdue" -> { add(row, "outstandingInvoices"); if (text(row, "status") == "overdue") add(row, "overdueInvoices") } } }
+        data["operating-expenses"].orEmpty().forEach { row -> if (!periodRow(row, "expense_date")) { if (text(row, "expense_date") == null) undated += 1 } else add(row, "operatingExpenses") }
+    }
+    val counts = JSONArray(); fun count(key: String, number: Int) { counts.put(JSONObject().put("key", key).put("count", number)) }
+    if (product == "finance") { count("income", data["income"].orEmpty().size); count("expenses", data["expenses"].orEmpty().size); count("savings", data["savings"].orEmpty().size); count("debts", data["debts"].orEmpty().size); count("goals", data["goals"].orEmpty().size) }
+    else { count("projects", data["projects"].orEmpty().size); count("customers", data["customers"].orEmpty().size); count("suppliers", data["suppliers"].orEmpty().size); count("employees", data["employees"].orEmpty().count { text(it, "status") == "active" }); count("invoices", data["invoices"].orEmpty().count { text(it, "status") == "sent" || text(it, "status") == "overdue" }) }
+    val currencies = JSONArray(); totals.toSortedMap().forEach { (code, values) -> currencies.put(JSONObject().put("currency", code).apply { values.forEach { (key, amount) -> put(key, amount) } }) }
+    return JSONObject().put("period", period).put("counts", counts).put("currencies", currencies).put("undated", undated).put("partial", partial)
+}
+
+private fun nativeReportPdf(report: JSONObject, product: String, period: String, language: String): ByteArray {
+    fun tr(ar: String, en: String, fr: String) = if (language == "ar") ar else if (language == "fr") fr else en
+    fun label(key: String) = when (key) { "income" -> tr("الدخل", "Income", "Revenus"); "expenses" -> tr("المصروفات", "Expenses", "Dépenses"); "savings" -> tr("المدخرات", "Savings", "Épargne"); "debts" -> tr("الديون", "Debts", "Dettes"); "goals" -> tr("الأهداف", "Goals", "Objectifs"); "projects" -> tr("المشاريع", "Projects", "Projets"); "customers" -> tr("العملاء", "Customers", "Clients"); "suppliers" -> tr("الموردون", "Suppliers", "Fournisseurs"); "employees" -> tr("الموظفون النشطون", "Active employees", "Employés actifs"); else -> tr("الفواتير المفتوحة", "Open invoices", "Factures ouvertes") }
+    val document = PdfDocument(); val info = PdfDocument.PageInfo.Builder(612, 792, 1).create(); var page = document.startPage(info); var canvas = page.canvas; var y = 44f
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK; textSize = 11f }
+    fun line(text: String, heading: Boolean = false) {
+        if (y > 740f) { document.finishPage(page); page = document.startPage(info); canvas = page.canvas; y = 44f }
+        paint.textSize = if (heading) 16f else 11f; canvas.drawText(text.take(105), 38f, y, paint); y += if (heading) 27f else 18f
+    }
+    line("THE SFM ${product.replaceFirstChar { it.uppercase() }} — $period", true)
+    line(tr("ملخص من سجلات الحساب المحمّلة فقط. العملات منفصلة.", "Summary derived only from loaded account records. Currencies remain separate.", "Synthèse tirée uniquement des enregistrements chargés. Les devises restent séparées."))
+    if (report.optBoolean("partial")) line(tr("تنبيه: قد يكون التقرير جزئياً؛ حُمّل أول 800 سجل فقط لكل قسم.", "Notice: this report may be partial; only the first 800 records in each section were loaded.", "Attention : le rapport peut être partiel ; seuls les 800 premiers enregistrements par section ont été chargés."))
+    report.getJSONArray("counts").objects().forEach { row -> line("${label(row.getString("key"))}: ${row.getInt("count")}") }
+    if (report.optInt("undated") > 0) line("${tr("سجلات بلا تاريخ تقرير", "Records without a reporting date", "Enregistrements sans date de rapport")}: ${report.optInt("undated")}")
+    report.getJSONArray("currencies").objects().forEach { row ->
+        val currency = row.getString("currency"); line(currency, true)
+        val values = if (product == "finance") listOf("receivedIncome" to tr("الدخل المستلم", "Received income", "Revenus reçus"), "expectedIncome" to tr("الدخل المتوقع", "Expected income", "Revenus prévus"), "expenses" to tr("المصروفات", "Expenses", "Dépenses"), "savings" to tr("المدخرات المضافة", "Savings added", "Épargne ajoutée"), "debtOutstanding" to tr("الدين المتبقي", "Debt remaining", "Dette restante")) else listOf("completedSales" to tr("المبيعات المكتملة", "Completed sales", "Ventes finalisées"), "pendingSales" to tr("المبيعات المعلقة", "Pending sales", "Ventes en attente"), "operatingExpenses" to tr("مصروفات التشغيل", "Operating expenses", "Charges d’exploitation"), "paidInvoices" to tr("الفواتير المدفوعة", "Paid invoices", "Factures payées"), "outstandingInvoices" to tr("الفواتير المستحقة", "Outstanding invoices", "Factures impayées"), "overdueInvoices" to tr("الفواتير المتأخرة", "Overdue invoices", "Factures en retard"))
+        values.forEach { (key, name) -> line("$name: ${row.optDouble(key)} $currency") }
+    }
+    document.finishPage(page); return ByteArrayOutputStream().use { output -> document.writeTo(output); document.close(); output.toByteArray() }
+}
 
 @Composable private fun RecordEditor(resource: JSONObject, row: JSONObject, language: String, onClose: () -> Unit, onSave: (JSONObject) -> Unit) {
     val fields = resource.getJSONArray("fields").objects()

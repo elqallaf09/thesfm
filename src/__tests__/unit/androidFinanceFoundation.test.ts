@@ -73,6 +73,17 @@ describe('THE SFM Finance Android foundation', () => {
     expect(activity).toContain('auth.cancelMfa(pending)');
   });
 
+  it('derives Finance and Business report PDFs from protected records and uses user-selected storage', () => {
+    const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
+
+    expect(activity).toContain('nativeMonthlyReport(auth, productId, reportPeriod.value)');
+    expect(activity).toContain('records/$resource?limit=100');
+    expect(activity).toContain('pages < 8');
+    expect(activity).toContain('PdfDocument()');
+    expect(activity).toContain('ActivityResultContracts.CreateDocument("application/pdf")');
+    expect(activity).toContain('pendingReportPdf = null');
+  });
+
   it('keeps the existing SFM TV host available for a no-GMS Huawei build', () => {
     const tvGradle = read('apps/markets-tv/android/app/build.gradle');
 
