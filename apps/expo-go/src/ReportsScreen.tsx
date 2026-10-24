@@ -5,7 +5,10 @@ import { useAccountSync } from './accountSync';
 import type { Screen } from './navigation';
 import { MobileRequestError, type MobileSessionClient } from './session';
 import { Button, Busy, ErrorNotice, Label, Panel, formatValue, useUI } from './ui';
+import { buildReportExport } from './reportExport';
 import { businessReport, financeReport, shiftReportPeriod, type BusinessReport, type FinanceReport } from './workspaceReports';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const financeResources = ['income', 'expenses', 'savings', 'debts', 'goals'] as const;
 const businessResources = ['projects', 'customers', 'suppliers', 'sales', 'invoices', 'employees', 'operating-expenses'] as const;
@@ -24,8 +27,8 @@ async function readRecords(client: MobileSessionClient, product: PhoneProduct, r
 }
 
 export function ReportsScreen({ client, product, navigate }: { client: MobileSessionClient; product: Extract<PhoneProduct, 'finance' | 'business'>; navigate: (screen: Screen) => void }) {
-  const { t } = useUI(); const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
-  const [records, setRecords] = useState<Loaded>({}); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [truncated, setTruncated] = useState(false); const sequence = useRef(0);
+  const { language, t } = useUI(); const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const [records, setRecords] = useState<Loaded>({}); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [truncated, setTruncated] = useState(false); const [exportBusy, setExportBusy] = useState(false); const [exportError, setExportError] = useState(false); const [exportNotice, setExportNotice] = useState(false); const sequence = useRef(0);
   const resourceIds = product === 'finance' ? financeResources : businessResources;
   const load = useCallback(async (silent = false) => {
     const requestId = ++sequence.current;
@@ -44,9 +47,22 @@ export function ReportsScreen({ client, product, navigate }: { client: MobileSes
     ? financeReport(period, { income: records.income ?? [], expenses: records.expenses ?? [], savings: records.savings ?? [], debts: records.debts ?? [], goals: records.goals ?? [] })
     : businessReport(period, { projects: records.projects ?? [], customers: records.customers ?? [], suppliers: records.suppliers ?? [], sales: records.sales ?? [], invoices: records.invoices ?? [], employees: records.employees ?? [], operatingExpenses: records['operating-expenses'] ?? [] }), [period, product, records]);
   const movePeriod = (offset: number) => { const next = shiftReportPeriod(period, offset); if (next) setPeriod(next); };
+  const exportPdf = useCallback(async () => {
+    if (busy || exportBusy) return;
+    setExportBusy(true); setExportError(false); setExportNotice(false);
+    try {
+      const file = buildReportExport({ product, period, report, language, truncated });
+      const pdf = await Print.printToFileAsync({ html: file.html });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(pdf.uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: file.filename });
+      setExportNotice(true);
+    } catch { setExportError(true); }
+    finally { setExportBusy(false); }
+  }, [busy, exportBusy, language, period, product, report, truncated]);
   return <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 24 }}><Label large>{t(product === 'finance' ? ['???? ????????', 'Reports Center', 'Centre des rapports'] : ['???? ??????? ???????', 'Business operations', "Op�rations d'entreprise"])}</Label><Label muted>{t(['???? ?????? ?????? ??? ?? ????? ?????? ???????? ?????? ????????.', 'This native monthly view uses only records in your account; currencies stay separate.', 'Cette vue mensuelle native utilise uniquement les enregistrements de votre compte ; les devises restent distinctes.'])}</Label>
     <Panel><Label>{t(['??????', 'Reporting month', 'Mois du rapport'])}: {period}</Label><View style={{ flexDirection: 'row', gap: 8 }}><View style={{ flex: 1 }}><Button label={t(['?????? ???????', 'Previous month', 'Mois pr�c�dent'])} onPress={() => movePeriod(-1)} disabled={busy} /></View><View style={{ flex: 1 }}><Button label={t(['?????? ???????', 'Next month', 'Mois suivant'])} onPress={() => movePeriod(1)} disabled={busy} /></View></View><Button label={t(['????? ????????', 'Refresh from my account', 'Actualiser depuis mon compte'])} onPress={() => { void load(); }} disabled={busy} /></Panel>
     {error ? <ErrorNotice code={error} retry={() => { void load(); }} /> : null}{busy && !Object.keys(records).length ? <Busy /> : null}
+    <Panel><Button label={t(['تصدير تقرير الحساب PDF', 'Export account report as PDF', 'Exporter le rapport du compte en PDF'])} onPress={() => { void exportPdf(); }} disabled={busy || exportBusy} /></Panel>
+    {exportBusy ? <Busy /> : null}{exportNotice ? <Panel><Label>{t(['تم إعداد PDF التقرير من سجلات الحساب المحمّلة حالياً.', 'Your report PDF was prepared from the currently loaded account records.', 'Le PDF du rapport a été préparé à partir des enregistrements de compte actuellement chargés.'])}</Label></Panel> : null}{exportError ? <ErrorNotice code="REPORT_EXPORT_UNAVAILABLE" retry={() => { void exportPdf(); }} /> : null}
     {truncated ? <Panel><Label>{t(['??? ????? ??????? ???? ???????. ????? ??? ???????? ?????? ?????? ??? ?? ????? ????????.', 'Only the first 800 records per section are included. Narrow the month or review the detailed section for more.', 'Seuls les 800 premiers enregistrements par section sont inclus. Affinez le mois ou consultez la section d�taill�e.'])}</Label></Panel> : null}
     {product === 'finance' ? <FinanceReportView report={report as FinanceReport} navigate={navigate} /> : <BusinessReportView report={report as BusinessReport} navigate={navigate} />}
   </ScrollView>;

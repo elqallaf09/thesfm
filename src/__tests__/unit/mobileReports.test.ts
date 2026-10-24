@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MobileRecord } from '@/lib/mobile/resourceContract';
 import { businessReport, financeReport, shiftReportPeriod } from '../../../apps/expo-go/src/workspaceReports';
+import { buildReportExport } from '../../../apps/expo-go/src/reportExport';
 
 const row = (values: Record<string, string | number | boolean | null>): MobileRecord => ({ id: crypto.randomUUID(), created_at: '2026-10-01T00:00:00.000Z', ...values });
 
@@ -27,5 +28,20 @@ describe('native account reports', () => {
   });
   it('moves months across years and rejects malformed periods', () => {
     expect(shiftReportPeriod('2026-01', -1)).toBe('2025-12'); expect(shiftReportPeriod('2026-12', 1)).toBe('2027-01'); expect(shiftReportPeriod('2026-13', 1)).toBeNull();
+  });
+  it('exports only the calculated account report, keeps currencies separate, and marks incomplete loads', () => {
+    const report = financeReport('2026-10', {
+      income: [row({ amount: 100, currency: 'KWD', status: 'received', received_date: '2026-10-03' })],
+      expenses: [row({ amount: 30, currency: 'KWD', date: '2026-10-05' })], savings: [], debts: [], goals: [],
+    });
+    const output = buildReportExport({ product: 'finance', period: '2026-10', report, language: 'en', truncated: true });
+    expect(output.filename).toBe('the-sfm-finance-2026-10-report.pdf');
+    expect(output.html).toContain('Received income'); expect(output.html).toContain('100 KWD'); expect(output.html).toContain('This report may be partial');
+    expect(output.html).not.toContain('999');
+  });
+  it('escapes report content before rendering a print document', () => {
+    const report = businessReport('2026-10', { projects: [row({ name: '<script>alert(1)</script>' })], customers: [], suppliers: [], employees: [], sales: [], invoices: [], operatingExpenses: [] });
+    const output = buildReportExport({ product: 'business', period: '2026-10', report, language: 'fr', truncated: false });
+    expect(output.html).not.toContain('<script>alert(1)</script>'); expect(output.html).toContain('Rapport mensuel THE SFM');
   });
 });
