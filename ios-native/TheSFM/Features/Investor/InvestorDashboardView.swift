@@ -177,8 +177,10 @@ private struct InvestorMarketAnalysisView: View {
                     GeometryReader { proxy in
                         HStack(alignment: .bottom, spacing: 2) {
                             ForEach(chartPoints) { point in
-                                Capsule().fill(.cyan).frame(width: max(2, (proxy.size.width - CGFloat(max(0, chartPoints.count - 1) * 2)) / CGFloat(chartPoints.count)), height: barHeight(point))
-                                    .accessibilityLabel("\(point.observedAt): \(point.price.formatted(.number))")
+                                let barWidth: CGFloat = max(2, (proxy.size.width - CGFloat(max(0, chartPoints.count - 1) * 2)) / CGFloat(chartPoints.count))
+                                let accessibilityText = "\(point.observedAt): \(point.price)"
+                                Capsule().fill(Color.cyan).frame(width: barWidth, height: barHeight(point))
+                                    .accessibilityLabel(accessibilityText)
                             }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
