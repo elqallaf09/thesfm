@@ -1,7 +1,7 @@
 import SwiftUI
 
 private struct MobileDecisionAnalysis: Codable { let score: Double?; let status: String?; let netAfterDecision: Double?; let savingsAfterDecision: Double?; let missingData: [String]?; let riskFlags: [String]? }
-private struct MobileDecision: Codable, Identifiable { let id: String; let decision_title: String?; let estimated_cost: Double?; let currency: String?; let status: String?; let created_at: String?; let analysis: MobileDecisionAnalysis? }
+private struct MobileDecision: Codable, Identifiable { let id: String; let decision_title: String?; let decision_type: String?; let estimated_cost: Double?; let monthly_impact: Double?; let currency: String?; let status: String?; let target_date: String?; let created_at: String?; let analysis: MobileDecisionAnalysis? }
 private struct MobileDecisionPage: Decodable { var decisions: [MobileDecision]; let canWrite: Bool; let canDelete: Bool }
 private struct MobileDecisionInput: Encodable { let title: String; let decisionType: String; let estimatedCost: Double; let monthlyImpact: Double; let expectedBenefit: String; let riskLevel: String; let targetDate: String?; let notes: String; let currency: String; let locale: String }
 private struct MobileDecisionSaved: Decodable { let decision: MobileDecision; let analysis: MobileDecisionAnalysis }
@@ -19,6 +19,7 @@ struct MobileDecisionsView: View {
     private var index: Int { language == "ar" ? 0 : language == "fr" ? 2 : 1 }
     private func tr(_ ar: String, _ en: String, _ fr: String) -> String { [ar, en, fr][index] }
     private var disabled: Bool { loading || auth.isDeviceLocked }
+    private var timelineDecisions: [MobileDecision] { (page?.decisions ?? []).filter { $0.target_date != nil }.sorted { ($0.target_date ?? "") < ($1.target_date ?? "") } }
     private var types: [(String, String)] { [("purchase", tr("شراء", "Purchase", "Achat")), ("investment", tr("استثمار", "Investment", "Investissement")), ("project", tr("مشروع", "Project", "Projet")), ("debt_saving", tr("قرض / دين", "Loan / debt", "Prêt / dette")), ("charity_zakat", tr("زكاة / صدقة", "Zakat / charity", "Zakat / charité")), ("budget", tr("ميزانية", "Budget", "Budget"))] }
     private var riskScore: String { guard let score = analysis?.score else { return "-" }; return "\(Int(max(0, min(100, 100 - score)).rounded()))%" }
     private var statusLabel: String { switch analysis?.status { case "initially_suitable": return tr("مناسب مبدئيًا", "Initially suitable", "Adaptée initialement"); case "high_risk": return tr("مخاطر مرتفعة", "High risk", "Risque élevé"); case "needs_review": return tr("تحتاج مراجعة", "Needs review", "À examiner"); default: return tr("بيانات غير كافية", "Insufficient data", "Données insuffisantes") } }
@@ -44,6 +45,15 @@ struct MobileDecisionsView: View {
                 if let missing = analysis.missingData, !missing.isEmpty { Text(tr("بيانات ناقصة: ", "Missing data: ", "Données manquantes : ") + missing.joined(separator: ", ")).font(.footnote).foregroundStyle(.secondary) }
                 if let flags = analysis.riskFlags, !flags.isEmpty { Text(tr("تنبيهات: ", "Warnings: ", "Alertes : ") + flags.joined(separator: ", ")).font(.footnote).foregroundStyle(.secondary) }
             } else { Text(tr("أدخل قرارًا لتحليل أثره من بيانات حسابك.", "Enter a decision to analyze its impact using your account data.", "Saisissez une décision pour analyser son impact avec les données de votre compte.")).foregroundStyle(.secondary) } }
+            Section(tr("الخط الزمني للقرارات", "Decision timeline", "Chronologie des décisions")) {
+                if timelineDecisions.isEmpty {
+                    Text(tr("لا توجد قرارات بتاريخ مستهدف بعد.", "No decisions have a target date yet.", "Aucune décision n'a encore de date cible.")).foregroundStyle(.secondary)
+                } else {
+                    ForEach(timelineDecisions) { decision in
+                        timelineRow(decision)
+                    }
+                }
+            }
             Section(tr("القرارات السابقة", "Previous decisions", "Décisions précédentes")) {
                 if let decisions = page?.decisions, !decisions.isEmpty {
                     ForEach(decisions) { decision in
@@ -95,6 +105,21 @@ struct MobileDecisionsView: View {
         .listRowBackground(selectedID == decision.id ? Color.accentColor.opacity(0.12) : nil)
     }
     private func decisionDate(_ value: String?) -> String { value.map { " · " + String($0.prefix(10)) } ?? "" }
+    @ViewBuilder private func timelineRow(_ decision: MobileDecision) -> some View {
+        let title = decision.decision_title ?? "-"
+        let target = decision.target_date ?? "-"
+        let impact = decision.monthly_impact.map { money($0, currency: decision.currency ?? currency) }
+        Button { selectedID = decision.id; analysis = decision.analysis } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                Text(tr("موعد مستهدف: ", "Target: ", "Cible : ") + target).font(.caption).foregroundStyle(.secondary)
+                if let impact {
+                    Text(tr("أثر شهري: ", "Monthly impact: ", "Impact mensuel : ") + impact).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
     private func money(_ value: Double?, currency: String) -> String { guard let value else { return "-" }; return value.formatted(.currency(code: currency)) }
     @MainActor private func load() async { guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }; loading = true; failed = false; defer { loading = false }; do { async let decisions: MobileDecisionPage = APIClient.authorized(accessToken: token).get("/api/mobile/business/decisions"); async let account: MobileDecisionAccount = APIClient.authorized(accessToken: token).get("/api/mobile/account"); let (nextPage, nextAccount) = try await (decisions, account); page = nextPage; currency = nextAccount.profile?.preferred_currency ?? nextAccount.profile?.default_currency ?? "KWD"; if let first = nextPage.decisions.first { selectedID = first.id; analysis = first.analysis } } catch { failed = true } }
     @MainActor private func save() async { guard !auth.isDeviceLocked, let token = await auth.validAccessToken(), let estimatedCost = Double(cost), estimatedCost > 0, page?.canWrite == true else { return }; loading = true; failed = false; defer { loading = false }; do { let body = MobileDecisionInput(title: title.trimmingCharacters(in: .whitespacesAndNewlines), decisionType: type, estimatedCost: estimatedCost, monthlyImpact: max(0, Double(monthlyImpact) ?? 0), expectedBenefit: benefit, riskLevel: risk, targetDate: targetDate.isEmpty ? nil : targetDate, notes: notes, currency: currency, locale: language); let result: MobileDecisionSaved = try await APIClient.authorized(accessToken: token).send("/api/mobile/business/decisions", method: "POST", body: JSONEncoder().encode(body), as: MobileDecisionSaved.self); page?.decisions.removeAll { $0.id == result.decision.id }; page?.decisions.insert(result.decision, at: 0); selectedID = result.decision.id; analysis = result.analysis; title = ""; cost = ""; monthlyImpact = ""; benefit = ""; targetDate = ""; notes = "" } catch { failed = true } }

@@ -64,6 +64,14 @@ private val decisionKinds = listOf(DecisionKind("purchase", "شراء", "Purchas
                 analysis.optJSONArray("riskFlags")?.let { values -> if (values.length() > 0) Text("${tr("تنبيهات", "Warnings", "Alertes")}: ${values.join(", ")}", style = MaterialTheme.typography.bodySmall) }
             }
         } }
+        Text(tr("الخط الزمني للقرارات", "Decision timeline", "Chronologie des décisions"), style = MaterialTheme.typography.titleMedium)
+        val timeline = decisions.filter { it.optString("target_date").isNotBlank() }.sortedBy { it.optString("target_date") }
+        if (timeline.isEmpty()) Text(tr("لا توجد قرارات بتاريخ مستهدف بعد.", "No decisions have a target date yet.", "Aucune décision n'a encore de date cible."))
+        timeline.forEach { decision -> Card(Modifier.fillMaxWidth().clickable { select(decision.optJSONObject("analysis")) }) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(decision.optString("decision_title", "-"))
+            Text("${tr("موعد مستهدف", "Target", "Cible")}: ${decision.optString("target_date")}", style = MaterialTheme.typography.bodySmall)
+            if (!decision.isNull("monthly_impact")) Text("${tr("أثر شهري", "Monthly impact", "Impact mensuel")}: ${decision.optDouble("monthly_impact")} ${decision.optString("currency", currency)}", style = MaterialTheme.typography.bodySmall)
+        } } }
         Text(tr("القرارات السابقة", "Previous decisions", "Décisions précédentes"), style = MaterialTheme.typography.titleMedium)
         if (decisions.isEmpty()) Text(tr("لا توجد قرارات محفوظة بعد.", "No saved decisions yet.", "Aucune décision enregistrée."))
         decisions.forEach { decision -> Card(Modifier.fillMaxWidth().clickable { select(decision.optJSONObject("analysis")) }) { Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
