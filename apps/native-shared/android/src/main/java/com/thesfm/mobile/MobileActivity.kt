@@ -34,6 +34,7 @@ import java.net.URLEncoder
 import java.io.ByteArrayOutputStream
 import java.util.Calendar
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 abstract class MobileActivity : ComponentActivity() {
     private data class PendingBusinessDocument(val projectId: String, val title: String, val category: String, val notes: String)
@@ -58,9 +59,15 @@ abstract class MobileActivity : ComponentActivity() {
     private val marketHistory = mutableStateOf<JSONObject?>(null)
     private val marketTechnical = mutableStateOf<JSONObject?>(null)
     private val investorIntelligence = mutableStateOf<JSONObject?>(null)
+    private val marketAnalysisAssetType = mutableStateOf("STOCK")
+    private val investorChat = mutableStateOf<List<JSONObject>>(emptyList())
+    private val investorChatDraft = mutableStateOf("")
+    private val investorComparisonInput = mutableStateOf("")
+    private val investorComparison = mutableStateOf<List<JSONObject>>(emptyList())
     private val cursor = mutableStateOf<String?>(null)
     private val pendingLink = mutableStateOf<String?>(null)
     private var uiEpoch = 0L
+    private var activeWork: Future<*>? = null
     private var marketPage = 1
     private var investorFeedPage = 1
     private var marketQuery = ""
@@ -120,13 +127,21 @@ abstract class MobileActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); pendingLink.value = intent.dataString; if (signedIn.value && !locked.value) loadCatalog() }
     override fun onStop() { super.onStop(); if (::auth.isInitialized && auth.session != null) locked.value = true }
     override fun onDestroy() { executor.shutdown(); super.onDestroy() }
+    /** Invalidates a pending response before the next account or screen can use it. */
+    private fun cancelCurrentRequest() {
+        ++uiEpoch
+        activeWork?.cancel(true)
+        activeWork = null
+        busy.value = false
+    }
     private fun work(action: () -> JSONObject, done: (JSONObject) -> Unit) {
         if (busy.value) return
-        val epoch = uiEpoch; busy.value = true; error.value = false; errorCode.value = null
-        executor.execute {
+        val epoch = ++uiEpoch; busy.value = true; error.value = false; errorCode.value = null
+        activeWork = executor.submit {
             val result = runCatching(action)
             runOnUiThread {
                 if (epoch != uiEpoch || isDestroyed) return@runOnUiThread
+                activeWork = null
                 signedIn.value = auth.session != null
                 busy.value = false
                 result.onSuccess(done).onFailure { failure ->
@@ -275,14 +290,51 @@ abstract class MobileActivity : ComponentActivity() {
         marketHistory.value = result.optJSONObject("history")
         marketTechnical.value = result.optJSONObject("technical")
     }
+    private fun intelligenceAssetType(assetType: String) = when (assetType.uppercase()) {
+        "CRYPTO", "FOREX", "INDEX" -> assetType.uppercase()
+        "ETF", "FUND" -> "FUND"
+        "METAL", "COMMODITY" -> "COMMODITY"
+        else -> "STOCK"
+    }
     /** Account-scoped full analysis. MobileSession rechecks MFA and account changes before this request. */
-    private fun loadInvestorIntelligence(symbol: String, assetType: String = "STOCK", forceRefresh: Boolean = false) = work({
-        val normalizedType = when (assetType.uppercase()) { "CRYPTO", "FOREX", "INDEX" -> assetType.uppercase(); "ETF", "FUND" -> "FUND"; "METAL", "COMMODITY" -> "COMMODITY"; else -> "STOCK" }
+    private fun loadInvestorIntelligence(symbol: String, assetType: String, language: String, forceRefresh: Boolean = false) = work({
+        val normalizedType = intelligenceAssetType(assetType)
         val body = JSONObject().put("asset", JSONObject().put("symbol", symbol.uppercase()).put("assetType", normalizedType))
-            .put("horizon", "SWING").put("locale", "en").put("requestedModules", JSONArray(listOf("TECHNICAL", "FUNDAMENTAL", "SENTIMENT", "NEWS", "RISK", "SHARIA")))
+            .put("horizon", "SWING").put("locale", language).put("requestedModules", JSONArray(listOf("TECHNICAL", "FUNDAMENTAL", "SENTIMENT", "NEWS", "RISK", "SHARIA")))
             .put("source", "SMART_MARKET_ANALYSIS").put("forceRefresh", forceRefresh)
         auth.request("/api/intelligence/analyze", "POST", body)
     }) { json -> investorIntelligence.value = json.optJSONObject("result") }
+    /** The assistant endpoint verifies the website identity, AI entitlement and rate limit on every send. */
+    private fun sendInvestorChat(symbol: String, assetType: String, language: String, message: String) {
+        val content = message.trim()
+        if (content.isBlank()) { error.value = true; errorCode.value = "INVALID_REQUEST"; return }
+        val next = (investorChat.value + JSONObject().put("role", "user").put("content", content)).takeLast(20)
+        investorChat.value = next
+        investorChatDraft.value = ""
+        work({
+            val messages = JSONArray().apply { next.forEach { row -> put(JSONObject().put("role", row.optString("role")).put("content", row.optString("content"))) } }
+            val body = JSONObject().put("domain", "market").put("messages", messages)
+                .put("asset", JSONObject().put("symbol", symbol.uppercase()).put("assetType", intelligenceAssetType(assetType)))
+                .put("locale", language).put("sourceRoute", "/ai-analyst/assistant")
+            investorIntelligence.value?.optString("analysisId")?.takeIf { it.isNotBlank() }?.let { body.put("analysisId", it) }
+            auth.request("/api/intelligence/chat", "POST", body).also { response ->
+                if (!response.optBoolean("ok") || response.optString("text").isBlank()) throw MobileApiError(503, "CHAT_UNAVAILABLE")
+            }
+        }) { response ->
+            investorChat.value = (investorChat.value + JSONObject().put("role", "assistant").put("content", response.optString("text"))).takeLast(20)
+        }
+    }
+    /** Comparison stays native; no market HTML/WebView is embedded. */
+    private fun compareInvestorAssets(input: String, assetType: String) {
+        val symbols = input.split(',', ' ', '\n', '\t').map { it.trim().uppercase() }
+            .filter { it.matches(Regex("^[A-Z0-9.^=:_/-]{1,32}$")) }.distinct().take(4)
+        if (symbols.size < 2) { error.value = true; errorCode.value = "INVALID_COMPARISON"; return }
+        work({
+            auth.request("/api/market/compare?symbols=${URLEncoder.encode(symbols.joinToString(","), "UTF-8")}&assetType=${URLEncoder.encode(intelligenceAssetType(assetType).lowercase(), "UTF-8")}")
+        }) { response ->
+            investorComparison.value = response.optJSONArray("results")?.objects() ?: emptyList()
+        }
+    }
     private fun loadInvestorFeed(kind: String, language: String, nextPage: Int = 1) = work({
         val path = when (kind) {
             "news" -> "/api/market-news?language=${URLEncoder.encode(language, "UTF-8")}&page=$nextPage&pageSize=30&q=${URLEncoder.encode(marketQuery, "UTF-8")}"
@@ -303,8 +355,8 @@ abstract class MobileActivity : ComponentActivity() {
         runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }.onFailure { error.value = true; errorCode.value = "LINK_UNAVAILABLE" }
     }
     private fun signOut() {
-        ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; pendingBusinessDocument = null; businessDocumentProjects.value = emptyList(); investorFeed.value = "markets"; marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null
+        cancelCurrentRequest(); auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; pendingBusinessDocument = null; businessDocumentProjects.value = emptyList(); investorFeed.value = "markets"; marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null; marketAnalysisAssetType.value = "STOCK"; investorChat.value = emptyList(); investorChatDraft.value = ""; investorComparisonInput.value = ""; investorComparison.value = emptyList()
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false; decisionMode.value = false; decisions.value = emptyList(); decisionAnalysis.value = null; decisionCanWrite.value = false; decisionCanDelete.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -345,7 +397,9 @@ abstract class MobileActivity : ComponentActivity() {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
-                    } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null }
+                    } else if (marketAnalysisSymbol.value != null) {
+                        cancelCurrentRequest(); marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null; investorChat.value = emptyList(); investorChatDraft.value = ""; investorComparisonInput.value = ""; investorComparison.value = emptyList()
+                    }
                     else { selected.value = null; marketMode.value = false; reportMode.value = false; calculatorMode.value = false; teamMode.value = false; decisionMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
@@ -358,7 +412,10 @@ abstract class MobileActivity : ComponentActivity() {
                         if (errorCode.value == "INVALID_CODE") item { Text(tr("رمز التحقق غير صحيح. حاول مجدداً.", "The verification code is incorrect. Try again.", "Le code de vérification est incorrect. Réessayez."), color = MaterialTheme.colorScheme.error) }
                         if (errorCode.value == "CHALLENGE_EXPIRED") item { Text(tr("انتهت مهلة التحقق. ألغِ العملية وسجّل الدخول مجدداً.", "Verification expired. Cancel and sign in again.", "La vérification a expiré. Annulez puis reconnectez-vous."), color = MaterialTheme.colorScheme.error) }
                         if (errorCode.value == "CHALLENGE_REQUIRED") item { Text(tr("أرسل رمز البريد الإلكتروني أولاً.", "Send an email code first.", "Envoyez d’abord un code par e-mail."), color = MaterialTheme.colorScheme.error) }
-                        if (busy.value) item { CircularProgressIndicator() }
+                        if (busy.value) item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator()
+                            TextButton(onClick = { cancelCurrentRequest() }) { Text(tr("إلغاء الطلب", "Cancel request", "Annuler la requête")) }
+                        } }
                         if (pendingMfa.value != null) {
                             val pending = pendingMfa.value!!
                             item { Text(tr("تحقق إضافي", "Additional verification", "Vérification supplémentaire"), style = MaterialTheme.typography.headlineMedium) }
@@ -424,15 +481,39 @@ abstract class MobileActivity : ComponentActivity() {
                             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(tr("تحليل المستثمر", "Investor analyst", "Analyste investisseur"), style = MaterialTheme.typography.titleMedium)
                                 Text(tr("الاستحقاقات وحدود الذكاء والبيانات الموثقة تتحقق في الخادم.", "Entitlements, AI allowance and verified data are checked on the server.", "Les droits, le quota IA et les données vérifiées sont contrôlés côté serveur."), style = MaterialTheme.typography.bodySmall)
-                                Button(enabled = !busy.value, onClick = { loadInvestorIntelligence(symbol) }) { Text(tr("تحليل كامل", "Run full analysis", "Lancer l'analyse complète")) }
+                                if (!signedIn.value) Text(tr("سجل الدخول بحساب الموقع لاستخدام التحليل والدردشة المحميين.", "Sign in with your website account to use protected analysis and chat.", "Connectez-vous avec votre compte du site pour utiliser l'analyse et la discussion protégées."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Button(enabled = !busy.value && signedIn.value && !locked.value, onClick = { loadInvestorIntelligence(symbol, marketAnalysisAssetType.value, language) }) { Text(tr("تحليل كامل", "Run full analysis", "Lancer l'analyse complète")) }
                                 intelligence?.let { result ->
                                     Text("${tr("التوصية", "Recommendation", "Recommandation")}: ${result.optString("recommendation", "-")}")
                                     Text("${tr("المخاطر", "Risk", "Risque")}: ${result.optString("risk", "-")}")
                                     if (result.has("confidence")) Text("${tr("الثقة", "Confidence", "Confiance")}: ${result.optDouble("confidence")}")
                                     result.optJSONObject("marketPrice")?.takeIf { it.optBoolean("available") }?.let { price -> Text("${tr("السعر الموثق", "Verified price", "Cours vérifié")}: ${price.opt("value")} ${price.optString("currency")}") }
                                     result.optJSONObject("dataCompleteness")?.let { completeness -> Text("${tr("اكتمال البيانات", "Data completeness", "Complétude des données")}: ${completeness.optDouble("percentage")}%") }
-                                    Button(enabled = !busy.value, onClick = { loadInvestorIntelligence(symbol, forceRefresh = true) }) { Text(tr("تحديث آمن", "Refresh safely", "Actualiser prudemment")) }
+                                    Button(enabled = !busy.value && signedIn.value && !locked.value, onClick = { loadInvestorIntelligence(symbol, marketAnalysisAssetType.value, language, forceRefresh = true) }) { Text(tr("تحديث آمن", "Refresh safely", "Actualiser prudemment")) }
                                 }
+                            } } }
+                            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(tr("مقارنة الأصول", "Compare assets", "Comparer des actifs"), style = MaterialTheme.typography.titleMedium)
+                                Text(tr("أدخل رمزين إلى أربعة رموز مفصولة بفواصل. تتحقق الجلسة أولاً.", "Enter two to four comma-separated symbols. The session is verified first.", "Saisissez deux à quatre symboles séparés par des virgules. La session est vérifiée d'abord."), style = MaterialTheme.typography.bodySmall)
+                                OutlinedTextField(investorComparisonInput.value, { investorComparisonInput.value = it }, label = { Text(tr("الرموز", "Symbols", "Symboles")) }, modifier = Modifier.fillMaxWidth())
+                                Button(enabled = !busy.value && signedIn.value && !locked.value, onClick = { compareInvestorAssets(investorComparisonInput.value, marketAnalysisAssetType.value) }) { Text(tr("مقارنة", "Compare", "Comparer")) }
+                                investorComparison.value.forEach { row ->
+                                    val comparisonSymbol = row.optString("symbol", "-")
+                                    val name = row.optString("name").takeIf { it.isNotBlank() }
+                                    val quote = row.optJSONObject("quote")
+                                    Text(listOf(comparisonSymbol, name, quote?.opt("price")?.toString(), quote?.optString("currency")).filterNotNull().filter { it.isNotBlank() }.joinToString(" · "))
+                                    row.opt("changePercent")?.let { Text("${tr("التغير", "Change", "Variation")}: $it%", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                }
+                            } } }
+                            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(tr("دردشة التحليل", "Analysis chat", "Discussion d'analyse"), style = MaterialTheme.typography.titleMedium)
+                                Text(tr("ترسل الرسالة والرمز المحدد فقط؛ يتحقق الخادم من الهوية والاستحقاق والبيانات.", "Only the message and selected symbol are sent; the server verifies identity, entitlement and data.", "Seuls le message et le symbole sont envoyés ; le serveur vérifie l'identité, les droits et les données."), style = MaterialTheme.typography.bodySmall)
+                                investorChat.value.forEach { row ->
+                                    Text(if (row.optString("role") == "user") tr("أنت", "You", "Vous") else tr("المحلل", "Analyst", "Analyste"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(row.optString("content"))
+                                }
+                                OutlinedTextField(investorChatDraft.value, { investorChatDraft.value = it }, label = { Text(tr("سؤالك", "Your question", "Votre question")) }, modifier = Modifier.fillMaxWidth())
+                                Button(enabled = !busy.value && signedIn.value && !locked.value && investorChatDraft.value.isNotBlank(), onClick = { sendInvestorChat(symbol, marketAnalysisAssetType.value, language, investorChatDraft.value) }) { Text(tr("إرسال", "Send", "Envoyer")) }
                             } } }
                             item { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 TextButton(onClick = { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }) { Text(tr("رجوع", "Back", "Retour")) }
@@ -477,7 +558,13 @@ abstract class MobileActivity : ComponentActivity() {
                             item { Button(onClick = { loadMarkets() }, enabled = !busy.value) { Text(tr("بحث وتحديث", "Search and refresh", "Rechercher et actualiser")) } }
                             items(records.value) { row -> Card(Modifier.fillMaxWidth().clickable {
                                 val symbol = row.optString("displaySymbol", row.optString("symbol")).trim()
-                                if (symbol.isNotBlank()) { marketAnalysisSymbol.value = symbol; marketHistory.value = null; marketTechnical.value = null; loadMarketAnalysis(symbol) }
+                                if (symbol.isNotBlank()) {
+                                    marketAnalysisSymbol.value = symbol
+                                    marketAnalysisAssetType.value = intelligenceAssetType(row.optString("assetType", row.optString("asset_type")))
+                                    marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null
+                                    investorChat.value = emptyList(); investorChatDraft.value = ""; investorComparisonInput.value = symbol; investorComparison.value = emptyList()
+                                    loadMarketAnalysis(symbol)
+                                }
                             }) { Column(Modifier.padding(16.dp)) { Text(row.optString("displayName", row.optString("name"))); Text(row.optString("displaySymbol", row.optString("symbol"))); Text(row.optString("currency", "-")); Text(tr("عرض التحليل", "View analysis", "Voir l'analyse"), color = MaterialTheme.colorScheme.primary) } } }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadMarkets(marketPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
                         } else if (marketMode.value) {

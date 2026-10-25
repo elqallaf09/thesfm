@@ -44,13 +44,15 @@ struct MobileDecisionsView: View {
                 if let missing = analysis.missingData, !missing.isEmpty { Text(tr("بيانات ناقصة: ", "Missing data: ", "Données manquantes : ") + missing.joined(separator: ", ")).font(.footnote).foregroundStyle(.secondary) }
                 if let flags = analysis.riskFlags, !flags.isEmpty { Text(tr("تنبيهات: ", "Warnings: ", "Alertes : ") + flags.joined(separator: ", ")).font(.footnote).foregroundStyle(.secondary) }
             } else { Text(tr("أدخل قرارًا لتحليل أثره من بيانات حسابك.", "Enter a decision to analyze its impact using your account data.", "Saisissez une décision pour analyser son impact avec les données de votre compte.")).foregroundStyle(.secondary) } }
-            Section(tr("القرارات السابقة", "Previous decisions", "Décisions précédentes")) { if let decisions = page?.decisions, !decisions.isEmpty { ForEach(decisions) { decision in VStack(alignment: .leading, spacing: 5) {
-                let itemTitle = decision.decision_title ?? "-"
-                let itemAmount = money(decision.estimated_cost, currency: decision.currency ?? currency)
-                Button { selectedID = decision.id; analysis = decision.analysis } label: { VStack(alignment: .leading, spacing: 3) { Text(itemTitle); Text(itemAmount).font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
-                Text((decision.status ?? "-") + decisionDate(decision.created_at)).font(.caption).foregroundStyle(.secondary)
-                if page?.canDelete == true { Button(tr("حذف", "Delete", "Supprimer"), role: .destructive) { deleteCandidate = decision }.disabled(disabled) }
-            }.listRowBackground(selectedID == decision.id ? Color.accentColor.opacity(0.12) : nil) } } else { Text(tr("لا توجد قرارات محفوظة بعد.", "No saved decisions yet.", "Aucune décision enregistrée.")).foregroundStyle(.secondary) } }
+            Section(tr("القرارات السابقة", "Previous decisions", "Décisions précédentes")) {
+                if let decisions = page?.decisions, !decisions.isEmpty {
+                    ForEach(decisions) { decision in
+                        decisionRow(decision, canDelete: page?.canDelete == true)
+                    }
+                } else {
+                    Text(tr("لا توجد قرارات محفوظة بعد.", "No saved decisions yet.", "Aucune décision enregistrée.")).foregroundStyle(.secondary)
+                }
+            }
             if loading { Section { ProgressView() } }
         }.navigationTitle(tr("القرارات", "Decisions", "Décisions")).task(id: auth.accessToken) { page = nil; analysis = nil; selectedID = ""; await load() }.refreshable { await load() }
         .confirmationDialog(tr("حذف القرار؟", "Delete decision?", "Supprimer la décision ?"), item: $deleteCandidate) { decision in Button(tr("حذف نهائي", "Delete permanently", "Supprimer définitivement"), role: .destructive) { Task { await remove(decision) } } } message: { Text(tr("سيحذف من حسابك ولا يمكن التراجع عن ذلك.", "It will be removed from your account and cannot be undone.", "Elle sera supprimée de votre compte et ne pourra pas être restaurée.")) }
@@ -58,6 +60,26 @@ struct MobileDecisionsView: View {
     }
 
     @ViewBuilder private func metric(_ label: String, _ value: Double?) -> some View { Text(label + ": " + (value.map { money($0, currency: currency) } ?? "-")) }
+    @ViewBuilder private func decisionRow(_ decision: MobileDecision, canDelete: Bool) -> some View {
+        let itemTitle = decision.decision_title ?? "-"
+        let itemAmount = money(decision.estimated_cost, currency: decision.currency ?? currency)
+        let status = (decision.status ?? "-") + decisionDate(decision.created_at)
+        VStack(alignment: .leading, spacing: 5) {
+            Button { selectedID = decision.id; analysis = decision.analysis } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(itemTitle)
+                    Text(itemAmount).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+            Text(status).font(.caption).foregroundStyle(.secondary)
+            if canDelete {
+                Button(tr("حذف", "Delete", "Supprimer"), role: .destructive) { deleteCandidate = decision }
+                    .disabled(disabled)
+            }
+        }
+        .listRowBackground(selectedID == decision.id ? Color.accentColor.opacity(0.12) : nil)
+    }
     private func decisionDate(_ value: String?) -> String { value.map { " · " + String($0.prefix(10)) } ?? "" }
     private func money(_ value: Double?, currency: String) -> String { guard let value else { return "-" }; return value.formatted(.currency(code: currency)) }
     @MainActor private func load() async { guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }; loading = true; failed = false; defer { loading = false }; do { async let decisions: MobileDecisionPage = APIClient.authorized(accessToken: token).get("/api/mobile/business/decisions"); async let account: MobileDecisionAccount = APIClient.authorized(accessToken: token).get("/api/mobile/account"); let (nextPage, nextAccount) = try await (decisions, account); page = nextPage; currency = nextAccount.profile?.preferred_currency ?? nextAccount.profile?.default_currency ?? "KWD"; if let first = nextPage.decisions.first { selectedID = first.id; analysis = first.analysis } } catch { failed = true } }
