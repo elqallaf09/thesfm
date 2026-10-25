@@ -376,7 +376,7 @@ abstract class MobileActivity : ComponentActivity() {
                             } }
                             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(tr("سجل الأسعار", "Recorded price history", "Historique des prix enregistrés"), style = MaterialTheme.typography.titleMedium)
-                                if (chartPoints.size >= 2 && low != null && high != null) {
+                                if (history != null && chartPoints.size >= 2 && low != null && high != null) {
                                     LazyRow(Modifier.fillMaxWidth().height(145.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
                                         items(chartPoints, key = { it.optString("observationKey", it.optString("observedAt")) }) { point ->
                                             val price = point.optDouble("price")
@@ -388,15 +388,15 @@ abstract class MobileActivity : ComponentActivity() {
                                     Text("${tr("المشاهدات", "Observations", "Observations")}: ${history.optInt("pointCount", points.size)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     listOf(history.optString("source"), history.optString("generatedAt")).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 } else Text(tr("لا يوجد سجل أسعار موثق لهذا الرمز.", "No verified recorded history is available for this symbol.", "Aucun historique enregistré vérifié n'est disponible pour ce symbole."), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            } }
+                            } } }
                             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(tr("التحليل الفني", "Technical analysis", "Analyse technique"), style = MaterialTheme.typography.titleMedium)
-                                if (technical?.optBoolean("technicalAvailable") == true) {
+                                if (technical != null && technical.optBoolean("technicalAvailable")) {
                                     listOf("trend", "rsi", "samples").forEach { key -> if (technical.has(key) && !technical.isNull(key)) Text("${key.replaceFirstChar { it.uppercase() }}: ${technical.opt(key)}") }
                                     technical.optJSONObject("indicators")?.let { indicators -> listOf("sma20", "sma50", "ema20", "ema50", "support", "resistance").forEach { key -> if (indicators.has(key) && !indicators.isNull(key)) Text("${key.uppercase()}: ${indicators.opt(key)}") } }
                                     listOf(technical.optString("source"), technical.optString("upstreamProvider"), technical.optString("technicalAsOf")).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                                 } else Text(tr("مؤشرات التحليل الفني غير متاحة حتى تتوفر مشاهدات موثقة كافية.", "Technical indicators are unavailable until enough verified observations exist.", "Les indicateurs techniques sont indisponibles tant que les observations vérifiées sont insuffisantes."), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            } }
+                            } } }
                         } else if (marketMode.value && investorFeed.value == "markets") {
                             item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(listOf("news", "calendar", "screening")) { kind ->
