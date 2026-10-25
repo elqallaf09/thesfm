@@ -54,7 +54,7 @@ export function InvestorAnalysisScreen({ client }: { client: MobileSessionClient
     const next = [...chat, { role: 'user' as const, content }].slice(-20); setChat(next); setMessage(''); setBusy(true); setError('');
     try {
       const reply = await client.request<{ ok?: boolean; text?: string }>('/api/intelligence/chat', { method: 'POST', body: JSON.stringify({ domain: 'market', messages: next, asset: { symbol: selectedSymbol, assetType }, locale: language, sourceRoute: '/ai-analyst/assistant', analysisId: analysis?.analysisId ?? null }) });
-      if (!reply.ok || !reply.text) throw new MobileRequestError('CHAT_UNAVAILABLE'); setChat(previous => [...previous, { role: 'assistant', content: reply.text! }].slice(-20));
+      if (!reply.ok || !reply.text) throw new MobileRequestError('CHAT_UNAVAILABLE'); setChat(previous => [...previous, { role: 'assistant' as const, content: reply.text! }].slice(-20));
     } catch (reason) { setError(reason instanceof MobileRequestError ? reason.code : 'CHAT_UNAVAILABLE'); }
     finally { setBusy(false); }
   }
@@ -82,5 +82,5 @@ function AnalysisResult({ analysis, symbol, onRefresh, busy, tr }: { analysis: A
 }
 function Comparison({ data }: { data: Record<string, unknown> }) {
   const { t } = useUI(); const rows = Object.entries(data).filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value)).slice(0, 12);
-  return <View style={{ gap: 5 }}><Label muted>{t(['استجابة المقارنة من مزود البيانات الحالي.', 'Comparison response from the current data provider.', 'Réponse de comparaison du fournisseur actuel.'])}</Label>{rows.length ? rows.map(([key, value]) => <Label key={key}>{key}: {formatValue(value)}</Label>) : <Label muted>{t(['لم يُرجع المزود حقولًا قابلة للعرض.', 'The provider returned no displayable fields.', "Le fournisseur n'a renvoyé aucun champ affichable.")}</Label>}</View>;
+  return <View style={{ gap: 5 }}><Label muted>{t(['استجابة المقارنة من مزود البيانات الحالي.', 'Comparison response from the current data provider.', 'Réponse de comparaison du fournisseur actuel.'])}</Label>{rows.length ? rows.map(([key, value]) => <Label key={key}>{key}: {formatValue(value)}</Label>) : <Label muted>{t(['لم يُرجع المزود حقولًا قابلة للعرض.', 'The provider returned no displayable fields.', "Le fournisseur n'a renvoyé aucun champ affichable."])}</Label>}</View>;
 }
