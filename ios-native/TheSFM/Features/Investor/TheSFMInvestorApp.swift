@@ -6,6 +6,7 @@ struct TheSFMInvestorApp: App {
     var body: some Scene {
         WindowGroup {
             TabView {
+                NavigationStack { InvestorAdvancedAnalysisView() }.tabItem { Label("تحليل", systemImage: "sparkles") }
                 InvestorDashboardView().tabItem { Label("الأسواق", systemImage: "chart.line.uptrend.xyaxis") }
                 MobileRecordsView(product: "investor").tabItem { Label("حسابي والمحفظة", systemImage: "wallet.pass") }
             }

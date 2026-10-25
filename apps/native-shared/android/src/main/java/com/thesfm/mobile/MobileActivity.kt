@@ -57,6 +57,7 @@ abstract class MobileActivity : ComponentActivity() {
     private val marketAnalysisSymbol = mutableStateOf<String?>(null)
     private val marketHistory = mutableStateOf<JSONObject?>(null)
     private val marketTechnical = mutableStateOf<JSONObject?>(null)
+    private val investorIntelligence = mutableStateOf<JSONObject?>(null)
     private val cursor = mutableStateOf<String?>(null)
     private val pendingLink = mutableStateOf<String?>(null)
     private var uiEpoch = 0L
@@ -274,6 +275,14 @@ abstract class MobileActivity : ComponentActivity() {
         marketHistory.value = result.optJSONObject("history")
         marketTechnical.value = result.optJSONObject("technical")
     }
+    /** Account-scoped full analysis. MobileSession rechecks MFA and account changes before this request. */
+    private fun loadInvestorIntelligence(symbol: String, assetType: String = "STOCK", forceRefresh: Boolean = false) = work({
+        val normalizedType = when (assetType.uppercase()) { "CRYPTO", "FOREX", "INDEX" -> assetType.uppercase(); "ETF", "FUND" -> "FUND"; "METAL", "COMMODITY" -> "COMMODITY"; else -> "STOCK" }
+        val body = JSONObject().put("asset", JSONObject().put("symbol", symbol.uppercase()).put("assetType", normalizedType))
+            .put("horizon", "SWING").put("locale", "en").put("requestedModules", JSONArray(listOf("TECHNICAL", "FUNDAMENTAL", "SENTIMENT", "NEWS", "RISK", "SHARIA")))
+            .put("source", "SMART_MARKET_ANALYSIS").put("forceRefresh", forceRefresh)
+        auth.request("/api/intelligence/analyze", "POST", body)
+    }) { json -> investorIntelligence.value = json.optJSONObject("result") }
     private fun loadInvestorFeed(kind: String, language: String, nextPage: Int = 1) = work({
         val path = when (kind) {
             "news" -> "/api/market-news?language=${URLEncoder.encode(language, "UTF-8")}&page=$nextPage&pageSize=30&q=${URLEncoder.encode(marketQuery, "UTF-8")}"
@@ -295,7 +304,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; pendingBusinessDocument = null; businessDocumentProjects.value = emptyList(); investorFeed.value = "markets"; marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; pendingBusinessDocument = null; businessDocumentProjects.value = emptyList(); investorFeed.value = "markets"; marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false; decisionMode.value = false; decisions.value = emptyList(); decisionAnalysis.value = null; decisionCanWrite.value = false; decisionCanDelete.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -336,7 +345,7 @@ abstract class MobileActivity : ComponentActivity() {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
-                    } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }
+                    } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null; investorIntelligence.value = null }
                     else { selected.value = null; marketMode.value = false; reportMode.value = false; calculatorMode.value = false; teamMode.value = false; decisionMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
@@ -406,11 +415,25 @@ abstract class MobileActivity : ComponentActivity() {
                             val symbol = marketAnalysisSymbol.value!!
                             val history = marketHistory.value
                             val technical = marketTechnical.value
+                            val intelligence = investorIntelligence.value
                             val points = history?.optJSONArray("points")?.objects()?.filter { it.optDouble("price", Double.NaN).isFinite() && it.optDouble("price") > 0 } ?: emptyList()
                             val chartPoints = points.takeLast(36)
                             val low = chartPoints.minOfOrNull { it.optDouble("price") }
                             val high = chartPoints.maxOfOrNull { it.optDouble("price") }
                             item { Text(symbol, style = MaterialTheme.typography.headlineMedium) }
+                            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(tr("تحليل المستثمر", "Investor analyst", "Analyste investisseur"), style = MaterialTheme.typography.titleMedium)
+                                Text(tr("الاستحقاقات وحدود الذكاء والبيانات الموثقة تتحقق في الخادم.", "Entitlements, AI allowance and verified data are checked on the server.", "Les droits, le quota IA et les données vérifiées sont contrôlés côté serveur."), style = MaterialTheme.typography.bodySmall)
+                                Button(enabled = !busy.value, onClick = { loadInvestorIntelligence(symbol) }) { Text(tr("تحليل كامل", "Run full analysis", "Lancer l'analyse complète")) }
+                                intelligence?.let { result ->
+                                    Text("${tr("التوصية", "Recommendation", "Recommandation")}: ${result.optString("recommendation", "-")}")
+                                    Text("${tr("المخاطر", "Risk", "Risque")}: ${result.optString("risk", "-")}")
+                                    if (result.has("confidence")) Text("${tr("الثقة", "Confidence", "Confiance")}: ${result.optDouble("confidence")}")
+                                    result.optJSONObject("marketPrice")?.takeIf { it.optBoolean("available") }?.let { price -> Text("${tr("السعر الموثق", "Verified price", "Cours vérifié")}: ${price.opt("value")} ${price.optString("currency")}") }
+                                    result.optJSONObject("dataCompleteness")?.let { completeness -> Text("${tr("اكتمال البيانات", "Data completeness", "Complétude des données")}: ${completeness.optDouble("percentage")}%") }
+                                    Button(enabled = !busy.value, onClick = { loadInvestorIntelligence(symbol, forceRefresh = true) }) { Text(tr("تحديث آمن", "Refresh safely", "Actualiser prudemment")) }
+                                }
+                            } } }
                             item { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                 TextButton(onClick = { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }) { Text(tr("رجوع", "Back", "Retour")) }
                                 Button(enabled = !busy.value, onClick = { loadMarketAnalysis(symbol) }) { Text(tr("تحديث", "Refresh", "Actualiser")) }
