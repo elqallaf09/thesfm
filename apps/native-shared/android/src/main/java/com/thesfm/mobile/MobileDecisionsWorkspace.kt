@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 
 private data class DecisionKind(val key: String, val ar: String, val en: String, val fr: String)
-private val decisionKinds = listOf(DecisionKind("purchase", "شراء", "Purchase", "Achat"), DecisionKind("investment", "استثمار", "Investment", "Investissement"), DecisionKind("project", "مشروع", "Project", "Projet"), DecisionKind("debt_saving", "قرض / دين", "Loan / debt", "Prêt / dette"), DecisionKind("charity_zakat", "زكاة / صدقة", "Zakat / charité"), DecisionKind("budget", "ميزانية", "Budget", "Budget"))
+private val decisionKinds = listOf(DecisionKind("purchase", "شراء", "Purchase", "Achat"), DecisionKind("investment", "استثمار", "Investment", "Investissement"), DecisionKind("project", "مشروع", "Project", "Projet"), DecisionKind("debt_saving", "قرض / دين", "Loan / debt", "Prêt / dette"), DecisionKind("charity_zakat", "زكاة / صدقة", "Zakat / charity", "Zakat / charité"), DecisionKind("budget", "ميزانية", "Budget", "Budget"))
 
 /** Compose client for the server-side, MFA/RLS-protected Business decision analysis. */
 @Composable fun DecisionWorkspace(decisions: List<JSONObject>, analysis: JSONObject?, canWrite: Boolean, canDelete: Boolean, busy: Boolean, language: String, currency: String, refresh: () -> Unit, select: (JSONObject?) -> Unit, save: (JSONObject) -> Unit, remove: (String) -> Unit) {

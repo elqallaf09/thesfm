@@ -78,5 +78,6 @@ describe('mobile business decisions', () => {
     expect(readFileSync('ios-native/TheSFM/Core/Networking/MobileDecisionsView.swift', 'utf8')).toContain('"/api/mobile/business/decisions"');
     expect(readFileSync('ios-native/TheSFM.xcodeproj/project.pbxproj', 'utf8')).toContain('MobileDecisionsView.swift in Sources');
     expect(readFileSync('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt', 'utf8')).toContain('"/api/mobile/business/decisions"');
+    expect(readFileSync('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileDecisionsWorkspace.kt', 'utf8')).toContain('"Zakat / charity", "Zakat / charité"');
   });
 });
