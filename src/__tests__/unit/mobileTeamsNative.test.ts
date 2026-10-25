@@ -8,6 +8,7 @@ describe('native business teams', () => {
   it('keeps the server boundary user-scoped, MFA-gated and constrained to known RPC actions', () => {
     const source = read('src/lib/server/mobileTeams.ts');
     expect(source).toContain('mobileAccess(request)');
+    expect(source).toContain('viewerId: access.userId');
     expect(source).toContain("'sfm_team_action'");
     expect(source).toContain("'sfm_team_task'");
     expect(source).toContain("'task_status'");
@@ -18,5 +19,17 @@ describe('native business teams', () => {
     expect(read('apps/expo-go/src/TeamsScreen.tsx')).toContain("'/api/mobile/business/teams'");
     expect(read('ios-native/TheSFM/Core/Networking/MobileTeamsView.swift')).toContain('"/api/mobile/business/teams"');
     expect(read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt')).toContain('"/api/mobile/business/teams"');
+  });
+
+  it('keeps owner and task controls scoped to the authenticated viewer in every native client', () => {
+    const expo = read('apps/expo-go/src/TeamsScreen.tsx');
+    const swift = read('ios-native/TheSFM/Core/Networking/MobileTeamsView.swift');
+    const android = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
+    expect(expo).toContain('detail.team.owner_id === detail.viewerId');
+    expect(expo).toContain('assigneeId');
+    expect(swift).toContain('let viewerId: String');
+    expect(swift).toContain('assigneeId: String?');
+    expect(android).toContain('val viewerId = current.optString("viewerId")');
+    expect(android).toContain('teamInvitationTeamId');
   });
 });

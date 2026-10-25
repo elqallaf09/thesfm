@@ -71,6 +71,8 @@ abstract class MobileActivity : ComponentActivity() {
     private val teamMode = mutableStateOf(false)
     private val teams = mutableStateOf<List<JSONObject>>(emptyList())
     private val teamDetail = mutableStateOf<JSONObject?>(null)
+    private val teamInvitation = mutableStateOf("")
+    private val teamInvitationTeamId = mutableStateOf<String?>(null)
     private val report = mutableStateOf<JSONObject?>(null)
     private val reportPeriod = mutableStateOf(nativeReportPeriod())
     private var pendingReportPdf: ByteArray? = null
@@ -156,11 +158,18 @@ abstract class MobileActivity : ComponentActivity() {
     private fun loadTeams(teamId: String? = null) = work({ auth.request("/api/mobile/business/teams" + (teamId?.let { "?teamId=${URLEncoder.encode(it, "UTF-8")}" } ?: "")) }) { json ->
         if (teamId == null) teams.value = json.getJSONArray("teams").objects() else teamDetail.value = json
     }
-    private fun teamAction(action: String, teamId: String? = teamDetail.value?.optJSONObject("team")?.optString("id"), nickname: String = "", value: String = "", taskId: String? = null) = work({
+    private fun teamAction(action: String, teamId: String? = teamDetail.value?.optJSONObject("team")?.optString("id"), nickname: String = "", value: String = "", taskId: String? = null, assigneeId: String? = null, due: String? = null) = work({
         val body = JSONObject().put("action", action).put("nickname", nickname).put("value", value)
         if (teamId != null) body.put("teamId", teamId); if (taskId != null) body.put("taskId", taskId)
+        if (assigneeId != null) body.put("assigneeId", assigneeId); if (due != null) body.put("due", due)
         auth.request("/api/mobile/business/teams", "POST", body)
-    }) { result -> val next = teamId ?: result.optJSONObject("result")?.optString("id"); loadTeams(); if (!next.isNullOrBlank()) loadTeams(next) }
+    }) { result ->
+        if (action == "invite") { teamInvitation.value = result.optJSONObject("result")?.optString("code").orEmpty(); teamInvitationTeamId.value = teamId }
+        if (action == "revoke_invites") { teamInvitation.value = ""; teamInvitationTeamId.value = null }
+        if (action == "leave") teamDetail.value = null
+        val next = if (action == "create" || action == "join") result.optJSONObject("result")?.optString("id") else if (action == "leave") null else teamId
+        loadTeams(); if (!next.isNullOrBlank()) loadTeams(next)
+    }
     private fun changeReportPeriod(offset: Int) {
         shiftNativeReportPeriod(reportPeriod.value, offset)?.let { reportPeriod.value = it; report.value = null; loadReport() }
     }
@@ -476,7 +485,7 @@ abstract class MobileActivity : ComponentActivity() {
                         } else if (calculatorMode.value) {
                             item { FinancialCalculatorWorkspace(language) }
                         } else if (teamMode.value) {
-                            item { TeamWorkspace(teams.value, teamDetail.value, busy.value, language, load = { loadTeams(it) }, action = { action, nickname, value, taskId -> teamAction(action, nickname = nickname, value = value, taskId = taskId) }) }
+                            item { TeamWorkspace(teams.value, teamDetail.value, teamInvitation.value.takeIf { teamInvitationTeamId.value == teamDetail.value?.optJSONObject("team")?.optString("id") }.orEmpty(), busy.value, language, load = { loadTeams(it) }, action = { action, nickname, value, taskId, assigneeId, due -> teamAction(action, nickname = nickname, value = value, taskId = taskId, assigneeId = assigneeId, due = due) }) }
                         } else if (reportMode.value) {
                             val currentReport = report.value
                             fun reportLabel(key: String) = when (key) {
@@ -688,31 +697,74 @@ private fun nativeReportPdf(report: JSONObject, product: String, period: String,
     document.finishPage(page); return ByteArrayOutputStream().use { output -> document.writeTo(output); document.close(); output.toByteArray() }
 }
 
-@Composable private fun TeamWorkspace(teams: List<JSONObject>, detail: JSONObject?, busy: Boolean, language: String, load: (String?) -> Unit, action: (String, String, String, String?) -> Unit) {
-    var nickname by remember { mutableStateOf("") }; var name by remember { mutableStateOf("") }; var code by remember { mutableStateOf("") }; var note by remember { mutableStateOf("") }; var task by remember { mutableStateOf("") }
+@Composable private fun TeamWorkspace(teams: List<JSONObject>, detail: JSONObject?, invitation: String, busy: Boolean, language: String, load: (String?) -> Unit, action: (String, String, String, String?, String?, String?) -> Unit) {
+    var nickname by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var task by remember { mutableStateOf("") }
+    var taskAssignee by remember { mutableStateOf("") }
+    var taskDue by remember { mutableStateOf("") }
     fun tr(ar: String, en: String, fr: String) = if (language == "ar") ar else if (language == "fr") fr else en
+    fun statusLabel(status: String) = when (status) {
+        "todo" -> tr("قيد الانتظار", "To do", "À faire")
+        "doing" -> tr("قيد التنفيذ", "In progress", "En cours")
+        else -> tr("مكتملة", "Done", "Terminée")
+    }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(tr("فرق العمل", "Teams", "Équipes"), style = MaterialTheme.typography.headlineMedium); Text(tr("تشارك الملاحظات والمهام المنشورة فقط؛ سجلاتك المالية تبقى خاصة.", "Only published notes and tasks are shared; financial records stay private.", "Seules les notes et tâches publiées sont partagées ; les dossiers financiers restent privés."))
-        OutlinedTextField(nickname, { nickname = it }, label = { Text(tr("اسمك في الفريق", "Your team name", "Votre nom dans l’équipe")) }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(name, { name = it }, label = { Text(tr("فريق جديد", "New team", "Nouvelle équipe")) }, modifier = Modifier.fillMaxWidth())
-        Button(enabled = !busy && nickname.trim().length >= 2 && name.trim().length >= 2, onClick = { action("create", nickname, name, null) }) { Text(tr("إنشاء فريق", "Create team", "Créer une équipe")) }
-        OutlinedTextField(code, { code = it }, label = { Text(tr("رمز الدعوة", "Invitation code", "Code d’invitation")) }, modifier = Modifier.fillMaxWidth())
-        Button(enabled = !busy && nickname.trim().length >= 2 && code.isNotBlank(), onClick = { action("join", nickname, code, null) }) { Text(tr("انضمام", "Join", "Rejoindre")) }
+        Text(tr("فرق العمل", "Teams", "Équipes"), style = MaterialTheme.typography.headlineMedium)
+        Text(tr("لا تُشارك إلا الملاحظات والمهام التي تنشرها؛ تبقى سجلاتك المالية خاصة.", "Only notes and tasks you publish are shared; financial records stay private.", "Seules vos notes et tâches publiées sont partagées ; vos dossiers financiers restent privés."))
+        OutlinedTextField(nickname, { nickname = it }, label = { Text(tr("اسمك في الفريق", "Your team name", "Votre nom dans l'équipe")) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(name, { name = it }, label = { Text(tr("اسم الفريق الجديد", "New team", "Nouvelle équipe")) }, modifier = Modifier.fillMaxWidth())
+        Button(enabled = !busy && nickname.trim().length >= 2 && name.trim().length >= 2, onClick = { action("create", nickname, name, null, null, null) }) { Text(tr("إنشاء فريق", "Create team", "Créer une équipe")) }
+        OutlinedTextField(code, { code = it }, label = { Text(tr("رمز الدعوة", "Invitation code", "Code d'invitation")) }, modifier = Modifier.fillMaxWidth())
+        Button(enabled = !busy && nickname.trim().length >= 2 && code.isNotBlank(), onClick = { action("join", nickname, code, null, null, null) }) { Text(tr("انضمام", "Join", "Rejoindre")) }
         Button(enabled = !busy, onClick = { load(null) }) { Text(tr("تحديث", "Refresh", "Actualiser")) }
         teams.forEach { team -> Button(onClick = { load(team.getString("id")) }, modifier = Modifier.fillMaxWidth()) { Text(team.getString("name")) } }
         detail?.let { current ->
-            Text(current.getJSONObject("team").getString("name"), style = MaterialTheme.typography.titleLarge)
-            current.getJSONArray("members").objects().forEach { member -> Text("${member.optString("display_name")} · ${member.optString("role")}") }
-            OutlinedTextField(note, { note = it }, label = { Text(tr("ملاحظة للفريق", "Team note", "Note d’équipe")) }, modifier = Modifier.fillMaxWidth())
-            Button(enabled = !busy && note.isNotBlank(), onClick = { action("note", "", note, null); note = "" }) { Text(tr("نشر", "Post", "Publier")) }
-            current.getJSONArray("notes").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Text(row.optString("body"), Modifier.padding(12.dp)) } }
+            val team = current.getJSONObject("team")
+            val viewerId = current.optString("viewerId")
+            val owner = team.optString("owner_id") == viewerId
+            val members = current.getJSONArray("members").objects()
+            Text(team.getString("name"), style = MaterialTheme.typography.titleLarge)
+            Text(tr("الأعضاء", "Members", "Membres"), style = MaterialTheme.typography.titleMedium)
+            members.forEach { member -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) { Text(member.optString("display_name")); Text(if (member.optString("role") == "owner") tr("المالك", "Owner", "Propriétaire") else tr("عضو", "Member", "Membre"), style = MaterialTheme.typography.bodySmall) }
+                if (owner && member.optString("role") != "owner") { TextButton(enabled = !busy, onClick = { action("remove_member", "", member.optString("user_id"), null, null, null) }) { Text(tr("إزالة", "Remove", "Retirer")) } }
+            } }
+            if (owner) {
+                Button(enabled = !busy, onClick = { action("invite", "", "", null, null, null) }) { Text(tr("إنشاء دعوة", "Create invitation", "Créer une invitation")) }
+                if (invitation.isNotBlank()) { Text(tr("شارك هذا الرمز مع الشخص المقصود فقط. يُستخدم مرة واحدة وينتهي خلال 7 أيام.", "Share this code only with the intended person. It works once and expires after 7 days.", "Partagez ce code uniquement avec la personne concernée. Il est à usage unique et expire après 7 jours."), style = MaterialTheme.typography.bodySmall); Text(invitation, style = MaterialTheme.typography.bodyMedium) }
+                TextButton(enabled = !busy, onClick = { action("revoke_invites", "", "", null, null, null) }) { Text(tr("إلغاء الدعوات المعلقة", "Revoke pending invitations", "Révoquer les invitations")) }
+            } else {
+                TextButton(enabled = !busy, onClick = { action("leave", "", "", null, null, null) }) { Text(tr("مغادرة الفريق", "Leave team", "Quitter l'équipe")) }
+            }
+            OutlinedTextField(note, { note = it }, label = { Text(tr("ملاحظة للفريق", "Team note", "Note d'équipe")) }, modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy && note.isNotBlank(), onClick = { action("note", "", note, null, null, null); note = "" }) { Text(tr("نشر", "Post", "Publier")) }
+            current.getJSONArray("notes").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
+                Text(row.optString("body")); Text(row.optString("created_at"), style = MaterialTheme.typography.bodySmall)
+                if (owner || row.optString("author_id") == viewerId) { TextButton(enabled = !busy, onClick = { action("delete_note", "", row.optString("id"), null, null, null) }) { Text(tr("حذف", "Delete", "Supprimer")) } }
+            } } }
+            Text(tr("مهام الفريق", "Team tasks", "Tâches"), style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(task, { task = it }, label = { Text(tr("مهمة", "Task", "Tâche")) }, modifier = Modifier.fillMaxWidth())
-            Button(enabled = !busy && task.isNotBlank(), onClick = { action("task_create", "", task, null); task = "" }) { Text(tr("إضافة مهمة", "Add task", "Ajouter")) }
-            current.getJSONArray("tasks").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(row.optString("title")); Row { listOf("todo", "doing", "done").forEach { status -> TextButton(onClick = { action("task_status", "", status, row.getString("id")) }) { Text(status) } } } } } }
+            Text(tr("المكلّف (اختياري)", "Assignee (optional)", "Responsable (facultatif)"), style = MaterialTheme.typography.bodyMedium)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { FilterChip(selected = taskAssignee.isBlank(), onClick = { taskAssignee = "" }, label = { Text(tr("غير مكلّفة", "Unassigned", "Non attribuée")) }) }
+                items(members, key = { it.optString("user_id") }) { member -> FilterChip(selected = taskAssignee == member.optString("user_id"), onClick = { taskAssignee = member.optString("user_id") }, label = { Text(member.optString("display_name")) }) }
+            }
+            OutlinedTextField(taskDue, { taskDue = it }, label = { Text(tr("تاريخ الاستحقاق (YYYY-MM-DD، اختياري)", "Due date (YYYY-MM-DD, optional)", "Échéance (AAAA-MM-JJ, facultatif)")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii), modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy && task.isNotBlank(), onClick = { action("task_create", "", task, null, taskAssignee.ifBlank { null }, taskDue.ifBlank { null }); task = "" }) { Text(tr("إضافة مهمة", "Add task", "Ajouter")) }
+            current.getJSONArray("tasks").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
+                val canUpdate = owner || row.optString("author_id") == viewerId || row.optString("assignee_id") == viewerId
+                val canDelete = owner || row.optString("author_id") == viewerId
+                Text(row.optString("title")); Text(statusLabel(row.optString("status")) + row.optString("due_date").takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty(), style = MaterialTheme.typography.bodySmall)
+                row.optString("assignee_id").takeIf { it.isNotBlank() }?.let { assignee -> Text("${tr("المكلّف:", "Assignee:", "Responsable :")} ${members.find { it.optString("user_id") == assignee }?.optString("display_name") ?: "-"}", style = MaterialTheme.typography.bodySmall) }
+                if (canUpdate) { Row { listOf("todo", "doing", "done").forEach { status -> TextButton(enabled = !busy, onClick = { action("task_status", "", status, row.getString("id"), null, null) }) { Text(statusLabel(status)) } } } }
+                if (canDelete) { TextButton(enabled = !busy, onClick = { action("task_delete", "", "", row.getString("id"), null, null) }) { Text(tr("حذف", "Delete", "Supprimer")) } }
+            } } }
         }
     }
 }
-
 @Composable private fun FinancialCalculatorWorkspace(language: String) {
     var kind by remember { mutableStateOf("zakat") }; var principal by remember { mutableStateOf("") }; var rate by remember { mutableStateOf("") }; var years by remember { mutableStateOf("") }; var monthly by remember { mutableStateOf("") }; var nisab by remember { mutableStateOf("") }
     fun tr(ar: String, en: String, fr: String) = if (language == "ar") ar else if (language == "fr") fr else en

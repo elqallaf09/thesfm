@@ -38,7 +38,7 @@ export async function handleMobileBusinessTeams(request: Request) {
       access.client.from('sfm_team_tasks').select('id,title,status,due_date,author_id,assignee_id').eq('team_id', teamId).order('created_at', { ascending: false }).limit(1000),
     ]);
     if (members.error || notes.error || tasks.error) return mobileResponse({ ok: false, code: 'TEAM_UNAVAILABLE' }, 503);
-    return mobileResponse({ ok: true, team, members: members.data ?? [], notes: notes.data ?? [], tasks: tasks.data ?? [] });
+    return mobileResponse({ ok: true, viewerId: access.userId, team, members: members.data ?? [], notes: notes.data ?? [], tasks: tasks.data ?? [] });
   }
 
   if (request.method !== 'POST') return mobileResponse({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
