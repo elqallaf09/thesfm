@@ -204,7 +204,7 @@ private struct InvestorMarketAnalysisView: View {
                     scalar(tr("الاتجاه", "Trend", "Tendance"), technical.trend)
                     scalar("RSI", technical.rsi?.text)
                     scalar(tr("العينات", "Samples", "Échantillons"), technical.samples?.text)
-                    for key in ["sma20", "sma50", "ema20", "ema50", "support", "resistance"] {
+                    ForEach(["sma20", "sma50", "ema20", "ema50", "support", "resistance"], id: \.self) { key in
                         scalar(key.uppercased(), technical.indicators?[key]?.text)
                     }
                     metadata([technical.source, technical.upstreamProvider, technical.technicalAsOf])
