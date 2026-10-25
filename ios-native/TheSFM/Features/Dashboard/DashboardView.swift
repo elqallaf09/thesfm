@@ -30,6 +30,10 @@ struct DashboardView: View {
             MobileReportsView(product: "finance")
                 .tabItem { Label("Reports", systemImage: "chart.bar.doc.horizontal") }
                 .tag(MainTab.reports)
+
+            MobileFinancialCalculatorsView()
+                .tabItem { Label("Calculators", systemImage: "function") }
+                .tag(MainTab.investments)
         }
         .tint(AppTheme.Colors.accent)
         .environment(\.layoutDirection, .rightToLeft)

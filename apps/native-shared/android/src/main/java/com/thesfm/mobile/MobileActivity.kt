@@ -67,6 +67,7 @@ abstract class MobileActivity : ComponentActivity() {
     private var account = mutableStateOf<JSONObject?>(null)
     private val summary = mutableStateOf<JSONObject?>(null)
     private val reportMode = mutableStateOf(false)
+    private val calculatorMode = mutableStateOf(false)
     private val teamMode = mutableStateOf(false)
     private val teams = mutableStateOf<List<JSONObject>>(emptyList())
     private val teamDetail = mutableStateOf<JSONObject?>(null)
@@ -300,14 +301,14 @@ abstract class MobileActivity : ComponentActivity() {
         }
         CompositionLocalProvider(LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr) {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || teamMode.value || marketAnalysisSymbol.value != null) {
+                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || calculatorMode.value || teamMode.value || marketAnalysisSymbol.value != null) {
                     val pending = pendingMfa.value
                     if (pending != null) {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
                     } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }
-                    else { selected.value = null; marketMode.value = false; reportMode.value = false; teamMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
+                    else { selected.value = null; marketMode.value = false; reportMode.value = false; calculatorMode.value = false; teamMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
                     LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max = 1100.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -472,8 +473,10 @@ abstract class MobileActivity : ComponentActivity() {
                                 } }
                             }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadInvestorFeed(feed, language, investorFeedPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
+                        } else if (calculatorMode.value) {
+                            item { FinancialCalculatorWorkspace(language) }
                         } else if (teamMode.value) {
-                            item { TeamWorkspace(teams.value, teamDetail.value, busy.value, load = { loadTeams(it) }, action = { action, nickname, value, taskId -> teamAction(action, nickname = nickname, value = value, taskId = taskId) }) }
+                            item { TeamWorkspace(teams.value, teamDetail.value, busy.value, language, load = { loadTeams(it) }, action = { action, nickname, value, taskId -> teamAction(action, nickname = nickname, value = value, taskId = taskId) }) }
                         } else if (reportMode.value) {
                             val currentReport = report.value
                             fun reportLabel(key: String) = when (key) {
@@ -533,6 +536,7 @@ abstract class MobileActivity : ComponentActivity() {
                             if (productId == "finance" || productId == "business") item { Button(onClick = { reportMode.value = true; report.value = null; loadReport() }, enabled = !busy.value) { Text(tr(if (productId == "finance") "مركز التقارير" else "عمليات الأعمال", if (productId == "finance") "Reports Center" else "Business operations", if (productId == "finance") "Centre des rapports" else "Opérations d’affaires")) } }
                             item { Button(onClick = { loadCatalog() }, enabled = !busy.value) { Text(tr("تحديث الأقسام", "Refresh sections", "Actualiser les rubriques")) } }
                             if (productId == "business") item { Button(onClick = { teamMode.value = true; teamDetail.value = null; loadTeams() }, enabled = !busy.value) { Text(tr("فرق العمل", "Teams", "Équipes")) } }
+                            if (productId == "finance") item { Button(onClick = { calculatorMode.value = true }, enabled = !busy.value) { Text(tr("الحاسبات المالية", "Financial calculators", "Calculateurs financiers")) } }
                             items(resources.value, key = { it.getString("id") }) { resource -> Button(onClick = { selected.value = resource; records.value = emptyList(); loadRecords() }, modifier = Modifier.fillMaxWidth()) { Text(label(resource)) } }
                             if (productId == "investor") item { Button(onClick = { investorFeed.value = "markets"; marketMode.value = true; records.value = emptyList(); loadMarkets() }) { Text(tr("الأسواق", "Markets", "Marchés")) } }
                             item { Button(onClick = { work({ auth.request("/api/mobile/account") }) { account.value = it } }) { Text(tr("حسابي والاشتراك", "Account and subscription", "Compte et abonnement")) } }
@@ -684,27 +688,47 @@ private fun nativeReportPdf(report: JSONObject, product: String, period: String,
     document.finishPage(page); return ByteArrayOutputStream().use { output -> document.writeTo(output); document.close(); output.toByteArray() }
 }
 
-@Composable private fun TeamWorkspace(teams: List<JSONObject>, detail: JSONObject?, busy: Boolean, load: (String?) -> Unit, action: (String, String, String, String?) -> Unit) {
+@Composable private fun TeamWorkspace(teams: List<JSONObject>, detail: JSONObject?, busy: Boolean, language: String, load: (String?) -> Unit, action: (String, String, String, String?) -> Unit) {
     var nickname by remember { mutableStateOf("") }; var name by remember { mutableStateOf("") }; var code by remember { mutableStateOf("") }; var note by remember { mutableStateOf("") }; var task by remember { mutableStateOf("") }
+    fun tr(ar: String, en: String, fr: String) = if (language == "ar") ar else if (language == "fr") fr else en
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Teams", style = MaterialTheme.typography.headlineMedium); Text("Only published notes and tasks are shared; financial records stay private.")
-        OutlinedTextField(nickname, { nickname = it }, label = { Text("Your team name") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(name, { name = it }, label = { Text("New team") }, modifier = Modifier.fillMaxWidth())
-        Button(enabled = !busy && nickname.trim().length >= 2 && name.trim().length >= 2, onClick = { action("create", nickname, name, null) }) { Text("Create team") }
-        OutlinedTextField(code, { code = it }, label = { Text("Invitation code") }, modifier = Modifier.fillMaxWidth())
-        Button(enabled = !busy && nickname.trim().length >= 2 && code.isNotBlank(), onClick = { action("join", nickname, code, null) }) { Text("Join") }
-        Button(enabled = !busy, onClick = { load(null) }) { Text("Refresh") }
+        Text(tr("فرق العمل", "Teams", "Équipes"), style = MaterialTheme.typography.headlineMedium); Text(tr("تشارك الملاحظات والمهام المنشورة فقط؛ سجلاتك المالية تبقى خاصة.", "Only published notes and tasks are shared; financial records stay private.", "Seules les notes et tâches publiées sont partagées ; les dossiers financiers restent privés."))
+        OutlinedTextField(nickname, { nickname = it }, label = { Text(tr("اسمك في الفريق", "Your team name", "Votre nom dans l’équipe")) }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(name, { name = it }, label = { Text(tr("فريق جديد", "New team", "Nouvelle équipe")) }, modifier = Modifier.fillMaxWidth())
+        Button(enabled = !busy && nickname.trim().length >= 2 && name.trim().length >= 2, onClick = { action("create", nickname, name, null) }) { Text(tr("إنشاء فريق", "Create team", "Créer une équipe")) }
+        OutlinedTextField(code, { code = it }, label = { Text(tr("رمز الدعوة", "Invitation code", "Code d’invitation")) }, modifier = Modifier.fillMaxWidth())
+        Button(enabled = !busy && nickname.trim().length >= 2 && code.isNotBlank(), onClick = { action("join", nickname, code, null) }) { Text(tr("انضمام", "Join", "Rejoindre")) }
+        Button(enabled = !busy, onClick = { load(null) }) { Text(tr("تحديث", "Refresh", "Actualiser")) }
         teams.forEach { team -> Button(onClick = { load(team.getString("id")) }, modifier = Modifier.fillMaxWidth()) { Text(team.getString("name")) } }
         detail?.let { current ->
             Text(current.getJSONObject("team").getString("name"), style = MaterialTheme.typography.titleLarge)
             current.getJSONArray("members").objects().forEach { member -> Text("${member.optString("display_name")} · ${member.optString("role")}") }
-            OutlinedTextField(note, { note = it }, label = { Text("Team note") }, modifier = Modifier.fillMaxWidth())
-            Button(enabled = !busy && note.isNotBlank(), onClick = { action("note", "", note, null); note = "" }) { Text("Post") }
+            OutlinedTextField(note, { note = it }, label = { Text(tr("ملاحظة للفريق", "Team note", "Note d’équipe")) }, modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy && note.isNotBlank(), onClick = { action("note", "", note, null); note = "" }) { Text(tr("نشر", "Post", "Publier")) }
             current.getJSONArray("notes").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Text(row.optString("body"), Modifier.padding(12.dp)) } }
-            OutlinedTextField(task, { task = it }, label = { Text("Task") }, modifier = Modifier.fillMaxWidth())
-            Button(enabled = !busy && task.isNotBlank(), onClick = { action("task_create", "", task, null); task = "" }) { Text("Add task") }
+            OutlinedTextField(task, { task = it }, label = { Text(tr("مهمة", "Task", "Tâche")) }, modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy && task.isNotBlank(), onClick = { action("task_create", "", task, null); task = "" }) { Text(tr("إضافة مهمة", "Add task", "Ajouter")) }
             current.getJSONArray("tasks").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(row.optString("title")); Row { listOf("todo", "doing", "done").forEach { status -> TextButton(onClick = { action("task_status", "", status, row.getString("id")) }) { Text(status) } } } } } }
         }
+    }
+}
+
+@Composable private fun FinancialCalculatorWorkspace(language: String) {
+    var kind by remember { mutableStateOf("zakat") }; var principal by remember { mutableStateOf("") }; var rate by remember { mutableStateOf("") }; var years by remember { mutableStateOf("") }; var monthly by remember { mutableStateOf("") }; var nisab by remember { mutableStateOf("") }
+    fun tr(ar: String, en: String, fr: String) = if (language == "ar") ar else if (language == "fr") fr else en
+    fun value(text: String) = text.replace(',', '.').toDoubleOrNull()
+    val result = run {
+        val base = value(principal)?.takeIf { it >= 0 } ?: return@run null
+        if (kind == "zakat") { val threshold = value(nisab)?.takeIf { it > 0 } ?: return@run null; if (base >= threshold) base * .025 else 0.0 }
+        else { val annual = value(rate)?.takeIf { it in 0.0..100.0 } ?: return@run null; val term = value(years)?.takeIf { it in 0.0001..100.0 } ?: return@run null; val periods = (term * 12).toInt(); if (periods < 1) return@run null; val monthlyRate = annual / 1200; if (kind == "loan") { if (monthlyRate == 0.0) base / periods else base * monthlyRate / (1 - Math.pow(1 + monthlyRate, -periods.toDouble())) } else { val payment = value(monthly)?.takeIf { it >= 0 } ?: return@run null; if (monthlyRate == 0.0) base + payment * periods else base * Math.pow(1 + monthlyRate, periods.toDouble()) + payment * (Math.pow(1 + monthlyRate, periods.toDouble()) - 1) / monthlyRate } }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(tr("الحاسبات المالية", "Financial calculators", "Calculateurs financiers"), style = MaterialTheme.typography.headlineMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) { listOf("zakat", "compound", "loan").forEach { option -> FilterChip(selected = kind == option, onClick = { kind = option }, label = { Text(if (option == "zakat") tr("الزكاة", "Zakat", "Zakat") else if (option == "compound") tr("نمو مركب", "Compound", "Croissance") else tr("قرض", "Loan", "Prêt")) }) } }
+        OutlinedTextField(principal, { principal = it }, label = { Text(if (kind == "zakat") tr("الأصول المؤهلة بعد الالتزامات", "Eligible assets after liabilities", "Actifs éligibles après dettes") else tr("المبلغ الأساسي", "Principal", "Capital initial")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+        if (kind == "zakat") { OutlinedTextField(nisab, { nisab = it }, label = { Text(tr("النصاب بالعملة نفسها", "Nisab in the same currency", "Nisab dans la même devise")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth()); Text(tr("أدخل نصابًا موثقًا لتاريخ الحساب؛ يفترض حولًا قمريًا كاملًا بنسبة 2.5٪.", "Enter a verified nisab for the calculation date; assumes a full lunar year at 2.5%.", "Saisissez un nisab vérifié à la date du calcul ; une année lunaire à 2,5 % est supposée.")) }
+        else { OutlinedTextField(rate, { rate = it }, label = { Text(tr("المعدل السنوي %", "Annual rate %", "Taux annuel %")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth()); OutlinedTextField(years, { years = it }, label = { Text(tr("السنوات", "Years", "Années")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth()); if (kind == "compound") OutlinedTextField(monthly, { monthly = it }, label = { Text(tr("الإضافة الشهرية", "Monthly contribution", "Versement mensuel")) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth()) }
+        Text(tr("النتيجة", "Result", "Résultat") + ": " + (result?.let { "%.2f".format(it) } ?: "–"), style = MaterialTheme.typography.titleLarge); Text(tr("لا تنشئ هذه الحاسبة سجلًا أو توصية مالية تلقائيًا.", "This calculator does not create a record or financial recommendation.", "Cette calculatrice ne crée ni enregistrement ni recommandation financière."))
     }
 }
 

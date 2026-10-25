@@ -543,6 +543,33 @@ private struct MobileBusinessDocumentUpload: View {
     }
 }
 private struct RecordEditorSelection: Identifiable { let id = UUID(); let row: [String: MobileValue] }
+
+/// Mirrors the public website calculators. Values stay on-device and never
+/// create account records; users must supply a verified nisab and currency.
+struct MobileFinancialCalculatorsView: View {
+    @AppStorage("sfm-language") private var language = "ar"
+    @State private var kind = "zakat"; @State private var principal = ""; @State private var rate = ""; @State private var years = ""; @State private var monthly = ""; @State private var nisab = ""
+    private var index: Int { language == "ar" ? 0 : language == "fr" ? 2 : 1 }
+    private func tr(_ ar: String, _ en: String, _ fr: String) -> String { [ar, en, fr][index] }
+    private func number(_ value: String) -> Double? { Double(value.replacingOccurrences(of: ",", with: ".")) }
+    private var result: Double? {
+        guard let value = number(principal), value >= 0 else { return nil }
+        if kind == "zakat" { guard let threshold = number(nisab), threshold > 0 else { return nil }; return value >= threshold ? value * 0.025 : 0 }
+        guard let annual = number(rate), annual >= 0, annual <= 100, let term = number(years), term > 0, term <= 100 else { return nil }
+        let months = (term * 12).rounded(); guard months >= 1 else { return nil }; let monthlyRate = annual / 1200
+        if kind == "loan" { return monthlyRate == 0 ? value / months : value * monthlyRate / (1 - pow(1 + monthlyRate, -months)) }
+        guard let contribution = number(monthly), contribution >= 0 else { return nil }
+        return monthlyRate == 0 ? value + contribution * months : value * pow(1 + monthlyRate, months) + contribution * (pow(1 + monthlyRate, months) - 1) / monthlyRate
+    }
+    var body: some View { Form {
+        Section { Picker(tr("الأداة", "Tool", "Outil"), selection: $kind) { Text(tr("الزكاة", "Zakat", "Zakat")).tag("zakat"); Text(tr("نمو مركب", "Compound growth", "Croissance composée")).tag("compound"); Text(tr("قرض", "Loan", "Prêt")).tag("loan") }.pickerStyle(.segmented) }
+        Section { TextField(kind == "zakat" ? tr("الأصول المؤهلة بعد الالتزامات", "Eligible assets after liabilities", "Actifs éligibles après dettes") : tr("المبلغ الأساسي", "Principal", "Capital initial"), text: $principal).keyboardType(.decimalPad)
+            if kind == "zakat" { TextField(tr("النصاب بالعملة نفسها", "Nisab in the same currency", "Nisab dans la même devise"), text: $nisab).keyboardType(.decimalPad); Text(tr("أدخل نصابًا موثقًا لتاريخ الحساب؛ يفترض حولًا قمريًا كاملًا بنسبة 2.5٪.", "Enter a verified nisab for the calculation date; this assumes a full lunar year at 2.5%.", "Saisissez un nisab vérifié à la date du calcul ; une année lunaire complète à 2,5 % est supposée.")).font(.footnote).foregroundStyle(.secondary) }
+            else { TextField(tr("المعدل السنوي %", "Annual rate %", "Taux annuel %"), text: $rate).keyboardType(.decimalPad); TextField(tr("السنوات", "Years", "Années"), text: $years).keyboardType(.decimalPad); if kind == "compound" { TextField(tr("الإضافة الشهرية", "Monthly contribution", "Versement mensuel"), text: $monthly).keyboardType(.decimalPad) } }
+        }
+        Section(tr("النتيجة", "Result", "Résultat")) { Text(result.map { $0.formatted(.number.precision(.fractionLength(2))) } ?? "–").font(.title2.bold()); Text(tr("لا تنشئ هذه الحاسبة سجلًا أو توصية مالية تلقائيًا.", "This calculator does not create a record or financial recommendation.", "Cette calculatrice ne crée ni enregistrement ni recommandation financière.")).font(.footnote).foregroundStyle(.secondary) }
+    }.navigationTitle(tr("الحاسبات المالية", "Financial calculators", "Calculateurs financiers")) }
+}
 private struct MobileRecordEditor: View {
     let resource: MobileResource
     let row: [String: MobileValue]
