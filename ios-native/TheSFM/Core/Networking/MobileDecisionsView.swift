@@ -55,7 +55,21 @@ struct MobileDecisionsView: View {
             }
             if loading { Section { ProgressView() } }
         }.navigationTitle(tr("القرارات", "Decisions", "Décisions")).task(id: auth.accessToken) { page = nil; analysis = nil; selectedID = ""; await load() }.refreshable { await load() }
-        .confirmationDialog(tr("حذف القرار؟", "Delete decision?", "Supprimer la décision ?"), item: $deleteCandidate) { decision in Button(tr("حذف نهائي", "Delete permanently", "Supprimer définitivement"), role: .destructive) { Task { await remove(decision) } } } message: { Text(tr("سيحذف من حسابك ولا يمكن التراجع عن ذلك.", "It will be removed from your account and cannot be undone.", "Elle sera supprimée de votre compte et ne pourra pas être restaurée.")) }
+        .confirmationDialog(
+            tr("حذف القرار؟", "Delete decision?", "Supprimer la décision ?"),
+            isPresented: Binding(
+                get: { deleteCandidate != nil },
+                set: { if !$0 { deleteCandidate = nil } }
+            )
+        ) {
+            if let decision = deleteCandidate {
+                Button(tr("حذف نهائي", "Delete permanently", "Supprimer définitivement"), role: .destructive) {
+                    Task { await remove(decision) }
+                }
+            }
+        } message: {
+            Text(tr("سيحذف من حسابك ولا يمكن التراجع عن ذلك.", "It will be removed from your account and cannot be undone.", "Elle sera supprimée de votre compte et ne pourra pas être restaurée."))
+        }
         }
     }
 
