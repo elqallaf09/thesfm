@@ -16,5 +16,8 @@ export function intelligenceAssetType(value: unknown): IntelligenceAssetType {
 }
 
 export function boundedSymbols(value: string) {
-  return [...new Set(value.split(/[\s,]+/).map(symbol => symbol.trim().toUpperCase()).filter(symbol => /^[A-Z0-9.^=:_/-]{1,32}$/.test(symbol)))].slice(0, 4);
+  // A symbol can be an index, share class, or a single forex/crypto pair. Do
+  // not accept URL punctuation (notably `:` or a second slash) into a request.
+  const isSafeSymbol = (symbol: string) => /^(?:\^[A-Z0-9][A-Z0-9.^=_-]*|[A-Z0-9][A-Z0-9.^=_-]*)(?:\/[A-Z0-9][A-Z0-9.^=_-]*)?$/.test(symbol) && symbol.length <= 32;
+  return [...new Set(value.split(/[\s,]+/).map(symbol => symbol.trim().toUpperCase()).filter(isSafeSymbol))].slice(0, 4);
 }
