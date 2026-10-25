@@ -9,6 +9,7 @@ import { ReportsScreen } from './ReportsScreen';
 import { InvestorFeeds } from './InvestorFeeds';
 import { TeamsScreen } from './TeamsScreen';
 import { MobileDecisionsScreen } from './MobileDecisionsScreen';
+import { InvestorAnalysisScreen } from './InvestorAnalysisScreen';
 import { completeGoogleSignIn, startGoogleSignIn } from './oauth';
 import { MobileRequestError, PendingMobileMfa, type MobileSessionClient } from './session';
 import { screenForLink, type Screen } from './navigation';
@@ -63,6 +64,7 @@ export function MobileWorkspace(props: Props) {
   else if (screen.kind === 'records' && resource) content = <RecordsScreen key={resource.id} client={client} product={product} resource={resource} />;
   else if (screen.kind === 'account') content = <AccountScreen client={client} languageChanged={languageChanged} themeChanged={themeChanged} signOut={() => { void client.signOut(); }} />;
   else if (screen.kind === 'markets') content = <MarketsScreen base={base} client={client} navigate={navigate} />;
+  else if (screen.kind === 'analysis' && product === 'investor') content = <InvestorAnalysisScreen client={client} />;
   else if (screen.kind === 'symbol' && screen.symbol) content = <SymbolScreen base={base} symbol={screen.symbol} />;
   else if (screen.kind === 'notifications') content = <NotificationsScreen client={client} openLink={openLink} />;
   else if (screen.kind === 'channels') content = <NotificationChannelsScreen client={client} openExternal={openLink} />;
