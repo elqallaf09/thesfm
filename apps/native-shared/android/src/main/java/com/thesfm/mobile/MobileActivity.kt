@@ -69,6 +69,11 @@ abstract class MobileActivity : ComponentActivity() {
     private val reportMode = mutableStateOf(false)
     private val calculatorMode = mutableStateOf(false)
     private val teamMode = mutableStateOf(false)
+    private val decisionMode = mutableStateOf(false)
+    private val decisions = mutableStateOf<List<JSONObject>>(emptyList())
+    private val decisionAnalysis = mutableStateOf<JSONObject?>(null)
+    private val decisionCanWrite = mutableStateOf(false)
+    private val decisionCanDelete = mutableStateOf(false)
     private val teams = mutableStateOf<List<JSONObject>>(emptyList())
     private val teamDetail = mutableStateOf<JSONObject?>(null)
     private val teamInvitation = mutableStateOf("")
@@ -132,7 +137,7 @@ abstract class MobileActivity : ComponentActivity() {
                         errorCode.value = (failure as? MobileApiError)?.code
                     }
                 }
-                if (!signedIn.value) { resources.value = emptyList(); records.value = emptyList(); account.value = null }
+                if (!signedIn.value) { resources.value = emptyList(); records.value = emptyList(); account.value = null; decisions.value = emptyList(); decisionAnalysis.value = null; decisionMode.value = false; decisionCanWrite.value = false; decisionCanDelete.value = false }
             }
         }
     }
@@ -169,6 +174,21 @@ abstract class MobileActivity : ComponentActivity() {
         if (action == "leave") teamDetail.value = null
         val next = if (action == "create" || action == "join") result.optJSONObject("result")?.optString("id") else if (action == "leave") null else teamId
         loadTeams(); if (!next.isNullOrBlank()) loadTeams(next)
+    }
+    private fun loadDecisions() = work({ auth.request("/api/mobile/business/decisions") }) { json ->
+        decisions.value = json.getJSONArray("decisions").objects()
+        decisionCanWrite.value = json.optBoolean("canWrite")
+        decisionCanDelete.value = json.optBoolean("canDelete")
+        decisionAnalysis.value = decisions.value.firstOrNull()?.optJSONObject("analysis")
+    }
+    private fun saveDecision(body: JSONObject) = work({ auth.request("/api/mobile/business/decisions", "POST", body) }) { json ->
+        val decision = json.getJSONObject("decision")
+        decisions.value = listOf(decision) + decisions.value.filterNot { it.optString("id") == decision.optString("id") }
+        decisionAnalysis.value = json.optJSONObject("analysis")
+    }
+    private fun deleteDecision(id: String) = work({ auth.request("/api/mobile/business/decisions", "DELETE", JSONObject().put("id", id)) }) {
+        decisions.value = decisions.value.filterNot { row -> row.optString("id") == id }
+        decisionAnalysis.value = decisions.value.firstOrNull()?.optJSONObject("analysis")
     }
     private fun changeReportPeriod(offset: Int) {
         shiftNativeReportPeriod(reportPeriod.value, offset)?.let { reportPeriod.value = it; report.value = null; loadReport() }
@@ -276,7 +296,7 @@ abstract class MobileActivity : ComponentActivity() {
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
         pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; pendingBusinessDocument = null; businessDocumentProjects.value = emptyList(); investorFeed.value = "markets"; marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null
-        resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
+        resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false; decisionMode.value = false; decisions.value = emptyList(); decisionAnalysis.value = null; decisionCanWrite.value = false; decisionCanDelete.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable private fun Workspace() {
@@ -310,14 +330,14 @@ abstract class MobileActivity : ComponentActivity() {
         }
         CompositionLocalProvider(LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr) {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || calculatorMode.value || teamMode.value || marketAnalysisSymbol.value != null) {
+                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || calculatorMode.value || teamMode.value || decisionMode.value || marketAnalysisSymbol.value != null) {
                     val pending = pendingMfa.value
                     if (pending != null) {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
                     } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }
-                    else { selected.value = null; marketMode.value = false; reportMode.value = false; calculatorMode.value = false; teamMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
+                    else { selected.value = null; marketMode.value = false; reportMode.value = false; calculatorMode.value = false; teamMode.value = false; decisionMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
                     LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max = 1100.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -486,6 +506,12 @@ abstract class MobileActivity : ComponentActivity() {
                             item { FinancialCalculatorWorkspace(language) }
                         } else if (teamMode.value) {
                             item { TeamWorkspace(teams.value, teamDetail.value, teamInvitation.value.takeIf { teamInvitationTeamId.value == teamDetail.value?.optJSONObject("team")?.optString("id") }.orEmpty(), busy.value, language, load = { loadTeams(it) }, action = { action, nickname, value, taskId, assigneeId, due -> teamAction(action, nickname = nickname, value = value, taskId = taskId, assigneeId = assigneeId, due = due) }) }
+                        } else if (decisionMode.value) {
+                            val accountCurrency = account.value?.optJSONObject("profile")?.optString("preferred_currency").takeUnless { it.isNullOrBlank() }
+                                ?: account.value?.optJSONObject("profile")?.optString("default_currency").takeUnless { it.isNullOrBlank() }
+                                ?: summary.value?.optString("currency").takeUnless { it.isNullOrBlank() }
+                                ?: "KWD"
+                            item { DecisionWorkspace(decisions.value, decisionAnalysis.value, decisionCanWrite.value, decisionCanDelete.value, busy.value, language, accountCurrency, refresh = { loadDecisions() }, select = { decisionAnalysis.value = it }, save = { body -> saveDecision(body) }, remove = { id -> deleteDecision(id) }) }
                         } else if (reportMode.value) {
                             val currentReport = report.value
                             fun reportLabel(key: String) = when (key) {
@@ -546,6 +572,7 @@ abstract class MobileActivity : ComponentActivity() {
                             item { Button(onClick = { loadCatalog() }, enabled = !busy.value) { Text(tr("تحديث الأقسام", "Refresh sections", "Actualiser les rubriques")) } }
                             if (productId == "business") item { Button(onClick = { teamMode.value = true; teamDetail.value = null; loadTeams() }, enabled = !busy.value) { Text(tr("فرق العمل", "Teams", "Équipes")) } }
                             if (productId == "finance") item { Button(onClick = { calculatorMode.value = true }, enabled = !busy.value) { Text(tr("الحاسبات المالية", "Financial calculators", "Calculateurs financiers")) } }
+                            if (productId == "business") item { Button(onClick = { decisionMode.value = true; decisionAnalysis.value = null; loadDecisions() }, enabled = !busy.value) { Text(tr("تحليل القرارات", "Decision analysis", "Analyse de décision")) } }
                             items(resources.value, key = { it.getString("id") }) { resource -> Button(onClick = { selected.value = resource; records.value = emptyList(); loadRecords() }, modifier = Modifier.fillMaxWidth()) { Text(label(resource)) } }
                             if (productId == "investor") item { Button(onClick = { investorFeed.value = "markets"; marketMode.value = true; records.value = emptyList(); loadMarkets() }) { Text(tr("الأسواق", "Markets", "Marchés")) } }
                             item { Button(onClick = { work({ auth.request("/api/mobile/account") }) { account.value = it } }) { Text(tr("حسابي والاشتراك", "Account and subscription", "Compte et abonnement")) } }
