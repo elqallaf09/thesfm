@@ -87,6 +87,9 @@ struct InvestorDashboardView: View {
                     }
                     Section("أدوات الأسواق (\(filteredInstruments.count))") {
                         ForEach(filteredInstruments) { instrument in
+                            NavigationLink {
+                                InvestorMarketAnalysisView(instrument: instrument, language: language)
+                            } label: {
                             HStack(spacing: 12) {
                                 Image(systemName: "chart.line.uptrend.xyaxis")
                                     .foregroundStyle(.tint)
@@ -111,6 +114,8 @@ struct InvestorDashboardView: View {
                                 }
                             }
                             .accessibilityElement(children: .combine)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -138,6 +143,87 @@ struct InvestorDashboardView: View {
             .onChange(of: language) { _, _ in if selectedFeed != .markets { Task { await refresh() } } }
         }
         .tint(.cyan)
+    }
+}
+
+private struct InvestorMarketAnalysisView: View {
+    let instrument: InvestorInstrument
+    let language: String
+    @StateObject private var analysis = InvestorMarketAnalysisStore()
+
+    private func tr(_ ar: String, _ en: String, _ fr: String) -> String {
+        language == "ar" ? ar : language == "fr" ? fr : en
+    }
+
+    private var chartPoints: [InvestorRecordedHistoryPoint] { Array(analysis.points.suffix(36)) }
+    private var low: Double? { chartPoints.map(\.price).min() }
+    private var high: Double? { chartPoints.map(\.price).max() }
+
+    private func barHeight(_ point: InvestorRecordedHistoryPoint) -> CGFloat {
+        guard let low, let high, high > low else { return 72 }
+        return CGFloat(18 + ((point.price - low) / (high - low)) * 116)
+    }
+
+    var body: some View {
+        List {
+            Section {
+                Text(instrument.title).font(.title3.weight(.semibold))
+                Text([instrument.code, instrument.marketName, instrument.currency].compactMap { $0 }.joined(separator: " · "))
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            Section(tr("سجل الأسعار", "Recorded price history", "Historique des prix enregistrés")) {
+                if analysis.isLoading && chartPoints.isEmpty { ProgressView(tr("جارٍ تحميل البيانات المسجلة.", "Loading recorded data.", "Chargement des données enregistrées.")) }
+                if chartPoints.count >= 2 {
+                    GeometryReader { proxy in
+                        HStack(alignment: .bottom, spacing: 2) {
+                            ForEach(chartPoints) { point in
+                                Capsule().fill(.cyan).frame(width: max(2, (proxy.size.width - CGFloat(max(0, chartPoints.count - 1) * 2)) / CGFloat(chartPoints.count)), height: barHeight(point))
+                                    .accessibilityLabel("\(point.observedAt): \(point.price.formatted(.number))")
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    }
+                    .frame(height: 142)
+                    if let low, let high {
+                        LabeledContent(tr("المدى المسجل", "Recorded range", "Plage enregistrée"), value: "\(low.formatted(.number)) — \(high.formatted(.number))")
+                    }
+                    LabeledContent(tr("المشاهدات", "Observations", "Observations"), value: "\(analysis.pointCount)")
+                    metadata([analysis.historySource, analysis.historyGeneratedAt])
+                } else {
+                    ContentUnavailableView(
+                        tr("لا يوجد سجل موثق", "No verified history", "Aucun historique vérifié"),
+                        systemImage: "chart.bar.xaxis",
+                        description: Text(tr("لا تظهر هذه الشاشة أرقامًا بديلة عند غياب السجل المسجل.", "This screen does not invent fallback values when recorded history is unavailable.", "Cet écran n’invente pas de valeurs de remplacement quand l’historique enregistré est indisponible."))
+                    )
+                }
+            }
+            Section(tr("التحليل الفني", "Technical analysis", "Analyse technique")) {
+                if let technical = analysis.technical, technical.technicalAvailable == true {
+                    scalar(tr("الاتجاه", "Trend", "Tendance"), technical.trend)
+                    scalar("RSI", technical.rsi?.text)
+                    scalar(tr("العينات", "Samples", "Échantillons"), technical.samples?.text)
+                    for key in ["sma20", "sma50", "ema20", "ema50", "support", "resistance"] {
+                        scalar(key.uppercased(), technical.indicators?[key]?.text)
+                    }
+                    metadata([technical.source, technical.upstreamProvider, technical.technicalAsOf])
+                } else {
+                    Text(tr("مؤشرات التحليل الفني غير متاحة حتى تتوفر مشاهدات موثقة كافية.", "Technical indicators are unavailable until enough verified observations exist.", "Les indicateurs techniques sont indisponibles tant que les observations vérifiées sont insuffisantes."))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle(instrument.code)
+        .toolbar { Button(tr("تحديث", "Refresh", "Actualiser"), systemImage: "arrow.clockwise") { Task { await analysis.refresh(symbol: instrument.code) } }.disabled(analysis.isLoading) }
+        .task(id: instrument.code) { await analysis.refresh(symbol: instrument.code) }
+    }
+
+    @ViewBuilder private func scalar(_ label: String, _ value: String?) -> some View {
+        if let value, !value.isEmpty { LabeledContent(label, value: value) }
+    }
+
+    @ViewBuilder private func metadata(_ values: [String?]) -> some View {
+        let text = values.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.joined(separator: " · ")
+        if !text.isEmpty { Text(text).font(.footnote).foregroundStyle(.secondary) }
     }
 }
 

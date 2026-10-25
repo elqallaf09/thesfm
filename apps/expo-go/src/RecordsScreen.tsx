@@ -8,11 +8,24 @@ import { useAccountSync } from './accountSync';
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const ATTACHMENT_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
+const PROJECT_DOCUMENT_TYPES = new Set([
+  ...ATTACHMENT_TYPES,
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+const PROJECT_DOCUMENT_CATEGORIES = ['business_plan', 'contract', 'license', 'invoice', 'receipt', 'supplier', 'employee', 'report', 'financial', 'legal', 'other'] as const;
 type MobileAttachmentAccess = { ok: true; attachment: { url: string } };
-function attachmentMimeType(name: string, supplied: string | null | undefined) {
-  if (supplied && ATTACHMENT_TYPES.has(supplied)) return supplied;
+type MobileProject = { id: string; name?: string };
+type PickedDocument = { uri: string; name: string; mimeType: string; size?: number };
+function attachmentMimeType(name: string, supplied: string | null | undefined, allowed = ATTACHMENT_TYPES) {
+  if (supplied && allowed.has(supplied)) return supplied;
   const extension = name.split('.').at(-1)?.toLowerCase();
-  return extension === 'pdf' ? 'application/pdf' : extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : extension === 'webp' ? 'image/webp' : null;
+  const inferred = extension === 'pdf' ? 'application/pdf' : extension === 'png' ? 'image/png' : extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : extension === 'webp' ? 'image/webp'
+    : extension === 'doc' ? 'application/msword' : extension === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      : extension === 'xls' ? 'application/vnd.ms-excel' : extension === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : null;
+  return inferred && allowed.has(inferred) ? inferred : null;
 }
 
 export function RecordsScreen({ client, product, resource }: { client: MobileSessionClient; product: PhoneProduct; resource: MobileResource }) {
@@ -24,6 +37,13 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<MobileRecord | 'new' | null>(null);
+  const [documentEditor, setDocumentEditor] = useState(false);
+  const [documentProjects, setDocumentProjects] = useState<MobileProject[]>([]);
+  const [documentProjectId, setDocumentProjectId] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('');
+  const [documentCategory, setDocumentCategory] = useState<(typeof PROJECT_DOCUMENT_CATEGORIES)[number]>('business_plan');
+  const [documentNotes, setDocumentNotes] = useState('');
+  const [documentFile, setDocumentFile] = useState<PickedDocument | null>(null);
   const sequence = useRef(0);
   const path = `/api/mobile/${product}/records/${resource.id}`;
   const load = useCallback(async (after?: string, silent = false) => {
@@ -46,6 +66,12 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
   const supportsPrivateDocuments = product === 'business' && resource.id === 'documents';
   const attachmentUrlField = resource.id === 'income' ? 'attachment_url' : 'receipt_image_url';
   const attachmentNameField = resource.id === 'income' ? 'attachment_name' : 'receipt_file_name';
+  const documentCategoryLabel = (category: string) => {
+    const labels: Record<string, readonly [string, string, string]> = {
+      business_plan: ['خطة عمل', 'Business plan', "Plan d'affaires"], contract: ['عقد', 'Contract', 'Contrat'], license: ['ترخيص', 'License', 'Licence'], invoice: ['فاتورة', 'Invoice', 'Facture'], receipt: ['إيصال', 'Receipt', 'Reçu'], supplier: ['مورد', 'Supplier', 'Fournisseur'], employee: ['موظف', 'Employee', 'Employé'], report: ['تقرير', 'Report', 'Rapport'], financial: ['مالي', 'Financial', 'Financier'], legal: ['قانوني', 'Legal', 'Juridique'], other: ['أخرى', 'Other', 'Autre'],
+    };
+    return t(labels[category] ?? labels.other);
+  };
   async function attach(record: MobileRecord) {
     const picked = await DocumentPicker.getDocumentAsync({ type: [...ATTACHMENT_TYPES], copyToCacheDirectory: false, multiple: false });
     const file = picked.assets?.[0];
@@ -58,6 +84,34 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
     form.append('file', { uri: file.uri, name: file.name || 'attachment', type: mimeType } as unknown as Blob);
     setBusy(true); setError('');
     try { await client.request(attachmentPath, { method: 'POST', body: form }); await load(); }
+    catch (error) { setError(error instanceof MobileRequestError ? error.code : 'UPLOAD_UNAVAILABLE'); }
+    finally { setBusy(false); }
+  }
+  async function openDocumentEditor() {
+    setBusy(true); setError('');
+    try {
+      const projects = await client.request<MobilePage>('/api/mobile/business/records/projects?limit=100');
+      const rows = projects.records.map(row => ({ id: row.id, name: typeof row.name === 'string' ? row.name : undefined }));
+      setDocumentProjects(rows); setDocumentProjectId(rows[0]?.id ?? ''); setDocumentTitle(''); setDocumentCategory('business_plan'); setDocumentNotes(''); setDocumentFile(null); setDocumentEditor(true);
+    } catch (error) { setError(error instanceof MobileRequestError ? error.code : 'LOAD_UNAVAILABLE'); }
+    finally { setBusy(false); }
+  }
+  async function chooseProjectDocument() {
+    const picked = await DocumentPicker.getDocumentAsync({ type: [...PROJECT_DOCUMENT_TYPES], copyToCacheDirectory: false, multiple: false });
+    const file = picked.assets?.[0];
+    if (picked.canceled || !file) return;
+    const mimeType = attachmentMimeType(file.name, file.mimeType, PROJECT_DOCUMENT_TYPES);
+    if (!mimeType) { setError('UNSUPPORTED_FILE'); return; }
+    if (file.size != null && file.size > MAX_ATTACHMENT_BYTES) { setError('FILE_TOO_LARGE'); return; }
+    setDocumentFile({ uri: file.uri, name: file.name || 'document', mimeType, ...(file.size == null ? {} : { size: file.size }) });
+  }
+  async function uploadProjectDocument() {
+    if (!documentProjectId || !documentTitle.trim() || !documentFile) { setError('INVALID_UPLOAD'); return; }
+    const form = new FormData();
+    form.append('projectId', documentProjectId); form.append('title', documentTitle.trim()); form.append('category', documentCategory); form.append('notes', documentNotes.trim());
+    form.append('file', { uri: documentFile.uri, name: documentFile.name, type: documentFile.mimeType } as unknown as Blob);
+    setBusy(true); setError('');
+    try { await client.request(attachmentPath, { method: 'POST', body: form }); setDocumentEditor(false); await load(); }
     catch (error) { setError(error instanceof MobileRequestError ? error.code : 'UPLOAD_UNAVAILABLE'); }
     finally { setBusy(false); }
   }
@@ -88,6 +142,7 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
     {lastSyncedAt ? <Label muted>{t(['تمت المزامنة مع حسابك', 'Synced with your account', 'Synchronisé avec votre compte'])}: {new Date(lastSyncedAt).toLocaleTimeString(language === 'ar' ? 'ar-KW' : language === 'fr' ? 'fr-FR' : 'en-US')}</Label> : null}
     <Input label={t(['البحث في السجلات المحملة', 'Search loaded records', 'Rechercher les enregistrements chargés'])} value={query} onChange={setQuery} />
     {!resource.readOnly ? <Button label={t(['إضافة سجل', 'Add record', 'Ajouter'])} onPress={() => setEditing('new')} disabled={busy} /> : null}
+    {supportsPrivateDocuments ? <Button label={t(['رفع مستند', 'Upload document', 'Téléverser un document'])} onPress={() => { void openDocumentEditor(); }} disabled={busy} /> : null}
     {error ? <ErrorNotice code={error} retry={() => { void load(); }} /> : null}
     <FlatList data={visible} keyExtractor={row => row.id} refreshing={busy} onRefresh={() => { void load(); }} contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
       ListEmptyComponent={busy ? <Busy /> : !error ? <Empty /> : null}
@@ -109,6 +164,22 @@ export function RecordsScreen({ client, product, resource }: { client: MobileSes
         await client.request(path, { method: editing === 'new' ? 'POST' : 'PATCH', body: JSON.stringify({ ...values, ...(editing !== 'new' ? { id: editing.id } : {}) }) });
         setEditing(null); await load();
       }} /> : null}</SafeAreaView>
+    </Modal>
+    <Modal visible={documentEditor} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setDocumentEditor(false)}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 16 }}>
+        <Label large>{t(['رفع مستند مشروع', 'Upload project document', 'Téléverser un document de projet'])}</Label>
+        <Label>{t(['المشروع', 'Project', 'Projet'])}</Label>
+        <ScrollView horizontal contentContainerStyle={{ gap: 8 }}>{documentProjects.map(project => <Button key={project.id} label={project.name || project.id} selected={documentProjectId === project.id} onPress={() => setDocumentProjectId(project.id)} disabled={busy} />)}</ScrollView>
+        {!documentProjects.length ? <Label muted>{t(['لا توجد مشاريع. أنشئ مشروعاً أولاً في حساب الموقع.', 'No projects are available. Create a project in your website account first.', "Aucun projet disponible. Créez d'abord un projet dans votre compte web."])}</Label> : null}
+        <Input label={t(['عنوان المستند', 'Document title', 'Titre du document'])} value={documentTitle} onChange={setDocumentTitle} />
+        <Label>{t(['التصنيف', 'Category', 'Catégorie'])}</Label>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{PROJECT_DOCUMENT_CATEGORIES.map(category => <Button key={category} label={documentCategoryLabel(category)} selected={documentCategory === category} onPress={() => setDocumentCategory(category)} disabled={busy} />)}</View>
+        <Input label={t(['ملاحظات', 'Notes', 'Notes'])} value={documentNotes} onChange={setDocumentNotes} />
+        {documentFile ? <Label muted>{documentFile.name}{documentFile.size != null ? ` · ${documentFile.size}` : ''}</Label> : null}
+        <Button label={t(['اختيار ملف', 'Choose file', 'Choisir un fichier'])} onPress={() => { void chooseProjectDocument(); }} disabled={busy} />
+        <Button label={busy ? t(['جارٍ الرفع', 'Uploading', 'Téléversement']) : t(['رفع إلى حسابي', 'Upload to my account', 'Téléverser dans mon compte'])} onPress={() => { void uploadProjectDocument(); }} disabled={busy || !documentProjects.length} />
+        <Button label={t(['إلغاء', 'Cancel', 'Annuler'])} onPress={() => setDocumentEditor(false)} disabled={busy} />
+      </ScrollView></SafeAreaView>
     </Modal>
   </View>;
 }

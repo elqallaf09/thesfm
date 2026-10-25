@@ -348,6 +348,7 @@ private struct MobileRecordList: View {
     @State private var deleting: [String: MobileValue]?
     @State private var attachmentRecordId: String?
     @State private var attachmentImporting = false
+    @State private var businessDocumentUploading = false
     @Environment(\.openURL) private var openURL
     private var index: Int { language == "ar" ? 0 : language == "fr" ? 2 : 1 }
     private func tr(_ ar: String, _ en: String, _ fr: String) -> String { [ar, en, fr][index] }
@@ -384,7 +385,12 @@ private struct MobileRecordList: View {
             }
         }
         .navigationTitle(resource.label[index])
-        .toolbar { if !auth.isDeviceLocked && resource.readOnly != true { Button(tr("إضافة", "Add", "Ajouter")) { editor = RecordEditorSelection(row: [:]) } } }
+        .toolbar {
+            if !auth.isDeviceLocked && product == "business" && resource.id == "documents" {
+                Button(tr("رفع مستند", "Upload document", "Téléverser un document"), systemImage: "arrow.up.doc") { businessDocumentUploading = true }
+            }
+            if !auth.isDeviceLocked && resource.readOnly != true { Button(tr("إضافة", "Add", "Ajouter")) { editor = RecordEditorSelection(row: [:]) } }
+        }
         .task { await load() }
         .refreshable { await load() }
         .fileImporter(isPresented: $attachmentImporting, allowedContentTypes: [.pdf, .png, .jpeg, .webP], allowsMultipleSelection: false) { result in
@@ -399,6 +405,10 @@ private struct MobileRecordList: View {
             try await mutate(selection.row["id"] == nil ? "POST" : "PATCH", body: values.merging(selection.row["id"].map { ["id": $0] } ?? [:], uniquingKeysWith: { _, new in new }))
             editor = nil; await load()
         } }
+        .sheet(isPresented: $businessDocumentUploading) {
+            MobileBusinessDocumentUpload(language: language) { await load() }
+                .environmentObject(auth)
+        }
         .confirmationDialog(tr("حذف السجل من حساب الموقع؟", "Delete from website account?", "Supprimer du compte du site ?"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
             Button(tr("حذف", "Delete", "Supprimer"), role: .destructive) { if let id = deleting?["id"] { Task { do { try await mutate("DELETE", body: ["id": id]); deleting = nil; await load() } catch { failed = true } } } }
         }
@@ -456,6 +466,82 @@ private struct MobileRecordList: View {
 }
 private struct MobileAttachmentAccess: Decodable { let attachment: MobileSignedAttachment }
 private struct MobileSignedAttachment: Decodable { let url: URL }
+private struct MobileProjectOption: Identifiable { let id: String; let name: String }
+private struct MobileBusinessDocumentUpload: View {
+    let language: String
+    let saved: () async -> Void
+    @EnvironmentObject private var auth: AuthSessionStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var projects: [MobileProjectOption] = []
+    @State private var projectId = ""
+    @State private var title = ""
+    @State private var category = "business_plan"
+    @State private var notes = ""
+    @State private var fileURL: URL?
+    @State private var importing = false
+    @State private var loading = false
+    @State private var failed = false
+
+    private let categories = ["business_plan", "contract", "license", "invoice", "receipt", "supplier", "employee", "report", "financial", "legal", "other"]
+    private var index: Int { language == "ar" ? 0 : language == "fr" ? 2 : 1 }
+    private func tr(_ ar: String, _ en: String, _ fr: String) -> String { [ar, en, fr][index] }
+    private var acceptedTypes: [UTType] { ["pdf", "png", "jpg", "jpeg", "webp", "doc", "docx", "xls", "xlsx"].compactMap { UTType(filenameExtension: $0) } }
+    private func categoryLabel(_ value: String) -> String {
+        let labels: [String: [String]] = [
+            "business_plan": ["خطة عمل", "Business plan", "Plan d'affaires"], "contract": ["عقد", "Contract", "Contrat"], "license": ["ترخيص", "License", "Licence"], "invoice": ["فاتورة", "Invoice", "Facture"], "receipt": ["إيصال", "Receipt", "Reçu"], "supplier": ["مورد", "Supplier", "Fournisseur"], "employee": ["موظف", "Employee", "Employé"], "report": ["تقرير", "Report", "Rapport"], "financial": ["مالي", "Financial", "Financier"], "legal": ["قانوني", "Legal", "Juridique"], "other": ["أخرى", "Other", "Autre"],
+        ]
+        return labels[value]?[index] ?? labels["other"]![index]
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if loading { ProgressView() }
+                if projects.isEmpty && !loading { Text(tr("لا توجد مشاريع. أنشئ مشروعاً من حساب الموقع أولاً.", "No projects are available. Create a project in your website account first.", "Aucun projet disponible. Créez d'abord un projet dans votre compte web.")) }
+                else { Picker(tr("المشروع", "Project", "Projet"), selection: $projectId) { ForEach(projects, id: \.id) { Text($0.name).tag($0.id) } } }
+                TextField(tr("عنوان المستند", "Document title", "Titre du document"), text: $title)
+                Picker(tr("التصنيف", "Category", "Catégorie"), selection: $category) { ForEach(categories, id: \.self) { Text(categoryLabel($0)).tag($0) } }
+                TextField(tr("ملاحظات", "Notes", "Notes"), text: $notes, axis: .vertical).lineLimit(2...5)
+                Button(fileURL == nil ? tr("اختيار ملف", "Choose file", "Choisir un fichier") : fileURL!.lastPathComponent, systemImage: "doc") { importing = true }.disabled(loading)
+                if failed { Text(tr("تعذر رفع المستند. تحقق من الملف والصلاحية وحاول مجدداً.", "The document could not be uploaded. Check the file and permissions, then try again.", "Impossible de téléverser le document. Vérifiez le fichier et les droits puis réessayez.")).foregroundStyle(.red) }
+            }
+            .navigationTitle(tr("رفع مستند", "Upload document", "Téléverser un document"))
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button(tr("رفع", "Upload", "Téléverser")) { Task { await upload() } }.disabled(loading || projectId.isEmpty || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || fileURL == nil) }
+                ToolbarItem(placement: .cancellationAction) { Button(tr("إلغاء", "Cancel", "Annuler")) { dismiss() }.disabled(loading) }
+            }
+        }
+        .task { await loadProjects() }
+        .fileImporter(isPresented: $importing, allowedContentTypes: acceptedTypes, allowsMultipleSelection: false) { result in
+            if case let .success(urls) = result { fileURL = urls.first }
+        }
+    }
+
+    @MainActor private func loadProjects() async {
+        guard !auth.isDeviceLocked, let token = await auth.validAccessToken() else { return }
+        loading = true; failed = false; defer { loading = false }
+        do {
+            let page: MobileRecordPage = try await APIClient.authorized(accessToken: token).get("/api/mobile/business/records/projects?limit=100")
+            projects = page.records.compactMap { row in guard let id = row["id"]?.string else { return nil }; return MobileProjectOption(id: id, name: row["name"]?.string ?? id) }
+            projectId = projects.first?.id ?? ""
+        } catch { failed = true }
+    }
+
+    @MainActor private func upload() async {
+        guard !auth.isDeviceLocked, let token = await auth.validAccessToken(), let fileURL else { return }
+        loading = true; failed = false; defer { loading = false }
+        let scoped = fileURL.startAccessingSecurityScopedResource()
+        defer { if scoped { fileURL.stopAccessingSecurityScopedResource() } }
+        do {
+            let values = try fileURL.resourceValues(forKeys: [.contentTypeKey, .fileSizeKey])
+            guard let contentType = values.contentType, acceptedTypes.contains(where: { contentType.conforms(to: $0) }), let mimeType = contentType.preferredMIMEType, let size = values.fileSize, size > 0, size <= 10 * 1024 * 1024 else { throw APIClientError.invalidResponse }
+            let data = try Data(contentsOf: fileURL, options: .mappedIfSafe)
+            guard data.count == size else { throw APIClientError.invalidResponse }
+            try await APIClient.authorized(accessToken: token).upload("/api/mobile/business/records/documents/attachment", fields: ["projectId": projectId, "title": title.trimmingCharacters(in: .whitespacesAndNewlines), "category": category, "notes": notes.trimmingCharacters(in: .whitespacesAndNewlines)], file: MultipartFile(name: fileURL.lastPathComponent, mimeType: mimeType, data: data))
+            await saved(); dismiss()
+        } catch { failed = true }
+    }
+}
 private struct RecordEditorSelection: Identifiable { let id = UUID(); let row: [String: MobileValue] }
 private struct MobileRecordEditor: View {
     let resource: MobileResource

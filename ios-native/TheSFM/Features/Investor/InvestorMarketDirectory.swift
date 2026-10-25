@@ -57,6 +57,88 @@ final class InvestorMarketDirectoryStore: ObservableObject {
     }
 }
 
+struct InvestorRecordedHistoryPoint: Decodable, Identifiable {
+    let observationKey: String
+    let observedAt: String
+    let price: Double
+
+    var id: String { observationKey }
+}
+
+private struct InvestorRecordedHistoryEnvelope: Decodable {
+    struct History: Decodable {
+        let points: [InvestorRecordedHistoryPoint]
+        let pointCount: Int
+        let source: String?
+        let generatedAt: String?
+    }
+    let history: History
+}
+
+struct InvestorTechnicalSnapshot: Decodable {
+    let technicalAvailable: Bool?
+    let trend: String?
+    let rsi: InvestorFeedScalar?
+    let samples: InvestorFeedScalar?
+    let technicalAsOf: String?
+    let source: String?
+    let upstreamProvider: String?
+    let indicators: [String: InvestorFeedScalar]?
+}
+
+@MainActor
+final class InvestorMarketAnalysisStore: ObservableObject {
+    @Published private(set) var points: [InvestorRecordedHistoryPoint] = []
+    @Published private(set) var pointCount = 0
+    @Published private(set) var historySource: String?
+    @Published private(set) var historyGeneratedAt: String?
+    @Published private(set) var technical: InvestorTechnicalSnapshot?
+    @Published private(set) var isLoading = false
+    @Published private(set) var historyUnavailable = false
+    @Published private(set) var technicalUnavailable = false
+
+    func refresh(symbol: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        let historyResult: Result<InvestorRecordedHistoryEnvelope, Error> = await request(path: "api/sfm-market/v1/history/\(symbol.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? symbol)?limit=60")
+        let technicalResult: Result<InvestorTechnicalSnapshot, Error> = await request(path: "api/sfm-market/v1/trader/technical/\(symbol.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? symbol)")
+        switch historyResult {
+        case .success(let result):
+            points = result.history.points
+            pointCount = result.history.pointCount
+            historySource = result.history.source
+            historyGeneratedAt = result.history.generatedAt
+            historyUnavailable = false
+        case .failure:
+            points = []
+            pointCount = 0
+            historySource = nil
+            historyGeneratedAt = nil
+            historyUnavailable = true
+        }
+        switch technicalResult {
+        case .success(let result):
+            technical = result
+            technicalUnavailable = false
+        case .failure:
+            technical = nil
+            technicalUnavailable = true
+        }
+    }
+
+    private func request<T: Decodable>(path: String) async -> Result<T, Error> {
+        do {
+            let url = SupabaseConfig.apiBaseURL.appending(path: path)
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, 200..<300 ~= http.statusCode else { throw URLError(.badServerResponse) }
+            return .success(try JSONDecoder().decode(T.self, from: data))
+        } catch { return .failure(error) }
+    }
+}
+
 enum InvestorPublicFeed: String, CaseIterable, Identifiable {
     case markets, news, calendar, screening
     var id: String { rawValue }

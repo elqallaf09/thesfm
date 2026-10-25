@@ -15,6 +15,9 @@ export async function publicRequest<T>(base: string, path: string): Promise<T> {
   } finally { clearTimeout(timeout); }
 }
 type Instrument = { symbol: string; displaySymbol?: string; name?: string; displayName?: string; assetType?: string; currency?: string; exchange?: string; country?: string; providerSymbol?: string; marketName?: string; source?: string; shariahStatus?: string };
+type MarketHistoryPoint = { price?: unknown; observedAt?: unknown };
+type MarketHistory = { points?: MarketHistoryPoint[]; pointCount?: number; source?: string; generatedAt?: string };
+type MarketTechnical = { available?: boolean; technicalAvailable?: boolean; trend?: unknown; rsi?: unknown; movingAverages?: Record<string, unknown>; indicators?: Record<string, unknown>; samples?: unknown; technicalAsOf?: unknown; source?: unknown; upstreamProvider?: unknown };
 export function MarketsScreen({ base, client, navigate }: { base: string; client: MobileSessionClient; navigate: (screen: Screen) => void }) {
   const { t } = useUI();
   const [items, setItems] = useState<Instrument[]>([]); const [watchlist, setWatchlist] = useState<MobileRecord[]>([]);
@@ -75,8 +78,34 @@ export function MarketsScreen({ base, client, navigate }: { base: string; client
   </View>;
 }
 export function SymbolScreen({ base, symbol }: { base: string; symbol: string }) {
-  const { t } = useUI(); const [quote, setQuote] = useState<Record<string, unknown> | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
-  const load = useCallback(async () => { setBusy(true); setError(''); try { const data = await publicRequest<{ quote: Record<string, unknown> }>(base, `/api/sfm-market/v1/quote/${encodeURIComponent(symbol)}`); setQuote(data.quote); } catch (error) { setError(error instanceof MobileRequestError ? error.code : 'DATA_UNAVAILABLE'); } finally { setBusy(false); } }, [base, symbol]);
+  const { t } = useUI(); const [quote, setQuote] = useState<Record<string, unknown> | null>(null); const [history, setHistory] = useState<MarketHistory | null>(null); const [technical, setTechnical] = useState<MarketTechnical | null>(null); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => {
+    setBusy(true); setError('');
+    try {
+      const quoteResult = await publicRequest<{ quote: Record<string, unknown> }>(base, `/api/sfm-market/v1/quote/${encodeURIComponent(symbol)}`);
+      setQuote(quoteResult.quote);
+      const [historyResult, technicalResult] = await Promise.allSettled([
+        publicRequest<{ history: MarketHistory }>(base, `/api/sfm-market/v1/history/${encodeURIComponent(symbol)}?limit=60`),
+        publicRequest<MarketTechnical>(base, `/api/sfm-market/v1/trader/technical/${encodeURIComponent(symbol)}`),
+      ]);
+      setHistory(historyResult.status === 'fulfilled' ? historyResult.value.history : null);
+      setTechnical(technicalResult.status === 'fulfilled' ? technicalResult.value : null);
+    } catch (error) { setError(error instanceof MobileRequestError ? error.code : 'DATA_UNAVAILABLE'); }
+    finally { setBusy(false); }
+  }, [base, symbol]);
   useEffect(() => { void load(); }, [load]);
+  const points = (history?.points ?? []).flatMap(point => {
+    const price = Number(point.price); return Number.isFinite(price) && price > 0 ? [{ price, observedAt: typeof point.observedAt === 'string' ? point.observedAt : '' }] : [];
+  });
+  const chartPoints = points.slice(-36); const low = Math.min(...chartPoints.map(point => point.price)); const high = Math.max(...chartPoints.map(point => point.price));
+  const indicators = technical?.indicators ?? technical?.movingAverages ?? {};
+  const technicalRows: Array<[string, unknown]> = [['rsi', technical?.rsi], ['trend', technical?.trend], ['samples', technical?.samples], ['sma20', indicators.sma20], ['sma50', indicators.sma50], ['ema20', indicators.ema20], ['ema50', indicators.ema50], ['support', indicators.support], ['resistance', indicators.resistance]].filter(([, value]) => value != null) as Array<[string, unknown]>;
+  return <ScrollView contentContainerStyle={{ gap: 15 }}>
+    <Label large>{symbol}</Label>{busy ? <Busy /> : null}{error ? <ErrorNotice code={error} retry={() => { void load(); }} /> : null}
+    {quote ? <Panel>{['price', 'currency', 'change', 'changePercent', 'source', 'asOf', 'observedAt', 'delayed'].filter(key => quote[key] != null).map(key => <View key={key}><Label muted>{key}</Label><Label>{formatValue(quote[key])}</Label></View>)}</Panel> : null}
+    <Panel><Label large>{t(['سجل الأسعار', 'Recorded price history', 'Historique des prix enregistrés'])}</Label>{chartPoints.length >= 2 ? <><View accessibilityLabel={t(['رسم سجل الأسعار', 'Recorded price history chart', 'Graphique de l’historique des prix enregistrés'])} style={{ height: 140, flexDirection: 'row', alignItems: 'flex-end', gap: 2, paddingTop: 8 }}>{chartPoints.map((point, index) => <View key={`${point.observedAt}:${index}`} style={{ flex: 1, minWidth: 2, height: `${high === low ? 50 : 12 + ((point.price - low) / (high - low)) * 88}%`, backgroundColor: '#22d3ee', borderRadius: 2 }} />)}</View><Label muted>{t(['المشاهدات المسجلة', 'Recorded observations', 'Observations enregistrées'])}: {history?.pointCount ?? points.length} · {formatValue(low)} — {formatValue(high)}</Label><Label muted>{[history?.source, history?.generatedAt].filter(Boolean).join(' · ')}</Label></> : <Label muted>{t(['لا يوجد سجل أسعار موثق لهذا الرمز.', 'No verified recorded history is available for this symbol.', 'Aucun historique enregistré vérifié n’est disponible pour ce symbole.'])}</Label>}</Panel>
+    <Panel><Label large>{t(['التحليل الفني', 'Technical analysis', 'Analyse technique'])}</Label>{technical?.technicalAvailable ? technicalRows.map(([key, value]) => <View key={key}><Label muted>{key}</Label><Label>{formatValue(value)}</Label></View>) : <Label muted>{t(['مؤشرات التحليل الفني غير متاحة حتى تتوفر مشاهدات موثقة كافية.', 'Technical indicators are unavailable until enough verified observations exist.', 'Les indicateurs techniques sont indisponibles tant que les observations vérifiées sont insuffisantes.'])}</Label>}{technical ? <Label muted>{[technical.source, technical.upstreamProvider, technical.technicalAsOf].filter(Boolean).map(formatValue).join(' · ')}</Label> : null}</Panel>
+    <Button label={t(['تحديث السعر', 'Refresh quote', 'Actualiser le cours'])} onPress={() => { void load(); }} disabled={busy} />
+  </ScrollView>;
   return <ScrollView contentContainerStyle={{ gap: 15 }}><Label large>{symbol}</Label>{busy ? <Busy /> : null}{error ? <ErrorNotice code={error} retry={() => { void load(); }} /> : null}{quote ? <Panel>{['price', 'currency', 'change', 'changePercent', 'source', 'asOf', 'observedAt', 'delayed'].filter(key => quote[key] != null).map(key => <View key={key}><Label muted>{key}</Label><Label>{formatValue(quote[key])}</Label></View>)}</Panel> : null}<Button label={t(['تحديث السعر', 'Refresh quote', 'Actualiser le cours'])} onPress={() => { void load(); }} disabled={busy} /></ScrollView>;
 }

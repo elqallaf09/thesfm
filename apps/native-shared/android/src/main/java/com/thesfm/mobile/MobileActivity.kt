@@ -12,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -34,6 +36,7 @@ import java.util.Calendar
 import java.util.concurrent.Executors
 
 abstract class MobileActivity : ComponentActivity() {
+    private data class PendingBusinessDocument(val projectId: String, val title: String, val category: String, val notes: String)
     abstract val productId: String
     abstract val apiBaseUrl: String
     abstract val supabaseUrl: String
@@ -51,6 +54,9 @@ abstract class MobileActivity : ComponentActivity() {
     private val selected = mutableStateOf<JSONObject?>(null)
     private val marketMode = mutableStateOf(false)
     private val investorFeed = mutableStateOf("markets")
+    private val marketAnalysisSymbol = mutableStateOf<String?>(null)
+    private val marketHistory = mutableStateOf<JSONObject?>(null)
+    private val marketTechnical = mutableStateOf<JSONObject?>(null)
     private val cursor = mutableStateOf<String?>(null)
     private val pendingLink = mutableStateOf<String?>(null)
     private var uiEpoch = 0L
@@ -65,6 +71,8 @@ abstract class MobileActivity : ComponentActivity() {
     private val reportPeriod = mutableStateOf(nativeReportPeriod())
     private var pendingReportPdf: ByteArray? = null
     private var pendingAttachment: Pair<String, String>? = null
+    private var pendingBusinessDocument: PendingBusinessDocument? = null
+    private val businessDocumentProjects = mutableStateOf<List<JSONObject>>(emptyList())
     private val credentialLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         locked.value = it.resultCode != Activity.RESULT_OK
         if (!locked.value) loadCatalog()
@@ -83,8 +91,11 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private val attachmentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val attachment = pendingAttachment
+        val document = pendingBusinessDocument
         pendingAttachment = null
+        pendingBusinessDocument = null
         if (uri != null && attachment != null) uploadAttachment(attachment.first, attachment.second, uri)
+        if (uri != null && document != null) uploadBusinessDocument(document, uri)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -177,6 +188,22 @@ abstract class MobileActivity : ComponentActivity() {
             auth.uploadFinancialAttachment(resourceId, recordId, name, mime, incomeAttachmentBytes(uri))
         }) { loadRecords() }
     }
+    private fun uploadBusinessDocument(document: PendingBusinessDocument, uri: Uri) {
+        if (locked.value || !signedIn.value) return
+        work({
+            val name = incomeAttachmentName(uri)
+            val inferredMime = when (name.substringAfterLast('.', "").lowercase()) {
+                "pdf" -> "application/pdf"; "png" -> "image/png"; "jpg", "jpeg" -> "image/jpeg"; "webp" -> "image/webp"
+                "doc" -> "application/msword"; "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                "xls" -> "application/vnd.ms-excel"; "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                else -> "application/octet-stream"
+            }
+            val allowedMimeTypes = setOf("application/pdf", "image/png", "image/jpeg", "image/webp", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            val suppliedMime = contentResolver.getType(uri)?.lowercase()
+            val mime = if (suppliedMime in allowedMimeTypes) suppliedMime!! else inferredMime
+            auth.uploadBusinessDocument(document.projectId, document.title, document.category, document.notes, name, mime, incomeAttachmentBytes(uri))
+        }) { loadRecords() }
+    }
     private fun openAttachment(resourceId: String, recordId: String) {
         if (locked.value || !signedIn.value) return
         work({ auth.request("/api/mobile/$productId/records/$resourceId/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}") }) { result ->
@@ -194,6 +221,17 @@ abstract class MobileActivity : ComponentActivity() {
         marketPage = nextPage; val next = json.getJSONArray("markets").objects()
         records.value = if (nextPage == 1) next else records.value + next
         cursor.value = if (json.optJSONObject("pagination")?.optBoolean("hasMore") == true) "more" else null
+    }
+    private fun loadMarketAnalysis(symbol: String) = work({
+        val result = JSONObject()
+        runCatching { auth.publicRequest("/api/sfm-market/v1/history/${URLEncoder.encode(symbol, "UTF-8")}?limit=60") }
+            .onSuccess { result.put("history", it.optJSONObject("history")) }
+        runCatching { auth.publicRequest("/api/sfm-market/v1/trader/technical/${URLEncoder.encode(symbol, "UTF-8")}") }
+            .onSuccess { result.put("technical", it) }
+        result
+    }) { result ->
+        marketHistory.value = result.optJSONObject("history")
+        marketTechnical.value = result.optJSONObject("technical")
     }
     private fun loadInvestorFeed(kind: String, language: String, nextPage: Int = 1) = work({
         val path = when (kind) {
@@ -216,7 +254,7 @@ abstract class MobileActivity : ComponentActivity() {
     }
     private fun signOut() {
         ++uiEpoch; auth.clear(); signedIn.value = false; locked.value = false; selected.value = null
-        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; investorFeed.value = "markets"
+        pendingMfa.value = null; error.value = false; errorCode.value = null; reportMode.value = false; report.value = null; pendingReportPdf = null; pendingAttachment = null; pendingBusinessDocument = null; businessDocumentProjects.value = emptyList(); investorFeed.value = "markets"; marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null
         resources.value = emptyList(); records.value = emptyList(); account.value = null; summary.value = null; cursor.value = null; busy.value = false; marketMode.value = false
     }
     @OptIn(ExperimentalMaterial3Api::class)
@@ -231,15 +269,34 @@ abstract class MobileActivity : ComponentActivity() {
         var mfaCode by remember(pendingMfa.value) { mutableStateOf("") }
         var emailCodeSent by remember(pendingMfa.value) { mutableStateOf(pendingMfa.value?.emailChallenge != null) }
         var editing by remember { mutableStateOf<JSONObject?>(null) }; var deleting by remember { mutableStateOf<JSONObject?>(null) }
+        var documentUpload by remember { mutableStateOf(false) }
+        var documentProjectId by remember { mutableStateOf("") }
+        var documentTitle by remember { mutableStateOf("") }
+        var documentCategory by remember { mutableStateOf("business_plan") }
+        var documentNotes by remember { mutableStateOf("") }
+        fun documentCategoryLabel(category: String) = when (category) {
+            "business_plan" -> tr("خطة عمل", "Business plan", "Plan d'affaires")
+            "contract" -> tr("عقد", "Contract", "Contrat")
+            "license" -> tr("ترخيص", "License", "Licence")
+            "invoice" -> tr("فاتورة", "Invoice", "Facture")
+            "receipt" -> tr("إيصال", "Receipt", "Reçu")
+            "supplier" -> tr("مورد", "Supplier", "Fournisseur")
+            "employee" -> tr("موظف", "Employee", "Employé")
+            "report" -> tr("تقرير", "Report", "Rapport")
+            "financial" -> tr("مالي", "Financial", "Financier")
+            "legal" -> tr("قانوني", "Legal", "Juridique")
+            else -> tr("أخرى", "Other", "Autre")
+        }
         CompositionLocalProvider(LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr) {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value) {
+                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || marketAnalysisSymbol.value != null) {
                     val pending = pendingMfa.value
                     if (pending != null) {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
-                    } else { selected.value = null; marketMode.value = false; reportMode.value = false; report.value = null; records.value = emptyList(); cursor.value = null }
+                    } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }
+                    else { selected.value = null; marketMode.value = false; reportMode.value = false; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
                     LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max = 1100.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -304,6 +361,42 @@ abstract class MobileActivity : ComponentActivity() {
                             item { OutlinedTextField(password, { password = it }, label = { Text(tr("كلمة المرور", "Password", "Mot de passe")) }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth()) }
                             item { Button(enabled = !busy.value && email.isNotBlank() && password.isNotBlank(), onClick = { work({ auth.signIn(email, password); JSONObject() }) { password = ""; locked.value = false; loadCatalog() } }) { Text(tr("تسجيل الدخول بحساب الموقع", "Sign in with website account", "Se connecter au compte du site")) } }
                             if (productId == "investor") item { TextButton(onClick = { investorFeed.value = "markets"; marketMode.value = true; loadMarkets() }) { Text(tr("تصفح الأسواق", "Browse markets", "Explorer les marchés")) } }
+                        } else if (marketMode.value && investorFeed.value == "markets" && marketAnalysisSymbol.value != null) {
+                            val symbol = marketAnalysisSymbol.value!!
+                            val history = marketHistory.value
+                            val technical = marketTechnical.value
+                            val points = history?.optJSONArray("points")?.objects()?.filter { it.optDouble("price", Double.NaN).isFinite() && it.optDouble("price") > 0 } ?: emptyList()
+                            val chartPoints = points.takeLast(36)
+                            val low = chartPoints.minOfOrNull { it.optDouble("price") }
+                            val high = chartPoints.maxOfOrNull { it.optDouble("price") }
+                            item { Text(symbol, style = MaterialTheme.typography.headlineMedium) }
+                            item { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                TextButton(onClick = { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }) { Text(tr("رجوع", "Back", "Retour")) }
+                                Button(enabled = !busy.value, onClick = { loadMarketAnalysis(symbol) }) { Text(tr("تحديث", "Refresh", "Actualiser")) }
+                            } }
+                            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(tr("سجل الأسعار", "Recorded price history", "Historique des prix enregistrés"), style = MaterialTheme.typography.titleMedium)
+                                if (chartPoints.size >= 2 && low != null && high != null) {
+                                    LazyRow(Modifier.fillMaxWidth().height(145.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.Bottom) {
+                                        items(chartPoints, key = { it.optString("observationKey", it.optString("observedAt")) }) { point ->
+                                            val price = point.optDouble("price")
+                                            val height = if (high == low) 72f else (18 + ((price - low) / (high - low) * 116)).toFloat()
+                                            Surface(color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(8.dp).height(height.dp)) {}
+                                        }
+                                    }
+                                    Text("${tr("المدى المسجل", "Recorded range", "Plage enregistrée")}: $low — $high")
+                                    Text("${tr("المشاهدات", "Observations", "Observations")}: ${history.optInt("pointCount", points.size)}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    listOf(history.optString("source"), history.optString("generatedAt")).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                } else Text(tr("لا يوجد سجل أسعار موثق لهذا الرمز.", "No verified recorded history is available for this symbol.", "Aucun historique enregistré vérifié n'est disponible pour ce symbole."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } }
+                            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(tr("التحليل الفني", "Technical analysis", "Analyse technique"), style = MaterialTheme.typography.titleMedium)
+                                if (technical?.optBoolean("technicalAvailable") == true) {
+                                    listOf("trend", "rsi", "samples").forEach { key -> if (technical.has(key) && !technical.isNull(key)) Text("${key.replaceFirstChar { it.uppercase() }}: ${technical.opt(key)}") }
+                                    technical.optJSONObject("indicators")?.let { indicators -> listOf("sma20", "sma50", "ema20", "ema50", "support", "resistance").forEach { key -> if (indicators.has(key) && !indicators.isNull(key)) Text("${key.uppercase()}: ${indicators.opt(key)}") } }
+                                    listOf(technical.optString("source"), technical.optString("upstreamProvider"), technical.optString("technicalAsOf")).filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }?.let { Text(it.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                } else Text(tr("مؤشرات التحليل الفني غير متاحة حتى تتوفر مشاهدات موثقة كافية.", "Technical indicators are unavailable until enough verified observations exist.", "Les indicateurs techniques sont indisponibles tant que les observations vérifiées sont insuffisantes."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } }
                         } else if (marketMode.value && investorFeed.value == "markets") {
                             item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(listOf("news", "calendar", "screening")) { kind ->
@@ -318,7 +411,10 @@ abstract class MobileActivity : ComponentActivity() {
                             item { OutlinedTextField(marketQuery, { marketQuery = it }, label = { Text(tr("ابحث بالاسم أو الرمز", "Search name or symbol", "Rechercher un nom ou symbole")) }, modifier = Modifier.fillMaxWidth()) }
                             item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(listOf("all", "stock", "forex", "commodity", "fund")) { type -> FilterChip(selected = marketCategory == type, onClick = { marketCategory = type; loadMarkets() }, label = { Text(type) }) } } }
                             item { Button(onClick = { loadMarkets() }, enabled = !busy.value) { Text(tr("بحث وتحديث", "Search and refresh", "Rechercher et actualiser")) } }
-                            items(records.value) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text(row.optString("displayName", row.optString("name"))); Text(row.optString("displaySymbol", row.optString("symbol"))); Text(row.optString("currency", "—")) } } }
+                            items(records.value) { row -> Card(Modifier.fillMaxWidth().clickable {
+                                val symbol = row.optString("displaySymbol", row.optString("symbol")).trim()
+                                if (symbol.isNotBlank()) { marketAnalysisSymbol.value = symbol; marketHistory.value = null; marketTechnical.value = null; loadMarketAnalysis(symbol) }
+                            }) { Column(Modifier.padding(16.dp)) { Text(row.optString("displayName", row.optString("name"))); Text(row.optString("displaySymbol", row.optString("symbol"))); Text(row.optString("currency", "-")); Text(tr("عرض التحليل", "View analysis", "Voir l'analyse"), color = MaterialTheme.colorScheme.primary) } } }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadMarkets(marketPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
                         } else if (marketMode.value) {
                             val feed = investorFeed.value
@@ -434,6 +530,13 @@ abstract class MobileActivity : ComponentActivity() {
                                 TextButton(onClick = { selected.value = null; records.value = emptyList(); cursor.value = null }) { Text(tr("رجوع", "Back", "Retour")) }
                                 Button(enabled = !busy.value, onClick = { loadRecords() }) { Text(tr("تحديث", "Refresh", "Actualiser")) }
                                 if (!resource.optBoolean("readOnly")) Button(enabled = !busy.value, onClick = { editing = JSONObject() }) { Text(tr("إضافة", "Add", "Ajouter")) }
+                                if (productId == "business" && resource.getString("id") == "documents") Button(enabled = !busy.value, onClick = {
+                                    work({ auth.request("/api/mobile/business/records/projects?limit=100") }) { json ->
+                                        businessDocumentProjects.value = json.getJSONArray("records").objects()
+                                        documentProjectId = businessDocumentProjects.value.firstOrNull()?.optString("id").orEmpty()
+                                        documentTitle = ""; documentCategory = "business_plan"; documentNotes = ""; documentUpload = true
+                                    }
+                                }) { Text(tr("رفع مستند", "Upload document", "Téléverser un document")) }
                             } }
                             if (records.value.isEmpty() && !busy.value) item { Text(tr("لا توجد سجلات.", "No records.", "Aucun enregistrement.")) }
                             items(records.value, key = { it.getString("id") }) { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -462,6 +565,29 @@ abstract class MobileActivity : ComponentActivity() {
                         }
                         if (signedIn.value) item { TextButton(onClick = { editing = null; deleting = null; signOut() }) { Text(tr("تسجيل الخروج", "Sign out", "Déconnexion")) } }
                     }
+                    if (documentUpload) AlertDialog(
+                        onDismissRequest = { if (!busy.value) documentUpload = false },
+                        title = { Text(tr("رفع مستند مشروع", "Upload project document", "Téléverser un document de projet")) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                if (businessDocumentProjects.value.isEmpty()) Text(tr("لا توجد مشاريع. أنشئ مشروعاً من حساب الموقع أولاً.", "No projects are available. Create a project in your website account first.", "Aucun projet disponible. Créez d'abord un projet dans votre compte web."))
+                                else {
+                                    Text(tr("المشروع", "Project", "Projet"))
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(businessDocumentProjects.value, key = { it.getString("id") }) { project -> FilterChip(selected = documentProjectId == project.getString("id"), onClick = { documentProjectId = project.getString("id") }, label = { Text(project.optString("name", project.getString("id"))) }) } }
+                                }
+                                OutlinedTextField(documentTitle, { documentTitle = it }, label = { Text(tr("عنوان المستند", "Document title", "Titre du document")) }, modifier = Modifier.fillMaxWidth())
+                                Text(tr("التصنيف", "Category", "Catégorie"))
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(listOf("business_plan", "contract", "license", "invoice", "receipt", "supplier", "employee", "report", "financial", "legal", "other")) { category -> FilterChip(selected = documentCategory == category, onClick = { documentCategory = category }, label = { Text(documentCategoryLabel(category)) }) } }
+                                OutlinedTextField(documentNotes, { documentNotes = it }, label = { Text(tr("ملاحظات", "Notes", "Notes")) }, modifier = Modifier.fillMaxWidth())
+                            }
+                        },
+                        confirmButton = { TextButton(enabled = documentProjectId.isNotBlank() && documentTitle.isNotBlank(), onClick = {
+                            pendingBusinessDocument = PendingBusinessDocument(documentProjectId, documentTitle.trim(), documentCategory, documentNotes.trim())
+                            documentUpload = false
+                            attachmentLauncher.launch(arrayOf("application/pdf", "image/png", "image/jpeg", "image/webp", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                        }) { Text(tr("اختيار ملف", "Choose file", "Choisir un fichier")) } },
+                        dismissButton = { TextButton(onClick = { documentUpload = false }) { Text(tr("إلغاء", "Cancel", "Annuler")) } },
+                    )
                     editing?.let { row -> selected.value?.let { resource -> RecordEditor(resource, row, language, onClose = { editing = null }, onSave = { body ->
                         val method = if (row.has("id")) "PATCH" else "POST"
                         if (row.has("id")) body.put("id", row.getString("id"))

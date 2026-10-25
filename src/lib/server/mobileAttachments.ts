@@ -7,6 +7,17 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 const maxUploadBytes = 10 * 1024 * 1024;
 const allowedMimeTypes = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
+const projectDocumentMimeTypes = new Set([
+  ...allowedMimeTypes,
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+const projectDocumentCategories = new Set([
+  'business_plan', 'contract', 'license', 'invoice', 'receipt', 'supplier',
+  'employee', 'report', 'financial', 'legal', 'other',
+]);
 
 type AttachmentRow = {
   id: string;
@@ -73,6 +84,14 @@ function projectDocumentPath(value: unknown, userId: string) {
   return value;
 }
 
+function uploadFormText(form: FormData, key: string, maxLength: number, required = false) {
+  const value = form.get(key);
+  if (typeof value !== 'string') return required ? null : '';
+  const text = value.trim();
+  if ((required && !text) || text.length > maxLength) return null;
+  return text;
+}
+
 async function businessDocumentPermission(client: SupabaseClient, userId: string) {
   const role = await client.from('business_user_roles').select('role').eq('user_id', userId).maybeSingle();
   if (role.error) return { response: mobileResponse({ ok: false, code: 'ACCESS_UNAVAILABLE' }, 503) };
@@ -83,9 +102,10 @@ async function businessDocumentPermission(client: SupabaseClient, userId: string
   return { role: value as BusinessRole };
 }
 
-/** Private project documents are view-only on mobile until their complete web
- * editing workflow has native parity. The server owns role, row and path
- * checks; clients see only a short-lived signed URL. */
+/** The server owns mobile project-document role, row, path and upload checks.
+ * Clients can only request a short-lived link or add a new document to one of
+ * their existing projects; replacement and destructive delete stay on the web
+ * until the full project workflow has native parity. */
 export async function handleMobileBusinessDocument(request: Request, product: string, resource: string) {
   if (product !== 'business' || resource !== 'documents') return mobileResponse({ ok: false, code: 'NOT_FOUND' }, 404);
   const access = await mobileAccess(request);
@@ -94,6 +114,57 @@ export async function handleMobileBusinessDocument(request: Request, product: st
   if (limited) { limited.headers.set('Cache-Control', 'private, no-store'); return limited; }
   const permission = await businessDocumentPermission(access.client, access.userId);
   if (permission.response) return permission.response;
+
+  if (request.method === 'POST') {
+    if (!businessPermissions(permission.role).canWriteBusinessModules) return mobileResponse({ ok: false, code: 'FORBIDDEN' }, 403);
+    const contentLength = Number(request.headers.get('content-length') || '0');
+    if (Number.isFinite(contentLength) && contentLength > maxUploadBytes + 80 * 1024) return mobileResponse({ ok: false, code: 'FILE_TOO_LARGE' }, 413);
+    let form: FormData;
+    try { form = await request.formData(); } catch { return mobileResponse({ ok: false, code: 'INVALID_UPLOAD' }, 400); }
+    const projectId = recordIdSchema.safeParse(form.get('projectId'));
+    const title = uploadFormText(form, 'title', 250, true);
+    const category = uploadFormText(form, 'category', 40, true);
+    const notes = uploadFormText(form, 'notes', 4000);
+    const file = form.get('file');
+    if (!projectId.success || !title || !category || !projectDocumentCategories.has(category)
+      || notes === null || typeof File === 'undefined' || !(file instanceof File)) {
+      return mobileResponse({ ok: false, code: 'INVALID_UPLOAD' }, 400);
+    }
+    if (!projectDocumentMimeTypes.has(file.type)) return mobileResponse({ ok: false, code: 'UNSUPPORTED_FILE' }, 415);
+    if (file.size < 1 || file.size > maxUploadBytes) return mobileResponse({ ok: false, code: 'FILE_TOO_LARGE' }, 413);
+    const project = await access.client.from('projects').select('id').eq('user_id', access.userId).eq('id', projectId.data).maybeSingle();
+    if (project.error) return mobileResponse({ ok: false, code: 'LOAD_UNAVAILABLE' }, 503);
+    if (!project.data) return mobileResponse({ ok: false, code: 'PROJECT_NOT_FOUND' }, 404);
+    const documentId = crypto.randomUUID();
+    const name = safeFileName(file.name);
+    const path = `${access.userId}/projects/${projectId.data}/${documentId}-${name}`;
+    let bytes: Uint8Array;
+    try { bytes = new Uint8Array(await file.arrayBuffer()); } catch { return mobileResponse({ ok: false, code: 'INVALID_UPLOAD' }, 400); }
+    const uploaded = await access.client.storage.from('project-documents').upload(path, bytes, { cacheControl: '3600', contentType: file.type, upsert: false });
+    if (uploaded.error) return mobileResponse({ ok: false, code: 'UPLOAD_UNAVAILABLE' }, 503);
+    const now = new Date().toISOString();
+    const saved = await access.client.from('project_documents').insert({
+      id: documentId,
+      user_id: access.userId,
+      project_id: projectId.data,
+      title,
+      category,
+      file_url: null,
+      file_path: path,
+      file_name: name,
+      file_type: file.type,
+      file_size: file.size,
+      notes: notes || null,
+      uploaded_at: now,
+      updated_at: now,
+    }).select('id,project_id,title,category,file_name,file_type,file_size,notes,uploaded_at,created_at').maybeSingle();
+    if (saved.error || !saved.data) {
+      await access.client.storage.from('project-documents').remove([path]).catch(() => {});
+      return mobileResponse({ ok: false, code: saved.error ? 'SAVE_UNAVAILABLE' : 'PROJECT_NOT_FOUND' }, saved.error ? 503 : 404);
+    }
+    return mobileResponse({ ok: true, document: saved.data }, 201);
+  }
+
   if (request.method !== 'GET') return mobileResponse({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
   const documentId = recordIdSchema.safeParse(new URL(request.url).searchParams.get('recordId'));
   if (!documentId.success) return mobileResponse({ ok: false, code: 'INVALID_ID' }, 400);

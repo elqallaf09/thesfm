@@ -10,6 +10,9 @@ describe('native private business project documents', () => {
     const screen = read('apps/expo-go/src/RecordsScreen.tsx');
     expect(screen).toContain("const supportsPrivateDocuments = product === 'business' && resource.id === 'documents';");
     expect(screen).toContain("Private project document from your website account.");
+    expect(screen).toContain("'/api/mobile/business/records/projects?limit=100'");
+    expect(screen).toContain('async function uploadProjectDocument()');
+    expect(screen).toContain("form.append('projectId', documentProjectId)");
     expect(screen).toContain('void openAttachment(item)');
   });
 
@@ -18,12 +21,18 @@ describe('native private business project documents', () => {
     expect(source).toContain('if product == "business", resource.id == "documents"');
     expect(source).toContain('result.attachment.url.scheme == "https", result.attachment.url.host != nil');
     expect(source).toContain('"/api/mobile/\\(product)/records/\\(resource.id)/attachment?recordId=\\(recordId)"');
+    expect(source).toContain('MobileBusinessDocumentUpload');
+    expect(source).toContain('"/api/mobile/business/records/projects?limit=100"');
+    expect(source).toContain('"/api/mobile/business/records/documents/attachment"');
   });
 
   it('keeps Android document access native and scoped to the signed-in product', () => {
     const activity = read('apps/native-shared/android/src/main/java/com/thesfm/mobile/MobileActivity.kt');
     expect(activity).toContain('"/api/mobile/$productId/records/$resourceId/attachment?recordId=${URLEncoder.encode(recordId, "UTF-8")}"');
     expect(activity).toContain('productId == "business" && resourceId == "documents"');
+    expect(activity).toContain('PendingBusinessDocument');
+    expect(activity).toContain('auth.uploadBusinessDocument');
+    expect(activity).toContain('"/api/mobile/business/records/projects?limit=100"');
     expect(activity).toContain('"View document"');
   });
 });

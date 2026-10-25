@@ -123,6 +123,12 @@ class MobileSession(context: Context, private val product: String, private val a
         require(bytes.isNotEmpty() && bytes.size <= 10 * 1024 * 1024) { "INVALID_UPLOAD_SIZE" }
         return multipartRequest("/api/mobile/$product/records/$resource/attachment", mapOf("recordId" to recordId), MobileMultipartFile(name, mimeType, bytes))
     }
+    /** Adds a new project document; the server verifies role and project ownership. */
+    fun uploadBusinessDocument(projectId: String, title: String, category: String, notes: String, name: String, mimeType: String, bytes: ByteArray): JSONObject {
+        require(product == "business") { "BUSINESS_ONLY" }
+        require(bytes.isNotEmpty() && bytes.size <= 10 * 1024 * 1024) { "INVALID_UPLOAD_SIZE" }
+        return multipartRequest("/api/mobile/$product/records/documents/attachment", mapOf("projectId" to projectId, "title" to title, "category" to category, "notes" to notes), MobileMultipartFile(name, mimeType, bytes))
+    }
     private fun multipartRequest(path: String, fields: Map<String, String>, file: MobileMultipartFile): JSONObject {
         require(path.startsWith("/api/") && !path.contains("://"))
         val epoch = generation
