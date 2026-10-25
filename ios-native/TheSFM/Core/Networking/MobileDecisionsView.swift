@@ -45,7 +45,9 @@ struct MobileDecisionsView: View {
                 if let flags = analysis.riskFlags, !flags.isEmpty { Text(tr("تنبيهات: ", "Warnings: ", "Alertes : ") + flags.joined(separator: ", ")).font(.footnote).foregroundStyle(.secondary) }
             } else { Text(tr("أدخل قرارًا لتحليل أثره من بيانات حسابك.", "Enter a decision to analyze its impact using your account data.", "Saisissez une décision pour analyser son impact avec les données de votre compte.")).foregroundStyle(.secondary) } }
             Section(tr("القرارات السابقة", "Previous decisions", "Décisions précédentes")) { if let decisions = page?.decisions, !decisions.isEmpty { ForEach(decisions) { decision in VStack(alignment: .leading, spacing: 5) {
-                Button { selectedID = decision.id; analysis = decision.analysis } label: { VStack(alignment: .leading, spacing: 3) { Text(decision.decision_title ?? "-"); Text(money(decision.estimated_cost, currency: decision.currency ?? currency)).font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
+                let itemTitle = decision.decision_title ?? "-"
+                let itemAmount = money(decision.estimated_cost, currency: decision.currency ?? currency)
+                Button { selectedID = decision.id; analysis = decision.analysis } label: { VStack(alignment: .leading, spacing: 3) { Text(itemTitle); Text(itemAmount).font(.caption).foregroundStyle(.secondary) } }.buttonStyle(.plain)
                 Text((decision.status ?? "-") + decisionDate(decision.created_at)).font(.caption).foregroundStyle(.secondary)
                 if page?.canDelete == true { Button(tr("حذف", "Delete", "Supprimer"), role: .destructive) { deleteCandidate = decision }.disabled(disabled) }
             }.listRowBackground(selectedID == decision.id ? Color.accentColor.opacity(0.12) : nil) } } else { Text(tr("لا توجد قرارات محفوظة بعد.", "No saved decisions yet.", "Aucune décision enregistrée.")).foregroundStyle(.secondary) } }
