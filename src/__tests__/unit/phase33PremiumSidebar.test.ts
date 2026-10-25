@@ -162,7 +162,9 @@ describe('Phase 3.3 premium sidebar interaction contract', () => {
     expect(sidebar).toMatch(/<nav\r?\n\s+className="sfm-shared-utilities"/);
     expect(sidebar).toContain('max-height:min(40dvh,340px)');
     expect(sidebar).toContain('useLayoutEffect(() =>');
-    expect(sidebar).toContain('scroll.scrollTop += itemRect.bottom - scrollRect.bottom');
+    expect(sidebar).toContain("target.scrollIntoView({ block: 'nearest', inline: 'nearest' });");
+    expect(sidebar).toContain('settledFrame = window.requestAnimationFrame(revealActiveItem);');
+    expect(sidebar).not.toContain('scroll.scrollTop += itemRect.bottom - scrollRect.bottom');
     expect(mobile).toContain('className="sfm-mobile-utilities"');
     expect(mobile).toContain('className="sfm-mobile-utility-nav"');
     expect(mobile).toContain('@media(max-height:620px)');
