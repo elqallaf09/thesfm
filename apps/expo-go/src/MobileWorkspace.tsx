@@ -7,6 +7,7 @@ import { RecordsScreen } from './RecordsScreen';
 import { ToolsScreen } from './ToolsScreen';
 import { ReportsScreen } from './ReportsScreen';
 import { InvestorFeeds } from './InvestorFeeds';
+import { TeamsScreen } from './TeamsScreen';
 import { completeGoogleSignIn, startGoogleSignIn } from './oauth';
 import { MobileRequestError, PendingMobileMfa, type MobileSessionClient } from './session';
 import { screenForLink, type Screen } from './navigation';
@@ -66,6 +67,7 @@ export function MobileWorkspace(props: Props) {
   else if (screen.kind === 'channels') content = <NotificationChannelsScreen client={client} openExternal={openLink} />;
   else if (screen.kind === 'tools') content = <ToolsScreen initialPath={screen.path} />;
   else if (screen.kind === 'reports' && (product === 'finance' || product === 'business')) content = <ReportsScreen client={client} product={product} navigate={navigate} />;
+  else if (screen.kind === 'teams' && product === 'business') content = <TeamsScreen client={client} />;
   else if (screen.kind === 'news' || screen.kind === 'calendar' || screen.kind === 'screening') content = <InvestorFeeds key={screen.kind} base={base} kind={screen.kind} />;
   else content = <Panel><Label>{t(['هذه الوظيفة لم تكتمل في نسخة التطبيق الحالية.', 'This feature is not complete in this app version.', 'Cette fonction n’est pas encore complète dans cette version.'])}</Label><Button label={t(['فتح الأقسام', 'Open sections', 'Ouvrir les rubriques'])} onPress={() => navigate({ kind: 'catalog' })} /></Panel>;
   return <View style={{ flex: 1 }}><View style={{ minHeight: 66, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: colors.border, gap: 8, flexDirection: rtl ? 'row-reverse' : 'row', alignItems: 'center', flexWrap: 'wrap' }}><View style={{ flex: 1 }}><Label large>{`THE SFM ${product === 'finance' ? 'Finance' : product === 'investor' ? 'Investor' : 'Business'}`}</Label></View>{stack.length > 1 ? <Button label={t(['رجوع', 'Back', 'Retour'])} onPress={() => setStack(previous => previous.slice(0, -1))} /> : null}{signedIn && screen.kind === 'notifications' ? <Button label={t(['القنوات', 'Channels', 'Canaux'])} onPress={() => navigate({ kind: 'channels' })} /> : null}{signedIn ? <Button label={t(['الإشعارات', 'Notifications', 'Notifications'])} onPress={() => navigate({ kind: 'notifications' })} /> : null}</View>

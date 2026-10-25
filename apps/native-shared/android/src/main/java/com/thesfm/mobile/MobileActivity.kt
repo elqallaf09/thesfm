@@ -67,6 +67,9 @@ abstract class MobileActivity : ComponentActivity() {
     private var account = mutableStateOf<JSONObject?>(null)
     private val summary = mutableStateOf<JSONObject?>(null)
     private val reportMode = mutableStateOf(false)
+    private val teamMode = mutableStateOf(false)
+    private val teams = mutableStateOf<List<JSONObject>>(emptyList())
+    private val teamDetail = mutableStateOf<JSONObject?>(null)
     private val report = mutableStateOf<JSONObject?>(null)
     private val reportPeriod = mutableStateOf(nativeReportPeriod())
     private var pendingReportPdf: ByteArray? = null
@@ -149,6 +152,14 @@ abstract class MobileActivity : ComponentActivity() {
         }
     }
     private fun loadReport() = work({ nativeMonthlyReport(auth, productId, reportPeriod.value) }) { report.value = it }
+    private fun loadTeams(teamId: String? = null) = work({ auth.request("/api/mobile/business/teams" + (teamId?.let { "?teamId=${URLEncoder.encode(it, "UTF-8")}" } ?: "")) }) { json ->
+        if (teamId == null) teams.value = json.getJSONArray("teams").objects() else teamDetail.value = json
+    }
+    private fun teamAction(action: String, teamId: String? = teamDetail.value?.optJSONObject("team")?.optString("id"), nickname: String = "", value: String = "", taskId: String? = null) = work({
+        val body = JSONObject().put("action", action).put("nickname", nickname).put("value", value)
+        if (teamId != null) body.put("teamId", teamId); if (taskId != null) body.put("taskId", taskId)
+        auth.request("/api/mobile/business/teams", "POST", body)
+    }) { result -> val next = teamId ?: result.optJSONObject("result")?.optString("id"); loadTeams(); if (!next.isNullOrBlank()) loadTeams(next) }
     private fun changeReportPeriod(offset: Int) {
         shiftNativeReportPeriod(reportPeriod.value, offset)?.let { reportPeriod.value = it; report.value = null; loadReport() }
     }
@@ -289,14 +300,14 @@ abstract class MobileActivity : ComponentActivity() {
         }
         CompositionLocalProvider(LocalLayoutDirection provides if (language == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr) {
             MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || marketAnalysisSymbol.value != null) {
+                BackHandler(pendingMfa.value != null || selected.value != null || marketMode.value || reportMode.value || teamMode.value || marketAnalysisSymbol.value != null) {
                     val pending = pendingMfa.value
                     if (pending != null) {
                         work({ auth.cancelMfa(pending); JSONObject() }) {
                             pendingMfa.value = null; password = ""; mfaCode = ""; emailCodeSent = false
                         }
                     } else if (marketAnalysisSymbol.value != null) { marketAnalysisSymbol.value = null; marketHistory.value = null; marketTechnical.value = null }
-                    else { selected.value = null; marketMode.value = false; reportMode.value = false; report.value = null; records.value = emptyList(); cursor.value = null }
+                    else { selected.value = null; marketMode.value = false; reportMode.value = false; teamMode.value = false; teamDetail.value = null; report.value = null; records.value = emptyList(); cursor.value = null }
                 }
                 Scaffold(topBar = { TopAppBar(title = { Text("THE SFM ${productId.replaceFirstChar { it.uppercase() }}") }) }) { padding ->
                     LazyColumn(Modifier.fillMaxSize().padding(padding).widthIn(max = 1100.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -461,6 +472,8 @@ abstract class MobileActivity : ComponentActivity() {
                                 } }
                             }
                             if (cursor.value != null) item { Button(enabled = !busy.value, onClick = { loadInvestorFeed(feed, language, investorFeedPage + 1) }) { Text(tr("تحميل المزيد", "Load more", "Charger la suite")) } }
+                        } else if (teamMode.value) {
+                            item { TeamWorkspace(teams.value, teamDetail.value, busy.value, load = { loadTeams(it) }, action = { action, nickname, value, taskId -> teamAction(action, nickname = nickname, value = value, taskId = taskId) }) }
                         } else if (reportMode.value) {
                             val currentReport = report.value
                             fun reportLabel(key: String) = when (key) {
@@ -519,6 +532,7 @@ abstract class MobileActivity : ComponentActivity() {
                             }
                             if (productId == "finance" || productId == "business") item { Button(onClick = { reportMode.value = true; report.value = null; loadReport() }, enabled = !busy.value) { Text(tr(if (productId == "finance") "مركز التقارير" else "عمليات الأعمال", if (productId == "finance") "Reports Center" else "Business operations", if (productId == "finance") "Centre des rapports" else "Opérations d’affaires")) } }
                             item { Button(onClick = { loadCatalog() }, enabled = !busy.value) { Text(tr("تحديث الأقسام", "Refresh sections", "Actualiser les rubriques")) } }
+                            if (productId == "business") item { Button(onClick = { teamMode.value = true; teamDetail.value = null; loadTeams() }, enabled = !busy.value) { Text(tr("فرق العمل", "Teams", "Équipes")) } }
                             items(resources.value, key = { it.getString("id") }) { resource -> Button(onClick = { selected.value = resource; records.value = emptyList(); loadRecords() }, modifier = Modifier.fillMaxWidth()) { Text(label(resource)) } }
                             if (productId == "investor") item { Button(onClick = { investorFeed.value = "markets"; marketMode.value = true; records.value = emptyList(); loadMarkets() }) { Text(tr("الأسواق", "Markets", "Marchés")) } }
                             item { Button(onClick = { work({ auth.request("/api/mobile/account") }) { account.value = it } }) { Text(tr("حسابي والاشتراك", "Account and subscription", "Compte et abonnement")) } }
@@ -668,6 +682,30 @@ private fun nativeReportPdf(report: JSONObject, product: String, period: String,
         values.forEach { (key, name) -> line("$name: ${row.optDouble(key)} $currency") }
     }
     document.finishPage(page); return ByteArrayOutputStream().use { output -> document.writeTo(output); document.close(); output.toByteArray() }
+}
+
+@Composable private fun TeamWorkspace(teams: List<JSONObject>, detail: JSONObject?, busy: Boolean, load: (String?) -> Unit, action: (String, String, String, String?) -> Unit) {
+    var nickname by remember { mutableStateOf("") }; var name by remember { mutableStateOf("") }; var code by remember { mutableStateOf("") }; var note by remember { mutableStateOf("") }; var task by remember { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Teams", style = MaterialTheme.typography.headlineMedium); Text("Only published notes and tasks are shared; financial records stay private.")
+        OutlinedTextField(nickname, { nickname = it }, label = { Text("Your team name") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(name, { name = it }, label = { Text("New team") }, modifier = Modifier.fillMaxWidth())
+        Button(enabled = !busy && nickname.trim().length >= 2 && name.trim().length >= 2, onClick = { action("create", nickname, name, null) }) { Text("Create team") }
+        OutlinedTextField(code, { code = it }, label = { Text("Invitation code") }, modifier = Modifier.fillMaxWidth())
+        Button(enabled = !busy && nickname.trim().length >= 2 && code.isNotBlank(), onClick = { action("join", nickname, code, null) }) { Text("Join") }
+        Button(enabled = !busy, onClick = { load(null) }) { Text("Refresh") }
+        teams.forEach { team -> Button(onClick = { load(team.getString("id")) }, modifier = Modifier.fillMaxWidth()) { Text(team.getString("name")) } }
+        detail?.let { current ->
+            Text(current.getJSONObject("team").getString("name"), style = MaterialTheme.typography.titleLarge)
+            current.getJSONArray("members").objects().forEach { member -> Text("${member.optString("display_name")} · ${member.optString("role")}") }
+            OutlinedTextField(note, { note = it }, label = { Text("Team note") }, modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy && note.isNotBlank(), onClick = { action("note", "", note, null); note = "" }) { Text("Post") }
+            current.getJSONArray("notes").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Text(row.optString("body"), Modifier.padding(12.dp)) } }
+            OutlinedTextField(task, { task = it }, label = { Text("Task") }, modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy && task.isNotBlank(), onClick = { action("task_create", "", task, null); task = "" }) { Text("Add task") }
+            current.getJSONArray("tasks").objects().forEach { row -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) { Text(row.optString("title")); Row { listOf("todo", "doing", "done").forEach { status -> TextButton(onClick = { action("task_status", "", status, row.getString("id")) }) { Text(status) } } } } } }
+        }
+    }
 }
 
 @Composable private fun RecordEditor(resource: JSONObject, row: JSONObject, language: String, onClose: () -> Unit, onSave: (JSONObject) -> Unit) {

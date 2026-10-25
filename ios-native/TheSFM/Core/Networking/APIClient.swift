@@ -44,6 +44,17 @@ struct APIClient {
         guard let response = response as? HTTPURLResponse, 200..<300 ~= response.statusCode else { throw APIClientError.invalidResponse }
     }
 
+    func send<Response: Decodable>(_ path: String, method: String, body: Data, as: Response.Type) async throws -> Response {
+        guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL, url.host == baseURL.host, url.scheme == "https" else { throw APIClientError.invalidResponse }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = method; request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = await tokenProvider() { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let response = response as? HTTPURLResponse, 200..<300 ~= response.statusCode else { throw APIClientError.invalidResponse }
+        return try JSONDecoder().decode(Response.self, from: data)
+    }
+
     /// Small private attachments only. The caller validates the chosen file and
     /// the server independently enforces ownership, MIME type and the 10 MB cap.
     func upload(_ path: String, fields: [String: String], file: MultipartFile) async throws {

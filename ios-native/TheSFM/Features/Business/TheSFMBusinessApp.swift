@@ -10,6 +10,7 @@ struct TheSFMBusinessApp: App {
     var body: some Scene {
         WindowGroup {
             TabView {
+                MobileTeamsView().tabItem { Label("Teams", systemImage: "person.3") }
                 BusinessHomeView().tabItem { Label("الرئيسية", systemImage: "house") }
                 MobileRecordsView(product: "business").tabItem { Label("إدارة الأعمال", systemImage: "briefcase") }
             }

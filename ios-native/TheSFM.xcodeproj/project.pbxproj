@@ -37,6 +37,7 @@
 		1E0001030000000000000003 /* MobileRecordsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0000010000000000000001 /* MobileRecordsView.swift */; };
 		1E0001040000000000000004 /* AuthSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000030000000000000003 /* AuthSessionStore.swift */; };
 		1E0001050000000000000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0000040000000000000004 /* APIClient.swift */; };
+		1F0001010000000000000001 /* MobileTeamsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F0000010000000000000001 /* MobileTeamsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -62,6 +63,7 @@
 		1D0000020000000000000002 /* MarketsTVHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketsTVHomeView.swift; sourceTree = "<group>"; };
 		1D0000110000000000000011 /* TheSFMtv.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheSFMtv.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E0000010000000000000001 /* MobileRecordsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRecordsView.swift; sourceTree = "<group>"; };
+		1F0000010000000000000001 /* MobileTeamsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileTeamsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -178,6 +180,7 @@
 			children = (
 				1A0000040000000000000004 /* APIClient.swift */,
 				1E0000010000000000000001 /* MobileRecordsView.swift */,
+				1F0000010000000000000001 /* MobileTeamsView.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -441,6 +444,7 @@
 				1C0001040000000000000004 /* APIClient.swift in Sources */,
 				1C0001050000000000000005 /* SupabaseConfig.swift in Sources */,
 				1E0001030000000000000003 /* MobileRecordsView.swift in Sources */,
+				1F0001010000000000000001 /* MobileTeamsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
