@@ -35,9 +35,16 @@ test.describe('authentication deep-link preservation', () => {
 
     test('returns to a genuinely protected destination without dropping nested query parameters', async ({ page }) => {
       test.skip(!userAuthConfigured, 'Real authenticated redirect coverage requires the configured Preview user fixture.');
-      const protectedPath = '/settings?section=security&filters=%7B%22range%22%3A%221M%22%7D&return=%2Fwatchlist%3Fsort%3Dnewest';
+      const protectedPath = '/profile?section=security&filters=%7B%22range%22%3A%221M%22%7D&return=%2Fwatchlist%3Fsort%3Dnewest';
       await page.goto(`/login?next=${encodeURIComponent(protectedPath)}`, { waitUntil: 'domcontentloaded' });
       await page.waitForURL(url => `${url.pathname}${url.search}${url.hash}` === protectedPath);
+    });
+
+    test('returns through the settings alias to the protected profile with the full query intact', async ({ page }) => {
+      test.skip(!userAuthConfigured, 'Real authenticated redirect coverage requires the configured Preview user fixture.');
+      const search = '?section=security&filters=%7B%22range%22%3A%221M%22%7D&return=%2Fwatchlist%3Fsort%3Dnewest&tag=one&tag=two';
+      await page.goto(`/login?next=${encodeURIComponent(`/settings${search}`)}`, { waitUntil: 'domcontentloaded' });
+      await page.waitForURL(url => `${url.pathname}${url.search}${url.hash}` === `/profile${search}`);
     });
   });
 });

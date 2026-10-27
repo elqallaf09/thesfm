@@ -23,7 +23,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from '@/components/finance/DashboardDataProvider';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import {
   buildLinePoints,
@@ -154,6 +154,8 @@ export default function ExecutiveDashboardPage() {
 
     const profileRequest = (async () => {
       try {
+        const supabase = await loadSupabaseClient();
+        if (controller.signal.aborted) return;
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -177,7 +179,7 @@ export default function ExecutiveDashboardPage() {
       try {
         const { data, error } = await (dashboardData
           ? dashboardData.loadTable(source.table)
-          : supabase.from(source.table).select('*').eq('user_id', user.id)
+          : (await loadSupabaseClient()).from(source.table).select('*').eq('user_id', user.id)
             .limit(1000).abortSignal(controller.signal));
         if (error) throw error;
         if (controller.signal.aborted) return;

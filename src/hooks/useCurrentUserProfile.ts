@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 
 export const CURRENT_USER_PROFILE_CHANGED_EVENT = 'sfm-current-user-profile-changed';
 
@@ -112,8 +112,10 @@ export function useCurrentUserProfile(): CurrentUserProfile {
   const [authUser, setAuthUser] = useState<User | null>(user);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const requestVersion = useRef(0);
 
   const loadProfile = useCallback(async () => {
+    const version = ++requestVersion.current;
     if (!user) {
       setAuthUser(null);
       setProfile(null);
@@ -122,18 +124,28 @@ export function useCurrentUserProfile(): CurrentUserProfile {
     }
 
     setIsLoadingProfile(true);
-    const [{ data: authData }, { data: profileData }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-    ]);
-
-    setAuthUser(authData.user ?? user);
-    setProfile((profileData ?? null) as ProfileRow | null);
-    setIsLoadingProfile(false);
+    try {
+      const supabase = await loadSupabaseClient();
+      if (version !== requestVersion.current) return;
+      const [{ data: authData }, { data: profileData }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+      ]);
+      if (version !== requestVersion.current) return;
+      setAuthUser(authData.user ?? user);
+      setProfile((profileData ?? null) as ProfileRow | null);
+    } catch {
+      if (version !== requestVersion.current) return;
+      setAuthUser(user);
+      setProfile(null);
+    } finally {
+      if (version === requestVersion.current) setIsLoadingProfile(false);
+    }
   }, [user]);
 
   useEffect(() => {
     void loadProfile();
+    return () => { requestVersion.current += 1; };
   }, [loadProfile]);
 
   useEffect(() => {

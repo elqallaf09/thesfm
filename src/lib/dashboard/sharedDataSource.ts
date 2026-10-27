@@ -13,7 +13,10 @@ export type DashboardQueryClient = {
 };
 
 /** One dashboard mount / authenticated owner / refresh, never a global user cache. */
-export function createDashboardDataSource(db: DashboardQueryClient, userId: string | null) {
+export function createDashboardDataSource(
+  db: DashboardQueryClient | (() => PromiseLike<DashboardQueryClient>),
+  userId: string | null,
+) {
   const requests = new Map<string, Promise<TableResult>>();
 
   function loadTable(table: string, limit = 1000): Promise<TableResult> {
@@ -27,7 +30,8 @@ export function createDashboardDataSource(db: DashboardQueryClient, userId: stri
     // Start in a microtask so concurrent consumers share even synchronously
     // resolving clients. The owner is fixed by the provider, never by a caller.
     const request = Promise.resolve()
-      .then(() => db.from(table).select('*').eq('user_id', userId).limit(limit))
+      .then(() => typeof db === 'function' ? db() : db)
+      .then(client => client.from(table).select('*').eq('user_id', userId).limit(limit))
       .then(result => {
         if (result.error) requests.delete(key);
         return result;

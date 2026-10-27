@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { normalizeAccountActivityRows, type AccountActivityRow } from '@/lib/accountActivity';
 
 const CACHE_TTL_MS = 30_000;
@@ -31,6 +31,7 @@ export function useRecentAccountActivity(limit = 6) {
     }
     setLoading(true);
     try {
+      const supabase = await loadSupabaseClient();
       const { data, error: queryError } = await supabase
         .from('account_activity')
         .select('id,user_id,event_type,title,description,entity_type,entity_id,metadata,created_at')

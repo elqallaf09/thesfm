@@ -22,7 +22,8 @@ on:
 
 permissions:
   contents: read
-  deployments: read
+  deployments: write
+  pull-requests: read
 
 concurrency:
   group: authenticated-preview-validate-${{ inputs.target_sha }}
@@ -32,11 +33,12 @@ jobs:
   validate:
     name: Validate authenticated isolated Preview
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 75
     environment: Preview
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PRODUCTION_REF: ${{ vars.SUPABASE_PRODUCTION_REF }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
       E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
@@ -46,6 +48,7 @@ jobs:
       E2E_EXPECTED_DEPLOYMENT_SHA: ${{ inputs.target_sha }}
       INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}
       PLAYWRIGHT_NO_COPY_PROMPT: "1"
+      SFM_PREVIEW_MOBILE_QA: "1"
     steps:
       - name: Validate fail-closed target and required capabilities
         shell: bash
@@ -54,6 +57,7 @@ jobs:
           for name in \
             SUPABASE_ACCESS_TOKEN \
             SUPABASE_PRODUCTION_REF \
+            VERCEL_TOKEN \
             VERCEL_AUTOMATION_BYPASS_SECRET \
             SUPER_ADMIN_EMAILS \
             E2E_USER_EMAIL \
@@ -108,46 +112,21 @@ jobs:
           printf 'SUPABASE_PREVIEW_URL=https://%s.supabase.co\n' "$INPUT_PREVIEW_REF" >> "$GITHUB_ENV"
           printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$service_key" >> "$GITHUB_ENV"
 
-      - name: Resolve READY Vercel Preview for exact SHA
+      - name: Ensure isolated Vercel Preview for the current PR commit
         id: preview
         uses: actions/github-script@v9
         with:
           script: |
             const sha = process.env.E2E_EXPECTED_DEPLOYMENT_SHA;
-            const deadline = Date.now() + 10 * 60 * 1000;
-            while (Date.now() < deadline) {
-              const deployments = await github.paginate(github.rest.repos.listDeployments, {
-                ...context.repo,
-                sha,
-                environment: 'Preview',
-                per_page: 100,
-              });
-              for (const deployment of deployments.sort(
-                (left, right) => Date.parse(right.created_at) - Date.parse(left.created_at),
-              )) {
-                if (deployment.sha !== sha || deployment.environment !== 'Preview') continue;
-                const { data: statuses } = await github.rest.repos.listDeploymentStatuses({
-                  ...context.repo,
-                  deployment_id: deployment.id,
-                  per_page: 100,
-                });
-                const ready = statuses.find(status => status.state === 'success');
-                if (!ready) continue;
-                const candidate = ready.environment_url || ready.target_url;
-                let target;
-                try {
-                  target = new URL(candidate);
-                } catch {
-                  continue;
-                }
-                if (target.protocol !== 'https:' || !target.hostname.endsWith('.vercel.app')) continue;
-                core.setOutput('url', target.origin);
-                core.info(`Resolved READY Vercel Preview for exact SHA ${sha}.`);
-                return;
-              }
-              await new Promise(resolve => setTimeout(resolve, 15000));
-            }
-            core.setFailed(`No READY Vercel Preview was found for exact SHA ${sha}.`);
+            const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+              ...context.repo, commit_sha: sha, per_page: 100,
+            });
+            const matches = pulls.filter(pr => pr.state === 'open' && pr.head.sha === sha
+              && pr.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`);
+            if (matches.length !== 1) throw new Error('Expected exactly one open same-repository PR at the requested SHA.');
+            const { data: pull_request } = await github.rest.pulls.get({ ...context.repo, pull_number: matches[0].number });
+            const { ensureReleasePreview } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/ensure-release-preview.mjs`);
+            await ensureReleasePreview({ github, core, context: { repo: context.repo, payload: { ...context.payload, pull_request } } });
 
       - uses: pnpm/action-setup@v6
         with:
@@ -163,6 +142,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Provision isolated Preview auth fixtures
+        id: fixtures
         run: node tests/smoke/preview-auth-fixtures.mjs provision
 
       - name: Validate authenticated request-to-row observability and isolation
@@ -175,13 +155,23 @@ jobs:
           --project=chromium-desktop
           tests/smoke/observability-preview.spec.ts
 
+      - name: Verify cold authenticated dashboard startup
+        if: hashFiles('tests/smoke/dashboard-cold-session.spec.ts') != ''
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+        run: >-
+          pnpm exec playwright test
+          --config=playwright.preview.config.ts
+          --max-failures=1
+          tests/smoke/dashboard-cold-session.spec.ts
+
       - name: Run complete authenticated remote smoke suite
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
-        run: pnpm exec playwright test --config=playwright.preview.config.ts
+        run: pnpm exec playwright test --config=playwright.preview.config.ts --max-failures=1
 
       - name: Cleanup isolated Preview auth fixtures
-        if: always()
+        if: always() && (steps.fixtures.outcome == 'success' || steps.fixtures.outcome == 'failure')
         run: node tests/smoke/preview-auth-fixtures.mjs cleanup
 
       - name: Publish validation summary

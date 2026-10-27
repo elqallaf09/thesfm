@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from './DashboardDataProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { loadUserDataTables } from '@/lib/data/financeData';
 import { summarizeGoal } from '@/lib/dashboard/executiveOverview';
 import { buildEconomicHomeSummary } from '@/lib/dashboard/economicHomeSummary';
@@ -63,6 +63,8 @@ export function EconomicIntelligenceHome() {
     if (!user?.id) { setState({ loading: false, snapshot: null, goals: [], decisions: [] }); return; }
     let cancelled = false;
     void (async () => {
+      const supabase = await loadSupabaseClient();
+      if (cancelled) return;
       const [finance, saved] = await Promise.all([
         (dashboardData
           ? dashboardData.loadTables(ECONOMIC_INTELLIGENCE_TABLES)
