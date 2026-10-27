@@ -323,7 +323,7 @@ function NewsEvidenceLine({ item, tr }: {
         : tr('news_single_source_detail');
 
   return (
-    <div className={`mt-3 rounded-[var(--radius-card)] border px-3 py-2.5 text-xs leading-5 ${
+    <div className={`mt-3 rounded-[var(--radius-card)] border px-3 py-2.5 text-[length:var(--fs-small)] leading-[var(--lh-small)] leading-5 ${
       isConflicting
         ? 'border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]   '
         : isOfficial
@@ -549,7 +549,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
       <div className="space-y-2">
         {rows.map(row => (
           <div key={`${row.rank}-${row.symbol}`} className="flex min-w-0 items-center gap-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 shadow-[var(--shadow-card)]  ">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-circle)] border border-[var(--primary)] bg-[var(--primary-soft)] text-xs font-bold text-[var(--primary)]   ">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-circle)] border border-[var(--primary)] bg-[var(--primary-soft)] text-[length:var(--fs-caption)] leading-[var(--lh-caption)] font-bold text-[var(--primary)]   ">
               {row.rank}
             </span>
             <div className="min-w-0 flex-1">
@@ -564,15 +564,15 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   showName={false}
                   symbolClassName="text-sm"
                 />
-                <span className={`rounded-[var(--radius-pill)] border px-2 py-0.5 text-[12px] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
+                <span className={`rounded-[var(--radius-pill)] border px-2 py-0.5 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold ${changeBadgeClass(row.changePercent)}`} dir="ltr">
                   {formatPercent(row.changePercent)}
                 </span>
               </div>
-              <p className="truncate text-xs text-[var(--foreground-muted)] ">{row.name}</p>
+              <p className="truncate text-[length:var(--fs-small)] leading-[var(--lh-small)] text-[var(--foreground-muted)] ">{row.name}</p>
             </div>
             <div className="shrink-0 text-end">
               <p dir="ltr" className="text-sm font-bold text-[var(--foreground)] ">{formatPrice(row.price, row.currency)}</p>
-              <p dir="ltr" className="text-[12px] text-[var(--foreground-muted)] ">{formatNumber(row.volume)}</p>
+              <p dir="ltr" className="text-[length:var(--fs-small)] leading-[var(--lh-small)] text-[var(--foreground-muted)] ">{formatNumber(row.volume)}</p>
             </div>
           </div>
         ))}
@@ -615,7 +615,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   {config.shariaCaution ? <ShieldCheck size={26} /> : <Newspaper size={26} />}
                 </div>
                 <div className="min-w-0">
-                  <span className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-3 py-1 text-xs font-bold text-[var(--primary)]   ">
+                  <span className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-3 py-1 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--primary)]   ">
                     <Sparkles size={14} />
                     {tr(config.badgeKey)}
                   </span>
@@ -685,7 +685,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       {(config.metricCards ?? config.filters.filter(filter => filter.key !== 'all').slice(0, 4).map(filter => ({ labelKey: filter.labelKey, bodyKey: filter.labelKey }))).map(card => (
                         <div key={`${card.labelKey}-${card.bodyKey}`} className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3  ">
                           <p className="text-sm font-bold text-[var(--foreground)] ">{tr(card.labelKey)}</p>
-                          <p className="mt-1 text-xs leading-6 text-[var(--foreground-muted)] ">{tr(card.bodyKey)}</p>
+                          <p className="mt-1 text-[length:var(--fs-small)] leading-[var(--lh-small)] text-[var(--foreground-muted)] ">{tr(card.bodyKey)}</p>
                         </div>
                       ))}
                     </div>
@@ -719,7 +719,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             {card.items.map(item => (
                               <li key={item} className="flex items-start gap-2 text-sm font-bold leading-7 text-[var(--foreground-secondary)] ">
                                 <span
-                                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-circle)] text-[12px] font-bold ${
+                                  className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-circle)] text-[length:var(--fs-caption)] leading-[var(--lh-caption)] font-bold ${
                                     card.tone === 'positive'
                                       ? 'bg-[var(--success-soft)] text-[var(--success)]  '
                                       : 'bg-[var(--warning-soft)] text-[var(--warning)]  '
@@ -778,7 +778,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             }`}
                           >
                             {tr(filter.labelKey)}
-                            <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[12px] ${active ? 'bg-[var(--surface)] text-[var(--primary-foreground)]' : 'bg-[var(--surface-muted)] text-[var(--foreground-secondary)]  '}`}>
+                            <span className={`rounded-[var(--radius-pill)] px-2 py-0.5 text-[length:var(--fs-label)] leading-[var(--lh-label)] ${active ? 'bg-[var(--surface)] text-[var(--primary-foreground)]' : 'bg-[var(--surface-muted)] text-[var(--foreground-secondary)]  '}`}>
                               {categoryCounts[filter.key] ?? 0}
                             </span>
                           </button>
@@ -842,14 +842,14 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                               size="sm"
                               variant="badge"
                               className="max-w-full rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--primary-soft)] px-2.5 py-1 text-[var(--primary)]   "
-                              labelClassName="max-w-[11rem] text-xs"
-                              symbolClassName="text-[12px]"
+                              labelClassName="max-w-[11rem] text-[length:var(--fs-label)] leading-[var(--lh-label)]"
+                              symbolClassName="text-[length:var(--fs-label)] leading-[var(--lh-label)]"
                             />
-                            <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
+                            <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--success)]   ">
                               {item.source}
                             </span>
                             {item.shariaStatus && (
-                              <span className={`rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-bold ${shariaStatusBadgeClass(item.shariaStatus)}`}>
+                              <span className={`rounded-[var(--radius-pill)] border px-3 py-1.5 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold ${shariaStatusBadgeClass(item.shariaStatus)}`}>
                                 {tr(shariaStatusLabelKey(item.shariaStatus))}
                               </span>
                             )}
@@ -863,20 +863,20 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           <NewsEvidenceLine item={item} tr={tr} />
                           <div className="mt-4 grid gap-2 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] p-3   sm:grid-cols-2">
                             <div>
-                              <p className="text-xs text-[var(--foreground-muted)] ">{item.companyName}</p>
+                              <p className="text-[length:var(--fs-small)] leading-[var(--lh-small)] text-[var(--foreground-muted)] ">{item.companyName}</p>
                               <p dir="ltr" className="mt-1 text-sm font-bold text-[var(--foreground)] ">
                                 {formatPrice(price?.price ?? item.price, 'USD')}
                               </p>
                             </div>
                             <div>
-                              <p className="text-xs text-[var(--foreground-muted)] ">{tr('stock_category_change_percent')}</p>
+                              <p className="text-[length:var(--fs-small)] leading-[var(--lh-small)] text-[var(--foreground-muted)] ">{tr('stock_category_change_percent')}</p>
                               <p dir="ltr" className={`mt-1 text-sm font-bold ${changeTone(price?.changePercent ?? item.changePercent)}`}>
                                 {formatPercent(price?.changePercent ?? item.changePercent)}
                               </p>
                             </div>
                           </div>
                           {item.shariaStatus && (
-                            <div className="mt-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3 text-xs leading-6 text-[var(--foreground-secondary)]   ">
+                            <div className="mt-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-3 text-[length:var(--fs-small)] leading-[var(--lh-small)] text-[var(--foreground-secondary)]   ">
                               <p>
                                 <span className="font-bold text-[var(--foreground)] ">{tr('stock_category_sharia_compliance_status')}: </span>
                                 <span className={`font-bold ${item.shariaStatus === 'non_compliant' ? 'text-[var(--danger)] ' : item.shariaStatus === 'needs_review' ? 'text-[var(--warning)] ' : 'text-[var(--foreground-secondary)] '}`}>
@@ -890,7 +890,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             </div>
                           )}
                           <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
-                            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--foreground-muted)] ">
+                            <span className="inline-flex items-center gap-2 text-[length:var(--fs-caption)] leading-[var(--lh-caption)] font-semibold text-[var(--foreground-muted)] ">
                               <Clock3 size={14} />
                               {formatDateTime(item.publishedAt)}
                             </span>
@@ -921,7 +921,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                         {tr('tech_news_load_more')}
                       </button>
                     ) : (
-                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-xs font-bold text-[var(--foreground-muted)]   ">
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--foreground-muted)]   ">
                         {tr('tech_news_all_loaded')}
                       </span>
                     )}
@@ -954,9 +954,9 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                           variant="badge"
                           showName={false}
                           className="max-w-[8rem] rounded-[var(--radius-pill)] bg-[var(--primary-soft)] px-2 py-0.5 text-[var(--primary)]  "
-                          symbolClassName="text-[12px]"
+                          symbolClassName="text-[length:var(--fs-label)] leading-[var(--lh-label)]"
                         />
-                        <span className="truncate text-[12px] font-bold text-[var(--foreground-muted)] ">{item.source}</span>
+                        <span className="truncate text-[length:var(--fs-caption)] leading-[var(--lh-caption)] font-bold text-[var(--foreground-muted)] ">{item.source}</span>
                       </div>
                       <p className="line-clamp-2 text-sm font-bold leading-6 text-[var(--foreground)] ">{item.title}</p>
                     </a>
@@ -986,7 +986,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                       <div key={section}>
                         <div className="mb-2 flex items-center justify-between gap-3">
                           <h3 className="text-sm font-bold text-[var(--foreground)] ">{sectionTitle(section)}</h3>
-                          <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[12px] font-bold text-[var(--foreground-secondary)]   ">
+                          <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-muted)] px-2 py-1 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--foreground-secondary)]   ">
                             {tr('stock_category_movers_three_stocks')}
                           </span>
                         </div>
@@ -1017,7 +1017,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 <div className="mt-4 space-y-2">
                   {mentionedTickers.length > 0 ? mentionedTickers.map((item, index) => (
                     <div key={item.ticker} className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2  ">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-circle)] bg-[var(--primary-soft)] text-xs font-bold text-[var(--primary)]  ">{index + 1}</span>
+                      <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-circle)] bg-[var(--primary-soft)] text-[length:var(--fs-caption)] leading-[var(--lh-caption)] font-bold text-[var(--primary)]  ">{index + 1}</span>
                       <AssetIdentity
                         symbol={item.ticker}
                         name={item.companyName}
@@ -1026,9 +1026,9 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                         variant="badge"
                         className="min-w-0 flex-1 text-[var(--foreground)] "
                         labelClassName="text-sm"
-                        symbolClassName="text-xs text-[var(--foreground-muted)] "
+                        symbolClassName="text-[length:var(--fs-label)] leading-[var(--lh-label)] text-[var(--foreground-muted)] "
                       />
-                      <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--success)]   ">
                         {tr('tech_news_mentions_count').replace('{count}', String(item.count))}
                       </span>
                     </div>
@@ -1047,7 +1047,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                 </h2>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {sourceCounts.length > 0 ? sourceCounts.map(([source, count]) => (
-                    <span key={source} className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-xs font-bold text-[var(--success)]   ">
+                    <span key={source} className="rounded-[var(--radius-pill)] border border-[var(--success)] bg-[var(--success-soft)] px-3 py-1.5 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--success)]   ">
                       {source} · {count}
                     </span>
                   )) : (
@@ -1106,7 +1106,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                             size="xs"
                             showName={false}
                             className="rounded-[var(--radius-pill)] border border-[var(--primary)] bg-[var(--surface)] px-3 py-1 text-[var(--primary)]   "
-                            symbolClassName="text-xs"
+                            symbolClassName="text-[length:var(--fs-label)] leading-[var(--lh-label)]"
                           />
                         ))}
                       </div>
@@ -1149,7 +1149,7 @@ export function StockCategoryNewsPage({ categoryId }: { categoryId: StockCategor
                   <section key={section} className="rounded-[var(--radius-panel)] border border-[var(--border)] bg-[var(--surface-muted)] p-4  ">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <h3 className="font-bold text-[var(--foreground)] ">{sectionTitle(section)}</h3>
-                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[12px] font-bold text-[var(--foreground-secondary)]   ">
+                      <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[length:var(--fs-label)] leading-[var(--lh-label)] font-bold text-[var(--foreground-secondary)]   ">
                         {tr('stock_category_movers_five_stocks')}
                       </span>
                     </div>

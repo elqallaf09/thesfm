@@ -53,12 +53,12 @@ export function AiTab() {
 
       <style jsx global>{`
         .ops-ai-usage-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-        .ops-ai-usage-scope { margin: 0; color: var(--foreground-secondary); font-size: 12px; line-height: 1.7; }
+        .ops-ai-usage-scope { margin: 0; color: var(--foreground-secondary); font-size: var(--fs-label); line-height: var(--lh-label); }
         .ops-ai-usage-summary article { border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; }
-        .ops-ai-usage-summary strong { display: block; color: var(--foreground); font: 600 20px var(--font-data); }
-        .ops-ai-usage-summary span { display: block; margin-top: 4px; color: var(--foreground-muted); font-size: 12px; font-weight: 700; }
+        .ops-ai-usage-summary strong { display: block; color: var(--foreground); font: 600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono);font-family:var(--font-mono);font-weight:600; }
+        .ops-ai-usage-summary span { display: block; margin-top: 4px; color: var(--foreground-muted); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 700; }
         .ops-ai-usage-table { border: 1px solid var(--border); border-radius: var(--radius-card); overflow: auto; max-width: 100%; }
-        .ops-ai-usage-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); font-size: 12.5px; }
+        .ops-ai-usage-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); font-size: var(--fs-small);line-height:var(--lh-small); }
         .ops-ai-usage-row:first-child { border-top: none; }
         .ops-ai-usage-head { background: var(--surface-muted); font-weight: 600; color: var(--foreground); }
       `}</style>

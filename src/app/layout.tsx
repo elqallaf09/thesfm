@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Mono, IBM_Plex_Sans_Arabic } from 'next/font/google';
+import { Cairo, IBM_Plex_Mono, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { DensityProvider } from '@/hooks/useDensity';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -18,16 +18,23 @@ import './workspace-chrome-critical.css';
 import './temporary-product-flags.css';
 
 const ibmPlexSansArabic = IBM_Plex_Sans_Arabic({
-  variable: '--font-ibm-plex-sans-arabic',
+  variable: '--font-body',
   subsets: ['arabic', 'latin'],
   weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
+const cairo = Cairo({
+  variable: '--font-heading',
+  subsets: ['arabic', 'latin'],
+  weight: ['600', '700'],
+  display: 'swap',
+});
+
 const ibmPlexMono = IBM_Plex_Mono({
-  variable: '--font-ibm-plex-mono',
+  variable: '--font-mono',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['500', '600'],
   display: 'swap',
 });
 
@@ -56,7 +63,7 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${ibmPlexSansArabic.variable} ${ibmPlexMono.variable}`}
+      className={`${ibmPlexSansArabic.variable} ${cairo.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
       <body className="font-sans antialiased">

@@ -70,7 +70,7 @@ describe('phase 2.10 production UI hardening', () => {
   it('uses the approved fonts and exposes every mobile Trader route through an accessible More menu', () => {
     expect(traderHtml).toContain('family=IBM+Plex+Mono');
     expect(traderDetailHtml).toContain('family=IBM+Plex+Mono');
-    expect(visualTokens).toContain('--font-data: var(--font-ibm-plex-mono');
+    expect(visualTokens).toContain('--font-data: var(--font-mono');
     expect(traderHtml).toContain('href="/semantic-tokens.css');
     expect(traderDetailHtml).toContain('href="/semantic-tokens.css');
     expect(traderCss).not.toContain('--font-mono:');

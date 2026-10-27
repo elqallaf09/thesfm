@@ -18,16 +18,17 @@ function renderCount(source: string, component: 'LanguageSwitcher' | 'UserChip')
   return source.match(new RegExp(`<${component}(?:\\s|/?>)`, 'g'))?.length ?? 0;
 }
 
-function tokenValue(tokens: string, token: string) {
+function tokenValue(tokens: string, token: string): string {
   const value = tokens.match(new RegExp(`--${token}:\\s*([^;]+);`))?.[1]?.trim();
   expect(value, `${token} is defined`).toBeDefined();
-  return value!;
+  const reference = value!.match(/^var\(--([a-z0-9-]+)\)$/)?.[1];
+  return reference ? tokenValue(tokens, reference) : value!;
 }
 
-function remToPixels(value: string) {
-  const rem = value.match(/^(\d*\.?\d+)rem$/)?.[1];
-  expect(rem, `${value} is an auditable rem value`).toBeDefined();
-  return Number(rem) * 16;
+function fontSizeToPixels(value: string) {
+  const size = value.match(/^(\d*\.?\d+)(px|rem)$/);
+  expect(size, `${value} is an auditable font size`).toBeDefined();
+  return Number(size![1]) * (size![2] === 'rem' ? 16 : 1);
 }
 
 const appFiles = sourceFiles('src/app', new Set(['.tsx'])).sort();
@@ -139,7 +140,7 @@ describe('Phase 3.1 global-controls contract', () => {
 });
 
 describe('Phase 3.1 typography and direction contract', () => {
-  it('uses IBM Plex Sans Arabic globally and scopes IBM Plex Mono to data roles', () => {
+  it('uses IBM Plex Sans Arabic for UI, Cairo for headings, and IBM Plex Mono for data', () => {
     const layout = read('src/app/layout.tsx');
     const tokens = read('src/styles/tokens.css');
     const globals = read('src/app/globals.css');
@@ -148,25 +149,28 @@ describe('Phase 3.1 typography and direction contract', () => {
     expect(layout).toContain('IBM_Plex_Sans_Arabic');
     expect(layout).toContain("subsets: ['arabic', 'latin']");
     expect(layout).toContain('IBM_Plex_Mono');
-    expect(tokens).toContain('--font-ui: var(--font-ibm-plex-sans-arabic');
-    expect(tokens).toContain('--font-data: var(--font-ibm-plex-mono');
+    expect(layout).toContain('Cairo');
+    expect(layout).toContain("variable: '--font-heading'");
+    expect(tokens).toContain('--font-ui: var(--font-body');
+    expect(tokens).toContain('--font-data: var(--font-mono');
     expect(globals).toContain('body :is(');
     expect(globals).toContain('[data-financial-value]');
     expect(globals).toContain('[data-market-value]');
     expect(globals).toContain('font-family: var(--font-data) !important');
     expect(globals).not.toMatch(/body\s*\{[^}]*font-family\s*:\s*var\(--font-data\)/);
-    expect(activeUi).not.toMatch(/\b(?:Tajawal|Cairo|Inter|Arial|Tahoma|Aptos)\b/i);
+    expect(activeUi).not.toMatch(/\b(?:Tajawal|Inter|Arial|Tahoma|Aptos)\b/i);
+    expect(activeUi).not.toMatch(/font-family:\s*['"]?Cairo\b/i);
   });
 
   it('enforces readable shared typography floors and the supported weight ceiling', () => {
     const tokens = read('src/styles/tokens.css');
 
-    expect(remToPixels(tokenValue(tokens, 'type-body-size'))).toBeGreaterThanOrEqual(15);
-    expect(remToPixels(tokenValue(tokens, 'type-body-small-size'))).toBeGreaterThanOrEqual(14);
-    expect(remToPixels(tokenValue(tokens, 'type-caption-size'))).toBeGreaterThanOrEqual(13);
-    expect(remToPixels(tokenValue(tokens, 'type-label-size'))).toBeGreaterThanOrEqual(13);
-    expect(remToPixels(tokenValue(tokens, 'type-button-size'))).toBeGreaterThanOrEqual(14);
-    expect(remToPixels(tokenValue(tokens, 'type-navigation-size'))).toBeGreaterThanOrEqual(14);
+    expect(fontSizeToPixels(tokenValue(tokens, 'type-body-size'))).toBe(15);
+    expect(fontSizeToPixels(tokenValue(tokens, 'type-body-small-size'))).toBe(14);
+    expect(fontSizeToPixels(tokenValue(tokens, 'type-caption-size'))).toBe(12);
+    expect(fontSizeToPixels(tokenValue(tokens, 'type-label-size'))).toBe(13);
+    expect(fontSizeToPixels(tokenValue(tokens, 'type-button-size'))).toBe(13);
+    expect(fontSizeToPixels(tokenValue(tokens, 'type-navigation-size'))).toBe(14);
     expect(tokenValue(tokens, 'type-navigation-weight')).toBe('500');
     expect(tokenValue(tokens, 'type-navigation-active-weight')).toBe('600');
     expect(tokenValue(tokens, 'control-h')).toBe('44px');

@@ -60,17 +60,17 @@ export function GlobalMarketsNewsFilters({ lang, value, sources, onApply }: {
       </div>
       <style jsx>{`
         .gm-news-filter-panel { display:grid; gap:14px; padding:16px; border:1px solid var(--border); border-radius:var(--radius-card); background:var(--surface); }
-        .gm-news-filter-panel p { margin:0; font-size:12px; line-height:1.6; color:var(--foreground-secondary); }
+        .gm-news-filter-panel p { margin:0; font-size:var(--fs-small, 14px); line-height:var(--lh-small, 22px); color:var(--foreground-secondary); }
         .gm-news-filters { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
-        .gm-news-filters label { display:grid; gap:6px; min-width:0; color:var(--foreground-secondary); font-size:12px; font-weight:600; }
-        .gm-news-filters input,.gm-news-filters select { width:100%; min-width:0; min-height:46px; border:1px solid var(--border-strong); border-radius:var(--radius-control); padding:8px 10px; background:var(--surface-muted); color:var(--foreground); font:inherit; font-size:13px; }
+        .gm-news-filters label { display:grid; gap:6px; min-width:0; color:var(--foreground-secondary); font-size:var(--fs-label, 13px); font-weight:600;line-height:var(--lh-label, 20px); }
+        .gm-news-filters input,.gm-news-filters select { width:100%; min-width:0; min-height:46px; border:1px solid var(--border-strong); border-radius:var(--radius-control); padding:8px 10px; background:var(--surface-muted); color:var(--foreground); font:inherit; font-size:var(--fs-body, 15px);line-height:var(--lh-body, 24px); }
         .gm-news-filter-actions { display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
         .gm-news-filter-actions button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px; padding:0 15px; border:1px solid var(--border); border-radius:var(--radius-control); color:var(--foreground); background:var(--surface-muted); font-weight:650; cursor:pointer; }
         .gm-news-filter-actions .gm-news-filter-apply { background:var(--accent); color:var(--accent-foreground); border-color:var(--accent); }
         .gm-news-filter-panel .gm-news-filter-error { color:var(--danger); }
         .gm-news-filter-panel :is(input,select,button):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
         @media(max-width:900px) { .gm-news-filters { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-        @media(max-width:640px) { .gm-news-filters input,.gm-news-filters select { font-size:16px; } }
+        @media(max-width:640px) { .gm-news-filters input,.gm-news-filters select { font-size:var(--fs-body, 15px);line-height:var(--lh-body, 24px); } }
         @media(max-width:480px) { .gm-news-filters { grid-template-columns:1fr; } .gm-news-filter-actions button { flex:1; } }
       `}</style>
     </form>

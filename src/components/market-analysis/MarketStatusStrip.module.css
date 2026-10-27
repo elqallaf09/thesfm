@@ -72,17 +72,17 @@
 
 .statusCopy strong {
   color: currentColor;
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   overflow-wrap: anywhere;
 }
 
 .statusCopy small {
   color: var(--foreground-secondary);
-  font-size: var(--type-label-size);
+  font-size:var(--fs-small, 14px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height:var(--lh-small, 22px);
   overflow-wrap: anywhere;
 }
 
@@ -112,9 +112,9 @@
   gap: var(--space-1);
   min-inline-size: 0;
   color: var(--foreground-muted);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
 }
 
 .fact dt svg {
@@ -132,9 +132,9 @@
 .fact dd {
   margin: 0;
   color: var(--foreground);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
 }
 
 .timestamp {
@@ -144,8 +144,8 @@
   column-gap: var(--space-1);
   min-inline-size: 0;
   color: var(--foreground-muted);
-  font-size: var(--type-label-size);
-  line-height: var(--type-label-leading);
+  font-size: var(--fs-label, 13px);
+  line-height: var(--lh-label, 20px);
 }
 
 .timestamp svg {

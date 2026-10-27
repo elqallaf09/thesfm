@@ -206,42 +206,42 @@ export function TradingSessionsPanel({ t, locale }: { t: (key: string) => string
         .trading-sessions-dashboard{font-family:var(--font-ui)}
         .session-liquidity-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start}
         .session-liquidity-icon{width:54px;height:54px;border-radius:var(--radius-panel);display:grid;place-items:center;background:var(--surface-muted);border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);color:var(--primary-hover)}
-        .session-liquidity-head small{display:block;color:var(--primary-hover);font-size:12px;font-weight: 700;line-height:1.4}
-        .session-liquidity-head h2{margin:3px 0 0;color:var(--foreground);font-size:clamp(24px,3vw,34px);font-weight: 700;line-height:1.2}
-        .session-liquidity-head p{margin:8px 0 0;max-width:760px;color:var(--foreground-muted);font-size:14px;font-weight: 500;line-height:1.85}
+        .session-liquidity-head small{display:block;color:var(--primary-hover);font-size:var(--fs-small, 14px);font-weight: 700;line-height:var(--lh-small, 22px)}
+        .session-liquidity-head h2{margin:3px 0 0;color:var(--foreground);font-size:var(--fs-section, 20px);font-weight: 700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);}
+        .session-liquidity-head p{margin:8px 0 0;max-width:760px;color:var(--foreground-muted);font-size:var(--fs-small, 14px);font-weight: 500;line-height:var(--lh-small, 22px)}
         .session-overlap-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
         .session-overlap-card{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;border:1px solid color-mix(in srgb, var(--accent) 16%, transparent);background:var(--surface);border-radius:var(--radius-panel);padding:14px;box-shadow: var(--shadow-sm);overflow:hidden}
         .session-overlap-card::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:4px;background:color-mix(in srgb, var(--accent) 55%, transparent)}
         .session-overlap-card.high::before{background:var(--primary)}.session-overlap-card.highest::before{background:var(--accent)}
         .session-overlap-card.active{border-color:color-mix(in srgb, var(--accent) 38%, transparent);box-shadow: var(--shadow-sm)}
         .session-overlap-card-icon{width:40px;height:40px;border-radius:var(--radius-card);display:grid;place-items:center;border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);background:color-mix(in srgb, var(--accent) 10%, transparent);color:var(--primary-hover)}
-        .session-overlap-card strong{display:block;color:var(--foreground);font-size:15px;font-weight: 700;line-height:1.45}
-        .session-overlap-card p{margin:5px 0 0;color:var(--foreground-muted);font-size:12px;font-weight: 500;line-height:1.65}
-        .session-overlap-card small{display:inline-flex;margin-top:9px;border-radius:var(--radius-pill);border:1px solid color-mix(in srgb, var(--accent) 16%, transparent);background:var(--surface-muted);color:var(--foreground);padding:6px 9px;font-family:var(--font-data);font-size:12px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
-        .session-overlap-card b{grid-column:1/-1;width:max-content;max-width:100%;border-radius: var(--radius-pill);border:1px solid color-mix(in srgb, var(--warning) 22%, transparent);background:color-mix(in srgb, var(--warning) 10%, transparent);color:var(--warning);padding:6px 10px;font-size:12px;font-weight: 700;line-height:1.2}
+        .session-overlap-card strong{display:block;color:var(--foreground);font-size:var(--fs-body, 15px);font-weight: 700;line-height:var(--lh-body, 24px)}
+        .session-overlap-card p{margin:5px 0 0;color:var(--foreground-muted);font-size:var(--fs-small, 14px);font-weight: 500;line-height:var(--lh-small, 22px)}
+        .session-overlap-card small{display:inline-flex;margin-top:9px;border-radius:var(--radius-pill);border:1px solid color-mix(in srgb, var(--accent) 16%, transparent);background:var(--surface-muted);color:var(--foreground);padding:6px 9px;font-family:var(--font-data);font-size:var(--fs-small, 14px);font-weight:700;line-height:var(--lh-small, 22px);font-variant-numeric:tabular-nums}
+        .session-overlap-card b{grid-column:1/-1;width:max-content;max-width:100%;border-radius: var(--radius-pill);border:1px solid color-mix(in srgb, var(--warning) 22%, transparent);background:color-mix(in srgb, var(--warning) 10%, transparent);color:var(--warning);padding:6px 10px;font-size:var(--fs-caption, 12px);font-weight: 700;line-height:var(--lh-caption, 18px)}
         .session-overlap-card.high b{border-color:color-mix(in srgb, var(--primary) 22%, transparent);background:color-mix(in srgb, var(--primary) 10%, transparent);color:var(--primary)}
         .session-overlap-card.highest b{border-color:color-mix(in srgb, var(--accent) 25%, transparent);background:color-mix(in srgb, var(--accent) 12%, transparent);color:var(--primary-hover)}
         .session-timeline-shell{display:grid;gap:12px;border:1px solid color-mix(in srgb, var(--accent) 16%, transparent);border-radius:var(--radius-panel);padding:16px;background:var(--surface);min-width:0;overflow:hidden}
         .session-timeline-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
-        .session-timeline-title strong{color:var(--foreground);font-size:15px;font-weight: 700;line-height:1.45}
-        .session-timeline-title span{max-width:560px;color:var(--foreground-muted);font-size:12px;font-weight: 500;line-height:1.65}
+        .session-timeline-title strong{color:var(--foreground);font-size:var(--fs-body, 15px);font-weight: 700;line-height:var(--lh-body, 24px)}
+        .session-timeline-title span{max-width:560px;color:var(--foreground-muted);font-size:var(--fs-caption, 12px);font-weight: 500;line-height:var(--lh-caption, 18px)}
         .session-timeline-scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
         .session-timeline-board{position:relative;min-width:760px;display:grid;gap:10px;padding:10px 12px 14px;border-radius:var(--radius-panel);border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface)}
         .session-hour-row{position:relative;height:24px;border-bottom:1px solid color-mix(in srgb, var(--foreground-muted) 18%, transparent)}
-        .session-hour-row span{position:absolute;top:0;transform:translateX(-50%);color:var(--foreground-muted);font-family:var(--font-data);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+        .session-hour-row span{position:absolute;top:0;transform:translateX(-50%);color:var(--foreground-muted);font-family:var(--font-data);font-size:var(--fs-caption, 12px);font-weight:700;font-variant-numeric:tabular-nums;line-height:var(--lh-caption, 18px);}
         .session-hour-row span::after{content:"";position:absolute;top:20px;left:50%;width:1px;height:218px;background:color-mix(in srgb, var(--foreground-muted) 16%, transparent)}
         .session-overlap-lane{position:relative;height:58px;border-radius:var(--radius-card);background:var(--surface-muted);border:1px solid color-mix(in srgb, var(--accent) 12%, transparent);overflow:visible}
         .session-overlap-zone{position:absolute;top:10px;height:38px;border-radius: var(--radius-pill);background:color-mix(in srgb, var(--warning) 15%, transparent);border:1px solid color-mix(in srgb, var(--warning) 26%, transparent);box-shadow: var(--shadow-sm)}
         .session-overlap-zone.high{background:color-mix(in srgb, var(--primary) 14%, transparent);border-color:color-mix(in srgb, var(--primary) 28%, transparent)}
         .session-overlap-zone.highest{background:color-mix(in srgb, var(--accent) 18%, transparent);border-color:color-mix(in srgb, var(--accent) 34%, transparent)}
         .session-overlap-zone.active{box-shadow: var(--focus-shadow)}
-        .session-overlap-zone b{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:max-content;max-width:180px;white-space:nowrap;border-radius: var(--radius-pill);background:var(--surface);border:1px solid color-mix(in srgb, var(--accent) 18%, transparent);color:var(--foreground);padding:6px 9px;font-size:12px;font-weight: 700;line-height:1.2;box-shadow: var(--shadow-sm)}
+        .session-overlap-zone b{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:max-content;max-width:180px;white-space:nowrap;border-radius: var(--radius-pill);background:var(--surface);border:1px solid color-mix(in srgb, var(--accent) 18%, transparent);color:var(--foreground);padding:6px 9px;font-size:var(--fs-caption, 12px);font-weight: 700;line-height:var(--lh-caption, 18px);box-shadow: var(--shadow-sm)}
         .session-rows{display:grid;gap:10px}
         .session-row{display:grid;grid-template-columns:190px minmax(0,1fr);gap:12px;align-items:center}
         .session-row-label{min-width:0;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);background:var(--surface-muted);border-radius:var(--radius-card);padding:10px;display:grid;gap:7px}
-        .session-row-label strong{color:var(--foreground);font-size:14px;font-weight: 700;line-height:1.35}
-        .session-row-label small{color:var(--foreground-muted);font-family:var(--font-data);font-size:12px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
-        .session-row-label .session-badge{width:max-content;border-radius: var(--radius-pill);padding:6px 9px;background:color-mix(in srgb, var(--foreground-muted) 12%, transparent);color:var(--foreground-muted);font-size:12px;font-weight: 700;line-height:1.2}
+        .session-row-label strong{color:var(--foreground);font-size:var(--fs-label, 13px);font-weight: 700;line-height:var(--lh-label, 20px)}
+        .session-row-label small{color:var(--foreground-muted);font-family:var(--font-data);font-size:var(--fs-label, 13px);font-weight:700;line-height:var(--lh-label, 20px);font-variant-numeric:tabular-nums}
+        .session-row-label .session-badge{width:max-content;border-radius: var(--radius-pill);padding:6px 9px;background:color-mix(in srgb, var(--foreground-muted) 12%, transparent);color:var(--foreground-muted);font-size:var(--fs-label, 13px);font-weight: 700;line-height:var(--lh-label, 20px)}
         .session-row-label .session-badge.open{background:color-mix(in srgb, var(--accent) 14%, transparent);color:var(--primary-hover)}
         .session-row-track{position:relative;height:44px;border-radius: var(--radius-pill);border:1px solid color-mix(in srgb, var(--accent) 12%, transparent);background:color-mix(in srgb, var(--foreground-muted) 10%, transparent);overflow:hidden}
         .session-bar{position:absolute;top:8px;bottom:8px;border-radius: var(--radius-pill);background:var(--chart-5);border:1px solid color-mix(in srgb, var(--surface) 14%, transparent)}

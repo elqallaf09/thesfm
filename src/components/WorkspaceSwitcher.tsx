@@ -247,9 +247,9 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           color: var(--workspace-switcher-item-text);
           text-decoration: none;
           white-space: nowrap;
-          font-size: var(--type-navigation-size);
+          font-size: var(--fs-label, 13px);
           font-weight: var(--type-navigation-weight);
-          line-height: var(--type-navigation-leading);
+          line-height: var(--lh-label, 20px);
           scroll-snap-align: center;
           touch-action: manipulation;
           cursor: pointer;
@@ -309,7 +309,7 @@ export function WorkspaceSwitcher({ adminAccess, className = '' }: WorkspaceSwit
           .sfm-workspace-tab {
             min-height: 44px;
             padding-inline: 13px;
-            font-size: var(--type-navigation-size);
+            font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
           }
         }
 

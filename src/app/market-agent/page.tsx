@@ -989,7 +989,7 @@ function LegacyMarketAgentWorkspace() {
           border-radius: var(--radius-pill);
           background: color-mix(in srgb, var(--surface) 12%, transparent);
           color: var(--hero-foreground);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           letter-spacing: .04em;
         }
@@ -997,9 +997,9 @@ function LegacyMarketAgentWorkspace() {
         .agent-page-header h1 {
           margin: 0;
           color: var(--hero-foreground);
-          font-size: clamp(30px, 4vw, 44px);
-          font-weight: 600;
-          line-height: 1.25;
+          font-size: var(--fs-page);
+          font-weight: 700;
+          line-height: var(--lh-page);
           overflow-wrap: anywhere;
         }
 
@@ -1007,9 +1007,9 @@ function LegacyMarketAgentWorkspace() {
           max-width: 760px;
           margin: 12px 0 0;
           color: var(--hero-foreground-muted);
-          font-size: 15px;
+          font-size: var(--fs-body);
           font-weight: 400;
-          line-height: 1.9;
+          line-height: var(--lh-body);
         }
 
         .agent-service-chip {
@@ -1035,7 +1035,7 @@ function LegacyMarketAgentWorkspace() {
         .agent-service-chip small {
           display: block;
           color: var(--hero-foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 400;
         }
 
@@ -1043,7 +1043,7 @@ function LegacyMarketAgentWorkspace() {
           display: block;
           margin-top: 2px;
           color: var(--hero-foreground);
-          font-size: 13px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           overflow-wrap: anywhere;
         }
@@ -1071,15 +1071,15 @@ function LegacyMarketAgentWorkspace() {
         .agent-field > span,
         .agent-timeframe-group > span {
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .agent-field > small {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.55;
+          line-height: var(--lh-small);
         }
 
         .agent-input-shell,
@@ -1121,7 +1121,7 @@ function LegacyMarketAgentWorkspace() {
           background: transparent;
           color: var(--foreground);
           font-family: var(--font-ui);
-          font-size: 14px;
+          font-size: var(--fs-body);line-height:var(--lh-body);
           font-weight: 400;
         }
 
@@ -1163,7 +1163,7 @@ function LegacyMarketAgentWorkspace() {
           background: transparent;
           color: var(--foreground-muted);
           font-family: var(--font-data);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           cursor: pointer;
         }
@@ -1193,7 +1193,7 @@ function LegacyMarketAgentWorkspace() {
           border-radius: var(--radius-control);
           padding: 0 14px;
           font-family: var(--font-ui);
-          font-size: 13px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           cursor: pointer;
           transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease, color var(--duration-fast) ease;
@@ -1257,9 +1257,9 @@ function LegacyMarketAgentWorkspace() {
         .agent-legal-notice p {
           margin: 4px 0 0;
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.75;
+          line-height: var(--lh-small);
         }
 
         .agent-loading-state,
@@ -1286,17 +1286,17 @@ function LegacyMarketAgentWorkspace() {
         .agent-empty-state h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: 20px;
-          font-weight: 600;
+          font-size: var(--fs-section);line-height:var(--lh-section);
+          font-weight: 700;
         }
 
         .agent-loading-state p,
         .agent-empty-state p {
           margin: 6px 0 0;
           color: var(--foreground-muted);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.75;
+          line-height: var(--lh-small);
         }
 
         .agent-empty-state.error {
@@ -1349,7 +1349,7 @@ function LegacyMarketAgentWorkspace() {
 
         .agent-example-row > span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
         }
 
@@ -1395,7 +1395,7 @@ function LegacyMarketAgentWorkspace() {
         .agent-workspace-header span {
           color: var(--foreground-muted);
           font-family: var(--font-data);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
           overflow-wrap: anywhere;
         }
@@ -1403,9 +1403,9 @@ function LegacyMarketAgentWorkspace() {
         .agent-workspace-header h2 {
           margin: 5px 0 0;
           color: var(--foreground);
-          font-size: 24px;
-          font-weight: 600;
-          line-height: 1.35;
+          font-size: var(--fs-section);
+          font-weight: 700;
+          line-height: var(--lh-section);
         }
 
         .agent-workspace-grid {
@@ -1459,9 +1459,9 @@ function LegacyMarketAgentWorkspace() {
         .agent-history-panel > header p {
           margin: 4px 0 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.55;
+          line-height: var(--lh-small);
         }
 
         .agent-metric-grid {
@@ -1489,17 +1489,17 @@ function LegacyMarketAgentWorkspace() {
 
         .agent-metric span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
         }
 
         .agent-metric strong {
           min-width: 0;
           color: var(--foreground);
-          font-family: var(--font-data);
-          font-size: 14px;
+          font-family: var(--font-mono);
+          font-size: var(--fs-kpi);
           font-weight: 600;
-          line-height: 1.4;
+          line-height: var(--lh-kpi);
           overflow-wrap: anywhere;
         }
 
@@ -1526,7 +1526,7 @@ function LegacyMarketAgentWorkspace() {
         .agent-trend-pill span,
         .agent-indicator-card span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
         }
 
@@ -1536,7 +1536,7 @@ function LegacyMarketAgentWorkspace() {
           margin-top: 3px;
           color: var(--foreground);
           font-family: var(--font-data);
-          font-size: 13px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           overflow-wrap: anywhere;
         }
@@ -1546,7 +1546,7 @@ function LegacyMarketAgentWorkspace() {
           padding: 5px 8px;
           background: var(--surface-muted);
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1585,16 +1585,16 @@ function LegacyMarketAgentWorkspace() {
         .agent-analysis-notes h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-card-title);line-height:var(--lh-card-title);
           font-weight: 600;
         }
 
         .agent-analysis-notes p {
           margin: 7px 0 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.75;
+          line-height: var(--lh-small);
           overflow-wrap: anywhere;
         }
 
@@ -1610,7 +1610,7 @@ function LegacyMarketAgentWorkspace() {
           align-items: center;
           gap: 7px;
           color: var(--foreground);
-          font-size: 15px;
+          font-size: var(--fs-card-title);line-height:var(--lh-card-title);
           font-weight: 600;
         }
 
@@ -1619,7 +1619,7 @@ function LegacyMarketAgentWorkspace() {
           margin-bottom: 5px;
           color: var(--primary);
           font-family: var(--font-data);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1639,14 +1639,14 @@ function LegacyMarketAgentWorkspace() {
         .agent-score-ring strong {
           display: block;
           color: var(--foreground);
-          font-family: var(--font-data);
-          font-size: 24px;
+          font-family: var(--font-mono);
+          font-size: var(--fs-kpi);line-height:var(--lh-kpi);
           font-weight: 600;
         }
 
         .agent-score-ring span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
         }
 
@@ -1670,7 +1670,7 @@ function LegacyMarketAgentWorkspace() {
         .agent-signal-card dt,
         .agent-data-list dt {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
         }
 
@@ -1681,7 +1681,7 @@ function LegacyMarketAgentWorkspace() {
           align-items: center;
           gap: 5px;
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           text-align: end;
           overflow-wrap: anywhere;
@@ -1697,7 +1697,7 @@ function LegacyMarketAgentWorkspace() {
           justify-content: space-between;
           gap: 10px;
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
 
@@ -1719,9 +1719,9 @@ function LegacyMarketAgentWorkspace() {
           display: block;
           margin-top: 5px;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.5;
+          line-height: var(--lh-small);
         }
 
         .agent-quick-actions {
@@ -1775,9 +1775,9 @@ function LegacyMarketAgentWorkspace() {
 
         .agent-level-marker b {
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1.3;
+          line-height: var(--lh-label);
           overflow-wrap: anywhere;
         }
 
@@ -1788,7 +1788,7 @@ function LegacyMarketAgentWorkspace() {
           color: var(--foreground);
           padding: 4px 6px;
           font-family: var(--font-data);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-style: normal;
           font-weight: 600;
           box-shadow: var(--shadow-xs);
@@ -1814,7 +1814,7 @@ function LegacyMarketAgentWorkspace() {
           gap: 12px;
           margin-top: 8px;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
 
@@ -1835,9 +1835,9 @@ function LegacyMarketAgentWorkspace() {
           padding: 6px 9px;
           background: var(--surface-muted);
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1.25;
+          line-height: var(--lh-label);
           white-space: nowrap;
         }
 
@@ -1900,14 +1900,14 @@ function LegacyMarketAgentWorkspace() {
           border-bottom: 1px solid var(--border);
           background: var(--surface-muted);
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 600;
         }
 
         .agent-history-row {
           border-bottom: 1px solid var(--border);
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
 
@@ -1951,8 +1951,8 @@ function LegacyMarketAgentWorkspace() {
           padding: 24px 12px;
           color: var(--foreground-muted);
           text-align: center;
-          font-size: 13px;
-          line-height: 1.7;
+          font-size: var(--fs-small);
+          line-height: var(--lh-small);
         }
 
         .spin {
@@ -2040,7 +2040,7 @@ function LegacyMarketAgentWorkspace() {
           .agent-history-row > [role='cell']::before {
             content: attr(data-label);
             color: var(--foreground-muted);
-            font-size: 12px;
+            font-size: var(--fs-small);line-height:var(--lh-small);
             font-weight: 500;
           }
         }

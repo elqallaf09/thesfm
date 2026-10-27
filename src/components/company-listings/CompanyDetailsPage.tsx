@@ -690,8 +690,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .details-state h1 {
             margin: 0;
             color: var(--foreground);
-            font-size: 28px;
-            font-weight: 700;
+            font-size: var(--fs-page, 28px);
+            font-weight: 700;line-height:var(--lh-page, 38px);font-family:var(--font-heading);
           }
           .details-state p {
             margin: 0;
@@ -763,8 +763,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             padding: 7px 11px;
             background: color-mix(in srgb, var(--surface) 14%, transparent);
             color: var(--hero-foreground);
-            font-size: 12px;
-            font-weight: 600;
+            font-size: var(--fs-label, 13px);
+            font-weight: 600;line-height:var(--lh-label, 20px);
           }
           .status-pill.approved,
           .status-card.approved { color: var(--success); background: var(--success-soft); }
@@ -778,10 +778,10 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .status-card.inactive { color: var(--foreground-secondary); background: var(--surface-muted); }
           .hero-copy h1 {
             margin: 12px 0 8px;
-            font-size: clamp(32px, 4vw, 56px);
-            line-height: 1.08;
+            font-size: var(--fs-page, 28px);
+            line-height: var(--lh-page, 38px);
             font-weight: 700;
-            overflow-wrap: anywhere;
+            overflow-wrap: anywhere;font-family:var(--font-heading);
           }
           .hero-meta {
             display: flex;
@@ -796,15 +796,15 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             padding: 7px 10px;
             background: color-mix(in srgb, var(--surface) 12%, transparent);
             color: var(--hero-foreground-muted);
-            font-size: 13px;
-            font-weight: 500;
+            font-size: var(--fs-caption, 12px);
+            font-weight: 500;line-height:var(--lh-caption, 18px);
           }
           .hero-copy p {
             margin: 14px 0 0;
             color: var(--hero-foreground-muted);
-            line-height: 1.8;
+            line-height: var(--lh-body, 24px);
             font-weight: 400;
-            max-width: 760px;
+            max-width: 760px;font-size:var(--fs-body, 15px);
           }
           .hero-actions {
             display: flex;
@@ -832,8 +832,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .review-warning p {
             margin: 6px 0 0;
-            line-height: 1.7;
-            font-weight: 400;
+            line-height: var(--lh-body, 24px);
+            font-weight: 400;font-size:var(--fs-body, 15px);
           }
           .company-layout {
             display: grid;
@@ -874,14 +874,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .section-head small {
             display: block;
             color: var(--accent);
-            font-size: 12px;
-            font-weight: 600;
+            font-size: var(--fs-small, 14px);
+            font-weight: 600;line-height:var(--lh-small, 22px);
           }
           .section-head h2 {
             margin: 2px 0 0;
             color: var(--foreground);
-            font-size: 22px;
-            font-weight: 600;
+            font-size: var(--fs-section, 20px);
+            font-weight: 700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
           }
           .overview-block {
             display: grid;
@@ -896,14 +896,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
           .overview-block span {
             color: var(--accent);
-            font-size: 12px;
-            font-weight: 600;
+            font-size: var(--fs-caption, 12px);
+            font-weight: 600;line-height:var(--lh-caption, 18px);
           }
           .overview-block p {
             margin: 7px 0 0;
             color: var(--foreground);
-            line-height: 1.9;
-            font-weight: 400;
+            line-height: var(--lh-body, 24px);
+            font-weight: 400;font-size:var(--fs-body, 15px);
           }
           .details-grid,
           .status-list {
@@ -939,8 +939,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .status-card span {
             display: block;
             color: var(--foreground-muted);
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--fs-label, 13px);
+            font-weight: 500;line-height:var(--lh-label, 20px);
           }
           .detail-tile strong,
           .contact-action strong,
@@ -948,9 +948,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             display: block;
             margin-top: 4px;
             color: var(--foreground);
-            font-size: 15px;
+            font-size: var(--fs-label, 13px);
             font-weight: 600;
-            overflow-wrap: anywhere;
+            overflow-wrap: anywhere;line-height:var(--lh-label, 20px);
           }
           .services-grid {
             display: grid;
@@ -1087,7 +1087,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             gap: 8px;
             text-decoration: none;
             cursor: pointer;
-            font: 600 14px/1.25 var(--font-ui);
+            font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);line-height:var(--lh-label, 20px);
           }
           .admin-card button:disabled {
             opacity: .68;
@@ -1222,14 +1222,14 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           .hero-copy h1 {
             max-width: 860px;
-            font-size: clamp(34px, 3.8vw, 58px);
-            letter-spacing: 0;
+            font-size: var(--fs-page, 28px);
+            letter-spacing: 0;line-height:var(--lh-page, 38px);font-weight:700;font-family:var(--font-heading);
           }
 
           .hero-copy p {
             max-width: 780px;
-            font-size: 15px;
-            color: var(--hero-foreground-muted);
+            font-size: var(--fs-body, 15px);
+            color: var(--hero-foreground-muted);line-height:var(--lh-body, 24px);
           }
 
           .hero-actions {
@@ -1277,17 +1277,17 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.highlight-card small) {
             display: block;
             color: var(--foreground-muted);
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--fs-caption, 12px);
+            font-weight: 500;line-height:var(--lh-caption, 18px);
           }
 
           :global(.highlight-card strong) {
             display: block;
             margin-top: 4px;
             color: var(--foreground);
-            font-size: 16px;
+            font-size: var(--fs-body, 15px);
             font-weight: 600;
-            overflow-wrap: anywhere;
+            overflow-wrap: anywhere;line-height:var(--lh-body, 24px);
           }
 
           .company-layout {
@@ -1334,17 +1334,17 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.section-head small) {
             display: block;
             color: var(--accent);
-            font-size: 12px;
+            font-size: var(--fs-caption, 12px);
             font-weight: 600;
-            letter-spacing: 0.01em;
+            letter-spacing: 0.01em;line-height:var(--lh-caption, 18px);
           }
 
           :global(.section-head h2) {
             margin: 3px 0 0;
             color: var(--foreground);
-            font-size: 23px;
-            line-height: 1.2;
-            font-weight: 600;
+            font-size: var(--fs-section, 20px);
+            line-height: var(--lh-section, 30px);
+            font-weight: 700;font-family:var(--font-heading);
           }
 
           .overview-block {
@@ -1358,8 +1358,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           .overview-block p {
-            font-size: 15px;
-            line-height: 1.9;
+            font-size: var(--fs-body, 15px);
+            line-height: var(--lh-body, 24px);
           }
 
           :global(.details-grid) {
@@ -1400,8 +1400,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           :global(.status-card span) {
             display: block;
             color: var(--foreground-muted);
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--fs-label, 13px);
+            font-weight: 500;line-height:var(--lh-label, 20px);
           }
 
           :global(.detail-tile strong),
@@ -1410,9 +1410,9 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             display: block;
             margin-top: 4px;
             color: var(--foreground);
-            font-size: 15px;
+            font-size: var(--fs-label, 13px);
             font-weight: 600;
-            overflow-wrap: anywhere;
+            overflow-wrap: anywhere;line-height:var(--lh-label, 20px);
           }
 
           .services-grid {
@@ -1441,8 +1441,8 @@ export function CompanyDetailsPage({ id }: { id: string }) {
 
           .empty-card strong {
             color: var(--foreground);
-            font-size: 16px;
-            font-weight: 600;
+            font-size: var(--fs-card-title, 17px);
+            font-weight: 600;line-height:var(--lh-card-title, 26px);
           }
 
           .empty-card p {
@@ -1505,7 +1505,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           }
 
           :global(.metric-grid .detail-tile:first-child strong) {
-            font-size: 24px;
+            font-size: var(--fs-kpi, 26px);line-height:var(--lh-kpi, 32px);font-weight:600;font-family:var(--font-mono);
           }
 
           :global(.status-card) {
@@ -1557,17 +1557,17 @@ export function CompanyDetailsPage({ id }: { id: string }) {
           .location-card span {
             display: block;
             color: var(--foreground-muted);
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--fs-caption, 12px);
+            font-weight: 500;line-height:var(--lh-caption, 18px);
           }
 
           .location-card strong {
             display: block;
             margin-top: 5px;
             color: var(--foreground);
-            font-size: 16px;
+            font-size: var(--fs-body, 15px);
             font-weight: 600;
-            overflow-wrap: anywhere;
+            overflow-wrap: anywhere;line-height:var(--lh-body, 24px);
           }
 
           @media (max-width: 1180px) {
@@ -1623,7 +1623,7 @@ export function CompanyDetailsPage({ id }: { id: string }) {
             }
 
             .hero-copy h1 {
-              font-size: 34px;
+              font-size: var(--fs-page, 28px);line-height:var(--lh-page, 38px);font-weight:700;font-family:var(--font-heading);
             }
 
             .highlight-row,

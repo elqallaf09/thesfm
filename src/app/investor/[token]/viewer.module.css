@@ -40,7 +40,7 @@
   background: var(--surface);
   color: var(--primary);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 600;
   cursor: pointer;
 }
@@ -87,8 +87,8 @@
 .centerBox h1 {
   margin: 0;
   color: var(--foreground);
-  font-size: 19px;
-  font-weight: 600;
+  font-size: var(--fs-page);line-height:var(--lh-page);
+  font-weight: 700;
 }
 
 .centerBox p {
@@ -108,7 +108,7 @@
   display: grid;
   gap: 5px;
   color: var(--foreground-secondary);
-  font-size: 13px;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 500;
   text-align: start;
 }
@@ -123,7 +123,7 @@
   background: var(--surface);
   color: var(--foreground);
   font-family: var(--font-ui);
-  font-size: 13.5px;
+  font-size: var(--fs-body);line-height:var(--lh-body);
 }
 
 .passwordForm input:hover,
@@ -145,7 +145,7 @@
   background: var(--primary);
   color: var(--primary-foreground);
   font-family: var(--font-ui);
-  font-size: 13.5px;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 600;
   cursor: pointer;
 }
@@ -171,8 +171,8 @@
 .hero h1 {
   margin: 0 0 10px;
   color: var(--foreground);
-  font-size: clamp(22px, 4vw, 30px);
-  font-weight: 600;
+  font-size: var(--fs-page);line-height:var(--lh-page);
+  font-weight: 700;
 }
 
 .ownerMessage {
@@ -185,7 +185,7 @@
 .ownerMessage h2 {
   margin: 0 0 6px;
   color: var(--primary);
-  font-size: 13px;
+  font-size: var(--fs-card-title);line-height:var(--lh-card-title);
   font-weight: 600;
 }
 
@@ -212,7 +212,7 @@
   gap: 8px;
   margin: 0;
   color: var(--foreground);
-  font-size: 16px;
+  font-size: var(--fs-card-title);line-height:var(--lh-card-title);
   font-weight: 600;
 }
 
@@ -254,10 +254,10 @@
 
 .scoreLine strong {
   color: var(--foreground);
-  font-family: var(--font-data);
-  font-size: 38px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-kpi);
   font-weight: 600;
-  line-height: 1;
+  line-height: var(--lh-kpi);
 }
 
 .scoreLine span {
@@ -275,14 +275,14 @@
 
 .metaGrid dt {
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 500;
 }
 
 .metaGrid dd {
   margin: 3px 0 0;
   color: var(--foreground);
-  font-size: 14.5px;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -317,7 +317,7 @@
   display: inline-flex;
   align-items: center;
   color: var(--primary);
-  font-size: 13px;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 600;
   text-decoration: none;
 }
@@ -335,7 +335,7 @@
 
 .riskMeta {
   color: var(--warning);
-  font-size: 12.5px;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
   font-weight: 500;
 }
 
@@ -374,8 +374,8 @@
   inline-size: min(860px, 100%);
   margin-inline: auto;
   color: var(--foreground-muted);
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
   text-align: center;
 }
 

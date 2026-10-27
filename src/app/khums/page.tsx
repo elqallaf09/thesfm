@@ -1272,10 +1272,10 @@ export default function KhumsPage() {
         .khums-content{display:grid;gap:18px;width:100%;max-inline-size:none;margin-inline:0;min-width:0}
         .khums-content > *,.khums-tab-panel > *,.overview-grid > *,.two-column > *,.reports-layout > *,.form-grid > *,.khums-stat-grid > *{min-width:0}
         .khums-hero{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:22px;border-radius:var(--radius-panel);padding:clamp(22px,3vw,34px);background:var(--hero-gradient);color:var(--hero-foreground);border:1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);box-shadow:var(--shadow-card)}
-        .eyebrow{display:inline-flex;border:1px solid color-mix(in srgb, var(--hero-foreground) 20%, transparent);background:color-mix(in srgb, var(--hero-foreground) 10%, transparent);color:var(--hero-foreground-muted);border-radius:var(--radius-pill);padding:7px 11px;font-size:12px;font-weight:600}
-        .khums-hero h1{margin:12px 0 8px;font-size:clamp(36px,4vw,54px);line-height:1.08;font-weight:600;letter-spacing:0}
-        .khums-hero p{margin:0;max-width:760px;color:var(--hero-foreground-muted);font-size:16px;line-height:1.85}
-        .disclaimer-badge{display:inline-flex;align-items:center;gap:8px;margin-top:14px;border-radius:var(--radius-pill);background:color-mix(in srgb, var(--hero-foreground) 10%, transparent);border:1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);padding:8px 12px;color:var(--hero-foreground-muted);font-size:13px;font-weight:600}
+        .eyebrow{display:inline-flex;border:1px solid color-mix(in srgb, var(--hero-foreground) 20%, transparent);background:color-mix(in srgb, var(--hero-foreground) 10%, transparent);color:var(--hero-foreground-muted);border-radius:var(--radius-pill);padding:7px 11px;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600}
+        .khums-hero h1{margin:12px 0 8px;font-size:var(--fs-page);line-height:var(--lh-page);font-weight:700;letter-spacing:0}
+        .khums-hero p{margin:0;max-width:760px;color:var(--hero-foreground-muted);font-size:var(--fs-body);line-height:var(--lh-body)}
+        .disclaimer-badge{display:inline-flex;align-items:center;gap:8px;margin-top:14px;border-radius:var(--radius-pill);background:color-mix(in srgb, var(--hero-foreground) 10%, transparent);border:1px solid color-mix(in srgb, var(--hero-foreground) 18%, transparent);padding:8px 12px;color:var(--hero-foreground-muted);font-size:var(--fs-small);line-height:var(--lh-small);font-weight:600}
         .hero-actions,.report-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
         button,a{font-family:inherit}
         .gold-btn,.dark-btn,.primary-wide,.mini-btn{min-height:44px;border-radius:var(--radius-control);border:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 15px;font-weight:600;text-decoration:none;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease}
@@ -1293,8 +1293,8 @@ export default function KhumsPage() {
         .khums-tab-panel:focus-visible{border-radius:var(--radius-panel);box-shadow:var(--focus-shadow)}
         .khums-critical-summary{display:grid;grid-template-columns:minmax(190px,1.2fr) repeat(3,minmax(150px,1fr));gap:10px;padding:10px;border:1px solid color-mix(in srgb, var(--info) 14%, transparent);border-radius:var(--radius-panel);background:color-mix(in srgb,var(--surface) 92%,transparent);box-shadow:var(--shadow-card)}
         .khums-critical-summary > div{display:grid;gap:4px;align-content:center;min-height:72px;border:1px solid color-mix(in srgb, var(--info) 11%, transparent);border-radius:var(--radius-card);background:var(--surface-muted);padding:11px 13px;min-width:0}
-        .khums-critical-summary small{color:var(--foreground-secondary);font-size:12px;font-weight:600}
-        .khums-critical-summary strong{color:var(--foreground);font-size:clamp(16px,1.45vw,21px);font-weight:600;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+        .khums-critical-summary small{color:var(--foreground-secondary);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600}
+        .khums-critical-summary strong{color:var(--foreground);font-size:var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
         .khums-critical-summary .critical-status.not_due,.khums-critical-summary .critical-status.complete{background:var(--surface-muted)}
         .khums-critical-summary .critical-status.incomplete{background:var(--foreground-secondary)}
         .khums-critical-summary .critical-status.overpaid{background:var(--primary-soft)}
@@ -1305,24 +1305,24 @@ export default function KhumsPage() {
         .khums-stat-grid{display:grid;grid-template-columns:repeat(6,minmax(170px,1fr));gap:16px;align-items:stretch;margin-top:4px}
         .stat-card{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;gap:7px 12px;min-height:136px;padding:18px 16px;border-radius:var(--radius-card);background:var(--surface);border:1px solid color-mix(in srgb, var(--info) 13%, transparent);box-shadow:var(--shadow-card)}
         .stat-card > .stat-icon{grid-row:1 / span 2;width:42px;height:42px;border-radius:var(--radius-control);background:var(--surface);color:var(--primary);display:grid;place-items:center}
-        .stat-card > small{color:var(--foreground-secondary);font-size:12.5px;font-weight:600;line-height:1.45}
-        .stat-card > strong{align-self:end;color:var(--foreground);font-size:clamp(18px,1.35vw,23px);line-height:1.25;overflow-wrap:normal;word-break:keep-all;unicode-bidi:isolate}
+        .stat-card > small{color:var(--foreground-secondary);font-size:var(--fs-label);font-weight:600;line-height:var(--lh-label)}
+        .stat-card > strong{align-self:end;color:var(--foreground);font-size:var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);overflow-wrap:normal;word-break:keep-all;unicode-bidi:isolate}
         .overview-grid,.two-column,.reports-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
         .overview-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
         .overview-count-grid div{display:grid;gap:6px;border:1px solid color-mix(in srgb, var(--info) 12%, transparent);border-radius:var(--radius-card);background:var(--surface-muted);padding:13px}
-        .overview-count-grid small{color:var(--foreground-secondary);font-size:12px;font-weight:600;line-height:1.45}
-        .overview-count-grid strong{color:var(--foreground);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+        .overview-count-grid small{color:var(--foreground-secondary);font-size:var(--fs-caption);font-weight:600;line-height:var(--lh-caption)}
+        .overview-count-grid strong{color:var(--foreground);font-size:var(--fs-kpi);font-family:var(--font-mono);line-height:var(--lh-kpi);font-weight:600;font-variant-numeric:tabular-nums}
         .quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
         .quick-actions .mini-btn{width:100%;min-height:48px;white-space:normal;line-height:1.45}
         .panel-card{background:var(--surface);border:1px solid color-mix(in srgb, var(--info) 13%, transparent);border-radius:var(--radius-panel);padding:clamp(18px,2vw,24px);box-shadow:var(--shadow-card)}
         .section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
-        .section-head h2{margin:2px 0 0;color:var(--foreground);font-size:clamp(20px,1.8vw,24px);line-height:1.35;font-weight:600}
+        .section-head h2{margin:2px 0 0;color:var(--foreground);font-size:var(--fs-section);line-height:var(--lh-section);font-weight:700}
         .section-head p{max-width:720px;margin:6px 0 0;color:var(--foreground-secondary);line-height:1.75}
-        .section-head small{display:inline-flex;color:var(--foreground);font-size:12px;font-weight:600;line-height:1.35}
+        .section-head small{display:inline-flex;color:var(--foreground);font-size:var(--fs-label);font-weight:600;line-height:var(--lh-label)}
         .section-head .head-icon{flex:0 0 auto;width:44px;height:44px;border-radius:var(--radius-card);display:grid;place-items:center;background:color-mix(in srgb, var(--info) 10%, transparent);color:var(--primary);border:1px solid color-mix(in srgb, var(--info) 12%, transparent)}
         .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-        .form-grid label,.currency-field{display:grid;gap:7px;color:var(--foreground);font-size:13px;font-weight:600;min-width:0}
-        .form-grid input,.form-grid select,.form-grid textarea{width:100%;min-height:48px;border:1px solid color-mix(in srgb, var(--info) 18%, transparent);border-radius:var(--radius-control);background:var(--surface);color:var(--foreground);padding-inline:13px;outline:none;font:600 14px var(--font-ui)}
+        .form-grid label,.currency-field{display:grid;gap:7px;color:var(--foreground);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600;min-width:0}
+        .form-grid input,.form-grid select,.form-grid textarea{width:100%;min-height:48px;border:1px solid color-mix(in srgb, var(--info) 18%, transparent);border-radius:var(--radius-control);background:var(--surface);color:var(--foreground);padding-inline:13px;outline:none;font:600 var(--fs-body)/var(--lh-body) var(--font-body)}
         .form-grid textarea{min-height:96px;padding-block:12px;resize:vertical;line-height:1.7}
         .form-grid input:focus,.form-grid select:focus,.form-grid textarea:focus{border-color:var(--accent);box-shadow:var(--focus-shadow)}
         .wide{grid-column:1/-1}
@@ -1336,9 +1336,9 @@ export default function KhumsPage() {
         .khums-disclosure[open] > summary::after{content:'−'}
         .khums-disclosure > summary:focus-visible{outline:3px solid color-mix(in srgb, var(--accent) 34%, transparent);outline-offset:-3px;border-radius:var(--radius-card)}
         .khums-disclosure > summary span{display:grid;gap:4px;min-width:0}
-        .khums-disclosure > summary span strong{font-size:16px;overflow-wrap:anywhere}
-        .khums-disclosure > summary span small{color:var(--foreground-secondary);font-size:12px;font-weight:600;overflow-wrap:anywhere}
-        .khums-disclosure > summary b{margin-inline-start:auto;color:var(--primary-hover);font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+        .khums-disclosure > summary span strong{font-size:var(--fs-label);line-height:var(--lh-label);overflow-wrap:anywhere}
+        .khums-disclosure > summary span small{color:var(--foreground-secondary);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600;overflow-wrap:anywhere}
+        .khums-disclosure > summary b{margin-inline-start:auto;color:var(--primary-hover);font-size:var(--fs-label);line-height:var(--lh-label);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
         .disclosure-body{padding:16px;border-top:1px solid color-mix(in srgb, var(--info) 11%, transparent)}
         .disclosure-copy{display:grid;gap:10px;padding:16px;border-top:1px solid color-mix(in srgb, var(--info) 11%, transparent)}
         .disclosure-copy p,.history-notes{margin:0;color:var(--foreground-secondary);font-weight:600;line-height:1.8}
@@ -1357,15 +1357,15 @@ export default function KhumsPage() {
         .documents-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid color-mix(in srgb, var(--info) 12%, transparent);border-radius:var(--radius-card);background:var(--surface-muted);padding:12px;min-width:0}
         .documents-list li div{display:grid;gap:4px;min-width:0}
         .documents-list li strong{color:var(--foreground);overflow-wrap:anywhere}
-        .documents-list li span{color:var(--foreground-secondary);font-size:12px;font-weight:600;overflow-wrap:anywhere}
+        .documents-list li span{color:var(--foreground-secondary);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600;overflow-wrap:anywhere}
         .documents-list a{min-height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid color-mix(in srgb, var(--info) 18%, transparent);border-radius:var(--radius-control);background:var(--surface);color:var(--primary-hover);padding:0 12px;text-decoration:none;font-weight:600;white-space:nowrap}
         .formula-box,.status-card,.payment-summary div,.split-grid div{border:1px solid color-mix(in srgb, var(--info) 12%, transparent);background:var(--surface-muted);border-radius:var(--radius-card);padding:14px;min-width:0}
         .formula-box{background:var(--foreground);color:var(--surface)}
         .formula-box small,.formula-box span{display:block;color:var(--accent);font-weight:600;line-height:1.5}
-        .formula-box strong{display:block;margin:6px 0;color:var(--surface);font-size:clamp(25px,2.4vw,34px);overflow-wrap:anywhere}
+        .formula-box strong{display:block;margin:6px 0;color:var(--surface);font-size:var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);overflow-wrap:anywhere}
         .status-card{margin-top:12px}
         .status-card small,.payment-summary small,.split-grid small,.report-table span{display:block;color:var(--primary-hover);font-weight:600;line-height:1.45}
-        .status-card strong,.payment-summary strong,.split-grid strong,.report-table strong{display:block;margin-top:5px;color:var(--foreground);font-size:18px;overflow-wrap:anywhere}
+        .status-card strong,.payment-summary strong,.split-grid strong,.report-table strong{display:block;margin-top:5px;color:var(--foreground);font-size:var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);overflow-wrap:anywhere}
         .status-card p{margin:7px 0 0;color:var(--foreground-secondary);line-height:1.7}
         .status-card.not_due,.payment-state.not_due{background:var(--surface-muted)}
         .status-card.complete,.payment-state.complete{background:var(--surface-muted)}
@@ -1377,7 +1377,7 @@ export default function KhumsPage() {
         .payment-list,.reminder-grid{display:grid;gap:10px;margin-top:14px}
         .payment-list article,.reminder-grid article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid color-mix(in srgb, var(--info) 13%, transparent);background:var(--surface);border-radius:var(--radius-card);padding:13px;min-width:0}
         .payment-list strong,.reminder-grid strong{display:block;color:var(--foreground);font-size:16px;line-height:1.4;overflow-wrap:anywhere}
-        .payment-list span,.payment-list small,.reminder-grid span,.reminder-grid small{display:block;color:var(--foreground-secondary);font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+        .payment-list span,.payment-list small,.reminder-grid span,.reminder-grid small{display:block;color:var(--foreground-secondary);font-size:var(--fs-label);line-height:var(--lh-label);overflow-wrap:anywhere}
         .payment-list button{width:38px;height:var(--control-h-sm);border:1px solid color-mix(in srgb, var(--danger) 14%, transparent);background:var(--surface);color:var(--danger);border-radius:var(--radius-control);display:grid;place-items:center;cursor:pointer}
         .reminder-grid article.completed{opacity:.72}
         .reminder-grid article > div:last-child{display:flex;gap:8px;flex-wrap:wrap}
@@ -1396,7 +1396,7 @@ export default function KhumsPage() {
 
         /* Khums route production polish. */
         .khums-page{overflow-x:clip}.khums-page .sfm-dashboard-page-content.khums-content{width:100%;max-inline-size:none;margin-inline:0;gap:clamp(16px,1.8vw,24px);min-width:0}.khums-page .sfm-dashboard-page-content.khums-content > *{inline-size:100%;min-width:0}
-        .khums-hero{grid-template-columns:minmax(0,1fr) minmax(300px,max-content);border-radius:var(--radius-panel);min-height:0}.khums-hero h1{font-size:clamp(32px,3.2vw,48px);letter-spacing:0;text-wrap:balance;color:var(--hero-foreground)!important}.khums-hero p{font-size:15.5px;max-width:780px;color:var(--hero-foreground-muted)!important}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}.khums-page :is(.gold-btn,.dark-btn,.primary-wide,.mini-btn){border-radius:var(--radius-control);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.khums-page :is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+        .khums-hero{grid-template-columns:minmax(0,1fr) minmax(300px,max-content);border-radius:var(--radius-panel);min-height:0}.khums-hero h1{font-size:var(--fs-page);font-weight:700;line-height:var(--lh-page);letter-spacing:0;text-wrap:balance;color:var(--hero-foreground)!important}.khums-hero p{font-size:var(--fs-body);line-height:var(--lh-body);max-width:780px;color:var(--hero-foreground-muted)!important}.hero-actions{min-width:0}.hero-actions > *{flex:0 1 auto}.khums-page :is(.gold-btn,.dark-btn,.primary-wide,.mini-btn){border-radius:var(--radius-control);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.khums-page :is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
         .khums-stat-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}.stat-card{height:100%;min-height:136px;border-radius:var(--radius-card)}.stat-card strong,.split-grid strong,.payment-summary strong,.report-table strong,.formula-box strong{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
         .panel-card,.notice{border-radius:var(--radius-panel);border:1px solid var(--border);box-shadow:var(--shadow-card);min-width:0}.two-column,.reports-layout,.payment-layout,.overview-grid{gap:16px}.section-head{align-items:center}.section-head h2{letter-spacing:0;text-wrap:balance}.section-head p{max-width:760px}.form-grid{gap:14px}.form-grid label{line-height:1.45}.form-grid input,.form-grid select,.form-grid textarea{min-height:46px;border-radius:var(--radius-control)}.empty-panel{min-height:132px;border-radius:var(--radius-card);padding:18px}.payment-list article,.reminder-grid article,.report-table div,.split-grid div,.formula-box,.status-card,.payment-summary{border-radius:var(--radius-card);min-width:0}.muted-note,.warning-line{border-radius:var(--radius-card)}.report-actions{flex-wrap:wrap}
         @media(max-width:1260px){.khums-hero{grid-template-columns:1fr}.hero-actions{justify-content:flex-start}.khums-stat-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.two-column,.reports-layout,.payment-layout,.overview-grid{grid-template-columns:1fr}}
@@ -1436,19 +1436,19 @@ export default function KhumsPage() {
         .stat-card{position:relative;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto 1fr auto;min-height:214px;padding:17px 16px;align-content:start}
         .stat-card > .stat-icon{grid-row:1 / span 2;background:var(--surface);color:var(--primary)}
         .stat-card > small{grid-column:2}
-        .stat-card > strong{grid-column:2;align-self:start;margin-top:2px;font-size:clamp(17px,1.35vw,22px)}
-        .stat-explanation{grid-column:1/-1;margin:11px 0 0;font-size:12px;font-weight:600;line-height:1.65}
+        .stat-card > strong{grid-column:2;align-self:start;margin-top:2px;font-size:var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);}
+        .stat-explanation{grid-column:1/-1;margin:11px 0 0;font-size:var(--fs-small);font-weight:600;line-height:var(--lh-small)}
         .metric-evidence{grid-column:1/-1;align-self:end;margin-top:10px;border-top:1px solid color-mix(in srgb, var(--accent) 12%, transparent);padding-top:8px}
         .metric-evidence > summary{width:34px;height:32px;border-radius:var(--radius-sm);display:grid;place-items:center;cursor:pointer;list-style:none;color:var(--primary);background:color-mix(in srgb, var(--accent) 8%, transparent);border:1px solid color-mix(in srgb, var(--accent) 13%, transparent)}
         .metric-evidence > summary::-webkit-details-marker{display:none}
         .metric-evidence > div{display:grid;gap:7px;margin-top:9px;border-radius:var(--radius-control);background:var(--surface-muted);padding:10px}
-        .metric-evidence p{display:grid;gap:2px;margin:0;color:var(--foreground-muted);font-size:12px;line-height:1.55}
+        .metric-evidence p{display:grid;gap:2px;margin:0;color:var(--foreground-muted);font-size:var(--fs-small);line-height:var(--lh-small)}
         .metric-evidence b{color:var(--primary);font-weight:600}
         .metric-evidence span{width:auto;height:auto;display:block;background:none;color:inherit;border:0;border-radius:0}
         .calculation-evidence{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
         .calculation-evidence div{min-width:0;border:1px solid color-mix(in srgb, var(--accent) 14%, transparent);border-radius:var(--radius-card);background:var(--surface-muted);padding:12px}
-        .calculation-evidence small{display:block;color:var(--danger);font-size:12px;font-weight:600;line-height:1.45}
-        .calculation-evidence strong{display:block;margin-top:5px;color:var(--foreground);font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+        .calculation-evidence small{display:block;color:var(--danger);font-size:var(--fs-small);font-weight:600;line-height:var(--lh-small)}
+        .calculation-evidence strong{display:block;margin-top:5px;color:var(--foreground);font-size:var(--fs-label);line-height:var(--lh-label);overflow-wrap:anywhere}
         .khums-page .formula-box{border-color:color-mix(in srgb, var(--foreground-secondary) 24%, transparent);background:var(--primary);box-shadow:var(--shadow-card)}
         .khums-page .formula-box :is(small,span){color:var(--foreground-secondary)}
         .document-count{min-width:42px;height:42px;border-radius:var(--radius-pill);display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);font-weight:600;font-variant-numeric:tabular-nums}

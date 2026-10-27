@@ -60,12 +60,12 @@ export function FeatureEvidenceList({ evidence, limit = 3 }: { evidence: OpsHeal
         .ops-feature-evidence ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
         .ops-feature-evidence-item { min-width: 0; border-block-start: 1px solid var(--border); padding-block-start: 9px; }
         .ops-feature-evidence-heading { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
-        .ops-feature-evidence-heading strong { color: var(--foreground); font-size: 12px; font-weight: 600; }
+        .ops-feature-evidence-heading strong { color: var(--foreground); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 600; }
         .ops-feature-evidence-item dl { margin: 7px 0 0; display: grid; gap: 5px; }
-        .ops-feature-evidence-item dl > div { display: grid; grid-template-columns: minmax(80px, .4fr) minmax(0, 1fr); gap: 8px; font-size: 11.5px; line-height: 1.6; }
+        .ops-feature-evidence-item dl > div { display: grid; grid-template-columns: minmax(80px, .4fr) minmax(0, 1fr); gap: 8px; font-size: var(--fs-caption); line-height: var(--lh-caption); }
         .ops-feature-evidence-item dt { color: var(--foreground-muted); }
         .ops-feature-evidence-item dd { margin: 0; color: var(--foreground-secondary); overflow-wrap: anywhere; }
-        .ops-feature-evidence-more summary { width: fit-content; padding-block: 6px; cursor: pointer; color: var(--foreground); font-size: 12px; font-weight: 600; }
+        .ops-feature-evidence-more summary { width: fit-content; padding-block: 6px; cursor: pointer; color: var(--foreground); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 600; }
         .ops-feature-evidence-more summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
         @media (max-width: 380px) { .ops-feature-evidence-item dl > div { grid-template-columns: minmax(0, 1fr); gap: 1px; } }
       `}</style>

@@ -31,7 +31,7 @@ export function RouteError({ error, reset, title }: RouteErrorProps) {
       }}
     >
       <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>⚠️</div>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>{title || t('error_generic_title')}</h2>
+      <h2 style={{ fontSize: 'var(--fs-section, 20px)', lineHeight: 'var(--lh-section, 30px)', fontWeight: 700, fontFamily: 'var(--font-heading)', margin: 0 }}>{title || t('error_generic_title')}</h2>
       <p style={{ color: 'var(--foreground-muted)', margin: 0, maxWidth: '30ch', lineHeight: 1.6 }}>
         {t('error_generic_body')}
       </p>
@@ -45,7 +45,7 @@ export function RouteError({ error, reset, title }: RouteErrorProps) {
           background: 'var(--primary)',
           color: 'var(--primary-foreground)',
           cursor: 'pointer',
-          fontSize: '0.9rem',
+          fontSize: 'var(--fs-label, 13px)', lineHeight: 'var(--lh-label, 20px)',
           fontWeight: 500,
         }}
       >

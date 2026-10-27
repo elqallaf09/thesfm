@@ -42,7 +42,7 @@ describe('authorized administration surfaces visual-system contract', () => {
     expect(surfaces.companies).toContain("rejected: 'danger'");
     expect(surfaces.companies).toContain('.ca-status-dot');
     expect(surfaces.providers).toContain('font-family:var(--font-data)');
-    expect(surfaces.instagram).toContain('font-family:var(--font-data)');
+    expect(surfaces.instagram).toContain('font-family:var(--font-mono)');
   });
 
   it('preserves full-width shells, responsive grids, tables, and dialog geometry', () => {

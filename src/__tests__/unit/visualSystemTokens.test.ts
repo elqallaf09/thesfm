@@ -267,21 +267,25 @@ describe('central visual-system contract', () => {
     expect(themes).not.toMatch(/--(?:bg(?:-2|-card|-input|-muted)?|text-(?:1|2|3|white|white-2|white-3)|green(?:-bg)?|red(?:-bg)?|amber(?:-bg)?|blue(?:-bg)?)\s*:/i);
   });
 
-  it('uses IBM Plex Sans Arabic globally and scopes IBM Plex Mono to data roles', () => {
+  it('uses IBM Plex Sans Arabic for UI, Cairo for headings, and IBM Plex Mono for data', () => {
     const htmlTag = layout.match(/<html[\s\S]*?>/)?.[0] ?? '';
     const bodyTag = layout.match(/<body[\s\S]*?>/)?.[0] ?? '';
 
     expect(layout).toContain('IBM_Plex_Sans_Arabic');
     expect(layout).toContain('IBM_Plex_Mono');
-    expect(layout).not.toMatch(/\bCairo\b|\bTajawal\b/);
+    expect(layout).toContain('Cairo');
+    expect(layout).not.toMatch(/\bTajawal\b/);
+    expect(layout).toContain("variable: '--font-body'");
+    expect(layout).toContain("variable: '--font-heading'");
+    expect(layout).toContain("variable: '--font-mono'");
     expect(htmlTag).toContain('ibmPlexSansArabic.variable');
     expect(htmlTag).toContain('ibmPlexMono.variable');
     expect(bodyTag).not.toContain('ibmPlexSansArabic.variable');
     expect(bodyTag).not.toContain('ibmPlexMono.variable');
-    expect(tokens).toContain('--font-ui: var(--font-ibm-plex-sans-arabic');
-    expect(tokens).toContain('--font-data: var(--font-ibm-plex-mono');
+    expect(tokens).toContain('--font-ui: var(--font-body');
+    expect(tokens).toContain('--font-data: var(--font-mono');
     expect(globals).toContain('--font-sans: var(--font-ui)');
-    expect(globals).toContain('--font-mono: var(--font-data)');
+    expect(globals).not.toContain('--font-mono: var(--font-data)');
     expect(globals).not.toMatch(/--font-(?:sans|mono):\s*["']/);
     expect(globals).toContain('font-family:var(--font-ui)');
     expect(globals).toContain('font-family: var(--font-data) !important');

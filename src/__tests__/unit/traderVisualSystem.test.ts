@@ -142,8 +142,8 @@ describe('standalone Trader visual-system contract', () => {
       expect(html).toContain('family=IBM+Plex+Sans+Arabic');
       expect(html).not.toMatch(/family=(?:Cairo|Tajawal|Inter)/);
     }
-    expect(tokens).toContain('--font-ui: var(--font-ibm-plex-sans-arabic');
-    expect(tokens).toContain('--font-data: var(--font-ibm-plex-mono');
+    expect(tokens).toContain('--font-ui: var(--font-body');
+    expect(tokens).toContain('--font-data: var(--font-mono');
     expect(finalLayer).toContain('html[data-theme] body *');
     expect(finalLayer).toContain('[data-market-value]');
     expect(finalLayer).toContain('font-family: var(--font-ui);');

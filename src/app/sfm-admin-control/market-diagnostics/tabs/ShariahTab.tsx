@@ -34,11 +34,11 @@ export function ShariahTab() {
       <JobSourceCard title={t('ops_center_shariah_jobs_title')} stats={ops.backgroundJobs.shariahResearch} />
 
       <style jsx global>{`
-        .ops-section-title { margin: 0; color: var(--foreground); font-size: 14px; font-weight: 600; }
+        .ops-section-title { margin: 0; color: var(--foreground); font-size: var(--fs-section);line-height:var(--lh-section); font-weight: 700; }
         .ops-shariah-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
         .ops-shariah-counts article { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 14px; box-shadow: var(--shadow-sm); }
-        .ops-shariah-counts strong { display: block; color: var(--foreground); font: 600 20px/1 var(--font-data); font-variant-numeric: tabular-nums; }
-        .ops-shariah-counts span { display: block; margin-top: 6px; color: var(--foreground-muted); font-size: 12px; font-weight: 700; }
+        .ops-shariah-counts strong { display: block; color: var(--foreground); font: 600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono);font-family:var(--font-mono);font-weight:600; font-variant-numeric: tabular-nums; }
+        .ops-shariah-counts span { display: block; margin-top: 6px; color: var(--foreground-muted); font-size: var(--fs-caption);line-height:var(--lh-caption); font-weight: 700; }
       `}</style>
     </section>
   );

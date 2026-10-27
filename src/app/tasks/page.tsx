@@ -461,8 +461,8 @@ export default function TasksCenterPage() {
         }
         .tasks-warning small {
           color: var(--warning);
-          font-size: 12px;
-          line-height: 1.6;
+          font-size: var(--fs-label);
+          line-height: var(--lh-label);
         }
         .tasks-warning button {
           width: fit-content;
@@ -473,7 +473,7 @@ export default function TasksCenterPage() {
           color: var(--warning);
           padding: 0 12px;
           cursor: pointer;
-          font: 600 12px var(--font-ui);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
         }
         .tasks-toolbar {
           display: grid;
@@ -498,7 +498,7 @@ export default function TasksCenterPage() {
           outline: 0;
           background: transparent;
           color: var(--foreground);
-          font: 500 14px var(--font-ui);
+          font: 500 var(--fs-body)/var(--lh-body) var(--font-body);
         }
         .tasks-search input::placeholder {
           color: var(--control-placeholder);
@@ -591,15 +591,15 @@ function TaskMetric({
         p {
           margin: 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
         strong {
           display: block;
           color: var(--foreground);
-          font-size: 26px;
-          line-height: 1.1;
-          font-family: var(--font-data);
+          font-size: var(--fs-kpi);font-weight:600;
+          line-height: var(--lh-kpi);
+          font-family: var(--font-mono);
         }
       `}</style>
     </AppCard>
@@ -704,7 +704,7 @@ function TaskCard({
           border: 1px solid var(--border);
           color: var(--foreground-muted);
           padding: 4px 8px;
-          font-size: 12px;
+          font-size: var(--fs-caption);line-height:var(--lh-caption);
           font-weight: 500;
           overflow-wrap: anywhere;
         }
@@ -727,8 +727,8 @@ function TaskCard({
         h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: 18px;
-          line-height: 1.45;
+          font-size: var(--fs-section);font-weight:700;
+          line-height: var(--lh-section);
           overflow-wrap: anywhere;
         }
         p {
@@ -757,7 +757,7 @@ function TaskCard({
           background: var(--surface);
           color: var(--foreground);
           padding: 0 13px;
-          font: 600 12px var(--font-ui);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
           text-decoration: none;
           cursor: pointer;
           box-shadow: var(--shadow-xs);

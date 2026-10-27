@@ -528,7 +528,7 @@ const aboutStyles = `
     color: var(--foreground-secondary);
     text-decoration: none;
     font-weight: 600;
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
   }
   .about-links a:hover, .nav-login:hover {
     background: var(--surface-hover);
@@ -550,7 +550,7 @@ const aboutStyles = `
     display: grid;
     place-items: center;
     padding: 8px 14px;
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
   }
   .mobile-menu-button {
     display: none;
@@ -585,15 +585,15 @@ const aboutStyles = `
     background: var(--accent-soft);
     color: var(--accent);
     padding: 8px 13px;
-    font-size: 12px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
   }
   .hero-copy h1 {
     margin: 0;
     color: var(--foreground);
-    font-size: clamp(36px, 6vw, 64px);
-    line-height: 1.03;
-    font-weight: 600;
+    font-size: var(--fs-page);
+    line-height: var(--lh-page);
+    font-weight: 700;
     letter-spacing: 0;
   }
   .hero-copy p {
@@ -638,7 +638,7 @@ const aboutStyles = `
   }
   .hero-panel h2 {
     margin: 0 0 10px;
-    font-size: 28px;
+    font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
     color: var(--hero-foreground);
   }
   .hero-panel p {
@@ -717,7 +717,7 @@ const aboutStyles = `
   .info-card h2, .icon-card h3, .value-card h3, .trust-card h3 {
     margin: 16px 0 8px;
     color: var(--foreground);
-    font-size: 20px;
+    font-size: var(--fs-card-title);line-height:var(--lh-card-title);
     font-weight: 600;
   }
   .info-card.featured h2,
@@ -748,16 +748,16 @@ const aboutStyles = `
   }
   .section-heading span {
     color: var(--primary);
-    font-size: 12px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
     text-transform: uppercase;
   }
   .section-heading h2 {
     margin: 8px 0 0;
     color: var(--foreground);
-    font-size: clamp(28px, 4vw, 44px);
-    line-height: 1.15;
-    font-weight: 600;
+    font-size: var(--fs-section);
+    line-height: var(--lh-section);
+    font-weight: 700;
   }
   .audience-grid, .areas-grid, .values-grid {
     display: grid;
@@ -801,7 +801,7 @@ const aboutStyles = `
   .trust-band h2 {
     margin: 18px 0 10px;
     color: var(--foreground);
-    font-size: clamp(28px, 4vw, 46px);
+    font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
   }
   .trust-band p {
     margin: 0;
@@ -838,7 +838,7 @@ const aboutStyles = `
   .about-cta h2 {
     margin: 0;
     color: var(--hero-foreground);
-    font-size: clamp(28px, 4vw, 44px);
+    font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
   }
   .about-cta p {
     max-width: 720px;
@@ -886,8 +886,8 @@ const aboutStyles = `
     flex-basis: 100%;
     margin: 4px 0 0;
     color: var(--foreground-secondary);
-    font-size: 13px;
-    line-height: 1.6;
+    font-size: var(--fs-small);
+    line-height: var(--lh-small);
   }
   .footer-brand p a {
     color: var(--primary);
@@ -1036,10 +1036,10 @@ const aboutStyles = `
       gap: 6px;
     }
     .hero-copy h1 {
-      font-size: 38px;
+      font-size: var(--fs-page);font-weight:700;line-height:var(--lh-page);
     }
     .hero-copy p {
-      font-size: 16px;
+      font-size: var(--fs-body);line-height:var(--lh-body);
     }
     .hero-actions, .cta-actions {
       display: grid;

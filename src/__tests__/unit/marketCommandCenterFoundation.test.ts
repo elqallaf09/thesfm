@@ -338,7 +338,7 @@ describe('market command center shell and visual-system boundaries', () => {
     const fontFamilies = [...styles.matchAll(/font-family:\s*([^;]+);/g)].map(match => match[1].trim());
     expect(fontFamilies.length).toBeGreaterThan(0);
     for (const fontFamily of fontFamilies) {
-      expect(['var(--font-ui)', 'var(--font-data)']).toContain(fontFamily);
+      expect(['var(--font-ui)', 'var(--font-data)', 'var(--font-body)', 'var(--font-heading)', 'var(--font-mono)']).toContain(fontFamily);
     }
   });
 

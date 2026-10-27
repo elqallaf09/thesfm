@@ -289,12 +289,12 @@ export function AuthForm() {
           {/* Error / Success */}
           {error && (
             <div className="auth-error" style={{marginBottom:'16px'}}>
-              <span style={{fontSize:'16px'}}>⚠️</span> {error}
+              <span style={{fontSize:'var(--fs-body, 15px)'}}>⚠️</span> {error}
             </div>
           )}
           {forgotPasswordSuccess && (
             <div className="auth-success" style={{marginBottom:'16px'}}>
-              <span style={{fontSize:'16px'}}>✅</span> {forgotPasswordSuccess}
+              <span style={{fontSize:'var(--fs-body, 15px)'}}>✅</span> {forgotPasswordSuccess}
             </div>
           )}
 
@@ -409,7 +409,7 @@ export function AuthForm() {
               </div>
               <div style={{textAlign: isArabic ? 'left' : 'right', marginBottom:'20px'}}>
                 <button type="button" className="auth-link"
-                  style={{fontSize:'13px', color:'var(--accent)', fontWeight:'600'}}
+                  style={{fontSize:'var(--fs-body, 15px)', color:'var(--accent)', fontWeight:'600'}}
                   onClick={() => { setShowForgotPassword(true); setError(''); setForgotPasswordSuccess(''); setResetStep('username'); }}>
                   {isArabic ? 'نسيت كلمة المرور؟' : isFrench ? 'Mot de passe oublié?' : 'Forgot password?'}
                 </button>
@@ -497,7 +497,7 @@ export function AuthForm() {
                   <div style={{display:'flex', gap:'16px', height:'48px', alignItems:'center'}}>
                     {['male','female'].map(g => (
                       <label key={g} style={{display:'flex', alignItems:'center', gap:'6px', cursor:'pointer',
-                        fontSize:'14px', fontWeight:'500', color: gender === g ? 'var(--foreground)' : 'var(--foreground-muted)',
+                        fontSize:'var(--fs-body, 15px)', fontWeight:'500', color: gender === g ? 'var(--foreground)' : 'var(--foreground-muted)',
                         fontFamily:'var(--font-ui)'}}>
                         <input type="radio" name="gender" value={g}
                           checked={gender === g} onChange={() => setGender(g)}
@@ -511,7 +511,7 @@ export function AuthForm() {
 
               {/* Security Questions */}
               <div style={{background:'var(--surface-muted)', border:'1.5px solid var(--border)', borderRadius:'var(--radius-control)', padding:'16px', marginBottom:'4px'}}>
-                <p style={{fontSize:'12.5px', fontWeight:'700', color:'var(--foreground)', marginBottom:'12px', fontFamily:'var(--font-ui)'}}>
+                <p style={{fontSize:'var(--fs-small, 14px)', fontWeight:'700', color:'var(--foreground)', marginBottom:'12px', fontFamily:'var(--font-ui)'}}>
                   🔐 {isArabic ? 'أسئلة الأمان (الأول والثاني إجباري)' : 'Security Questions (1st & 2nd required)'}
                 </p>
                 {[
@@ -520,9 +520,9 @@ export function AuthForm() {
                   {q:securityQuestion3, setQ:setSecurityQuestion3, a:securityAnswer3, setA:setSecurityAnswer3, label: isArabic?'السؤال الثالث (اختياري)':'3rd Question (optional)', filter:[securityQuestion,securityQuestion2]},
                 ].map((sq, idx) => (
                   <div key={idx} style={{marginBottom: idx < 2 ? '12px' : '0'}}>
-                    <label style={{fontSize:'12px', fontWeight:'600', color: idx === 2 ? 'var(--foreground-muted)' : 'var(--foreground-muted)', display:'block', marginBottom:'6px', fontFamily:'var(--font-ui)'}}>{sq.label}</label>
+                    <label style={{fontSize:'var(--fs-caption, 12px)', fontWeight:'600', color: idx === 2 ? 'var(--foreground-muted)' : 'var(--foreground-muted)', display:'block', marginBottom:'6px', fontFamily:'var(--font-ui)'}}>{sq.label}</label>
                     <Select value={sq.q} onValueChange={sq.setQ}>
-                      <SelectTrigger style={{height:'40px', fontSize:'12.5px', borderColor:'var(--border)', marginBottom:'6px'}}>
+                      <SelectTrigger style={{height:'40px', fontSize:'var(--fs-body, 15px)', borderColor:'var(--border)', marginBottom:'6px'}}>
                         <SelectValue placeholder={t.selectQuestion} />
                       </SelectTrigger>
                       <SelectContent>
@@ -535,7 +535,7 @@ export function AuthForm() {
                     </Select>
                     {(sq.q || idx < 2) && (
                       <input className="auth-input auth-input-no-pad"
-                        style={{height:'40px', fontSize:'13px'}}
+                        style={{height:'40px', fontSize:'var(--fs-body, 15px)'}}
                         value={sq.a} onChange={e => sq.setA(e.target.value)}
                         placeholder={isArabic ? 'الإجابة...' : 'Answer...'} />
                     )}
@@ -578,7 +578,7 @@ export function AuthForm() {
                   onClick={handleGuestLogin}
                   disabled={guestLoading}
                   aria-busy={guestLoading}>
-                  <i className="ti ti-user-circle" style={{fontSize:'18px'}} aria-hidden="true" />
+                  <i className="ti ti-user-circle" style={{fontSize:'var(--fs-body, 15px)'}} aria-hidden="true" />
                   {guestLoading ? t.processing : t.guestLogin}
                 </button>
               </div>
@@ -597,7 +597,7 @@ export function AuthForm() {
 
       {/* Footer */}
       <p style={{position:'absolute', bottom:'16px', left:'50%', transform:'translateX(-50%)',
-        fontSize:'12px', color:'var(--foreground-muted)', whiteSpace:'nowrap',
+        fontSize:'var(--fs-small, 14px)', color:'var(--foreground-muted)', whiteSpace:'nowrap',
         fontFamily:'var(--font-ui)'}}>
         المدير المالي الذكي — SFM © 2026
       </p>

@@ -67,11 +67,11 @@ export default function TraderEducationPage() {
       <style jsx global>{`
         .trader-education-shell{min-height:100%;background:var(--background);color:var(--foreground)}
         .trader-education-content{display:grid;gap:20px}
-        .trader-education-count{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground-secondary);font:600 12px/1.4 var(--font-ui)}
+        .trader-education-count{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground-secondary);font:600 var(--fs-caption)/var(--lh-caption) var(--font-body)}
         .trader-education-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
         .trader-education-category{display:grid;align-content:start;gap:16px}
         .trader-education-category>header{display:flex;align-items:center;gap:11px}
-        .trader-education-category h2{margin:0;color:var(--foreground);font-size:18px;font-weight:650}
+        .trader-education-category h2{margin:0;color:var(--foreground);font-size:var(--fs-section);line-height:var(--lh-section);font-weight:700}
         .trader-education-category small{display:block;margin-top:3px;color:var(--foreground-muted);font-weight:500}
         .trader-education-icon{width:42px;height:42px;display:grid;place-items:center;flex:0 0 auto;border-radius:var(--radius-control);background:var(--primary-soft);color:var(--primary)}
         .trader-education-lessons{display:grid;gap:9px}
@@ -79,13 +79,13 @@ export default function TraderEducationPage() {
         .trader-education-lessons details[open]{border-color:color-mix(in srgb,var(--primary) 34%,var(--border));background:var(--primary-soft)}
         .trader-education-lessons summary{display:grid;gap:3px;padding:12px 13px;cursor:pointer;list-style-position:inside;color:var(--foreground)}
         .trader-education-lessons summary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-3px}
-        .trader-education-lessons summary span{color:var(--primary);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
-        .trader-education-lessons summary strong{font-size:14px;font-weight:620;line-height:1.5}
-        .trader-education-lessons p{margin:0;padding:0 13px 13px;color:var(--foreground-secondary);font-size:13px;font-weight:400;line-height:1.75}
+        .trader-education-lessons summary span{color:var(--primary);font-size:var(--fs-caption);line-height:var(--lh-caption);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+        .trader-education-lessons summary strong{font-size:var(--fs-label);font-weight:620;line-height:var(--lh-label)}
+        .trader-education-lessons p{margin:0;padding:0 13px 13px;color:var(--foreground-secondary);font-size:var(--fs-small);font-weight:400;line-height:var(--lh-small)}
         .trader-education-disclaimer{display:flex;align-items:flex-start;gap:11px;border-color:color-mix(in srgb,var(--warning) 32%,var(--border));background:var(--warning-soft);color:var(--warning)}
         .trader-education-disclaimer svg{flex:0 0 auto;margin-top:2px}
         .trader-education-disclaimer strong{display:block;color:var(--foreground);font-weight:650}
-        .trader-education-disclaimer p{margin:4px 0 0;color:var(--foreground-secondary);font-size:13px;line-height:1.7}
+        .trader-education-disclaimer p{margin:4px 0 0;color:var(--foreground-secondary);font-size:var(--fs-small);line-height:var(--lh-small)}
         @media(max-width:820px){.trader-education-grid{grid-template-columns:1fr}}
         @media(max-width:640px){.trader-education-content{gap:15px}.trader-education-category{gap:13px}}
       `}</style>

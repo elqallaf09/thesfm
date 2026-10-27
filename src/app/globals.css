@@ -297,7 +297,6 @@
 @theme inline {
   /* next/font registers these literal family names; Tailwind v4 resolves them at parse time. */
   --font-sans: var(--font-ui);
-  --font-mono: var(--font-data);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
@@ -393,9 +392,9 @@ html {
 body {
   width:100%;
   font-family:var(--font-ui);
-  font-size:15px;
+  font-size:var(--fs-body);
   font-weight:var(--type-body-weight);
-  line-height:var(--type-body-leading);
+  line-height:var(--lh-body);
   color:var(--foreground);
   background:var(--background);
   direction:inherit;
@@ -407,10 +406,10 @@ body {
 }
 
 /*
- * One global UI-font contract keeps application chrome and page content on
- * IBM Plex Sans Arabic. Explicit financial-data roles opt into IBM Plex Mono below.
+ * Inherit the body font so headings and explicit numeric roles keep their
+ * selected families, including descendants within those typography roles.
  */
-body :where(
+:where(body) :where(
   *:not(
     .ti,
     [class^="ti-"],
@@ -439,7 +438,7 @@ body :where(
     mjx-container *
   )
 ) {
-  font-family: var(--font-ui) !important;
+  font-family: inherit;
 }
 
 :root[dir="rtl"] :where(h1, h2, h3, h4, h5, h6, th, label, button) {
@@ -683,10 +682,10 @@ button.sfm-app-card:active,
 }
 
 /* ── 3. Typography ── */
-h1{font-size:var(--type-page-title-size);font-weight:var(--type-page-title-weight);line-height:var(--type-page-title-leading);letter-spacing:var(--type-page-title-tracking)}
-h2{font-size:var(--type-section-title-size);font-weight:var(--type-section-title-weight);line-height:var(--type-section-title-leading)}
-h3{font-size:var(--type-card-title-size);font-weight:var(--type-card-title-weight);line-height:var(--type-card-title-leading)}
-h4{font-size:var(--type-body-size);font-weight:600;line-height:1.5;color:var(--foreground-secondary)}
+h1{font-size:var(--fs-page);font-weight:700;line-height:var(--lh-page);letter-spacing:var(--type-page-title-tracking)}
+h2{font-size:var(--fs-section);font-weight:700;line-height:var(--lh-section)}
+h3{font-size:var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title)}
+h4{font-size:var(--fs-body);font-weight:600;line-height:var(--lh-body);color:var(--foreground-secondary)}
 h5{font-size:var(--type-label-size);font-weight:var(--type-label-weight);line-height:var(--type-label-leading);color:var(--foreground-secondary)}
 p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-height:var(--type-body-leading);color:var(--foreground-secondary)}
 :where(strong, b){font-weight:600}
@@ -733,7 +732,7 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
   letter-spacing:-0.5px;
 }
 .sfm-logo-name{font-family: var(--font-ui);font-size:14px;font-weight:700;color:var(--sidebar-foreground);line-height:1.3}
-.sfm-logo-sub{font-size:12px;color:var(--sidebar-muted);margin-top:2px}
+.sfm-logo-sub{font-size:var(--fs-label);color:var(--sidebar-muted); line-height: var(--lh-label);margin-top:2px}
 
 .sfm-brand-mark{
   display:block;
@@ -759,11 +758,11 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
   border:none;background:transparent;
   color:var(--sidebar-muted);
   font-family: var(--font-ui);
-  font-size:13.5px;font-weight:500;
+  font-size:var(--fs-small);font-weight:500;
   cursor:pointer;text-decoration:none;
   transition:all var(--duration) var(--ease);
   direction:rtl;text-align:right;
-  width:calc(100% - 16px);
+  width:calc(100% - 16px); line-height: var(--lh-small);
 }
 .sfm-nav-item:hover{background:var(--sidebar-hover);color:var(--sidebar-foreground)}
 .sfm-nav-item.active{
@@ -776,8 +775,8 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
 .sfm-nav-badge{
   margin-right:auto;
   background:var(--primary);color:var(--primary-foreground);
-  font-size:12px;font-weight:700;
-  padding:2px 7px;border-radius: var(--radius-panel);
+  font-size:var(--fs-label);font-weight:700;
+  padding:2px 7px;border-radius: var(--radius-panel); line-height: var(--lh-label);
 }
 .sfm-nav-divider{height:1px;background:var(--sidebar-border);margin:8px 16px}
 
@@ -795,16 +794,16 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
   background: var(--primary-soft);
   border-radius: var(--radius-circle);
   display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:var(--foreground);flex-shrink:0;
+  font-size:var(--fs-caption);font-weight:700;color:var(--foreground);flex-shrink:0; line-height: var(--lh-caption);
 }
 .sfm-user-name{font-family: var(--font-ui);font-size:13px;font-weight:700;color:var(--foreground-inverse);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sfm-user-role{font-size:12px;color:var(--hero-foreground-muted);margin-top:1px}
+.sfm-user-role{font-size:var(--fs-label);color:var(--hero-foreground-muted); line-height: var(--lh-label);margin-top:1px}
 .sfm-lang-row{display:flex;gap:4px;padding:8px 4px 0}
 .sfm-lang-btn{
   flex:1;padding:6px;border-radius:var(--radius-sm);border:none;cursor:pointer;
-  font-family: var(--font-ui);font-size:12px;font-weight:700;
+  font-family: var(--font-ui);font-size:var(--fs-label);font-weight:700;
   transition:all var(--duration) var(--ease);
-  background:transparent;color:var(--hero-foreground-muted);
+  background:transparent;color:var(--hero-foreground-muted); line-height: var(--lh-label);
 }
 .sfm-lang-btn.active{background: var(--primary-soft);color:var(--primary)}
 
@@ -851,9 +850,9 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
 }
 .sfm-topbar-title{
   font-family: var(--font-ui);
-  font-size:16.5px;font-weight:700;color:var(--foreground);
+  font-size:var(--fs-section);font-weight:700;color:var(--foreground); line-height: var(--lh-section);
 }
-.sfm-topbar-sub{font-size:12.5px;color:var(--foreground-muted);margin-top:1px}
+.sfm-topbar-sub{font-size:var(--fs-small);color:var(--foreground-muted); line-height: var(--lh-small);margin-top:1px}
 
 /* Ticker */
 .sfm-ticker-bar{background:var(--surface-muted);overflow:hidden;padding:8px 0;border-block:1px solid var(--border)}
@@ -866,9 +865,9 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
   padding:8px 15px;border-radius:var(--radius-control);
   background:var(--surface-muted);border:1px solid var(--border);
   color:var(--foreground-secondary);
-  font-family: var(--font-ui);font-size:13px;font-weight:600;
+  font-family: var(--font-ui);font-size:var(--fs-label);font-weight:600;
   cursor:pointer;text-decoration:none;white-space:nowrap;
-  transition:all var(--duration) var(--ease);
+  transition:all var(--duration) var(--ease); line-height: var(--lh-label);
 }
 .sfm-nav-btn:hover{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
 
@@ -912,8 +911,8 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
   pointer-events:none;
 }
 .sfm-card-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
-.sfm-card-title{font-family: var(--font-ui);font-size:16px;font-weight:700;color:var(--foreground);line-height:1.35}
-.sfm-card-sub{font-size:12.5px;color:var(--foreground-muted);margin-top:2px}
+.sfm-card-title{font-family: var(--font-ui);font-size:var(--fs-card-title);font-weight:600;color:var(--foreground);line-height:var(--lh-card-title)}
+.sfm-card-sub{font-size:var(--fs-small);color:var(--foreground-muted); line-height: var(--lh-small);margin-top:2px}
 .sfm-card-dark .sfm-card-title{color:var(--foreground)}
 .sfm-card-dark .sfm-card-sub{color:var(--foreground-secondary)}
 .sfm-pill{
@@ -923,31 +922,31 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
   background:var(--primary-soft);
   color:var(--foreground-secondary);
   font-family: var(--font-ui);
-  font-size:12px;font-weight:700;white-space:nowrap;
+  font-size:var(--fs-label);font-weight:700;white-space:nowrap; line-height: var(--lh-label);
 }
 .sfm-card-dark .sfm-pill{border-color: var(--border);background: var(--surface);color:var(--accent)}
 .sfm-gauge{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:center;position:relative;z-index:1}
 .sfm-gauge-svg{width:150px;height:104px;overflow:visible}
-.sfm-score-number{font-family: var(--font-data);font-size:46px;font-weight:700;line-height:1;color:var(--foreground)}
-.sfm-score-number span{font-size:16px;color: var(--foreground);font-weight:700}
+.sfm-score-number{font-family: var(--font-data);font-size:var(--fs-kpi);font-weight:600;line-height:var(--lh-kpi);color:var(--foreground)}
+.sfm-score-number span{font-size:var(--fs-small);color: var(--foreground); line-height: var(--lh-small);font-weight:700}
 .sfm-score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;position:relative;z-index:1}
 .sfm-score-mini{border: 1px solid var(--border);background: var(--surface-muted);border-radius: var(--radius-card);padding:10px;text-align:center}
-.sfm-score-mini strong{display:block;color: var(--foreground);font-size:15px}
-.sfm-score-mini span{font-size:12px;color:var(--foreground-muted)}
+.sfm-score-mini strong{display:block;color: var(--foreground); line-height: var(--lh-kpi); font-weight: 600; font-family: var(--font-data);font-size:var(--fs-kpi)}
+.sfm-score-mini span{font-size:var(--fs-label); line-height: var(--lh-label);color:var(--foreground-muted)}
 .sfm-feed-list{display:flex;flex-direction:column;gap:10px}
 .sfm-feed-item{display:flex;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--border);border-radius: var(--radius-card);background:var(--surface)}
 .sfm-feed-icon{width:34px;height:34px;border-radius: var(--radius-card);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--primary-soft);font-size:16px}
-.sfm-feed-title{font-size:13px;font-weight:700;color:var(--foreground);line-height:1.35}
-.sfm-feed-meta{font-size:12px;color:var(--foreground-muted);margin-top:2px}
+.sfm-feed-title{font-size:var(--fs-card-title);font-weight:600;color:var(--foreground);line-height:var(--lh-card-title)}
+.sfm-feed-meta{font-size:var(--fs-caption);color:var(--foreground-muted); line-height: var(--lh-caption);margin-top:2px}
 .sfm-chart-box{height:236px;min-width:0}
 .sfm-donut-layout{display:grid;grid-template-columns:220px 1fr;gap:14px;align-items:center}
-.sfm-donut-center{font-family: var(--font-data);font-size:23px;font-weight:700;color:var(--foreground)}
+.sfm-donut-center{font-family: var(--font-data);font-size:var(--fs-kpi);font-weight:600; line-height: var(--lh-kpi);color:var(--foreground)}
 .sfm-legend{display:flex;flex-direction:column;gap:9px}
 .sfm-legend-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
 .sfm-legend-row:last-child{border-bottom:none}
-.sfm-legend-name{display:flex;align-items:center;gap:8px;color:var(--foreground-secondary);font-size:12.5px;font-weight:700}
+.sfm-legend-name{display:flex;align-items:center;gap:8px;color:var(--foreground-secondary);font-size:var(--fs-label); line-height: var(--lh-label);font-weight:700}
 .sfm-dot{width:9px;height:9px;border-radius: var(--radius-circle);display:inline-block}
-.sfm-legend-value{font-family: var(--font-data);color:var(--foreground);font-size:12.5px;font-weight:700;white-space:nowrap}
+.sfm-legend-value{font-family: var(--font-data);color:var(--foreground);font-size:var(--fs-small);font-weight:700; line-height: var(--lh-small);white-space:nowrap}
 .sfm-goal-mini{background:var(--surface);border:1px solid var(--border);border-radius: var(--radius-panel);padding:15px;box-shadow: var(--shadow-xs);transition:all var(--duration) var(--ease)}
 .sfm-goal-mini:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .sfm-goal-mini-icon{width:38px;height:38px;border-radius: var(--radius-card);background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
@@ -998,14 +997,14 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
 }
 .kpi-val{
   font-family: var(--font-data);
-  font-size:28px;font-weight:700;line-height:1.1;color:var(--foreground);
+  font-size:var(--fs-kpi);font-weight:600;line-height:var(--lh-kpi);color:var(--foreground);
 }
-.kpi-unit{font-size:14px;font-weight:500;color:var(--foreground-muted);margin-right:4px}
+.kpi-unit{font-size:var(--fs-small);font-weight:500;color:var(--foreground-muted); line-height: var(--lh-small);margin-right:4px}
 .kpi-trend{
   display:inline-flex;align-items:center;gap:4px;
   font-family: var(--font-ui);
-  font-size:12px;font-weight:700;margin-top:10px;
-  padding:3px 9px;border-radius: var(--radius-panel);
+  font-size:var(--fs-caption);font-weight:700;margin-top:10px;
+  padding:3px 9px;border-radius: var(--radius-panel); line-height: var(--lh-caption);
 }
 .kpi-trend.up  {background:var(--success-soft);color:var(--success)}
 .kpi-trend.down{background:var(--danger-soft);  color:var(--danger)}
@@ -1119,7 +1118,7 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 .badge{
   display:inline-flex;align-items:center;gap:4px;
   font-family: var(--font-ui);
-  font-size:12px;font-weight:600;line-height:1.4;
+  font-size:var(--fs-label);font-weight:600;line-height:var(--lh-label);
   padding:3px 10px;border-radius: var(--radius-panel);
 }
 .badge-green{background:var(--alert-success-background);color:var(--success)}
@@ -1175,8 +1174,8 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   padding:6px 12px;border-radius:var(--radius-control);border:none;
   background:transparent;cursor:pointer;min-width:60px;
   color:var(--foreground-muted);font-family: var(--font-ui);
-  font-size:12px;font-weight:600;
-  transition:all var(--duration) var(--ease);
+  font-size:var(--fs-label);font-weight:600;
+  transition:all var(--duration) var(--ease); line-height: var(--lh-label);
 }
 .sfm-bottom-nav-item.active{color:var(--primary)}
 .sfm-bottom-nav-item:hover{color:var(--accent)}
@@ -1210,9 +1209,9 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   .sfm-bottom-nav{display:none}
   .sfm-main{padding-bottom:44px}
 
-  body{font-size:15px}
+  body{font-size:var(--fs-body);line-height:var(--lh-body)}
   .sfm-card{padding:18px 20px;border-radius:var(--radius-card)}
-  .kpi-val{font-size:24px !important}
+  .kpi-val{font-size:var(--fs-kpi) !important; font-weight: 600; font-family: var(--font-data);line-height:var(--lh-kpi)}
   .sfm-reference-row,.sfm-dashboard-charts{grid-template-columns:1fr}
   .sfm-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sfm-dashboard-goals{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1229,9 +1228,9 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   .sfm-dashboard-page-shell{margin-inline-start:0;padding:calc(74px + env(safe-area-inset-top)) 14px 72px}
   .sfm-bottom-nav{display:flex}
   .sfm-topbar-nav{flex-wrap:wrap;gap:4px;padding:8px 12px}
-  .sfm-nav-btn{font-size:12px;padding:6px 10px}
+  .sfm-nav-btn{font-size:var(--fs-label); line-height: var(--lh-label);padding:6px 10px}
   .sfm-card{padding:16px 18px;border-radius:var(--radius-card)}
-  .kpi-val{font-size:22px !important}
+  .kpi-val{font-size:var(--fs-kpi) !important; font-weight: 600; font-family: var(--font-data);line-height:var(--lh-kpi)}
   .sfm-reference-row,.sfm-dashboard-charts,.sfm-dashboard-goals{grid-template-columns:1fr}
   .sfm-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .sfm-gauge{grid-template-columns:1fr;text-align:center;justify-items:center}
@@ -1242,8 +1241,8 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   input,select,textarea{height:48px !important;font-size:16px !important;border-radius:var(--radius-control) !important}
   textarea{height:auto !important}
   button,[role="button"]{min-height:44px}
-  h1{font-size:24px}
-  h2{font-size:20px}
+  h1{font-size:var(--fs-page); font-weight: 700;line-height:var(--lh-page)}
+  h2{font-size:var(--fs-section); font-weight: 700;line-height:var(--lh-section)}
 }
 
 /* iOS/iPad Safari fixes */
@@ -1357,8 +1356,8 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 }
 .auth-brand-sub {
   font-family: var(--font-ui);
-  font-size: 13.5px; font-weight: 400;
-  color: var(--foreground-muted);
+  font-size: var(--fs-small); font-weight: 400;
+  color: var(--foreground-muted); line-height: var(--lh-small);
 }
 
 /* ── Divider ── */
@@ -1372,8 +1371,8 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 .auth-field { margin-bottom: 18px; }
 .auth-field-label {
   font-family: var(--font-ui);
-  font-size: 13.5px; font-weight: 600;
-  color: var(--foreground-muted); display: block; margin-bottom: 7px;
+  font-size: var(--fs-label); font-weight: 600;
+  color: var(--foreground-muted); display: block; margin-bottom: 7px; line-height: var(--lh-label);
 }
 .auth-input-wrap { position: relative; }
 .auth-input-icon {
@@ -1422,12 +1421,12 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   background: var(--primary);
   border: none; border-radius: var(--radius-card);
   font-family: var(--font-ui);
-  font-size: 16px; font-weight: 700;
+  font-size: var(--fs-label); font-weight: 700;
   color: var(--primary-foreground); cursor: pointer;
   letter-spacing: 0.2px;
   box-shadow: var(--shadow-xs);
   transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 8px; line-height: var(--lh-label);
 }
 .auth-btn-primary:hover {
   background: var(--primary-hover);
@@ -1444,10 +1443,10 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   border: 1.5px solid var(--border);
   border-radius: var(--radius-card);
   font-family: var(--font-ui);
-  font-size: 14px; font-weight: 600;
+  font-size: var(--fs-label); font-weight: 600;
   color: var(--foreground-muted); cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all 0.18s;
+  transition: all 0.18s; line-height: var(--lh-label);
 }
 .auth-btn-secondary:hover {
   border-color: var(--accent); color: var(--foreground); background: var(--surface-muted);
@@ -1459,17 +1458,17 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   margin: 20px 0;
 }
 .auth-sep-line { flex: 1; height: 1px; background: var(--border); }
-.auth-sep-text { font-size: 12.5px; color: var(--foreground-muted); white-space: nowrap; }
+.auth-sep-text { font-size: var(--fs-label); color: var(--foreground-muted); white-space: nowrap; line-height: var(--lh-label); }
 
 /* ── Links ── */
 .auth-links { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .auth-link-row { display: flex; align-items: center; gap: 16px; }
 .auth-link {
   font-family: var(--font-ui);
-  font-size: 13.5px; font-weight: 500;
+  font-size: var(--fs-label); font-weight: 500;
   color: var(--foreground-muted); cursor: pointer;
   background: none; border: none; padding: 0;
-  transition: color 0.15s;
+  transition: color 0.15s; line-height: var(--lh-label);
 }
 .auth-link:hover { color: var(--primary); }
 .auth-link-primary {
@@ -1486,10 +1485,10 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   border-radius: var(--radius-control);
   padding: 11px 14px;
   font-family: var(--font-ui);
-  font-size: 13.5px; font-weight: 500;
+  font-size: var(--fs-small); font-weight: 500;
   color: var(--danger);
   margin-bottom: 16px;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; line-height: var(--lh-small);
 }
 .auth-success {
   background: var(--success-soft);
@@ -1497,10 +1496,10 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   border-radius: var(--radius-control);
   padding: 11px 14px;
   font-family: var(--font-ui);
-  font-size: 13.5px; font-weight: 500;
+  font-size: var(--fs-small); font-weight: 500;
   color: var(--success);
   margin-bottom: 16px;
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; line-height: var(--lh-small);
 }
 
 /* ── Progress Steps ── */
@@ -1515,9 +1514,9 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   width: 28px; height: 28px; border-radius: var(--radius-circle);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-ui);
-  font-size: 12px; font-weight: 700;
+  font-size: var(--fs-caption); font-weight: 700;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: all 0.2s; line-height: var(--lh-caption);
 }
 .auth-step-circle.done { background: var(--success-soft); color: var(--success); }
 .auth-step-circle.active { background: var(--primary); color: var(--primary-foreground); }
@@ -1525,7 +1524,7 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   background: var(--surface-muted); color: var(--foreground-muted);
   border: 1.5px solid var(--border);
 }
-.auth-step-label { font-size: 12px; color: var(--foreground-muted); font-family: var(--font-ui); }
+.auth-step-label { font-size: var(--fs-label); color: var(--foreground-muted); font-family: var(--font-ui); line-height: var(--lh-label); }
 .auth-step-label.active { color: var(--foreground); font-weight: 600; }
 .auth-step-line { flex: 1; height: 1px; background: var(--border); margin: 0 4px; }
 
@@ -1533,7 +1532,7 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 @media (max-width: 480px) {
   .auth-card { padding: 32px 24px 28px; border-radius: var(--radius-panel); }
   .auth-brand-name { font-size: 18px; }
-  .auth-btn-primary { height: 50px; font-size: 15px; }
+  .auth-btn-primary { height: 50px; font-size: var(--fs-label); line-height: var(--lh-label); }
 }
 
 /* ==========================================================================
@@ -1998,7 +1997,7 @@ button:disabled,
 
 .sfm-empty-state strong {
   color: var(--foreground);
-  font-size: 18px;
+  font-size: var(--fs-card-title); line-height: var(--lh-card-title); font-weight: 600;
 }
 
 .sfm-empty-state p {
@@ -2120,17 +2119,17 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
 .sfm-modal-header h2 {
   margin: 0 !important;
   color: var(--foreground) !important;
-  font-size: clamp(19px, 2.2vw, 23px) !important;
-  line-height: 1.25 !important;
-  font-weight: 600 !important;
+  font-size: var(--fs-section) !important;
+  line-height: var(--lh-section) !important;
+  font-weight: 700 !important;
 }
 
 .sfm-modal-header p {
   margin: 6px 0 0 !important;
   color: var(--foreground-secondary) !important;
-  font-size: 13px !important;
+  font-size: var(--fs-small) !important;
   font-weight: 400 !important;
-  line-height: 1.6 !important;
+  line-height: var(--lh-small) !important;
 }
 
 .sfm-modal-close {
@@ -3184,14 +3183,14 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--primary-soft);
           color: var(--primary-hover);
           padding: 7px 12px;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energyHero h1 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(30px, 3.8vw, 42px);
-          line-height: 1.12;
+          font-size: var(--fs-page);
+          line-height: var(--lh-page);
           font-weight: 700;
           letter-spacing: 0;
         }
@@ -3199,9 +3198,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           margin: 0;
           max-width: 980px;
           color: var(--foreground);
-          font-size: 15px;
+          font-size: var(--fs-body);
           font-weight: 700;
-          line-height: 1.8;
+          line-height: var(--lh-body);
         }
         .energyHeroMeta {
           display: flex;
@@ -3214,8 +3213,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           align-items: center;
           gap: 6px;
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption);
+          font-weight: 700; line-height: var(--lh-caption);
         }
         .energyHeroActions {
           min-width: min(100%, 250px);
@@ -3225,8 +3224,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyHeroActions small {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energyPrimaryButton,
         .energySecondaryButton,
@@ -3242,7 +3241,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           justify-content: center;
           gap: 8px;
           padding: 0 16px;
-          font: 700 13px var(--font-ui);
+          font: 700 var(--fs-label)/var(--lh-label) var(--font-ui);
           cursor: pointer;
           transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         }
@@ -3362,26 +3361,26 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyTickerIdentity > span:not(.asset-avatar) {
           color: var(--foreground);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption);
+          font-weight: 700; line-height: var(--lh-caption);
         }
         .energyTickerItem strong {
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-caption);
           font-weight: 700;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           grid-column: 1;
-          grid-row: 2;
+          grid-row: 2; line-height: var(--lh-caption);
         }
         .energyTickerItem b,
         .energyTickerItem em {
           font-style: normal;
           font-weight: 700;
           font-variant-numeric: tabular-nums;
-          font-size: 12px;
-          white-space: nowrap;
+          font-size: var(--fs-caption);
+          white-space: nowrap; line-height: var(--lh-caption);
         }
         .energyTickerItem b {
           color: var(--foreground);
@@ -3397,8 +3396,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           justify-self: end;
           border-radius: var(--radius-pill);
           padding: 2px 6px;
-          font-size: 12px;
-          line-height: 1.2;
+          font-size: var(--fs-caption);
+          line-height: var(--lh-caption);
         }
         .energyTickerItem.energyTone-positive em {
           color: var(--success);
@@ -3426,11 +3425,11 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyTickerMeta small {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption);
           font-weight: 700;
           white-space: nowrap;
           overflow: hidden;
-          text-overflow: ellipsis;
+          text-overflow: ellipsis; line-height: var(--lh-caption);
         }
         .energyTickerMeta small:first-child {
           min-width: 0;
@@ -3469,7 +3468,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           align-items: center;
           gap: 8px;
           padding: 0 13px;
-          font: 700 13px var(--font-ui);
+          font: 700 var(--fs-label)/var(--lh-label) var(--font-ui);
           cursor: pointer;
         }
         .energyTabs button:hover,
@@ -3520,16 +3519,16 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energySectionHeader h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: 20px;
+          font-size: var(--fs-section);
           font-weight: 700;
-          line-height: 1.35;
+          line-height: var(--lh-section);
         }
         .energySectionHeader p {
           margin: 5px 0 0;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.6;
+          line-height: var(--lh-small);
         }
         .energySectionAction {
           flex: 0 0 auto;
@@ -3581,19 +3580,19 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyStat span:not(.energyStatIcon) {
           color: var(--foreground);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energyStat strong {
           color: var(--foreground);
-          font-size: 19px;
-          font-weight: 700;
-          font-variant-numeric: tabular-nums;
+          font-size: var(--fs-kpi);
+          font-weight: 600;
+          font-variant-numeric: tabular-nums; line-height: var(--lh-kpi); font-family: var(--font-data);
         }
         .energyStat small {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energyStatSkeleton {
           min-height: 78px;
@@ -3670,14 +3669,14 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energySummaryIdentity strong {
           color: var(--foreground-secondary);
-          font-size: 15px;
-          line-height: 1.35;
-          font-weight: 700;
+          font-size: var(--fs-card-title);
+          line-height: var(--lh-card-title);
+          font-weight: 600;
         }
         .energySummaryIdentity > div > span {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          line-height: 1.4;
+          font-size: var(--fs-small);
+          line-height: var(--lh-small);
           font-weight: 700;
           overflow-wrap: anywhere;
         }
@@ -3694,8 +3693,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           color: var(--foreground-muted);
           padding: 0 9px;
-          font-size: 12px;
-          line-height: 1;
+          font-size: var(--fs-caption);
+          line-height: var(--lh-caption);
           font-weight: 700;
           white-space: nowrap;
           overflow: hidden;
@@ -3711,11 +3710,11 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energySummaryValue {
           color: var(--foreground-secondary);
-          font-size: clamp(22px, 2.2vw, 30px);
-          line-height: 1;
-          font-weight: 700;
+          font-size: var(--fs-kpi);
+          line-height: var(--lh-kpi);
+          font-weight: 600;
           font-variant-numeric: tabular-nums;
-          overflow-wrap: anywhere;
+          overflow-wrap: anywhere; font-family: var(--font-data);
         }
         .energySummaryChange {
           min-height: 28px;
@@ -3726,9 +3725,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           color: var(--foreground-secondary);
           padding: 0 9px;
-          font-size: 12px;
+          font-size: var(--fs-caption);
           font-weight: 700;
-          font-variant-numeric: tabular-nums;
+          font-variant-numeric: tabular-nums; line-height: var(--lh-caption);
         }
         .energySummaryCard.energyTone-positive .energySummaryChange,
         .energyCommodityCard.energyTone-positive .energyCommodityValueRow em {
@@ -3745,8 +3744,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energySummaryCard p {
           margin: 0;
           color: var(--foreground-secondary);
-          font-size: 12.5px;
-          line-height: 1.65;
+          font-size: var(--fs-small);
+          line-height: var(--lh-small);
           font-weight: 700;
         }
         .energySummaryUnavailable,
@@ -3762,14 +3761,14 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energySummaryUnavailable strong,
         .energyCommodityUnavailable strong {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energySummaryUnavailable span,
         .energyCommodityUnavailable span {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          line-height: 1.55;
+          font-size: var(--fs-small);
+          line-height: var(--lh-small);
           font-weight: 700;
         }
         .energySummaryMeta {
@@ -3788,8 +3787,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           color: var(--foreground-muted);
           padding: 0 8px;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption);
+          font-weight: 700; line-height: var(--lh-caption);
         }
         .energySummaryMeta i {
           font-style: normal;
@@ -3800,8 +3799,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           justify-content: space-between;
           gap: 8px;
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption);
+          font-weight: 700; line-height: var(--lh-caption);
         }
         .energyCommodityCard {
           display: flex;
@@ -3833,8 +3832,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           border-radius: var(--radius-pill);
           padding: 3px 7px;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energyCommodityCard strong,
         .energyCompanyFeature strong,
@@ -3848,9 +3847,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyCommodityCard b {
           color: var(--foreground);
-          font-size: 19px;
-          font-weight: 700;
-          font-variant-numeric: tabular-nums;
+          font-size: var(--fs-kpi);
+          font-weight: 600;
+          font-variant-numeric: tabular-nums; line-height: var(--lh-kpi); font-family: var(--font-data);
         }
         .energyCommodityCard em {
           min-height: 28px;
@@ -3870,8 +3869,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           flex-wrap: wrap;
           gap: 7px;
           color: var(--foreground);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption);
+          font-weight: 700; line-height: var(--lh-caption);
         }
         .energyCommodityCard footer span {
           min-height: 24px;
@@ -3918,8 +3917,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energySectorRow span {
           color: var(--foreground);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energySectorRow b {
           font-variant-numeric: tabular-nums;
@@ -3952,8 +3951,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           align-items: center;
           gap: 8px;
           color: var(--foreground);
-          font-size: 14px;
-          font-weight: 700;
+          font-size: var(--fs-card-title);
+          font-weight: 600; line-height: var(--lh-card-title);
         }
         .energyMoverRow {
           min-width: 0;
@@ -3964,7 +3963,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           min-height: 44px;
           border-top: 1px solid var(--border);
           padding-top: 8px;
-          font-size: 12px;
+          font-size: var(--fs-small); line-height: var(--lh-small);
         }
         .energyMoverRow > span:not(.asset-avatar) {
           color: var(--foreground);
@@ -4012,15 +4011,15 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           gap: 3px;
         }
         .energyCompanyFeature strong {
-          font-size: 15px;
-          overflow-wrap: anywhere;
+          font-size: var(--fs-card-title);
+          overflow-wrap: anywhere; line-height: var(--lh-card-title); font-weight: 600;
         }
         .energyCompanyFeature small,
         .energyCompanyFeature p {
           margin: 0;
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energyCompanyMetrics {
           display: grid;
@@ -4031,14 +4030,14 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           display: grid;
           gap: 3px;
           color: var(--foreground);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energyCompanyMetrics b {
           color: var(--foreground);
-          font-size: 15px;
-          font-weight: 700;
-          font-variant-numeric: tabular-nums;
+          font-size: var(--fs-kpi);
+          font-weight: 600;
+          font-variant-numeric: tabular-nums; line-height: var(--lh-kpi); font-family: var(--font-data);
         }
         .energyCompanyFeature footer {
           display: flex;
@@ -4058,8 +4057,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           border-radius: var(--radius-card);
           color: var(--foreground-secondary);
           font-weight: 700;
-          font-size: 12px;
-          list-style: none;
+          font-size: var(--fs-label);
+          list-style: none; line-height: var(--lh-label);
         }
         .energyMethodology summary::-webkit-details-marker {
           display: none;
@@ -4082,9 +4081,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyMethodology p {
           margin: 6px 0 0;
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.6;
+          line-height: var(--lh-small);
         }
         .energyFilterPanel {
           display: grid;
@@ -4108,8 +4107,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           gap: 6px;
           min-width: 0;
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energySearchField,
         .energyFilterGrid select {
@@ -4118,7 +4117,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           border: 1px solid var(--border);
           background: var(--control-background);
           color: var(--foreground);
-          font: 700 14px var(--font-ui);
+          font: 700 var(--fs-label)/var(--lh-label) var(--font-ui);
         }
         .energySearchField {
           display: flex;
@@ -4153,9 +4152,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           color: var(--foreground);
           padding: 0 13px;
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 700;
-          white-space: nowrap;
+          white-space: nowrap; line-height: var(--lh-label);
         }
         .energyActiveFilters {
           display: flex;
@@ -4172,7 +4171,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--primary-soft);
           color: var(--primary);
           padding: 0 10px;
-          font: 700 12px var(--font-ui);
+          font: 700 var(--fs-label)/var(--lh-label) var(--font-ui);
           cursor: pointer;
         }
         .energyActiveFilters button.clear {
@@ -4197,18 +4196,18 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           top: 0;
           background: var(--surface);
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 700;
           padding: 13px 14px;
-          border-bottom: 1px solid var(--border);
+          border-bottom: 1px solid var(--border); line-height: var(--lh-label);
         }
         .energyCompanyTable td {
           padding: 13px 14px;
           border-bottom: 1px solid var(--border);
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          vertical-align: middle;
+          vertical-align: middle; line-height: var(--lh-small);
         }
         .energyCompanyTable tr:last-child td {
           border-bottom: 0;
@@ -4288,25 +4287,25 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyNewsCard time {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption);
           font-weight: 700;
-          white-space: nowrap;
+          white-space: nowrap; line-height: var(--lh-caption);
         }
         .energyNewsCard h3 {
           margin: 0;
-          font-size: 17px;
-          line-height: 1.55;
+          font-size: var(--fs-card-title);
+          line-height: var(--lh-card-title);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden; font-weight: 600;
         }
         .energyNewsCard p {
           margin: 0;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.65;
+          line-height: var(--lh-small);
           display: -webkit-box;
           -webkit-line-clamp: 3;
           -webkit-box-orient: vertical;
@@ -4323,8 +4322,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           color: var(--foreground-muted);
           padding: 5px 9px;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption);
+          font-weight: 700; line-height: var(--lh-caption);
         }
         .energyNewsCard footer a,
         .energyNewsCard footer span {
@@ -4333,9 +4332,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           align-items: center;
           gap: 7px;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-label);
           font-weight: 700;
-          text-decoration: none;
+          text-decoration: none; line-height: var(--lh-label);
         }
         .energyNewsCard footer a:hover,
         .energyNewsCard footer a:focus-visible {
@@ -4349,8 +4348,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           gap: 12px;
           flex-wrap: wrap;
           color: var(--foreground);
-          font-size: 13px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energyCalendarShell {
           min-height: 0;
@@ -4367,8 +4366,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           border-radius: var(--radius-card);
           background: var(--info-soft);
           color: var(--info);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energyCalendarList {
           display: grid;
@@ -4400,9 +4399,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyCalendarDate span,
         .energyCalendarEvent footer span {
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-caption);
           font-weight: 700;
-          line-height: 1.45;
+          line-height: var(--lh-caption);
         }
         .energyCalendarBody > div {
           display: flex;
@@ -4412,9 +4411,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyCalendarBody h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 15px;
-          font-weight: 700;
-          line-height: 1.45;
+          font-size: var(--fs-card-title);
+          font-weight: 600;
+          line-height: var(--lh-card-title);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
@@ -4423,9 +4422,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyCalendarBody p {
           margin: 0;
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.55;
+          line-height: var(--lh-small);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
@@ -4480,9 +4479,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyComparisonRow p {
           margin: 0;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.55;
+          line-height: var(--lh-small);
         }
         .energyLessons {
           display: grid;
@@ -4517,9 +4516,9 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           margin: 0;
           padding: 0 14px 14px;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.7;
+          line-height: var(--lh-small);
         }
         .energyExplainerGrid {
           display: grid;
@@ -4553,8 +4552,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyExplainerGrid p {
           margin: 0;
           color: var(--foreground);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energyBadge {
           min-height: 28px;
@@ -4566,8 +4565,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           background: var(--surface-muted);
           color: var(--foreground-secondary);
           padding: 0 9px;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-label);
+          font-weight: 700; line-height: var(--lh-label);
         }
         .energyTone-positive {
           color: var(--success);
@@ -4605,8 +4604,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           border: 1px solid color-mix(in srgb, var(--warning) 34%, var(--border));
           background: var(--warning-soft);
           color: var(--warning);
-          font-size: 13px;
-          font-weight: 700;
+          font-size: var(--fs-small);
+          font-weight: 700; line-height: var(--lh-small);
         }
         .energyEmptyState {
           min-height: 150px;
@@ -4628,15 +4627,15 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         }
         .energyEmptyState strong {
           color: var(--foreground);
-          font-size: 16px;
-          font-weight: 700;
+          font-size: var(--fs-card-title);
+          font-weight: 600; line-height: var(--lh-card-title);
         }
         .energyEmptyState p {
           margin: 0;
           max-width: 520px;
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.65;
+          line-height: var(--lh-small);
         }
         .energySkeletonStack span {
           height: 72px;
@@ -4656,15 +4655,15 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
         .energyDisclaimer h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: 16px;
-          font-weight: 700;
+          font-size: var(--fs-section);
+          font-weight: 700; line-height: var(--lh-section);
         }
         .energyDisclaimer p {
           margin: 7px 0 0;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 700;
-          line-height: 1.7;
+          line-height: var(--lh-small);
         }
         .energyStandaloneAction {
           justify-self: start;
@@ -4768,7 +4767,7 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
             max-width: 68px;
           }
           .energyHero h1 {
-            font-size: 30px;
+            font-size: var(--fs-page); line-height: var(--lh-page); font-weight: 700;
           }
           .energyHeroActions {
             grid-template-columns: 1fr;
@@ -4816,8 +4815,8 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
             display: block;
             margin: 0;
             color: var(--foreground-muted);
-            font-size: 12px;
-            font-weight: 700;
+            font-size: var(--fs-small);
+            font-weight: 700; line-height: var(--lh-small);
           }
           .energyMobileCompanyCard {
             display: grid;
@@ -4849,15 +4848,15 @@ body:has(:where(.sfm-modal-overlay, .modal-backdrop, .entry-overlay, .documents-
           }
           .energyMobileCompanyCard dt {
             color: var(--foreground);
-            font-size: 12px;
-            font-weight: 700;
+            font-size: var(--fs-label);
+            font-weight: 700; line-height: var(--lh-label);
           }
           .energyMobileCompanyCard dd {
             margin: 3px 0 0;
             color: var(--foreground);
-            font-size: 13px;
+            font-size: var(--fs-small);
             font-weight: 700;
-            overflow-wrap: anywhere;
+            overflow-wrap: anywhere; line-height: var(--lh-small);
           }
           .energyComparisonHead,
           .energyComparisonRow {
@@ -5682,6 +5681,7 @@ body :is(
   box-shadow: var(--shadow-xs);
 }
 
+:where(h1, h2, .sfm-page-title) { --font-ui: var(--font-heading); font-family: var(--font-ui); }
 :where(h1, h2, h3, h4, h5, h6) {
   font-family: var(--font-ui);
   color: inherit;
@@ -6067,9 +6067,9 @@ body :is(
   border-style: solid;
   border-width: 1px;
   border-radius: var(--radius-pill);
-  font-size: var(--type-caption-size);
+  font-size: var(--fs-label);
   font-weight: 600;
-  line-height: 1.3;
+  line-height: var(--lh-label);
 }
 
 :where(.sfm-empty-state, .empty-state, .preview-empty, .directory-empty, .funding-empty, .pitch-empty, .documents-empty) {
@@ -6106,7 +6106,7 @@ body :is(
 
 :where(.recharts-cartesian-axis-tick text, .recharts-polar-angle-axis-tick text) {
   fill: var(--chart-label) !important;
-  font-size: 12px;
+  font-size: var(--fs-caption); line-height: var(--lh-caption);
 }
 
 :where(.recharts-tooltip-wrapper > div, .recharts-default-tooltip) {
@@ -6216,8 +6216,8 @@ body :is(
 .market-status-body p {
   margin: 0;
   color: var(--foreground-secondary);
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
   overflow-wrap: anywhere;
 }
 
@@ -6234,7 +6234,7 @@ body :is(
   padding-inline: 11px;
   background: var(--surface-elevated);
   color: var(--foreground);
-  font: 600 12.5px/1.4 var(--font-ui);
+  font: 600 var(--fs-label)/var(--lh-label) var(--font-ui);
   cursor: pointer;
 }
 
@@ -6297,7 +6297,7 @@ body :is(
   padding: 9px 12px;
   border-bottom: 1px solid var(--border);
   color: var(--foreground-secondary);
-  font-size: 13px;
+  font-size: var(--fs-small); line-height: var(--lh-small);
 }
 
 .market-provider-drawer-row:last-child {
@@ -6328,9 +6328,9 @@ body :is(
   padding: 5px 9px;
   background: var(--surface-muted);
   color: var(--foreground-secondary);
-  font-size: 12px;
+  font-size: var(--fs-label);
   font-weight: 700;
-  white-space: normal;
+  white-space: normal; line-height: var(--lh-label);
 }
 
 .market-status-badge.success { border-color: color-mix(in srgb, var(--success) 32%, transparent); background: var(--success-soft); color: var(--success); }
@@ -6367,8 +6367,8 @@ body :is(
   .market-provider-drawer-row:not(.market-provider-drawer-head) > [role="cell"]::before {
     content: attr(data-label);
     color: var(--foreground-muted);
-    font-size: 12px;
-    line-height: 1.25;
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
     font-weight: 700;
   }
 
@@ -6422,15 +6422,15 @@ body :is(
 
 .market-provider-card-heading strong {
   color: var(--foreground);
-  font-size: 13.5px;
-  font-weight: 700;
-  overflow-wrap: anywhere;
+  font-size: var(--fs-card-title);
+  font-weight: 600;
+  overflow-wrap: anywhere; line-height: var(--lh-card-title);
 }
 
 .market-provider-card-role {
   color: var(--foreground-muted);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--fs-label);
+  font-weight: 700; line-height: var(--lh-label);
 }
 
 .market-provider-card.tone-success .market-provider-card-icon { background: var(--success-soft); color: var(--success); }
@@ -6447,17 +6447,17 @@ body :is(
 
 .market-provider-card-stats dt {
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--fs-label);
   font-weight: 700;
-  margin: 0 0 2px;
+  margin: 0 0 2px; line-height: var(--lh-label);
 }
 
 .market-provider-card-stats dd {
   margin: 0;
   color: var(--foreground-secondary);
-  font-size: 12px;
+  font-size: var(--fs-small);
   font-weight: 700;
-  overflow-wrap: anywhere;
+  overflow-wrap: anywhere; line-height: var(--lh-small);
 }
 
 .market-provider-diagnostic {
@@ -6473,8 +6473,8 @@ body :is(
 .market-provider-diagnostic p {
   margin: 0;
   color: var(--foreground-secondary);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
 }
 
 .market-provider-diagnostic strong {
@@ -6488,8 +6488,8 @@ body :is(
   border: 1px dashed var(--border);
   border-radius: var(--radius-card);
   color: var(--foreground-muted);
-  font-size: 12.5px;
-  text-align: center;
+  font-size: var(--fs-small);
+  text-align: center; line-height: var(--lh-small);
 }
 
 .market-capability-matrix {
@@ -6509,7 +6509,7 @@ body :is(
   padding: 8px 12px;
   border-top: 1px solid var(--border);
   color: var(--foreground-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-small); line-height: var(--lh-small);
 }
 
 .market-capability-matrix-row:first-child {
@@ -6543,8 +6543,8 @@ body :is(
 .market-configuration-list h3 {
   margin: 0;
   color: var(--foreground);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--fs-card-title);
+  font-weight: 600; line-height: var(--lh-card-title);
 }
 
 .market-configuration-list ul {
@@ -6564,7 +6564,7 @@ body :is(
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
   background: var(--surface-muted);
-  font-size: 12px;
+  font-size: var(--fs-small); line-height: var(--lh-small);
 }
 
 .market-configuration-icon { display: inline-flex; flex: 0 0 auto; }
@@ -6617,8 +6617,8 @@ body :is(
   .market-capability-matrix-row:not(.market-capability-matrix-head) > [role="cell"]::before {
     content: attr(data-label);
     color: var(--foreground-muted);
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--fs-label);
+    font-weight: 700; line-height: var(--lh-label);
   }
 }
 
@@ -6652,8 +6652,8 @@ body :is(
 
 .market-header-box small {
   color: var(--foreground);
-  font-size: 12.5px;
-  font-weight: 700;
+  font-size: var(--fs-label);
+  font-weight: 700; line-height: var(--lh-label);
 }
 
 .market-header-box p {
@@ -6663,8 +6663,8 @@ body :is(
   align-items: center;
   gap: 6px;
   color: var(--foreground-secondary);
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
   overflow-wrap: anywhere;
 }
 
@@ -6688,7 +6688,7 @@ body :is(
   padding-inline: 14px;
   background: var(--surface-elevated);
   color: var(--foreground);
-  font: 600 12.5px/1.4 var(--font-ui);
+  font: 600 var(--fs-label)/var(--lh-label) var(--font-ui);
   cursor: pointer;
 }
 

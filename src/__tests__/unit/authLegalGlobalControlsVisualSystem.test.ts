@@ -24,7 +24,7 @@ const assignedFiles = [
 
 const literalColour = /#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})\b|(?:rgb|hsl)a?\(|oklch\(/i;
 const localGradient = /(?:linear|radial|conic)-gradient\(/i;
-const directFont = /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto Sans Arabic)\b|font-family\s*:(?!\s*(?:var\(--font-(?:ui|data)\)|inherit\b))/i;
+const directFont = /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto Sans Arabic)\b|font-family\s*:(?!\s*(?:var\(--font-(?:ui|data|body|heading|mono)\)|inherit\b))/i;
 const rawDepth = /border-radius\s*:\s*(?:[1-9]\d*(?:\.\d+)?|0?\.\d+)(?:px|rem)|box-shadow\s*:\s*(?!\s*(?:var\(|none\b))|filter\s*:\s*drop-shadow\(/i;
 
 describe('auth, legal, and global controls visual-system contract', () => {
@@ -37,7 +37,7 @@ describe('auth, legal, and global controls visual-system contract', () => {
       expect(source, relativePath).not.toMatch(rawDepth);
       expect(source, relativePath).not.toMatch(/var\(--sfm-/);
       expect(source, relativePath).not.toMatch(/(?:html\.)?\.dark\b|\[data-theme=['"]?dark|\bdark:/i);
-      expect(source, relativePath).not.toMatch(/font(?:-weight)?\s*:\s*(?:[7-9]\d\d|9[0-9]{2})/);
+      expect(source, relativePath).not.toMatch(/font(?:-weight)?\s*:\s*(?:7(?:0[1-9]|[1-9]\d)|[89]\d{2}|[1-9]\d{3,})/);
       expect(source, relativePath).not.toMatch(/100d?vw|calc\([^)]*(?:sidebar|100d?vw)/i);
     }
   });

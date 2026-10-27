@@ -37,9 +37,9 @@ export function CountryExchangeHeading({ label, itemCount, status, id }: Country
           overflow: hidden;
           margin: 0;
           color: var(--foreground);
-          font-size: 13.5px;
+          font-size: var(--fs-label, 13px);
           font-weight: 700;
-          line-height: 1.3;
+          line-height: var(--lh-label, 20px);
         }
 
         .gm-strip-heading-meta {
@@ -54,9 +54,9 @@ export function CountryExchangeHeading({ label, itemCount, status, id }: Country
           text-align: center;
           font-variant-numeric: tabular-nums;
           color: var(--foreground-muted);
-          font-size: 11px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 500;
-          font-family: var(--font-data);
+          font-family: var(--font-data);line-height:var(--lh-caption, 18px);
         }
       `}</style>
     </div>

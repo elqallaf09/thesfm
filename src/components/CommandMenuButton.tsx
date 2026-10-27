@@ -77,14 +77,14 @@ export const CommandMenuButton = forwardRef<HTMLButtonElement, CommandMenuButton
           gap: 9px;
           padding: 0 10px;
           font-family: var(--font-ui);
-          font-size: var(--type-navigation-size);
+          font-size: var(--fs-label, 13px);
           font-weight: var(--type-navigation-weight);
           cursor: pointer;
           overflow: hidden;
           transition:
             background-color var(--duration-fast) var(--ease),
             border-color var(--duration-fast) var(--ease),
-            color var(--duration-fast) var(--ease);
+            color var(--duration-fast) var(--ease);line-height:var(--lh-label, 20px);
         }
         .sfm-command-trigger.compact {
           width: 44px;
@@ -121,10 +121,10 @@ export const CommandMenuButton = forwardRef<HTMLButtonElement, CommandMenuButton
           padding: 1px 4px;
           color: var(--foreground-muted);
           background: var(--surface-muted);
-          font-size: 11px;
+          font-size: var(--fs-caption, 12px);
           font-family: var(--font-ui);
           font-weight: 500;
-          line-height: 1.3;
+          line-height: var(--lh-caption, 18px);
         }
         .sfm-shared-sidebar[data-collapsed="true"] .sfm-command-trigger{width:44px;padding:0;justify-content:center}
         .sfm-shared-sidebar[data-collapsed="true"] .sfm-command-trigger span,

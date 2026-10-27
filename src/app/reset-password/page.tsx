@@ -282,16 +282,16 @@ function ResetPasswordContent() {
         .reset-shell .brand h1 {
           margin: 0 0 8px;
           color: var(--foreground);
-          font-size: clamp(24px, 4vw, 30px);
+          font-size: var(--fs-page);
           font-weight: 700;
-          line-height: 1.3;
+          line-height: var(--lh-page);
         }
         .reset-shell .brand p {
           margin: 0;
           color: var(--foreground-secondary);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.7;
+          line-height: var(--lh-small);
         }
         .reset-shell .form { display: grid; gap: 14px; }
         .reset-shell .auth-field {
@@ -301,7 +301,7 @@ function ResetPasswordContent() {
         }
         .reset-shell .auth-field > span {
           color: var(--foreground-secondary);
-          font-size: 13px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 500;
         }
         .reset-shell .input-wrap {
@@ -329,7 +329,7 @@ function ResetPasswordContent() {
           outline: 0;
           background: transparent;
           color: var(--foreground);
-          font: 400 14px var(--font-ui);
+          font: 400 var(--fs-body)/var(--lh-body) var(--font-body);
         }
         .reset-shell .icon {
           display: grid;
@@ -358,7 +358,7 @@ function ResetPasswordContent() {
           justify-content: space-between;
           gap: 12px;
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
         .reset-shell .meter-top strong { font-weight: 600; }
@@ -381,9 +381,9 @@ function ResetPasswordContent() {
         .reset-shell .password-meter p {
           margin: 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);
           font-weight: 400;
-          line-height: 1.6;
+          line-height: var(--lh-small);
         }
         .reset-shell .primary,
         .reset-shell .state-card a {
@@ -398,7 +398,7 @@ function ResetPasswordContent() {
           background: var(--primary);
           color: var(--primary-foreground);
           box-shadow: var(--shadow-sm);
-          font: 600 14px var(--font-ui);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
           text-decoration: none;
           cursor: pointer;
           transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease, background var(--duration-fast) ease, border-color var(--duration-fast) ease;
@@ -424,9 +424,9 @@ function ResetPasswordContent() {
           border-radius: var(--radius-control);
           background: var(--danger-soft);
           color: var(--danger);
-          font-size: 13px;
+          font-size: var(--fs-small);
           font-weight: 500;
-          line-height: 1.6;
+          line-height: var(--lh-small);
         }
         .reset-shell .message.ok {
           border-color: color-mix(in srgb, var(--success) 30%, var(--border));

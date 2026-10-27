@@ -96,9 +96,9 @@ export function SummaryCard({
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
-        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'12px',fontWeight:700,lineHeight:1.35}}>{label}</small>
-        <strong style={{display:'block',marginTop:'5px',color:'var(--foreground)',fontSize:'clamp(17px,1.8vw,22px)',lineHeight:1.18,fontWeight:700,overflowWrap:'anywhere'}}>{value}</strong>
-        <p style={{margin:'5px 0 0',color:'var(--foreground-secondary)',fontSize:'12px',fontWeight:700,lineHeight:1.5}}>{description}</p>
+        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'var(--fs-label, 13px)',fontWeight:700,lineHeight:'var(--lh-label, 20px)'}}>{label}</small>
+        <strong style={{display:'block',marginTop:'5px',color:'var(--foreground)',fontSize:'var(--fs-kpi, 26px)',lineHeight:'var(--lh-kpi, 32px)',fontWeight:600,fontFamily:'var(--font-mono)',overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'5px 0 0',color:'var(--foreground-secondary)',fontSize:'var(--fs-small, 14px)',fontWeight:700,lineHeight:'var(--lh-small, 22px)'}}>{description}</p>
       </div>
     </article>
   );
@@ -111,9 +111,9 @@ export function ReportCard({ icon: Icon, title, value, detail }: { icon: LucideI
         <Icon size={18} />
       </div>
       <div style={{minWidth:0}}>
-        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'12px',fontWeight:700}}>{title}</small>
-        <strong style={{display:'block',marginTop:'4px',color:'var(--foreground)',fontSize:'clamp(16px,1.6vw,20px)',fontWeight:700,overflowWrap:'anywhere'}}>{value}</strong>
-        <p style={{margin:'4px 0 0',color:'var(--foreground-secondary)',fontSize:'12px',lineHeight:1.5}}>{detail}</p>
+        <small style={{display:'block',color:'var(--foreground-secondary)',fontSize:'var(--fs-label, 13px)',fontWeight:700,lineHeight:'var(--lh-label, 20px)'}}>{title}</small>
+        <strong style={{display:'block',marginTop:'4px',color:'var(--foreground)',fontSize:'var(--fs-kpi, 26px)',fontWeight:600,lineHeight:'var(--lh-kpi, 32px)',fontFamily:'var(--font-mono)',overflowWrap:'anywhere'}}>{value}</strong>
+        <p style={{margin:'4px 0 0',color:'var(--foreground-secondary)',fontSize:'var(--fs-small, 14px)',lineHeight:'var(--lh-small, 22px)'}}>{detail}</p>
       </div>
     </article>
   );
@@ -149,7 +149,7 @@ export function Stepper({
       <style jsx>{`
         .setup-stepper{display:flex;flex-wrap:wrap;gap:9px;overflow-x:visible;padding:2px 2px 16px;margin:0 0 18px;list-style:none;scrollbar-width:none;max-width:100%;min-width:0}
         .setup-stepper::-webkit-scrollbar{display:none}
-        .setup-stepper li{flex:1 1 170px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state";align-items:center;gap:3px 8px;border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);border-radius:var(--radius-card);padding:9px 11px;font-weight:500;font-size:12px;transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease),box-shadow var(--duration) var(--ease),transform var(--duration) var(--ease)}
+        .setup-stepper li{flex:1 1 170px;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"icon title" "icon state";align-items:center;gap:3px 8px;border:1px solid var(--border);background:var(--surface);color:var(--foreground-secondary);border-radius:var(--radius-card);padding:9px 11px;font-weight:500;font-size:var(--fs-caption, 12px);transition:background var(--duration) var(--ease),border-color var(--duration) var(--ease),box-shadow var(--duration) var(--ease),transform var(--duration) var(--ease);line-height:var(--lh-caption, 18px);}
         .setup-stepper li.active{background:var(--primary-soft);color:var(--primary-active);border-color:var(--primary);box-shadow:var(--active-indicator-inline-start)}
         .setup-stepper li.done{background:var(--success-soft);color:var(--success);border-color:color-mix(in srgb,var(--success) 28%,var(--border))}
         .setup-stepper li.upcoming{background:var(--surface)}
@@ -157,7 +157,7 @@ export function Stepper({
         .setup-stepper li.active span{background:var(--primary);color:var(--primary-foreground)}
         .setup-stepper li.done span{background:var(--success);color:var(--foreground-inverse)}
         .setup-stepper b{grid-area:title;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
-        .setup-stepper em{grid-area:state;font-style:normal;font-size:12px;font-weight:500;color:inherit;line-height:1.15}
+        .setup-stepper em{grid-area:state;font-style:normal;font-size:var(--fs-caption, 12px);font-weight:500;color:inherit;line-height:var(--lh-caption, 18px)}
         @media(max-width:720px){.setup-stepper{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;padding-bottom:12px;margin-bottom:14px}.setup-stepper li{flex:0 0 min(78vw,250px)}}
       `}</style>
     </ol>
@@ -204,8 +204,8 @@ export function IncomeDecisionCard({
           box-shadow: var(--shadow-xs);
         }
         .income-decision-copy { display: grid; gap: 10px; max-width: 620px; }
-        .income-decision-copy h3 { margin: 0; color: var(--foreground); font-size: clamp(24px,3.5vw,34px); line-height: 1.25; font-weight: 700; }
-        .income-decision-copy p { margin: 0; color: var(--foreground-secondary); font-size: 15px; font-weight: 400; line-height: 1.9; }
+        .income-decision-copy h3 { margin: 0; color: var(--foreground); font-size: var(--fs-card-title, 17px); line-height: var(--lh-card-title, 26px); font-weight: 600;font-family:var(--font-body); }
+        .income-decision-copy p { margin: 0; color: var(--foreground-secondary); font-size: var(--fs-body, 15px); font-weight: 400; line-height: var(--lh-body, 24px); }
         .income-decision-actions {
           margin-top: 8px;
           display: flex;
@@ -217,14 +217,14 @@ export function IncomeDecisionCard({
         }
         .income-action-btn {
           width: 100%; min-height: 52px; border-radius: var(--radius-control); padding: 0 22px;
-          font: 600 15px var(--font-ui);
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           display: inline-flex; align-items: center; justify-content: center; gap: 10px;
           cursor: pointer; white-space: nowrap; min-width: 0;
           border: 1px solid var(--primary);
           background: var(--primary);
           color: var(--primary-foreground);
           box-shadow: var(--shadow-sm);
-          transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease);
+          transition: transform var(--duration) var(--ease), box-shadow var(--duration) var(--ease), background var(--duration) var(--ease), border-color var(--duration) var(--ease);line-height:var(--lh-label, 20px);
         }
         .income-action-btn:hover { transform: translateY(-2px); background:var(--primary-hover); border-color:var(--primary-hover); box-shadow:var(--shadow-md); }
         .income-action-btn:active { transform: translateY(0) scale(.985); }
@@ -232,9 +232,9 @@ export function IncomeDecisionCard({
         .income-skip-link {
           display: inline-flex; align-items: center; justify-content: center; gap: 7px;
           background: none; border: none; padding: 6px 12px; border-radius: var(--radius-sm);
-          font: 600 13px var(--font-ui);
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           color: var(--foreground-secondary);
-          cursor: pointer; transition: color .18s, background .18s; white-space: nowrap;
+          cursor: pointer; transition: color .18s, background .18s; white-space: nowrap;line-height:var(--lh-label, 20px);
         }
         .income-skip-link:hover { color: var(--primary); background: var(--primary-soft); }
       `}</style>
@@ -315,7 +315,7 @@ export function ToggleRow({
 }) {
   const base: React.CSSProperties = {
     minHeight: '48px', borderRadius: 'var(--radius-control)', padding: '0 22px',
-    fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+    fontSize: 'var(--fs-label, 13px)', lineHeight: 'var(--lh-label, 20px)', fontWeight: 600, cursor: 'pointer',
     fontFamily: 'var(--font-ui)', display: 'inline-flex',
     alignItems: 'center', justifyContent: 'center', transition: 'all .18s ease',
     whiteSpace: 'nowrap',

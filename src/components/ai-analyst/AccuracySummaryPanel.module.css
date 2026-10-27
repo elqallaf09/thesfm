@@ -19,15 +19,15 @@
   padding: 10px 12px;
   background: var(--surface-secondary);
   color: var(--foreground-secondary);
-  font-size: .74rem;
-  line-height: 1.45;
+  font-size: var(--fs-caption, 12px);
+  line-height: var(--lh-caption, 18px);
 }
 
 .sampleProgress strong {
   flex: 0 0 auto;
   color: var(--foreground);
   font-family: var(--font-data);
-  font-size: .92rem;
+  font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
 }
 
 .reasonNote {
@@ -37,8 +37,8 @@
   padding: 10px 12px;
   background: var(--warning-soft);
   color: var(--foreground-secondary);
-  font-size: .76rem;
-  line-height: 1.65;
+  font-size: var(--fs-small, 14px);
+  line-height: var(--lh-small, 22px);
 }
 
 @media (max-width: 520px) {

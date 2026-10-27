@@ -7,83 +7,101 @@
 
 :root {
   /* Typography */
-  --font-ui: var(--font-ibm-plex-sans-arabic, "IBM Plex Sans Arabic"),
+  --font-ui: var(--font-body, "IBM Plex Sans Arabic"),
     "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-data: var(--font-ibm-plex-mono, "IBM Plex Mono"),
+  --font-data: var(--font-mono, "IBM Plex Mono"),
     "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 
-  --type-display-size: clamp(2rem, 3vw, 2.75rem);
-  --type-display-leading: 1.2;
+  --fs-caption: 12px;
+  --lh-caption: 18px;
+  --lh-caption-prose: 18px;
+  --fs-label: 13px;
+  --lh-label: 20px;
+  --fs-small: 14px;
+  --lh-small: 22px;
+  --fs-body: 15px;
+  --lh-body: 24px;
+  --fs-card-title: 17px;
+  --lh-card-title: 26px;
+  --fs-section: 20px;
+  --lh-section: 30px;
+  --fs-page: 28px;
+  --lh-page: 38px;
+  --fs-kpi: 26px;
+  --lh-kpi: 32px;
+
+  --type-display-size: var(--fs-page);
+  --type-display-leading: var(--lh-page);
   --type-display-weight: 700;
   --type-display-tracking: -0.01em;
 
-  --type-page-title-size: clamp(1.5rem, 2.25vw, 2rem);
-  --type-page-title-leading: 1.28;
+  --type-page-title-size: var(--fs-page);
+  --type-page-title-leading: var(--lh-page);
   --type-page-title-weight: 700;
   --type-page-title-tracking: -0.01em;
 
-  --type-section-title-size: clamp(1.25rem, 1.7vw, 1.5rem);
-  --type-section-title-leading: 1.35;
-  --type-section-title-weight: 600;
+  --type-section-title-size: var(--fs-section);
+  --type-section-title-leading: var(--lh-section);
+  --type-section-title-weight: 700;
   --type-section-title-tracking: 0;
 
-  --type-card-title-size: 1.0625rem;
-  --type-card-title-leading: 1.4;
+  --type-card-title-size: var(--fs-card-title);
+  --type-card-title-leading: var(--lh-card-title);
   --type-card-title-weight: 600;
   --type-card-title-tracking: 0;
 
-  --type-body-size: 0.9375rem;
-  --type-body-leading: 1.7;
+  --type-body-size: var(--fs-body);
+  --type-body-leading: var(--lh-body);
   --type-body-weight: 400;
   --type-body-tracking: 0;
 
-  --type-body-small-size: 0.875rem;
-  --type-body-small-leading: 1.6;
+  --type-body-small-size: var(--fs-small);
+  --type-body-small-leading: var(--lh-small);
   --type-body-small-weight: 400;
   --type-body-small-tracking: 0;
 
-  --type-caption-size: 0.8125rem;
-  --type-caption-leading: 1.5;
+  --type-caption-size: var(--fs-caption);
+  --type-caption-leading: var(--lh-caption);
   --type-caption-weight: 400;
   --type-caption-tracking: 0;
 
-  --type-label-size: 0.8125rem;
-  --type-label-leading: 1.45;
+  --type-label-size: var(--fs-label);
+  --type-label-leading: var(--lh-label);
   --type-label-weight: 500;
   --type-label-tracking: 0;
 
-  --type-button-size: 0.875rem;
-  --type-button-leading: 1.25;
+  --type-button-size: var(--fs-label);
+  --type-button-leading: var(--lh-label);
   --type-button-weight: 600;
   --type-button-tracking: 0;
 
-  --type-navigation-size: 0.875rem;
-  --type-navigation-leading: 1.5;
+  --type-navigation-size: var(--fs-small);
+  --type-navigation-leading: var(--lh-small);
   --type-navigation-weight: 500;
   --type-navigation-active-weight: 600;
 
-  --type-numeric-value-size: 1.35rem;
-  --type-numeric-value-leading: 1.2;
-  --type-numeric-value-weight: 700;
+  --type-numeric-value-size: var(--fs-kpi);
+  --type-numeric-value-leading: var(--lh-kpi);
+  --type-numeric-value-weight: 600;
   --type-numeric-value-tracking: -0.01em;
 
-  --type-financial-value-size: 1.1rem;
-  --type-financial-value-leading: 1.25;
+  --type-financial-value-size: var(--fs-kpi);
+  --type-financial-value-leading: var(--lh-kpi);
   --type-financial-value-weight: 600;
   --type-financial-value-tracking: 0;
 
-  --type-percentage-size: 0.9375rem;
-  --type-percentage-leading: 1.25;
+  --type-percentage-size: var(--fs-small);
+  --type-percentage-leading: var(--lh-small);
   --type-percentage-weight: 600;
   --type-percentage-tracking: 0;
 
-  --type-table-header-size: 0.75rem;
-  --type-table-header-leading: 1.4;
+  --type-table-header-size: var(--fs-label);
+  --type-table-header-leading: var(--lh-label);
   --type-table-header-weight: 600;
   --type-table-header-tracking: 0.01em;
 
-  --type-table-cell-size: 0.875rem;
-  --type-table-cell-leading: 1.5;
+  --type-table-cell-size: var(--fs-small);
+  --type-table-cell-leading: var(--lh-small);
   --type-table-cell-weight: 400;
   --type-table-cell-tracking: 0;
 
@@ -195,4 +213,28 @@
   --sidebar-glass-filter: blur(20px) saturate(125%);
   --sidebar-mobile-glass-filter: blur(14px) saturate(118%);
   --sidebar-item-hover-lift: -1px;
+}
+
+/* Arabic body copy keeps at least 1.6 leading at the small text size. */
+:root:lang(ar) {
+  --lh-caption-prose: 19.2px;
+  --lh-small: 22.4px;
+}
+
+/* Tailwind typography consumes the same role scale as the existing CSS API. */
+@theme inline {
+  --text-xs: var(--fs-caption);
+  --text-xs--line-height: var(--lh-caption);
+  --text-sm: var(--fs-small);
+  --text-sm--line-height: var(--lh-small);
+  --text-base: var(--fs-body);
+  --text-base--line-height: var(--lh-body);
+  --text-lg: var(--fs-card-title);
+  --text-lg--line-height: var(--lh-card-title);
+  --text-xl: var(--fs-section);
+  --text-xl--line-height: var(--lh-section);
+}
+
+:where(sub, sup) {
+  font-size: max(var(--fs-caption), 0.75em);
 }

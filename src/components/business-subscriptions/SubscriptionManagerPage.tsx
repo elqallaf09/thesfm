@@ -2348,24 +2348,24 @@ const subscriptionManagerStyles = `
     color: var(--hero-foreground-muted);
     border-radius:var(--radius-pill);
     padding: 7px 11px;
-    font-size: 0.78rem;
-    font-weight:600;
+    font-size: var(--fs-label, 13px);
+    font-weight:600;line-height:var(--lh-label, 20px);
   }
 
   .subscription-hero h1 {
     margin: 12px 0 8px;
-    font-size: clamp(30px, 4vw, 48px);
-    line-height: 1.08;
-    font-weight:600;
-    letter-spacing: 0;
+    font-size: var(--fs-page, 28px);
+    line-height: var(--lh-page, 38px);
+    font-weight:700;
+    letter-spacing: 0;font-family:var(--font-heading);
   }
 
   .subscription-hero p {
     margin: 0;
     max-width: 760px;
     color: var(--hero-foreground-muted);
-    line-height: 1.8;
-    font-weight:400;
+    line-height: var(--lh-body, 24px);
+    font-weight:400;font-size:var(--fs-body, 15px);
   }
 
   .subscription-hero-actions,
@@ -2423,7 +2423,7 @@ const subscriptionManagerStyles = `
     min-height: 38px;
     padding-inline: 12px;
     border-radius: var(--radius-control);
-    font-size: 0.82rem;
+    font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
   }
 
   .subscription-primary-btn:hover,
@@ -2497,17 +2497,17 @@ const subscriptionManagerStyles = `
   .subscription-kpi small {
     display: block;
     color: var(--foreground-muted);
-    font-size: 0.8rem;
-    font-weight:600;
+    font-size: var(--fs-small, 14px);
+    font-weight:600;line-height:var(--lh-small, 22px);
   }
 
   .subscription-kpi strong {
     display: block;
     margin-top: 5px;
     color: var(--foreground);
-    font-size: clamp(1rem, 1.4vw, 1.32rem);
+    font-size: var(--fs-kpi, 26px);
     font-weight:600;
-    overflow-wrap: anywhere;
+    overflow-wrap: anywhere;line-height:var(--lh-kpi, 32px);font-family:var(--font-mono);
   }
 
   .subscription-tabs {
@@ -2683,8 +2683,8 @@ const subscriptionManagerStyles = `
   .client-avatar.sm { width: 36px; height: 36px; border-radius: var(--radius-control); }
   .client-avatar.lg { width: 74px; height: 74px; border-radius: var(--radius-panel); }
   .client-avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .client-avatar b { font-size: 0.86rem; font-weight:600; }
-  .client-avatar.lg b { font-size: 1.2rem; }
+  .client-avatar b { font-size: var(--fs-caption, 12px); font-weight:600;line-height:var(--lh-caption, 18px); }
+  .client-avatar.lg b { font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px); }
 
   .subscription-client-title {
     min-width: 0;
@@ -2693,9 +2693,9 @@ const subscriptionManagerStyles = `
   .subscription-client-title h3 {
     margin: 0;
     color: var(--foreground);
-    font-size: 1rem;
+    font-size: var(--fs-card-title, 17px);
     font-weight:600;
-    overflow-wrap: anywhere;
+    overflow-wrap: anywhere;line-height:var(--lh-card-title, 26px);font-family:var(--font-body);
   }
 
   .subscription-client-title span,
@@ -2733,8 +2733,8 @@ const subscriptionManagerStyles = `
   .subscription-reminder-mini span {
     display: block;
     color: var(--foreground-secondary);
-    font-size: 0.76rem;
-    font-weight:600;
+    font-size: var(--fs-caption, 12px);
+    font-weight:600;line-height:var(--lh-caption, 18px);
   }
 
   .subscription-client-metrics strong,
@@ -2746,10 +2746,10 @@ const subscriptionManagerStyles = `
     display: block;
     margin-top: 4px;
     color: var(--foreground);
-    font-size: 0.88rem;
+    font-size: var(--fs-caption, 12px);
     font-weight:600;
-    overflow-wrap: anywhere;
-  }
+    overflow-wrap: anywhere;line-height:var(--lh-caption, 18px);
+  } .detail-row strong { font-size:var(--fs-small, 14px); line-height:var(--lh-small, 22px); }
 
   .subscription-manager-shell :is(
     .subscription-kpi strong,
@@ -2820,10 +2820,10 @@ const subscriptionManagerStyles = `
     min-height: 28px;
     border-radius:var(--radius-pill);
     padding: 4px 10px;
-    font-size: 0.75rem;
+    font-size: var(--fs-label, 13px);
     font-weight:600;
     white-space: nowrap;
-    border: 1px solid transparent;
+    border: 1px solid transparent;line-height:var(--lh-label, 20px);
   }
 
   .sub-status.active,
@@ -2973,8 +2973,8 @@ const subscriptionManagerStyles = `
   .profile-identity h2 {
     margin: 0;
     color: var(--foreground);
-    font-size: clamp(1.5rem, 3vw, 2.3rem);
-    font-weight:600;
+    font-size: var(--fs-section, 20px);
+    font-weight:700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
   }
 
   .profile-identity p {
@@ -3009,8 +3009,8 @@ const subscriptionManagerStyles = `
   .subscription-calendar-card h2 {
     margin: 0;
     color: var(--foreground);
-    font-size: 1rem;
-    font-weight:600;
+    font-size: var(--fs-card-title, 17px);
+    font-weight:600;line-height:var(--lh-card-title, 26px);font-family:var(--font-heading);
   }
 
   .detail-row {
@@ -3081,10 +3081,10 @@ const subscriptionManagerStyles = `
   .subscription-calendar-legend span {
     border-radius:var(--radius-pill);
     padding: 5px 9px;
-    font-size: 0.75rem;
+    font-size: var(--fs-caption, 12px);
     font-weight:600;
     background: var(--surface-muted);
-    border: 1px solid color-mix(in srgb, var(--info) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--info) 14%, transparent);line-height:var(--lh-caption, 18px);
   }
 
   .subscription-calendar-grid {
@@ -3113,13 +3113,13 @@ const subscriptionManagerStyles = `
   .calendar-dot {
     border-radius: var(--radius-sm);
     padding: 5px 6px;
-    font-size: 0.75rem;
+    font-size: var(--fs-caption, 12px);
     font-weight:600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     background: color-mix(in srgb, var(--info) 10%, transparent);
-    color: var(--primary-hover);
+    color: var(--primary-hover);line-height:var(--lh-caption, 18px);
   }
 
   .calendar-dot.paid,
@@ -3178,9 +3178,9 @@ const subscriptionManagerStyles = `
 
   .subscription-renewal-ring strong {
     color: var(--foreground);
-    font-size: 2rem;
+    font-size: var(--fs-body, 15px);
     font-weight:600;
-    transform: translateY(-8px);
+    transform: translateY(-8px);line-height:var(--lh-body, 24px);
   }
 
   .subscription-renewal-ring span {
@@ -3251,15 +3251,15 @@ const subscriptionManagerStyles = `
   .subscription-reminder-status h3 {
     margin: 0;
     color: var(--foreground);
-    font-size: 0.95rem;
-    font-weight:600;
+    font-size: var(--fs-card-title, 17px);
+    font-weight:600;line-height:var(--lh-card-title, 26px);font-family:var(--font-body);
   }
 
   .subscription-reminder-status p {
     margin: 3px 0 0;
     color: var(--foreground-secondary);
-    font-size: 0.82rem;
-    font-weight:600;
+    font-size: var(--fs-small, 14px);
+    font-weight:600;line-height:var(--lh-small, 22px);
   }
 
   .subscription-reminder-missing,
@@ -3269,9 +3269,9 @@ const subscriptionManagerStyles = `
     color: var(--danger);
     border-radius: var(--radius-control);
     padding: 9px 10px;
-    font-size: 0.78rem;
+    font-size: var(--fs-caption, 12px);
     font-weight:600;
-    overflow-wrap: anywhere;
+    overflow-wrap: anywhere;line-height:var(--lh-caption, 18px);
   }
 
   .subscription-reminder-status-grid {
@@ -3292,8 +3292,8 @@ const subscriptionManagerStyles = `
   .subscription-reminder-failure span {
     display: block;
     color: var(--foreground-secondary);
-    font-size: 0.75rem;
-    font-weight:600;
+    font-size: var(--fs-label, 13px);
+    font-weight:600;line-height:var(--lh-label, 20px);
   }
 
   .subscription-reminder-status-grid strong,
@@ -3301,9 +3301,9 @@ const subscriptionManagerStyles = `
     display: block;
     margin-top: 4px;
     color: var(--foreground);
-    font-size: 0.78rem;
+    font-size: var(--fs-label, 13px);
     font-weight:600;
-    overflow-wrap: anywhere;
+    overflow-wrap: anywhere;line-height:var(--lh-label, 20px);
   }
 
   .subscription-reminder-recipient-grid {
@@ -3335,17 +3335,17 @@ const subscriptionManagerStyles = `
   .subscription-reminder-recipient-card > span,
   .subscription-reminder-recipient-card dt {
     color: var(--foreground-secondary);
-    font-size: 0.75rem;
-    font-weight:600;
+    font-size: var(--fs-caption, 12px);
+    font-weight:600;line-height:var(--lh-caption, 18px);
   }
 
   .subscription-reminder-recipient-card > strong,
   .subscription-reminder-recipient-card dd {
     margin: 0;
     color: var(--foreground);
-    font-size: 0.78rem;
+    font-size: var(--fs-caption, 12px);
     font-weight:600;
-    overflow-wrap: anywhere;
+    overflow-wrap: anywhere;line-height:var(--lh-caption, 18px);
   }
 
   .subscription-reminder-recipient-card dl {
@@ -3406,14 +3406,14 @@ const subscriptionManagerStyles = `
   .subscription-modal > header span {
     color: var(--primary-hover);
     font-weight:600;
-    font-size: 0.78rem;
+    font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
   }
 
   .subscription-modal h2 {
     margin: 5px 0 0;
     color: var(--foreground);
-    font-size: 1.5rem;
-    font-weight:600;
+    font-size: var(--fs-section, 20px);
+    font-weight:700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
   }
 
   .subscription-form-grid {

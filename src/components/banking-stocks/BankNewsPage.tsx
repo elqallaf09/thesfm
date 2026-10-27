@@ -2335,23 +2335,23 @@ export function BankNewsPage() {
           background: color-mix(in srgb, var(--surface) 78%, transparent);
           color: var(--hero-foreground-muted);
           font-weight: 500;
-          font-size: 0.78rem;
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
 
         .bankHero h1 {
           margin: 12px 0 8px;
-          font-size: clamp(1.75rem, 2.6vw, 2.35rem);
-          line-height: 1.15;
+          font-size: var(--fs-page, 28px);
+          line-height: var(--lh-page, 38px);
           color: var(--hero-foreground);
-          letter-spacing: 0;
+          letter-spacing: 0;font-weight:700;font-family:var(--font-heading);
         }
 
         .bankHero p {
           margin: 0;
           max-width: 760px;
           color: var(--hero-foreground-muted);
-          font-size: 0.95rem;
-          line-height: 1.8;
+          font-size: var(--fs-body, 15px);
+          line-height: var(--lh-body, 24px);
         }
 
         .bankHeroStatus {
@@ -2379,10 +2379,10 @@ export function BankNewsPage() {
 
         .bankHeaderMeta strong {
           color: var(--foreground);
-          font-size: 0.9rem;
+          font-size: var(--fs-caption, 12px);
           white-space: nowrap;
           overflow: hidden;
-          text-overflow: ellipsis;
+          text-overflow: ellipsis;line-height:var(--lh-caption, 18px);
         }
 
         .bankPrimaryButton,
@@ -2455,7 +2455,7 @@ export function BankNewsPage() {
         .bankPrimaryMini,
         .bankSecondaryMini {
           padding-inline: 12px;
-          font-size: 0.86rem;
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
 
         .bankPrimaryButton:focus-visible,
@@ -2549,15 +2549,15 @@ export function BankNewsPage() {
           align-items: center;
           gap: 8px;
           color: var(--foreground);
-          font-size: clamp(1.05rem, 1.35vw, 1.25rem);
-          letter-spacing: 0;
+          font-size: var(--fs-section, 20px);
+          letter-spacing: 0;line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
         }
 
         .sectionHead p,
         .filterHeader p {
           margin: 6px 0 0;
           color: var(--foreground-secondary);
-          line-height: 1.7;
+          line-height: var(--lh-body, 24px);font-size:var(--fs-body, 15px);
         }
 
         .bankTickerSkeletons {
@@ -2643,14 +2643,14 @@ export function BankNewsPage() {
         .bankTickerItem strong {
           display: block;
           color: var(--foreground);
-          font-size: 0.94rem;
+          font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
         }
 
         .bankTickerItem span,
         .bankTickerItem small {
           color: var(--foreground-muted);
-          font-size: 0.76rem;
-          line-height: 1.4;
+          font-size: var(--fs-caption, 12px);
+          line-height: var(--lh-caption, 18px);
         }
 
         .tickerNumbers {
@@ -2705,25 +2705,25 @@ export function BankNewsPage() {
         .bankStockPriceRow small,
         .filterField span {
           color: var(--foreground-muted);
-          font-size: 0.82rem;
-          font-weight: 500;
+          font-size: var(--fs-label, 13px);
+          font-weight: 500;line-height:var(--lh-label, 20px);
         }
 
         .bankMetricValue {
           min-height: 2.2em;
           color: var(--foreground);
-          font-size: 1.02rem;
-          line-height: 1.35;
+          font-size: var(--fs-kpi, 26px);
+          line-height: var(--lh-kpi, 32px);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-weight:600;font-family:var(--font-mono);
         }
 
         .bankMetricDetail {
           color: var(--foreground-muted);
-          font-size: 0.75rem;
-          line-height: 1.45;
+          font-size:var(--fs-small, 14px);
+          line-height:var(--lh-small, 22px);
         }
 
         .bankStockGrid {
@@ -2770,18 +2770,18 @@ export function BankNewsPage() {
         }
 
         .bankStockHeader h3 {
-          font-size: 0.98rem;
-          line-height: 1.35;
+          font-size: var(--fs-card-title, 17px);
+          line-height: var(--lh-card-title, 26px);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-weight:600;font-family:var(--font-body);
         }
 
         .bankStockHeader p {
           margin: 4px 0 0;
           color: var(--foreground-muted);
-          font-size: 0.84rem;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
 
         .bankQuoteBadge,
@@ -2797,9 +2797,9 @@ export function BankNewsPage() {
           padding: 6px 9px;
           background: var(--surface);
           color: var(--info);
-          font-size: 0.76rem;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-label, 20px);
         }
 
         .bankStockPriceRow {
@@ -2821,9 +2821,9 @@ export function BankNewsPage() {
 
         .bankStockPriceRow strong {
           color: var(--foreground);
-          font-size: 1.08rem;
+          font-size: var(--fs-kpi, 26px);
           font-weight: 600;
-          font-variant-numeric: tabular-nums;
+          font-variant-numeric: tabular-nums;line-height:var(--lh-kpi, 32px);font-family:var(--font-mono);
         }
 
         .bankStockPriceRow em {
@@ -2854,8 +2854,8 @@ export function BankNewsPage() {
           margin: 4px 0 0;
           color: var(--foreground);
           font-weight: 600;
-          font-size: 0.86rem;
-          overflow-wrap: anywhere;
+          font-size: var(--fs-caption, 12px);
+          overflow-wrap: anywhere;line-height:var(--lh-caption, 18px);
         }
 
         .bankStockActions,
@@ -2906,22 +2906,22 @@ export function BankNewsPage() {
         }
 
         .leadStory h3 {
-          font-size: clamp(1.35rem, 2vw, 1.85rem);
-          line-height: 1.45;
+          font-size: var(--fs-card-title, 17px);
+          line-height: var(--lh-card-title, 26px);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-weight:600;font-family:var(--font-body);
         }
 
         .leadStory p,
         .newsCard p {
           color: var(--foreground-secondary);
-          line-height: 1.8;
+          line-height: var(--lh-small, 22px);
           margin: 0;
           display: -webkit-box;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-size:var(--fs-small, 14px);
         }
 
         .leadStory p {
@@ -2941,12 +2941,12 @@ export function BankNewsPage() {
         }
 
         .secondaryStory h3 {
-          font-size: 1rem;
-          line-height: 1.55;
+          font-size: var(--fs-card-title, 17px);
+          line-height: var(--lh-card-title, 26px);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-weight:600;font-family:var(--font-body);
         }
 
         .secondaryStoryActions {
@@ -2974,7 +2974,7 @@ export function BankNewsPage() {
           flex-wrap: wrap;
           gap: 8px;
           color: var(--foreground-muted);
-          font-size: 0.82rem;
+          font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
         }
 
         .newsMeta span {
@@ -2985,7 +2985,7 @@ export function BankNewsPage() {
         }
 
         .newsMeta.compact {
-          font-size: 0.76rem;
+          font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
         }
 
         .bankFilterPanel {
@@ -3014,7 +3014,7 @@ export function BankNewsPage() {
           background: var(--surface);
           color: var(--foreground);
           font: inherit;
-          padding: 0 12px;
+          padding: 0 12px;line-height:var(--lh-body, 24px);
         }
 
         .searchField div {
@@ -3052,7 +3052,7 @@ export function BankNewsPage() {
           gap: 7px;
           font: inherit;
           font-weight: 600;
-          cursor: pointer;
+          cursor: pointer;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
         }
 
         .mobileFilterToggle {
@@ -3086,17 +3086,17 @@ export function BankNewsPage() {
         }
 
         .newsCard h3 {
-          font-size: 1.08rem;
-          line-height: 1.6;
+          font-size: var(--fs-card-title, 17px);
+          line-height: var(--lh-card-title, 26px);
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-weight:600;font-family:var(--font-body);
         }
 
         .newsCard p {
           -webkit-line-clamp: 2;
-          font-size: 0.95rem;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
 
         .newsStockContext {
@@ -3114,8 +3114,8 @@ export function BankNewsPage() {
           border: 1px solid color-mix(in srgb, var(--surface) 90%, transparent);
           padding: 6px 9px;
           color: var(--primary-hover);
-          font-size: 0.78rem;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
 
         .newsCardFooter {
@@ -3139,7 +3139,7 @@ export function BankNewsPage() {
           font-weight: 600;
           text-decoration: none;
           font: inherit;
-          cursor: pointer;
+          cursor: pointer;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
         }
 
         .bankLoadMore {
@@ -3167,7 +3167,7 @@ export function BankNewsPage() {
         .sideModule h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 1rem;
+          font-size: var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;font-family:var(--font-body);
         }
 
         .sideStockList,
@@ -3192,7 +3192,7 @@ export function BankNewsPage() {
           padding: 10px;
           color: inherit;
           text-decoration: none;
-          font: inherit;
+          font: inherit;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
         }
 
         .sideStockList button {
@@ -3213,7 +3213,7 @@ export function BankNewsPage() {
           display: block;
           color: var(--foreground-muted);
           font-style: normal;
-          font-size: 0.78rem;
+          font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
         }
 
         .sideStoryList a {
@@ -3242,7 +3242,7 @@ export function BankNewsPage() {
           color: var(--primary-hover);
           padding: 7px 10px;
           font-weight: 600;
-          font-size: 0.78rem;
+          font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
         }
 
         .bankEmptyState,
@@ -3290,7 +3290,7 @@ export function BankNewsPage() {
         .bankInlineState em,
         .sideEmpty {
           font-style: normal;
-          font-size: 0.88rem;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
 
         .sideEmpty {
@@ -3400,13 +3400,13 @@ export function BankNewsPage() {
         .quickPanelHeader h2 {
           margin: 12px 0 6px;
           color: var(--foreground);
-          font-size: 1.55rem;
+          font-size: var(--fs-section, 20px);line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
         }
 
         .quickPanelHeader p {
           margin: 0;
           color: var(--foreground-secondary);
-          line-height: 1.7;
+          line-height: var(--lh-body, 24px);font-size:var(--fs-body, 15px);
         }
 
         .quickSummaryGrid {
@@ -3432,14 +3432,14 @@ export function BankNewsPage() {
         .quickTechnicalGrid span {
           display: block;
           color: var(--foreground-muted);
-          font-size: 0.82rem;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
-          margin-bottom: 5px;
+          margin-bottom: 5px;line-height:var(--lh-label, 20px);
         }
 
         .quickTechnicalGrid strong {
           color: var(--foreground);
-          font-size: 1rem;
+          font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
         }
 
         .quickExplanation h3 {
@@ -3450,7 +3450,7 @@ export function BankNewsPage() {
         .quickExplanation p {
           margin: 0;
           color: var(--foreground-secondary);
-          line-height: 1.8;
+          line-height: var(--lh-body, 24px);font-size:var(--fs-body, 15px);
         }
 
         .quickPanelFooter {
@@ -3588,7 +3588,7 @@ export function BankNewsPage() {
           }
 
           .bankHero h1 {
-            font-size: clamp(1.45rem, 7vw, 1.75rem);
+            font-size: var(--fs-page, 28px);line-height:var(--lh-page, 38px);font-weight:700;font-family:var(--font-heading);
           }
 
           .bankTickerItem {
@@ -3600,7 +3600,7 @@ export function BankNewsPage() {
           }
 
           .bankMetricLabel {
-            font-size: 0.75rem;
+            font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
           }
 
           .bankStockMetrics,

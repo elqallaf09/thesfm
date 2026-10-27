@@ -163,9 +163,9 @@ export function MarketSignalMiniBadge({ signal }: { signal: Pick<MarketSignal, '
           gap:6px;
           border-radius:var(--radius-pill);
           padding:4px 8px;
-          font-size:12px;
+          font-size:var(--fs-caption, 12px);
           font-weight:500;
-          line-height:1;
+          line-height:var(--lh-caption, 18px);
           white-space:nowrap;
           border:1px solid var(--border);
           background:var(--surface-muted);
@@ -310,22 +310,22 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
           align-items:center;
           gap:6px;
           color:var(--foreground-muted);
-          font-size:12px;
-          font-weight:500;
+          font-size:var(--fs-label, 13px);
+          font-weight:500;line-height:var(--lh-label, 20px);
         }
         .market-signal-header h2{
           margin:5px 0 0;
-          font-size:clamp(18px,2vw,24px);
-          letter-spacing:0;
+          font-size:var(--fs-section, 20px);
+          letter-spacing:0;line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
         }
         .market-signal-badge{
           min-width:74px;
           text-align:center;
           border-radius:var(--radius-pill);
           padding:8px 12px;
-          font-size:13px;
+          font-size:var(--fs-label, 13px);
           font-weight:600;
-          border:1px solid var(--border);
+          border:1px solid var(--border);line-height:var(--lh-label, 20px);
         }
         .market-signal-badge.buy,.market-signal-badge.cautious-buy{background:var(--success-soft);color:var(--success);border-color:color-mix(in srgb,var(--success) 34%,var(--border))}
         .market-signal-badge.sell,.market-signal-badge.error{background:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 34%,var(--border))}
@@ -359,15 +359,15 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         .market-signal-confidence span,.market-signal-price small,.market-signal-metric small{
           display:block;
           color:var(--foreground-muted);
-          font-size:12px;
-          font-weight:500;
+          font-size:var(--fs-small, 14px);
+          font-weight:500;line-height:var(--lh-small, 22px);
         }
         .market-signal-confidence strong,.market-signal-price strong{
           display:block;
           margin-top:4px;
-          font-size:24px;
+          font-size:var(--fs-kpi, 26px);
           letter-spacing:0;
-          font-family:var(--font-data);
+          font-family:var(--font-mono);line-height:var(--lh-kpi, 32px);font-weight:600;
         }
         .market-signal-meter{
           height:8px;
@@ -385,8 +385,8 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         .market-signal-explanation{
           margin:10px 0 0;
           color:var(--foreground-secondary);
-          font-size:12px;
-          line-height:1.6;
+          font-size:var(--fs-small, 14px);
+          line-height:var(--lh-small, 22px);
           font-weight:400;
         }
         .market-signal-grid{
@@ -412,10 +412,10 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         .market-signal-metric strong{
           display:block;
           margin-top:2px;
-          font-size:13px;
+          font-size:var(--fs-label, 13px);
           color:var(--foreground);
           font-family:var(--font-data);
-          overflow-wrap:anywhere;
+          overflow-wrap:anywhere;line-height:var(--lh-label, 20px);
         }
         .market-signal-details{
           display:grid;
@@ -431,20 +431,20 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
         }
         .market-signal-details h3{
           margin:0 0 8px;
-          font-size:13px;
+          font-size:var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;font-family:var(--font-body);
         }
         .market-signal-details ul{
           margin:0;
           padding:0 18px 0 0;
           color:var(--foreground-secondary);
-          font-size:13px;
-          line-height:1.65;
+          font-size:var(--fs-small, 14px);
+          line-height:var(--lh-small, 22px);
         }
         .market-signal-score dl{
           margin:0;
           display:grid;
           gap:7px;
-          font-size:13px;
+          font-size:var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
         .market-signal-score div{
           display:flex;
@@ -460,8 +460,8 @@ export function MarketSignalPanel({ signal, loading = false, error = false, comp
           background:var(--warning-soft);
           color:var(--warning);
           padding:11px 12px;
-          font-size:12px;
-          line-height:1.7;
+          font-size:var(--fs-small, 14px);
+          line-height:var(--lh-small, 22px);
           border:1px solid color-mix(in srgb,var(--warning) 34%,var(--border));
         }
         .market-signal-disclaimer span{

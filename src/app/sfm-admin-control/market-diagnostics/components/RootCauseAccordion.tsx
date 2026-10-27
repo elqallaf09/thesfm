@@ -88,12 +88,12 @@ export function RootCauseAccordion({ issues, limit }: { issues: RootCauseIssue[]
         .ops-root-cause-item.tone-warning .ops-root-cause-icon { color: var(--warning); }
         .ops-root-cause-item.tone-info .ops-root-cause-icon { color: var(--info); }
         .ops-root-cause-problem { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--foreground); font-size: 13px; font-weight: 600; }
-        .ops-root-cause-problem b { font-weight: 500; color: var(--foreground-secondary); background: var(--surface-muted); border-radius: var(--radius-sm); padding: 1px 7px; font-size: 12px; }
+        .ops-root-cause-problem b { font-weight: 500; color: var(--foreground-secondary); background: var(--surface-muted); border-radius: var(--radius-sm); padding: 1px 7px; font-size: var(--fs-label);line-height:var(--lh-label); }
         .ops-root-cause-item dl { margin: 0; padding: 0 14px 14px; display: grid; gap: 8px; }
-        .ops-root-cause-item dl > div { display: grid; grid-template-columns: minmax(120px, 0.6fr) 1fr; gap: 8px; font-size: 12.5px; }
+        .ops-root-cause-item dl > div { display: grid; grid-template-columns: minmax(120px, 0.6fr) 1fr; gap: 8px; font-size: var(--fs-small);line-height:var(--lh-small); }
         .ops-root-cause-item dt { color: var(--foreground-muted); font-weight: 500; }
         .ops-root-cause-item dd { margin: 0; color: var(--foreground-secondary); overflow-wrap: anywhere; }
-        .ops-root-cause-item code { background: var(--surface-muted); border-radius: var(--radius-xs); padding: 1px 6px; font-size: 12px; }
+        .ops-root-cause-item code { background: var(--surface-muted); border-radius: var(--radius-xs); padding: 1px 6px; font-size: var(--fs-small);line-height:var(--lh-small); }
         @media (max-width: 560px) {
           .ops-root-cause-item dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
         }

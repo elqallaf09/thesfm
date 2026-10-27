@@ -29,7 +29,7 @@ describe('market page CSS visual-system contract', () => {
     );
     expect(marketCss).not.toMatch(/\b(?:Tajawal|Arial)\b|font-weight:\s*(?:8\d{2}|9\d{2})/i);
     expect(marketCss).not.toMatch(rawDepthPattern);
-    expect(marketCss).toContain('font: 700 12px var(--font-ui)');
+    expect(marketCss).toContain('font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui)');
     expect(marketCss).toMatch(
       /\.market-status-value\s*\{[\s\S]*?font-family:\s*var\(--font-data\)/,
     );

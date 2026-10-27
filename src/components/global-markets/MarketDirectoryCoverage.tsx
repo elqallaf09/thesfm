@@ -31,13 +31,13 @@ export function MarketDirectoryCoverage({ coverage, lang, onSelect }: { coverage
     <style jsx>{`
       .market-coverage { min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
       summary { min-height: 44px; align-content: center; cursor: pointer; font-weight: 600; }
-      p { color: var(--foreground-muted); font-size: 13px; line-height: 1.7; }
+      p { color: var(--foreground-muted); font-size: var(--fs-small, 14px); line-height: var(--lh-small, 22px); }
       ul { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 8px; padding: 0; margin: 0; }
       li { min-width: 0; }
       li p { margin: 4px 0; }
       a { display: inline-block; min-height: 44px; align-content: center; color: var(--foreground-secondary); text-decoration: underline; }
       button { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-height: 44px; width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); color: var(--foreground); text-align: start; cursor: pointer; }
-      strong { font-size: 12px; color: var(--foreground-secondary); }
+      strong { font-size: var(--fs-caption, 12px); color: var(--foreground-secondary);line-height:var(--lh-caption, 18px); }
       :is(button, summary):focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
     `}</style>
   </details>;

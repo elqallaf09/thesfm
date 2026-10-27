@@ -36,9 +36,9 @@ export function MarketDataStatus({ tone, lang, className }: MarketDataStatusProp
           gap: 5px;
           border-radius: var(--radius-pill);
           padding: 3px 8px;
-          font-size: 11px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 600;
-          line-height: 1;
+          line-height: var(--lh-caption, 18px);
           white-space: nowrap;
         }
 

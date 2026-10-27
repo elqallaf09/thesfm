@@ -101,7 +101,7 @@ export function EbooksStyles() {
           outline: 0;
           background: transparent;
           color: var(--foreground);
-          font: 400 15px/1.5 var(--font-ui);
+          font: 400 var(--fs-body)/var(--lh-body) var(--font-body);
         }
 
         .ebooks-search-field input::placeholder {
@@ -129,7 +129,7 @@ export function EbooksStyles() {
           background: var(--surface);
           color: var(--foreground-secondary);
           padding: 0 16px;
-          font: 500 13px/1.5 var(--font-ui);
+          font: 500 var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
           transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
           white-space: nowrap;
@@ -170,15 +170,15 @@ export function EbooksStyles() {
 
         .ebooks-stat-card span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .ebooks-stat-card strong {
           min-width: 0;
           color: var(--foreground);
-          font-size: clamp(18px, 2vw, 24px);
-          line-height: 1.35;
+          font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;
+          line-height: var(--lh-kpi);
           overflow-wrap: anywhere;
         }
 
@@ -211,8 +211,8 @@ export function EbooksStyles() {
         .ebooks-section-head h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(24px, 3vw, 36px);
-          line-height: 1.2;
+          font-size: var(--fs-section);font-weight:700;
+          line-height: var(--lh-section);
         }
 
         .ebooks-section-head p {
@@ -245,9 +245,9 @@ export function EbooksStyles() {
         .ebooks-modal h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(21px, 2vw, 30px);
-          line-height: 1.3;
-        }
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
+        }.ebooks-modal h2{font-size:var(--fs-section);line-height:var(--lh-section);font-weight:700}
 
         .ebooks-featured-copy p,
         .ebook-card p,
@@ -360,9 +360,9 @@ export function EbooksStyles() {
           background: var(--accent-soft);
           color: var(--accent-hover);
           padding: 6px 10px;
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1.3;
+          line-height: var(--lh-label);
         }
 
         .ebook-topic-row span {
@@ -386,7 +386,7 @@ export function EbooksStyles() {
           min-height: 42px;
           border-radius: var(--radius-control);
           padding: 0 14px;
-          font: 600 13px/1.5 var(--font-ui);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
           text-decoration: none;
           cursor: pointer;
           transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
