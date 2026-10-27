@@ -72,7 +72,7 @@ on:
 
 permissions:
   contents: read
-  deployments: read
+  deployments: write
   checks: read
   pull-requests: read
 
