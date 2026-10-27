@@ -50,18 +50,18 @@ export default function InvestmentEducationPage() {
         .investment-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
         .investment-hero{background:var(--hero-gradient);border-radius:var(--radius-panel);padding:clamp(24px,5vw,54px);color:var(--hero-foreground);box-shadow:var(--shadow-md);overflow:hidden;position:relative}
         .investment-hero:after{content:'';position:absolute;inset:auto -80px -110px auto;width:260px;height:260px;border-radius:var(--radius-pill);background:color-mix(in srgb,var(--accent) 18%,transparent);pointer-events:none}
-        .investment-hero h1{margin:0 0 10px;font-size:clamp(32px,7vw,56px);line-height:1.15;font-weight:600;letter-spacing:0}
+        .investment-hero h1{margin:0 0 10px;font-size:var(--fs-page);line-height:var(--lh-page);font-weight:700;letter-spacing:0}
         .investment-hero p{margin:0;max-width:720px;color:var(--hero-foreground-muted);font-size:clamp(15px,2.2vw,19px);line-height:1.8;font-weight:400}
         .investment-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
-        .investment-actions button,.investment-card button{min-height:44px;border:0;border-radius:var(--radius-control);padding:12px 18px;font:600 13px/1.5 var(--font-ui);cursor:pointer}
+        .investment-actions button,.investment-card button{min-height:44px;border:0;border-radius:var(--radius-control);padding:12px 18px;font:600 var(--fs-label)/var(--lh-label) var(--font-body);cursor:pointer}
         .investment-primary{background:var(--primary);color:var(--primary-foreground)}
         .investment-primary:hover{background:var(--primary-hover)}
         .investment-secondary{background:color-mix(in srgb,var(--hero-foreground) 10%,transparent);color:var(--hero-foreground);border:1px solid color-mix(in srgb,var(--hero-foreground) 22%,transparent)!important}
         .investment-actions button:focus-visible,.investment-card button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
         .investment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
         .investment-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;display:grid;gap:12px;box-shadow:var(--shadow-card)}
-        .investment-card h2{margin:0;color:var(--foreground);font-size:19px;font-weight:600}
-        .investment-card p{margin:0;color:var(--foreground-secondary);line-height:1.75;font-size:14px;font-weight:400}
+        .investment-card h2{margin:0;color:var(--foreground);font-size:var(--fs-card-title);line-height:var(--lh-card-title);font-weight:600}
+        .investment-card p{margin:0;color:var(--foreground-secondary);line-height:var(--lh-small);font-size:var(--fs-small);font-weight:400}
         .investment-card button{justify-self:start;background:var(--primary);color:var(--primary-foreground)}
         .investment-card button:hover{background:var(--primary-hover)}
         .investment-note{background:var(--surface-muted);border:1px dashed var(--border-strong);border-radius:var(--radius-card);padding:18px;color:var(--foreground-secondary);font-weight:500;line-height:1.7;text-align:center}

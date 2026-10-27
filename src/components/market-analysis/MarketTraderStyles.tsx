@@ -114,15 +114,15 @@ export function MarketTraderStyles() {
 
       .technical-selected-chip small {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.35}
+        line-height: var(--lh-label, 20px)}
 
       .technical-selected-chip strong {
         color: var(--foreground);
-        font-size: 18px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.25;
+        line-height: var(--lh-label, 20px);
         letter-spacing: .02em;
         overflow-wrap: anywhere}
 
@@ -157,8 +157,8 @@ export function MarketTraderStyles() {
         min-height: 42px;
         border-radius: var(--radius-pill);
         padding: 0 17px;
-        font-size: 13px;
-        line-height: 1.2}
+        font-size: var(--fs-label, 13px);
+        line-height: var(--lh-label, 20px)}
 
       .technical-dashboard .technical-symbol-pill {
         flex: 0 0 auto;
@@ -169,8 +169,8 @@ export function MarketTraderStyles() {
       .technical-dashboard .technical-symbol-main {
         min-height: 36px;
         padding: 0 13px;
-        font-size: 13px;
-        line-height: 1.2;
+        font-size: var(--fs-label, 13px);
+        line-height: var(--lh-label, 20px);
         white-space: nowrap}
 
       .technical-dashboard .technical-symbol-main span {
@@ -287,18 +287,18 @@ export function MarketTraderStyles() {
       .technical-dashboard .technical-summary-item small {
         display: block;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 700;
-        line-height: 1.45;
+        line-height: var(--lh-small, 22px);
         margin-bottom: 6px}
 
       .technical-dashboard .technical-summary-item strong {
         display: block;
         min-width: 0;
         color: var(--foreground);
-        font-size: clamp(16px, 1.35vw, 19px);
+        font-size: var(--fs-body, 15px);
         font-weight: 700;
-        line-height: 1.45;
+        line-height: var(--lh-body, 24px);
         font-variant-numeric: tabular-nums;
         overflow-wrap: anywhere}
 
@@ -319,15 +319,15 @@ export function MarketTraderStyles() {
 
       .technical-dashboard .technical-data-card h3 {
         color: var(--foreground);
-        font-size: 15px;
-        font-weight: 700;
-        line-height: 1.45}
+        font-size: var(--fs-card-title, 17px);
+        font-weight: 600;
+        line-height: var(--lh-card-title, 26px);font-family:var(--font-body);}
 
       .technical-dashboard .technical-data-card > strong {
         color: var(--foreground);
-        font-size: clamp(24px, 2.2vw, 34px);
+        font-size: var(--fs-body, 15px);
         font-weight: 700;
-        line-height: 1.15;
+        line-height: var(--lh-body, 24px);
         font-variant-numeric: tabular-nums}
 
       .technical-dashboard .technical-data-rows {
@@ -342,14 +342,14 @@ export function MarketTraderStyles() {
 
       .technical-dashboard .technical-data-rows small {
         color: var(--foreground-muted);
-        font-size: 12px;
-        font-weight: 700}
+        font-size: var(--fs-small, 14px);
+        font-weight: 700;line-height:var(--lh-small, 22px);}
 
       .technical-dashboard .technical-data-rows b {
         color: var(--foreground);
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);
         font-weight: 700;
-        font-variant-numeric: tabular-nums}
+        font-variant-numeric: tabular-nums;line-height:var(--lh-small, 22px);}
 
       .technical-dashboard .technical-data-card.support .technical-data-card-head span {
         color: var(--success);
@@ -369,8 +369,8 @@ export function MarketTraderStyles() {
         background: var(--surface);
         color: var(--success);
         padding: 8px 11px;
-        font-size: 12px;
-        line-height: 1.5}
+        font-size: var(--fs-caption, 12px);
+        line-height: var(--lh-caption, 18px)}
 
       .technical-dashboard .technical-category-row button {
         border-color: var(--border-strong);
@@ -433,7 +433,7 @@ export function MarketTraderStyles() {
       .technical-dashboard .technical-range-marker b,
       .technical-dashboard .technical-range-marker small {
         padding: 6px 9px;
-        font-size: 12px}
+        font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);}
 
       .technical-dashboard .technical-range-marker::after {
         width: 15px;
@@ -456,14 +456,14 @@ export function MarketTraderStyles() {
         background: var(--surface);
         color: var(--success);
         padding: 6px 9px;
-        font-size: 12px;
-        line-height: 1.2}
+        font-size: var(--fs-caption, 12px);
+        line-height: var(--lh-caption, 18px)}
 
       .technical-dashboard .technical-education-list span {
         color: var(--foreground-muted);
-        font-size: 13.5px;
+        font-size: var(--fs-label, 13px);
         font-weight: 400;
-        line-height: 1.75}
+        line-height: var(--lh-label, 20px)}
 
       @media (max-width: 1180px) {
         .technical-dashboard .technical-selected-summary {
@@ -519,7 +519,7 @@ export function MarketTraderStyles() {
 
         .technical-dashboard .technical-symbol-main {
           padding-inline: 10px;
-          font-size: 12px}
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);}
       }
 
       .technical-dashboard .technical-selector-shell {
@@ -547,14 +547,14 @@ export function MarketTraderStyles() {
 
       .technical-dashboard .technical-selected-chip strong {
         color: var(--foreground) !important;
-        font-size: clamp(17px, 1.5vw, 20px) !important}
+        font-size: var(--fs-label, 13px) !important;line-height:var(--lh-label, 20px);}
 
       .technical-dashboard .technical-selected-chip span:not(.technical-selected-chip-icon) {
         min-width: 0;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 400;
-        line-height: 1.45;
+        line-height: var(--lh-label, 20px);
         overflow-wrap: anywhere}
 
       .technical-dashboard .technical-search {
@@ -588,9 +588,9 @@ export function MarketTraderStyles() {
         color: var(--primary-foreground);
         background: var(--primary);
         box-shadow: var(--shadow-card);
-        font: 700 14px var(--font-ui);
+        font: 700 var(--fs-small, 14px)/var(--lh-small, 22px) var(--font-ui);
         transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
-        white-space: nowrap}
+        white-space: nowrap;line-height:var(--lh-small, 22px);}
 
       .technical-dashboard .technical-search-apply:hover {
         transform: translateY(-1px);
@@ -745,9 +745,9 @@ export function MarketTraderStyles() {
         background: var(--primary-soft);
         color: var(--primary-hover);
         padding: 0 13px;
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.25;
+        line-height: var(--lh-label, 20px);
         white-space: nowrap}
 
       .trader-premium-dashboard .trader-premium-header,
@@ -836,16 +836,16 @@ export function MarketTraderStyles() {
         overflow-wrap: anywhere}
 
       .trader-premium-dashboard .trader-tool-switcher strong {
-        font-size: 13px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.35}
+        line-height: var(--lh-label, 20px)}
 
       .trader-premium-dashboard .trader-tool-switcher small {
         margin-top: 3px;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 400;
-        line-height: 1.45}
+        line-height: var(--lh-small, 22px)}
 
       .trader-premium-dashboard .trader-tool-switcher > button[aria-selected="true"] small {
         color: var(--foreground)}
@@ -949,9 +949,9 @@ export function MarketTraderStyles() {
         border-radius: var(--radius-control);
         background: transparent;
         color: var(--foreground-muted);
-        font: 700 13px var(--font-ui);
+        font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
-        transition: transform .16s ease, box-shadow .16s ease, background .16s ease, color .16s ease}
+        transition: transform .16s ease, box-shadow .16s ease, background .16s ease, color .16s ease;line-height:var(--lh-label, 20px);}
 
       .trader-premium-dashboard .tool-segmented-row button:hover,
       .trader-premium-dashboard .tool-segmented-row button:focus-visible {
@@ -1099,7 +1099,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .trader-premium-header p,
       .trader-premium-dashboard .trader-premium-main-head p,
       .trader-premium-dashboard .trader-support-card p {
-        line-height: 1.65}
+        line-height: var(--lh-small, 22px);font-size:var(--fs-small, 14px);}
 
       .trader-premium-dashboard .trader-tool-switcher {
         gap: 9px;
@@ -1158,9 +1158,9 @@ export function MarketTraderStyles() {
         margin: 0;
         min-width: 0;
         color: var(--foreground);
-        font-size: 13px;
-        font-weight: 700;
-        line-height: 1.35}
+        font-size: var(--fs-card-title, 17px);
+        font-weight: 600;
+        line-height: var(--lh-card-title, 26px);font-family:var(--font-body);}
 
       .trader-premium-dashboard .trader-field-group .trader-form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1173,7 +1173,7 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .tool-input .tool-input-shell input,
       .trader-premium-dashboard .tool-input .tool-input-shell select {
         height: var(--control-h-lg) !important;
-        font-size: 15px}
+        font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);}
 
       .trader-premium-dashboard .tool-advanced {
         margin-top: 0;
@@ -1191,8 +1191,8 @@ export function MarketTraderStyles() {
         background: var(--primary-soft)}
 
       .trader-premium-dashboard .trader-highlight-result strong {
-        font-size: clamp(34px, 4vw, 46px);
-        color: var(--success)}
+        font-size: var(--fs-body, 15px);
+        color: var(--success);line-height:var(--lh-body, 24px);}
 
       .trader-premium-dashboard .tool-results {
         padding: 13px;
@@ -1222,14 +1222,14 @@ export function MarketTraderStyles() {
       .trader-premium-dashboard .tool-result-card > span:not(.tool-result-icon) {
         grid-area: label;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.35}
+        line-height: var(--lh-caption, 18px)}
 
       .trader-premium-dashboard .tool-result-card b {
         grid-area: value;
-        font-size: clamp(18px, 1.65vw, 24px);
-        font-variant-numeric: tabular-nums}
+        font-size: var(--fs-body, 15px);
+        font-variant-numeric: tabular-nums;line-height:var(--lh-body, 24px);}
 
       .trader-premium-dashboard .tool-formula-card {
         border-radius: var(--radius-panel);
@@ -1257,9 +1257,9 @@ export function MarketTraderStyles() {
         gap: 9px;
         align-items: start;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size:var(--fs-small, 14px);
         font-weight: 400;
-        line-height: 1.65}
+        line-height:var(--lh-small, 22px)}
 
       .trader-premium-dashboard .trader-steps li::before {
         content: counter(trader-step);
@@ -1270,8 +1270,8 @@ export function MarketTraderStyles() {
         place-items: center;
         background: var(--surface);
         color: var(--foreground);
-        font-size: 12px;
-        font-weight: 700}
+        font-size: var(--fs-caption, 12px);
+        font-weight: 700;line-height:var(--lh-caption, 18px);}
 
       .trader-premium-dashboard .trader-tool-switcher-shell {
         display: grid;
@@ -1336,16 +1336,16 @@ export function MarketTraderStyles() {
 
       .trader-premium-dashboard .trader-premium-save strong {
         color: var(--foreground);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-caption, 18px);
         overflow-wrap: anywhere}
 
       .trader-premium-dashboard .trader-premium-save div small {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 400;
-        line-height: 1.45}
+        line-height: var(--lh-small, 22px)}
 
       .trader-premium-dashboard .trader-premium-save button {
         width: max-content;
@@ -1360,8 +1360,8 @@ export function MarketTraderStyles() {
         background: var(--primary);
         color: var(--primary-foreground);
         padding: 0 13px;
-        font: 700 12px var(--font-ui);
-        white-space: nowrap}
+        font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
+        white-space: nowrap;line-height:var(--lh-label, 20px);}
 
       .trader-premium-dashboard .trader-premium-save > small {
         grid-column: 1 / -1;

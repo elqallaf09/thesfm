@@ -47,9 +47,9 @@ export default function Wakeel() {
         .wakeel-page{width:100%;max-width:56rem;min-height:65vh;margin:0 auto;display:flex;align-items:center;padding:40px 16px;font-family:var(--font-ui);color:var(--foreground)}
         .wakeel-card{width:100%;border:1px solid var(--border);border-radius:var(--radius-panel);background:var(--surface);padding:32px;box-shadow:var(--shadow-card)}
         .wakeel-icon{width:48px;height:48px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-card);background:var(--warning-soft);color:var(--warning)}
-        .wakeel-eyebrow{margin:0 0 8px;color:var(--foreground-secondary);font-size:14px;font-weight:500}
-        h1{margin:0;color:var(--foreground);font-size:clamp(24px,4vw,30px);line-height:1.35;font-weight:600}
-        .wakeel-body{max-width:42rem;margin:12px 0 0;color:var(--foreground-secondary);font-size:16px;line-height:1.75;font-weight:400}
+        .wakeel-eyebrow{margin:0 0 8px;color:var(--foreground-secondary);font-size:var(--fs-label, 13px);font-weight:500;line-height:var(--lh-label, 20px);}
+        h1{margin:0;color:var(--foreground);font-size:var(--fs-page, 28px);line-height:var(--lh-page, 38px);font-weight:700;font-family:var(--font-heading);}
+        .wakeel-body{max-width:42rem;margin:12px 0 0;color:var(--foreground-secondary);font-size:var(--fs-body, 15px);line-height:var(--lh-body, 24px);font-weight:400}
         .wakeel-action{min-height:44px;margin-top:24px;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--primary);border-radius:var(--radius-card);background:var(--primary);color:var(--primary-foreground);padding:10px 20px;font-weight:600;text-decoration:none;transition:background .18s ease,border-color .18s ease}
         .wakeel-action:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
         .wakeel-action:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px;box-shadow:var(--focus-shadow)}

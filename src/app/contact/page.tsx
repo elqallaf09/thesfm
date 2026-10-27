@@ -514,7 +514,7 @@ const contactStyles = `
     border-radius: var(--radius-pill);
     color: var(--foreground-secondary);
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease;
   }
@@ -543,7 +543,7 @@ const contactStyles = `
     color: var(--primary-foreground);
     box-shadow: var(--shadow-sm);
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
     transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
   }
@@ -600,15 +600,15 @@ const contactStyles = `
     background: color-mix(in srgb, var(--hero-foreground) 8%, transparent);
     color: var(--hero-foreground-muted);
     padding: 8px 13px;
-    font-size: 12px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
   }
   .hero-copy h1 {
     margin: 22px 0 12px;
     color: var(--hero-foreground);
-    font-size: clamp(38px, 6vw, 66px);
-    line-height: 1.04;
-    font-weight: 600;
+    font-size: var(--fs-page);
+    line-height: var(--lh-page);
+    font-weight: 700;
     letter-spacing: 0;
   }
   .hero-copy p {
@@ -689,10 +689,10 @@ const contactStyles = `
   .form-copy h2 {
     margin: 0;
     color: var(--foreground);
-    font-size: 22px;
-    line-height: 1.35;
+    font-size: var(--fs-card-title);
+    line-height: var(--lh-card-title);
     font-weight: 600;
-  }
+  }.form-copy h2{font-size:var(--fs-section);line-height:var(--lh-section);font-weight:700}
   .contact-card p,
   .form-copy p,
   .contact-form-preview p,
@@ -716,8 +716,8 @@ const contactStyles = `
     color: var(--primary);
     cursor: pointer;
     overflow-wrap: anywhere;
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: var(--fs-label);
+    line-height: var(--lh-label);
     font-weight: 600;
     text-decoration: underline;
     text-decoration-color: var(--accent);
@@ -741,7 +741,7 @@ const contactStyles = `
     background: var(--surface-muted);
     color: var(--primary);
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
   }
@@ -777,7 +777,7 @@ const contactStyles = `
     background: var(--accent-soft);
     color: var(--accent-hover);
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
   }
   .contact-form-preview {
@@ -807,7 +807,7 @@ const contactStyles = `
     display: grid;
     gap: 7px;
     color: var(--foreground);
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
   }
   .contact-form-preview input,
@@ -819,7 +819,7 @@ const contactStyles = `
     background: var(--control-background);
     color: var(--foreground);
     padding: 12px 13px;
-    font: 400 14px/1.5 var(--font-ui);
+    font: 400 var(--fs-body)/var(--lh-body) var(--font-body);
     resize: vertical;
   }
   .contact-form-preview input:focus,
@@ -851,7 +851,7 @@ const contactStyles = `
     box-shadow: var(--shadow-sm);
     padding: 10px 16px;
     cursor: pointer;
-    font: 600 13px/1.5 var(--font-ui);
+    font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
     transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
   }
   .contact-form-preview button:hover:not(:disabled) {
@@ -862,9 +862,9 @@ const contactStyles = `
   .form-status {
     border-radius: var(--radius-card);
     padding: 12px 14px;
-    font-size: 13px;
+    font-size: var(--fs-label);
     font-weight: 600;
-    line-height: 1.7;
+    line-height: var(--lh-label);
   }
   .form-status.success {
     border: 1px solid color-mix(in srgb, var(--success) 28%, var(--border));
@@ -931,7 +931,7 @@ const contactStyles = `
   .footer-links a {
     color: var(--foreground-muted);
     text-decoration: none;
-    font-size: 13px;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 600;
     transition: color 180ms ease, text-decoration-color 180ms ease;
   }
@@ -1051,10 +1051,10 @@ const contactStyles = `
       padding: 22px;
     }
     .hero-copy h1 {
-      font-size: 38px;
+      font-size: var(--fs-page);font-weight:700;line-height:var(--lh-page);
     }
     .hero-copy p {
-      font-size: 16px;
+      font-size: var(--fs-body);line-height:var(--lh-body);
     }
     .mobile-menu-ctas,
     .form-grid {

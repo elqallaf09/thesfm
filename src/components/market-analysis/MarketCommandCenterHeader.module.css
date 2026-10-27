@@ -45,28 +45,28 @@
 .eyebrow {
   margin: 0 0 var(--space-1);
   color: var(--primary-hover);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
 }
 
 .copy h1 {
   margin: 0;
   color: var(--foreground);
-  font-size: var(--type-page-title-size);
-  font-weight: var(--type-page-title-weight);
-  line-height: var(--type-page-title-leading);
+  font-size: var(--fs-page, 28px);
+  font-weight: 700;
+  line-height: var(--lh-page, 38px);
   letter-spacing: var(--type-page-title-tracking);
-  overflow-wrap: anywhere;
+  overflow-wrap: anywhere;font-family:var(--font-heading);
 }
 
 .description {
   max-inline-size: var(--workspace-page-max-reading);
   margin: var(--space-2) 0 0;
   color: var(--foreground-secondary);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-small, 14px);
   font-weight: var(--type-body-weight);
-  line-height: var(--type-body-leading);
+  line-height: var(--lh-small, 22px);
   overflow-wrap: anywhere;
 }
 

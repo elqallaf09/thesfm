@@ -67,7 +67,7 @@ export function EbooksDetailStyles() {
 
         .ebooks-disclaimer h2 {
           color: var(--foreground);
-          font-size: 18px;
+          font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
         }
 
         .ebooks-disclaimer p {
@@ -146,7 +146,7 @@ export function EbooksDetailStyles() {
 
         .ebooks-modal dt {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -159,7 +159,7 @@ export function EbooksDetailStyles() {
         .ebooks-modal h3 {
           margin: 0 0 8px;
           color: var(--foreground);
-          font-size: 18px;
+          font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);
         }
 
         .ebooks-modal ul {

@@ -6,5 +6,5 @@
   min-inline-size: 0;
 }
 .facts > div { min-inline-size: 0; }
-.facts dt { color: var(--foreground-muted); font-size: .8rem; }
+.facts dt { color: var(--foreground-muted); font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
 .facts dd { margin: 5px 0 0; overflow-wrap: anywhere; color: var(--foreground); font-weight: 700; font-variant-numeric: tabular-nums; }

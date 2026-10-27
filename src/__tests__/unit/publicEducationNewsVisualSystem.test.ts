@@ -29,7 +29,7 @@ const stockNewsFiles = [
 
 const literalColour = /#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})\b|(?:rgb|hsl)a?\(|oklch\(/i;
 const localGradient = /(?:linear|radial|conic)-gradient\(/i;
-const directFont = /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto Sans Arabic)\b|font-family\s*:(?!\s*(?:var\(--font-(?:ui|data)\)|inherit\b))/i;
+const directFont = /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto Sans Arabic)\b|font-family\s*:(?!\s*(?:var\(--font-(?:ui|data|body|heading|mono)\)|inherit\b))/i;
 const rawDepth = /border-radius\s*:\s*(?:[1-9]\d*(?:\.\d+)?|0?\.\d+)(?:px|rem)|box-shadow\s*:\s*(?!\s*(?:var\(|none\b))/i;
 
 describe('public, education, and stock-news visual-system contract', () => {

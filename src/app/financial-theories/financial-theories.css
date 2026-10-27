@@ -50,8 +50,8 @@
           background: color-mix(in srgb, var(--hero-foreground) 8%, transparent);
           color: var(--hero-foreground-muted);
           padding: 9px 11px;
-          line-height: 1.55;
-          font-size: 12px;
+          line-height: var(--lh-small);
+          font-size: var(--fs-small);
           font-weight: 600;
         }
 
@@ -68,7 +68,7 @@
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font: 600  13px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           text-decoration: none;
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
           white-space: nowrap;
@@ -164,13 +164,13 @@
           background: color-mix(in srgb, var(--hero-foreground) 48%, transparent);
           color: var(--foreground-secondary);
           padding: 8px 10px;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .learning-progress-metrics b {
           color: var(--foreground);
-          font-size: 15px;
+          font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);
         }
 
         .guided-goal-section,
@@ -211,9 +211,9 @@
 
         .goal-path-card span {
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1.55;
+          line-height: var(--lh-label);
         }
 
         .goal-path-card:hover,
@@ -241,7 +241,7 @@
         .learning-level-panel span {
           display: block;
           color: var(--primary-hover);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -274,7 +274,7 @@
           background: var(--surface);
           color: var(--foreground);
           padding: 0 14px;
-          font: 600  12px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
           transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
         }
@@ -311,15 +311,15 @@
 
         .theory-of-day-card span {
           color: var(--primary-hover);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .theory-of-day-card h2 {
           margin: 5px 0;
           color: var(--foreground);
-          font-size: clamp(24px, 3vw, 34px);
-          line-height: 1.16;
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
         }
 
         .theory-of-day-card p {
@@ -360,7 +360,7 @@
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font: 600  13px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
           white-space: nowrap;
           box-shadow: var(--shadow-md);
@@ -381,7 +381,7 @@
         .guided-filter-summary span {
           color: var(--foreground-secondary);
           font-weight: 600;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
         }
 
         .guided-filter-summary strong {
@@ -420,15 +420,15 @@
 
         .theory-accordion-head span {
           color: var(--primary-hover);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .theory-accordion-head h3 {
           margin: 4px 0;
           color: var(--foreground);
-          font-size: 20px;
-          line-height: 1.25;
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
         }
 
         .theory-accordion-head p {
@@ -476,9 +476,9 @@
           background: color-mix(in srgb, var(--accent) 12%, transparent);
           color: var(--accent);
           padding: 8px 12px;
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1.35;
+          line-height: var(--lh-label);
           overflow-wrap: anywhere;
         }
 
@@ -520,16 +520,16 @@
         .theory-stat-card strong {
           display: block;
           color: var(--foreground);
-          font-size: 25px;
-          line-height: 1;
+          font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;
+          line-height: var(--lh-kpi);
         }
 
         .theory-stat-card p {
           margin: 3px 0 0;
           color: var(--foreground-secondary);
           font-weight: 600;
-          line-height: 1.25;
-          font-size: 12px;
+          line-height: var(--lh-small);
+          font-size: var(--fs-small);
         }
 
         .why-card {
@@ -551,7 +551,7 @@
         .why-copy span,
         .theory-section-head span {
           color: var(--primary-hover);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -560,8 +560,8 @@
         .theories-cta h2 {
           margin: 6px 0;
           color: var(--foreground);
-          font-size: clamp(22px, 2.6vw, 30px);
-          line-height: 1.15;
+          font-size: var(--fs-section);font-weight:700;
+          line-height: var(--lh-section);
         }
 
         .why-copy p,
@@ -652,7 +652,7 @@
           outline: 0;
           background: transparent;
           color: var(--foreground);
-          font: 600  14px var(--font-ui);
+          font: 600  var(--fs-body)/var(--lh-body) var(--font-body);
         }
 
         .theory-search input::placeholder {
@@ -745,9 +745,9 @@
           background: color-mix(in srgb, var(--primary) 10%, transparent);
           color: var(--primary-hover);
           padding: 5px 9px;
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1;
+          line-height: var(--lh-label);
           overflow-wrap: anywhere;
         }
 
@@ -775,16 +775,16 @@
           background: color-mix(in srgb, var(--success) 12%, transparent);
           color: var(--success);
           padding: 0 9px;
-          font-size: 12px;
+          font-size: var(--fs-label);
           font-weight: 600;
-          line-height: 1;
+          line-height: var(--lh-label);
         }
 
         .theory-card h3 {
           margin: 8px 0 0;
           color: var(--foreground);
-          font-size: 19px;
-          line-height: 1.3;
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
         }
 
         .theory-short {
@@ -808,7 +808,7 @@
         .practical-example-card small {
           display: block;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           margin-bottom: 3px;
         }
@@ -841,7 +841,7 @@
         .theory-tool-pill strong {
           min-width: 0;
           text-align: end;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
         }
 
         .theory-actions {
@@ -861,7 +861,7 @@
           justify-content: center;
           gap: 7px;
           padding: 0 12px;
-          font: 600  12px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           text-decoration: none;
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
         }
@@ -994,7 +994,7 @@
           background: color-mix(in srgb, var(--accent) 14%, transparent);
           color: var(--accent);
           padding: 0 12px;
-          font: 600  12px var(--font-ui);
+          font: 600  var(--fs-small)/var(--lh-small) var(--font-body);
           cursor: pointer;
         }
 
@@ -1033,7 +1033,7 @@
           background: var(--primary);
           color: var(--accent);
           font-weight: 600;
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
         }
 
         .starter-theory-card h3,
@@ -1041,8 +1041,8 @@
         .practical-example-card h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 18px;
-          line-height: 1.35;
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
         }
 
         .starter-theory-card p,
@@ -1078,7 +1078,7 @@
           background: color-mix(in srgb, var(--accent) 8%, transparent);
           color: var(--primary-hover);
           padding: 0 9px;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           overflow-wrap: anywhere;
         }
@@ -1114,7 +1114,7 @@
           background: color-mix(in srgb, var(--accent) 9%, transparent);
           color: var(--primary-hover);
           padding: 0 10px;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1144,7 +1144,7 @@
           align-items: center;
           border-radius: var(--radius-pill);
           padding: 0 10px;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1203,15 +1203,15 @@
 
         .calculator-panel-head span {
           color: var(--primary-hover);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .calculator-panel-head h3 {
           margin: 5px 0;
           color: var(--foreground);
-          font-size: 22px;
-          line-height: 1.25;
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
         }
 
         .calculator-panel-head p,
@@ -1321,7 +1321,7 @@
           background: var(--surface-muted);
           color: var(--foreground);
           padding: 0 12px;
-          font: 600  12px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
         }
 
@@ -1347,7 +1347,7 @@
           background: var(--primary);
           color: var(--primary-foreground);
           padding: 0 13px;
-          font: 600  13px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
         }
 
@@ -1359,7 +1359,7 @@
 
         .calculator-mode-actions span {
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1372,7 +1372,7 @@
         .calculator-field > span,
         .calculator-total span {
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1391,7 +1391,7 @@
           background: var(--control-background);
           color: var(--foreground);
           padding: 0 12px;
-          font: 600  14px var(--font-ui);
+          font: 600  var(--fs-body)/var(--lh-body) var(--font-body);
           outline: none;
         }
 
@@ -1423,7 +1423,7 @@
 
         .calculator-total strong {
           color: var(--foreground);
-          font-size: 18px;
+          font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);
         }
 
         .calculator-total.ok {
@@ -1472,14 +1472,14 @@
 
         .calculator-result-card span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
         .calculator-result-card strong {
           color: var(--foreground);
-          font-size: clamp(18px, 2vw, 24px);
-          line-height: 1.2;
+          font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;
+          line-height: var(--lh-kpi);
           overflow-wrap: anywhere;
         }
 
@@ -1569,7 +1569,7 @@
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font: 600  13px var(--font-ui);
+          font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
         }
 
@@ -1588,7 +1588,7 @@
 
         .theories-cta span {
           color: var(--hero-foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
 
@@ -1599,7 +1599,7 @@
 
         .theories-cta p {
           color: var(--hero-foreground-muted);
-          font-size: 15px;
+          font-size: var(--fs-body);line-height:var(--lh-body);
           font-weight: 600;
           max-width: 760px;
         }

@@ -23,9 +23,9 @@ const LOGO_SIZE: Record<CompanyLogoSize, number> = {
 };
 
 const FALLBACK_TEXT_SIZE: Record<CompanyLogoSize, string> = {
-  sm: 'text-xs',
-  md: 'text-xs',
-  lg: 'text-xs',
+  sm: 'text-[length:var(--fs-caption)] leading-[var(--lh-caption)]',
+  md: 'text-[length:var(--fs-caption)] leading-[var(--lh-caption)]',
+  lg: 'text-[length:var(--fs-caption)] leading-[var(--lh-caption)]',
 };
 
 const COMPANY_FALLBACKS: Record<string, { text: string; className: string }> = {

@@ -829,8 +829,8 @@ export function ProjectFinancialModelTab({
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                       <CartesianGrid stroke="var(--border)" />
-                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} />
-                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} width={46} />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} width={46} />
                       <Tooltip />
                       <Line type="monotone" dataKey="revenue" name={t.revenue} stroke="var(--primary)" strokeWidth={3} dot={false} />
                     </LineChart>
@@ -842,8 +842,8 @@ export function ProjectFinancialModelTab({
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                       <CartesianGrid stroke="var(--border)" />
-                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} />
-                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} width={46} />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} width={46} />
                       <Tooltip />
                       <Line type="monotone" dataKey="costs" name={t.costs} stroke="var(--warning)" strokeWidth={3} dot={false} />
                     </LineChart>
@@ -855,8 +855,8 @@ export function ProjectFinancialModelTab({
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                       <CartesianGrid stroke="var(--border)" />
-                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} />
-                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} width={46} />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} width={46} />
                       <Tooltip />
                       <Line type="monotone" dataKey="netProfit" name={t.netProfit} stroke="var(--success)" strokeWidth={3} dot={false} />
                     </LineChart>
@@ -868,8 +868,8 @@ export function ProjectFinancialModelTab({
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                       <CartesianGrid stroke="var(--border)" />
-                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} />
-                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} width={46} />
+                      <XAxis dataKey="month" tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} width={46} />
                       <Tooltip />
                       <Line type="monotone" dataKey="cashFlow" name={t.cumulativeCashFlow} stroke="var(--accent)" strokeWidth={3} dot={false} />
                     </LineChart>
@@ -961,8 +961,8 @@ export function ProjectFinancialModelTab({
               <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={scenarios.map(item => ({ name: t[item.id], profit: Math.round(item.totalProfit), revenue: Math.round(item.totalRevenue) }))}>
                   <CartesianGrid stroke="var(--border)" />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} />
-                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 12 }} width={42} />
+                  <XAxis dataKey="name" tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} />
+                  <YAxis tick={{ fill: 'var(--foreground-muted)', fontSize: 'var(--fs-caption, 12px)' }} width={42} />
                   <Tooltip />
                   <Bar dataKey="profit" name={t.totalProfit} fill="var(--primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
@@ -1003,9 +1003,9 @@ export function ProjectFinancialModelTab({
         .financial-card,.financial-metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:18px;box-shadow:var(--shadow-card);min-width:0}
         .financial-metric{background:var(--surface-muted)}
         .financial-metric small{display:block;color:var(--foreground-muted);font-weight:600}
-        .financial-metric strong{display:block;margin-top:6px;color:var(--foreground);font-family:var(--font-data);font-size:18px;overflow-wrap:anywhere}
+        .financial-metric strong{display:block;margin-top:6px;color:var(--foreground);font-family:var(--font-mono);font-size:var(--fs-kpi, 26px);overflow-wrap:anywhere;line-height:var(--lh-kpi, 32px);font-weight:600;}
         .section-title,.section-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-        .section-title h2,.section-header h2{margin:0;color:var(--foreground);font-size:19px}
+        .section-title h2,.section-header h2{margin:0;color:var(--foreground);font-size:var(--fs-section, 20px);line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);}
         .section-title svg{color:var(--primary)}
         .section-header button{min-height:40px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);color:var(--foreground);padding:0 12px;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
         .financial-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -1021,7 +1021,7 @@ export function ProjectFinancialModelTab({
         .row-heading button{width:36px;height:var(--control-h-sm);border:1px solid var(--danger-soft);border-radius:var(--radius-control);background:var(--danger-soft);color:var(--danger);display:grid;place-items:center;cursor:pointer}
         .chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
         .chart-box{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-card);padding:12px;min-width:0}
-        .chart-box h3{margin:0 0 10px;color:var(--foreground);font-size:15px}
+        .chart-box h3{margin:0 0 10px;color:var(--foreground);font-size:var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;font-family:var(--font-body);}
         .financial-empty-chart{min-height:220px;display:grid;place-items:center;text-align:center;border:1px dashed var(--primary-soft);border-radius:var(--radius-control);color:var(--foreground-muted);font-weight:600;line-height:1.7;padding:18px}
         .forecast-preview-card{display:grid;gap:14px}
         .forecast-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
@@ -1032,22 +1032,22 @@ export function ProjectFinancialModelTab({
         .projection-primary{background:var(--primary);color:var(--primary-foreground);box-shadow:var(--shadow-sm)}
         .projection-primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
         .projection-disabled{background:var(--surface-muted);color:var(--foreground-muted);cursor:not-allowed}
-        .projection-disabled span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:12px}
+        .projection-disabled span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);}
         .projection-view-toggle,.scenario-toggle-row{display:flex;flex-wrap:wrap;gap:8px}
         .projection-view-toggle button,.scenario-toggle-row button{min-height:36px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground-muted);padding:0 12px;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
         .projection-view-toggle button.active,.scenario-toggle-row button.active{background:var(--primary-soft);color:var(--primary-hover);border-color:color-mix(in srgb, var(--primary) 32%, transparent);font-weight:700}
         .projection-view-toggle button:disabled{cursor:not-allowed;opacity:.72}
-        .projection-view-toggle button span{border-radius:var(--radius-pill);background:var(--surface-muted);padding:2px 7px;font-size:12px}
+        .projection-view-toggle button span{border-radius:var(--radius-pill);background:var(--surface-muted);padding:2px 7px;font-size:var(--fs-label, 13px);line-height:var(--lh-label, 20px);}
         .forecast-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-card);max-width:100%}
         .forecast-table-wrap.compact{max-height:420px}
         .forecast-table-wrap.full{max-height:min(62vh,680px)}
         .forecast-table{width:100%;min-width:980px;border-collapse:separate;border-spacing:0;background:var(--surface-muted)}
         .forecast-table th,.forecast-table td{padding:11px 12px;border-bottom:1px solid var(--primary-soft);text-align:start;white-space:nowrap;color:var(--foreground)}
-        .forecast-table th{position:sticky;top:0;z-index:1;font-size:12px;color:var(--foreground-muted);background:var(--border);backdrop-filter:blur(8px)}
+        .forecast-table th{position:sticky;top:0;z-index:1;font-size:var(--fs-label, 13px);color:var(--foreground-muted);background:var(--border);backdrop-filter:blur(8px);line-height:var(--lh-label, 20px);}
         .forecast-table tbody tr:hover td{background:var(--primary-soft)}.forecast-table td{font-family:var(--font-data)}
         .financial-empty-forecast{display:grid;gap:9px;place-items:center;text-align:center;border:1px dashed var(--primary-soft);border-radius:var(--radius-card);background:var(--surface-muted);padding:28px;min-height:220px}
-        .financial-empty-forecast strong{color:var(--foreground);font-size:18px}
-        .financial-empty-forecast p{margin:0;color:var(--foreground-muted);line-height:1.8;font-weight:500}
+        .financial-empty-forecast strong{color:var(--foreground);font-size:var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;}
+        .financial-empty-forecast p{margin:0;color:var(--foreground-muted);line-height:var(--lh-small, 22px);font-weight:500;font-size:var(--fs-small, 14px);}
         .financial-empty-forecast button{min-height:42px;border:0;border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:0 16px;font-family:inherit;font-weight:600;cursor:pointer}
         .financial-insight-card ul{display:grid;gap:10px;margin:0;padding:0;list-style:none}
         .financial-insight-card li{border:1px solid var(--accent-soft);background:var(--primary-soft);border-radius:var(--radius-control);padding:12px;color:var(--foreground);font-weight:600;line-height:1.7}
@@ -1057,19 +1057,19 @@ export function ProjectFinancialModelTab({
         .scenario-card.active{border-color:var(--accent-soft);box-shadow:var(--shadow-sm)}
         .scenario-card div{display:flex;justify-content:space-between;gap:10px;align-items:center}
         .scenario-card strong{color:var(--foreground)}.scenario-card small{color:var(--foreground-muted);font-weight:500}
-        .scenario-card span{border-radius:var(--radius-pill);padding:4px 9px;font-size:12px;font-weight:600}
+        .scenario-card span{border-radius:var(--radius-pill);padding:4px 9px;font-size:var(--fs-caption, 12px);font-weight:600;line-height:var(--lh-caption, 18px);}
         .scenario-card.low span{background:var(--success-soft);color:var(--success)}.scenario-card.medium span{background:var(--warning-soft);color:var(--warning)}.scenario-card.high span{background:var(--danger-soft);color:var(--danger)}
-        .ai-card p{margin:0;color:var(--foreground-muted);line-height:1.7}
+        .ai-card p{margin:0;color:var(--foreground-muted);line-height:var(--lh-small, 22px);font-size:var(--fs-small, 14px);}
         .financial-actions button{min-height:44px;border-radius:var(--radius-control);border:1px solid var(--border);font-family:inherit;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
         .primary-financial-btn{background:var(--primary);color:var(--primary-foreground)}
         .primary-financial-btn:disabled{opacity:.68;cursor:not-allowed}
         .disabled-financial-btn{background:var(--surface-muted);color:var(--foreground-muted);cursor:not-allowed}
-        .disabled-financial-btn span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:12px}
+        .disabled-financial-btn span{border-radius:var(--radius-pill);background:var(--primary-soft);color:var(--primary-hover);padding:3px 8px;font-size:var(--fs-label, 13px);line-height:var(--lh-label, 20px);}
         .financial-notice{border:1px solid var(--border-strong);background:var(--surface-muted);color:var(--foreground);border-radius:var(--radius-card);padding:12px 14px;font-weight:600}
         .financial-modal-backdrop{position:fixed;inset:0;z-index:90;background:var(--background-overlay);backdrop-filter:blur(8px);display:grid;place-items:center;padding:24px}
         .financial-modal{width:min(1180px,100%);max-height:calc(100vh - 48px);overflow:hidden;display:grid;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-panel);padding:18px;box-shadow:var(--shadow-popover);color:var(--foreground)}
         .financial-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
-        .financial-modal-head h2{margin:0;color:var(--foreground);font-size:22px}
+        .financial-modal-head h2{margin:0;color:var(--foreground);font-size:var(--fs-section, 20px);line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);}
         .financial-modal-head p{margin:6px 0 0;color:var(--foreground-muted);font-weight:500}
         .financial-modal-close{width:40px;height:40px;border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);color:var(--foreground);display:grid;place-items:center;cursor:pointer}
         .financial-modal-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}

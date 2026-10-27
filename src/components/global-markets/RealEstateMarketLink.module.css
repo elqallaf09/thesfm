@@ -9,10 +9,10 @@
   border-radius: var(--radius-pill);
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--fs-caption, 12px);
   font-weight: 650;
   text-decoration: none;
-  white-space: nowrap;
+  white-space: nowrap;line-height:var(--lh-caption, 18px);
 }
 
 .link:hover {

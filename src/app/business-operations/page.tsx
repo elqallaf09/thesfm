@@ -802,8 +802,8 @@ const businessOperationsStyles = `
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--foreground-secondary);
-    font-size: 0.78rem;
-    line-height: 1.55;
+    font-size: var(--fs-small);
+    line-height: var(--lh-small);
   }
 
   .business-hero-actions {
@@ -860,7 +860,7 @@ const businessOperationsStyles = `
   .business-summary-grid span {
     display: block;
     color: var(--foreground-muted);
-    font-size: 0.88rem;
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: 500;
   }
 
@@ -868,7 +868,7 @@ const businessOperationsStyles = `
     display: block;
     margin-top: 8px;
     color: var(--foreground);
-    font-size: 1.18rem;
+    font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);
     overflow-wrap: anywhere;
   }
 
@@ -921,7 +921,7 @@ const businessOperationsStyles = `
   .business-hub-card h2 {
     margin: 0;
     color: var(--foreground);
-    font-size: 1.15rem;
+    font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);
   }
 
   .business-hub-card p {
@@ -987,7 +987,7 @@ const businessOperationsStyles = `
   .business-section-heading h2 {
     margin: 0;
     color: var(--foreground);
-    font-size: 1rem;
+    font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1022,7 +1022,7 @@ const businessOperationsStyles = `
 
   .business-chart-empty strong {
     color: var(--foreground);
-    font-size: 1rem;
+    font-size: var(--fs-body);line-height:var(--lh-body);
   }
 
   .business-chart-empty p {

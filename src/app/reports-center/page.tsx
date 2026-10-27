@@ -2566,7 +2566,7 @@ const pageStyles = `
   .topbar span {
     display: block;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -2598,7 +2598,7 @@ const pageStyles = `
     border-radius: var(--radius-pill);
     background: color-mix(in srgb, var(--hero-foreground) 10%, transparent);
     color: var(--hero-foreground) !important;
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -2609,9 +2609,9 @@ const pageStyles = `
   .reports-hero h1 {
     margin: var(--space-4) 0 var(--space-2);
     color: var(--hero-foreground) !important;
-    font-size: var(--type-display-size);
-    font-weight: var(--type-display-weight);
-    line-height: var(--type-display-leading);
+    font-size: var(--fs-page);
+    font-weight: 700;
+    line-height: var(--lh-page);
     letter-spacing: var(--type-display-tracking);
   }
 
@@ -2780,7 +2780,7 @@ const pageStyles = `
 
   .filter-context {
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-caption-weight);
     text-align: end;
     overflow-wrap: anywhere;
@@ -3004,9 +3004,9 @@ const pageStyles = `
   .report-card h3 {
     margin: 0 0 var(--space-1);
     color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    font-weight: var(--type-card-title-weight);
-    line-height: var(--type-card-title-leading);
+    font-size: var(--fs-card-title);
+    font-weight: 600;
+    line-height: var(--lh-card-title);
   }
 
   .report-card p {
@@ -3027,7 +3027,7 @@ const pageStyles = `
     padding: var(--space-1) var(--space-2);
     border: 1px solid;
     border-radius: var(--radius-pill);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
     white-space: nowrap;
   }
@@ -3082,7 +3082,7 @@ const pageStyles = `
     border-radius: var(--radius-pill);
     background: var(--surface-muted);
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-caption);line-height:var(--lh-caption);
     font-weight: var(--type-caption-weight);
   }
 
@@ -3112,7 +3112,7 @@ const pageStyles = `
     border-radius: var(--radius-pill);
     background: var(--surface);
     color: var(--warning);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-small);line-height:var(--lh-small);
     font-weight: var(--type-label-weight);
   }
 
@@ -3122,7 +3122,7 @@ const pageStyles = `
     justify-content: space-between;
     gap: var(--space-2);
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-caption);line-height:var(--lh-caption);
     font-weight: var(--type-caption-weight);
   }
 
@@ -3153,9 +3153,9 @@ const pageStyles = `
   .requirements-compact span {
     display: -webkit-box;
     overflow: hidden;
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-small);
     font-weight: var(--type-body-weight);
-    line-height: var(--type-caption-leading);
+    line-height: var(--lh-small);
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
   }
@@ -3281,9 +3281,9 @@ const pageStyles = `
   .pdf-preview-toolbar h2 {
     margin: var(--space-1) 0;
     color: var(--foreground);
-    font-size: var(--type-section-title-size);
-    font-weight: var(--type-section-title-weight);
-    line-height: var(--type-section-title-leading);
+    font-size: var(--fs-section);
+    font-weight: 700;
+    line-height: var(--lh-section);
   }
 
   .pdf-preview-toolbar p {
@@ -3400,9 +3400,9 @@ const pageStyles = `
   .pdf-brand-lockup h2 {
     margin: var(--space-1) 0;
     color: var(--foreground);
-    font-size: var(--type-page-title-size);
-    font-weight: var(--type-page-title-weight);
-    line-height: var(--type-page-title-leading);
+    font-size: var(--fs-section);
+    font-weight: 700;
+    line-height: var(--lh-section);
   }
 
   .pdf-brand-lockup p {
@@ -3431,7 +3431,7 @@ const pageStyles = `
   .pdf-report-reference em {
     max-width: 14rem;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-caption);line-height:var(--lh-caption);
     font-style: normal;
     font-weight: var(--type-caption-weight);
     overflow-wrap: anywhere;
@@ -3463,7 +3463,7 @@ const pageStyles = `
     display: block;
     margin-bottom: var(--space-1);
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-caption-weight);
   }
 
@@ -3504,13 +3504,13 @@ const pageStyles = `
   .pdf-section-heading h3 {
     margin: 0;
     color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    font-weight: var(--type-card-title-weight);
+    font-size: var(--fs-card-title);line-height:var(--lh-card-title);
+    font-weight: 600;
   }
 
   .pdf-section-heading span {
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-caption-weight);
   }
 
@@ -3584,7 +3584,7 @@ const pageStyles = `
     padding-top: var(--space-3);
     border-top: 1px solid var(--border);
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-caption);line-height:var(--lh-caption);
     font-weight: var(--type-caption-weight);
     break-inside: avoid;
   }
@@ -3778,7 +3778,7 @@ const pageStyles = `
     }
 
     .reports-hero h1 {
-      font-size: var(--type-page-title-size);
+      font-size: var(--fs-page);font-weight:700;line-height:var(--lh-page);
     }
 
     .report-card-head {
@@ -3876,11 +3876,11 @@ const pageStyles = `
     }
 
     .pdf-brand-lockup h2 {
-      font-size: 22pt;
+      font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
     }
 
     .pdf-brand-lockup p {
-      font-size: 9.5pt;
+      font-size: var(--fs-small);line-height:var(--lh-small);
     }
 
     .pdf-logo {
@@ -3889,7 +3889,7 @@ const pageStyles = `
     }
 
     .pdf-report-reference em {
-      font-size: 7.5pt;
+      font-size: var(--fs-caption);line-height:var(--lh-caption);
     }
 
     .pdf-metadata-grid,
@@ -3911,16 +3911,16 @@ const pageStyles = `
 
     .pdf-metadata-grid span,
     .pdf-summary-grid span {
-      font-size: 8pt;
+      font-size: var(--fs-caption);line-height:var(--lh-caption);
     }
 
     .pdf-metadata-grid strong,
     .pdf-summary-grid strong {
-      font-size: 9.5pt;
+      font-size: var(--fs-label);line-height:var(--lh-label);
     }
 
     .pdf-summary-grid div:first-child strong {
-      font-size: 12pt;
+      font-size: var(--fs-label);line-height:var(--lh-label);
     }
 
     .pdf-section-heading {
@@ -3949,14 +3949,14 @@ const pageStyles = `
     .pdf-report-table td {
       padding: var(--space-2) !important;
       border-color: var(--border) !important;
-      font-size: 8.8pt !important;
-      line-height: 1.45 !important;
+      font-size: var(--fs-caption) !important;
+      line-height: var(--lh-caption) !important;
     }
 
     .pdf-report-table th {
       background: var(--foreground) !important;
       color: var(--foreground-inverse) !important;
-      font-size: 8.6pt !important;
+      font-size: var(--fs-caption) !important;line-height:var(--lh-caption);
     }
 
     .pdf-report-table tr {
@@ -3981,7 +3981,7 @@ const pageStyles = `
       padding: 5mm 0 0;
       border-top: 1px solid var(--border-strong);
       background: var(--surface);
-      font-size: 7.5pt;
+      font-size: var(--fs-caption);line-height:var(--lh-caption);
     }
 
     .preview-empty {

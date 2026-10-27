@@ -645,11 +645,11 @@ function SubmitStyles() {
         color: var(--foreground);
         padding: 0 16px;
         text-decoration: none;
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
         box-shadow: var(--shadow-xs);
         transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background .16s ease, color .16s ease;
-        -webkit-tap-highlight-color: transparent;
+        -webkit-tap-highlight-color: transparent;line-height:var(--lh-small, 22px);
       }
       .company-submit-back svg {
         color: var(--primary);
@@ -684,23 +684,23 @@ function SubmitStyles() {
       }
       .company-submit-hero span {
         color: var(--primary);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 600;line-height:var(--lh-caption, 18px);
       }
       .company-submit-hero h1,
       .company-submit-gate h1 {
         margin: 8px 0;
         color: var(--foreground);
-        font-size: clamp(26px, 3vw, 38px);
-        line-height: 1.2;
-        font-weight: 700;
+        font-size: var(--fs-page, 28px);
+        line-height: var(--lh-page, 38px);
+        font-weight: 700;font-family:var(--font-heading);
       }
       .company-submit-hero p,
       .company-submit-gate p {
         margin: 0;
         color: var(--foreground-muted);
-        line-height: 1.8;
-        font-weight: 400;
+        line-height: var(--lh-body, 24px);
+        font-weight: 400;font-size:var(--fs-body, 15px);
       }
       .company-submit-gate {
         text-align: center;
@@ -725,8 +725,8 @@ function SubmitStyles() {
       .submit-section h2 {
         margin: 0 0 14px;
         color: var(--foreground);
-        font-size: 18px;
-        font-weight: 600;
+        font-size: var(--fs-section, 20px);
+        font-weight: 700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
       }
       .submit-grid {
         display: grid;
@@ -763,8 +763,8 @@ function SubmitStyles() {
       .map-location-field span,
       .map-location-head span {
         color: var(--foreground);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--fs-label, 13px);
+        font-weight: 600;line-height:var(--lh-label, 20px);
       }
       .map-location-head small {
         color: var(--foreground-muted);
@@ -782,9 +782,9 @@ function SubmitStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font: 600 13px/1.25 var(--font-ui);
+        font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
-        box-shadow: var(--shadow-xs);
+        box-shadow: var(--shadow-xs);line-height:var(--lh-label, 20px);
       }
       .map-location-head button:hover,
       .map-location-head button:focus-visible {
@@ -820,8 +820,8 @@ function SubmitStyles() {
       }
       .submit-field span {
         color: var(--foreground-secondary);
-        font-size: 13px;
-        font-weight: 500;
+        font-size: var(--fs-label, 13px);
+        font-weight: 500;line-height:var(--lh-label, 20px);
       }
       .submit-field b {
         color: var(--danger);
@@ -835,8 +835,8 @@ function SubmitStyles() {
         background: var(--control-background);
         color: var(--foreground);
         padding: 12px;
-        font: 500 14px/1.5 var(--font-ui);
-        outline: 0;
+        font: 500 var(--fs-body, 15px)/var(--lh-body, 24px) var(--font-ui);
+        outline: 0;line-height:var(--lh-body, 24px);
       }
       .submit-field input,
       .submit-field select {
@@ -880,9 +880,9 @@ function SubmitStyles() {
         place-items: center;
         color: var(--accent-hover);
         background: var(--accent-soft);
-        font-size: 24px;
+        font-size: var(--fs-body, 15px);
         font-weight: 600;
-        letter-spacing: 2px;
+        letter-spacing: 2px;line-height:var(--lh-body, 24px);
       }
       .image-preview.invalid {
         border-color: color-mix(in srgb, var(--danger) 30%, transparent);
@@ -935,8 +935,8 @@ function SubmitStyles() {
         color: var(--primary-foreground);
         background: var(--primary);
         box-shadow: var(--shadow-sm);
-        font: 600 14px/1.25 var(--font-ui);
-        cursor: pointer;
+        font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
+        cursor: pointer;line-height:var(--lh-label, 20px);
       }
       .submit-sticky button:disabled,
       .company-submit-gate button:disabled {

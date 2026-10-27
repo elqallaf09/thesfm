@@ -171,8 +171,19 @@ describe('density.css compact layer', () => {
   });
 
   it('keeps every font size at or above the accessible floor', () => {
+    const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf8');
     const sizes = [...css.matchAll(/font-size\s*:\s*([^;]+);/g)]
-      .flatMap(([, value]) => [...value.matchAll(/(\d+(?:\.\d+)?)px/g)].map(([, px]) => Number(px)));
+      .flatMap(([, value]) => {
+        const resolved = value.replace(/var\(--([a-z0-9-]+)\)/g, (_, token: string) => {
+          const definition = tokens.match(new RegExp(`--${token}:\\s*([^;]+);`))?.[1];
+          expect(definition, `${token} is defined in the shared scale`).toBeDefined();
+          return definition!;
+        });
+        const pixels = [...resolved.matchAll(/(\d+(?:\.\d+)?)(px|rem)\b/g)]
+          .map(([, size, unit]) => Number(size) * (unit === 'rem' ? 16 : 1));
+        expect(pixels.length, `${value} resolves to an auditable size`).toBeGreaterThan(0);
+        return pixels;
+      });
     expect(sizes.length).toBeGreaterThan(0);
     for (const size of sizes) {
       expect(size).toBeGreaterThanOrEqual(12);

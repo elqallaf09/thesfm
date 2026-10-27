@@ -51,16 +51,16 @@ export function GlobalMarketsLayoutStyles() {
       .gm-header-copy h1 {
         margin: 0;
         color: var(--foreground);
-        font-size: 19px;
+        font-size: var(--fs-page, 28px);
         font-weight: 700;
-        line-height: 1.25;
+        line-height: var(--lh-page, 38px);font-family:var(--font-heading);
       }
 
       .gm-header-copy p {
         margin: 0;
         color: var(--foreground-muted);
-        font-size: 12.5px;
-        line-height: 1.4;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
 
       .gm-header-actions {
@@ -75,9 +75,9 @@ export function GlobalMarketsLayoutStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         color: var(--foreground-muted);
-        font-size: 11.5px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 500;
-        white-space: nowrap;
+        white-space: nowrap;line-height:var(--lh-caption, 18px);
       }
 
       .gm-header-refresh {
@@ -88,13 +88,13 @@ export function GlobalMarketsLayoutStyles() {
         min-block-size: 44px;
         gap: 7px;
         padding-inline: 12px;
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 650;
         border: 1px solid var(--border);
         border-radius: var(--radius-pill);
         background: var(--surface);
         color: var(--foreground-secondary);
-        cursor: pointer;
+        cursor: pointer;line-height:var(--lh-caption, 18px);
       }
 
       .gm-header-refresh:hover {
@@ -132,9 +132,9 @@ export function GlobalMarketsLayoutStyles() {
       }
 
       .gm-selection > div { flex: 1; display: grid; gap: 4px; min-width: 0; }
-      .gm-selection strong { font-size: 13px; color: var(--foreground); }
+      .gm-selection strong { font-size: var(--fs-label, 13px); color: var(--foreground);line-height:var(--lh-label, 20px); }
       .gm-selection-chips { list-style: none; padding: 0; margin: 6px 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-      .gm-selection-chips li { min-width: 0; block-size: 48px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding: 5px 9px; border-radius: var(--radius-control); background: var(--accent-soft); color: var(--foreground); font-size: 12px; line-height: 1.5; }
+      .gm-selection-chips li { min-width: 0; block-size: 48px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; padding: 5px 9px; border-radius: var(--radius-control); background: var(--accent-soft); color: var(--foreground); font-size: var(--fs-label, 13px); line-height: var(--lh-label, 20px); }
       .gm-selection > button { background: var(--accent); border-color: var(--accent); color: var(--accent-foreground); flex: none; }
       .gm-header-refresh:disabled { opacity: .55; cursor: wait; }
       .gm-header button:focus-visible, .gm-selection button:focus-visible, .gm-picker button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -158,29 +158,29 @@ export function GlobalMarketsLayoutStyles() {
       .gm-picker { --sfm-modal-responsive-width: 780px; }
       .gm-picker-body { display: grid; gap: 20px; }
       .gm-picker-selected { padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-muted); }
-      .gm-picker-count { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+      .gm-picker-count { display: flex; justify-content: space-between; margin: 0 0 10px; font-size: var(--fs-small, 14px); font-weight: 700;line-height:var(--lh-small, 22px); }
       .gm-picker-count bdi { color: var(--accent); font-family: var(--font-data); }
       .gm-picker-order { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
       .gm-picker-order li { min-height: 56px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); }
-      .gm-picker-rank { display: grid; place-items: center; inline-size: 26px; block-size: 26px; flex: none; background: var(--accent-soft); color: var(--accent); border-radius: var(--radius-pill); font-family: var(--font-data); font-size: 12px; }
-      .gm-picker-order-name { flex: 1; min-width: 0; font-size: 13px; line-height: 1.5; }
+      .gm-picker-rank { display: grid; place-items: center; inline-size: 26px; block-size: 26px; flex: none; background: var(--accent-soft); color: var(--accent); border-radius: var(--radius-pill); font-family: var(--font-data); font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
+      .gm-picker-order-name { flex: 1; min-width: 0; font-size: var(--fs-label, 13px); line-height: var(--lh-label, 20px); }
       .gm-picker-order-actions { display: flex; flex: none; gap: 4px; }
       .gm-picker-order-actions button { inline-size: 44px; block-size: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); color: var(--foreground); cursor: pointer; }
       .gm-picker-order-actions .gm-picker-remove { color: var(--danger); background: var(--danger-soft); }
       .gm-picker-order-actions button:disabled { opacity: .35; cursor: not-allowed; }
-      .gm-picker-hint { margin: 10px 0 0; font-size: 12px; line-height: 1.6; color: var(--foreground-secondary); }
+      .gm-picker-hint { margin: 10px 0 0; font-size: var(--fs-small, 14px); line-height: var(--lh-small, 22px); color: var(--foreground-secondary); }
       .gm-picker-browse { display: grid; gap: 12px; }
-      .gm-picker-browse h3 { margin: 0; font-size: 14px; }
+      .gm-picker-browse h3 { margin: 0; font-size: var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;font-family:var(--font-body); }
       .gm-picker-search { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); background: var(--surface); }
       .gm-picker-search:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-      .gm-picker-search input { flex: 1; width: 100%; min-width: 0; min-height: 44px; border: 0; outline: 0; padding: 0; background: transparent; color: var(--foreground); font-size: 14px; }
+      .gm-picker-search input { flex: 1; width: 100%; min-width: 0; min-height: 44px; border: 0; outline: 0; padding: 0; background: transparent; color: var(--foreground); font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px); }
       .gm-picker-groups { display: flex; flex-wrap: wrap; gap: 6px; }
-      .gm-picker-groups button { min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--foreground-secondary); background: var(--surface); cursor: pointer; font-size: 12px; }
+      .gm-picker-groups button { min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--foreground-secondary); background: var(--surface); cursor: pointer; font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px); }
       .gm-picker-groups button[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
       .gm-picker-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-      .gm-picker-option { min-height: 62px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); text-align: start; font-size: 13px; line-height: 1.5; color: var(--foreground); background: var(--surface); cursor: pointer; }
+      .gm-picker-option { min-height: 62px; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); text-align: start; font-size: var(--fs-label, 13px); line-height: var(--lh-label, 20px); color: var(--foreground); background: var(--surface); cursor: pointer; }
       .gm-picker-option.is-selected { border-color: var(--accent); background: var(--accent-soft); font-weight: 650; }
-      .gm-picker-option small { display: block; margin-top: 3px; color: var(--foreground-muted); font-size: 11px; }
+      .gm-picker-option small { display: block; margin-top: 3px; color: var(--foreground-muted); font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
       .gm-picker-option:disabled { opacity: .55; cursor: not-allowed; }
       .gm-picker-check { display: grid; place-items: center; inline-size: 28px; block-size: 28px; flex: none; border: 1px solid var(--border); border-radius: var(--radius-control); }
       .gm-picker-option.is-selected .gm-picker-check { background: var(--accent); color: var(--accent-foreground); border-color: var(--accent); }
@@ -197,8 +197,8 @@ export function GlobalMarketsLayoutStyles() {
         margin: 0;
         padding-top: 6px;
         color: var(--foreground-muted);
-        font-size: 11.5px;
-        line-height: 1.5;
+        font-size: var(--fs-caption, 12px);
+        line-height: var(--lh-caption-prose, 18px);
         border-top: 1px solid var(--border);
       }
 
@@ -217,14 +217,14 @@ export function GlobalMarketsLayoutStyles() {
         .gm-header { padding: 14px 12px; flex-wrap: wrap; }
         .gm-header-copy { flex-basis: calc(100% - 52px); }
         .gm-header-actions { width: 100%; justify-content: space-between; }
-        .gm-header-updated { inline-size: auto; flex: 1; font-size: 10.5px; }
+        .gm-header-updated { inline-size: auto; flex: 1; font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
         .gm-header-refresh { flex: none; }
 
         .gm-header-icon { inline-size: 36px; block-size: 36px; }
         .gm-header-updated { display: block; }
         .gm-strips { gap: 9px; }
         .gm-selection-chips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .gm-picker-search input { font-size: 16px; }
+        .gm-picker-search input { font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px); }
         .gm-selection { align-items: stretch; flex-direction: column; }
         .gm-selection button { width: 100%; }
         .gm-picker-options { grid-template-columns: 1fr; }

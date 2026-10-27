@@ -17,16 +17,16 @@
 .metadata dt {
   margin: 0 0 5px;
   color: var(--foreground-muted);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: var(--fs-caption, 12px);
+  line-height: var(--lh-caption, 18px);
 }
 
 .metadata dd {
   margin: 0;
   color: var(--foreground);
-  font-size: 14px;
+  font-size: var(--fs-caption, 12px);
   font-weight: 600;
-  line-height: 1.7;
+  line-height: var(--lh-caption, 18px);
 }
 
 @media (max-width: 390px) {

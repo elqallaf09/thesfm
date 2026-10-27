@@ -708,7 +708,7 @@ function ReportContent() {
         .report-actions button {
           min-height: 44px; border-radius: var(--radius-card); border: 1px solid var(--border); background: var(--surface);
           color: var(--foreground); padding: 9px 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          font: 600 13px var(--font-ui); cursor: pointer; box-shadow: var(--shadow-card);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body); cursor: pointer; box-shadow: var(--shadow-card);
         }
         .report-actions button:last-child { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
         .report-actions button:hover { transform: translateY(-1px); }
@@ -722,27 +722,27 @@ function ReportContent() {
         .brand { display: flex; align-items: center; gap: 12px; }
         .brand img { border-radius: var(--radius-card); background: color-mix(in srgb, var(--hero-foreground) 94%, transparent); }
         .brand strong { display: block; color: var(--hero-foreground-muted); font-size: 18px; letter-spacing: .04em; }
-        .brand span { display: block; color: color-mix(in srgb, var(--hero-foreground) 76%, transparent); font-size: 12px; margin-top: 2px; }
-        .cover h1 { margin: 28px 0 10px; max-width: 760px; color: var(--hero-foreground); font-size: clamp(30px, 5vw, 44px); line-height: 1.15; }
+        .brand span { display: block; color: color-mix(in srgb, var(--hero-foreground) 76%, transparent); font-size: var(--fs-label);line-height:var(--lh-label); margin-top: 2px; }
+        .cover h1 { margin: 28px 0 10px; max-width: 760px; color: var(--hero-foreground); font-size: var(--fs-page);font-weight:700; line-height: var(--lh-page); }
         .boundary { max-width: 780px; margin: 0 0 18px; display: flex; align-items: flex-start; gap: 8px; color: color-mix(in srgb, var(--hero-foreground) 86%, transparent); line-height: 1.7; }
         .boundary svg { flex: 0 0 auto; margin-top: 4px; color: var(--hero-foreground-muted); }
         .cover-meta { display: flex; gap: 10px; flex-wrap: wrap; }
         .cover-meta span { border: 1px solid color-mix(in srgb, var(--hero-foreground) 24%, transparent); background: color-mix(in srgb, var(--hero-foreground) 9%, transparent); border-radius: var(--radius-pill); padding: 7px 12px; color: color-mix(in srgb, var(--hero-foreground) 82%, transparent); }
         .cover-meta b { color: var(--hero-foreground); }
         .section { padding: clamp(20px, 4vw, 32px); border-bottom: 1px solid var(--border); }
-        .section h2 { margin: 0 0 14px; color: var(--foreground); font-size: clamp(21px, 3vw, 25px); }
-        .section h3 { margin: 26px 0 10px; color: var(--success); font-size: 17px; }
+        .section h2 { margin: 0 0 14px; color: var(--foreground); font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section); }
+        .section h3 { margin: 26px 0 10px; color: var(--success); font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title); }
         .section-intro { max-width: 780px; margin: -4px 0 16px; color: var(--foreground-muted); line-height: 1.75; }
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; }
         .metric { min-width: 0; border: 1px solid var(--border); background: var(--surface-muted); border-radius: var(--radius-card); padding: 16px; }
         .metric small { display: block; color: var(--foreground-muted); font-weight: 600; line-height: 1.5; }
-        .metric strong { display: block; margin-top: 7px; color: var(--foreground); font-family: var(--font-data); font-size: clamp(18px, 2.4vw, 22px); overflow-wrap: anywhere; }
+        .metric strong { display: block; margin-top: 7px; color: var(--foreground); font-family: var(--font-mono); font-size: var(--fs-kpi);font-weight:600;line-height:var(--lh-kpi); overflow-wrap: anywhere; }
         .scope-note { margin-top: 14px; border-inline-start: 4px solid var(--accent); border-radius: var(--radius-control); background: color-mix(in srgb, var(--accent) 9%, transparent); padding: 12px 14px; display: flex; align-items: flex-start; gap: 9px; color: var(--foreground-muted); line-height: 1.7; }
         .scope-note svg { flex: 0 0 auto; margin-top: 3px; color: var(--accent); }
         .scope-note strong { display: block; color: var(--foreground); }
         .scope-note p { margin: 2px 0 0; }
         .table-wrap { max-width: 100%; margin-top: 14px; overflow: clip; border: 1px solid var(--border); border-radius: var(--radius-card); }
-        .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+        .data-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: var(--fs-small);line-height:var(--lh-small); }
         .data-table th, .data-table td { min-width: 0; padding: 11px 10px; border-bottom: 1px solid var(--border); text-align: start; vertical-align: top; overflow-wrap: anywhere; }
         .data-table th { color: var(--foreground); background: var(--surface-muted); font-weight: 600; }
         .data-table tbody tr:last-child td { border-bottom: 0; }
@@ -752,7 +752,7 @@ function ReportContent() {
         .load-warning { margin: 20px clamp(20px, 4vw, 32px) 0; border: 1px solid var(--danger); border-radius: var(--radius-card); background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--foreground); padding: 12px 14px; display: flex; align-items: flex-start; gap: 9px; line-height: 1.6; }
         .loading-state { display: flex; align-items: center; gap: 10px; color: var(--foreground-muted); }
         .loading-dot { width: 12px; height: 12px; border-radius: var(--radius-pill); background: var(--primary); box-shadow: var(--shadow-card); animation: report-pulse 1.2s ease-in-out infinite; }
-        .report-sheet footer { padding: 22px clamp(20px, 4vw, 32px); background: var(--surface-muted); color: var(--foreground-muted); font-size: 12px; line-height: 1.8; }
+        .report-sheet footer { padding: 22px clamp(20px, 4vw, 32px); background: var(--surface-muted); color: var(--foreground-muted); font-size: var(--fs-caption); line-height: var(--lh-caption); }
         .report-sheet footer p { max-width: 820px; margin: 0; }
         .report-sheet footer span { display: block; margin-top: 8px; color: var(--success); font-weight: 600; }
         .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }

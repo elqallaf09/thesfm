@@ -5,9 +5,9 @@
 .reason {
   flex-basis: 100%;
   color: var(--foreground-muted);
-  font-size: .68rem;
+  font-size: var(--fs-caption, 12px);
   font-weight: 600;
-  line-height: 1.45;
+  line-height: var(--lh-caption, 18px);
   text-align: end;
 }
 

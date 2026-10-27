@@ -431,21 +431,21 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           padding: 5px 10px;
           background: var(--primary-soft);
           color: var(--primary);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-label, 13px);
+          font-weight: 600;line-height:var(--lh-label, 20px);
         }
         .account-completion-main h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(24px, 3vw, 34px);
-          line-height: 1.15;
+          font-size: var(--fs-section, 20px);
+          line-height: var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
         }
         .account-completion-main p {
           max-width: 760px;
           margin: 0;
           color: var(--foreground-muted);
-          line-height: 1.75;
-          font-weight: 400;
+          line-height: var(--lh-body, 24px);
+          font-weight: 400;font-size:var(--fs-body, 15px);
         }
         .account-completion-next {
           display: grid;
@@ -454,7 +454,7 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         }
         .account-completion-next > strong {
           color: var(--foreground);
-          font-size: 14px;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
         .account-completion-next-list {
           display: grid;
@@ -498,13 +498,13 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         }
         .account-next-copy b {
           color: var(--foreground);
-          font-size: 14px;
-          line-height: 1.35;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
         }
         .account-next-copy small {
           color: var(--foreground-muted);
-          font-size: 12px;
-          line-height: 1.45;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           overflow-wrap: anywhere;
         }
         .account-next-action,
@@ -514,9 +514,9 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           border: 1px solid var(--border);
           background: var(--surface);
           color: var(--primary);
-          font-size: 12px;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-label, 20px);
         }
         .account-next-action {
           min-height: 32px;
@@ -586,9 +586,9 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           place-items: center;
           background: var(--surface);
           color: var(--foreground);
-          font-size: 24px;
-          font-family: var(--font-data);
-          font-weight: 600;
+          font-size: var(--fs-kpi, 26px);
+          font-family: var(--font-mono);
+          font-weight: 600;line-height:var(--lh-kpi, 32px);
         }
         .account-completion-score-copy {
           display: grid;
@@ -598,12 +598,12 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         }
         .account-completion-score-copy b {
           color: var(--foreground);
-          font-size: 15px;
+          font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
         }
         .account-completion-score-copy span {
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
         .account-completion-bar {
           width: 100%;
@@ -674,15 +674,15 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
         .step-copy b {
           min-width: 0;
           color: var(--foreground);
-          font-size: 14px;
-          line-height: 1.4;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           overflow-wrap: anywhere;
         }
         .step-copy small {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 400;
-          line-height: 1.5;
+          line-height: var(--lh-small, 22px);
         }
         .step-state {
           border-radius: var(--radius-pill);
@@ -690,9 +690,9 @@ export function AccountCompletionCard({ compact = false, className = '' }: Accou
           border: 1px solid var(--border);
           background: var(--surface);
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 600;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-caption, 18px);
         }
         .step-state.complete {
           border-color: color-mix(in srgb, var(--success) 28%, transparent);

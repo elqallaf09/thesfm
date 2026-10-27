@@ -50,23 +50,23 @@
 .kicker {
   margin: 0 0 3px;
   color: var(--primary);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--fs-caption, 12px);
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .heading h2 {
   margin: 0;
-  font-size: clamp(20px, 2.4vw, 30px);
-  line-height: 1.25;
-  font-weight: 700;
+  font-size: var(--fs-section, 20px);
+  line-height: var(--lh-section, 30px);
+  font-weight: 700;font-family:var(--font-heading);
 }
 
 .heading p:not(.kicker) {
   margin: 7px 0 0;
   max-width: 900px;
   color: var(--foreground-secondary);
-  font-size: 14px;
-  line-height: 1.75;
+  font-size: var(--fs-small, 14px);
+  line-height: var(--lh-small, 22px);
 }
 
 .refresh,
@@ -82,9 +82,9 @@
   gap: 8px;
   padding: 9px 14px;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-label, 13px);
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer;line-height:var(--lh-label, 20px);
 }
 
 .refresh:disabled {
@@ -101,7 +101,7 @@
   flex-wrap: wrap;
   gap: 8px 14px;
   color: var(--foreground-muted);
-  font-size: 12px;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .metaRow span {
@@ -119,8 +119,8 @@
   background: var(--warning-soft);
   color: var(--warning);
   padding: 11px 13px;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--fs-small, 14px);
+  line-height: var(--lh-small, 22px);
 }
 
 .stats {
@@ -141,14 +141,14 @@
 
 .stat span {
   color: var(--foreground-muted);
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: var(--fs-caption, 12px);
+  line-height: var(--lh-caption, 18px);
 }
 
 .stat strong {
-  font-family: var(--font-data);
-  font-size: 20px;
-  line-height: 1.1;
+  font-family: var(--font-mono);
+  font-size: var(--fs-kpi, 26px);
+  line-height: var(--lh-kpi, 32px);font-weight:600;
 }
 
 .ticker {
@@ -192,7 +192,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
 }
 
 .selectWrap select,
@@ -209,7 +209,7 @@
   align-items: center;
   gap: 8px;
   color: var(--foreground-secondary);
-  font-size: 12px;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .resultMeta strong {
@@ -272,14 +272,14 @@
 
 .identity strong {
   font-family: var(--font-data);
-  font-size: 14px;
+  font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
 }
 
 .identity span {
   overflow-wrap: anywhere;
-  line-height: 1.5;
+  line-height: var(--lh-caption, 18px);
   color: var(--foreground-secondary);
-  font-size: 12px;
+  font-size: var(--fs-caption, 12px);
 }
 
 .move {
@@ -290,9 +290,9 @@
   background: var(--surface-muted);
   padding: 5px 7px;
   font-family: var(--font-data);
-  font-size: 11px;
+  font-size: var(--fs-caption, 12px);
   font-style: normal;
-  font-weight: 700;
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .move[data-direction='up'] {
@@ -314,16 +314,16 @@
 }
 
 .priceRow strong {
-  font-family: var(--font-data);
-  font-size: 18px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-kpi, 26px);line-height:var(--lh-kpi, 32px);font-weight:600;
 }
 
 .coverage {
   border-top: 1px solid var(--border);
   padding-top: 8px;
-  line-height: 1.6;
+  line-height: var(--lh-caption, 18px);
   color: var(--foreground-muted);
-  font-size: 11px;
+  font-size: var(--fs-caption, 12px);
 }
 
 .metrics {
@@ -343,14 +343,14 @@
 
 .metrics dt {
   color: var(--foreground-muted);
-  font-size: 10px;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .metrics dd {
   margin: 3px 0 0;
   font-family: var(--font-data);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--fs-caption, 12px);
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .tags {
@@ -369,8 +369,8 @@
   background: var(--surface-muted);
   color: var(--foreground-secondary);
   padding: 4px 7px;
-  font-size: 10px;
-  overflow-wrap: anywhere;
+  font-size: var(--fs-caption, 12px);
+  overflow-wrap: anywhere;line-height:var(--lh-caption, 18px);
 }
 
 .tags .compliant {
@@ -382,8 +382,8 @@
 .reason {
   margin: 0;
   color: var(--foreground-muted);
-  font-size: 11px;
-  line-height: 1.55;
+  font-size: var(--fs-caption, 12px);
+  line-height: var(--lh-caption, 18px);
 }
 
 .loadMore {
@@ -398,7 +398,7 @@
   color: var(--foreground-secondary);
   padding: 28px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
 }
 
 .skeleton {

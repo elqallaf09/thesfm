@@ -97,7 +97,7 @@ describe('project-detail visual-system contract', () => {
     expect(styles).toContain('font-family:var(--font-data)');
     expect(styles).not.toMatch(/\.project-workspace\{[^}]*font-family:var\(--font-data\)/);
     expect(combined).toContain('.forecast-table td{font-family:var(--font-data)}');
-    expect(combined).toContain('.summary-card strong{display:block;margin-top:6px;color:var(--foreground);font-family:var(--font-data)');
+    expect(combined).toContain('.summary-card strong{display:block;margin-top:6px;color:var(--foreground);font-family:var(--font-mono)');
   });
 
   it('preserves semantic project states, accessible scores, and print contrast', () => {

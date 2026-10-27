@@ -26,8 +26,8 @@ export function DiagnosticIssueSections({ issues, limit }: { issues: RootCauseIs
       {truncated ? <Link className="ops-diagnostic-all" href="/sfm-admin-control/market-diagnostics?tab=errors">{t('ops_center_view_all_diagnostics')}</Link> : null}
       <style jsx global>{`
         .ops-diagnostic-sections { min-width: 0; display: grid; gap: 10px; }
-        .ops-diagnostic-explanation { margin: 0; color: var(--foreground-secondary); font-size: 12px; line-height: 1.7; }
-        .ops-diagnostic-all { color: var(--primary); width: fit-content; font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+        .ops-diagnostic-explanation { margin: 0; color: var(--foreground-secondary); font-size: var(--fs-small); line-height: var(--lh-small); }
+        .ops-diagnostic-all { color: var(--primary); width: fit-content; font-size: var(--fs-small);line-height:var(--lh-small); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
         .ops-diagnostic-all:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
       `}</style>
     </div>

@@ -93,7 +93,7 @@ export function MarketStripControls({ containerRef, dir, lang, manual, onManualC
           transition: background-color 120ms ease, color 120ms ease;
         }
 
-        .gm-strip-motion { inline-size: auto; gap: 6px; padding-inline: 10px; font-size: 12px; margin-inline-end: auto; }
+        .gm-strip-motion { inline-size: auto; gap: 6px; padding-inline: 10px; font-size: var(--fs-caption, 12px); margin-inline-end: auto;line-height:var(--lh-caption, 18px); }
         .gm-strip-motion[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
         .gm-strip-control-btn:hover {

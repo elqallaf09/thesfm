@@ -168,14 +168,14 @@ function CategoryStockTickerStyles() {
     <style jsx global>{`
       .category-stock-ticker{min-width:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);padding:16px;box-shadow:var(--shadow-card);font-family:var(--font-ui);color:var(--foreground)}
       .category-stock-ticker.empty{overflow:visible}
-      .category-stock-ticker-empty-row{display:flex;align-items:center;gap:12px;color:var(--foreground-secondary);font-size:14px;font-weight:500;line-height:1.6}
+      .category-stock-ticker-empty-row{display:flex;align-items:center;gap:12px;color:var(--foreground-secondary);font-size:var(--fs-small, 14px);font-weight:500;line-height:var(--lh-small, 22px)}
       .category-stock-ticker-head{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
       .category-stock-ticker-title-row{display:flex;min-width:0;align-items:center;gap:12px}
       .category-stock-ticker-icon{width:40px;height:40px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-control);background:var(--primary-soft);color:var(--primary)}
       .category-stock-ticker-copy{min-width:0}
-      .category-stock-ticker-copy h2{margin:0;color:var(--foreground);font-size:14px;font-weight:600;line-height:1.45}
-      .category-stock-ticker-copy p{margin:2px 0 0;color:var(--foreground-muted);font-size:12px;font-weight:400;line-height:1.55}
-      .category-stock-ticker-note{display:inline-flex;width:fit-content;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface-muted);color:var(--foreground-secondary);padding:6px 12px;font-size:12px;font-weight:500;line-height:1.45}
+      .category-stock-ticker-copy h2{margin:0;color:var(--foreground);font-size:var(--fs-section, 20px);font-weight:700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);}
+      .category-stock-ticker-copy p{margin:2px 0 0;color:var(--foreground-muted);font-size:var(--fs-small, 14px);font-weight:400;line-height:var(--lh-small, 22px)}
+      .category-stock-ticker-note{display:inline-flex;width:fit-content;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface-muted);color:var(--foreground-secondary);padding:6px 12px;font-size:var(--fs-small, 14px);font-weight:500;line-height:var(--lh-small, 22px)}
       @media(min-width:640px){.category-stock-ticker-head{flex-direction:row;align-items:center;justify-content:space-between}}
     `}</style>
   );

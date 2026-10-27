@@ -62,22 +62,22 @@ const gateStyles = `
     display:inline-flex;
     margin-bottom:14px;
     color:var(--info);
-    font-size:12px;
+    font-size:var(--fs-label);line-height:var(--lh-label);
     font-weight:600;
     letter-spacing:.04em;
   }
   .trader-gate-card h1 {
     margin:0 0 12px;
     color:var(--foreground);
-    font-size:clamp(28px,4vw,40px);
-    line-height:1.2;
+    font-size:var(--fs-page);
+    line-height:var(--lh-page);
     font-weight:700;
   }
   .trader-gate-card p {
     margin:0;
     color:var(--foreground-secondary);
-    font-size:16px;
-    line-height:1.8;
+    font-size:var(--fs-body);
+    line-height:var(--lh-body);
   }
   .trader-gate-actions { display:flex;flex-wrap:wrap;gap:12px;margin-top:26px }
   .trader-gate-actions a {

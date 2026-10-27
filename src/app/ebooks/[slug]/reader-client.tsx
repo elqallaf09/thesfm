@@ -201,9 +201,9 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         .ebook-reader-section-head h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(26px, 4vw, 46px);
-          font-weight: 600;
-          line-height: 1.2;
+          font-size: var(--fs-page);
+          font-weight: 700;
+          line-height: var(--lh-page);
         }
 
         .ebook-reader-title p {
@@ -275,7 +275,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
 
         .ebook-reader-meta-card span {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption);line-height:var(--lh-caption);
           font-weight: 500;
         }
 
@@ -315,7 +315,7 @@ export function EbookReaderClient({ initialSlug }: { initialSlug: string }) {
         }
 
         .ebook-reader-section-head h2 {
-          font-size: clamp(24px, 3vw, 34px);
+          font-size: var(--fs-section);font-weight:700;line-height:var(--lh-section);
         }
 
         .ebook-reader-related-grid {

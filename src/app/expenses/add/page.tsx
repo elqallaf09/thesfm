@@ -123,13 +123,13 @@ export default function AddExpensePage() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .page-container { min-height: 100vh; background: var(--background); padding: 24px; color: var(--foreground); }
         .form-card { background: var(--surface); border-radius: var(--radius-panel); max-width: 600px; margin: 0 auto; padding: 32px; box-shadow: var(--shadow-md); border: 1px solid var(--border); }
-        .form-title { font-size: 24px; font-weight: 700; color: var(--foreground); margin-bottom: 8px; text-align: center; }
-        .form-subtitle { font-size: 14px; color: var(--foreground-secondary); text-align: center; margin-bottom: 28px; }
+        .form-title { font-size: var(--fs-card-title);line-height:var(--lh-card-title); font-weight: 600; color: var(--foreground); margin-bottom: 8px; text-align: center; }
+        .form-subtitle { font-size: var(--fs-small);line-height:var(--lh-small); color: var(--foreground-secondary); text-align: center; margin-bottom: 28px; }
         .form-group { margin-bottom: 20px; }
-        .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--foreground-secondary); margin-bottom: 8px; }
+        .form-label { display: block; font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 500; color: var(--foreground-secondary); margin-bottom: 8px; }
         .form-input,
         .form-select,
-        .amount-input { width: 100%; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: 15px; font-family: var(--font-ui); background: var(--control-background); color: var(--foreground); transition: border-color var(--duration), box-shadow var(--duration), background var(--duration); outline: none; }
+        .amount-input { width: 100%; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: var(--fs-body);line-height:var(--lh-body); font-family: var(--font-ui); background: var(--control-background); color: var(--foreground); transition: border-color var(--duration), box-shadow var(--duration), background var(--duration); outline: none; }
         .form-input:focus,
         .form-select:focus,
         .amount-input:focus { border-color: var(--focus-ring); box-shadow: var(--focus-shadow); }
@@ -139,7 +139,7 @@ export default function AddExpensePage() {
         .amount-input-wrapper { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 200px); gap: 12px; align-items: end; }
         .amount-input { min-width: 0; font-size: 18px; font-weight: 600; font-family: var(--font-data); text-align: center; }
         .currency-select { width: 100%; min-width: 170px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; outline: none; }
-        .btn-submit { width: 100%; padding: 16px; background: var(--primary); border: none; border-radius: var(--radius-card); font-size: 16px; font-weight: 600; color: var(--primary-foreground); cursor: pointer; font-family: var(--font-ui); transition: background var(--duration), transform var(--duration); margin-top: 24px; }
+        .btn-submit { width: 100%; padding: 16px; background: var(--primary); border: none; border-radius: var(--radius-card); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 600; color: var(--primary-foreground); cursor: pointer; font-family: var(--font-ui); transition: background var(--duration), transform var(--duration); margin-top: 24px; }
         .btn-submit:hover { background: var(--primary-hover); transform: translateY(-1px); }
         .btn-submit:focus-visible,
         .btn-cancel:focus-visible,
@@ -147,7 +147,7 @@ export default function AddExpensePage() {
         .necessity-btn:focus-visible,
         .back-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
         .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-cancel { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: 14px; font-weight: 600; color: var(--foreground-secondary); cursor: pointer; font-family: var(--font-ui); transition: background var(--duration), border-color var(--duration); margin-top: 12px; }
+        .btn-cancel { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-control); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 600; color: var(--foreground-secondary); cursor: pointer; font-family: var(--font-ui); transition: background var(--duration), border-color var(--duration); margin-top: 12px; }
         .btn-cancel:hover { background: var(--control-hover); border-color: var(--border-strong); }
         .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .category-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 8px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); cursor: pointer; transition: background var(--duration), border-color var(--duration); }
@@ -158,16 +158,16 @@ export default function AddExpensePage() {
         .necessity-btn:hover { background: var(--surface-hover); }
         .necessity-btn.selected { background: var(--surface-active); box-shadow: var(--active-indicator-shadow); }
         .category-icon { font-size: 24px; }
-        .category-label { font-size: 12px; font-weight: 500; color: var(--foreground-secondary); text-align: center; }
+        .category-label { font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 500; color: var(--foreground-secondary); text-align: center; }
         .success-overlay { position: fixed; inset: 0; background: var(--background-overlay); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeUp .3s ease; }
         .success-card { background: var(--surface-elevated); border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: var(--shadow-popover); padding: 40px; text-align: center; max-width: 320px; margin: 20px; }
         .success-icon { width: 80px; height: 80px; background: var(--success); color: var(--primary-foreground); border-radius: var(--radius-pill); display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; }
-        .success-title { font-size: 20px; font-weight: 600; color: var(--foreground); margin-bottom: 8px; }
+        .success-title { font-size: var(--fs-card-title);line-height:var(--lh-card-title); font-weight: 600; color: var(--foreground); margin-bottom: 8px; }
         .success-msg { font-size: 14px; color: var(--foreground-secondary); }
         .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
         .back-btn { width: 44px; height: var(--control-h); background: var(--control-background); color: var(--foreground); border: 1px solid var(--border); border-radius: var(--radius-control); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; transition: background var(--duration), border-color var(--duration); }
         .back-btn:hover { background: var(--control-hover); }
-        .header-title { font-size: 20px; font-weight: 600; color: var(--foreground); }
+        .header-title { font-size: var(--fs-card-title);line-height:var(--lh-card-title); font-weight: 600; color: var(--foreground); }
         @media (max-width: 640px) {
           .page-container { padding: 16px; }
           .form-card { padding: 22px; }
@@ -230,7 +230,7 @@ export default function AddExpensePage() {
                       style={{ borderColor: necessity === item.id ? item.color : 'var(--border)' }}
                     >
                       <div style={{ fontWeight: 700, color: item.color }}>{isAr ? item.ar : isFr ? item.fr : item.en}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
+                      <div style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)', marginTop: '4px' }}>{isAr ? item.hintAr : isFr ? item.hintFr : item.hintEn}</div>
                     </button>
                   ))}
                 </div>

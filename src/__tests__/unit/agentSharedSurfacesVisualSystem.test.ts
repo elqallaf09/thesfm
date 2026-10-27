@@ -63,7 +63,7 @@ describe('agent and shared market surfaces visual-system contract', () => {
     expect(sources.ai).toContain('font-family:var(--font-data)');
     expect(sources.portfolioComparison).toContain('font-family:var(--font-data)');
     expect(sources.assetProfile).toContain('font-family:var(--font-data)');
-    expect(sources.accountCompletion).toContain('font-family: var(--font-data)');
+    expect(sources.accountCompletion).toContain('font-family: var(--font-mono)');
   });
 
   it('leaves width and sidebar geometry to the shared workspace shell', () => {

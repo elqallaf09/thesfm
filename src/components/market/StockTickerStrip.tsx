@@ -242,18 +242,18 @@ export function StockTickerStrip({
 
               .sfm-stock-ticker-title strong {
                 color: var(--foreground);
-                font-size: 13px;
+                font-size: var(--fs-caption, 12px);
                 font-weight: 600;
                 font-family: var(--font-data);
-                line-height: 1.15;
+                line-height: var(--lh-caption, 18px);
               }
 
               .sfm-stock-ticker-title span,
               .sfm-stock-ticker-foot small {
                 color: var(--foreground-muted);
-                font-size: var(--type-caption-size);
+                font-size: var(--fs-caption, 12px);
                 font-weight: 400;
-                line-height: 1.35;
+                line-height: var(--lh-caption, 18px);
                 overflow-wrap: anywhere;
               }
 
@@ -268,10 +268,10 @@ export function StockTickerStrip({
               .sfm-stock-ticker-values b {
                 min-width: 0;
                 color: var(--foreground);
-                font-size: 13px;
+                font-size: var(--fs-caption, 12px);
                 font-weight: 600;
                 font-family: var(--font-data);
-                line-height: 1.2;
+                line-height: var(--lh-caption, 18px);
                 overflow-wrap: anywhere;
               }
 
@@ -282,11 +282,11 @@ export function StockTickerStrip({
                 gap: 4px;
                 border-radius: var(--radius-pill);
                 padding: 4px 7px;
-                font-size: 12px;
+                font-size: var(--fs-caption, 12px);
                 font-style: normal;
                 font-weight: 600;
                 font-family: var(--font-data);
-                line-height: 1;
+                line-height: var(--lh-caption, 18px);
                 white-space: nowrap;
               }
 
@@ -326,8 +326,8 @@ export function StockTickerStrip({
                 border-radius: var(--radius-card);
                 background: var(--surface-muted);
                 color: var(--foreground-muted);
-                font-size: 13px;
-                font-weight: 500;
+                font-size: var(--fs-small, 14px);
+                font-weight: 500;line-height:var(--lh-small, 22px);
               }
 
               @media (max-width: 430px) {

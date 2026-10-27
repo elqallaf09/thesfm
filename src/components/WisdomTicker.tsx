@@ -108,12 +108,12 @@ export function WisdomTicker({ language, onLanguageChange, showLanguageSelector 
         .wisdom-layout{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;font-family:var(--font-ui);color:var(--foreground)}
         .wisdom-panel{order:2;min-width:0;min-height:44px;flex:1;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface-muted);padding:8px 12px}
         .wisdom-panel:focus-within{border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
-        .wisdom-ticker{display:flex;align-items:center;gap:24px;width:max-content;white-space:nowrap;font-size:12px;animation:wisdom-scroll-ltr 120s linear infinite}
+        .wisdom-ticker{display:flex;align-items:center;gap:24px;width:max-content;white-space:nowrap;font-size:var(--fs-caption, 12px);animation:wisdom-scroll-ltr 120s linear infinite;line-height:var(--lh-caption, 18px);}
         .wisdom-layout[dir="rtl"] .wisdom-ticker{animation-name:wisdom-scroll-rtl}
         .wisdom-ticker:hover,.wisdom-ticker:focus-within{animation-play-state:paused}
         .wisdom-item{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;color:var(--foreground-secondary)}
-        .wisdom-mark{color:var(--accent);font-size:12px}
-        .wisdom-title{color:var(--foreground-muted);font-size:12px;font-style:italic}
+        .wisdom-mark{color:var(--accent);font-size:var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);}
+        .wisdom-title{color:var(--foreground-muted);font-size:var(--fs-caption, 12px);font-style:italic;line-height:var(--lh-caption, 18px);}
         .wisdom-copy{font-weight:500}
         .wisdom-separator{margin:0 8px;color:var(--border-strong)}
         .wisdom-language{order:1;flex:0 0 auto}

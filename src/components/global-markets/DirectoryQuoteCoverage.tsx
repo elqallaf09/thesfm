@@ -28,7 +28,7 @@ export function DirectoryQuoteCoverage({ rows, prices, lang, failed, loading }: 
       {oldest ? <p>{copy.oldest}: <time dateTime={oldest.toISOString()}>{new Intl.DateTimeFormat(`${lang}-u-nu-latn`, { dateStyle: 'medium', timeStyle: 'short' }).format(oldest)}</time></p> : null}
     </details>
     <style jsx>{`
-      .directory-quote-coverage { min-width: 0; min-height: 98px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-card); color: var(--foreground-secondary); background: var(--surface); font-size: 13px; line-height: 1.7; }
+      .directory-quote-coverage { min-width: 0; min-height: 98px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-card); color: var(--foreground-secondary); background: var(--surface); font-size: var(--fs-label, 13px); line-height: var(--lh-label, 20px); }
       p { margin: 2px 0; }
       summary { cursor: pointer; min-height: 44px; align-content: center; }
       summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }

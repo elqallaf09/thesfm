@@ -127,10 +127,10 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
 
         .sfm-global-brand strong {
           color: var(--header-dock-text);
-          font-size: 14px;
+          font-size: var(--fs-small, 14px);
           font-weight: 600;
           letter-spacing: 0.03em;
-          line-height: 1.35;
+          line-height: var(--lh-small, 22px);
           white-space: nowrap;
         }
 
@@ -138,9 +138,9 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           max-width: 170px;
           overflow: hidden;
           color: var(--header-dock-text-subtle);
-          font-size: var(--type-caption-size);
+          font-size: var(--fs-caption, 12px);
           font-weight: 400;
-          line-height: var(--type-caption-leading);
+          line-height: var(--lh-caption, 18px);
           text-overflow: ellipsis;
           white-space: nowrap;
         }
@@ -363,7 +363,7 @@ function GlobalHeaderDock({ dir, children }: GlobalHeaderDockProps) {
           }
 
           .sfm-global-brand strong {
-            font-size: 13px;
+            font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
           }
         }
       `}</style>
