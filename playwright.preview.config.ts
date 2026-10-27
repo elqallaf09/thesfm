@@ -8,6 +8,10 @@ export default defineConfig(baseConfig, {
   reporter: 'list',
   use: {
     storageState: previewProtectionStatePath,
+    // Remote HTTPS enables the PWA worker (loopback CI does not). Keep the
+    // browser route fixtures observable instead of letting the worker bypass
+    // Playwright interception. Real account/API requests remain live.
+    serviceWorkers: 'block',
     trace: 'off',
     screenshot: 'off',
     video: 'off',
