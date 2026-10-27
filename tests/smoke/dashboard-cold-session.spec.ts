@@ -60,11 +60,12 @@ test('a cold dashboard restores its persisted session before shared owner reads'
   const initialScripts = new Set([...html.matchAll(/(?:src|href)="([^"]+\.js(?:\?[^"]*)?)"/g)]
     .map(match => new URL(match[1], page.url()).pathname));
   await expect(page).toHaveURL(url => url.pathname === '/dashboard');
-  await expect(page.locator('[data-dashboard-executive="true"]')).toBeVisible();
+  const dashboard = page.locator('[data-dashboard-executive="true"]');
+  await expect(dashboard).toBeVisible();
   await expect.poll(() => successfulReads.size, { message: 'All six owner-scoped dashboard reads should succeed.' }).toBe(ownerTables.length);
   // The timestamp is committed after profile + all six queries settle, unlike
   // the executive container, which can appear after the first source responds.
-  await expect(page.getByText(/^(Last updated|آخر تحديث|Dernière mise à jour):/)).toBeVisible();
+  await expect(dashboard.getByText(/^(Last updated|آخر تحديث|Dernière mise à jour):/)).toBeVisible();
   const measurements = await page.evaluate(() => {
     const scripts = performance.getEntriesByType('resource').filter((entry): entry is PerformanceResourceTiming => {
       const url = new URL(entry.name);
@@ -92,7 +93,7 @@ test('a cold dashboard restores its persisted session before shared owner reads'
   expect(prematureOwnerReads, 'Owner data must wait for server session verification.').toBe(0);
   expect(ownerTables.map(table => reads.get(table))).toEqual(ownerTables.map(() => 1));
   successfulReads.clear();
-  await page.getByRole('button', { name: /^(Refresh data|تحديث البيانات|Actualiser les données)$/ }).click();
+  await dashboard.getByRole('button', { name: /^(Refresh data|تحديث البيانات|Actualiser les données)$/ }).click();
   await expect.poll(() => successfulReads.size, { message: 'Refreshing should complete fresh shared owner reads.' }).toBe(ownerTables.length);
   expect(ownerTables.map(table => reads.get(table))).toEqual(ownerTables.map(() => 2));
   expect(sdkScripts.size, 'The real browser SDK should load during persisted-session restore.').toBeGreaterThan(0);
