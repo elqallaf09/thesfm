@@ -245,6 +245,26 @@ describe('triggerScan retry behavior', () => {
     // 1 initial attempt + SCANNER_MAX_RETRIES(2) retries = 3 total
     expect(fetchYahooNormalizedQuote).toHaveBeenCalledTimes(3);
   });
+
+  it('isolates a timed-out provider request to its symbol and continues the scan', async () => {
+    getUsStockUniverse.mockReturnValue([asset('TIMEOUT'), asset('GOOD')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockImplementation(async (options: { requestedSymbol: string }) => {
+      if (options.requestedSymbol === 'TIMEOUT') {
+        throw new Error('The operation was aborted due to timeout');
+      }
+      return { available: true, price: 50, change: 1, changePercent: 1, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true };
+    });
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    const { results, run } = await triggerScan({ market: 'US' }, { force: true });
+
+    expect(run.status).toBe('completed');
+    expect(run.succeeded).toBe(1);
+    expect(run.failed).toBe(1);
+    expect(results.map((result) => result.symbol)).toEqual(['GOOD']);
+    expect(releaseScanLock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('triggerScan cursor persistence and resumability', () => {
