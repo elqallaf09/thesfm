@@ -214,6 +214,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       unsubscribe = () => subscription.unsubscribe();
+    }).catch(error => {
+      // A cold SDK chunk can fail before getSession starts. Settle the same
+      // signed-out fallback as a failed restore, never leave auth loading.
+      if (mounted) {
+        const guestMode = getStoredGuestMode();
+        commitInitialAuthState(null, guestMode);
+        syncGuestCookie(guestMode);
+      }
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[auth] failed to load browser client', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
     });
 
     return () => {

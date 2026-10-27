@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import type {
   SmartNotification,
   SmartNotificationSeverity,
@@ -120,9 +120,9 @@ function sortEvents(events: SmartNotification[]) {
 }
 
 async function fetchNotificationEvents(userId: string, lang: 'ar' | 'en' | 'fr') {
-  const db = supabase as any;
   const storedFields = 'id,type,title,message,read,link,created_at,severity,source_module,source_id,action_url,status,due_date,read_at,metadata';
   const storedPromise = (async () => {
+    const db = await loadSupabaseClient() as any;
     let result = await db.from('notifications').select(storedFields).eq('user_id', userId).order('created_at', { ascending: false });
     if (result.error) {
       result = await db.from('notifications').select('id,type,title,message,read,link,created_at').eq('user_id', userId).order('created_at', { ascending: false });

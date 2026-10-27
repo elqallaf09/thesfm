@@ -72,7 +72,7 @@ on:
 
 permissions:
   contents: read
-  deployments: read
+  deployments: write
   checks: read
   pull-requests: read
 
@@ -584,9 +584,11 @@ jobs:
 
   vercel-evidence:
     name: Vercel Preview deployment evidence
-    needs: [resolve-target, validate-required-secrets]
+    # Wait for the optional deployment creators before starting the readiness clock.
+    needs: [resolve-target, validate-required-secrets, rollout, authenticated-preview]
+    if: always() && !cancelled() && needs.resolve-target.result == 'success' && needs.validate-required-secrets.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     environment: Preview
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

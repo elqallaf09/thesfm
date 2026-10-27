@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from './DashboardDataProvider';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useCurrency } from '@/lib/useCurrency';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { loadUserDataTables } from '@/lib/data/financeData';
 import { summarizeGoal } from '@/lib/dashboard/executiveOverview';
 import { formatCurrency, formatPercent } from '@/lib/locale';
@@ -159,7 +159,7 @@ export function FinanceDashboardIntelligence() {
     void (async () => {
       const result = await (dashboardData
           ? dashboardData.loadTables(ECONOMIC_INTELLIGENCE_TABLES)
-          : loadUserDataTables(supabase, user.id, ECONOMIC_INTELLIGENCE_TABLES));
+          : loadUserDataTables(await loadSupabaseClient(), user.id, ECONOMIC_INTELLIGENCE_TABLES));
       if (cancelled) return;
       const records = result.records as Record<string, any[]>;
       const snapshot = buildFinancialTwinSnapshot(financialTwinSourceFromRecords(records, result.errors), currency || 'KWD');

@@ -2,11 +2,14 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { createDashboardDataSource, type DashboardQueryClient } from '@/lib/dashboard/sharedDataSource';
 
 type DashboardData = ReturnType<typeof createDashboardDataSource> & { refresh: () => void };
 const DashboardDataContext = createContext<DashboardData | null>(null);
+// Keep the generated SDK schema narrow at the dynamic-table query boundary.
+const loadDashboardClient = async (): Promise<DashboardQueryClient> =>
+  await loadSupabaseClient() as unknown as DashboardQueryClient;
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -14,8 +17,8 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const value = useMemo(() => ({
-    // Narrow the generated Supabase schema at this dynamic-table boundary.
-    ...createDashboardDataSource(supabase as unknown as DashboardQueryClient, userId),
+    // Auth resolves the same singleton before any owner-scoped read starts.
+    ...createDashboardDataSource(loadDashboardClient, userId),
     refresh,
     // Refresh replaces the entire scope; old responses cannot repopulate it.
     revision,

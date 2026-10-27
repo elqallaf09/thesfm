@@ -33,8 +33,9 @@ import { ProjectSelector } from '@/components/projects/ProjectSelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useUrlTabState } from '@/hooks/useUrlTabState';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { formatMoney } from '@/lib/formatMoney';
+import { loadBusinessHubModules, loadBusinessHubProjects } from './_data';
 
 
 // --- Extracted to _lib.ts ---
@@ -112,7 +113,7 @@ export default function BusinessHubPage() {
   const [savingFundingProgram, setSavingFundingProgram] = useState(false);
   const [fundingImportMessage, setFundingImportMessage] = useState('');
 
-  const loadProjects = useCallback(async () => {
+  const loadProjects = useCallback(async (signal: AbortSignal) => {
     if (!user) {
       setProjects([]);
       setLoadingProjects(false);
@@ -120,12 +121,8 @@ export default function BusinessHubPage() {
     }
     setLoadingProjects(true);
     setLoadError('');
-    const db = supabase as any;
-    const { data, error } = await db
-      .from('projects')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const { data, error } = await loadBusinessHubProjects(user.id, signal);
+    if (signal.aborted) return;
     if (error) {
       setLoadError(text.loadError);
       setProjects([]);
@@ -140,8 +137,12 @@ export default function BusinessHubPage() {
   }, [text.loadError, user]);
 
   useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
+    const controller = new AbortController();
+    void loadProjects(controller.signal).catch(() => {
+      if (!controller.signal.aborted) { setProjects([]); setLoadError(text.loadError); setLoadingProjects(false); }
+    });
+    return () => controller.abort();
+  }, [loadProjects, text.loadError]);
 
   useEffect(() => {
     setDocumentDraft(null);
@@ -155,31 +156,15 @@ export default function BusinessHubPage() {
         return;
       }
       setLoadingModules(true);
-      const userId = user.id;
-      const db = supabase as any;
-      async function rows(table: string) {
-        const { data, error } = await db
-          .from(table)
-          .select('*')
-          .eq('user_id', userId)
-          .eq('project_id', selectedProjectId)
-          .limit(500);
-        return error ? [] : (data ?? []);
-      }
-      const [feasibility, financialModels, tasks, milestones, documents, pitchDecks] = await Promise.all([
-        rows('project_feasibility_studies'),
-        rows('project_financial_models'),
-        rows('project_tasks'),
-        rows('project_milestones'),
-        rows('project_documents'),
-        rows('project_pitch_decks'),
-      ]);
+      const modules = await loadBusinessHubModules(user.id, selectedProjectId);
       if (!cancelled) {
-        setModules({ feasibility, financialModels, tasks, milestones, documents, pitchDecks });
+        setModules(modules);
         setLoadingModules(false);
       }
     }
-    loadModules();
+    void loadModules().catch(() => {
+      if (!cancelled) { setModules(EMPTY_MODULES); setLoadingModules(false); }
+    });
     return () => {
       cancelled = true;
     };
@@ -200,7 +185,8 @@ export default function BusinessHubPage() {
         setFundingForm(emptyFundingForm(selectedCurrency));
         return;
       }
-      const db = supabase as any;
+      const db = await loadSupabaseClient() as any;
+      if (cancelled) return;
       const { data, error } = await db
         .from('project_funding_readiness')
         .select('*')
@@ -217,7 +203,9 @@ export default function BusinessHubPage() {
       setFundingRecord(row);
       setFundingForm(fundingRowToForm(row, selectedCurrency));
     }
-    loadFundingReadiness();
+    void loadFundingReadiness().catch(() => {
+      if (!cancelled) { setFundingRecord(null); setFundingForm(emptyFundingForm(selectedCurrency)); }
+    });
     return () => {
       cancelled = true;
     };
@@ -226,7 +214,8 @@ export default function BusinessHubPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadFundingPrograms() {
-      const db = supabase as any;
+      const db = await loadSupabaseClient() as any;
+      if (cancelled) return;
       const { data, error } = await db
         .from('funding_programs')
         .select('*')
@@ -242,7 +231,9 @@ export default function BusinessHubPage() {
         setFundingDirectoryMessage('');
       }
     }
-    loadFundingPrograms();
+    void loadFundingPrograms().catch(() => {
+      if (!cancelled) { setFundingPrograms([]); setFundingDirectoryMessage(text.loadError); }
+    });
     return () => {
       cancelled = true;
     };
@@ -255,7 +246,8 @@ export default function BusinessHubPage() {
         setFundingShortlist([]);
         return;
       }
-      const db = supabase as any;
+      const db = await loadSupabaseClient() as any;
+      if (cancelled) return;
       const { data, error } = await db
         .from('project_funding_shortlist')
         .select('*')
@@ -265,7 +257,7 @@ export default function BusinessHubPage() {
       if (cancelled) return;
       setFundingShortlist(error ? [] : ((data ?? []) as FundingShortlistRow[]));
     }
-    loadFundingShortlist();
+    void loadFundingShortlist().catch(() => { if (!cancelled) setFundingShortlist([]); });
     return () => {
       cancelled = true;
     };
@@ -281,7 +273,8 @@ export default function BusinessHubPage() {
         setWizardStep(0);
         return;
       }
-      const db = supabase as any;
+      const db = await loadSupabaseClient() as any;
+      if (cancelled) return;
       const { data, error } = await db
         .from('project_jurisdiction_assessments')
         .select('*')
@@ -299,7 +292,9 @@ export default function BusinessHubPage() {
       setWizard(row?.inputs ? normalizeWizard(row.inputs) : initialWizard);
       setWizardStep(0);
     }
-    loadJurisdictionAssessment();
+    void loadJurisdictionAssessment().catch(() => {
+      if (!cancelled) { setJurisdictionAssessment(null); setWizard(initialWizard); setWizardStep(0); }
+    });
     return () => {
       cancelled = true;
     };
@@ -511,7 +506,7 @@ export default function BusinessHubPage() {
       notes: fundingForm.notes.trim() || null,
       updated_at: new Date().toISOString(),
     };
-    const db = supabase as any;
+    const db = await loadSupabaseClient() as any;
     const { data, error } = await db
       .from('project_funding_readiness')
       .upsert(payload, { onConflict: 'user_id,project_id' })
@@ -547,7 +542,7 @@ export default function BusinessHubPage() {
       status: 'generated',
       updated_at: new Date().toISOString(),
     };
-    const db = supabase as any;
+    const db = await loadSupabaseClient() as any;
     const { data, error } = await db
       .from('project_jurisdiction_assessments')
       .upsert(payload, { onConflict: 'user_id,project_id' })
@@ -568,6 +563,7 @@ export default function BusinessHubPage() {
     setSavingFundingProgram(true);
     setFundingImportMessage('');
     try {
+      const supabase = await loadSupabaseClient();
       const { data: sessionData } = await supabase.auth.getSession();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (sessionData.session?.access_token) {
@@ -619,7 +615,7 @@ export default function BusinessHubPage() {
       status: 'saved',
       updated_at: new Date().toISOString(),
     };
-    const db = supabase as any;
+    const db = await loadSupabaseClient() as any;
     const { data, error } = await db
       .from('project_funding_shortlist')
       .upsert(payload, { onConflict: 'user_id,project_id,funding_program_id' })
@@ -637,7 +633,7 @@ export default function BusinessHubPage() {
 
   const updateShortlistStatus = async (row: FundingShortlistRow, status: string) => {
     setShortlistSavingId(row.funding_program_id || row.id);
-    const db = supabase as any;
+    const db = await loadSupabaseClient() as any;
     const { data, error } = await db
       .from('project_funding_shortlist')
       .update({ status, updated_at: new Date().toISOString() })
@@ -656,7 +652,7 @@ export default function BusinessHubPage() {
 
   const removeShortlistItem = async (row: FundingShortlistRow) => {
     setShortlistSavingId(row.funding_program_id || row.id);
-    const db = supabase as any;
+    const db = await loadSupabaseClient() as any;
     const { error } = await db
       .from('project_funding_shortlist')
       .delete()

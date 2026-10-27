@@ -2,7 +2,6 @@
 // Pure functions - no React hooks
 
 
-import { supabase } from '@/integrations/supabase/client';
 import type { Investment, InvestmentInput, InvestmentType, RiskLevel } from '@/types/investment';
 import type { InvestmentPlatformStatus, InvestmentPlatformType } from '@/types/investmentPlatform';
 import { firstMoneyValue, parseMoneyValue } from '@/lib/money';
@@ -336,13 +335,13 @@ export function coreSavePayload(payload: Record<string, unknown>) {
   return pickPayload(payload, CORE_SAVE_KEYS);
 }
 
-type InvestmentMutationAttempt = {
+export type InvestmentMutationAttempt = {
   label: string;
   payload: Record<string, unknown>;
   source?: InvestmentWriteSource;
 };
 
-type InvestmentMutationResult = {
+export type InvestmentMutationResult = {
   data: unknown | null;
   error: {
     message?: string;
@@ -356,7 +355,7 @@ export function mutationErrorMessage(result: InvestmentMutationResult | null) {
   return result?.error?.message || 'Could not save investment';
 }
 
-function logInvestmentWriteOperation(input: {
+export function logInvestmentWriteOperation(input: {
   operation: 'insert' | 'update' | 'upsert';
   source: InvestmentWriteSource;
   id?: string;
@@ -380,86 +379,6 @@ export function buildSnapshotFallbackPayload(data: InvestmentInput, userId?: str
     notes: data.notes ?? null,
     ai_analysis: investmentSnapshotText(data),
   };
-}
-
-export async function insertInvestmentWithAttempts(attempts: InvestmentMutationAttempt[]) {
-  let last: InvestmentMutationResult | null = null;
-
-  for (const attempt of attempts) {
-    logInvestmentWriteOperation({
-      operation: 'insert',
-      source: attempt.source ?? 'add_form',
-      payload: attempt.payload,
-    });
-    const result = await supabase
-      .from('investment_items')
-      .insert(attempt.payload)
-      .select('*')
-      .single() as unknown as InvestmentMutationResult;
-
-    if (!result.error && result.data) {
-      debugInvestments('saved investment row', {
-        attempt: attempt.label,
-        keys: Object.keys(attempt.payload),
-      });
-      return result.data;
-    }
-
-    last = result;
-    debugInvestments('investment insert attempt failed', {
-      attempt: attempt.label,
-      message: result.error?.message,
-      code: result.error?.code,
-      details: result.error?.details,
-      hint: result.error?.hint,
-      keys: Object.keys(attempt.payload),
-    });
-  }
-
-  throw new Error(mutationErrorMessage(last));
-}
-
-export async function updateInvestmentWithAttempts(id: string, userId: string, attempts: InvestmentMutationAttempt[]) {
-  let last: InvestmentMutationResult | null = null;
-
-  for (const attempt of attempts) {
-    if (Object.keys(attempt.payload).length === 0) continue;
-    logInvestmentWriteOperation({
-      operation: 'update',
-      source: attempt.source ?? 'edit_form',
-      id,
-      payload: attempt.payload,
-    });
-    const result = await supabase
-      .from('investment_items')
-      .update(attempt.payload)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select('*')
-      .single() as unknown as InvestmentMutationResult;
-
-    if (!result.error && result.data) {
-      debugInvestments('saved investment row', {
-        attempt: attempt.label,
-        id,
-        keys: Object.keys(attempt.payload),
-      });
-      return result.data;
-    }
-
-    last = result;
-    debugInvestments('investment update attempt failed', {
-      attempt: attempt.label,
-      id,
-      message: result.error?.message,
-      code: result.error?.code,
-      details: result.error?.details,
-      hint: result.error?.hint,
-      keys: Object.keys(attempt.payload),
-    });
-  }
-
-  throw new Error(mutationErrorMessage(last));
 }
 
 export function normalizeInvestmentForSave(data: InvestmentInput) {

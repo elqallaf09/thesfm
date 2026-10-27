@@ -99,4 +99,44 @@ describe('dashboard owner-scoped shared reads', () => {
     await expect(scope.loadTable('debts')).resolves.toHaveProperty('error', null);
     expect(f.from).toHaveBeenCalledTimes(2);
   });
+
+  it('does not load the deferred client for anonymous or invalid reads', async () => {
+    const loadClient = vi.fn().mockResolvedValue(fixture().db);
+    await expect(createDashboardDataSource(loadClient, null).loadTable('debts')).rejects.toThrow('UNAUTHENTICATED');
+    const scope = createDashboardDataSource(loadClient, 'owner-a');
+    await expect(scope.loadTable('debts', 0)).rejects.toThrow('INVALID_QUERY_LIMIT');
+    await scope.loadTables([{ key: 'debts', table: 'debts', userScoped: false }]);
+    expect(loadClient).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates pending client loads without mixing captured owners', async () => {
+    const f = fixture();
+    let finishLoad!: (db: typeof f.db) => void;
+    const client = new Promise<typeof f.db>(resolve => { finishLoad = resolve; });
+    const loadClient = vi.fn(() => client);
+    const ownerA = createDashboardDataSource(loadClient, 'owner-a');
+    const first = ownerA.loadTable('debts');
+    const shared = ownerA.loadTable('debts');
+    const ownerB = createDashboardDataSource(loadClient, 'owner-b').loadTable('debts');
+    expect(shared).toBe(first);
+    await Promise.resolve();
+    expect(f.from).not.toHaveBeenCalled();
+    finishLoad(f.db);
+    await Promise.all([first, shared, ownerB]);
+    expect(loadClient).toHaveBeenCalledTimes(2);
+    expect(f.eq.mock.calls).toEqual([['user_id', 'owner-a'], ['user_id', 'owner-b']]);
+  });
+
+  it('surfaces deferred-client failure and permits a later scoped retry', async () => {
+    const f = fixture();
+    const loadClient = vi.fn().mockRejectedValueOnce(new Error('client unavailable')).mockResolvedValue(f.db);
+    const scope = createDashboardDataSource(loadClient, 'owner-a');
+    const failed = await scope.loadTables([...tables]);
+    expect(failed.errors.income).toBe('client unavailable');
+    expect(f.from).not.toHaveBeenCalled();
+    const retried = await scope.loadTables([...tables]);
+    expect(retried.errors).toEqual({});
+    expect(f.eq).toHaveBeenCalledWith('user_id', 'owner-a');
+    expect(f.from).toHaveBeenCalledTimes(1);
+  });
 });
