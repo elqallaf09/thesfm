@@ -48,6 +48,7 @@ jobs:
       E2E_EXPECTED_DEPLOYMENT_SHA: ${{ inputs.target_sha }}
       INPUT_PREVIEW_REF: ${{ inputs.preview_ref }}
       PLAYWRIGHT_NO_COPY_PROMPT: "1"
+      SFM_PREVIEW_MOBILE_QA: "1"
     steps:
       - name: Validate fail-closed target and required capabilities
         shell: bash
