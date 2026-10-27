@@ -5,6 +5,7 @@ import { hasTvPrice } from '@/lib/markets-tv/coverage';
 import type { TvGroup, TvSnapshot, TvScene } from '@/lib/markets-tv/types';
 import { TV_SCENE_GROUP, tvSceneAssets } from './sceneCatalog';
 import { resolveTvQuotes } from './quoteLoader';
+import { tvWatchlistAssets } from './watchlistAssets';
 export type TvSnapshotOptions = { page?: number; pageSize?: number; market?: string; symbols?: string[]; scene?: TvScene };
 
 async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: TvSnapshotOptions): Promise<TvSnapshot> {
@@ -17,7 +18,7 @@ async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: Tv
       total: quotes.length, available: quotes.filter(hasTvPrice).length, selectionTotal: combined.length };
   }
   const directory: TvAsset[] = group === 'watchlist'
-    ? [...new Set(ownedSymbols)].slice(0, 50).map(symbol => ({ symbol, name: symbol }))
+    ? tvWatchlistAssets(ownedSymbols)
     : await tvDirectoryAssets(group, options.market);
   const bySymbol = new Map(directory.map(asset => [asset.symbol, asset]));
   const selected = options.symbols ? [...new Set(options.symbols)].flatMap(symbol => bySymbol.has(symbol) ? [bySymbol.get(symbol)!] : []) : directory;

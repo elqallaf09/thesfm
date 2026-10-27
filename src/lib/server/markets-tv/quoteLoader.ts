@@ -28,7 +28,9 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
     const compact = (symbol: string) => symbol.split(':').at(-1)!.replace(/=X$/, '').replace(/[-/_]/g, '');
     // In particular, BTC/USD and BTC/USDT are different denominations.
     if (compact(requested) !== compact(supplied)) return false;
-    if (asset.assetType === 'forex' && row.currency !== compact(requested).slice(-3)) return false;
+    const quoteCurrency = asset.assetType === 'forex' ? compact(requested).slice(-3)
+      : compact(requested).match(/(USDT|USD)$/)?.[0];
+    if (quoteCurrency && row.currency !== quoteCurrency) return false;
   }
   if (/\.(KW|DU|AD|AE|QA|SR|SA|OM|BH|T|SS|SZ|HK|AS|DE|SW|PA|L|CO|NS|KS)$/.test(requested)) {
     // Market-specific Twelve Data responses use the stricter MIC path below.

@@ -65,7 +65,7 @@ export function parseCryptoQuotes(payload: unknown, assets: TvAsset[], now = Dat
 export async function cryptoTvQuotes(assets: TvAsset[]): Promise<TvQuote[]> {
   if (!assets.length) return [];
   try {
-    const symbols = JSON.stringify(assets.map(a => a.providerSymbol));
+    const symbols = JSON.stringify([...new Set(assets.map(a => a.providerSymbol))]);
     const response = await fetch(`${BINANCE}/ticker/24hr?${new URLSearchParams({ symbols })}`, { next: { revalidate: 10 }, signal: AbortSignal.timeout(8000) });
     if (!response.ok) return assets.map(asset => emptyInstrument(asset, response.status === 429 ? 'rate_limited' : [401, 403].includes(response.status) ? 'access_denied' : 'provider_unavailable'));
     return parseCryptoQuotes(await response.json(), assets);

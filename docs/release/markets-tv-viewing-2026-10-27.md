@@ -31,6 +31,12 @@ does not imply that every configured provider can return a price for it.
   A spot-metal alias cannot replace a futures contract, and USD and USDT pairs
   are distinct. Metadata-free watchlist failures can retain a quote only when
   one prior identity is unambiguous and no supplied field contradicts it.
+- Owned watchlists recognize explicit USDT pairs whose base is present in the
+  local crypto registry. Both slash and compact forms retain the saved symbol
+  and use the Binance batch with USDT units; duplicate provider symbols are
+  fetched once. Unknown or bare symbols retain the existing resolver, with
+  denomination checks on crypto results and no USD substitute for a failed
+  USDT quote.
 - Provider failures expose bounded reason codes, never provider credentials or
   raw responses. The shared World Stocks adapter marks retained failures
   unavailable for its older consumers, while TV can label the retained value.
@@ -95,10 +101,31 @@ The local full rebuild of this adjustment was terminated by shared-worker
 memory pressure (exit 137); the exact final revision must pass the isolated CI
 production build and browser gates before merging.
 
+A subsequent focused watchlist correction covers owned-symbol loading, both
+USDT symbol forms, scene and paged snapshots, batch deduplication, and provider
+failure without a USD fallback. Its final revision also requires the full CI
+gates; the initial validation counts above are not claimed for later revisions.
+
 Run the repository release gates and `pnpm build:tv` before merging. CI must
 validate the exact PR head; production verification must identify the merged
 commit and its ready Vercel deployment. This change does not alter database
 schemas, provider subscriptions, billing, or the Trader protected boundary.
+
+## Deployment observation
+
+PR #316 records the final candidate SHA, required-check results, merge SHA and
+READY deployment identity. The existing main-branch deployment applies to all
+production visitors; this change does not create a separate canary audience.
+The release operator observes the changed public routes for five minutes after
+deployment, checks their real snapshots and layouts, and checks filtered runtime
+errors. Changed-route 5xx, broken authorization, private-data disclosure or a
+critical viewing failure requires reverting to the immediately preceding READY
+immutable deployment. Its identity is captured again immediately before merging.
+
+This supervised observation is not evidence of continuous RUM, alert delivery,
+or physical-device validation. Those controls are recorded separately as proven
+or unverified in the PR release record; no monitoring control is marked passed
+solely because a build or browser fixture passes.
 
 Provider coverage must be assessed from real source responses after deployment.
 Earlier public production probes returned Binance and some US prices but no

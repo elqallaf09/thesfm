@@ -2,6 +2,7 @@ import 'server-only';
 import { GLOBAL_MARKET_STRIPS, inferStripCurrency } from '@/lib/market/globalMarketStrips';
 import type { TvGroup, TvScene } from '@/lib/markets-tv/types';
 import type { TvAsset } from './catalog';
+import { tvWatchlistAssets } from './watchlistAssets';
 
 /** Reuse configured identities, never prices. Viewing mode does not download
  * the worldwide directory or select arbitrary alphabetical listings. */
@@ -43,7 +44,7 @@ export const TV_SCENE_GROUP: Record<TvScene, TvGroup> = {
 };
 export function tvSceneAssets(scene: TvScene, ownedSymbols: string[] = []): { summary: TvAsset[]; rows: TvAsset[] } {
   if (scene === 'watchlist') {
-    const selected = [...new Set(ownedSymbols)].slice(0, 10).map(symbol => ({ symbol, name: symbol }));
+    const selected = tvWatchlistAssets(ownedSymbols).slice(0, 10);
     return { summary: selected.slice(0, 4), rows: selected.slice(4) };
   }
   if (scene === 'gulf') return { summary: configured('kuwait_boursa', 4),
