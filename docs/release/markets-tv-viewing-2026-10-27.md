@@ -66,7 +66,8 @@ Browser smoke covers 720p, 1080p and 4K containment, mobile overflow, AR/EN/FR,
 source details, focus restoration, short watchlists, and the original browsing
 and strips flows. Row containment is checked separately from page overflow.
 
-Local verification on 2026-10-27 used Node 22.13.0 and pnpm 11.1.3:
+Local verification of the initial feature on 2026-10-27 used Node 22.13.0 and
+pnpm 11.1.3:
 
 | Gate | Result |
 | --- | --- |
@@ -79,11 +80,20 @@ Local verification on 2026-10-27 used Node 22.13.0 and pnpm 11.1.3:
 | Chromium smoke against the production build | 13 passed |
 | Performance budget | Passed, including new TV route budgets |
 
-For both TV routes, the build-manifest measurement including shared layout
-assets is 185,041 bytes of initial JavaScript and 71,605 bytes of initial CSS
+For both TV routes, the initial build-manifest measurement including shared
+layout assets was 185,041 bytes of initial JavaScript and 71,605 bytes of CSS
 after gzip. New ceilings of 205,000 and 80,000 bytes allow roughly 11% headroom
 and make future growth visible in CI. These are transfer-size measurements,
 not observed network latency or real-user Web Vitals.
+
+A subsequent caption-only adjustment establishes a 12px minimum and relative
+line heights. It passed all six layout fixtures: 720p, 1080p and 4K against both
+the existing typography and the parallel shared-font update in PR #315, with
+the actual Cairo and IBM Plex Mono fonts loaded. All six quote rows remained
+inside their bounds. The browser regression test now asserts the caption floor.
+The local full rebuild of this adjustment was terminated by shared-worker
+memory pressure (exit 137); the exact final revision must pass the isolated CI
+production build and browser gates before merging.
 
 Run the repository release gates and `pnpm build:tv` before merging. CI must
 validate the exact PR head; production verification must identify the merged

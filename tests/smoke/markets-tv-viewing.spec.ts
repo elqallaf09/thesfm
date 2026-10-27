@@ -102,6 +102,11 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
       }).map(child => child.className);
     }));
     expect(overflowingRows).toEqual([]);
+    const captionSizes = await page.locator([
+      '.tv-scene-source', '.tv-scene-evidence time', '.tv-scene-change small',
+      '.tv-scene-price small', '.tv-scene-summary-value small', '.tv-viewing-footer',
+    ].join(',')).evaluateAll(elements => elements.map(element => Number.parseFloat(getComputedStyle(element).fontSize)));
+    expect(Math.min(...captionSizes)).toBeGreaterThanOrEqual(12);
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
   const settings = page.locator('[data-tv-focus-key="settings"]');
