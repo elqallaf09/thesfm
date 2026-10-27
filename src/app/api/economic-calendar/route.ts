@@ -1,1 +1,3 @@
-export { dynamic, GET } from '../market/economic-calendar/route';
+export const dynamic = 'force-dynamic';
+
+export { GET } from '../market/economic-calendar/route';

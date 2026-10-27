@@ -1,6 +1,6 @@
 # THE SFM repository guide
 
-THE SFM is a multilingual financial workspace built with Next.js 15, React 19,
+THE SFM is a multilingual financial workspace built with Next.js 16, React 19,
 TypeScript, Tailwind CSS 4, and Supabase. Use pnpm 11.1.3 (the version pinned in
 `package.json`) and Node.js 22.13.0 (the CI version).
 

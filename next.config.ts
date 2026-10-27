@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import fs from "node:fs";
 import path from "node:path";
+import { PerformanceBuildManifestPlugin } from './scripts/performance-build-manifest.mjs';
 
 const ALLOWED_ORIGIN = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL ? "https://www.the-sfm.com" : "*");
 const PROJECT_ROOT = process.cwd();
@@ -234,7 +235,13 @@ const nextConfig: NextConfig = {
     root: PROJECT_ROOT,
   },
   experimental: WINDOWS_BUILD_EXPERIMENTS,
-  webpack(config, { dev }) {
+  // Keep the dev/build scripts on Webpack during the Next 16 migration so the
+  // existing production manifests, performance budgets, and Windows shim agree.
+  webpack(config, { dev, isServer }) {
+    if (!dev && !isServer) {
+      config.plugins ??= [];
+      config.plugins.push(new PerformanceBuildManifestPlugin());
+    }
     if (!dev && ENABLE_WINDOWS_MANIFEST_SHIM) {
       config.cache = false;
       config.plugins ??= [];
@@ -252,9 +259,6 @@ const nextConfig: NextConfig = {
       });
     }
     return config;
-  },
-  eslint: {
-    ignoreDuringBuilds: skipVerifiedBuildChecks,
   },
   typescript: {
     ignoreBuildErrors: skipVerifiedBuildChecks,

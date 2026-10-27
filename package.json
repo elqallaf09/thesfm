@@ -7,9 +7,9 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev",
-    "dev:debug": "NODE_OPTIONS='--inspect' next dev",
-    "build": "node scripts/clean-next-build.mjs && next build",
+    "dev": "next dev --webpack",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev --webpack",
+    "build": "node scripts/clean-next-build.mjs && next build --webpack",
     "start": "next start",
     "check:i18n": "node scripts/check-translations.mjs",
     "check:maintainability": "node scripts/check-source-complexity.mjs",
