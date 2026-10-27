@@ -125,7 +125,7 @@ jobs:
             if (matches.length !== 1) throw new Error('Expected exactly one open same-repository PR at the requested SHA.');
             const { data: pull_request } = await github.rest.pulls.get({ ...context.repo, pull_number: matches[0].number });
             const { ensureReleasePreview } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/ensure-release-preview.mjs`);
-            await ensureReleasePreview({ github, core, context: { ...context, payload: { ...context.payload, pull_request } } });
+            await ensureReleasePreview({ github, core, context: { repo: context.repo, payload: { ...context.payload, pull_request } } });
 
       - uses: pnpm/action-setup@v6
         with:
@@ -141,6 +141,7 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Provision isolated Preview auth fixtures
+        id: fixtures
         run: node tests/smoke/preview-auth-fixtures.mjs provision
 
       - name: Validate authenticated request-to-row observability and isolation
@@ -159,7 +160,7 @@ jobs:
         run: pnpm exec playwright test --config=playwright.preview.config.ts
 
       - name: Cleanup isolated Preview auth fixtures
-        if: always()
+        if: always() && (steps.fixtures.outcome == 'success' || steps.fixtures.outcome == 'failure')
         run: node tests/smoke/preview-auth-fixtures.mjs cleanup
 
       - name: Publish validation summary
