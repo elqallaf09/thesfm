@@ -70,7 +70,9 @@ test('incompatible manifests and malformed assets cannot silently reduce measure
 test('Webpack compilation emits real initial assets and keeps an on-demand chunk out of the route budget', async () => {
   const require = createRequire(import.meta.url);
   const bundledWebpack = require('next/dist/compiled/webpack/webpack');
-  bundledWebpack.init();
+  // Next 15 initializes lazily; Next 16 exposes the compiler immediately.
+  if (typeof bundledWebpack.init === 'function') bundledWebpack.init();
+  assert.equal(typeof bundledWebpack.webpack, 'function');
   const root = await mkdtemp(path.join(tmpdir(), 'sfm-performance-manifest-'));
   let compiler;
   try {
