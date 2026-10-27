@@ -33,7 +33,9 @@ jobs:
   validate:
     name: Validate authenticated isolated Preview
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The complete browser suite shares CI's 75-minute budget; provisioning and
+    # installation must not cut off the WebKit leg before failure reporting.
+    timeout-minutes: 75
     environment: Preview
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -154,6 +156,15 @@ jobs:
           --config=playwright.preview.config.ts
           --project=chromium-desktop
           tests/smoke/observability-preview.spec.ts
+
+      - name: Verify WebKit analyst regressions before the complete suite
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+        run: >-
+          pnpm exec playwright test --config=playwright.preview.config.ts
+          --project=mobile-webkit --max-failures=1
+          tests/smoke/ai-analyst-unified-research.spec.ts
+          tests/smoke/intelligence-smart-analysis.spec.ts
 
       - name: Run complete authenticated remote smoke suite
         env:
