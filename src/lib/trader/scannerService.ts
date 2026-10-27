@@ -61,6 +61,11 @@ type AssetOutcome =
   | { ok: true; symbol: string; result: StockAnalysisResult; cacheHit: boolean }
   | { ok: false; symbol: string; reason: string; cacheHit: boolean };
 
+function providerFailureReason(error: unknown) {
+  const message = error instanceof Error ? `${error.name} ${error.message}` : String(error ?? '');
+  return /abort|timeout|timed\s*out/i.test(message) ? 'provider_timeout' : 'provider_request_failed';
+}
+
 type ScanCache = {
   results: StockAnalysisResult[];
   status: ScannerStatus;
@@ -135,7 +140,7 @@ function toCandles(history: Awaited<ReturnType<typeof fetchYahooHistory>>): Mark
 
 async function analyzeAssetOnce(asset: TradableAsset): Promise<AssetOutcome> {
   const candidateSymbols = dedupeProviderCandidates([asset.providerSymbol, asset.symbol]);
-  const [quoteResult, historyResult] = await Promise.all([
+  const [quoteSettled, historySettled] = await Promise.allSettled([
     fetchYahooNormalizedQuote({
       requestedSymbol: asset.symbol,
       symbols: candidateSymbols,
@@ -145,9 +150,20 @@ async function analyzeAssetOnce(asset: TradableAsset): Promise<AssetOutcome> {
     fetchYahooHistory(asset.providerSymbol, 'stock', '2y', '1d'),
   ]);
 
+  const cacheHit = historySettled.status === 'fulfilled' && historySettled.value.success
+    ? historySettled.value.cached === true
+    : false;
+  if (quoteSettled.status === 'rejected') {
+    return { ok: false, symbol: asset.symbol, reason: providerFailureReason(quoteSettled.reason), cacheHit };
+  }
+  if (historySettled.status === 'rejected') {
+    return { ok: false, symbol: asset.symbol, reason: providerFailureReason(historySettled.reason), cacheHit };
+  }
+
+  const quoteResult = quoteSettled.value;
+  const historyResult = historySettled.value;
   const quote = toMarketQuote(asset, quoteResult);
   const candles = toCandles(historyResult);
-  const cacheHit = historyResult.success ? historyResult.cached === true : false;
   if (!quote) {
     return { ok: false, symbol: asset.symbol, reason: quoteResult.unavailableReason || 'quote_unavailable', cacheHit };
   }
