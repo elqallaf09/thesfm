@@ -5,6 +5,7 @@ import { normalizeTvChannels, TV_CHANNELS_KEY, TV_CHANNEL_LIMIT, type TvChannel 
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import type { TvSettings } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
+import { tvSceneText } from '@/lib/markets-tv/scene-display';
 
 export function TvChannels({ channels, change, settings, selections, apply }: {
   channels: TvChannel[]; change: (channels: TvChannel[]) => void; settings: TvSettings;
@@ -34,7 +35,7 @@ export function TvChannels({ channels, change, settings, selections, apply }: {
     <p className="tv-muted">{channels.length} / {TV_CHANNEL_LIMIT} · {t('channelsLocal')}</p>
     {message && <p role="status">{message}</p>}
     <div className="tv-channel-list">{channels.map(channel => <div className="tv-channel" key={channel.id}>
-      <div><strong dir="auto">{channel.name}</strong><small>{t(!channel.settings.stripDensity || channel.settings.stripDensity === 'balanced' ? 'balancedDensity' : channel.settings.stripDensity)} · {channel.settings.language.toUpperCase()} · {t('stripSpeed')}: {t(channel.settings.stripSpeed === 36 ? 'slow' : channel.settings.stripSpeed === 80 ? 'fast' : 'normal')}</small></div>
+      <div><strong dir="auto">{channel.name}</strong><small>{tvSceneText(settings.language, channel.settings.displayMode || 'strips')} · {channel.settings.displayMode === 'viewing' ? tvSceneText(settings.language, channel.settings.scene || 'overview') : t(!channel.settings.stripDensity || channel.settings.stripDensity === 'balanced' ? 'balancedDensity' : channel.settings.stripDensity)} · {channel.settings.language.toUpperCase()} · {t('stripSpeed')}: {t(channel.settings.stripSpeed === 36 ? 'slow' : channel.settings.stripSpeed === 80 ? 'fast' : 'normal')}</small></div>
       <div className="tv-channel-actions">
         <button onClick={() => apply(channel)} aria-label={`${t('applyChannel')}: ${channel.name}`}><Play aria-hidden="true"/>{t('applyChannel')}</button>
         <button onClick={() => persist(channels.map(item => item.id === channel.id ? { ...item, settings, selections } : item))} aria-label={`${t('updateChannel')}: ${channel.name}`}><Save aria-hidden="true"/>{t('updateChannel')}</button>

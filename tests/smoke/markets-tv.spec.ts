@@ -126,6 +126,7 @@ test('TV market selection changes the main screen and promotes its independent t
       quotes: Array.from({ length: 6 }, (_, index) => ({ symbol: `${market}-${pageNumber * 6 + index}`, name: 'Synthetic QA', nameAr: 'اختبار', price: null, changePercent: null, currency: 'USD', source: null, observedAt: null, status: 'unavailable' })) } });
   });
   await page.goto('/tv');
+  await page.getByRole('button', { name: 'تصفح كل الأسواق', exact: true }).click();
   await expect(page.locator('.tv-market-strip')).toHaveCount(2);
   await page.locator('[data-market="SSE"] .tv-market-strip-heading').click();
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','SSE');

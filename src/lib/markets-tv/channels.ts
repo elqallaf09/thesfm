@@ -14,8 +14,12 @@ export function normalizeTvChannels(value: unknown): TvChannel[] {
   for (const item of value.slice(0, TV_CHANNEL_LIMIT)) {
     if (!item || typeof item !== 'object' || typeof item.id !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(item.id)
       || typeof item.name !== 'string' || !item.name.trim() || result.some(channel => channel.id === item.id)) continue;
+    const settings = normalizeTvSettings(item.settings);
+    // Legacy channels describe market strips and their instrument selections.
+    // Opening them as a curated viewing scene would hide those saved choices.
+    if (!item.settings || typeof item.settings !== 'object' || !('displayMode' in item.settings)) settings.displayMode = 'strips';
     const channel: TvChannel = { id: item.id, name: item.name.trim().slice(0, 60),
-      settings: normalizeTvSettings(item.settings), selections: normalizeTvSelections(item.selections) };
+      settings, selections: normalizeTvSelections(item.selections) };
     size += JSON.stringify(channel).length + 1;
     if (size > TV_CHANNEL_STORAGE_LIMIT) break;
     result.push(channel);

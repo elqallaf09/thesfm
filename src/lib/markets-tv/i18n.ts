@@ -64,6 +64,8 @@ export const TV_TEXT = {
   pair: ['ربط حسابي', 'Link my account', 'Lier mon compte'], paired: ['جهاز مرتبط', 'Linked device', 'Appareil lié'],
   public: ['وضع العرض العام', 'Public display', 'Affichage public'], loading: ['جارٍ تحديث البيانات', 'Updating data', 'Actualisation des données'],
   unavailable: ['غير متاح', 'Unavailable', 'Indisponible'], delayed: ['متأخر', 'Delayed', 'Différé'], stale: ['آخر سعر محفوظ', 'Last known price', 'Dernier cours connu'],
+  closed: ['آخر إغلاق', 'Last close', 'Dernière clôture'],
+  unknown_delay: ['التأخير غير مؤكد', 'Delay unconfirmed', 'Délai non confirmé'],
   unknown_time: ['وقت المصدر غير متاح', 'Source time unavailable', 'Heure source indisponible'], available: ['آخر تحديث للمصدر', 'Latest source update', 'Dernière mise à jour source'],
   source: ['المصدر', 'Source', 'Source'], observed: ['وقت السعر', 'Quote time', 'Heure du cours'],
   news: ['أخبار الأسواق', 'Market headlines', 'Actualités des marchés'], noNews: ['لا توجد أخبار متاحة الآن', 'No headlines available now', 'Aucune actualité disponible'],
@@ -140,11 +142,11 @@ export function tvTime(value: string | null, language: TvLanguage, date = false)
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
   const key = `${language}:${date}:${dateOnly}`;
-  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), ...(dateOnly ? { timeZone: 'UTC' } : {}) }));
+  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), timeZone: dateOnly ? 'UTC' : 'Asia/Kuwait' }));
   return timeFormats.get(key)!.format(new Date(value));
 }
 export function tvPrice(price: number | null, currency: string | null) {
-  if (price === null) return '—';
+  if (price === null || !Number.isFinite(price) || price <= 0) return '—';
   const key = price > 0 && price < .001 ? 'tiny' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : price < 1 ? '6' : '4';
   if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', key === 'tiny' ? { maximumSignificantDigits: 6 } : { maximumFractionDigits: Number(key) }));
   return priceFormats.get(key)!.format(price);

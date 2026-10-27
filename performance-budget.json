@@ -32,6 +32,16 @@
       "manifestKey": "/market-analysis/page",
       "initialJavaScriptGzipBytes": 320000,
       "initialCssGzipBytes": 80000
+    },
+    "/tv": {
+      "manifestKey": "/tv/page",
+      "initialJavaScriptGzipBytes": 205000,
+      "initialCssGzipBytes": 80000
+    },
+    "/tv/strips": {
+      "manifestKey": "/tv/strips/page",
+      "initialJavaScriptGzipBytes": 205000,
+      "initialCssGzipBytes": 80000
     }
   }
 }

@@ -65,6 +65,17 @@ describe('TV authorization boundary', () => {
     query.set('symbols', '["AAPL"]'); query.set('group', 'watchlist');
     expect((await snapshot(request(`snapshot?${query}`))).status).toBe(400);
   });
+  it('validates curated scenes and authenticates the watchlist before loading any snapshot', async () => {
+    mocks.snapshot.mockResolvedValue({ quotes: [], summary: [], total: 0, available: 0 });
+    expect((await snapshot(request('snapshot?group=global&scene=overview&pageSize=10'))).status).toBe(200);
+    expect(mocks.snapshot).toHaveBeenCalledWith('global', [], expect.objectContaining({ scene: 'overview', pageSize: 10 }));
+    mocks.snapshot.mockClear();
+    for (const query of ['group=global&scene=watchlist', 'group=global&scene=__proto__', 'group=gulf&scene=overview', 'group=global&scene=overview&page=1', 'group=global&scene=overview&market=US']) {
+      expect((await snapshot(request(`snapshot?${query}`))).status).toBe(400);
+    }
+    expect((await snapshot(request('snapshot?group=watchlist&scene=watchlist&pageSize=10'))).status).toBe(401);
+    expect(mocks.snapshot).not.toHaveBeenCalled(); expect(mocks.admin).not.toHaveBeenCalled();
+  });
   it('bounds streamed JSON bodies, including missing content-length', async () => {
     expect(await tvBody(request('pair', 'POST', { 'content-type': 'application/json' }, JSON.stringify({ name: 'a'.repeat(9000) })))).toBeNull();
     expect(await tvBody(request('pair', 'POST', { 'content-type': 'application/json' }, '[1]'))).toBeNull();
