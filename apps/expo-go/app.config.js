@@ -59,4 +59,4 @@ module.exports = {
   },
 };
 
-validateMobileConfig(module.exports.expo.extra);
+validateMobileConfig(module.exports.expo.extra, { requireAuth: process.env.EAS_BUILD === 'true' });

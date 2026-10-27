@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { boundedSymbols, intelligenceAssetType, intelligenceAssetTypes, type IntelligenceAssetType } from './investorAnalysis';
+import { boundedSymbols, comparisonRows, intelligenceAssetType, intelligenceAssetTypes, type IntelligenceAssetType } from './investorAnalysis';
 import { MobileRequestError, type MobileSessionClient } from './session';
 import { Button, Busy, ErrorNotice, formatValue, Input, Label, Panel, useUI } from './ui';
 
@@ -19,10 +19,10 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
  * This is deliberately native and session-bound: the analysis and chat APIs
  * retain their server-side entitlement, allowance, evidence and rate checks.
  */
-export function InvestorAnalysisScreen({ client }: { client: MobileSessionClient }) {
+export function InvestorAnalysisScreen({ client, initialSymbol = '' }: { client: MobileSessionClient; initialSymbol?: string }) {
   const { language, t } = useUI();
   const tr = (ar: string, en: string, fr: string) => t([ar, en, fr]);
-  const [query, setQuery] = useState(''); const [matches, setMatches] = useState<SearchItem[]>([]); const [symbol, setSymbol] = useState('');
+  const [query, setQuery] = useState(''); const [matches, setMatches] = useState<SearchItem[]>([]); const [symbol, setSymbol] = useState(initialSymbol);
   const [assetType, setAssetType] = useState<IntelligenceAssetType>('STOCK'); const [exchange, setExchange] = useState(''); const [currency, setCurrency] = useState('');
   const [analysis, setAnalysis] = useState<Analysis | null>(null); const [chat, setChat] = useState<ChatMessage[]>([]); const [message, setMessage] = useState('');
   const [compare, setCompare] = useState(''); const [comparison, setComparison] = useState<Record<string, unknown> | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
@@ -65,7 +65,6 @@ export function InvestorAnalysisScreen({ client }: { client: MobileSessionClient
     catch (reason) { setError(reason instanceof MobileRequestError ? reason.code : 'COMPARE_UNAVAILABLE'); }
     finally { setBusy(false); }
   }
-  const price = analysis?.marketPrice;
   return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14, paddingBottom: 28 }}>
     <Panel><Label large>{tr('محلل المستثمر', 'Investor analyst', 'Analyste investisseur')}</Label><Label muted>{tr('تحليل ومحادثة من بيانات سوق موثقة؛ الاستحقاق والحدود تبقى في الخادم.', 'Analysis and chat use verified market data; entitlements and limits stay on the server.', "L'analyse et la discussion utilisent des données vérifiées ; les droits restent côté serveur.")}</Label></Panel>
     <Panel><Input label={tr('البحث بالاسم أو الرمز', 'Search name or symbol', 'Rechercher un nom ou symbole')} value={query} onChange={setQuery} /><Button label={tr('بحث', 'Search', 'Rechercher')} disabled={busy || !query.trim()} onPress={() => { void search(); }} />{matches.map((item, index) => <Button key={`${item.symbol}:${index}`} label={`${item.displaySymbol || item.symbol || '-'} — ${item.name || ''}`} disabled={busy} onPress={() => choose(item)} />)}</Panel>
@@ -81,6 +80,12 @@ function AnalysisResult({ analysis, symbol, onRefresh, busy, tr }: { analysis: A
   return <Panel><Label large>{tr('نتيجة التحليل', 'Analysis result', "Résultat de l'analyse")}</Label><Label>{analysis.asset?.displaySymbol || symbol}{analysis.asset?.name ? ` — ${analysis.asset.name}` : ''}</Label><Label>{tr('التوصية: ', 'Recommendation: ', 'Recommandation : ')}{analysis.recommendation || '-'}</Label><Label>{tr('المخاطر: ', 'Risk: ', 'Risque : ')}{analysis.risk || '-'}</Label><Label>{tr('الثقة: ', 'Confidence: ', 'Confiance : ')}{analysis.confidence == null ? '-' : `${Math.round(analysis.confidence * (analysis.confidence <= 1 ? 100 : 1))}%`} {analysis.confidenceQuality || ''}</Label>{price?.available ? <Label>{tr('السعر الموثق: ', 'Verified price: ', 'Cours vérifié : ')}{formatValue(price.value)} {price.currency || analysis.asset?.quoteCurrency || ''}</Label> : <Label muted>{tr('السعر الموثق غير متاح حاليًا.', 'A verified current price is unavailable.', 'Un cours actuel vérifié est indisponible.')}</Label>}{analysis.targets?.available ? <Label>{tr('النطاق المستنتج: ', 'Derived range: ', 'Fourchette dérivée : ')}{formatValue(analysis.targets.lower)} – {formatValue(analysis.targets.upper)} {analysis.targets.currency || ''}</Label> : null}<Label>{tr('اكتمال البيانات: ', 'Data completeness: ', 'Complétude des données : ')}{analysis.dataCompleteness?.percentage == null ? '-' : `${Math.round(analysis.dataCompleteness.percentage)}%`}</Label>{analysis.dataCompleteness?.missingRequiredFactors?.length ? <Label muted>{tr('العوامل الناقصة: ', 'Missing factors: ', 'Facteurs manquants : ')}{analysis.dataCompleteness.missingRequiredFactors.join(', ')}</Label> : null}{analysis.warnings?.map((warning, index) => <Label muted key={`${warning.code}:${index}`}>{warning.severity || 'INFO'}: {warning.code || '-'}</Label>)}<Button label={tr('تحديث آمن', 'Refresh safely', 'Actualiser prudemment')} disabled={busy} onPress={onRefresh} /></Panel>;
 }
 function Comparison({ data }: { data: Record<string, unknown> }) {
-  const { t } = useUI(); const rows = Object.entries(data).filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value)).slice(0, 12);
-  return <View style={{ gap: 5 }}><Label muted>{t(['استجابة المقارنة من مزود البيانات الحالي.', 'Comparison response from the current data provider.', 'Réponse de comparaison du fournisseur actuel.'])}</Label>{rows.length ? rows.map(([key, value]) => <Label key={key}>{key}: {formatValue(value)}</Label>) : <Label muted>{t(['لم يُرجع المزود حقولًا قابلة للعرض.', 'The provider returned no displayable fields.', "Le fournisseur n'a renvoyé aucun champ affichable."])}</Label>}</View>;
+  const { t } = useUI(); const rows = comparisonRows(data);
+  return <View style={{ gap: 12 }}>{rows.length ? rows.map((row, index) => <Panel key={`${row.symbol}:${index}`}>
+    <Label large>{row.symbol}</Label><Label>{row.name}</Label>
+    <Label>{t(['السعر', 'Price', 'Cours'])}: {formatValue(row.price)} {row.currency}</Label>
+    <Label>{t(['التغير', 'Change', 'Variation'])}: {row.changePercent === null ? '—' : `${formatValue(row.changePercent)}%`}</Label>
+    {row.source ? <Label muted>{t(['المصدر', 'Source', 'Source'])}: {row.source}</Label> : null}
+    {row.updatedAt ? <Label muted>{t(['آخر تحديث', 'Last updated', 'Dernière mise à jour'])}: {row.updatedAt}</Label> : null}
+  </Panel>) : <Label muted>{t(['بيانات المقارنة غير متاحة حاليًا. أعد المحاولة لاحقًا.', 'Comparison data is currently unavailable. Try again later.', 'Les données de comparaison sont indisponibles. Réessayez plus tard.'])}</Label>}</View>;
 }

@@ -81,3 +81,16 @@ jobs:
         env:
           SFM_PRODUCT: ${{ matrix.product }}
         run: pnpm exec expo export --platform android --platform ios --output-dir .expo-validation/ci
+      - name: Prepare isolated browser contract tests
+        run: |
+          pnpm --dir ../.. install --frozen-lockfile
+          pnpm --dir ../.. exec playwright install --with-deps chromium
+      - name: Export browser test application
+        env:
+          SFM_PRODUCT: ${{ matrix.product }}
+          EXPO_PUBLIC_SFM_SUPABASE_URL: https://qa.example.test
+          EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY: sb_publishable_isolated_fixture
+        run: pnpm exec expo export --platform web --output-dir .expo-validation/web
+      - name: Verify navigation, records, languages and sign-out in browser
+        working-directory: .
+        run: node --experimental-strip-types scripts/mobile/verify-web.mjs '${{ matrix.product }}' apps/expo-go/.expo-validation/web

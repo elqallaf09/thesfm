@@ -64,11 +64,11 @@ export function MobileWorkspace(props: Props) {
   else if (screen.kind === 'records' && resource) content = <RecordsScreen key={resource.id} client={client} product={product} resource={resource} />;
   else if (screen.kind === 'account') content = <AccountScreen client={client} languageChanged={languageChanged} themeChanged={themeChanged} signOut={() => { void client.signOut(); }} />;
   else if (screen.kind === 'markets') content = <MarketsScreen base={base} client={client} navigate={navigate} />;
-  else if (screen.kind === 'analysis' && product === 'investor') content = <InvestorAnalysisScreen client={client} />;
+  else if (screen.kind === 'analysis' && product === 'investor') content = <InvestorAnalysisScreen key={screen.symbol ?? 'analysis'} client={client} initialSymbol={screen.symbol} />;
   else if (screen.kind === 'symbol' && screen.symbol) content = <SymbolScreen base={base} symbol={screen.symbol} />;
   else if (screen.kind === 'notifications') content = <NotificationsScreen client={client} openLink={openLink} />;
   else if (screen.kind === 'channels') content = <NotificationChannelsScreen client={client} openExternal={openLink} />;
-  else if (screen.kind === 'tools') content = <ToolsScreen initialPath={screen.path} />;
+  else if (screen.kind === 'tools') content = <ToolsScreen key={screen.path ?? 'tools'} initialPath={screen.path} />;
   else if (screen.kind === 'reports' && (product === 'finance' || product === 'business')) content = <ReportsScreen client={client} product={product} navigate={navigate} />;
   else if (screen.kind === 'teams' && product === 'business') content = <TeamsScreen client={client} />;
   else if (screen.kind === 'decisions' && product === 'business') content = <MobileDecisionsScreen client={client} />;

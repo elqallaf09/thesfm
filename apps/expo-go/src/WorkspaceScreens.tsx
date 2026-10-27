@@ -77,7 +77,7 @@ export function CatalogScreen({ product, navigate, embedded = false }: { product
   const { language, t } = useUI();
   const content = <View style={{ gap: 12 }}>
     {product === 'investor' ? <Button label={t(['محلل المستثمر', 'Investor analyst', 'Analyste investisseur'])} onPress={() => navigate({ kind: 'analysis' })} /> : null}
-    {product === 'business' ? <Button label={t(['تحليل القرارات', 'Decision analysis', 'Analyse de décision'])} onPress={() => navigate({ kind: 'decisions' })} /> : null}
+    {product === 'business' ? <><Button label={t(['فرق العمل', 'Teams', 'Équipes'])} onPress={() => navigate({ kind: 'teams' })} /><Button label={t(['تحليل القرارات', 'Decision analysis', 'Analyse de décision'])} onPress={() => navigate({ kind: 'decisions' })} /></> : null}
     {MOBILE_RESOURCES.filter(resource => resource.products.includes(product)).map(resource => <Button key={resource.id} label={localized(resource.label, language)} onPress={() => navigate({ kind: 'records', resource: resource.id })} />)}
     {product === 'finance' ? <Button label={t(['مركز التقارير', 'Reports Center', 'Centre des rapports'])} onPress={() => navigate({ kind: 'reports' })} /> : null}
     {product === 'business' ? <Button label={t(['عمليات الأعمال', 'Business operations', "Opérations d'entreprise"])} onPress={() => navigate({ kind: 'reports' })} /> : null}

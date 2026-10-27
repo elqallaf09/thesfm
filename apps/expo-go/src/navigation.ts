@@ -10,15 +10,15 @@ export function screenForLink(input: string, product: PhoneProduct): { screen: S
     else if (['https:', 'mailto:', 'tel:'].includes(url.protocol)) return { external: url.toString() };
     else return { screen: { kind: 'unavailable', path: input } };
   }
-  path = path.split(/[?#]/)[0].replace(/\/+$/, '') || '/';
-  if (['/', '/today', '/dashboard', '/business-hub'].includes(path)) return { screen: { kind: 'home' } };
+  path = path.split(/[?#]/)[0].replace(/^\/(ar|en|fr)(?=\/|$)/, '').replace(/\/+$/, '') || '/';
+  if (['/', '/today', '/dashboard'].includes(path)) return { screen: { kind: 'home' } };
   if (['/settings', '/profile', '/security', '/profile/accounts'].includes(path)) return { screen: { kind: 'account' } };
   if (path === '/notifications/channels') return { screen: { kind: 'channels' } };
   if (['/notifications', '/notif'].includes(path)) return { screen: { kind: 'notifications' } };
   if (product === 'finance' && ['/reports', '/reports-center'].includes(path)) return { screen: { kind: 'reports' } };
   if (product === 'business' && ['/business-operations', '/business-hub'].includes(path)) return { screen: { kind: 'reports' } };
   if (product === 'business' && path === '/business/teams') return { screen: { kind: 'teams' } };
-  if (product === 'business' && path === '/decisions') return { screen: { kind: 'decisions' } };
+  if (product === 'business' && ['/decisions', '/decisions/simulator', '/decisions/timeline'].includes(path)) return { screen: { kind: 'decisions' } };
   if (product === 'investor' && ['/ai-analyst', '/ai-analyst/overview', '/ai-analyst/analyze', '/ai-analyst/compare', '/ai-analyst/assistant', '/market-analysis'].includes(path)) return { screen: { kind: 'analysis' } };
   const resource = MOBILE_RESOURCES.find(item => item.products.includes(product) && item.paths.includes(path));
   if (resource) return { screen: { kind: 'records', resource: resource.id } };
@@ -28,6 +28,9 @@ export function screenForLink(input: string, product: PhoneProduct): { screen: S
   if (product === 'investor' && path === '/sharia-stocks') return { screen: { kind: 'screening' } };
   if (product === 'investor' && /^\/(symbol-details|world-stocks)\/[^/]+$/.test(path)) {
     try { return { screen: { kind: 'symbol', symbol: decodeURIComponent(path.split('/')[2]) } }; } catch { /* invalid link */ }
+  }
+  if (product === 'investor' && /^\/ai-analyst\/analyze\/[^/]+$/.test(path)) {
+    try { return { screen: { kind: 'analysis', symbol: decodeURIComponent(path.split('/')[3]) } }; } catch { /* invalid link */ }
   }
   if (['/zakat', '/zakat-calculator', '/compound-interest-calculator', '/loan-calculator'].includes(path)) return { screen: { kind: 'tools', path } };
   return { screen: { kind: 'unavailable', path } };

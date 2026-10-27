@@ -43,6 +43,21 @@ describe('native navigation', () => {
     expect(screenForLink('javascript:alert(1)', 'finance')).toHaveProperty('screen.kind', 'unavailable');
     expect(screenForLink('/symbol-details/NBK.KW', 'investor')).toHaveProperty('screen.symbol', 'NBK.KW');
   });
+  it('opens localized business links and all existing decision entry points inside the app', () => {
+    for (const prefix of ['', '/ar', '/en', '/fr']) {
+      expect(screenForLink(`${prefix}/business-hub`, 'business')).toEqual({ screen: { kind: 'reports' } });
+      expect(screenForLink(`${prefix}/business/teams`, 'business')).toEqual({ screen: { kind: 'teams' } });
+      for (const path of ['/decisions', '/decisions/simulator', '/decisions/timeline']) {
+        expect(screenForLink(`https://www.the-sfm.com${prefix}${path}?source=notification`, 'business')).toEqual({ screen: { kind: 'decisions' } });
+        expect(screenForLink(`${prefix}${path}`, 'finance')).toHaveProperty('screen.kind', 'unavailable');
+      }
+    }
+  });
+  it('preserves the selected asset when opening a localized analysis notification', () => {
+    expect(screenForLink('https://www.the-sfm.com/ar/ai-analyst/analyze/%5EGSPC', 'investor')).toEqual({ screen: { kind: 'analysis', symbol: '^GSPC' } });
+    expect(screenForLink('/ai-analyst/analyze/%ZZ', 'investor')).toHaveProperty('screen.kind', 'unavailable');
+    expect(screenForLink('/ai-analyst/analyze/AAPL', 'finance')).toHaveProperty('screen.kind', 'unavailable');
+  });
 });
 describe('account-backed mobile synchronization', () => {
   it('refreshes only after the application returns to the foreground', () => {

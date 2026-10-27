@@ -45,7 +45,9 @@ try {
         const key = url.pathname.split('/').at(-1); const rows = records.get(key) ?? [];
         if (request.method() === 'POST') { const record = { ...request.postDataJSON(), id: 'c52a014b-e3fc-4e4c-9279-418377c2267e', created_at: '2026-10-24T00:00:00Z' }; records.set(key, [...rows, record]); writes++; body = { ok: true, record }; }
         else body = { ok: true, version: 1, records: rows, nextCursor: null };
-      } else if (url.pathname === '/api/notifications') body = { notifications: [] };
+      } else if (url.pathname === '/api/mobile/business/teams') body = { teams: [] };
+      else if (url.pathname === '/api/market/compare') body = { success: true, results: [{ symbol: 'NBK.KW', name: 'Comparison fixture', latestPrice: 1.25, changePercent: 2, currency: 'KWD', source: 'QA fixture' }, { symbol: 'KFH.KW', latestPrice: null, changePercent: null, currency: 'KWD' }] };
+      else if (url.pathname === '/api/notifications') body = { notifications: [] };
       else if (url.pathname === '/api/markets') body = { markets: [{ symbol: 'NBK.KW', displaySymbol: 'NBK.KW', name: 'QA market fixture', assetType: 'stock', currency: 'KWD', exchange: 'XKUW', country: 'KW' }], pagination: { hasMore: false } };
       else body = { ok: true, items: [], events: [] };
       await route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(body) });
@@ -67,6 +69,21 @@ try {
     }
     await page.getByRole('button', { name: 'حفظ في حسابي', exact: true }).click();
     await expect(page.getByRole('button', { name: 'تعديل', exact: true })).toBeVisible();
+    if (product === 'business') {
+      await page.getByRole('button', { name: catalogLabel, exact: true }).click();
+      await page.getByRole('button', { name: 'فرق العمل', exact: true }).click();
+      await expect(page.getByText('لا توجد فرق بعد.', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'إنشاء فريق', exact: true })).toBeVisible();
+    }
+    if (product === 'investor') {
+      await page.getByRole('button', { name: catalogLabel, exact: true }).click();
+      await page.getByRole('button', { name: 'محلل المستثمر', exact: true }).click();
+      await page.getByLabel('الرموز', { exact: true }).fill('NBK.KW,KFH.KW');
+      await page.getByRole('button', { name: 'مقارنة', exact: true }).click();
+      await expect(page.getByText('Comparison fixture', { exact: true })).toBeVisible();
+      await expect(page.getByText('السعر: 1.25 KWD', { exact: true })).toBeVisible();
+      await expect(page.getByText('التغير: —', { exact: true })).toBeVisible();
+    }
     await page.getByRole('button', { name: 'حسابي', exact: true }).click();
     await page.getByRole('button', { name: 'English', exact: true }).click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).waitFor();
