@@ -7,7 +7,7 @@ const ownerTables = ['monthly_income_sources', 'expense_items', 'savings_items',
 // auth.setup logs in once and saves both browser auth and Preview protection
 // state. Each Playwright test starts a fresh context with that state in memory;
 // no login page or previous navigation has warmed this context's SDK modules.
-test.use({ storageState: userAuthStatePath, trace: 'off', screenshot: 'off', video: 'off' });
+test.use({ storageState: userAuthStatePath, serviceWorkers: 'allow', trace: 'off', screenshot: 'off', video: 'off' });
 
 test('a cold dashboard restores its persisted session before shared owner reads', async ({ page }, testInfo) => {
   test.skip(!userAuthConfigured, 'Cold authenticated startup requires the configured Preview user fixture.');
@@ -92,6 +92,16 @@ test('a cold dashboard restores its persisted session before shared owner reads'
   expect(sessionPosts, 'Session restore should coalesce verification into one request.').toBe(1);
   expect(prematureOwnerReads, 'Owner data must wait for server session verification.').toBe(0);
   expect(ownerTables.map(table => reads.get(table))).toEqual(ownerTables.map(() => 1));
+  const dashboardUrl = new URL(page.url());
+  if (dashboardUrl.protocol === 'https:' && !['localhost', '127.0.0.1', '::1', '[::1]'].includes(dashboardUrl.hostname)) {
+    // Keep cold-ready timing above this wait, then exercise real account reads
+    // under the production worker. The registrar intentionally skips loopback.
+    await expect.poll(() => page.evaluate(() => {
+      const controller = navigator.serviceWorker?.controller;
+      return controller ? new URL(controller.scriptURL).pathname : null;
+    }), { timeout: 15_000, message: 'The production service worker should control the dashboard before Refresh.' })
+      .toBe('/sfm-notifications-sw.js');
+  }
   successfulReads.clear();
   await dashboard.getByRole('button', { name: /^(Refresh data|تحديث البيانات|Actualiser les données)$/ }).click();
   await expect.poll(() => successfulReads.size, { message: 'Refreshing should complete fresh shared owner reads.' }).toBe(ownerTables.length);
