@@ -123,6 +123,12 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   const row = page.locator('.tv-scene-row').first();
   await row.click();
   await expect(page.locator('canvas.tv-qr')).toBeVisible();
+  await expect.poll(() => page.locator('canvas.tv-qr').evaluate(canvas => {
+    if (!(canvas instanceof HTMLCanvasElement) || canvas.width !== 260 || canvas.height !== 260) return false;
+    const pixels = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+    if (!pixels) return false;
+    return pixels.some((value, index) => index % 4 === 0 && value === 0 && pixels[index + 3] === 255);
+  })).toBe(true);
   await page.keyboard.press('Escape');
   await expect(row).toBeFocused();
   await settings.click();
