@@ -5,6 +5,7 @@ import type { TvAsset } from './catalog';
 import type { TvQuote } from '@/lib/markets-tv/types';
 import { twelveDataObservation } from '@/lib/market/quoteObservation';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
+import { twelveDataFetch, TWELVE_RETRY_HEADER } from '@/lib/server/twelve-data-fetch';
 
 const BINANCE = 'https://data-api.binance.vision/api/v3';
 const ECB = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml';
@@ -105,20 +106,20 @@ export function referenceForexQuote(asset: TvAsset, days: ReferenceDay[]): TvQuo
   return { ...quote, issue: undefined, price, changePercent: before ? (price / before - 1) * 100 : null, source: 'ECB · reference', observedAt: latest.date, receivedAt: new Date().toISOString(),
     observation: { precision: 'date', marketOpen: null }, delayType: 'eod', changeBasis: 'reference', status: 'reference' };
 }
-let forexBlock: { until: number; issue: TvQuote['issue'] } | null = null;
 export async function forexTvQuote(asset: TvAsset): Promise<TvQuote> {
   const key = process.env.TWELVE_DATA_API_KEY?.trim();
   let issue: TvQuote['issue'] = key ? 'provider_unavailable' : 'not_configured';
-  if (forexBlock && forexBlock.until > Date.now()) issue = forexBlock.issue;
-  else if (key) {
+  let retryAt: string | null = null;
+  if (key) {
     try {
       const params = new URLSearchParams({ symbol: asset.symbol, apikey: key, timezone: 'UTC' });
-      const response = await fetch(`https://api.twelvedata.com/quote?${params}`, { next: { revalidate: 15 }, signal: AbortSignal.timeout(4000) });
+      const response = await twelveDataFetch(`https://api.twelvedata.com/quote?${params}`, { signal: AbortSignal.timeout(4000) });
+      retryAt = response.headers.get(TWELVE_RETRY_HEADER);
       const payload: unknown = await response.json().catch(() => null);
       const row = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as Row : {};
       const price = numeric(row.close), { lastUpdated: time, observation, delayType } = twelveDataObservation(row);
       const code = [401, 403, 429].find(value => Number(row.code) === value || response.status === value);
-      if (code) { issue = code === 429 ? 'rate_limited' : 'access_denied'; forexBlock = { until: Date.now() + 60000, issue }; }
+      if (code) issue = code === 429 ? 'rate_limited' : 'access_denied';
       if (response.ok && row.status !== 'error' && row.symbol === asset.symbol && (!row.currency || row.currency === asset.currency) && price !== null && price > 0 && time && Date.parse(time) <= Date.now() + 60000) {
         const quote: TvQuote = { ...emptyInstrument(asset), issue: undefined, price, changePercent: numeric(row.percent_change), source: 'Twelve Data', observedAt: time,
           receivedAt: new Date().toISOString(), observation, delayType, changeBasis: 'session', status: delayType === 'eod' ? 'closed' : 'delayed' };
@@ -127,6 +128,6 @@ export async function forexTvQuote(asset: TvAsset): Promise<TvQuote> {
       if (response.ok && row.status !== 'error') issue = row.symbol && row.symbol !== asset.symbol || row.currency && row.currency !== asset.currency ? 'identity_mismatch' : 'invalid_quote';
     } catch (error) { issue = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name) ? 'timeout' : 'provider_unavailable'; }
   }
-  try { const quote = referenceForexQuote(asset, await sharedReference()); return quote.price === null ? { ...quote, issue } : quote; }
-  catch { return emptyInstrument(asset, issue); }
+  try { const quote = referenceForexQuote(asset, await sharedReference()); return quote.price === null ? { ...quote, issue, retryAt } : quote; }
+  catch { return { ...emptyInstrument(asset, issue), retryAt }; }
 }

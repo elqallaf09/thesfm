@@ -36,6 +36,13 @@ function isSnapshot(value: unknown): value is TvSnapshot {
   return typeof item.group === 'string' && Array.isArray(item.quotes) && typeof item.generatedAt === 'string';
 }
 
+/** Recheck provider status at least every five minutes, without advancing quote timestamps. */
+export function tvSnapshotRetryDelay(value: unknown, now = Date.now()): number {
+  if (!isSnapshot(value) || typeof value.retryAt !== 'string') return 0;
+  const delay = Date.parse(value.retryAt) - now;
+  return Number.isFinite(delay) ? Math.max(0, Math.min(MAX_RETRY_MS, delay)) : 0;
+}
+
 /** Retention never changes provider timestamps or invents observations. */
 export function retainTvResource<T>(previous: T | null, next: T): T {
   return isSnapshot(next) && isSnapshot(previous) ? mergeStripSnapshot(previous, next) as T : next;
@@ -69,6 +76,12 @@ export class TvResourceCache {
     if (!key) return load(options.signal);
     const cached = this.entries.get(key), now = this.clock();
     if (cached && cached.retryAt > now) {
+      // A partial provider failure is still a successful snapshot. Keep its
+      // explanation/retained data visible while preventing forced refresh storms.
+      if (!('error' in cached) && cached.data != null) {
+        this.save(key, cached);
+        return Promise.resolve(cached.data as T);
+      }
       const error = cached.error;
       return Promise.reject(new TvResourceError(error instanceof Error ? error.message : 'UNAVAILABLE',
         error instanceof TvResourceError ? error.status : 0, cached.retryAt - now));
@@ -89,7 +102,9 @@ export class TvResourceCache {
         if (controller.signal.aborted) throw aborted();
         // The shared map holds heterogeneous payloads; the merge validates both shapes.
         const retained = retainTvResource<unknown>(this.entries.get(key)?.data ?? null, data);
-        this.save(key, { data: retained, fetchedAt: this.clock(), failures: 0, retryAt: 0 });
+        const fetchedAt = this.clock();
+        this.save(key, { data: retained, fetchedAt, failures: 0,
+          retryAt: fetchedAt + tvSnapshotRetryDelay(data, fetchedAt) });
         return retained;
       }, error => {
         if (!controller.signal.aborted) {

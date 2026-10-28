@@ -29,6 +29,8 @@ export type SfmMarketRequest = {
   assetType?: string | null;
   forceFresh?: boolean;
   excludeProviders?: MarketDataProviderName[];
+  preferredProviders?: MarketDataProviderName[];
+  onQuoteAttempts?: (attempts: ProviderAttemptFailure[]) => void;
 };
 
 function providerContext(
@@ -37,12 +39,14 @@ function providerContext(
   assetType: string | null | undefined,
   forceFresh: boolean | undefined,
   excludeProviders: MarketDataProviderName[] = [],
+  preferredProviders?: MarketDataProviderName[],
 ): MarketDataProviderContext {
   return {
     symbol,
     market,
     assetType,
     forceFresh,
+    preferredProviders,
     // Product decision: the SFM-owned market contract must never silently
     // fall back to Yahoo. If our other lawful feeds cannot supply evidence,
     // the engine returns unavailable/partial rather than changing source.
@@ -160,7 +164,7 @@ function buildSfmQuote(quote: NormalizedMarketQuote, attempts: ProviderAttemptFa
       providerSymbol: quote.providerSymbol,
       observedAt: quote.lastUpdated,
       observation: quote.observation,
-      receivedAt,
+      receivedAt: quote.receivedAt ?? receivedAt,
       delayType: quote.delayType,
       cached: Boolean(quote.cached),
       cacheAgeSeconds: Number.isFinite(quote.cacheAgeSeconds) ? Number(quote.cacheAgeSeconds) : null,
@@ -223,8 +227,10 @@ export async function getSfmMarketQuote(symbolInput: string, request: SfmMarketR
     normalized.assetType,
     request.forceFresh,
     request.excludeProviders,
+    request.preferredProviders,
   );
   const result = await getQuoteWithFallback(normalized.symbol, request.market ?? null, context);
+  request.onQuoteAttempts?.(result.attempts);
   if (!result.ok) return null;
   return buildSfmQuote(result.data, result.attempts, new Date().toISOString());
 }
@@ -269,6 +275,7 @@ export async function analyzeSfmMarketSymbol(symbolInput: string, request: SfmMa
     normalized.assetType,
     request.forceFresh,
     request.excludeProviders,
+    request.preferredProviders,
   );
   const supportsSecEvidence = normalized.assetType === 'stock' || normalized.assetType === 'etf';
   const secPromise = supportsSecEvidence

@@ -16,7 +16,7 @@ export function mergeStripSnapshot(previous: TvSnapshot | null, next: TvSnapshot
       if (candidate && (!q.currency || q.currency === candidate.currency) && (!q.exchange || q.exchange === candidate.exchange)) old = candidate;
     }
     if (!old || !hasTvPrice(old)) return q;
-    if (!hasTvPrice(q)) return { ...old, status: 'stale' as const, issue: q.issue || 'provider_unavailable' as const };
+    if (!hasTvPrice(q)) return { ...old, status: 'stale' as const, issue: q.issue || 'provider_unavailable' as const, retryAt: q.retryAt };
     const before = old.observedAt ? Date.parse(old.observedAt) : NaN;
     const after = q.observedAt ? Date.parse(q.observedAt) : NaN;
     if (Number.isFinite(before) && (!Number.isFinite(after) || after < before || after > Date.now() + 60_000)) return old;

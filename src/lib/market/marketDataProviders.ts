@@ -7,11 +7,15 @@ import { isValidChange, isValidPrice } from '@/lib/market/quoteNormalization';
 import { FmpMarketDataProvider } from '@/lib/market/providers/fmpMarketData';
 import { GoldApiProvider, isSilverSpot } from '@/lib/market/providers/goldApi';
 import { fetchTwelveDataCandles } from '@/lib/market/providers/twelveDataCandles';
+import { fetchTwelveDataQuote, twelveDataIndexCandidates } from '@/lib/market/providers/twelveDataQuote';
+import { QuoteProviderError, cachedQuoteFailure, rememberQuoteFailure } from '@/lib/market/providers/quoteFailure';
+import { twelveDataFetch } from '@/lib/server/twelve-data-fetch';
+import { FmpRateLimitError, getFmpRateLimitedUntil } from '@/lib/trader/providers/fmpRuntime';
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAliases';
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
-import { observationIso as toIso, twelveDataObservation, type QuoteObservation } from '@/lib/market/quoteObservation';
+import { observationIso as toIso, type QuoteObservation } from '@/lib/market/quoteObservation';
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo' | 'gold_api';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
 export type MarketDataProviderContext = {
@@ -24,6 +28,7 @@ export type MarketDataProviderContext = {
   country?: string | null;
   currency?: string | null;
   excludeProviders?: MarketDataProviderName[];
+  preferredProviders?: MarketDataProviderName[];
   forceFresh?: boolean; historyPeriod?: string;
 };
 
@@ -50,6 +55,7 @@ export type NormalizedMarketQuote = {
   delayType: MarketDelayType;
   lastUpdated: string | null;
   observation?: QuoteObservation;
+  receivedAt?: string;
   cached?: boolean;
   cacheAgeSeconds?: number;
 };
@@ -137,6 +143,7 @@ export type ProviderAttemptFailure = {
   message: string;
   category: string;
   retryable: boolean;
+  retryAt?: string | null;
 };
 
 export type ProviderFallbackResult<T> =
@@ -308,7 +315,7 @@ function normalizeQuote(input: {
     country: input.context?.country,
     assetType,
   });
-  const priceUnit = detectPriceUnit({
+  const priceUnit = assetType === 'index' ? 'major' : detectPriceUnit({
     price: rawPrice,
     currency: resolved.currency,
     providerCurrency: input.currency,
@@ -349,7 +356,7 @@ function normalizeQuote(input: {
     providerSymbol: input.providerSymbol,
     name: textOrNull(input.name) ?? textOrNull(input.context?.name),
     price: round(price) ?? price,
-    currency: resolved.currency,
+    currency: assetType === 'index' ? null : resolved.currency,
     change: round(change),
     changePercent: round(changePercent),
     open: round(normalizeValue(input.open)),
@@ -393,7 +400,7 @@ async function fetchJson(url: string, options?: { cacheKey?: string; ttlMs?: num
     const cached = cacheGet<unknown>(options.cacheKey, options.forceFresh);
     if (cached) return { ok: true, status: 200, data: cached.data, cacheHit: true, cacheAgeSeconds: cached.ageSeconds, headers: new Headers() };
   }
-  const response = await fetch(url, {
+  const response = await (url.startsWith('https://api.twelvedata.com/') ? twelveDataFetch : fetch)(url, {
     cache: 'no-store',
     signal: AbortSignal.timeout(options?.timeoutMs ?? REQUEST_TIMEOUT_MS),
     headers: {
@@ -403,7 +410,7 @@ async function fetchJson(url: string, options?: { cacheKey?: string; ttlMs?: num
     },
   });
   const data = await response.json().catch(() => null);
-  if (response.ok && options?.cacheKey && options.ttlMs) cacheSet(options.cacheKey, data, options.ttlMs);
+  if (response.ok && data?.status !== 'error' && options?.cacheKey && options.ttlMs) cacheSet(options.cacheKey, data, options.ttlMs);
   return { ok: response.ok, status: response.status, data, cacheHit: false, cacheAgeSeconds: 0, headers: response.headers };
 }
 
@@ -485,6 +492,10 @@ function twelveExchangeCandidates(symbol: string, market?: string | null, contex
                 : null;
   const base = stripSuffix(s);
   const assetType = normalizeAssetType(context?.assetType);
+  if (assetType === 'index') {
+    const mapped = twelveDataIndexCandidates(s);
+    if (mapped !== null) return mapped;
+  }
   if (assetType === 'forex') {
     const pair = compactPair(s);
     return [{ symbol: `${pair.slice(0, 3)}/${pair.slice(3, 6)}`, exchange: null }];
@@ -638,51 +649,13 @@ class TwelveDataProvider extends BaseProvider {
   name = 'twelve_data' as const;
   displayName = 'Twelve Data';
   configured() { return Boolean(apiKey('TWELVE_DATA_API_KEY')); }
+  supports(symbol: string, context: MarketDataProviderContext) { return context.assetType !== 'index' || twelveDataIndexCandidates(upper(symbol))?.length !== 0; }
 
   async getQuote(symbol: string, market?: string | null, context?: MarketDataProviderContext) {
     const key = apiKey('TWELVE_DATA_API_KEY');
     if (!key) return null;
-    for (const candidate of twelveExchangeCandidates(symbol, market, context)) {
-      const params = new URLSearchParams({ symbol: candidate.symbol, apikey: key, timezone: 'UTC' });
-      if (candidate.exchange) params.set('exchange', candidate.exchange);
-      const cacheKey = `quote:${this.name}:${params.get('symbol')}:${params.get('exchange') ?? ''}`;
-      const started = Date.now();
-      const result = await fetchJson(`https://api.twelvedata.com/quote?${params.toString()}`, { cacheKey, ttlMs: QUOTE_CACHE_MS, forceFresh: context?.forceFresh });
-      const body = result.data as Record<string, unknown> | null;
-      if (!result.ok || !body || body.status === 'error') {
-        logProviderFailure(this.name, 'quote', symbol, providerError(this.name, String(body?.code ?? `http_${result.status}`), String(body?.message ?? 'provider_error'), candidate.symbol, result.status));
-        continue;
-      }
-      const quote = normalizeQuote({
-        symbol: context?.symbol ?? symbol,
-        providerSymbol: candidate.exchange ? `${candidate.symbol}:${candidate.exchange}` : candidate.symbol,
-        provider: this.name,
-        providerName: this.displayName,
-        name: body.name,
-        price: body.close ?? body.price,
-        currency: body.currency,
-        change: body.change,
-        changePercent: body.percent_change,
-        open: body.open,
-        high: body.high,
-        low: body.low,
-        previousClose: body.previous_close,
-        volume: body.volume,
-        market: market ?? body.exchange,
-        exchange: body.exchange ?? candidate.exchange,
-        exchangeCode: body.mic_code ?? candidate.exchange,
-        country: body.country,
-        assetType: body.type ?? body.instrument_type,
-        ...twelveDataObservation(body),
-        context,
-      });
-      if (quote) {
-        if (result.cacheHit) Object.assign(quote, { cached: true, cacheAgeSeconds: result.cacheAgeSeconds });
-        logProviderSuccess(this.name, 'quote', symbol, Date.now() - started, result.cacheHit);
-        return quote;
-      }
-    }
-    return null;
+    return fetchTwelveDataQuote({ symbol, market, context, key, candidates: twelveExchangeCandidates(symbol, market, context),
+      fetchJson, normalize: normalizeQuote, success: (latency, cacheHit) => logProviderSuccess(this.name, 'quote', symbol, latency, cacheHit) });
   }
 
   async getCandles(symbol: string, market?: string | null, interval = '1day', context?: MarketDataProviderContext) {
@@ -890,6 +863,7 @@ class EodhdProvider extends BaseProvider {
         forceFresh: context?.forceFresh,
       });
       const body = result.data as Record<string, unknown> | null;
+      if ([401, 402, 403, 429].includes(result.status)) throw new QuoteProviderError(result.status, 'provider_error', null, candidate);
       if (!result.ok || !body) {
         logProviderFailure(this.name, 'quote', symbol, providerError(this.name, `http_${result.status}`, 'provider_error', candidate, result.status));
         continue;
@@ -1158,16 +1132,22 @@ function providerExcluded(provider: MarketDataProvider, context: MarketDataProvi
 export async function getQuoteWithFallback(symbol: string, market?: string | null, context: MarketDataProviderContext = {}): Promise<ProviderFallbackResult<NormalizedMarketQuote>> {
   const attempts: ProviderAttemptFailure[] = [];
   const key = fallbackKey('quote', symbol, market, context);
-  for (const provider of marketDataProviders) {
+  const preferred = context.preferredProviders || (context.assetType === 'index' ? ['fmp'] : []);
+  const rank = (name: MarketDataProviderName) => preferred.includes(name) ? preferred.indexOf(name) : preferred.length;
+  const ordered = preferred.length ? [...marketDataProviders].sort((a, b) => rank(a.name) - rank(b.name)) : marketDataProviders;
+  for (const provider of ordered) {
     if (providerExcluded(provider, context)) continue;
     if (provider.supports && !provider.supports(symbol, context)) continue;
     if (!provider.configured()) {
       attempts.push(providerError(provider.name, 'not_configured', 'provider_not_configured'));
       continue;
     }
+    const failed = cachedQuoteFailure(`${key}:${provider.name}`);
+    if (failed) { attempts.push(failed); continue; }
     try {
       const quote = await provider.getQuote(symbol, market, context);
       if (quote) {
+        quote.receivedAt ??= new Date().toISOString();
         setFallback(key, quote, provider.name);
         return { ok: true, data: quote, provider: provider.name, attempts };
       }
@@ -1175,7 +1155,10 @@ export async function getQuoteWithFallback(symbol: string, market?: string | nul
       attempts.push(failure);
       logProviderFailure(provider.name, 'quote', symbol, failure);
     } catch (error) {
-      const failure = providerError(provider.name, error instanceof Error && error.name === 'TimeoutError' ? 'provider_timeout' : 'provider_error', error instanceof Error ? error.message : 'provider_error');
+      const status = error instanceof QuoteProviderError ? error.status : error instanceof FmpRateLimitError ? 429 : undefined;
+      const failure = providerError(provider.name, error instanceof Error && error.name === 'TimeoutError' ? 'provider_timeout' : 'provider_error', error instanceof Error ? error.message : 'provider_error', error instanceof QuoteProviderError ? error.providerSymbol : undefined, status);
+      failure.retryAt = error instanceof QuoteProviderError ? error.retryAt : error instanceof FmpRateLimitError ? getFmpRateLimitedUntil() : undefined;
+      rememberQuoteFailure(`${key}:${provider.name}`, failure);
       attempts.push(failure);
       logProviderFailure(provider.name, 'quote', symbol, failure);
     }

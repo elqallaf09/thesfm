@@ -6,6 +6,7 @@ import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/t
 import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvSceneChange, tvSceneHasPrice, tvSceneIssue, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { TvDataNotice } from './TvDataNotice';
 
 type SceneSnapshot = TvSnapshot & { summary?: TvQuote[]; selectionTotal?: number };
 type Props = {
@@ -31,17 +32,18 @@ function QuoteChange({ quote, language }: { quote: TvQuote; language: TvLanguage
 function QuoteEvidence({ quote, language, now }: { quote: TvQuote; language: TvLanguage; now: number }) {
   const status = tvSceneHasPrice(quote) ? quoteStatus(quote, now) : 'unavailable';
   return <span className="tv-scene-evidence">
-    <span className="tv-status" data-status={status}>{status === 'available' ? tvSceneText(language, 'latestQuote') : tvText(language, status)}</span>
-    <span className="tv-scene-source" dir="auto">{quote.source || tvText(language, 'unavailable')}</span>
-    <time dateTime={quote.observedAt || undefined}>{tvTime(quote.observedAt, language, true)}</time>
+    <span className="tv-status" data-status={status}>{status === 'unavailable' ? tvSceneText(language, tvSceneIssue(quote.issue)) : status === 'available' ? tvSceneText(language, 'latestQuote') : tvText(language, status)}</span>
+    {status !== 'unavailable' && <><span className="tv-scene-source" dir="auto">{quote.source}</span>
+      <time dateTime={quote.observedAt || undefined}>{tvTime(quote.observedAt, language, true)}</time></>}
   </span>;
 }
 
 function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; language: TvLanguage; now: number; select: (quote: TvQuote) => void }) {
-  return <button className="tv-scene-summary" onClick={() => select(quote)} data-tv-focus-key={`summary:${quoteKey(quote)}`}>
+  const priced = tvSceneHasPrice(quote);
+  return <button className="tv-scene-summary" data-priced={priced} onClick={() => select(quote)} data-tv-focus-key={`summary:${quoteKey(quote)}`}>
     <span className="tv-scene-summary-name">{language === 'ar' ? quote.nameAr : quote.name}</span>
-    <span className="tv-scene-summary-value" dir="ltr">{tvSceneHasPrice(quote) ? tvPrice(quote.price, quote.currency) : '—'}<small>{tvSceneQuoteUnit(quote, language)}</small></span>
-    <QuoteChange quote={quote} language={language}/>
+    {priced ? <><span className="tv-scene-summary-value" dir="ltr">{tvPrice(quote.price, quote.currency)}<small>{tvSceneQuoteUnit(quote, language)}</small></span>
+      <QuoteChange quote={quote} language={language}/></> : <span className="tv-scene-summary-code" dir="ltr">{quote.displaySymbol || quote.symbol}</span>}
     <QuoteEvidence quote={quote} language={language} now={now}/>
   </button>;
 }
@@ -84,17 +86,18 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ snapshot, loadi
   const [view, setView] = useState<'list' | 'heatmap'>('list');
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(language, key);
-  const { summaries, rows, all, priced, unavailable, tickerQuotes } = useMemo(() => {
+  const { summaries, rows, all, unavailable, tickerQuotes } = useMemo(() => {
     const summaries = snapshot?.summary?.slice(0, 4) ?? snapshot?.quotes.slice(0, 4) ?? [];
     const snapshotRows = snapshot?.summary ? snapshot.quotes.slice(0, 6) : snapshot?.quotes.slice(4, 10) ?? [];
     const rows = watchlist && !snapshotRows.length ? summaries : snapshotRows;
     const all = Array.from(new Map([...summaries, ...rows].map(quote => [quoteKey(quote), quote])).values());
     return {
-      summaries, rows, all, priced: rows.filter(tvSceneHasPrice), unavailable: all.filter(quote => !tvSceneHasPrice(quote)),
+      summaries, rows, all, unavailable: all.filter(quote => !tvSceneHasPrice(quote)),
       tickerQuotes: all.filter(tvSceneHasPrice),
     };
   }, [snapshot, watchlist]);
   const emptyWatchlist = watchlist && Boolean(snapshot) && all.length === 0;
+  const rowsPriced = rows.some(tvSceneHasPrice);
   const recent = all.filter(quote => tvSceneHasPrice(quote) && ['available', 'delayed'].includes(quoteStatus(quote, now))).length;
   const closed = all.filter(quote => tvSceneHasPrice(quote) && quoteStatus(quote, now) === 'closed').length;
   const retained = all.filter(quote => tvSceneHasPrice(quote) && !['available', 'delayed', 'closed'].includes(quoteStatus(quote, now))).length;
@@ -123,13 +126,13 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ snapshot, loadi
           {heatmap.length ? <div className="tv-scene-heatmap">{heatmap.map(quote => <button key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`heatmap:${quoteKey(quote)}`} data-trend={quote.changePercent! > 0 ? 'up' : quote.changePercent! < 0 ? 'down' : 'flat'}>
             <span className="tv-scene-heatmap-name">{language === 'ar' ? quote.nameAr : quote.name}</span><strong dir="ltr">{quote.displaySymbol || quote.symbol}</strong>
             <QuoteChange quote={quote} language={language}/><QuoteEvidence quote={quote} language={language} now={now}/>
-          </button>)}</div> : <p className="tv-scene-no-data">{emptyWatchlist ? t('emptyWatchlist') : s('noHeatmap')}</p>}
-        </> : priced.length ? <div className="tv-scene-table">
-          <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></div>
-          <div className="tv-scene-rows">{priced.map(quote => <button className="tv-quote tv-scene-row" key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
+          </button>)}</div> : <div className="tv-scene-no-data"><p>{emptyWatchlist ? t('emptyWatchlist') : s('noHeatmap')}</p>{rows.length > 0 && <button onClick={() => setView('list')}>{s('quoteList')}</button>}</div>}
+        </> : rows.length ? <div className="tv-scene-table" data-empty={!rowsPriced}>
+          <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span>{rowsPriced ? <><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></> : <span>{t('provider')}</span>}</div>
+          <div className="tv-scene-rows">{rows.map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
             <span className="tv-scene-identity"><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span dir="ltr">{quote.displaySymbol || quote.symbol}</span></span>
-            <span className="tv-scene-price" dir="ltr"><strong>{tvPrice(quote.price, quote.currency)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
-            <QuoteChange quote={quote} language={language}/><QuoteEvidence quote={quote} language={language} now={now}/>
+            {tvSceneHasPrice(quote) && <><span className="tv-scene-price" dir="ltr"><strong>{tvPrice(quote.price, quote.currency)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
+              <QuoteChange quote={quote} language={language}/></>}<QuoteEvidence quote={quote} language={language} now={now}/>
           </button>)}</div>
         </div> : <div className="tv-scene-no-data"><h3>{emptyWatchlist ? t('emptyWatchlist') : s('noScenePrices')}</h3><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
       </section>
@@ -137,7 +140,8 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ snapshot, loadi
         <section className="tv-scene-health" aria-labelledby="tv-scene-coverage-title"><h2 id="tv-scene-coverage-title">{s('sceneCoverage')}</h2>
           <div className="tv-scene-coverage-total"><strong dir="ltr">{snapshot ? `${all.length - unavailable.length} / ${all.length}` : '—'}</strong><span>{s('quoted')}</span></div>
           <p>{s('selectedCoverage')}</p>
-          <dl><div><dt>{s('recent')}</dt><dd dir="ltr">{snapshot ? recent : '—'}</dd></div><div><dt>{s('closePrices')}</dt><dd dir="ltr">{snapshot ? closed : '—'}</dd></div><div><dt>{s('otherPrices')}</dt><dd dir="ltr">{snapshot ? retained : '—'}</dd></div></dl>
+          <TvDataNotice quotes={all} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/>
+          {tickerQuotes.length > 0 && <dl><div><dt>{s('recent')}</dt><dd dir="ltr">{snapshot ? recent : '—'}</dd></div><div><dt>{s('closePrices')}</dt><dd dir="ltr">{snapshot ? closed : '—'}</dd></div><div><dt>{s('otherPrices')}</dt><dd dir="ltr">{snapshot ? retained : '—'}</dd></div></dl>}
           {unavailable.length > 0 && <details className="tv-scene-unavailable"><summary data-tv-focus-key="scene-unavailable">{s('missing')} <bdi>{unavailable.length}</bdi></summary><ul>{unavailable.map(quote => <li key={quoteKey(quote)}><button onClick={() => onQuote(quote)} data-tv-focus-key={`unavailable:${quoteKey(quote)}`}><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span>{s(tvSceneIssue(quote.issue))}</span></button></li>)}</ul></details>}
         </section>
         <section className="tv-scene-headlines" aria-labelledby="tv-scene-news-title"><h2 id="tv-scene-news-title">{t('news')}</h2>{visibleNews.length ? visibleNews.map(story => <button key={story.id} onClick={() => onStory(story)} data-tv-focus-key={`story:${story.id}`}><span>{story.title}</span><small>{story.source} · {tvTime(story.publishedAt, language, true)}</small></button>) : <p>{t('noNews')}</p>}</section>

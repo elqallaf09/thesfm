@@ -118,7 +118,7 @@ export const TV_TEXT = {
   activeReading: ['متوقف أثناء التصفح', 'Paused while browsing', 'En pause pendant la navigation'],
   latestObservation: ['آخر ملاحظة سعرية', 'Latest price observation', 'Dernière observation du cours'],
   nothingRanked: ['لا تتوفر بيانات حديثة كافية للترتيب', 'Not enough recent data to rank', 'Données récentes insuffisantes pour classer'],
-  refresh: ['تحديث', 'Refresh', 'Actualiser'], connected: ['الاتصال متاح', 'Connected', 'Connecté'],
+  refresh: ['تحديث', 'Refresh', 'Actualiser'], connected: ['الشبكة متصلة', 'Network connected', 'Réseau connecté'],
   stripMarkets: ['أشرطة الأسواق', 'Market strips', 'Bandes des marchés'],
   reference: ['سعر مرجعي يومي', 'Daily reference rate', 'Taux de référence quotidien'],
   rising: ['صعود', 'Rising', 'Hausse'], falling: ['نزول', 'Falling', 'Baisse'], unchanged: ['دون تغير', 'Unchanged', 'Stable'],

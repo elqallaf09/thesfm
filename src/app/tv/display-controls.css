@@ -4,7 +4,7 @@
 .tv-density-compact { --tv-card-width: 24em; --tv-card-height: 3.65em; --tv-row-height: 4.25em; }
 .tv-screen .tv-market-strip { min-height: var(--tv-row-height); }
 .tv-screen .tv-market-strip-item { width: var(--tv-card-width); min-width: var(--tv-card-width); min-height: var(--tv-card-height); }
-.tv-screen.tv-density-balanced .tv-market-strip-item { grid-template-rows: 2.1em 1.2em .95em; row-gap: .15em; line-height: 1.25; padding-block: .3em; }
+.tv-screen.tv-density-balanced .tv-market-strip-item { grid-template-rows: minmax(2.1em, auto) minmax(1.2em, auto) minmax(.95em, auto); row-gap: .15em; line-height: 1.25; padding-block: .3em; }
 .tv-density-balanced .tv-strip-symbol > span { white-space: nowrap; max-height: 1.35em; }
 .tv-screen.tv-density-compact .tv-market-strip { min-height: var(--tv-row-height); }
 .tv-screen.tv-density-compact .tv-market-strip-item {
@@ -42,12 +42,47 @@
 .tv-channel small { display: block; font-size: .65em; margin-top: .6em; color: var(--tv-muted); }
 .tv-channel-actions, .tv-channel-confirm { display: flex; flex-wrap: wrap; gap: .5em; align-items: center; font-size: .72em; }
 .tv-channel-confirm { grid-column: 1/-1; padding-block-start: .7em; border-top: 1px solid var(--tv-line); }
+/* Source evidence and units stay readable when TV layouts shrink to 720p. */
+.tv-strip-symbol > b { font-size: max(12px, .85em); }
+.tv-screen .tv-strip-symbol > span { font-size: max(12px, .68em); }
+.tv-strip-price > span { font-size: max(12px, .62em); }
+.tv-screen .tv-market-strip-heading small { font-size: max(12px, .68em); }
+.tv-market-strip-empty { font-size: max(12px, .7em); }
+.tv-screen .tv-market-strip-item > .tv-strip-change { font-size: max(12px, .66em); }
+.tv-screen .tv-market-strip-item > .tv-strip-evidence { font-size: max(12px, .6em); line-height: 1.4; }
+.tv-quote-grid .tv-quote-name { font-size: max(12px, .8em); }
+.tv-quote-grid .tv-quote-top > span { font-size: max(12px, .65em); }
+.tv-quote-grid .tv-price-line > small { font-size: max(12px, .76em); }
+.tv-quote-grid .tv-price-line > span { font-size: max(12px, .88em); }
+.tv-quote-grid .tv-quote-meta { font-size: max(12px, .67em); line-height: 1.5; flex-wrap: wrap; }
+.tv-quote-grid .tv-status { font-size: max(12px, .6em); line-height: 1.5; }
+.tv-browsing .tv-eyebrow { font-size: max(12px, .7em); }
+.tv-browsing .tv-pagination { font-size: max(12px, .76em); }
+.tv-browsing .tv-data-health p { font-size: max(12px, .65em); }
+.tv-browsing .tv-brand small, .tv-browsing .tv-clock small { font-size: max(12px, .76em); }
+.tv-screen .tv-story small { font-size: max(12px, .65em); }
+.tv-footer { font-size: max(12px, .63em); }
+/* Keep unavailable tools readable without animating rows of empty prices. */
+.tv-data-notice { display: flex; align-items: center; justify-content: space-between; gap: .7em; padding: .55em .7em; margin-bottom: .5em; border: 1px solid var(--tv-line); border-inline-start-color: var(--tv-accent); border-radius: var(--radius-sm); background: var(--tv-panel2); flex-shrink: 0; }
+.tv-data-notice strong { font-size: max(12px, .75em); line-height: 1.5; font-weight: 500; color: var(--tv-accent); }
+.tv-data-notice small { display: block; font-size: max(12px, .65em); line-height: 1.5; }
+.tv-screen .tv-data-notice button { font-size: max(12px, .7em); flex-shrink: 0; }
+.tv-screen .tv-data-notice button:disabled { --border: var(--tv-line); --control-disabled: var(--tv-panel); --foreground-subtle: var(--tv-muted); --shadow-xs: none; border-style: dashed; }
+.tv-screen .tv-quote-grid .tv-quote[data-priced=false] { min-height: 6em; padding-block: .8em; }
+.tv-quote-grid .tv-quote[data-priced=false] .tv-status { font-size: max(12px, .72em); line-height: 1.5; color: var(--tv-muted); }
+.tv-screen .tv-market-strip[data-empty=true] { min-height: 4.1em; }
+.tv-market-strip[data-empty=true] .tv-market-strip-window { overflow-x: auto; scrollbar-width: thin; }
+.tv-market-strip[data-empty=true] .tv-market-strip-track { animation: none; transform: none; }
+.tv-market-strip[data-paged=false] > .tv-market-strip-window { grid-column: 2/-1; }
+.tv-screen .tv-market-strip-item[data-priced=false] { grid-template-rows: auto auto; min-height: 3.55em; }
+.tv-screen .tv-market-strip-item[data-priced=false] > .tv-strip-evidence { grid-row: 2; font-size: max(12px, .65em); line-height: 1.4; }
+.tv-strip-health, .tv-strip-coverage { font-size: max(12px, .57em); }
 @media(max-width:760px) {
   .tv-screen .tv-market-strip-heading small { display: inline; }
   .tv-screen .tv-market-strip-heading { grid-template-columns: minmax(0,1fr); gap: .2em; }
   .tv-screen .tv-market-strip-heading small { margin-inline-start: 0; }
   .tv-screen .tv-market-strip-heading strong { white-space: normal; }
-  .tv-strip-coverage { font-size: .52em; }
+  .tv-strip-coverage { font-size: max(12px, .52em); }
   .tv-channel { grid-template-columns: 1fr; }
   .tv-channel-create { flex-wrap: wrap; }
 }

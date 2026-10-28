@@ -189,3 +189,35 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
   await expect(page.getByText('قائمة المتابعة فارغة. أضف أصولك من الموقع أو الهاتف.', { exact: true })).toBeVisible();
   await expect(page.locator('.tv-scene-row')).toHaveCount(0);
 });
+
+test('an unavailable scene keeps instruments readable and explains the source cooldown', async ({ page }) => {
+  await fixtures(page);
+  const retryAt = new Date(Date.now() + 300_000).toISOString();
+  await page.route('**/api/tv/snapshot?*', route => {
+    const body = snapshot('gulf', undefined, true);
+    for (const quote of [...body.summary, ...body.quotes]) quote.issue = 'rate_limited';
+    return route.fulfill({ json: { ...body, retryAt } });
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/tv');
+  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator('.tv-data-notice')).toContainText('حد الطلبات لدى المصدر');
+  await expect(page.locator('.tv-data-notice time')).toHaveAttribute('dateTime', retryAt);
+  await expect(page.locator('[data-tv-focus-key="source-retry"]')).toBeDisabled();
+  await expect(page.locator('.tv-scene-no-data')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-row .tv-scene-price')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-summary .tv-status')).toHaveCount(4);
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
+    const lastRow = await page.locator('.tv-scene-row').last().boundingBox();
+    expect(lastRow!.y + lastRow!.height).toBeLessThan(viewport.height);
+  }
+  const row = page.locator('.tv-scene-row').first();
+  await row.click();
+  await expect(page.getByRole('dialog')).toContainText('حد الطلبات لدى المصدر');
+  await page.keyboard.press('Escape');
+  await expect(row).toBeFocused();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(392);
+});
