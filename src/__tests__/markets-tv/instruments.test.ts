@@ -13,8 +13,10 @@ describe('TV expanded currency feeds', () => {
     expect(rows).toHaveLength(1400); expect(rows[0].currency).toBe('USDT');
     const quotes = parseCryptoQuotes([{ symbol: rows[0].providerSymbol, lastPrice: '1.123456', closeTime: now, priceChangePercent: '2.5', count: 20 }], [rows[0]], now);
     expect(quotes[0]).toMatchObject({ price: 1.123456, currency: 'USDT', observedAt: new Date(now).toISOString(), status: 'available' });
+    expect(quotes[0]).toMatchObject({ changeBasis: '24h', delayType: 'realtime', issue: undefined });
     expect(parseCryptoQuotes([{ symbol: 'OTHER', lastPrice: '9', closeTime: now, count: 1 }], [rows[0]], now)[0].price).toBeNull();
     expect(parseCryptoQuotes([{ symbol: rows[0].providerSymbol, lastPrice: '1', closeTime: now + 100000, count: 20 }], [rows[0]], now)[0].price).toBeNull();
+    expect(parseCryptoQuotes([{ symbol: rows[0].providerSymbol, lastPrice: '1', closeTime: now }], [rows[0]], now)[0].price).toBeNull();
   });
   it('accepts all published forex pairs and computes explicitly dated ECB crosses', () => {
     const assets = parseForexDirectory({ data: [{ symbol: 'GBP/USD', currency_base: 'Pound', currency_quote: 'Dollar' }, { symbol: 'EUR/USD' }, { symbol: 'EUR/USD' }, { symbol: 'USD/USD' }] });
@@ -23,6 +25,7 @@ describe('TV expanded currency feeds', () => {
     const q = referenceForexQuote(assets[1], days);
     expect(q.price).toBeCloseTo(1.5); expect(q.changePercent).toBeCloseTo(9.0909); expect(q.observedAt).toBe('2026-09-18'); expect(q.source).toBe('ECB · reference');
     expect(quoteStatus(q, now)).toBe('reference');
+    expect(q).toMatchObject({ changeBasis: 'reference', issue: undefined });
     expect(referenceForexQuote({ symbol: 'KWD/USD', name: 'Test' }, days).price).toBeNull();
   });
   it('retains evidence only for the same listing and never advances its source clock on failure', () => {
@@ -31,7 +34,18 @@ describe('TV expanded currency feeds', () => {
     const failed = { ...old, quotes: [{ ...quote, price: null, observedAt: null }] };
     expect(mergeStripSnapshot(old, failed).quotes[0]).toMatchObject({ price: 10, status: 'stale', observedAt: quote.observedAt });
     expect(mergeStripSnapshot(old, { ...failed, quotes: [{ ...failed.quotes[0], exchange: 'TWO' }] }).quotes[0].price).toBeNull();
+    expect(mergeStripSnapshot(old, { ...failed, quotes: [{ ...failed.quotes[0], currency: 'EUR' }] }).quotes[0].price).toBeNull();
+    expect(mergeStripSnapshot(old, { ...failed, group: 'us' }).quotes[0].price).toBeNull();
+    expect(mergeStripSnapshot(old, { ...old, quotes: [{ ...quote, price: 99, observedAt: 'invalid' }] }).quotes[0].price).toBe(10);
     expect(mergeStripSnapshot(old, { ...old, quotes: [{ ...quote, price: 11, observedAt: new Date(now + 1000).toISOString() }] }).quotes[0].price).toBe(11);
+    const previous = { ...old, scene: 'world' as const, summary: [quote], quotes: [] };
+    const next = { ...previous, summary: [{ ...quote, price: null, source: null, observedAt: null, issue: 'timeout' as const }] };
+    expect(mergeStripSnapshot(previous, next).summary?.[0]).toMatchObject({ price: 10, observedAt: quote.observedAt, receivedAt: quote.receivedAt, status: 'stale', issue: 'timeout' });
+    const missingMetadata = { ...failed, group: 'watchlist' as const, quotes: [{ ...failed.quotes[0], currency: null, exchange: null, issue: 'timeout' as const }] };
+    const watchlist = { ...old, group: 'watchlist' as const };
+    expect(mergeStripSnapshot(watchlist, missingMetadata).quotes[0]).toMatchObject({ price: 10, currency: 'USD', exchange: 'ONE', status: 'stale', observedAt: quote.observedAt });
+    expect(mergeStripSnapshot(watchlist, { ...missingMetadata, quotes: [{ ...missingMetadata.quotes[0], currency: 'EUR' }] }).quotes[0].price).toBeNull();
+    expect(mergeStripSnapshot({ ...watchlist, quotes: [quote, { ...quote, exchange: 'TWO' }] }, missingMetadata).quotes[0].price).toBeNull();
   });
   it('validates custom market IDs, keeps an explicit empty selection and clamps controls', () => {
     expect(normalizeTvSettings({ marketIds: ['TD_XSAU','crypto','crypto','<script>'], stripSpeed: 999, stripDensity: 'compact' })).toMatchObject({ marketIds: ['TD_XSAU','crypto'], stripSpeed: 56, stripDensity: 'compact' });

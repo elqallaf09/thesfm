@@ -3,7 +3,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TvStripQuote } from './TvStripQuote';
-import { mergeStripSnapshot } from '@/lib/markets-tv/stripQuotes';
+import { retainVisibleTvSnapshot } from './retainedSnapshot';
 import { ChevronRight, RefreshCw } from 'lucide-react';
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import { useTvResource } from './useTvResource';
@@ -26,8 +26,10 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   const path = visible && market.count > 0 && (!custom || selectedPage!.length > 0) ? `/api/tv/snapshot?${params}` : null;
   const resource = useTvResource<TvSnapshot>(path, market.group === 'crypto' ? 15000 : 30000, market.group === 'watchlist' ? token : '', revision);
   const [retained, setRetained] = useState<TvSnapshot | null>(null);
-  useEffect(() => { if (resource.data) setRetained(previous => mergeStripSnapshot(previous, resource.data!)); }, [resource.data]);
-  const snapshot = resource.data ? mergeStripSnapshot(retained, resource.data) : retained, quotes = snapshot?.quotes || [];
+  const resourceData = resource.data, errorStatus = resource.errorStatus;
+  useEffect(() => { setRetained(previous => retainVisibleTvSnapshot(previous, { data: resourceData, errorStatus })); }, [resourceData, errorStatus]);
+  // Hide revoked data in this render as well as clearing the retained state.
+  const snapshot = retainVisibleTvSnapshot(retained, resource), quotes = snapshot?.quotes || [];
   const coverage = tvStripCoverage(quotes, now);
   const displayed = pricedOnly ? quotes.filter(hasTvPrice) : quotes;
   const pages = Math.max(1, Math.ceil((custom ? selection.length : snapshot?.directoryTotal ?? market.count) / 12));
@@ -45,14 +47,14 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   }, [pricedOnly, displayed.length, visible, paused, manualPause, resource.loading, resource.error, resource.data, pages]);
   useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
   const health = resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
-  const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
+  const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = () => { if (!resource.loading) setPage(value => (value + 1) % pages); };
   return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
       <small dir="ltr" title={t('directory')}>{custom ? `${selection.length.toLocaleString('en-US')} / ` : ''}{market.count.toLocaleString('en-US')}</small>
       <span className="tv-strip-coverage">{t('pageCoverage')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>
-      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
+      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
     </button>
     <div className="tv-market-strip-window" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(Boolean(root.current?.contains(document.activeElement)))} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={next} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>

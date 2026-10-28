@@ -73,6 +73,10 @@ export type WorldStockQuotesResponse = {
 
 export type WorldStockQuote = {
   dataRecord?: import('@/lib/market-data/records.server').MarketDataRecord;
+  observation?: import('@/lib/market/quoteObservation').QuoteObservation;
+  delayType?: string | null;
+  receivedAt?: string | null;
+  issue?: 'provider_unavailable' | 'timeout' | 'identity_mismatch' | 'rate_limited' | 'access_denied' | 'not_configured' | 'invalid_quote';
   price: number | null;
   change: number | null;
   changePercent: number | null;

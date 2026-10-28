@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { MarketsTv } from '@/components/markets-tv/MarketsTv';
 import '../tv.css';
 import '../display-controls.css';
+import '../viewing.css';
 
 export const metadata: Metadata = {
   title: 'أشرطة الأسواق | The SFM Markets TV',

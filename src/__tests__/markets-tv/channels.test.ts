@@ -12,9 +12,10 @@ describe('TV saved channels and display evidence', () => {
     const [saved] = normalizeTvChannels(JSON.parse(JSON.stringify([channel])));
     expect(saved.name).toBe('شاشة المكتب'); expect(saved).not.toHaveProperty('token');
     expect(saved.settings.marketIds).toEqual(['US', 'BOURSA_KUWAIT']);
-    expect(saved.settings).toMatchObject({ language: 'fr', stripDensity: 'compact', pricedOnly: true, marketSpeeds: { US: 80, BOURSA_KUWAIT: 36 }, autoHideControls: true });
+    expect(saved.settings).toMatchObject({ displayMode: 'strips', language: 'fr', stripDensity: 'compact', pricedOnly: true, marketSpeeds: { US: 80, BOURSA_KUWAIT: 36 }, autoHideControls: true });
     expect(saved.selections.US).toHaveLength(2000); expect(saved.selections.BOURSA_KUWAIT).toEqual([]);
     expect(saved.selections.SSE).toBeUndefined();
+    expect(normalizeTvChannels(JSON.parse(JSON.stringify([saved])))).toEqual([saved]);
   });
   it('bounds stored channels and rejects duplicate/unsafe IDs and invalid speed maps', () => {
     expect(normalizeTvChannels(null)).toEqual([]);
@@ -30,7 +31,8 @@ describe('TV saved channels and display evidence', () => {
       source: 'QA fixture', observedAt: '2026-09-19T11:59:00Z', receivedAt: null, status: 'delayed', changePercent: 1, exchange: 'QA', country: null };
     const quotes: TvQuote[] = [quote, { ...quote, observedAt: '2026-09-18T12:00:00Z', status: 'reference' },
       { ...quote, observedAt: '2026-09-18T12:00:00Z' }, { ...quote, observedAt: null }, { ...quote, price: null }, { ...quote, source: null }];
-    expect(tvStripCoverage(quotes, now)).toEqual({ loaded: 6, priced: 4, recent: 1, reference: 1, stale: 1, unknown: 1 });
+    expect(tvStripCoverage(quotes, now)).toEqual({ loaded: 6, priced: 4, recent: 1, closed: 0, reference: 1, stale: 1, unknown: 1 });
+    expect(tvStripCoverage([{ ...quote, status: 'closed', observedAt: '2026-09-18T12:00:00Z' }], now)).toMatchObject({ closed: 1, stale: 0, recent: 0 });
     expect(tvStripCoverage([quote], now + 3600000).stale).toBe(1);
   });
 });
