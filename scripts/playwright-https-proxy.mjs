@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import http from 'node:http';
 import https from 'node:https';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
@@ -6,7 +7,37 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const require = createRequire(import.meta.url);
-const httpProxy = require('next/dist/compiled/http-proxy');
+
+function createForwardedHeaders(request, upstreamHost, upstreamPort) {
+  const forwardedFor = [request.headers['x-forwarded-for'], request.socket.remoteAddress]
+    .filter(Boolean)
+    .join(', ');
+  return {
+    ...request.headers,
+    host: `${upstreamHost}:${upstreamPort}`,
+    'x-forwarded-for': forwardedFor,
+    'x-forwarded-host': request.headers.host,
+    'x-forwarded-proto': 'https',
+  };
+}
+
+function rewriteRedirectLocation(location, forwardedHost, upstreamPort) {
+  if (!location || !forwardedHost) return location;
+  try {
+    const redirectUrl = new URL(location);
+    const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+    const targetsForwardedHost = redirectUrl.host === forwardedHost;
+    const targetsUpstream = loopbackHosts.has(redirectUrl.hostname)
+      && Number(redirectUrl.port || (redirectUrl.protocol === 'https:' ? 443 : 80)) === upstreamPort;
+    if (!targetsForwardedHost && !targetsUpstream) return location;
+    redirectUrl.protocol = 'https:';
+    if (targetsUpstream) redirectUrl.host = forwardedHost;
+    return redirectUrl.toString();
+  } catch {
+    // Preserve malformed or non-URL Location values for the browser to reject.
+    return location;
+  }
+}
 
 export async function startHttpsLoopbackProxy({
   key,
@@ -16,42 +47,63 @@ export async function startHttpsLoopbackProxy({
   listenHost = '127.0.0.1',
   listenPort,
 }) {
-  const proxy = httpProxy.createProxyServer({
-    target: `http://${upstreamHost}:${upstreamPort}`,
-    xfwd: true,
-    ws: true,
-  });
   const server = https.createServer({ key, cert }, (request, response) => {
-    proxy.web(request, response);
-  });
-  proxy.on('error', (_error, _request, response) => {
-    if (response && typeof response.writeHead === 'function') {
+    const forwardedHost = request.headers.host;
+    const upstreamRequest = http.request({
+      hostname: upstreamHost,
+      port: upstreamPort,
+      method: request.method,
+      path: request.url,
+      headers: createForwardedHeaders(request, upstreamHost, upstreamPort),
+    }, upstreamResponse => {
+      const headers = { ...upstreamResponse.headers };
+      if (typeof headers.location === 'string') {
+        headers.location = rewriteRedirectLocation(headers.location, forwardedHost, upstreamPort);
+      }
+      response.writeHead(
+        upstreamResponse.statusCode ?? 502,
+        upstreamResponse.statusMessage,
+        headers,
+      );
+      upstreamResponse.pipe(response);
+    });
+    upstreamRequest.on('error', () => {
       if (!response.headersSent) response.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
       response.end('Upstream server is not ready.');
-      return;
-    }
-    response?.destroy();
+    });
+    request.on('aborted', () => upstreamRequest.destroy());
+    request.pipe(upstreamRequest);
   });
-  proxy.on('proxyRes', (proxyResponse, request) => {
-    const location = proxyResponse.headers.location;
-    const forwardedHost = request.headers.host;
-    if (!location || !forwardedHost) return;
-    try {
-      const redirectUrl = new URL(location);
-      const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
-      const targetsForwardedHost = redirectUrl.host === forwardedHost;
-      const targetsUpstream = loopbackHosts.has(redirectUrl.hostname)
-        && Number(redirectUrl.port || (redirectUrl.protocol === 'https:' ? 443 : 80)) === upstreamPort;
-      if (!targetsForwardedHost && !targetsUpstream) return;
-      redirectUrl.protocol = 'https:';
-      if (targetsUpstream) redirectUrl.host = forwardedHost;
-      proxyResponse.headers.location = redirectUrl.toString();
-    } catch {
-      // Preserve malformed or non-URL Location values for the browser to reject.
-    }
+  server.on('upgrade', (request, socket, head) => {
+    const upstreamRequest = http.request({
+      hostname: upstreamHost,
+      port: upstreamPort,
+      method: request.method,
+      path: request.url,
+      headers: createForwardedHeaders(request, upstreamHost, upstreamPort),
+    });
+    upstreamRequest.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
+      const responseHeaders = upstreamResponse.rawHeaders
+        .reduce((lines, value, index, values) => index % 2 === 0
+          ? [...lines, `${value}: ${values[index + 1]}`]
+          : lines, []);
+      socket.write([
+        `HTTP/${upstreamResponse.httpVersion} ${upstreamResponse.statusCode} ${upstreamResponse.statusMessage}`,
+        ...responseHeaders,
+        '',
+        '',
+      ].join('\r\n'));
+      if (head.length > 0) upstreamSocket.write(head);
+      if (upstreamHead.length > 0) socket.write(upstreamHead);
+      socket.pipe(upstreamSocket).pipe(socket);
+    });
+    upstreamRequest.on('response', upstreamResponse => {
+      upstreamResponse.resume();
+      socket.destroy();
+    });
+    upstreamRequest.on('error', () => socket.destroy());
+    upstreamRequest.end();
   });
-  server.on('upgrade', (request, socket, head) => proxy.ws(request, socket, head));
-  server.once('close', () => proxy.removeAllListeners());
 
   await new Promise((resolve, reject) => {
     server.once('error', reject);

@@ -53,6 +53,20 @@ function marketSystemState(): MarketSystemState {
   };
 }
 
+function emptyMarketSystemState(): MarketSystemState {
+  return {
+    ...marketSystemState(),
+    overall: 'unknown',
+    providers: {},
+    providerProfiles: [],
+    capabilityMatrix: [],
+    featuresSucceeded: [],
+    featuresDegraded: [],
+    featuresFailed: ['quotes'],
+    delivery: { source: 'unavailable', cached: false, delayed: true, reason: 'aggregate_refresh_in_progress' },
+  };
+}
+
 describe('/api/market/providers/health', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -66,9 +80,11 @@ describe('/api/market/providers/health', () => {
 
     expect(response.status).toBe(200);
     expect(getMarketSystemState).toHaveBeenCalledTimes(1);
+    expect(getMarketSystemState).toHaveBeenCalledWith();
     expect(body).toMatchObject({
       ok: true,
       status: 'degraded',
+      activeProbe: false,
       configured: 2,
       healthy: 1,
       generatedAt: '2026-09-28T06:30:00.000Z',
@@ -87,6 +103,27 @@ describe('/api/market/providers/health', () => {
     expect(body.state.capabilityMatrix[1].lastErrorReason).toBeNull();
     expect(body.state.delivery).toMatchObject({
       source: 'persistent_cache', cached: true, delayed: false, reason: null,
+    });
+  });
+
+  it('actively verifies an empty cold-start snapshot before reporting provider health', async () => {
+    getMarketSystemState
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(marketSystemState());
+
+    const { GET } = await import('@/app/api/market/providers/health/route');
+    const response = await GET();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(1);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(2, { forceFresh: true });
+    expect(body).toMatchObject({
+      ok: true,
+      status: 'degraded',
+      activeProbe: true,
+      configured: 2,
+      healthy: 1,
     });
   });
 });

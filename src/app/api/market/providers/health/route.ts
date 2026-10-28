@@ -7,7 +7,16 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const state = await getMarketSystemState();
+  let state = await getMarketSystemState();
+  let activeProbe = false;
+
+  // A cold serverless instance can briefly miss both the shared snapshot and
+  // the refresh lease. Verify that empty state once before publishing a false
+  // provider outage to operational clients.
+  if (state.capabilityMatrix.length === 0 && Object.keys(state.providers).length === 0) {
+    state = await getMarketSystemState({ forceFresh: true });
+    activeProbe = true;
+  }
   const publicState = sanitizeMarketSystemStateForPublic(state);
   const providers = publicState.providerProfiles.map(profile => ({
     provider: profile.provider,
@@ -23,6 +32,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     status: publicState.overall,
+    activeProbe,
     configured,
     healthy,
     providers,
