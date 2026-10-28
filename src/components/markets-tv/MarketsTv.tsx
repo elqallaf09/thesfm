@@ -1,10 +1,8 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Shared with offline packaged TV clients without the Next image runtime. */
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Maximize, Monitor, Rows3, Settings2, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper, SlidersHorizontal } from 'lucide-react';
-import { TvMarketPicker } from './TvMarketPicker';
-import { TvInstrumentPicker } from './TvInstrumentPicker';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
 import { TvMarketStrips } from './TvMarketStrips';
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
@@ -15,11 +13,13 @@ import { TvSessions } from './TvSessions';
 import { TvQr } from './TvQr';
 import { useTvResource, useTvScenePrefetch } from './useTvResource';
 import { useTvRemote } from './useTvRemote';
-import { TvChannels } from './TvChannels';
 import { normalizeTvChannels, TV_CHANNELS_KEY, type TvChannel } from '@/lib/markets-tv/channels';
 import { useTvControls } from './useTvControls';
 import { TV_SCENE_ORDER, tvScenePath, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { TvSceneDashboard } from './TvSceneDashboard';
+const TvMarketPicker = lazy(() => import('./TvMarketPicker').then(module => ({ default: module.TvMarketPicker })));
+const TvInstrumentPicker = lazy(() => import('./TvInstrumentPicker').then(module => ({ default: module.TvInstrumentPicker })));
+const TvChannels = lazy(() => import('./TvChannels').then(module => ({ default: module.TvChannels })));
 const SETTINGS_KEY = 'sfm-markets-tv-settings-v1', TOKEN_KEY = 'sfm-markets-tv-device-v1';
 const EMPTY_NEWS: TvNews[] = [];
 type Dialog = 'settings' | 'pair' | 'device' | 'worldStocks' | 'markets' | 'instruments' | 'channels' | 'sessions' | null;
@@ -235,6 +235,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     </>}
     {message && <div className="tv-toast" role="status">{message}</div>}
     {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className="tv-dialog"><header><h2 id="tv-dialog-title">{detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'channels' ? 'channels' : dialog === 'worldStocks' ? 'worldStocks' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : dialog === 'device' ? 'paired' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X/></button></header>
+      <Suspense fallback={<p role="status">{t('loading')}</p>}>
       {dialog === 'channels' && <TvChannels channels={channels} change={setChannels} settings={{ ...settings, displayMode: stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse' }} selections={selections} apply={channel => {
         setSettings(normalizeTvSettings({ ...channel.settings, displayMode: channel.settings.displayMode || (stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse') })); setSelections(normalizeTvSelections(channel.selections)); if (channel.settings.displayMode) setRouteStrips(false);
         choose(channel.settings.groups[0], channel.settings.marketIds?.[0] || '');
@@ -249,6 +250,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       {dialog === 'sessions' && <TvSessions language={settings.language} now={now}/>}
       {detail && <TvQuoteDetail quote={detail} language={settings.language} now={now}/>}
       {story && <div className="tv-detail"><div><h3>{story.title}</h3><p>{story.source} · {tvTime(story.publishedAt,settings.language,true)}</p></div><div className="tv-phone-link"><TvQr value={story.url} label={t('openStory')}/><p>{t('openStory')}</p></div></div>}
+      </Suspense>
     </section></div>}
   </div>;
 }
