@@ -1,5 +1,45 @@
 # The SFM Markets TV
 
+## Source recovery and degraded display — 2026-10-28
+
+The viewing scene keeps its selected instruments visible when prices are missing.
+Unavailable cards show one cause rather than duplicate price/source placeholders.
+A source notice distinguishes network connectivity from quote availability and
+shows a retry time when the provider is cooling down. Retained quotes keep their
+original source and observation time. Strip rows without prices use a single,
+manually scrollable copy; provider cooldown pauses automatic batch scanning.
+Core source/time, currency and coverage captions are at least 12px at 720p.
+Optional settings, detail, map, hours and brief panels load when opened.
+
+All authenticated Twelve Data request paths share a server-only transport with
+two concurrent requests, bounded waiting/singleflight and account-specific
+cooldowns. The existing private `trader_cache` holds a credential-fingerprinted
+marker; insertion plus a conditional extension preserves the longest expiry.
+Database failure leaves the in-process guard active. No new schema is required.
+Retry-After takes precedence; explicit minute/day exhaustion uses the documented
+reset, while unspecified throttling backs off from 90 seconds to 15 minutes.
+
+`TvQuote.retryAt` is independent of `observedAt`. The snapshot exposes a retry
+time only when no selected quote is healthy, so a blocked source cannot suspend
+another provider's available stream. Public clients honor successful snapshots
+with a cooldown, including forced refresh/remount, and recheck status at least
+every five minutes. Private devices retain their regular authorization polling.
+
+TV prefers Finnhub for verified US stock identities, with the existing fallback
+chain available. US market-open state is accepted only from a fresh, matching
+Finnhub market-status response; missing access does not imply closure. FMP index
+support is restricted to the six displayed canonical symbols. Twelve Data's
+verified FTSE, DAX and Nikkei aliases include MIC checks. Index values stay in
+points and never pass through equity pence/fils conversions. Twelve Data Kuwait
+quotes are labeled EOD according to the provider's published coverage. None of
+these changes establishes account entitlement or supplies missing prices.
+
+Provider contracts: [Twelve Data credits and resets](https://support.twelvedata.com/en/articles/5615854-credits),
+[Kuwait coverage](https://twelvedata.com/exchanges/xkuw?group=reference),
+[index directory](https://api.twelvedata.com/indices),
+[FMP index quotes](https://site.financialmodelingprep.com/developer/docs/stable/index-quote),
+[Finnhub market status](https://finnhub.io/docs/api/market-status).
+
 ## Display and global release increment
 
 See [the worldwide release programme](markets-tv-global-release.md) for current
@@ -62,8 +102,14 @@ them in login query parameters. Settings and private device responses are
 cache. RLS denies client access to the device table; server-only queries are
 scoped by the verified user ID or hashed device token.
 
-Public sources reuse the canonical SFM market engine and its provider cache. The TV preserves closing/daily reference prices with a stale label; they never enter current-price movers or alerts. The engine excludes the platform's prohibited fallback providers. Four quote workers share a 40-second request budget; unavailable assets remain explicit missing states. Quote/device polling is once per
-minute, news once per three minutes, and saved analyses once per five minutes.
+Public sources reuse the canonical SFM market engine and its provider cache. The
+TV distinguishes dated closes and reference prices from stale retained readings;
+these never enter current-price movers or alerts. The engine excludes the
+platform's prohibited fallback providers. Four quote workers share a nine-second
+request budget; unavailable assets remain explicit missing states. Viewing scenes
+poll every 30 seconds (15 seconds for currencies/commodities), browse quotes and
+device authorization once per minute, news once per three minutes, and saved
+analyses once per five minutes. Provider cooldown can extend public polling.
 Polls do not overlap and suspend in hidden screens. Missing prices remain missing;
 retained prices age in place. Screen state never substitutes a retrieval time for
 the provider's observation time. Pair creation also has a PostgreSQL advisory-lock

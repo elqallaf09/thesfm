@@ -8,7 +8,7 @@ import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { useTvResource } from './useTvResource';
-import { TV_SCENE_ORDER, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { TV_SCENE_ORDER, tvSceneHasPrice, tvSceneIssue, tvSceneText } from '@/lib/markets-tv/scene-display';
 
 export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
@@ -90,7 +90,7 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
   return <div className="tv-detail">
     <div><span dir="ltr" className="tv-symbol">{quote.symbol}</span><h3>{language === 'ar' ? quote.nameAr : quote.name}</h3>
       <div className="tv-detail-price" dir="ltr">{tvPrice(quote.price, quote.currency)} <small>{quote.currency}</small></div>
-      <p>{quote.source || '—'} · {tvTime(quote.observedAt, language, true)} · {t(quoteStatus(quote, now))}</p>
+      <p>{tvSceneHasPrice(quote) ? `${quote.source} · ${tvTime(quote.observedAt, language, true)} · ${t(quoteStatus(quote, now))}` : tvSceneText(language, tvSceneIssue(quote.issue))}</p>
       <h3>{t('ai')}</h3>{analysis.loading ? <p>{t('loading')}</p> : valid ? <>
         <p className="tv-recommendation">{t(result.recommendation)}</p><p>{t('confidence')}: {result.confidence} / 100 · {t('risk')}: {t(result.risk)}</p>
         <p>{t('source')}: The SFM AI Analyst · {result.confidenceCalculation.methodologyVersion}</p><p>{t('analysisTime')}: {tvTime(result.generatedAt, language, true)}</p>

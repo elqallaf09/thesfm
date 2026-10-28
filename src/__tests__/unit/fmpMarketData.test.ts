@@ -53,4 +53,29 @@ describe('FMP in the production SFM market path', () => {
     await expect(provider.getCandles('MSFT', 'us-stocks', '1d')).rejects.toThrow('provider_http_403');
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+  it('requests exact index identities first and never substitutes an ETF or a dollar amount', async () => {
+    configure(); vi.stubEnv('TWELVE_DATA_API_KEY', 'test-td');
+    const timestamp = Math.floor(Date.now() / 1000) - 100;
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      const url = new URL(String(input)); expect(url.origin).toBe('https://financialmodelingprep.com');
+      expect(url.searchParams.get('symbol')).toBe('^GSPC');
+      return Response.json([{ symbol: 'SPY', price: 500 }, { symbol: '^GSPC', price: 6000, previousClose: 5990, timestamp, exchange: 'INDEX' }]);
+    });
+    const { getSfmMarketQuote } = await import('@/lib/sfm-market/engine');
+    const result = await getSfmMarketQuote('^GSPC', { assetType: 'index' });
+    expect(result).toMatchObject({ symbol: '^GSPC', assetType: 'index', price: 6000, currency: null,
+      provenance: { upstreamProvider: 'fmp', providerSymbol: '^GSPC', observedAt: new Date(timestamp * 1000).toISOString(), delayType: 'delayed' } });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it('retains entitlement failure and retry time without repeated index requests', async () => {
+    configure();
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 402 }));
+    const { getQuoteWithFallback } = await import('@/lib/market/marketDataProviders');
+    const context = { assetType: 'index', excludeProviders: ['yahoo' as const] };
+    const first = await getQuoteWithFallback('^GSPC', 'indices', context);
+    const second = await getQuoteWithFallback('^GSPC', 'indices', { ...context, forceFresh: true });
+    expect(first.ok).toBe(false); expect(second.ok).toBe(false);
+    expect(first.attempts.find(attempt => attempt.provider === 'fmp')).toMatchObject({ code: 'NOT_ENTITLED', status: 402, retryAt: expect.any(String) });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
 });

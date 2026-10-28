@@ -1,4 +1,15 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+async function expectSingleResearchWorkspace(page: Page) {
+  const workspace = page.getByTestId('ai-analyst-research-workspace');
+  // Redirect targets can stream hidden staging nodes before the final tree.
+  // Require both visible and total uniqueness before strict descendant checks.
+  await expect(workspace.filter({ visible: true })).toHaveCount(1);
+  await expect(workspace).toHaveCount(1);
+  await expect(workspace).toBeVisible();
+  return workspace;
+}
+
 // Guest-only browser interception: no real account data or live AI charges.
 test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 for (const locale of ['ar', 'en', 'fr'] as const) {
@@ -19,8 +30,8 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     }) }));
     await page.goto('/ai-analyst/assets?symbol=NVDA&assetType=STOCK&horizon=SWING&autoRun=1');
     await expect(page).toHaveURL(/\/ai-analyst\/analyze\/NVDA\?assetType=STOCK&horizon=SWING#details$/);
-    const workspace = page.getByTestId('ai-analyst-research-workspace');
-    await expect(workspace).toBeVisible(); await expect(workspace.getByRole('heading', { name: 'Verified fixture asset' })).toBeVisible();
+    const workspace = await expectSingleResearchWorkspace(page);
+    await expect(workspace.getByRole('heading', { name: 'Verified fixture asset' })).toBeVisible();
     await expect(workspace.locator('form')).toHaveCount(1);
     const runLabel = { ar: 'تشغيل البحث والتحليل', en: 'Run research and analysis', fr: 'Lancer la recherche et l’analyse' }[locale];
     const run = workspace.getByRole('button', { name: runLabel, exact: true });
@@ -34,6 +45,7 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
     await expect(run).toBeEnabled(); await expect(page).toHaveURL(/\/ai-analyst\/analyze\/NVDA/);
     await page.goto('/ai-analyst/agent?symbol=NVDA&assetType=STOCK&timeframe=1D');
     await expect(page).toHaveURL(/\/ai-analyst\/analyze\/NVDA\?assetType=STOCK&horizon=INTRADAY#research$/);
+    await expectSingleResearchWorkspace(page);
     await expect(run).toBeEnabled(); expect(posts).toBe(1);
     await expect(workspace.locator('form select').last()).toHaveValue('INTRADAY');
     const widths = testInfo.project.name === 'chromium-desktop' ? [820, 1440] : [390];

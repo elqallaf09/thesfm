@@ -47,13 +47,15 @@ export const TV_SCENE_TEXT = {
   unknownBasis: ['فترة غير موثقة', 'Period unverified', 'Période non vérifiée'],
   noScenePrices: ['لا تتوفر أسعار موثقة لهذا المشهد الآن', 'Verified quotes are currently unavailable for this scene', 'Les cours vérifiés de cette scène sont momentanément indisponibles'],
   noSummaries: ['الملخصات غير متاحة حاليًا', 'Summaries are currently unavailable', 'Les résumés sont momentanément indisponibles'],
-  retainedDuringRetry: ['نعرض آخر قراءة محفوظة مع وقتها أثناء إعادة الاتصال.', 'Showing the last retained reading and its time while reconnecting.', 'Affichage de la dernière lecture conservée et de son heure pendant la reconnexion.'],
+  retainedDuringRetry: ['نعرض آخر قراءة محفوظة مع وقتها الأصلي.', 'Showing the last retained reading with its original time.', 'Dernière lecture conservée avec son horodatage d’origine.'],
   noHeatmap: ['لا توجد تغيّرات موثقة كافية للخريطة', 'Not enough verified changes for the map', 'Variations vérifiées insuffisantes pour la carte'],
   more: ['أخرى', 'more', 'autres'],
   ticker: ['شريط المشهد', 'Scene ticker', 'Bande de la scène'],
   pauseTicker: ['إيقاف الشريط', 'Pause ticker', 'Suspendre la bande'],
   resumeTicker: ['تشغيل الشريط', 'Resume ticker', 'Reprendre la bande'],
   update: ['تحديث الأسعار', 'Refresh quotes', 'Actualiser les cours'],
+  retryAfter: ['إعادة المحاولة بعد', 'Retry after', 'Réessayer après'],
+  updatesUnavailable: ['تحديث الأسعار متعذر حاليًا', 'Quote updates are currently unavailable', 'Actualisation des cours indisponible'],
   automatic: ['تبديل تلقائي', 'Auto rotation', 'Rotation automatique'],
   manual: ['مشهد ثابت', 'Fixed scene', 'Scène fixe'],
   previousScene: ['المشهد السابق', 'Previous scene', 'Scène précédente'],
@@ -62,7 +64,7 @@ export const TV_SCENE_TEXT = {
   timeout: ['انتهت مهلة المصدر', 'Source timed out', 'Délai de la source dépassé'],
   identityMismatch: ['تعذر تأكيد هوية الأداة', 'Instrument identity could not be verified', 'Identité du titre non vérifiée'],
   rateLimited: ['حد الطلبات لدى المصدر', 'Source request limit reached', 'Limite de requêtes de la source atteinte'],
-  accessDenied: ['التغطية غير متاحة للحساب', 'Coverage unavailable for this account', 'Couverture indisponible pour ce compte'],
+  accessDenied: ['رفض المصدر طلب البيانات', 'Source access denied', 'Accès à la source refusé'],
   notConfigured: ['مصدر السوق غير مهيأ', 'Market source is not configured', 'Source du marché non configurée'],
   invalidQuote: ['سعر أو وحدة غير صالحين', 'Invalid price or unit', 'Cours ou unité non valide'],
 } satisfies Record<string, [string, string, string]>;
@@ -97,4 +99,10 @@ export function tvSceneIssue(issue: string | undefined): TvSceneTextKey {
     access_denied: 'accessDenied', not_configured: 'notConfigured', invalid_quote: 'invalidQuote',
   };
   return issue ? keys[issue] || 'sourceUnavailable' : 'sourceUnavailable';
+}
+
+/** Keep an unavailable strip from scanning another batch during provider cooldown. */
+export function tvStripSourceCooling(quotes: TvQuote[], retryAt: string | null | undefined, now: number) {
+  return Boolean(retryAt && Date.parse(retryAt) > now)
+    || quotes.length > 0 && quotes.every(quote => quote.issue === 'rate_limited');
 }

@@ -156,6 +156,92 @@ async function useEnglish(page: Page) {
   await page.addInitScript(() => localStorage.setItem('sfm_lang', 'en'));
 }
 
+type ControlledNewsRequest = { language: string | null; bodyStarted: boolean; aborted: boolean };
+type ControlledNewsHarness = {
+  snapshot: () => ControlledNewsRequest[];
+  resolve: (index: number, payload: unknown) => void;
+  rejectAbort: (index: number) => void;
+};
+
+declare global {
+  interface Window {
+    __sfmControlledNews: ControlledNewsHarness;
+  }
+}
+
+async function controlNewsBodies(page: Page, baseURL: string | undefined) {
+  if (!baseURL) throw new Error('Controlled news tests require the configured application baseURL');
+  const applicationOrigin = new URL(baseURL).origin;
+  // These races exercise the real page with controlled response bodies. No
+  // account API, analytics endpoint, or external provider receives a request.
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== applicationOrigin) {
+      await route.abort('blockedbyclient');
+    } else if (url.pathname.startsWith('/api/')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, items: [] }) });
+    } else {
+      await route.continue();
+    }
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('sfm_lang', 'en');
+    const originalFetch = window.fetch.bind(window);
+    const requests: Array<{
+      language: string | null;
+      signal?: AbortSignal | null;
+      bodyStarted: boolean;
+      resolve: (payload: unknown) => void;
+      reject: (reason: DOMException) => void;
+    }> = [];
+    window.__sfmControlledNews = {
+      snapshot: () => requests.map(request => ({ language: request.language, bodyStarted: request.bodyStarted, aborted: request.signal?.aborted ?? false })),
+      resolve: (index, payload) => requests[index].resolve(payload),
+      rejectAbort: index => requests[index].reject(new DOMException('Canceled news response body', 'AbortError')),
+    };
+    window.fetch = async (input, init) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof Request ? input.url : String(input), location.href);
+      if (url.pathname !== '/api/tech-news') return originalFetch(input, init);
+      let resolveBody!: (payload: unknown) => void;
+      let rejectBody!: (reason: DOMException) => void;
+      const body = new Promise<unknown>((resolve, reject) => { resolveBody = resolve; rejectBody = reject; });
+      const request = { language: url.searchParams.get('lang'), signal: init?.signal, bodyStarted: false, resolve: resolveBody, reject: rejectBody };
+      requests.push(request);
+      const response = new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+      Object.defineProperty(response, 'json', { value: () => { request.bodyStarted = true; return body; } });
+      return response;
+    };
+  });
+  await page.goto('/tech-news');
+  await expect.poll(() => page.evaluate(() => window.__sfmControlledNews.snapshot().map(request => ({ language: request.language, bodyStarted: request.bodyStarted }))))
+    .toEqual([{ language: 'ar', bodyStarted: true }, { language: 'en', bodyStarted: true }]);
+  const headers = page.locator('.tech-news-header');
+  await expect(headers.filter({ visible: true })).toHaveCount(1);
+  await expect(headers).toHaveCount(1);
+}
+
+async function settleNewsBody(page: Page, index: number, payload?: ReturnType<typeof mockPayload>) {
+  await page.evaluate(async ({ index, payload }) => {
+    if (payload) window.__sfmControlledNews.resolve(index, payload);
+    else window.__sfmControlledNews.rejectAbort(index);
+    // Let the response continuation and React's resulting paint complete before
+    // asserting that an obsolete completion did not change the current feed.
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  }, { index, payload });
+}
+
+async function expectCurrentNews(page: Page) {
+  const feed = page.getByTestId('tech-news-unified-feed');
+  await expect(feed).toHaveCount(1);
+  await expect(feed).toBeVisible();
+  await expect(feed.locator('.tech-news-card')).toHaveCount(12);
+  await expect(feed.locator('.tech-news-card-lead h2')).toHaveText('Nvidia unveils next-generation AI accelerator');
+  await expect(feed.locator('.tech-news-card-lead .tech-news-media-fallback-initials')).toHaveText('CN');
+  await expect(page.locator('.tech-news-header-stat span')).toHaveText('13');
+  await expect(page.locator('.tech-news-state[role="alert"]')).toHaveCount(0);
+  await expect(page.locator('.tech-news-refresh-btn')).toBeEnabled();
+}
+
 test.describe('Tech Market News redesigned experience', () => {
   test('renders every visible story in one feed after the search and filter controls without duplicates', async ({ page }) => {
     await useEnglish(page);
@@ -227,6 +313,42 @@ test.describe('Tech Market News redesigned experience', () => {
     await expect(leadMedia).toBeVisible();
     await expect(leadMedia.locator('.tech-news-media-fallback-initials')).toHaveText('CN');
     await expect(page.locator('.tech-news-card-lead .tech-news-card-media.has-image')).toHaveCount(0);
+  });
+
+  for (const order of ['before', 'after'] as const) {
+    test(`ignores an aborted older language body ${order} the current news succeeds`, async ({ page, baseURL }) => {
+      await controlNewsBodies(page, baseURL);
+      await expect.poll(() => page.evaluate(() => window.__sfmControlledNews.snapshot()[0].aborted)).toBe(true);
+      if (order === 'before') await settleNewsBody(page, 0);
+      await settleNewsBody(page, 1, mockPayload());
+      if (order === 'after') {
+        await expectCurrentNews(page);
+        await settleNewsBody(page, 0);
+      }
+      await expectCurrentNews(page);
+    });
+  }
+
+  test('keeps current news when an obsolete successful body arrives later', async ({ page, baseURL }) => {
+    await controlNewsBodies(page, baseURL);
+    await settleNewsBody(page, 1, mockPayload());
+    await expectCurrentNews(page);
+    await settleNewsBody(page, 0, { ...mockPayload(), items: [] });
+    await expectCurrentNews(page);
+  });
+
+  test('finishes loading when manual refresh supersedes the initial request', async ({ page, baseURL }) => {
+    await controlNewsBodies(page, baseURL);
+    await page.locator('.tech-news-refresh-btn').click();
+    await expect.poll(() => page.evaluate(() => window.__sfmControlledNews.snapshot().map(request => ({ language: request.language, bodyStarted: request.bodyStarted }))))
+      .toEqual([{ language: 'ar', bodyStarted: true }, { language: 'en', bodyStarted: true }, { language: 'en', bodyStarted: true }]);
+    await expect.poll(() => page.evaluate(() => window.__sfmControlledNews.snapshot()[1].aborted)).toBe(true);
+    await expect(page.locator('.tech-news-refresh-btn')).toBeDisabled();
+    await settleNewsBody(page, 2, mockPayload());
+    await expectCurrentNews(page);
+    await settleNewsBody(page, 1, { ...mockPayload(), items: [] });
+    await settleNewsBody(page, 0);
+    await expectCurrentNews(page);
   });
 
   test('shows the correct evidence state per verification status', async ({ page }) => {

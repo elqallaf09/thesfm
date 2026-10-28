@@ -76,6 +76,7 @@ export type WorldStockQuote = {
   observation?: import('@/lib/market/quoteObservation').QuoteObservation;
   delayType?: string | null;
   receivedAt?: string | null;
+  retryAt?: string | null;
   issue?: 'provider_unavailable' | 'timeout' | 'identity_mismatch' | 'rate_limited' | 'access_denied' | 'not_configured' | 'invalid_quote';
   price: number | null;
   change: number | null;

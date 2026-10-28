@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { isPublicTvSnapshot, requestTvResource, retainTvResource, tvResourceCache, TvResourceError, tvRetryDelay } from './tvResourceCache';
+import { isPublicTvSnapshot, requestTvResource, retainTvResource, tvResourceCache, TvResourceError, tvRetryDelay, tvSnapshotRetryDelay } from './tvResourceCache';
 
 export function useTvResource<T>(path: string | null, interval: number, token = '', revision = 0) {
   // The identity cannot expose a device token through returned state or a DOM key.
@@ -36,6 +36,12 @@ export function useTvResource<T>(path: string | null, interval: number, token = 
       try {
         const body = await requestTvResource<T>(path!, { signal: requestController.signal, token, ttlMs: interval, force });
         force = false; failures = 0; retryAt = 0;
+        // Private resources keep their normal authorization checks even while
+        // the server is waiting for a quote provider's rate limit to recover.
+        if (!token && isPublicTvSnapshot(path!)) {
+          nextDelay = Math.max(interval, tvSnapshotRetryDelay(body));
+          retryAt = Date.now() + nextDelay;
+        }
         if (!stopped && !requestController.signal.aborted) setState(previous => ({ key,
           data: retainTvResource(previous.key === key ? previous.data : null, body), error: null, errorStatus: null, loading: false }));
       } catch (error) {

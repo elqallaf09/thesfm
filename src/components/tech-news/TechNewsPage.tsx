@@ -380,25 +380,31 @@ export function TechNewsPage() {
   const [sort, setSort] = useState<TechNewsSort>('recent');
   const [viewMode, setViewMode] = useState<TechNewsViewMode>('grid');
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NEWS_COUNT);
-  // Language hydration can replace the first request before it settles. Keep
-  // an older aborted request from overwriting the newer language's successful
-  // news payload with an error or loading state.
-  const latestLoadRequestRef = useRef(0);
+    // A language hydration request may be superseded before it settles. Only
+    // the live controller may update the news state.
+  const activeRequest = useRef<AbortController | null>(null);
   const locale = localeFor(lang);
 
-  const load = useCallback(async (showLoader = true, signal?: AbortSignal) => {
-    const requestId = latestLoadRequestRef.current + 1;
-    latestLoadRequestRef.current = requestId;
+  const load = useCallback(async (showLoader = true) => {
+    const controller = new AbortController();
+    const previous = activeRequest.current;
+    activeRequest.current = controller;
+    previous?.abort();
+      const ownsRequest = () => activeRequest.current === controller && !controller.signal.aborted;
     if (showLoader) setLoading(true);
     setRefreshing(!showLoader);
     setError('');
     try {
-      const response = await fetch(`/api/tech-news?lang=${encodeURIComponent(lang)}&limit=60`, { signal });
-      const json = await response.json().catch(() => ({})) as ApiResponse;
+      const response = await fetch(`/api/tech-news?lang=${encodeURIComponent(lang)}&limit=60`, { signal: controller.signal });
+      const json = await response.json().catch((parseError: unknown) => {
+        if (controller.signal.aborted || parseError instanceof Error && parseError.name === 'AbortError') throw parseError;
+        return {};
+      }) as ApiResponse;
+      if (!ownsRequest()) return;
       if (!response.ok || !json.success) {
         throw new Error('reason' in json ? json.reason || json.error || ui.noNews : ui.noNews);
       }
-      if (requestId !== latestLoadRequestRef.current) return;
+      setError('');
       setItems(json.items);
       setPrices(json.prices ?? []);
       setLastUpdated(json.lastUpdated);
@@ -408,27 +414,29 @@ export function TechNewsPage() {
         storedFallbackUsed: json.storedFallbackUsed,
       });
     } catch (loadError) {
-      if (signal?.aborted || (loadError instanceof DOMException && loadError.name === 'AbortError')) return;
-      if (requestId !== latestLoadRequestRef.current) return;
+      if (!ownsRequest() || loadError instanceof Error && loadError.name === 'AbortError') return;
       setItems([]);
       setPrices([]);
       setLastUpdated('');
       setNewsDeliveryStatus(INITIAL_NEWS_DELIVERY_STATUS);
       setError(loadError instanceof Error ? loadError.message : ui.noNews);
     } finally {
-      if (requestId === latestLoadRequestRef.current && !signal?.aborted) {
-        if (showLoader) setLoading(false);
+      if (ownsRequest()) {
+        activeRequest.current = null;
+        setLoading(false);
         setRefreshing(false);
       }
     }
   }, [lang, ui.noNews]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    void load(true, controller.signal);
-    return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+    void load();
+    return () => {
+      const controller = activeRequest.current;
+      activeRequest.current = null;
+      controller?.abort();
+    };
+  }, [load]);
 
   useEffect(() => {
     setVisibleCount(INITIAL_VISIBLE_NEWS_COUNT);

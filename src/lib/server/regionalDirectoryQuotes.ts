@@ -1,6 +1,7 @@
 import 'server-only';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { regionalQuoteIdentity } from '@/lib/market/regionalDirectory';
+import { twelveDataFetch } from '@/lib/server/twelve-data-fetch';
 
 const cache = new Map<string, { quote: TechStockPrice; expires: number }>();
 const pending = new Map<string, Promise<TechStockPrice>>();
@@ -42,7 +43,7 @@ async function load(symbol: string): Promise<TechStockPrice> {
     if (blockedUntil > Date.now()) return unavailable(symbol, blockedReason);
     if ((accessBlockedUntil.get(identity.mic) || 0) > Date.now()) return unavailable(symbol, 'provider_access_required');
     const params = new URLSearchParams({ symbol: identity.symbol, mic_code: identity.mic, apikey: key });
-    const response = await fetch(`https://api.twelvedata.com/quote?${params}`, { cache: 'no-store', signal: AbortSignal.timeout(6500) });
+    const response = await twelveDataFetch(`https://api.twelvedata.com/quote?${params}`, { signal: AbortSignal.timeout(6500) });
     const data = await response.json().catch(() => null) as Record<string, unknown> | null;
     const status = response.ok ? Number(data?.code || 200) : response.status;
     if (status === 429 || status === 401 || status === 403) {

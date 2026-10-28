@@ -137,12 +137,14 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
       : page.getByTestId('ai-analyst-tabs').getByRole('link', { name: 'Market leadership' });
     if (isMobile) await page.getByRole('button', { name: 'Open AI Analyst sections' }).click();
     await leadershipLink.click();
+    await expectSingleAnalystWorkspace(page);
     await expect(page.locator('[data-ai-analyst-surface="market-leadership"]')).toBeVisible();
     await expect(page.getByText('Missing Logo Corp')).toBeVisible();
     await page.waitForTimeout(250);
     expect(missingLogoRequests).toBe(1);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await expectSingleAnalystWorkspace(page);
     await expect(page.locator('[data-ai-analyst-surface="market-leadership"]')).toBeVisible();
     await expect(page.getByText('Missing Logo Corp')).toBeVisible();
     await page.waitForTimeout(250);
