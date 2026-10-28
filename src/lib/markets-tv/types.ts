@@ -1,8 +1,11 @@
 export type TvLanguage = 'ar' | 'en' | 'fr';
 export type TvGroup = 'world' | 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
 export type TvView = 'markets' | 'map' | 'sessions' | 'brief';
+export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'watchlist';
+export type TvDisplayMode = 'viewing' | 'browse' | 'strips';
 export type TvSettings = {
   language: TvLanguage; theme: 'dark' | 'light'; layout: 'balanced' | 'quotes';
+  displayMode?: TvDisplayMode; scene?: TvScene;
   groups: TvGroup[]; autoRotate: boolean; rotationSeconds: number; ticker: boolean; sound: boolean;
   marketIds?: string[]; stripDensity?: 'comfortable' | 'balanced' | 'compact'; stripSpeed?: number;
   pricedOnly?: boolean; autoHideControls?: boolean; marketSpeeds?: Record<string, number>;
@@ -10,11 +13,20 @@ export type TvSettings = {
 export type TvQuote = {
   symbol: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
   changePercent: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
-  status: 'available' | 'delayed' | 'stale' | 'reference' | 'unknown_time' | 'unavailable';
+  status: 'available' | 'delayed' | 'closed' | 'stale' | 'reference' | 'unknown_time' | 'unknown_delay' | 'unavailable';
   exchange: string | null; country: string | null;
+  observation?: import('@/lib/market/quoteObservation').QuoteObservation;
+  delayType?: string | null;
+  changeBasis?: 'session' | '24h' | 'reference';
+  issue?: 'provider_unavailable' | 'timeout' | 'identity_mismatch' | 'rate_limited' | 'access_denied' | 'not_configured' | 'invalid_quote';
 };
 export type TvMarket = { id: string; group: TvGroup; labelAr: string; labelEn: string; labelFr: string; count: number; status: string };
-export type TvSnapshot = { page?: number; pageSize?: number; directoryTotal?: number; market?: string;  group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number; };
+export type TvSnapshot = {
+  page?: number; pageSize?: number; directoryTotal?: number; selectionTotal?: number; market?: string;
+  scene?: TvScene; summary?: TvQuote[];
+  /** total/available describe quotes only; summary is separate and never duplicated. */
+  group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number;
+};
 export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string };
 export type TvDevice = { id: string; name: string; expiresAt: string; settings: TvSettings; };
 export type TvAlert = { id: string; symbol: string; alert_type: string; threshold: number; currency: string | null; status: string };
@@ -23,6 +35,7 @@ export const TV_STRIP_SPEEDS = [36, 56, 80] as const;
 export const DEFAULT_TV_STRIP_SPEED = TV_STRIP_SPEEDS[1];
 export const DEFAULT_TV_SETTINGS: TvSettings = {
   language: 'ar', theme: 'dark', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
+  displayMode: 'viewing', scene: 'overview',
   autoRotate: false, rotationSeconds: 30, ticker: true, sound: false, stripSpeed: DEFAULT_TV_STRIP_SPEED,
   stripDensity: 'balanced', pricedOnly: false, autoHideControls: false,
 };
@@ -42,6 +55,8 @@ export function normalizeTvSettings(value: unknown): TvSettings {
   return {
     language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
     theme: row.theme === 'light' ? 'light' : 'dark', layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
+    displayMode: row.displayMode === 'browse' || row.displayMode === 'strips' ? row.displayMode : 'viewing',
+    scene: row.scene === 'gulf' || row.scene === 'world' || row.scene === 'assets' || row.scene === 'watchlist' ? row.scene : 'overview',
     groups: groups.length ? groups : [...DEFAULT_TV_SETTINGS.groups], autoRotate: row.autoRotate === true,
     rotationSeconds: [20, 30, 60, 120].includes(Number(row.rotationSeconds)) ? Number(row.rotationSeconds) : 30,
     ticker: row.ticker !== false, sound: row.sound === true,

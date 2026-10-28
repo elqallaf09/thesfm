@@ -6,4 +6,5 @@ import { MarketsTv } from '@/components/markets-tv/MarketsTv';
 import '@/app/tv/tv.css';
 import './packaged.css';
 import '@/app/tv/display-controls.css';
+import '@/app/tv/viewing.css';
 createRoot(document.getElementById('root')!).render(<MarketsTv />);

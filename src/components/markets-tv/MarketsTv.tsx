@@ -1,31 +1,34 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Shared with offline packaged TV clients without the Next image runtime. */
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Maximize, Monitor, Rows3, Settings2, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper, SlidersHorizontal } from 'lucide-react';
-import { TvMarketPicker } from './TvMarketPicker';
-import { TvInstrumentPicker } from './TvInstrumentPicker';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
 import { TvMarketStrips } from './TvMarketStrips';
-import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvGroup, type TvNews, type TvQuote, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
+import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { TvBrief, TvMarketMap, TvPairPanel, TvQuoteDetail, TvSettingsPanel } from './TvPanels';
 import { TvSessions } from './TvSessions';
 import { TvQr } from './TvQr';
-import { useTvResource } from './useTvResource';
+import { useTvResource, useTvScenePrefetch } from './useTvResource';
 import { useTvRemote } from './useTvRemote';
-import { TvChannels } from './TvChannels';
 import { normalizeTvChannels, TV_CHANNELS_KEY, type TvChannel } from '@/lib/markets-tv/channels';
 import { useTvControls } from './useTvControls';
+import { TV_SCENE_ORDER, tvScenePath, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { TvSceneDashboard } from './TvSceneDashboard';
+const TvMarketPicker = lazy(() => import('./TvMarketPicker').then(module => ({ default: module.TvMarketPicker })));
+const TvInstrumentPicker = lazy(() => import('./TvInstrumentPicker').then(module => ({ default: module.TvInstrumentPicker })));
+const TvChannels = lazy(() => import('./TvChannels').then(module => ({ default: module.TvChannels })));
 const SETTINGS_KEY = 'sfm-markets-tv-settings-v1', TOKEN_KEY = 'sfm-markets-tv-device-v1';
-type Dialog = 'settings' | 'pair' | 'device' | 'worldStocks' | 'markets' | 'instruments' | 'channels' | null;
+const EMPTY_NEWS: TvNews[] = [];
+type Dialog = 'settings' | 'pair' | 'device' | 'worldStocks' | 'markets' | 'instruments' | 'channels' | 'sessions' | null;
 export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: boolean }) {
   const [selections, setSelections] = useState<TvSelections>({});
   const [channels, setChannels] = useState<TvChannel[]>([]);
   const [instrumentMarket, setInstrumentMarket] = useState<TvMarket | null>(null);
   const [stripsPaused, setStripsPaused] = useState(false);
-  const [stripsOnly, setStripsOnly] = useState(initialStripsOnly);
+  const [routeStrips, setRouteStrips] = useState(initialStripsOnly);
   const [settings, setSettings] = useState<TvSettings>(DEFAULT_TV_SETTINGS), [ready, setReady] = useState(false);
   const [selectedMarket, setSelectedMarket] = useState('');
   const [group, setGroup] = useState<TvGroup>('global'), [view, setView] = useState<TvView>('markets');
@@ -34,20 +37,36 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const [online, setOnline] = useState(true), [message, setMessage] = useState(''), [fullscreen, setFullscreen] = useState(false);
   const activity = useRef(0), alertSeen = useRef(new Set<string>()), root = useRef<HTMLDivElement>(null), syncLoaded = useRef('');
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
-  const device = useTvResource<{ device: TvDevice; symbols: string[]; alerts: TvAlert[] }>(token ? '/api/tv/device' : null, 60000, token);
-  const catalog = useTvResource<{ markets: TvMarket[] }>(ready ? '/api/tv/catalog' : null, 300000, '', revision);
-  const market = useTvResource<TvSnapshot>(ready && !stripsOnly && (group !== 'watchlist' || token) ? `/api/tv/snapshot?group=${group}&page=${page}&pageSize=6${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
-  const news = useTvResource<{ stories: TvNews[] }>(ready && !stripsOnly ? `/api/tv/news?language=${settings.language}` : null, 180000);
+  const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(settings.language, key);
+  const stripsOnly = routeStrips || settings.displayMode === 'strips';
+  const viewing = !stripsOnly && settings.displayMode !== 'browse';
+  const scene = settings.scene || 'overview';
+  const scenes = TV_SCENE_ORDER.filter(value => value !== 'watchlist' || token);
+  const nextScene = scenes[(scenes.indexOf(scene) + 1) % scenes.length];
+  const previousScene = scenes[scenes.indexOf(scene) > 0 ? scenes.indexOf(scene) - 1 : scenes.length - 1];
   const modal = Boolean(dialog || detail || story);
-  const controls = useTvControls(root, stripsOnly && Boolean(settings.autoHideControls), modal);
+  const device = useTvResource<{ device: TvDevice; symbols: string[]; alerts: TvAlert[] }>(token ? '/api/tv/device' : null, 60000, token);
+  const catalog = useTvResource<{ markets: TvMarket[] }>(ready && (!viewing || dialog === 'markets' || dialog === 'instruments') ? '/api/tv/catalog' : null, 300000, '', revision);
+  const market = useTvResource<TvSnapshot>(ready && !stripsOnly && !viewing && (group !== 'watchlist' || token) ? `/api/tv/snapshot?group=${group}&page=${page}&pageSize=6${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
+  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && (scene !== 'watchlist' || token) ? tvScenePath(scene) : null, scene === 'assets' ? 15000 : 30000, scene === 'watchlist' ? token : '', revision);
+  useTvScenePrefetch(ready && viewing && settings.autoRotate && !modal && online && nextScene !== 'watchlist' ? tvScenePath(nextScene) : null, 30000);
+  const news = useTvResource<{ stories: TvNews[] }>(ready && !stripsOnly ? `/api/tv/news?language=${settings.language}` : null, 180000);
+  const controls = useTvControls(root, (stripsOnly || viewing) && Boolean(settings.autoHideControls), modal);
   const close = useCallback(() => { setDialog(null); setDetail(null); setStory(null); }, []);
   const interact = useCallback(() => { activity.current = Date.now(); }, []);
-  useTvRemote(() => { if (modal) close(); else setDialog('settings'); }, interact, modal);
+  const openPair = useCallback(() => setDialog('pair'), []);
+  const refresh = useCallback(() => setRevision(value => value + 1), []);
+  const toggleTicker = useCallback(() => setStripsPaused(value => !value), []);
+  useTvRemote(() => { if (modal) close(); else setDialog('settings'); }, interact, modal, action => {
+    const play = action === 'play' || action === 'toggle' && (stripsOnly ? stripsPaused : !settings.autoRotate);
+    setStripsPaused(!play);
+    if (!stripsOnly) setSettings(value => ({ ...value, autoRotate: play }));
+  });
   useEffect(() => {
     try { setSettings(normalizeTvSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'))); setToken(localStorage.getItem(TOKEN_KEY) || ''); } catch { /* Device storage can be unavailable. */ }
     try { setSelections(normalizeTvSelections(JSON.parse(localStorage.getItem(TV_SELECTIONS_KEY) || '{}'))); } catch { /* Keep defaults if device storage is corrupt. */ }
     try { setChannels(normalizeTvChannels(JSON.parse(localStorage.getItem(TV_CHANNELS_KEY) || '[]'))); } catch { /* Stored channels may be unavailable. */ }
-    setReady(true); setNow(Date.now()); setOnline(navigator.onLine);
+    activity.current = Date.now(); setReady(true); setNow(Date.now()); setOnline(navigator.onLine);
     const timer = setInterval(() => setNow(Date.now()), 1000);
     const network = () => setOnline(navigator.onLine);
     const screen = () => setFullscreen(Boolean(document.fullscreenElement));
@@ -62,9 +81,10 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   useEffect(() => {
     if (device.error === 'UNAUTHORIZED') {
       setToken(''); syncLoaded.current = ''; alertSeen.current.clear(); setGroup(g => g === 'watchlist' ? 'global' : g);
+      setSettings(value => ({ ...value, scene: value.scene === 'watchlist' ? 'overview' : value.scene }));
       try { localStorage.removeItem(TOKEN_KEY); } catch { /* No persistent storage. */ }
     }
-    if (token && device.data && syncLoaded.current !== token) { syncLoaded.current = token; setSettings(device.data.device.settings); }
+    if (token && device.data && syncLoaded.current !== token) { syncLoaded.current = token; setSettings(normalizeTvSettings(device.data.device.settings)); }
   }, [device.error, device.data, token]);
   useEffect(() => {
     if (!token || !ready || syncLoaded.current !== token) return;
@@ -79,15 +99,33 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     if (!settings.groups.includes(group) && !(settings.groups.includes('world') && selectedMarket)) { setGroup(settings.groups[0]); setSelectedMarket(''); setPage(0); }
   }, [settings.groups, group, selectedMarket]);
   const choose = useCallback((next: TvGroup, market = '') => { setGroup(next); setSelectedMarket(market); setPage(0); activity.current = Date.now(); }, []);
+  const chooseScene = useCallback((next: TvScene) => { setSettings(value => ({ ...value, scene: next })); activity.current = Date.now(); }, []);
+  function changeDisplayMode(displayMode: TvDisplayMode) {
+    const next = { ...settings, displayMode };
+    setRouteStrips(false); setSettings(next); activity.current = Date.now();
+    // Persist before a real /tv ↔ /tv/strips navigation unmounts this screen.
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* In-memory mode remains usable. */ }
+  }
+  function changeSettings(next: TvSettings) {
+    if (next.displayMode !== settings.displayMode) setRouteStrips(false);
+    setSettings(next); activity.current = Date.now();
+  }
   useEffect(() => {
     if (stripsOnly || !settings.autoRotate || modal || document.hidden || !now || now - activity.current < settings.rotationSeconds * 1000) return;
+    if (viewing) {
+      if (!sceneMarket.data && sceneMarket.loading) return;
+      // Keep the remote user's reading target stable until they return to the controls.
+      if (document.activeElement?.closest('.tv-scene-body, .tv-scene-summaries, .tv-scene-ticker')) return;
+      setSettings(value => ({ ...value, scene: nextScene })); activity.current = now; return;
+    }
     const groups = settings.groups.filter(g => g !== 'watchlist' || token);
     if (groups.length) { const index = groups.indexOf(group); setGroup(groups[(index + 1) % groups.length]); setSelectedMarket(''); setPage(0); activity.current = now; }
-  }, [now, settings.autoRotate, settings.rotationSeconds, settings.groups, modal, group, token, stripsOnly]);
+  }, [now, settings.autoRotate, settings.rotationSeconds, settings.groups, modal, group, token, stripsOnly, viewing, sceneMarket.data, sceneMarket.loading, nextScene]);
+  const activeSnapshot = viewing ? sceneMarket.data : market.data;
   useEffect(() => {
-    if (!market.data || !device.data) return;
+    if (!activeSnapshot || !device.data) return;
     for (const alert of device.data.alerts) {
-      const q = market.data.quotes.find(item => item.symbol === alert.symbol);
+      const q = [...activeSnapshot.quotes, ...(activeSnapshot.summary || [])].find(item => item.symbol === alert.symbol);
       if (q?.exchange?.startsWith('TD_')) continue;
       if (alert.alert_type !== 'change_exceeds' && (!alert.currency || alert.currency !== q?.currency)) continue;
       if (!q || !['available','delayed'].includes(quoteStatus(q)) || q.price === null) continue;
@@ -102,17 +140,17 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
         oscillator.start(); oscillator.stop(context.currentTime + 0.18); oscillator.onended = () => { void context.close(); };
       } catch { /* Sound is optional and may require a user gesture. */ } }
     }
-  }, [market.data, device.data, settings.sound, settings.language]);
+  }, [activeSnapshot, device.data, settings.sound, settings.language]);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 9000); return () => clearTimeout(timer); }, [message]);
   const linked = useCallback((value: string) => {
     try { localStorage.setItem(TOKEN_KEY, value); } catch { /* Session remains usable in memory. */ }
     syncLoaded.current = value; setToken(value); setDialog(null); setGroup('watchlist');
-    setSettings(s => ({ ...s, groups: Array.from(new Set([...s.groups, 'watchlist' as const])) }));
+    setSettings(s => ({ ...s, scene: 'watchlist', groups: Array.from(new Set([...s.groups, 'watchlist' as const])) }));
   }, []);
   async function unlink() {
     const response = await tvFetch('/api/tv/device', { method: 'DELETE', headers: { 'x-sfm-tv-token': token } }).catch(() => null);
     if (response && (response.ok || response.status === 401)) {
-      setToken(''); alertSeen.current.clear(); setGroup('global'); close(); try { localStorage.removeItem(TOKEN_KEY); } catch { /* No storage. */ }
+      setToken(''); alertSeen.current.clear(); setGroup('global'); setSettings(value => ({ ...value, scene: 'overview' })); close(); try { localStorage.removeItem(TOKEN_KEY); } catch { /* No storage. */ }
     } else setMessage(t('error'));
   }
   async function toggleFullscreen() { try { if (document.fullscreenElement) await document.exitFullscreen(); else await root.current?.requestFullscreen(); } catch { setMessage(t('error')); } }
@@ -124,10 +162,11 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   // second-by-second dashboard clock from rerendering every strip and card.
   const stripNow = Math.floor((now || Date.now()) / 15_000) * 15_000;
   const displayLink = <a className="tv-display-link" aria-label={t(stripsOnly ? 'dashboard' : 'stripsOnly')} href={stripsOnly ? '/tv' : '/tv/strips'} onClick={event => {
-    if (tvOrigin() !== window.location.origin) { event.preventDefault(); setStripsOnly(value => !value); }
+    if (tvOrigin() !== window.location.origin) event.preventDefault();
+    changeDisplayMode(stripsOnly ? 'viewing' : 'strips');
   }}>{stripsOnly ? <Monitor aria-hidden="true"/> : <Rows3 aria-hidden="true"/>}<span>{t(stripsOnly ? 'dashboard' : 'stripsOnly')}</span></a>;
   const strips = <TvMarketStrips selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused} markets={catalog.data?.markets || []} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} />;
-  return <div ref={root} data-tv-root className={`tv-screen tv-${settings.theme}${stripsOnly ? ' tv-strips-only' : ''} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
+  return <div ref={root} data-tv-root className={`tv-screen tv-${settings.theme}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     {stripsOnly ? <>
       <header className="tv-strips-toolbar" data-controls-hidden={controls.hidden}><div className="tv-strip-brand"><img src={ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="48" height="48"/><div><strong dir="ltr">THE SFM <span>MARKETS TV</span></strong><h1>{t('stripMarkets')}</h1></div></div><div className="tv-header-actions" hidden={controls.hidden}>
         <button onClick={() => setDialog('channels')} aria-label={t('channels')}><Rows3 aria-hidden="true"/><span>{t('channels')}</span></button>
@@ -142,10 +181,33 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
       {catalog.error && <div className="tv-notice" role="status">{t('error')} <button onClick={() => setRevision(v => v + 1)}>{t('retry')}</button></div>}
       <main className="tv-strips-main">{!ready || catalog.loading ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : strips}</main>
+    </> : viewing ? <>
+      <header className="tv-viewing-header" data-controls-hidden={controls.hidden}>
+        <div className="tv-viewing-brand"><img src={ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="48" height="48"/><div><strong dir="ltr">THE SFM</strong><span dir="ltr">MARKETS TV</span></div></div>
+        <div className="tv-viewing-clock"><strong dir="ltr">{now ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kuwait', hour: '2-digit', minute: '2-digit' }).format(now) : '—'}</strong><small>{s('kuwaitTime')}</small></div>
+        <div className="tv-header-actions" hidden={controls.hidden}>
+          <button onClick={() => changeDisplayMode('browse')} aria-label={s('browse')} data-tv-focus-key="browse"><Globe2 aria-hidden="true"/><span>{s('browse')}</span></button>
+          {displayLink}
+          <button onClick={() => setDialog(token ? 'device' : 'pair')} aria-label={t(token ? 'paired' : 'pair')} data-tv-focus-key="pair"><Smartphone aria-hidden="true"/><span>{t(token ? 'paired' : 'pair')}</span></button>
+          <button onClick={() => setDialog('settings')} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button>
+          <button onClick={() => void toggleFullscreen()} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')} data-tv-focus-key="fullscreen"><Maximize aria-hidden="true"/></button>
+        </div>
+        {controls.hidden && <button onClick={controls.wake} aria-label={t('showControls')}><Settings2 aria-hidden="true"/></button>}
+      </header>
+      <div className="tv-viewing-nav"><nav className="tv-scene-tabs" aria-label={s('scenes')}>{TV_SCENE_ORDER.map(value => <button key={value} aria-pressed={scene === value} onClick={() => chooseScene(value)} data-tv-focus-key={`scene:${value}`}>{s(value)}</button>)}</nav>
+        <div className="tv-scene-playback"><span>{s(settings.autoRotate ? 'automatic' : 'manual')}</span>
+          <button onClick={() => chooseScene(previousScene)} aria-label={s('previousScene')} data-tv-focus-key="scene-previous">{settings.language === 'ar' ? <ArrowRight aria-hidden="true"/> : <ArrowLeft aria-hidden="true"/>}</button>
+          <button aria-label={t(settings.autoRotate ? 'pause' : 'resume')} aria-pressed={settings.autoRotate} onClick={() => { setSettings(value => ({ ...value, autoRotate: !value.autoRotate })); interact(); }} data-tv-focus-key="scene-playback">{settings.autoRotate ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}</button>
+          <button onClick={() => chooseScene(nextScene)} aria-label={s('nextScene')} data-tv-focus-key="scene-next">{settings.language === 'ar' ? <ArrowLeft aria-hidden="true"/> : <ArrowRight aria-hidden="true"/>}</button>
+        </div>
+      </div>
+      {!online && <div className="tv-scene-notice" role="status">{t('offline')}</div>}
+      <TvSceneDashboard snapshot={sceneMarket.data} loading={!ready || sceneMarket.loading} error={sceneMarket.error} language={settings.language} now={stripNow} news={news.data?.stories || EMPTY_NEWS} linked={Boolean(token)} watchlist={scene === 'watchlist'} ticker={settings.ticker} tickerPaused={stripsPaused} speed={settings.stripSpeed || 56} onQuote={setDetail} onStory={setStory} onPair={openPair} onRefresh={refresh} onTickerPause={toggleTicker}/>
+      <footer className="tv-viewing-footer"><span>{t('remoteHelp')}</span><button onClick={() => setDialog('sessions')}>{t('sessions')}</button><button onClick={() => setDialog('channels')}>{t('channels')}</button><span>{t(online ? 'connected' : 'offline')}</span><button onClick={() => setRevision(value => value + 1)} aria-label={s('update')}><RefreshCw aria-hidden="true"/></button></footer>
     </> : <>
     <header className="tv-header"><div className="tv-brand"><Monitor aria-hidden="true"/><div><strong dir="ltr">THE SFM <span>MARKETS TV</span></strong><small>{token ? t('paired') : t('public')}</small></div></div>
-      <div className="tv-clock"><strong dir="ltr">{now ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now) : '—'}</strong><small>{now ? new Intl.DateTimeFormat(`${settings.language}-u-nu-latn`, { weekday: 'long', day: 'numeric', month: 'long' }).format(now) : '—'}</small></div>
-      <div className="tv-header-actions">{displayLink}<a className="tv-world-stocks-link" href={ready ? `${tvOrigin()}/world-stocks` : "/world-stocks"} onClick={event => { if (tvOrigin() !== window.location.origin) { event.preventDefault(); setDialog("worldStocks"); } }}><Globe2 aria-hidden="true"/><span>{t('worldStocks')}</span></a><button onClick={() => setDialog(token ? 'device' : 'pair')}><Smartphone aria-hidden="true"/><span>{t(token ? 'paired' : 'pair')}</span></button><button onClick={() => setDialog('settings')} aria-label={t('settings')}><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button><button onClick={() => void toggleFullscreen()} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')}><Maximize aria-hidden="true"/></button></div>
+      <div className="tv-clock"><strong dir="ltr">{now ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kuwait', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now) : '—'}</strong><small>{s('kuwaitTime')} · {now ? new Intl.DateTimeFormat(`${settings.language}-u-nu-latn`, { timeZone: 'Asia/Kuwait', weekday: 'long', day: 'numeric', month: 'long' }).format(now) : '—'}</small></div>
+      <div className="tv-header-actions"><button className="tv-browse-viewing-button" onClick={() => changeDisplayMode('viewing')} aria-label={s('viewing')}><Monitor aria-hidden="true"/><span>{s('viewing')}</span></button>{displayLink}<a className="tv-world-stocks-link" href={ready ? `${tvOrigin()}/world-stocks` : "/world-stocks"} onClick={event => { if (tvOrigin() !== window.location.origin) { event.preventDefault(); setDialog("worldStocks"); } }}><Globe2 aria-hidden="true"/><span>{t('worldStocks')}</span></a><button onClick={() => setDialog(token ? 'device' : 'pair')}><Smartphone aria-hidden="true"/><span>{t(token ? 'paired' : 'pair')}</span></button><button onClick={() => setDialog('settings')} aria-label={t('settings')}><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button><button onClick={() => void toggleFullscreen()} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')}><Maximize aria-hidden="true"/></button></div>
     </header>
     <nav className="tv-markets-nav" aria-label={t('markets')}>{settings.groups.map(g => <button key={g} aria-pressed={group === g} onClick={() => choose(g)}>{t(g)}</button>)}</nav>
     {catalog.data && !['global','crypto','forex','commodities','watchlist'].includes(group) && <label className="tv-exchange-select">{t('markets')}<select value={selectedMarket} onChange={event => { setSelectedMarket(event.target.value); setPage(0); }}><option value="">{t('allMarkets')}</option>{catalog.data.markets.filter(m => group === 'world' ? !['global','crypto','forex','commodities'].includes(m.group) : m.group === group).map(m => <option key={m.id} value={m.id}>{settings.language === 'ar' ? m.labelAr : settings.language === 'fr' ? m.labelFr : m.labelEn} ({m.count.toLocaleString('en-US')})</option>)}</select></label>}
@@ -172,20 +234,23 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     <footer className="tv-footer"><span>{t('remoteHelp')}</span><span>{t(online ? 'connected' : 'offline')}</span><button onClick={() => setRevision(v => v + 1)} aria-label={t('refresh')}><RefreshCw size={16}/></button></footer>
     </>}
     {message && <div className="tv-toast" role="status">{message}</div>}
-    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className="tv-dialog"><header><h2 id="tv-dialog-title">{detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'channels' ? 'channels' : dialog === 'worldStocks' ? 'worldStocks' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : dialog === 'device' ? 'paired' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X/></button></header>
-      {dialog === 'channels' && <TvChannels channels={channels} change={setChannels} settings={settings} selections={selections} apply={channel => {
-        setSettings(normalizeTvSettings(channel.settings)); setSelections(normalizeTvSelections(channel.selections));
+    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className="tv-dialog"><header><h2 id="tv-dialog-title">{detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'channels' ? 'channels' : dialog === 'worldStocks' ? 'worldStocks' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : dialog === 'device' ? 'paired' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X/></button></header>
+      <Suspense fallback={<p role="status">{t('loading')}</p>}>
+      {dialog === 'channels' && <TvChannels channels={channels} change={setChannels} settings={{ ...settings, displayMode: stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse' }} selections={selections} apply={channel => {
+        setSettings(normalizeTvSettings({ ...channel.settings, displayMode: channel.settings.displayMode || (stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse') })); setSelections(normalizeTvSelections(channel.selections)); if (channel.settings.displayMode) setRouteStrips(false);
         choose(channel.settings.groups[0], channel.settings.marketIds?.[0] || '');
         setMessage(`${tvText(channel.settings.language, 'channelApplied')}: ${channel.name}`); close();
       }}/>}
       {dialog === 'markets' && <TvMarketPicker markets={catalog.data?.markets || []} settings={settings} change={setSettings} selections={selections} customize={market => { setInstrumentMarket(market); setDialog('instruments'); }}/>}
-      {dialog === 'settings' && <TvSettingsPanel settings={settings} change={setSettings} stripsOnly={stripsOnly} customize={() => setDialog('markets')} channels={() => setDialog('channels')}/>}
+      {dialog === 'settings' && <TvSettingsPanel settings={settings} change={changeSettings} stripsOnly={stripsOnly} displayMode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} changeDisplayMode={changeDisplayMode} customize={() => setDialog('markets')} channels={() => setDialog('channels')}/>}
       {dialog === 'instruments' && instrumentMarket && <TvInstrumentPicker key={instrumentMarket.id} market={instrumentMarket} language={settings.language} selected={selections[instrumentMarket.id]} back={() => setDialog('markets')} change={symbols => setSelections(current => { const next = { ...current }; if (symbols === undefined) delete next[instrumentMarket.id]; else next[instrumentMarket.id] = symbols; return normalizeTvSelections(next); })}/>}
       {dialog === 'pair' && <TvPairPanel language={settings.language} onLinked={linked}/>}
       {dialog === 'device' && <div className="tv-pair-content"><p>{device.data?.device.name}</p><p>{t('confirmDisconnect')}</p><button onClick={() => void unlink()}>{t('disconnect')}</button><TvQr value={`${tvOrigin()}/tv/pair`} label={t('devices')}/><p>{t('devices')}</p></div>}
       {dialog === 'worldStocks' && <TvQr value={`${tvOrigin()}/world-stocks`} label={t('worldStocks')}/>}
+      {dialog === 'sessions' && <TvSessions language={settings.language} now={now}/>}
       {detail && <TvQuoteDetail quote={detail} language={settings.language} now={now}/>}
       {story && <div className="tv-detail"><div><h3>{story.title}</h3><p>{story.source} · {tvTime(story.publishedAt,settings.language,true)}</p></div><div className="tv-phone-link"><TvQr value={story.url} label={t('openStory')}/><p>{t('openStory')}</p></div></div>}
+      </Suspense>
     </section></div>}
   </div>;
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { loadUserDataTables, personalExpenseRows, personalIncomeRows } from '@/lib/data/financeData';
 import {
   compareSmartTasks,
@@ -230,10 +230,10 @@ export function useSmartTasks() {
     }
 
     setLoading(true);
-    const db = supabase as any;
+    const client = loadSupabaseClient();
     const [profileResult, dataResult] = await Promise.allSettled([
-      db.from('profiles').select('id,display_name,default_currency,onboarding_completed').eq('id', user.id).maybeSingle(),
-      loadUserDataTables<SmartTaskTableKey>(db, user.id, SMART_TASK_TABLES),
+      client.then(db => db.from('profiles').select('id,display_name,default_currency,onboarding_completed').eq('id', user.id).maybeSingle()),
+      client.then(db => loadUserDataTables<SmartTaskTableKey>(db, user.id, SMART_TASK_TABLES)),
     ]);
 
     const nextProfile = profileResult.status === 'fulfilled' && !profileResult.value.error

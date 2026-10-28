@@ -10,15 +10,18 @@ export function useTvControls(root: RefObject<HTMLDivElement | null>, enabled: b
     if (!enabled || modal) return;
     const timer = setInterval(() => {
       // Never remove a keyboard/remote target while it has focus.
-      if (Date.now() - lastActivity.current >= 12000 && !root.current?.querySelector('.tv-header-actions')?.contains(document.activeElement)) setHidden(true);
+      if (!document.hidden && Date.now() - lastActivity.current >= 12000
+        && !root.current?.querySelector('.tv-header-actions')?.contains(document.activeElement)) setHidden(true);
     }, 1000);
     document.addEventListener('keydown', wake, true);
     document.addEventListener('pointermove', wake, { passive: true });
     document.addEventListener('pointerdown', wake, { passive: true });
     document.addEventListener('focusin', wake);
+    document.addEventListener('visibilitychange', wake);
     return () => {
       clearInterval(timer); document.removeEventListener('keydown', wake, true);
       document.removeEventListener('pointermove', wake); document.removeEventListener('pointerdown', wake); document.removeEventListener('focusin', wake);
+      document.removeEventListener('visibilitychange', wake);
     };
   }, [enabled, modal, root, wake]);
   return { hidden: enabled && !modal && hidden, wake };

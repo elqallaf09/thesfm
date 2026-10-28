@@ -32,7 +32,7 @@ export async function fetchWorldStockQuotes(requests: WorldStockQuoteRequest[]):
     try {
       if (providerRegion(request.exchangeCode)) {
         quotes[id] = await providerStockQuote(request.exchangeCode, request.canonicalSymbol);
-        if (quotes[id].price === null) partialFailure = true;
+        if (quotes[id].price === null || quotes[id].status !== 'available') partialFailure = true;
         continue;
       }
       const result = await getQuoteWithFallback(request.providerSymbol, request.exchangeCode, {

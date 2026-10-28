@@ -17,8 +17,16 @@ describe('TV evidence contracts', () => {
     const unknown = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observedAt: null } }), undefined, now);
     expect(unknown.observedAt).toBeNull(); expect(unknown.status).toBe('unknown_time');
   });
+  it('accepts verified index points without requiring a currency amount', () => {
+    const index = toTvQuote('^GSPC', row({ symbol: '^GSPC', assetType: 'index', currency: null }), undefined, now);
+    expect(index).toMatchObject({ price: 100, currency: null, status: 'delayed' });
+    const crypto = toTvQuote('BTC/USDT', row({ symbol: 'BTC/USDT', assetType: 'crypto', currency: 'USDT' }), undefined, now);
+    expect(crypto).toMatchObject({ price: 100, currency: 'USDT' });
+    expect(toTvQuote('AAPL', row({ assetType: 'stock', currency: null }), undefined, now).price).toBeNull();
+  });
   it('ages retained prices even when the source stops updating', () => {
-    const q = toTvQuote('AAPL', row(), undefined, now); expect(q.status).toBe('delayed'); expect(quoteStatus(q, now + 20 * 60000)).toBe('stale');
+    const q = toTvQuote('AAPL', row(), undefined, now); expect(q.status).toBe('delayed'); expect(quoteStatus(q, now + 20 * 60000)).toBe('delayed');
+    expect(quoteStatus(q, now + 50 * 60000)).toBe('stale');
     expect(toTvQuote('AAPL', row({ currency: null }), undefined, now).price).toBeNull();
   });
   it('rejects future times and excludes stale prices from mover ranking', () => {
@@ -29,14 +37,26 @@ describe('TV evidence contracts', () => {
     expect(tvMovers([pos, neg], now).gainers).toEqual([pos]); expect(tvMovers([pos, neg], now).losers).toEqual([neg]);
     expect(tvMovers([pos, neg], now + 3600000)).toEqual({ gainers: [], losers: [] });
   });
-  it('shows closing/reference prices as stale without entering current movers', () => {
+  it('preserves closing/reference prices through a weekend without entering current movers', () => {
     const closed = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observation: { precision: 'instant', marketOpen: false } }, changePercent: 3 }), undefined, now);
-    expect(closed.price).toBe(100); expect(closed.status).toBe('stale'); expect(closed.source).toBe('Twelve Data');
+    expect(closed.price).toBe(100); expect(closed.status).toBe('closed'); expect(closed.source).toBe('Twelve Data');
+    expect(quoteStatus(closed, now + 2 * 86400000)).toBe('closed');
+    expect(quoteStatus(closed, now + 8 * 86400000)).toBe('stale');
     expect(tvMovers([closed], now).gainers).toEqual([]);
     const daily = toTvQuote('AAPL', row({ provenance: { ...row().provenance, observation: { precision: 'date' } } }), undefined, now);
-    expect(daily.status).toBe('stale');
+    expect(daily.status).toBe('reference');
     expect(toTvQuote('AAPL', row({ quality: { state: 'unavailable' } }), undefined, now).price).toBeNull();
     expect(toTvQuote('AAPL', row({ provenance: { ...row().provenance, upstreamProvider: null } }), undefined, now).price).toBeNull();
+  });
+  it('does not promote an unknown or delayed entitlement to a live quote', () => {
+    for (const delayType of [null, 'unknown', 'cached']) {
+      const q = toTvQuote('AAPL', row({ provenance: { ...row().provenance, delayType } }), undefined, now);
+      expect(q.status).toBe('unknown_delay');
+      expect(quoteStatus({ ...q, status: 'available' }, now)).toBe('unknown_delay');
+    }
+    const realtime = toTvQuote('AAPL', row({ provenance: { ...row().provenance, delayType: 'realtime' } }), undefined, now);
+    expect(realtime.status).toBe('available');
+    expect(quoteStatus({ ...realtime, delayType: 'delayed' }, now)).toBe('delayed');
   });
   it('uses bounded real asset lists and retains all six Gulf countries', () => {
     const symbols=tvAssets('gulf').map(a=>a.symbol);

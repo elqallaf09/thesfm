@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, History, RefreshCcw, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { eventFamilyLabel, summarizeResolutionHistory, type ResolutionEventRow } from '@/lib/dashboard/resolutionIntelligence';
 
 const TEXT = {
@@ -46,6 +46,8 @@ export function EconomicResolutionHistory() {
     let cancelled = false;
     setLoading(true);
     void (async () => {
+      const supabase = await loadSupabaseClient();
+      if (cancelled) return;
       const result = await (supabase as any).from('notifications')
         .select('id,event_key,status,created_at,resolved_at,resolution_code')
         .eq('user_id', user.id)
@@ -56,7 +58,9 @@ export function EconomicResolutionHistory() {
         setRows(result.error ? [] : (result.data ?? []));
         setLoading(false);
       }
-    })();
+    })().catch(() => {
+      if (!cancelled) { setRows([]); setLoading(false); }
+    });
     return () => { cancelled = true; };
   }, [authLoading, user?.id]);
 

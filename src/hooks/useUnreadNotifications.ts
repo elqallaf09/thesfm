@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 
 export function useUnreadNotifications(userId?: string | null) {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -16,21 +16,25 @@ export function useUnreadNotifications(userId?: string | null) {
       }
       if (document.visibilityState === 'hidden') return;
 
-      const db = supabase as any;
-      let result = await db
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('status', 'unread');
-      if (result.error) {
-        result = await db
+      try {
+        const db = await loadSupabaseClient() as any;
+        if (cancelled) return;
+        let result = await db
           .from('notifications')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', userId)
-          .eq('read', false);
+          .eq('status', 'unread');
+        if (result.error) {
+          result = await db
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('read', false);
+        }
+        if (!cancelled) setUnreadNotifications(result.error ? 0 : (result.count ?? 0));
+      } catch {
+        if (!cancelled) setUnreadNotifications(0);
       }
-      if (cancelled) return;
-      setUnreadNotifications(result.error ? 0 : (result.count ?? 0));
     }
 
     void loadUnread();

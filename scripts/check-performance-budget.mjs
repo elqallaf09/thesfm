@@ -1,11 +1,12 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { PERFORMANCE_MANIFEST_FILE, routeFilesForBudget } from './performance-build-manifest.mjs';
 
 const root = process.cwd();
 const nextDir = path.join(root, '.next');
 const budget = JSON.parse(await readFile(path.join(root, 'performance-budget.json'), 'utf8'));
-const manifest = JSON.parse(await readFile(path.join(nextDir, 'app-build-manifest.json'), 'utf8'));
+const manifest = JSON.parse(await readFile(path.join(nextDir, PERFORMANCE_MANIFEST_FILE), 'utf8'));
 
 async function filesBelow(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -47,11 +48,7 @@ const fontSizes = await Promise.all(fontFiles.map(file => stat(file)));
 record(results, `built font assets (${fontFiles.length} files)`, fontSizes.reduce((sum, item) => sum + item.size, 0), budget.builtFontTotalBytes);
 
 for (const [route, routeBudget] of Object.entries(budget.routes)) {
-  const routeFiles = [...new Set([
-    ...(manifest.pages['/layout'] ?? []),
-    ...(manifest.pages[routeBudget.manifestKey] ?? []),
-  ])];
-  if (routeFiles.length === 0) throw new Error(`No build assets found for ${route}`);
+  const routeFiles = routeFilesForBudget(manifest, routeBudget.manifestKey);
 
   let javascriptBytes = 0;
   let cssBytes = 0;

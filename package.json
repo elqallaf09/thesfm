@@ -7,9 +7,9 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev",
-    "dev:debug": "NODE_OPTIONS='--inspect' next dev",
-    "build": "node scripts/clean-next-build.mjs && next build",
+    "dev": "next dev --webpack",
+    "dev:debug": "NODE_OPTIONS='--inspect' next dev --webpack",
+    "build": "node scripts/clean-next-build.mjs && next build --webpack",
     "start": "next start",
     "check:i18n": "node scripts/check-translations.mjs",
     "check:maintainability": "node scripts/check-source-complexity.mjs",
@@ -77,7 +77,7 @@
     "embla-carousel-react": "8.6.0",
     "input-otp": "1.5.0",
     "lucide-react": "^1.47.0",
-    "next": "15.5.28",
+    "next": "16.4.2",
     "next-themes": "^0.4.4",
     "pdf-parse": "2.4.5",
     "pptxgenjs": "^4.0.1",

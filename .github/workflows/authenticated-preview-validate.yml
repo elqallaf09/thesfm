@@ -166,10 +166,20 @@ jobs:
           tests/smoke/ai-analyst-unified-research.spec.ts
           tests/smoke/intelligence-smart-analysis.spec.ts
 
+      - name: Verify cold authenticated dashboard startup
+        if: hashFiles('tests/smoke/dashboard-cold-session.spec.ts') != ''
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+        run: >-
+          pnpm exec playwright test
+          --config=playwright.preview.config.ts
+          --max-failures=1
+          tests/smoke/dashboard-cold-session.spec.ts
+
       - name: Run complete authenticated remote smoke suite
         env:
           E2E_BASE_URL: ${{ steps.preview.outputs.url }}
-        run: pnpm exec playwright test --config=playwright.preview.config.ts
+        run: pnpm exec playwright test --config=playwright.preview.config.ts --max-failures=1
 
       - name: Cleanup isolated Preview auth fixtures
         if: always() && (steps.fixtures.outcome == 'success' || steps.fixtures.outcome == 'failure')

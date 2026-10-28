@@ -1,13 +1,10 @@
 // Isolated real-component browser tests. All data below is synthetic and never persisted.
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
-const require = createRequire(import.meta.url);
-const viteRequire = createRequire(createRequire(require.resolve('vitest/package.json')).resolve('vite/package.json'));
-const { build } = viteRequire('esbuild');
+import { build } from 'vite';
 const root = process.cwd();
 const work = await mkdtemp(path.join(tmpdir(), 'shariah-ui-'));
 const proof = path.resolve(process.env.SHARIAH_UI_PROOF_DIR || path.join(work, 'proof'));
@@ -22,17 +19,27 @@ const labels = {
   admin_shariah_compliant: 'متوافق', admin_shariah_non_compliant: 'غير متوافق',
   admin_shariah_needs_review: 'يحتاج مراجعة', admin_shariah_unclassified: 'غير مصنف',
 };
-await build({ absWorkingDir: root, stdin: {
-  contents: "import React from 'react'; import {createRoot} from 'react-dom/client'; import Page from './src/app/sfm-admin-control/shariah/ShariahAdminClient'; createRoot(document.getElementById('app')).render(<Page reviewer='Synthetic test reviewer'/>);",
-  resolveDir: root, loader: 'tsx', sourcefile: 'isolated-progress-test.tsx',
-}, bundle: true, platform: 'browser', jsx: 'automatic', outfile: path.join(work, 'app.js'),
+const fixtureEntry = path.join(root, 'isolated-progress-test.tsx');
+const languageEntry = '\0shariah-test-language';
+// Use the declared bundler API; Vite 8 no longer installs esbuild internally.
+await build({ root, configFile: false, envFile: false, publicDir: false,
+  resolve: { alias: [
+    { find: '@/hooks/useLanguage', replacement: languageEntry },
+    { find: '@', replacement: path.join(root, 'src') },
+  ] },
+  oxc: { jsx: { runtime: 'automatic' } },
   define: { 'process.env.NODE_ENV': '"production"' },
-  plugins: [{ name: 'test-only-language', setup(plugin) {
-    plugin.onResolve({ filter: /^@\/hooks\/useLanguage$/ }, () => ({ path: 'language', namespace: 'fixture' }));
-    plugin.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({
-      contents: `const labels=${JSON.stringify(labels)}; const t=(key)=>labels[key]||key; export function useLanguage(){return {lang:'ar',dir:'rtl',t}}`, loader: 'js',
-    }));
-  } }],
+  build: { outDir: work, emptyOutDir: false, minify: false,
+    lib: { entry: fixtureEntry, name: 'ShariahProgressFixture', formats: ['iife'], fileName: () => 'app.js' },
+    rolldownOptions: { output: { inlineDynamicImports: true } },
+  },
+  plugins: [{ name: 'isolated-progress-fixture',
+    resolveId(id) { if (id === fixtureEntry || id === languageEntry) return id; },
+    load(id) {
+      if (id === fixtureEntry) return "import React from 'react'; import {createRoot} from 'react-dom/client'; import Page from './src/app/sfm-admin-control/shariah/ShariahAdminClient'; createRoot(document.getElementById('app')).render(<Page reviewer='Synthetic test reviewer'/>);";
+      if (id === languageEntry) return `const labels=${JSON.stringify(labels)}; const t=(key)=>labels[key]||key; export function useLanguage(){return {lang:'ar',dir:'rtl',t}}`;
+    },
+  }],
 });
 const bundle = await readFile(path.join(work, 'app.js'));
 const html = '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{--background:#f7f8fc;--surface:#fff;--border:#cfd4e3;--primary:#5142e9;--primary-foreground:white;--foreground:#152448;--foreground-secondary:#566079;--foreground-muted:#58627e;--radius-panel:12px;--radius-control:8px;--font-ui:Arial;--font-data:monospace}body{font-family:Arial;padding:20px;background:var(--background)}button,input{font:inherit}</style><div id="app"></div></html>';

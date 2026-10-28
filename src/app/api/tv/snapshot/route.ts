@@ -1,9 +1,10 @@
-import { TV_GROUPS, type TvGroup } from '@/lib/markets-tv/types';
+import { TV_GROUPS, type TvGroup, type TvScene } from '@/lib/markets-tv/types';
 import { getTvDevice, ownedTvData } from '@/lib/server/markets-tv/devices';
 import { loadTvSnapshot } from '@/lib/server/markets-tv/snapshot';
 import { tvJson } from '@/lib/server/markets-tv/http';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { validTvSymbol } from '@/lib/markets-tv/selections';
+import { TV_SCENE_GROUP } from '@/lib/server/markets-tv/sceneCatalog';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 export async function GET(request: Request) {
@@ -14,8 +15,12 @@ export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { prefix: 'tv-snapshot', max: group === 'watchlist' ? 30 : 120 }); if (limited) return limited;
   const page = Number(params.get('page') || 0), pageSize = Number(params.get('pageSize') || 6);
   const market = params.get('market') || undefined;
+  const scene = params.get('scene') as TvScene | null;
   if (!Number.isInteger(page) || page < 0 || page > 1_000_000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 12 || market && !/^[A-Z_a-z0-9]{1,32}$/.test(market)) return tvJson({ code: 'INVALID_QUERY' }, 400);
   if (!TV_GROUPS.includes(group as TvGroup)) return tvJson({ code: 'INVALID_GROUP' }, 400);
+  if (scene && (!Object.hasOwn(TV_SCENE_GROUP, scene) || TV_SCENE_GROUP[scene] !== group || market || params.has('symbols') || page !== 0)) {
+    return tvJson({ code: 'INVALID_QUERY' }, 400);
+  }
   let selected: string[] | undefined;
   if (params.has('symbols')) {
     try {
@@ -33,6 +38,6 @@ export async function GET(request: Request) {
       if (!device?.user_id) return tvJson({ code: 'UNAUTHORIZED' }, 401);
       symbols = (await ownedTvData(device.user_id)).symbols;
     }
-    return tvJson(await loadTvSnapshot(group as TvGroup, symbols, { page, pageSize, market, symbols: selected }));
+    return tvJson(await loadTvSnapshot(group as TvGroup, symbols, { page, pageSize, market, symbols: selected, ...(scene ? { scene } : {}) }));
   } catch { return tvJson({ code: 'MARKET_UNAVAILABLE' }, 503); }
 }

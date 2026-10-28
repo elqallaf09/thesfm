@@ -584,7 +584,9 @@ jobs:
 
   vercel-evidence:
     name: Vercel Preview deployment evidence
-    needs: [resolve-target, validate-required-secrets]
+    # Wait for the optional deployment creators before starting the readiness clock.
+    needs: [resolve-target, validate-required-secrets, rollout, authenticated-preview]
+    if: always() && !cancelled() && needs.resolve-target.result == 'success' && needs.validate-required-secrets.result == 'success'
     runs-on: ubuntu-latest
     # Provisioning and migrations run before the authenticated job creates the
     # Preview. Leave time for that build, then its passive evidence request.

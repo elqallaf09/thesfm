@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { loadSupabaseClient } from '@/integrations/supabase/loadClient';
 import { useAuth } from '@/hooks/useAuth';
 import { recordAccountActivity } from '@/lib/accountActivity';
 import type { Investment, InvestmentInput, InvestmentType } from '@/types/investment';
@@ -11,12 +11,12 @@ import {
   buildInvestmentPayload, normalizeInvestmentForSave, mergeInvestmentForUpdate,
   buildPriceRefreshPayload, mergeMarketPriceIntoInvestment, buildSnapshotFallbackPayload,
   metaFromInvestment, toLegacyRow, mutationErrorMessage,
-  safeInvestmentSummary, nowIso, coreSavePayload, updateInvestmentWithAttempts,
+  safeInvestmentSummary, nowIso, coreSavePayload,
   cleanInvestmentUpdatePayload, compactUpdatePayload, moneyNumber, newId,
-  insertInvestmentWithAttempts,
   type InvestmentMeta, type InvestmentSelectResult, type DbInvestmentRow,
   type InvestmentMarketPriceUpdate,
 } from '@/lib/investments/investmentUtils';
+import { insertInvestmentWithAttempts, updateInvestmentWithAttempts } from '@/lib/investments/investmentPersistence';
 
 const DEBUG_INVESTMENTS = process.env.NODE_ENV === 'development';
 
@@ -51,6 +51,8 @@ export function useInvestments() {
         return;
       }
 
+      const supabase = await loadSupabaseClient();
+      if (cancelled) return;
       const meta = readJson<Record<string, InvestmentMeta>>(userMetaKey, {});
       const richSelect = 'id,user_id,name,asset_name,type,category,amount,value,current_value,initial_value,invested_amount,total_invested,purchase_price,purchase_date,entry_date,average_buy_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,exchange,asset_type,quantity,shares,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,purchase_platform_id,purchase_platform_name,purchase_platform_type,investment_snapshot,ai_analysis,created_at,updated_at';
       const standardSelect = 'id,user_id,name,type,category,amount,value,current_value,initial_value,invested_amount,purchase_price,purchase_total,monthly_contribution,expected_return,expected_annual_return,risk_level,currency,start_date,notes,symbol,provider_symbol,market,asset_type,quantity,unit,profit_loss,profit_loss_percent,default_currency_value,location,property_type,expected_monthly_income,expected_monthly_expense,maturity_date,current_price,current_market_value,price_currency,native_currency,native_unit_price,native_market_value,user_currency,fx_rate_to_user_currency,converted_market_value,fx_source,fx_last_updated_at,valuation_source,valuation_last_updated_at,last_price,last_price_updated_at,data_source,project_id,metal_type,metal_product_type,metal_karat,metal_purity,grams,pure_metal_grams,price_source,purchase_platform_id,purchase_platform_name,purchase_platform_type,ai_analysis,created_at,updated_at';
@@ -127,7 +129,12 @@ export function useInvestments() {
       }
     }
 
-    void load();
+    void load().catch(loadError => {
+      if (cancelled) return;
+      setError(loadError instanceof Error ? loadError.message : 'Investment load failed');
+      setItems([]);
+      setIsLoading(false);
+    });
     return () => {
       cancelled = true;
     };
@@ -149,6 +156,7 @@ export function useInvestments() {
       return optimistic;
     }
 
+    const supabase = await loadSupabaseClient();
     const extendedPayload = buildInvestmentPayload(data, user.id);
     debugInvestments('add payload', safeInvestmentSummary({
       ...data,
@@ -298,6 +306,7 @@ export function useInvestments() {
       return;
     }
 
+    const supabase = await loadSupabaseClient();
     const result = await supabase.from('investment_items').delete().eq('id', id).eq('user_id', user.id);
     if (result.error) throw new Error(result.error.message);
 
