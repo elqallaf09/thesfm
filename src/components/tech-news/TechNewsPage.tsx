@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
@@ -380,9 +380,15 @@ export function TechNewsPage() {
   const [sort, setSort] = useState<TechNewsSort>('recent');
   const [viewMode, setViewMode] = useState<TechNewsViewMode>('grid');
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NEWS_COUNT);
+  // Language hydration can replace the first request before it settles. Keep
+  // an older aborted request from overwriting the newer language's successful
+  // news payload with an error or loading state.
+  const latestLoadRequestRef = useRef(0);
   const locale = localeFor(lang);
 
   const load = useCallback(async (showLoader = true, signal?: AbortSignal) => {
+    const requestId = latestLoadRequestRef.current + 1;
+    latestLoadRequestRef.current = requestId;
     if (showLoader) setLoading(true);
     setRefreshing(!showLoader);
     setError('');
@@ -392,6 +398,7 @@ export function TechNewsPage() {
       if (!response.ok || !json.success) {
         throw new Error('reason' in json ? json.reason || json.error || ui.noNews : ui.noNews);
       }
+      if (requestId !== latestLoadRequestRef.current) return;
       setItems(json.items);
       setPrices(json.prices ?? []);
       setLastUpdated(json.lastUpdated);
@@ -401,15 +408,18 @@ export function TechNewsPage() {
         storedFallbackUsed: json.storedFallbackUsed,
       });
     } catch (loadError) {
-      if (loadError instanceof DOMException && loadError.name === 'AbortError') return;
+      if (signal?.aborted || (loadError instanceof DOMException && loadError.name === 'AbortError')) return;
+      if (requestId !== latestLoadRequestRef.current) return;
       setItems([]);
       setPrices([]);
       setLastUpdated('');
       setNewsDeliveryStatus(INITIAL_NEWS_DELIVERY_STATUS);
       setError(loadError instanceof Error ? loadError.message : ui.noNews);
     } finally {
-      if (showLoader) setLoading(false);
-      setRefreshing(false);
+      if (requestId === latestLoadRequestRef.current && !signal?.aborted) {
+        if (showLoader) setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [lang, ui.noNews]);
 
