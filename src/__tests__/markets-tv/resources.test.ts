@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createTvSnapshotQueue } from '@/components/markets-tv/snapshotQueue';
-import { isPublicTvSnapshot, TvResourceCache, TvResourceError, tvRetryDelay } from '@/components/markets-tv/tvResourceCache';
+import { isPublicTvSnapshot, TvResourceCache, TvResourceError, tvRetryDelay, tvSnapshotRetryDelay } from '@/components/markets-tv/tvResourceCache';
 import { retainVisibleTvSnapshot } from '@/components/markets-tv/retainedSnapshot';
 import type { TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 
@@ -138,6 +138,46 @@ describe('TV public resource lifecycle', () => {
     expect((await cache.request<TvSnapshot>(path, options(), load)).quotes[0].price).toBe(102);
     expect(tvRetryDelay(100, 30_000)).toBe(300_000);
     expect(tvRetryDelay(1, 0)).toBeGreaterThanOrEqual(5000);
+  });
+
+  it('honors provider cooldown in a successful snapshot across refresh and remount, then recovers', async () => {
+    let now = Date.parse('2026-10-27T09:02:00Z');
+    const cache = new TvResourceCache(32, () => now);
+    const retryAt = new Date(now + 120_000).toISOString();
+    const blocked: TvSnapshot = { ...snapshot({ price: null, status: 'unavailable', issue: 'rate_limited', retryAt }), retryAt };
+    const load = vi.fn().mockResolvedValueOnce(snapshot()).mockResolvedValueOnce(blocked).mockResolvedValue(snapshot({ price: 102 }));
+    await cache.request(path, options(), load);
+    now += 30_000;
+    const delayed = await cache.request<TvSnapshot>(path, options(), load);
+    expect(delayed.quotes[0]).toMatchObject({ price: 100, status: 'stale', issue: 'rate_limited', retryAt, observedAt: '2026-10-27T09:00:00Z' });
+    expect(delayed.retryAt).toBe(retryAt);
+    now += 30_000;
+    expect(await cache.request(path, { ...options(), force: true }, load)).toEqual(delayed);
+    expect(await cache.request(path, options(), load)).toEqual(delayed);
+    expect(load).toHaveBeenCalledTimes(2);
+    now += 60_000;
+    expect((await cache.request<TvSnapshot>(path, options(), load)).quotes[0].price).toBe(102);
+    expect(load).toHaveBeenCalledTimes(3);
+  });
+
+  it('bounds status rechecks without treating arbitrary responses or invalid dates as provider cooldowns', () => {
+    const now = Date.parse('2026-10-27T09:02:00Z');
+    expect(tvSnapshotRetryDelay({ ...snapshot(), retryAt: new Date(now + 86_400_000).toISOString() }, now)).toBe(300_000);
+    expect(tvSnapshotRetryDelay({ ...snapshot(), retryAt: 'invalid' }, now)).toBe(0);
+    expect(tvSnapshotRetryDelay({ ...snapshot(), retryAt: new Date(now - 1).toISOString() }, now)).toBe(0);
+    expect(tvSnapshotRetryDelay({ retryAt: new Date(now + 60_000).toISOString() }, now)).toBe(0);
+  });
+
+  it('does not cache a private provider cooldown or postpone the next authorization response', async () => {
+    const cache = new TvResourceCache();
+    const ownedPath = '/api/tv/snapshot?group=watchlist&scene=watchlist';
+    const blocked: TvSnapshot = { ...snapshot({ price: null, status: 'unavailable', issue: 'rate_limited' }),
+      group: 'watchlist', retryAt: new Date(Date.now() + 300_000).toISOString() };
+    const load = vi.fn().mockResolvedValueOnce(blocked).mockRejectedValueOnce(new TvResourceError('UNAUTHORIZED', 401));
+    await cache.request(ownedPath, { ...options(), token: 'test-device' }, load);
+    await expect(cache.request(ownedPath, { ...options(), token: 'test-device' }, load)).rejects.toMatchObject({ status: 401 });
+    expect(cache.peek(ownedPath, 'test-device')).toBeNull();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 });
 

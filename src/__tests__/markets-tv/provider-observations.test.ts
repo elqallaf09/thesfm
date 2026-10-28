@@ -45,7 +45,7 @@ describe('TV exchange-bound provider observations', () => {
       .mockResolvedValueOnce(Response.json({ code: 429, status: 'error' }, { status: 429 })); vi.stubGlobal('fetch', fetch);
     const { providerStockQuote } = await import('@/lib/world-stocks/providerQuote');
     const first = await providerStockQuote('TD_XKUW', 'NBK', listing);
-    vi.setSystemTime(now + 16_000);
+    vi.setSystemTime(now + 301_000);
     const retained = await providerStockQuote('TD_XKUW', 'NBK', listing);
     expect(retained).toMatchObject({ price: first.price, quoteTimestamp: first.quoteTimestamp, receivedAt: first.receivedAt, issue: 'rate_limited', status: 'unavailable' });
     expect(await providerStockQuote('TD_XDFM', 'DIB', { providerSymbol: 'DIB', mic: 'XDFM', currency: 'AED' })).toMatchObject({ price: null, issue: 'rate_limited' });

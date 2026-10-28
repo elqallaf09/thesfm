@@ -1,5 +1,7 @@
 import { cleanEnv } from '@/lib/market/providerConfig';
 import { fmpQueuedFetch } from '@/lib/trader/providers/fmpRuntime.server';
+import { getFmpRateLimitedUntil } from '@/lib/trader/providers/fmpRuntime';
+import { QuoteProviderError } from './quoteFailure';
 import type {
   MarketDataProvider, MarketDataProviderContext, NormalizedMarketCandle,
   NormalizedMarketQuote, ProviderHealthResult,
@@ -8,6 +10,12 @@ import type {
 type Row = Record<string, unknown>;
 const cache = new Map<string, { expires: number; rows: Row[] }>();
 const pending = new Map<string, Promise<Row[]>>();
+const failures = new Map<string, { until: number; error: QuoteProviderError }>();
+const INDEX_COUNTRY: Record<string, string> = { '^GSPC': 'US', '^DJI': 'US', '^NDX': 'US', '^FTSE': 'GB', '^GDAXI': 'DE', '^N225': 'JP' };
+export function fmpIndexSymbol(symbol: string, context: MarketDataProviderContext = {}) {
+  const value = symbol.trim().toUpperCase();
+  return context.assetType === 'index' && Object.hasOwn(INDEX_COUNTRY, value) ? value : null;
+}
 
 function number(value: unknown): number | null {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
@@ -29,6 +37,9 @@ async function rows(endpoint: string, symbol: string, forceFresh = false): Promi
   const key = `${endpoint}:${symbol}`;
   const cached = cache.get(key);
   if (!forceFresh && cached && cached.expires > Date.now()) return cached.rows;
+  const failed = failures.get(key);
+  if (failed && failed.until > Date.now()) throw failed.error;
+  if (failed) failures.delete(key);
   const existing = pending.get(key);
   if (existing) return existing;
   const load = (async () => {
@@ -42,7 +53,16 @@ async function rows(endpoint: string, symbol: string, forceFresh = false): Promi
       signal: AbortSignal.timeout(8000),
       ...(forceFresh ? { cache: 'no-store' as const } : { next: { revalidate: endpoint === 'quote' ? 60 : 900 } }),
     });
-    if (!response.ok) throw new Error(`provider_http_${response.status}`);
+    if (!response.ok) {
+      const until = [401, 402, 403].includes(response.status) ? Date.now() + 300_000 : null;
+      const error = new QuoteProviderError(response.status, `provider_http_${response.status}`,
+        until ? new Date(until).toISOString() : response.status === 429 ? getFmpRateLimitedUntil() : undefined, symbol);
+      if (until) {
+        if (failures.size >= 500) failures.delete(failures.keys().next().value!);
+        failures.set(key, { until, error });
+      }
+      throw error;
+    }
     const payload: unknown = await response.json();
     if (!Array.isArray(payload)) throw new Error('provider_invalid_response');
     const result = payload.filter((item): item is Row => !!item && typeof item === 'object');
@@ -58,9 +78,13 @@ export class FmpMarketDataProvider implements MarketDataProvider {
   name = 'fmp' as const;
   displayName = 'Financial Modeling Prep';
   configured() { return Boolean(cleanEnv(process.env.FMP_API_KEY)); }
+  supports(symbol: string, context: MarketDataProviderContext) {
+    return Boolean(fmpIndexSymbol(symbol, context) || fmpEquitySymbol(symbol, context.market, context));
+  }
 
   async getQuote(symbol: string, market?: string | null, context: MarketDataProviderContext = {}): Promise<NormalizedMarketQuote | null> {
-    const providerSymbol = fmpEquitySymbol(symbol, market, context);
+    const indexSymbol = fmpIndexSymbol(symbol, context);
+    const providerSymbol = indexSymbol || fmpEquitySymbol(symbol, market, context);
     if (!providerSymbol || !this.configured()) return null;
     const data = await rows('quote', providerSymbol, context.forceFresh);
     const row = data.find(item => String(item.symbol).toUpperCase() === providerSymbol);
@@ -72,13 +96,13 @@ export class FmpMarketDataProvider implements MarketDataProvider {
     return {
       symbol: context.symbol || symbol, providerSymbol, price,
       name: typeof row.name === 'string' ? row.name : context.name ?? null,
-      currency: typeof row.currency === 'string' ? row.currency : 'USD',
+      currency: indexSymbol ? null : typeof row.currency === 'string' ? row.currency : 'USD',
       previousClose, change, marketCap: number(row.marketCap),
       changePercent: number(row.changePercentage ?? row.changesPercentage)
         ?? (change !== null && previousClose !== null && previousClose > 0 ? change / previousClose * 100 : null),
       open: number(row.open), high: number(row.dayHigh), low: number(row.dayLow), volume: number(row.volume),
-      market: market ?? 'us-stocks', exchange: typeof row.exchange === 'string' ? row.exchange : context.exchange ?? null,
-      exchangeCode: context.exchangeCode ?? null, country: 'US', assetType: context.assetType ?? 'stock',
+      market: market ?? (indexSymbol ? 'indices' : 'us-stocks'), exchange: typeof row.exchange === 'string' ? row.exchange : context.exchange ?? null,
+      exchangeCode: context.exchangeCode ?? null, country: indexSymbol ? INDEX_COUNTRY[indexSymbol] : 'US', assetType: indexSymbol ? 'index' : context.assetType ?? 'stock',
       provider: this.name, providerName: this.displayName,
       // A configured key alone does not establish a realtime entitlement.
       delayType: 'delayed',

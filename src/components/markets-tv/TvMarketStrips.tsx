@@ -8,6 +8,7 @@ import { ChevronRight, RefreshCw } from 'lucide-react';
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import { useTvResource } from './useTvResource';
 import { hasTvPrice, tvStripCoverage } from '@/lib/markets-tv/coverage';
+import { tvSceneIssue, tvSceneText, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 
 type Props = { selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; pricedOnly?: boolean; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
 const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, selections, pricedOnly = false }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
@@ -31,39 +32,49 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   // Hide revoked data in this render as well as clearing the retained state.
   const snapshot = retainVisibleTvSnapshot(retained, resource), quotes = snapshot?.quotes || [];
   const coverage = tvStripCoverage(quotes, now);
+  const sourceCooling = tvStripSourceCooling(quotes, snapshot?.retryAt, now);
+  const emptyPrices = quotes.length > 0 && !coverage.priced;
+  const failure = tvSceneText(language, quotes.length > 0 && quotes.every(quote => quote.issue === quotes[0].issue) ? tvSceneIssue(quotes[0].issue) : 'updatesUnavailable');
   const displayed = pricedOnly ? quotes.filter(hasTvPrice) : quotes;
   const pages = Math.max(1, Math.ceil((custom ? selection.length : snapshot?.directoryTotal ?? market.count) / 12));
   useEffect(() => {
-    if (!track.current) return;
-    const resize = new ResizeObserver(() => { if (track.current) setDuration(Math.max(1, track.current.scrollWidth / 2 / speed)); });
-    resize.observe(track.current); return () => resize.disconnect();
-  }, [displayed.length, speed]);
+    const element = track.current, viewport = element?.parentElement;
+    if (!element || !viewport) return;
+    const resize = new ResizeObserver(() => {
+      setDuration(Math.max(1, element.scrollWidth / 2 / speed));
+      const focused = document.activeElement;
+      if (!emptyPrices || !(focused instanceof HTMLElement) || !element.contains(focused)) return;
+      const bounds = viewport.getBoundingClientRect(), card = focused.getBoundingClientRect();
+      if (card.left < bounds.left || card.right > bounds.right) focused.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    });
+    resize.observe(element); resize.observe(viewport); return () => resize.disconnect();
+  }, [displayed.length, speed, emptyPrices]);
   useEffect(() => {
-    if (!pricedOnly || displayed.length || !visible || paused || manualPause || resource.loading || resource.error || !resource.data || pages <= 1) return;
+    if (!pricedOnly || displayed.length || !visible || paused || manualPause || sourceCooling || resource.loading || resource.error || !resource.data || pages <= 1) return;
     // Empty batches have no animation cycle to advance them. Keep scanning bounded
     // and stop while hidden, paused or disconnected instead of requesting the whole exchange.
     const timer = setTimeout(() => { if (!document.hidden && navigator.onLine) setPage(value => (value + 1) % pages); }, 8000);
     return () => clearTimeout(timer);
-  }, [pricedOnly, displayed.length, visible, paused, manualPause, resource.loading, resource.error, resource.data, pages]);
+  }, [pricedOnly, displayed.length, visible, paused, manualPause, sourceCooling, resource.loading, resource.error, resource.data, pages]);
   useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
   const health = resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
   const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = () => { if (!resource.loading) setPage(value => (value + 1) % pages); };
-  return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id}>
+  return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-source-cooling={sourceCooling} data-paged={pages > 1}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
       <small dir="ltr" title={t('directory')}>{custom ? `${selection.length.toLocaleString('en-US')} / ` : ''}{market.count.toLocaleString('en-US')}</small>
       <span className="tv-strip-coverage">{t('pageCoverage')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>
-      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
+      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
     </button>
     <div className="tv-market-strip-window" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(Boolean(root.current?.contains(document.activeElement)))} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-      {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={next} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
-        {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
+      {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause && !emptyPrices ? 'running' : 'paused' }}>
+        {(emptyPrices ? [0] : [0, 1]).map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
           {displayed.map(q => <TvStripQuote key={`${q.exchange}:${q.symbol}`} quote={q} group={market.group} language={language} now={Math.floor(now / 15000) * 15000} duplicate={Boolean(copy)} onQuote={onQuote}/>)}
         </div>)}
-      </div> : <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>}
+      </div> : <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>}
     </div>
-    <button className="tv-strip-next" aria-label={`${t('next')}: ${market.labelEn}`} onClick={next} disabled={pages === 1 || resource.loading}><ChevronRight aria-hidden="true"/></button>
+    {pages > 1 && <button className="tv-strip-next" aria-label={`${t('next')}: ${market.labelEn}`} onClick={next} disabled={resource.loading}><ChevronRight aria-hidden="true"/></button>}
   </div>;
 });
 export const TvMarketStrips = memo(function TvMarketStrips(props: Props) {

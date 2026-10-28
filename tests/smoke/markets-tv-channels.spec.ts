@@ -79,6 +79,16 @@ test('TV density preserves source evidence, batch coverage and responsive layout
     heights.push((await row.boundingBox())!.height);
     await expect(row.locator('.tv-strip-evidence').first()).toContainText('QA fixture');
     await expect(row.locator('.tv-strip-symbol').first()).toContainText('شركة اختبار');
+    for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }]) {
+      await page.setViewportSize(viewport);
+      const captions = row.locator('.tv-market-strip-set').first().locator('.tv-strip-symbol > span, .tv-strip-price > span, .tv-strip-change, .tv-strip-evidence');
+      expect(await captions.evaluateAll(elements => Math.min(...elements.map(element => parseFloat(getComputedStyle(element).fontSize))))).toBeGreaterThanOrEqual(12);
+      const overflow = await row.locator('.tv-market-strip-set').first().locator('.tv-market-strip-item').evaluateAll(cards => cards.flatMap(card => {
+        const bounds = card.getBoundingClientRect();
+        return [...card.children].filter(child => { const rect = child.getBoundingClientRect(); return rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1; }).map(child => child.className);
+      }));
+      expect(overflow).toEqual([]);
+    }
   }
   expect(heights[0]).toBeGreaterThan(heights[1]); expect(heights[1]).toBeGreaterThan(heights[2]);
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
@@ -112,4 +122,47 @@ test('priced-only mode advances an empty batch and idle controls wake without hi
   await page.getByRole('button', { name: 'Display settings', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
+});
+
+test('a rate-limited strip keeps its instruments accessible and pauses automatic batch scanning', async ({ page }) => {
+  await fixtures(page);
+  await page.clock.install();
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'en', marketIds: ['US'] })));
+  const pages: string[] = [];
+  await page.route('**/api/tv/snapshot?*', route => {
+    const batch = new URL(route.request().url()).searchParams.get('page') || '0';
+    pages.push(batch);
+    return route.fulfill({ json: { group: 'us', market: 'US', page: Number(batch), directoryTotal: 24, available: 0, total: 12,
+      retryAt: new Date(Date.now() + 300_000).toISOString(), generatedAt: new Date().toISOString(),
+      quotes: Array.from({ length: 12 }, (_, index) => ({ symbol: `QA${index}`, name: `Unavailable fixture ${index}`, nameAr: `أداة اختبار ${index}`,
+        price: null, currency: 'USD', changePercent: null, source: null, observedAt: null, status: 'unavailable', issue: 'rate_limited', exchange: 'US', country: 'US' })) } });
+  });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.goto('/tv/strips');
+  const strip = page.locator('[data-market="US"]');
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(12);
+  await expect(strip).toHaveAttribute('data-source-cooling', 'true');
+  await expect(strip.locator('.tv-strip-price,.tv-strip-change')).toHaveCount(0);
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'none');
+  await strip.locator('.tv-market-strip-track').dispatchEvent('animationiteration');
+  await page.clock.fastForward(9000);
+  expect(pages.every(value => value === '0')).toBe(true);
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 3840, height: 2160 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
+    const last = strip.locator('.tv-market-strip-item').last();
+    await last.focus();
+    await expect(last).toBeFocused();
+    await expect.poll(() => last.evaluate(element => {
+      const bounds = element.closest('.tv-market-strip-window')!.getBoundingClientRect(), card = element.getBoundingClientRect();
+      return { beforeEnd: card.left < bounds.right, afterStart: card.right > bounds.left };
+    })).toEqual({ beforeEnd: true, afterStart: true });
+  }
+  await page.getByRole('button', { name: 'Display settings', exact: true }).click();
+  await page.getByRole('switch', { name: 'Only show instruments with prices', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect(strip.locator('.tv-market-strip-empty')).toContainText('Source request limit reached');
+  await expect(strip.locator('.tv-market-strip-empty')).not.toContainText('continuing to the next batch');
+  await page.clock.fastForward(9000);
+  expect(pages.every(value => value === '0')).toBe(true);
 });

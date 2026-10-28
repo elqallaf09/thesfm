@@ -1,3 +1,4 @@
+import { twelveDataFetch } from '@/lib/server/twelve-data-fetch';
 /**
  * Twelve Data provider module.
  *
@@ -194,8 +195,7 @@ export async function fetchTwelveDataQuote(
   const t0    = Date.now();
 
   try {
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
+    const res = await twelveDataFetch(url, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const ms = Date.now() - t0;
@@ -239,8 +239,7 @@ export async function fetchTwelveDataBatch(
   const t0     = Date.now();
 
   try {
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
+    const res = await twelveDataFetch(url, {
       signal: AbortSignal.timeout(15_000),
     });
     const ms = Date.now() - t0;
@@ -297,8 +296,7 @@ export async function fetchTwelveDataTimeSeries(
   const t0         = Date.now();
 
   try {
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
+    const res = await twelveDataFetch(url, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const ms = Date.now() - t0;

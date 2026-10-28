@@ -1,6 +1,6 @@
 import type { NormalizedMarketCandle } from '@/lib/market/marketDataProviders';
 
-type Candidate = { symbol: string; exchange: string | null };
+type Candidate = { symbol: string; exchange: string | null; mic?: string };
 type Result = { ok: boolean; status: number; data: unknown };
 type FetchJson = (url: string, options: { cacheKey: string; ttlMs: number; forceFresh?: boolean }) => Promise<Result>;
 
@@ -22,10 +22,11 @@ export async function fetchTwelveDataCandles(options: {
     const interval = !options.interval || /^(1d|d)$/i.test(options.interval) ? '1day' : options.interval;
     const params = new URLSearchParams({ symbol: candidate.symbol, interval, outputsize: '260', apikey: options.key, timezone: 'UTC' });
     if (candidate.exchange) params.set('exchange', candidate.exchange);
+    if (candidate.mic) params.set('mic_code', candidate.mic);
     const result = await options.fetchJson(`https://api.twelvedata.com/time_series?${params}`, {
       cacheKey: `candles:twelve_data:${identity}:${interval}`, ttlMs: 300_000, forceFresh: options.forceFresh,
     });
-    const body = result.data as { status?: string; code?: number; values?: Record<string, unknown>[]; meta?: { symbol?: string; currency?: string } } | null;
+    const body = result.data as { status?: string; code?: number; values?: Record<string, unknown>[]; meta?: { symbol?: string; currency?: string; mic_code?: string } } | null;
     if (!result.ok || body?.status === 'error' || !Array.isArray(body?.values)) {
       const status = body?.status === 'error' && Number(body.code) >= 400 ? Number(body.code) : result.status;
       options.onFailure(candidate, { ...result, status });
@@ -35,6 +36,7 @@ export async function fetchTwelveDataCandles(options: {
     }
     const compact = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^GOLD$/, 'XAUUSD');
     if (body.meta?.symbol && compact(body.meta.symbol) !== compact(candidate.symbol)) continue;
+    if (candidate.mic && body.meta?.mic_code && body.meta.mic_code !== candidate.mic) continue;
     if (candidate.symbol === 'XAG/USD' && body.meta?.currency && body.meta.currency !== 'USD') continue;
     const candles = new Map<string, NormalizedMarketCandle>();
     for (const row of body.values) {

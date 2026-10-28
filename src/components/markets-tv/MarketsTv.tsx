@@ -8,15 +8,20 @@ import { TvMarketStrips } from './TvMarketStrips';
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
-import { TvBrief, TvMarketMap, TvPairPanel, TvQuoteDetail, TvSettingsPanel } from './TvPanels';
-import { TvSessions } from './TvSessions';
 import { TvQr } from './TvQr';
 import { useTvResource, useTvScenePrefetch } from './useTvResource';
 import { useTvRemote } from './useTvRemote';
 import { normalizeTvChannels, TV_CHANNELS_KEY, type TvChannel } from '@/lib/markets-tv/channels';
 import { useTvControls } from './useTvControls';
-import { TV_SCENE_ORDER, tvScenePath, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { TV_SCENE_ORDER, tvSceneHasPrice, tvSceneIssue, tvScenePath, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { TvSceneDashboard } from './TvSceneDashboard';
+import { TvDataNotice } from './TvDataNotice';
+const TvBrief = lazy(() => import('./TvPanels').then(module => ({ default: module.TvBrief })));
+const TvMarketMap = lazy(() => import('./TvPanels').then(module => ({ default: module.TvMarketMap })));
+const TvPairPanel = lazy(() => import('./TvPanels').then(module => ({ default: module.TvPairPanel })));
+const TvQuoteDetail = lazy(() => import('./TvPanels').then(module => ({ default: module.TvQuoteDetail })));
+const TvSettingsPanel = lazy(() => import('./TvPanels').then(module => ({ default: module.TvSettingsPanel })));
+const TvSessions = lazy(() => import('./TvSessions').then(module => ({ default: module.TvSessions })));
 const TvMarketPicker = lazy(() => import('./TvMarketPicker').then(module => ({ default: module.TvMarketPicker })));
 const TvInstrumentPicker = lazy(() => import('./TvInstrumentPicker').then(module => ({ default: module.TvInstrumentPicker })));
 const TvChannels = lazy(() => import('./TvChannels').then(module => ({ default: module.TvChannels })));
@@ -180,7 +185,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       </div>{controls.hidden && <button onClick={controls.wake} aria-label={t('showControls')}><Settings2 aria-hidden="true"/></button>}</header>
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
       {catalog.error && <div className="tv-notice" role="status">{t('error')} <button onClick={() => setRevision(v => v + 1)}>{t('retry')}</button></div>}
-      <main className="tv-strips-main">{!ready || catalog.loading ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : strips}</main>
+      <main className="tv-strips-main">{!ready || (catalog.loading && !catalog.data) ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : strips}</main>
     </> : viewing ? <>
       <header className="tv-viewing-header" data-controls-hidden={controls.hidden}>
         <div className="tv-viewing-brand"><img src={ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="48" height="48"/><div><strong dir="ltr">THE SFM</strong><span dir="ltr">MARKETS TV</span></div></div>
@@ -216,17 +221,21 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     {market.error && <div className="tv-notice" role="status">{t('error')} <button onClick={() => setRevision(v => v + 1)}>{t('retry')}</button></div>}
     <main className={`tv-body tv-layout-${settings.layout}`}>
       <div className="tv-main-panel">
+        <Suspense fallback={<p role="status">{t('loading')}</p>}>
         {view === 'sessions' ? <TvSessions language={settings.language} now={now}/> : view === 'map' ? <TvMarketMap language={settings.language} group={group} select={g => { choose(g); setView('markets'); }} now={now || Date.now()}/> : view === 'brief' ? <TvBrief snapshot={market.data} language={settings.language} now={now} select={setDetail}/> : <>
-          {group === 'watchlist' && !token ? <div className="tv-empty"><Smartphone/><h2>{t('linkForWatchlist')}</h2><button onClick={() => setDialog('pair')}>{t('pair')}</button></div> : !ready || market.loading ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : !quotes.length ? <div className="tv-empty"><h2>{t(group === 'watchlist' ? 'emptyWatchlist' : 'noPrices')}</h2></div> : <div className="tv-quote-grid">{shown.map(q => <button className="tv-quote" key={`${q.exchange || group}:${q.symbol}`} onClick={() => setDetail(q)}>
+          {(group !== 'watchlist' || token) && <TvDataNotice quotes={quotes} language={settings.language} retryAt={market.data?.retryAt} now={now} loading={market.loading} refresh={refresh}/>}
+          {group === 'watchlist' && !token ? <div className="tv-empty"><Smartphone/><h2>{t('linkForWatchlist')}</h2><button onClick={() => setDialog('pair')}>{t('pair')}</button></div> : !ready || (market.loading && !market.data) ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : !quotes.length ? <div className="tv-empty"><h2>{t(group === 'watchlist' ? 'emptyWatchlist' : 'noPrices')}</h2></div> : <div className="tv-quote-grid">{shown.map(q => <button className="tv-quote" data-priced={tvSceneHasPrice(q)} key={`${q.exchange || group}:${q.symbol}`} onClick={() => setDetail(q)}>
             <div className="tv-quote-top"><strong dir="ltr">{q.symbol}</strong><span>{q.exchange || q.country || ''}</span></div>
             <span className="tv-quote-name">{settings.language === 'ar' ? q.nameAr : q.name}</span>
-            <div className="tv-price-line" dir="ltr"><strong>{tvPrice(q.price, q.currency)}</strong><small>{q.currency}</small><span data-trend={q.changePercent === null ? 'flat' : q.changePercent >= 0 ? 'up' : 'down'}>{q.changePercent === null ? '—' : `${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%`}</span></div>
-            <div className="tv-quote-meta"><span>{q.source || t('unavailable')}</span><time>{tvTime(q.observedAt, settings.language, true)}</time></div><small className="tv-status" data-status={quoteStatus(q, now)}>{t(quoteStatus(q, now))}</small>
+            {tvSceneHasPrice(q) ? <><div className="tv-price-line" dir="ltr"><strong>{tvPrice(q.price, q.currency)}</strong><small>{q.currency}</small><span data-trend={q.changePercent === null ? 'flat' : q.changePercent >= 0 ? 'up' : 'down'}>{q.changePercent === null ? '—' : `${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%`}</span></div>
+              <div className="tv-quote-meta"><span>{q.source}</span><time>{tvTime(q.observedAt, settings.language, true)}</time></div><small className="tv-status" data-status={quoteStatus(q, now)}>{t(quoteStatus(q, now))}</small></>
+              : <small className="tv-status" data-status="unavailable">{s(tvSceneIssue(q.issue))}</small>}
           </button>)}</div>}
           <div className="tv-pagination"><span>{t('coverage')}: <b dir="ltr">{market.data ? `${market.data.available} / ${market.data.total}` : '—'}</b></span><div><button disabled={page === 0} aria-label={t('previous')} onClick={() => setPage(p => Math.max(0,p - 1))}><ArrowLeft/></button><span dir="ltr">{page + 1} / {pages}</span><button disabled={page >= pages - 1} aria-label={t('next')} onClick={() => setPage(p => p + 1)}><ArrowRight/></button></div></div>
         </>}
+        </Suspense>
       </div>
-      {settings.layout === 'balanced' && <aside className="tv-news-panel"><div className="tv-panel-title"><span className="tv-accent-square"/><h2>{t('news')}</h2></div><div className="tv-headlines">{!ready || news.loading ? <p>{t('loading')}</p> : news.data?.stories.length ? news.data.stories.slice(0,3).map((item,index) => <button className="tv-story" key={item.id} onClick={() => setStory(item)}><span className="tv-story-index">{String(index+1).padStart(2,'0')}</span><div><h3>{item.title}</h3><small>{item.source} · {tvTime(item.publishedAt,settings.language,true)}</small></div></button>) : <p className="tv-muted">{t('noNews')}</p>}</div>
+      {settings.layout === 'balanced' && <aside className="tv-news-panel"><div className="tv-panel-title"><span className="tv-accent-square"/><h2>{t('news')}</h2></div><div className="tv-headlines">{!ready || (news.loading && !news.data) ? <p>{t('loading')}</p> : news.data?.stories.length ? news.data.stories.slice(0,3).map((item,index) => <button className="tv-story" key={item.id} onClick={() => setStory(item)}><span className="tv-story-index">{String(index+1).padStart(2,'0')}</span><div><h3>{item.title}</h3><small>{item.source} · {tvTime(item.publishedAt,settings.language,true)}</small></div></button>) : <p className="tv-muted">{t('noNews')}</p>}</div>
         <div className="tv-data-health"><h3>{t('provider')}</h3><strong dir="ltr">{freshCount} / {quotes.length}</strong><p>{t('freshCount')}</p></div>
       </aside>}
     </main>
