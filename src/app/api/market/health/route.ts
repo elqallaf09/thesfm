@@ -1,21 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 import { sanitizeMarketSystemStateForPublic } from '@/lib/market-state/publicState';
+import { getVerifiedMarketSystemState } from '@/lib/market-state/verifiedState';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  let state = await getMarketSystemState();
-  let activeProbe = false;
-
-  // A cold serverless instance can briefly miss both the shared snapshot and
-  // the refresh lease. Do not cache that absence as "not configured" when the
-  // deployment may have healthy providers. Probe once to establish the real
-  // state; normal requests continue to use the bounded shared snapshot.
-  if (state.capabilityMatrix.length === 0 && Object.keys(state.providers).length === 0) {
-    state = await getMarketSystemState({ forceFresh: true });
-    activeProbe = true;
-  }
+  const { state, activeProbe, waitedForRefresh } = await getVerifiedMarketSystemState();
   const configured = Object.values(state.providers).some(provider => provider?.configured);
   const returnedCapabilities = state.featuresSucceeded.length + state.featuresDegraded.length;
   const available = returnedCapabilities > 0;
@@ -32,6 +22,7 @@ export async function GET() {
     code: available ? null : configured ? 'MARKET_DATA_UNAVAILABLE' : 'MARKET_DATA_NOT_CONFIGURED',
     marketDataService,
     activeProbe,
+    waitedForRefresh,
     measuredAt: state.generatedAt,
     state: sanitizeMarketSystemStateForPublic(state),
   }, {

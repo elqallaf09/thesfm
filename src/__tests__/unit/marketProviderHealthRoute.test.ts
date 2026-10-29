@@ -70,6 +70,7 @@ function emptyMarketSystemState(): MarketSystemState {
 describe('/api/market/providers/health', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.useRealTimers();
     getMarketSystemState.mockReset().mockResolvedValue(marketSystemState());
   });
 
@@ -85,6 +86,7 @@ describe('/api/market/providers/health', () => {
       ok: true,
       status: 'degraded',
       activeProbe: false,
+      waitedForRefresh: false,
       configured: 2,
       healthy: 1,
       generatedAt: '2026-09-28T06:30:00.000Z',
@@ -108,7 +110,10 @@ describe('/api/market/providers/health', () => {
 
   it('actively verifies an empty cold-start snapshot before reporting provider health', async () => {
     getMarketSystemState
-      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce({
+        ...emptyMarketSystemState(),
+        delivery: { source: 'unavailable', cached: false, delayed: false, reason: 'market_state_unavailable' },
+      })
       .mockResolvedValueOnce(marketSystemState());
 
     const { GET } = await import('@/app/api/market/providers/health/route');
@@ -122,6 +127,31 @@ describe('/api/market/providers/health', () => {
       ok: true,
       status: 'degraded',
       activeProbe: true,
+      waitedForRefresh: false,
+      configured: 2,
+      healthy: 1,
+    });
+  });
+
+  it('waits for the shared refresh instead of racing it with another live probe', async () => {
+    vi.useFakeTimers();
+    getMarketSystemState
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(marketSystemState());
+
+    const { GET } = await import('@/app/api/market/providers/health/route');
+    const responsePromise = GET();
+    await vi.advanceTimersByTimeAsync(250);
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(getMarketSystemState).toHaveBeenCalledTimes(2);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(1);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(2);
+    expect(body).toMatchObject({
+      status: 'degraded',
+      activeProbe: false,
+      waitedForRefresh: true,
       configured: 2,
       healthy: 1,
     });
