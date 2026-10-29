@@ -1,16 +1,108 @@
 {
-  "cli": { "appVersionSource": "remote" },
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "build": {
-    "finance-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "finance" } },
-    "investor-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "investor" } },
-    "business-preview": { "distribution": "internal", "env": { "SFM_PRODUCT": "business" } },
-    "finance-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "finance" } },
-    "investor-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "investor" } },
-    "business-production": { "autoIncrement": true, "env": { "SFM_PRODUCT": "business" } }
+    "finance-preview": {
+      "distribution": "internal",
+      "env": {
+        "SFM_PRODUCT": "finance"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "investor-preview": {
+      "distribution": "internal",
+      "env": {
+        "SFM_PRODUCT": "investor"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "business-preview": {
+      "distribution": "internal",
+      "env": {
+        "SFM_PRODUCT": "business"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "finance-production": {
+      "autoIncrement": true,
+      "env": {
+        "SFM_PRODUCT": "finance"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "investor-production": {
+      "autoIncrement": true,
+      "env": {
+        "SFM_PRODUCT": "investor"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "business-production": {
+      "autoIncrement": true,
+      "env": {
+        "SFM_PRODUCT": "business"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "finance-huawei": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "SFM_PRODUCT": "finance",
+        "SFM_DISTRIBUTION": "huawei"
+      }
+    },
+    "investor-huawei": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "SFM_PRODUCT": "investor",
+        "SFM_DISTRIBUTION": "huawei"
+      }
+    },
+    "business-huawei": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "SFM_PRODUCT": "business",
+        "SFM_DISTRIBUTION": "huawei"
+      }
+    }
   },
   "submit": {
-    "finance-production": { "ios": { "ascAppId": "6820083151" } },
-    "investor-production": { "ios": { "ascAppId": "6820084328" } },
-    "business-production": { "ios": { "ascAppId": "6820086077" } }
+    "finance-production": {
+      "ios": {
+        "ascAppId": "6820083151"
+      }
+    },
+    "investor-production": {
+      "ios": {
+        "ascAppId": "6820084328"
+      }
+    },
+    "business-production": {
+      "ios": {
+        "ascAppId": "6820086077"
+      }
+    }
   }
 }

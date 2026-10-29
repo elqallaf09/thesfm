@@ -1,182 +1,108 @@
 import Constants from 'expo-constants';
-import appIcon from './assets/icon.png';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { PrivacyShield } from './native/PrivacyShield';
-import { NativeWorkspace } from './native/Workspace';
-import { shortcuts, resourceFor } from './native/catalog';
-import { openScreen as openSite } from './native/navigation';
-import { useAccountSummary } from './native/useAccountSummary';
-import { fetchJson } from './native/api';
-import { MfaPrompt } from './native/MfaPrompt';
-import { AuthGate } from './native/AccountScreen';
-import { RecordScreen } from './native/RecordScreen';
-import { absoluteKnownAmount, shariahTag } from './presentation';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { StatusBar } from 'expo-status-bar';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-
-type ProductId = 'finance' | 'investor' | 'business';
-type FinanceSummary = { currency: string | null; monthlyIncome: number | null; monthlyExpenses: number | null; monthlyNet: number | null; trackedPosition: number | null; activeDebtCount: number };
-type BusinessSummary = { currency: string | null; projectCount: number; customerCount: number; supplierCount: number; activeEmployeeCount: number; invoiceCount: number; openInvoiceCount: number; overdueInvoiceCount: number; outstandingInvoiceAmount: number | null; monthlySales: number | null; monthlyOperatingExpenses: number | null; monthlyOperatingNet: number | null; refreshedAt: string };
-type Instrument = { displaySymbol?: string; symbol: string; displayName?: string; name: string; assetType?: string; marketName?: string; currency?: string; source?: string; sector?: string; shariahStatus?: string };
-type ApiBody = Record<string, unknown> & { ok?: boolean; code?: string };
-type IconName = 'home' | 'wallet' | 'chart' | 'business' | 'target' | 'file' | 'user' | 'refresh' | 'search' | 'shield' | 'arrow' | 'check' | 'bell';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { AppState, Platform, SafeAreaView, useColorScheme, View } from 'react-native';
+import type { MobileLanguage, PhoneProduct } from '../../src/lib/mobile/resourceContract';
+import { MobileWorkspace } from './src/MobileWorkspace';
+import { MobileRequestError, MobileSessionClient, PendingMobileMfa } from './src/session';
+import { MfaScreen } from './src/MfaScreen';
+import { sessionStorage } from './src/secureStorage';
+import { Button, Busy, darkColors, ErrorNotice, Label, lightColors, UIContext, useUI } from './src/ui';
+import { PrivacyShield } from './native/PrivacyShield';
 
 const extra = Constants.expoConfig?.extra ?? {};
-const product = (extra.sfmProduct ?? 'finance') as ProductId;
+const product = (['finance', 'investor', 'business'].includes(String(extra.sfmProduct)) ? extra.sfmProduct : 'finance') as PhoneProduct;
 const apiBaseUrl = String(extra.apiBaseUrl ?? 'https://www.the-sfm.com').replace(/\/$/, '');
-const C = { canvas: '#0B0D12', surface: '#12151C', raised: '#181C24', border: '#292E38', borderStrong: '#59648A', text: '#EAF1FB', second: '#C3CCE8', muted: '#98A2C9', indigo: '#818CF8', teal: '#5EEAD4', sky: '#79ADEF', violet: '#A78BFA', success: '#59C98A', danger: '#FB7185', warning: '#E9B65B' };
-const glyph: Record<IconName, string> = { home: '⌂', wallet: '▣', chart: '⌁', business: '▤', target: '◎', file: '▤', user: '◌', refresh: '↻', search: '⌕', shield: '◇', arrow: '←', check: '✓', bell: '◔' };
-const productInfo: Record<ProductId, { label: string; accent: string; soft: string; icon: IconName }> = {
-  finance: { label: 'المال الشخصي', accent: C.teal, soft: '#0E3336', icon: 'wallet' },
-  investor: { label: 'الأسواق والاستثمار', accent: C.sky, soft: '#142A44', icon: 'chart' },
-  business: { label: 'الأعمال والمشاريع', accent: C.violet, soft: '#281946', icon: 'business' },
-};
+const supabaseUrl = String(extra.supabaseUrl ?? '').replace(/\/$/, '');
+const client = new MobileSessionClient({ product, apiBaseUrl, supabaseUrl, publicKey: String(extra.supabaseAnonKey ?? ''), storage: sessionStorage });
 
 export default function App() {
-  return <SafeAreaProvider><PrivacyShield><NativeWorkspace>{product === 'finance' ? <FinanceApp /> : product === 'investor' ? <InvestorApp /> : <BusinessApp />}</NativeWorkspace></PrivacyShield></SafeAreaProvider>;
-}
-
-function FinanceApp() {
-  const { pending, cancelMfa, session, summary, loading, error: errorMessage, lastUpdatedAt, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<FinanceSummary>();
-  const [showSignIn, setShowSignIn] = useState(true);
-  const [tab, setTab] = useState('home');
-
-  if (loading && !session) return <Loading productId="finance" />;
-  if (pending) return <MfaPrompt pending={pending} onCancel={cancelMfa} />;
-  if (!session) return <>{errorMessage ? <Notice message={errorMessage} /> : null}{errorMessage ? <Pressable accessibilityRole="button" onPress={loadSummary}><Text style={{ color: C.teal, padding: 16 }}>إعادة الاتصال</Text></Pressable> : null}<Landing productId="finance" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} /></>;
-  return <Shell productId="finance" tab={tab} setTab={setTab}>
-    {tab === 'home' ? <FinanceDashboard summary={summary} loading={loading} error={errorMessage} lastUpdatedAt={lastUpdatedAt} refresh={loadSummary} /> : null}
-    {tab === 'plan' ? <DetailScreen productId="finance" kicker="الحركة المالية" title="سجّل دخلك ومصروفاتك." body="الدخل والمصروفات والمدخرات والأهداف في مساحات واضحة، مرتبطة ببيانات حسابك." items={[['الدخل', 'مصادر الدخل والاستلام', 'wallet', '/income'], ['المصروفات', 'الحركة اليومية والتصنيفات', 'file', '/expenses'], ['الأهداف المالية', 'تابع التقدم والموعد المستهدف', 'target', '/goals'], ['المدخرات', 'رتّب أرصدتك حسب الغرض', 'wallet', '/savings'], ['مراجعة الشهر', 'راجع الدخل والمصروفات', 'check', '/income/month-close']]} /> : null}
-    {tab === 'insights' ? <DetailScreen productId="finance" kicker="الرؤى" title="قراءة مبنية على بياناتك." body={summary?.monthlyNet == null ? 'أضف سجلات الشهر لتظهر لك قراءة مالية واضحة.' : summary.monthlyNet >= 0 ? 'صافي الشهر موجب حسب السجلات المتاحة.' : 'المصروفات الحالية تتجاوز الدخل المسجل لهذا الشهر.'} items={[['الأهداف', 'خطتك والادخار الشهري', 'target', '/goals'], ['الزكاة', 'احسب من المبالغ التي تدخلها', 'check', '/zakat-calculator'], ['التقارير', 'مخرجات مالية من سجلاتك', 'file', '/reports-center'], ['الاستثمارات', 'مركز الاستثمار والمتابعة', 'chart', '/invest'], ['الالتزامات', 'الأرصدة والأقساط', 'wallet', '/debts']]} /> : null}
-    {tab === 'account' ? <Account productId="finance" signOut={signOut} /> : null}
-  </Shell>;
-}
-
-function FinanceDashboard({ summary, loading, error, lastUpdatedAt, refresh }: { summary: FinanceSummary | null; loading: boolean; error: string | null; lastUpdatedAt: Date | null; refresh: () => void }) {
-  const income = summary?.monthlyIncome ?? 0; const expense = summary?.monthlyExpenses ?? 0; const max = Math.max(income, expense, 1);
-  return <>
-    <Hero kicker="مساحة المال الشخصي" title="صورة أوضح لمالك." body="نفس الرؤية المالية في THE SFM، مرتبة لتناسب شاشة هاتفك." action={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onAction={refresh} />
-    {error ? <Notice message={error} /> : null}
-    <Heading title="ملخصك المالي" note={lastUpdatedAt ? `آخر تحديث: ${time(lastUpdatedAt)}` : 'يظهر من بيانات حسابك الفعلية'} />
-    <MetricGrid>
-      <Metric label="المركز المالي" value={money(summary?.trackedPosition ?? null, summary?.currency ?? null)} icon="wallet" color={C.indigo} hint="بعد الالتزامات" />
-      <Metric label="الدخل الشهري" value={money(summary?.monthlyIncome ?? null, summary?.currency ?? null)} icon="chart" color={C.success} hint="السجلات المتاحة" />
-      <Metric label="المصروفات" value={money(summary?.monthlyExpenses ?? null, summary?.currency ?? null)} icon="file" color={C.danger} hint="الشهر الحالي" />
-      <Metric label={(summary?.monthlyNet ?? 0) < 0 ? 'عجز الشهر' : 'صافي الشهر'} value={money(absoluteKnownAmount(summary?.monthlyNet), summary?.currency ?? null)} icon="target" color={(summary?.monthlyNet ?? 0) < 0 ? C.danger : C.teal} hint="الدخل ناقص المصروفات" />
-    </MetricGrid>
-    <View style={styles.panel}><PanelHead title="تدفقك الشهري" copy="الدخل مقابل المصروفات المسجلة" icon="chart" color={C.indigo} />
-      {summary?.currency ? <><Progress label="الدخل" value={income} max={max} color={C.teal} detail={money(income, summary.currency)} /><Progress label="المصروفات" value={expense} max={max} color={C.danger} detail={money(expense, summary.currency)} /><Text style={styles.dataNote}>تُعرض النسب من سجلاتك ولا تُستبدل بتوقعات.</Text></> : <Empty icon="chart" title="أضف دخلك ومصروفاتك لرؤية التدفق" body="لا نعرض أرقامًا تقديرية بدل بياناتك." />}
-    </View>
-    <Heading title="ابدأ من حيث تحتاج" note="إدارة سجلاتك داخل التطبيق" />
-    <QuickGrid items={[
-      ['الدخل والمصروفات', 'سجّل الحركة اليومية', 'file', '/income'], ['المدخرات والأهداف', 'تابع التقدم بوضوح', 'target', '/goals'], ['الزكاة والحاسبات', 'أدوات عامة ومساحة مخصصة', 'check', '/zakat-calculator'], ['الديون', `${summary?.activeDebtCount.toLocaleString('en-US') ?? '٠'} التزامات نشطة`, 'wallet', '/debts'],
-    ]} />
-    <Trust />
-  </>;
-}
-
-function InvestorApp() {
-  const [items, setItems] = useState<Instrument[]>([]); const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null); const [query, setQuery] = useState(''); const [assetType, setAssetType] = useState('all'); const [updatedAt, setUpdatedAt] = useState<Date | null>(null); const [tab, setTab] = useState('home');
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
-    try { const body = await fetchJson<ApiBody>(`${apiBaseUrl}/api/markets?limit=60&quality=complete`); if (!body) throw new Error('MARKETS_UNAVAILABLE'); setItems(Array.isArray(body.markets) ? body.markets as Instrument[] : []); setUpdatedAt(new Date()); }
-    catch { setError('تعذر تحميل الأسواق. تحقق من الشبكة ثم أعد المحاولة.'); } finally { setLoading(false); }
+  const [, update] = useReducer(value => value + 1, 0);
+  const [ready, setReady] = useState(false);
+  const [language, setLanguage] = useState<MobileLanguage>('ar');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [locked, setLocked] = useState(false);
+  const [background, setBackground] = useState(false);
+  const [pendingMfa, setPendingMfa] = useState<PendingMobileMfa | null>(null);
+  const [error, setError] = useState('');
+  const deviceTheme = useColorScheme();
+  const authBrowser = useRef(false);
+  const pendingLink = useRef<string | null>(null);
+  useEffect(() => {
+    const unsubscribe = client.subscribe(update);
+    const unsubscribeMfa = client.subscribeMfaRequired(setPendingMfa);
+    return () => { unsubscribe(); unsubscribeMfa(); };
   }, []);
-  useEffect(() => { void load(); }, [load]);
-  const types = useMemo(() => [...new Set(items.map(item => item.assetType).filter(Boolean))] as string[], [items]);
-  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return items.filter(item => (assetType === 'all' || item.assetType === assetType) && (!q || [item.displaySymbol, item.symbol, item.displayName, item.name, item.marketName, item.sector].filter(Boolean).some(value => value?.toLowerCase().includes(q)))); }, [assetType, items, query]);
-  if (tab === 'watch') return <Shell productId="investor" tab={tab} setTab={setTab} fixed><AuthGate><RecordScreen resource={resourceFor('/market-watchlist', 'investor')!} /></AuthGate></Shell>;
-  if (tab === 'discover') return <Shell productId="investor" tab={tab} setTab={setTab}><DetailScreen productId="investor" kicker="أدوات المستثمر" title="من الدليل إلى قرار أوضح." body="استكشف الأدوات ومصدر البيانات والحالة الشرعية من مساحات THE SFM المتخصصة." items={[['الأسواق العالمية', 'الأدوات والقطاعات ومعلومات المصدر', 'chart', '/global-markets'], ['فحص شرعي', 'الحالة والمنهجية المتاحة', 'shield', '/sharia-stocks'], ['أخبار السوق', 'أخبار مع مصادر وتواريخ', 'file', '/market-news'], ['قائمة المتابعة', 'رتب الأدوات التي تهمك', 'target', '/market-watchlist']]} /></Shell>;
-  if (tab === 'account') return <Shell productId="investor" tab={tab} setTab={setTab}><Account productId="investor" /></Shell>;
-  return <Shell productId="investor" tab={tab} setTab={setTab} fixed>
-    <FlatList data={filtered} keyExtractor={(item, index) => `${item.displaySymbol ?? item.symbol}-${index}`} style={styles.list} contentContainerStyle={styles.listContent}
-      ListHeaderComponent={<><View style={styles.investHero}><Text style={styles.kicker}>مستكشف الأسواق</Text><Text style={styles.heroTitle}>أسواق واضحة،<Text style={{ color: C.sky }}> بلا ضوضاء.</Text></Text><Text style={styles.heroBody}>دليل أدوات THE SFM. المعلومات المعروضة تصف الأداة ومصدرها ولا تمثل توصية استثمارية.</Text><View style={styles.meta}><Text style={styles.metaText}>{items.length.toLocaleString('en-US')} أداة</Text><Text style={styles.metaText}>{updatedAt ? `تحديث ${time(updatedAt)}` : 'جارٍ التحديث'}</Text></View><Pressable accessibilityRole="button" onPress={load} disabled={loading} style={[styles.heroButton, loading && styles.disabled]}><Icon name="refresh" color={C.canvas} /><Text style={styles.heroButtonText}>{loading ? 'جارٍ التحديث…' : 'تحديث القائمة'}</Text></Pressable></View>
-      <TextInput accessibilityLabel="البحث في الأسواق" onChangeText={setQuery} placeholder="ابحث بالاسم أو الرمز" placeholderTextColor={C.muted} style={styles.input} textAlign="right" value={query} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}><FilterPill active={assetType === 'all'} label="الكل" onPress={() => setAssetType('all')} />{types.map(type => <FilterPill active={assetType === type} key={type} label={type} onPress={() => setAssetType(type)} />)}</ScrollView>
-      {error ? <Notice message={error} /> : null}<Heading title="دليل الأسواق" note={`${filtered.length.toLocaleString('en-US')} نتيجة`} /></>}
-      renderItem={({ item }) => <InstrumentRow item={item} />} ItemSeparatorComponent={() => <View style={{ height: 9 }} />} ListEmptyComponent={loading ? <ActivityIndicator color={C.sky} size="large" style={{ margin: 32 }} /> : <Empty icon="search" title={query ? 'لا توجد أداة تطابق بحثك' : 'لا توجد أدوات سوق متاحة الآن'} body="حاول التحديث أو غيّر الفلتر." />} ListFooterComponent={<View style={{ marginTop: 18, gap: 12 }}><Trust /><WebButton label="عرض دليل الأسواق" path="/global-markets" /></View>} />
-  </Shell>;
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        await Promise.all([client.restore(), sessionStorage.getItem(`sfm-${product}-preferences`).then(raw => {
+          if (!raw || !mounted) return;
+          try {
+            const saved = JSON.parse(raw);
+            if (['ar', 'en', 'fr'].includes(saved.language)) setLanguage(saved.language);
+            if (['system', 'light', 'dark'].includes(saved.theme)) setTheme(saved.theme);
+          } catch { /* retain device defaults */ }
+        })]);
+        let requiresMfa = false;
+        if (client.signedIn) {
+          try { await client.beginMfaIfRequired(); }
+          catch (reason) {
+            if (reason instanceof PendingMobileMfa) {
+              requiresMfa = true;
+              if (mounted) setPendingMfa(reason);
+            } else {
+              await client.signOut(false);
+              if (mounted) setError(reason instanceof MobileRequestError ? reason.code : 'AUTH_UNAVAILABLE');
+            }
+          }
+        }
+        if (mounted) { setLocked(client.signedIn && !requiresMfa && Platform.OS !== 'web'); setReady(true); }
+      } catch { if (mounted) { setError('STORAGE_UNAVAILABLE'); setReady(true); } }
+    })();
+    return () => { mounted = false; };
+  }, []);
+  const signedIn = client.signedIn;
+  const generation = client.generation;
+  useEffect(() => {
+    if (!signedIn) { setLocked(false); return; }
+    let mounted = true;
+    void client.request<{ profile: { preferred_lang?: MobileLanguage; preferred_theme?: 'light' | 'dark' | 'system' } | null }>('/api/mobile/account', {}, 15_000).then(data => {
+      if (!mounted) return;
+      if (data.profile?.preferred_lang && ['ar', 'en', 'fr'].includes(data.profile.preferred_lang)) setLanguage(data.profile.preferred_lang);
+      if (data.profile?.preferred_theme && ['light', 'dark', 'system'].includes(data.profile.preferred_theme)) setTheme(data.profile.preferred_theme);
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [signedIn, generation]);
+  useEffect(() => {
+    if (!ready) return;
+    void sessionStorage.setItem(`sfm-${product}-preferences`, JSON.stringify({ language, theme })).catch(() => setError('STORAGE_UNAVAILABLE'));
+  }, [language, theme, ready]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      setBackground(state !== 'active');
+      if (state !== 'active' && client.signedIn && !authBrowser.current && Platform.OS !== 'web') setLocked(true);
+      if (state === 'active') client.clearCache();
+    });
+    return () => subscription.remove();
+  }, []);
+  const colors = theme === 'dark' || theme === 'system' && deviceTheme === 'dark' ? darkColors : lightColors;
+  const context = useMemo(() => ({ language, colors }), [language, colors]);
+  return <PrivacyShield><UIContext.Provider value={context}><SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}><StatusBar style={colors === darkColors ? 'light' : 'dark'} />
+    {!ready ? <Busy /> : background && (signedIn || pendingMfa) ? <View style={{ flex: 1, backgroundColor: colors.bg }} /> : pendingMfa ? <MfaScreen client={client} pending={pendingMfa} completed={() => setPendingMfa(null)} cancelled={() => setPendingMfa(null)} /> : locked && signedIn ? <Unlock onUnlock={() => setLocked(false)} /> : <MobileWorkspace key={generation} client={client} product={product} base={apiBaseUrl} supabaseUrl={supabaseUrl} signedIn={signedIn} languageChanged={setLanguage} themeChanged={setTheme} authBrowser={authBrowser} googleEnabled={extra.googleSignInEnabled === true} pendingLink={pendingLink} mfaRequired={setPendingMfa} />}
+    {error ? <ErrorNotice code={error} /> : null}
+  </SafeAreaView></UIContext.Provider></PrivacyShield>;
 }
-
-function BusinessApp() {
-  const { pending, cancelMfa, session, summary, loading, error, email, password, setEmail, setPassword, signIn, signOut, loadSummary } = useAccountSummary<BusinessSummary>();
-  const [showSignIn, setShowSignIn] = useState(true);
-  const [tab, setTab] = useState('home');
-  if (loading && !session) return <Loading productId="business" />;
-  if (pending) return <MfaPrompt pending={pending} onCancel={cancelMfa} />;
-  if (!session) return <>{error ? <Notice message={error} /> : null}{error ? <Pressable accessibilityRole="button" onPress={loadSummary}><Text style={{ color: C.violet, padding: 16 }}>إعادة الاتصال</Text></Pressable> : null}<Landing productId="business" showSignIn={showSignIn} setShowSignIn={setShowSignIn} email={email} password={password} setEmail={setEmail} setPassword={setPassword} signIn={signIn} loading={loading} /></>;
-  return <Shell productId="business" tab={tab} setTab={setTab}>
-    {tab === 'home' ? <BusinessDashboard summary={summary} loading={loading} error={error} refresh={loadSummary} /> : null}
-    {tab === 'operations' ? <DetailScreen productId="business" kicker="العمليات" title="كل ما تحتاجه لتسيير العمل." body="المشاريع والعملاء والموردون والموظفون والفواتير في مساحات متصلة." items={[['المبيعات', 'تابع الفرص والمبيعات المسجلة', 'chart', '/sales'], ['الموردون', 'بيانات الموردين والتواصل', 'file', '/suppliers'], ['المصروفات التشغيلية', 'سجل التكاليف التشغيلية', 'wallet', '/operating-expenses'], ['الفريق', 'إدارة الموظفين وسجل النشاط', 'user', '/employees']]} /> : null}
-    {tab === 'reports' ? <DetailScreen productId="business" kicker="التقارير" title="مخرجات جاهزة من بياناتك." body="راجع المؤشرات المالية وسجلات المشاريع وشارك ملخص الأعمال من التطبيق." items={[['مركز التقارير', 'تقارير ومستندات موحدة', 'file', '/reports-center'], ['خطط المشاريع', 'الميزانية وخطوات التنفيذ', 'chart', '/projects'], ['مركز القرارات', 'حوّل البيانات إلى خطوات', 'target', '/decisions']]} /> : null}
-    {tab === 'account' ? <Account productId="business" signOut={signOut} /> : null}
-  </Shell>;
+function Unlock({ onUnlock }: { onUnlock: () => void }) {
+  const { t } = useUI(); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  async function unlock() {
+    setBusy(true); setError('');
+    try {
+      const result = await LocalAuthentication.authenticateAsync({ promptMessage: t(['فتح THE SFM', 'Unlock THE SFM', 'Déverrouiller THE SFM']), disableDeviceFallback: false });
+      if (result.success) onUnlock(); else setError('DEVICE_LOCKED');
+    } catch { setError('DEVICE_LOCKED'); } finally { setBusy(false); }
+  }
+  return <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}><Label large>{t(['حسابك محمي', 'Your account is protected', 'Votre compte est protégé'])}</Label><Button label={t(['فتح بقفل الجهاز', 'Unlock with device security', 'Déverrouiller avec l’appareil'])} onPress={() => { void unlock(); }} disabled={busy} />{error ? <ErrorNotice code={error} /> : null}<Button label={t(['تسجيل الخروج', 'Sign out', 'Déconnexion'])} onPress={() => { void client.signOut(); }} /></View>;
 }
-
-function BusinessDashboard({ summary, loading, error, refresh }: { summary: BusinessSummary | null; loading: boolean; error: string | null; refresh: () => void }) {
-  const sales = summary?.monthlySales ?? 0; const expense = summary?.monthlyOperatingExpenses ?? 0; const max = Math.max(sales, expense, 1);
-  return <><Hero kicker="مساحة الأعمال" title="عملك اليوم، بوضوح." body="المشاريع والعملاء والفواتير والتقارير من نفس سجلات THE SFM." action={loading ? 'جارٍ التحديث…' : 'تحديث البيانات'} onAction={refresh} />{error ? <Notice message={error} /> : null}<Heading title="نظرة تشغيلية" note={summary ? `آخر تحديث: ${time(new Date(summary.refreshedAt))}` : 'يظهر من بيانات حساب الشركة'} />
-    <MetricGrid><Metric label="المشاريع" value={count(summary?.projectCount)} icon="business" color={C.indigo} hint="سجل المشاريع" /><Metric label="العملاء" value={count(summary?.customerCount)} icon="user" color={C.teal} hint="جهات مسجلة" /><Metric label="الفواتير المفتوحة" value={count(summary?.openInvoiceCount)} icon="file" color={C.warning} hint={`من ${count(summary?.invoiceCount)} فاتورة`} /><Metric label="الموظفون النشطون" value={count(summary?.activeEmployeeCount)} icon="user" color={C.success} hint="ضمن السجل الحالي" /></MetricGrid>
-    <View style={styles.panel}><PanelHead title="الأداء الشهري" copy="قراءة من المبيعات والمصروفات التشغيلية" icon="chart" color={C.violet} />{summary?.currency ? <><Progress label="المبيعات" value={sales} max={max} color={C.violet} detail={money(sales, summary.currency)} /><Progress label="المصروفات التشغيلية" value={expense} max={max} color={C.danger} detail={money(expense, summary.currency)} /><Text style={[styles.net, { color: (summary.monthlyOperatingNet ?? 0) >= 0 ? C.success : C.danger }]}>الصافي التشغيلي: {money(summary.monthlyOperatingNet, summary.currency)}</Text></> : <Empty icon="chart" title="أضف سجلات المبيعات والمصروفات" body="نظهر الأداء الحقيقي فقط بعد توفر السجلات." />}</View>
-    <Heading title="تنفيذ اليوم" note="اختصارات لمساحات العمل" /><QuickGrid items={[['الفواتير والتحصيل', `${count(summary?.overdueInvoiceCount)} فواتير متأخرة`, 'file', '/invoices'], ['العملاء', 'العلاقات والبيانات الأساسية', 'user', '/customers'], ['المشاريع', 'المتابعة والتقدم', 'business', '/projects'], ['التقارير', 'مخرجات أعمالك الموحدة', 'file', '/reports-center']]} /><Trust /></>;
-}
-
-function Landing({ productId, email, password, setEmail, setPassword, signIn, loading }: { productId: ProductId; showSignIn: boolean; setShowSignIn: (value: boolean) => void; email: string; password: string; setEmail: (value: string) => void; setPassword: (value: string) => void; signIn: () => void; loading: boolean }) {
-  const meta = productInfo[productId];
-  return <SafeAreaView style={styles.safe}><StatusBar style="light" /><Brand productId={productId} publicMode /><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.landing, { paddingTop: 18 }]}><View style={[styles.auth, { width: '100%', maxWidth: 620, alignSelf: 'center', borderColor: meta.accent }]}><Text style={[styles.kicker, { color: meta.accent }]}>{meta.label}</Text><Text style={styles.authTitle}>دخول إلى مساحتي</Text><Text style={styles.heroBody}>{productId === 'business' ? 'مشاريعك وعملاؤك وفواتيرك داخل تطبيق الأعمال.' : 'دخلك ومصروفاتك وادخارك داخل تطبيق المال الشخصي.'}</Text><TextInput accessibilityLabel="البريد الإلكتروني" autoCapitalize="none" autoComplete="email" keyboardType="email-address" onChangeText={setEmail} placeholder="البريد الإلكتروني" placeholderTextColor={C.muted} style={styles.input} textAlign="right" value={email} /><TextInput accessibilityLabel="كلمة المرور" autoComplete="password" onChangeText={setPassword} placeholder="كلمة المرور" placeholderTextColor={C.muted} secureTextEntry style={styles.input} textAlign="right" value={password} /><Pressable accessibilityRole="button" disabled={loading || !email.trim() || !password} onPress={signIn} style={[styles.primary, { backgroundColor: meta.accent }, (loading || !email.trim() || !password) && styles.disabled]}><Text style={styles.primaryText}>{loading ? 'جارٍ التحقق…' : 'تسجيل الدخول'}</Text></Pressable><Text style={styles.dataNote}>استخدم حساب THE SFM نفسه. تُحفظ الجلسة في التخزين الآمن للجهاز.</Text></View>{productId === 'finance' ? <Pressable accessibilityRole="button" onPress={() => openSite('/zakat-calculator')} style={styles.outline}><Text style={styles.outlineText}>استخدام حاسبة الزكاة</Text></Pressable> : null}</ScrollView></SafeAreaView>;
-}
-
-function Shell({ productId, tab, setTab, children, fixed = false }: { productId: ProductId; tab: string; setTab: (value: string) => void; children: ReactNode; fixed?: boolean }) {
-  const { width, height } = useWindowDimensions(); const landscape = width > height; const pad = width < 360 ? 14 : width < 600 ? 18 : 24; const nav = productId === 'finance' ? [['home', 'الرئيسية', 'home'], ['plan', 'الحركة', 'wallet'], ['insights', 'التخطيط', 'target'], ['account', 'حسابي', 'user']] : productId === 'business' ? [['home', 'الرئيسية', 'home'], ['operations', 'العمليات', 'business'], ['reports', 'التقارير', 'file'], ['account', 'حسابي', 'user']] : [['home', 'الأسواق', 'home'], ['watch', 'المتابعة', 'target'], ['discover', 'استكشف', 'chart'], ['account', 'حسابي', 'user']];
-  const content = <View style={[styles.content, { paddingHorizontal: pad, maxWidth: width >= 700 ? 1120 : undefined, alignSelf: width >= 700 ? 'center' : undefined, width: '100%' }]}>{children}</View>;
-  return <SafeAreaView style={styles.safe}><StatusBar style="light" /><Brand productId={productId} /><Rail productId={productId} /><View style={{ flex: 1, flexDirection: landscape ? 'row-reverse' : 'column' }}>{fixed ? <View style={styles.fixed}>{children}</View> : <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scroll}>{content}</ScrollView>}<View style={[styles.bottom, landscape && { flexDirection: 'column', width: 92, paddingVertical: 8, borderLeftWidth: 1, borderLeftColor: C.border, justifyContent: 'space-evenly' }]}>{nav.map(([id, label, icon]) => <Pressable accessibilityRole="tab" accessibilityState={{ selected: tab === id }} key={id} onPress={() => setTab(id)} style={styles.bottomItem}><View style={[styles.bottomIcon, tab === id && styles.bottomIconOn]}><Icon name={icon as IconName} color={tab === id ? C.canvas : C.muted} small /></View><Text style={[styles.bottomText, tab === id && styles.bottomTextOn]}>{label}</Text></Pressable>)}</View></View></SafeAreaView>;
-}
-
-function Brand({ productId, publicMode = false }: { productId: ProductId; publicMode?: boolean }) { const meta = productInfo[productId]; return <View style={styles.brandBar}><View style={styles.lockup}><View style={styles.logo}><Image alt="THE SFM" accessibilityLabel="THE SFM" source={appIcon} style={styles.logoImage} /></View><View><Text style={styles.wordmark}>THE SFM</Text>{!publicMode ? <Text style={styles.brandSub}>{meta.label}</Text> : null}</View></View><View style={styles.productTag}><Icon name={meta.icon} color={meta.accent} small /><Text style={[styles.productTagText, { color: meta.accent }]}>{publicMode ? (productId === 'finance' ? 'Finance' : 'Business') : productId.toUpperCase()}</Text></View></View>; }
-function Rail({ productId }: { productId: ProductId }) { return <ScrollView horizontal style={{ flexGrow: 0, maxHeight: 55 }} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.rail, { borderBottomColor: productInfo[productId].accent }]}>{shortcuts[productId].map(([path, label]) => <Pressable accessibilityRole="button" key={path} onPress={() => openSite(path)} style={[styles.railItem, { flex: 0, paddingHorizontal: 14, borderColor: C.border }]}><Text style={[styles.railText, { color: productInfo[productId].accent }]}>{label}</Text></Pressable>)}</ScrollView>; }
-
-function Hero({ kicker, title, body, action, onAction }: { kicker: string; title: string; body: string; action: string; onAction: () => void }) { return <View style={styles.hero}><Text style={styles.kicker}>{kicker}</Text><Text style={styles.heroTitle}>{title}</Text><Text style={styles.heroBody}>{body}</Text><Pressable accessibilityRole="button" onPress={onAction} style={styles.heroButton}><Icon name="refresh" color={C.canvas} /><Text style={styles.heroButtonText}>{action}</Text></Pressable></View>; }
-function DetailScreen({ productId, kicker, title, body, items }: { productId: ProductId; kicker: string; title: string; body: string; items: [string, string, IconName, string][] }) { const meta = productInfo[productId]; return <><View style={[styles.detailHero, { borderColor: meta.accent }]}><Badge icon={meta.icon} color={meta.accent} soft={meta.soft} /><Text style={styles.kicker}>{kicker}</Text><Text style={styles.detailTitle}>{title}</Text><Text style={styles.heroBody}>{body}</Text></View><Heading title="مساحات العمل" note="افتح التفاصيل الكاملة عند الحاجة" /><View style={styles.detailList}>{items.map(([title2, body2, icon, path]) => <Pressable accessibilityRole="button" key={title2} onPress={() => openSite(path)} style={styles.detailRow}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title2}</Text><Text style={styles.rowCopy}>{body2}</Text></View><Icon name="arrow" color={C.indigo} /></Pressable>)}</View><Trust /></>; }
-function Account({ productId, signOut }: { productId: ProductId; signOut?: () => void }) { const meta = productInfo[productId]; return <><View style={styles.detailHero}><Badge icon="shield" color={C.indigo} /><Text style={styles.detailTitle}>بياناتك، ووصولك بيدك.</Text><Text style={styles.heroBody}>تحمي THE SFM بياناتك بجلسات مصادقة وصلاحيات وصول. افتح إعدادات الحساب لإدارة التفاصيل.</Text></View><View style={styles.detailList}><Row title="الملف الشخصي" body="البيانات والخيارات العامة" icon="user" path="/profile" /><Row title="الأمان والجلسات" body="المصادقة وإدارة الوصول" icon="shield" path="/security" /></View><View style={[styles.accountNote, { borderColor: meta.accent }]}><Icon name="check" color={meta.accent} /><Text style={styles.trustText}>لا نعرض بيانات مالية تجريبية بدل بيانات حسابك الفعلية.</Text></View>{signOut ? <Pressable accessibilityRole="button" onPress={signOut} style={styles.signOut}><Text style={styles.signOutText}>تسجيل الخروج</Text></Pressable> : <WebButton label="دخول إلى حسابي" path="/login" />}</>; }
-function Row({ title, body, icon, path }: { title: string; body: string; icon: IconName; path: string }) { return <Pressable accessibilityRole="button" onPress={() => openSite(path)} style={styles.detailRow}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.rowCopy}>{body}</Text></View><Icon name="arrow" color={C.indigo} /></Pressable>; }
-function Heading({ title, note }: { title: string; note: string }) { return <View style={styles.heading}><Text style={styles.headingTitle}>{title}</Text><Text style={styles.headingNote}>{note}</Text></View>; }
-function MetricGrid({ children }: { children: ReactNode }) { const { width } = useWindowDimensions(); return <View style={[styles.metrics, width >= 700 && styles.metricsWide]}>{children}</View>; }
-function Metric({ label, value, icon, color, hint }: { label: string; value: string; icon: IconName; color: string; hint: string }) { const { width } = useWindowDimensions(); return <View style={[styles.metric, width >= 900 && { width: '23.5%' }]}><View style={styles.metricTop}><Text style={styles.metricLabel}>{label}</Text><Badge icon={icon} color={color} small /></View><Text style={[styles.metricValue, { color }]} numberOfLines={1}>{value}</Text><Text style={styles.metricHint}>{hint}</Text></View>; }
-function PanelHead({ title, copy, icon, color }: { title: string; copy: string; icon: IconName; color: string }) { return <View style={styles.panelHead}><View><Text style={styles.panelTitle}>{title}</Text><Text style={styles.rowCopy}>{copy}</Text></View><Badge icon={icon} color={color} /></View>; }
-function Progress({ label, value, max, color, detail }: { label: string; value: number; max: number; color: string; detail: string }) { return <View style={styles.progress}><View style={styles.progressTop}><Text style={styles.rowTitle}>{label}</Text><Text style={styles.progressValue}>{detail}</Text></View><View style={styles.track}><View style={[styles.fill, { width: `${Math.max(0, Math.min(100, (value / max) * 100))}%`, backgroundColor: color }]} /></View></View>; }
-function QuickGrid({ items }: { items: [string, string, IconName, string][] }) { return <View style={styles.quickGrid}>{items.map(([title, body, icon, path]) => <Pressable accessibilityRole="button" key={title} onPress={() => openSite(path)} style={styles.quick}><Badge icon={icon} color={C.indigo} small /><View style={{ flex: 1 }}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.rowCopy}>{body}</Text></View><Icon name="arrow" color={C.muted} /></Pressable>)}</View>; }
-function InstrumentRow({ item }: { item: Instrument }) { const shariah = shariahTag(item.shariahStatus, C); return <Pressable accessibilityRole="button" onPress={() => openSite(`/symbol-details/${encodeURIComponent(item.symbol)}`)} style={styles.instrument}><View style={styles.instrumentTop}><View style={{ flex: 1 }}><Text style={styles.instrumentTitle} numberOfLines={1}>{item.displayName || item.name}</Text><Text style={styles.rowCopy} numberOfLines={1}>{[item.marketName || 'سوق عالمي', item.sector].filter(Boolean).join(' · ')}</Text></View><View style={styles.symbol}><Text style={styles.symbolText}>{item.displaySymbol || item.symbol}</Text></View></View><View style={styles.instrumentFoot}><View style={styles.tags}><Tag label={item.assetType || 'أداة'} /><Tag label={item.currency || '—'} />{shariah ? <Tag label={shariah.label} color={shariah.color} /> : null}</View><Icon name="arrow" color={C.indigo} /></View></Pressable>; }
-function FilterPill({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) { return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress} style={[styles.filter, active && styles.filterOn]}><Text style={[styles.filterText, active && styles.filterTextOn]}>{label}</Text></Pressable>; }
-function Badge({ icon, color, soft = '#222A5E', small = false }: { icon: IconName; color: string; soft?: string; small?: boolean }) { return <View style={[styles.badge, small && styles.badgeSmall, { backgroundColor: soft }]}><Icon name={icon} color={color} small={small} /></View>; }
-function Icon({ name, color, small = false }: { name: IconName; color: string; small?: boolean }) { return <Text style={[styles.icon, small && styles.iconSmall, { color }]}>{glyph[name]}</Text>; }
-function Tag({ label, color }: { label: string; color?: string }) { return <View style={[styles.tag, color ? { borderColor: color, backgroundColor: `${color}22` } : null]}><Text style={[styles.tagText, color ? { color } : null]}>{label}</Text></View>; }
-function Notice({ message }: { message: string }) { return <View accessibilityRole="alert" style={styles.notice}><Icon name="bell" color={C.warning} small /><Text style={styles.noticeText}>{message}</Text></View>; }
-function Empty({ icon, title, body }: { icon: IconName; title: string; body: string }) { return <View style={styles.empty}><Badge icon={icon} color={C.indigo} /><Text style={styles.emptyTitle}>{title}</Text><Text style={styles.emptyBody}>{body}</Text></View>; }
-function Trust() { return <View style={styles.trust}><Icon name="shield" color={C.teal} /><Text style={styles.trustText}>تُبنى القراءات على سجلاتك ومصادر البيانات المتاحة. لا نملأ الفجوات بأرقام مختلقة.</Text></View>; }
-function WebButton({ label, path }: { label: string; path: string }) { return <Pressable accessibilityRole="button" onPress={() => openSite(path)} style={styles.primary}><Text style={styles.primaryText}>{label}</Text><Icon name="arrow" color={C.canvas} /></Pressable>; }
-function Loading({ productId }: { productId: ProductId }) { return <SafeAreaView style={styles.safe}><StatusBar style="light" /><View style={styles.loading}><Badge icon={productInfo[productId].icon} color={productInfo[productId].accent} /><Text style={styles.loadingText}>THE SFM</Text><ActivityIndicator accessibilityLabel="جارٍ التحميل" color={productInfo[productId].accent} size="large" /></View></SafeAreaView>; }
-
-function count(value: number | undefined) { return value == null ? '—' : value.toLocaleString('en-US'); }
-function money(value: number | null, currency: string | null) { return value == null || !currency ? '—' : `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currency}`; }
-function time(value: Date | null) { return value ? value.toLocaleTimeString('ar-KW-u-nu-latn', { hour: '2-digit', minute: '2-digit' }) : '—'; }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.canvas }, fixed: { flex: 1 }, scroll: { paddingBottom: 10 }, content: { paddingTop: 18, paddingBottom: 28, gap: 16 }, landing: { paddingHorizontal: 18, paddingBottom: 40, gap: 18 },
-  brandBar: { minHeight: 56, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, backgroundColor: '#0D1016', borderBottomWidth: 1, borderBottomColor: C.border }, lockup: { flexDirection: 'row-reverse', alignItems: 'center', gap: 9 }, logo: { width: 34, height: 34, borderRadius: 10, overflow: 'hidden', backgroundColor: '#111C40', borderWidth: 1, borderColor: '#334172', alignItems: 'center', justifyContent: 'center' }, logoImage: { width: 34, height: 34, position: 'absolute' }, logoText: { color: C.indigo, fontSize: 17, fontWeight: '900' }, wordmark: { color: C.text, fontSize: 15, fontWeight: '900', letterSpacing: .2 }, brandSub: { color: C.muted, fontSize: 11 }, productTag: { flexDirection: 'row-reverse', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: 99, paddingHorizontal: 9, paddingVertical: 6 }, productTagText: { fontSize: 11, fontWeight: '800' },
-  rail: { minHeight: 54, flexDirection: 'row-reverse', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface }, railItem: { flex: 1, borderWidth: 1, borderColor: 'transparent', borderRadius: 11, minHeight: 37, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 4 }, railText: { color: C.muted, fontSize: 11, fontWeight: '800' },
-  hero: { padding: 19, borderWidth: 1, borderColor: '#3A439B', backgroundColor: '#121A38', borderRadius: 20 }, investHero: { padding: 18, borderWidth: 1, borderColor: '#24466A', backgroundColor: '#101A2A', borderRadius: 19, marginTop: 16 }, kicker: { color: C.indigo, fontSize: 12, fontWeight: '900', textAlign: 'right', marginBottom: 7 }, heroTitle: { color: C.text, fontSize: 27, fontWeight: '900', lineHeight: 38, textAlign: 'right' }, heroBody: { color: C.second, fontSize: 14, lineHeight: 23, textAlign: 'right', marginTop: 8 }, heroButton: { alignSelf: 'flex-end', minHeight: 44, marginTop: 15, borderRadius: 12, backgroundColor: C.indigo, paddingHorizontal: 14, flexDirection: 'row-reverse', justifyContent: 'center', alignItems: 'center', gap: 7 }, heroButtonText: { color: C.canvas, fontSize: 13, fontWeight: '900' }, meta: { flexDirection: 'row-reverse', gap: 12, marginTop: 12 }, metaText: { color: C.second, fontSize: 11 },
-  heading: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, marginTop: 7 }, headingTitle: { color: C.text, fontSize: 18, fontWeight: '900', textAlign: 'right' }, headingNote: { color: C.muted, fontSize: 11, flex: 1, textAlign: 'left' },
-  metrics: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 10 }, metricsWide: { justifyContent: 'space-between' }, metric: { width: '48.5%', minHeight: 128, borderRadius: 17, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 13, justifyContent: 'space-between' }, metricTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 5 }, metricLabel: { color: C.second, fontSize: 12, fontWeight: '800', textAlign: 'right', flex: 1 }, metricValue: { fontSize: 17, fontWeight: '900', textAlign: 'right', marginTop: 10 }, metricHint: { color: C.muted, fontSize: 10, textAlign: 'right', marginTop: 5 },
-  badge: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' }, badgeSmall: { width: 31, height: 31, borderRadius: 10 }, icon: { fontSize: 21, fontWeight: '900' }, iconSmall: { fontSize: 14 },
-  panel: { borderRadius: 19, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 17, gap: 14 }, panelHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }, panelTitle: { color: C.text, fontSize: 16, fontWeight: '900', textAlign: 'right' }, progress: { gap: 7 }, progressTop: { flexDirection: 'row-reverse', justifyContent: 'space-between', gap: 8 }, progressValue: { color: C.text, fontSize: 12, fontWeight: '800' }, track: { height: 8, borderRadius: 99, overflow: 'hidden', backgroundColor: '#232D5D', direction: 'rtl' }, fill: { height: '100%', borderRadius: 99 }, dataNote: { color: C.muted, fontSize: 11, lineHeight: 18, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border, textAlign: 'right' }, net: { fontSize: 14, fontWeight: '900', textAlign: 'right', paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border },
-  quickGrid: { gap: 10 }, quick: { minHeight: 70, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 12 }, rowTitle: { color: C.text, fontSize: 14, fontWeight: '900', textAlign: 'right' }, rowCopy: { color: C.muted, fontSize: 11, marginTop: 3, lineHeight: 17, textAlign: 'right' },
-  trust: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 9, padding: 14, borderRadius: 15, borderWidth: 1, borderColor: '#244947', backgroundColor: '#0E2225', marginTop: 3 }, trustText: { color: C.second, fontSize: 12, lineHeight: 19, textAlign: 'right', flex: 1 },
-  detailHero: { padding: 20, borderRadius: 20, borderWidth: 1, backgroundColor: C.surface, gap: 8 }, detailTitle: { color: C.text, fontSize: 25, fontWeight: '900', lineHeight: 35, textAlign: 'right' }, detailList: { gap: 10 }, detailRow: { minHeight: 76, flexDirection: 'row-reverse', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 12 }, accountNote: { flexDirection: 'row-reverse', alignItems: 'flex-start', gap: 9, padding: 14, borderRadius: 15, borderWidth: 1, backgroundColor: C.raised }, signOut: { minHeight: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#73313E', backgroundColor: '#28131B' }, signOutText: { color: C.danger, fontSize: 15, fontWeight: '900' },
-  list: { flex: 1 }, listContent: { paddingHorizontal: 18, paddingBottom: 28 }, input: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, backgroundColor: '#101A3F', color: C.text, fontSize: 15, paddingHorizontal: 14, marginTop: 14 }, filterRow: { gap: 8, paddingVertical: 11, direction: 'rtl' }, filter: { minHeight: 37, borderRadius: 99, borderWidth: 1, borderColor: C.borderStrong, backgroundColor: C.surface, justifyContent: 'center', paddingHorizontal: 13 }, filterOn: { backgroundColor: C.indigo, borderColor: C.indigo }, filterText: { color: C.second, fontSize: 12, fontWeight: '800' }, filterTextOn: { color: C.canvas },
-  instrument: { borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, padding: 14 }, instrumentTop: { flexDirection: 'row-reverse', alignItems: 'flex-start', justifyContent: 'space-between', gap: 9 }, instrumentTitle: { color: C.text, fontSize: 15, fontWeight: '900', textAlign: 'right' }, symbol: { borderRadius: 9, backgroundColor: '#222A5E', paddingHorizontal: 8, paddingVertical: 6 }, symbolText: { color: C.indigo, fontSize: 11, fontWeight: '900', direction: 'ltr' }, instrumentFoot: { flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10, marginTop: 12 }, tags: { flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 5, flex: 1 }, tag: { borderRadius: 99, borderWidth: 1, borderColor: '#3A439B', backgroundColor: '#161D42', paddingHorizontal: 7, paddingVertical: 4 }, tagText: { color: C.second, fontSize: 9, fontWeight: '800' },
-  bottom: { minHeight: 68, paddingBottom: 5, flexDirection: 'row-reverse', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, borderTopColor: C.border, backgroundColor: '#0D1016' }, bottomItem: { minWidth: 57, minHeight: 53, justifyContent: 'center', alignItems: 'center', gap: 3 }, bottomIcon: { width: 30, height: 25, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }, bottomIconOn: { backgroundColor: C.indigo }, bottomText: { color: C.muted, fontSize: 10, fontWeight: '700' }, bottomTextOn: { color: C.text },
-  landingHero: { paddingTop: 25, gap: 9 }, landingTitle: { color: C.text, fontSize: 29, fontWeight: '900', lineHeight: 41, textAlign: 'right' }, primary: { minHeight: 52, borderRadius: 14, backgroundColor: C.indigo, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 15, marginTop: 12 }, primaryText: { color: C.canvas, fontSize: 15, fontWeight: '900' }, outline: { minHeight: 50, borderRadius: 14, borderWidth: 1, borderColor: C.borderStrong, flexDirection: 'row-reverse', alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 15 }, outlineText: { color: C.text, fontSize: 15, fontWeight: '800' },
-  preview: { borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: C.border, backgroundColor: C.surface }, previewTop: { minHeight: 57, flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: C.border, paddingHorizontal: 15 }, previewBrand: { color: C.muted, fontSize: 11, fontWeight: '700' }, previewTabs: { flexDirection: 'row-reverse', gap: 4, padding: 4, margin: 12, borderRadius: 12, backgroundColor: '#10141A', borderWidth: 1, borderColor: C.border }, activePreviewTab: { flex: 1, minHeight: 38, borderRadius: 8, backgroundColor: C.raised, color: C.text, textAlign: 'center', textAlignVertical: 'center', fontSize: 10, fontWeight: '800' }, previewTab: { flex: 1, minHeight: 38, color: C.muted, textAlign: 'center', textAlignVertical: 'center', fontSize: 10, fontWeight: '700' }, previewBody: { padding: 17, gap: 8 }, previewTitle: { color: C.text, fontSize: 21, fontWeight: '900', marginTop: 8, textAlign: 'right' }, previewCopy: { color: C.muted, fontSize: 12, lineHeight: 20, textAlign: 'right', marginBottom: 5 }, previewRow: { minHeight: 58, flexDirection: 'row-reverse', alignItems: 'center', gap: 9, borderTopWidth: 1, borderTopColor: C.border, paddingVertical: 8 }, landingTrust: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, marginTop: -4 }, auth: { borderRadius: 20, borderWidth: 1, borderColor: C.borderStrong, backgroundColor: C.raised, padding: 17, gap: 11 }, authHead: { flexDirection: 'row-reverse', justifyContent: 'space-between', alignItems: 'flex-start' }, authTitle: { color: C.text, fontSize: 20, fontWeight: '900', textAlign: 'right' }, close: { color: C.second, fontSize: 25, lineHeight: 27 },
-  notice: { flexDirection: 'row-reverse', alignItems: 'center', gap: 8, borderRadius: 14, borderWidth: 1, borderColor: '#674E1D', backgroundColor: '#2B220F', padding: 13 }, noticeText: { color: '#F5DCA1', fontSize: 12, lineHeight: 19, textAlign: 'right', flex: 1 }, empty: { minHeight: 155, alignItems: 'center', justifyContent: 'center', gap: 9, paddingHorizontal: 22, borderRadius: 17, borderWidth: 1, borderColor: C.borderStrong, borderStyle: 'dashed', backgroundColor: C.surface }, emptyTitle: { color: C.text, fontSize: 15, fontWeight: '900', textAlign: 'center' }, emptyBody: { color: C.muted, fontSize: 12, lineHeight: 19, textAlign: 'center' }, disabled: { opacity: .55 }, loading: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 }, loadingText: { color: C.text, fontSize: 20, fontWeight: '900', letterSpacing: 1 },
-});

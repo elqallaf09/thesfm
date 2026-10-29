@@ -23,55 +23,17 @@ struct DashboardView: View {
             .tabItem { Label("الرئيسية", systemImage: "house.fill") }
             .tag(MainTab.home)
 
-            NavigationStack {
-                FinancePreviewScreen(
-                    title: "المصاريف",
-                    subtitle: "سجل المصروفات والاشتراكات والديون الشهرية في مكان واحد.",
-                    systemImage: "creditcard.fill",
-                    cards: [
-                        PreviewCard(title: "إجمالي المصروفات", value: "بانتظار الربط", note: "لا يتم عرض أرقام قبل جلب بياناتك."),
-                        PreviewCard(title: "الاشتراكات الشهرية", value: "جاهزة للإضافة", note: "Netflix وAI والاتصالات والإنترنت."),
-                    ]
-                )
-            }
-            .tabItem { Label("المصاريف", systemImage: "creditcard") }
-            .tag(MainTab.expenses)
+            MobileRecordsView(product: "finance")
+                .tabItem { Label("أموالي", systemImage: "wallet.pass") }
+                .tag(MainTab.expenses)
 
-            NavigationStack {
-                FinancePreviewScreen(
-                    title: "الاستثمار",
-                    subtitle: "تابع المحفظة والأسعار والتنبيهات بشكل مباشر عند ربط البيانات.",
-                    systemImage: "chart.line.uptrend.xyaxis",
-                    cards: [
-                        PreviewCard(title: "قيمة المحفظة", value: "بانتظار الأسعار", note: "تحديث حي عند توفر مزود البيانات."),
-                        PreviewCard(title: "المخاطر", value: "غير محسوبة", note: "تحسب من تنوع الأصول وحركة السوق."),
-                    ]
-                )
-            }
-            .tabItem { Label("الاستثمار", systemImage: "chart.line.uptrend.xyaxis") }
-            .tag(MainTab.investments)
+            MobileReportsView(product: "finance")
+                .tabItem { Label("Reports", systemImage: "chart.bar.doc.horizontal") }
+                .tag(MainTab.reports)
 
-            NavigationStack {
-                FinancePreviewScreen(
-                    title: "المشاريع",
-                    subtitle: "حوّل أفكارك إلى خطة عمل وعرض استثماري قابل للمشاركة.",
-                    systemImage: "briefcase.fill",
-                    cards: [
-                        PreviewCard(title: "العروض الاستثمارية", value: "PDF وPowerPoint", note: "تصدير احترافي من بيانات المشروع."),
-                        PreviewCard(title: "جاهزية المشروع", value: "تحليل منظم", note: "يعتمد على البيانات التي تضيفها فقط."),
-                    ]
-                )
-            }
-            .tabItem { Label("المشاريع", systemImage: "briefcase") }
-            .tag(MainTab.projects)
-
-            NavigationStack {
-                MoreScreen {
-                    authSession.signOut()
-                }
-            }
-            .tabItem { Label("المزيد", systemImage: "square.grid.2x2.fill") }
-            .tag(MainTab.more)
+            MobileFinancialCalculatorsView()
+                .tabItem { Label("Calculators", systemImage: "function") }
+                .tag(MainTab.investments)
         }
         .tint(AppTheme.Colors.accent)
         .environment(\.layoutDirection, .rightToLeft)
@@ -109,6 +71,7 @@ struct DashboardView: View {
 private enum MainTab: Hashable {
     case home
     case expenses
+    case reports
     case investments
     case projects
     case more

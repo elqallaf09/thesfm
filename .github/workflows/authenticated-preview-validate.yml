@@ -33,6 +33,8 @@ jobs:
   validate:
     name: Validate authenticated isolated Preview
     runs-on: ubuntu-latest
+    # The complete browser suite shares CI's 75-minute budget; provisioning and
+    # installation must not cut off the WebKit leg before failure reporting.
     timeout-minutes: 75
     environment: Preview
     env:
@@ -154,6 +156,15 @@ jobs:
           --config=playwright.preview.config.ts
           --project=chromium-desktop
           tests/smoke/observability-preview.spec.ts
+
+      - name: Verify WebKit analyst regressions before the complete suite
+        env:
+          E2E_BASE_URL: ${{ steps.preview.outputs.url }}
+        run: >-
+          pnpm exec playwright test --config=playwright.preview.config.ts
+          --project=mobile-webkit --max-failures=1
+          tests/smoke/ai-analyst-unified-research.spec.ts
+          tests/smoke/intelligence-smart-analysis.spec.ts
 
       - name: Verify cold authenticated dashboard startup
         if: hashFiles('tests/smoke/dashboard-cold-session.spec.ts') != ''

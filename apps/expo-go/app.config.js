@@ -36,13 +36,17 @@ module.exports = {
     version: '0.2.1',
     icon: './assets/icon.png',
     orientation: 'default',
-    userInterfaceStyle: 'dark',
+    userInterfaceStyle: 'automatic',
     scheme: product.slug,
     ios: {
       bundleIdentifier: product.bundleIdentifier,
       supportsTablet: true,
       infoPlist: { ITSAppUsesNonExemptEncryption: false },
     },
+    plugins: [
+      'expo-secure-store',
+      ['expo-local-authentication', { faceIDPermission: 'Allow THE SFM to unlock your account with Face ID.' }],
+    ],
     android: { versionCode: 3, allowBackup: false, blockedPermissions: ['android.permission.SYSTEM_ALERT_WINDOW', 'android.permission.RECORD_AUDIO', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE'], softwareKeyboardLayoutMode: 'resize', package: product.bundleIdentifier, adaptiveIcon: { backgroundColor: '#08131C' } },
     extra: {
       sfmProduct: productId,
@@ -50,8 +54,9 @@ module.exports = {
       apiBaseUrl: process.env.EXPO_PUBLIC_SFM_API_BASE_URL || 'https://www.the-sfm.com',
       supabaseUrl: process.env.EXPO_PUBLIC_SFM_SUPABASE_URL || '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY || '',
+      googleSignInEnabled: process.env.EXPO_PUBLIC_SFM_GOOGLE_SIGN_IN_ENABLED === 'true',
     },
   },
 };
 
-validateMobileConfig(module.exports.expo.extra);
+validateMobileConfig(module.exports.expo.extra, { requireAuth: process.env.EAS_BUILD === 'true' });

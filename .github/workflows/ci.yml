@@ -580,6 +580,11 @@ jobs:
         with:
           script: |
             const sha = context.payload.pull_request.head.sha;
+            const { requiresMobilePreview } = require('./.github/scripts/mobile-preview-policy.cjs');
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              ...context.repo, pull_number: context.payload.pull_request.number, per_page: 100,
+            });
+            const mobilePreviewRequired = requiresMobilePreview(files);
             const productionRef = process.env.SUPABASE_PRODUCTION_REF?.trim();
             if (!/^[a-z0-9]{20}$/.test(productionRef ?? '')) {
               core.setFailed('SUPABASE_PRODUCTION_REF must be an explicit Supabase project ref.');
@@ -601,6 +606,10 @@ jobs:
               );
               if (unavailable) {
                 core.setOutput('available', 'false');
+                if (mobilePreviewRequired) {
+                  core.setFailed('Mobile account changes require authenticated isolated Preview validation. The Supabase integration skipped provisioning; simulator/export success is not release evidence.');
+                  return;
+                }
                 core.notice(`Supabase Preview was ${unavailable.conclusion} for this SHA; authenticated Preview smoke is not applicable.`);
                 return;
               }

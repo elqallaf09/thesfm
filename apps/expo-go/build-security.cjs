@@ -10,7 +10,10 @@ function publicKeyOnly(key) {
   try { role = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString('utf8')).role; } catch { /* Reject all unrecognized key formats. */ }
   if (role !== 'anon') throw new Error('Mobile configuration requires a publishable or anon Supabase key');
 }
-function validateMobileConfig(extra) {
+function validateMobileConfig(extra, options = {}) {
+  if (options.requireAuth && (!extra.supabaseUrl || !extra.supabaseAnonKey)) {
+    throw new Error('Release builds require EXPO_PUBLIC_SFM_SUPABASE_URL and EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY');
+  }
   secureOrigin(extra.apiBaseUrl, 'SFM API URL');
   secureOrigin(extra.supabaseUrl, 'Supabase URL');
   publicKeyOnly(extra.supabaseAnonKey);

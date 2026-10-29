@@ -424,10 +424,14 @@ test.describe('Tech Market News redesigned experience', () => {
     await page.goto('/tech-news');
 
     const loadMore = page.getByRole('button', { name: 'Load more' });
+    const feed = page.getByTestId('tech-news-unified-feed');
+    // Language hydration starts a replacement fetch. The page must not leave
+    // a stale aborted request's error visible while the newer payload renders.
+    await expect(page.locator('.tech-news-state[role="alert"]')).toHaveCount(0);
+    await expect(feed.locator('[data-news-id]')).toHaveCount(12);
     await expect(loadMore).toBeVisible();
-    await expect(page.getByTestId('tech-news-unified-feed').locator('[data-news-id]')).toHaveCount(12);
     await loadMore.click();
-    await expect(page.getByTestId('tech-news-unified-feed').locator('[data-news-id]')).toHaveCount(13);
+    await expect(feed.locator('[data-news-id]')).toHaveCount(13);
     await expect(page.getByText('All available news are shown')).toBeVisible();
   });
 

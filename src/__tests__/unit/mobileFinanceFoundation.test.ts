@@ -47,19 +47,79 @@ describe('THE SFM Finance iOS foundation', () => {
   });
 
   it('refreshes the Expo Go summary automatically and keeps the finance state transparent', () => {
-    const expo = read('apps/expo-go/App.tsx');
-
-    expect(read('apps/expo-go/native/useAccountSummary.ts')).toContain('if (session) void loadSummary();');
-    expect(expo).toContain('activeDebtCount.toLocaleString');
-    expect(expo).toContain('آخر تحديث:');
-    expect(expo).toContain('error={errorMessage}');
+    const screens = read('apps/expo-go/src/WorkspaceScreens.tsx');
+    expect(screens).toContain('useEffect(() => { void load(); }, [load])');
+    expect(screens).toContain('activeDebtCount');
+    expect(screens).toContain('/api/mobile/${product}/summary');
+    expect(screens).toContain('ErrorNotice');
   });
 
-  it('routes both account dashboards through the shared secure session lifecycle', () => {
-    const expo = read('apps/expo-go/App.tsx');
-    expect(expo).toContain('useAccountSummary<FinanceSummary>()');
-    expect(expo).toContain('useAccountSummary<BusinessSummary>()');
-    expect(expo).not.toContain('SecureStore.');
-    expect(read('apps/expo-go/native/sessionStore.ts')).toContain('WHEN_UNLOCKED_THIS_DEVICE_ONLY');
+  it('keeps Finance and Business refresh sessions in their own encrypted storage keys', () => {
+    const session = read('apps/expo-go/src/session.ts');
+    const storage = read('apps/expo-go/src/secureStorage.ts');
+    expect(session).toContain('`sfm-${config.product}-session`');
+    expect(session).toContain('await this.acceptSession(session, epoch)');
+    expect(storage).toContain('SecureStore.setItemAsync');
+    expect(storage).toContain('WHEN_UNLOCKED_THIS_DEVICE_ONLY');
+  });
+
+  it('does not persist a Swift first-factor session before its native MFA proof', () => {
+    const session = read('ios-native/TheSFM/Core/Auth/AuthSessionStore.swift');
+    const router = read('ios-native/TheSFM/App/AppRouter.swift');
+    const records = read('ios-native/TheSFM/Core/Networking/MobileRecordsView.swift');
+
+    expect(session).toContain('private var mfaChallenge: PendingMfa?');
+    expect(session).toContain('func sendMfaEmail() async');
+    expect(session).toContain('func verifyMfa(code: String) async');
+    expect(session).toContain('private func verifyTotp(pending: PendingMfa, code: String)');
+    expect(session).toContain('try await assertSessionSecurity(verified.accessToken)');
+    expect(session).toContain('func cancelMfa() async');
+    expect(session.indexOf('try await assertSessionSecurity(verified.accessToken)')).toBeLessThan(session.indexOf('save(verified)'));
+    expect(router).toContain('if authSession.pendingMfaMethod != nil');
+    expect(records).toContain('.fullScreenCover(isPresented: Binding(');
+  });
+
+  it('derives Finance and Business native report PDFs from the protected record API without combining currencies', () => {
+    const records = read('ios-native/TheSFM/Core/Networking/MobileRecordsView.swift');
+    const dashboard = read('ios-native/TheSFM/Features/Dashboard/DashboardView.swift');
+    const business = read('ios-native/TheSFM/Features/Business/BusinessHomeView.swift');
+
+    expect(records).toContain('struct MobileReportsView: View');
+    expect(records).toContain('/api/mobile/\\(product)/records/\\(resource)');
+    expect(records).toContain('value.count == 3');
+    expect(records).toContain('report.isPartial');
+    expect(records).toContain('MobileReportPDF.create');
+    expect(dashboard).toContain('MobileReportsView(product: "finance")');
+    expect(business).toContain('MobileReportsView(product: "business")');
+  });
+
+  it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
+    const session = read('apps/expo-go/src/session.ts');
+    const ui = read('apps/expo-go/src/ui.tsx');
+    expect(session).toContain('controller.abort(), 15_000');
+    expect(session).toContain('INVALID_CREDENTIALS');
+    expect(session).toContain('AUTH_UNAVAILABLE');
+    expect(ui).toContain('البريد أو كلمة المرور غير صحيحة.');
+  });
+  it('keeps income attachments and expense receipts owner-scoped across Expo and SwiftUI without persisting signed URLs', () => {
+    const expoRecords = read('apps/expo-go/src/RecordsScreen.tsx');
+    const expoSession = read('apps/expo-go/src/session.ts');
+    const swiftRecords = read('ios-native/TheSFM/Core/Networking/MobileRecordsView.swift');
+    const api = read('ios-native/TheSFM/Core/Networking/APIClient.swift');
+
+    expect(expoRecords).toContain('DocumentPicker.getDocumentAsync');
+    expect(expoRecords).toContain('attachmentPath');
+    expect(expoRecords).toContain("resource.id === 'income' || resource.id === 'expenses'");
+    expect(expoRecords).toContain("receipt_image_url");
+    expect(expoRecords).toContain('Linking.openURL(result.attachment.url)');
+    expect(expoSession).toContain('init.body instanceof FormData');
+    expect(expoSession).toContain('multipart boundary');
+    expect(swiftRecords).toContain('.fileImporter(isPresented: $attachmentImporting');
+    expect(swiftRecords).toContain('MobileAttachmentAccess');
+    expect(swiftRecords).toContain('resource.id == "income" || resource.id == "expenses"');
+    expect(swiftRecords).toContain('receipt_file_name');
+    expect(swiftRecords).toContain('openURL(result.attachment.url)');
+    expect(api).toContain('func upload(_ path: String, fields: [String: String], file: MultipartFile) async throws');
+    expect(api).toContain('multipart/form-data; boundary=');
   });
 });

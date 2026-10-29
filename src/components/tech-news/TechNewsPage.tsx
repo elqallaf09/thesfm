@@ -380,6 +380,8 @@ export function TechNewsPage() {
   const [sort, setSort] = useState<TechNewsSort>('recent');
   const [viewMode, setViewMode] = useState<TechNewsViewMode>('grid');
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_NEWS_COUNT);
+    // A language hydration request may be superseded before it settles. Only
+    // the live controller may update the news state.
   const activeRequest = useRef<AbortController | null>(null);
   const locale = localeFor(lang);
 
@@ -388,7 +390,7 @@ export function TechNewsPage() {
     const previous = activeRequest.current;
     activeRequest.current = controller;
     previous?.abort();
-    const ownsRequest = () => activeRequest.current === controller && !controller.signal.aborted;
+      const ownsRequest = () => activeRequest.current === controller && !controller.signal.aborted;
     if (showLoader) setLoading(true);
     setRefreshing(!showLoader);
     setError('');

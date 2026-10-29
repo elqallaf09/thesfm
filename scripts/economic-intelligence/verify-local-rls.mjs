@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createClient } from '@supabase/supabase-js';
-import { assertDisposableConfiguration, localOnlyFetch, LOCAL_API } from './local-rls-guard.mjs';
+import { assertDisposableConfiguration, createLocalOnlyFetch } from './local-rls-guard.mjs';
 
 const status = JSON.parse(await readFile(process.argv[2], 'utf8'));
-assertDisposableConfiguration(status, process.env.SFM_RLS_DISPOSABLE);
-const options = { auth: { autoRefreshToken: false, persistSession: false }, global: { fetch: localOnlyFetch } };
-const admin = createClient(LOCAL_API, status.SERVICE_ROLE_KEY, options);
-const anonymous = createClient(LOCAL_API, status.ANON_KEY, options);
+const localApi = assertDisposableConfiguration(status, process.env.SFM_RLS_DISPOSABLE);
+const options = { auth: { autoRefreshToken: false, persistSession: false }, global: { fetch: createLocalOnlyFetch(localApi) } };
+const admin = createClient(localApi, status.SERVICE_ROLE_KEY, options);
+const anonymous = createClient(localApi, status.ANON_KEY, options);
 const users = [];
 const passed = [];
 const marker = `ei-isolation-${randomUUID()}`;
@@ -56,7 +56,7 @@ async function makeUser(index) {
   const password = randomBytes(32).toString('base64url');
   const created = successful(await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: 'Disposable isolation fixture' } }), 'create disposable user');
   assert.ok(created?.user?.id, 'The local Auth service must create a real user.');
-  const user = { id: created.user.id, client: createClient(LOCAL_API, status.ANON_KEY, options) };
+  const user = { id: created.user.id, client: createClient(localApi, status.ANON_KEY, options) };
   users.push(user);
   const signedIn = successful(await user.client.auth.signInWithPassword({ email, password }), 'sign in disposable user');
   assert.equal(signedIn.user?.id, user.id);

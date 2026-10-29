@@ -588,7 +588,9 @@ jobs:
     needs: [resolve-target, validate-required-secrets, rollout, authenticated-preview]
     if: always() && !cancelled() && needs.resolve-target.result == 'success' && needs.validate-required-secrets.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # Provisioning and migrations run before the authenticated job creates the
+    # Preview. Leave time for that build, then its passive evidence request.
+    timeout-minutes: 35
     environment: Preview
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -599,7 +601,7 @@ jobs:
         with:
           script: |
             const sha = '${{ needs.resolve-target.outputs.sha }}';
-            const deadline = Date.now() + 10 * 60 * 1000;
+            const deadline = Date.now() + 30 * 60 * 1000;
             while (Date.now() < deadline) {
               const deployments = await github.paginate(github.rest.repos.listDeployments, {
                 ...context.repo,

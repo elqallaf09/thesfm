@@ -18,7 +18,10 @@
   },
   "dependencies": {
     "expo": "~57.0.27",
+    "expo-auth-session": "57.0.14",
     "expo-constants": "~57.0.21",
+    "expo-crypto": "57.0.3",
+    "expo-local-authentication": "57.0.3",
     "expo-device": "57.0.2",
     "expo-document-picker": "57.0.3",
     "expo-file-system": "57.0.7",
@@ -29,10 +32,13 @@
     "expo-secure-store": "~57.0.4",
     "expo-sharing": "57.0.23",
     "expo-status-bar": "~57.0.1",
-    "fflate": "0.8.2",
+    "expo-web-browser": "57.0.3",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "~5.7.0"
+    "fflate": "0.8.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-web": "0.21.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
