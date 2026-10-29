@@ -1,22 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getMarketSystemState } from '@/lib/market-state/aggregateMarketState';
 import { sanitizeMarketSystemStateForPublic } from '@/lib/market-state/publicState';
+import { getVerifiedMarketSystemState } from '@/lib/market-state/verifiedState';
 import { traderProviderDisplayName } from '@/lib/trader/marketMetadata';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  let state = await getMarketSystemState();
-  let activeProbe = false;
-
-  // A cold serverless instance can briefly miss both the shared snapshot and
-  // the refresh lease. Verify that empty state once before publishing a false
-  // provider outage to operational clients.
-  if (state.capabilityMatrix.length === 0 && Object.keys(state.providers).length === 0) {
-    state = await getMarketSystemState({ forceFresh: true });
-    activeProbe = true;
-  }
+  const { state, activeProbe, waitedForRefresh } = await getVerifiedMarketSystemState();
   const publicState = sanitizeMarketSystemStateForPublic(state);
   const providers = publicState.providerProfiles.map(profile => ({
     provider: profile.provider,
@@ -33,6 +24,7 @@ export async function GET() {
     ok: true,
     status: publicState.overall,
     activeProbe,
+    waitedForRefresh,
     configured,
     healthy,
     providers,
