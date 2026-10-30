@@ -8,6 +8,11 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 // ADMIN_API_POLICY_EXCEPTION: cron-or-admin-news-ingest
 
+// Two workers each process at most two batches. Bound every provider window so
+// a slow regional feed cannot consume the entire Vercel function lifetime and
+// discard the batches that already persisted successfully.
+const PROVIDER_BUDGET_MS = 12_000;
+
 function configuredSecret() {
   const value = process.env.CRON_SECRET?.trim() ?? '';
   if (!value || /^(your_|replace_|change_|example|placeholder)/i.test(value)) return '';
@@ -77,6 +82,7 @@ async function runIngestion(request: Request) {
         pageSize: 60,
         sort: 'importance',
         forceExternal: true,
+        providerBudgetMs: PROVIDER_BUDGET_MS,
       });
     }
   };
