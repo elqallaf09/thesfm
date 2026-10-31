@@ -60,4 +60,40 @@ describe('/api/market-news/ingest', () => {
       });
     }
   });
+
+  it('returns a truthful partial result before the platform deadline when persistence stalls', async () => {
+    vi.useFakeTimers();
+    let callCount = 0;
+    mocks.aggregateFinancialNews.mockImplementation(() => {
+      callCount += 1;
+      return callCount <= 2 ? Promise.resolve(aggregation()) : new Promise(() => {});
+    });
+
+    try {
+      const { GET } = await import('@/app/api/market-news/ingest/route');
+      const responsePromise = GET(new Request('https://example.com/api/market-news/ingest', {
+        headers: { authorization: 'Bearer market-news-test-secret' },
+      }));
+      await vi.advanceTimersByTimeAsync(45_000);
+      const response = await responsePromise;
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toMatchObject({
+        ok: true,
+        code: 'NEWS_INGESTION_PARTIAL',
+        batchCount: 4,
+        completedBatches: 2,
+        failedBatches: 2,
+        deadlineExceeded: true,
+      });
+      expect(mocks.aggregateFinancialNews).toHaveBeenCalledTimes(4);
+      for (const [params] of mocks.aggregateFinancialNews.mock.calls) {
+        expect(params.signal).toBeInstanceOf(AbortSignal);
+        expect(params.signal.aborted).toBe(true);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
