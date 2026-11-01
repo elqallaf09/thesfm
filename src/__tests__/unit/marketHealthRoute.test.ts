@@ -38,6 +38,7 @@ function state(patch: Partial<MarketSystemState> = {}): MarketSystemState {
 describe('/api/market/health', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.useRealTimers();
     getMarketSystemState.mockReset();
   });
 
@@ -51,7 +52,9 @@ describe('/api/market/health', () => {
     expect(response.status).toBe(200);
     expect(getMarketSystemState).toHaveBeenCalledTimes(1);
     expect(getMarketSystemState).toHaveBeenCalledWith();
-    expect(body).toMatchObject({ ok: true, marketDataService: 'degraded', activeProbe: false });
+    expect(body).toMatchObject({
+      ok: true, marketDataService: 'degraded', activeProbe: false, waitedForRefresh: false,
+    });
   });
 
   it('actively verifies an empty cold-start snapshot before reporting configuration failure', async () => {
@@ -59,7 +62,7 @@ describe('/api/market/health', () => {
       .mockResolvedValueOnce(state({
         overall: 'unknown', providers: {}, capabilityMatrix: [],
         featuresSucceeded: [], featuresDegraded: [], featuresFailed: ['quotes'],
-        delivery: { source: 'unavailable', cached: false, delayed: true, reason: 'aggregate_refresh_in_progress' },
+        delivery: { source: 'unavailable', cached: false, delayed: false, reason: 'market_state_unavailable' },
       }))
       .mockResolvedValueOnce(state());
 
@@ -70,6 +73,32 @@ describe('/api/market/health', () => {
     expect(response.status).toBe(200);
     expect(getMarketSystemState).toHaveBeenNthCalledWith(1);
     expect(getMarketSystemState).toHaveBeenNthCalledWith(2, { forceFresh: true });
-    expect(body).toMatchObject({ ok: true, marketDataService: 'degraded', activeProbe: true });
+    expect(body).toMatchObject({
+      ok: true, marketDataService: 'degraded', activeProbe: true, waitedForRefresh: false,
+    });
+  });
+
+  it('waits for an in-progress shared refresh before probing providers again', async () => {
+    vi.useFakeTimers();
+    getMarketSystemState
+      .mockResolvedValueOnce(state({
+        overall: 'unknown', providers: {}, capabilityMatrix: [],
+        featuresSucceeded: [], featuresDegraded: [], featuresFailed: ['quotes'],
+        delivery: { source: 'unavailable', cached: false, delayed: true, reason: 'aggregate_refresh_in_progress' },
+      }))
+      .mockResolvedValueOnce(state());
+
+    const { GET } = await import('@/app/api/market/health/route');
+    const responsePromise = GET();
+    await vi.advanceTimersByTimeAsync(250);
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(getMarketSystemState).toHaveBeenCalledTimes(2);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(1);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(2);
+    expect(body).toMatchObject({
+      ok: true, marketDataService: 'degraded', activeProbe: false, waitedForRefresh: true,
+    });
   });
 });
