@@ -20,11 +20,11 @@ overrides:
   expo-constants: 57.0.21
   expo-modules-autolinking: 57.0.13
   expo-modules-core: 57.0.20
+  node-forge: 1.4.1
   xcode>uuid: 11.1.1
 
 patchedDependencies:
   braces@3.0.3: e8ff639d03cd453b516b59fbf98a93bea1b4e2bf3ded5005fd344b6f9eafb57f
-  node-forge@1.4.0: 04cceb4a8ee9b5ef8c5d0d147e58a83d438f00f508bd5620c969fd7e31db38e1
 
 importers:
 
@@ -1718,8 +1718,8 @@ packages:
     resolution: {integrity: sha512-NMPBRMJgiQHjbd8phG3Vebdx4kZ1H121rbl5IkMqeOsahptB9BKo/d7oJ3zTXqTgagn2bWlNSXkh0QUGM31RYg==}
     engines: {node: '>=18'}
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.1:
+    resolution: {integrity: sha512-w5/MfWaeMrpR/5ba6fZyAUTLSuE6aYz7H/3cYrqwZEmf5eQS3IaaLgJt4MBv7HglGFWmV22K8h4U18RJQmw/ow==}
     engines: {node: '>= 6.13.0'}
 
   node-int64@0.4.0:
@@ -2721,7 +2721,7 @@ snapshots:
       glob: 13.0.6
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.0(patch_hash=04cceb4a8ee9b5ef8c5d0d147e58a83d438f00f508bd5620c969fd7e31db38e1)
+      node-forge: 1.4.1
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -2757,7 +2757,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.6':
     dependencies:
-      node-forge: 1.4.0(patch_hash=04cceb4a8ee9b5ef8c5d0d147e58a83d438f00f508bd5620c969fd7e31db38e1)
+      node-forge: 1.4.1
 
   '@expo/config-plugins@57.0.10(typescript@6.0.3)':
     dependencies:
@@ -4349,7 +4349,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  node-forge@1.4.0(patch_hash=04cceb4a8ee9b5ef8c5d0d147e58a83d438f00f508bd5620c969fd7e31db38e1): {}
+  node-forge@1.4.1: {}
 
   node-int64@0.4.0: {}
 
