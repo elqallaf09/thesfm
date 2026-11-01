@@ -8,7 +8,7 @@ const observability = readSource('tests/smoke/observability-preview.spec.ts');
 const workflow = readSource('.github/workflows/ci.yml');
 const manualAuthenticatedPreviewWorkflow = readSource('.github/workflows/authenticated-preview-validate.yml');
 const previewRolloutWorkflow = readSource('.github/workflows/preview-rollout.yml');
-const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-preview:'));
+const authenticatedPreviewJob = workflow.slice(workflow.indexOf('  authenticated-external-preview:'));
 
 describe('Preview-only authentication fixtures', () => {
   it('dynamically pins every fixture mutation to the verified isolated Preview project', () => {
@@ -98,7 +98,7 @@ describe('Preview-only authentication fixtures', () => {
     expect(authenticatedPreviewJob).toContain(
       "if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
     );
-    const previewConfigurationJob = workflow.slice(workflow.indexOf('  preview-configuration:'), workflow.indexOf('  authenticated-preview:'));
+    const previewConfigurationJob = workflow.slice(workflow.indexOf('  preview-configuration:'), workflow.indexOf('  authenticated-external-preview:'));
     expect(previewConfigurationJob).toContain(
       "if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'",
     );
