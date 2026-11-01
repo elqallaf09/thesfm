@@ -38,7 +38,6 @@ export async function insertInvestmentWithAttempts(attempts: InvestmentMutationA
 
   throw new Error(mutationErrorMessage(last));
 }
-
 export async function updateInvestmentWithAttempts(id: string, userId: string, attempts: InvestmentMutationAttempt[]) {
   const supabase = await loadSupabaseClient();
   let last: InvestmentMutationResult | null = null;
@@ -82,4 +81,3 @@ export async function updateInvestmentWithAttempts(id: string, userId: string, a
 
   throw new Error(mutationErrorMessage(last));
 }
-

@@ -124,9 +124,11 @@ describe('Supabase Preview Validate workflow input-injection hardening', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('reads target_pr/target_sha from the trusted event payload, not interpolated into the script source', () => {
-    expect(workflow).toContain('context.payload.inputs?.target_pr');
-    expect(workflow).toContain('context.payload.inputs?.target_sha');
+  it('reads typed target inputs through env for dispatch and reusable calls without source interpolation', () => {
+    expect(workflow).toContain('INPUT_TARGET_PR: ${{ inputs.target_pr }}');
+    expect(workflow).toContain('process.env.INPUT_TARGET_PR');
+    expect(workflow).toContain('INPUT_TARGET_SHA: ${{ inputs.target_sha }}');
+    expect(workflow).toContain('process.env.INPUT_TARGET_SHA');
     expect(workflow).not.toMatch(/`\$\{\{\s*inputs\.target_(pr|sha)\s*\}\}`/);
   });
 

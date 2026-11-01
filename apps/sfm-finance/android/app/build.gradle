@@ -12,17 +12,20 @@ def releaseValue = { String name, String fallback = '' ->
 android {
   namespace 'com.thesfm.finance'
   compileSdk 36
+  buildToolsVersion '36.0.0'
 
   defaultConfig {
     applicationId 'com.thesfm.finance'
     minSdk 26
     targetSdk 36
-    versionCode 1
+    versionCode providers.gradleProperty('SFM_VERSION_CODE').orElse('1').get().toInteger()
     versionName '0.1.0'
     buildConfigField 'String', 'SFM_API_BASE_URL', releaseValue('SFM_API_BASE_URL', 'https://www.the-sfm.com')
     buildConfigField 'String', 'SFM_SUPABASE_ANON_KEY', releaseValue('SFM_SUPABASE_ANON_KEY')
     buildConfigField 'String', 'SFM_SUPABASE_URL', releaseValue('SFM_SUPABASE_URL')
   }
+
+  sourceSets { main.java.srcDir '../../../native-shared/android/src/main/java' }
 
   flavorDimensions 'distribution'
   productFlavors {

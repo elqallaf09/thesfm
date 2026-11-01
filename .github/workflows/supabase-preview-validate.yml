@@ -33,6 +33,43 @@ name: Supabase Preview Validate
 # required for any tier.
 
 on:
+  workflow_call:
+    inputs:
+      target_pr:
+        description: "Pull request number to validate (e.g. 53). Mutually exclusive with target_sha."
+        required: false
+        type: string
+      target_sha:
+        description: "Exact commit SHA to validate. Mutually exclusive with target_pr."
+        required: false
+        type: string
+      preview_ref:
+        description: "Optional explicit isolated Supabase Preview project ref (tier 1). Production is rejected. When omitted, resolution falls through to the external Supabase Preview check, then a workflow-created ephemeral branch."
+        required: false
+        type: string
+      cleanup_branch_id:
+        description: "Escape hatch: delete this workflow-owned Supabase branch ID and exit, skipping validation entirely. Use when a run's own cleanup could not run (e.g. it failed before reaching Finalize)."
+        required: false
+        type: string
+      activate_rollout:
+        description: "After migrations pass, configure and redeploy the isolated Vercel Preview."
+        required: false
+        default: false
+        type: boolean
+      git_branch:
+        description: "Vercel Preview branch scope; required when activate_rollout is true."
+        required: false
+        type: string
+      deployment_id:
+        description: "Existing READY Vercel Preview deployment id; required when activate_rollout is true."
+        required: false
+        type: string
+      run_authenticated_smoke:
+        description: "Run fail-closed authenticated tests against the exact-SHA isolated Preview."
+        required: false
+        default: false
+        type: boolean
+
   workflow_dispatch:
     inputs:
       target_pr:
@@ -113,18 +150,21 @@ jobs:
     steps:
       - name: Resolve exact target SHA
         id: resolve
+        env:
+          INPUT_TARGET_PR: ${{ inputs.target_pr }}
+          INPUT_TARGET_SHA: ${{ inputs.target_sha }}
         uses: actions/github-script@v9
         with:
           script: |
-            // Read inputs from the trusted, already-parsed event payload
-            // object rather than template-interpolating them into this
+            // Read typed dispatch/reusable inputs from environment variables
+            // rather than template-interpolating them into this
             // script's source text — the latter would let a crafted input
             // value (e.g. containing a backtick or template-literal
             // terminator) break out of the string and execute arbitrary JS
             // with this step's github-script token, before any validation
             // below ever runs.
-            const targetPr = String(context.payload.inputs?.target_pr ?? '').trim();
-            const targetSha = String(context.payload.inputs?.target_sha ?? '').trim();
+            const targetPr = String(process.env.INPUT_TARGET_PR ?? '').trim();
+            const targetSha = String(process.env.INPUT_TARGET_SHA ?? '').trim();
             if (!targetPr && !targetSha) {
               core.setFailed('Provide either target_pr or target_sha.');
               return;
@@ -133,6 +173,18 @@ jobs:
               core.setFailed('Provide only one of target_pr or target_sha, not both.');
               return;
             }
+            const assertCurrent = async pr => {
+              if (pr.state !== 'open' || pr.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}`
+                || pr.head.ref === pr.base.ref || pr.user.login === 'dependabot[bot]') {
+                throw new Error('Preview requires an open, same-repository maintainer PR.');
+              }
+              const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                ...context.repo, basehead: `${pr.base.sha}...${pr.head.sha}`,
+              });
+              if (!['ahead', 'identical'].includes(comparison.data.status)) {
+                throw new Error('Update the PR with current main before provisioning a Preview.');
+              }
+            };
             if (targetPr) {
               if (!/^\d+$/.test(targetPr)) {
                 core.setFailed('target_pr must be a plain PR number, e.g. 53.');
@@ -142,6 +194,7 @@ jobs:
                 ...context.repo,
                 pull_number: Number(targetPr),
               });
+              await assertCurrent(pr);
               core.setOutput('sha', pr.head.sha);
               core.setOutput('pr_number', String(pr.number));
               core.info(`Resolved PR #${pr.number} to exact head SHA ${pr.head.sha}.`);
@@ -151,8 +204,17 @@ jobs:
               core.setFailed('target_sha must be a full 40-character commit SHA.');
               return;
             }
+            const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+              ...context.repo, commit_sha: targetSha, per_page: 100,
+            });
+            const matches = pulls.filter(pr => pr.state === 'open' && pr.head.sha === targetSha
+              && pr.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`);
+            if (matches.length !== 1) throw new Error('Expected one current open PR at this exact SHA.');
+            const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: matches[0].number });
+            if (pr.head.sha !== targetSha) throw new Error('PR head changed before Preview provisioning.');
+            await assertCurrent(pr);
             core.setOutput('sha', targetSha);
-            core.setOutput('pr_number', '');
+            core.setOutput('pr_number', String(pr.number));
             core.info(`Using explicit target SHA ${targetSha}.`);
 
   validate-required-secrets:
@@ -588,7 +650,9 @@ jobs:
     needs: [resolve-target, validate-required-secrets, rollout, authenticated-preview]
     if: always() && !cancelled() && needs.resolve-target.result == 'success' && needs.validate-required-secrets.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # Provisioning and migrations run before the authenticated job creates the
+    # Preview. Leave time for that build, then its passive evidence request.
+    timeout-minutes: 35
     environment: Preview
     env:
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
@@ -599,7 +663,7 @@ jobs:
         with:
           script: |
             const sha = '${{ needs.resolve-target.outputs.sha }}';
-            const deadline = Date.now() + 10 * 60 * 1000;
+            const deadline = Date.now() + 30 * 60 * 1000;
             while (Date.now() < deadline) {
               const deployments = await github.paginate(github.rest.repos.listDeployments, {
                 ...context.repo,

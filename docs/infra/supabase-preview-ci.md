@@ -1,5 +1,20 @@
 # Supabase Preview CI: root cause and current state
 
+## Required mobile release validation
+
+Mobile account changes now call `Supabase Preview Validate` from CI with the exact
+PR head and authenticated smoke enabled. The workflow reuses a verified external
+Preview when available; otherwise it creates, migrates, tests, and cleans up its
+own schema-only branch. This uses the existing migration and baseline safety
+checks, not the Production database. Forks, stale heads, and branches missing
+current main are rejected before provisioning. The stable required check
+`CI/Authenticated Preview smoke` fails unless the selected validation completes
+successfully; skipped or cancelled mobile validation cannot satisfy it.
+
+Non-mobile changes keep the existing external-Preview policy. Automatic mobile
+fallbacks use the protected Preview environment and incur the normal temporary
+Supabase/Vercel usage charges. Cleanup remains unconditional.
+
 ## Summary
 
 The "Supabase Preview" GitHub check (created by Supabase's own GitHub App

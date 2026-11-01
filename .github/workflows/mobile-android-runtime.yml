@@ -23,6 +23,12 @@ jobs:
       EXPO_PUBLIC_SFM_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       EXPO_PUBLIC_SFM_API_BASE_URL: https://www.the-sfm.com
     steps:
+      - name: Reserve disk space for the Android system image and native build
+        # Only unused preinstalled toolchains on the disposable hosted runner.
+        # Keep the Android SDK, Java, Node and the checked-out workspace intact.
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost
+          df -h /
       - uses: actions/checkout@v7
         with:
           persist-credentials: false

@@ -55,7 +55,7 @@ test('masks before writing only to the job environment', async () => {
 });
 test('CI resolves credentials after target isolation and before provisioning, never a static cross-branch key', () => {
   const workflow = readFileSync(new URL('../../workflows/ci.yml', import.meta.url), 'utf8');
-  const job = workflow.slice(workflow.indexOf('\n  authenticated-preview:'));
+  const job = workflow.slice(workflow.indexOf('\n  authenticated-external-preview:'));
   assert.ok(!job.includes('secrets.SUPABASE_PREVIEW_SERVICE_ROLE_KEY'));
   assert.ok(job.indexOf('Validate resolved isolated Supabase Preview target') < job.indexOf('Resolve branch-specific Preview credentials'));
   assert.ok(job.indexOf('Resolve branch-specific Preview credentials') < job.indexOf('Provision isolated Preview auth fixtures'));

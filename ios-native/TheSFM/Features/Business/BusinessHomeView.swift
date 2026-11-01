@@ -12,7 +12,9 @@ struct BusinessHomeView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if !authSession.isAuthenticated {
+                if authSession.pendingMfaMethod != nil {
+                    MfaVerificationView()
+                } else if !authSession.isAuthenticated {
                     BusinessLoginView()
                 } else if authSession.isDeviceLocked {
                     BusinessUnlockView(summaryStore: summaryStore)
@@ -142,6 +144,9 @@ private struct BusinessDashboardView: View {
             }
 
             Section {
+                NavigationLink("Reports Center") {
+                    MobileReportsView(product: "business")
+                }
                 Button("تحديث البيانات", systemImage: "arrow.clockwise") {
                     Task {
                         guard let token = authSession.accessToken else { return }

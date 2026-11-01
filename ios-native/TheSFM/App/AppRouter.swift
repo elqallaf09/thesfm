@@ -5,7 +5,9 @@ struct AppRouter: View {
 
     var body: some View {
         Group {
-            if authSession.isAuthenticated {
+            if authSession.pendingMfaMethod != nil {
+                MfaVerificationView()
+            } else if authSession.isAuthenticated {
                 if authSession.isDeviceLocked {
                     AppUnlockView()
                 } else {
@@ -51,7 +53,7 @@ private struct AppUnlockView: View {
                     Label("فتح التطبيق", systemImage: "faceid")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(SFMPrimaryButtonStyle())
+                .buttonStyle(.borderedProminent)
                 .accessibilityHint("يستخدم Face ID أو رمز مرور الجهاز")
 
                 if let errorMessage = authSession.errorMessage {

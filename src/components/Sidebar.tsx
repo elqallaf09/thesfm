@@ -134,16 +134,18 @@ export function Sidebar() {
 
   useLayoutEffect(() => {
     if (!selectedItemId) return;
-    const frame = window.requestAnimationFrame(() => {
+    let settledFrame: number | null = null;
+    const revealActiveItem = () => {
       const scroll = navigationScrollRef.current;
       const target = scroll?.querySelector<HTMLElement>('[aria-current="page"]');
       if (!scroll || !target) return;
-      const itemRect = target.getBoundingClientRect();
-      const scrollRect = scroll.getBoundingClientRect();
-      if (itemRect.top < scrollRect.top) scroll.scrollTop += itemRect.top - scrollRect.top;
-      else if (itemRect.bottom > scrollRect.bottom) scroll.scrollTop += itemRect.bottom - scrollRect.bottom;
+      target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    };
+    const frame = window.requestAnimationFrame(() => {
+      revealActiveItem();
+      settledFrame = window.requestAnimationFrame(revealActiveItem);
     });
-    return () => window.cancelAnimationFrame(frame);
+    return () => { window.cancelAnimationFrame(frame); if (settledFrame !== null) window.cancelAnimationFrame(settledFrame); };
   }, [collapsed, openGlobalGroupIds, openGroupIds, openItemIds, selectedItemId, supportOpen]);
 
   const handleLogout = async () => {

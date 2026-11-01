@@ -2,6 +2,14 @@ import { createRequire } from 'node:module';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 const require = createRequire(import.meta.url);
 const { validateMobileConfig } = require('../../../apps/expo-go/build-security.cjs');
+
+it('refuses a signed build that would install without working authentication configuration', () => {
+  for (const extra of [{}, { supabaseUrl: 'https://example.supabase.co' }, { supabaseAnonKey: 'sb_publishable_test' }]) {
+    expect(() => validateMobileConfig(extra, { requireAuth: true })).toThrow('Release builds require');
+  }
+  expect(() => validateMobileConfig({ apiBaseUrl: 'https://www.the-sfm.com', supabaseUrl: 'https://example.supabase.co', supabaseAnonKey: 'sb_publishable_test' }, { requireAuth: true })).not.toThrow();
+  expect(() => validateMobileConfig({})).not.toThrow();
+});
 const anon = `header.${Buffer.from(JSON.stringify({ role: 'anon' })).toString('base64url')}.signature`;
 const base = { apiBaseUrl: 'https://www.the-sfm.com', supabaseUrl: 'https://test.supabase.co', supabaseAnonKey: anon };
 afterEach(() => { vi.unstubAllEnvs(); });
