@@ -12,6 +12,10 @@ export const maxDuration = 60;
 // a slow regional feed cannot consume the entire Vercel function lifetime and
 // discard the batches that already persisted successfully.
 const PROVIDER_BUDGET_MS = 12_000;
+// Leave enough headroom for Next.js to serialize the response before Vercel's
+// 60 second hard limit. A database write can occasionally stall after the
+// provider window has completed, so the route also needs an end-to-end budget.
+const INGESTION_BUDGET_MS = 45_000;
 
 function configuredSecret() {
   const value = process.env.CRON_SECRET?.trim() ?? '';
@@ -71,12 +75,13 @@ async function runIngestion(request: Request) {
   const startedAt = Date.now();
   const batches = ingestionBatches();
   const results = new Array<Awaited<ReturnType<typeof aggregateFinancialNews>>>(batches.length);
+  const controller = new AbortController();
   let cursor = 0;
   const worker = async () => {
     while (cursor < batches.length) {
       const index = cursor;
       cursor += 1;
-      results[index] = await aggregateFinancialNews(batches[index], {
+      results[index] = await aggregateFinancialNews({ ...batches[index], signal: controller.signal }, {
         mode: 'ingest',
         page: 1,
         pageSize: 60,
@@ -86,10 +91,22 @@ async function runIngestion(request: Request) {
       });
     }
   };
-  const settled = await Promise.allSettled([worker(), worker()]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<'deadline'>(resolve => {
+    timer = setTimeout(() => {
+      controller.abort(new Error('NEWS_INGESTION_DEADLINE'));
+      resolve('deadline');
+    }, INGESTION_BUDGET_MS);
+    timer.unref?.();
+  });
+  const outcome = await Promise.race([
+    Promise.allSettled([worker(), worker()]).then(() => 'settled' as const),
+    deadline,
+  ]);
+  if (timer) clearTimeout(timer);
   const completed = results.filter(Boolean);
   const providerCoverage = completed.flatMap(result => result.providerCoverage);
-  const failedBatches = settled.filter(result => result.status === 'rejected').length + (batches.length - completed.length);
+  const failedBatches = batches.length - completed.length;
 
   return NextResponse.json({
     ok: completed.length > 0,
@@ -97,6 +114,7 @@ async function runIngestion(request: Request) {
     batchCount: batches.length,
     completedBatches: completed.length,
     failedBatches,
+    deadlineExceeded: outcome === 'deadline',
     storyCount: completed.reduce((total, result) => total + result.total, 0),
     providerCount: providerCoverage.length,
     successfulProviders: providerCoverage.filter(provider => provider.status === 'success').length,
