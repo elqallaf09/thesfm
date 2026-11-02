@@ -46,12 +46,8 @@ export const authCopy = {
   },
 } as const;
 
-export function authWebsiteUrl(base: string, product: PhoneProduct, action: 'register' | 'forgot' | 'explore' | 'privacy' | 'terms', language: string) {
-  const url = new URL(action === 'explore' ? '/' : action === 'register' || action === 'forgot' ? '/login' : `/${action}`, base);
+export function authWebsiteUrl(base: string, _product: PhoneProduct, action: 'explore' | 'privacy' | 'terms', language: string) {
+  const url = new URL(action === 'explore' ? '/' : `/${action}`, base);
   url.searchParams.set('lang', language);
-  if (action === 'register' || action === 'forgot') {
-    url.searchParams.set('mode', action);
-    url.searchParams.set('next', product === 'investor' ? '/investments' : product === 'business' ? '/business' : '/dashboard');
-  }
   return url.toString();
 }
