@@ -75,7 +75,7 @@ export function MobileSignIn(props: Props) {
   }
   const productName = product === 'finance' ? 'Finance' : product === 'investor' ? 'Investor' : 'Business';
   const button = (label: string, onPress: () => void, primary = false, disabled = busy, icon?: ReactNode) => <Pressable
-    accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, busy: primary && busy }} disabled={disabled} onPress={onPress}
+    accessibilityRole="button" accessibilityLabel={label} aria-disabled={disabled} aria-busy={primary && busy} accessibilityState={{ disabled, busy: primary && busy }} disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.button, row, { borderColor: primary ? palette.primary : palette.inputBorder, backgroundColor: primary ? palette.primary : palette.surface, opacity: disabled ? .55 : pressed ? .75 : 1 }]}>
     {icon}<Text style={[text, bold, styles.buttonText, { color: primary ? palette.onPrimary : palette.text }]}>{label}</Text>
   </Pressable>;
@@ -83,10 +83,10 @@ export function MobileSignIn(props: Props) {
   const form = <View testID={`auth-${product}`} style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }, wide && styles.wideCard]}>
     <View style={[styles.controls, row]}>
       <View accessibilityLabel={copy.language} style={[styles.controlGroup, row, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-        {languageOptions.map(option => <Pressable key={option.value} accessibilityRole="button" accessibilityLabel={option.value === 'en' ? 'English' : option.value === 'fr' ? 'Français' : option.label} accessibilityState={{ selected: language === option.value }} onPress={() => languageChanged(option.value)} style={[styles.control, { backgroundColor: language === option.value ? palette.soft : 'transparent' }]}><Text style={[text, language === option.value && bold, { color: language === option.value ? palette.primary : palette.muted }]}>{option.label}</Text></Pressable>)}
+        {languageOptions.map(option => <Pressable key={option.value} accessibilityRole="button" accessibilityLabel={option.value === 'en' ? 'English' : option.value === 'fr' ? 'Français' : option.label} aria-pressed={language === option.value} accessibilityState={{ selected: language === option.value }} onPress={() => languageChanged(option.value)} style={[styles.control, { backgroundColor: language === option.value ? palette.soft : 'transparent' }]}><Text style={[text, language === option.value && bold, { color: language === option.value ? palette.primary : palette.muted }]}>{option.label}</Text></Pressable>)}
       </View>
       <View style={[styles.controlGroup, row, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-        {(['light', 'dark'] as const).map(mode => <Pressable key={mode} accessibilityRole="button" accessibilityLabel={copy[mode]} accessibilityState={{ selected: dark === (mode === 'dark') }} onPress={() => themeChanged(mode)} style={[styles.control, { backgroundColor: dark === (mode === 'dark') ? palette.soft : 'transparent' }]}><Text style={{ fontSize: 21, color: dark === (mode === 'dark') ? palette.primary : palette.muted }}>{mode === 'light' ? '☀' : '☾'}</Text></Pressable>)}
+        {(['light', 'dark'] as const).map(mode => <Pressable key={mode} accessibilityRole="button" accessibilityLabel={copy[mode]} aria-pressed={dark === (mode === 'dark')} accessibilityState={{ selected: dark === (mode === 'dark') }} onPress={() => themeChanged(mode)} style={[styles.control, { backgroundColor: dark === (mode === 'dark') ? palette.soft : 'transparent' }]}><Text style={{ fontSize: 21, color: dark === (mode === 'dark') ? palette.primary : palette.muted }}>{mode === 'light' ? '☀' : '☾'}</Text></Pressable>)}
       </View>
     </View>
     <View style={styles.brand}>
@@ -111,13 +111,13 @@ export function MobileSignIn(props: Props) {
           autoCapitalize="none" autoCorrect={false} autoComplete="current-password" textContentType="password" returnKeyType="go"
           onSubmitEditing={() => { void signIn(); }} onFocus={() => setFocused('password')} onBlur={() => setFocused(null)}
           style={[styles.passwordInput, text]} />
-        <Pressable accessibilityRole="button" accessibilityLabel={visible ? copy.hide : copy.show} accessibilityState={{ expanded: visible }} onPress={() => setVisible(value => !value)} style={styles.reveal}>
+        <Pressable accessibilityRole="button" accessibilityLabel={visible ? copy.hide : copy.show} aria-expanded={visible} accessibilityState={{ expanded: visible }} onPress={() => setVisible(value => !value)} style={styles.reveal}>
           <Text style={[text, { color: palette.primary, fontSize: 13 }]}>{visible ? (language === 'ar' ? 'إخفاء' : language === 'fr' ? 'Masquer' : 'Hide') : (language === 'ar' ? 'إظهار' : language === 'fr' ? 'Afficher' : 'Show')}</Text>
         </Pressable>
       </View>
     </View>
     <View style={[styles.options, row]}>
-      <Pressable accessibilityRole="checkbox" accessibilityLabel={copy.remember} accessibilityState={{ checked: remember }} disabled={busy} onPress={() => {
+      <Pressable accessibilityRole="checkbox" accessibilityLabel={copy.remember} aria-checked={remember} accessibilityState={{ checked: remember }} disabled={busy} onPress={() => {
         setRemember(value => !value);
         if (remember) void sessionStorage.removeItem(rememberedKey).catch(() => {});
       }} style={[styles.remember, row]}>
