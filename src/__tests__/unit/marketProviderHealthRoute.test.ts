@@ -156,4 +156,32 @@ describe('/api/market/providers/health', () => {
       healthy: 1,
     });
   });
+
+  it('keeps waiting when the shared cold refresh needs longer than five seconds', async () => {
+    vi.useFakeTimers();
+    getMarketSystemState
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(emptyMarketSystemState())
+      .mockResolvedValueOnce(marketSystemState());
+
+    const { GET } = await import('@/app/api/market/providers/health/route');
+    const responsePromise = GET();
+    await vi.advanceTimersByTimeAsync(7_500);
+    const response = await responsePromise;
+    const body = await response.json();
+
+    expect(getMarketSystemState).toHaveBeenCalledTimes(7);
+    expect(getMarketSystemState).toHaveBeenNthCalledWith(7);
+    expect(body).toMatchObject({
+      status: 'degraded',
+      activeProbe: false,
+      waitedForRefresh: true,
+      configured: 2,
+      healthy: 1,
+    });
+  });
 });
