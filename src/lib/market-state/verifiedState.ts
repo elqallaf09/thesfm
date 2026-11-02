@@ -1,7 +1,20 @@
 import { getMarketSystemState } from './aggregateMarketState';
 import type { MarketSystemState } from './types';
 
-const SHARED_REFRESH_POLL_DELAYS_MS = [250, 500, 1_000, 1_500, 1_750] as const;
+// A cold aggregate refresh regularly takes 10-12 seconds in production. Keep
+// polling the shared snapshot for that bounded window instead of starting a
+// duplicate provider probe after five seconds while the lease holder is still
+// working.
+const SHARED_REFRESH_POLL_DELAYS_MS = [
+  250,
+  500,
+  1_000,
+  1_500,
+  1_750,
+  2_500,
+  2_500,
+  2_000,
+] as const;
 
 function isEmptyMarketState(state: MarketSystemState) {
   return state.capabilityMatrix.length === 0 && Object.keys(state.providers).length === 0;
