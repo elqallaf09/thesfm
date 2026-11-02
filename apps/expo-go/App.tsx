@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AppState, Platform, SafeAreaView, useColorScheme, View } from 'react-native';
 import type { MobileLanguage, PhoneProduct } from '../../src/lib/mobile/resourceContract';
+import { authPalettes } from './src/authPresentation';
 import { MobileWorkspace } from './src/MobileWorkspace';
 import { MobileRequestError, MobileSessionClient, PendingMobileMfa } from './src/session';
 import { MfaScreen } from './src/MfaScreen';
@@ -90,8 +91,8 @@ export default function App() {
   }, []);
   const colors = theme === 'dark' || theme === 'system' && deviceTheme === 'dark' ? darkColors : lightColors;
   const context = useMemo(() => ({ language, colors }), [language, colors]);
-  return <PrivacyShield><UIContext.Provider value={context}><SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}><StatusBar style={colors === darkColors ? 'light' : 'dark'} />
-    {!ready ? <Busy /> : background && (signedIn || pendingMfa) ? <View style={{ flex: 1, backgroundColor: colors.bg }} /> : pendingMfa ? <MfaScreen client={client} pending={pendingMfa} completed={() => setPendingMfa(null)} cancelled={() => setPendingMfa(null)} /> : locked && signedIn ? <Unlock onUnlock={() => setLocked(false)} /> : <MobileWorkspace key={generation} client={client} product={product} base={apiBaseUrl} supabaseUrl={supabaseUrl} signedIn={signedIn} languageChanged={setLanguage} themeChanged={setTheme} authBrowser={authBrowser} googleEnabled={extra.googleSignInEnabled === true} pendingLink={pendingLink} mfaRequired={setPendingMfa} />}
+  return <PrivacyShield><UIContext.Provider value={context}><SafeAreaView style={{ flex: 1, backgroundColor: signedIn ? colors.bg : authPalettes[colors === darkColors ? 'dark' : 'light'].bg }}><StatusBar style={colors === darkColors ? 'light' : 'dark'} />
+    {!ready ? <Busy /> : background && (signedIn || pendingMfa) ? <View style={{ flex: 1, backgroundColor: colors.bg }} /> : pendingMfa ? <MfaScreen client={client} pending={pendingMfa} completed={() => setPendingMfa(null)} cancelled={() => setPendingMfa(null)} /> : locked && signedIn ? <Unlock onUnlock={() => setLocked(false)} /> : <MobileWorkspace key={signedIn ? generation : 'signed-out'} client={client} product={product} base={apiBaseUrl} supabaseUrl={supabaseUrl} signedIn={signedIn} languageChanged={setLanguage} themeChanged={setTheme} authBrowser={authBrowser} googleEnabled={extra.googleSignInEnabled === true} pendingLink={pendingLink} mfaRequired={setPendingMfa} />}
     {error ? <ErrorNotice code={error} /> : null}
   </SafeAreaView></UIContext.Provider></PrivacyShield>;
 }
