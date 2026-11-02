@@ -12,7 +12,7 @@ export const validRegistrationEmail = (value: string) => value.trim().length <= 
 export function registrationError(input: Registration) {
   if (!/^[\p{L}\p{N}_-]{3,50}$/u.test(input.username.trim())) return 'INVALID_USERNAME';
   if (!validRegistrationEmail(input.email)) return 'INVALID_EMAIL';
-  if (input.password.length < 6 || input.password.length > 1024) return 'INVALID_PASSWORD';
+  if (input.password.trim().length < 6 || input.password.length > 1024) return 'INVALID_PASSWORD';
   if (input.password !== input.confirmation) return 'PASSWORD_MISMATCH';
   if (!input.termsAccepted) return 'TERMS_REQUIRED';
   return null;

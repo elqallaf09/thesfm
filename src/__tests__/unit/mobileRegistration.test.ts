@@ -15,7 +15,8 @@ describe('native registration validation and translations', () => {
   it.each([
     [{ username: 'x' }, 'INVALID_USERNAME'], [{ username: 'x@y' }, 'INVALID_USERNAME'],
     [{ email: 'invalid' }, 'INVALID_EMAIL'], [{ email: `${'x'.repeat(250)}@example.com` }, 'INVALID_EMAIL'],
-    [{ password: '12345' }, 'INVALID_PASSWORD'], [{ password: 'x'.repeat(1025) }, 'INVALID_PASSWORD'],
+    [{ password: '12345' }, 'INVALID_PASSWORD'], [{ password: '      ' }, 'INVALID_PASSWORD'],
+    [{ password: '   abc   ' }, 'INVALID_PASSWORD'], [{ password: 'x'.repeat(1025) }, 'INVALID_PASSWORD'],
     [{ confirmation: 'different' }, 'PASSWORD_MISMATCH'], [{ termsAccepted: false }, 'TERMS_REQUIRED'],
   ] as const)('rejects %j before sending any credentials', async (change, expected) => {
     const fetcher = vi.fn(); const { client } = setup(fetcher);
