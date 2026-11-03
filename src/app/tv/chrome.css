@@ -1,7 +1,7 @@
 /* Shared TV chrome. All colors resolve without modern color functions. */
 .tv-screen.tv-strips-only { height: 100vh; height: 100dvh; }
 .tv-unified-header { display: flex; align-items: center; justify-content: space-between; gap: .8em; flex: 0 0 auto; min-width: 0; }
-.tv-unified-brand { display: flex; align-items: center; gap: .55em; flex-shrink: 0; }
+.tv-unified-brand { display: flex; align-items: center; gap: .55em; flex-shrink: 0; line-height: 1.25; }
 .tv-unified-brand img { width: 2.2em; height: 2.2em; object-fit: contain; }
 .tv-unified-brand strong, .tv-unified-brand span { display: block; }
 .tv-unified-brand strong { font-size: 1em; letter-spacing: .07em; }

@@ -203,7 +203,7 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await page.getByRole('button', { name: 'Customize markets', exact: true }).click();
   await page.getByRole('button', { name: 'Clear all', exact: true }).click();
   await page.getByRole('textbox', { name: 'Search markets', exact: true }).fill('QA market 7');
-  await page.locator('.tv-market-options .tv-market-toggle').click();
+  await page.locator('.tv-market-editor').getByRole('switch').click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.tv-market-strip')).toHaveCount(1);
   await expect(page.locator('.tv-market-strip')).toHaveAttribute('data-market', 'QA7');
