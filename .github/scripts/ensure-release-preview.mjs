@@ -1,3 +1,4 @@
+import { validatePreviewTarget } from './validate-preview-target.mjs';
 import { resolvePreviewCredentials } from './resolve-preview-credentials.mjs';
 
 const project = 'prj_AumPZoHxwpIUVJID2gQBx30ZmciV';
@@ -49,12 +50,7 @@ export async function ensureReleasePreview({ github, context, core, env = proces
   };
   const assertCurrent = async () => {
     const { data } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
-    if (data.state !== 'open' || data.head.sha !== sha) throw new Error('Pull request changed; refusing a stale deployment.');
-    if (!/^[a-f0-9]{40}$/.test(data.base?.sha ?? '')) throw new Error('Missing current base commit.');
-    const comparison = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${data.base.sha}...${sha}` });
-    if (!['ahead', 'identical'].includes(comparison.data.status)) {
-      throw new Error('Update this branch with current main before spending on a release Preview.');
-    }
+    await validatePreviewTarget({ github, repo: context.repo, pr: data, sha });
   };
   await assertCurrent();
   const settings = await request(`/v9/projects/${project}`);

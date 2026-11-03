@@ -23,14 +23,14 @@ function snapshot(): TvSnapshot {
   };
 }
 
-async function openTv(page: Page, language: TvLanguage) {
-  await page.addInitScript(language => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language })), language);
+async function openTv(page: Page, language: TvLanguage, settings: Record<string, unknown> = {}) {
+  await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, ...settings })), { language, settings });
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot() }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator(settings.displayMode === 'browse' ? '.tv-quote-grid > button' : '.tv-scene-row')).toHaveCount(6);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -137,6 +137,151 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
     await expect(opener).toBeFocused();
-    await expect(page.getByRole('meter')).toHaveAttribute('aria-valuenow', '7');
+    await expect(page.locator('.tv-scene-health')).not.toHaveAttribute('open', '');
+    await page.locator('.tv-scene-health > summary').click();
+    await expect(page.locator('.tv-scene-coverage-total')).toBeVisible();
+    await expect(page.locator('.tv-scene-coverage-total')).toContainText('7 / 10');
   });
 }
+
+for (const language of ['ar', 'en', 'fr'] as const) {
+  test(`packaged ${language} browse fits both card rows and reachable pagination`, async ({ page }) => {
+    await openTv(page, language, { displayMode: 'browse', autoRotate: false });
+    for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
+      await page.setViewportSize({ width, height });
+      await containedContent(page, '.tv-quote-grid > button');
+      const measurements = await page.evaluate(() => {
+        const grid = document.querySelector('.tv-quote-grid')!, pager = document.querySelector('.tv-pagination')!;
+        const cards = [...grid.children];
+        return { gridBottom: grid.getBoundingClientRect().bottom, lastBottom: cards.at(-1)!.getBoundingClientRect().bottom,
+          pagerBottom: pager.getBoundingClientRect().bottom, width: document.documentElement.scrollWidth };
+      });
+      expect(measurements.width).toBeLessThanOrEqual(width + 2);
+      expect(measurements.pagerBottom).toBeLessThan(height);
+      if (width >= 1280) expect(measurements.lastBottom).toBeLessThanOrEqual(measurements.gridBottom + 1);
+      await expect(page.locator('.tv-pagination')).toBeInViewport({ ratio: 1 });
+    }
+    await page.locator('.tv-mode-viewing').click();
+    await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+    await expect(page.locator('.tv-unified-brand img')).toHaveAttribute('alt', 'THE SFM');
+    await page.locator('.tv-mode-strips').click();
+    await expect(page.locator('.tv-strips-only')).toBeVisible();
+    await expect(page.locator('.tv-unified-brand img')).toHaveAttribute('alt', 'THE SFM');
+    await page.locator('.tv-mode-browse').click();
+    await expect(page.locator('.tv-quote-grid > button')).toHaveCount(6);
+  });
+}
+
+test('wall-clock ticks do not render the dashboard and quote freshness remains scheduled', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-03T09:59:58Z') });
+  await page.addInitScript(() => {
+    type Fiber = { memoizedProps?: Record<string, unknown>; memoizedState?: unknown; child?: Fiber; sibling?: Fiber; return?: Fiber };
+    const scope = window as typeof window & { tvRootRenders: number; tvCommits: number; __REACT_DEVTOOLS_GLOBAL_HOOK__: unknown };
+    scope.tvRootRenders = 0; scope.tvCommits = 0;
+    let previous: unknown;
+    const find = (fiber?: Fiber): Fiber | undefined => {
+      if (!fiber) return;
+      if (fiber.memoizedProps && 'data-tv-root' in fiber.memoizedProps) return fiber.return;
+      return find(fiber.child) || find(fiber.sibling);
+    };
+    scope.__REACT_DEVTOOLS_GLOBAL_HOOK__ = { supportsFiber: true, inject: () => 1, onCommitFiberUnmount: () => {},
+      onCommitFiberRoot: (_id: number, root: { current: Fiber }) => {
+        scope.tvCommits++;
+        const state = find(root.current)?.memoizedState;
+        if (state && state !== previous) { scope.tvRootRenders++; previous = state; }
+      } };
+  });
+  await openTv(page, 'ar', { autoHideControls: false, autoRotate: false, ticker: false });
+  const counts = () => page.evaluate(() => {
+    const scope = window as typeof window & { tvRootRenders: number; tvCommits: number };
+    return { renders: scope.tvRootRenders, commits: scope.tvCommits };
+  });
+  await page.clock.runFor(100);
+  const before = await counts();
+  expect(before.renders).toBeGreaterThan(0);
+  await page.clock.runFor(3100);
+  await expect(page.locator('.tv-unified-clock strong')).toHaveText('13:00');
+  const after = await counts();
+  expect(after.commits).toBeGreaterThan(before.commits);
+  expect(after.renders).toBe(before.renders);
+  await page.clock.runFor(15000);
+  expect((await counts()).renders).toBeGreaterThan(after.renders);
+});
+
+test('full Arabic news, isolated quote evidence and legacy-compatible colors', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-03T09:00:00Z') });
+  await openTv(page, 'ar');
+  const title = 'عنوان خبري طويل لاختبار ظهور النص كاملاً في العمود الجانبي وإمكانية فتح تفاصيله بالريموت دون إخفاء بقية الكلمات أو قص السطر الأخير من الخبر';
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'full', title, source: 'مصدر الاختبار', publishedAt: '2026-11-03T08:30:00Z', url: 'https://example.com/story' }] } }));
+  await page.reload();
+  await expect(page.locator('.tv-scene-headlines button > span')).toHaveText(title);
+  expect(await page.locator('.tv-scene-headlines button > span').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  await expect(page.locator('.tv-scene-row time').first()).toHaveText('00:00');
+  await expect(page.locator('.tv-scene-ticker-evidence').first()).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('.tv-scene-ticker-evidence time').first()).toHaveAttribute('dir', 'ltr');
+  await page.locator('[data-tv-focus-key="scene-heatmap"]').click();
+  expect(await page.locator('.tv-scene-heatmap > button').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(55, 45, 53)');
+  await page.locator('[data-tv-focus-key="settings"]').click();
+  expect(await page.locator('.tv-modal-backdrop').evaluate(el => getComputedStyle(el).backdropFilter)).toBe('none');
+});
+
+test('pairing rejects malformed responses, times out, and accepts a valid activation', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-03T09:00:00Z') });
+  await openTv(page, 'en');
+  let state: 'invalid' | 'timeout' | 'valid' = 'invalid';
+  await page.route('**/api/tv/pair', route => {
+    if (state === 'timeout') return;
+    if (state === 'invalid') return route.fulfill({ json: { code: 'PAIR_UNAVAILABLE' } });
+    return route.fulfill({ json: route.request().method() === 'POST'
+      ? { code: 'ABCDEF123456', secret: 'a'.repeat(64), expiresAt: '2026-11-03T09:10:00Z' }
+      : { state: 'active', token: 'b'.repeat(64) } });
+  });
+  await page.route('**/api/tv/device', route => route.fulfill({ json: { device: { name: 'Test TV', settings: { language: 'en' } }, symbols: ['QA4'], alerts: [] } }));
+  await page.locator('[data-tv-focus-key="pair"]').click();
+  const create = page.locator('.tv-pair-content button');
+  await create.click();
+  await expect(page.locator('.tv-pair-code')).toHaveCount(0);
+  await expect(create).toBeEnabled();
+  state = 'timeout';
+  await create.click();
+  await expect(create).toBeDisabled();
+  await page.clock.runFor(16000);
+  await expect(create).toBeEnabled();
+  state = 'valid';
+  await create.click();
+  await expect(page.locator('.tv-pair-code')).toHaveText('ABCD — EF12 — 3456');
+  await page.clock.runFor(5100);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe('b'.repeat(64));
+});
+
+test('strips use index points, show compatible tick colors and keep unavailable instruments moving', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-11-03T09:00:00Z') });
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', displayMode: 'strips', marketIds: ['US'], groups: ['us'], autoHideControls: false })));
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US', labelFr: 'US', count: 24 }] } }));
+  let price: number | null = 5961.2;
+  let observed = '2026-11-03T09:00:00Z';
+  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { ...snapshot(), summary: undefined, directoryTotal: 24,
+    quotes: [{ ...snapshot().quotes[0], symbol: '^GSPC', price, status: price ? 'available' : 'unavailable',
+      source: price ? 'Verified source' : null, observedAt: price ? observed : null, issue: price ? undefined : 'rate_limited' }],
+    retryAt: price ? undefined : '2026-11-03T09:05:00Z' } }));
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  const strip = page.locator('[data-market="US"]');
+  await expect(strip.locator('.tv-strip-price').first()).toContainText('5,961.20 نقطة');
+  await expect(strip.locator('.tv-strip-evidence').first()).toHaveAttribute('dir', 'rtl');
+  await expect(strip.locator('.tv-strip-evidence time').first()).toHaveText('12:00');
+  await page.clock.runFor(2000);
+  price = 5962.2; observed = '2026-11-03T09:00:02Z';
+  await page.getByRole('button', { name: 'تحديث', exact: true }).click();
+  await expect(strip.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
+  await expect(strip.locator('.tv-market-strip-item').first()).toHaveCSS('background-color', 'rgb(30, 57, 58)');
+  price = null;
+  await page.reload();
+  await expect(strip).toHaveAttribute('data-empty', 'true');
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
+  await expect(strip.locator('.tv-strip-price')).toHaveCount(0);
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'running');
+  await expect(strip).toHaveAttribute('data-source-cooling', 'true');
+});

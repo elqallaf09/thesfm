@@ -8,4 +8,5 @@ import './packaged.css';
 import '@/app/tv/display-controls.css';
 import '@/app/tv/viewing.css';
 import '@/app/tv/sessions.css';
+import '@/app/tv/chrome.css';
 createRoot(document.getElementById('root')!).render(<MarketsTv />);

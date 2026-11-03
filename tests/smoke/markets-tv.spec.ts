@@ -29,6 +29,10 @@ test('instrument choices search beyond the first page, persist and restore all s
   await page.getByRole('textbox', { name: 'ابحث بالرمز أو اسم الشركة' }).fill('QA1999');
   await expect(page.getByRole('checkbox')).toHaveCount(1);
   await page.getByRole('checkbox').click();
+  await page.getByRole('textbox', { name: 'ابحث بالرمز أو اسم الشركة' }).fill('');
+  await page.getByRole('button', { name: 'أسهمي المختارة · 2', exact: true }).click();
+  await expect(page.getByRole('checkbox')).toHaveCount(2);
+  await expect(page.getByRole('checkbox', { name: /QA1999/ })).toBeVisible();
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }]) {
     await page.setViewportSize(viewport);
     const dialog = await page.getByRole('dialog').boundingBox();
@@ -93,7 +97,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await expect(page.locator('canvas.tv-qr')).toBeVisible();
   await expect(page.getByText('No valid saved analysis for this asset')).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Browse all markets', exact: true }).click();
+  await page.getByRole('link', { name: 'Browse all markets', exact: true }).click();
   await page.getByRole('button', { name: 'Market map', exact: true }).click();
   await expect(page.getByRole('group', { name: 'Market map', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Market hours', exact: true }).click();
@@ -134,7 +138,7 @@ test('TV market selection changes the main screen and promotes its independent t
       quotes: Array.from({ length: 6 }, (_, index) => ({ symbol: `${market}-${pageNumber * 6 + index}`, name: 'Synthetic QA', nameAr: 'اختبار', price: null, changePercent: null, currency: 'USD', source: null, observedAt: null, status: 'unavailable' })) } });
   });
   await page.goto('/tv');
-  await page.getByRole('button', { name: 'تصفح كل الأسواق', exact: true }).click();
+  await page.getByRole('link', { name: 'تصفح كل الأسواق', exact: true }).click();
   await expect(page.locator('.tv-market-strip')).toHaveCount(2);
   await page.locator('[data-market="SSE"] .tv-market-strip-heading').click();
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','SSE');
@@ -223,7 +227,7 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'paused');
   await page.getByRole('button', { name: 'Resume strips', exact: true }).click();
   await expect(page.locator('.tv-strip-change svg').first()).toBeVisible();
-  await page.getByRole('link', { name: 'TV dashboard', exact: true }).click();
+  await page.getByRole('link', { name: 'Viewing mode', exact: true }).click();
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.locator('.tv-strips-only')).toHaveCount(0);
 });

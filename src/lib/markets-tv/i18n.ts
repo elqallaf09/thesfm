@@ -1,5 +1,24 @@
 import type { TvLanguage } from './types';
 export const TV_TEXT = {
+  done: ['تم', 'Done', 'Terminé'],
+  marketPickerHeading: ['شاشتك، على اختيارك', 'Your screen, your markets', 'Votre écran, vos marchés'],
+  marketPickerHelp: ['اختر سوقًا من القائمة لضبط ظهوره وترتيبه وأسهمه وسرعة شريطه.', 'Choose a market to set its visibility, order, instruments and scroll speed.', 'Choisissez un marché pour régler sa visibilité, son ordre, ses titres et sa vitesse.'],
+  marketRegion: ['المنطقة أو النوع', 'Region or type', 'Région ou catégorie'],
+  marketList: ['قائمة الأسواق', 'Market list', 'Liste des marchés'],
+  marketOptions: ['إعدادات السوق', 'Market options', 'Options du marché'],
+  showMarket: ['عرض السوق', 'Show market', 'Afficher le marché'],
+  marketVisible: ['ظاهر على الشاشة', 'Shown on screen', 'Affiché à l’écran'],
+  marketHidden: ['غير معروض', 'Not displayed', 'Non affiché'],
+  addMarket: ['إضافة إلى الشاشة', 'Add to screen', 'Ajouter à l’écran'],
+  displayOrder: ['ترتيب الظهور', 'Display order', 'Ordre d’affichage'],
+  selectResults: ['إضافة الأسواق الظاهرة', 'Add visible markets', 'Ajouter les marchés visibles'],
+  instrumentPickerHelp: ['اعرض السوق كاملًا أو كوّن قائمتك الخاصة. تبقى اختياراتك محفوظة عند البحث والتنقل.', 'Show the entire market or create your own list. Your choices stay saved as you search and browse.', 'Affichez tout le marché ou créez votre liste. Vos choix sont conservés pendant la recherche.'],
+  allInstrumentsHelp: ['عرض دليل السوق كاملًا', 'Display the entire directory', 'Afficher tout le répertoire'],
+  specificInstrumentsHelp: ['اختر ما تريد متابعته فقط', 'Choose what you want to follow', 'Choisissez les titres à suivre'],
+  instrumentList: ['قائمة الأسهم والأصول', 'Instrument list', 'Liste des titres'],
+  browseInstruments: ['تصفح الأسهم', 'Browse instruments', 'Parcourir les titres'],
+  myInstruments: ['أسهمي المختارة', 'My instruments', 'Mes titres'],
+  chooseFirstInstrument: ['لتكوين قائمة خاصة، اضغط على أول سهم تريده أو اختر «أسهم وأصول محددة».', 'To create a custom list, choose your first instrument or switch to Selected instruments.', 'Pour créer votre liste, choisissez un premier titre ou passez aux Titres sélectionnés.'],
   channels: ['قنواتي', 'My channels', 'Mes chaînes'],
   balancedDensity: ['متوازن', 'Balanced', 'Équilibré'],
   channelsHelp: ['احفظ الأسواق وترتيبها واختيارات الأسهم واللغة وكثافة العرض وسرعة كل شريط معًا.', 'Save markets, their order, instrument choices, language, density and each strip’s speed together.', 'Enregistrez ensemble les marchés, leur ordre, les titres, la langue, la densité et la vitesse de chaque bande.'],
@@ -144,13 +163,27 @@ export function tvTime(value: string | null, language: TvLanguage, date = false)
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
   const key = `${language}:${date}:${dateOnly}`;
-  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), timeZone: dateOnly ? 'UTC' : 'Asia/Kuwait' }));
+  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), timeZone: dateOnly ? 'UTC' : 'Asia/Kuwait' }));
   return timeFormats.get(key)!.format(new Date(value));
 }
 export function tvPrice(price: number | null, currency: string | null) {
   if (price === null || !Number.isFinite(price) || price <= 0) return '—';
-  const key = price > 0 && price < .001 ? 'tiny' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : price < 1 ? '6' : '4';
-  if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', key === 'tiny' ? { maximumSignificantDigits: 6 } : { maximumFractionDigits: Number(key) }));
+  const key = price < .001 ? 'tiny' : price < 1 && !['KWD','BHD','OMR'].includes(currency || '') ? '6' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : '2';
+  if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', key === 'tiny' ? { minimumSignificantDigits: 2, maximumSignificantDigits: 6 } : { minimumFractionDigits: Number(key), maximumFractionDigits: Number(key) }));
   return priceFormats.get(key)!.format(price);
 }
 const priceFormats = new Map<string, Intl.NumberFormat>();
+
+// Compare days in the displayed timezone, not the device timezone or UTC.
+const quoteDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuwait', year: 'numeric', month: '2-digit', day: '2-digit' });
+export function tvQuoteTime(value: string | null, language: TvLanguage, now: number) {
+  if (!value || !Number.isFinite(Date.parse(value))) return '—';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const instant = new Date(value);
+  const time = tvTime(value, language);
+  if (Number.isFinite(now) && now > 0 && quoteDay.format(instant) === quoteDay.format(now)) return time;
+  // Keep the full date for an older observation, including its year.
+  const parts = quoteDay.formatToParts(instant);
+  const part = (type: string) => parts.find(value => value.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')} · ${time}`;
+}

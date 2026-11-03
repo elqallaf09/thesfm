@@ -116,9 +116,9 @@ test('priced-only mode advances an empty batch and idle controls wake without hi
   await expect(page.locator('.tv-market-strip-set').first().locator('button')).toHaveCount(2, { timeout: 18000 });
   await expect(page.locator('.tv-strip-coverage')).toContainText('2 / 2');
   await page.locator('.tv-market-strip-heading').focus();
-  await expect(page.locator('.tv-strips-toolbar')).toHaveAttribute('data-controls-hidden', 'true', { timeout: 16000 });
+  await expect(page.locator('.tv-unified-header')).toHaveAttribute('data-controls-hidden', 'true', { timeout: 16000 });
   await page.keyboard.press('ArrowUp');
-  await expect(page.locator('.tv-strips-toolbar')).toHaveAttribute('data-controls-hidden', 'false');
+  await expect(page.locator('.tv-unified-header')).toHaveAttribute('data-controls-hidden', 'false');
   await page.getByRole('button', { name: 'Display settings', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -140,17 +140,17 @@ test('a rate-limited strip keeps its instruments accessible and pauses automatic
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/tv/strips');
   const strip = page.locator('[data-market="US"]');
-  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(12);
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(24);
   await expect(strip).toHaveAttribute('data-source-cooling', 'true');
   await expect(strip.locator('.tv-strip-price,.tv-strip-change')).toHaveCount(0);
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'none');
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
   await strip.locator('.tv-market-strip-track').dispatchEvent('animationiteration');
   await page.clock.fastForward(9000);
   expect(pages.every(value => value === '0')).toBe(true);
   for (const viewport of [{ width: 1280, height: 720 }, { width: 3840, height: 2160 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
-    const last = strip.locator('.tv-market-strip-item').last();
+    const last = strip.locator('.tv-market-strip-set').first().locator('.tv-market-strip-item').last();
     await last.focus();
     await expect(last).toBeFocused();
     await expect.poll(() => last.evaluate(element => {

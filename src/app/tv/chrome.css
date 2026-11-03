@@ -1,0 +1,74 @@
+/* Shared TV chrome. All colors resolve without modern color functions. */
+.tv-unified-header { display: flex; align-items: center; justify-content: space-between; gap: .8em; flex: 0 0 auto; min-width: 0; }
+.tv-unified-brand { display: flex; align-items: center; gap: .55em; flex-shrink: 0; }
+.tv-unified-brand img { width: 2.2em; height: 2.2em; object-fit: contain; }
+.tv-unified-brand strong, .tv-unified-brand span { display: block; }
+.tv-unified-brand strong { font-size: 1em; letter-spacing: .07em; }
+.tv-unified-brand span { font-size: max(12px, .6em); color: var(--tv-muted); letter-spacing: .1em; }
+.tv-unified-clock { display: flex; align-items: center; gap: .65em; white-space: nowrap; }
+.tv-unified-clock strong { font: 500 1.25em/1.2 var(--font-data); font-variant-numeric: tabular-nums; }
+.tv-unified-clock small { font-size: max(12px, .55em); color: var(--tv-muted); line-height: 1.5; }
+.tv-unified-clock small span { display: block; }
+.tv-unified-header .tv-header-actions { gap: .3em; font-size: .72em; flex-wrap: nowrap; }
+.tv-unified-header .tv-header-actions[hidden] { display: none; }
+.tv-unified-header .tv-header-actions button, .tv-unified-header .tv-display-link { min-height: 2.7em; padding: .45em .55em; }
+.tv-mode-switch { display: flex; gap: .2em; padding: .15em; background: var(--tv-panel2); border-radius: var(--radius-control); }
+.tv-mode-switch .tv-display-link { border-color: transparent; background: transparent; white-space: nowrap; }
+.tv-mode-switch .tv-display-link[aria-current=page] { color: var(--tv-accent); background: var(--tv-panel); border-color: var(--tv-accent); }
+.tv-quote-evidence { min-width: 0; color: var(--tv-muted); }
+.tv-evidence-stacked { display: flex; flex-direction: column; align-items: flex-start; gap: .12em; font-size: max(12px, .7em); line-height: 1.35; }
+.tv-evidence-origin { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5em; min-width: 0; }
+.tv-quote-evidence .tv-scene-source, .tv-quote-evidence .tv-status, .tv-quote-evidence time { font-size: inherit; line-height: inherit; margin: 0; }
+.tv-quote-evidence .tv-scene-source { max-width: 13em; }
+.tv-quote-evidence time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tv-evidence-inline { display: flex; align-items: center; justify-content: flex-start; gap: .75em; font-size: max(12px, .65em); line-height: 1.5; }
+.tv-evidence-inline .tv-evidence-origin { flex-wrap: nowrap; }
+.tv-screen .tv-market-strip-item > .tv-strip-evidence { display: flex; grid-column: 1/-1; grid-row: 3; font-size: max(12px, .6em); overflow: visible; }
+.tv-scene-ticker-evidence { grid-column: 1/-1; }
+.tv-screen .tv-scene-summary > .tv-evidence-stacked { font-size: max(12px, .62em); }
+.tv-scene-summary .tv-evidence-stacked .tv-status, .tv-scene-summary .tv-evidence-stacked .tv-scene-source, .tv-scene-summary .tv-evidence-stacked time { font-size: inherit; }
+.tv-scene-row .tv-evidence-origin { gap: .35em; }
+.tv-scene-row .tv-quote-evidence { line-height: 1.2; gap: .08em; }
+.tv-screen .tv-scene-row { padding-block: .05em; }
+.tv-evidence-origin > .tv-status:not(:first-child)::before { content: '·'; margin-inline-end: .4em; color: var(--tv-muted); }
+.tv-scene-movers { background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-panel); padding: .65em .75em; }
+.tv-scene-movers > p { font-size: max(12px, .6em); line-height: 1.5; color: var(--tv-muted); }
+.tv-screen .tv-scene-movers button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .25em .5em; padding: .5em 0; width: 100%; min-height: 0; border: 0; border-top: 1px solid var(--tv-line); border-radius: 0; background: transparent; text-align: start; font-size: .75em; }
+.tv-scene-movers small { grid-column: 1/-1; color: var(--tv-muted); font-size: max(12px, .8em); }
+.tv-scene-movers strong { font-family: var(--font-data); }
+.tv-scene-health > summary { cursor: pointer; font-size: .75em; padding-block: .15em; }
+.tv-scene-health > p { margin-top: .5em; }
+.tv-scene-sidebar > section, .tv-scene-sidebar > details { flex: 0 0 auto; }
+.tv-scene-headlines button > span { display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
+.tv-news-evidence { display: flex; flex-wrap: wrap; gap: .25em .6em; color: var(--tv-muted); }
+.tv-scene-headlines .tv-news-evidence { display: flex; }
+.tv-news-panel > .tv-scene-headlines { border: 0; background: transparent; }
+.tv-news-panel .tv-scene-headlines h2 { font-size: 1em; }
+.tv-browsing .tv-quote > .tv-quote-evidence { margin-top: .65em; }
+@media (min-width: 761px) {
+  .tv-screen.tv-browsing { height: 100vh; height: 100dvh; min-height: 0; font-size: clamp(16px, min(1.3vw, 2.4vh), 50px); padding: 2.2vh 2.5vw; gap: .6em; overflow: hidden; }
+  .tv-browsing .tv-body { min-height: 0; overflow: hidden; gap: .75em; grid-template-columns: minmax(0, 2.8fr) minmax(0, 1fr); }
+  .tv-browsing .tv-layout-quotes { grid-template-columns: minmax(0, 1fr); }
+  .tv-browsing .tv-main-panel { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+  .tv-browsing .tv-quote-grid { flex: 1; min-height: 0; grid-template-rows: repeat(2, minmax(min-content, 1fr)); overflow-y: auto; padding: .2em; gap: .6em; }
+  .tv-screen.tv-browsing .tv-quote { min-height: 0; padding: .6em .7em; }
+  .tv-browsing .tv-quote-name { margin-block: .2em .35em; }
+  .tv-browsing .tv-price-line strong { font-size: 1.5em; }
+  .tv-browsing .tv-price-line small { font-size: .6em; }
+  .tv-browsing .tv-pagination { flex: 0 0 auto; margin-top: .4em; padding-inline: .25em; }
+  .tv-browsing .tv-news-panel { min-height: 0; overflow-y: auto; }
+  .tv-browsing > .tv-market-strips { max-height: 5.5em; padding-top: .4em; }
+  .tv-browsing .tv-body .tv-empty, .tv-browsing .tv-body .tv-loading { min-height: 0; flex: 1; }
+  .tv-browsing .tv-section-heading h1 { font-size: 1.25em; }
+  .tv-browsing .tv-section-heading { align-items: center; }
+}
+@media (max-width: 1450px) and (min-width: 761px) {
+  .tv-unified-header .tv-header-actions span { display: none; }
+  .tv-unified-clock small span { display: none; }
+}
+@media (max-width: 760px) {
+  .tv-unified-header { flex-wrap: wrap; }
+  .tv-unified-header .tv-header-actions { flex-wrap: wrap; width: 100%; font-size: .8em; }
+  .tv-unified-header .tv-header-actions button, .tv-unified-header .tv-display-link { min-height: 44px; }
+  .tv-unified-header .tv-mode-switch span { display: inline; }
+}

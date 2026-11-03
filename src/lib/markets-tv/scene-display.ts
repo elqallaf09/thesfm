@@ -11,6 +11,8 @@ export function tvScenePath(scene: TvScene) {
 }
 
 export const TV_SCENE_TEXT = {
+  sceneMoves: ['تحركات المشهد', 'Scene movers', 'Variations de la sélection'],
+  selectedMoves: ['من الأدوات المعروضة فقط', 'Among displayed instruments only', 'Parmi les instruments affichés uniquement'],
   overview: ['نظرة عامة', 'Overview', 'Vue d’ensemble'],
   gulf: ['الكويت والخليج', 'Kuwait & Gulf', 'Koweït et Golfe'],
   world: ['العالم', 'World', 'Monde'],

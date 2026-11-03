@@ -40,20 +40,20 @@
 .tv-scene-summary-value { grid-column: 1/-1; font-family: var(--font-data); font-size: 1.65em; line-height: 1.25; letter-spacing: -.04em; }
 .tv-scene-summary-value small { font: 400 max(12px, .4em)/1.3 var(--font-ui); letter-spacing: 0; margin-inline-start: .5em; }
 .tv-scene-summary > .tv-scene-change { grid-column: 2; grid-row: 3; align-self: start; text-align: end; }
-.tv-scene-summary > .tv-scene-evidence { grid-column: 1; grid-row: 3; }
+.tv-scene-summary > .tv-evidence-stacked { grid-column: 1; grid-row: 3; }
 .tv-scene-change { display: flex; flex-direction: column; align-items: start; gap: .1em; min-width: 0; font-family: var(--font-data); }
 .tv-scene-change > span { display: inline-flex; align-items: center; gap: .18em; white-space: nowrap; }
 .tv-scene-change svg { width: .85em; height: .85em; }
 .tv-scene-change small { font-family: var(--font-ui); font-size: max(12px, .65em); line-height: 1.4; }
-.tv-scene-evidence { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; min-width: 0; line-height: 1.2; gap: .1em .35em; color: var(--tv-muted); }
-.tv-scene-evidence .tv-status { font-size: max(12px, .7em); line-height: 1.2; margin: 0; white-space: nowrap; }
-.tv-scene-evidence time, .tv-scene-source { font-size: max(12px, .7em); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tv-scene-evidence time { grid-column: 1/-1; }
-.tv-scene-summary .tv-scene-evidence .tv-status { font-size: max(12px, .62em); }
-.tv-scene-summary .tv-scene-source, .tv-scene-summary .tv-scene-evidence time { font-size: max(12px, .62em); }
+.tv-evidence-stacked { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; min-width: 0; line-height: 1.2; gap: .1em .35em; color: var(--tv-muted); }
+.tv-evidence-stacked .tv-status { font-size: max(12px, .7em); line-height: 1.2; margin: 0; white-space: nowrap; }
+.tv-evidence-stacked time, .tv-scene-source { font-size: max(12px, .7em); line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-evidence-stacked time { grid-column: 1/-1; }
+.tv-scene-summary .tv-evidence-stacked .tv-status { font-size: max(12px, .62em); }
+.tv-scene-summary .tv-scene-source, .tv-scene-summary .tv-evidence-stacked time { font-size: max(12px, .62em); }
 .tv-scene-summary .tv-scene-change { font-size: .83em; }
 .tv-scene-summary-code { grid-column: 1/-1; font: 400 max(12px, .7em)/1.4 var(--font-data); color: var(--tv-muted); }
-.tv-scene-summary[data-priced=false] > .tv-scene-evidence { grid-column: 1/-1; }
+.tv-scene-summary[data-priced=false] > .tv-evidence-stacked { grid-column: 1/-1; }
 .tv-scene-summary[data-priced=false] .tv-status { white-space: normal; }
 .tv-status[data-status=closed] { color: var(--tv-muted); }
 .tv-status[data-status=unknown_delay], .tv-status[data-status=delayed] { color: var(--tv-accent); }
@@ -87,7 +87,7 @@
 .tv-scene-price small { font-size: max(12px, .65em); line-height: 1.15; }
 .tv-scene-row .tv-scene-change { font-size: .9em; align-items: center; line-height: 1.2; }
 .tv-scene-row .tv-scene-change small { line-height: 1.2; }
-.tv-scene-row[data-priced=false] .tv-scene-evidence { grid-column: 2/-1; display: block; }
+.tv-scene-row[data-priced=false] .tv-evidence-stacked { grid-column: 2/-1; display: block; }
 .tv-scene-row[data-priced=false] .tv-status { white-space: normal; line-height: 1.4; }
 .tv-scene-sidebar { display: flex; flex-direction: column; gap: .6em; min-width: 0; min-height: 0; overflow-y: auto; padding: .15em; }
 .tv-scene-health, .tv-scene-headlines { background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-panel); padding: .65em .75em; min-width: 0; }
@@ -113,7 +113,7 @@
 .tv-scene-unavailable li span { color: var(--tv-muted); }
 .tv-scene-headlines { flex: 1 1 auto; }
 .tv-screen .tv-scene-headlines button { display: block; min-height: 0; width: 100%; padding: .45em 0; border: 0; border-top: 1px solid var(--tv-line); border-radius: 0; background: transparent; text-align: start; }
-.tv-scene-headlines button > span { font-size: .75em; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tv-scene-headlines button > span { font-size: .78em; line-height: 1.55; display: block; overflow-wrap: anywhere; }
 .tv-scene-headlines small { display: block; line-height: 1.4; font-size: max(12px, .6em); margin-top: .25em; }
 .tv-scene-headlines > p { line-height: 1.5; color: var(--tv-muted); font-size: .75em; margin-top: .5em; }
 .tv-scene-no-data, .tv-scene-loading, .tv-viewing-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em; text-align: center; padding: 1em; flex: 1; min-height: 0; color: var(--tv-muted); }
@@ -121,13 +121,13 @@
 .tv-scene-heatmap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(min-content, 1fr); gap: .5em; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .tv-scene-heatmap > button:focus { outline-offset: -3px; }
 .tv-screen .tv-scene-heatmap > button { display: flex; flex-direction: column; align-items: start; justify-content: center; gap: .2em; min-width: 0; min-height: 0; padding: .6em; text-align: start; border: 0; color: var(--tv-text); background: var(--tv-panel2); }
-.tv-screen .tv-scene-heatmap > button[data-trend=up] { background: color-mix(in srgb, var(--tv-up) 13%, var(--tv-panel)); }
-.tv-screen .tv-scene-heatmap > button[data-trend=down] { background: color-mix(in srgb, var(--tv-down) 13%, var(--tv-panel)); }
+.tv-screen .tv-scene-heatmap > button[data-trend=up] { background: var(--tv-up-surface); }
+.tv-screen .tv-scene-heatmap > button[data-trend=down] { background: var(--tv-down-surface); }
 .tv-scene-heatmap-name { font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
 .tv-scene-heatmap > button > strong { font-family: var(--font-data); font-size: .8em; }
 .tv-scene-heatmap .tv-scene-change { font-size: 1.3em; }
 .tv-scene-heatmap .tv-scene-change small { font-size: max(12px, .5em); }
-.tv-scene-heatmap .tv-scene-evidence { font-size: .85em; width: 100%; }
+.tv-scene-heatmap .tv-evidence-stacked { font-size: .85em; width: 100%; }
 .tv-scene-ticker { display: flex; gap: .7em; align-items: stretch; overflow: hidden; min-height: 2.6em; flex: 0 0 auto; background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-control); }
 .tv-screen .tv-scene-ticker > button { color: var(--tv-accent); border: 0; border-radius: 0; padding: .3em .6em; font-size: .75em; background: var(--tv-panel); flex-shrink: 0; }
 .tv-scene-ticker-window { overflow: hidden; display: flex; align-items: center; direction: ltr; flex: 1; min-width: 0; }
@@ -170,14 +170,14 @@
   .tv-scene-summary-value small { display: block; margin: 0; }
   .tv-screen .tv-scene-summary { padding: .65em; grid-template-columns: minmax(0, 1fr); }
   .tv-scene-summary > .tv-scene-change { grid-column: 1; grid-row: 3; text-align: start; }
-  .tv-scene-summary > .tv-scene-evidence { grid-column: 1; grid-row: 4; }
-  .tv-scene-summary .tv-scene-evidence .tv-status { font-size: .75em; }
-  .tv-scene-summary .tv-scene-source, .tv-scene-summary .tv-scene-evidence time { font-size: .67em; }
+  .tv-scene-summary > .tv-evidence-stacked { grid-column: 1; grid-row: 4; }
+  .tv-scene-summary .tv-evidence-stacked .tv-status { font-size: .75em; }
+  .tv-scene-summary .tv-scene-source, .tv-scene-summary .tv-evidence-stacked time { font-size: .67em; }
   .tv-scene-body { grid-template-columns: minmax(0, 1fr); }
   .tv-scene-table-head { display: none; }
   .tv-screen .tv-scene-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5em; padding: .75em 0; }
-  .tv-scene-row .tv-scene-price, .tv-scene-row .tv-scene-evidence { align-items: end; text-align: end; }
-  .tv-scene-row .tv-scene-evidence time { white-space: normal; }
+  .tv-scene-row .tv-scene-price, .tv-scene-row .tv-evidence-stacked { align-items: end; text-align: end; }
+  .tv-scene-row .tv-evidence-stacked time { white-space: normal; }
   .tv-scene-rows { grid-auto-rows: auto; overflow: visible; }
   .tv-scene-sidebar { overflow: visible; }
   .tv-scene-health, .tv-scene-headlines { padding: .85em; }
