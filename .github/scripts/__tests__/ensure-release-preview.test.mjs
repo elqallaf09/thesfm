@@ -20,7 +20,7 @@ function setup({ existing = false, transform = value => value, stale = false, be
     number: 199, head: { sha, ref: 'feat/test', repo: { id: 1236791806, full_name: 'elqallaf09/thesfm' } },
   } } };
   const github = { rest: {
-    pulls: { get: async () => ({ data: { state: 'open', head: { sha: stale ? 'd'.repeat(40) : sha }, base: { sha: 'e'.repeat(40) } } }) },
+    pulls: { get: async () => ({ data: { state: 'open', head: { sha: stale ? 'd'.repeat(40) : sha, ref: 'feat/test', repo: { full_name: 'elqallaf09/thesfm' } }, base: { sha: 'e'.repeat(40), ref: 'main', repo: { full_name: 'elqallaf09/thesfm' } } } }) },
     repos: {
       compareCommitsWithBasehead: async () => ({ data: { status: behind ? 'diverged' : 'ahead' } }),
       listDeployments: async () => ({ data: existing ? [{ id: 9, sha, ref: sha, payload: { vercelDeploymentId: ready.id } }] : [] }),
@@ -85,7 +85,7 @@ test('rejects forks, production refs, stale heads and missing tokens before any 
     assert.equal(fixture.calls.length, 0);
   }
   const fixture = setup({ stale: true });
-  await assert.rejects(ensureReleasePreview(fixture.args), /stale/);
+  await assert.rejects(ensureReleasePreview(fixture.args), /Invalid/);
   assert.equal(fixture.calls.length, 0);
   const oldBase = setup({ behind: true });
   await assert.rejects(ensureReleasePreview(oldBase.args), /current main/);
