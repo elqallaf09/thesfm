@@ -524,6 +524,60 @@ describe('triggerScan database idempotency', () => {
   });
 });
 
+describe('trader_provider_status.last_successful_update', () => {
+  const STALE_MARKET_TIME = '2026-10-30T20:02:00.000Z';
+
+  function providerPayload(calls: { table: string; args: unknown[] }[]) {
+    const write = calls.find((c) => c.table === 'trader_provider_status');
+    return (write?.args?.[0] ?? null) as Record<string, unknown> | null;
+  }
+
+  it('records when the provider answered, not the quote market timestamp', async () => {
+    // The market timestamp is the last trade/close, so overnight and weekend
+    // runs would otherwise persist a provider that looks days stale while it is
+    // answering every request perfectly.
+    getUsStockUniverse.mockReturnValue([asset('ONE')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: true, price: 42, change: 1, changePercent: 1, currency: 'USD', marketTime: STALE_MARKET_TIME, source: 'Yahoo Finance', delayed: true });
+    analyzeStock.mockImplementation(({ asset: a, quote }: { asset: TradableAsset; quote: { price: number } }) => ({
+      symbol: a.symbol, signal: 'buy', confidence: quote.price, currentPrice: quote.price,
+      targetPrice: quote.price, stopLoss: quote.price, expectedTimeframe: 'weeks', riskLevel: 'medium',
+      score: 0, scoreBreakdown: {}, reasons: [], warnings: [], provider: 'Yahoo Finance', delayed: true,
+      dataTimestamp: STALE_MARKET_TIME,
+    }) as unknown as StockAnalysisResult);
+
+    const { calls, admin } = recordingSupabaseAdmin();
+    createServerSupabaseAdmin.mockReturnValue(admin);
+
+    const startedAt = Date.now();
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    await triggerScan({ market: 'US' }, { force: true });
+
+    const payload = providerPayload(calls);
+    expect(payload).not.toBeNull();
+    expect(payload?.last_successful_update).not.toBe(STALE_MARKET_TIME);
+    expect(new Date(String(payload?.last_successful_update)).getTime()).toBeGreaterThanOrEqual(startedAt);
+  });
+
+  it('leaves the stored timestamp untouched when nothing succeeded', async () => {
+    // A cold serverless instance has no in-memory success history. Writing a
+    // null would erase a good stored value and fake an outage.
+    getUsStockUniverse.mockReturnValue([asset('ONE')]);
+    stubHistorySuccess();
+    fetchYahooNormalizedQuote.mockResolvedValue({ available: false, price: null, change: null, changePercent: null, currency: 'USD', marketTime: null, source: 'Yahoo Finance', delayed: true, unavailableReason: 'provider_returned_empty_quote' });
+
+    const { calls, admin } = recordingSupabaseAdmin();
+    createServerSupabaseAdmin.mockReturnValue(admin);
+
+    const { triggerScan } = await import('@/lib/trader/scannerService');
+    await triggerScan({ market: 'US' }, { force: true });
+
+    const payload = providerPayload(calls);
+    expect(payload).not.toBeNull();
+    expect(Object.hasOwn(payload ?? {}, 'last_successful_update')).toBe(false);
+  });
+});
+
 describe('triggerScan deadline behavior', () => {
   it('stops before the deadline and reports a truthful partial completion instead of hanging', async () => {
     const symbols = Array.from({ length: 20 }, (_, i) => `SYM${i}`);

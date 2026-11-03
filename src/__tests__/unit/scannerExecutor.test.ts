@@ -43,6 +43,26 @@ describe('runWithConcurrency', () => {
     expect(processedCount).toBeLessThan(50);
     expect(processedCount).toBeGreaterThan(0);
   });
+
+  it('does not report stopped when the stop signal trips only after the queue drained', async () => {
+    // The scanner's cycle-closing slice processes every remaining symbol and
+    // only then trips its circuit breaker / deadline. That must stay a
+    // "finished the work" result, because `stopped` is what downgrades a scan
+    // run from `completed` to `partial`.
+    const items = Array.from({ length: 12 }, (_, index) => index);
+    let processed = 0;
+
+    const { processedCount, stopped } = await runWithConcurrency(items, 4, async (item) => {
+      processed += 1;
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      return item;
+    }, {
+      shouldStop: () => processed >= items.length,
+    });
+
+    expect(processedCount).toBe(12);
+    expect(stopped).toBe(false);
+  });
 });
 
 describe('dedupeProviderCandidates', () => {

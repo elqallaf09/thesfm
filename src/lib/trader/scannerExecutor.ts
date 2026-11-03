@@ -97,11 +97,16 @@ export async function runWithConcurrency<T, R>(
 
   async function workerLoop() {
     for (;;) {
+      // Queue exhaustion is checked BEFORE the stop signal: once every item has
+      // been dispatched there is nothing left to stop, so a deadline or circuit
+      // breaker tripping on the tail of a run must not report `stopped`. That
+      // false positive made the scanner's cycle-closing slice persist as
+      // `partial` even though it had exhausted the universe.
+      if (cursor >= items.length) return;
       if (options.shouldStop?.()) {
         stopped = true;
         return;
       }
-      if (cursor >= items.length) return;
       const index = cursor;
       cursor += 1;
       results[index] = await worker(items[index], index);
