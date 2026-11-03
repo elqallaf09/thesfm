@@ -1,0 +1,13 @@
+import type { LocalizedLabel,PhoneProduct } from './resourceContract';
+export const specializedReports: Array<{id:string;label:LocalizedLabel;products:PhoneProduct[]}> = [
+ {id:'income',label:['الدخل','Income','Revenus'],products:['finance']},{id:'expenses',label:['المصروفات','Expenses','Dépenses'],products:['finance']},
+ {id:'debts',label:['الديون','Debts','Dettes'],products:['finance']},{id:'debtPayments',label:['سداد الديون','Debt payments','Remboursements'],products:['finance']},
+ {id:'savings',label:['الادخار','Savings','Épargne'],products:['finance']},{id:'goals',label:['الأهداف','Goals','Objectifs'],products:['finance']},
+ {id:'investments',label:['الاستثمارات','Investments','Investissements'],products:['investor','finance']},
+ {id:'projectIncome',label:['إيرادات المشاريع','Project income','Revenus des projets'],products:['business']},{id:'projectExpenses',label:['مصروفات المشاريع','Project expenses','Dépenses des projets'],products:['business']},
+ {id:'projects',label:['المشاريع','Projects','Projets'],products:['business']},{id:'feasibility',label:['الجدوى','Feasibility','Faisabilité'],products:['business']},{id:'financialModels',label:['النماذج المالية','Financial models','Modèles financiers'],products:['business']},
+ {id:'tasks',label:['المهام','Tasks','Tâches'],products:['business']},{id:'milestones',label:['المعالم','Milestones','Jalons'],products:['business']},{id:'documents',label:['المستندات','Documents','Documents'],products:['business']},{id:'pitchDecks',label:['عروض المستثمرين','Pitch decks','Présentations'],products:['business']},
+ {id:'marketWatchlist',label:['المتابعة','Watchlist','Suivi'],products:['investor']},{id:'zakatCalculations',label:['حسابات الزكاة','Zakat calculations','Calculs de zakat'],products:['finance']},{id:'zakatAssets',label:['أصول الزكاة','Zakat assets','Actifs de zakat'],products:['finance']},
+ {id:'charityProjects',label:['مشاريع الخير','Charity projects','Projets caritatifs'],products:['finance']},{id:'charityDonations',label:['التبرعات','Donations','Dons'],products:['finance']},{id:'charityBeneficiaries',label:['المستفيدون','Beneficiaries','Bénéficiaires'],products:['finance']},{id:'charityImpact',label:['أثر التبرعات','Donation impact','Impact des dons'],products:['finance']},
+];
+export function csvRecords(rows:Record<string,unknown>[]){const keys=[...new Set(rows.flatMap(Object.keys))].filter(k=>k!=='user_id');const cell=(v:unknown)=>{let s=typeof v==='object'&&v!==null?JSON.stringify(v):String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};return '\ufeff'+[keys,...rows.map(r=>keys.map(k=>r[k]))].map(r=>r.map(cell).join(',')).join('\r\n');}

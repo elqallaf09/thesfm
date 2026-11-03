@@ -96,7 +96,7 @@ describe('THE SFM Finance iOS foundation', () => {
   it('uses a bounded mobile request and distinguishes invalid credentials from temporary connection errors', () => {
     const session = read('apps/expo-go/src/session.ts');
     const ui = read('apps/expo-go/src/ui.tsx');
-    expect(session).toContain('controller.abort(), 15_000');
+    expect(session).toContain('timeoutMs = 15_000');
     expect(session).toContain('INVALID_CREDENTIALS');
     expect(session).toContain('AUTH_UNAVAILABLE');
     expect(ui).toContain('البريد أو كلمة المرور غير صحيحة.');
