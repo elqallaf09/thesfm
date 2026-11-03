@@ -56,11 +56,14 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       const bounds = await page.evaluate(() => ({
         width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
         panelBottom: document.querySelector('.tv-scene-quotes')!.getBoundingClientRect().bottom,
+        lastRowBottom: document.querySelector('.tv-scene-row:last-child')!.getBoundingClientRect().bottom,
+        rowsBottom: document.querySelector('.tv-scene-rows')!.getBoundingClientRect().bottom,
         tickerTop: document.querySelector('.tv-scene-ticker')!.getBoundingClientRect().top,
       }));
       expect(bounds.width).toBeLessThanOrEqual(width + 2);
       expect(bounds.height).toBeLessThanOrEqual(height + 2);
       expect(bounds.panelBottom).toBeLessThan(bounds.tickerTop);
+      if (width >= 1280) expect(bounds.lastRowBottom).toBeLessThanOrEqual(bounds.rowsBottom + 1);
       const captionSizes = await page.locator('.tv-scene-row small, .tv-scene-row time, .tv-scene-source')
         .evaluateAll(elements => elements.map(element => parseFloat(getComputedStyle(element).fontSize)));
       expect(Math.min(...captionSizes)).toBeGreaterThanOrEqual(12);

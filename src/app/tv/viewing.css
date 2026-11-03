@@ -75,7 +75,7 @@
 .tv-scene-table-head { color: var(--tv-muted); font-size: max(12px, .65em); padding-bottom: .35em; flex: 0 0 auto; }
 .tv-scene-table[data-empty=true] .tv-scene-table-head > span:last-child { grid-column: 2/-1; text-align: start; }
 .tv-scene-rows { display: grid; grid-auto-rows: minmax(min-content, 1fr); flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.tv-screen .tv-scene-row { min-height: 0; padding: .35em .3em; border: 0; border-top: 1px solid var(--tv-line); border-radius: 0; background: transparent; text-align: start; line-height: 1.2; }
+.tv-screen .tv-scene-row { min-height: 0; padding: .1em .3em; border: 0; border-top: 1px solid var(--tv-line); border-radius: 0; background: transparent; text-align: start; line-height: 1.2; }
 .tv-screen .tv-scene-row:nth-child(even) { background: var(--tv-panel2); }
 .tv-screen .tv-scene-row:hover { background: var(--tv-panel2); }
 .tv-scene-row:focus { outline-offset: -3px; }
