@@ -2,6 +2,7 @@ const { test } = process.env.VITEST ? await import('vitest') : await import('nod
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { validatePreviewTarget } from '../validate-preview-target.mjs';
 import { spawnSync } from 'node:child_process';
 
 const workflow = name => readFileSync(new URL(`../../workflows/${name}.yml`, import.meta.url), 'utf8');
@@ -26,7 +27,10 @@ test('the required check rejects failed, cancelled, skipped, or missing selected
 
 const resolver = workflow('supabase-preview-validate').split('      - name: Resolve exact target SHA\n')[1]
   .split('\n  validate-required-secrets:')[0].split('          script: |\n')[1]
-  .split('\n').map(line => line.replace(/^            /, '')).join('\n');
+  .split('\n').map(line => line.replace(/^            /, '')).join('\n')
+  // Vitest's VM cannot import from new AsyncFunction. Inject the real helper
+  // through its argument instead; the workflow keeps its normal Node import.
+  .replace(/const \{ validatePreviewTarget \} = await import\([^\n]+\);/, '');
 const sha = 'a'.repeat(40);
 const pr = { number: 310, state: 'open', user: { login: 'owner' },
   head: { sha, ref: 'feature/mobile', repo: { full_name: 'owner/repo' } },
@@ -40,8 +44,8 @@ async function resolve({ candidate = pr, current = candidate, comparison = 'ahea
     repos: { listPullRequestsAssociatedWithCommit() {}, compareCommitsWithBasehead: async () => ({ data: { status: comparison } }) },
   } };
   const core = { setOutput: (key, value) => { outputs[key] = value; }, info() {}, setFailed: message => { throw new Error(message); } };
-  await new AsyncFunction('github', 'context', 'core', 'process', resolver)(github,
-    { repo: { owner: 'owner', repo: 'repo' }, payload: {} }, core, { env: { ...inputs, GITHUB_WORKSPACE: fileURLToPath(new URL('../../../', import.meta.url)) } });
+  await new AsyncFunction('github', 'context', 'core', 'process', 'validatePreviewTarget', resolver)(github,
+    { repo: { owner: 'owner', repo: 'repo' }, payload: {} }, core, { env: { ...inputs, GITHUB_WORKSPACE: fileURLToPath(new URL('../../../', import.meta.url)) } }, validatePreviewTarget);
   return outputs;
 }
 
