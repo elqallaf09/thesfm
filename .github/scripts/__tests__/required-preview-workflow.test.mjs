@@ -62,3 +62,25 @@ test('provisioning rejects stale heads, forks, closed PRs, dependency bots, and 
     { inputs: { INPUT_TARGET_SHA: sha, INPUT_TARGET_PR: '310' } },
   ]) await assert.rejects(resolve(options));
 });
+
+
+test('concurrent runs and retries create distinct workflow-owned branch names', () => {
+  const create = workflow('supabase-preview-validate')
+    .split('      - name: Step 3 — create a workflow-owned ephemeral branch (no explicit/external branch found)')[1]
+    .split('        run: |\n')[1].split('\n      - name:')[0]
+    .replace(/\$\{\{ needs.resolve-target.outputs.pr_number \}\}/g, '334')
+    .replace(/\$\{\{ needs.resolve-target.outputs.sha \}\}/g, sha);
+  const names = [];
+  for (const [run, attempt] of [['100', '1'], ['101', '1'], ['100', '2']]) {
+    const result = spawnSync('bash', ['-eu', '-c', 'node() { printf "%s\\n" "$@"; };\n' + create], {
+      encoding: 'utf8', env: { ...process.env, GITHUB_RUN_ID: run, GITHUB_RUN_ATTEMPT: attempt, SUPABASE_PRODUCTION_REF: 'b'.repeat(20) },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const args = result.stdout.trim().split('\n');
+    const name = args[args.indexOf('--branch-name') + 1];
+    assert.match(name, /^ci-pr-334-\d+-\d+$/);
+    assert.equal(args[args.indexOf('--sha') + 1], sha);
+    names.push(name);
+  }
+  assert.equal(new Set(names).size, 3);
+});

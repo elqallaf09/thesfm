@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: authenticated-preview-validate-${{ inputs.target_sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   validate:

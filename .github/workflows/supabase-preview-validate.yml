@@ -359,6 +359,7 @@ jobs:
           node .github/scripts/supabase-branch.mjs create \
             --parent-ref "${SUPABASE_PRODUCTION_REF}" \
             --pr-number "${{ needs.resolve-target.outputs.pr_number }}" \
+            --branch-name "ci-pr-${{ needs.resolve-target.outputs.pr_number }}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             --sha "${{ needs.resolve-target.outputs.sha }}" \
             --production-ref "${SUPABASE_PRODUCTION_REF}"
 
@@ -642,8 +643,8 @@ jobs:
   vercel-evidence:
     name: Vercel Preview deployment evidence
     # Wait for the optional deployment creators before starting the readiness clock.
-    needs: [resolve-target, validate-required-secrets, rollout, authenticated-preview]
-    if: always() && !cancelled() && needs.resolve-target.result == 'success' && needs.validate-required-secrets.result == 'success'
+    needs: [resolve-target, validate-required-secrets, provision-preview, rollout, authenticated-preview]
+    if: always() && !cancelled() && needs.resolve-target.result == 'success' && needs.validate-required-secrets.result == 'success' && needs.provision-preview.result == 'success' && (!inputs.run_authenticated_smoke || needs.authenticated-preview.result == 'success')
     runs-on: ubuntu-latest
     # Provisioning and migrations run before the authenticated job creates the
     # Preview. Leave time for that build, then its passive evidence request.
