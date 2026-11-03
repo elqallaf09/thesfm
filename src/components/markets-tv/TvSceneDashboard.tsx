@@ -3,7 +3,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, LayoutGrid, List, Pause, Play, RefreshCw } from 'lucide-react';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
-import { tvPrice, tvText } from '@/lib/markets-tv/i18n';
+import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvSceneChange, tvSceneHasPrice, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { TvQuoteEvidence as QuoteEvidence } from './TvQuoteEvidence';
@@ -34,7 +34,7 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
   const priced = tvSceneHasPrice(quote);
   return <button className="tv-scene-summary" data-priced={priced} onClick={() => select(quote)} data-tv-focus-key={`summary:${quoteKey(quote)}`}>
     <span className="tv-scene-summary-name"><span>{language === 'ar' ? quote.nameAr : quote.name}</span><i className="tv-scene-quote-dot" data-status={priced ? quoteStatus(quote, now) : 'unavailable'} aria-hidden="true"/></span>
-    {priced ? <><span className="tv-scene-summary-value" dir="ltr">{tvPrice(quote.price, quote.currency)}<small>{tvSceneQuoteUnit(quote, language)}</small></span>
+    {priced ? <><span className="tv-scene-summary-value" dir="ltr">{tvQuotePrice(quote)}<small>{tvSceneQuoteUnit(quote, language)}</small></span>
       <QuoteChange quote={quote} language={language}/></> : <span className="tv-scene-summary-placeholder" dir="ltr"><strong>—</strong><span className="tv-scene-summary-code">{quote.displaySymbol || quote.symbol}</span></span>}
     <QuoteEvidence quote={quote} language={language} now={now}/>
   </button>;
@@ -65,7 +65,7 @@ function SceneTicker({ quotes, language, now, paused, speed, select, toggle }: {
     <div className="tv-scene-ticker-window"><div className="tv-scene-ticker-track" style={{ animationDuration: `${duration}s` }}>
       {[false, true].map(duplicate => <div key={String(duplicate)} ref={duplicate ? undefined : set} className="tv-scene-ticker-set" aria-hidden={duplicate || undefined}>
         {quotes.map(quote => <button key={quoteKey(quote)} tabIndex={duplicate ? -1 : undefined} onClick={() => select(quote)} data-tv-focus-key={duplicate ? undefined : `ticker:${quoteKey(quote)}`}>
-          <strong dir="ltr">{quote.displaySymbol || quote.symbol}</strong><span dir="ltr">{tvPrice(quote.price, quote.currency)} <small>{tvSceneQuoteUnit(quote, language)}</small></span>
+          <strong dir="ltr">{quote.displaySymbol || quote.symbol}</strong><span dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote, language)}</small></span>
           <span dir="ltr" data-trend={quote.changePercent === null || quote.changePercent === 0 ? 'flat' : quote.changePercent > 0 ? 'up' : 'down'}>{tvSceneChange(quote)}</span>
           <QuoteEvidence quote={quote} language={language} now={now} compact className="tv-scene-ticker-evidence"/>
         </button>)}
@@ -119,7 +119,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ snapshot, loadi
           <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span>{rowsPriced ? <><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></> : <span>{t('provider')}</span>}</div>
           <div className="tv-scene-rows">{rows.map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
             <span className="tv-scene-identity"><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span dir="ltr">{quote.displaySymbol || quote.symbol}</span></span>
-            {tvSceneHasPrice(quote) && <><span className="tv-scene-price" dir="ltr"><strong>{tvPrice(quote.price, quote.currency)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
+            {tvSceneHasPrice(quote) && <><span className="tv-scene-price" dir="ltr"><strong>{tvQuotePrice(quote)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
               <QuoteChange quote={quote} language={language}/></>}<QuoteEvidence quote={quote} language={language} now={now}/>
           </button>)}</div>
         </div> : <div className="tv-scene-no-data"><h3>{emptyWatchlist ? t('emptyWatchlist') : s('noScenePrices')}</h3><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}

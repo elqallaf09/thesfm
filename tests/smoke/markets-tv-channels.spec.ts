@@ -32,8 +32,10 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   });
   await page.goto('/tv/strips');
   await page.getByRole('button', { name: 'تخصيص الأسواق', exact: true }).click();
+  await page.locator('[data-tv-focus-key="market-BOURSA_KUWAIT"]').click();
   await page.getByRole('button', { name: 'تقديم السوق: بورصة الكويت' }).click();
-  await page.getByRole('combobox', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).selectOption('80');
+  await page.locator('[data-tv-focus-key="market-US"]').click();
+  await page.getByRole('group', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).getByRole('button', { name: 'سريعة', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();

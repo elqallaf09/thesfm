@@ -231,7 +231,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   let state: 'invalid' | 'timeout' | 'valid' = 'invalid';
   await page.route('**/api/tv/pair', route => {
     if (state === 'timeout') return;
-    if (state === 'invalid') return route.fulfill({ json: { code: 'PAIR_UNAVAILABLE' } });
+    if (state === 'invalid') return route.fulfill({ json: { code: 123456789012, secret: 'a'.repeat(64), expiresAt: '2026-11-03T09:10:00Z' } });
     return route.fulfill({ json: route.request().method() === 'POST'
       ? { code: 'ABCDEF123456', secret: 'a'.repeat(64), expiresAt: '2026-11-03T09:10:00Z' }
       : { state: 'active', token: 'b'.repeat(64) } });
@@ -284,4 +284,11 @@ test('strips use index points, show compatible tick colors and keep unavailable 
   await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
   await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'running');
   await expect(strip).toHaveAttribute('data-source-cooling', 'true');
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 3840, height: 2160 }]) {
+    await page.setViewportSize(viewport);
+    const bounds = await page.locator('.tv-market-strips').boundingBox();
+    expect(bounds!.height).toBeGreaterThan(viewport.height * .85);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
+  }
 });

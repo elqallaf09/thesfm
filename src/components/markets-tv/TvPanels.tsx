@@ -2,7 +2,7 @@
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { useEffect, useRef, useState } from 'react';
 import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvGroup, type TvLanguage, type TvQuote, type TvSettings, type TvSnapshot } from '@/lib/markets-tv/types';
-import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
+import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { tvMovers } from '@/lib/markets-tv/quotes';
 import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
@@ -55,7 +55,7 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
       const response = await tvFetch('/api/tv/pair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'The SFM TV' }), signal: controller.signal });
       if (!response.ok) throw new Error('PAIR_UNAVAILABLE');
       const payload = await response.json();
-      if (!payload || !/^[A-F0-9]{12}$/.test(payload.code) || !/^[a-f0-9]{64}$/.test(payload.secret) || !Number.isFinite(Date.parse(payload.expiresAt)) || Date.parse(payload.expiresAt) <= Date.now()) throw new Error('INVALID_PAIR');
+      if (!payload || typeof payload.code !== 'string' || typeof payload.secret !== 'string' || typeof payload.expiresAt !== 'string' || !/^[A-F0-9]{12}$/.test(payload.code) || !/^[a-f0-9]{64}$/.test(payload.secret) || !Number.isFinite(Date.parse(payload.expiresAt)) || Date.parse(payload.expiresAt) <= Date.now()) throw new Error('INVALID_PAIR');
       if (!controller.signal.aborted) setPair(payload);
     } catch { setError(true); } finally { clearTimeout(timeout); if (creation.current === controller) { creation.current = null; setBusy(false); } }
   }
@@ -100,7 +100,7 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
   const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
   return <div className="tv-detail">
     <div><span dir="ltr" className="tv-symbol">{quote.symbol}</span><h3>{language === 'ar' ? quote.nameAr : quote.name}</h3>
-      <div className="tv-detail-price" dir="ltr">{tvPrice(quote.price, quote.currency)} <small>{tvSceneQuoteUnit(quote, language)}</small></div>
+      <div className="tv-detail-price" dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote, language)}</small></div>
       <TvQuoteEvidence quote={quote} language={language} now={now}/>
       <h3>{t('ai')}</h3>{analysis.loading ? <p>{t('loading')}</p> : valid ? <>
         <p className="tv-recommendation">{t(result.recommendation)}</p><p>{t('confidence')}: {result.confidence} / 100 · {t('risk')}: {t(result.risk)}</p>

@@ -1,4 +1,4 @@
-import type { TvLanguage } from './types';
+import type { TvLanguage, TvQuote } from './types';
 export const TV_TEXT = {
   done: ['تم', 'Done', 'Terminé'],
   marketPickerHeading: ['شاشتك، على اختيارك', 'Your screen, your markets', 'Votre écran, vos marchés'],
@@ -166,13 +166,18 @@ export function tvTime(value: string | null, language: TvLanguage, date = false)
   if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), timeZone: dateOnly ? 'UTC' : 'Asia/Kuwait' }));
   return timeFormats.get(key)!.format(new Date(value));
 }
-export function tvPrice(price: number | null, currency: string | null) {
+export function tvPrice(price: number | null, currency: string | null, precision?: 3 | 6) {
   if (price === null || !Number.isFinite(price) || price <= 0) return '—';
-  const key = price < .001 ? 'tiny' : price < 1 && !['KWD','BHD','OMR'].includes(currency || '') ? '6' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : '2';
+  const key = price < .001 ? 'tiny' : precision ? String(precision) : price < 1 && !['KWD','BHD','OMR'].includes(currency || '') ? '6' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : '2';
   if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', key === 'tiny' ? { minimumSignificantDigits: 2, maximumSignificantDigits: 6 } : { minimumFractionDigits: Number(key), maximumFractionDigits: Number(key) }));
   return priceFormats.get(key)!.format(price);
 }
 const priceFormats = new Map<string, Intl.NumberFormat>();
+
+export function tvQuotePrice(quote: Pick<TvQuote, 'price' | 'currency' | 'exchange' | 'symbol'>) {
+  const forex = quote.exchange === 'FOREX' || quote.symbol.endsWith('=X');
+  return tvPrice(quote.price, quote.currency, forex ? quote.currency === 'JPY' ? 3 : 6 : undefined);
+}
 
 // Compare days in the displayed timezone, not the device timezone or UTC.
 const quoteDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuwait', year: 'numeric', month: '2-digit', day: '2-digit' });

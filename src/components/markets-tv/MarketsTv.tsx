@@ -6,7 +6,7 @@ import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/l
 import { TvMarketStrips } from './TvMarketStrips';
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
-import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
+import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { TvQr } from './TvQr';
 import { useTvResource, useTvScenePrefetch } from './useTvResource';
 import { useTvRemote } from './useTvRemote';
@@ -147,7 +147,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
         : alert.alert_type === 'change_exceeds' && q.changePercent !== null ? Math.abs(q.changePercent) >= alert.threshold : false;
       if (!crossed) { alertSeen.current.delete(alert.id); continue; }
       if (alertSeen.current.has(alert.id)) continue;
-      alertSeen.current.add(alert.id); setMessage(`${tvText(settings.language, 'alert')}: ${alert.symbol} · ${tvPrice(q.price, q.currency)} ${q.currency}`);
+      alertSeen.current.add(alert.id); setMessage(`${tvText(settings.language, 'alert')}: ${alert.symbol} · ${tvQuotePrice(q)} ${tvSceneQuoteUnit(q, settings.language)}`);
       if (settings.sound) { try {
         const context = new AudioContext(); const oscillator = context.createOscillator(), gain = context.createGain();
         oscillator.connect(gain); gain.connect(context.destination); gain.gain.value = 0.05; oscillator.frequency.value = 640;
@@ -207,7 +207,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
           {group === 'watchlist' && !token ? <div className="tv-empty"><Smartphone/><h2>{t('linkForWatchlist')}</h2><button onClick={() => setDialog('pair')}>{t('pair')}</button></div> : !ready || (market.loading && !market.data) ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : !quotes.length ? <div className="tv-empty"><h2>{t(group === 'watchlist' ? 'emptyWatchlist' : 'noPrices')}</h2></div> : <div className="tv-quote-grid">{shown.map(q => <button className="tv-quote" data-priced={tvSceneHasPrice(q)} key={`${q.exchange || group}:${q.symbol}`} onClick={() => setDetail(q)}>
             <div className="tv-quote-top"><strong dir="ltr">{q.symbol}</strong><span>{q.exchange || q.country || ''}</span></div>
             <span className="tv-quote-name">{settings.language === 'ar' ? q.nameAr : q.name}</span>
-            {tvSceneHasPrice(q) ? <><div className="tv-price-line" dir="ltr"><strong>{tvPrice(q.price, q.currency)}</strong><small>{tvSceneQuoteUnit(q, settings.language)}</small><span data-trend={q.changePercent === null ? 'flat' : q.changePercent >= 0 ? 'up' : 'down'}>{q.changePercent === null ? '—' : `${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%`}</span></div>
+            {tvSceneHasPrice(q) ? <><div className="tv-price-line" dir="ltr"><strong>{tvQuotePrice(q)}</strong><small>{tvSceneQuoteUnit(q, settings.language)}</small><span data-trend={q.changePercent === null ? 'flat' : q.changePercent >= 0 ? 'up' : 'down'}>{q.changePercent === null ? '—' : `${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%`}</span></div>
               <TvQuoteEvidence quote={q} language={settings.language} now={now}/></>
               : <small className="tv-status" data-status="unavailable">{s(tvSceneIssue(q.issue))}</small>}
           </button>)}</div>}
