@@ -140,7 +140,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ snapshot, loadi
         <section className="tv-scene-health" aria-labelledby="tv-scene-coverage-title"><h2 id="tv-scene-coverage-title">{s('sceneCoverage')}</h2>
           <div className="tv-scene-coverage-total"><strong dir="ltr">{snapshot ? `${all.length - unavailable.length} / ${all.length}` : '—'}</strong><span>{s('quoted')}</span></div>
           <p>{s('selectedCoverage')}</p>
-          <TvDataNotice quotes={all} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/>
+          <TvDataNotice quotes={unavailable.length ? unavailable : all} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/>
           {tickerQuotes.length > 0 && <dl><div><dt>{s('recent')}</dt><dd dir="ltr">{snapshot ? recent : '—'}</dd></div><div><dt>{s('closePrices')}</dt><dd dir="ltr">{snapshot ? closed : '—'}</dd></div><div><dt>{s('otherPrices')}</dt><dd dir="ltr">{snapshot ? retained : '—'}</dd></div></dl>}
           {unavailable.length > 0 && <details className="tv-scene-unavailable"><summary data-tv-focus-key="scene-unavailable">{s('missing')} <bdi>{unavailable.length}</bdi></summary><ul>{unavailable.map(quote => <li key={quoteKey(quote)}><button onClick={() => onQuote(quote)} data-tv-focus-key={`unavailable:${quoteKey(quote)}`}><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span>{s(tvSceneIssue(quote.issue))}</span></button></li>)}</ul></details>}
         </section>

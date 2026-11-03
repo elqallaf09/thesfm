@@ -65,6 +65,7 @@ describe('TV unavailable-price presentation', () => {
     }
     const priced = { ...quote(), issue: undefined, price: 1.2, source: 'Verified test source' };
     expect(renderToStaticMarkup(<TvDataNotice quotes={[quote(), priced]} language="en" now={now} loading={false} refresh={noop}/>)).toBe('');
+    expect(renderToStaticMarkup(<TvDataNotice quotes={[{ ...quote(), retryAt }, priced]} language="en" now={now} loading={false} refresh={noop}/>)).toBe('');
   });
 
   it('explains a failed update while retaining previous prices without calling a mixed healthy scene unavailable', () => {
@@ -75,6 +76,39 @@ describe('TV unavailable-price presentation', () => {
     expect(html).not.toContain('Verified quotes are currently unavailable');
     const healthy = { ...retained, issue: undefined, status: 'available' as const };
     expect(renderToStaticMarkup(<TvDataNotice quotes={[retained, healthy]} language="en" now={now} loading={false} refresh={noop}/>)).toBe('');
+  });
+
+  it('shows failed instruments and their retry time in a partially healthy scene', () => {
+    const partial: TvSnapshot = { ...snapshot, retryAt: undefined,
+      summary: snapshot.summary!.map((row, index) => index < 3 ? { ...row, retryAt } : {
+        ...row, issue: undefined, price: 123, source: 'Verified test source', status: 'available',
+      }),
+      quotes: snapshot.quotes.map(row => ({ ...row, issue: undefined, price: 123,
+        source: 'Verified test source', status: 'closed' })),
+      available: 6,
+    };
+    const html = renderToStaticMarkup(<TvSceneDashboard snapshot={partial} loading={false} error={null}
+      language="en" now={now} news={[]} linked={false} watchlist={false} ticker tickerPaused={false} speed={56}
+      onQuote={noop} onStory={noop} onPair={noop} onRefresh={noop} onTickerPause={noop}/>);
+    expect(html).toContain('7 / 10');
+    expect(html).toContain('class="tv-data-notice"');
+    expect(html).toContain(`dateTime="${retryAt}"`);
+    expect(html).toContain('Retry after');
+    expect(html).toContain('class="tv-scene-ticker"');
+    expect(html).not.toContain('Verified quotes are currently unavailable');
+    expect(html).not.toContain('Showing the last retained reading');
+  });
+
+  it('uses the earliest future instrument retry and enables retry after it expires', () => {
+    const quotes = [quote(), { ...quote(1), retryAt }, { ...quote(2), retryAt: 'invalid' }];
+    const future = renderToStaticMarkup(<TvDataNotice quotes={quotes} language="en"
+      retryAt="2026-10-28T05:02:00Z" now={now} loading={false} refresh={noop}/>);
+    expect(future).toContain(`dateTime="${retryAt}"`);
+    expect(future).toContain('disabled=""');
+    const expired = renderToStaticMarkup(<TvDataNotice quotes={quotes} language="en"
+      now={now + 61_000} loading={false} refresh={noop}/>);
+    expect(expired).not.toContain('disabled=""');
+    expect(expired).not.toContain('<time');
   });
 });
 
