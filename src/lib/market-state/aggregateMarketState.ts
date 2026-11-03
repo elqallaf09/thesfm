@@ -459,9 +459,19 @@ export async function getMarketSystemState(options: { forceFresh?: boolean; pref
   // Dedup concurrent callers onto one in-flight compute — without this, N requests racing a
   // cache-expiry window would each trigger their own full aggregation (including the live
   // getProviderHealth() probes below), not just the post-hoc 30s memoryCache above.
-  if (pendingCompute) return pendingCompute;
+  //
+  // A forced verification is the recovery path after a bounded wait for another instance's
+  // refresh. It must not inherit an empty passive result from a concurrent cache/lease lookup;
+  // doing so reports activeProbe=true while returning the same zero-provider snapshot. Wait for
+  // the shared work first, reuse it when it contains evidence, otherwise run the requested probe.
+  if (pendingCompute) {
+    const sharedState = await pendingCompute;
+    const hasProviderEvidence = sharedState.capabilityMatrix.length > 0
+      || Object.keys(sharedState.providers).length > 0;
+    if (!options.forceFresh || hasProviderEvidence) return sharedState;
+  }
 
-  pendingCompute = (async () => {
+  const computePromise: Promise<MarketSystemState> = (async (): Promise<MarketSystemState> => {
     let persisted: MarketSystemState | null = null;
     let refreshLockRunId: string | null = null;
     if (!options.forceFresh) {
@@ -538,10 +548,16 @@ export async function getMarketSystemState(options: { forceFresh?: boolean; pref
         });
       }
       return emptySystemState(now);
-    } finally {
-      pendingCompute = null;
     }
   })();
 
-  return pendingCompute;
+  // Clear the shared promise for every return path, including fresh persisted
+  // snapshots and refresh-lease misses that return before live aggregation.
+  // Keeping a resolved empty promise here pins a warm serverless instance to a
+  // zero-provider snapshot and prevents the recovery probe from ever running.
+  const trackedPromise = computePromise.finally(() => {
+    if (pendingCompute === trackedPromise) pendingCompute = null;
+  });
+  pendingCompute = trackedPromise;
+  return trackedPromise;
 }
