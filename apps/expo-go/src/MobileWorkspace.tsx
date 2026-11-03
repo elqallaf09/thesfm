@@ -1,3 +1,4 @@
+import { ExtendedWorkspace } from './ExtendedWorkspace';
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, useWindowDimensions, View } from 'react-native';
 import { resourceFor, type MobileLanguage, type PhoneProduct } from '../../../src/lib/mobile/resourceContract';
@@ -60,6 +61,7 @@ export function MobileWorkspace(props: Props) {
   const nav = <View style={{ flexDirection: wide ? 'column' : rtl ? 'row-reverse' : 'row', gap: 7, padding: 10, borderColor: colors.border, borderTopWidth: wide ? 0 : 1, width: wide ? 210 : '100%' }}>{tabs.map(tab => <View key={tab.kind} style={{ flex: wide ? undefined : 1 }}><Button label={tab.label} selected={screen.kind === tab.kind} onPress={() => { if (!signedIn && tab.kind !== 'markets') { setGuest(false); return; } setStack([{ kind: tab.kind }]); }} /></View>)}</View>;
   let content;
   if (!signedIn && !['markets', 'symbol'].includes(screen.kind)) content = <MobileSignIn {...props} />;
+  else if (screen.kind === 'workspace') content = <ExtendedWorkspace key={screen.resource} feature={screen.resource||''} client={client} product={product} base={base}/>;
   else if (screen.kind === 'home') content = <HomeScreen client={client} product={product} navigate={navigate} wide={wide} />;
   else if (screen.kind === 'catalog') content = <CatalogScreen product={product} navigate={navigate} />;
   else if (screen.kind === 'records' && resource) content = <RecordsScreen key={resource.id} client={client} product={product} resource={resource} />;

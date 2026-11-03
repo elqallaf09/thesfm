@@ -97,3 +97,42 @@ test('remote reaches every clipped row and restores focus after quote details', 
   await expect(page.locator('.tv-data-notice time')).toBeAttached();
   await expect(page.locator('.tv-scene-ticker')).toBeVisible();
 });
+
+for (const language of ['ar', 'en', 'fr'] as const) {
+  test(`packaged ${language} sessions fit the TV and preserve remote focus and local clocks`, async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-11-03T09:52:00Z') });
+    await page.setViewportSize({ width: 960, height: 540 });
+    await openTv(page, language);
+    const opener = page.locator('.tv-viewing-footer button').first();
+    await opener.click();
+    const dialog = page.getByRole('dialog');
+    await expect(page.locator('.tv-session')).toHaveCount(4);
+    for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
+      await page.setViewportSize({ width, height });
+      expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+      await containedContent(page, '.tv-session');
+    }
+    for (const [market, clock] of [['XKUW', '12:52'], ['XSAU', '12:52'], ['XNYS', '04:52'], ['XTKS', '18:52']]) {
+      await expect(page.locator(`[data-market="${market}"] time`)).toHaveText(clock);
+    }
+    // New York's clock follows daylight saving without claiming the exchange is open.
+    await page.clock.setSystemTime(new Date('2026-07-01T09:52:00Z'));
+    await page.clock.runFor(10_000);
+    await expect(page.locator('[data-market="XNYS"] time')).toHaveText('05:52');
+    await page.setViewportSize({ width: 960, height: 540 });
+    const kuwait = page.locator('[data-tv-focus-key="session:XKUW"]');
+    const nyse = page.locator('[data-tv-focus-key="session:XNYS"]');
+    await kuwait.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(nyse).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(nyse).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('[data-market="XNYS"] canvas')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(nyse).toHaveAttribute('aria-expanded', 'false');
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(opener).toBeFocused();
+    await expect(page.getByRole('meter')).toHaveAttribute('aria-valuenow', '7');
+  });
+}

@@ -41,9 +41,9 @@ function QuoteEvidence({ quote, language, now }: { quote: TvQuote; language: TvL
 function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; language: TvLanguage; now: number; select: (quote: TvQuote) => void }) {
   const priced = tvSceneHasPrice(quote);
   return <button className="tv-scene-summary" data-priced={priced} onClick={() => select(quote)} data-tv-focus-key={`summary:${quoteKey(quote)}`}>
-    <span className="tv-scene-summary-name">{language === 'ar' ? quote.nameAr : quote.name}</span>
+    <span className="tv-scene-summary-name"><span>{language === 'ar' ? quote.nameAr : quote.name}</span><i className="tv-scene-quote-dot" data-status={priced ? quoteStatus(quote, now) : 'unavailable'} aria-hidden="true"/></span>
     {priced ? <><span className="tv-scene-summary-value" dir="ltr">{tvPrice(quote.price, quote.currency)}<small>{tvSceneQuoteUnit(quote, language)}</small></span>
-      <QuoteChange quote={quote} language={language}/></> : <span className="tv-scene-summary-code" dir="ltr">{quote.displaySymbol || quote.symbol}</span>}
+      <QuoteChange quote={quote} language={language}/></> : <span className="tv-scene-summary-placeholder" dir="ltr"><strong>—</strong><span className="tv-scene-summary-code">{quote.displaySymbol || quote.symbol}</span></span>}
     <QuoteEvidence quote={quote} language={language} now={now}/>
   </button>;
 }
@@ -139,10 +139,11 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ snapshot, loadi
       <aside className="tv-scene-sidebar">
         <section className="tv-scene-health" aria-labelledby="tv-scene-coverage-title"><h2 id="tv-scene-coverage-title">{s('sceneCoverage')}</h2>
           <div className="tv-scene-coverage-total"><strong dir="ltr">{snapshot ? `${all.length - unavailable.length} / ${all.length}` : '—'}</strong><span>{s('quoted')}</span></div>
+          {all.length > 0 && <div className="tv-scene-coverage-meter" role="meter" aria-label={s('quoted')} aria-valuemin={0} aria-valuemax={all.length} aria-valuenow={all.length - unavailable.length}>{all.map(quote => <span key={quoteKey(quote)} data-priced={tvSceneHasPrice(quote)} />)}</div>}
           <p>{s('selectedCoverage')}</p>
-          <TvDataNotice quotes={unavailable.length ? unavailable : all} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/>
           {tickerQuotes.length > 0 && <dl><div><dt>{s('recent')}</dt><dd dir="ltr">{snapshot ? recent : '—'}</dd></div><div><dt>{s('closePrices')}</dt><dd dir="ltr">{snapshot ? closed : '—'}</dd></div><div><dt>{s('otherPrices')}</dt><dd dir="ltr">{snapshot ? retained : '—'}</dd></div></dl>}
           {unavailable.length > 0 && <details className="tv-scene-unavailable"><summary data-tv-focus-key="scene-unavailable">{s('missing')} <bdi>{unavailable.length}</bdi></summary><ul>{unavailable.map(quote => <li key={quoteKey(quote)}><button onClick={() => onQuote(quote)} data-tv-focus-key={`unavailable:${quoteKey(quote)}`}><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span>{s(tvSceneIssue(quote.issue))}</span></button></li>)}</ul></details>}
+          <TvDataNotice quotes={unavailable.length ? unavailable : all} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/>
         </section>
         <section className="tv-scene-headlines" aria-labelledby="tv-scene-news-title"><h2 id="tv-scene-news-title">{t('news')}</h2>{visibleNews.length ? visibleNews.map(story => <button key={story.id} onClick={() => onStory(story)} data-tv-focus-key={`story:${story.id}`}><span>{story.title}</span><small>{story.source} · {tvTime(story.publishedAt, language, true)}</small></button>) : <p>{t('noNews')}</p>}</section>
       </aside>
