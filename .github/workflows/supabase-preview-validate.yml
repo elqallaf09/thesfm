@@ -1,7 +1,7 @@
 name: Supabase Preview Validate
 
 # On-demand, target-agnostic Preview validation. Unlike the required PR gates
-# in ci.yml, this workflow can validate an arbitrary already-open PR (by
+# in ci.yml, this workflow can validate an open PR or an unchanged merged release (by
 # number) without needing a new commit on that PR.
 #
 # Self-sufficient provisioning: this workflow does not require an external
@@ -148,6 +148,11 @@ jobs:
       sha: ${{ steps.resolve.outputs.sha }}
       pr_number: ${{ steps.resolve.outputs.pr_number }}
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
       - name: Resolve exact target SHA
         id: resolve
         env:
@@ -173,18 +178,8 @@ jobs:
               core.setFailed('Provide only one of target_pr or target_sha, not both.');
               return;
             }
-            const assertCurrent = async pr => {
-              if (pr.state !== 'open' || pr.head.repo?.full_name !== `${context.repo.owner}/${context.repo.repo}`
-                || pr.head.ref === pr.base.ref || pr.user.login === 'dependabot[bot]') {
-                throw new Error('Preview requires an open, same-repository maintainer PR.');
-              }
-              const comparison = await github.rest.repos.compareCommitsWithBasehead({
-                ...context.repo, basehead: `${pr.base.sha}...${pr.head.sha}`,
-              });
-              if (!['ahead', 'identical'].includes(comparison.data.status)) {
-                throw new Error('Update the PR with current main before provisioning a Preview.');
-              }
-            };
+            const { validatePreviewTarget } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/validate-preview-target.mjs`);
+            const assertCurrent = pr => validatePreviewTarget({ github, repo: context.repo, pr, sha: pr.head.sha });
             if (targetPr) {
               if (!/^\d+$/.test(targetPr)) {
                 core.setFailed('target_pr must be a plain PR number, e.g. 53.');
@@ -207,9 +202,9 @@ jobs:
             const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
               ...context.repo, commit_sha: targetSha, per_page: 100,
             });
-            const matches = pulls.filter(pr => pr.state === 'open' && pr.head.sha === targetSha
+            const matches = pulls.filter(pr => pr.head.sha === targetSha
               && pr.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`);
-            if (matches.length !== 1) throw new Error('Expected one current open PR at this exact SHA.');
+            if (matches.length !== 1) throw new Error('Expected one same-repository PR at this exact SHA.');
             const { data: pr } = await github.rest.pulls.get({ ...context.repo, pull_number: matches[0].number });
             if (pr.head.sha !== targetSha) throw new Error('PR head changed before Preview provisioning.');
             await assertCurrent(pr);

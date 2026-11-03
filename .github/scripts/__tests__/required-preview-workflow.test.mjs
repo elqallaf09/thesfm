@@ -1,6 +1,7 @@
 const { test } = process.env.VITEST ? await import('vitest') : await import('node:test');
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const workflow = name => readFileSync(new URL(`../../workflows/${name}.yml`, import.meta.url), 'utf8');
@@ -29,7 +30,7 @@ const resolver = workflow('supabase-preview-validate').split('      - name: Reso
 const sha = 'a'.repeat(40);
 const pr = { number: 310, state: 'open', user: { login: 'owner' },
   head: { sha, ref: 'feature/mobile', repo: { full_name: 'owner/repo' } },
-  base: { sha: 'b'.repeat(40), ref: 'main' } };
+  base: { sha: 'b'.repeat(40), ref: 'main', repo: { full_name: 'owner/repo' } } };
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
 async function resolve({ candidate = pr, current = candidate, comparison = 'ahead', inputs = { INPUT_TARGET_SHA: sha } } = {}) {
@@ -40,7 +41,7 @@ async function resolve({ candidate = pr, current = candidate, comparison = 'ahea
   } };
   const core = { setOutput: (key, value) => { outputs[key] = value; }, info() {}, setFailed: message => { throw new Error(message); } };
   await new AsyncFunction('github', 'context', 'core', 'process', resolver)(github,
-    { repo: { owner: 'owner', repo: 'repo' }, payload: {} }, core, { env: inputs });
+    { repo: { owner: 'owner', repo: 'repo' }, payload: {} }, core, { env: { ...inputs, GITHUB_WORKSPACE: fileURLToPath(new URL('../../../', import.meta.url)) } });
   return outputs;
 }
 
