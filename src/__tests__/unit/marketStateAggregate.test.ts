@@ -371,6 +371,38 @@ describe('getMarketSystemState', () => {
     expect(acquireScanLock).not.toHaveBeenCalled();
   });
 
+  it('does not let a forced probe inherit an empty concurrent lease result', async () => {
+    let resolveLock!: (value: { acquired: false; existing: { runId: string; lockedAt: string } }) => void;
+    let markLockStarted!: () => void;
+    const lockResult = new Promise<{ acquired: false; existing: { runId: string; lockedAt: string } }>(resolve => {
+      resolveLock = resolve;
+    });
+    const lockStarted = new Promise<void>(resolve => {
+      markLockStarted = resolve;
+    });
+    acquireScanLock.mockImplementation(() => {
+      markLockStarted();
+      return lockResult;
+    });
+    getTraderMarketCatalog.mockResolvedValue(catalogFixture());
+
+    const { getMarketSystemState } = await import('@/lib/market-state/aggregateMarketState');
+    const passive = getMarketSystemState();
+    await lockStarted;
+    const forced = getMarketSystemState({ forceFresh: true });
+
+    resolveLock({
+      acquired: false,
+      existing: { runId: 'other-instance', lockedAt: new Date().toISOString() },
+    });
+
+    const [passiveState, forcedState] = await Promise.all([passive, forced]);
+    expect(passiveState.capabilityMatrix).toHaveLength(0);
+    expect(forcedState.capabilityMatrix.length).toBeGreaterThan(0);
+    expect(getTraderMarketCatalog).toHaveBeenCalledTimes(1);
+    expect(getTraderMarketCatalog).toHaveBeenCalledWith({ forceFresh: true });
+  });
+
   it('falls back to the last persisted snapshot instead of a blank state when the live aggregation throws (malformed provider response)', async () => {
     getTraderMarketCatalog.mockRejectedValue(new Error('malformed upstream response'));
     const persistedSnapshot = {
