@@ -14,9 +14,9 @@ import { RESEARCH_COPY } from './researchCopy';
 import styles from './AiAnalystWorkspace.module.css';
 import researchStyles from './AiAnalystResearchWorkspace.module.css';
 
-type Props = { symbol?: string; assetType?: IntelligenceAssetType; horizon?: IntelligenceHorizon; allHorizons?: boolean; investmentContext?: InvestmentAnalysisContext | null };
+type Props = { symbol?: string; assetType?: IntelligenceAssetType; horizon?: IntelligenceHorizon; allHorizons?: boolean; autoRun?: boolean; investmentContext?: InvestmentAnalysisContext | null };
 
-export function AiAnalystResearchWorkspace({ symbol = '', assetType = 'STOCK', horizon = 'SWING', allHorizons = false, investmentContext }: Props) {
+export function AiAnalystResearchWorkspace({ symbol = '', assetType = 'STOCK', horizon = 'SWING', allHorizons = false, autoRun = false, investmentContext }: Props) {
   const { lang } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = RESEARCH_COPY[locale];
@@ -33,7 +33,7 @@ export function AiAnalystResearchWorkspace({ symbol = '', assetType = 'STOCK', h
       <header className={symbol ? researchStyles.visuallyHidden : styles.cardHeader}><div><h2 id="ai-research-title">{copy.title}</h2><p>{copy.body}</p></div></header>
       <AiAnalystAssetPicker key={`${symbol}:${assetType}:${horizon}`} initialSymbol={symbol} initialAssetType={assetType} initialHorizon={horizon} allHorizons={allHorizons} autoRun={false} submitLabel={copy.select} compact />
     </section>
-    {symbol ? <div id="research">{allHorizons && !privateAsset ? <AiAnalystAllHorizons symbol={symbol} assetType={assetType} /> : <AiAnalystAnalysis key={`${symbol}:${assetType}:${horizon}`} symbol={symbol} assetType={assetType} horizon={horizon} autoRun={false} investmentContext={investmentContext} />}</div> : <>
+    {symbol ? <div id="research">{allHorizons && !privateAsset ? <AiAnalystAllHorizons symbol={symbol} assetType={assetType} /> : <AiAnalystAnalysis key={`${symbol}:${assetType}:${horizon}`} symbol={symbol} assetType={assetType} horizon={horizon} autoRun={autoRun} investmentContext={investmentContext} />}</div> : <>
       <section id="research" className={styles.card}><h2 className={styles.panelTitle}>{copy.research}</h2><p className={styles.mutedText}>{copy.idle}</p><button className={styles.primaryAction} type="button" disabled>{copy.run}</button></section>
       <AiAnalystRuleEngine />
     </>}

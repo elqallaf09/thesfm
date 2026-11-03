@@ -9,6 +9,7 @@ import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { useTvResource } from './useTvResource';
 import { TV_SCENE_ORDER, tvSceneHasPrice, tvSceneIssue, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { tvAnalysisAssetType, tvAnalysisHref } from '@/lib/markets-tv/analysisLink';
 
 export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
@@ -82,8 +83,9 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const scoped = quote.exchange?.startsWith('TD_');
   const pair = quote.exchange === 'BINANCE' || quote.exchange === 'FOREX';
-  const url = scoped ? `/world-stocks/${encodeURIComponent(quote.symbol)}?region=${encodeURIComponent(quote.exchange!)}` : `/ai-analyst/analyze/${encodeURIComponent(quote.symbol)}`;
-  const assetType = quote.exchange === 'FOREX' || quote.symbol.includes('=X') ? 'FOREX' : quote.exchange === 'BINANCE' ? 'CRYPTO' : /-(USD|USDT)$/.test(quote.symbol) ? 'CRYPTO' : /[=]F$/.test(quote.symbol) ? 'COMMODITY' : quote.symbol.startsWith('^') ? 'INDEX' : 'STOCK';
+  const url = tvAnalysisHref(quote);
+  const phoneUrl = `${typeof window !== 'undefined' ? tvOrigin() : 'https://www.the-sfm.com'}${url}`;
+  const assetType = tvAnalysisAssetType(quote);
   const analysis = useTvResource<{ result: AnalysisResult }>(scoped || pair ? null : `/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
   const result = analysis.data?.result;
   const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
@@ -97,7 +99,7 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
       </> : <p>{t(result ? 'analysisExpired' : 'noAnalysis')}</p>}
       <p className="tv-muted">{t('disclaimer')}</p>
     </div>
-    <div className="tv-phone-link"><TvQr value={`${typeof window !== 'undefined' ? tvOrigin() : 'https://www.the-sfm.com'}${url}`} label={t('openPhone')} /><p>{t('openPhone')}</p></div>
+    <div className="tv-phone-link"><a href={phoneUrl} aria-label={t('openPhone')}><TvQr value={phoneUrl} label={t('openPhone')} /></a><p>{t('openPhone')}</p></div>
   </div>;
 }
 export function TvMarketMap({ language, group, select, now }: { language: TvLanguage; group: TvGroup; select: (group: TvGroup) => void; now: number }) {

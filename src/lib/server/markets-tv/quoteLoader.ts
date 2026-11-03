@@ -10,6 +10,7 @@ import type { TvAsset } from './catalog';
 import { cryptoTvQuotes, forexTvQuote } from './instruments';
 import { tvProviderFailure } from './quoteAvailability';
 import { finnhubUsMarketOpen } from './finnhubMarketStatus';
+import { cachedTvQuote } from './quoteCache';
 
 const PRIMARY_MIC: Record<string, string> = {
   BOURSA_KUWAIT: 'XKUW', DFM: 'XDFM', NASDAQ_DUBAI: 'DIFX', SSE: 'XSHG', SZSE: 'XSHE',
@@ -105,9 +106,12 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   quote.status = quoteStatus(quote); return quote;
 }
 function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
-  const key = JSON.stringify([group, asset.symbol, asset.region, asset.exchange, asset.mic, asset.currency, asset.assetType]);
+  const assetType = asset.assetType || (group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : group === 'forex' ? 'forex' : 'stock');
+  const key = JSON.stringify([asset.symbol, asset.region, asset.exchange, asset.mic, asset.providerSymbol, asset.currency, assetType]);
   const running = pendingQuotes.get(key); if (running) return running;
-  const work = loadQuote(asset, group).catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
+  const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
+  const work = cachedTvQuote(key, () => loadQuote(asset, group), usStock || assetType === 'forex' ? 30 : 300)
+    .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work); return work;
 }
 

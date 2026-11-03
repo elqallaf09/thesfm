@@ -9,9 +9,9 @@ function errorCodeFrom(payload: IntelligenceResponse) {
   return typeof payload.error?.code === 'string' ? payload.error.code : 'INTERNAL_ERROR';
 }
 
-/** Read saved evidence on entry; only an explicit user action starts research. */
-export function useResearchTask({ symbol, assetType, horizon, locale }: {
-  symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon; locale: 'ar' | 'en' | 'fr';
+/** Read saved evidence first. TV handoffs explicitly request one automatic run. */
+export function useResearchTask({ symbol, assetType, horizon, locale, autoRun = false }: {
+  symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon; locale: 'ar' | 'en' | 'fr'; autoRun?: boolean;
 }) {
   const { user, isGuest } = useAuth();
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -21,6 +21,7 @@ export function useResearchTask({ symbol, assetType, horizon, locale }: {
 
   const requestRef = useRef<AbortController | null>(null);
   const loadedIdentityRef = useRef('');
+  const automaticIdentityRef = useRef('');
   const [taskState, setTaskState] = useState<'idle' | 'running' | 'done' | 'failed'>('idle');
 
   const requestAnalysis = useCallback(async (forceRefresh = false) => {
@@ -75,8 +76,7 @@ export function useResearchTask({ symbol, assetType, horizon, locale }: {
         const payload = await response.json().catch(() => ({})) as IntelligenceResponse;
         if (requestRef.current !== controller) return;
         if (response.ok && payload.ok === true && payload.result) { setResult(payload.result); return; }
-        // Opening details, changing tabs or following old autoRun links is a
-        // read-only action. A missing saved analysis never triggers a POST.
+        // Ordinary navigation and old autoRun links remain read-only.
         if (response.status !== 404) setErrorCode(errorCodeFrom(payload));
       } catch {
         if (requestRef.current === controller) setErrorCode(controller.signal.aborted ? 'PROVIDER_TIMEOUT' : 'NETWORK_ERROR');
@@ -93,6 +93,15 @@ export function useResearchTask({ symbol, assetType, horizon, locale }: {
       controller.abort();
     };
   }, [assetType, horizon, locale, symbol]);
+
+  useEffect(() => {
+    if (!autoRun || loading || errorCode || taskState !== 'idle') return;
+    const identity = `${symbol}:${assetType}:${horizon}:${locale}`;
+    if (automaticIdentityRef.current === identity) return;
+    automaticIdentityRef.current = identity;
+    if (result && ['COMPLETE', 'PARTIAL'].includes(result.status) && Date.parse(result.expiresAt) > Date.now() && !result.staleData) return;
+    void requestAnalysis(false);
+  }, [autoRun, loading, errorCode, taskState, symbol, assetType, horizon, locale, result, requestAnalysis]);
 
   return { user, isGuest, result, loading, errorCode, retryAfterSeconds, taskState, requestAnalysis };
 }

@@ -61,5 +61,5 @@ export function AiAnalystAnalysis(props: AiAnalystAnalysisProps) {
   if (props.investmentContext?.privateAsset) {
     return <PrivateInvestmentAnalysis symbol={props.symbol} context={props.investmentContext} />;
   }
-  return <AiAnalystResearchRunner symbol={props.symbol} assetType={props.assetType} horizon={props.horizon} />;
+  return <AiAnalystResearchRunner symbol={props.symbol} assetType={props.assetType} horizon={props.horizon} autoRun={props.autoRun} />;
 }
