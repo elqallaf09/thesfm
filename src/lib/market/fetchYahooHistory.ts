@@ -1,3 +1,4 @@
+import { parseYahooChartSnapshot } from '@/lib/trader/yahooChartSnapshot';
 import type { MarketAssetType, MarketHistoryPoint } from '@/lib/market/marketService';
 
 type YahooChartPayload = {
@@ -7,6 +8,7 @@ type YahooChartPayload = {
         symbol?: string;
         currency?: string;
         regularMarketTime?: number;
+        regularMarketPrice?: number;
       };
       timestamp?: number[];
       indicators?: {
@@ -43,6 +45,8 @@ export type YahooHistoryResult =
       currency: string | null;
       delayed: true;
       fetchedAt: string;
+      retrievedAt?: string;
+      quoteSnapshot?: ReturnType<typeof parseYahooChartSnapshot>;
       cached?: boolean;
       cacheAgeSeconds?: number;
     }
@@ -60,12 +64,14 @@ export type YahooHistoryResult =
       code: string;
       error: string;
       unavailableReason: string;
+      retryAfterMs?: number;
     };
 
 const YAHOO_HISTORY_CACHE_MS = 10 * 60 * 1000;
 const yahooHistoryCache = new Map<string, { expiresAt: number; createdAt: number; data: YahooHistoryResult }>();
 
 function numberOrNull(value: unknown) {
+  if(value===null||value===undefined||value==='')return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -160,6 +166,8 @@ export function normalizeYahooChartHistory(payload: YahooChartPayload | null, in
     period: input.period,
     interval: input.interval || undefined,
     history,
+    retrievedAt: new Date().toISOString(),
+    quoteSnapshot: typeof result.meta?.regularMarketPrice === 'number' && result.meta.regularMarketPrice > 0 && dateFromUnix(result.meta.regularMarketTime) ? parseYahooChartSnapshot(payload) : null,
     currency: result.meta?.currency ?? null,
     delayed: true,
     fetchedAt: dateFromUnix(result.meta?.regularMarketTime) || new Date().toISOString(),
@@ -224,7 +232,11 @@ export async function fetchYahooHistory(
           message: 'Yahoo Finance history request failed.',
         });
 
-    yahooHistoryCache.set(cacheKey, {
+    if (!parsed.success && response.status === 429) {
+      const raw=response.headers.get('Retry-After');const delay=raw ? (/^\d+(\.\d+)?$/.test(raw) ? Number(raw)*1000 : Date.parse(raw)-Date.now()) : NaN;
+      if(Number.isFinite(delay)&&delay>=0)parsed.retryAfterMs=delay;
+    }
+    if(parsed.success) yahooHistoryCache.set(cacheKey, {
       data: parsed,
       createdAt: now,
       expiresAt: now + YAHOO_HISTORY_CACHE_MS,

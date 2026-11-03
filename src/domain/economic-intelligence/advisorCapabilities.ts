@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const ADVISOR_CAPABILITIES = ['coach', 'planner', 'portfolio', 'spending', 'retirement', 'debt', 'goals', 'investment', 'risk', 'wealth'] as const;
-export type AdvisorCapability = typeof ADVISOR_CAPABILITIES[number];
+import { ADVISOR_CAPABILITIES, type AdvisorCapability } from '@/lib/mobile/advisorContract';
+export { ADVISOR_CAPABILITIES, type AdvisorCapability } from '@/lib/mobile/advisorContract';
 export const advisorRequestSchema = z.object({
   capability: z.enum(ADVISOR_CAPABILITIES),
   currency: z.string().regex(/^[A-Z]{3}$/),

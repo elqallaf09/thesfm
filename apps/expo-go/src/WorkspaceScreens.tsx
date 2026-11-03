@@ -1,3 +1,4 @@
+import { featureDirectory } from './featureDirectory';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, ScrollView, View } from 'react-native';
 import { localized, MOBILE_RESOURCES, type MobilePage, type MobileRecord, type PhoneProduct } from '../../../src/lib/mobile/resourceContract';
@@ -76,6 +77,7 @@ function InvestorPortfolio({ client, navigate }: { client: MobileSessionClient; 
 export function CatalogScreen({ product, navigate, embedded = false }: { product: PhoneProduct; navigate: (screen: Screen) => void; embedded?: boolean }) {
   const { language, t } = useUI();
   const content = <View style={{ gap: 12 }}>
+    {featureDirectory.filter(f=>f.products.includes(product)).map(f=><Button key={f.id} label={t(f.label)} onPress={()=>navigate({kind:'workspace',resource:f.id})}/>)}
     {product === 'investor' ? <Button label={t(['محلل المستثمر', 'Investor analyst', 'Analyste investisseur'])} onPress={() => navigate({ kind: 'analysis' })} /> : null}
     {product === 'business' ? <><Button label={t(['فرق العمل', 'Teams', 'Équipes'])} onPress={() => navigate({ kind: 'teams' })} /><Button label={t(['تحليل القرارات', 'Decision analysis', 'Analyse de décision'])} onPress={() => navigate({ kind: 'decisions' })} /></> : null}
     {MOBILE_RESOURCES.filter(resource => resource.products.includes(product)).map(resource => <Button key={resource.id} label={localized(resource.label, language)} onPress={() => navigate({ kind: 'records', resource: resource.id })} />)}

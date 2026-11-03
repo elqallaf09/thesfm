@@ -527,8 +527,8 @@ function getCachedUsResult(symbol: string) {
   return results.find((item) => item.symbol.toUpperCase() === symbol || item.providerSymbol.toUpperCase() === symbol) ?? null;
 }
 
-async function requireTraderAccess() {
-  const access = await getTraderAccess();
+async function requireTraderAccess(request: NextRequest) {
+  const access = await getTraderAccess(request.headers.has('authorization') ? request : undefined);
   if (!access.allowed) {
     return {
       allowed: false as const,
@@ -549,7 +549,7 @@ export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ symbol: string }> },
 ) {
-  const access = await requireTraderAccess();
+  const access = await requireTraderAccess(_request);
   if (!access.allowed) return access.response;
 
   const { symbol } = await context.params;
@@ -594,7 +594,7 @@ export async function POST(
   _request: NextRequest,
   context: { params: Promise<{ symbol: string }> },
 ) {
-  const access = await requireTraderAccess();
+  const access = await requireTraderAccess(_request);
   if (!access.allowed) return access.response;
 
   const { symbol } = await context.params;

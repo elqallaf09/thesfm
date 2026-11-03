@@ -8,41 +8,8 @@ import { normalizeDigits } from '@/lib/locale';
 import { AppModal } from '@/components/ui/AppModal';
 
 type Lang = 'ar' | 'en' | 'fr';
-type TaskStatus = 'todo' | 'in_progress' | 'done' | 'late' | 'cancelled';
-type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
-type TaskPhase = 'idea' | 'study' | 'setup' | 'launch' | 'growth';
-type MilestoneStatus = 'planned' | 'in_progress' | 'completed' | 'late';
-
-export type ProjectTaskRow = {
-  id: string;
-  user_id: string;
-  project_id: string;
-  title: string;
-  description: string | null;
-  status: TaskStatus | string | null;
-  priority: TaskPriority | string | null;
-  phase: TaskPhase | string | null;
-  start_date: string | null;
-  due_date: string | null;
-  completed_at: string | null;
-  assigned_to: string | null;
-  estimated_cost: string | number | null;
-  actual_cost: string | number | null;
-  sort_order: number | null;
-  created_at?: string | null;
-};
-
-export type ProjectMilestoneRow = {
-  id: string;
-  user_id: string;
-  project_id: string;
-  title: string;
-  description: string | null;
-  target_date: string | null;
-  status: MilestoneStatus | string | null;
-  progress_percent: string | number | null;
-  related_task_ids?: unknown;
-};
+import type {TaskStatus,TaskPriority,TaskPhase,MilestoneStatus,ProjectTaskRow,ProjectMilestoneRow} from '@/lib/mobile/projectTaskTypes';
+export type {ProjectTaskRow,ProjectMilestoneRow} from '@/lib/mobile/projectTaskTypes';
 
 export type ProjectTasksSummary = {
   totalTasks: number;

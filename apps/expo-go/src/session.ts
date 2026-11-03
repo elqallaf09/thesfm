@@ -48,9 +48,9 @@ export class MobileSessionClient {
   private configured() {
     if (!this.config.supabaseUrl || !this.config.publicKey) throw new MobileRequestError('AUTH_NOT_CONFIGURED');
   }
-  private async transport(url: string, init: RequestInit = {}) {
+  private async transport(url: string, init: RequestInit = {}, timeoutMs = 15_000) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await (this.config.fetcher ?? fetch)(url, { ...init, cache: 'no-store', signal: controller.signal });
       const body = await response.json().catch(() => null) as Record<string, unknown> | null;
@@ -288,7 +288,7 @@ export class MobileSessionClient {
         // fetch must add the multipart boundary itself; JSON corrupts FormData.
         const multipart = typeof FormData !== 'undefined' && init.body instanceof FormData;
         if (!multipart && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-        return this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}${path}`, { ...init, redirect: 'error', headers });
+        return this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}${path}`, { ...init, redirect: 'error', headers }, /^\/api\/mobile\/(centers\/|business\/projects|investor\/)/.test(path) ? 75_000 : 15_000);
       };
       let result = await send();
       if (result.response.status === 401) {
@@ -304,7 +304,7 @@ export class MobileSessionClient {
       if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
       if (!result.response.ok) {
         if (result.response.status === 401) await this.signOut(false);
-        throw new MobileRequestError(String(result.body?.code ?? result.body?.error ?? 'REQUEST_FAILED'), result.response.status);
+        throw new MobileRequestError(String(result.body?.code ?? (typeof result.body?.error === 'object' ? (result.body.error as {code?:string})?.code : result.body?.error) ?? 'REQUEST_FAILED'), result.response.status);
       }
       if (!reading) this.clearCache();
       else if (ttlMs) this.cache.set(key, { value: result.body, expires: this.now() + ttlMs });
@@ -313,6 +313,17 @@ export class MobileSessionClient {
     if (reading) this.inflight.set(key, task);
     try { return await task; } finally { if (this.inflight.get(key) === task) this.inflight.delete(key); }
   }
+  private async secureAccount() {
+    const epoch=this.epoch,session=await this.activeSession();
+    if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');
+    try{await this.sessionSecurity(session,epoch);}catch(error){if(error instanceof PendingMobileMfa)this.mfaRequiredListener?.(error);throw error;}
+    return {epoch,session};
+  }
+  async accountFactors(){const {session,epoch}=await this.secureAccount();const r=await this.mfaTransport('/auth/v1/user',session);if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');if(!r.response.ok)throw new MobileRequestError('AUTH_UNAVAILABLE');return (r.body?.factors??[]) as Array<{id:string;factor_type:string;status:string;friendly_name?:string}>;}
+  async enrollAuthenticator(){const {session,epoch}=await this.secureAccount();const r=await this.mfaTransport('/auth/v1/factors',session,{method:'POST',body:JSON.stringify({factor_type:'totp',friendly_name:'THE SFM'})});if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');if(!r.response.ok||!r.body?.id||!(r.body?.totp as {secret?:string}|undefined)?.secret)throw new MobileRequestError('AUTH_UNAVAILABLE');return {id:String(r.body.id),secret:String((r.body.totp as {secret:string}).secret)};}
+  async verifyAuthenticator(id:string,code:string){if(!/^[0-9]{6}$/.test(code))throw new MobileRequestError('INVALID_CODE');const {session,epoch}=await this.secureAccount();const path='/auth/v1/factors/'+encodeURIComponent(id);const c=await this.mfaTransport(path+'/challenge',session,{method:'POST',body:'{}'});if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');if(!c.response.ok||!c.body?.id)throw new MobileRequestError('AUTH_UNAVAILABLE');const v=await this.mfaTransport(path+'/verify',session,{method:'POST',body:JSON.stringify({challenge_id:c.body.id,code})});if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');if(!v.response.ok)throw new MobileRequestError('INVALID_CODE');const next=parseSession(v.body,this.now());await this.sessionSecurity(next,epoch);await this.acceptSession(next,epoch);}
+  async removeAuthenticator(id:string){const {session,epoch}=await this.secureAccount();const r=await this.mfaTransport('/auth/v1/factors/'+encodeURIComponent(id),session,{method:'DELETE'});if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');if(!r.response.ok)throw new MobileRequestError('AUTH_UNAVAILABLE');}
+  async signOutEverywhere(){const {session,epoch}=await this.secureAccount();const r=await this.mfaTransport('/auth/v1/logout?scope=global',session,{method:'POST'});if(epoch!==this.epoch)throw new MobileRequestError('STALE_SESSION');if(!r.response.ok)throw new MobileRequestError('AUTH_UNAVAILABLE');await this.signOut(false);}
   async signOut(revoke = true) {
     const previous = this.session;
     ++this.epoch;
