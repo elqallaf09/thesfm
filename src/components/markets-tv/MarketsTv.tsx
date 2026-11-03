@@ -1,8 +1,8 @@
 'use client';
-/* eslint-disable @next/next/no-img-element -- Shared with offline packaged TV clients without the Next image runtime. */
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Maximize, Monitor, Rows3, Settings2, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper, SlidersHorizontal } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ArrowLeft, ArrowRight, Clock3, Monitor, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper, SlidersHorizontal } from 'lucide-react';
+import { TvStatusBar, TvTopBar } from './TvShell';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
 import { TvMarketStrips } from './TvMarketStrips';
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
@@ -72,7 +72,9 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     try { setSelections(normalizeTvSelections(JSON.parse(localStorage.getItem(TV_SELECTIONS_KEY) || '{}'))); } catch { /* Keep defaults if device storage is corrupt. */ }
     try { setChannels(normalizeTvChannels(JSON.parse(localStorage.getItem(TV_CHANNELS_KEY) || '[]'))); } catch { /* Stored channels may be unavailable. */ }
     activity.current = Date.now(); setReady(true); setNow(Date.now()); setOnline(navigator.onLine);
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    // The visible clocks tick inside <TvClock/>; this coarse tick only drives
+    // rotation and freshness, so the whole screen no longer rerenders every second.
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     const network = () => setOnline(navigator.onLine);
     const screen = () => setFullscreen(Boolean(document.fullscreenElement));
     window.addEventListener('online', network); window.addEventListener('offline', network); document.addEventListener('fullscreenchange', screen);
@@ -110,6 +112,10 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     setRouteStrips(false); setSettings(next); activity.current = Date.now();
     // Persist before a real /tv ↔ /tv/strips navigation unmounts this screen.
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* In-memory mode remains usable. */ }
+    if (typeof window !== 'undefined' && tvOrigin() === window.location.origin) {
+      const path = displayMode === 'strips' ? '/tv/strips' : '/tv';
+      if (window.location.pathname !== path) window.location.assign(path);
+    }
   }
   function changeSettings(next: TvSettings) {
     if (next.displayMode !== settings.displayMode) setRouteStrips(false);
@@ -166,39 +172,31 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   // The strip rows only use time for price freshness. Rounding prevents the
   // second-by-second dashboard clock from rerendering every strip and card.
   const stripNow = Math.floor((now || Date.now()) / 15_000) * 15_000;
-  const displayLink = <a className="tv-display-link" aria-label={t(stripsOnly ? 'dashboard' : 'stripsOnly')} href={stripsOnly ? '/tv' : '/tv/strips'} onClick={event => {
-    if (tvOrigin() !== window.location.origin) event.preventDefault();
-    changeDisplayMode(stripsOnly ? 'viewing' : 'strips');
-  }}>{stripsOnly ? <Monitor aria-hidden="true"/> : <Rows3 aria-hidden="true"/>}<span>{t(stripsOnly ? 'dashboard' : 'stripsOnly')}</span></a>;
+  const mode: TvDisplayMode = stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse';
+  const logo = ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png';
+  const topbar = (extra?: ReactNode) => <TvTopBar language={settings.language} mode={mode} logo={logo} linked={Boolean(token)} fullscreen={fullscreen}
+    controlsHidden={(stripsOnly || viewing) && controls.hidden} seconds={!viewing} extra={extra}
+    onMode={next => { if (next !== mode) changeDisplayMode(next); }} onPair={() => setDialog(token ? 'device' : 'pair')}
+    onSettings={() => setDialog('settings')} onFullscreen={() => void toggleFullscreen()} onWake={controls.wake}/>;
+  const statusbar = <TvStatusBar language={settings.language} online={online} updatedAt={stripsOnly ? null : activeSnapshot?.generatedAt}
+    onSessions={stripsOnly ? undefined : () => setDialog('sessions')} onChannels={() => setDialog('channels')} onRefresh={refresh}/>;
   const strips = <TvMarketStrips selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused} markets={catalog.data?.markets || []} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} />;
   return <div ref={root} data-tv-root className={`tv-screen tv-${settings.theme}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     {stripsOnly ? <>
-      <header className="tv-strips-toolbar" data-controls-hidden={controls.hidden}><div className="tv-strip-brand"><img src={ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="48" height="48"/><div><strong dir="ltr">THE SFM <span>MARKETS TV</span></strong><h1>{t('stripMarkets')}</h1></div></div><div className="tv-header-actions" hidden={controls.hidden}>
-        <button onClick={() => setDialog('channels')} aria-label={t('channels')}><Rows3 aria-hidden="true"/><span>{t('channels')}</span></button>
-        <button className="tv-customize-button" onClick={() => setDialog('markets')} aria-label={t('customizeMarkets')}><SlidersHorizontal aria-hidden="true"/><span>{t('customizeMarkets')}</span></button>
-        <button onClick={() => setStripsPaused(value => !value)} aria-label={t(stripsPaused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={stripsPaused}>{stripsPaused ? <Play/> : <Pause/>}</button>
-        <button onClick={() => setRevision(value => value + 1)} aria-label={t('refresh')}><RefreshCw/></button>
-        {displayLink}
-        <button onClick={() => setDialog(token ? 'device' : 'pair')} aria-label={t(token ? 'paired' : 'pair')}><Smartphone aria-hidden="true"/></button>
-        <button onClick={() => setDialog('settings')} aria-label={t('settings')}><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button>
-        <button onClick={() => void toggleFullscreen()} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')}><Maximize aria-hidden="true"/></button>
-      </div>{controls.hidden && <button onClick={controls.wake} aria-label={t('showControls')}><Settings2 aria-hidden="true"/></button>}</header>
+      {topbar()}
+      <div className="tv-subbar" hidden={controls.hidden}>
+        <h1>{t('stripMarkets')}</h1>
+        <div className="tv-subbar-actions">
+          <button className="tv-customize-button" onClick={() => setDialog('markets')}><SlidersHorizontal aria-hidden="true"/><span>{t('customizeMarkets')}</span></button>
+          <button onClick={toggleTicker} aria-label={t(stripsPaused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={stripsPaused}>{stripsPaused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}<span>{t(stripsPaused ? 'resumeStrips' : 'pauseStrips')}</span></button>
+        </div>
+      </div>
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
       {catalog.error && <div className="tv-notice" role="status">{t('error')} <button onClick={() => setRevision(v => v + 1)}>{t('retry')}</button></div>}
       <main className="tv-strips-main">{!ready || (catalog.loading && !catalog.data) ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : strips}</main>
+      {statusbar}
     </> : viewing ? <>
-      <header className="tv-viewing-header" data-controls-hidden={controls.hidden}>
-        <div className="tv-viewing-brand"><img src={ready && tvOrigin() !== window.location.origin ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="48" height="48"/><div><strong dir="ltr">THE SFM</strong><span dir="ltr">MARKETS TV</span></div></div>
-        <div className="tv-viewing-clock"><strong dir="ltr">{now ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kuwait', hour: '2-digit', minute: '2-digit' }).format(now) : '—'}</strong><small>{s('kuwaitTime')}</small></div>
-        <div className="tv-header-actions" hidden={controls.hidden}>
-          <button onClick={() => changeDisplayMode('browse')} aria-label={s('browse')} data-tv-focus-key="browse"><Globe2 aria-hidden="true"/><span>{s('browse')}</span></button>
-          {displayLink}
-          <button onClick={() => setDialog(token ? 'device' : 'pair')} aria-label={t(token ? 'paired' : 'pair')} data-tv-focus-key="pair"><Smartphone aria-hidden="true"/><span>{t(token ? 'paired' : 'pair')}</span></button>
-          <button onClick={() => setDialog('settings')} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button>
-          <button onClick={() => void toggleFullscreen()} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')} data-tv-focus-key="fullscreen"><Maximize aria-hidden="true"/></button>
-        </div>
-        {controls.hidden && <button onClick={controls.wake} aria-label={t('showControls')}><Settings2 aria-hidden="true"/></button>}
-      </header>
+      {topbar()}
       <div className="tv-viewing-nav"><nav className="tv-scene-tabs" aria-label={s('scenes')}>{TV_SCENE_ORDER.map(value => <button key={value} aria-pressed={scene === value} onClick={() => chooseScene(value)} data-tv-focus-key={`scene:${value}`}>{s(value)}</button>)}</nav>
         <div className="tv-scene-playback"><span>{s(settings.autoRotate ? 'automatic' : 'manual')}</span>
           <button onClick={() => chooseScene(previousScene)} aria-label={s('previousScene')} data-tv-focus-key="scene-previous">{settings.language === 'ar' ? <ArrowRight aria-hidden="true"/> : <ArrowLeft aria-hidden="true"/>}</button>
@@ -208,15 +206,12 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       </div>
       {!online && <div className="tv-scene-notice" role="status">{t('offline')}</div>}
       <TvSceneDashboard snapshot={sceneMarket.data} loading={!ready || sceneMarket.loading} error={sceneMarket.error} language={settings.language} now={stripNow} news={news.data?.stories || EMPTY_NEWS} linked={Boolean(token)} watchlist={scene === 'watchlist'} ticker={settings.ticker} tickerPaused={stripsPaused} speed={settings.stripSpeed || 56} onQuote={setDetail} onStory={setStory} onPair={openPair} onRefresh={refresh} onTickerPause={toggleTicker}/>
-      <footer className="tv-viewing-footer"><span>{t('remoteHelp')}</span><button onClick={() => setDialog('sessions')}>{t('sessions')}</button><button onClick={() => setDialog('channels')}>{t('channels')}</button><span>{t(online ? 'connected' : 'offline')}</span><button onClick={() => setRevision(value => value + 1)} aria-label={s('update')}><RefreshCw aria-hidden="true"/></button></footer>
+      {statusbar}
     </> : <>
-    <header className="tv-header"><div className="tv-brand"><Monitor aria-hidden="true"/><div><strong dir="ltr">THE SFM <span>MARKETS TV</span></strong><small>{token ? t('paired') : t('public')}</small></div></div>
-      <div className="tv-clock"><strong dir="ltr">{now ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kuwait', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now) : '—'}</strong><small>{s('kuwaitTime')} · {now ? new Intl.DateTimeFormat(`${settings.language}-u-nu-latn`, { timeZone: 'Asia/Kuwait', weekday: 'long', day: 'numeric', month: 'long' }).format(now) : '—'}</small></div>
-      <div className="tv-header-actions"><button className="tv-browse-viewing-button" onClick={() => changeDisplayMode('viewing')} aria-label={s('viewing')}><Monitor aria-hidden="true"/><span>{s('viewing')}</span></button>{displayLink}<a className="tv-world-stocks-link" href={ready ? `${tvOrigin()}/world-stocks` : "/world-stocks"} onClick={event => { if (tvOrigin() !== window.location.origin) { event.preventDefault(); setDialog("worldStocks"); } }}><Globe2 aria-hidden="true"/><span>{t('worldStocks')}</span></a><button onClick={() => setDialog(token ? 'device' : 'pair')}><Smartphone aria-hidden="true"/><span>{t(token ? 'paired' : 'pair')}</span></button><button onClick={() => setDialog('settings')} aria-label={t('settings')}><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button><button onClick={() => void toggleFullscreen()} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')}><Maximize aria-hidden="true"/></button></div>
-    </header>
+    {topbar(<a className="tv-world-stocks-link" href={ready ? `${tvOrigin()}/world-stocks` : "/world-stocks"} onClick={event => { if (tvOrigin() !== window.location.origin) { event.preventDefault(); setDialog("worldStocks"); } }}><Globe2 aria-hidden="true"/><span>{t('worldStocks')}</span></a>)}
     <nav className="tv-markets-nav" aria-label={t('markets')}>{settings.groups.map(g => <button key={g} aria-pressed={group === g} onClick={() => choose(g)}>{t(g)}</button>)}</nav>
     {catalog.data && !['global','crypto','forex','commodities','watchlist'].includes(group) && <label className="tv-exchange-select">{t('markets')}<select value={selectedMarket} onChange={event => { setSelectedMarket(event.target.value); setPage(0); }}><option value="">{t('allMarkets')}</option>{catalog.data.markets.filter(m => group === 'world' ? !['global','crypto','forex','commodities'].includes(m.group) : m.group === group).map(m => <option key={m.id} value={m.id}>{settings.language === 'ar' ? m.labelAr : settings.language === 'fr' ? m.labelFr : m.labelEn} ({m.count.toLocaleString('en-US')})</option>)}</select></label>}
-    <div className="tv-section-heading"><div><span className="tv-eyebrow">{t('directory')}: {market.data?.directoryTotal?.toLocaleString('en-US') ?? '—'}</span><h1>{t(group)}</h1></div><div className="tv-view-actions">{(['markets','map','sessions','brief'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{v === 'map' ? <Globe2 aria-hidden="true"/> : v === 'brief' ? <Newspaper aria-hidden="true"/> : <Monitor aria-hidden="true"/>}{t(v)}</button>)}<button aria-label={t(settings.autoRotate ? 'pause' : 'resume')} aria-pressed={settings.autoRotate} onClick={() => setSettings(s => ({ ...s, autoRotate: !s.autoRotate }))}>{settings.autoRotate ? <Pause/> : <Play/>}</button></div></div>
+    <div className="tv-section-heading"><div><span className="tv-eyebrow">{t('directory')}: {market.data?.directoryTotal?.toLocaleString('en-US') ?? '—'}</span><h1>{t(group)}</h1></div><div className="tv-view-actions">{(['markets','map','sessions','brief'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{v === 'map' ? <Globe2 aria-hidden="true"/> : v === 'brief' ? <Newspaper aria-hidden="true"/> : v === 'sessions' ? <Clock3 aria-hidden="true"/> : <Monitor aria-hidden="true"/>}{t(v)}</button>)}<button aria-label={t(settings.autoRotate ? 'pause' : 'resume')} aria-pressed={settings.autoRotate} onClick={() => setSettings(s => ({ ...s, autoRotate: !s.autoRotate }))}>{settings.autoRotate ? <Pause/> : <Play/>}</button></div></div>
     {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
     {market.error && <div className="tv-notice" role="status">{t('error')} <button onClick={() => setRevision(v => v + 1)}>{t('retry')}</button></div>}
     <main className={`tv-body tv-layout-${settings.layout}`}>
@@ -240,7 +235,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       </aside>}
     </main>
     {settings.ticker && strips}
-    <footer className="tv-footer"><span>{t('remoteHelp')}</span><span>{t(online ? 'connected' : 'offline')}</span><button onClick={() => setRevision(v => v + 1)} aria-label={t('refresh')}><RefreshCw size={16}/></button></footer>
+    {statusbar}
     </>}
     {message && <div className="tv-toast" role="status">{message}</div>}
     {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className="tv-dialog"><header><h2 id="tv-dialog-title">{detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'channels' ? 'channels' : dialog === 'worldStocks' ? 'worldStocks' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : dialog === 'device' ? 'paired' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X/></button></header>

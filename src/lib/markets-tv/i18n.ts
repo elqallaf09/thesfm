@@ -138,17 +138,32 @@ export const TV_TEXT = {
 export type TvTextKey = keyof typeof TV_TEXT;
 export function tvText(language: TvLanguage, key: TvTextKey) { return TV_TEXT[key][language === 'ar' ? 0 : language === 'fr' ? 2 : 1]; }
 const timeFormats = new Map<string, Intl.DateTimeFormat>();
-export function tvTime(value: string | null, language: TvLanguage, date = false) {
-  if (!value || !Number.isFinite(Date.parse(value))) return '—';
-  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
-  const key = `${language}:${date}:${dateOnly}`;
-  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(`${language}-u-nu-latn`, { ...(dateOnly ? {} : { hour: '2-digit', minute: '2-digit' } as const), ...(date || dateOnly ? { month: 'short', day: 'numeric' } as const : {}), timeZone: dateOnly ? 'UTC' : 'Asia/Kuwait' }));
-  return timeFormats.get(key)!.format(new Date(value));
+function tvFormat(key: string, locale: string, options: Intl.DateTimeFormatOptions) {
+  if (!timeFormats.has(key)) timeFormats.set(key, new Intl.DateTimeFormat(locale, options));
+  return timeFormats.get(key)!;
 }
+const kuwaitDay = (value: number) => tvFormat('day', 'en-CA', { timeZone: 'Asia/Kuwait', year: 'numeric', month: '2-digit', day: '2-digit' }).format(value);
+/** 24-hour Kuwait time, matching the header clock. With `date`, the day is
+ * only added when the observation is not from today, so rows stay short. */
+export function tvTime(value: string | null, language: TvLanguage, date = false, now = Date.now()) {
+  if (!value || !Number.isFinite(Date.parse(value))) return '—';
+  const locale = `${language}-u-nu-latn`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return tvFormat(`${language}:date-only`, locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(value));
+  const instant = Date.parse(value);
+  const time = tvFormat(`${language}:time`, locale, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Asia/Kuwait' }).format(instant);
+  if (!date || kuwaitDay(instant) === kuwaitDay(now)) return time;
+  return `${tvFormat(`${language}:day`, locale, { month: 'short', day: 'numeric', timeZone: 'Asia/Kuwait' }).format(instant)} ${time}`;
+}
+/** Fixed decimals per magnitude so a column of prices lines up on a TV. */
 export function tvPrice(price: number | null, currency: string | null) {
   if (price === null || !Number.isFinite(price) || price <= 0) return '—';
-  const key = price > 0 && price < .001 ? 'tiny' : ['KWD','BHD','OMR'].includes(currency || '') ? '3' : price < 1 ? '6' : '4';
-  if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', key === 'tiny' ? { maximumSignificantDigits: 6 } : { maximumFractionDigits: Number(key) }));
+  const key = price < .001 ? 'tiny' : ['KWD','BHD','OMR'].includes(currency || '') ? 'fils' : price < 1 ? 'sub' : price < 100 ? 'mid' : 'large';
+  const options: Record<string, Intl.NumberFormatOptions> = {
+    tiny: { maximumSignificantDigits: 6 }, fils: { minimumFractionDigits: 3, maximumFractionDigits: 3 },
+    sub: { minimumFractionDigits: 2, maximumFractionDigits: 6 }, mid: { minimumFractionDigits: 2, maximumFractionDigits: 4 },
+    large: { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+  };
+  if (!priceFormats.has(key)) priceFormats.set(key, new Intl.NumberFormat('en-US', options[key]));
   return priceFormats.get(key)!.format(price);
 }
 const priceFormats = new Map<string, Intl.NumberFormat>();

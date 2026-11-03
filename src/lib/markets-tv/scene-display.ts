@@ -67,6 +67,17 @@ export const TV_SCENE_TEXT = {
   accessDenied: ['رفض المصدر طلب البيانات', 'Source access denied', 'Accès à la source refusé'],
   notConfigured: ['مصدر السوق غير مهيأ', 'Market source is not configured', 'Source du marché non configurée'],
   invalidQuote: ['سعر أو وحدة غير صالحين', 'Invalid price or unit', 'Cours ou unité non valide'],
+  modeViewing: ['مشاهدة', 'Watch', 'Regarder'],
+  modeBrowse: ['تصفح', 'Browse', 'Parcourir'],
+  modeStrips: ['أشرطة', 'Strips', 'Bandes'],
+  lastUpdate: ['آخر تحديث', 'Last update', 'Dernière mise à jour'],
+  movers: ['أبرز التحركات', 'Top movers', 'Plus fortes variations'],
+  gainers: ['الأكثر ارتفاعًا', 'Top gainers', 'Plus fortes hausses'],
+  losers: ['الأكثر انخفاضًا', 'Top losers', 'Plus fortes baisses'],
+  noMovers: ['لا توجد تغيّرات موثقة في هذا المشهد بعد', 'No verified changes in this scene yet', 'Aucune variation vérifiée pour cette scène'],
+  marketClocks: ['أوقات الأسواق', 'Market clocks', 'Horloges des marchés'],
+  regularHours: ['الساعات المعتادة', 'Regular hours', 'Horaires habituels'],
+  pricesAvailable: ['أسعار متاحة', 'quotes available', 'cours disponibles'],
 } satisfies Record<string, [string, string, string]>;
 
 export type TvSceneTextKey = keyof typeof TV_SCENE_TEXT;

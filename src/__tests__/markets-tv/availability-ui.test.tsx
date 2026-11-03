@@ -28,7 +28,7 @@ describe('TV unavailable-price presentation', () => {
     for (let index = 0; index < 10; index++) expect(html).toContain(`Unavailable instrument ${index}`);
     expect(html.match(/class="tv-quote tv-scene-row"/g)).toHaveLength(6);
     expect(html).toContain('Source request limit reached');
-    expect(html).toContain('0 / 10');
+    expect(html).toContain('0/10');
     expect(html).not.toContain('class="tv-scene-no-data"');
     expect(html).not.toContain('class="tv-scene-price"');
     expect(html).not.toContain('class="tv-scene-summary-value"');

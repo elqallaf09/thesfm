@@ -7,4 +7,5 @@ import '@/app/tv/tv.css';
 import './packaged.css';
 import '@/app/tv/display-controls.css';
 import '@/app/tv/viewing.css';
+import '@/app/tv/shell.css';
 createRoot(document.getElementById('root')!).render(<MarketsTv />);

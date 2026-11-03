@@ -22,7 +22,10 @@ describe('TV viewing preference migration', () => {
 
 describe('TV quote presentation', () => {
   it('shows source instants in Kuwait time while preserving calendar-only observations', () => {
-    expect(tvTime('2026-10-27T12:05:00Z', 'en')).toContain('03:05');
+    expect(tvTime('2026-10-27T12:05:00Z', 'en')).toBe('15:05');
+    // Same Kuwait day: time only. Another day: short date first.
+    expect(tvTime('2026-10-27T12:05:00Z', 'en', true, Date.parse('2026-10-27T18:00:00Z'))).toBe('15:05');
+    expect(tvTime('2026-10-27T12:05:00Z', 'en', true, Date.parse('2026-10-29T08:00:00Z'))).toBe('Oct 27 15:05');
     expect(tvTime('2026-10-27', 'en', true)).toBe('Oct 27');
     expect(tvTime('invalid', 'ar')).toBe('—');
     expect(tvTime('2026-10-27T12:05:00Z', 'ar')).not.toMatch(/[٠-٩]/);
@@ -31,5 +34,9 @@ describe('TV quote presentation', () => {
   it('never presents a missing or invalid price as a zero price', () => {
     for (const value of [null, NaN, Infinity, 0, -1]) expect(tvPrice(value, 'KWD')).toBe('—');
     expect(tvPrice(0.982, 'KWD')).toBe('0.982');
+    expect(tvPrice(0.9, 'KWD')).toBe('0.900');
+    expect(tvPrice(228.5, 'USD')).toBe('228.50');
+    expect(tvPrice(96420, 'USDT')).toBe('96,420.00');
+    expect(tvPrice(1.08325, 'USD')).toBe('1.0833');
   });
 });

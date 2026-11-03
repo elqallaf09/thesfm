@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/server/market-provider-cooldown', () => ({ readTwelveDataCooldown: vi.fn().mockResolvedValue(null), publishTwelveDataCooldown: vi.fn().mockResolvedValue(undefined) }));
+// Twelve Data budget assertions; a Yahoo fallback attempt is a separate source.
+const tdCalls = (mock: { mock: { calls: unknown[][] } }) => mock.mock.calls.filter(([url]) => String(url).includes('twelvedata')).length;
 const now = Date.parse('2026-10-28T05:15:00Z');
 beforeEach(() => {
   vi.resetModules(); vi.useFakeTimers(); vi.setSystemTime(now);
@@ -30,7 +32,7 @@ describe('TV source recovery integration', () => {
       expect(url.hostname).toBe('api.twelvedata.com'); expect(url.searchParams.get('symbol')).toBe('AMZN');
       return Response.json({ symbol: 'AMZN', currency: 'USD', close: '201', previous_close: '198', last_quote_at: Date.parse(observedAt) / 1000, is_market_open: false });
     });
-    const before = fetch.mock.calls.length;
+    const before = tdCalls(fetch);
     const [fallback] = await resolveTvQuotes([{ symbol: 'AMZN', name: 'Amazon', currency: 'USD', region: 'US', country: 'US' }], 'us');
     expect(new URL(fetch.mock.calls[before][0]).hostname).toBe('finnhub.io');
     expect(fallback).toMatchObject({ symbol: 'AMZN', currency: 'USD', price: 201, source: 'Twelve Data', status: 'closed', observedAt });
@@ -57,9 +59,9 @@ describe('TV source recovery integration', () => {
     expect(snapshot.retryAt).toBe('2026-10-28T05:16:01.000Z');
     expect([...snapshot.summary!, ...snapshot.quotes].map(quote => ({symbol: quote.symbol, price: quote.price, issue: quote.issue, retryAt: quote.retryAt}))).toEqual(expect.arrayContaining([expect.objectContaining({ symbol: 'KFH.KW', price: null, issue: 'rate_limited', retryAt: snapshot.retryAt })]));
     expect([...snapshot.summary!, ...snapshot.quotes].filter(quote => quote.price !== null || quote.issue !== 'rate_limited' || quote.retryAt !== snapshot.retryAt)).toEqual([]);
-    expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(tdCalls(fetch)).toBeLessThanOrEqual(2);
     const again = await loadTvSnapshot('gulf', [], { scene: 'gulf' });
-    expect(again.retryAt).toBe(snapshot.retryAt); expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(again.retryAt).toBe(snapshot.retryAt); expect(tdCalls(fetch)).toBeLessThanOrEqual(2);
   });
   it('keeps healthy Binance refreshing when indices are blocked and chooses the first blocked retry otherwise', async () => {
     const { tvSnapshotRetryAt } = await import('@/lib/server/markets-tv/quoteAvailability');

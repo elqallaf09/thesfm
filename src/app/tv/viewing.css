@@ -110,8 +110,8 @@
 .tv-scene-no-data h3 { font-size: 1em; font-weight: 500; }
 .tv-scene-heatmap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: .5em; flex: 1; min-height: 0; }
 .tv-screen .tv-scene-heatmap > button { display: flex; flex-direction: column; align-items: start; justify-content: center; gap: .2em; min-width: 0; min-height: 0; padding: .6em; text-align: start; border: 0; color: var(--tv-text); background: var(--tv-panel2); }
-.tv-screen .tv-scene-heatmap > button[data-trend=up] { background: color-mix(in srgb, var(--tv-up) 13%, var(--tv-panel)); }
-.tv-screen .tv-scene-heatmap > button[data-trend=down] { background: color-mix(in srgb, var(--tv-down) 13%, var(--tv-panel)); }
+.tv-screen .tv-scene-heatmap > button[data-trend=up] { background: var(--tv-up-soft); }
+.tv-screen .tv-scene-heatmap > button[data-trend=down] { background: var(--tv-down-soft); }
 .tv-scene-heatmap-name { font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
 .tv-scene-heatmap > button > strong { font-family: var(--font-data); font-size: .8em; }
 .tv-scene-heatmap .tv-scene-change { font-size: 1.3em; }

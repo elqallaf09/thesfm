@@ -745,6 +745,9 @@
   --tv-accent: #ffc279;
   --tv-up: #62d9b2;
   --tv-down: #ff8d95;
+  /* Pre-mixed trend fills: Chromium 85 TV engines have no color-mix(). */
+  --tv-up-soft: #1c3436;
+  --tv-down-soft: #302a32;
   --tv-backdrop: #000b;
   --tv-qr-background: #fff;
   --tv-focus-shadow: 0 0 0 7px var(--tv-bg);
@@ -763,5 +766,7 @@
   --tv-accent: #854705;
   --tv-up: #0a7052;
   --tv-down: #b22537;
+  --tv-up-soft: #dfece8;
+  --tv-down-soft: #f5e3e5;
   color-scheme: light;
 }

@@ -1,0 +1,126 @@
+/* Markets TV — one frame for viewing, browse and strips. Loaded last.
+   Many TV WebViews report a 960×540 CSS viewport (1080p at 2x). The old
+   16–18px font floors overflowed that viewport, so type now scales with the
+   screen down to a 10px floor and every surface fits without clipping.
+   Chromium 85 safe: no color-mix(), no :has(), no container queries. */
+
+.tv-screen { font-size: clamp(10px, min(1.05vw, 1.85vh), 36px); }
+.tv-screen.tv-viewing { font-size: clamp(10px, min(1.32vw, 2.35vh), 52px); padding: 2.2vh 2.4vw; }
+.tv-screen.tv-browsing, .tv-screen.tv-strips-only {
+  height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; gap: .6em; padding: 2.2vh 2.4vw;
+}
+.tv-screen.tv-browsing { font-size: clamp(10px, min(1.2vw, 2.15vh), 46px); }
+
+/* ---------- Top bar ---------- */
+.tv-screen .tv-topbar {
+  display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 1em;
+  flex: 0 0 auto; padding-bottom: .55em; border-bottom: 1px solid var(--tv-line); font-size: .9em;
+}
+.tv-topbar-brand { display: flex; align-items: center; gap: .6em; min-width: 0; justify-self: start; }
+.tv-topbar-brand > img { width: 2.5em; height: 2.5em; object-fit: contain; flex-shrink: 0; }
+.tv-topbar-brand strong { display: block; font-family: var(--font-data); font-size: 1.1em; letter-spacing: .06em; line-height: 1.2; }
+.tv-topbar-brand span { display: block; color: var(--tv-muted); font-size: .7em; letter-spacing: .14em; line-height: 1.3; }
+.tv-topbar-clock { text-align: start; line-height: 1.25; padding-inline-start: 1em; border-inline-start: 1px solid var(--tv-line); }
+.tv-topbar-clock strong { display: block; font: 500 1.45em/1.2 var(--font-data); font-variant-numeric: tabular-nums; }
+.tv-topbar-clock small { display: block; font-size: .72em; color: var(--tv-muted); white-space: nowrap; }
+.tv-topbar-actions { display: flex; align-items: center; gap: .4em; justify-self: end; min-width: 0; }
+.tv-topbar-actions[hidden] { display: none; }
+.tv-screen .tv-topbar-actions > button, .tv-screen .tv-topbar-actions > a {
+  font-size: .82em; padding: .4em .65em; min-height: 2.4em; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: .4em; border: 1px solid var(--tv-line);
+  border-radius: var(--radius-sm); background: var(--tv-panel); text-decoration: none;
+}
+.tv-screen .tv-topbar-actions > button[data-linked=true] { color: var(--tv-up); }
+.tv-mode-switch { display: flex; padding: .2em; gap: .2em; background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-control); }
+.tv-screen .tv-mode-switch button { font-size: .82em; border-color: transparent; background: transparent; padding: .35em .7em; min-height: 2.2em; white-space: nowrap; }
+.tv-screen .tv-mode-switch button[aria-pressed=true] { background: var(--tv-panel2); border-color: var(--tv-accent); color: var(--tv-accent); }
+.tv-topbar-wake { justify-self: end; }
+
+/* ---------- Sub bar (strips) ---------- */
+.tv-subbar { display: flex; align-items: center; justify-content: space-between; gap: 1em; flex: 0 0 auto; }
+.tv-subbar[hidden] { display: none; }
+.tv-subbar h1 { font-size: 1.2em; font-weight: 600; }
+.tv-subbar-actions { display: flex; gap: .4em; }
+.tv-screen .tv-subbar-actions button { font-size: .82em; padding: .4em .7em; }
+.tv-strips-main { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+
+/* ---------- Status bar ---------- */
+.tv-screen .tv-statusbar {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 1.2em;
+  flex: 0 0 auto; font-size: max(10px, .66em); color: var(--tv-muted);
+  padding-top: .45em; border-top: 1px solid var(--tv-line);
+}
+.tv-statusbar-help { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tv-statusbar-actions { display: flex; gap: .8em; }
+.tv-screen .tv-statusbar button { font-size: 1em; min-height: 0; padding: .15em .3em; border: 0; background: transparent; color: var(--tv-text); }
+.tv-statusbar-state { display: inline-flex; align-items: center; gap: .35em; white-space: nowrap; }
+.tv-statusbar-state i { width: .6em; height: .6em; border-radius: var(--radius-pill); background: var(--tv-up); display: inline-block; }
+.tv-statusbar-state i[data-online=false] { background: var(--tv-down); }
+
+/* ---------- Viewing: table rows never collapse below their text ---------- */
+.tv-scene-rows { grid-auto-rows: minmax(0, 1fr); overflow: hidden; }
+.tv-screen .tv-scene-row { padding: .25em 0; overflow: hidden; }
+.tv-scene-identity strong, .tv-scene-identity > span { line-height: 1.3; }
+.tv-scene-evidence { display: flex; flex-direction: row; align-items: baseline; gap: .4em; min-width: 0; }
+.tv-scene-row .tv-scene-price { flex-direction: row; align-items: baseline; justify-content: center; gap: .35em; }
+.tv-scene-row .tv-scene-change { flex-direction: row; align-items: baseline; justify-content: center; gap: .35em; }
+.tv-scene-summary .tv-scene-evidence { flex-wrap: wrap; }
+.tv-scene-source { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tv-scene-quotes .tv-data-notice { margin-bottom: .4em; font-size: .75em; }
+.tv-scene-summary-value { font-size: 1.5em; }
+
+/* ---------- Viewing sidebar: movers, clocks, news ---------- */
+.tv-scene-sidebar { overflow: hidden; }
+.tv-scene-movers, .tv-scene-clocks {
+  background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-control);
+  padding: .55em .75em; min-width: 0; flex: 0 0 auto;
+}
+.tv-scene-movers > p { font-size: .7em; color: var(--tv-muted); margin-top: .3em; }
+.tv-scene-movers-lists { display: grid; grid-template-columns: 1fr 1fr; gap: .6em; margin-top: .25em; }
+.tv-scene-movers h3 { font-size: .62em; color: var(--tv-muted); font-weight: 500; margin-bottom: .15em; }
+.tv-scene-movers ul, .tv-scene-clocks ul { list-style: none; margin: 0; padding: 0; }
+.tv-screen .tv-scene-movers li button {
+  display: flex; justify-content: space-between; align-items: center; gap: .4em; width: 100%;
+  min-height: 0; padding: .2em 0; border: 0; border-radius: 0; background: transparent; font-size: .7em; text-align: start;
+}
+.tv-scene-movers li button > span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
+.tv-scene-movers .tv-scene-change { flex-direction: row; align-items: center; }
+.tv-scene-movers .tv-scene-change small { display: none; }
+.tv-scene-clocks ul { display: grid; grid-template-columns: 1fr 1fr; gap: .35em .8em; margin-top: .25em; }
+.tv-scene-clocks li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 .4em; font-size: .68em; line-height: 1.35; }
+.tv-scene-clocks li > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tv-scene-clocks li > strong { font-family: var(--font-data); font-weight: 500; }
+.tv-scene-clocks li > small { grid-column: 1 / -1; font-size: .85em; }
+.tv-scene-headlines { min-height: 0; overflow: hidden; }
+
+/* ---------- Browse: quote grid fits the screen ---------- */
+.tv-browsing .tv-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.tv-browsing .tv-main-panel { min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.tv-browsing .tv-quote-grid { flex: 1 1 auto; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+.tv-browsing .tv-news-panel { min-height: 0; overflow: hidden; }
+.tv-browsing .tv-market-strips { flex: 0 0 auto; max-height: 19.5vh; overflow: hidden; }
+.tv-browsing .tv-markets-nav { padding-block: .2em; }
+.tv-browsing .tv-section-heading h1 { font-size: 1.35em; line-height: 1.3; }
+.tv-browsing .tv-quote-grid { gap: .55em; }
+.tv-screen.tv-browsing .tv-quote { min-height: 0; padding: .6em .75em; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; justify-content: space-between; gap: .15em; text-align: start; }
+.tv-browsing .tv-quote > * { line-height: 1.35; }
+.tv-browsing .tv-quote-name { font-size: .8em; }
+.tv-browsing .tv-price-line strong { font-size: 1.4em; line-height: 1.2; }
+.tv-browsing .tv-quote-meta { font-size: .72em; }
+.tv-browsing .tv-pagination { margin-top: .5em; flex: 0 0 auto; }
+.tv-browsing .tv-story { padding-block: .45em; }
+.tv-browsing .tv-sessions { overflow-y: auto; min-height: 0; }
+
+/* ---------- Strips: one evidence line, no bidi flip ---------- */
+.tv-strip-evidence { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 760px) {
+  .tv-screen.tv-browsing, .tv-screen.tv-strips-only { height: auto; overflow: visible; }
+  .tv-screen .tv-topbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .tv-topbar-actions { grid-column: 1 / -1; flex-wrap: wrap; justify-self: stretch; }
+  .tv-screen .tv-statusbar { grid-template-columns: 1fr auto; }
+  .tv-statusbar-help { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .tv-screen button { transition: none; } }
+.tv-scene-row .tv-scene-identity { flex-direction: row; align-items: baseline; gap: .5em; }
+.tv-scene-row .tv-scene-identity > span { flex-shrink: 0; }
