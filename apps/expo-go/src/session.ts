@@ -1,3 +1,5 @@
+import { registrationError, validRegistrationEmail, type Registration } from './registration';
+
 export type MobileSession = { accessToken: string; refreshToken: string; expiresAt: number };
 export type SessionStorage = { getItem(key: string): Promise<string | null>; setItem(key: string, value: string): Promise<void>; removeItem(key: string): Promise<void> };
 export class MobileRequestError extends Error {
@@ -91,12 +93,82 @@ export class MobileSessionClient {
     this.session = null; this.clearCache(); this.emit();
     await this.persist(null);
     const { response, body } = await this.transport(`${this.config.supabaseUrl.replace(/\/$/, '')}/auth/v1/token?grant_type=password`, {
-      method: 'POST', headers: { apikey: this.config.publicKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }),
+      method: 'POST', redirect: 'error', headers: { apikey: this.config.publicKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), password }),
     });
+    if (!response.ok && body?.error_code === 'email_not_confirmed') throw new MobileRequestError('EMAIL_NOT_CONFIRMED', response.status);
+    if (response.status === 429) throw new MobileRequestError('RATE_LIMITED', response.status);
     if (!response.ok) throw new MobileRequestError(response.status === 400 ? 'INVALID_CREDENTIALS' : `AUTH_${response.status}`, response.status);
     const session = parseSession(body, this.now());
     await this.sessionSecurity(session, epoch);
     await this.acceptSession(session, epoch);
+  }
+  private registrationEndpoint(path: 'signup' | 'resend', language: Registration['language']) {
+    this.configured();
+    // Use the existing HTTPS confirmation landing page. Email links never enter
+    // the OAuth callback or import bearer tokens from an untrusted deep link.
+    const redirect = new URL('/login', this.config.apiBaseUrl);
+    redirect.searchParams.set('lang', language);
+    const endpoint = new URL(`/auth/v1/${path}`, this.config.supabaseUrl);
+    endpoint.searchParams.set('redirect_to', redirect.toString());
+    return endpoint.toString();
+  }
+  private registrationFailure(response: Response, body: Record<string, unknown> | null) {
+    const code = body?.error_code ?? body?.code;
+    if (response.status === 429 || code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return 'RATE_LIMITED';
+    if (code === 'weak_password') return 'WEAK_PASSWORD';
+    if (code === 'email_address_invalid' || code === 'validation_failed') return 'INVALID_EMAIL';
+    if (code === 'signup_disabled') return 'SIGNUP_DISABLED';
+    return 'AUTH_UNAVAILABLE';
+  }
+  async signUp(input: Registration): Promise<'confirmation_required' | 'signed_in'> {
+    const invalid = registrationError(input);
+    if (invalid) throw new MobileRequestError(invalid);
+    const endpoint = this.registrationEndpoint('signup', input.language);
+    // New attempts invalidate old responses, cached data and pending MFA.
+    const epoch = ++this.epoch;
+    this.session = null; this.clearCache(); this.emit();
+    await this.persist(null);
+    const email = input.email.trim().toLowerCase();
+    const { response, body } = await this.transport(endpoint, {
+      method: 'POST', redirect: 'error', headers: { apikey: this.config.publicKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: input.password, data: {
+        username: input.username.trim().toLowerCase(), display_name: input.username.trim(), email,
+        preferred_lang: input.language, default_currency: 'KWD', terms_accepted_at: new Date(this.now()).toISOString(),
+      } }),
+    });
+    if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
+    // Supabase may hide existing users with an obfuscated success or an explicit
+    // error. Both receive the same neutral UI; never use identities for discovery.
+    if (!response.ok) {
+      if (body?.error_code === 'user_already_exists' || body?.error_code === 'email_exists') return 'confirmation_required';
+      throw new MobileRequestError(this.registrationFailure(response, body), response.status);
+    }
+    const user = (body?.user ?? body) as Record<string, unknown> | null;
+    if (!body || !user || typeof user.id !== 'string' || !user.id) throw new MobileRequestError('AUTH_UNAVAILABLE');
+    if (!body.access_token) return 'confirmation_required';
+    const session = parseSession(body, this.now());
+    // A returned session still goes through the same server MFA gate as login.
+    // Provider configuration is authoritative; this flow never auto-confirms email.
+    await this.sessionSecurity(session, epoch);
+    await this.acceptSession(session, epoch);
+    return 'signed_in';
+  }
+  async resendConfirmation(email: string, language: Registration['language']) {
+    if (!validRegistrationEmail(email)) throw new MobileRequestError('INVALID_EMAIL');
+    const epoch = this.epoch;
+    const { response, body } = await this.transport(this.registrationEndpoint('resend', language), {
+      method: 'POST', redirect: 'error', headers: { apikey: this.config.publicKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'signup', email: email.trim().toLowerCase() }),
+    });
+    if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
+    if (!response.ok && !['user_not_found', 'email_not_found', 'email_already_confirmed'].includes(String(body?.error_code))) throw new MobileRequestError(this.registrationFailure(response, body), response.status);
+  }
+  async requestPasswordReset(email: string) {
+    if (!validRegistrationEmail(email)) throw new MobileRequestError('INVALID_EMAIL');
+    const { response, body } = await this.transport(`${this.config.apiBaseUrl.replace(/\/$/, '')}/api/auth/password-reset/request`, {
+      method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier: email.trim().toLowerCase() }),
+    });
+    if (!response.ok || body?.ok !== true) throw new MobileRequestError(response.status === 429 ? 'RATE_LIMITED' : 'AUTH_UNAVAILABLE', response.status);
   }
   private async acceptSession(session: MobileSession, epoch: number) {
     if (epoch !== this.epoch) throw new MobileRequestError('STALE_SESSION');
