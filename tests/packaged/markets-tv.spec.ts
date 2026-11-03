@@ -128,6 +128,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.keyboard.press('Enter');
     await expect(nyse).toHaveAttribute('aria-expanded', 'true');
     await expect(page.locator('[data-market="XNYS"] canvas')).toBeVisible();
+    await expect(page.locator('[data-market="XNYS"] canvas')).toBeInViewport({ ratio: 1 });
     await page.keyboard.press('Enter');
     await expect(nyse).toHaveAttribute('aria-expanded', 'false');
     await page.keyboard.press('Escape');
