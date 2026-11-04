@@ -1,4 +1,8 @@
 import 'server-only';
+import { after } from 'next/server';
+import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { normalizeSfmOwnedHistoryRows } from '@/lib/sfm-market/ownedHistory';
+import { persistSfmMarketObservation, SFM_MARKET_OBSERVATIONS_TABLE } from '@/lib/sfm-market/store';
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 import type { ProviderAttemptFailure } from '@/lib/market/marketDataProviders';
@@ -21,6 +25,17 @@ const empty = (asset: TvAsset, issue: TvQuote['issue'] = 'provider_unavailable')
   name: asset.name, nameAr: asset.nameAr || asset.name, currency: asset.currency || null,
   country: asset.country || null, exchange: asset.exchange || asset.region || null, issue,
 });
+
+function matchesIndex(requested: string, supplied: string, provider: string) {
+  const indices: Record<string, string[]> = { '^GSPC': ['^GSPC', 'GSPC', 'SPX'], '^DJI': ['^DJI', 'DJI'], '^NDX': ['^NDX', 'NDX'],
+    '^FTSE': ['^FTSE', 'FTSE'], '^GDAXI': ['^GDAXI', 'GDAXI', 'DAX'], '^N225': ['^N225', 'N225', 'NIKKEI225'] };
+  if (supplied.includes(':')) {
+    const exchanges: Record<string, string> = { '^FTSE': 'LSE', '^GDAXI': 'XETR', '^N225': 'JPX' };
+    const [base, exchange] = supplied.split(':');
+    if (provider !== 'twelve_data' || exchange !== exchanges[requested] || !indices[requested]?.includes(base)) return false;
+  } else if (!indices[requested]?.includes(supplied)) return false;
+  return true;
+}
 
 /** A fallback must retain the requested listing, not just a similar ticker. */
 export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boolean {
@@ -47,13 +62,7 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
     if (!matching) return false;
   }
   if (asset.assetType === 'index' && requested.startsWith('^')) {
-    const indices: Record<string, string[]> = { '^GSPC': ['^GSPC', 'GSPC', 'SPX'], '^DJI': ['^DJI', 'DJI'], '^NDX': ['^NDX', 'NDX'],
-      '^FTSE': ['^FTSE', 'FTSE'], '^GDAXI': ['^GDAXI', 'GDAXI', 'DAX'], '^N225': ['^N225', 'N225', 'NIKKEI225'] };
-    if (supplied.includes(':')) {
-      const exchanges: Record<string, string> = { '^FTSE': 'LSE', '^GDAXI': 'XETR', '^N225': 'JPX' };
-      const [base, exchange] = supplied.split(':');
-      if (row.provenance.upstreamProvider !== 'twelve_data' || exchange !== exchanges[requested] || !indices[requested]?.includes(base)) return false;
-    } else if (!indices[requested]?.includes(supplied)) return false;
+    if (!matchesIndex(requested, supplied, row.provenance.upstreamProvider)) return false;
   }
   if (/^[A-Z]{1,6}(?:[.-][AB])?$/.test(requested) && (!asset.assetType || asset.assetType === 'stock')) {
     const vendorSymbol = supplied.split(':')[0].replace(/\.US$/, '').replace(/\./g, '-');
@@ -103,7 +112,12 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
     country: asset.country || result.country, exchange: asset.exchange || asset.region || result.exchange,
     ...(result.price === null ? { issue: 'invalid_quote' as const } : {}),
   };
-  quote.status = quoteStatus(quote); return quote;
+  quote.status = quoteStatus(quote);
+  if (resolvedType === 'index' && !quote.issue && quote.price !== null && quote.observedAt && quote.status !== 'unknown_time') {
+    const save = async () => { await persistSfmMarketObservation(row); };
+    try { after(save); } catch { await save(); }
+  }
+  return quote;
 }
 function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const assetType = asset.assetType || (group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : group === 'forex' ? 'forex' : 'stock');
@@ -113,6 +127,23 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const work = cachedTvQuote(key, () => loadQuote(asset, group), usStock || assetType === 'forex' ? 30 : 300)
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work); return work;
+}
+
+async function archivedIndex(quote: TvQuote): Promise<TvQuote> {
+  try {
+    const admin = createServerSupabaseAdmin();
+    if (!admin) return quote;
+    const { data } = await admin.from(SFM_MARKET_OBSERVATIONS_TABLE)
+      .select('observation_key,symbol,observed_at,received_at,price,change_percent,quality_state,source_class,upstream_provider,provider_symbol')
+      .eq('symbol', quote.symbol).eq('asset_type', 'index').lte('observed_at', new Date().toISOString())
+      .order('observed_at', { ascending: false }).limit(5).abortSignal(AbortSignal.timeout(1200));
+    const point = normalizeSfmOwnedHistoryRows(data ?? []).reverse().find(row =>
+      row.symbol === quote.symbol && matchesIndex(row.symbol, row.providerSymbol?.toUpperCase() || '', row.upstreamProvider));
+    if (!point) return quote;
+    return { ...quote, price: point.price, currency: null, changePercent: point.changePercent,
+      source: `SFM · ${point.upstreamProvider}`, observedAt: point.observedAt, receivedAt: point.receivedAt,
+      changeBasis: 'reference', status: 'stale' };
+  } catch { return quote; }
 }
 
 export async function resolveTvQuotes(assets: TvAsset[], group: TvGroup): Promise<TvQuote[]> {
@@ -136,5 +167,7 @@ export async function resolveTvQuotes(assets: TvAsset[], group: TvGroup): Promis
     }
   }
   await Promise.all([cryptoWork, ...Array.from({ length: Math.min(4, ordinary.length) }, () => worker())]);
-  return quotes;
+  return Promise.all(quotes.map((quote, index) =>
+    quote.price === null && quote.symbol.startsWith('^') && (assets[index].assetType === 'index' || group === 'global')
+      ? archivedIndex(quote) : quote));
 }
