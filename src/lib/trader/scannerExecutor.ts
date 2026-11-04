@@ -139,11 +139,13 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions<T
     const backoff = Math.min(options.maxDelayMs, options.baseDelayMs * 2 ** attempt);
     const jittered = backoff * (0.5 + Math.random() * 0.5);
     const retryAfterMs = options.getRetryAfterMs?.(result) ?? null;
+    if(retryAfterMs!==null&&retryAfterMs>options.maxDelayMs)return result;
     const delayMs = Math.min(options.maxDelayMs, retryAfterMs ?? jittered);
 
     attempt += 1;
     options.onRetry?.(attempt, delayMs);
     await sleep(delayMs);
+    if(options.shouldAbort?.())return result;
   }
 }
 

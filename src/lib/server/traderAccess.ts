@@ -13,13 +13,12 @@ function isLocalTraderQaBypassEnabled() {
   return process.env.SFM_LOCAL_TRADER_QA === '1' && process.env.VERCEL !== '1';
 }
 
-export async function getTraderAccess(): Promise<TraderAccessResult> {
-  if (isLocalTraderQaBypassEnabled()) {
+export async function getTraderAccess(request?: Request): Promise<TraderAccessResult> {
+  if (!request && isLocalTraderQaBypassEnabled()) {
     return { allowed: true, userId: 'local-trader-qa', email: 'local-trader-qa@localhost', isAdmin: true };
   }
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get('sfm_access_token')?.value;
+  const token = request ? request.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() : (await cookies()).get('sfm_access_token')?.value;
   const user = await getUserFromBearerToken(token);
 
   if (!user) return { allowed: false, reason: 'unauthenticated' };
@@ -51,7 +50,7 @@ export async function getTraderAccess(): Promise<TraderAccessResult> {
     return { allowed: false, reason: 'not_approved', userId: user.id, email: user.email ?? undefined };
   }
 
-  if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+  if (data.expires_at && (!Number.isFinite(new Date(data.expires_at).getTime()) || new Date(data.expires_at).getTime() <= Date.now())) {
     return { allowed: false, reason: 'expired', userId: user.id, email: user.email ?? undefined };
   }
 

@@ -26,15 +26,15 @@ function isUuid(value?: string | null) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
-async function currentTraderUserId() {
-  const access = await getTraderAccess();
+async function currentTraderUserId(request: NextRequest) {
+  const access = await getTraderAccess(request.headers.has('authorization') ? request : undefined);
   if (!access.allowed || !isUuid(access.userId)) return null;
   return access.userId ?? null;
 }
 
 export async function GET(request: NextRequest) {
   const admin = createServerSupabaseAdmin();
-  const userId = await currentTraderUserId();
+  const userId = await currentTraderUserId(request);
   const forceFresh = request.nextUrl.searchParams.get('refresh') === '1' || request.nextUrl.searchParams.get('refresh') === 'true';
   const payload = await buildTradePerformancePayload({ admin, userId, forceFresh });
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   if (!record) return json({ ok: false, code: 'INVALID_TRADE_RECORD' }, { status: 400 });
 
   const admin = createServerSupabaseAdmin();
-  const userId = await currentTraderUserId();
+  const userId = await currentTraderUserId(request);
   if (!admin || !userId) {
     return json({
       ok: false,

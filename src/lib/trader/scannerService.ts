@@ -59,7 +59,7 @@ type PersistedCursor = {
 
 type AssetOutcome =
   | { ok: true; symbol: string; result: StockAnalysisResult; cacheHit: boolean }
-  | { ok: false; symbol: string; reason: string; cacheHit: boolean };
+  | { ok: false; symbol: string; reason: string; cacheHit: boolean; retryAfterMs?: number };
 
 function providerFailureReason(error: unknown) {
   const message = error instanceof Error ? `${error.name} ${error.message}` : String(error ?? '');
@@ -140,35 +140,27 @@ function toCandles(history: Awaited<ReturnType<typeof fetchYahooHistory>>): Mark
 
 async function analyzeAssetOnce(asset: TradableAsset): Promise<AssetOutcome> {
   const candidateSymbols = dedupeProviderCandidates([asset.providerSymbol, asset.symbol]);
-  const [quoteSettled, historySettled] = await Promise.allSettled([
-    fetchYahooNormalizedQuote({
-      requestedSymbol: asset.symbol,
-      symbols: candidateSymbols,
-      name: asset.name,
-      debugContext: { service: 'thesfm-trader-scanner', market: 'US' },
-    }),
-    fetchYahooHistory(asset.providerSymbol, 'stock', '2y', '1d'),
-  ]);
-
-  const cacheHit = historySettled.status === 'fulfilled' && historySettled.value.success
-    ? historySettled.value.cached === true
-    : false;
-  if (quoteSettled.status === 'rejected') {
-    return { ok: false, symbol: asset.symbol, reason: providerFailureReason(quoteSettled.reason), cacheHit };
+  let historyResult: Awaited<ReturnType<typeof fetchYahooHistory>>;
+  try { historyResult=await fetchYahooHistory(asset.providerSymbol,'stock','2y','1d'); }
+  catch(error){return {ok:false,symbol:asset.symbol,reason:providerFailureReason(error),cacheHit:false};}
+  const cacheHit=historyResult.success&&historyResult.cached===true;
+  if(!historyResult.success)return {ok:false,symbol:asset.symbol,reason:historyResult.unavailableReason,cacheHit:false,retryAfterMs:historyResult.retryAfterMs};
+  const embedded=historyResult.quoteSnapshot;
+  let quote:MarketQuote|null=null;
+  let quoteReason='quote_unavailable';
+  if(embedded?.price&&embedded.marketTime){
+    const change=embedded.previousClose===null?null:embedded.price-embedded.previousClose;
+    quote={symbol:asset.symbol,price:embedded.price,open:null,high:null,low:null,previousClose:embedded.previousClose,change,changePercent:change!==null&&embedded.previousClose?change/embedded.previousClose*100:null,volume:embedded.volume,timestamp:embedded.marketTime,currency:embedded.currency||asset.currency,delayed:true,provider:'Yahoo Finance'};
+  }else{
+    try {const fallback=await fetchYahooNormalizedQuote({requestedSymbol:asset.symbol,symbols:candidateSymbols,name:asset.name,debugContext:{service:'thesfm-trader-scanner',market:'US'}});quote=toMarketQuote(asset,fallback);quoteReason=fallback.unavailableReason||quoteReason;}
+    catch(error){return {ok:false,symbol:asset.symbol,reason:providerFailureReason(error),cacheHit};}
   }
-  if (historySettled.status === 'rejected') {
-    return { ok: false, symbol: asset.symbol, reason: providerFailureReason(historySettled.reason), cacheHit };
-  }
-
-  const quoteResult = quoteSettled.value;
-  const historyResult = historySettled.value;
-  const quote = toMarketQuote(asset, quoteResult);
   const candles = toCandles(historyResult);
   if (!quote) {
-    return { ok: false, symbol: asset.symbol, reason: quoteResult.unavailableReason || 'quote_unavailable', cacheHit };
+    return { ok: false, symbol: asset.symbol, reason: quoteReason, cacheHit };
   }
   if (candles.length < 30) {
-    return { ok: false, symbol: asset.symbol, reason: historyResult.success ? 'insufficient_history' : historyResult.unavailableReason, cacheHit };
+    return { ok: false, symbol: asset.symbol, reason: 'insufficient_history', cacheHit };
   }
   return { ok: true, symbol: asset.symbol, result: analyzeStock({ asset, quote, candles }), cacheHit };
 }
@@ -317,7 +309,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
           baseDelayMs: SCANNER_RETRY_BASE_DELAY_MS,
           maxDelayMs: SCANNER_RETRY_MAX_DELAY_MS,
           isRetryable: (result) => !result.ok && classifyScanFailure(result.reason).retryable,
-          getRetryAfterMs: () => null,
+          getRetryAfterMs: outcome => outcome.ok ? null : outcome.retryAfterMs ?? null,
           shouldAbort: () => deadline.expired() || breaker.isOpen(),
           onRetry: () => { metrics.retries += 1; },
         },
@@ -357,7 +349,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
   const completedAtIso = new Date().toISOString();
   const mergedResults = Array.from(bySymbol.values()).sort((a, b) => b.confidence - a.confidence);
   cache.results = mergedResults;
-  cache.providerConnected = mergedResults.length > 0;
+  cache.providerConnected = succeeded.length > 0;
   // `providerLastSuccess` feeds trader_provider_status.last_successful_update,
   // which answers "when did the provider last respond to us". It must therefore
   // be wall-clock time. It used to be seeded from the quote's market timestamp,
@@ -365,8 +357,9 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
   // a provider that was hours or days "stale" while it was in fact healthy. The
   // old `|| completedAtIso` tail was wrong in the opposite direction: it invented
   // a fresh success even for a run where nothing succeeded at all.
-  const providerAnsweredAt = succeeded.length > 0 ? completedAtIso : null;
-  cache.providerLastSuccess = providerAnsweredAt ?? cache.providerLastSuccess;
+  // Cached history can produce a valid scan result without proving that the
+  // external provider answered during this run.
+  if (succeeded.some((item) => !item.cacheHit)) cache.providerLastSuccess = completedAtIso;
   cache.delayed = mergedResults.some((result) => result.delayed);
 
   const newOffset = offset + attemptedCount;
@@ -394,7 +387,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
     nextCursor = newOffset;
   }
 
-  const status: 'completed' | 'partial' = universeExhausted && !stopped ? 'completed' : 'partial';
+  const status: 'completed' | 'partial' = universeExhausted ? 'completed' : 'partial';
   const generatedSignals = mergedResults.filter((result) => result.signal !== 'hold').length;
 
   cache.status = {
@@ -431,7 +424,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
     circuitBreakerState: breaker.state(),
     durationMs,
     nextCursor,
-    approximateExternalRequests: attempted.length * 2 + metrics.retries * 2,
+    stopReason: universeExhausted ? 'universe_exhausted' : breakerOpen ? 'provider_circuit_open' : deadline.expired() ? 'time_budget' : 'slice_complete',
   });
 
   await persistScan({

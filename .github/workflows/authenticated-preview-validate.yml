@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: authenticated-preview-validate-${{ inputs.target_sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -89,6 +89,14 @@ jobs:
         with:
           ref: ${{ inputs.target_sha }}
 
+      - name: Load validation infrastructure from the workflow revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .preview-infra
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       - name: Resolve and mask isolated Supabase credentials
         shell: bash
         run: |
@@ -123,11 +131,11 @@ jobs:
             const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
               ...context.repo, commit_sha: sha, per_page: 100,
             });
-            const matches = pulls.filter(pr => pr.state === 'open' && pr.head.sha === sha
+            const matches = pulls.filter(pr => pr.head.sha === sha
               && pr.head.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`);
-            if (matches.length !== 1) throw new Error('Expected exactly one open same-repository PR at the requested SHA.');
+            if (matches.length !== 1) throw new Error('Expected exactly one same-repository PR at the requested SHA.');
             const { data: pull_request } = await github.rest.pulls.get({ ...context.repo, pull_number: matches[0].number });
-            const { ensureReleasePreview } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/ensure-release-preview.mjs`);
+            const { ensureReleasePreview } = await import(`${process.env.GITHUB_WORKSPACE}/.preview-infra/.github/scripts/ensure-release-preview.mjs`);
             await ensureReleasePreview({ github, core, context: { repo: context.repo, payload: { ...context.payload, pull_request } } });
 
       - uses: pnpm/action-setup@v6
