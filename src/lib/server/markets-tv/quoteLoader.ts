@@ -26,7 +26,7 @@ const empty = (asset: TvAsset, issue: TvQuote['issue'] = 'provider_unavailable')
   country: asset.country || null, exchange: asset.exchange || asset.region || null, issue,
 });
 
-function matchesIndex(requested: string, supplied: string, provider: string) {
+function matchesIndex(requested: string, supplied: string, provider: string | null) {
   const indices: Record<string, string[]> = { '^GSPC': ['^GSPC', 'GSPC', 'SPX'], '^DJI': ['^DJI', 'DJI'], '^NDX': ['^NDX', 'NDX'],
     '^FTSE': ['^FTSE', 'FTSE'], '^GDAXI': ['^GDAXI', 'GDAXI', 'DAX'], '^N225': ['^N225', 'N225', 'NIKKEI225'] };
   if (supplied.includes(':')) {
