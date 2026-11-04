@@ -76,3 +76,10 @@
   .tv-unified-header .tv-header-actions button, .tv-unified-header .tv-display-link { min-height: 44px; }
   .tv-unified-header .tv-mode-switch span { display: none; }
 }
+
+/* Keep Arabic and Latin market names inside their own horizontal scroll targets. */
+@media (max-width: 760px) {
+  .tv-screen .tv-markets-nav { min-width: 0; max-width: 100%; }
+  .tv-screen .tv-markets-nav > button { flex: 0 0 auto; width: max-content; min-width: max-content; }
+  .tv-screen .tv-view-actions { flex-wrap: wrap; }
+}
