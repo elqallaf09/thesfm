@@ -1,0 +1,78 @@
+/* Shared by Next and packaged Android, Tizen and webOS clients. One scroll area
+   prevents grid rows from collapsing inside a height-constrained dialog. */
+.tv-screen .tv-picker-dialog{width:min(1400px,94vw);height:92vh;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;padding:1.25em;font-size:clamp(16px,1.3vw,30px)}
+.tv-screen .tv-picker-dialog>header{flex-shrink:0;margin-bottom:.75em;padding-bottom:.65em}
+.tv-screen .tv-picker{display:flex;flex-direction:column;min-height:0;gap:0;flex:1}
+.tv-picker-scroll{overflow:auto;overscroll-behavior:contain;min-height:0;flex:1;padding:.4em .5em .8em;scroll-padding:1em;scrollbar-width:thin}
+.tv-picker-scroll>*+*{margin-top:.8em}
+.tv-picker-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:1em}
+.tv-picker-intro>div{min-width:0}
+.tv-screen .tv-picker-intro h3{font-size:1.15em;line-height:1.5}
+.tv-picker-intro p,.tv-screen .tv-picker-help{font-size:max(13px,.8em);line-height:1.65;color:var(--tv-muted)}
+.tv-picker-intro p{margin-top:.25em;max-width:52em}
+.tv-screen .tv-picker-count{display:flex;flex-direction:column;align-items:center;gap:.2em;flex-shrink:0;font-size:max(13px,.75em);padding:.6em 1em;background:var(--tv-panel2);border:1px solid var(--tv-line);border-radius:var(--radius-sm)}
+.tv-picker-count b{font-size:1.4em;color:var(--tv-accent);font-family:var(--font-data)}
+.tv-picker-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(10em,.4fr);gap:.7em}
+.tv-screen .tv-picker .tv-market-search{margin:0;min-height:3em;padding:.5em .8em}
+.tv-picker .tv-market-search input{font-size:1em;line-height:1.6}
+.tv-picker-region{display:flex;align-items:center;gap:.5em;font-size:max(13px,.8em)}
+.tv-picker-region select,.tv-picker-mobile-market select{width:100%;min-width:0;min-height:3em;padding:.55em;font:inherit;color:var(--tv-text);background:var(--tv-panel);border:1px solid var(--tv-line);border-radius:var(--radius-sm)}
+.tv-picker-mobile-market{display:none}
+.tv-screen .tv-picker-scroll>.tv-market-search{margin-top:.8em}
+.tv-picker-region>span{max-width:5em;flex-shrink:0}
+.tv-picker-toolbar,.tv-picker-footer,.tv-picker-footer-row{display:flex;align-items:center;justify-content:space-between;gap:.75em;flex-wrap:wrap}
+.tv-screen .tv-picker button{min-height:2.8em;white-space:normal;line-height:1.5;font-size:max(14px,.85em)}
+.tv-screen .tv-picker .tv-segment button{font-size:max(14px,.85em)}
+.tv-picker-workspace{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:start;gap:1em}
+.tv-market-list{display:grid;grid-auto-rows:max-content;align-content:start;gap:.55em;min-width:0}
+.tv-screen .tv-market-row{display:flex;justify-content:flex-start;gap:.8em;text-align:start;width:100%;min-height:4.9em;padding:.8em;border-radius:var(--radius-sm)}
+.tv-picker-identity{display:grid;gap:.3em;flex:1;min-width:0}
+.tv-picker-identity strong{font-weight:600;line-height:1.5}
+.tv-screen .tv-picker-identity small{font-size:max(13px,.8em);line-height:1.5}
+.tv-market-position{font-family:var(--font-data);font-size:.85em;color:var(--tv-muted)}
+.tv-market-check[data-selected=true]{border-color:var(--tv-accent);color:var(--tv-accent);background:var(--tv-panel2)}
+.tv-market-editor{position:sticky;top:0;display:grid;gap:.85em;padding:1em;min-width:0;border:1px solid var(--tv-line);background:var(--tv-panel);border-radius:var(--radius-control)}
+.tv-market-editor h3{margin-top:.25em}
+.tv-screen .tv-market-editor>div>small{font-size:max(13px,.75em)}
+.tv-screen .tv-market-editor .tv-market-customize{font-size:max(14px,.9em);justify-content:flex-start;text-align:start;border:1px solid var(--tv-line);border-radius:var(--radius-sm);padding:.75em}
+.tv-market-customize span{display:grid;gap:.2em}
+.tv-screen .tv-market-customize small{font-size:max(13px,.8em)}
+.tv-picker-control{display:grid;gap:.5em;border-top:1px solid var(--tv-line);padding-top:.8em}
+.tv-picker-control>span{display:flex;justify-content:space-between;gap:.5em;font-size:max(13px,.85em)}
+.tv-picker-actions{display:flex;flex-wrap:wrap;gap:.5em}
+.tv-speed-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5em}
+.tv-screen .tv-picker-primary{border-color:var(--tv-accent);background:var(--tv-panel2);color:var(--tv-accent);font-weight:600}
+.tv-screen .tv-picker-footer{flex-shrink:0;border-top:1px solid var(--tv-line);padding-top:.75em;margin-top:.4em}
+.tv-picker-empty{display:grid;place-content:center;gap:1em;min-height:8em;text-align:center;padding:1.5em;line-height:1.7;color:var(--tv-muted);border:1px dashed var(--tv-line);border-radius:var(--radius-sm)}
+.tv-screen .tv-picker .tv-picker-back{font-size:max(14px,.85em)}
+.tv-instrument-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7em}
+.tv-screen .tv-instrument-modes>button{text-align:start;justify-content:flex-start;padding:.8em;gap:.8em}
+.tv-instrument-modes span{display:grid;gap:.25em}
+.tv-screen .tv-instrument-modes small{font-size:max(13px,.8em);font-weight:400}
+.tv-screen .tv-picker .tv-instrument-options{max-height:none;overflow:visible;grid-auto-rows:max-content;align-content:start;gap:.6em;padding:0}
+.tv-screen .tv-picker .tv-instrument-options>button{font-size:max(14px,.9em);min-height:5em;padding:.8em;white-space:normal}
+.tv-screen .tv-picker .tv-instrument-identity>span{font-size:max(13px,.85em);overflow-wrap:anywhere;line-height:1.55}
+.tv-screen .tv-picker .tv-instrument-options small{font-size:max(13px,.8em)}
+.tv-screen .tv-instrument-footer{display:grid;gap:.6em}
+.tv-screen .tv-picker .tv-instrument-pagination{font-size:max(13px,.85em);justify-content:space-between;gap:.5em}
+.tv-screen .tv-picker :focus{outline-offset:2px}
+@media(max-width:760px){
+  .tv-screen .tv-picker-dialog{width:96vw;height:94vh;max-height:94vh;padding:.8em}
+  .tv-picker-intro{flex-direction:column;gap:.5em}
+  .tv-screen .tv-picker-count{flex-direction:row;align-items:center;gap:.75em;padding:.4em .7em}
+  .tv-picker-filters,.tv-picker-workspace{grid-template-columns:1fr}
+  .tv-market-editor{position:static}
+  .tv-picker-mobile-market{display:grid;gap:.4em}
+  .tv-picker-workspace>.tv-market-list{display:none}
+  .tv-picker-workspace>.tv-market-list[data-empty=true]{display:grid}
+  .tv-screen .tv-picker .tv-instrument-options{grid-template-columns:1fr}
+  .tv-instrument-modes{grid-template-columns:1fr}
+  .tv-picker-footer>.tv-picker-help{display:none}
+  .tv-picker-footer .tv-picker-actions{flex:1;justify-content:flex-end}
+  .tv-picker-footer-row>.tv-picker-help{font-size:13px}
+}
+@media(min-width:761px) and (max-height:800px){
+  .tv-screen .tv-picker-dialog{padding:.8em;font-size:16px}
+  .tv-market-editor{gap:.55em;padding:.8em}
+  .tv-picker-control{padding-top:.5em}
+}

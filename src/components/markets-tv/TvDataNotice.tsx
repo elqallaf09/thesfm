@@ -10,12 +10,19 @@ export function TvDataNotice({ quotes, language, retryAt, now, loading, refresh 
   quotes: TvQuote[]; language: TvLanguage; retryAt?: string | null; now: number;
   loading: boolean; refresh: () => void;
 }) {
-  const waiting = Boolean(retryAt && Date.parse(retryAt) > now);
-  if (!quotes.length || !waiting && quotes.some(quote => tvSceneHasPrice(quote) && !quote.issue)) return null;
+  const snapshotWaiting = Boolean(retryAt && Date.parse(retryAt) > now);
+  if (!quotes.length || !snapshotWaiting && quotes.some(quote => tvSceneHasPrice(quote) && !quote.issue)) return null;
+  // A mixed snapshot omits its global cooldown so healthy prices keep updating.
+  // A notice scoped to failed instruments can still show their own retry time.
+  const nextRetryAt = [retryAt, ...quotes.map(quote => quote.retryAt)].reduce<string | null>((earliest, value) => {
+    if (!value || !(Date.parse(value) > now)) return earliest;
+    return !earliest || Date.parse(value) < Date.parse(earliest) ? value : earliest;
+  }, null);
+  const waiting = Boolean(nextRetryAt);
   const retained = quotes.some(tvSceneHasPrice);
   const issue = quotes[0].issue && quotes.every(quote => quote.issue === quotes[0].issue) ? tvSceneIssue(quotes[0].issue) : retained ? 'updatesUnavailable' : 'noScenePrices';
   return <div className="tv-data-notice" role="status">
-    <div><strong>{tvSceneText(language, issue)}</strong>{retained && <small>{tvSceneText(language, 'retainedDuringRetry')}</small>}{waiting && <small>{tvSceneText(language, 'retryAfter')} <time dateTime={retryAt!}>{tvTime(retryAt!, language, true)}</time></small>}</div>
+    <div><strong>{tvSceneText(language, issue)}</strong>{retained && <small>{tvSceneText(language, 'retainedDuringRetry')}</small>}{nextRetryAt && <small>{tvSceneText(language, 'retryAfter')} <time dateTime={nextRetryAt}>{tvTime(nextRetryAt, language, true)}</time></small>}</div>
     <button onClick={refresh} disabled={loading || waiting} data-tv-focus-key="source-retry"><RefreshCw aria-hidden="true"/>{tvText(language, loading ? 'loading' : 'retry')}</button>
   </div>;
 }

@@ -2,8 +2,12 @@ import type { ProviderAttemptFailure } from '@/lib/market/marketDataProviders';
 import type { TvQuote } from '@/lib/markets-tv/types';
 
 export function tvProviderFailure(attempts: ProviderAttemptFailure[]): Pick<TvQuote, 'issue' | 'retryAt'> {
-  const limited = attempts.find(attempt => attempt.code === 'RATE_LIMITED');
-  if (limited) return { issue: 'rate_limited', retryAt: limited.retryAt };
+  const limited = attempts.filter(attempt => attempt.code === 'RATE_LIMITED');
+  if (limited.length) {
+    // A long FMP cooldown must not hide Twelve Data's earlier recovery window.
+    const retries = limited.map(attempt => Date.parse(attempt.retryAt || '')).filter(time => Number.isFinite(time) && time > Date.now());
+    return { issue: 'rate_limited', retryAt: retries.length ? new Date(Math.min(...retries)).toISOString() : undefined };
+  }
   const denied = attempts.find(attempt => ['NOT_ENTITLED', 'FORBIDDEN', 'UNAUTHORIZED', 'AUTHENTICATION_EXPIRED'].includes(attempt.code));
   if (denied) return { issue: 'access_denied', retryAt: denied.retryAt };
   if (attempts.some(attempt => attempt.code === 'TIMEOUT')) return { issue: 'timeout' };

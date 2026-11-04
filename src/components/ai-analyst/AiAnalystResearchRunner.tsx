@@ -27,13 +27,13 @@ function DeferredLoading() {
 const IntelligenceTimelinePanel = dynamic(() => import('@/components/intelligence/IntelligenceTimelinePanel').then(module => module.IntelligenceTimelinePanel), { ssr: false, loading: DeferredLoading });
 const AccuracySummaryPanel = dynamic(() => import('./AccuracySummaryPanel').then(module => module.AccuracySummaryPanel), { ssr: false, loading: DeferredLoading });
 
-export function AiAnalystResearchRunner({ symbol, assetType, horizon }: { symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon }) {
+export function AiAnalystResearchRunner({ symbol, assetType, horizon, autoRun = false }: { symbol: string; assetType: IntelligenceAssetType; horizon: IntelligenceHorizon; autoRun?: boolean }) {
   const { lang } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale];
   const researchCopy = RESEARCH_COPY[locale];
   const sourceCopy = DASHBOARD_COPY[locale];
-  const { user, isGuest, result, loading, errorCode, retryAfterSeconds, taskState, requestAnalysis } = useResearchTask({ symbol, assetType, horizon, locale });
+  const { user, isGuest, result, loading, errorCode, retryAfterSeconds, taskState, requestAnalysis } = useResearchTask({ symbol, assetType, horizon, locale, autoRun });
   const presentedResult = useMemo(() => result ? withSfmAnalyticalSource(result) : null, [result]);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);

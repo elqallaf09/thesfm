@@ -1,14 +1,16 @@
 'use client';
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvGroup, type TvLanguage, type TvQuote, type TvSettings, type TvSnapshot } from '@/lib/markets-tv/types';
-import { tvPrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
-import { quoteStatus, tvMovers } from '@/lib/markets-tv/quotes';
+import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
+import { tvMovers } from '@/lib/markets-tv/quotes';
 import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
+import { TvQuoteEvidence } from './TvQuoteEvidence';
 import { useTvResource } from './useTvResource';
-import { TV_SCENE_ORDER, tvSceneHasPrice, tvSceneIssue, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { TV_SCENE_ORDER, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { tvAnalysisAssetType, tvAnalysisHref } from '@/lib/markets-tv/analysisLink';
 
 export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
@@ -42,12 +44,20 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
   const [pair, setPair] = useState<{ code: string; secret: string; expiresAt: string } | null>(null);
   const [error, setError] = useState(false), [expired, setExpired] = useState(false), [busy, setBusy] = useState(false);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
+  const creation = useRef<AbortController | null>(null);
+  useEffect(() => () => creation.current?.abort(), []);
   async function create() {
+    creation.current?.abort();
+    const controller = new AbortController(); creation.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15000);
     setBusy(true); setError(false); setExpired(false); setPair(null);
     try {
-      const response = await tvFetch('/api/tv/pair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'The SFM TV' }) });
-      if (!response.ok) throw new Error(); setPair(await response.json());
-    } catch { setError(true); } finally { setBusy(false); }
+      const response = await tvFetch('/api/tv/pair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'The SFM TV' }), signal: controller.signal });
+      if (!response.ok) throw new Error('PAIR_UNAVAILABLE');
+      const payload = await response.json();
+      if (!payload || typeof payload.code !== 'string' || typeof payload.secret !== 'string' || typeof payload.expiresAt !== 'string' || !/^[A-F0-9]{12}$/.test(payload.code) || !/^[a-f0-9]{64}$/.test(payload.secret) || !Number.isFinite(Date.parse(payload.expiresAt)) || Date.parse(payload.expiresAt) <= Date.now()) throw new Error('INVALID_PAIR');
+      if (!controller.signal.aborted) setPair(payload);
+    } catch { setError(true); } finally { clearTimeout(timeout); if (creation.current === controller) { creation.current = null; setBusy(false); } }
   }
   useEffect(() => {
     if (!pair) return; let stopped = false; let timer: ReturnType<typeof setTimeout>; let pending = false;
@@ -82,29 +92,30 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const scoped = quote.exchange?.startsWith('TD_');
   const pair = quote.exchange === 'BINANCE' || quote.exchange === 'FOREX';
-  const url = scoped ? `/world-stocks/${encodeURIComponent(quote.symbol)}?region=${encodeURIComponent(quote.exchange!)}` : `/ai-analyst/analyze/${encodeURIComponent(quote.symbol)}`;
-  const assetType = quote.exchange === 'FOREX' || quote.symbol.includes('=X') ? 'FOREX' : quote.exchange === 'BINANCE' ? 'CRYPTO' : /-(USD|USDT)$/.test(quote.symbol) ? 'CRYPTO' : /[=]F$/.test(quote.symbol) ? 'COMMODITY' : quote.symbol.startsWith('^') ? 'INDEX' : 'STOCK';
+  const url = tvAnalysisHref(quote);
+  const phoneUrl = `${typeof window !== 'undefined' ? tvOrigin() : 'https://www.the-sfm.com'}${url}`;
+  const assetType = tvAnalysisAssetType(quote);
   const analysis = useTvResource<{ result: AnalysisResult }>(scoped || pair ? null : `/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
   const result = analysis.data?.result;
   const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
   return <div className="tv-detail">
     <div><span dir="ltr" className="tv-symbol">{quote.symbol}</span><h3>{language === 'ar' ? quote.nameAr : quote.name}</h3>
-      <div className="tv-detail-price" dir="ltr">{tvPrice(quote.price, quote.currency)} <small>{quote.currency}</small></div>
-      <p>{tvSceneHasPrice(quote) ? `${quote.source} · ${tvTime(quote.observedAt, language, true)} · ${t(quoteStatus(quote, now))}` : tvSceneText(language, tvSceneIssue(quote.issue))}</p>
+      <div className="tv-detail-price" dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote, language)}</small></div>
+      <TvQuoteEvidence quote={quote} language={language} now={now}/>
       <h3>{t('ai')}</h3>{analysis.loading ? <p>{t('loading')}</p> : valid ? <>
         <p className="tv-recommendation">{t(result.recommendation)}</p><p>{t('confidence')}: {result.confidence} / 100 · {t('risk')}: {t(result.risk)}</p>
         <p>{t('source')}: The SFM AI Analyst · {result.confidenceCalculation.methodologyVersion}</p><p>{t('analysisTime')}: {tvTime(result.generatedAt, language, true)}</p>
       </> : <p>{t(result ? 'analysisExpired' : 'noAnalysis')}</p>}
       <p className="tv-muted">{t('disclaimer')}</p>
     </div>
-    <div className="tv-phone-link"><TvQr value={`${typeof window !== 'undefined' ? tvOrigin() : 'https://www.the-sfm.com'}${url}`} label={t('openPhone')} /><p>{t('openPhone')}</p></div>
+    <div className="tv-phone-link"><a href={phoneUrl} aria-label={t('openPhone')}><TvQr value={phoneUrl} label={t('openPhone')} /></a><p>{t('openPhone')}</p></div>
   </div>;
 }
 export function TvMarketMap({ language, group, select, now }: { language: TvLanguage; group: TvGroup; select: (group: TvGroup) => void; now: number }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   return <section className="tv-map-panel"><div className="tv-map" role="group" aria-label={t('map')}>
     {TV_MAP_POINTS.map(point => <button key={point.group} className="tv-map-point" aria-pressed={group === point.group} style={{ left: `${point.x}%`, top: `${point.y}%` }} onClick={() => select(point.group)}>
-      <strong>{t(point.group)}</strong><span>{new Intl.DateTimeFormat(`${language}-u-nu-latn`, { timeZone: point.zone, hour: '2-digit', minute: '2-digit' }).format(now)}</span>
+      <strong>{t(point.group)}</strong><span>{new Intl.DateTimeFormat(`${language}-u-nu-latn`, { timeZone: point.zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)}</span>
     </button>)}
   </div><p className="tv-muted">{t('localTime')}</p></section>;
 }

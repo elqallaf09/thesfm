@@ -22,7 +22,7 @@ describe('TV viewing preference migration', () => {
 
 describe('TV quote presentation', () => {
   it('shows source instants in Kuwait time while preserving calendar-only observations', () => {
-    expect(tvTime('2026-10-27T12:05:00Z', 'en')).toContain('03:05');
+    expect(tvTime('2026-10-27T12:05:00Z', 'en')).toBe('15:05');
     expect(tvTime('2026-10-27', 'en', true)).toBe('Oct 27');
     expect(tvTime('invalid', 'ar')).toBe('—');
     expect(tvTime('2026-10-27T12:05:00Z', 'ar')).not.toMatch(/[٠-٩]/);

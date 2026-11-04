@@ -1,5 +1,4 @@
 import 'server-only';
-import { unstable_cache } from 'next/cache';
 import { tvDirectoryAssets, type TvAsset } from './catalog';
 import { hasTvPrice } from '@/lib/markets-tv/coverage';
 import type { TvGroup, TvSnapshot, TvScene } from '@/lib/markets-tv/types';
@@ -31,15 +30,14 @@ async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: Tv
     total: assets.length, directoryTotal: directory.length, selectionTotal: selected.length, page, pageSize, market: options.market };
 }
 
-// Public instrument observations may be reused, but a device's watchlist and
-// selected private identities never enter the shared response cache.
-const publicSnapshot = unstable_cache((group: TvGroup, options: TvSnapshotOptions) => buildSnapshot(group, [], options),
-  ['tv-public-snapshot-v4'], { revalidate: 15 });
+// Observations are cached per listing by quoteLoader, not per scene/page.
+// Do not nest that cache inside another unstable_cache (Next bypasses inner
+// cache reads). Watchlist selections never enter a shared response cache.
 const pendingSnapshots = new Map<string, Promise<TvSnapshot>>();
 export function loadTvSnapshot(group: TvGroup, ownedSymbols: string[] = [], options: TvSnapshotOptions = {}): Promise<TvSnapshot> {
   if (group === 'watchlist' || options.scene === 'watchlist') return buildSnapshot(group, ownedSymbols, options);
   const key = JSON.stringify([group, options]);
   const running = pendingSnapshots.get(key); if (running) return running;
-  const work = publicSnapshot(group, options).finally(() => pendingSnapshots.delete(key));
+  const work = buildSnapshot(group, [], options).finally(() => pendingSnapshots.delete(key));
   pendingSnapshots.set(key, work); return work;
 }

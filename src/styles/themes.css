@@ -745,6 +745,10 @@
   --tv-accent: #ffc279;
   --tv-up: #62d9b2;
   --tv-down: #ff8d95;
+  --tv-up-surface: #1e393a;
+  --tv-down-surface: #372d35;
+  --tv-up-tint: rgba(98, 217, 178, .12);
+  --tv-down-tint: rgba(255, 141, 149, .12);
   --tv-backdrop: #000b;
   --tv-qr-background: #fff;
   --tv-focus-shadow: 0 0 0 7px var(--tv-bg);
@@ -763,5 +767,9 @@
   --tv-accent: #854705;
   --tv-up: #0a7052;
   --tv-down: #b22537;
+  --tv-up-surface: #d8eee7;
+  --tv-down-surface: #f4dde0;
+  --tv-up-tint: rgba(10, 112, 82, .12);
+  --tv-down-tint: rgba(178, 37, 55, .12);
   color-scheme: light;
 }

@@ -71,8 +71,6 @@
 .tv-screen .tv-quote-grid .tv-quote[data-priced=false] { min-height: 6em; padding-block: .8em; }
 .tv-quote-grid .tv-quote[data-priced=false] .tv-status { font-size: max(12px, .72em); line-height: 1.5; color: var(--tv-muted); }
 .tv-screen .tv-market-strip[data-empty=true] { min-height: 4.1em; }
-.tv-market-strip[data-empty=true] .tv-market-strip-window { overflow-x: auto; scrollbar-width: thin; }
-.tv-market-strip[data-empty=true] .tv-market-strip-track { animation: none; transform: none; }
 .tv-market-strip[data-paged=false] > .tv-market-strip-window { grid-column: 2/-1; }
 .tv-screen .tv-market-strip-item[data-priced=false] { grid-template-rows: auto auto; min-height: 3.55em; }
 .tv-screen .tv-market-strip-item[data-priced=false] > .tv-strip-evidence { grid-row: 2; font-size: max(12px, .65em); line-height: 1.4; }

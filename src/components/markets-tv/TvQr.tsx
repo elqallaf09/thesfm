@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-export function TvQr({ value, label }: { value: string; label: string }) {
+export function TvQr({ value, label, size = 260 }: { value: string; label: string; size?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const target = canvas.current;
@@ -8,9 +8,9 @@ export function TvQr({ value, label }: { value: string; label: string }) {
     let cancelled = false;
     void import('qrcode').then(QRCode => {
       if (cancelled || canvas.current !== target) return;
-      return QRCode.toCanvas(target, value, { width: 260, margin: 3, errorCorrectionLevel: 'M' });
+      return QRCode.toCanvas(target, value, { width: size, margin: 3, errorCorrectionLevel: 'M' });
     }).catch(() => undefined);
     return () => { cancelled = true; };
-  }, [value]);
-  return <canvas ref={canvas} className="tv-qr" role="img" aria-label={label} />;
+  }, [value, size]);
+  return <canvas ref={canvas} width={size} height={size} className="tv-qr" role="img" aria-label={label} />;
 }

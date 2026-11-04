@@ -1,0 +1,55 @@
+/* The same local-time schedule is used by the website and offline TV shell. */
+.tv-sessions-dialog { width: min(1480px, 94vw); padding: 1em 1.2em; font-size: clamp(16px, min(1.45vw, 2.6vh), 48px); }
+.tv-sessions-dialog > header { padding-bottom: .6em; margin-bottom: .65em; }
+.tv-sessions-dialog > header h2 { font-size: 1.35em; }
+.tv-sessions-dialog > header button { padding: .3em; min-height: 2em; background: var(--tv-panel); }
+.tv-sessions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7em; }
+.tv-sessions-intro { grid-column: 1/-1; display: flex; align-items: center; justify-content: space-between; gap: 1em; padding-bottom: .15em; }
+.tv-sessions-intro > span { display: flex; align-items: center; gap: .5em; color: var(--tv-accent); font-size: .8em; }
+.tv-sessions-intro > small { font-size: max(12px, .7em); }
+.tv-session { display: flex; flex-direction: column; min-width: 0; gap: .6em; padding: .9em 1em .7em; background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-panel); }
+.tv-session header { display: flex; justify-content: space-between; align-items: center; gap: .7em; }
+.tv-session-identity { display: flex; align-items: center; min-width: 0; gap: .65em; }
+.tv-session-identity > div { min-width: 0; }
+.tv-session-code { display: grid; place-items: center; width: 2.5em; height: 2.5em; flex-shrink: 0; border-radius: var(--radius-control); background: var(--tv-panel2); color: var(--tv-accent); font: 500 .9em/1 var(--font-data); border: 1px solid var(--tv-line); }
+.tv-session h2, .tv-dialog .tv-session h2 { font-size: 1em; font-weight: 600; line-height: 1.5; }
+.tv-session small { font-size: max(12px, .65em); line-height: 1.4; }
+.tv-session-identity small { display: block; }
+.tv-session-clock { flex-shrink: 0; text-align: end; }
+.tv-session-clock time { display: block; font: 500 1.5em/1.2 var(--font-data); letter-spacing: -.05em; }
+.tv-session-clock small { display: block; margin-top: .15em; }
+.tv-session-hours { display: flex; flex-wrap: wrap; align-items: center; gap: .4em .8em; margin-top: .2em; }
+.tv-session-hours strong { font: 500 1.25em/1.35 var(--font-data); letter-spacing: -.04em; }
+.tv-session-hours strong + strong { border-inline-start: 1px solid var(--tv-line); padding-inline-start: .8em; }
+.tv-session-timeline { margin-block: .15em; }
+.tv-session-track { height: .32em; position: relative; background: var(--tv-line); border-radius: var(--radius-xs); }
+.tv-session-track > span { position: absolute; height: 100%; border-radius: var(--radius-xs); background: var(--tv-accent); }
+.tv-session-axis { display: flex; justify-content: space-between; color: var(--tv-muted); font: 400 max(12px, .55em)/1.5 var(--font-data); padding-top: .3em; }
+.tv-session footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .4em; border-top: 1px solid var(--tv-line); padding-top: .55em; margin-top: auto; }
+.tv-session footer small { display: flex; align-items: center; gap: .4em; }
+.tv-screen .tv-session footer button { font-size: max(12px, .65em); min-height: 2.4em; padding: .35em .5em; border-color: transparent; background: var(--tv-panel2); }
+.tv-session-qr { border-top: 1px solid var(--tv-line); padding-top: .8em; display: flex; align-items: center; justify-content: center; gap: 1em; }
+.tv-session-qr .tv-qr { width: 180px; height: auto; flex-shrink: 0; }
+.tv-session-qr p { font-size: .8em; max-width: 16em; line-height: 1.7; }
+.tv-sessions-note { grid-column: 1/-1; display: flex; justify-content: space-between; align-items: baseline; gap: .5em 1.5em; flex-wrap: wrap; color: var(--tv-muted); font-size: max(12px, .65em); line-height: 1.5; }
+.tv-sessions-note small { font-size: 1em; }
+@media (min-width: 2000px) { .tv-sessions-dialog { width: 78vw; } }
+@media (min-width: 761px) and (max-height: 650px) {
+  .tv-sessions-dialog { padding: .7em 1em; }
+  .tv-sessions-dialog > header { padding-bottom: .4em; margin-bottom: .4em; }
+  .tv-sessions { gap: .5em; }
+  .tv-session { padding: .55em .8em .5em; gap: .3em; }
+  .tv-session-clock time { font-size: 1.25em; }
+  .tv-session-clock small { margin-top: 0; }
+  .tv-session-hours { margin-top: 0; }
+  .tv-session-hours strong { font-size: 1.15em; }
+  .tv-session-axis { line-height: 1.1; padding-top: .2em; }
+  .tv-session-timeline { margin-block: .1em; }
+  .tv-session footer { padding-top: .25em; }
+  .tv-screen .tv-session footer button { min-height: 2.1em; padding-block: .2em; }
+}
+@media (max-width: 760px) {
+  .tv-sessions { grid-template-columns: minmax(0, 1fr); }
+  .tv-sessions-dialog { padding: 1em; }
+  .tv-session-qr { flex-direction: column; }
+}

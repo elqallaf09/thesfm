@@ -9,6 +9,14 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe('TV source recovery integration', () => {
+  it('retries the first recovering provider instead of waiting for a different provider for fifteen minutes', async () => {
+    const { tvProviderFailure } = await import('@/lib/server/markets-tv/quoteAvailability');
+    const failure = tvProviderFailure([
+      { provider: 'fmp', code: 'RATE_LIMITED', message: 'limited', category: 'rate_limit', retryable: true, retryAt: new Date(now + 900_000).toISOString() },
+      { provider: 'twelve_data', code: 'RATE_LIMITED', message: 'limited', category: 'rate_limit', retryable: true, retryAt: new Date(now + 61_000).toISOString() },
+    ]);
+    expect(failure).toEqual({ issue: 'rate_limited', retryAt: new Date(now + 61_000).toISOString() });
+  });
   it('prefers the proven US source, preserves the close timestamp, and falls back with the same identity if it fails', async () => {
     vi.stubEnv('TWELVE_DATA_API_KEY', 'test-td'); vi.stubEnv('FINNHUB_API_KEY', 'test-fh');
     const observedAt = '2026-10-27T20:00:00.000Z';

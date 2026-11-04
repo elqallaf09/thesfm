@@ -68,8 +68,8 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
       <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
     </button>
     <div className="tv-market-strip-window" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(Boolean(root.current?.contains(document.activeElement)))} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-      {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause && !emptyPrices ? 'running' : 'paused' }}>
-        {(emptyPrices ? [0] : [0, 1]).map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
+      {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
+        {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
           {displayed.map(q => <TvStripQuote key={`${q.exchange}:${q.symbol}`} quote={q} group={market.group} language={language} now={Math.floor(now / 15000) * 15000} duplicate={Boolean(copy)} onQuote={onQuote}/>)}
         </div>)}
       </div> : <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>}

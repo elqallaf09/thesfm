@@ -3,6 +3,8 @@ import { MarketsTv } from '@/components/markets-tv/MarketsTv';
 import '../tv.css';
 import '../display-controls.css';
 import '../viewing.css';
+import '../sessions.css';
+import '../chrome.css';
 
 export const metadata: Metadata = {
   title: 'أشرطة الأسواق | The SFM Markets TV',

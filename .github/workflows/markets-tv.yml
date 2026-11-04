@@ -2,7 +2,7 @@ name: Markets TV packages
 on:
   pull_request:
     branches: [main]
-    paths: ['apps/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', 'pnpm-lock.yaml', '.github/workflows/markets-tv.yml']
+    paths: ['apps/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', 'tests/packaged/**', 'playwright.tv.config.ts', 'pnpm-lock.yaml', '.github/workflows/markets-tv.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,6 +25,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:tv
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify packaged TV layout and remote navigation
+        run: pnpm exec playwright test --config=playwright.tv.config.ts
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
