@@ -7,13 +7,16 @@ import { tvSceneHasPrice, tvSceneIssue, tvSceneQuoteUnit, tvSceneText } from '@/
 import type { TvGroup, TvLanguage, TvQuote } from '@/lib/markets-tv/types';
 import { TvAssetIcon } from './TvAssetIcon';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
+const QUOTE_TICK_MS = 5_000;
 export const TvStripQuote = memo(function TvStripQuote({ quote: q, group, language, now, duplicate, onQuote }: { quote: TvQuote; group: TvGroup; language: TvLanguage; now: number; duplicate: boolean; onQuote: (quote: TvQuote) => void }) {
   const previous = useRef(q), [tick, setTick] = useState('');
   useEffect(() => {
     const old = previous.current; previous.current = q;
     if (q.price === null || old.price === null || q.price === old.price || !q.observedAt || !old.observedAt || Date.parse(q.observedAt) <= Date.parse(old.observedAt)) return;
     setTick(q.price > old.price ? 'up' : 'down');
-    const timer = setTimeout(() => setTick(''), 1200); return () => clearTimeout(timer);
+    // Keep the update visible long enough to be perceived on a television and
+    // by slower WebKit devices after the new price has painted.
+    const timer = setTimeout(() => setTick(''), QUOTE_TICK_MS); return () => clearTimeout(timer);
   }, [q.price, q.observedAt, q]);
   const priced = tvSceneHasPrice(q);
   const trend = !priced || q.changePercent === null || q.changePercent === 0 ? 'flat' : q.changePercent > 0 ? 'up' : 'down';

@@ -22,6 +22,12 @@ async function fixtures(page: Page, emptyFirstBatch = false) {
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_ANALYSIS' } }));
 }
 
+async function chooseMarket(page: Page, marketId: string) {
+  const mobilePicker = page.locator('.tv-picker-mobile-market select');
+  if (await mobilePicker.isVisible()) await mobilePicker.selectOption(marketId);
+  else await page.locator(`[data-tv-focus-key="market-${marketId}"]`).click();
+}
+
 test('TV channels restore stock choices, order, per-market speed, density and language after reload', async ({ page }) => {
   await fixtures(page);
   await page.addInitScript(() => {
@@ -32,9 +38,9 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   });
   await page.goto('/tv/strips');
   await page.getByRole('button', { name: 'تخصيص الأسواق', exact: true }).click();
-  await page.locator('[data-tv-focus-key="market-BOURSA_KUWAIT"]').click();
+  await chooseMarket(page, 'BOURSA_KUWAIT');
   await page.getByRole('button', { name: 'تقديم السوق: بورصة الكويت' }).click();
-  await page.locator('[data-tv-focus-key="market-US"]').click();
+  await chooseMarket(page, 'US');
   await page.getByRole('group', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).getByRole('button', { name: 'سريعة', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
