@@ -176,19 +176,26 @@ async function persistScan(input: {
   failedAssets: number;
   generatedSignals: number;
   errorCode: string | null;
+  providerLastSuccess: string | null;
 }) {
   const supabase = createServerSupabaseAdmin();
   if (!supabase) return;
 
-  await supabase.from('trader_provider_status').upsert({
+  const providerStatus: Record<string, unknown> = {
     provider: 'Yahoo Finance',
     configured: true,
     connected: cache.providerConnected,
     delayed: cache.delayed,
-    ...(cache.providerLastSuccess ? {last_successful_update: cache.providerLastSuccess} : {}),
     last_error_code: input.errorCode,
     updated_at: new Date().toISOString(),
-  }).then(({ error }) => {
+  };
+  // Only ever advance the health timestamp on an actual provider success, and
+  // omit the column otherwise. A cold serverless instance carries no in-memory
+  // history, so writing a null here would erase a perfectly good stored value
+  // and make a healthy provider look dead.
+  if (input.providerLastSuccess) providerStatus.last_successful_update = input.providerLastSuccess;
+
+  await supabase.from('trader_provider_status').upsert(providerStatus).then(({ error }) => {
     if (error) console.warn('[trader-scanner] provider status persistence skipped', { code: error.code });
   });
 
@@ -343,7 +350,16 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
   const mergedResults = Array.from(bySymbol.values()).sort((a, b) => b.confidence - a.confidence);
   cache.results = mergedResults;
   cache.providerConnected = succeeded.length > 0;
-  if(succeeded.some(item=>!item.cacheHit))cache.providerLastSuccess = completedAtIso;
+  // `providerLastSuccess` feeds trader_provider_status.last_successful_update,
+  // which answers "when did the provider last respond to us". It must therefore
+  // be wall-clock time. It used to be seeded from the quote's market timestamp,
+  // which is the last trade/close -- so every overnight and weekend run reported
+  // a provider that was hours or days "stale" while it was in fact healthy. The
+  // old `|| completedAtIso` tail was wrong in the opposite direction: it invented
+  // a fresh success even for a run where nothing succeeded at all.
+  // Cached history can produce a valid scan result without proving that the
+  // external provider answered during this run.
+  if (succeeded.some((item) => !item.cacheHit)) cache.providerLastSuccess = completedAtIso;
   cache.delayed = mergedResults.some((result) => result.delayed);
 
   const newOffset = offset + attemptedCount;
@@ -422,6 +438,7 @@ async function runScanInternal(filters: ScannerFilters, runId: string): Promise<
     failedAssets: failedCount,
     generatedSignals,
     errorCode: cache.status.lastErrorCode,
+    providerLastSuccess: cache.providerLastSuccess,
   }).catch((error) => {
     logReliabilityEvent('warn', 'trader_scanner.persistence_failed', {
       runId,
