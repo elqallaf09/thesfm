@@ -24,6 +24,8 @@ async function fixtures(page: Page, emptyFirstBatch = false) {
 
 async function chooseMarket(page: Page, marketId: string) {
   const mobilePicker = page.locator('.tv-picker-mobile-market select');
+  // Both layouts mount the select once the market catalog is ready.
+  await expect(mobilePicker.locator(`option[value="${marketId}"]`)).toBeAttached();
   if (await mobilePicker.isVisible()) await mobilePicker.selectOption(marketId);
   else await page.locator(`[data-tv-focus-key="market-${marketId}"]`).click();
 }
