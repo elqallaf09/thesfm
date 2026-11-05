@@ -143,7 +143,7 @@ test('TV market selection changes the main screen and promotes its independent t
   await page.locator('[data-market="SSE"] .tv-market-strip-heading').click();
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','SSE');
   await expect(page.locator('.tv-quote').first()).toContainText('SSE-0');
-  await page.getByRole('button', { name: 'التالي', exact: true }).click();
+  await page.locator('.tv-pagination').getByRole('button', { name: 'التالي', exact: true }).click();
   await expect(page.locator('.tv-quote').first()).toContainText('SSE-6');
   await page.locator('[data-market="US"] .tv-market-strip-heading').click();
   await expect(page.locator('.tv-quote').first()).toContainText('US-0');
