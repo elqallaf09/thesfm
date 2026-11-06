@@ -1,6 +1,21 @@
 {
-  "extends": "expo/tsconfig.base",
-  "compilerOptions": { "strict": true, "noEmit": true },
+  // Expo 57 base options are explicit so the repository's pure API contract
+  // tests can read this project without installing its separate TV runtime.
+  "compilerOptions": {
+    "allowJs": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ESNext"],
+    "module": "preserve",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "customConditions": ["react-native"],
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
+    "strict": true
+  },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "android", "ios", "dist"]
 }
