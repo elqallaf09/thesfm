@@ -12,13 +12,18 @@ function snapshot(scene = 'overview', observedAt = new Date().toISOString(), mis
     status: missing ? 'unavailable' : 'available', delayType: 'realtime', changeBasis: 'session',
     ...(missing ? { issue: 'timeout' } : {}),
   });
+  if (scene === 'overview') return { group: 'global', scene, generatedAt: new Date().toISOString(),
+    summary: ['^GSPC','^DJI','^NDX','^FTSE','^GDAXI','^N225'].map((symbol,index)=>({...quote(index),symbol,currency:null})),
+    quotes: [], available: 0, total: 0, selectionTotal: 6 };
   return { group: scene === 'gulf' ? 'gulf' : 'global', scene, generatedAt: new Date().toISOString(),
     summary: Array.from({ length: 4 }, (_, index) => quote(index)),
     quotes: Array.from({ length: 6 }, (_, index) => quote(index + 4)),
     available: missing ? 0 : 6, total: 6, selectionTotal: 10 };
 }
 
-async function fixtures(page: Page) {
+async function fixtures(page: Page, scene = 'overview') {
+  if (scene !== 'overview') await page.addInitScript(scene=>localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({scene})),scene);
+  await page.route('**/api/tv/history', route => route.fulfill({json:{symbol:'^GSPC',points:[],issue:'provider_unavailable'}}));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
@@ -32,10 +37,10 @@ test('default viewing requests a bounded scene and keeps watchlist access privat
   page.on('request', request => { if (request.url().includes('/api/tv/')) requests.push(new URL(request.url())); });
   await page.goto('/tv');
   await expect(page.locator('.tv-viewing')).toBeVisible();
-  await expect(page.locator('.tv-scene-summary')).toHaveCount(4);
-  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator('.tv-index-hero')).toContainText('123.45');
+  await expect(page.locator('.tv-index-five article')).toHaveCount(5);
+  await expect(page.locator('.tv-index-five article').last()).toContainText('128.45');
   await expect(page.locator('.tv-scene-ticker')).toHaveCount(1);
-  await expect(page.locator('.tv-scene-coverage-total')).toContainText('10 / 10');
   expect(requests.filter(url => url.pathname === '/api/tv/catalog')).toHaveLength(0);
   expect(requests.filter(url => url.pathname === '/api/tv/snapshot').map(url => url.search)).toEqual(['?group=global&scene=overview&pageSize=10']);
 
@@ -54,10 +59,10 @@ test('default viewing requests a bounded scene and keeps watchlist access privat
 
 test('partial quote failure retains both row and summary source times without becoming live', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await fixtures(page);
+  await fixtures(page, 'gulf');
   const observedAt = new Date(Date.now() - 60_000).toISOString();
   let failed = false;
-  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot('overview', observedAt, failed) }));
+  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot('gulf', observedAt, failed) }));
   await page.goto('/tv');
   const row = page.locator('.tv-scene-row').first();
   const summary = page.locator('.tv-scene-summary').first();
@@ -79,7 +84,7 @@ test('partial quote failure retains both row and summary source times without be
 });
 
 test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three languages', async ({ page }) => {
-  await fixtures(page);
+  await fixtures(page, 'gulf');
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -146,7 +151,7 @@ test('remote media keys control rotation and interaction postpones the next scen
   await fixtures(page);
   await page.clock.install();
   await page.goto('/tv');
-  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator('.tv-index-five article')).toHaveCount(5);
   const overview = page.locator('[data-tv-focus-key="scene:overview"]');
   await page.keyboard.press('MediaPlayPause');
   await expect(page.locator('[data-tv-focus-key="scene-playback"]')).toHaveAttribute('aria-pressed', 'true');
@@ -191,7 +196,7 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
 });
 
 test('an unavailable scene keeps instruments readable and explains the source cooldown', async ({ page }) => {
-  await fixtures(page);
+  await fixtures(page, 'gulf');
   const retryAt = new Date(Date.now() + 300_000).toISOString();
   await page.route('**/api/tv/snapshot?*', route => {
     const body = snapshot('gulf', undefined, true);
@@ -200,7 +205,8 @@ test('an unavailable scene keeps instruments readable and explains the source co
   });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/tv');
-  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator('.tv-unavailable-card')).toHaveCount(6);
+  await expect(page.locator('.tv-unavailable-card button')).toHaveCount(6);
   await expect(page.locator('.tv-data-notice')).toContainText('حد الطلبات لدى المصدر');
   await expect(page.locator('.tv-data-notice time')).toHaveAttribute('dateTime', retryAt);
   await expect(page.locator('[data-tv-focus-key="source-retry"]')).toBeDisabled();
@@ -210,10 +216,10 @@ test('an unavailable scene keeps instruments readable and explains the source co
   for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
-    const lastRow = await page.locator('.tv-scene-row').last().boundingBox();
+    const lastRow = await page.locator('.tv-unavailable-card').last().boundingBox();
     expect(lastRow!.y + lastRow!.height).toBeLessThan(viewport.height);
   }
-  const row = page.locator('.tv-scene-row').first();
+  const row = page.locator('.tv-scene-summary').first();
   await row.click();
   await expect(page.getByRole('dialog')).toContainText('حد الطلبات لدى المصدر');
   await page.keyboard.press('Escape');

@@ -6,7 +6,7 @@ import { twelveDataFetch, TWELVE_RETRY_HEADER } from '@/lib/server/twelve-data-f
 const cache = new Map<string, { expires: number; result: WorldStockQuote }>();
 const pending = new Map<string, Promise<WorldStockQuote>>();
 type Failure = NonNullable<WorldStockQuote['issue']>;
-export async function providerStockQuote(region: string, symbol: string, suppliedListing?: Pick<ProviderListing, 'providerSymbol' | 'mic' | 'currency'>): Promise<WorldStockQuote> {
+export async function providerStockQuote(region: string, symbol: string, suppliedListing?: Pick<ProviderListing, 'providerSymbol' | 'mic' | 'currency'>, timeoutMs = 6500): Promise<WorldStockQuote> {
   const id = `${region}:${symbol}:${suppliedListing?.mic || ''}:${suppliedListing?.currency || ''}`, previous = cache.get(id);
   if (previous && previous.expires > Date.now()) return previous.result;
   const running = pending.get(id); if (running) return running;
@@ -19,7 +19,7 @@ export async function providerStockQuote(region: string, symbol: string, supplie
     if (!key) return failed('not_configured');
     try {
       const params = new URLSearchParams({ symbol: listing.providerSymbol!, mic_code: listing.mic, apikey: key, timezone: 'UTC' });
-      const response = await twelveDataFetch(`https://api.twelvedata.com/quote?${params}`, { signal: AbortSignal.timeout(6500) });
+      const response = await twelveDataFetch(`https://api.twelvedata.com/quote?${params}`, { signal: AbortSignal.timeout(Math.max(1000, Math.min(6500, timeoutMs))) });
       const data = await response.json().catch(() => null);
       const code = [401, 403, 429].find(value => response.status === value || Number(data?.code) === value);
       if (code) {

@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- Shared with offline packaged TV clients. */
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Globe2, Maximize, Monitor, Pause, Play, RefreshCw, Rows3, Settings2, SlidersHorizontal, Smartphone } from 'lucide-react';
+import { obsText } from '@/lib/markets-tv/obsidian';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import { tvOrigin } from '@/lib/markets-tv/client';
@@ -49,7 +50,7 @@ export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, pa
       <button onClick={channels} aria-label={t('channels')} data-tv-focus-key="channels"><Rows3 aria-hidden="true"/></button>
       <button className="tv-customize-button" onClick={customize} aria-label={t('customizeMarkets')} data-tv-focus-key="customize"><SlidersHorizontal aria-hidden="true"/></button>
       <button onClick={pair} aria-label={t(paired ? 'paired' : 'pair')} data-tv-focus-key="pair"><Smartphone aria-hidden="true"/></button>
-      <button onClick={settings} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/></button>
+      <button className="tv-tweaks-button" onClick={settings} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/><span>{obsText(language,'tweaks')}</span></button>
       <button onClick={toggleFullscreen} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')} data-tv-focus-key="fullscreen"><Maximize aria-hidden="true"/></button>
       {mode === 'strips' && <><button onClick={togglePause} aria-label={t(paused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={paused}>{paused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}</button><button onClick={refresh} aria-label={t('refresh')}><RefreshCw aria-hidden="true"/></button></>}
     </div>

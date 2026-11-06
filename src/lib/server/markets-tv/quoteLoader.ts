@@ -26,14 +26,18 @@ const empty = (asset: TvAsset, issue: TvQuote['issue'] = 'provider_unavailable')
   country: asset.country || null, exchange: asset.exchange || asset.region || null, issue,
 });
 
-function matchesIndex(requested: string, supplied: string, provider: string | null) {
+export function matchesIndex(requested: string, supplied: string, provider: string | null) {
+  // Legacy Finnhub aliases can identify an ETF instead of the cash index.
+  // Apply this allowlist to saved observations as well as fresh responses.
+  if (!['fmp', 'twelve_data', 'yahoo'].includes(provider || '')) return false;
+  if (provider === 'fmp' || provider === 'yahoo') return supplied === requested;
   const indices: Record<string, string[]> = { '^GSPC': ['^GSPC', 'GSPC', 'SPX'], '^DJI': ['^DJI', 'DJI'], '^NDX': ['^NDX', 'NDX'],
     '^FTSE': ['^FTSE', 'FTSE'], '^GDAXI': ['^GDAXI', 'GDAXI', 'DAX'], '^N225': ['^N225', 'N225', 'NIKKEI225'] };
   if (supplied.includes(':')) {
     const exchanges: Record<string, string> = { '^FTSE': 'LSE', '^GDAXI': 'XETR', '^N225': 'JPX' };
     const [base, exchange] = supplied.split(':');
     if (provider !== 'twelve_data' || exchange !== exchanges[requested] || !indices[requested]?.includes(base)) return false;
-  } else if (!indices[requested]?.includes(supplied)) return false;
+  } else return false;
   return true;
 }
 
@@ -62,7 +66,7 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
     if (!matching) return false;
   }
   if (asset.assetType === 'index' && requested.startsWith('^')) {
-    if (!matchesIndex(requested, supplied, row.provenance.upstreamProvider)) return false;
+    if (row.assetType !== 'index' || !matchesIndex(requested, supplied, row.provenance.upstreamProvider)) return false;
   }
   if (/^[A-Z]{1,6}(?:[.-][AB])?$/.test(requested) && (!asset.assetType || asset.assetType === 'stock')) {
     const vendorSymbol = supplied.split(':')[0].replace(/\.US$/, '').replace(/\./g, '-');
@@ -77,28 +81,33 @@ const pendingQuotes = new Map<string, Promise<TvQuote>>();
 async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const assetType = asset.assetType || (group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : group === 'forex' ? 'forex' : undefined);
   if (assetType === 'forex') return forexTvQuote(asset);
+  let regionalFailure: TvQuote | null = null;
   const primaryMic = PRIMARY_MIC[asset.region || ''];
   if (providerRegion(asset.region) || primaryMic || asset.mic) {
     const mic = asset.mic || primaryMic;
     const symbol = asset.providerSymbol || (primaryMic ? asset.symbol.replace(/\.(KW|DU|AD|AE|QA|SR|SA|OM|BH|SS|SZ)$/i, '') : asset.symbol);
-    const row = await providerStockQuote(mic ? `TD_${mic}` : asset.region!, symbol,
-      mic ? { providerSymbol: symbol, mic, currency: asset.currency || undefined } : undefined);
-    if (row.price !== null && asset.currency && row.currency !== asset.currency) return empty(asset, 'identity_mismatch');
-    const result: TvQuote = { ...empty(asset), price: row.price, changePercent: row.changePercent,
-      source: row.dataSource, observedAt: row.quoteTimestamp, receivedAt: row.receivedAt || null,
-      observation: row.observation, delayType: row.delayType ?? 'delayed', retryAt: row.retryAt,
-      changeBasis: 'session', issue: row.issue || (row.price === null ? 'provider_unavailable' : undefined),
-      status: row.price === null ? 'unavailable' : row.delayType === 'eod' || row.observation?.marketOpen === false ? 'closed' : 'delayed' };
-    result.status = quoteStatus(result); return result;
+    try {
+      const row = await providerStockQuote(mic ? `TD_${mic}` : asset.region!, symbol,
+        mic ? { providerSymbol: symbol, mic, currency: asset.currency || undefined } : undefined, 3500);
+      if (row.price !== null && asset.currency && row.currency !== asset.currency) return empty(asset, 'identity_mismatch');
+      const result: TvQuote = { ...empty(asset), price: row.price, changePercent: row.changePercent,
+        source: row.dataSource, observedAt: row.quoteTimestamp, receivedAt: row.receivedAt || null,
+        observation: row.observation, delayType: row.delayType ?? 'delayed', retryAt: row.retryAt,
+        changeBasis: 'session', issue: row.issue || (row.price === null ? 'provider_unavailable' : undefined),
+        status: row.price === null ? 'unavailable' : row.delayType === 'eod' || row.observation?.marketOpen === false ? 'closed' : 'delayed' };
+      result.status = quoteStatus(result);
+      if (result.price !== null) return result;
+      regionalFailure = result;
+    } catch { regionalFailure = empty(asset); }
   }
   let attempts: ProviderAttemptFailure[] = [];
   const knownUsStock = (assetType === 'stock' || !assetType && group === 'us') && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
   const row = await getSfmMarketQuote(asset.symbol, { assetType, onQuoteAttempts: value => { attempts = value; },
     ...(asset.region ? { market: asset.region } : {}),
     ...(knownUsStock ? { preferredProviders: ['finnhub' as const] } : {}),
-    ...(['index', 'commodity'].includes(assetType || '') ? { excludeProviders: ['finnhub' as const] } : {}),
+    ...(regionalFailure ? { excludeProviders: ['twelve_data' as const, 'finnhub' as const] } : ['index', 'commodity'].includes(assetType || '') ? { excludeProviders: ['finnhub' as const] } : {}),
   });
-  if (!row) return { ...empty(asset), ...tvProviderFailure(attempts) };
+  if (!row) return regionalFailure || { ...empty(asset), ...tvProviderFailure(attempts) };
   const resolvedType = assetType || (row.assetType === 'gold' ? 'commodity' : row.assetType === 'etf' ? 'stock' : row.assetType);
   if (!tvQuoteIdentityMatches({ ...asset, assetType: resolvedType }, row)) return empty(asset, 'identity_mismatch');
   const marketOpen = row.provenance.upstreamProvider === 'finnhub' && knownUsStock ? await finnhubUsMarketOpen() : null;

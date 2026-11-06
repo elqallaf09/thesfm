@@ -74,14 +74,13 @@ describe('TV canonical market snapshots', () => {
     const second = loadTvSnapshot('global', [], { scene: 'overview' });
     const [snapshot, shared] = await Promise.all([first, second]);
     expect(shared).toBe(snapshot); expect(directory).not.toHaveBeenCalled();
-    expect(snapshot.summary).toHaveLength(4); expect(snapshot.quotes).toHaveLength(6);
-    expect(snapshot.summary?.map(q => q.symbol)).toEqual(['^GSPC', '^DJI', '^NDX', 'BTC/USDT']);
-    expect(snapshot.total).toBe(6); expect(snapshot.selectionTotal).toBe(10); expect(snapshot.directoryTotal).toBeUndefined();
-    expect(snapshot.quotes.map(q => q.symbol)).toEqual(['AAPL','MSFT','NVDA','GOOGL','AMZN','META']);
-    expect(new Set([...snapshot.summary!, ...snapshot.quotes].map(q => q.symbol)).size).toBe(10);
-    expect(getSfmMarketQuote).toHaveBeenCalledTimes(9);
-    expect(cryptoTvQuotes).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(cryptoTvQuotes).mock.calls[0][0]).toMatchObject([{ symbol: 'BTC/USDT', currency: 'USDT', providerSymbol: 'BTCUSDT' }]);
+    expect(snapshot.summary).toHaveLength(6); expect(snapshot.quotes).toHaveLength(0);
+    expect(snapshot.summary?.map(q => q.symbol)).toEqual(['^GSPC', '^DJI', '^NDX', '^FTSE', '^GDAXI', '^N225']);
+    expect(snapshot.total).toBe(0); expect(snapshot.selectionTotal).toBe(6); expect(snapshot.directoryTotal).toBeUndefined();
+    expect(snapshot.quotes).toEqual([]);
+    expect(new Set([...snapshot.summary!, ...snapshot.quotes].map(q => q.symbol)).size).toBe(6);
+    expect(getSfmMarketQuote).toHaveBeenCalledTimes(6);
+    expect(cryptoTvQuotes).not.toHaveBeenCalled();
   });
   it('keeps all six Gulf countries in the bounded viewing selection', () => {
     const selection = tvSceneAssets('gulf');
@@ -96,7 +95,7 @@ describe('TV canonical market snapshots', () => {
     vi.mocked(providerStockQuote).mockResolvedValue({ price: 1.012, change: null, changePercent: 1, currency: 'KWD', quoteTimestamp: '2026-09-17T10:00:00Z',
       receivedAt: '2026-09-19T08:00:00Z', delayed: true, delayType: 'eod', observation: { precision: 'instant', marketOpen: false }, dataSource: 'Twelve Data', status: 'available' });
     const snapshot = await loadTvSnapshot('gulf', [], { market: 'BOURSA_KUWAIT' });
-    expect(providerStockQuote).toHaveBeenCalledWith('TD_XKUW', 'NBK', { providerSymbol: 'NBK', mic: 'XKUW', currency: 'KWD' });
+    expect(providerStockQuote).toHaveBeenCalledWith('TD_XKUW', 'NBK', { providerSymbol: 'NBK', mic: 'XKUW', currency: 'KWD' }, 3500);
     expect(snapshot.quotes[0]).toMatchObject({ price: 1.012, status: 'closed', observedAt: '2026-09-17T10:00:00Z', receivedAt: '2026-09-19T08:00:00Z', exchange: 'BOURSA_KUWAIT' });
   });
   it('preserves the original provider failure when failed quotes have no currency', async () => {
@@ -105,6 +104,17 @@ describe('TV canonical market snapshots', () => {
       delayed: true, dataSource: null, status: 'unavailable', issue: 'not_configured' });
     const snapshot = await loadTvSnapshot('gulf', [], { market: 'BOURSA_KUWAIT', symbols: ['KFH.KW'] });
     expect(snapshot.quotes[0]).toMatchObject({ price: null, currency: 'KWD', issue: 'not_configured', receivedAt: null });
+  });
+  it('uses a configured fallback after a regional provider rejection without changing listing or currency', async () => {
+    vi.spyOn(catalog, 'tvDirectoryAssets').mockResolvedValue([{ symbol: 'KFH.KW', name: 'KFH', region: 'BOURSA_KUWAIT', currency: 'KWD', assetType: 'stock' }]);
+    vi.mocked(providerStockQuote).mockResolvedValue({ price: null, change: null, changePercent: null, currency: null, quoteTimestamp: null, delayed: true, dataSource: null, status: 'unavailable', issue: 'access_denied' });
+    const row = { symbol: 'KFH.KW', assetType: 'stock', price: 0.75, currency: 'KWD', changePercent: 1, quality: { state: 'complete' }, provenance: { upstreamProvider: 'eodhd', providerSymbol: 'KFH.KW', observedAt: '2026-11-05T10:00:00Z', receivedAt: '2026-11-06T10:00:00Z', delayType: 'eod', observation: { precision: 'instant', marketOpen: false } } } as SfmMarketQuote;
+    vi.mocked(getSfmMarketQuote).mockResolvedValue(row);
+    const result = await loadTvSnapshot('gulf', [], { market: 'BOURSA_KUWAIT' });
+    expect(result.quotes[0]).toMatchObject({ price: 0.75, currency: 'KWD', source: 'eodhd', observedAt: '2026-11-05T10:00:00Z' });
+    expect(getSfmMarketQuote).toHaveBeenCalledWith('KFH.KW', expect.objectContaining({ excludeProviders: ['twelve_data', 'finnhub'] }));
+    vi.mocked(getSfmMarketQuote).mockResolvedValue({ ...row, provenance: { ...row.provenance, providerSymbol: 'KFH' } });
+    expect((await loadTvSnapshot('gulf', [], { market: 'BOURSA_KUWAIT' })).quotes[0]).toMatchObject({ price: null, issue: 'identity_mismatch' });
   });
   it('rejects fallback denomination, exchange, stripped-listing and instrument mismatches', () => {
     const row = { symbol: 'SAP.DE', currency: 'EUR', provenance: { providerSymbol: 'SAP.DE' } } as SfmMarketQuote;

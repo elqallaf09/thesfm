@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const language = input === 'en' || input === 'fr' ? input : 'ar';
   try {
     const snapshot = await cachedTvNews(language, async () => {
-      const result = await aggregateFinancialNews({ language, limit: 8 }, { pageSize: 8, sort: 'latest', providerBudgetMs: 6000 });
+      const result = await aggregateFinancialNews({ language, languages: [language], limit: 8 }, { pageSize: 8, sort: 'latest', providerBudgetMs: 6000 });
       return result.stories.flatMap(s => {
         const url = safeTvUrl(s.originalUrl);
         return url ? [{ id: s.id, title: s.title, source: s.sourceName, publishedAt: s.publishedAt, url }] : [];

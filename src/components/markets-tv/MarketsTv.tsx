@@ -117,7 +117,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     if (!settings.groups.includes(group) && !(settings.groups.includes('world') && selectedMarket)) { setGroup(settings.groups[0]); setSelectedMarket(''); setPage(0); }
   }, [settings.groups, group, selectedMarket]);
   const choose = useCallback((next: TvGroup, market = '') => { setGroup(next); setSelectedMarket(market); setPage(0); activity.current = Date.now(); }, []);
-  const chooseScene = useCallback((next: TvScene) => { setSettings(value => ({ ...value, scene: next })); activity.current = Date.now(); }, []);
+  const chooseScene = useCallback((next: TvScene) => { setView('markets'); setSettings(value => ({ ...value, scene: next })); activity.current = Date.now(); }, []);
   function changeDisplayMode(displayMode: TvDisplayMode) {
     const next = { ...settings, displayMode };
     setRouteStrips(false); setSettings(next); activity.current = Date.now();
@@ -181,7 +181,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   // Freshness is independent of the clock and updates at most every 15 seconds.
   const stripNow = now;
   const strips = <TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || (!stripsOnly && modal)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} />;
-  return <div ref={root} data-tv-root className={`tv-screen tv-${settings.theme}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
+  return <div ref={root} data-tv-root data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     <TvHeader language={settings.language} mode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} ready={ready} paired={Boolean(token)} fullscreen={fullscreen} hidden={controls.hidden} paused={stripsPaused} wake={controls.wake} changeMode={changeDisplayMode} pair={() => setDialog(token ? 'device' : 'pair')} settings={() => setDialog('settings')} customize={() => setDialog('markets')} channels={() => setDialog('channels')} toggleFullscreen={() => void toggleFullscreen()} togglePause={toggleTicker} refresh={refresh}/>
     {stripsOnly ? <>
 
@@ -190,7 +190,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       <main className="tv-strips-main">{!ready || (catalog.loading && !catalog.data) ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : strips}</main>
     </> : viewing ? <>
 
-      <div className="tv-viewing-nav"><nav className="tv-scene-tabs" aria-label={s('scenes')}>{TV_SCENE_ORDER.map(value => <button key={value} aria-pressed={scene === value} onClick={() => chooseScene(value)} data-tv-focus-key={`scene:${value}`}>{s(value)}</button>)}</nav>
+      <div className="tv-viewing-nav"><nav className="tv-scene-tabs" aria-label={s('scenes')}>{TV_SCENE_ORDER.map(value => <button key={value} aria-pressed={view === 'markets' && scene === value} onClick={() => chooseScene(value)} data-tv-focus-key={`scene:${value}`}>{s(value)}</button>)}{(['sessions','brief'] as const).map(value=><button key={value} aria-pressed={view===value} onClick={()=>setView(value)}>{t(value)}</button>)}</nav>
         <div className="tv-scene-playback"><span>{s(settings.autoRotate ? 'automatic' : 'manual')}</span>
           <button onClick={() => chooseScene(previousScene)} aria-label={s('previousScene')} data-tv-focus-key="scene-previous">{settings.language === 'ar' ? <ArrowRight aria-hidden="true"/> : <ArrowLeft aria-hidden="true"/>}</button>
           <button aria-label={t(settings.autoRotate ? 'pause' : 'resume')} aria-pressed={settings.autoRotate} onClick={() => { setSettings(value => ({ ...value, autoRotate: !value.autoRotate })); interact(); }} data-tv-focus-key="scene-playback">{settings.autoRotate ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}</button>
@@ -198,7 +198,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
         </div>
       </div>
       {!online && <div className="tv-scene-notice" role="status">{t('offline')}</div>}
-      <TvSceneDashboard snapshot={sceneMarket.data} loading={!ready || sceneMarket.loading} error={sceneMarket.error} language={settings.language} now={stripNow} news={news.data?.stories || EMPTY_NEWS} linked={Boolean(token)} watchlist={scene === 'watchlist'} ticker={settings.ticker} tickerPaused={stripsPaused} speed={settings.stripSpeed || 56} onQuote={setDetail} onStory={setStory} onPair={openPair} onRefresh={refresh} onTickerPause={toggleTicker}/>
+      {view === 'sessions' ? <main className="tv-feature-view"><Suspense fallback={<p>{t('loading')}</p>}><TvSessions language={settings.language} now={now}/></Suspense></main> : view === 'brief' ? <main className="tv-feature-view"><Suspense fallback={<p>{t('loading')}</p>}><TvBrief snapshot={sceneMarket.data} language={settings.language} now={now} select={setDetail}/></Suspense></main> : <TvSceneDashboard overview={scene === 'overview'} snapshot={sceneMarket.data} loading={!ready || sceneMarket.loading} error={sceneMarket.error} language={settings.language} now={stripNow} news={news.data?.stories || EMPTY_NEWS} linked={Boolean(token)} watchlist={scene === 'watchlist'} ticker={settings.ticker} tickerPaused={stripsPaused} speed={settings.stripSpeed || 56} onQuote={setDetail} onStory={setStory} onPair={openPair} onRefresh={refresh} onTickerPause={toggleTicker}/>}
       <footer className="tv-viewing-footer"><span>{t('remoteHelp')}</span><button onClick={() => setDialog('sessions')}>{t('sessions')}</button><button onClick={() => setDialog('channels')}>{t('channels')}</button><span>{t(online ? 'connected' : 'offline')}</span><button onClick={() => setRevision(value => value + 1)} aria-label={s('update')}><RefreshCw aria-hidden="true"/></button></footer>
     </> : <>
 

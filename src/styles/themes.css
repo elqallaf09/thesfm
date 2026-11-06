@@ -773,3 +773,31 @@
   --tv-down-tint: rgba(178, 37, 55, .12);
   color-scheme: light;
 }
+
+/* Markets TV Obsidian palette, shared by all three display modes. */
+.tv-screen.tv-dark {
+  --tv-bg: #06080c;
+  --tv-panel: #0e131b;
+  --tv-panel2: #151d29;
+  --tv-text: #edf0f5;
+  --tv-muted: #a5b0bf;
+  --tv-line: #283140;
+  --tv-accent: #d4af6a;
+  --tv-up: #74c6a6;
+  --tv-down: #e3919a;
+}
+.tv-screen[data-accent=blue] { --tv-accent: #81b4ee; }
+.tv-screen[data-accent=green] { --tv-accent: #78c8ab; }
+.tv-screen[data-accent=purple] { --tv-accent: #b49ce0; }
+.tv-screen.tv-light { --tv-accent: #86601e; }
+.tv-screen.tv-light[data-accent=blue] { --tv-accent: #285b98; }
+.tv-screen.tv-light[data-accent=green] { --tv-accent: #236d53; }
+.tv-screen.tv-light[data-accent=purple] { --tv-accent: #70529c; }
+
+.tv-screen { --tv-palette-champagne: #d4af6a; --tv-accent-choice-2: #81b4ee; --tv-accent-choice-3: #78c8ab; --tv-accent-choice-4: #b49ce0; --tv-hero-tint: #d4af6a09; }
+.tv-screen[data-accent=blue] { --tv-hero-tint: #81b4ee09; }
+.tv-screen[data-accent=green] { --tv-hero-tint: #78c8ab09; }
+.tv-screen[data-accent=purple] { --tv-hero-tint: #b49ce009; }
+
+.tv-screen { --tv-active-shadow: inset 0 -2px 0 var(--tv-accent); --tv-focus-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 5px var(--tv-accent); }
+.tv-screen { --tv-hero-background: radial-gradient(ellipse at 80% 0%, var(--tv-hero-tint), transparent 60%), var(--tv-panel); --tv-timeline-grid: repeating-linear-gradient(to right, var(--tv-line) 0 1px, transparent 1px 12.5%); }

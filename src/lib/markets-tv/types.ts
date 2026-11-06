@@ -1,9 +1,11 @@
 export type TvLanguage = 'ar' | 'en' | 'fr';
+export type TvAccent = 'champagne' | 'blue' | 'green' | 'purple';
 export type TvGroup = 'world' | 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
 export type TvView = 'markets' | 'map' | 'sessions' | 'brief';
 export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'watchlist';
 export type TvDisplayMode = 'viewing' | 'browse' | 'strips';
 export type TvSettings = {
+  accent?: TvAccent;
   language: TvLanguage; theme: 'dark' | 'light'; layout: 'balanced' | 'quotes';
   displayMode?: TvDisplayMode; scene?: TvScene;
   groups: TvGroup[]; autoRotate: boolean; rotationSeconds: number; ticker: boolean; sound: boolean;
@@ -38,7 +40,7 @@ export const TV_GROUPS: TvGroup[] = ['world', 'global', 'us', 'gulf', 'europe', 
 export const TV_STRIP_SPEEDS = [36, 56, 80] as const;
 export const DEFAULT_TV_STRIP_SPEED = TV_STRIP_SPEEDS[1];
 export const DEFAULT_TV_SETTINGS: TvSettings = {
-  language: 'ar', theme: 'dark', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
+  language: 'ar', accent: 'champagne', theme: 'dark', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
   displayMode: 'viewing', scene: 'overview',
   autoRotate: false, rotationSeconds: 30, ticker: true, sound: false, stripSpeed: DEFAULT_TV_STRIP_SPEED,
   stripDensity: 'balanced', pricedOnly: false, autoHideControls: false,
@@ -57,6 +59,7 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     }
   }
   return {
+    accent: row.accent === 'blue' || row.accent === 'green' || row.accent === 'purple' ? row.accent : 'champagne',
     language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
     theme: row.theme === 'light' ? 'light' : 'dark', layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
     displayMode: row.displayMode === 'browse' || row.displayMode === 'strips' ? row.displayMode : 'viewing',

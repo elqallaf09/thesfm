@@ -52,5 +52,5 @@ export function tvSceneAssets(scene: TvScene, ownedSymbols: string[] = []): { su
   if (scene === 'world') return { summary: configured('global_indices', 6).filter(item => ['^GSPC', '^FTSE', '^GDAXI', '^N225'].includes(item.symbol)),
     rows: [...EUROPE, ...configured('japan_tse', 2), ...configured('hongkong_hkex', 1)] };
   if (scene === 'assets') return { summary: configured('commodities', 4), rows: [...CRYPTO, ...FOREX] };
-  return { summary: [...configured('global_indices', 3), CRYPTO[0]], rows: configured('us_nasdaq', 6) };
+  return { summary: configured('global_indices', 6), rows: [] };
 }
