@@ -1,15 +1,16 @@
 'use client';
+/* eslint-disable @next/next/no-img-element -- Also rendered from offline APK assets. */
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { useEffect, useRef, useState } from 'react';
-import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvGroup, type TvLanguage, type TvQuote, type TvSettings, type TvSnapshot } from '@/lib/markets-tv/types';
+import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvGroup, type TvLanguage, type TvQuote, type TvSettings } from '@/lib/markets-tv/types';
 import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
-import { tvMovers } from '@/lib/markets-tv/quotes';
 import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
 import { useTvResource } from './useTvResource';
 import { TV_SCENE_ORDER, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { obsText } from '@/lib/markets-tv/obsidian';
 import { tvAnalysisAssetType, tvAnalysisHref } from '@/lib/markets-tv/analysisLink';
 
 export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void }) {
@@ -21,6 +22,7 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
     {displayMode === 'viewing' && <div className="tv-setting-row"><span>{tvSceneText(settings.language, 'chooseScene')}</span><div className="tv-segment">{TV_SCENE_ORDER.map(scene => <button key={scene} aria-pressed={(settings.scene || 'overview') === scene} onClick={() => change({ ...settings, scene })}>{tvSceneText(settings.language, scene)}</button>)}</div></div>}
     <div className="tv-setting-row"><span>{displayMode === 'viewing' ? tvSceneText(settings.language, 'browseCustomization') : t('displayInstruments')}</span><button onClick={customize}>{t('customizeMarkets')}</button></div>
     <div className="tv-setting-row"><span>{t('channels')}</span><button onClick={channels}>{t('channels')}</button></div>
+    <div className="tv-setting-row"><span>{obsText(settings.language,'tweaks')}</span><div className="tv-segment tv-accent-options">{(['champagne','blue','green','purple'] as const).map(accent=><button key={accent} data-accent={accent} aria-pressed={(settings.accent||'champagne')===accent} onClick={()=>change({...settings,accent})}>{obsText(settings.language,accent)}</button>)}</div></div>
     <div className="tv-setting-row"><span>{t('theme')}</span><div className="tv-segment">{(['dark','light'] as const).map(theme => <button key={theme} aria-pressed={settings.theme === theme} onClick={() => change({ ...settings, theme })}>{t(theme)}</button>)}</div></div>
     {!stripsOnly && <>
     {displayMode === 'browse' && <div className="tv-setting-row"><span>{t('layout')}</span><div className="tv-segment">{(['balanced','quotes'] as const).map(layout => <button key={layout} aria-pressed={settings.layout === layout} onClick={() => change({ ...settings, layout })}>{t(layout)}</button>)}</div></div>}
@@ -114,15 +116,10 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
 export function TvMarketMap({ language, group, select, now }: { language: TvLanguage; group: TvGroup; select: (group: TvGroup) => void; now: number }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   return <section className="tv-map-panel"><div className="tv-map" role="group" aria-label={t('map')}>
+    <img className="tv-map-image" src={typeof window !== 'undefined' && tvOrigin() !== window.location.origin ? './markets-tv/world-dotted-map.png' : '/markets-tv/world-dotted-map.png'} alt="" aria-hidden="true"/>
     {TV_MAP_POINTS.map(point => <button key={point.group} className="tv-map-point" aria-pressed={group === point.group} style={{ left: `${point.x}%`, top: `${point.y}%` }} onClick={() => select(point.group)}>
       <strong>{t(point.group)}</strong><span>{new Intl.DateTimeFormat(`${language}-u-nu-latn`, { timeZone: point.zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)}</span>
     </button>)}
   </div><p className="tv-muted">{t('localTime')}</p></section>;
 }
-export function TvBrief({ snapshot, language, now, select }: { snapshot: TvSnapshot | null; language: TvLanguage; now: number; select: (quote: TvQuote) => void }) {
-  const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
-  const movers = tvMovers(snapshot?.quotes || [], now);
-  return <div className="tv-brief"><div className="tv-brief-lead"><span>{t('coverage')}</span><strong>{snapshot?.available ?? '—'} <small>/ {snapshot?.total ?? '—'}</small></strong><p>{t('subset')}</p></div>
-    {(['gainers','losers'] as const).map(kind => <section key={kind}><h3>{t(kind)}</h3>{movers[kind].length ? movers[kind].map(q => <button className="tv-mover" key={q.symbol} onClick={() => select(q)}><span dir="ltr">{q.symbol}</span><strong dir="ltr" data-trend={kind === 'gainers' ? 'up' : 'down'}>{q.changePercent! > 0 ? '+' : ''}{q.changePercent?.toFixed(2)}%</strong><small>{q.source} · {tvTime(q.observedAt, language, true)}</small></button>) : <p className="tv-muted">{t('nothingRanked')}</p>}</section>)}<p className="tv-muted">{t('sample')}</p>
-  </div>;
-}
+export { TvBrief } from './TvBrief';

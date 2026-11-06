@@ -20,6 +20,6 @@ export function cachedTvNews(language: TvLanguage, load: () => Promise<TvNews[]>
     });
     pending.set(language, request);
     try { return await request; } finally { if (pending.get(language) === request) pending.delete(language); }
-  }, ['tv-news-v1', language], { revalidate: 180 });
+  }, ['tv-news-native-language-v2', language], { revalidate: 180 });
   return read();
 }

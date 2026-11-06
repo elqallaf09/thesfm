@@ -56,10 +56,11 @@ for (const density of ['balanced', 'comfortable', 'compact']) {
       await expect(page.locator('.tv-pagination')).toBeInViewport({ ratio: 1 });
     }
     await page.setViewportSize({ width: 960, height: 540 });
-    for (const [name, selector] of [['ساعات الأسواق', '.tv-session, .tv-sessions-note'], ['خريطة الأسواق', '.tv-map-point'], ['موجز السوق', '.tv-mover']]) {
+    for (const [name, selector] of [['ساعات الأسواق', '.tv-session, .tv-sessions-note'], ['خريطة الأسواق', '.tv-map-point'], ['موجز السوق', '.tv-ranking-empty']]) {
       await page.locator('.tv-view-actions').getByRole('button', { name, exact: true }).click();
       await expect(body.locator(selector).first()).toBeVisible();
       await fits(body, body.locator(selector));
+      if (name === 'خريطة الأسواق') expect(await page.locator('.tv-map-image').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     }
     await page.locator('.tv-view-actions').getByRole('button', { name: 'الأسواق', exact: true }).click();
     await expect(ticker).toBeVisible();

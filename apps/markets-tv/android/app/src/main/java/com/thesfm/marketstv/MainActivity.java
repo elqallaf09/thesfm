@@ -3,6 +3,9 @@ package com.thesfm.marketstv;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.WindowManager;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -40,6 +43,9 @@ public final class MainActivity extends ComponentActivity {
       }
     });
     setContentView(screen);
+    WindowInsetsControllerCompat insets = WindowCompat.getInsetsController(getWindow(), screen);
+    insets.hide(WindowInsetsCompat.Type.systemBars());
+    insets.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     screen.setFocusable(true); screen.setFocusableInTouchMode(true); screen.requestFocus();
     getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
       @Override public void handleOnBackPressed() { handleTvBack(); }

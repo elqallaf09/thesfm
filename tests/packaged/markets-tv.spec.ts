@@ -24,7 +24,7 @@ function snapshot(): TvSnapshot {
 }
 
 async function openTv(page: Page, language: TvLanguage, settings: Record<string, unknown> = {}) {
-  await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, ...settings })), { language, settings });
+  await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, scene: 'world', ...settings })), { language, settings });
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot() }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [] } }));
@@ -109,7 +109,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     const opener = page.locator('.tv-viewing-footer button').first();
     await opener.click();
     const dialog = page.getByRole('dialog');
-    await expect(page.locator('.tv-session')).toHaveCount(4);
+    await expect(page.locator('.tv-session')).toHaveCount(5);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
       expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
@@ -127,11 +127,13 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     const nyse = page.locator('[data-tv-focus-key="session:XNYS"]');
     await kuwait.focus();
     await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
     await expect(nyse).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(nyse).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('[data-market="XNYS"] canvas')).toBeVisible();
-    await expect(page.locator('[data-market="XNYS"] canvas')).toBeInViewport({ ratio: 1 });
+    await expect(page.locator('.tv-session-qr canvas')).toBeVisible();
+    await expect(page.locator('.tv-session-qr canvas')).toBeInViewport({ ratio: 1 });
     await page.keyboard.press('Enter');
     await expect(nyse).toHaveAttribute('aria-expanded', 'false');
     await page.keyboard.press('Escape');

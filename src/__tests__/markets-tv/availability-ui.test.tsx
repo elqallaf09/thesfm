@@ -26,13 +26,13 @@ describe('TV unavailable-price presentation', () => {
       language="en" now={now} news={[]} linked={false} watchlist={false} ticker tickerPaused={false} speed={56}
       onQuote={noop} onStory={noop} onPair={noop} onRefresh={noop} onTickerPause={noop}/>);
     for (let index = 0; index < 10; index++) expect(html).toContain(`Unavailable instrument ${index}`);
-    expect(html.match(/class="tv-quote tv-scene-row"/g)).toHaveLength(6);
+    expect(html.match(/class="tv-unavailable-card"/g)).toHaveLength(6);
     expect(html).toContain('Source request limit reached');
     expect(html).toContain('0 / 10');
     expect(html).not.toContain('class="tv-scene-no-data"');
     expect(html).not.toContain('class="tv-scene-price"');
     expect(html).not.toContain('class="tv-scene-summary-value"');
-    expect(html).not.toContain('class="tv-scene-ticker"');
+    expect(html).not.toContain('class="tv-scene-ticker tv-whole-ticker"');
   });
 
   it('never renders private instrument names before the device is linked', () => {
@@ -94,7 +94,7 @@ describe('TV unavailable-price presentation', () => {
     expect(html).toContain('class="tv-data-notice"');
     expect(html).toContain(`dateTime="${retryAt}"`);
     expect(html).toContain('Retry after');
-    expect(html).toContain('class="tv-scene-ticker"');
+    expect(html).toContain('class="tv-scene-ticker tv-whole-ticker"');
     expect(html).not.toContain('Verified quotes are currently unavailable');
     expect(html).not.toContain('Showing the last retained reading');
   });
