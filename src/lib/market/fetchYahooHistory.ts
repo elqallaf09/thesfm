@@ -180,6 +180,7 @@ export async function fetchYahooHistory(
   period: string,
   interval?: string,
   forceFresh = false,
+  timeoutMs = 9000,
 ): Promise<YahooHistoryResult> {
   const symbol = providerSymbol.trim().toUpperCase();
   if (!symbol) {
@@ -212,7 +213,7 @@ export async function fetchYahooHistory(
   try {
     const response = await fetch(url, {
       ...(forceFresh ? { cache: 'no-store' as const } : { next: { revalidate: Math.round(YAHOO_HISTORY_CACHE_MS / 1000) } }),
-      signal: AbortSignal.timeout(9000),
+      signal: AbortSignal.timeout(Math.max(1000, Math.min(9000, timeoutMs))),
       headers: {
         accept: 'application/json',
         'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)',

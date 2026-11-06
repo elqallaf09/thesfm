@@ -23,7 +23,7 @@ export async function cachedTvQuote(identity: string, load: () => Promise<TvQuot
       throw new UnavailableQuote(quote);
     }
     return { quote, verifiedAt: Date.now() };
-  }, ['tv-verified-quote-v2', createHash('sha256').update(identity).digest('hex')], { revalidate });
+  }, ['tv-verified-quote-v3', createHash('sha256').update(identity).digest('hex')], { revalidate });
   try {
     const { quote, verifiedAt } = await read();
     // Cached observations keep both original clocks and are never called live
