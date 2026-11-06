@@ -9,6 +9,12 @@ type YahooChartPayload = {
         currency?: string;
         regularMarketTime?: number;
         regularMarketPrice?: number;
+        exchangeName?: string;
+        fullExchangeName?: string;
+        instrumentType?: string;
+        chartPreviousClose?: number;
+        previousClose?: number;
+        currentTradingPeriod?: { regular?: { start?: number; end?: number } };
       };
       timestamp?: number[];
       indicators?: {

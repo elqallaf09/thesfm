@@ -1,4 +1,7 @@
 plugins { id 'com.android.application' }
+def signingValues = ['SFM_TV_KEYSTORE_PATH', 'SFM_TV_KEYSTORE_PASSWORD', 'SFM_TV_KEY_ALIAS', 'SFM_TV_KEY_PASSWORD'].collectEntries { [(it): System.getenv(it)?.trim()] }
+def hasReleaseSigning = signingValues.values().every { it }
+if (signingValues.values().any { it } && !hasReleaseSigning) throw new GradleException('SFM TV release signing requires all four SFM_TV signing variables.')
 android {
   namespace 'com.thesfm.marketstv'
   compileSdk 36
@@ -11,6 +14,20 @@ android {
     preview { dimension 'distribution'; applicationIdSuffix '.preview'; manifestPlaceholders = [appLabel: 'SFM TV Obsidian'] }
   }
   compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
-  buildTypes { release { minifyEnabled false } }
+  signingConfigs {
+    if (hasReleaseSigning) release {
+      storeFile file(signingValues.SFM_TV_KEYSTORE_PATH)
+      storePassword signingValues.SFM_TV_KEYSTORE_PASSWORD
+      keyAlias signingValues.SFM_TV_KEY_ALIAS
+      keyPassword signingValues.SFM_TV_KEY_PASSWORD
+    }
+  }
+  buildTypes { release { minifyEnabled false; if (hasReleaseSigning) signingConfig signingConfigs.release } }
+}
+tasks.register('verifyReleaseSigning') {
+  doLast {
+    if (!hasReleaseSigning) throw new GradleException('Release signing is not configured. Default CI release APK/AAB outputs are UNSIGNED and must not be distributed.')
+    if (!file(signingValues.SFM_TV_KEYSTORE_PATH).isFile()) throw new GradleException('Release keystore file is not available.')
+  }
 }
 dependencies { implementation 'androidx.webkit:webkit:1.12.1'; implementation 'androidx.activity:activity:1.11.0' }

@@ -139,6 +139,18 @@ describe('TV public resource lifecycle', () => {
     expect(tvRetryDelay(100, 30_000)).toBe(300_000);
     expect(tvRetryDelay(1, 0)).toBeGreaterThanOrEqual(5000);
   });
+  it('allows explicit retry after a transient 503 while preserving a server-mandated retry window', async () => {
+    const cache = new TvResourceCache();
+    const load = vi.fn().mockRejectedValueOnce(new TvResourceError('UNAVAILABLE', 503)).mockResolvedValue(snapshot());
+    await expect(cache.request(path, options(), load)).rejects.toMatchObject({ status: 503 });
+    await cache.request(path, { ...options(), force: true }, load);
+    expect(load).toHaveBeenCalledTimes(2);
+    const waiting = new TvResourceCache();
+    const blocked = vi.fn().mockRejectedValue(new TvResourceError('UNAVAILABLE', 503, 120_000));
+    await expect(waiting.request(path, options(), blocked)).rejects.toMatchObject({ status: 503 });
+    await expect(waiting.request(path, { ...options(), force: true }, blocked)).rejects.toMatchObject({ status: 503 });
+    expect(blocked).toHaveBeenCalledTimes(1);
+  });
 
   it('honors provider cooldown in a successful snapshot across refresh and remount, then recovers', async () => {
     let now = Date.parse('2026-10-27T09:02:00Z');

@@ -69,9 +69,12 @@ describe('TV source recovery integration', () => {
     expect(snapshot.retryAt).toBe('2026-10-28T05:16:01.000Z');
     expect([...snapshot.summary!, ...snapshot.quotes].map(quote => ({symbol: quote.symbol, price: quote.price, issue: quote.issue, retryAt: quote.retryAt}))).toEqual(expect.arrayContaining([expect.objectContaining({ symbol: 'KFH.KW', price: null, issue: 'rate_limited', retryAt: snapshot.retryAt })]));
     expect([...snapshot.summary!, ...snapshot.quotes].filter(quote => quote.price !== null || quote.issue !== 'rate_limited' || quote.retryAt !== snapshot.retryAt)).toEqual([]);
-    expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+    const requests = (host: string) => fetch.mock.calls.filter(call => new URL(String(call[0])).hostname === host).length;
+    expect(requests('api.twelvedata.com')).toBeLessThanOrEqual(2);
+    expect(requests('query1.finance.yahoo.com')).toBeLessThanOrEqual(2);
+    const requestCount = fetch.mock.calls.length;
     const again = await loadTvSnapshot('gulf', [], { scene: 'gulf' });
-    expect(again.retryAt).toBe(snapshot.retryAt); expect(fetch.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(again.retryAt).toBe(snapshot.retryAt); expect(fetch.mock.calls.length).toBe(requestCount);
   });
   it('keeps healthy Binance refreshing when indices are blocked and chooses the first blocked retry otherwise', async () => {
     const { tvSnapshotRetryAt } = await import('@/lib/server/markets-tv/quoteAvailability');

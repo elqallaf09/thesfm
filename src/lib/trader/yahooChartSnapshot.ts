@@ -30,11 +30,15 @@ export function parseYahooChartSnapshot(payload: unknown) {
   }).at(-1);
   // chartPreviousClose is the start of range=1y; it is never a daily baseline.
   const previousClose = positive(meta.regularMarketPreviousClose) ?? positive(meta.previousClose) ?? prior?.close ?? null;
+  const regular = record(record(meta.currentTradingPeriod).regular);
+  const start = positive(regular.start), end = positive(regular.end);
+  const regularSession = start !== null && end !== null && end > start ? { start: start * 1000, end: end * 1000 } : null;
   return {
     symbol: text(meta.symbol), name: text(meta.longName) ?? text(meta.shortName),
     price: positive(meta.regularMarketPrice) ?? closes.at(-1) ?? null, previousClose,
     currency: text(meta.currency), exchange: text(meta.fullExchangeName ?? meta.exchangeName ?? meta.exchange ?? meta.quoteSourceName),
-    exchangeCode: text(meta.exchange), market: text(meta.market), assetType: text(meta.quoteType ?? meta.instrumentType),
+    exchangeCode: text(meta.exchange) ?? text(meta.exchangeName), market: text(meta.market), assetType: text(meta.quoteType ?? meta.instrumentType),
+    ...(regularSession ? { regularSession } : {}),
     marketCap: positive(meta.marketCap), volume: number(meta.regularMarketVolume), closes, history,
     marketTime: marketTime && Number.isFinite(new Date(marketTime * 1000).getTime()) ? new Date(marketTime * 1000).toISOString() : null,
   };

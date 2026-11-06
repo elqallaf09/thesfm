@@ -60,7 +60,7 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       (replacement || nearest || elements[0])?.focus();
     });
     const root = scope();
-    if (root) observer.observe(root, { childList: true, subtree: true });
+    if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'aria-hidden', 'inert', 'disabled'] });
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
       const focused = document.activeElement as HTMLElement | null;

@@ -75,7 +75,10 @@ export class TvResourceCache {
     // Never store tokens, private responses, or private requests in shared maps.
     if (!key) return load(options.signal);
     const cached = this.entries.get(key), now = this.clock();
-    if (cached && cached.retryAt > now) {
+    const error = cached?.error;
+    const forcedTransientRetry = options.force && cached && 'error' in cached
+      && !(error instanceof TvResourceError && (error.status === 429 || error.retryAfterMs > 0));
+    if (cached && cached.retryAt > now && !forcedTransientRetry) {
       // A partial provider failure is still a successful snapshot. Keep its
       // explanation/retained data visible while preventing forced refresh storms.
       if (!('error' in cached) && cached.data != null) {
