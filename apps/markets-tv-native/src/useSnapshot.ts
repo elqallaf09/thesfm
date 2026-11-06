@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { readSnapshot, type Scene, type Snapshot } from './api';
+import { readSnapshot, SnapshotError, type Scene, type Snapshot } from './api';
 
 export function useSnapshot(scene: Scene, revision: number) {
   const cache = useRef(new Map<Scene, Snapshot>());
@@ -23,8 +23,8 @@ export function useSnapshot(scene: Scene, revision: number) {
         const retry = Date.parse(data.retryAt || '') - Date.now();
         if (Number.isFinite(retry) && ![...data.summary, ...data.quotes].some(q => q.price !== null && !q.issue)) delay = Math.max(delay, retry);
         if (active()) setState({ scene, data, loading: false, error: false });
-      } catch {
-        delay = Math.min(300_000, delay * 2 ** Math.min(++failures, 4));
+      } catch (error) {
+        delay = Math.max(error instanceof SnapshotError ? error.retryAfterMs : 0, Math.min(300_000, delay * 2 ** Math.min(++failures, 4)));
         if (active()) setState({ scene, data: cache.current.get(scene) || null, loading: false, error: true });
       } finally {
         clearTimeout(timeout); busy = false;

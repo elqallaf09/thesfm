@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, BackHandler, Image, Modal, Platform, ScrollView, StyleSheet, Text, TVEventControl, TVFocusGuideView, useTVEventHandler, View } from 'react-native';
 import { useFonts } from 'expo-font';
-import { currentStatus, hasPrice, sampleMetrics, SCENES, type Language, type Quote, type Scene } from './src/api';
+import { currentStatus, formatQuotePrice, hasPrice, sampleMetrics, SCENES, type Language, type Quote, type Scene } from './src/api';
 import { quoteLabel, t } from './src/copy';
 import { useSnapshot } from './src/useSnapshot';
 import { Metric, styles as controlStyles, TvButton } from './src/TvControls';
@@ -71,9 +71,9 @@ export default function App() {
         <Metric label={t(language, 'falling')} value={String(stats.falling)}/><Metric label={t(language, 'average')} value={percent(stats.average)}/>
       </View></View> : <ScrollView contentContainerStyle={s.content}>
         <TVFocusGuideView autoFocus style={[s.grid, direction]}>
-          {quotes.map(quote => <TvButton key={quote.symbol} style={s.card} onPress={() => { interact(); setDetail(quote); }} label={`${language === 'ar' ? quote.nameAr : quote.name}, ${hasPrice(quote) ? quote.price : t(language, 'noPrice')}`}>
+          {quotes.map(quote => <TvButton key={`${quote.exchange || ''}:${quote.symbol}:${quote.currency || ''}`} style={s.card} onPress={() => { interact(); setDetail(quote); }} label={`${language === 'ar' ? quote.nameAr : quote.name}, ${hasPrice(quote) ? quote.price : t(language, 'noPrice')}`}>
             <View style={s.cardContent}><Text numberOfLines={1} style={[s.cardName, align]}>{language === 'ar' ? quote.nameAr : quote.name}</Text><Text style={[s.symbol, align]}>{quote.symbol}</Text>
-              <View style={[s.priceRow, direction]}><Text style={s.price}>{hasPrice(quote) ? quote.price!.toLocaleString('en-US', { maximumFractionDigits: 3 }) : '—'}</Text><Text style={s.body}>{quote.currency || ''}</Text><Text style={[s.change, { color: (quote.changePercent || 0) < 0 ? '#F19B9B' : '#86D7B6' }]}>{hasPrice(quote) ? percent(quote.changePercent) : '—'}</Text></View>
+              <View style={[s.priceRow, direction]}><Text style={s.price}>{formatQuotePrice(quote)}</Text><Text style={s.body}>{quote.currency || ''}</Text><Text style={[s.change, { color: (quote.changePercent || 0) < 0 ? '#F19B9B' : '#86D7B6' }]}>{hasPrice(quote) ? percent(quote.changePercent) : '—'}</Text></View>
               {evidence(quote)}</View>
           </TvButton>)}
         </TVFocusGuideView>{!quotes.length && <Text style={s.body}>{t(language, 'noData')}</Text>}
@@ -82,7 +82,7 @@ export default function App() {
     <Modal visible={detail !== null} transparent onRequestClose={() => { interact(); setDetail(null); }} animationType="fade">
       <View style={s.backdrop}><TVFocusGuideView autoFocus trapFocusUp trapFocusDown trapFocusLeft trapFocusRight style={s.dialog}>
         <Text style={[s.title, align]}>{detail && (language === 'ar' ? detail.nameAr : detail.name)}</Text><Text style={[s.symbol, align]}>{detail?.symbol}</Text>
-        <Text style={s.price}>{detail && hasPrice(detail) ? `${detail.price} ${detail.currency || ''}` : t(language, 'noPrice')}</Text>
+        <Text style={s.price}>{detail && hasPrice(detail) ? `${formatQuotePrice(detail)} ${detail.currency || ''}` : t(language, 'noPrice')}</Text>
         {detail && evidence(detail)}<Text style={[s.evidence, align]}>{t(language, 'back')}</Text>
         <TvButton onPress={() => { interact(); setDetail(null); }}>{t(language, 'close')}</TvButton>
       </TVFocusGuideView></View>

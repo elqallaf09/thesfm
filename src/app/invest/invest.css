@@ -2934,7 +2934,7 @@
 
 @container (max-width: 28rem) {
   .invest-holding-metric strong {
-    font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);
+    font-size: var(--fs-title);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-title);
   }
 }
 

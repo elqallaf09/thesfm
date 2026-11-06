@@ -1209,9 +1209,8 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   .sfm-bottom-nav{display:none}
   .sfm-main{padding-bottom:44px}
 
-  body{font-size:var(--fs-body);line-height:var(--lh-body)}
   .sfm-card{padding:18px 20px;border-radius:var(--radius-card)}
-  .kpi-val{font-size:var(--fs-kpi) !important; font-weight: 600; font-family: var(--font-data);line-height:var(--lh-kpi)}
+  .kpi-val{font-size:var(--fs-kpi) !important}
   .sfm-reference-row,.sfm-dashboard-charts{grid-template-columns:1fr}
   .sfm-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sfm-dashboard-goals{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1228,9 +1227,9 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   .sfm-dashboard-page-shell{margin-inline-start:0;padding:calc(74px + env(safe-area-inset-top)) 14px 72px}
   .sfm-bottom-nav{display:flex}
   .sfm-topbar-nav{flex-wrap:wrap;gap:4px;padding:8px 12px}
-  .sfm-nav-btn{font-size:var(--fs-label); line-height: var(--lh-label);padding:6px 10px}
+  .sfm-nav-btn{padding:6px 10px}
   .sfm-card{padding:16px 18px;border-radius:var(--radius-card)}
-  .kpi-val{font-size:var(--fs-kpi) !important; font-weight: 600; font-family: var(--font-data);line-height:var(--lh-kpi)}
+  .kpi-val{font-size:var(--fs-kpi) !important}
   .sfm-reference-row,.sfm-dashboard-charts,.sfm-dashboard-goals{grid-template-columns:1fr}
   .sfm-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .sfm-gauge{grid-template-columns:1fr;text-align:center;justify-items:center}
@@ -1241,8 +1240,6 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   input,select,textarea{height:48px !important;font-size:16px !important;border-radius:var(--radius-control) !important}
   textarea{height:auto !important}
   button,[role="button"]{min-height:44px}
-  h1{font-size:var(--fs-page); font-weight: 700;line-height:var(--lh-page)}
-  h2{font-size:var(--fs-section); font-weight: 700;line-height:var(--lh-section)}
 }
 
 /* iOS/iPad Safari fixes */
