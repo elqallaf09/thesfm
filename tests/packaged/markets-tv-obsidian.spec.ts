@@ -26,7 +26,7 @@ for(const language of ['ar','en','fr'] as const)test(`Obsidian ${language} overv
   await open(page,language);
   for(const [width,height] of [[960,540],[1280,720],[1536,1009],[1920,1080],[3840,2160]]){
     await page.setViewportSize({width,height});
-    await contained(page,'.tv-index-hero,.tv-index-five article,.tv-overview,.tv-whole-ticker');
+    await contained(page,'.tv-index-hero,.tv-session-chart,.tv-index-five article,.tv-overview,.tv-whole-ticker');
     await expect(page.locator('.tv-index-five')).toBeInViewport({ratio:1});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+1);
     expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBeLessThanOrEqual(height+1);
