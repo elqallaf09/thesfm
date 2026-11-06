@@ -20,7 +20,7 @@ for (const locale of ['ar', 'en', 'fr'] as const) {
       }) });
     });
     await page.goto('/ai-analyst/calendar');
-    const calendar = page.locator('[data-ai-analyst-surface="economic-calendar"]');
+    const calendar = page.locator('[data-ai-analyst-surface="economic-calendar"]:visible');
     await expect(calendar).toBeVisible();
     const summary = calendar.locator('summary').filter({ hasText: 'THE SFM' });
     await expect(summary).toContainText('1/2');

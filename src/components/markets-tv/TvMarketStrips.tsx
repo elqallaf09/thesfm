@@ -1,7 +1,8 @@
 'use client';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
+import { TvBrowseStripPage } from './TvBrowseStripPage';
 import { TvStripQuote } from './TvStripQuote';
 import { retainVisibleTvSnapshot } from './retainedSnapshot';
 import { ChevronRight, RefreshCw } from 'lucide-react';
@@ -10,8 +11,8 @@ import { useTvResource } from './useTvResource';
 import { hasTvPrice, tvStripCoverage } from '@/lib/markets-tv/coverage';
 import { tvSceneIssue, tvSceneText, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 
-type Props = { selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; pricedOnly?: boolean; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
-const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, selections, pricedOnly = false }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
+type Props = { browse?: boolean; selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; pricedOnly?: boolean; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
+const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, browse = false, selections, pricedOnly = false }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
   const root = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false), [page, setPage] = useState(0), [duration, setDuration] = useState(90), [paused, setPaused] = useState(false);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -48,7 +49,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
       if (card.left < bounds.left || card.right > bounds.right) focused.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
     });
     resize.observe(element); resize.observe(viewport); return () => resize.disconnect();
-  }, [displayed.length, speed, emptyPrices]);
+  }, [displayed.length, speed, emptyPrices, browse]);
   useEffect(() => {
     if (!pricedOnly || displayed.length || !visible || paused || manualPause || sourceCooling || resource.loading || resource.error || !resource.data || pages <= 1) return;
     // Empty batches have no animation cycle to advance them. Keep scanning bounded
@@ -59,7 +60,8 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
   const health = resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
   const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
-  const next = () => { if (!resource.loading) setPage(value => (value + 1) % pages); };
+  const next = useCallback(() => { if (!resource.loading) setPage(value => (value + 1) % pages); }, [resource.loading, pages]);
+  const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
   return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-source-cooling={sourceCooling} data-paged={pages > 1}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
@@ -67,14 +69,18 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
       <span className="tv-strip-coverage">{t('pageCoverage')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>
       <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
     </button>
-    <div className="tv-market-strip-window" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(Boolean(root.current?.contains(document.activeElement)))} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-      {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
-        {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
-          {displayed.map(q => <TvStripQuote key={`${q.exchange}:${q.symbol}`} quote={q} group={market.group} language={language} now={Math.floor(now / 15000) * 15000} duplicate={Boolean(copy)} onQuote={onQuote}/>)}
-        </div>)}
-      </div> : <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>}
-    </div>
-    {pages > 1 && <button className="tv-strip-next" aria-label={`${t('next')}: ${market.labelEn}`} onClick={next} disabled={resource.loading}><ChevronRight aria-hidden="true"/></button>}
+    {browse && displayed.length > 0 ? <TvBrowseStripPage key={page} quotes={displayed} group={market.group} language={language}
+      now={now} onQuote={onQuote} speed={speed} paused={manualPause || !visible || resource.loading}
+      hasNextBatch={pages > 1} sourceCooling={sourceCooling} nextBatch={next}/> : <>
+      <div className="tv-market-strip-window" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(Boolean(root.current?.contains(document.activeElement)))} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+        {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
+          {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
+            {displayed.map(q => <TvStripQuote key={`${q.exchange}:${q.symbol}`} quote={q} group={market.group} language={language} now={Math.floor(now / 15000) * 15000} duplicate={Boolean(copy)} onQuote={onQuote}/>)}
+          </div>)}
+        </div> : empty}
+      </div>
+      {pages > 1 && <button className="tv-strip-next" aria-label={`${t('next')}: ${market.labelEn}`} onClick={next} disabled={resource.loading}><ChevronRight aria-hidden="true"/></button>}
+    </>}
   </div>;
 });
 export const TvMarketStrips = memo(function TvMarketStrips(props: Props) {
