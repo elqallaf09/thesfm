@@ -172,7 +172,7 @@ const ContextMenuShortcut = ({
   return (
     <span
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
+        "ml-auto text-[length:var(--fs-label)] leading-[var(--lh-label)] tracking-widest text-muted-foreground",
         className
       )}
       {...props}

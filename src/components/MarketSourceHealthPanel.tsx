@@ -29,9 +29,9 @@ export function MarketSourceHealthPanel({ report, lang }: { report?: MarketHealt
       </table></div>}
     <style jsx>{`
       .source-health { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
-      h2 { font-size: 18px; margin: 0 0 8px; } p { font-size: 13px; line-height: 1.7; color: var(--foreground-secondary); }
+      h2 { font-size: var(--fs-section, 20px); margin: 0 0 8px;line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading); } p { font-size: var(--fs-small, 14px); line-height: var(--lh-small, 22px); color: var(--foreground-secondary); }
       .source-health-scroll { overflow-x: auto; } table { width: 100%; border-collapse: collapse; }
-      th, td { padding: 10px; text-align: start; border-bottom: 1px solid var(--border); font-size: 13px; }
+      th, td { padding: 10px; text-align: start; border-bottom: 1px solid var(--border); font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px); }
     `}</style>
   </section>;
 }

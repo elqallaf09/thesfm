@@ -38,7 +38,7 @@ describe('security visual-system contract', () => {
       /font(?:-weight|Weight)?\s*:\s*(?:7(?:0[1-9]|[1-9]\d)|[89]\d{2}|[1-9]\d{3,})\b/,
     );
     expect(securityPage).toContain('font-family:var(--font-ui)');
-    expect(securityPage).toContain('.security-score-copy h2{margin:10px 0 0;font-family:var(--font-data)');
+    expect(securityPage).toContain('.security-score-copy h2{margin:10px 0 0;font-family:var(--font-mono);font-size:var(--fs-kpi);font-weight:600;line-height:var(--lh-kpi)}');
     expect(securityPage).toContain('.manual-secret code{');
     expect(securityPage).toContain('font:600 13px/1.5 var(--font-data)');
   });

@@ -49,16 +49,16 @@ describe('Administration market diagnostics visual-system contract', () => {
   });
 
   it('reserves the data font for operational metrics', () => {
-    expect(combined).toContain('.ops-health-score-percent { font: 600 26px var(--font-data)');
-    expect(combined).toContain('.ops-shariah-counts strong { display: block; color: var(--foreground); font: 600 20px/1 var(--font-data)');
-    expect(combined).toContain('.ops-ai-usage-summary strong { display: block; color: var(--foreground); font: 600 20px var(--font-data)');
+    expect(combined).toContain('.ops-health-score-percent { font: 600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono)');
+    expect(combined).toContain('.ops-shariah-counts strong { display: block; color: var(--foreground); font: 600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono)');
+    expect(combined).toContain('.ops-ai-usage-summary strong { display: block; color: var(--foreground); font: 600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono)');
   });
 
   it('keeps Sharia administration on the same semantic and accessible contract', () => {
     expect(shariaAdmin).not.toMatch(
       /#[0-9a-f]{3,8}\b|(?:rgb|hsl)a?\(|(?:linear|radial|conic)-gradient\(|\b(?:Tajawal|Cairo|Arial)\b|var\(--sfm-|font-weight:\s*(?:8\d{2}|9\d{2})/i,
     );
-    expect(shariaAdmin).toContain('font:600 26px/1 var(--font-data)');
+    expect(shariaAdmin).toContain('font:600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono)');
     expect(shariaAdmin).toContain('background:var(--success-soft);color:var(--success)');
     expect(shariaAdmin).toContain('outline:2px solid var(--focus-ring)');
   });

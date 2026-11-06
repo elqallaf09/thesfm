@@ -65,9 +65,9 @@
 .copy h1 {
   margin: 0;
   max-width: 760px;
-  font-size: clamp(2.35rem, 5vw, 5.35rem);
-  font-weight: var(--type-display-weight);
-  line-height: var(--type-display-leading);
+  font-size: var(--fs-page);
+  font-weight: 700;
+  line-height: var(--lh-page);
   letter-spacing: var(--type-display-tracking);
   overflow-wrap: anywhere;
 }
@@ -95,7 +95,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   background: var(--surface-elevated);
-  font-size: var(--type-caption-size);
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: var(--type-section-title-weight);
 }
 
@@ -189,21 +189,21 @@
 .note {
   margin: 0;
   color: var(--foreground-muted);
-  font-size: var(--type-caption-size);
-  line-height: 1.65;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
 }
 
 .error {
   margin: -8px 0 0;
   color: var(--danger);
-  font-size: var(--type-caption-size);
+  font-size: var(--fs-small);line-height:var(--lh-small);
   font-weight: var(--type-section-title-weight);
 }
 
 @media (max-width: 820px) {
   .page { padding: var(--space-4); }
   .hero { grid-template-columns: 1fr; margin-top: 42px; gap: 28px; }
-  .copy h1 { font-size: clamp(2.25rem, 11vw, 4rem); }
+  .copy h1 { font-size: var(--fs-page);font-weight:700;line-height:var(--lh-page); }
   .selectGrid { grid-template-columns: 1fr; }
   .navActions { gap: 6px; }
   .signIn { padding: 8px 10px; }

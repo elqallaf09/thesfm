@@ -684,7 +684,7 @@ export default function InstagramAutomationClient({
           color:var(--hero-foreground);border-radius:var(--radius-panel);padding:20px;display:grid;gap:16px;grid-template-columns:1fr auto;align-items:center;
           min-width:0;box-shadow:var(--shadow-card)
         }
-        .ig-hero h1{margin:0;font-size:clamp(28px,4vw,44px);line-height:1.15;font-weight:700}
+        .ig-hero h1{margin:0;font-size:var(--fs-page);line-height:var(--lh-page);font-weight:700}
         .ig-hero p{margin:8px 0 0;max-width:800px;color:var(--hero-foreground-muted);line-height:1.75;font-weight:400}
         .ig-hero-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
         .ig-badge-strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -704,9 +704,9 @@ export default function InstagramAutomationClient({
           display:flex;
           align-items:center;
           gap:8px;
-          font-size:18px;
+          font-size:var(--fs-section);line-height:var(--lh-section);
           color:var(--foreground);
-          font-weight:600;
+          font-weight:700;
         }
         .ig-grid{
           display:grid;
@@ -729,8 +729,8 @@ export default function InstagramAutomationClient({
           padding:12px;
           min-width:0;
         }
-        .ig-stat span{color:var(--foreground-muted);font-size:12px;font-weight:500}
-        .ig-stat strong{display:block;margin-top:4px;font-family:var(--font-data);font-size:26px;font-weight:600;color:var(--foreground)}
+        .ig-stat span{color:var(--foreground-muted);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:500}
+        .ig-stat strong{display:block;margin-top:4px;font-family:var(--font-mono);font-size:var(--fs-kpi);line-height:var(--lh-kpi);font-weight:600;color:var(--foreground)}
         .ig-banner{
           border-radius:var(--radius-control);
           padding:12px 14px;
@@ -748,7 +748,7 @@ export default function InstagramAutomationClient({
           border-radius:var(--radius-pill);
           background:var(--surface-muted);
           padding:4px 10px;
-          font-size:12px;
+          font-size:var(--fs-label);line-height:var(--lh-label);
           display:inline-flex;
           align-items:center;
           font-weight:500;
@@ -771,7 +771,7 @@ export default function InstagramAutomationClient({
           justify-content:center;
           gap:8px;
           cursor:pointer;
-          font:600 13px var(--font-ui);
+          font:600 var(--fs-label)/var(--lh-label) var(--font-body);
           transition:background .16s ease,border-color .16s ease;
         }
         .ig-action.primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
@@ -790,7 +790,7 @@ export default function InstagramAutomationClient({
         }
         .ig-field{display:grid;gap:6px;min-width:0}
         .ig-field.wide{grid-column:1/-1}
-        .ig-field span{font-size:12px;font-weight:500;color:var(--foreground-muted)}
+        .ig-field span{font-size:var(--fs-label);line-height:var(--lh-label);font-weight:500;color:var(--foreground-muted)}
         .ig-field input,.ig-field textarea,.ig-field select{
           width:100%;
           min-width:0;
@@ -800,7 +800,7 @@ export default function InstagramAutomationClient({
           border-radius:var(--radius-control);
           min-height:42px;
           padding:10px 12px;
-          font:400 13px var(--font-ui);
+          font:400 var(--fs-body)/var(--lh-body) var(--font-body);
         }
         .ig-field input:focus-visible,.ig-field textarea:focus-visible,.ig-field select:focus-visible{outline:none;border-color:var(--focus-ring);box-shadow:var(--focus-shadow)}
         .ig-field textarea{min-height:100px;resize:vertical;line-height:1.6}
@@ -812,7 +812,7 @@ export default function InstagramAutomationClient({
           background:var(--surface-muted);
           color:var(--primary);
           padding:0 11px;
-          font:500 12px var(--font-ui);
+          font:500 var(--fs-label)/var(--lh-label) var(--font-body);
         }
         .ig-tabs button:hover{background:var(--surface-hover)}.ig-tabs button:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-tabs button.active{background:var(--primary-soft);color:var(--primary-hover);border-color:color-mix(in srgb, var(--primary) 32%, transparent);font-weight:600}
         .ig-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -821,7 +821,7 @@ export default function InstagramAutomationClient({
         .ig-item:hover{border-color:var(--border-strong);background:var(--surface-hover)}
         .ig-item:focus-visible{outline:none;box-shadow:var(--focus-shadow)}.ig-item.active{border-color:var(--primary);box-shadow:var(--active-indicator-shadow);background:var(--primary-soft)}
         .ig-item strong{font-size:14px;display:block;overflow-wrap:anywhere;color:var(--foreground);font-weight:600}
-        .ig-item small{font-size:12px;color:var(--foreground-muted);font-weight:400}
+        .ig-item small{font-size:var(--fs-label);line-height:var(--lh-label);color:var(--foreground-muted);font-weight:400}
         .ig-item .ig-item-top{display:flex;gap:8px;align-items:center;justify-content:space-between;min-width:0}
         .ig-item .ig-item-top .left{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
         .ig-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -852,8 +852,8 @@ export default function InstagramAutomationClient({
         .ig-empty strong{color:var(--foreground)}
         .ig-event-list{display:grid;gap:8px;max-height:230px;overflow:auto;padding-inline-end:2px}
         .ig-event{border:1px solid var(--border);background:var(--surface-muted);border-radius:var(--radius-control);padding:9px;display:grid;gap:5px}
-        .ig-event strong{font-size:12px;color:var(--foreground);font-weight:600}
-        .ig-event small{font-size:12px;color:var(--foreground-muted);font-weight:400}
+        .ig-event strong{font-size:var(--fs-label);line-height:var(--lh-label);color:var(--foreground);font-weight:600}
+        .ig-event small{font-size:var(--fs-label);line-height:var(--lh-label);color:var(--foreground-muted);font-weight:400}
         .ig-code-card{
           border:1px solid var(--border);
           background:var(--surface);
@@ -866,7 +866,7 @@ export default function InstagramAutomationClient({
         .ig-code-card strong{color:var(--danger)}
         .ig-code-row{display:flex;gap:8px;flex-wrap:wrap}
         .ig-code-row input{flex:1;min-width:200px}
-        .ig-subtle{color:var(--foreground-muted);font-size:12px;font-weight:400;line-height:1.7}
+        .ig-subtle{color:var(--foreground-muted);font-size:var(--fs-small);font-weight:400;line-height:var(--lh-small)}
         @media(max-width:1200px){
           .ig-grid{grid-template-columns:minmax(0,1fr)}
           .ig-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -877,7 +877,7 @@ export default function InstagramAutomationClient({
           .ig-hero-tools{justify-content:stretch}
           .ig-hero-tools>*{width:100%}
           .ig-stats,.ig-actions{display:grid;grid-template-columns:1fr}
-          .ig-stats .ig-stat strong{font-size:30px}
+          .ig-stats .ig-stat strong{font-size:var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi);}
         }
       `}</style>
       <div className="ig-admin" dir={dir}>

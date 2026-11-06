@@ -36,11 +36,11 @@ export function SymbolCoverageCard({ coverage }: { coverage: SymbolCoverage }) {
       </div>
       <style jsx global>{`
         .ops-symbol-coverage { display: grid; gap: 12px; }
-        .ops-symbol-coverage h3 { margin: 0; color: var(--foreground); font-size: 14px; font-weight: 600; }
+        .ops-symbol-coverage h3 { margin: 0; color: var(--foreground); font-size: var(--fs-card-title);line-height:var(--lh-card-title); font-weight: 600; }
         .ops-symbol-coverage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
         .ops-symbol-coverage-grid article { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 14px; box-shadow: var(--shadow-sm); }
-        .ops-symbol-coverage-grid strong { display: block; color: var(--foreground); font: 600 20px/1 var(--font-data); font-variant-numeric: tabular-nums; }
-        .ops-symbol-coverage-grid span { display: block; margin-top: 6px; color: var(--foreground-muted); font-size: 12px; line-height: 1.4; font-weight: 700; overflow-wrap: anywhere; }
+        .ops-symbol-coverage-grid strong { display: block; color: var(--foreground); font: 600 var(--fs-kpi)/var(--lh-kpi) var(--font-mono);font-family:var(--font-mono);font-weight:600; font-variant-numeric: tabular-nums; }
+        .ops-symbol-coverage-grid span { display: block; margin-top: 6px; color: var(--foreground-muted); font-size: var(--fs-label); line-height: var(--lh-label); font-weight: 700; overflow-wrap: anywhere; }
         .ops-symbol-coverage-not-instrumented { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
       `}</style>
     </section>

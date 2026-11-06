@@ -32,7 +32,7 @@ export const BUSINESS_HUB_STYLES = `
   .topbar span {
     display: block;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -92,9 +92,9 @@ export const BUSINESS_HUB_STYLES = `
   .business-hero h1 {
     margin: var(--space-5) 0 var(--space-3);
     color: var(--hero-foreground);
-    font-size: var(--type-display-size);
-    line-height: var(--type-display-leading);
-    font-weight: var(--type-display-weight);
+    font-size: var(--fs-page);
+    line-height: var(--lh-page);
+    font-weight: 700;
     letter-spacing: var(--type-display-tracking);
   }
 
@@ -217,10 +217,10 @@ export const BUSINESS_HUB_STYLES = `
   .state-panel h1 {
     margin: 0;
     color: var(--foreground);
-    font-size: var(--type-section-title-size);
-    line-height: var(--type-section-title-leading);
-    font-weight: var(--type-section-title-weight);
-  }
+    font-size: var(--fs-page);
+    line-height: var(--lh-page);
+    font-weight: 700;
+  }.selector-panel h2,.readiness-head h2,.empty-state h2{font-size:var(--fs-section);line-height:var(--lh-section);font-weight:700}.card-title h2{font-size:var(--fs-card-title);line-height:var(--lh-card-title);font-weight:600}
 
   .selector-panel p,
   .readiness-head p,
@@ -363,9 +363,9 @@ export const BUSINESS_HUB_STYLES = `
   .readiness-card h3 {
     margin: 0;
     color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    line-height: var(--type-card-title-leading);
-    font-weight: var(--type-card-title-weight);
+    font-size: var(--fs-card-title);
+    line-height: var(--lh-card-title);
+    font-weight: 600;
   }
 
   .readiness-card > div > strong {
@@ -384,7 +384,7 @@ export const BUSINESS_HUB_STYLES = `
     max-width: 100%;
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-pill);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -458,9 +458,9 @@ export const BUSINESS_HUB_STYLES = `
   .documents-header h2 {
     margin: var(--space-3) 0 var(--space-2);
     color: var(--foreground);
-    font-size: var(--type-page-title-size);
-    line-height: var(--type-page-title-leading);
-    font-weight: var(--type-page-title-weight);
+    font-size: var(--fs-section);
+    line-height: var(--lh-section);
+    font-weight: 700;
   }
 
   .funding-header p,
@@ -557,7 +557,7 @@ export const BUSINESS_HUB_STYLES = `
   .document-link small,
   .dd-row small {
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-small);line-height:var(--lh-small);
     font-weight: var(--type-body-weight);
   }
 
@@ -620,7 +620,7 @@ export const BUSINESS_HUB_STYLES = `
 
   .fund-row label span {
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -663,7 +663,7 @@ export const BUSINESS_HUB_STYLES = `
   .document-vault-summary span {
     display: block;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-body-weight);
   }
 
@@ -906,7 +906,7 @@ export const BUSINESS_HUB_STYLES = `
     border-radius: var(--radius-pill);
     background: var(--surface);
     color: var(--foreground-secondary);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -955,9 +955,9 @@ export const BUSINESS_HUB_STYLES = `
     margin: 0;
     overflow-wrap: anywhere;
     color: var(--foreground);
-    font-size: var(--type-card-title-size);
-    line-height: var(--type-card-title-leading);
-    font-weight: var(--type-card-title-weight);
+    font-size: var(--fs-card-title);
+    line-height: var(--lh-card-title);
+    font-weight: 600;
   }
 
   .program-card-head p,
@@ -965,7 +965,7 @@ export const BUSINESS_HUB_STYLES = `
     display: block;
     margin: var(--space-1) 0 0;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-small);line-height:var(--lh-small);
     font-weight: var(--type-body-weight);
   }
 
@@ -982,7 +982,7 @@ export const BUSINESS_HUB_STYLES = `
   .program-meta span {
     display: block;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-caption);line-height:var(--lh-caption);
     font-weight: var(--type-body-weight);
   }
 
@@ -1050,7 +1050,7 @@ export const BUSINESS_HUB_STYLES = `
 
   .compact-select span {
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -1210,14 +1210,14 @@ export const BUSINESS_HUB_STYLES = `
   .section-title-row h3 {
     margin: 0;
     color: var(--foreground);
-    font-size: var(--type-section-title-size);
-    font-weight: var(--type-section-title-weight);
+    font-size: var(--fs-card-title);line-height:var(--lh-card-title);
+    font-weight: 600;
   }
 
   .section-title-row span {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-pill);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
   }
 
@@ -1334,7 +1334,7 @@ export const BUSINESS_HUB_STYLES = `
     border-radius: var(--radius-pill);
     background: var(--primary-soft);
     color: var(--primary-hover);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-label);line-height:var(--lh-label);
     font-weight: var(--type-label-weight);
     text-decoration: none;
   }
@@ -1413,7 +1413,7 @@ export const BUSINESS_HUB_STYLES = `
   .copilot-panel span {
     display: block;
     color: var(--foreground-muted);
-    font-size: var(--type-caption-size);
+    font-size: var(--fs-small);line-height:var(--lh-small);
     font-weight: var(--type-body-weight);
   }
 

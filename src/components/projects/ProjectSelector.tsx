@@ -513,8 +513,8 @@ export function ProjectSelector({
 
         .project-selector-kicker span {
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
 
         .project-selector-kicker b,
@@ -525,15 +525,15 @@ export function ProjectSelector({
           background: var(--surface-muted);
           color: var(--foreground-secondary);
           padding: 4px 7px;
-          font-size: 12px;
+          font-size: var(--fs-label, 13px);
           font-style: normal;
           font-weight: 500;
-          line-height: 1.2;
+          line-height: var(--lh-label, 20px);
           white-space: nowrap;
         }
 
         .project-selector-main strong {
-          font-size: 16px;
+          font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
         }
 
         .project-selector-change {
@@ -541,9 +541,9 @@ export function ProjectSelector({
           align-items: center;
           gap: 7px;
           color: var(--primary);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 600;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-caption, 18px);
         }
 
         .project-selector-actions {
@@ -568,9 +568,9 @@ export function ProjectSelector({
           border-radius: var(--radius-control);
           padding: 0 14px;
           font-family: var(--font-ui);
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
-          line-height: 1.35;
+          line-height: var(--lh-label, 20px);
           text-align: center;
           text-decoration: none;
           cursor: pointer;
@@ -649,8 +649,8 @@ export function ProjectSelector({
           background: transparent;
           color: var(--foreground);
           font-family: var(--font-ui);
-          font-size: 14px;
-          font-weight: 400;
+          font-size: var(--fs-body, 15px);
+          font-weight: 400;line-height:var(--lh-body, 24px);
         }
 
         .project-selector-search input::placeholder {
@@ -698,11 +698,11 @@ export function ProjectSelector({
         }
 
         .option-copy strong {
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
 
         .option-copy small {
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
 
         .option-badges {
@@ -719,8 +719,8 @@ export function ProjectSelector({
           padding: 18px 10px;
           color: var(--foreground-muted);
           text-align: center;
-          font-size: 13px;
-          line-height: 1.7;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
         }
 
         .sfm-project-selector.compact .project-selector-card {

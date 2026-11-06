@@ -299,25 +299,25 @@ export function DebtStyles() {
         color: var(--accent);
         border-radius: var(--radius-pill);
         padding: 7px 12px;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         margin-bottom: 14px;
       }
 
       .debts-hero h1 {
         margin: 0 0 10px;
-        font-size: clamp(34px, 5vw, 58px);
-        line-height: 1;
-        font-weight: 600;
+        font-size: var(--fs-page);
+        line-height: var(--lh-page);
+        font-weight: 700;
       }
 
       .debts-hero p {
         margin: 0;
         max-width: 760px;
         color: color-mix(in srgb, var(--hero-foreground) 74%, transparent);
-        font-size: 15px;
+        font-size: var(--fs-body);
         font-weight: 500;
-        line-height: 1.8;
+        line-height: var(--lh-body);
       }
 
       .debts-hero-actions {
@@ -342,7 +342,7 @@ export function DebtStyles() {
         gap: 8px;
         background: var(--primary);
         color: var(--primary-foreground);
-        font: 600 13px var(--font-ui);
+        font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
         cursor: pointer;
         box-shadow: var(--shadow-md);
         transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, background .18s ease;
@@ -450,18 +450,18 @@ export function DebtStyles() {
       .payment-row small {
         display: block;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);
         font-weight: 600;
-        line-height: 1.45;
+        line-height: var(--lh-label);
       }
 
       .debt-summary-card strong {
         display: block;
         margin-top: 7px;
         color: var(--foreground);
-        font-size: clamp(18px, 2vw, 24px);
+        font-size: var(--fs-kpi);font-family:var(--font-mono);
         font-weight: 600;
-        line-height: 1.2;
+        line-height: var(--lh-kpi);
         overflow-wrap: anywhere;
       }
 
@@ -495,7 +495,7 @@ export function DebtStyles() {
       .debts-section-head span {
         display: block;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         margin-bottom: 5px;
       }
@@ -503,8 +503,8 @@ export function DebtStyles() {
       .debts-section-head h2 {
         margin: 0;
         color: var(--foreground);
-        font-size: 20px;
-        font-weight: 600;
+        font-size: var(--fs-section);line-height:var(--lh-section);
+        font-weight: 700;
       }
 
       .debt-tabs {
@@ -536,7 +536,7 @@ export function DebtStyles() {
         justify-content: center;
         gap: 8px;
         white-space: nowrap;
-        font: 600 13px var(--font-ui);
+        font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
         cursor: pointer;
         transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease;
       }
@@ -565,7 +565,7 @@ export function DebtStyles() {
         justify-content: center;
         background: color-mix(in srgb, var(--shadow-color) 8%, transparent);
         color: inherit;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
@@ -613,16 +613,16 @@ export function DebtStyles() {
       .debt-card h3 {
         margin: 0 0 4px;
         color: var(--foreground);
-        font-size: 18px;
+        font-size: var(--fs-card-title);
         font-weight: 600;
-        line-height: 1.35;
+        line-height: var(--lh-card-title);
         overflow-wrap: anywhere;
       }
 
       .debt-card p {
         margin: 0;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small);line-height:var(--lh-small);
         font-weight: 600;
         overflow-wrap: anywhere;
       }
@@ -715,7 +715,7 @@ export function DebtStyles() {
         background: color-mix(in srgb, var(--accent) 12%, transparent);
         color: var(--accent);
         padding: 6px 10px;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         white-space: nowrap;
       }
@@ -745,7 +745,7 @@ export function DebtStyles() {
         justify-content: space-between;
         gap: 10px;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
@@ -788,9 +788,9 @@ export function DebtStyles() {
       .insight-row b,
       .payment-row b {
         color: var(--foreground);
-        font-size: 13px;
+        font-size: var(--fs-kpi);font-family:var(--font-mono);
         font-weight: 600;
-        line-height: 1.35;
+        line-height: var(--lh-kpi);
         overflow-wrap: anywhere;
       }
 
@@ -804,9 +804,9 @@ export function DebtStyles() {
         border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
         border-radius: var(--radius-card);
         padding: 10px 12px;
-        font-size: 12px;
+        font-size: var(--fs-small);
         font-weight: 600;
-        line-height: 1.6;
+        line-height: var(--lh-small);
       }
 
       .debt-warning div {
@@ -837,7 +837,7 @@ export function DebtStyles() {
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        font: 600  12px var(--font-ui);
+        font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
         cursor: pointer;
       }
 
@@ -870,7 +870,7 @@ export function DebtStyles() {
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        font: 600  12px var(--font-ui);
+        font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
         cursor: pointer;
         list-style: none;
         transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
@@ -882,8 +882,8 @@ export function DebtStyles() {
 
       .debt-action-menu summary::after {
         content: "⌄";
-        font-size: 13px;
-        line-height: 1;
+        font-size: var(--fs-label);
+        line-height: var(--lh-label);
       }
 
       .debt-action-menu[open] summary,
@@ -968,7 +968,7 @@ export function DebtStyles() {
         border-radius: var(--radius-pill);
         padding: 4px 9px;
         font-style: normal;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         color: var(--accent);
         background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -1003,7 +1003,7 @@ export function DebtStyles() {
         padding: 18px;
         color: var(--foreground-muted);
         background: color-mix(in srgb, var(--primary) 38%, transparent);
-        font-size: 13px;
+        font-size: var(--fs-small);line-height:var(--lh-small);
         font-weight: 600;
         text-align: center;
       }
@@ -1081,25 +1081,25 @@ export function DebtStyles() {
         background: color-mix(in srgb, var(--accent) 10%, transparent);
         color: var(--primary-hover);
         padding: 5px 10px;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
       .debt-modal-head h2 {
         margin: 10px 0 0;
         color: var(--foreground);
-        font-size: clamp(24px, 3vw, 32px);
-        font-weight: 600;
-        line-height: 1.15;
+        font-size: var(--fs-section);
+        font-weight: 700;
+        line-height: var(--lh-section);
       }
 
       .debt-modal-head p {
         margin: 8px 0 0;
         max-width: 560px;
         color: var(--foreground-secondary);
-        font-size: 14px;
+        font-size: var(--fs-small);
         font-weight: 600;
-        line-height: 1.7;
+        line-height: var(--lh-small);
       }
 
       .debt-modal-head > button {
@@ -1166,9 +1166,9 @@ export function DebtStyles() {
       .debt-save-alert p {
         margin: 6px 0 0;
         color: var(--danger);
-        font-size: 13px;
+        font-size: var(--fs-small);
         font-weight: 600;
-        line-height: 1.7;
+        line-height: var(--lh-small);
       }
 
       .debt-validation-panel svg {
@@ -1188,7 +1188,7 @@ export function DebtStyles() {
         display: grid;
         gap: 4px;
         color: var(--warning);
-        font-size: 12px;
+        font-size: var(--fs-small);line-height:var(--lh-small);
         font-weight: 600;
       }
 
@@ -1235,7 +1235,7 @@ export function DebtStyles() {
 
       .debt-field > span {
         color: var(--foreground);
-        font-size: 13px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
@@ -1249,9 +1249,9 @@ export function DebtStyles() {
         display: block;
         margin-top: 5px;
         color: var(--foreground-secondary);
-        font-size: 12px;
+        font-size: var(--fs-label);
         font-weight: 600;
-        line-height: 1.6;
+        line-height: var(--lh-label);
       }
 
       .debt-field input,
@@ -1266,7 +1266,7 @@ export function DebtStyles() {
         background: color-mix(in srgb, var(--hero-foreground) 92%, transparent);
         color: var(--foreground);
         padding: 0 14px;
-        font: 600  14px var(--font-ui);
+        font: 600  var(--fs-body)/var(--lh-body) var(--font-body);
         outline: none;
         box-shadow: var(--shadow-md);
         transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
@@ -1320,7 +1320,7 @@ export function DebtStyles() {
         color: var(--accent);
         border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
         font-style: normal;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         letter-spacing: .02em;
       }
@@ -1355,7 +1355,7 @@ export function DebtStyles() {
         background: color-mix(in srgb, var(--accent) 12%, transparent);
         color: var(--primary-hover);
         padding: 8px 14px;
-        font: 600  12px var(--font-ui);
+        font: 600  var(--fs-label)/var(--lh-label) var(--font-body);
         cursor: pointer;
       }
 
@@ -1380,7 +1380,7 @@ export function DebtStyles() {
         width: auto;
         min-width: 190px;
         min-height: 50px;
-        font-size: 14px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         box-shadow: var(--shadow-md);
       }
 
@@ -1403,7 +1403,7 @@ export function DebtStyles() {
         background: color-mix(in srgb, var(--hero-foreground) 86%, transparent);
         color: var(--foreground);
         padding: 0 20px;
-        font: 600 13px var(--font-ui);
+        font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
         cursor: pointer;
         transition: background .18s ease, border-color .18s ease, transform .18s ease;
       }
@@ -1429,7 +1429,7 @@ export function DebtStyles() {
       .debt-form-helper {
         margin: 14px 0 0;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-small);line-height:var(--lh-small);
         font-weight: 500;
       }
 
@@ -1589,18 +1589,18 @@ export function DebtStyles() {
       .strategy-panel-head h2 {
         margin: 8px 0 4px;
         color: var(--foreground);
-        font-size: clamp(20px, 2.2vw, 26px);
-        font-weight: 600;
-        line-height: 1.2;
+        font-size: var(--fs-section);
+        font-weight: 700;
+        line-height: var(--lh-section);
       }
 
       .strategy-panel-head p {
         margin: 0;
         max-width: 540px;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small);
         font-weight: 500;
-        line-height: 1.75;
+        line-height: var(--lh-small);
       }
 
       .strategy-extra-input {
@@ -1612,7 +1612,7 @@ export function DebtStyles() {
 
       .strategy-extra-input > span {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
@@ -1683,7 +1683,7 @@ export function DebtStyles() {
         gap: 6px;
         border-radius: var(--radius-pill);
         padding: 6px 12px;
-        font-size: 13px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
@@ -1702,7 +1702,7 @@ export function DebtStyles() {
       .strategy-tag {
         border-radius: var(--radius-pill);
         padding: 4px 10px;
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         background: color-mix(in srgb, var(--foreground-muted) 12%, transparent);
         border: 1px solid color-mix(in srgb, var(--foreground-muted) 20%, transparent);
@@ -1718,9 +1718,9 @@ export function DebtStyles() {
       .strategy-desc {
         margin: 0;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small);
         font-weight: 500;
-        line-height: 1.75;
+        line-height: var(--lh-small);
       }
 
       .strategy-stats {
@@ -1746,16 +1746,16 @@ export function DebtStyles() {
       .strategy-stat small {
         display: block;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
       .strategy-stat strong {
         display: block;
         color: var(--foreground);
-        font-size: 15px;
+        font-size: var(--fs-kpi);font-family:var(--font-mono);
         font-weight: 600;
-        line-height: 1.3;
+        line-height: var(--lh-kpi);
         overflow-wrap: anywhere;
       }
 
@@ -1765,7 +1765,7 @@ export function DebtStyles() {
 
       .strategy-order-label {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
         padding-bottom: 4px;
         border-bottom: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
@@ -1795,7 +1795,7 @@ export function DebtStyles() {
         border-radius: var(--radius-pill);
         display: grid;
         place-items: center;
-        font-size: 12px;
+        font-size: var(--fs-caption);line-height:var(--lh-caption);
         font-weight: 600;
         background: color-mix(in srgb, var(--accent) 14%, transparent);
         color: var(--primary-hover);
@@ -1827,7 +1827,7 @@ export function DebtStyles() {
 
       .strategy-debt-detail small {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 500;
       }
 

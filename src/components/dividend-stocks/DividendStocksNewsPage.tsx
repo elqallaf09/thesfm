@@ -3255,21 +3255,21 @@ function DividendStyles() {
         background: color-mix(in srgb, var(--accent) 14%, transparent);
         border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
         color: var(--foreground);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--fs-label, 13px);
+        font-weight: 600;line-height:var(--lh-label, 20px);
       }
       .hero h1 {
         margin: 0;
-        font-size: clamp(32px, 4vw, 46px);
-        line-height: 1.08;
-        letter-spacing: 0;
+        font-size: var(--fs-page, 28px);
+        line-height: var(--lh-page, 38px);
+        letter-spacing: 0;font-weight:700;font-family:var(--font-heading);
       }
       .hero p {
         margin: 0;
         max-width: 850px;
         color: color-mix(in srgb, var(--hero-foreground) 83%, transparent);
-        font-size: 15px;
-        line-height: 1.85;
+        font-size: var(--fs-body, 15px);
+        line-height: var(--lh-body, 24px);
       }
       .hero-meta {
         flex-wrap: wrap;
@@ -3283,8 +3283,8 @@ function DividendStyles() {
         background: color-mix(in srgb, var(--hero-foreground) 9%, transparent);
         border: 1px solid color-mix(in srgb, var(--hero-foreground) 14%, transparent);
         color: color-mix(in srgb, var(--hero-foreground) 90%, transparent);
-        font-size: 12px;
-        font-weight: 400;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 400;line-height:var(--lh-caption, 18px);
       }
       .status-dot::before {
         content: '';
@@ -3308,13 +3308,13 @@ function DividendStyles() {
       }
       .hero-panel span {
         color: var(--hero-foreground);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 600;line-height:var(--lh-caption, 18px);
       }
       .hero-panel strong {
         display: block;
         margin-top: 7px;
-        font-size: 19px;
+        font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
       }
       .refresh-button,
       .primary-button,
@@ -3329,7 +3329,7 @@ function DividendStyles() {
         border-radius: var(--radius-control);
         border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
         font: inherit;
-        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+        transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
       }
       .refresh-button,
       .primary-button {
@@ -3414,14 +3414,14 @@ function DividendStyles() {
       .section-title h3 {
         margin: 0;
         color: var(--foreground);
-        font-size: clamp(20px, 2.4vw, 26px);
-        line-height: 1.25;
+        font-size: var(--fs-section, 20px);
+        line-height: var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
       }
       .section-title p {
         margin: 0;
         color: var(--foreground-secondary);
-        font-size: 14px;
-        line-height: 1.8;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .summary-grid {
         display: grid;
@@ -3448,19 +3448,19 @@ function DividendStyles() {
       }
       .metric-label {
         color: var(--foreground-secondary);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-label, 13px);
+        font-weight: 600;line-height:var(--lh-label, 20px);
       }
       .metric-value {
         color: var(--foreground);
-        font-size: 24px;
+        font-size: var(--fs-kpi, 26px);
         font-weight: 600;
-        line-height: 1.1;
+        line-height: var(--lh-kpi, 32px);font-family:var(--font-mono);
       }
       .metric-help {
         color: var(--foreground-muted);
-        font-size: 12px;
-        line-height: 1.5;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .ticker-panel {
         padding: 10px;
@@ -3510,9 +3510,9 @@ function DividendStyles() {
         justify-content: center;
         gap: 8px;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        text-align: center;
+        text-align: center;line-height:var(--lh-small, 22px);
       }
       .ticker-top,
       .stock-head,
@@ -3542,15 +3542,15 @@ function DividendStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 12px;
-        font-weight:500;
+        font-size: var(--fs-caption, 12px);
+        font-weight:500;line-height:var(--lh-caption, 18px);
       }
       .ticker-metrics {
         justify-content: space-between;
         color: var(--foreground-secondary);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         gap: 6px;
-        min-width: 0;
+        min-width: 0;line-height:var(--lh-caption, 18px);
       }
       .ticker-metrics span {
         min-width: 0;
@@ -3573,16 +3573,16 @@ function DividendStyles() {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
       }
       .ticker-item .numeric {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 600;line-height:var(--lh-caption, 18px);
       }
       .ticker-item .badge {
         min-height: 22px;
         padding: 3px 7px;
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
       }
       .tone-positive { color: var(--success); background: color-mix(in srgb, var(--success) 10%, transparent); border-color: color-mix(in srgb, var(--success) 22%, transparent); }
       .tone-negative { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, transparent); border-color: color-mix(in srgb, var(--danger) 20%, transparent); }
@@ -3600,9 +3600,9 @@ function DividendStyles() {
         padding: 5px 10px;
         border-radius: var(--radius-pill);
         border: 1px solid color-mix(in srgb, var(--accent) 16%, transparent);
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 600;
-        white-space: nowrap;
+        white-space: nowrap;line-height:var(--lh-label, 20px);
       }
       .workspace-grid {
         display: grid;
@@ -3726,15 +3726,15 @@ function DividendStyles() {
       .strategy-card h3 {
         margin: 0;
         color: var(--foreground);
-        font-size: 17px;
-        line-height: 1.45;
-        font-weight: 600;
+        font-size: var(--fs-card-title, 17px);
+        line-height: var(--lh-card-title, 26px);
+        font-weight: 600;font-family:var(--font-body);
       }
       .stock-title p,
       .event-row p {
         margin: 4px 0 0;
         color: var(--foreground-secondary);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
       }
       .score-band {
         display: flex;
@@ -3746,8 +3746,8 @@ function DividendStyles() {
         border: 1px solid color-mix(in srgb, var(--success) 14%, transparent);
       }
       .score-band strong {
-        font-size: 24px;
-        color: var(--success);
+        font-size: var(--fs-kpi, 26px);
+        color: var(--success);line-height:var(--lh-kpi, 32px);font-weight:600;font-family:var(--font-mono);
       }
       .metric-grid {
         display: grid;
@@ -3764,15 +3764,15 @@ function DividendStyles() {
       .mini-metric span {
         display: block;
         color: var(--foreground-secondary);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 600;line-height:var(--lh-caption, 18px);
       }
       .mini-metric strong {
         display: block;
         margin-top: 5px;
         color: var(--foreground);
-        font-size: 14px;
-        font-weight: 600;
+        font-size: var(--fs-small, 14px);
+        font-weight: 600;line-height:var(--lh-small, 22px);
       }
       .asset-mini-metric {
         display: grid;
@@ -3784,7 +3784,7 @@ function DividendStyles() {
       }
       .asset-mini-name {
         color: var(--foreground);
-        font-size: 13px;
+        font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
       }
       .asset-mini-symbol,
       .compact-asset-symbol {
@@ -3807,9 +3807,9 @@ function DividendStyles() {
         border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
         background: color-mix(in srgb, var(--accent) 8%, transparent);
         color: var(--info);
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        line-height: 1.55;
+        line-height: var(--lh-small, 22px);
       }
       .dividend-data-notice {
         padding: 12px 13px;
@@ -3830,8 +3830,8 @@ function DividendStyles() {
         gap: 8px;
         margin: 0;
         color: var(--danger);
-        font-size: 13px;
-        line-height: 1.7;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .details-overlay {
         position: fixed;
@@ -3878,9 +3878,9 @@ function DividendStyles() {
       .details-identity h2 {
         margin: 5px 0 0;
         color: var(--foreground);
-        font-size: clamp(21px, 2.8vw, 30px);
-        line-height: 1.25;
-        overflow-wrap: anywhere;
+        font-size: var(--fs-section, 20px);
+        line-height: var(--lh-section, 30px);
+        overflow-wrap: anywhere;font-weight:700;font-family:var(--font-heading);
       }
       .details-identity p {
         margin: 5px 0 0;
@@ -3912,9 +3912,9 @@ function DividendStyles() {
         gap: 9px;
         padding: 12px 13px;
         border-radius: var(--radius-card);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        line-height: 1.6;
+        line-height: var(--lh-small, 22px);
       }
       .details-loading {
         border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
@@ -3943,14 +3943,14 @@ function DividendStyles() {
       }
       .details-item span {
         color: var(--foreground-secondary);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 600;line-height:var(--lh-caption, 18px);
       }
       .details-item strong {
         min-width: 0;
         color: var(--foreground);
-        font-size: 14px;
-        line-height: 1.55;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
         overflow-wrap: anywhere;
       }
       .details-disclaimer {
@@ -3967,9 +3967,9 @@ function DividendStyles() {
       .details-disclaimer p {
         margin: 0;
         color: var(--foreground-secondary);
-        font-size: 12.5px;
+        font-size: var(--fs-small, 14px);
         font-weight: 500;
-        line-height: 1.8;
+        line-height: var(--lh-small, 22px);
       }
       .filter-panel {
         display: grid;
@@ -4020,8 +4020,8 @@ function DividendStyles() {
       }
       .field label {
         color: var(--foreground-secondary);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-label, 13px);
+        font-weight: 600;line-height:var(--lh-label, 20px);
       }
       .input-wrap {
         position: relative;
@@ -4112,8 +4112,8 @@ function DividendStyles() {
         padding: 14px;
         text-align: start;
         border-bottom: 1px solid color-mix(in srgb, var(--accent) 11%, transparent);
-        font-size: 13px;
-        vertical-align: middle;
+        font-size: var(--fs-label, 13px);
+        vertical-align: middle;line-height:var(--lh-label, 20px);
       }
       .stock-table th {
         position: sticky;
@@ -4181,10 +4181,10 @@ function DividendStyles() {
         border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
       }
       .dividend-calendar-row.compact .event-date strong {
-        font-size: 14px;
+        font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
       }
       .dividend-calendar-row.compact .event-identity strong {
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
       }
       .dividend-calendar-row.compact .event-badges {
         justify-content: flex-start;
@@ -4207,9 +4207,9 @@ function DividendStyles() {
       }
       .event-date span {
         color: var(--primary);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 600;
-        text-transform: uppercase;
+        text-transform: uppercase;line-height:var(--lh-caption, 18px);
       }
       .event-identity {
         display: flex;
@@ -4252,14 +4252,14 @@ function DividendStyles() {
         -webkit-box-orient: vertical;
         margin: 0;
         color: var(--foreground-secondary);
-        font-size: 14px;
-        line-height: 1.75;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .article-meta {
         flex-wrap: wrap;
         color: var(--foreground-muted);
-        font-size: 12px;
-        font-weight: 400;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 400;line-height:var(--lh-caption, 18px);
       }
       .article-actions {
         margin-top: auto;
@@ -4281,11 +4281,11 @@ function DividendStyles() {
       }
       .side-column .section-title h2,
       .side-column .section-title h3 {
-        font-size: 19px;
+        font-size: var(--fs-section, 20px);line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
       }
       .side-column .section-title p {
-        font-size: 13px;
-        line-height: 1.7;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .side-column .guide-grid {
         grid-template-columns: 1fr;
@@ -4300,8 +4300,8 @@ function DividendStyles() {
         background: var(--surface-muted);
       }
       .compact-row .article-title {
-        font-size: 14.5px;
-        line-height: 1.55;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .compact-summary {
         display: -webkit-box;
@@ -4310,8 +4310,8 @@ function DividendStyles() {
         -webkit-box-orient: vertical;
         margin: 0;
         color: var(--foreground-secondary);
-        font-size: 12.5px;
-        line-height: 1.65;
+        font-size:var(--fs-small, 14px);
+        line-height:var(--lh-small, 22px);
       }
       .compact-row .link-button {
         min-height: 36px;
@@ -4326,7 +4326,7 @@ function DividendStyles() {
       .strategy-card p {
         margin: 8px 0 0;
         color: var(--foreground-secondary);
-        line-height: 1.75;
+        line-height: var(--lh-small, 22px);font-size:var(--fs-small, 14px);
       }
       .comparison-table {
         display: grid;
@@ -4351,8 +4351,8 @@ function DividendStyles() {
       }
       .comparison-row strong {
         color: var(--foreground);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--fs-label, 13px);
+        font-weight: 600;line-height:var(--lh-label, 20px);
       }
       .comparison-row span {
         min-width: 0;
@@ -4361,9 +4361,9 @@ function DividendStyles() {
         border-radius: var(--radius-control);
         background: color-mix(in srgb, var(--surface) 72%, transparent);
         color: var(--foreground-secondary);
-        font-size: 13px;
+        font-size: var(--fs-label, 13px);
         font-weight: 600;
-        line-height: 1.55;
+        line-height: var(--lh-label, 20px);
       }
       .methodology-box {
         margin-bottom: 14px;
@@ -4391,8 +4391,8 @@ function DividendStyles() {
       .guide-content {
         margin-top: 10px;
         color: var(--foreground-secondary);
-        font-size: 14px;
-        line-height: 1.8;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
         overflow-wrap: anywhere;
         animation: dividendGuideOpen 180ms ease-out;
       }
@@ -4462,16 +4462,16 @@ function DividendStyles() {
       .event-empty-copy strong {
         display: block;
         color: var(--foreground);
-        font-size: 15px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        line-height: 1.35;
+        line-height: var(--lh-small, 22px);
       }
       .event-empty-copy p {
         margin: 4px 0 0;
         color: var(--foreground-secondary);
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        line-height: 1.8;
+        line-height: var(--lh-small, 22px);
       }
       .event-empty-actions {
         display: flex;
@@ -4492,8 +4492,8 @@ function DividendStyles() {
         background: color-mix(in srgb, var(--surface) 90%, transparent);
         color: var(--info);
         padding: 6px 10px;
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-small, 14px);
+        font-weight: 600;line-height:var(--lh-small, 22px);
       }
 
 

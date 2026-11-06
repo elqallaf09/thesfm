@@ -255,7 +255,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
           white-space: nowrap;
           -webkit-tap-highlight-color: transparent;
-          touch-action: manipulation;
+          touch-action: manipulation;line-height:var(--lh-label, 20px);
         }
         .sfm-language-label-short {
           display: none;
@@ -264,7 +264,7 @@ export function LanguageSwitcher({ value, onChange, variant = 'light', compact =
           min-width: 112px;
           min-height: var(--control-h);
           padding-inline: 11px;
-          font-size: var(--type-navigation-size);
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
         .sfm-language-dropdown[data-variant='dark'] .sfm-language-trigger {
           background: var(--surface);

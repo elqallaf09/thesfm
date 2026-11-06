@@ -121,19 +121,19 @@ export function WorldStocksAdvancedFilters({
         .world-stocks-filters-trigger{
           display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;
           border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);
-          color:var(--foreground);font-family:var(--font-ui);font-size:12.5px;font-weight:600;cursor:pointer;
+          color:var(--foreground);font-family:var(--font-ui);font-size:var(--fs-label, 13px);font-weight:600;cursor:pointer;line-height:var(--lh-label, 20px);
         }
         .world-stocks-filters-trigger:hover,.world-stocks-filters-trigger:focus-visible{outline:none;border-color:var(--accent);box-shadow:var(--focus-shadow)}
-        .world-stocks-filters-trigger b{min-width:20px;height:20px;border-radius:var(--radius-pill);display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);font-size:11px}
+        .world-stocks-filters-trigger b{min-width:20px;height:20px;border-radius:var(--radius-pill);display:grid;place-items:center;background:var(--primary);color:var(--primary-foreground);font-size:var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);}
         .world-stocks-filters-body{display:grid;gap:14px}
         .world-stocks-select-control{display:grid;gap:6px;min-width:0}
-        .world-stocks-select-control span{color:var(--foreground-muted);font-size:12px;font-weight:600}
-        .world-stocks-select-control select{width:100%;height:var(--control-h-lg);border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);color:var(--foreground);padding-inline:12px;font-family:var(--font-ui);font-size:13px;font-weight:600;outline:none}
+        .world-stocks-select-control span{color:var(--foreground-muted);font-size:var(--fs-caption, 12px);font-weight:600;line-height:var(--lh-caption, 18px);}
+        .world-stocks-select-control select{width:100%;height:var(--control-h-lg);border:1px solid var(--border);border-radius:var(--radius-control);background:var(--surface-muted);color:var(--foreground);padding-inline:12px;font-family:var(--font-ui);font-size:var(--fs-body, 15px);font-weight:600;outline:none;line-height:var(--lh-body, 24px);}
         .world-stocks-select-control select:focus{border-color:var(--accent);box-shadow:var(--focus-shadow)}
-        .world-stocks-clear-btn{min-height:40px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground);display:inline-flex;align-items:center;gap:7px;padding:0 13px;font-family:var(--font-ui);font-size:12px;font-weight:600;cursor:pointer}
+        .world-stocks-clear-btn{min-height:40px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--surface);color:var(--foreground);display:inline-flex;align-items:center;gap:7px;padding:0 13px;font-family:var(--font-ui);font-size:var(--fs-label, 13px);font-weight:600;cursor:pointer;line-height:var(--lh-label, 20px);}
         .world-stocks-clear-btn:hover,.world-stocks-clear-btn:focus-visible{outline:none;border-color:var(--accent);box-shadow:var(--focus-shadow)}
         .world-stocks-active-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-        .world-stocks-active-filters button{display:inline-flex;align-items:center;gap:7px;max-width:100%;min-height:40px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--info-soft);color:var(--info);padding:0 10px;font-family:var(--font-ui);font-size:12px;font-weight:600;cursor:pointer}
+        .world-stocks-active-filters button{display:inline-flex;align-items:center;gap:7px;max-width:100%;min-height:40px;border:1px solid var(--border);border-radius:var(--radius-pill);background:var(--info-soft);color:var(--info);padding:0 10px;font-family:var(--font-ui);font-size:var(--fs-label, 13px);font-weight:600;cursor:pointer;line-height:var(--lh-label, 20px);}
         .world-stocks-active-filters button b{min-width:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
         .world-stocks-active-filters button:hover,.world-stocks-active-filters button:focus-visible{outline:none;border-color:var(--primary);box-shadow:var(--focus-shadow)}
         .world-stocks-active-filters .world-stocks-clear-btn{background:transparent}

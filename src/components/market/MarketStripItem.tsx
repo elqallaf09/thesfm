@@ -155,10 +155,10 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
 
         .gm-strip-item-head strong {
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
           font-family: var(--font-data);
-          line-height: 1.1;
+          line-height: var(--lh-caption, 18px);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -166,9 +166,9 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
 
         .gm-strip-item-name {
           color: var(--foreground-muted);
-          font-size: 10.5px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 400;
-          line-height: 1.25;
+          line-height: var(--lh-caption, 18px);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -186,10 +186,10 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
         .gm-strip-item-values b {
           min-width: 0;
           color: var(--foreground);
-          font-size: 11.5px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 600;
           font-family: var(--font-data);
-          line-height: 1.15;
+          line-height: var(--lh-caption, 18px);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -205,11 +205,11 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
           gap: 2px;
           border-radius: var(--radius-pill);
           padding: 2px 5px;
-          font-size: 10px;
+          font-size: var(--fs-caption, 12px);
           font-style: normal;
           font-weight: 600;
           font-family: var(--font-data);
-          line-height: 1;
+          line-height: var(--lh-caption, 18px);
           white-space: nowrap;
         }
 
@@ -231,9 +231,9 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
         .gm-strip-item-sector {
           margin-top: 2px;
           color: var(--foreground-secondary);
-          font-size: 9.5px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 500;
-          line-height: 1.2;
+          line-height: var(--lh-caption, 18px);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -253,9 +253,9 @@ export function MarketStripItem({ item, lang }: MarketStripItemProps) {
             padding: 5px 7px;
           }
           .gm-strip-item-head { block-size: 20px; }
-          .gm-strip-item-name { font-size: 9.5px; }
+          .gm-strip-item-name { font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
           .gm-strip-item-values { margin-top: 0; }
-          .gm-strip-item-sector { margin-top: 0; font-size: 9px; }
+          .gm-strip-item-sector { margin-top: 0; font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
           .gm-strip-item-change { padding: 1px 4px; }
           .gm-strip-item-head :global(.gm-strip-item-logo) {
             flex-basis: 20px;

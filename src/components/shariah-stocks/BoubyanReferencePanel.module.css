@@ -50,16 +50,16 @@
 .eyebrow {
   margin: 0 0 4px;
   color: var(--primary);
-  font-size: 12px;
+  font-size: var(--fs-label, 13px);
   font-weight: 600;
-  line-height: 1.6;
+  line-height: var(--lh-label, 20px);
 }
 
 .heading h2 {
   margin: 0;
-  font-size: clamp(20px, 2.1vw, 26px);
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: var(--fs-section, 20px);
+  font-weight: 700;
+  line-height: var(--lh-section, 30px);font-family:var(--font-heading);
 }
 
 .sourceLink {
@@ -73,10 +73,10 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   color: var(--primary);
-  font-size: 13px;
+  font-size: var(--fs-caption, 12px);
   font-weight: 600;
   text-decoration: none;
-  line-height: 1.6;
+  line-height: var(--lh-caption, 18px);
 }
 
 .sourceLink svg,
@@ -87,8 +87,8 @@
 .description {
   margin: 0;
   color: var(--foreground-secondary);
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: var(--fs-small, 14px);
+  line-height: var(--lh-small, 22px);
 }
 
 .metadata {
@@ -109,15 +109,15 @@
 .metadata dt {
   margin-block-end: 4px;
   color: var(--foreground-muted);
-  font-size: 12px;
-  line-height: 1.65;
+  font-size: var(--fs-caption, 12px);
+  line-height: var(--lh-caption, 18px);
 }
 
 .metadata dd {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-caption, 12px);
   font-weight: 600;
-  line-height: 1.6;
+  line-height: var(--lh-caption, 18px);
 }
 
 .metadata time,
@@ -166,15 +166,15 @@
 
 .documentCopy strong {
   color: var(--foreground);
-  font-size: 14px;
+  font-size: var(--fs-small, 14px);
   font-weight: 600;
-  line-height: 1.6;
+  line-height: var(--lh-small, 22px);
 }
 
 .documentCopy > span {
   color: var(--foreground-muted);
-  font-size: 11px;
-  line-height: 1.6;
+  font-size: var(--fs-caption, 12px);
+  line-height: var(--lh-caption, 18px);
 }
 
 .documentAction {
@@ -183,9 +183,9 @@
   justify-items: end;
   gap: 5px;
   margin-inline-start: auto;
-  font-size: 11px;
+  font-size: var(--fs-caption, 12px);
   font-weight: 600;
-  line-height: 1.6;
+  line-height: var(--lh-caption, 18px);
 }
 
 .documentAction > span {
@@ -193,7 +193,7 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-data);
-  font-size: 10px;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .sourceLink:hover,
@@ -213,8 +213,8 @@
 .interpretation {
   padding-block-start: 2px;
   color: var(--foreground-secondary);
-  font-size: 13px;
-  line-height: 1.8;
+  font-size: var(--fs-label, 13px);
+  line-height: var(--lh-label, 20px);
 }
 
 .interpretation summary {
@@ -272,7 +272,7 @@
   }
 
   .documentAction {
-    font-size: 10px;
+    font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
   }
 }
 

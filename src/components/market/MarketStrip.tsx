@@ -77,7 +77,7 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false, onBrows
       </div>
 
       <style jsx>{`
-        .gm-strip-browse { display: block; margin-inline-start: auto; min-block-size: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--foreground); cursor: pointer; font-size: 12px; }
+        .gm-strip-browse { display: block; margin-inline-start: auto; min-block-size: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--foreground); cursor: pointer; font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
         .gm-strip-browse:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .gm-strip {
           --gm-strip-item-height: 92px;
@@ -116,9 +116,9 @@ export function MarketStrip({ strip, prices, lang, dir, loading = false, onBrows
           border-radius: var(--radius-card);
           background: var(--surface-muted);
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          padding: 0 12px;
+          padding: 0 12px;line-height:var(--lh-small, 22px);
         }
 
         @media (max-width: 430px) {

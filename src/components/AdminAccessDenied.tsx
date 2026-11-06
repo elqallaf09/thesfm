@@ -30,7 +30,7 @@ export function AdminAccessDenied() {
             gap: 10,
           }}
         >
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--foreground)' }}>
+          <h1 style={{ margin: 0, fontSize: 'var(--fs-page, 28px)', lineHeight: 'var(--lh-page, 38px)', fontWeight: 700, fontFamily: 'var(--font-heading)', color: 'var(--foreground)' }}>
             {t('admin_access_denied_title')}
           </h1>
           <p style={{ margin: 0, color: 'var(--foreground-secondary)', fontWeight: 400, lineHeight: 1.8 }}>

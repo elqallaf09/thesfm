@@ -146,7 +146,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
         </> : !directory.error && !directory.loading ? <div className="gm-explorer-empty" role="status"><strong>{t('global_markets_no_results', lang)}</strong><span>{selectedCoverage?.status === 'unavailable' ? copy.unavailable : t('global_markets_no_results_hint', lang)}</span></div> : null}
       </> : null}
       <style jsx>{`
-        .gm-directory-feedback, .gm-directory-quotes { color: var(--foreground-muted); font-size: 13px; line-height: 1.7; }
+        .gm-directory-feedback, .gm-directory-quotes { color: var(--foreground-muted); font-size: var(--fs-label, 13px); line-height: var(--lh-label, 20px); }
         .gm-directory-feedback p { margin: 0; }
         .gm-directory-loading { min-block-size: 196px; display: grid; place-items: center; color: var(--foreground-muted); }
         .gm-explorer {
@@ -156,8 +156,8 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
         .gm-explorer-heading {
           margin: 0;
           color: var(--foreground);
-          font-size: 16px;
-          font-weight: 700;
+          font-size: var(--fs-card-title, 17px);
+          font-weight: 600;line-height:var(--lh-card-title, 26px);
         }
         .gm-explorer-search {
           min-block-size: 44px;
@@ -175,9 +175,9 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           border: none;
           background: transparent;
           color: var(--foreground);
-          font-size: 16px;
+          font-size: var(--fs-body, 15px);
           outline: none;
-          min-width: 0;
+          min-width: 0;line-height:var(--lh-body, 24px);
         }
         .gm-explorer-filters {
           display: flex;
@@ -194,8 +194,8 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
         }
         .gm-explorer-filter span {
           color: var(--foreground-muted);
-          font-size: 11.5px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .gm-explorer-filter select {
           inline-size: 100%;
@@ -205,7 +205,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           border-radius: var(--radius-control);
           background: var(--surface);
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
         }
         .gm-explorer-reset {
           min-height: 40px;
@@ -214,9 +214,9 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           border-radius: var(--radius-control);
           background: var(--surface-muted);
           color: var(--foreground-secondary);
-          font-size: 12.5px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 600;
-          cursor: pointer;
+          cursor: pointer;line-height:var(--lh-caption, 18px);
         }
         .gm-explorer-toggle {
           justify-self: start;
@@ -232,8 +232,8 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
         .gm-explorer-count {
           margin: 0;
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
         .gm-explorer-grid {
           display: grid;
@@ -256,11 +256,11 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           border-radius: var(--radius-pill);
           background: var(--surface);
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
           cursor: pointer;
           min-width: 150px;
-          position: relative;
+          position: relative;line-height:var(--lh-label, 20px);
         }
         .gm-explorer-load-more:disabled { cursor: wait; opacity: .72; }
         .gm-explorer-load-label { visibility: visible; }
@@ -281,7 +281,7 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
           text-align: center;
           margin: 0;
           color: var(--foreground-muted);
-          font-size: 12.5px;
+          font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
         }
         .gm-explorer-empty {
           display: grid;
@@ -294,11 +294,11 @@ export function GlobalMarketsExplorer({ prices, lang, dir, browseRequest }: Glob
         }
         .gm-explorer-empty strong {
           color: var(--foreground);
-          font-size: 14px;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
         .gm-explorer-empty span {
           color: var(--foreground-muted);
-          font-size: 12.5px;
+          font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
         }
       `}</style>
     </section>

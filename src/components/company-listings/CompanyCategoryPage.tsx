@@ -433,24 +433,24 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             align-items: center;
             gap: 7px;
             color: var(--hero-foreground-muted);
-            font-size: 12px;
+            font-size: var(--fs-caption, 12px);
             font-weight: 600;
             letter-spacing: 0;
-            margin-bottom: 8px;
+            margin-bottom: 8px;line-height:var(--lh-caption, 18px);
           }
           .company-directory-hero h1 {
             margin: 0;
             color: var(--hero-foreground);
-            font-size: clamp(28px, 3vw, 40px);
-            line-height: 1.18;
-            font-weight: 700;
+            font-size: var(--fs-page, 28px);
+            line-height: var(--lh-page, 38px);
+            font-weight: 700;font-family:var(--font-heading);
           }
           .company-directory-hero p {
             margin: 10px 0 0;
             max-width: 760px;
             color: var(--hero-foreground-muted);
-            line-height: 1.8;
-            font-size: 15.5px;
+            line-height: var(--lh-body, 24px);
+            font-size: var(--fs-body, 15px);
             font-weight: 400;
           }
           .company-primary-action,
@@ -468,10 +468,10 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             color: var(--primary-foreground);
             background: var(--primary);
             box-shadow: var(--shadow-sm);
-            font: 600 14px/1.25 var(--font-ui);
+            font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
             cursor: pointer;
             white-space: nowrap;
-            transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+            transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;line-height:var(--lh-label, 20px);
           }
           .company-primary-action:hover,
           .company-load-row button:hover,
@@ -539,16 +539,16 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-stat-label {
             display: block;
             color: var(--foreground-muted);
-            font-size: 13px;
-            font-weight: 500;
+            font-size: var(--fs-label, 13px);
+            font-weight: 500;line-height:var(--lh-label, 20px);
           }
           .company-stat-card strong {
             display: block;
             margin-top: 8px;
             color: var(--foreground);
-            font-size: 30px;
-            line-height: 1;
-            font-family: var(--font-data);
+            font-size: var(--fs-kpi, 26px);
+            line-height: var(--lh-kpi, 32px);
+            font-family: var(--font-mono);
             font-weight: 600;
           }
           .company-stat-skeleton {
@@ -581,14 +581,14 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-filter-heading h2 {
             margin: 0;
             color: var(--foreground);
-            font-size: 18px;
-            font-weight: 600;
+            font-size: var(--fs-section, 20px);
+            font-weight: 700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
           }
           .company-filter-heading p {
             margin: 4px 0 0;
             color: var(--foreground-muted);
-            font-size: 13px;
-            line-height: 1.6;
+            font-size: var(--fs-small, 14px);
+            line-height: var(--lh-small, 22px);
             font-weight: 400;
           }
           .company-filter-bar {
@@ -604,8 +604,8 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           }
           .company-search > span {
             color: var(--foreground-muted);
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--fs-caption, 12px);
+            font-weight: 500;line-height:var(--lh-caption, 18px);
           }
           .company-search-control {
             min-height: 46px;
@@ -628,7 +628,7 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             outline: 0;
             background: transparent;
             color: var(--foreground);
-            font: 500 14px/1.4 var(--font-ui);
+            font: 500 var(--fs-body, 15px)/var(--lh-body, 24px) var(--font-ui);line-height:var(--lh-body, 24px);
           }
           .company-clear-filters {
             min-height: 46px;
@@ -641,9 +641,9 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
             padding: 0 14px;
             background: var(--primary-soft);
             color: var(--primary-hover);
-            font: 600 13px/1.25 var(--font-ui);
+            font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
             cursor: pointer;
-            white-space: nowrap;
+            white-space: nowrap;line-height:var(--lh-label, 20px);
           }
           .company-results-panel {
             padding: 18px;
@@ -659,22 +659,22 @@ export function CompanyCategoryPage({ category }: CompanyCategoryPageProps) {
           .company-results-title span {
             display: inline-flex;
             color: var(--primary);
-            font-size: 12px;
+            font-size: var(--fs-caption, 12px);
             font-weight: 600;
-            margin-bottom: 4px;
+            margin-bottom: 4px;line-height:var(--lh-caption, 18px);
           }
           .company-results-title h2 {
             margin: 0;
             color: var(--foreground);
-            font-size: 24px;
-            line-height: 1.2;
-            font-weight: 600;
+            font-size: var(--fs-section, 20px);
+            line-height: var(--lh-section, 30px);
+            font-weight: 700;font-family:var(--font-heading);
           }
           .company-results-title p {
             margin: 6px 0 0;
             color: var(--foreground-muted);
-            font-size: 13px;
-            font-weight: 400;
+            font-size: var(--fs-small, 14px);
+            font-weight: 400;line-height:var(--lh-small, 22px);
           }
           .company-results-controls {
             display: flex;
@@ -814,8 +814,8 @@ function CompanySelect({
         }
         .company-select span {
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
         .company-select select {
           width: 100%;
@@ -825,8 +825,8 @@ function CompanySelect({
           background: var(--control-background);
           color: var(--foreground);
           padding: 0 12px;
-          font: 500 14px/1.4 var(--font-ui);
-          outline: 0;
+          font: 500 var(--fs-body, 15px)/var(--lh-body, 24px) var(--font-ui);
+          outline: 0;line-height:var(--lh-body, 24px);
         }
         .company-select.compact {
           min-width: 210px;
@@ -1066,11 +1066,11 @@ function CompanyCard({
           gap: 5px;
           border-radius: var(--radius-pill);
           padding: 5px 9px;
-          font-size: 12px;
+          font-size: var(--fs-label, 13px);
           font-weight: 500;
           color: var(--foreground-secondary);
           background: var(--surface-muted);
-          border: 1px solid var(--border);
+          border: 1px solid var(--border);line-height:var(--lh-label, 20px);
         }
         .company-status {
           font-weight: 600 !important;
@@ -1107,19 +1107,19 @@ function CompanyCard({
         h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: 20px;
-          line-height: 1.35;
-          font-weight: 600;
+          font-size: var(--fs-section, 20px);
+          line-height: var(--lh-section, 30px);
+          font-weight: 700;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-family:var(--font-heading);
         }
         p {
           margin: 0;
           color: var(--foreground-secondary);
-          line-height: 1.7;
-          font-size: 14px;
+          line-height: var(--lh-small, 22px);
+          font-size: var(--fs-small, 14px);
           font-weight: 400;
           display: -webkit-box;
           -webkit-line-clamp: 3;
@@ -1142,7 +1142,7 @@ function CompanyCard({
           min-height: 44px;
           border-radius: var(--radius-control);
           padding: 0 14px;
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
         .company-actions :global(.company-card-action-main) {
           flex: 1 1 170px;
@@ -1258,15 +1258,15 @@ function CompanyEmpty({ filtered, onAdd, onClear }: { filtered?: boolean; onAdd:
         h2 {
           margin: 12px 0 8px;
           color: var(--foreground);
-          font-size: 22px;
-          font-weight: 600;
+          font-size: var(--fs-section, 20px);
+          font-weight: 700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
         }
         p {
           margin: 0 auto 16px;
           max-width: 520px;
           color: var(--foreground-muted);
-          line-height: 1.8;
-          font-weight: 400;
+          line-height: var(--lh-body, 24px);
+          font-weight: 400;font-size:var(--fs-body, 15px);
         }
         .company-empty-actions {
           display: flex;
@@ -1286,11 +1286,11 @@ function CompanyEmpty({ filtered, onAdd, onClear }: { filtered?: boolean; onAdd:
           border-radius: var(--radius-control);
           background: var(--primary);
           color: var(--primary-foreground);
-          font: 600 14px/1.25 var(--font-ui);
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           cursor: pointer;
           box-shadow: var(--shadow-sm);
           white-space: nowrap;
-          transition: transform .15s, box-shadow .15s, filter .15s;
+          transition: transform .15s, box-shadow .15s, filter .15s;line-height:var(--lh-label, 20px);
         }
         .company-add-btn.secondary {
           border: 1px solid var(--border);
@@ -1342,15 +1342,15 @@ function CompanyError({ message, onRetry }: { message: string; onRetry: () => vo
         h2 {
           margin: 0 0 8px;
           color: var(--danger);
-          font-size: 22px;
-          font-weight: 600;
+          font-size: var(--fs-section, 20px);
+          font-weight: 700;line-height:var(--lh-section, 30px);font-family:var(--font-heading);
         }
         p {
           margin: 0 auto 16px;
           max-width: 520px;
           color: var(--foreground-muted);
-          line-height: 1.8;
-          font-weight: 400;
+          line-height: var(--lh-body, 24px);
+          font-weight: 400;font-size:var(--fs-body, 15px);
         }
         button {
           border: 0;
@@ -1359,8 +1359,8 @@ function CompanyError({ message, onRetry }: { message: string; onRetry: () => vo
           padding: 0 18px;
           color: var(--primary-foreground);
           background: var(--primary);
-          font: 600 14px/1.25 var(--font-ui);
-          cursor: pointer;
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
+          cursor: pointer;line-height:var(--lh-label, 20px);
         }
       `}</style>
     </section>

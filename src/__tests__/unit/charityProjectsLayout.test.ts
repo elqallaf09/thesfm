@@ -20,7 +20,7 @@ describe('charity projects page layout regression guard', () => {
   it('keeps KPI cards compact, complete, and dashboard-like', () => {
     expect(charityStyles).toContain('grid-template-columns: repeat(5, minmax(0, 1fr))');
     expect(charityStyles).toContain('min-height: 112px');
-    expect(charityStyles).toContain('font-size: clamp(1.2rem, 1.6vw, 1.55rem)');
+    expect(charityStyles).toContain('font-size: var(--fs-kpi)');
     expect(charityPage).toContain('tr.nextDueDateKpi');
     expect(charityPage).toContain('tr.beneficiariesCountKpi');
   });
@@ -41,7 +41,7 @@ describe('charity projects page layout regression guard', () => {
     expect(pageTabs).toContain('.page-section-tabs.charity-tabs button');
     expect(charityStyles).toContain('grid-template-columns: repeat(8, minmax(0, 1fr))');
     expect(charityStyles).toMatch(/\.page-section-tabs-shell\.mobile-select \.page-section-tabs\.charity-tabs \{\s+display: none;/);
-    expect(pageTabs).toContain('font-size: 13.5px');
+    expect(pageTabs).toContain('font-size: var(--fs-label, 13px)');
   });
 
   it('keeps charity aggregates currency-safe and reports semantically reviewable', () => {

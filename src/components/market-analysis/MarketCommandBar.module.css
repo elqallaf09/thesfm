@@ -25,28 +25,28 @@
 
 .heading span {
   color: var(--accent);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
 }
 
 .heading h2 {
   margin: 0;
   color: var(--foreground);
-  font-size: var(--type-section-title-size);
-  font-weight: var(--type-section-title-weight);
-  line-height: var(--type-section-title-leading);
-  letter-spacing: var(--type-section-title-tracking);
+  font-size: var(--fs-section, 20px);
+  font-weight: 700;
+  line-height: var(--lh-section, 30px);
+  letter-spacing: var(--type-section-title-tracking);font-family:var(--font-heading);
 }
 
 .heading p {
   max-width: 48rem;
   margin: 0;
   color: var(--foreground-secondary);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-body, 15px);
   font-weight: var(--type-body-weight);
-  line-height: var(--type-body-leading);
+  line-height: var(--lh-body, 24px);
 }
 
 .form {
@@ -63,9 +63,9 @@
   gap: var(--space-2);
   min-width: 0;
   color: var(--foreground-secondary);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
 }
 
@@ -83,7 +83,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-control);
   font-family: var(--font-ui);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
 }
 
 .inputShell {
@@ -111,9 +111,9 @@
   color: var(--foreground);
   background: transparent;
   font-family: var(--font-ui);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-body, 15px);
   font-weight: var(--type-body-weight);
-  line-height: var(--type-body-leading);
+  line-height: var(--lh-body, 24px);
 }
 
 .inputShell input::placeholder {
@@ -251,9 +251,9 @@
 
 .resultIdentity b {
   color: var(--foreground);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-body, 15px);
   font-weight: var(--type-navigation-weight);
-  line-height: var(--type-body-leading);
+  line-height: var(--lh-body, 24px);
 }
 
 .resultMain em {
@@ -268,9 +268,9 @@
 
 .results small {
   color: var(--foreground-secondary);
-  font-size: var(--type-body-small-size);
+  font-size: var(--fs-small, 14px);
   font-weight: var(--type-body-small-weight);
-  line-height: var(--type-body-small-leading);
+  line-height: var(--lh-small, 22px);
 }
 
 @container (max-width: 46rem) {

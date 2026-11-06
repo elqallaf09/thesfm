@@ -38,9 +38,9 @@ type AssetBadgeProps = AssetAvatarProps & {
 };
 
 const sizeClass: Record<AssetAvatarSize, string> = {
-  xs: 'h-6 w-6 text-xs',
-  sm: 'h-8 w-8 text-xs',
-  md: 'h-10 w-10 text-xs',
+  xs: 'h-6 w-6 text-[length:var(--fs-caption)] leading-[var(--lh-caption)]',
+  sm: 'h-8 w-8 text-[length:var(--fs-caption)] leading-[var(--lh-caption)]',
+  md: 'h-10 w-10 text-[length:var(--fs-caption)] leading-[var(--lh-caption)]',
   lg: 'h-12 w-12 text-sm',
   xl: 'h-16 w-16 text-base',
 };

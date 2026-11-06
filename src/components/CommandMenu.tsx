@@ -362,19 +362,19 @@ export function CommandMenu({
         }
         .sfm-command-copy strong {
           color: var(--foreground);
-          font-size: 13.5px;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-label, 20px);
         }
         .sfm-command-copy small {
           color: var(--foreground-secondary);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 400;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-small, 22px);
         }
         .sfm-command-dialog [cmdk-item] span[cmdk-shortcut] {
           color: var(--primary);

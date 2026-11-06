@@ -85,7 +85,7 @@ export function IncomeSourcesForm({ userId, username, onComplete }: IncomeSource
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {t(`income_category_${category.id}_examples`).split('|').map((example) => (
-                        <span key={example} className="rounded-[var(--radius-pill)] bg-accent-soft px-2 py-1 text-xs text-foreground-secondary">{example}</span>
+                        <span key={example} className="rounded-[var(--radius-pill)] bg-accent-soft px-2 py-1 text-[length:var(--fs-label)] leading-[var(--lh-label)] text-foreground-secondary">{example}</span>
                       ))}
                     </div>
                     <div className="space-y-2">

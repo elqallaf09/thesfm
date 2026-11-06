@@ -715,13 +715,13 @@ export default function DocumentsCenterPage() {
         }
         .documents-upload-summary-copy strong {
           color: var(--foreground);
-          font-size: 16px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
         .documents-upload-summary-copy small {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          line-height: 1.45;
+          font-size: var(--fs-small);
+          line-height: var(--lh-small);
         }
         .documents-upload-summary-action {
           flex: 0 0 auto;
@@ -732,7 +732,7 @@ export default function DocumentsCenterPage() {
           border-radius: var(--radius-control);
           background: var(--primary-soft);
           color: var(--primary);
-          font-size: 13px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
         .documents-upload-panel-head {
@@ -748,15 +748,15 @@ export default function DocumentsCenterPage() {
         .documents-upload-panel-head span {
           display: block;
           color: var(--primary);
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
         .documents-upload-panel-head h2 {
           margin: 5px 0 0;
           color: var(--foreground);
-          font-size: clamp(20px, 2.4vw, 26px);
-          line-height: 1.2;
-          font-weight: 600;
+          font-size: var(--fs-section);
+          line-height: var(--lh-section);
+          font-weight: 700;
         }
         .documents-upload-wrap {
           position: relative;
@@ -777,7 +777,7 @@ export default function DocumentsCenterPage() {
           align-items: center;
           justify-content: center;
           gap: 9px;
-          font: 600 14px/1.25 var(--font-ui);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
           cursor: pointer;
           white-space: nowrap;
           box-shadow: var(--shadow-sm);
@@ -824,7 +824,7 @@ export default function DocumentsCenterPage() {
           gap: 9px;
           padding: 10px 12px;
           text-decoration: none;
-          font: 500 13px/1.4 var(--font-ui);
+          font: 500 var(--fs-label)/var(--lh-label) var(--font-body);
           text-align: start;
         }
         .documents-upload-options button {
@@ -884,8 +884,8 @@ export default function DocumentsCenterPage() {
         }
         .documents-dropzone-copy small {
           color: var(--foreground-muted);
-          font-size: 12px;
-          line-height: 1.45;
+          font-size: var(--fs-small);
+          line-height: var(--lh-small);
           font-weight: 400;
         }
         .documents-dropzone-button {
@@ -898,7 +898,7 @@ export default function DocumentsCenterPage() {
           border: 1px solid var(--border);
           color: var(--foreground);
           padding: 0 13px;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
           white-space: nowrap;
         }
@@ -934,16 +934,16 @@ export default function DocumentsCenterPage() {
         .document-metric p {
           margin: 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
         .document-metric strong {
           display: block;
           color: var(--foreground);
-          font-size: 24px;
-          font-family: var(--font-data);
+          font-size: var(--fs-kpi);
+          font-family: var(--font-mono);
           font-weight: 600;
-          line-height: 1.1;
+          line-height: var(--lh-kpi);
         }
         .documents-tools {
           display: grid;
@@ -970,7 +970,7 @@ export default function DocumentsCenterPage() {
           outline: 0;
           background: transparent;
           color: var(--foreground);
-          font: 500 14px/1.4 var(--font-ui);
+          font: 500 var(--fs-body)/var(--lh-body) var(--font-body);
         }
         .documents-search-field input::placeholder {
           color: var(--foreground-muted);
@@ -1009,8 +1009,8 @@ export default function DocumentsCenterPage() {
         .document-card h2 {
           margin: 8px 0 0;
           color: var(--foreground);
-          font-size: 20px;
-          line-height: 1.3;
+          font-size: var(--fs-card-title);font-weight:600;
+          line-height: var(--lh-card-title);
           overflow-wrap: anywhere;
         }
         .source-badge {
@@ -1022,7 +1022,7 @@ export default function DocumentsCenterPage() {
           background: var(--accent-soft);
           color: var(--accent-hover);
           padding: 5px 9px;
-          font-size: 12px;
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
         .document-meta {
@@ -1075,7 +1075,7 @@ export default function DocumentsCenterPage() {
           justify-content: center;
           gap: 7px;
           padding: 0 10px;
-          font: 600 12px/1.25 var(--font-ui);
+          font: 600 var(--fs-label)/var(--lh-label) var(--font-body);
           text-decoration: none;
           cursor: pointer;
         }

@@ -93,7 +93,7 @@ const rules = [
   {
     key: 'legacyFonts',
     label: 'legacy or direct font declaration',
-    pattern: /font-family\s*:(?!\s*(?:var\(--font-(?:ui|data)\)|\$\{[^}\n]*font(?:Ui|Data)\}|inherit\b|initial\b|unset\b))[^;}\n]+|["']?fontFamily["']?\s*:(?!\s*(?:['"`]?(?:var\(--font-(?:ui|data)\)|inherit\b)|[\w.]+\.font(?:Ui|Data)\b))[^,}\n]+|["']?fontFace["']?\s*:\s*(["'`])[^"'`\n]+\1|(?:fonts\.googleapis\.com[^'"\s]*family=|\bfont-\[['"`]?)(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto(?:\+|\s)Sans(?:\+|\s)Arabic)\b/gi,
+    pattern: /font-family\s*:(?!\s*(?:var\(--font-(?:ui|data|body|heading|mono)\)|\$\{[^}\n]*font(?:Ui|Data)\}|inherit\b|initial\b|unset\b))[^;}\n]+|["']?fontFamily["']?\s*:(?!\s*(?:['"`]?(?:var\(--font-(?:ui|data|body|heading|mono)\)|inherit\b)|[\w.]+\.font(?:Ui|Data)\b))[^,}\n]+|["']?fontFace["']?\s*:\s*(["'`])[^"'`\n]+\1|(?:fonts\.googleapis\.com[^'"\s]*family=|\bfont-\[['"`]?)(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto(?:\+|\s)Sans(?:\+|\s)Arabic)\b/gi,
   },
   {
     key: 'rawDepth',

@@ -56,9 +56,9 @@
   justify-content: center;
   text-align: center;
   font-family: var(--font-ui);
-  font-size: var(--type-navigation-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-navigation-weight);
-  line-height: var(--type-navigation-leading);
+  line-height: var(--lh-label, 20px);
   cursor: pointer;
   touch-action: manipulation;
   transition:
@@ -140,9 +140,9 @@
   justify-content: center;
   text-align: center;
   font-family: var(--font-ui);
-  font-size: var(--type-button-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-button-weight);
-  line-height: var(--type-button-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-button-tracking);
   cursor: pointer;
   touch-action: manipulation;

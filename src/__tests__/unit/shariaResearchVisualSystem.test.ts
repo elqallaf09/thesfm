@@ -27,9 +27,10 @@ describe('Sharia research visual-system contract', () => {
     }
   });
 
-  it('keeps typography within the shared IBM Plex roles and approved hierarchy', () => {
+  it('keeps typography within the shared body, heading, and numeric roles', () => {
     expect(styles).toContain('font-family: var(--font-ui)');
-    expect(styles).toContain('font-family: var(--font-data)');
+    expect(styles).toContain('font-family: var(--font-mono)');
+    expect(styles).toContain('font-family:var(--font-heading)');
     expect(styles).not.toMatch(
       /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto)\b|font-weight:\s*(?:7(?:0[1-9]|[1-9]\d)|[89]\d{2}|[1-9]\d{3,})/i,
     );

@@ -127,9 +127,9 @@ test.describe('Phase 3.1 global header and typography', () => {
       expectUiFont(typography.family);
     }
     expect(bodyTypography.size).toBeGreaterThanOrEqual(15);
-    expect(workspaceTypography.size).toBeGreaterThanOrEqual(14);
+    expect(workspaceTypography.size).toBe(13);
     expect(sidebarTypography.size).toBeGreaterThanOrEqual(14);
-    expect(languageTypography.size).toBeGreaterThanOrEqual(14);
+    expect(languageTypography.size).toBe(13);
     expect(accountTypography.size).toBeGreaterThanOrEqual(14);
     expect(workspaceTypography.weight).toBeGreaterThanOrEqual(500);
     expect(workspaceTypography.weight).toBeLessThanOrEqual(600);
@@ -173,8 +173,10 @@ test.describe('Phase 3.1 global header and typography', () => {
     const drawerAccountTypography = await computedTypography(drawer.locator('.sfm-user-chip'));
     for (const typography of [navTypography, drawerLanguageTypography, drawerAccountTypography]) {
       expectUiFont(typography.family);
-      expect(typography.size).toBeGreaterThanOrEqual(14);
     }
+    expect(navTypography.size).toBeGreaterThanOrEqual(14);
+    expect(drawerLanguageTypography.size).toBe(13);
+    expect(drawerAccountTypography.size).toBeGreaterThanOrEqual(14);
 
     const mobileGeometry = await page.evaluate(() => {
       const panel = document.querySelector<HTMLElement>('#sfm-mobile-menu');

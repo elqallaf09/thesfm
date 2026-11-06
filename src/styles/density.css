@@ -45,7 +45,7 @@
 }
 
 :root[data-density='compact'] .kpi-val {
-  font-size: 23px;
+  font-size: var(--fs-kpi); line-height: var(--lh-kpi); font-weight: 600; font-family: var(--font-data);
 }
 
 :root[data-density='compact'] .kpi-label {
@@ -97,11 +97,11 @@
 
 :root[data-density='compact'] .sfm-page-hero-copy h1 {
   margin: 4px 0;
-  font-size: clamp(22px, 3vw, 30px);
+  font-size: var(--fs-page); line-height: var(--lh-page); font-weight: 700;
 }
 
 :root[data-density='compact'] .sfm-page-hero-copy p {
-  line-height: 1.55;
+  line-height: var(--lh-body);
 }
 
 /* ── Compact: chips keep their touch floor, only trim horizontal air ── */

@@ -1394,8 +1394,8 @@ const businessRecordsModuleStyles = `
     color: var(--primary);
     border-radius: var(--radius-card);
     padding: 0 16px;
-    font-size: 0.92rem;
-    box-shadow: var(--shadow-xs);
+    font-size: var(--fs-small, 14px);
+    box-shadow: var(--shadow-xs);line-height:var(--lh-small, 22px);
   }
 
   .business-back-link svg {
@@ -1487,19 +1487,19 @@ const businessRecordsModuleStyles = `
   .business-form-field span,
   .business-form-head span {
     color: var(--foreground-muted);
-    font-size: 0.86rem;
-    font-weight: 500;
+    font-size: var(--fs-caption, 12px);
+    font-weight: 500;line-height:var(--lh-caption, 18px);
   }
 
   .business-stat-grid strong,
   .business-record-meta-grid strong {
-    font-family: var(--font-data);
+    font-family: var(--font-body);
     display: block;
     margin-top: 7px;
     color: var(--foreground);
-    font-size: 1.08rem;
-    overflow-wrap: anywhere;
-  }
+    font-size: var(--fs-body, 15px);
+    overflow-wrap: anywhere;line-height:var(--lh-body, 24px);font-weight:600;
+  } .business-stat-grid strong { font-family:var(--font-mono); font-size:var(--fs-kpi, 26px); line-height:var(--lh-kpi, 32px); } .business-record-meta-grid strong[dir="ltr"] { font-family:var(--font-mono); }
 
   .business-toolbar {
     display: flex;
@@ -1560,8 +1560,8 @@ const businessRecordsModuleStyles = `
     gap: 5px;
     min-width: 160px;
     color: var(--foreground-muted);
-    font-size: 0.78rem;
-    font-weight: 500;
+    font-size: var(--fs-label, 13px);
+    font-weight: 500;line-height:var(--lh-label, 20px);
   }
 
   .business-form-field input:focus,
@@ -1598,8 +1598,8 @@ const businessRecordsModuleStyles = `
   .business-form-head h2 {
     margin: 0;
     color: var(--foreground);
-    font-size: 1.05rem;
-    font-weight: 600;
+    font-size: var(--fs-card-title, 17px);
+    font-weight: 600;line-height:var(--lh-card-title, 26px);font-family:var(--font-heading);
   }
 
   .business-record-card p {
@@ -1744,9 +1744,9 @@ const businessRecordsModuleStyles = `
   .business-ai-invoice-head h3,
   .business-ai-result-head h4 {
     margin: 3px 0 0;
-    font-size: 1rem;
+    font-size: var(--fs-card-title, 17px);
     font-weight: 600;
-    color: var(--foreground);
+    color: var(--foreground);line-height:var(--lh-card-title, 26px);font-family:var(--font-body);
   }
 
   .business-ai-invoice-head span,
@@ -1762,7 +1762,7 @@ const businessRecordsModuleStyles = `
   .business-ai-invoice-head p,
   .business-ai-summary p {
     margin: 4px 0 0;
-    line-height: 1.55;
+    line-height: var(--lh-small, 22px);font-size:var(--fs-small, 14px);
   }
 
   .business-ai-invoice-toggle {
@@ -1824,7 +1824,7 @@ const businessRecordsModuleStyles = `
   .business-ai-upload-box em {
     color: var(--foreground-muted);
     font-style: normal;
-    font-size: 0.88rem;
+    font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
   }
 
   .business-ai-upload-box em {
@@ -1904,8 +1904,8 @@ const businessRecordsModuleStyles = `
     padding: 7px 10px;
     background: var(--success-soft);
     color: var(--success);
-    font-size: 0.78rem;
-    white-space: nowrap;
+    font-size: var(--fs-caption, 12px);
+    white-space: nowrap;line-height:var(--lh-caption, 18px);
   }
 
   .business-ai-result-grid {
@@ -1932,7 +1932,7 @@ const businessRecordsModuleStyles = `
 
   .business-ai-result-grid em {
     font-style: normal;
-    font-size: 0.78rem;
+    font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
   }
 
   .business-ai-summary,
@@ -1969,10 +1969,10 @@ const businessRecordsModuleStyles = `
     border-radius: var(--radius-pill);
     padding: 6px 9px;
     font-weight: 500;
-    font-size: 0.82rem;
+    font-size: var(--fs-label, 13px);
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: nowrap;line-height:var(--lh-label, 20px);
   }
 
   .business-record-actions button:focus-visible,
