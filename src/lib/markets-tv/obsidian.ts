@@ -25,6 +25,9 @@ const copy = {
   comparable: ['قراءات قابلة للمقارنة', 'comparable observations', 'observations comparables'],
   unavailable: ['بانتظار تحديث السعر', 'Waiting for a price update', 'En attente d’un nouveau cours'],
   chartSource: ['المصدر', 'Source', 'Source'],
+  loadingBrief: ['جارٍ تحميل بيانات الموجز', 'Loading brief data', 'Chargement des données du résumé'],
+  unavailableBrief: ['تعذر تحميل بيانات الموجز', 'Brief data could not be loaded', 'Impossible de charger le résumé'],
+  emptyBrief: ['لا توجد أدوات مختارة لهذا الموجز', 'No instruments selected for this brief', 'Aucun titre sélectionné pour ce résumé'],
 } as const;
 export function obsText(language: TvLanguage, key: keyof typeof copy) { return copy[key][language === 'ar' ? 0 : language === 'fr' ? 2 : 1]; }
 export function briefMetrics(quotes: TvQuote[], now: number) {
@@ -33,7 +36,7 @@ export function briefMetrics(quotes: TvQuote[], now: number) {
   const recent = available.filter(q => ['available', 'delayed', 'closed'].includes(quoteStatus(q, now)));
   // Session and rolling-24h changes are not interchangeable. Prefer session
   // observations; use 24h only for a homogeneous crypto sample.
-  const basis = unique.every(q => q.changeBasis === '24h') ? '24h' : 'session';
+  const basis = unique.length > 0 && unique.every(q => q.changeBasis === '24h') ? '24h' : 'session';
   const comparable = recent.filter(q => q.changeBasis === basis && q.changePercent !== null && Number.isFinite(q.changePercent));
   const rising = comparable.filter(q => q.changePercent! > 0), falling = comparable.filter(q => q.changePercent! < 0);
   const average = comparable.length ? comparable.reduce((sum, q) => sum + q.changePercent!, 0) / comparable.length : null;
