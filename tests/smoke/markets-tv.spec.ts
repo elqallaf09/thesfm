@@ -61,6 +61,7 @@ test('instrument choices search beyond the first page, persist and restore all s
 
 // UI-only synthetic fixtures: never imported by production providers or clients.
 test('TV fits a television and supports remote focus, languages and QR details', async ({ page }) => {
+  await page.addInitScript(()=>localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({scene:'gulf'})));
   await page.setViewportSize({ width: 1920, height: 1080 });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -103,7 +104,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await page.getByRole('button', { name: 'Market hours', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Market hours', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Market brief', exact: true }).click();
-  await expect(page.locator('.tv-brief')).toBeVisible();
+  await expect(page.locator('.tv-brief-dashboard')).toBeVisible();
   await page.getByRole('link', { name: 'Viewing mode', exact: true }).click();
   await page.getByRole('button', { name: 'Display settings', exact: true }).click();
   await page.locator('.tv-language-setting select').selectOption('fr');

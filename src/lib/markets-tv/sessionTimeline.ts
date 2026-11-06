@@ -42,7 +42,9 @@ function periods(session: TvSession, date: string) {
   });
 }
 export function sessionTimeline(session: TvSession, instant: number) {
-  const now = instant || Date.now(), kuwaitDate = dateInZone(now,'Asia/Kuwait');
+  // Server markup and the first client render share an unknown clock.
+  if (!Number.isFinite(instant) || instant <= 0) return { open:false, remaining:null, nowPercent:0, bars:[] };
+  const now = instant, kuwaitDate = dateInZone(now,'Asia/Kuwait');
   const start = zonedInstant(kuwaitDate,0,'Asia/Kuwait'), end = start + dayMs;
   const localDate = dateInZone(now,session.zone), localMidday = Date.parse(`${localDate}T12:00:00Z`);
   const cacheKey=`${session.id}:${localDate}`;

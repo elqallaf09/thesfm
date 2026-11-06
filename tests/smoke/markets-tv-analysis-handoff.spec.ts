@@ -19,7 +19,7 @@ test('the TV asset QR link opens its analysis on a phone viewport', async ({ pag
     return route.fulfill({ status: 503, json: { ok: false, error: { code: 'PROVIDER_UNAVAILABLE' } } });
   });
   await page.goto('/tv');
-  await page.locator('button.tv-scene-summary').first().click();
+  await page.locator('.tv-index-value').first().click();
   const handoff = page.locator('.tv-phone-link a');
   await expect(handoff).toHaveAttribute('href', /\/ai-analyst\/analyze\/%5EGDAXI\?assetType=INDEX&autoRun=1&source=markets-tv$/);
   await page.setViewportSize({ width: 390, height: 844 });

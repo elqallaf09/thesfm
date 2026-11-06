@@ -23,6 +23,9 @@ describe('Obsidian market data',()=>{
     expect(briefMetrics([{...quote('A',-2),price:null}],now)).toMatchObject({headline:'waitingDay',average:null,comparable:0});
     expect(briefMetrics([{...quote('BTC/USDT',3),changeBasis:'24h'}],now)).toMatchObject({basis:'24h',average:3});
   });
+  it('keeps server and first client schedules deterministic until the clock is ready',()=>{
+    expect(sessionTimeline(TV_SESSIONS[0],0)).toEqual({open:false,remaining:null,nowPercent:0,bars:[]});
+  });
   it('aligns New York and London in Kuwait time through both DST transitions',()=>{
     const ny=TV_SESSIONS.find(s=>s.id==='XNYS')!,london=TV_SESSIONS.find(s=>s.id==='XLON')!;
     const winter=sessionTimeline(ny,now),summer=sessionTimeline(ny,Date.parse('2026-07-01T14:00:00Z'));
