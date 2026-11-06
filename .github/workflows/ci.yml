@@ -286,7 +286,9 @@ jobs:
       # The Playwright config runs chromium-desktop, mobile-chrome, AND
       # mobile-webkit projects — webkit must be installed too, or a third of
       # the suite fails with a missing-executable error before any page loads.
-      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Install Chromium and WebKit
+        timeout-minutes: 10
+        run: bash .github/scripts/install-playwright-browsers.sh chromium webkit
       - name: Validate smoke environment
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
@@ -733,7 +735,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
         if: steps.supabase-preview.outputs.available == 'true'
 
-      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Install Chromium and WebKit
+        timeout-minutes: 10
+        run: bash .github/scripts/install-playwright-browsers.sh chromium webkit
         if: steps.supabase-preview.outputs.available == 'true'
 
       - name: Resolve branch-specific Preview credentials
