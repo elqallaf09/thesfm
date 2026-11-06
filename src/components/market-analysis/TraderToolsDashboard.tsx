@@ -696,19 +696,19 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-premium-header span:not(.trader-premium-header-icon),
         .trader-premium-dashboard .trader-premium-main-head span:not(.trader-premium-tool-icon):not(.trader-premium-save-icon) {
           color: var(--accent);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.35;
+          line-height: var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .trader-premium-header h2,
         .trader-premium-dashboard .trader-premium-main-head h3 {
           margin: 3px 0 0;
           color: var(--foreground);
-          font-size: clamp(22px, 2.6vw, 34px);
+          font-size: var(--fs-section, 20px);
           font-weight: 700;
-          line-height: 1.16;
-          letter-spacing: 0;
+          line-height: var(--lh-section, 30px);
+          letter-spacing: 0;font-family:var(--font-heading);
         }
 
         .trader-premium-dashboard .trader-premium-header p,
@@ -716,9 +716,9 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-support-card p {
           margin: 6px 0 0;
           color: var(--foreground-muted);
-          font-size: 13px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.75;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-premium-header-badge {
@@ -734,9 +734,9 @@ export function TraderToolsDashboard({
           border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
           background: color-mix(in srgb, var(--accent) 10%, transparent);
           color: var(--accent-hover);
-          font-size: 12px;
+          font-size: var(--fs-label, 13px);
           font-weight: 700;
-          line-height: 1.2;
+          line-height: var(--lh-label, 20px);
           white-space: nowrap;
         }
 
@@ -817,9 +817,9 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-support-card h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 15px;
-          font-weight: 700;
-          line-height: 1.35;
+          font-size: var(--fs-card-title, 17px);
+          font-weight: 600;
+          line-height: var(--lh-card-title, 26px);font-family:var(--font-body);
         }
 
         .trader-premium-dashboard .trader-guidance-note {
@@ -843,15 +843,15 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-guidance-note strong {
           display: block;
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 700;
-          line-height: 1.35;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-guidance-note p {
           margin-top: 3px;
-          font-size: 12px;
-          line-height: 1.65;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-side-result-grid {
@@ -883,18 +883,18 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .trader-side-stat span:not(.trader-side-stat-icon) {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.35;
+          line-height: var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .trader-side-stat b {
           grid-column: 2;
           min-width: 0;
           color: var(--foreground);
-          font-size: clamp(15px, 1.4vw, 19px);
+          font-size: var(--fs-body, 15px);
           font-weight: 700;
-          line-height: 1.18;
+          line-height: var(--lh-body, 24px);
           overflow-wrap: anywhere;
           font-variant-numeric: tabular-nums;
           font-family: var(--font-data);
@@ -907,7 +907,7 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .trader-support-card.highlight .trader-side-stat:first-child b {
           color: var(--primary-hover);
-          font-size: clamp(17px, 1.6vw, 22px);
+          font-size: var(--fs-kpi, 26px);line-height:var(--lh-kpi, 32px);font-weight:600;font-family:var(--font-mono);
         }
 
         .trader-premium-dashboard .trader-steps {
@@ -926,9 +926,9 @@ export function TraderToolsDashboard({
           align-items: center;
           gap: 9px;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size:var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.55;
+          line-height:var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-steps li::before {
@@ -941,8 +941,8 @@ export function TraderToolsDashboard({
           place-items: center;
           color: var(--primary-foreground);
           background: var(--info);
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 700;line-height:var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .trader-premium-main-head {
@@ -962,7 +962,7 @@ export function TraderToolsDashboard({
         }
 
         .trader-premium-dashboard .trader-premium-main-head h3 {
-          font-size: clamp(19px, 2vw, 26px);
+          font-size: var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;font-family:var(--font-body);
         }
 
         .trader-premium-dashboard .trader-premium-save {
@@ -990,17 +990,17 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-premium-save strong {
           display: block;
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.3;
+          line-height: var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .trader-premium-save small {
           display: block;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.35;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-premium-save button {
@@ -1015,9 +1015,9 @@ export function TraderToolsDashboard({
           background: color-mix(in srgb, var(--accent) 12%, transparent);
           color: var(--accent-hover);
           padding: 0 12px;
-          font: 700 12px var(--font-ui);
+          font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           cursor: pointer;
-          transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+          transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;line-height:var(--lh-label, 20px);
         }
 
         .trader-premium-dashboard .trader-premium-save button:hover,
@@ -1101,10 +1101,10 @@ export function TraderToolsDashboard({
           background: color-mix(in srgb, var(--surface) 82%, transparent);
           color: var(--foreground-muted);
           padding: 9px 10px;
-          font: 700 12px var(--font-ui);
+          font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           text-align: start;
           cursor: pointer;
-          transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease;
+          transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, color .18s ease;line-height:var(--lh-label, 20px);
         }
 
         .trader-premium-dashboard[dir="rtl"] .trader-tool-switcher > button {
@@ -1164,15 +1164,15 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .trader-tool-switcher strong {
           color: inherit;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 700;line-height:var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .trader-tool-switcher small {
           margin-top: 2px;
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          opacity: .78;
+          opacity: .78;line-height:var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-active-workspace {
@@ -1233,17 +1233,17 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-tool-card-head h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 16px;
-          font-weight: 700;
-          line-height: 1.35;
+          font-size: var(--fs-card-title, 17px);
+          font-weight: 600;
+          line-height: var(--lh-card-title, 26px);font-family:var(--font-body);
         }
 
         .trader-premium-dashboard .trader-tool-card-head p {
           margin: 4px 0 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.65;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .tool-reset {
@@ -1253,9 +1253,9 @@ export function TraderToolsDashboard({
           background: color-mix(in srgb, var(--accent) 10%, transparent);
           color: var(--accent-hover);
           padding: 0 12px;
-          font: 700 12px var(--font-ui);
+          font: 700 var(--fs-caption, 12px)/var(--lh-caption, 18px) var(--font-ui);
           cursor: pointer;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .tool-reset:hover,
@@ -1301,9 +1301,9 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-field-group-title h4 {
           margin: 0;
           color: var(--foreground);
-          font-size: 13px;
-          font-weight: 700;
-          line-height: 1.35;
+          font-size: var(--fs-card-title, 17px);
+          font-weight: 600;
+          line-height: var(--lh-card-title, 26px);font-family:var(--font-body);
         }
 
         .trader-premium-dashboard .trader-form-grid {
@@ -1328,17 +1328,17 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .tool-input > span {
           color: var(--border-strong);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.45;
+          line-height: var(--lh-caption, 18px);
           text-align: start;
         }
 
         .trader-premium-dashboard .tool-input small {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.55;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .tool-input-shell {
@@ -1375,9 +1375,9 @@ export function TraderToolsDashboard({
           color: var(--accent-hover);
           padding: 7px 8px;
           font-style: normal;
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.2;
+          line-height: var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .tool-input .tool-input-shell input,
@@ -1391,7 +1391,7 @@ export function TraderToolsDashboard({
           padding: 0 !important;
           outline: 0;
           box-shadow: none !important;
-          font: 700 15px var(--font-ui);
+          font: 700 var(--fs-body, 15px)/var(--lh-body, 24px) var(--font-ui);line-height:var(--lh-body, 24px);
         }
 
         .trader-premium-dashboard .tool-input .tool-input-shell input {
@@ -1426,8 +1426,8 @@ export function TraderToolsDashboard({
           border-radius: var(--radius-control);
           background: transparent;
           color: var(--foreground-muted);
-          font: 700 12px var(--font-ui);
-          cursor: pointer;
+          font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
+          cursor: pointer;line-height:var(--lh-label, 20px);
         }
 
         .trader-premium-dashboard .tool-segmented-row button:hover,
@@ -1460,10 +1460,10 @@ export function TraderToolsDashboard({
           justify-content: space-between;
           gap: 10px;
           color: var(--foreground);
-          font-size: 12px;
+          font-size: var(--fs-label, 13px);
           font-weight: 700;
           cursor: pointer;
-          list-style: none;
+          list-style: none;line-height:var(--lh-label, 20px);
         }
 
         .trader-premium-dashboard .tool-advanced summary::-webkit-details-marker {
@@ -1524,19 +1524,19 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .trader-highlight-result span {
           color: var(--accent-soft);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.35;
+          line-height: var(--lh-caption, 18px);
         }
 
         .trader-premium-dashboard .trader-highlight-result strong {
           color: var(--primary-foreground);
-          font-size: clamp(36px, 5vw, 58px);
-          font-weight: 700;
-          line-height: .96;
+          font-size: var(--fs-kpi, 26px);
+          font-weight: 600;
+          line-height: var(--lh-kpi, 32px);
           letter-spacing: 0;
           font-variant-numeric: tabular-nums;
-          font-family: var(--font-data);
+          font-family: var(--font-mono);
           overflow-wrap: anywhere;
           text-align: left;
           direction: ltr;
@@ -1546,9 +1546,9 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-highlight-result p {
           margin: 0;
           color: var(--primary-foreground);
-          font-size: 13px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.75;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-highlight-result b {
@@ -1579,16 +1579,16 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .tool-results-title {
           color: var(--foreground);
-          font-size: 14px;
+          font-size: var(--fs-small, 14px);
           font-weight: 700;
-          line-height: 1.35;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .tool-results-head small {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.45;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .tool-result-grid {
@@ -1622,9 +1622,9 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .tool-result-card span:not(.tool-result-icon) {
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
-          line-height: 1.4;
+          line-height: var(--lh-caption, 18px);
           text-align: start;
         }
 
@@ -1632,9 +1632,9 @@ export function TraderToolsDashboard({
           grid-column: 1 / -1;
           min-width: 0;
           color: var(--foreground);
-          font-size: clamp(18px, 1.9vw, 26px);
+          font-size: var(--fs-body, 15px);
           font-weight: 700;
-          line-height: 1.15;
+          line-height: var(--lh-body, 24px);
           font-variant-numeric: tabular-nums;
           font-family: var(--font-data);
           overflow-wrap: anywhere;
@@ -1667,17 +1667,17 @@ export function TraderToolsDashboard({
 
         .trader-premium-dashboard .tool-formula-card strong {
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);
           font-weight: 700;
-          line-height: 1.4;
+          line-height: var(--lh-label, 20px);
         }
 
         .trader-premium-dashboard .tool-formula-card p {
           margin: 4px 0 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.65;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .tool-formula-card b {
@@ -1690,10 +1690,10 @@ export function TraderToolsDashboard({
           border-radius: var(--radius-control);
           background: color-mix(in srgb, var(--accent) 10%, transparent);
           color: var(--accent-hover);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-weight: 700;
           font-family: var(--font-data);
-          line-height: 1.45;
+          line-height: var(--lh-caption, 18px);
           white-space: normal;
           overflow-wrap: anywhere;
           text-align: left;
@@ -1706,9 +1706,9 @@ export function TraderToolsDashboard({
           border-radius: var(--radius-card);
           background: var(--warning-soft);
           color: var(--warning);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 700;
-          line-height: 1.7;
+          line-height: var(--lh-small, 22px);
         }
 
         .trader-premium-dashboard .trader-premium-disclaimer {
@@ -1738,18 +1738,18 @@ export function TraderToolsDashboard({
         .trader-premium-dashboard .trader-premium-disclaimer strong {
           display: block;
           color: var(--foreground);
-          font-size: 13px;
+          font-size: var(--fs-small, 14px);
           font-weight: 700;
-          line-height: 1.4;
+          line-height: var(--lh-small, 22px);
           margin-bottom: 4px;
         }
 
         .trader-premium-dashboard .trader-premium-disclaimer p {
           margin: 0;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.75;
+          line-height: var(--lh-small, 22px);
         }
 
 
@@ -1874,7 +1874,7 @@ export function TraderToolsDashboard({
           }
 
           .trader-premium-dashboard .trader-highlight-result strong {
-            font-size: clamp(32px, 11vw, 46px);
+            font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
           }
         }
 

@@ -1807,15 +1807,15 @@ export default function ProfilePage() {
         .profile-top-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .profile-top span {
           color: var(--foreground-muted);
-          font-size: var(--type-caption-size);
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: var(--type-label-weight);
         }
         .profile-top h1 {
           margin: 4px 0 6px;
           color: var(--foreground);
-          font-size: var(--type-page-title-size);
-          font-weight: var(--type-page-title-weight);
-          line-height: var(--type-page-title-leading);
+          font-size: var(--fs-page);
+          font-weight: 700;
+          line-height: var(--lh-page);
         }
         .profile-top p {
           margin: 0;
@@ -1846,7 +1846,7 @@ export default function ProfilePage() {
           box-shadow: var(--shadow-md);
         }
         .hero-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
-        .hero-card-title { margin: 18px 0 4px; font-size: 24px; font-weight: 600; line-height: 1.35; }
+        .hero-card-title { margin: 18px 0 4px; font-size: var(--fs-card-title); font-weight: 600; line-height: var(--lh-card-title); }
         .hero-card-username { margin: 0; color: var(--hero-foreground-muted); direction: ltr; }
         .hero-meta-list { margin: 16px 0; display: grid; gap: 9px; }
         .meta-line { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
@@ -1893,7 +1893,7 @@ export default function ProfilePage() {
           border: 1px solid color-mix(in srgb, var(--hero-foreground) 24%, transparent);
           border-radius: var(--radius-pill);
           padding: 7px 12px;
-          font-size: var(--type-caption-size);
+          font-size: var(--fs-label);line-height:var(--lh-label);
           font-weight: 600;
         }
         .hero-actions, .section-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1968,14 +1968,14 @@ export default function ProfilePage() {
           color: var(--foreground-muted);
           font-weight: var(--type-label-weight);
         }
-        .stat-card strong { color: var(--foreground); font-size: 22px; font-weight: 600; }
+        .stat-card strong { color: var(--foreground); font-size: var(--fs-kpi);font-family:var(--font-mono);line-height:var(--lh-kpi); font-weight: 600; }
         .section-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: var(--primary); }
         .section-head h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: var(--type-section-title-size);
-          font-weight: var(--type-section-title-weight);
-          line-height: var(--type-section-title-leading);
+          font-size: var(--fs-section);
+          font-weight: 700;
+          line-height: var(--lh-section);
         }
         .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         .form-actions { margin-top: 16px; }
@@ -2152,7 +2152,7 @@ export default function ProfilePage() {
           display: grid;
           gap: 8px;
         }
-        .plan-card h3 { margin: 0; color: var(--foreground); font-size: var(--type-card-title-size); font-weight: 600; }
+        .plan-card h3 { margin: 0; color: var(--foreground); font-size: var(--fs-card-title);line-height:var(--lh-card-title); font-weight: 600; }
         .plan-card p { margin: 0; color: var(--foreground-muted); }
         .activity-item, .activity-empty {
           display: flex;
@@ -2165,7 +2165,7 @@ export default function ProfilePage() {
         }
         .activity-item > svg { color: var(--primary); flex: 0 0 auto; }
         .activity-item strong { color: var(--foreground); font-weight: 600; }
-        .activity-meta { margin: 3px 0 0; color: var(--foreground-muted); font-size: var(--type-caption-size); }
+        .activity-meta { margin: 3px 0 0; color: var(--foreground-muted); font-size: var(--fs-caption);line-height:var(--lh-caption); }
         .activity-empty { display: grid; gap: 8px; color: var(--foreground-muted); font-weight: 400; }
         .activity-empty strong { color: var(--foreground); font-weight: 600; }
         .activity-empty p { margin: 0; color: var(--foreground-muted); font-size: var(--type-body-small-size); line-height: var(--type-body-small-leading); }
@@ -2252,7 +2252,7 @@ export default function ProfilePage() {
           box-shadow: var(--shadow-lg);
         }
         .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .modal-head h3 { margin: 0; color: var(--foreground); font-size: var(--type-card-title-size); font-weight: 600; }
+        .modal-head h3 { margin: 0; color: var(--foreground); font-size: var(--fs-card-title);line-height:var(--lh-card-title); font-weight: 600; }
         .modal-fields { display: grid; gap: 12px; }
         .info-box {
           display: flex;
@@ -2283,7 +2283,7 @@ export default function ProfilePage() {
           color: var(--foreground-muted);
           padding: 5px 10px;
           font-weight: 600;
-          font-size: var(--type-caption-size);
+          font-size: var(--fs-label);line-height:var(--lh-label);
         }
         .status-pill.on { background: var(--success-soft); border-color: color-mix(in srgb, var(--success) 30%, var(--border)); color: var(--success); }
         .message-inline {

@@ -202,7 +202,7 @@ export default function MfaVerifyPage() {
           background: var(--info-soft);
           color: var(--info);
         }
-        .mfa-card h1 { margin: 0; color: var(--foreground); font-size: 28px; line-height: 1.35; font-weight: 600; }
+        .mfa-card h1 { margin: 0; color: var(--foreground); font-size: var(--fs-page); line-height: var(--lh-page); font-weight: 700; }
         .mfa-card p { margin: 0; color: var(--foreground-secondary); line-height: 1.75; font-weight: 400; }
         .mfa-card form { display: grid; gap: 14px; }
         .mfa-card label { display: grid; gap: 8px; color: var(--foreground); font-weight: 500; }
@@ -241,7 +241,7 @@ export default function MfaVerifyPage() {
           border-radius: var(--radius-control);
           padding: 0 12px;
           background: var(--surface);
-          font: 500 14px var(--font-ui);
+          font: 500 var(--fs-body)/var(--lh-body) var(--font-body);
           text-align: start;
           letter-spacing: 0;
         }

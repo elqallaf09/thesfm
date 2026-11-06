@@ -117,10 +117,10 @@ export default function ExpensesPage() {
         <div style={S(0)}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={() => router.push('/dashboard')} style={{ padding: '8px 16px', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-control)', cursor: 'pointer', color: 'var(--foreground-secondary)', fontSize: '13px', fontWeight: '600', fontFamily: 'var(--font-ui)' }}>{dir === 'rtl' ? '←' : '→'} {text.home}</button>
+              <button onClick={() => router.push('/dashboard')} style={{ padding: '8px 16px', background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-control)', cursor: 'pointer', color: 'var(--foreground-secondary)', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', fontFamily: 'var(--font-ui)' }}>{dir === 'rtl' ? '←' : '→'} {text.home}</button>
               <div>
-                <h1 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: '600', color: 'var(--foreground)' }}>🛒 {text.title}</h1>
-                <p style={{ fontSize: '13px', color: 'var(--foreground-muted)', marginTop: '2px' }}>{text.subtitle}</p>
+                <h1 style={{ fontSize: 'var(--fs-page)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-page)', fontWeight: '700', color: 'var(--foreground)' }}>🛒 {text.title}</h1>
+                <p style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)', marginTop: '2px' }}>{text.subtitle}</p>
               </div>
             </div>
             <button className="ebtn ebtn-g" onClick={() => { setShowForm(!showForm); setEditId(null); setName(''); setAmount(''); }}>
@@ -139,8 +139,8 @@ export default function ExpensesPage() {
           ].map((k, i) => (
             <div key={i} className="ec no-h" style={{ padding: '18px 20px' }}>
               <div style={{ width: '38px', height: '38px', background: `color-mix(in srgb, ${k.color} 10%, transparent)`, borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', marginBottom: '10px' }}>{k.icon}</div>
-              <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: k.color, fontFamily: 'var(--font-data)', lineHeight: 1 }}>
+              <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
+              <div style={{ fontSize: 'var(--fs-kpi)', fontWeight: '600', color: k.color, fontFamily: 'var(--font-mono)', lineHeight: 'var(--lh-kpi)' }}>
                 {(k as any).isN ? k.val : formatCurrency(k.val as number, 'KWD', lang)}
               </div>
             </div>
@@ -148,23 +148,23 @@ export default function ExpensesPage() {
         </div>
 
         {/* Message */}
-        {msg && <div style={{ padding: '13px 18px', borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', gap: '10px', background: msg.type === 'ok' ? 'var(--success-soft)' : 'var(--danger-soft)', border: `1.5px solid ${msg.type === 'ok' ? 'color-mix(in srgb, var(--success) 32%, var(--border))' : 'color-mix(in srgb, var(--danger) 32%, var(--border))'}`, color: msg.type === 'ok' ? 'var(--success)' : 'var(--danger)', animation: 'fadeUp .3s ease', fontFamily: 'var(--font-ui)', fontSize: '14px', fontWeight: '600' }}>{msg.text}</div>}
+        {msg && <div style={{ padding: '13px 18px', borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', gap: '10px', background: msg.type === 'ok' ? 'var(--success-soft)' : 'var(--danger-soft)', border: `1.5px solid ${msg.type === 'ok' ? 'color-mix(in srgb, var(--success) 32%, var(--border))' : 'color-mix(in srgb, var(--danger) 32%, var(--border))'}`, color: msg.type === 'ok' ? 'var(--success)' : 'var(--danger)', animation: 'fadeUp .3s ease', fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', fontWeight: '600' }}>{msg.text}</div>}
 
         {/* Add/Edit form */}
         {showForm && (
           <div className="ec" style={{ ...S(60), padding: '26px 28px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: 'var(--foreground)', marginBottom: '20px' }}>{editId ? `✏️ ${text.editTitle}` : `➕ ${text.addTitle}`}</h3>
+            <h3 style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)', marginBottom: '20px' }}>{editId ? `✏️ ${text.editTitle}` : `➕ ${text.addTitle}`}</h3>
             <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-muted)', display: 'block', marginBottom: '7px' }}>{text.name}</label>
+                <label style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-muted)', display: 'block', marginBottom: '7px' }}>{text.name}</label>
                 <input className="ei" list="cats-dl" placeholder={text.namePlaceholder} value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} style={{ height: '48px' }} />
                 <datalist id="cats-dl">{CATS[lang].map(c => <option key={c} value={c} />)}</datalist>
               </div>
               <div>
-                <label style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-muted)', display: 'block', marginBottom: '7px' }}>{text.amount}</label>
+                <label style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-muted)', display: 'block', marginBottom: '7px' }}>{text.amount}</label>
                 <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-control)', overflow: 'hidden', background: 'var(--control-background)' }}>
-                  <span dir="ltr" style={{ padding: '0 10px', fontSize: '12px', fontWeight: '600', color: 'var(--foreground-secondary)', borderInlineEnd: '1px solid var(--border)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: 'var(--font-data)' }}>KWD</span>
-                  <input type="text" inputMode="decimal" placeholder="0.000" dir="ltr" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '17px', fontWeight: '600', color: 'var(--foreground)', fontFamily: 'var(--font-data)' }} />
+                  <span dir="ltr" style={{ padding: '0 10px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', borderInlineEnd: '1px solid var(--border)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: 'var(--font-data)' }}>KWD</span>
+                  <input type="text" inputMode="decimal" placeholder="0.000" dir="ltr" value={amount} onChange={e => setAmount(e.target.value)} onKeyDown={e => e.key === 'Enter' && save()} style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: 'var(--fs-body)', lineHeight: 'var(--lh-body)', fontWeight: '600', color: 'var(--foreground)', fontFamily: 'var(--font-data)' }} />
                 </div>
               </div>
             </div>
@@ -180,21 +180,21 @@ export default function ExpensesPage() {
         {/* Table */}
         <div className="ec" style={{ ...S(120), padding: '22px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--foreground)' }}>{text.list} ({items.length})</h3>
-            <input placeholder={`🔍 ${text.search}`} value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: 'var(--radius-control)', border: '1.5px solid var(--border-strong)', background: 'var(--control-background)', fontFamily: 'var(--font-ui)', fontSize: '13px', color: 'var(--foreground)', outline: 'none', width: '220px' }} />
+            <h3 style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)' }}>{text.list} ({items.length})</h3>
+            <input placeholder={`🔍 ${text.search}`} value={filter} onChange={e => setFilter(e.target.value)} style={{ padding: '8px 14px', borderRadius: 'var(--radius-control)', border: '1.5px solid var(--border-strong)', background: 'var(--control-background)', fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-body)', lineHeight: 'var(--lh-body)', color: 'var(--foreground)', outline: 'none', width: '220px' }} />
           </div>
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <div style={{ fontSize: '40px', marginBottom: '12px' }}>🛒</div>
-              <p style={{ color: 'var(--foreground-muted)', fontSize: '14px' }}>{filter ? text.noResults : text.empty}</p>
+              <p style={{ color: 'var(--foreground-muted)', fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)' }}>{filter ? text.noResults : text.empty}</p>
             </div>
           ) : (
             <div className="expense-table-scroll" role="region" tabIndex={0} aria-label={`${text.list} (${items.length})`}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                  {[text.nameColumn, text.amount, text.date, ''].map(h => <th key={h} style={{ padding: '9px 10px', textAlign: 'start', fontSize: '12px', fontWeight: '600', color: 'var(--foreground-muted)' }}>{h}</th>)}
+                  {[text.nameColumn, text.amount, text.date, ''].map(h => <th key={h} style={{ padding: '9px 10px', textAlign: 'start', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-muted)' }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -208,10 +208,10 @@ export default function ExpensesPage() {
                         <span style={{ fontSize: '14px', marginLeft: '6px' }}>{item.name.includes('السكن') || item.name.includes('إيجار') ? '🏠' : item.name.includes('طعام') || item.name.includes('مطعم') ? '🍽' : item.name.includes('مواصلات') || item.name.includes('سيارة') ? '🚗' : item.name.includes('صحة') ? '💊' : item.name.includes('كهرباء') ? '💡' : item.name.includes('تعليم') ? '📚' : isCharity ? '' : '💳'}</span>
                         {displayName}
                       </td>
-                      <td style={{ padding: '12px 10px', fontSize: '14px', fontWeight: '600', color: 'var(--danger)', fontFamily: 'var(--font-data)' }}>
+                      <td style={{ padding: '12px 10px', fontSize: 'var(--fs-kpi)', lineHeight: 'var(--lh-kpi)', fontWeight: '600', color: 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
                         <span dir="ltr">{formatCurrency(item.amount, 'KWD', lang)}</span>
                       </td>
-                      <td style={{ padding: '12px 10px', fontSize: '12px', color: 'var(--foreground-muted)' }}>
+                      <td style={{ padding: '12px 10px', fontSize: 'var(--fs-caption)', lineHeight: 'var(--lh-caption)', color: 'var(--foreground-muted)' }}>
                         {date ? formatDate(date, lang, { month: 'long', year: 'numeric' }) : '—'}
                       </td>
                       <td style={{ padding: '12px 10px' }}>
@@ -228,8 +228,8 @@ export default function ExpensesPage() {
               </tbody>
               <tfoot>
                 <tr style={{ borderTop: '2px solid var(--border)' }}>
-                  <td style={{ padding: '12px 10px', fontSize: '14px', fontWeight: '600', color: 'var(--foreground)' }}>{text.total}</td>
-                  <td style={{ padding: '12px 10px', fontSize: '16px', fontWeight: '600', color: 'var(--danger)', fontFamily: 'var(--font-data)' }}>
+                  <td style={{ padding: '12px 10px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground)' }}>{text.total}</td>
+                  <td style={{ padding: '12px 10px', fontSize: 'var(--fs-kpi)', lineHeight: 'var(--lh-kpi)', fontWeight: '600', color: 'var(--danger)', fontFamily: 'var(--font-mono)' }}>
                     <span dir="ltr">{formatCurrency(total, 'KWD', lang)}</span>
                   </td>
                   <td colSpan={2} />
@@ -241,7 +241,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--foreground-muted)', paddingTop: '8px' }}>
+        <div style={{ textAlign: 'center', fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)', paddingTop: '8px' }}>
           {text.footer} • <span style={{ color: 'var(--primary)', fontWeight: '600' }}>THE SFM</span>
         </div>
       </div>

@@ -11,14 +11,14 @@ export function MarketBaseStyles() {
         background: var(--primary-soft);
         color: var(--primary-hover);
         padding: 0 12px;
-        font: 700 12px var(--font-ui);
+        font: 700 var(--fs-caption, 12px)/var(--lh-caption, 18px) var(--font-ui);
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 7px;
         cursor: pointer;
         white-space: nowrap;
-        transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+        transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;line-height:var(--lh-caption, 18px);
       }
 
       .market-section-refresh:hover,
@@ -56,8 +56,8 @@ export function MarketBaseStyles() {
         align-items: center;
         gap: 9px;
         color: var(--foreground);
-        font-size: 13px;
-        font-weight: 700;
+        font-size: var(--fs-small, 14px);
+        font-weight: 700;line-height:var(--lh-small, 22px);
       }
 
       .market-loading-dot {
@@ -146,9 +146,9 @@ export function MarketBaseStyles() {
       .technical-partial-state-head strong {
         display: block;
         color: var(--foreground);
-        font-size: 15px;
+        font-size: var(--fs-body, 15px);
         font-weight: 700;
-        line-height: 1.5;
+        line-height: var(--lh-body, 24px);
       }
 
       .technical-partial-state-head p,
@@ -156,8 +156,8 @@ export function MarketBaseStyles() {
       .technical-partial-note small {
         margin: 0;
         color: var(--foreground-muted);
-        font-size: 13px;
-        line-height: 1.75;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
 
       .technical-partial-grid {
@@ -178,16 +178,16 @@ export function MarketBaseStyles() {
 
       .technical-partial-metric small {
         color: var(--foreground-muted);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--fs-small, 14px);
+        font-weight: 600;line-height:var(--lh-small, 22px);
       }
 
       .technical-partial-metric b {
         color: var(--foreground);
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);
         font-weight: 700;
         overflow-wrap: anywhere;
-        font-family: var(--font-data);
+        font-family: var(--font-data);line-height:var(--lh-small, 22px);
       }
 
       .technical-partial-note {
@@ -216,9 +216,9 @@ export function MarketBaseStyles() {
         background: var(--warning-soft);
         color: var(--primary-hover);
         padding: 0 15px;
-        font: 700 12px var(--font-ui);
+        font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
-        transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;line-height:var(--lh-label, 20px);
       }
 
       .technical-partial-action:hover,
@@ -270,17 +270,17 @@ export function MarketBaseStyles() {
       .technical-dashboard-head h2 {
         margin: 0;
         color: var(--foreground);
-        font-size: clamp(22px, 2.3vw, 34px);
+        font-size: var(--fs-section, 20px);
         font-weight: 700;
-        line-height: 1.2;
+        line-height: var(--lh-section, 30px);font-family:var(--font-heading);
       }
 
       .technical-dashboard-head p {
         margin: 6px 0 0;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 500;
-        line-height: 1.7;
+        line-height: var(--lh-small, 22px);
       }
 
       .technical-refresh-button,
@@ -295,10 +295,10 @@ export function MarketBaseStyles() {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        font: 700 12px var(--font-ui);
+        font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
         white-space: nowrap;
-        transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+        transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;line-height:var(--lh-label, 20px);
       }
 
       .technical-refresh-button:hover,
@@ -348,17 +348,17 @@ export function MarketBaseStyles() {
 
       .technical-selector-head span {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.3;
+        line-height: var(--lh-caption, 18px);
       }
 
       .technical-selector-head strong {
         color: var(--foreground);
-        font-size: 18px;
+        font-size: var(--fs-body, 15px);
         font-weight: 700;
         letter-spacing: .02em;
-        line-height: 1.25;
+        line-height: var(--lh-body, 24px);
         overflow-wrap: anywhere;
       }
 
@@ -396,9 +396,9 @@ export function MarketBaseStyles() {
         background: var(--primary-soft);
         color: var(--primary-hover);
         padding: 7px 10px;
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-caption, 18px);
       }
 
       .technical-range-card,
@@ -429,18 +429,18 @@ export function MarketBaseStyles() {
       .technical-tab-disclaimer strong {
         display: block;
         color: var(--foreground);
-        font-size: 15px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.45;
+        line-height: var(--lh-label, 20px);
       }
 
       .technical-range-head p,
       .technical-tab-disclaimer p {
         margin: 5px 0 0;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 500;
-        line-height: 1.75;
+        line-height: var(--lh-small, 22px);
       }
 
       .technical-range-head > span {
@@ -526,16 +526,16 @@ export function MarketBaseStyles() {
 
       .technical-range-marker b {
         color: currentColor;
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        font-family: var(--font-data);
+        font-family: var(--font-data);line-height:var(--lh-caption, 18px);
       }
 
       .technical-range-marker small {
         color: var(--foreground);
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        font-family: var(--font-data);
+        font-family: var(--font-data);line-height:var(--lh-small, 22px);
       }
 
       .technical-range-marker.support {
@@ -597,15 +597,15 @@ export function MarketBaseStyles() {
 
       .technical-education-list b {
         color: var(--primary-hover);
-        font-size: 12px;
-        font-weight: 700;
+        font-size: var(--fs-caption, 12px);
+        font-weight: 700;line-height:var(--lh-caption, 18px);
       }
 
       .technical-education-list span {
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-label, 13px);
         font-weight: 500;
-        line-height: 1.7;
+        line-height: var(--lh-label, 20px);
       }
 
       .technical-tab-disclaimer {
@@ -668,17 +668,17 @@ export function MarketBaseStyles() {
       .portfolio-card-title h2 {
         margin: 0;
         color: var(--foreground);
-        font-size: clamp(24px, 2.4vw, 36px);
-        font-weight: 700;
-        line-height: 1.2;
+        font-size: var(--fs-card-title, 17px);
+        font-weight: 600;
+        line-height: var(--lh-card-title, 26px);font-family:var(--font-heading);
       }
 
       .portfolio-card-title p {
         margin: 0;
         color: var(--foreground-muted);
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);
         font-weight: 500;
-        line-height: 1.7;
+        line-height: var(--lh-small, 22px);
       }
 
       .portfolio-card-title i {
@@ -700,9 +700,9 @@ export function MarketBaseStyles() {
         color: var(--foreground-muted);
         border-radius: var(--radius-pill);
         padding: 8px 12px;
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-label, 20px);
         text-align: center;
       }
 
@@ -731,17 +731,17 @@ export function MarketBaseStyles() {
       .portfolio-empty-note strong {
         display: block;
         color: var(--foreground);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 700;
-        line-height: 1.5;
+        line-height: var(--lh-small, 22px);
       }
 
       .portfolio-empty-note p {
         margin: 4px 0 0;
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 500;
-        line-height: 1.75;
+        line-height: var(--lh-small, 22px);
       }
 
       .portfolio-comparison-grid {
@@ -792,21 +792,21 @@ export function MarketBaseStyles() {
 
       .portfolio-comparison-metric small {
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 600;
-        line-height: 1.45;
+        line-height: var(--lh-small, 22px);
       }
 
       .portfolio-comparison-metric strong {
         width: max-content;
         max-width: 100%;
         color: var(--foreground);
-        font-size: clamp(18px, 1.7vw, 25px);
-        font-weight: 700;
-        line-height: 1.25;
+        font-size: var(--fs-kpi, 26px);
+        font-weight: 600;
+        line-height: var(--lh-kpi, 32px);
         overflow-wrap: anywhere;
         font-variant-numeric: tabular-nums;
-        font-family: var(--font-data);
+        font-family: var(--font-mono);
       }
 
       .portfolio-comparison-metric.success strong,
@@ -819,7 +819,7 @@ export function MarketBaseStyles() {
         border-radius: var(--radius-pill);
         padding: 7px 11px;
         border: 1px solid transparent;
-        font-size: 14px;
+        font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
       }
 
       .portfolio-comparison-metric.success strong {

@@ -30,14 +30,14 @@ export function FeatureHealthGrid({ rows, evidenceLimit }: { rows: FeatureHealth
         .ops-feature-health-cell { min-width: 0; display: grid; align-content: start; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); padding: 12px; }
         .ops-feature-health-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
         .ops-feature-health-heading > strong { flex: 1; }
-        .ops-feature-health-detail { margin: 0; color: var(--foreground-secondary); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+        .ops-feature-health-detail { margin: 0; color: var(--foreground-secondary); font-size: var(--fs-small); line-height: var(--lh-small); overflow-wrap: anywhere; }
         .ops-feature-health-icon { display: inline-flex; }
         .ops-feature-health-cell.tone-success .ops-feature-health-icon { color: var(--success); }
         .ops-feature-health-cell.tone-warning .ops-feature-health-icon { color: var(--warning); }
         .ops-feature-health-cell.tone-danger .ops-feature-health-icon { color: var(--danger); }
         .ops-feature-health-cell.tone-info .ops-feature-health-icon { color: var(--info); }
         .ops-feature-health-cell.tone-muted .ops-feature-health-icon { color: var(--foreground-muted); }
-        .ops-feature-health-cell strong { color: var(--foreground); font-size: 12.5px; font-weight: 600; }
+        .ops-feature-health-cell strong { color: var(--foreground); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 600; }
       `}</style>
     </div>
   );

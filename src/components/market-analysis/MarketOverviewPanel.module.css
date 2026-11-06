@@ -48,9 +48,9 @@
 
 .eyebrow {
   color: var(--foreground-secondary);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
 }
 
@@ -63,19 +63,19 @@
 }
 
 .header h2 {
-  font-size: var(--type-section-title-size);
-  font-weight: var(--type-section-title-weight);
-  line-height: var(--type-section-title-leading);
-  letter-spacing: var(--type-section-title-tracking);
+  font-size: var(--fs-section, 20px);
+  font-weight: 700;
+  line-height: var(--lh-section, 30px);
+  letter-spacing: var(--type-section-title-tracking);font-family:var(--font-heading);
 }
 
 .header p {
   max-inline-size: 72ch;
   margin: var(--space-1) 0 0;
   color: var(--foreground-muted);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-body, 15px);
   font-weight: var(--type-body-weight);
-  line-height: var(--type-body-leading);
+  line-height: var(--lh-body, 24px);
   letter-spacing: var(--type-body-tracking);
 }
 
@@ -116,10 +116,10 @@
 
 .sectionHeading h3,
 .sectionHeadingWithIcon h3 {
-  font-size: var(--type-card-title-size);
-  font-weight: var(--type-card-title-weight);
-  line-height: var(--type-card-title-leading);
-  letter-spacing: var(--type-card-title-tracking);
+  font-size: var(--fs-card-title, 17px);
+  font-weight: 600;
+  line-height: var(--lh-card-title, 26px);
+  letter-spacing: var(--type-card-title-tracking);font-family:var(--font-body);
 }
 
 .sectionHeadingWithIcon > span {
@@ -162,9 +162,9 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--scope-accent, var(--primary));
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -172,9 +172,9 @@
 
 .assetIdentity strong {
   color: var(--foreground);
-  font-size: var(--type-section-title-size);
-  font-weight: var(--type-section-title-weight);
-  line-height: var(--type-section-title-leading);
+  font-size: var(--fs-section, 20px);
+  font-weight: 700;
+  line-height: var(--lh-section, 30px);
   letter-spacing: var(--type-section-title-tracking);
   overflow-wrap: anywhere;
 }
@@ -188,9 +188,9 @@
   padding: var(--space-1) var(--space-2);
   background: var(--surface);
   color: var(--foreground-secondary);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
   text-align: center;
   overflow-wrap: anywhere;
@@ -209,9 +209,9 @@
   border-inline-start: 1px solid var(--border-strong);
   padding-inline-start: var(--space-2);
   color: var(--foreground-muted);
-  font-size: var(--type-caption-size);
+  font-size: var(--fs-caption, 12px);
   font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-leading);
+  line-height: var(--lh-caption, 18px);
   letter-spacing: var(--type-caption-tracking);
   overflow-wrap: anywhere;
 }
@@ -246,9 +246,9 @@
 .countLabel {
   margin: 0;
   color: var(--foreground-muted);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
 }
 
@@ -256,9 +256,9 @@
   min-inline-size: 0;
   margin: 0;
   color: var(--foreground);
-  font-size: var(--type-body-size);
+  font-size: var(--fs-body, 15px);
   font-weight: var(--type-body-weight);
-  line-height: var(--type-body-leading);
+  line-height: var(--lh-body, 24px);
   letter-spacing: var(--type-body-tracking);
   overflow-wrap: anywhere;
 }
@@ -306,9 +306,9 @@
 .countContent small,
 .actionCopy small {
   color: var(--foreground-muted);
-  font-size: var(--type-caption-size);
+  font-size:var(--fs-small, 14px);
   font-weight: var(--type-caption-weight);
-  line-height: var(--type-caption-leading);
+  line-height:var(--lh-small, 22px);
   letter-spacing: var(--type-caption-tracking);
 }
 
@@ -342,9 +342,9 @@
 .compactEmpty p {
   min-inline-size: 0;
   margin: 0;
-  font-size: var(--type-body-small-size);
+  font-size: var(--fs-small, 14px);
   font-weight: var(--type-body-small-weight);
-  line-height: var(--type-body-small-leading);
+  line-height: var(--lh-small, 22px);
   letter-spacing: var(--type-body-small-tracking);
   overflow-wrap: anywhere;
 }
@@ -361,17 +361,17 @@
 
 .sessionLabel {
   color: var(--foreground-muted);
-  font-size: var(--type-label-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-label-weight);
-  line-height: var(--type-label-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-label-tracking);
 }
 
 .sessionContent strong {
   color: var(--foreground);
-  font-size: var(--type-card-title-size);
-  font-weight: var(--type-card-title-weight);
-  line-height: var(--type-card-title-leading);
+  font-size: var(--fs-card-title, 17px);
+  font-weight: 600;
+  line-height: var(--lh-card-title, 26px);
   letter-spacing: var(--type-card-title-tracking);
   overflow-wrap: anywhere;
 }
@@ -392,9 +392,9 @@
 .sessionContent p {
   margin: var(--space-1) 0 0;
   color: var(--foreground-muted);
-  font-size: var(--type-body-small-size);
+  font-size: var(--fs-body, 15px);
   font-weight: var(--type-body-small-weight);
-  line-height: var(--type-body-small-leading);
+  line-height: var(--lh-body, 24px);
   letter-spacing: var(--type-body-small-tracking);
 }
 
@@ -460,9 +460,9 @@
 
 .actionCopy strong {
   color: inherit;
-  font-size: var(--type-button-size);
+  font-size: var(--fs-label, 13px);
   font-weight: var(--type-button-weight);
-  line-height: var(--type-button-leading);
+  line-height: var(--lh-label, 20px);
   letter-spacing: var(--type-button-tracking);
   overflow-wrap: anywhere;
 }

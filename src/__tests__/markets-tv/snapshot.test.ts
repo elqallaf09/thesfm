@@ -1,4 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+const { externalHistory } = vi.hoisted(() => ({ externalHistory: vi.fn() }));
+vi.mock('@/lib/market/fetchYahooHistory', () => ({ fetchYahooHistory: externalHistory }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/server/markets-tv/instruments', () => ({ tvInstrumentAssets: vi.fn().mockResolvedValue([]), cryptoTvQuotes: vi.fn().mockResolvedValue([]), forexTvQuote: vi.fn() }));
@@ -13,6 +15,9 @@ import { providerStockQuote } from '@/lib/world-stocks/providerQuote';
 import { cryptoTvQuotes, forexTvQuote } from '@/lib/server/markets-tv/instruments';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 
+// Source-failure cases must not depend on a live secondary provider recovering
+// successfully on CI. The external recovery path has its own runtime tests.
+beforeEach(() => { externalHistory.mockResolvedValue({ success: false, unavailableReason: 'provider_http_503' }); });
 afterEach(() => { vi.useRealTimers(); vi.resetAllMocks(); vi.restoreAllMocks(); });
 describe('TV canonical market snapshots', () => {
   it('passes the actual asset class for indices, commodities and currency groups', async () => {

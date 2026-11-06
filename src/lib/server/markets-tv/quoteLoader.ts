@@ -16,6 +16,8 @@ import { tvProviderFailure } from './quoteAvailability';
 import { finnhubUsMarketOpen } from './finnhubMarketStatus';
 import { cachedTvQuote } from './quoteCache';
 import { withTvIndexFallback } from './indexFallback';
+import { withTvRegionalFallback } from './regionalFallback';
+import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
 
 const PRIMARY_MIC: Record<string, string> = {
   BOURSA_KUWAIT: 'XKUW', DFM: 'XDFM', NASDAQ_DUBAI: 'DIFX', SSE: 'XSHG', SZSE: 'XSHE',
@@ -136,7 +138,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
   const work = cachedTvQuote(key, async () => {
     const primary = loadQuote(asset, group).catch(() => empty(asset));
-    if (assetType !== 'index') return primary;
+    if (assetType !== 'index') return withTvRegionalFallback(asset, primary);
     const quote = await withTvIndexFallback(asset.symbol, primary);
     return { ...quote, displaySymbol: asset.displaySymbol, name: asset.name, nameAr: asset.nameAr || asset.name };
   }, usStock || assetType === 'forex' ? 30 : 300)
@@ -181,7 +183,8 @@ export async function resolveTvQuotes(assets: TvAsset[], group: TvGroup): Promis
       } finally { if (timer) clearTimeout(timer); }
     }
   }
-  await Promise.all([cryptoWork, ...Array.from({ length: Math.min(4, ordinary.length) }, () => worker())]);
+  const workers = ordinary.some(({ asset }) => tvRegionalIdentity(asset)) ? 6 : 4;
+  await Promise.all([cryptoWork, ...Array.from({ length: Math.min(workers, ordinary.length) }, () => worker())]);
   return Promise.all(quotes.map((quote, index) =>
     quote.price === null && quote.symbol.startsWith('^') && (assets[index].assetType === 'index' || group === 'global')
       ? archivedIndex(quote) : quote));

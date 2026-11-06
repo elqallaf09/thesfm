@@ -100,17 +100,17 @@ export function CharityStyles() {
         border-radius: var(--radius-pill);
         background: color-mix(in srgb, var(--hero-foreground) 11%, transparent);
         color: var(--hero-foreground);
-        font-size: var(--type-caption-size);
+        font-size: var(--fs-label);
         font-weight: 600;
-        line-height: 1.4;
+        line-height: var(--lh-label);
       }
 
       .charity-projects-page .cp-hero h1 {
         margin: 12px 0 10px;
         color: var(--hero-foreground);
-        font-size: clamp(2rem, 3.1vw, 3.25rem);
+        font-size: var(--fs-page);
         font-weight: 700;
-        line-height: 1.18;
+        line-height: var(--lh-page);
         letter-spacing: var(--type-page-title-tracking);
         overflow-wrap: anywhere;
       }
@@ -352,18 +352,18 @@ export function CharityStyles() {
       .charity-projects-page .summary-card small,
       .charity-projects-page .summary-card em {
         color: var(--foreground-muted);
-        font-size: var(--type-caption-size);
+        font-size: var(--fs-label);
         font-style: normal;
         font-weight: 400;
-        line-height: var(--type-caption-leading);
+        line-height: var(--lh-label);
       }
 
       .charity-projects-page .summary-card strong {
         color: var(--foreground);
-        font-family: var(--font-data);
-        font-size: clamp(1.2rem, 1.6vw, 1.55rem);
+        font-family: var(--font-mono);
+        font-size: var(--fs-kpi);
         font-weight: 600;
-        line-height: 1.25;
+        line-height: var(--lh-kpi);
         overflow-wrap: anywhere;
       }
 
@@ -441,8 +441,8 @@ export function CharityStyles() {
       }
 
       .charity-projects-page .section-head h2 {
-        font-size: clamp(1.25rem, 1.7vw, 1.55rem);
-        line-height: 1.35;
+        font-size: var(--fs-section);font-weight:700;
+        line-height: var(--lh-section);
       }
 
       .charity-projects-page .section-head small,
@@ -450,9 +450,9 @@ export function CharityStyles() {
         display: block;
         margin-bottom: 4px;
         color: var(--foreground-muted);
-        font-size: var(--type-caption-size);
+        font-size: var(--fs-label);
         font-weight: 500;
-        line-height: var(--type-caption-leading);
+        line-height: var(--lh-label);
       }
 
       .charity-projects-page .section-head p,
@@ -729,9 +729,9 @@ export function CharityStyles() {
       .charity-projects-page .modal-head h2 {
         margin: 0;
         color: var(--foreground);
-        font-size: var(--type-section-title-size);
-        font-weight: var(--type-section-title-weight);
-        line-height: var(--type-section-title-leading);
+        font-size: var(--fs-section);
+        font-weight: 700;
+        line-height: var(--lh-section);
       }
 
       .charity-projects-page .modal-head button,
@@ -832,9 +832,9 @@ export function CharityStyles() {
         .beneficiary-assurance
       ) small {
         color: var(--foreground-muted);
-        font-size: var(--type-caption-size);
+        font-size: var(--fs-label);
         font-weight: 400;
-        line-height: var(--type-caption-leading);
+        line-height: var(--lh-label);
       }
 
       .charity-projects-page :is(
@@ -850,9 +850,9 @@ export function CharityStyles() {
         min-width: 0;
         color: var(--foreground);
         font-family: var(--font-data);
-        font-size: 0.875rem;
+        font-size: var(--fs-label);
         font-weight: 600;
-        line-height: 1.45;
+        line-height: var(--lh-label);
         overflow-wrap: anywhere;
       }
 
@@ -1005,9 +1005,9 @@ export function CharityStyles() {
         border-radius: var(--radius-pill);
         background: var(--surface-muted);
         color: var(--foreground-secondary);
-        font-size: var(--type-caption-size);
+        font-size: var(--fs-label);
         font-weight: 500;
-        line-height: var(--type-caption-leading);
+        line-height: var(--lh-label);
         overflow-wrap: anywhere;
       }
 
@@ -1335,8 +1335,8 @@ export function CharityStyles() {
       }
 
       .charity-projects-page .impact-panel h3 {
-        font-size: var(--type-card-title-size);
-        line-height: var(--type-card-title-leading);
+        font-size: var(--fs-card-title);font-weight:600;
+        line-height: var(--lh-card-title);
       }
 
       .charity-projects-page .ratio-grid {
@@ -1432,7 +1432,7 @@ export function CharityStyles() {
         border-radius: var(--radius-pill);
         background: var(--warning-soft);
         color: var(--warning);
-        font-size: var(--type-caption-size);
+        font-size: var(--fs-label);line-height:var(--lh-label);
         font-weight: 600;
       }
 
@@ -1772,7 +1772,7 @@ export function CharityStyles() {
         .charity-projects-page .phase28-report-row > td::before {
           content: attr(data-label);
           color: var(--foreground-muted);
-          font-size: var(--type-caption-size);
+          font-size: var(--fs-small);line-height:var(--lh-small);
           font-weight: 500;
         }
 
@@ -1881,7 +1881,7 @@ export function CharityStyles() {
         }
 
         .charity-projects-page .cp-hero h1 {
-          font-size: 1.875rem;
+          font-size: var(--fs-page);font-weight:700;line-height:var(--lh-page);
         }
 
         .charity-projects-page :is(

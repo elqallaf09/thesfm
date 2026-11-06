@@ -32,6 +32,7 @@
     "**/*.backup-*.tsx",
     "**/*_backup_*/**",
     "apps/expo-go/**",
+    "apps/markets-tv-native/**",
     "wakeel-admin/**",
     "wakeel-tracking/**"
   ]

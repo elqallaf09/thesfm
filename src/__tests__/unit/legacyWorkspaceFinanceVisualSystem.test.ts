@@ -24,7 +24,7 @@ describe('legacy workspace finance visual-system contract', () => {
       /\b(?:text|bg|border|from|via|to)-(?:cyan|sky|blue|emerald|teal|rose|amber|yellow|slate|gray|zinc|stone|neutral)-\d{2,3}\b/i,
     );
     expect(source).not.toMatch(
-      /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto Sans)\b|font-mono/i,
+      /\b(?:Tajawal|Cairo|Arial|Helvetica|Inter|Poppins|Roboto|Noto Sans)\b|(?<!-)\bfont-mono\b/i,
     );
     expect(source).not.toMatch(
       /font-(?:extrabold|black)|font-(?:weight|Weight)\s*[:=]\s*['"]?(?:800|900|950)/i,
@@ -34,7 +34,7 @@ describe('legacy workspace finance visual-system contract', () => {
     );
     expect(source).not.toMatch(/(?:--|var\(--)(?:sfm|khums|zakat)-/i);
     expect(source).toContain('var(--font-ui)');
-    expect(source).toContain('var(--font-data)');
+    expect(source).toMatch(/var\(--font-(?:data|mono)\)/);
   });
 
   it.each(sources)('$file uses shared radii, depth, and shell width rules', ({ source }) => {

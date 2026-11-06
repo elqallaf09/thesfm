@@ -103,16 +103,16 @@ function OperationsCenterContent() {
         .market-diagnostics-admin { width: 100%; max-width: none; margin: 0; padding: 0; display: grid; gap: 18px; color: var(--foreground); }
         .market-diagnostics-hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; }
         .market-diagnostics-hero > div { min-width: 0; }
-        .market-diagnostics-hero h1 { color: var(--foreground); font-size: clamp(26px,3vw,38px); line-height: 1.15; font-weight: 600; margin: 0; }
-        .market-diagnostics-hero p { margin: 6px 0 0; color: var(--foreground-muted); font-size: 13px; }
+        .market-diagnostics-hero h1 { color: var(--foreground); font-size: var(--fs-page); line-height: var(--lh-page); font-weight: 700; margin: 0; }
+        .market-diagnostics-hero p { margin: 6px 0 0; color: var(--foreground-muted); font-size: var(--fs-small);line-height:var(--lh-small); }
         .ops-center-tab-panel { min-width: 0; display: grid; gap: 16px; }
         .ops-center-loading { margin: 0; padding: 20px; text-align: center; color: var(--foreground-muted); font-size: 13px; }
         .ops-tab-section { display: grid; gap: 14px; min-width: 0; }
-        .ops-section-title { margin: 0; color: var(--foreground); font-size: 14px; font-weight: 600; }
-        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: 13px; border: 1px dashed var(--border); border-radius: var(--radius-control); }
+        .ops-section-title { margin: 0; color: var(--foreground); font-size: var(--fs-section);line-height:var(--lh-section); font-weight: 700; }
+        .ops-empty-note { margin: 0; padding: 16px; text-align: center; color: var(--foreground-muted); font-size: var(--fs-small);line-height:var(--lh-small); border: 1px dashed var(--border); border-radius: var(--radius-control); }
         .ops-center-request-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--danger); border-radius: var(--radius-card); padding: 12px; background: var(--surface); }
-        .ops-center-request-error p { margin: 0; color: var(--foreground-secondary); font-size: 13px; line-height: 1.6; }
-        .ops-center-request-error button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-elevated); color: var(--foreground); font: 600 12px var(--font-ui); cursor: pointer; }
+        .ops-center-request-error p { margin: 0; color: var(--foreground-secondary); font-size: var(--fs-small); line-height: var(--lh-small); }
+        .ops-center-request-error button { min-height: 40px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-elevated); color: var(--foreground); font: 600 var(--fs-label)/var(--lh-label) var(--font-body); cursor: pointer; }
         .ops-center-request-error button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
         .ops-center-request-error button:disabled { cursor: not-allowed; opacity: .55; }
       `}</style>

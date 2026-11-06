@@ -47,7 +47,7 @@ export function MarketChartStyles() {
         }
 
         .trader-premium-dashboard .trader-highlight-result strong {
-          font-size: 32px;
+          font-size: var(--fs-body, 15px);line-height:var(--lh-body, 24px);
         }
       }
 
@@ -86,9 +86,9 @@ export function MarketChartStyles() {
 
       .chart-type-control > span {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-caption, 18px);
       }
 
       .chart-type-row {
@@ -106,10 +106,10 @@ export function MarketChartStyles() {
         color: var(--foreground);
         border-radius: var(--radius-pill);
         padding: 7px 11px;
-        font: 600 12px var(--font-ui);
+        font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
         transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease, opacity .16s ease;
-        white-space: nowrap;
+        white-space: nowrap;line-height:var(--lh-label, 20px);
       }
 
       .chart-type-row button[aria-pressed="true"],
@@ -144,9 +144,9 @@ export function MarketChartStyles() {
         color: var(--warning);
         border-radius: var(--radius-pill);
         padding: 5px 9px;
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-small, 22px);
       }
 
       .price-history-chart svg {
@@ -160,8 +160,8 @@ export function MarketChartStyles() {
       }
 
       .price-chart-values strong {
-        font-size: 18px;
-        font-family: var(--font-data) !important;
+        font-size: var(--fs-kpi, 26px);
+        font-family: var(--font-mono) !important;line-height:var(--lh-kpi, 32px);font-weight:600;
       }
 
       .price-chart-grid-line {
@@ -214,16 +214,16 @@ export function MarketChartStyles() {
       .price-chart-x-label,
       .price-chart-level-label {
         fill: var(--chart-label);
-        font: 500 12px var(--font-data);
+        font: 500 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-data);
         opacity: .78;
         direction: ltr;
         unicode-bidi: isolate;
-        pointer-events: none;
+        pointer-events: none;line-height:var(--lh-label, 20px);
       }
 
       .price-chart-x-label {
-        font-size: 12px;
-        opacity: .68;
+        font-size: var(--fs-label, 13px);
+        opacity: .68;line-height:var(--lh-label, 20px);
       }
 
       .price-chart-level line {
@@ -257,7 +257,7 @@ export function MarketChartStyles() {
         paint-order: stroke;
         stroke: var(--surface-elevated);
         stroke-width: 4px;
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
       }
 
       .price-chart-crosshair line {
@@ -296,9 +296,9 @@ export function MarketChartStyles() {
       .price-chart-tooltip strong {
         display: block;
         color: var(--foreground);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-caption, 18px);
         margin-bottom: 7px;
       }
 
@@ -319,8 +319,8 @@ export function MarketChartStyles() {
       .price-chart-tooltip dt,
       .price-chart-tooltip dd {
         margin: 0;
-        font-size: 12px;
-        line-height: 1.25;
+        font-size: var(--fs-caption, 12px);
+        line-height: var(--lh-caption, 18px);
       }
 
       .price-chart-tooltip dt {
@@ -434,17 +434,17 @@ export function MarketChartStyles() {
 
       .price-chart-state-copy strong {
         color: var(--foreground);
-        font-size: clamp(16px, 2vw, 21px);
-        font-weight: 700;
-        line-height: 1.35;
+        font-size: var(--fs-card-title, 17px);
+        font-weight: 600;
+        line-height: var(--lh-card-title, 26px);
       }
 
       .price-chart-state-copy p {
         margin: 0;
         color: var(--foreground-muted);
-        font-size: 13px;
+        font-size: var(--fs-small, 14px);
         font-weight: 500;
-        line-height: 1.8;
+        line-height: var(--lh-small, 22px);
       }
 
       .price-chart-state-copy small {
@@ -455,9 +455,9 @@ export function MarketChartStyles() {
         color: var(--primary-hover);
         border-radius: var(--radius-pill);
         padding: 5px 9px;
-        font-size: 12px;
+        font-size: var(--fs-small, 14px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-small, 22px);
       }
 
       .price-chart-summary-grid {
@@ -480,16 +480,16 @@ export function MarketChartStyles() {
 
       .price-chart-summary-item span {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-caption, 18px);
       }
 
       .price-chart-summary-item b {
         color: var(--foreground);
-        font-size: 13px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-label, 20px);
         overflow-wrap: normal;
         font-family: var(--font-data) !important;
       }
@@ -521,9 +521,9 @@ export function MarketChartStyles() {
         align-items: center;
         justify-content: center;
         gap: 7px;
-        font: 700 12px var(--font-ui);
+        font: 700 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
-        box-shadow: var(--shadow-xs);
+        box-shadow: var(--shadow-xs);line-height:var(--lh-label, 20px);
       }
 
       .price-chart-state-actions button:hover,
@@ -535,9 +535,9 @@ export function MarketChartStyles() {
 
       .price-chart-state-actions > span {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 600;
-        line-height: 1.6;
+        line-height: var(--lh-label, 20px);
       }
 
       .market-chart .levels-strip {
@@ -578,26 +578,26 @@ export function MarketChartStyles() {
 
       .levels-strip-labels small {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.35;
+        line-height: var(--lh-label, 20px);
       }
 
       .levels-strip-labels b {
         color: var(--foreground);
-        font-size: 15px;
+        font-size: var(--fs-label, 13px);
         font-weight: 700;
-        line-height: 1.25;
+        line-height: var(--lh-label, 20px);
         overflow-wrap: normal;
         font-family: var(--font-data) !important;
       }
 
       .levels-strip-labels em {
         color: var(--foreground-muted);
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);
         font-style: normal;
         font-weight: 700;
-        line-height: 1.3;
+        line-height: var(--lh-label, 20px);
         font-family: var(--font-data) !important;
       }
 
@@ -664,10 +664,10 @@ export function MarketChartStyles() {
         background: var(--surface-elevated);
         color: var(--foreground);
         padding: 3px 7px;
-        font-size: 12px;
+        font-size: var(--fs-caption, 12px);
         font-style: normal;
         font-weight: 700;
-        line-height: 1.2;
+        line-height: var(--lh-caption, 18px);
         white-space: nowrap;
       }
 
@@ -679,8 +679,8 @@ export function MarketChartStyles() {
 
       .price-chart-loading strong {
         color: var(--foreground);
-        font-size: 13px;
-        font-weight: 700;
+        font-size: var(--fs-small, 14px);
+        font-weight: 700;line-height:var(--lh-small, 22px);
       }
 
       .price-chart-skeleton {

@@ -52,17 +52,17 @@ export default function SavingsEducationPage() {
         .savings-back:hover{background:var(--surface-hover);border-color:var(--border-strong)}
         .savings-back:focus-visible,.savings-actions button:focus-visible,.savings-card button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
         .savings-hero{background:var(--hero-gradient);border-radius:var(--radius-panel);padding:clamp(24px,5vw,54px);color:var(--hero-foreground);box-shadow:var(--shadow-md)}
-        .savings-hero h1{margin:0 0 10px;font-size:clamp(32px,7vw,56px);line-height:1.15;font-weight:600;letter-spacing:0}
+        .savings-hero h1{margin:0 0 10px;font-size:var(--fs-page);line-height:var(--lh-page);font-weight:700;letter-spacing:0}
         .savings-hero p{margin:0;max-width:720px;color:var(--hero-foreground-muted);font-size:clamp(15px,2.2vw,19px);line-height:1.8;font-weight:400}
         .savings-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
-        .savings-actions button,.savings-card button{min-height:44px;border:0;border-radius:var(--radius-control);padding:12px 18px;font:600 13px/1.5 var(--font-ui);cursor:pointer}
+        .savings-actions button,.savings-card button{min-height:44px;border:0;border-radius:var(--radius-control);padding:12px 18px;font:600 var(--fs-label)/var(--lh-label) var(--font-body);cursor:pointer}
         .savings-primary{background:var(--primary);color:var(--primary-foreground)}
         .savings-primary:hover{background:var(--primary-hover)}
         .savings-secondary{background:color-mix(in srgb,var(--hero-foreground) 10%,transparent);color:var(--hero-foreground);border:1px solid color-mix(in srgb,var(--hero-foreground) 22%,transparent)!important}
         .savings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
         .savings-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:20px;display:grid;gap:12px;box-shadow:var(--shadow-card)}
-        .savings-card h2{margin:0;color:var(--foreground);font-size:19px;font-weight:600}
-        .savings-card p{margin:0;color:var(--foreground-secondary);line-height:1.75;font-size:14px;font-weight:400}
+        .savings-card h2{margin:0;color:var(--foreground);font-size:var(--fs-card-title);line-height:var(--lh-card-title);font-weight:600}
+        .savings-card p{margin:0;color:var(--foreground-secondary);line-height:var(--lh-small);font-size:var(--fs-small);font-weight:400}
         .savings-card button{justify-self:start;background:var(--primary);color:var(--primary-foreground)}
         .savings-card button:hover{background:var(--primary-hover)}
         .savings-note{background:var(--surface-muted);border:1px dashed var(--border-strong);border-radius:var(--radius-card);padding:18px;color:var(--foreground-secondary);font-weight:500;line-height:1.7;text-align:center}

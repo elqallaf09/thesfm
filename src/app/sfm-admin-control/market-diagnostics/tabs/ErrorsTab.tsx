@@ -22,7 +22,7 @@ export function ErrorsTab() {
 
       <DiagnosticIssueSections issues={ops.rootCause} />
       <style jsx global>{`
-        .ops-errors-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); padding: 12px; color: var(--foreground-secondary); font-size: 13px; }
+        .ops-errors-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-muted); padding: 12px; color: var(--foreground-secondary); font-size: var(--fs-label);line-height:var(--lh-label); }
         .ops-errors-summary bdi { font-weight: 600; color: var(--foreground); }
       `}</style>
     </section>

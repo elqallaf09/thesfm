@@ -65,15 +65,15 @@ export function CompanyListingResultPage({ type }: ResultPageProps) {
         h1 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(26px, 3vw, 38px);
-          font-weight: 700;
+          font-size: var(--fs-page, 28px);
+          font-weight: 700;line-height:var(--lh-page, 38px);font-family:var(--font-heading);
         }
         p {
           max-width: 620px;
           margin: 12px auto 22px;
           color: var(--foreground-muted);
-          line-height: 1.8;
-          font-weight: 400;
+          line-height: var(--lh-body, 24px);
+          font-weight: 400;font-size:var(--fs-body, 15px);
         }
         .result-actions {
           display: flex;

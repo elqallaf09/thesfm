@@ -45,7 +45,7 @@
 .eyebrow {
   margin: 0 0 0.5rem;
   color: var(--primary);
-  font-size: 0.78rem;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -54,8 +54,8 @@
 .hero h1 {
   margin: 0;
   max-inline-size: 20ch;
-  font-size: clamp(1.65rem, 3vw, 2.55rem);
-  line-height: 1.15;
+  font-size: var(--fs-page);font-weight:700;
+  line-height: var(--lh-page);
   letter-spacing: -0.025em;
 }
 
@@ -67,8 +67,8 @@
   max-inline-size: 68ch;
   margin: 0.75rem 0 0;
   color: var(--foreground-secondary);
-  font-size: 0.96rem;
-  line-height: 1.65;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
 }
 
 .contextRow {
@@ -78,7 +78,7 @@
   gap: 0.5rem 1rem;
   margin-block-start: 1rem;
   color: var(--foreground-muted);
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
 }
 
 .contextRow span {
@@ -108,8 +108,8 @@
   padding: 0.6rem 0.9rem;
   background: var(--surface-elevated);
   color: var(--foreground);
-  font: inherit;
-  font-size: 0.82rem;
+  font: inherit;line-height:var(--lh-label);
+  font-size: var(--fs-label);
   font-weight: 650;
   cursor: pointer;
   transition: border-color var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
@@ -160,16 +160,16 @@
 .sectionHeading h2 {
   margin: 0;
   color: var(--foreground);
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
-  line-height: 1.3;
+  font-size: var(--fs-section);font-weight:700;
+  line-height: var(--lh-section);
 }
 
 .sectionHeading p {
   margin: 0.35rem 0 0;
   max-inline-size: 66ch;
   color: var(--foreground-muted);
-  font-size: 0.8rem;
-  line-height: 1.55;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
 }
 
 .sectionHeading a {
@@ -179,7 +179,7 @@
   gap: 0.35rem;
   padding-inline: 0.5rem;
   color: var(--primary);
-  font-size: 0.8rem;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
@@ -236,7 +236,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   color: var(--foreground-secondary);
-  font-size: 0.78rem;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 650;
 }
 
@@ -263,9 +263,9 @@
 .financialValue {
   min-inline-size: 0;
   color: var(--foreground);
-  font-family: var(--font-data);
-  font-size: clamp(1.25rem, 2.1vw, 1.75rem);
-  line-height: 1.2;
+  font-family: var(--font-mono);
+  font-size: var(--fs-kpi);font-weight:600;
+  line-height: var(--lh-kpi);
   letter-spacing: -0.025em;
   overflow-wrap: anywhere;
 }
@@ -274,15 +274,15 @@
   min-block-size: 2.4em;
   margin: 0;
   color: var(--foreground-muted);
-  font-size: 0.7rem;
-  line-height: 1.45;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption-prose);
 }
 
 .methodNote {
   margin: 0.85rem 0 0;
   color: var(--foreground-muted);
-  font-size: 0.72rem;
-  line-height: 1.5;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption-prose);
 }
 
 .healthGrid {
@@ -327,19 +327,19 @@
 .scoreRing small {
   color: var(--foreground-muted);
   font-family: var(--font-data);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
 }
 
 .scoreCard h3 {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);
 }
 
 .scoreCard p {
   margin: 0.35rem 0 0;
   color: var(--foreground-muted);
-  font-size: 0.73rem;
-  line-height: 1.5;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption-prose);
 }
 
 .indicatorGrid {
@@ -360,23 +360,23 @@
 
 .healthIndicator > span {
   color: var(--foreground-secondary);
-  font-size: 0.73rem;
+  font-size: var(--fs-caption);
   font-weight: 650;
-  line-height: 1.45;
+  line-height: var(--lh-caption);
 }
 
 .healthIndicator strong {
   color: var(--foreground);
-  font-family: var(--font-data);
-  font-size: clamp(1rem, 1.6vw, 1.3rem);
+  font-family: var(--font-mono);
+  font-size: var(--fs-kpi);font-weight:600;line-height:var(--lh-kpi);
   overflow-wrap: anywhere;
 }
 
 .healthIndicator small {
   min-block-size: 1.1em;
   color: var(--foreground-muted);
-  font-size: 0.62rem;
-  line-height: 1.4;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
 }
 
 .primaryGrid,
@@ -411,7 +411,7 @@
   gap: 1rem;
   margin-block-end: 0.75rem;
   color: var(--foreground-secondary);
-  font-size: 0.73rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
 }
 
 .chartLegend span {
@@ -461,7 +461,7 @@
   overflow-x: auto;
   color: var(--chart-label);
   font-family: var(--font-data);
-  font-size: 0.65rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
   text-align: center;
   scrollbar-width: thin;
 }
@@ -481,7 +481,7 @@
   justify-content: space-between;
   gap: 1rem;
   color: var(--foreground-secondary);
-  font-size: 0.74rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
 }
 
 .categoryItem bdi {
@@ -519,7 +519,7 @@
 
 .allocationCard h3 {
   margin: 0 0 0.85rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);
 }
 
 .allocationCard dl,
@@ -552,7 +552,7 @@
   gap: 0.4rem;
   color: var(--foreground-secondary);
   font-family: var(--font-data);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
 }
 
 .allocationCard dt small {
@@ -568,7 +568,7 @@
   margin: 0;
   color: var(--foreground);
   font-family: var(--font-data);
-  font-size: 0.8rem;
+  font-size: var(--fs-label);line-height:var(--lh-label);
   font-weight: 650;
   text-align: end;
   overflow-wrap: anywhere;
@@ -576,8 +576,8 @@
 
 .allocationCard p {
   color: var(--foreground-muted);
-  font-size: 0.75rem;
-  line-height: 1.55;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
 }
 
 .currencyNote {
@@ -589,8 +589,8 @@
   padding: 0.75rem;
   background: var(--info-soft);
   color: var(--foreground-secondary);
-  font-size: 0.72rem;
-  line-height: 1.5;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption-prose);
 }
 
 .currencyNote svg {
@@ -627,7 +627,7 @@
 .goalHeading h3 {
   min-inline-size: 0;
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);
   overflow-wrap: anywhere;
 }
 
@@ -637,7 +637,7 @@
   padding: 0.24rem 0.55rem;
   background: var(--surface-muted);
   color: var(--foreground-secondary);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
   font-weight: 700;
 }
 
@@ -660,8 +660,8 @@
 .goalUnavailable {
   margin: 0.75rem 0;
   color: var(--foreground-muted);
-  font-size: 0.7rem;
-  line-height: 1.45;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
 }
 
 .goalFacts {
@@ -677,14 +677,14 @@
 
 .goalFacts dt {
   color: var(--foreground-muted);
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
 }
 
 .goalFacts dd {
   margin: 0.18rem 0 0;
   color: var(--foreground-secondary);
   font-family: var(--font-data);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption);
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -723,14 +723,14 @@
 
 .attentionItem h3 {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);
 }
 
 .attentionItem p {
   margin: 0.25rem 0 0;
   color: var(--foreground-muted);
-  font-size: 0.68rem;
-  line-height: 1.45;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption-prose);
 }
 
 .attentionItem > a {
@@ -765,8 +765,8 @@
 .stateMessage p {
   max-inline-size: 50ch;
   margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.55;
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
 }
 
 .stateMessage a,
@@ -780,8 +780,8 @@
   padding-inline: 0.85rem;
   background: var(--primary);
   color: var(--primary-foreground);
-  font: inherit;
-  font-size: 0.73rem;
+  font: inherit;line-height:var(--lh-caption);
+  font-size: var(--fs-caption);
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
@@ -800,7 +800,7 @@
 
 .sourceState p {
   margin: 0;
-  font-size: 0.73rem;
+  font-size: var(--fs-caption);line-height:var(--lh-caption-prose);
 }
 
 .shortcutGrid {
@@ -851,8 +851,8 @@
   grid-column: 1 / -1;
   align-self: end;
   min-inline-size: 0;
-  font-size: 0.72rem;
-  line-height: 1.4;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
   overflow-wrap: anywhere;
 }
 
@@ -862,7 +862,7 @@
   padding: 0.8rem 1rem;
   background: var(--warning-soft);
   color: var(--foreground-secondary);
-  font-size: 0.75rem;
+  font-size: var(--fs-small);line-height:var(--lh-small);
 }
 
 .skeleton {
@@ -942,7 +942,7 @@
 @media (max-width: 430px) {
   .hero,
   .section { padding: 1rem; }
-  .hero h1 { font-size: 1.55rem; }
+  .hero h1 { font-size: var(--fs-page);font-weight:700;line-height:var(--lh-page); }
   .contextRow { align-items: flex-start; flex-direction: column; }
   .indicatorGrid { grid-template-columns: 1fr; }
   .scoreCard { align-items: flex-start; }
@@ -958,7 +958,7 @@
   .shortcutGrid { grid-template-columns: 1fr; }
   .goalHeading { flex-direction: column; }
   .sectionHeading { flex-direction: column; }
-  .financialValue { font-size: 1.2rem; }
+  .financialValue { font-size: var(--fs-kpi);font-family:var(--font-mono);font-weight:600;line-height:var(--lh-kpi); }
 }
 
 @media (prefers-reduced-motion: reduce) {

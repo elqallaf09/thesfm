@@ -122,16 +122,16 @@ export default function AdCampaignCalculatorPage() {
         .home{min-height:44px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);padding:10px 16px;font-weight:600;cursor:pointer;font-family:var(--font-ui)}
         .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:22px}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-        label{display:block;font-size:13px;font-weight:500;color:var(--foreground-secondary);margin-bottom:7px}
-        input,select{width:100%;height:var(--control-h-lg);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--control-background);color:var(--foreground);padding:0 13px;font:500 15px/1.5 var(--font-ui);outline:none}
+        label{display:block;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:500;color:var(--foreground-secondary);margin-bottom:7px}
+        input,select{width:100%;height:var(--control-h-lg);border:1px solid var(--border-strong);border-radius:var(--radius-control);background:var(--control-background);color:var(--foreground);padding:0 13px;font:500 var(--fs-body)/var(--lh-body) var(--font-body);outline:none}
         input:focus,select:focus,.home:focus-visible,.save:focus-visible{border-color:var(--focus-ring);outline:2px solid var(--focus-ring);outline-offset:2px;box-shadow:var(--focus-shadow)}
         .platform{display:grid;grid-template-columns:130px 1fr 54px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
         .bar{height:24px;border-radius:var(--radius-pill);overflow:hidden;background:var(--surface-muted);display:flex;margin-top:14px}
         .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
         .kpi{background:var(--surface-muted);border:1px solid var(--border);border-radius:var(--radius-card);padding:16px;text-align:center}
-        .kpi strong{display:block;font-size:22px;color:var(--foreground);font-family:var(--font-data);font-weight:600}
-        .kpi span{font-size:12px;color:var(--foreground-muted);font-weight:500}
-        .table-wrap{max-width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:var(--radius-card)}table{width:100%;min-width:620px;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid var(--border);text-align:start;font-size:13px}th{background:var(--surface-muted);color:var(--foreground-secondary);font-weight:500}td:not(:first-child){font-family:var(--font-data)}
+        .kpi strong{display:block;font-size:var(--fs-kpi);line-height:var(--lh-kpi);color:var(--foreground);font-family:var(--font-mono);font-weight:600}
+        .kpi span{font-size:var(--fs-label);line-height:var(--lh-label);color:var(--foreground-muted);font-weight:500}
+        .table-wrap{max-width:100%;overflow-x:auto;margin-top:14px;border:1px solid var(--border);border-radius:var(--radius-card)}table{width:100%;min-width:620px;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid var(--border);text-align:start;font-size:var(--fs-label);line-height:var(--lh-label);}th{background:var(--surface-muted);color:var(--foreground-secondary);font-weight:500}td:not(:first-child){font-family:var(--font-data)}
         .save{margin-top:16px;width:100%;height:50px;border:1px solid var(--primary);border-radius:var(--radius-control);background:var(--primary);color:var(--primary-foreground);font-weight:600;cursor:pointer;font-family:var(--font-ui)}
         .save:hover:not(:disabled),.home:hover{background:var(--primary-hover);border-color:var(--primary-hover)}
         .save:disabled{opacity:.55;cursor:not-allowed}
@@ -142,7 +142,7 @@ export default function AdCampaignCalculatorPage() {
           <button type="button" className="home" onClick={() => router.push('/dashboard')}>{dir === 'rtl' ? '→' : '←'} {t('ad_home')}</button>
         </div>
         <div className="panel" style={{ marginBottom: 16 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 8 }}>🎯 {t('ad_title')}</h1>
+          <h1 style={{ fontSize: 'var(--fs-page)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-page)', fontWeight: '700', marginBottom: 8 }}>🎯 {t('ad_title')}</h1>
           <p style={{ color: 'var(--foreground-secondary)', lineHeight: 1.8 }}>{t('ad_description')}</p>
         </div>
         <div className="grid">
@@ -175,7 +175,7 @@ export default function AdCampaignCalculatorPage() {
             </div>
           </div>
           <div className="panel">
-            <h2 style={{ fontSize: 18, fontWeight: 600 }}>{t('ad_outputs')}</h2>
+            <h2 style={{ fontSize: 'var(--fs-section)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-section)', fontWeight: '700' }}>{t('ad_outputs')}</h2>
             <div className="bar">
               {rows.map(row => <div key={row.id} title={row.name} style={{ width: `${row.pct}%`, background: row.color }} />)}
             </div>

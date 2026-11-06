@@ -55,9 +55,9 @@ describe('business and company visual-system contract', () => {
       expect(combined).toContain(`var(${token})`);
     }
 
-    expect(businessRoutes.sales).toContain('font-family:var(--font-data)');
-    expect(businessRoutes.employees).toContain('font-family:var(--font-data)');
-    expect(businessRoutes.documents).toContain('font-family: var(--font-data)');
+    expect(businessRoutes.sales).toContain('font-family:var(--font-mono)');
+    expect(businessRoutes.employees).toContain('font-family:var(--font-mono)');
+    expect(businessRoutes.documents).toContain('font-family: var(--font-mono)');
   });
 
   it('lets the workspace shell own route width and sidebar geometry', () => {

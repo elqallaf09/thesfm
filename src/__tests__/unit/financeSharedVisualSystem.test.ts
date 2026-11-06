@@ -45,8 +45,8 @@ describe('shared Personal Finance visual-system guard', () => {
 
   it('keeps UI typography separate from numeric financial typography', () => {
     expect(styles).toContain('font-family:var(--font-ui)');
-    expect(styles).toMatch(/\.money-amount\{font-family:var\(--font-data\)/);
-    expect(styles).toMatch(/\.expense-row-amount>b\{font-family:var\(--font-data\)/);
+    expect(styles).toMatch(/\.money-amount\{font-family:var\(--font-mono\)/);
+    expect(styles).toMatch(/\.expense-row-amount>b\{font-family:var\(--font-mono\)/);
     expect(styles).toMatch(/\.monthly-grid b\{font-family:var\(--font-data\)/);
     expect(styles).not.toMatch(/Tajawal|Arial|font-(?:weight:)?(?:800|850|900|950)/i);
   });

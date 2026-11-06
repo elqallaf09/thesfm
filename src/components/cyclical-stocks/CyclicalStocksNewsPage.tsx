@@ -2683,32 +2683,32 @@ export function CyclicalStocksNewsPage() {
           background: color-mix(in srgb, var(--surface) 12%, transparent);
           color: var(--foreground);
           font-weight: 600;
-          font-size: 13px;
-          box-shadow: var(--shadow-card);
+          font-size: var(--fs-label, 13px);
+          box-shadow: var(--shadow-card);line-height:var(--lh-label, 20px);
         }
         .hero h1 {
           margin: 0;
-          font-size: clamp(32px, 4vw, 50px);
-          line-height: 1.08;
+          font-size: var(--fs-page, 28px);
+          line-height: var(--lh-page, 38px);
           letter-spacing: 0;
-          font-weight: 600;
+          font-weight: 700;
           text-wrap: balance;
-          text-shadow: none;
+          text-shadow: none;font-family:var(--font-heading);
         }
         .hero p {
           margin: 0;
           max-width: 820px;
           color: color-mix(in srgb, var(--hero-foreground) 88%, transparent);
-          font-size: 16px;
-          line-height: 1.85;
+          font-size: var(--fs-body, 15px);
+          line-height: var(--lh-body, 24px);
           font-weight: 400;
         }
         .hero-meta {
           display: flex;
           flex-wrap: wrap;
           color: color-mix(in srgb, var(--hero-foreground) 82%, transparent);
-          font-size: 13px;
-          font-weight: 500;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
         .hero-meta span {
           min-height: 34px;
@@ -2745,8 +2745,8 @@ export function CyclicalStocksNewsPage() {
           display: block;
           margin-top: 12px;
           color: var(--hero-foreground);
-          font-size: 20px;
-          line-height: 1.35;
+          font-size: var(--fs-body, 15px);
+          line-height: var(--lh-body, 24px);
         }
         .refresh-button,
         .ghost-action,
@@ -2765,10 +2765,10 @@ export function CyclicalStocksNewsPage() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font: 600 14px var(--font-ui);
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           cursor: pointer;
           text-decoration: none;
-          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;line-height:var(--lh-label, 20px);
         }
         .refresh-button {
           background: var(--surface-muted);
@@ -2874,7 +2874,7 @@ export function CyclicalStocksNewsPage() {
           height: 32px;
           overflow: hidden;
           color: var(--accent);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
         }
         .ticker-item .ticker-logo span {
           display: inline-flex;
@@ -2885,8 +2885,8 @@ export function CyclicalStocksNewsPage() {
         }
         .ticker-item strong {
           color: var(--foreground);
-          font-size: 14px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .ticker-item span {
           display: block;
@@ -2894,8 +2894,8 @@ export function CyclicalStocksNewsPage() {
           color: var(--foreground-secondary);
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
         .ticker-values {
           display: flex;
@@ -2910,8 +2910,8 @@ export function CyclicalStocksNewsPage() {
           color: var(--foreground-muted);
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .ticker-values b,
         .metric-card strong,
@@ -2944,9 +2944,9 @@ export function CyclicalStocksNewsPage() {
           background: transparent;
           color: var(--foreground-secondary);
           padding: 0 16px;
-          font: 600 14px var(--font-ui);
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           cursor: pointer;
-          transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+          transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;line-height:var(--lh-label, 20px);
         }
         .tab:hover {
           background: color-mix(in srgb, var(--accent) 8%, transparent);
@@ -3011,9 +3011,9 @@ export function CyclicalStocksNewsPage() {
         .section-header h2 {
           margin: 0;
           color: var(--foreground);
-          font-size: clamp(20px, 2vw, 25px);
-          font-weight: 600;
-          line-height: 1.25;
+          font-size: var(--fs-section, 20px);
+          font-weight: 700;
+          line-height: var(--lh-section, 30px);font-family:var(--font-heading);
         }
         .section-header p,
         .paragraph,
@@ -3022,8 +3022,8 @@ export function CyclicalStocksNewsPage() {
         .accordion-card p {
           margin: 0;
           color: var(--foreground-secondary);
-          font-size: 14px;
-          line-height: 1.85;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           font-weight: 400;
         }
         .metrics-grid {
@@ -3056,24 +3056,24 @@ export function CyclicalStocksNewsPage() {
         .metric-card small {
           display: block;
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-small, 14px);
+          font-weight: 600;line-height:var(--lh-small, 22px);
         }
         .metric-card strong {
           display: block;
           margin-top: 4px;
           color: var(--foreground);
-          font-size: 19px;
-          line-height: 1.2;
-          font-weight: 600;
+          font-size: var(--fs-kpi, 26px);
+          line-height: var(--lh-kpi, 32px);
+          font-weight: 600;font-family:var(--font-mono);
         }
         .metric-card em {
           display: block;
           margin-top: 5px;
           color: var(--foreground-muted);
-          font-size: 12px;
+          font-size: var(--fs-caption, 12px);
           font-style: normal;
-          font-weight: 500;
+          font-weight: 500;line-height:var(--lh-caption, 18px);
         }
         .overview-grid {
           display: grid;
@@ -3109,8 +3109,8 @@ export function CyclicalStocksNewsPage() {
           background: color-mix(in srgb, var(--surface) 72%, transparent);
           color: var(--danger);
           padding: 10px 12px;
-          font-size: 12px;
-          line-height: 1.7;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           font-weight: 500;
         }
         .dev-hint strong {
@@ -3147,23 +3147,23 @@ export function CyclicalStocksNewsPage() {
         .sector-stat-row span {
           display: block;
           color: var(--foreground-secondary);
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
-          line-height: 1.45;
+          line-height: var(--lh-label, 20px);
         }
         .macro-item strong,
         .sector-stat-row strong {
           display: block;
           color: var(--foreground);
-          font-size: 22px;
-          line-height: 1.2;
-          font-weight: 600;
+          font-size: var(--fs-kpi, 26px);
+          line-height: var(--lh-kpi, 32px);
+          font-weight: 600;font-family:var(--font-mono);
         }
         .macro-item small {
           display: block;
           color: var(--foreground-muted);
-          font-size: 12px;
-          line-height: 1.6;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           font-weight: 600;
         }
         .macro-detail-row {
@@ -3177,13 +3177,13 @@ export function CyclicalStocksNewsPage() {
         }
         .macro-detail-row span {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .macro-detail-row b {
           color: var(--foreground);
-          font-size: 12px;
-          line-height: 1.45;
+          font-size: var(--fs-caption, 12px);
+          line-height: var(--lh-caption, 18px);
           font-weight: 600;
           text-align: end;
         }
@@ -3211,8 +3211,8 @@ export function CyclicalStocksNewsPage() {
           color: var(--foreground-muted);
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--fs-label, 13px);
+          font-weight: 500;line-height:var(--lh-label, 20px);
         }
         .bar-track {
           block-size: 12px;
@@ -3255,8 +3255,8 @@ export function CyclicalStocksNewsPage() {
         .mover-list h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 15px;
-          font-weight: 600;
+          font-size: var(--fs-card-title, 17px);
+          font-weight: 600;line-height:var(--lh-card-title, 26px);font-family:var(--font-body);
         }
         .mover-row {
           display: grid;
@@ -3298,8 +3298,8 @@ export function CyclicalStocksNewsPage() {
         .mover-row small,
         .muted {
           color: var(--foreground-secondary);
-          font-size: 13px;
-          font-weight: 500;
+          font-size: var(--fs-small, 14px);
+          font-weight: 500;line-height:var(--lh-small, 22px);
         }
         .mover-row small {
           display: block;
@@ -3315,8 +3315,8 @@ export function CyclicalStocksNewsPage() {
         }
         .mover-values b {
           color: var(--foreground);
-          font-size: 13px;
-          font-weight: 600;
+          font-size: var(--fs-label, 13px);
+          font-weight: 600;line-height:var(--lh-label, 20px);
         }
         .mover-list-toggle {
           justify-self: start;
@@ -3396,14 +3396,14 @@ export function CyclicalStocksNewsPage() {
           color: var(--foreground);
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-size: 16px;
-          font-weight: 600;
+          font-size: var(--fs-body, 15px);
+          font-weight: 600;line-height:var(--lh-body, 24px);
         }
         .stock-card-head > div span,
         .company-cell > div span {
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .stock-logo {
           flex: 0 0 auto;
@@ -3437,16 +3437,16 @@ export function CyclicalStocksNewsPage() {
         .stock-metrics small {
           display: block;
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-small, 14px);
+          font-weight: 600;line-height:var(--lh-small, 22px);
         }
         .stock-metrics b {
           display: block;
           margin-top: 4px;
           overflow-wrap: break-word;
           color: var(--foreground);
-          font-size: 14px;
-          line-height: 1.45;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           font-weight: 600;
         }
         .stock-note {
@@ -3458,9 +3458,9 @@ export function CyclicalStocksNewsPage() {
           border-radius: var(--radius-control);
           background: color-mix(in srgb, var(--surface) 90%, transparent);
           padding: 10px;
-          font-size: 12px;
+          font-size: var(--fs-small, 14px);
           font-weight: 500;
-          line-height: 1.65;
+          line-height: var(--lh-small, 22px);
         }
         .stock-actions,
         .article-footer {
@@ -3510,8 +3510,8 @@ export function CyclicalStocksNewsPage() {
         }
         .filter-bar label > span {
           color: var(--foreground-secondary);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-label, 13px);
+          font-weight: 600;line-height:var(--lh-label, 20px);
         }
         .search-field div {
           position: relative;
@@ -3532,8 +3532,8 @@ export function CyclicalStocksNewsPage() {
           background: var(--surface);
           color: var(--foreground);
           padding: 0 12px;
-          font: 600 14px var(--font-ui);
-          box-shadow: var(--shadow-card);
+          font: 600 var(--fs-body, 15px)/var(--lh-body, 24px) var(--font-ui);
+          box-shadow: var(--shadow-card);line-height:var(--lh-body, 24px);
         }
         .search-field input {
           padding-inline-start: 38px;
@@ -3564,7 +3564,7 @@ export function CyclicalStocksNewsPage() {
           border-bottom: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
           text-align: start;
           vertical-align: middle;
-          font-size: 13px;
+          font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
         }
         .stock-table th {
           position: sticky;
@@ -3612,8 +3612,8 @@ export function CyclicalStocksNewsPage() {
         .article-meta {
           flex-wrap: wrap;
           color: var(--foreground-muted);
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .news-card.featured .article-meta,
         .news-card.featured p {
@@ -3622,17 +3622,17 @@ export function CyclicalStocksNewsPage() {
         .news-card h3 {
           margin: 0;
           color: var(--foreground);
-          font-size: 18px;
-          line-height: 1.55;
+          font-size: var(--fs-card-title, 17px);
+          line-height: var(--lh-card-title, 26px);
           font-weight: 600;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
-          overflow: hidden;
+          overflow: hidden;font-family:var(--font-body);
         }
         .news-card.featured h3 {
           color: var(--foreground);
-          font-size: clamp(20px, 2vw, 25px);
+          font-size: var(--fs-card-title, 17px);line-height:var(--lh-card-title, 26px);font-weight:600;font-family:var(--font-body);
         }
         .news-card p {
           display: -webkit-box;
@@ -3647,8 +3647,8 @@ export function CyclicalStocksNewsPage() {
           background: color-mix(in srgb, var(--accent) 8%, transparent);
           padding: 10px 12px;
           color: var(--foreground-secondary);
-          font-size: 13px;
-          line-height: 1.7;
+          font-size: var(--fs-label, 13px);
+          line-height: var(--lh-label, 20px);
         }
         .news-card.featured blockquote {
           color: var(--foreground-secondary);
@@ -3740,8 +3740,8 @@ export function CyclicalStocksNewsPage() {
         .sector-card h3 {
           margin: 0 0 6px;
           color: var(--foreground);
-          font-size: 17px;
-          font-weight: 600;
+          font-size: var(--fs-card-title, 17px);
+          font-weight: 600;line-height:var(--lh-card-title, 26px);font-family:var(--font-body);
         }
         .sector-stat-grid {
           display: grid;
@@ -3766,8 +3766,8 @@ export function CyclicalStocksNewsPage() {
         .sector-drivers strong {
           width: 100%;
           color: var(--foreground);
-          font-size: 13px;
-          font-weight: 600;
+          font-size: var(--fs-label, 13px);
+          font-weight: 600;line-height:var(--lh-label, 20px);
         }
         .sector-drivers span {
           border: 1px solid color-mix(in srgb, var(--accent) 10%, transparent);
@@ -3775,8 +3775,8 @@ export function CyclicalStocksNewsPage() {
           background: color-mix(in srgb, var(--surface) 86%, transparent);
           color: var(--foreground-secondary);
           padding: 6px 9px;
-          font-size: 12px;
-          font-weight: 600;
+          font-size: var(--fs-caption, 12px);
+          font-weight: 600;line-height:var(--lh-caption, 18px);
         }
         .accordion-list {
           display: grid;
@@ -3801,9 +3801,9 @@ export function CyclicalStocksNewsPage() {
           justify-content: space-between;
           align-items: center;
           gap: 12px;
-          font: 600 14px var(--font-ui);
+          font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           cursor: pointer;
-          text-align: start;
+          text-align: start;line-height:var(--lh-label, 20px);
         }
         .accordion-card p {
           padding: 0 14px 14px;
@@ -3817,15 +3817,15 @@ export function CyclicalStocksNewsPage() {
         .state-box strong {
           display: block;
           color: var(--foreground);
-          font-size: 15px;
-          font-weight: 600;
+          font-size: var(--fs-small, 14px);
+          font-weight: 600;line-height:var(--lh-small, 22px);
         }
         .footer-note p,
         .state-box p {
           margin: 4px 0 0;
           color: var(--foreground-secondary);
-          font-size: 13px;
-          line-height: 1.75;
+          font-size: var(--fs-small, 14px);
+          line-height: var(--lh-small, 22px);
           font-weight: 400;
         }
         .state-box {
@@ -3853,9 +3853,9 @@ export function CyclicalStocksNewsPage() {
           border: 1px solid transparent;
           border-radius: var(--radius-pill);
           padding: 6px 10px;
-          font-size: 12px;
+          font-size: var(--fs-label, 13px);
           font-weight: 600;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-label, 20px);
         }
         .tone-positive {
           background: color-mix(in srgb, var(--success) 12%, transparent);
@@ -3989,7 +3989,7 @@ export function CyclicalStocksNewsPage() {
             gap: 16px;
           }
           .hero h1 {
-            font-size: 30px;
+            font-size: var(--fs-page, 28px);line-height:var(--lh-page, 38px);font-weight:700;font-family:var(--font-heading);
           }
           .hero-panel {
             border-radius: var(--radius-control);

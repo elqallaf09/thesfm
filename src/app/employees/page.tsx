@@ -643,7 +643,7 @@ const employeeStyles = `
   .business-stat-grid article,.business-form-card,.business-table-card,.employee-card{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-panel);box-shadow:var(--shadow-card)}
   .business-stat-grid article{padding:16px;min-width:0}
   .business-stat-grid span{display:block;color:var(--foreground-muted);font-size:.88rem;font-weight:500}
-  .business-stat-grid strong{display:block;margin-top:8px;color:var(--foreground);font-family:var(--font-data);font-size:1.25rem;overflow-wrap:anywhere}
+  .business-stat-grid strong{display:block;margin-top:8px;color:var(--foreground);font-family:var(--font-mono);font-size:var(--fs-kpi);font-weight:600;line-height:var(--lh-kpi);overflow-wrap:anywhere}
   .business-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(160px,210px) minmax(160px,210px) auto;gap:12px;align-items:center}
   .business-search{min-height:48px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-card);display:flex;align-items:center;gap:10px;padding:0 12px;color:var(--foreground-muted)}
   .business-search input,.business-toolbar select,.business-form-grid input,.business-form-grid select,.business-form-grid textarea{width:100%;min-width:0;border:1px solid var(--border-strong);background:var(--control-background);color:var(--foreground);border-radius:var(--radius-control);padding:11px 12px;font-family:inherit;font-weight:500;outline:none}
@@ -664,17 +664,17 @@ const employeeStyles = `
   .employee-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr));gap:14px}
   .employee-card{padding:16px;display:grid;gap:14px}
   .employee-card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
-  .employee-card h2{margin:0;color:var(--foreground);font-size:1.08rem}.employee-card p{margin:6px 0 0;color:var(--foreground-muted);font-weight:400}
+  .employee-card h2{margin:0;color:var(--foreground);font-size:var(--fs-card-title);font-weight:600;line-height:var(--lh-card-title);}.employee-card p{margin:6px 0 0;color:var(--foreground-muted);font-weight:400}
   .employee-card dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0}
   .employee-card dl div{padding:11px;border-radius:var(--radius-control);background:var(--surface-muted);border:1px solid var(--border);min-width:0}
-  .employee-card dt{color:var(--foreground-muted);font-weight:500;font-size:.82rem}.employee-card dd{margin:5px 0 0;color:var(--foreground);font-weight:600;overflow-wrap:anywhere}
+  .employee-card dt{color:var(--foreground-muted);font-weight:500;font-size:var(--fs-label);line-height:var(--lh-label);}.employee-card dd{margin:5px 0 0;color:var(--foreground);font-weight:600;overflow-wrap:anywhere}
   .business-table-card{padding:0;overflow:hidden}
   .business-table-wrap{overflow:auto;max-width:100%}
   table{width:100%;border-collapse:collapse;min-width:920px}
   th,td{padding:14px 13px;text-align:start;border-bottom:1px solid var(--border);vertical-align:middle}
-  th{background:var(--surface-muted);color:var(--foreground-muted);font-size:.82rem;font-weight:600;position:sticky;top:0;z-index:1}
+  th{background:var(--surface-muted);color:var(--foreground-muted);font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600;position:sticky;top:0;z-index:1}
   td{color:var(--foreground);font-weight:400}
-  .business-status{display:inline-flex;border-radius:var(--radius-pill);padding:5px 10px;font-size:.78rem;font-weight:600;background:var(--success-soft);color:var(--success);white-space:nowrap}
+  .business-status{display:inline-flex;border-radius:var(--radius-pill);padding:5px 10px;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600;background:var(--success-soft);color:var(--success);white-space:nowrap}
   .status-on_leave{background:var(--warning-soft);color:var(--warning)}.status-inactive{background:var(--danger-soft);color:var(--danger)}
   .business-row-actions{display:flex;flex-wrap:wrap;gap:8px}
   .business-row-actions button{border:1px solid var(--border);background:var(--surface);color:var(--primary);border-radius:var(--radius-control);min-height:34px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-weight:600;cursor:pointer}

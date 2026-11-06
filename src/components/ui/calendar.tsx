@@ -36,7 +36,7 @@ function Calendar({
         month_grid: "w-full border-collapse space-y-1",
         weekdays: "flex",
         weekday:
-          "w-9 rounded-[var(--radius-control)] text-[0.8rem] font-normal text-muted-foreground",
+          "w-9 rounded-[var(--radius-control)] text-[length:var(--fs-caption)] leading-[var(--lh-caption)] font-normal text-muted-foreground",
         week: "flex w-full mt-2",
         day: "relative h-9 w-9 p-0 text-center text-sm [&.day-range-end]:rounded-e-[var(--radius-control)] [&.day-outside]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-s-[var(--radius-control)] last:[&:has([aria-selected])]:rounded-e-[var(--radius-control)] focus-within:relative focus-within:z-20",
         day_button: cn(

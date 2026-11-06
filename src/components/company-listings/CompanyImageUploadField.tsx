@@ -285,9 +285,9 @@ function ImageUploadStyles() {
       }
       .image-upload-label {
         color: var(--foreground-secondary);
-        font-size: 13px;
+        font-size: var(--fs-label, 13px);
         font-weight: 500;
-        line-height: 1.5;
+        line-height: var(--lh-label, 20px);
       }
       .image-upload-box,
       .image-upload-empty {
@@ -320,14 +320,14 @@ function ImageUploadStyles() {
         justify-content: center;
         gap: 8px;
         padding: 0 14px;
-        font: 600 13px/1.25 var(--font-ui);
+        font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
-        transition: transform .16s ease, border-color .16s ease, background .16s ease;
+        transition: transform .16s ease, border-color .16s ease, background .16s ease;line-height:var(--lh-label, 20px);
       }
       .image-upload-trigger span,
       .image-upload-empty span {
         color: inherit;
-        font: inherit;
+        font: inherit;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
       }
       .image-upload-trigger:hover,
       .image-upload-trigger:focus-visible,
@@ -387,9 +387,9 @@ function ImageUploadStyles() {
         place-items: center;
         color: var(--accent-hover);
         background: var(--accent-soft);
-        font-size: 24px;
+        font-size: var(--fs-body, 15px);
         font-weight: 600;
-        letter-spacing: 2px;
+        letter-spacing: 2px;line-height:var(--lh-body, 24px);
       }
       .image-upload-empty {
         min-height: 72px;
@@ -406,7 +406,7 @@ function ImageUploadStyles() {
       .image-upload-actions button {
         flex: 1 1 150px;
         min-height: 38px;
-        font-size: 12px;
+        font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
       }
       .image-upload-actions .danger {
         color: var(--danger);
@@ -422,8 +422,8 @@ function ImageUploadStyles() {
         padding: 10px 12px;
         display: block;
         font-weight: 500;
-        font-size: 13px;
-        line-height: 1.65;
+        font-size: var(--fs-small, 14px);
+        line-height: var(--lh-small, 22px);
       }
       .image-upload-warning {
         color: var(--warning);

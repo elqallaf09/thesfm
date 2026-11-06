@@ -275,10 +275,10 @@ export function PageTabs({
           align-items: center;
           justify-content: center;
           gap: 8px;
-          font: 500 13px/1.45 var(--font-ui);
+          font: 500 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
           cursor: pointer;
           transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-          white-space: nowrap;
+          white-space: nowrap;line-height:var(--lh-label, 20px);
         }
         .page-section-tabs.charity-tabs {
           display: grid;
@@ -293,8 +293,8 @@ export function PageTabs({
           min-width: 0;
           min-height: 46px;
           padding: 8px 12px;
-          font-size: 13.5px;
-          line-height: 1.35;
+          font-size: var(--fs-label, 13px);
+          line-height: var(--lh-label, 20px);
           white-space: normal;
         }
         .page-section-tabs button span {
@@ -329,8 +329,8 @@ export function PageTabs({
           background: var(--surface-muted);
           color: var(--foreground-secondary);
           padding: 3px 7px;
-          font-size: 12px;
-          line-height: 1;
+          font-size: var(--fs-label, 13px);
+          line-height: var(--lh-label, 20px);
         }
         .page-section-tabs button.active b {
           background: var(--primary);
@@ -384,7 +384,7 @@ export function PageTabs({
 
           .page-section-tabs-select-label {
             color: var(--foreground-muted);
-            font: 500 12px/1.5 var(--font-ui);
+            font: 500 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);line-height:var(--lh-label, 20px);
           }
 
           .page-section-tabs-select select {
@@ -395,7 +395,7 @@ export function PageTabs({
             background: var(--surface);
             color: var(--foreground);
             padding-inline: 14px 40px;
-            font: 500 14px/1.5 var(--font-ui);
+            font: 500 var(--fs-body, 15px)/var(--lh-body, 24px) var(--font-ui);line-height:var(--lh-body, 24px);
           }
         }
         @media (max-width: 1180px) and (min-width: 721px) {

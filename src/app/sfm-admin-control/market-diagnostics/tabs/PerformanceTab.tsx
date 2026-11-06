@@ -70,10 +70,10 @@ export function PerformanceTab() {
         .ops-performance-process { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 10px; }
         .ops-performance-process article { min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-elevated); padding: 12px; display: grid; gap: 4px; }
         .ops-performance-process strong { color: var(--foreground); font: 600 16px var(--font-data); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-        .ops-performance-process span { color: var(--foreground-muted); font-size: 12px; font-weight: 700; }
-        .ops-performance-process em { color: var(--foreground-muted); font-size: 12px; font-style: normal; opacity: .8; }
+        .ops-performance-process span { color: var(--foreground-muted); font-size: var(--fs-label);line-height:var(--lh-label); font-weight: 700; }
+        .ops-performance-process em { color: var(--foreground-muted); font-size: var(--fs-small);line-height:var(--lh-small); font-style: normal; opacity: .8; }
         .ops-performance-slowest ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-        .ops-performance-slowest li { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; background: var(--surface-muted); font-size: 12.5px; }
+        .ops-performance-slowest li { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; background: var(--surface-muted); font-size: var(--fs-small);line-height:var(--lh-small); }
         .ops-performance-not-instrumented { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
       `}</style>
     </section>

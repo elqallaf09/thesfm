@@ -46,6 +46,18 @@ describe('visual-system source guard', () => {
     )).not.toThrow();
   });
 
+  it('accepts the shared typography roles without allowing direct or unknown font families', () => {
+    for (const role of ['body', 'heading', 'mono', 'ui', 'data']) {
+      expect(probe(`.text { font-family: var(--font-${role}); }`, 'src/probe.css').passed).toBe(true);
+      expect(probe(`export const text = { fontFamily: 'var(--font-${role})' };`).passed).toBe(true);
+    }
+    for (const declaration of ['Cairo', 'Arial', 'var(--font-page-local)', 'var(--font-heading-alternate)']) {
+      const result = probe(`.text { font-family: ${declaration}; }`, 'src/probe.css');
+      expect(result.passed).toBe(false);
+      expect(result.output).toContain('legacy or direct font declaration');
+    }
+  });
+
   it('rejects built-in and raw arbitrary Tailwind depth utilities', () => {
     const result = probe(`
       export const legacyRadiusClass = 'rounded-lg';

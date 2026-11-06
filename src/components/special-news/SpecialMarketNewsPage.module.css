@@ -40,24 +40,24 @@
   min-height: 28px;
   padding: 5px 10px;
   border-radius: var(--radius-pill);
-  font-size: 0.78rem;
+  font-size: var(--fs-label, 13px);
   font-weight: 700;
   color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);line-height:var(--lh-label, 20px);
 }
 
 .hero h1 {
   margin: 9px 0 7px;
-  font-size: clamp(1.55rem, 3vw, 2.45rem);
-  line-height: 1.15;
-  color: var(--foreground);
+  font-size: var(--fs-page, 28px);
+  line-height: var(--lh-page, 38px);
+  color: var(--foreground);font-weight:700;font-family:var(--font-heading);
 }
 
 .hero p {
   max-width: 920px;
   margin: 0;
-  line-height: 1.8;
-  color: var(--muted-foreground);
+  line-height: var(--lh-body, 24px);
+  color: var(--muted-foreground);font-size:var(--fs-body, 15px);
 }
 
 .refreshButton {
@@ -73,7 +73,7 @@
   color: var(--foreground);
   font: inherit;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
 }
 
 .refreshButton:disabled {
@@ -108,13 +108,13 @@
 }
 
 .methodCard strong {
-  font-size: 0.92rem;
+  font-size: var(--fs-small, 14px);line-height:var(--lh-small, 22px);
 }
 
 .methodCard p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
-  line-height: 1.65;
+  line-height: var(--lh-small, 22px);font-size:var(--fs-small, 14px);
 }
 
 .priceRule {
@@ -149,9 +149,9 @@
   border-inline-end: 1px solid var(--border);
   background: color-mix(in srgb, var(--primary) 9%, var(--card));
   color: var(--foreground);
-  font-size: 0.8rem;
+  font-size: var(--fs-label, 13px);
   font-weight: 700;
-  white-space: nowrap;
+  white-space: nowrap;line-height:var(--lh-label, 20px);
 }
 
 .tickerViewport {
@@ -192,30 +192,30 @@
 .metalName {
   direction: rtl;
   color: var(--foreground);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: var(--fs-caption, 12px);
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .metalSymbol {
   color: var(--muted-foreground);
   font-family: var(--font-data);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .metalTickerItem strong {
   color: var(--foreground);
   font-family: var(--font-data);
-  font-size: 0.9rem;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .metalTickerItem small {
   color: var(--muted-foreground);
-  font-size: 0.66rem;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .metalChange {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: var(--fs-caption, 12px);
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .metalChange[data-direction='up'] {
@@ -282,7 +282,7 @@
   outline: 0;
   background: transparent;
   color: var(--foreground);
-  font: inherit;
+  font: inherit;line-height:var(--lh-body, 24px);
 }
 
 .statusMeta {
@@ -291,7 +291,7 @@
   justify-content: flex-end;
   gap: 8px 14px;
   color: var(--muted-foreground);
-  font-size: 0.82rem;
+  font-size: var(--fs-label, 13px);line-height:var(--lh-label, 20px);
 }
 
 .statusMeta span {
@@ -324,7 +324,7 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--muted-foreground);
-  font-size: 0.76rem;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .source,
@@ -355,8 +355,8 @@
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--primary) 8%, transparent);
   color: var(--foreground);
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: var(--fs-caption, 12px);
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .tags .ticker {
@@ -373,13 +373,13 @@
 }
 
 .quote strong {
-  font-size: 1.08rem;
-  color: var(--foreground);
+  font-size: var(--fs-body, 15px);
+  color: var(--foreground);line-height:var(--lh-body, 24px);
 }
 
 .quote span {
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: var(--fs-label, 13px);
+  font-weight: 700;line-height:var(--lh-label, 20px);
 }
 
 .quote span[data-direction='up'] {
@@ -397,14 +397,14 @@
 .quote small {
   margin-inline-start: auto;
   color: var(--muted-foreground);
-  font-size: 0.68rem;
+  font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px);
 }
 
 .card h2 {
   margin: 4px 0 9px;
-  font-size: 1rem;
-  line-height: 1.55;
-  color: var(--foreground);
+  font-size: var(--fs-card-title, 17px);
+  line-height: var(--lh-card-title, 26px);
+  color: var(--foreground);font-weight:600;font-family:var(--font-heading);
 }
 
 .summary {
@@ -420,8 +420,8 @@
 .companies {
   margin: 12px 0 0;
   color: var(--foreground);
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: var(--fs-caption, 12px);
+  font-weight: 700;line-height:var(--lh-caption, 18px);
 }
 
 .cardFooter {
@@ -435,8 +435,8 @@
 
 .verification {
   color: var(--muted-foreground);
-  font-size: 0.7rem;
-  text-transform: capitalize;
+  font-size: var(--fs-caption, 12px);
+  text-transform: capitalize;line-height:var(--lh-caption, 18px);
 }
 
 .cardFooter a {
@@ -444,9 +444,9 @@
   align-items: center;
   gap: 6px;
   color: var(--primary);
-  font-size: 0.8rem;
+  font-size: var(--fs-caption, 12px);
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: none;line-height:var(--lh-caption, 18px);
 }
 
 .cardFooter a:hover {
@@ -480,14 +480,14 @@
 
 .emptyState h2 {
   margin: 4px 0 0;
-  font-size: 1.05rem;
-  color: var(--foreground);
+  font-size: var(--fs-section, 20px);
+  color: var(--foreground);line-height:var(--lh-section, 30px);font-weight:700;font-family:var(--font-heading);
 }
 
 .emptyState p {
   max-width: 620px;
   margin: 0;
-  line-height: 1.65;
+  line-height: var(--lh-small, 22px);font-size:var(--fs-small, 14px);
 }
 
 .emptyState button {
@@ -499,7 +499,7 @@
   color: var(--foreground);
   font: inherit;
   font-weight: 700;
-  cursor: pointer;
+  cursor: pointer;line-height:var(--lh-label, 20px);font-size:var(--fs-label, 13px);
 }
 
 @media (max-width: 1100px) {
@@ -528,8 +528,8 @@
   }
 
   .hero p {
-    font-size: 0.88rem;
-    line-height: 1.7;
+    font-size: var(--fs-body, 15px);
+    line-height: var(--lh-body, 24px);
   }
 
   .refreshButton {

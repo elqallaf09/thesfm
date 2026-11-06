@@ -78,7 +78,7 @@ function ActionButtonLinkStyles() {
         padding: 0 16px;
         border: 1px solid var(--border);
         text-decoration: none;
-        font: 600 13px/1.25 var(--font-ui);
+        font: 600 var(--fs-label, 13px)/var(--lh-label, 20px) var(--font-ui);
         cursor: pointer;
         white-space: nowrap;
         -webkit-tap-highlight-color: transparent;
@@ -87,7 +87,7 @@ function ActionButtonLinkStyles() {
           box-shadow .16s ease,
           border-color .16s ease,
           background .16s ease,
-          color .16s ease;
+          color .16s ease;line-height:var(--lh-label, 20px);
       }
 
       .sfm-action-link-primary {

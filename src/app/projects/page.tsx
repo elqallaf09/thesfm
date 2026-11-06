@@ -98,7 +98,7 @@ function StepDots({ step, total }: { step: number; total: number }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '24px' }}>
       {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: i < total - 1 ? 1 : 'none' }}>
-          <div className={i === step ? 'project-step-dot active' : 'project-step-dot'} style={{ width: '28px', height: '28px', borderRadius: 'var(--radius-pill)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '700', flexShrink: 0,
+          <div className={i === step ? 'project-step-dot active' : 'project-step-dot'} style={{ width: '28px', height: '28px', borderRadius: 'var(--radius-pill)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', flexShrink: 0,
             background: i < step ? 'var(--accent)' : i === step ? 'var(--primary)' : 'var(--surface-muted)',
             color: i <= step ? 'var(--primary-foreground)' : 'var(--foreground-muted)',
             border: i === step ? '2px solid var(--focus-ring)' : '2px solid transparent',
@@ -123,8 +123,8 @@ function RiskGauge({ value }: { value: number }) {
           strokeDasharray={`${dash * 0.9} 157`} style={{ transition: 'stroke-dasharray .8s ease' }} />
       </svg>
       <div style={{ position: 'absolute', bottom: '0', left: '50%', transform: 'translateX(-50%)', textAlign: 'center' }}>
-        <div style={{ fontSize: '18px', fontWeight: '700', color: ri.color, fontFamily: 'var(--font-data)', lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: ri.color }}>{ri.label}</div>
+        <div style={{ fontSize: 'var(--fs-kpi)', fontWeight: '600', color: ri.color, fontFamily: 'var(--font-mono)', lineHeight: 'var(--lh-kpi)' }}>{value}</div>
+        <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', color: ri.color }}>{ri.label}</div>
       </div>
     </div>
   );
@@ -375,7 +375,7 @@ export default function ProjectsPage() {
       .pbtn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
       .prog-bar{height:7px;background:var(--surface-muted);border-radius:var(--radius-pill);overflow:hidden}
       .prog-fill{height:100%;border-radius:var(--radius-pill);transition:width 1s cubic-bezier(.4,0,.2,1)}
-      .need-chip{cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;border:1.5px solid var(--border);border-radius:var(--radius-pill);padding:7px 13px;font-size:12.5px;font-weight:600;font-family:var(--font-ui);background:var(--surface);color:var(--foreground-secondary);display:inline-flex;align-items:center;gap:6px}
+      .need-chip{cursor:pointer;transition:background-color .15s,border-color .15s,color .15s;border:1.5px solid var(--border);border-radius:var(--radius-pill);padding:7px 13px;font-size:var(--fs-label);line-height:var(--lh-label);font-weight:600;font-family:var(--font-ui);background:var(--surface);color:var(--foreground-secondary);display:inline-flex;align-items:center;gap:6px}
       .need-chip:hover{border-color:var(--primary);background:var(--surface-hover);color:var(--primary-hover)}
       .need-chip.active{background:var(--primary-soft);border-color:var(--primary);color:var(--primary-hover)}
       .project-card-header{min-width:0}.project-card-link{min-width:0}.project-card-actions{min-width:0}.project-card-actions>button{min-width:44px!important;min-height:44px!important}
@@ -393,14 +393,14 @@ export default function ProjectsPage() {
           <div style={S(0)}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: '700', color: 'var(--foreground)', marginBottom: '4px' }}>{pt.title}</h1>
-                <p style={{ fontSize: '13px', color: 'var(--foreground-muted)' }}>{pt.subtitle}</p>
+                <h1 style={{ fontSize: 'var(--fs-page)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-page)', fontWeight: '700', color: 'var(--foreground)', marginBottom: '4px' }}>{pt.title}</h1>
+                <p style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)' }}>{pt.subtitle}</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <button className="pbtn pbtn-o" style={{ padding: '11px 18px', fontSize: '14px' }} onClick={() => router.push('/projects/ad-calculator')}>
+                <button className="pbtn pbtn-o" style={{ padding: '11px 18px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)' }} onClick={() => router.push('/projects/ad-calculator')}>
                   {pt.adCalculator}
                 </button>
-                <button className="pbtn pbtn-g" style={{ padding: '11px 22px', fontSize: '14px' }}
+                <button className="pbtn pbtn-g" style={{ padding: '11px 22px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)' }}
                   onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); setFormStep(0); }}>
                   <Plus className="w-4 h-4" /> {pt.newProject}
                 </button>
@@ -418,10 +418,10 @@ export default function ProjectsPage() {
             ].map((k, i) => (
               <div key={i} className="pc no-h" style={{ padding: '18px 20px' }}>
                 <div style={{ width: '40px', height: '40px', background: k.background, borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', marginBottom: '12px' }}>{k.icon}</div>
-                <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
-                <div style={{ fontSize: '22px', fontWeight: '700', color: k.color, fontFamily: 'var(--font-data)', lineHeight: 1 }}>
+                <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginBottom: '4px', fontWeight: '600' }}>{k.label}</div>
+                <div style={{ fontSize: 'var(--fs-kpi)', fontWeight: '600', color: k.color, fontFamily: 'var(--font-mono)', lineHeight: 'var(--lh-kpi)' }}>
                   {k.isN ? k.val : k.val.toFixed(3)}
-                  {k.unit && <span style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginRight: '4px' }}> {k.unit}</span>}
+                  {k.unit && <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginRight: '4px' }}> {k.unit}</span>}
                 </div>
               </div>
             ))}
@@ -447,10 +447,10 @@ export default function ProjectsPage() {
               bodyClassName="project-modal-body"
             >
             <div ref={formRef} className="project-form-modal-content" style={S(60)}>
-              <div style={{ marginBottom: '4px', fontSize: '16px', fontWeight: '700', color: 'var(--foreground)' }}>
+              <div style={{ marginBottom: '4px', fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)' }}>
                 {editingId ? pt.editProject : pt.newProject} — {STEP_LABELS[formStep]}
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '20px' }}>{t('projects_step')} {formStep + 1} {t('projects_of')} {STEP_LABELS.length}</div>
+              <div style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)', marginBottom: '20px' }}>{t('projects_step')} {formStep + 1} {t('projects_of')} {STEP_LABELS.length}</div>
               <StepDots step={formStep} total={STEP_LABELS.length} />
 
               {/* Step 0: Basics */}
@@ -469,7 +469,7 @@ export default function ProjectsPage() {
                       )}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label htmlFor="project-name" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_name')} *</label>
+                      <label htmlFor="project-name" style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_name')} *</label>
                       <input id="project-name" className="pi" placeholder={t('projects_name_placeholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={{ height: '48px' }} />
                     </div>
                   </div>
@@ -480,7 +480,7 @@ export default function ProjectsPage() {
                       { key: 'startTimeline', label: t('projects_start_timeline'), opts: START_TIMELINES },
                     ].map(f => (
                       <div key={f.key}>
-                        <label htmlFor={`project-${f.key}`} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{f.label}</label>
+                        <label htmlFor={`project-${f.key}`} style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{f.label}</label>
                         <select id={`project-${f.key}`} className="pi psel" style={{ height: '48px' }} value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}>
                           <option value="">{t('projects_select')}</option>
                           {f.opts.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
@@ -488,17 +488,17 @@ export default function ProjectsPage() {
                       </div>
                     ))}
                     <div>
-                      <label htmlFor="project-status" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_status')}</label>
+                      <label htmlFor="project-status" style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_status')}</label>
                       <select id="project-status" className="pi psel" style={{ height: '48px' }} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as ProjectStatus }))}>
                         {(Object.keys(STATUS_CONFIG) as ProjectStatus[]).map(s => <option key={s} value={s}>{STATUS_CONFIG[s].icon} {statusLabels[s]}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label htmlFor="project-start-date" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_start_date')}</label>
+                      <label htmlFor="project-start-date" style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_start_date')}</label>
                       <input id="project-start-date" className="pi" type="date" style={{ height: '48px' }} value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
                     </div>
                     <div style={{ gridColumn: '1/-1' }}>
-                      <label htmlFor="project-idea" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_idea')}</label>
+                      <label htmlFor="project-idea" style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{t('projects_idea')}</label>
                       <input id="project-idea" className="pi" placeholder={t('projects_idea_placeholder')} value={form.idea} onChange={e => setForm(f => ({ ...f, idea: e.target.value }))} style={{ height: '48px' }} />
                     </div>
                   </div>
@@ -517,11 +517,11 @@ export default function ProjectsPage() {
                       { key: 'monthlyRevenue', label: t('projects_expected_monthly_revenue'), icon: '📊', color: 'var(--success)' },
                     ].map(f => (
                       <div key={f.key}>
-                        <label htmlFor={`project-${f.key}`} style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{f.icon} {f.label}</label>
+                        <label htmlFor={`project-${f.key}`} style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '7px' }}>{f.icon} {f.label}</label>
                         <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-control)', overflow: 'hidden', background: 'var(--control-background)' }}>
-                          <span style={{ padding: '0 10px', fontSize: '12px', fontWeight: '700', color: f.color, borderLeft: '1px solid var(--border)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: 'var(--font-data)' }}>{pt.currency}</span>
+                          <span style={{ padding: '0 10px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', color: f.color, borderLeft: '1px solid var(--border)', height: '48px', display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: 'var(--font-data)' }}>{pt.currency}</span>
                           <input id={`project-${f.key}`} type="text" inputMode="decimal" placeholder="0.000" dir="ltr" value={(form as any)[f.key]} onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                            style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: '16px', fontWeight: '700', color: 'var(--foreground)', fontFamily: 'var(--font-data)' }} />
+                            style={{ flex: 1, height: '48px', padding: '0 12px', background: 'transparent', border: 'none', outline: 'none', fontSize: 'var(--fs-body)', lineHeight: 'var(--lh-body)', fontWeight: '700', color: 'var(--foreground)', fontFamily: 'var(--font-data)' }} />
                         </div>
                       </div>
                     ))}
@@ -533,7 +533,7 @@ export default function ProjectsPage() {
                         return (
                           <div style={{ background: 'var(--success-soft)', border: '1.5px solid color-mix(in srgb, var(--success) 28%, var(--border))', borderRadius: 'var(--radius-control)', padding: '14px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '10px', textAlign: 'center' }}>
                             {[{ label: t('projects_monthly_profit'), val: `${profit.toFixed(3)} ${pt.currency}`, color: 'var(--success)' }, { label: t('projects_payback'), val: `${Math.ceil(cap / profit)} ${t('projects_month')}`, color: 'var(--warning)' }, { label: t('projects_annual_return'), val: `${((profit * 12 / cap) * 100).toFixed(1)}%`, color: 'var(--info)' }].map((r, i) => (
-                              <div key={i}><div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '4px' }}>{r.label}</div><div style={{ fontSize: '15px', fontWeight: '700', color: r.color, fontFamily: 'var(--font-data)' }}>{r.val}</div></div>
+                              <div key={i}><div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginBottom: '4px' }}>{r.label}</div><div style={{ fontSize: 'var(--fs-kpi)', lineHeight: 'var(--lh-kpi)', fontWeight: '600', color: r.color, fontFamily: 'var(--font-mono)' }}>{r.val}</div></div>
                             ))}
                           </div>
                         );
@@ -544,8 +544,8 @@ export default function ProjectsPage() {
                   {/* Risk slider */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                      <label htmlFor="project-risk-level" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)' }}>⚖️ {t('projects_risk_level')}</label>
-                      <span style={{ fontSize: '12.5px', fontWeight: '700', padding: '3px 12px', borderRadius: 'var(--radius-card)', background: riskInfo(form.riskLevel, riskLabels).bg, color: riskInfo(form.riskLevel, riskLabels).color }}>{riskInfo(form.riskLevel, riskLabels).label} ({form.riskLevel})</span>
+                      <label htmlFor="project-risk-level" style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)' }}>⚖️ {t('projects_risk_level')}</label>
+                      <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', padding: '3px 12px', borderRadius: 'var(--radius-card)', background: riskInfo(form.riskLevel, riskLabels).bg, color: riskInfo(form.riskLevel, riskLabels).color }}>{riskInfo(form.riskLevel, riskLabels).label} ({form.riskLevel})</span>
                     </div>
                     <input id="project-risk-level" type="range" min={0} max={100} value={form.riskLevel} aria-valuetext={`${riskInfo(form.riskLevel, riskLabels).label} (${form.riskLevel})`} onChange={e => setForm(f => ({ ...f, riskLevel: +e.target.value }))} style={{ width: '100%', height: '6px', borderRadius: 'var(--radius-sm)', accentColor: riskInfo(form.riskLevel, riskLabels).color, cursor: 'pointer' }} />
                   </div>
@@ -556,11 +556,11 @@ export default function ProjectsPage() {
               {formStep === 2 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
-                    <label htmlFor="project-notes" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '8px' }}>📝 {t('projects_notes')}</label>
+                    <label htmlFor="project-notes" style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '8px' }}>📝 {t('projects_notes')}</label>
                     <textarea id="project-notes" className="pi" rows={4} placeholder={t('projects_notes_placeholder')} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical', minHeight: '100px' }} />
                   </div>
                   <fieldset style={{ border: 0, margin: 0, padding: 0 }}>
-                    <legend style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '10px' }}>⚡ {t('projects_needs')}</legend>
+                    <legend style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', display: 'block', marginBottom: '10px' }}>⚡ {t('projects_needs')}</legend>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {needsOptions.map(([value, key, icon]) => {
                         const active = form.needs.includes(value);
@@ -574,7 +574,7 @@ export default function ProjectsPage() {
               {/* Step 3: Progress */}
               {formStep === 3 && (
                   <div role="group" aria-labelledby="project-progress-label">
-                    <div id="project-progress-label" style={{ fontSize: '13px', color: 'var(--foreground-muted)', marginBottom: '14px' }}>{t('projects_progress_help')}</div>
+                    <div id="project-progress-label" style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)', marginBottom: '14px' }}>{t('projects_progress_help')}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {PROGRESS_STEPS.map((s, i) => {
                       const done = form.progress[s.id];
@@ -583,10 +583,10 @@ export default function ProjectsPage() {
                           style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', borderRadius: 'var(--radius-card)', border: `1.5px solid ${done ? 'color-mix(in srgb, var(--success) 34%, var(--border))' : 'var(--border)'}`, background: done ? 'var(--success-soft)' : 'var(--surface-muted)', color: 'var(--foreground)', cursor: 'pointer', transition: 'all .2s', textAlign: 'start', fontFamily: 'var(--font-ui)' }}>
                           <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-pill)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', background: done ? 'var(--success-soft)' : 'var(--primary-soft)', border: `2px solid ${done ? 'var(--success)' : 'var(--border-strong)'}`, flexShrink: 0 }}>{done ? '✅' : s.icon}</div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: done ? 'var(--success)' : 'var(--foreground)' }}>{t(s.labelKey)}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--foreground-muted)' }}>{t('projects_stage')} {i + 1} {t('projects_of')} 5</div>
+                            <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', color: done ? 'var(--success)' : 'var(--foreground)' }}>{t(s.labelKey)}</div>
+                            <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)' }}>{t('projects_stage')} {i + 1} {t('projects_of')} 5</div>
                           </div>
-                          <div style={{ width: '20px', height: '20px', borderRadius: 'var(--radius-pill)', border: `2px solid ${done ? 'var(--success)' : 'var(--border-strong)'}`, background: done ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--foreground-inverse)', fontSize: '12px', flexShrink: 0 }}>{done && '✓'}</div>
+                          <div style={{ width: '20px', height: '20px', borderRadius: 'var(--radius-pill)', border: `2px solid ${done ? 'var(--success)' : 'var(--border-strong)'}`, background: done ? 'var(--success)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--foreground-inverse)', fontSize: 'var(--fs-caption)', lineHeight: 'var(--lh-caption)', flexShrink: 0 }}>{done && '✓'}</div>
                         </button>
                       );
                     })}
@@ -595,16 +595,16 @@ export default function ProjectsPage() {
               )}
               {formStep === 4 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div id="project-feasibility-help" style={{ fontSize: '13px', color: 'var(--foreground-muted)' }}>{t('projects_feasibility_help')}</div>
+                  <div id="project-feasibility-help" style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)' }}>{t('projects_feasibility_help')}</div>
                   <div role="group" aria-describedby="project-feasibility-help" className="g2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: '12px' }}>
                     {FEASIBILITY_TYPES.map(type => {
                       const active = form.feasibilityTypes.includes(type.id);
                       return (
                         <button type="button" aria-pressed={active} key={type.id} onClick={() => setForm(f => ({ ...f, feasibilityTypes: active ? f.feasibilityTypes.filter(x => x !== type.id) : [...f.feasibilityTypes, type.id] }))} style={{ textAlign: dir === 'rtl' ? 'right' : 'left', border: `1.8px solid ${active ? 'var(--primary)' : 'var(--border)'}`, background: active ? 'var(--primary-soft)' : 'var(--surface)', borderRadius: 'var(--radius-card)', padding: '14px', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>
                           <div style={{ fontSize: '26px', color: type.color }}>{type.icon}</div>
-                          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--foreground)', marginTop: '8px' }}>{t(type.titleKey)}</div>
-                          <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', lineHeight: 1.6, marginTop: '5px' }}>{t(type.descKey)}</div>
-                          <div style={{ marginTop: '9px', fontSize: '12px', color: type.color, fontWeight: 700 }}>{active ? t('projects_selected') : t('projects_choose')}</div>
+                          <div style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)', marginTop: '8px' }}>{t(type.titleKey)}</div>
+                          <div style={{ fontSize: 'var(--fs-small)', color: 'var(--foreground-muted)', lineHeight: 'var(--lh-small)', marginTop: '5px' }}>{t(type.descKey)}</div>
+                          <div style={{ marginTop: '9px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: type.color, fontWeight: 700 }}>{active ? t('projects_selected') : t('projects_choose')}</div>
                         </button>
                       );
                     })}
@@ -614,15 +614,15 @@ export default function ProjectsPage() {
 
               {/* Nav buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '26px', paddingTop: '18px', borderTop: '1px solid var(--border)' }}>
-                <button className="pbtn pbtn-o" style={{ padding: '10px 20px', fontSize: '14px' }} onClick={() => formStep > 0 ? setFormStep(s => s - 1) : (setShowForm(false), setEditingId(null))}>
+                <button className="pbtn pbtn-o" style={{ padding: '10px 20px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)' }} onClick={() => formStep > 0 ? setFormStep(s => s - 1) : (setShowForm(false), setEditingId(null))}>
                   {formStep > 0 ? `${dir === 'rtl' ? '←' : '→'} ${t('projects_previous')}` : t('projects_cancel')}
                 </button>
                 {formStep < STEP_LABELS.length - 1 ? (
-                  <button className="pbtn pbtn-d" style={{ padding: '10px 22px', fontSize: '14px' }} disabled={formStep === 0 && !form.name.trim()} onClick={() => setFormStep(s => s + 1)}>
+                  <button className="pbtn pbtn-d" style={{ padding: '10px 22px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)' }} disabled={formStep === 0 && !form.name.trim()} onClick={() => setFormStep(s => s + 1)}>
                     {t('projects_next')} {dir === 'rtl' ? '→' : '←'}
                   </button>
                 ) : (
-                  <button className="pbtn pbtn-g" style={{ padding: '10px 22px', fontSize: '14px' }} onClick={saveProject} disabled={saving || analyzing}>
+                  <button className="pbtn pbtn-g" style={{ padding: '10px 22px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)' }} onClick={saveProject} disabled={saving || analyzing}>
                     {saving || analyzing ? <><span style={{ width: '16px', height: '16px', borderRadius: 'var(--radius-pill)', border: '2px solid color-mix(in srgb, var(--primary-foreground) 35%, transparent)', borderTopColor: 'var(--primary-foreground)', animation: 'spin 1s linear infinite', display: 'inline-block' }} /> {analyzing ? t('projects_analyzing') : t('projects_saving')}</> : `💾 ${t('projects_save_analyze')}`}
                   </button>
                 )}
@@ -639,7 +639,7 @@ export default function ProjectsPage() {
 
           {projectsLoadError && !showForm && (
             <div className="pc" role="alert" style={{ ...S(70), padding: '28px', textAlign: 'center' }}>
-              <p style={{ fontSize: '14px', color: 'var(--danger)', marginBottom: '16px', lineHeight: 1.7 }}>{projectsLoadError}</p>
+              <p style={{ fontSize: 'var(--fs-small)', color: 'var(--danger)', marginBottom: '16px', lineHeight: 'var(--lh-small)' }}>{projectsLoadError}</p>
               <button className="pbtn pbtn-o" style={{ padding: '10px 20px', margin: '0 auto' }} onClick={() => void loadProjects()}>{pt.retry}</button>
             </div>
           )}
@@ -648,9 +648,9 @@ export default function ProjectsPage() {
           {!authLoading && !projectsLoading && !projectsLoadError && projects.length === 0 && !showForm && (
             <div className="pc" style={{ ...S(80), padding: '60px 40px', textAlign: 'center' }}>
               <div style={{ fontSize: '56px', marginBottom: '18px' }}>🚀</div>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--foreground)', marginBottom: '10px' }}>{pt.noProjects}</h3>
-              <p style={{ fontSize: '14px', color: 'var(--foreground-muted)', marginBottom: '22px', lineHeight: 1.7 }}>{pt.noProjectsDesc}</p>
-              <button className="pbtn pbtn-g" style={{ padding: '12px 26px', fontSize: '15px', margin: '0 auto' }} onClick={() => setShowForm(true)}>
+              <h3 style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)', marginBottom: '10px' }}>{pt.noProjects}</h3>
+              <p style={{ fontSize: 'var(--fs-small)', color: 'var(--foreground-muted)', marginBottom: '22px', lineHeight: 'var(--lh-small)' }}>{pt.noProjectsDesc}</p>
+              <button className="pbtn pbtn-g" style={{ padding: '12px 26px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', margin: '0 auto' }} onClick={() => setShowForm(true)}>
                 <Plus className="w-4 h-4" /> {pt.addFirst}
               </button>
             </div>
@@ -658,8 +658,8 @@ export default function ProjectsPage() {
 
           {projects.length > 0 && filteredProjects.length === 0 && activeTab !== 'all' && (
             <div className="pc" style={{ ...S(90), padding: '34px', textAlign: 'center' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', color: 'var(--foreground)', marginBottom: '8px' }}>{t('projects_filtered_empty')}</h3>
-              <p style={{ fontSize: '13px', color: 'var(--foreground-muted)', lineHeight: 1.7 }}>{t('projects_filtered_empty_body')}</p>
+              <h3 style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)', marginBottom: '8px' }}>{t('projects_filtered_empty')}</h3>
+              <p style={{ fontSize: 'var(--fs-small)', color: 'var(--foreground-muted)', lineHeight: 'var(--lh-small)' }}>{t('projects_filtered_empty_body')}</p>
             </div>
           )}
 
@@ -681,29 +681,29 @@ export default function ProjectsPage() {
                         <div aria-hidden="true" style={{ width: '50px', height: '50px', background: sc.bg, borderRadius: 'var(--radius-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0, border: `1px solid ${sc.border}` }}>{project.emoji}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                          <h3 style={{ fontSize: '16px', fontWeight: '700', color: 'var(--foreground)' }}>{project.name}</h3>
-                          <span style={{ fontSize: '12px', fontWeight: '700', padding: '3px 10px', borderRadius: 'var(--radius-card)', background: sc.bg, color: sc.color, flexShrink: 0 }}>{sc.icon} {statusLabels[project.status]}</span>
-                          {project.type && <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: 'var(--radius-card)', background: 'var(--primary-soft)', color: 'var(--foreground-secondary)' }}>{PROJECT_TYPES.find(([value]) => value === project.type)?.[1] ? t(PROJECT_TYPES.find(([value]) => value === project.type)![1]) : project.type}</span>}
+                          <h3 style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)' }}>{project.name}</h3>
+                          <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', padding: '3px 10px', borderRadius: 'var(--radius-card)', background: sc.bg, color: sc.color, flexShrink: 0 }}>{sc.icon} {statusLabels[project.status]}</span>
+                          {project.type && <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', padding: '3px 10px', borderRadius: 'var(--radius-card)', background: 'var(--primary-soft)', color: 'var(--foreground-secondary)' }}>{PROJECT_TYPES.find(([value]) => value === project.type)?.[1] ? t(PROJECT_TYPES.find(([value]) => value === project.type)![1]) : project.type}</span>}
                         </div>
                         <div className="prog-bar" role="progressbar" aria-label={t('projects_stages')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPct} style={{ marginBottom: '6px' }}>
                           <div className="prog-fill" style={{ width: `${progressPct}%`, background: progressPct === 100 ? 'var(--success)' : 'var(--primary)' }} />
                         </div>
                         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                          {cap > 0 && <span style={{ fontSize: '12px', color: 'var(--foreground-muted)' }}>{t('projects_capital')}: <b style={{ color: 'var(--primary)', fontFamily: 'var(--font-data)' }}>{cap.toFixed(3)} {pt.currency}</b></span>}
-                          {curP !== 0 && <span style={{ fontSize: '12px', color: 'var(--foreground-muted)' }}>{t('projects_current_profit')}: <b style={{ color: curP >= 0 ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-data)' }}>{curP >= 0 ? '+' : ''}{curP.toFixed(3)} {pt.currency}</b></span>}
-                          {roi && <span style={{ fontSize: '12px', color: 'var(--foreground-muted)' }}>{t('projects_payback_short')}: <b style={{ color: 'var(--info)', fontFamily: 'var(--font-data)' }}>{roi.months} {t('projects_month')}</b></span>}
+                          {cap > 0 && <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)' }}>{t('projects_capital')}: <b style={{ color: 'var(--primary)', fontFamily: 'var(--font-data)' }}>{cap.toFixed(3)} {pt.currency}</b></span>}
+                          {curP !== 0 && <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)' }}>{t('projects_current_profit')}: <b style={{ color: curP >= 0 ? 'var(--success)' : 'var(--danger)', fontFamily: 'var(--font-data)' }}>{curP >= 0 ? '+' : ''}{curP.toFixed(3)} {pt.currency}</b></span>}
+                          {roi && <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)' }}>{t('projects_payback_short')}: <b style={{ color: 'var(--info)', fontFamily: 'var(--font-data)' }}>{roi.months} {t('projects_month')}</b></span>}
                         </div>
                         </div>
                         {project.analysis && (
                           <div className="project-analysis-score" aria-label={`${t('projects_expected_success')}: ${project.analysis.score}`} style={{ width: '44px', height: '44px', borderRadius: 'var(--radius-pill)', border: `2.5px solid ${analysisTone.color}`, background: analysisTone.background, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <span style={{ fontSize: '12px', fontWeight: '700', color: analysisTone.color, fontFamily: 'var(--font-data)' }}>{project.analysis.score}</span>
+                            <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '700', color: analysisTone.color, fontFamily: 'var(--font-data)' }}>{project.analysis.score}</span>
                           </div>
                         )}
                       </Link>
                       <div className="project-card-actions" style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
                         <button type="button" aria-label={`${pt.editProject}: ${project.name}`} title={`${pt.editProject}: ${project.name}`} onClick={() => startEdit(project)} style={{ width: '44px', height: '44px', background: 'var(--primary-soft)', border: '1px solid color-mix(in srgb, var(--primary) 28%, var(--border))', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Pencil aria-hidden="true" className="w-3.5 h-3.5" /></button>
                         <button type="button" aria-label={`${t('delete')}: ${project.name}`} title={`${t('delete')}: ${project.name}`} onClick={() => removeProject(project.id)} style={{ width: '44px', height: '44px', background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 28%, var(--border))', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 aria-hidden="true" className="w-3.5 h-3.5" /></button>
-                        <button type="button" onClick={() => router.push(`/projects/${project.id}`)} style={{ minHeight: '44px', minWidth: '112px', background: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', fontSize: '12px', lineHeight: 1, fontWeight: 700, fontFamily: 'var(--font-ui)', whiteSpace: 'nowrap', boxShadow: 'var(--shadow-xs)', textShadow: 'none' }}>{pt.viewDetails}</button>
+                        <button type="button" onClick={() => router.push(`/projects/${project.id}`)} style={{ minHeight: '44px', minWidth: '112px', background: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: 700, fontFamily: 'var(--font-ui)', whiteSpace: 'nowrap', boxShadow: 'var(--shadow-xs)', textShadow: 'none' }}>{pt.viewDetails}</button>
                         <button type="button" onClick={() => setProjects(prev => prev.map(p => p.id === project.id ? { ...p, expanded: !p.expanded } : p))} aria-label={`${project.expanded ? pt.collapseProject : pt.expandProject}: ${project.name}`} aria-expanded={Boolean(project.expanded)} aria-controls={`project-details-${project.id}`} style={{ width: '44px', height: '44px', background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', color: 'var(--foreground-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {project.expanded ? <ChevronUp aria-hidden="true" className="w-5 h-5" /> : <ChevronDown aria-hidden="true" className="w-5 h-5" />}
                         </button>
@@ -716,7 +716,7 @@ export default function ProjectsPage() {
                         <div className="g2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px', paddingTop: '18px' }}>
                           {/* Financials */}
                           <div>
-                            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '12px' }}>💰 {t('projects_financial_data')}</div>
+                            <div style={{ fontSize: 'var(--fs-section)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-section)', fontWeight: '700', color: 'var(--foreground-secondary)', marginBottom: '12px' }}>💰 {t('projects_financial_data')}</div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                               {[
                                 { label: t('projects_capital'), val: project.capital, icon: '💰', color: 'var(--primary)' },
@@ -726,13 +726,13 @@ export default function ProjectsPage() {
                               ].map((f, i) => f.val ? (
                                 <div key={i} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-control)', padding: '12px', textAlign: 'center', border: '1px solid var(--border)' }}>
                                   <div style={{ fontSize: '16px', marginBottom: '4px' }}>{f.icon}</div>
-                                  <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '4px' }}>{f.label}</div>
-                                  <div style={{ fontSize: '14px', fontWeight: '700', color: f.color, fontFamily: 'var(--font-data)' }}>{fmt(f.val).toFixed(3)}<span style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginInlineStart: '3px' }}> {pt.currency}</span></div>
+                                  <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginBottom: '4px' }}>{f.label}</div>
+                                  <div style={{ fontSize: 'var(--fs-kpi)', lineHeight: 'var(--lh-kpi)', fontWeight: '600', color: f.color, fontFamily: 'var(--font-mono)' }}>{fmt(f.val).toFixed(3)}<span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginInlineStart: '3px' }}> {pt.currency}</span></div>
                                 </div>
                               ) : null)}
                             </div>
                             <div style={{ marginTop: '12px', background: 'var(--surface)', borderRadius: 'var(--radius-control)', padding: '14px', textAlign: 'center', border: '1px solid var(--border)' }}>
-                              <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', marginBottom: '10px' }}>{t('projects_risk_level')}</div>
+                              <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)', marginBottom: '10px' }}>{t('projects_risk_level')}</div>
                               <RiskGauge value={project.riskLevel} />
                             </div>
                           </div>
@@ -740,11 +740,11 @@ export default function ProjectsPage() {
                           {/* AI Analysis */}
                           {project.analysis && (
                             <div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '12px' }}>🤖 {t('projects_ai_analysis')}</div>
+                              <div style={{ fontSize: 'var(--fs-section)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-section)', fontWeight: '700', color: 'var(--foreground-secondary)', marginBottom: '12px' }}>🤖 {t('projects_ai_analysis')}</div>
                               <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '16px', marginBottom: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                  <span style={{ fontSize: '12px', color: 'var(--foreground-muted)' }}>{t('projects_expected_success')}</span>
-                                  <span style={{ fontSize: '18px', fontWeight: '700', color: analysisTone.color, fontFamily: 'var(--font-data)' }}>{project.analysis.successRate}</span>
+                                  <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--foreground-muted)' }}>{t('projects_expected_success')}</span>
+                                  <span style={{ fontSize: 'var(--fs-kpi)', lineHeight: 'var(--lh-kpi)', fontWeight: '600', color: analysisTone.color, fontFamily: 'var(--font-mono)' }}>{project.analysis.successRate}</span>
                                 </div>
                                 {[
                                   { label: t('projects_strengths'), items: project.analysis.strengths, icon: '✅' },
@@ -752,15 +752,15 @@ export default function ProjectsPage() {
                                   { label: t('projects_recommendations'), items: project.analysis.suggestions, icon: '💡' },
                                 ].map((sec, i) => (
                                   <div key={i} style={{ marginBottom: '8px' }}>
-                                    <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '4px' }}>{sec.icon} {sec.label}</div>
-                                    {sec.items?.map((item, j) => <div key={j} style={{ fontSize: '12px', color: 'var(--foreground-secondary)', padding: '2px 0', lineHeight: 1.5 }}>• {item}</div>)}
+                                    <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '4px' }}>{sec.icon} {sec.label}</div>
+                                    {sec.items?.map((item, j) => <div key={j} style={{ fontSize: 'var(--fs-small)', color: 'var(--foreground-secondary)', padding: '2px 0', lineHeight: 'var(--lh-small)' }}>• {item}</div>)}
                                   </div>
                                 ))}
                               </div>
                               {project.analysis.marketStatus && (
                                 <div style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: '11px 14px' }}>
-                                  <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '4px' }}>📊 {t('projects_market_status')}</div>
-                                  <div style={{ fontSize: '12px', color: 'var(--foreground-muted)', lineHeight: 1.6 }}>{project.analysis.marketStatus}</div>
+                                  <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '4px' }}>📊 {t('projects_market_status')}</div>
+                                  <div style={{ fontSize: 'var(--fs-small)', color: 'var(--foreground-muted)', lineHeight: 'var(--lh-small)' }}>{project.analysis.marketStatus}</div>
                                 </div>
                               )}
                             </div>
@@ -769,11 +769,11 @@ export default function ProjectsPage() {
 
                         {/* Progress steps */}
                         <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '10px' }}>📋 {t('projects_stages')}</div>
+                          <div style={{ fontSize: 'var(--fs-section)', fontFamily: 'var(--font-heading)', lineHeight: 'var(--lh-section)', fontWeight: '700', color: 'var(--foreground-secondary)', marginBottom: '10px' }}>📋 {t('projects_stages')}</div>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                             {PROGRESS_STEPS.map(s => {
                               const done = project.progress?.[s.id];
-                              return <button type="button" aria-pressed={done} key={s.id} onClick={() => toggleProgress(project.id, s.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: 'var(--radius-card)', border: `1.5px solid ${done ? 'var(--success)' : 'var(--border)'}`, background: done ? 'var(--success-soft)' : 'var(--surface)', cursor: 'pointer', fontSize: '12.5px', fontWeight: '600', color: done ? 'var(--success)' : 'var(--foreground-muted)', fontFamily: 'var(--font-ui)', transition: 'all .2s' }}><span aria-hidden="true">{done ? '✅' : s.icon}</span>{t(s.labelKey)}</button>;
+                              return <button type="button" aria-pressed={done} key={s.id} onClick={() => toggleProgress(project.id, s.id)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: 'var(--radius-card)', border: `1.5px solid ${done ? 'var(--success)' : 'var(--border)'}`, background: done ? 'var(--success-soft)' : 'var(--surface)', cursor: 'pointer', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: done ? 'var(--success)' : 'var(--foreground-muted)', fontFamily: 'var(--font-ui)', transition: 'all .2s' }}><span aria-hidden="true">{done ? '✅' : s.icon}</span>{t(s.labelKey)}</button>;
                             })}
                           </div>
                         </div>
@@ -781,8 +781,8 @@ export default function ProjectsPage() {
                         {/* Notes */}
                         {project.notes && (
                           <div style={{ marginTop: '14px', background: 'var(--surface-muted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-control)', padding: '12px 14px' }}>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '4px' }}>📝 {t('projects_notes')}</div>
-                            <div style={{ fontSize: '13px', color: 'var(--foreground-muted)', lineHeight: 1.6 }}>{project.notes}</div>
+                            <div style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', marginBottom: '4px' }}>📝 {t('projects_notes')}</div>
+                            <div style={{ fontSize: 'var(--fs-small)', color: 'var(--foreground-muted)', lineHeight: 'var(--lh-small)' }}>{project.notes}</div>
                           </div>
                         )}
                       </div>
@@ -799,24 +799,24 @@ export default function ProjectsPage() {
             <div style={{ background: 'var(--primary-soft)', borderBottom: '1px solid var(--border)', padding: '16px 22px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '38px', height: '38px', background: 'var(--surface)', borderRadius: 'var(--radius-control)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', border: '1px solid color-mix(in srgb, var(--primary) 30%, var(--border))', flexShrink: 0 }}>🤖</div>
               <div>
-                <div style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--foreground)' }}>{pt.advisorTitle}</div>
-                <div style={{ fontSize: '12px', color: 'var(--foreground-muted)' }}>{pt.advisorSub}</div>
+                <div style={{ fontSize: 'var(--fs-card-title)', lineHeight: 'var(--lh-card-title)', fontWeight: '600', color: 'var(--foreground)' }}>{pt.advisorTitle}</div>
+                <div style={{ fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', color: 'var(--foreground-muted)' }}>{pt.advisorSub}</div>
               </div>
               <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <div style={{ width: '7px', height: '7px', borderRadius: 'var(--radius-pill)', background: 'var(--success)', animation: 'pulse 1.5s infinite' }} />
-                <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: '600' }}>{pt.connected}</span>
+                <span style={{ fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', color: 'var(--success)', fontWeight: '600' }}>{pt.connected}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', padding: '12px 22px 0', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
               {[t('projects_chat_question_start'), t('projects_chat_question_budget'), t('projects_chat_question_feasibility')].map((q, i) => (
-                <button key={i} onClick={() => setChatInput(q)} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '5px 12px', fontSize: '12px', fontWeight: '600', color: 'var(--foreground-secondary)', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>{q}</button>
+                <button key={i} onClick={() => setChatInput(q)} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '5px 12px', fontSize: 'var(--fs-label)', lineHeight: 'var(--lh-label)', fontWeight: '600', color: 'var(--foreground-secondary)', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>{q}</button>
               ))}
             </div>
             <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px 22px' }}>
               {messages.map((msg, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-start' : 'flex-end', gap: '8px', alignItems: 'flex-end' }}>
                   {msg.role === 'assistant' && <div style={{ width: '28px', height: '28px', background: 'var(--primary-soft)', borderRadius: 'var(--radius-pill)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flexShrink: 0 }}>🤖</div>}
-                  <div style={{ maxWidth: '80%', padding: '11px 15px', borderRadius: msg.role === 'assistant' ? 'var(--radius-chat-incoming)' : 'var(--radius-chat-outgoing)', background: msg.role === 'assistant' ? 'var(--surface)' : 'var(--primary)', border: msg.role === 'assistant' ? '1px solid var(--border)' : 'none', color: msg.role === 'assistant' ? 'var(--foreground)' : 'var(--primary-foreground)', fontSize: '13.5px', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  <div style={{ maxWidth: '80%', padding: '11px 15px', borderRadius: msg.role === 'assistant' ? 'var(--radius-chat-incoming)' : 'var(--radius-chat-outgoing)', background: msg.role === 'assistant' ? 'var(--surface)' : 'var(--primary)', border: msg.role === 'assistant' ? '1px solid var(--border)' : 'none', color: msg.role === 'assistant' ? 'var(--foreground)' : 'var(--primary-foreground)', fontSize: 'var(--fs-small)', lineHeight: 'var(--lh-small)', whiteSpace: 'pre-wrap' }}>{msg.content}</div>
                 </div>
               ))}
               {chatLoading && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}><div style={{ width: '28px', height: '28px', background: 'var(--primary-soft)', borderRadius: 'var(--radius-pill)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🤖</div><div style={{ padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-chat-incoming)' }}><Loader2 className="w-4 h-4" style={{ animation: 'spin 1s linear infinite', color: 'var(--primary)' }} /></div></div>}
@@ -824,7 +824,7 @@ export default function ProjectsPage() {
             </div>
             <div style={{ padding: '12px 22px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
               <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendMessage()} placeholder={t('projects_chat_placeholder')}
-                style={{ flex: 1, background: 'var(--control-background)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-control)', padding: '11px 16px', fontFamily: 'var(--font-ui)', fontSize: '14px', color: 'var(--foreground)', outline: 'none', transition: 'border-color .2s' }}
+                style={{ flex: 1, background: 'var(--control-background)', border: '1.5px solid var(--border-strong)', borderRadius: 'var(--radius-control)', padding: '11px 16px', fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-body)', lineHeight: 'var(--lh-body)', color: 'var(--foreground)', outline: 'none', transition: 'border-color .2s' }}
                 onFocus={e => e.currentTarget.style.borderColor = 'var(--focus-ring)'} onBlur={e => e.currentTarget.style.borderColor = 'var(--border-strong)'} />
               <button
                 className="pbtn pbtn-g"
