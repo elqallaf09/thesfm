@@ -859,18 +859,6 @@ p{font-size:var(--type-body-size);font-weight:var(--type-body-weight);line-heigh
 @keyframes sfm-ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .ticker-scroll{animation:sfm-ticker 50s linear infinite;display:flex;width:max-content}
 
-/* Nav buttons (top bar) */
-.sfm-nav-btn{
-  display:inline-flex;align-items:center;gap:7px;
-  padding:8px 15px;border-radius:var(--radius-control);
-  background:var(--surface-muted);border:1px solid var(--border);
-  color:var(--foreground-secondary);
-  font-family: var(--font-ui);font-size:var(--fs-label);font-weight:600;
-  cursor:pointer;text-decoration:none;white-space:nowrap;
-  transition:all var(--duration) var(--ease); line-height: var(--lh-label);
-}
-.sfm-nav-btn:hover{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
-
 /* ════════════════════════════════════
    CARDS
    ════════════════════════════════════ */
@@ -1156,43 +1144,6 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 }
 
 /* ════════════════════════════════════
-   MOBILE BOTTOM NAV
-   ════════════════════════════════════ */
-.sfm-bottom-nav{
-  display:none;
-  position:fixed;bottom:0;left:0;right:0;
-  background:var(--surface);
-  border-top:1px solid var(--border);
-  box-shadow: var(--shadow-xs);
-  padding:8px 0 max(8px, env(safe-area-inset-bottom));
-  z-index:50;
-  direction:rtl;
-}
-.sfm-bottom-nav-inner{display:flex;align-items:center;justify-content:space-around}
-.sfm-bottom-nav-item{
-  display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:6px 12px;border-radius:var(--radius-control);border:none;
-  background:transparent;cursor:pointer;min-width:60px;
-  color:var(--foreground-muted);font-family: var(--font-ui);
-  font-size:var(--fs-label);font-weight:600;
-  transition:all var(--duration) var(--ease); line-height: var(--lh-label);
-}
-.sfm-bottom-nav-item.active{color:var(--primary)}
-.sfm-bottom-nav-item:hover{color:var(--accent)}
-.sfm-bottom-nav-icon{font-size:22px}
-.sfm-bottom-nav-add{
-  width:52px;height:52px;border-radius: var(--radius-circle);
-  background: var(--primary);
-  display:flex;align-items:center;justify-content:center;
-  font-size:26px;color:var(--primary-foreground);font-weight:700;
-  box-shadow: var(--shadow-xs);
-  border:none;cursor:pointer;
-  transition:all var(--duration) var(--ease);
-  margin-bottom:4px;
-}
-.sfm-bottom-nav-add:active{transform:scale(0.92)}
-
-/* ════════════════════════════════════
    RESPONSIVE BREAKPOINTS
    ════════════════════════════════════ */
 
@@ -1206,7 +1157,6 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 @media (min-width:768px) and (max-width:1024px){
   :root{--sidebar-w:220px}
   .sfm-main,.sfm-dashboard-page-shell{margin-inline:0}
-  .sfm-bottom-nav{display:none}
   .sfm-main{padding-bottom:44px}
 
   .sfm-card{padding:18px 20px;border-radius:var(--radius-card)}
@@ -1225,9 +1175,6 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
   .sfm-sidebar{display:none}
   .sfm-main{margin-inline-start:0;margin-inline-end:0;padding-bottom:72px}
   .sfm-dashboard-page-shell{margin-inline-start:0;padding:calc(74px + env(safe-area-inset-top)) 14px 72px}
-  .sfm-bottom-nav{display:flex}
-  .sfm-topbar-nav{flex-wrap:wrap;gap:4px;padding:8px 12px}
-  .sfm-nav-btn{padding:6px 10px}
   .sfm-card{padding:16px 18px;border-radius:var(--radius-card)}
   .kpi-val{font-size:var(--fs-kpi) !important}
   .sfm-reference-row,.sfm-dashboard-charts,.sfm-dashboard-goals{grid-template-columns:1fr}
