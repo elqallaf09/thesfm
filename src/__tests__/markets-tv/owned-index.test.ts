@@ -2,6 +2,7 @@ import { expect, it, vi } from 'vitest';
 const { read, fresh } = vi.hoisted(() => ({ read: vi.fn(), fresh: vi.fn() }));
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/sfm-market/engine', () => ({ getSfmMarketQuote: fresh }));
+vi.mock('@/lib/server/markets-tv/indexFallback', () => ({ withTvIndexFallback: (_symbol: string, primary: Promise<unknown>) => primary }));
 vi.mock('@/lib/server/adminAccess', () => ({ createServerSupabaseAdmin: () => ({
   from: () => {
     const query = { select: () => query, eq: () => query, lte: () => query,

@@ -47,6 +47,10 @@ describe('TV source recovery integration', () => {
     vi.stubEnv('TWELVE_DATA_API_KEY', 'test-td');
     const fetch = vi.fn().mockImplementation(async input => {
       const url = new URL(String(input)), symbol = url.searchParams.get('symbol');
+      if (url.hostname === 'query1.finance.yahoo.com') {
+        expect(decodeURIComponent(url.pathname)).toBe('/v8/finance/chart/^GDAXI');
+        return Response.json({ chart: { result: null, error: { code: 'Not Found' } } });
+      }
       expect(symbol).not.toMatch(/^\^/);
       return Response.json({ symbol, mic_code: symbol === 'FTSE' ? 'XLON' : 'WRONG', currency: 'GBP', close: 8500,
         last_quote_at: Date.parse('2026-10-27T16:30:00Z') / 1000, is_market_open: false });
@@ -54,7 +58,7 @@ describe('TV source recovery integration', () => {
     const { resolveTvQuotes } = await import('@/lib/server/markets-tv/quoteLoader');
     const rows = await resolveTvQuotes([{ symbol: '^FTSE', name: 'FTSE 100', assetType: 'index' }, { symbol: '^GDAXI', name: 'DAX', assetType: 'index' }], 'global');
     expect(rows[0]).toMatchObject({ symbol: '^FTSE', price: 8500, source: 'Twelve Data', status: 'closed', observedAt: '2026-10-27T16:30:00.000Z' });
-    expect(rows[1].price).toBeNull(); expect(fetch).toHaveBeenCalledTimes(2);
+    expect(rows[1].price).toBeNull(); expect(fetch).toHaveBeenCalledTimes(3);
     expect(new URL(fetch.mock.calls[0][0]).searchParams.get('mic_code')).toBe('XLON');
   });
   it('returns one truthful Gulf cooldown without fetching a directory or repeating ten quota failures', async () => {
