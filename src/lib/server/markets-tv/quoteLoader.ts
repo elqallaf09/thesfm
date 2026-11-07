@@ -1,3 +1,5 @@
+import { tvCommodityIdentity } from '@/lib/markets-tv/commodityQuote';
+import { withTvCommodityFallback } from './commodityFallback';
 import 'server-only';
 import { after } from 'next/server';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
@@ -18,6 +20,8 @@ import { cachedTvQuote } from './quoteCache';
 import { withTvIndexFallback } from './indexFallback';
 import { withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
+import { tvWorldStockIdentity } from '@/lib/markets-tv/worldStockQuote';
+import { withTvWorldStockFallback } from './worldStockFallback';
 import { tvGulfBankIdentity } from '@/lib/markets-tv/gulfBankQuote';
 import { withTvGulfBankFallback } from './gulfBankFallback';
 
@@ -51,6 +55,10 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
   if (asset.currency && row.currency !== asset.currency) return false;
   const requested = asset.symbol.toUpperCase(), supplied = row.provenance.providerSymbol?.toUpperCase();
   if (!supplied) return false;
+  // Continuous contracts must never accept a spot quote or a dated month.
+  const continuous = tvCommodityIdentity(asset);
+  if (continuous && (row.assetType !== 'commodity' || supplied !== continuous.symbol
+    || row.symbol !== continuous.symbol || row.exchange !== continuous.exchange)) return false;
   if (row.symbol && row.symbol.toUpperCase() !== requested && (!asset.assetType || asset.assetType === 'stock')) return false;
   if (asset.assetType === 'crypto' || asset.assetType === 'forex') {
     const compact = (symbol: string) => symbol.split(':').at(-1)!.replace(/=X$/, '').replace(/[-/_]/g, '');
@@ -140,6 +148,8 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
   const work = cachedTvQuote(key, async () => {
     const primary = loadQuote(asset, group).catch(() => empty(asset));
+    if (tvCommodityIdentity(asset)) return withTvCommodityFallback(asset, primary);
+    if (tvWorldStockIdentity(asset)) return withTvWorldStockFallback(asset, primary);
     if (tvGulfBankIdentity(asset)) return withTvGulfBankFallback(asset, primary);
     if (assetType !== 'index') return withTvRegionalFallback(asset, primary);
     const quote = await withTvIndexFallback(asset.symbol, primary);
@@ -147,7 +157,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   }, usStock || assetType === 'forex' ? 30 : 300)
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
-  if (tvGulfBankIdentity(asset)) {
+  if (tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset)) {
     // Keep slow cold reads alive after the bounded snapshot response so the
     // next refresh can use a verified cached quote. Never extend the UI wait.
     try { after(async () => { await work; }); } catch { /* No request scope in offline callers. */ }

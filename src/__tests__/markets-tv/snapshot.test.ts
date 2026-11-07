@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { externalHistory } = vi.hoisted(() => ({ externalHistory: vi.fn() }));
 vi.mock('@/lib/market/fetchYahooHistory', () => ({ fetchYahooHistory: externalHistory }));
 vi.mock('@/lib/server/markets-tv/gulfBankFallback', () => ({ withTvGulfBankFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
+vi.mock('@/lib/server/markets-tv/worldStockFallback', () => ({ withTvWorldStockFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
+vi.mock('@/lib/server/markets-tv/commodityFallback', () => ({ withTvCommodityFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/server/markets-tv/instruments', () => ({ tvInstrumentAssets: vi.fn().mockResolvedValue([]), cryptoTvQuotes: vi.fn().mockResolvedValue([]), forexTvQuote: vi.fn() }));
@@ -130,6 +132,13 @@ describe('TV canonical market snapshots', () => {
     expect(tvQuoteIdentityMatches(asset, { ...row, provenance: { ...row.provenance, providerSymbol: 'SAP' } })).toBe(false);
     expect(tvQuoteIdentityMatches({ symbol: 'AAPL', name: 'Apple', exchange: 'NASDAQ' }, { ...row, symbol: 'AAPL', currency: 'USD', exchange: 'NYSE', provenance: { ...row.provenance, providerSymbol: 'AAPL' } })).toBe(false);
     expect(tvQuoteIdentityMatches({ symbol: 'GC=F', name: 'Gold futures', assetType: 'commodity' }, { ...row, symbol: 'GC=F', currency: 'USD', provenance: { ...row.provenance, providerSymbol: 'XAUUSD' } })).toBe(false);
+    const continuous = { symbol: 'COMEX:GC1!', name: 'Gold continuous', currency: 'USD', exchange: 'COMEX', assetType: 'commodity' as const };
+    const future = { ...row, symbol: continuous.symbol, currency: 'USD', exchange: 'COMEX', assetType: 'commodity' as const, provenance: { ...row.provenance, providerSymbol: continuous.symbol } };
+    expect(tvQuoteIdentityMatches(continuous, future)).toBe(true);
+    for (const providerSymbol of ['XAUUSD', 'GC=F', 'COMEX:GCZ2026']) {
+      expect(tvQuoteIdentityMatches(continuous, { ...future, provenance: { ...future.provenance, providerSymbol } })).toBe(false);
+    }
+    expect(tvQuoteIdentityMatches(continuous, { ...future, exchange: 'FX' })).toBe(false);
     const fx = { symbol: 'EUR/USD', name: 'Euro/dollar', assetType: 'forex' as const };
     expect(tvQuoteIdentityMatches(fx, { ...row, symbol: 'EURUSD', currency: 'USD', provenance: { ...row.provenance, providerSymbol: 'OANDA:EUR_USD' } })).toBe(true);
     expect(tvQuoteIdentityMatches(fx, { ...row, symbol: 'EURUSD', currency: 'CHF', provenance: { ...row.provenance, providerSymbol: 'OANDA:EUR_USD' } })).toBe(false);

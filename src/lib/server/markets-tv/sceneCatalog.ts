@@ -1,3 +1,4 @@
+import { TV_COMMODITIES } from '@/lib/markets-tv/commodityQuote';
 import 'server-only';
 import { GLOBAL_MARKET_STRIPS, inferStripCurrency } from '@/lib/market/globalMarketStrips';
 import type { TvGroup, TvScene } from '@/lib/markets-tv/types';
@@ -51,6 +52,6 @@ export function tvSceneAssets(scene: TvScene, ownedSymbols: string[] = []): { su
     rows: ['saudi_tadawul', 'uae_dfm', 'uae_adx', 'qatar_qse', 'bahrain_bourse', 'oman_msx'].flatMap(id => configured(id, 1)) };
   if (scene === 'world') return { summary: configured('global_indices', 6).filter(item => ['^GSPC', '^FTSE', '^GDAXI', '^N225'].includes(item.symbol)),
     rows: [...EUROPE, ...configured('japan_tse', 2), ...configured('hongkong_hkex', 1)] };
-  if (scene === 'assets') return { summary: configured('commodities', 4), rows: [...CRYPTO, ...FOREX] };
+  if (scene === 'assets') return { summary: TV_COMMODITIES.map(item=>({...item,assetType:'commodity' as const,country:'US'})), rows: [...CRYPTO, ...FOREX] };
   return { summary: configured('global_indices', 6), rows: [] };
 }

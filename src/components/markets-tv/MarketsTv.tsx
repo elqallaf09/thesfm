@@ -3,7 +3,7 @@ import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Monitor, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper } from 'lucide-react';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
-import { TvMarketStrips } from './TvMarketStrips';
+const TvMarketStrips = lazy(() => import('./TvMarketStrips').then(module => ({ default: module.TvMarketStrips })));
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
@@ -57,6 +57,9 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const stripsOnly = routeStrips || settings.displayMode === 'strips';
   const viewing = !stripsOnly && settings.displayMode !== 'browse';
   const scene = settings.scene || 'overview';
+  // The market brief always summarizes the global benchmark sample, even
+  // after visiting an unpaired/empty watchlist or a rate-limited scene.
+  const resourceScene = view === 'brief' ? 'overview' : scene;
   const scenes = TV_SCENE_ORDER.filter(value => value !== 'watchlist' || token);
   const nextScene = scenes[(scenes.indexOf(scene) + 1) % scenes.length];
   const previousScene = scenes[scenes.indexOf(scene) > 0 ? scenes.indexOf(scene) - 1 : scenes.length - 1];
@@ -64,7 +67,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const device = useTvResource<{ device: TvDevice; symbols: string[]; alerts: TvAlert[] }>(token ? '/api/tv/device' : null, 60000, token);
   const catalog = useTvResource<{ markets: TvMarket[] }>(ready && (!viewing || dialog === 'markets' || dialog === 'instruments') ? '/api/tv/catalog' : null, 300000, '', revision);
   const market = useTvResource<TvSnapshot>(ready && !stripsOnly && !viewing && (group !== 'watchlist' || token) ? `/api/tv/snapshot?group=${group}&page=${page}&pageSize=${pageSize}${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
-  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && (scene !== 'watchlist' || token) ? tvScenePath(scene) : null, scene === 'assets' ? 15000 : 30000, scene === 'watchlist' ? token : '', revision);
+  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && (resourceScene !== 'watchlist' || token) ? tvScenePath(resourceScene) : null, resourceScene === 'assets' ? 15000 : 30000, resourceScene === 'watchlist' ? token : '', revision);
   useTvScenePrefetch(ready && viewing && settings.autoRotate && !modal && online && nextScene !== 'watchlist' ? tvScenePath(nextScene) : null, 30000);
   const news = useTvResource<{ stories: TvNews[] }>(ready && !stripsOnly ? `/api/tv/news?language=${settings.language}` : null, 180000);
   const controls = useTvControls(root, (stripsOnly || viewing) && Boolean(settings.autoHideControls), modal);
@@ -129,7 +132,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     setSettings(next); activity.current = Date.now();
   }
   useEffect(() => {
-    if (stripsOnly || !settings.autoRotate || modal) return;
+    if (stripsOnly || view !== 'markets' || !settings.autoRotate || modal) return;
     const timer = setInterval(() => {
       const instant = Date.now();
       if (document.hidden || instant - activity.current < settings.rotationSeconds * 1000) return;
@@ -142,7 +145,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       if (groups.length) { const index = groups.indexOf(group); setGroup(groups[(index + 1) % groups.length]); setSelectedMarket(''); setPage(0); activity.current = instant; }
     }, 1000);
     return () => clearInterval(timer);
-  }, [settings.autoRotate, settings.rotationSeconds, settings.groups, modal, group, token, stripsOnly, viewing, sceneMarket.data, sceneMarket.loading, nextScene]);
+  }, [settings.autoRotate, settings.rotationSeconds, settings.groups, modal, group, token, stripsOnly, viewing, view, sceneMarket.data, sceneMarket.loading, nextScene]);
   const activeSnapshot = viewing ? sceneMarket.data : market.data;
   useEffect(() => {
     if (!activeSnapshot || !device.data) return;
@@ -180,7 +183,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const shown = quotes.slice(0, pageSize);
   // Freshness is independent of the clock and updates at most every 15 seconds.
   const stripNow = now;
-  const strips = <TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || (!stripsOnly && modal)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} />;
+  const strips = <Suspense fallback={<div className="tv-loading" role="status">{t('loading')}</div>}><TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || (!stripsOnly && modal)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} /></Suspense>;
   return <div ref={root} data-tv-root data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     <TvHeader language={settings.language} mode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} ready={ready} paired={Boolean(token)} fullscreen={fullscreen} hidden={controls.hidden} paused={stripsPaused} wake={controls.wake} changeMode={changeDisplayMode} pair={() => setDialog(token ? 'device' : 'pair')} settings={() => setDialog('settings')} customize={() => setDialog('markets')} channels={() => setDialog('channels')} toggleFullscreen={() => void toggleFullscreen()} togglePause={toggleTicker} refresh={refresh}/>
     {stripsOnly ? <>
