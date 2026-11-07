@@ -116,12 +116,12 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       await containedContent(page, '.tv-session');
     }
     for (const [market, clock] of [['XKUW', '12:52'], ['XSAU', '12:52'], ['XNYS', '04:52'], ['XTKS', '18:52']]) {
-      await expect(page.locator(`[data-market="${market}"] time`)).toHaveText(clock);
+      await expect(page.locator(`[data-market="${market}"] header time`)).toHaveText(clock);
     }
     // New York's clock follows daylight saving without claiming the exchange is open.
     await page.clock.setSystemTime(new Date('2026-07-01T09:52:00Z'));
     await page.clock.runFor(10_000);
-    await expect(page.locator('[data-market="XNYS"] time')).toHaveText('05:52');
+    await expect(page.locator('[data-market="XNYS"] header time')).toHaveText('05:52');
     await page.setViewportSize({ width: 960, height: 540 });
     const kuwait = page.locator('[data-tv-focus-key="session:XKUW"]');
     const nyse = page.locator('[data-tv-focus-key="session:XNYS"]');

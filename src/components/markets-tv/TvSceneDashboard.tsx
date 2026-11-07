@@ -59,8 +59,10 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
   }, [snapshot, watchlist, overview]);
   const emptyWatchlist = watchlist && Boolean(snapshot) && all.length === 0;
   const rowsPriced = rows.some(tvSceneHasPrice);
-  const heatmap = rows.filter(quote => tvSceneHasPrice(quote) && quote.changePercent !== null
+  const heatmap = rows.filter(quote => tvSceneHasPrice(quote) && quote.changePercent !== null && Number.isFinite(quote.changePercent)
+    && ['session','24h'].includes(quote.changeBasis||'')
     && ['available', 'delayed', 'closed'].includes(quoteStatus(quote, now)));
+  const showHeatmap = view === 'heatmap' && heatmap.length > 0;
 
   if (watchlist && !linked) return <main className="tv-viewing-empty"><h1>{t('linkForWatchlist')}</h1><button onClick={onPair}>{t('pair')}</button></main>;
 
@@ -80,10 +82,11 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
             <button onClick={() => setView('heatmap')} aria-pressed={view === 'heatmap'} aria-label={s('heatmap')} data-tv-focus-key="scene-heatmap"><LayoutGrid aria-hidden="true"/></button>
           </div>
         </div>
-        {loading && !snapshot ? <div className="tv-scene-loading" role="status"><RefreshCw className="tv-spin" aria-hidden="true"/><span>{t('loading')}</span></div> : view === 'heatmap' ? <>
+        {view==='heatmap'&&!showHeatmap&&Boolean(snapshot)&&<p className="tv-scene-map-notice" role="status">{s('noHeatmap')} · {s('quoteList')}</p>}
+        {loading && !snapshot ? <div className="tv-scene-loading" role="status"><RefreshCw className="tv-spin" aria-hidden="true"/><span>{t('loading')}</span></div> : showHeatmap ? <>
           {heatmap.length ? <div className="tv-scene-heatmap">{heatmap.map(quote => <button key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`heatmap:${quoteKey(quote)}`} data-trend={quote.changePercent! > 0 ? 'up' : quote.changePercent! < 0 ? 'down' : 'flat'}>
             <TvAssetIcon quote={quote}/><span className="tv-scene-heatmap-name">{language === 'ar' ? quote.nameAr : quote.name}</span><strong dir="ltr">{quote.displaySymbol || quote.symbol}</strong>
-            <QuoteChange quote={quote} language={language}/><QuoteEvidence quote={quote} language={language} now={now}/>
+            <span className="tv-scene-heatmap-price" dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote,language)}</small></span><QuoteChange quote={quote} language={language}/><QuoteEvidence quote={quote} language={language} now={now}/>
           </button>)}</div> : <div className="tv-scene-no-data"><p>{emptyWatchlist ? t('emptyWatchlist') : s('noHeatmap')}</p>{rows.length > 0 && <button onClick={() => setView('list')}>{s('quoteList')}</button>}</div>}
         </> : rows.length ? <div className="tv-scene-table" data-empty={!rowsPriced}>
           <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span>{rowsPriced ? <><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></> : <span>{t('provider')}</span>}</div>

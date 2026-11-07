@@ -24,7 +24,7 @@ describe('Obsidian market data',()=>{
     expect(briefMetrics([{...quote('BTC/USDT',3),changeBasis:'24h'}],now)).toMatchObject({basis:'24h',average:3});
   });
   it('keeps server and first client schedules deterministic until the clock is ready',()=>{
-    expect(sessionTimeline(TV_SESSIONS[0],0)).toEqual({open:false,remaining:null,nowPercent:0,bars:[]});
+    expect(sessionTimeline(TV_SESSIONS[0],0)).toEqual({open:false,remaining:null,nextOpen:null,closesAt:null,nowPercent:0,bars:[]});
   });
   it('aligns New York and London in Kuwait time through both DST transitions',()=>{
     const ny=TV_SESSIONS.find(s=>s.id==='XNYS')!,london=TV_SESSIONS.find(s=>s.id==='XLON')!;
@@ -41,7 +41,7 @@ describe('Obsidian market data',()=>{
     expect(sessionTimeline(tokyo,Date.parse('2026-11-03T01:00:00Z')).bars).toEqual([]);
     expect(sessionTimeline(ny,Date.parse('2026-11-26T15:00:00Z')).open).toBe(false);
     expect(sessionTimeline(ny,Date.parse('2026-11-27T17:30:00Z'))).toMatchObject({open:true,remaining:30*60000});
-    expect(durationClock(103*60000)).toBe('1:43');
+    expect(durationClock(103*60000)).toBe('01:43:00');
   });
   it('normalizes real intraday bars to UTC, isolates the latest session, and rejects ETF/future/invalid points',()=>{
     const points=normalizeSessionHistory([{date:'2026-11-05 15:55:00',close:6000},{date:'2026-11-06 09:30:00',close:6010},{date:'2026-11-06 09:35:00',close:6012},{date:'2026-11-06 09:35:00',close:6013},{date:'2026-11-06 09:40:00',close:44,symbol:'SPY'},{date:'2026-11-06 09:45:00',close:NaN},{date:'2026-11-06 16:00:00',close:9999}],now);

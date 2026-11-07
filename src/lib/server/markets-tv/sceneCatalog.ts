@@ -35,6 +35,15 @@ const EUROPE: TvAsset[] = [
   { symbol: 'SAP.DE', name: 'SAP', nameAr: 'إس إيه بي', region: 'TD_XETR', mic: 'XETR', providerSymbol: 'SAP', currency: 'EUR', country: 'DE', assetType: 'stock' },
   { symbol: 'NESN.SW', name: 'Nestlé', nameAr: 'نستله', region: 'TD_XSWX', mic: 'XSWX', providerSymbol: 'NESN', currency: 'CHF', country: 'CH', assetType: 'stock' },
 ];
+/** A labelled configured sample when an exchange directory is unavailable.
+ * Reuse the exact qualified listings used by the scenes; never guess symbols. */
+export function tvConfiguredMarketAssets(market: string): TvAsset[] {
+  if (market === 'europe') return EUROPE;
+  const ids: Record<string,string> = { BOURSA_KUWAIT:'kuwait_boursa', TADAWUL:'saudi_tadawul', TD_XSAU:'saudi_tadawul',
+    DFM:'uae_dfm', ADX:'uae_adx', TD_XADS:'uae_adx', QSE:'qatar_qse', TD_DSMD:'qatar_qse',
+    BAHRAIN_BOURSE:'bahrain_bourse', TD_XBAH:'bahrain_bourse', MUSCAT:'oman_msx', TD_XMUS:'oman_msx' };
+  return ids[market] ? configured(ids[market],12) : [];
+}
 const CRYPTO = ['BTC', 'ETH', 'SOL'].map(base => ({ symbol: `${base}/USDT`, name: `${base}/USDT`,
   region: 'BINANCE', currency: 'USDT', baseCurrency: base, providerSymbol: `${base}USDT`, assetType: 'crypto' as const }));
 const FOREX = ['EUR/USD', 'GBP/USD', 'USD/JPY'].map(symbol => ({ symbol, name: symbol,

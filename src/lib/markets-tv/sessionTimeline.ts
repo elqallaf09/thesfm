@@ -3,12 +3,16 @@ export type TvSession = typeof TV_SESSIONS[number];
 const dayMs = 86_400_000;
 const wallFormats = new Map<string, Intl.DateTimeFormat>();
 const scheduleCache = new Map<string, {start:number;end:number}[]>();
+function wallFormat(zone: string) {
+  let format = wallFormats.get(zone);
+  if (!format) { format = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); wallFormats.set(zone,format); }
+  return format;
+}
 /** Converts an exchange wall clock to UTC, including seasonal DST offsets. */
 export function zonedInstant(date: string, minutes: number, zone: string): number {
   const target = Date.parse(`${date}T00:00:00Z`) + minutes * 60_000;
   let guess = target;
-  let format = wallFormats.get(zone);
-  if (!format) { format = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); wallFormats.set(zone,format); }
+  const format = wallFormat(zone);
   for (let i = 0; i < 3; i++) {
     const p = Object.fromEntries(format.formatToParts(guess).map(part => [part.type, part.value]));
     const wall = Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00Z`);
@@ -17,7 +21,7 @@ export function zonedInstant(date: string, minutes: number, zone: string): numbe
   return guess;
 }
 function dateInZone(instant: number, zone: string) {
-  const p = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(instant);
+  const p = wallFormat(zone).formatToParts(instant);
   const get = (type: string) => p.find(part => part.type === type)!.value;
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
@@ -43,7 +47,7 @@ function periods(session: TvSession, date: string) {
 }
 export function sessionTimeline(session: TvSession, instant: number) {
   // Server markup and the first client render share an unknown clock.
-  if (!Number.isFinite(instant) || instant <= 0) return { open:false, remaining:null, nowPercent:0, bars:[] };
+  if (!Number.isFinite(instant) || instant <= 0) return { open:false, remaining:null, nextOpen:null, closesAt:null, nowPercent:0, bars:[] };
   const now = instant, kuwaitDate = dateInZone(now,'Asia/Kuwait');
   const start = zonedInstant(kuwaitDate,0,'Asia/Kuwait'), end = start + dayMs;
   const localDate = dateInZone(now,session.zone), localMidday = Date.parse(`${localDate}T12:00:00Z`);
@@ -57,12 +61,18 @@ export function sessionTimeline(session: TvSession, instant: number) {
   const active = windows.find(w => now >= w.start && now < w.end);
   const next = windows.find(w => w.start > now);
   return { open: Boolean(active), remaining: active ? active.end-now : next ? next.start-now : null,
+    nextOpen: next?.start ?? null, closesAt: active?.end ?? null,
     nowPercent: (now-start)/dayMs*100,
     bars: windows.filter(w => w.end>start && w.start<end).map(w => ({ left:Math.max(0,(w.start-start)/dayMs*100), width:(Math.min(end,w.end)-Math.max(start,w.start))/dayMs*100, start:w.start, end:w.end })),
   };
 }
 export function durationClock(ms: number | null) {
-  if (ms === null) return '—';
-  const total = Math.max(0,Math.ceil(ms/60_000));
-  return `${Math.floor(total/60)}:${String(total%60).padStart(2,'0')}`;
+  const parts = countdownParts(ms);
+  if (!parts) return '—';
+  return [parts.days * 24 + parts.hours, parts.minutes, parts.seconds].map(value => String(value).padStart(2,'0')).join(':');
+}
+export function countdownParts(ms: number | null) {
+  if (ms === null || !Number.isFinite(ms)) return null;
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return { days: Math.floor(total / 86400), hours: Math.floor(total % 86400 / 3600), minutes: Math.floor(total % 3600 / 60), seconds: total % 60 };
 }

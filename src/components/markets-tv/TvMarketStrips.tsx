@@ -58,16 +58,16 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
     return () => clearTimeout(timer);
   }, [pricedOnly, displayed.length, visible, paused, manualPause, sourceCooling, resource.loading, resource.error, resource.data, pages]);
   useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
-  const health = resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
+  const health = market.status === 'unavailable' || resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
   const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = useCallback(() => { if (!resource.loading) setPage(value => (value + 1) % pages); }, [resource.loading, pages]);
   const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
-  return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-source-cooling={sourceCooling} data-paged={pages > 1}>
+  return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-directory-empty={market.count===0} data-source-cooling={sourceCooling} data-paged={pages > 1}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
-      <small dir="ltr" title={t('directory')}>{custom ? `${selection.length.toLocaleString('en-US')} / ` : ''}{market.count.toLocaleString('en-US')}</small>
-      <span className="tv-strip-coverage">{t('pageCoverage')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>
-      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
+      <small dir="ltr" title={t(market.status==='selected'?'selectedCoverage':'directory')}>{custom ? `${selection.length.toLocaleString('en-US')} / ` : ''}{market.count.toLocaleString('en-US')}</small>
+      {market.count>0&&<span className="tv-strip-coverage">{market.status==='selected'&&`${t('selectedCoverage')} · `}{t('pageCoverage')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>}
+      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{market.count===0?t('directoryUnavailable'):emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
     </button>
     {browse && displayed.length > 0 ? <TvBrowseStripPage key={page} quotes={displayed} group={market.group} language={language}
       now={now} onQuote={onQuote} speed={speed} paused={manualPause || !visible || resource.loading}

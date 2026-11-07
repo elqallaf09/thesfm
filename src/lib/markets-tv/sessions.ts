@@ -8,4 +8,4 @@ export const TV_SESSIONS = [
   { id: 'XNYS', region: 'US', names: ['بورصة نيويورك', 'New York Stock Exchange', 'Bourse de New York'], zone: 'America/New_York', hours: '09:30–16:00', days: 'mondayFriday', source: 'NYSE', url: 'https://www.nyse.com/trade/hours-calendars' },
   { id: 'XTKS', region: 'JP', names: ['بورصة طوكيو', 'Tokyo Stock Exchange', 'Bourse de Tokyo'], zone: 'Asia/Tokyo', hours: '09:00–11:30 · 12:30–15:30', days: 'mondayFriday', source: 'Japan Exchange Group', url: 'https://www.jpx.co.jp/english/equities/trading/domestic/01.html' },
 ] as const;
-export const TV_HOURS_VERIFIED = '2026-11-06';
+export const TV_HOURS_VERIFIED = '2026-11-07';
