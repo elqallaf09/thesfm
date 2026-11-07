@@ -9,6 +9,7 @@ export function tvCorsHeaders(origin: string) {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'content-type,x-sfm-tv-token',
+    'Access-Control-Expose-Headers': 'Retry-After',
     'Access-Control-Max-Age': '600',
     Vary: 'Origin',
   };

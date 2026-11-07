@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkStore } from 'next/dist/server/app-render/work-async-storage.external';
 import type { TvLanguage, TvNews } from '@/lib/markets-tv/types';
+import type { TvNewsChannel } from '@/lib/server/markets-tv/newsChannels';
 
 const now = Date.parse('2026-11-03T09:00:00Z');
 const stories: TvNews[] = [{ id: 'test', title: 'Test headline', source: 'Test source', url: 'https://example.com/news', publishedAt: '2026-11-03T08:00:00Z' }];
@@ -20,10 +21,10 @@ async function fixture() {
     },
     set: async (key: string, value: unknown) => { entries.set(key, { value, savedAt: Date.now() }); },
   };
-  const read = async (language: TvLanguage, load: () => Promise<TvNews[]>) => {
+  const read = async (language: TvLanguage, load: () => Promise<TvNews[]>, channel: TvNewsChannel = 'all') => {
     const store = { incrementalCache, pendingRevalidates: {} } as unknown as WorkStore;
     return workAsyncStorage.run(store, async () => {
-      const result = await cachedTvNews(language, load);
+      const result = await cachedTvNews(language, load, channel);
       await Promise.all(Object.values(store.pendingRevalidates || {}));
       return result;
     });
@@ -32,6 +33,17 @@ async function fixture() {
 }
 
 describe('TV shared news cache', () => {
+  it('isolates Kuwait, technology and general feeds in simultaneous cache misses and hits', async () => {
+    const { read } = await fixture();
+    const loads = ['all','kuwait','technology'].map(channel => vi.fn(async () => [{ ...stories[0], title: channel }]));
+    const channels = ['all','kuwait','technology'] as const;
+    const values = await Promise.all(channels.map((channel, index) => read('ar', loads[index], channel)));
+    expect(values.map(value => value.stories[0].title)).toEqual([...channels]);
+    for (let index = 0; index < channels.length; index++) {
+      expect((await read('ar', loads[index], channels[index])).stories[0].title).toBe(channels[index]);
+      expect(loads[index]).toHaveBeenCalledTimes(1);
+    }
+  });
   it('coalesces simultaneous cold loads, caches for 180 seconds and isolates languages', async () => {
     const { read } = await fixture();
     let resolve!: (value: TvNews[]) => void;

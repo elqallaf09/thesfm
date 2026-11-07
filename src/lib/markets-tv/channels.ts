@@ -1,11 +1,11 @@
 import { normalizeTvSelections, type TvSelections } from './selections';
-import { normalizeTvSettings, type TvSettings } from './types';
+import { normalizeTvSettings, type TvSettings, type TvView } from './types';
 
 export const TV_CHANNELS_KEY = 'sfm-markets-tv-channels-v1';
 export const TV_CHANNEL_LIMIT = 8;
 // UTF-16 storage budget; leave room for this screen's current selections/settings.
 export const TV_CHANNEL_STORAGE_LIMIT = 1_000_000;
-export type TvChannel = { id: string; name: string; settings: TvSettings; selections: TvSelections };
+export type TvChannel = { id: string; name: string; settings: TvSettings; selections: TvSelections; view?: TvView };
 
 export function normalizeTvChannels(value: unknown): TvChannel[] {
   if (!Array.isArray(value)) return [];
@@ -19,7 +19,8 @@ export function normalizeTvChannels(value: unknown): TvChannel[] {
     // Opening them as a curated viewing scene would hide those saved choices.
     if (!item.settings || typeof item.settings !== 'object' || !('displayMode' in item.settings)) settings.displayMode = 'strips';
     const channel: TvChannel = { id: item.id, name: item.name.trim().slice(0, 60),
-      settings, selections: normalizeTvSelections(item.selections) };
+      settings, selections: normalizeTvSelections(item.selections),
+      view: ['markets','map','sessions','brief','investments','allStocks','technology','kuwait'].includes(item.view) ? item.view : undefined };
     size += JSON.stringify(channel).length + 1;
     if (size > TV_CHANNEL_STORAGE_LIMIT) break;
     result.push(channel);

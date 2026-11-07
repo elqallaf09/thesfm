@@ -1,5 +1,8 @@
 import type { TvLanguage, TvQuote } from './types';
 export const TV_TEXT = {
+  allStocks: ['كل الأسهم', 'All stocks', 'Toutes les actions'],
+  technology: ['أخبار أسهم التقنية', 'Technology stocks news', 'Actualités des valeurs technologiques'],
+  kuwait: ['بورصة الكويت', 'Boursa Kuwait', 'Bourse du Koweït'],
   pairScope: ['يتيح الربط عرض قائمة المتابعة واستثمارات الحساب على هذا التلفزيون.', 'Linking allows this TV to display your watchlist and account investments.', 'L’association permet à ce téléviseur d’afficher votre liste de suivi et vos investissements.'],
   investments: ['استثماراتي', 'My investments', 'Mes investissements'],
   done: ['تم', 'Done', 'Terminé'],

@@ -1,0 +1,6 @@
+.tv-receiver-nav{display:flex;gap:.35em;min-width:0;width:100%;font-size:max(13px,.85em)}
+.tv-screen .tv-receiver-nav button{display:flex;align-items:center;justify-content:center;gap:.6em;flex:1;min-width:0;padding:.45em .6em;font-size:1em;line-height:1.35}
+.tv-receiver-nav bdi{color:var(--tv-accent);font-family:var(--font-data);font-size:.9em}
+.tv-receiver-nav button[aria-pressed=true]{border-color:var(--tv-accent);background:var(--tv-panel2)}
+.tv-receiver-nav button span{overflow-wrap:anywhere}
+@media(max-width:760px){.tv-receiver-nav{flex-wrap:wrap}.tv-screen .tv-receiver-nav button{flex:1 0 30%}}
