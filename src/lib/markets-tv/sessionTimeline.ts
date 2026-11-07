@@ -1,7 +1,8 @@
-import { TV_SESSIONS } from './sessions';
-export type TvSession = typeof TV_SESSIONS[number];
+import type { TvSession } from './sessionTypes';
+export type { TvSession } from './sessionTypes';
 const dayMs = 86_400_000;
 const wallFormats = new Map<string, Intl.DateTimeFormat>();
+const timeFormats = new Map<string, Intl.DateTimeFormat>();
 const scheduleCache = new Map<string, {start:number;end:number}[]>();
 function wallFormat(zone: string) {
   let format = wallFormats.get(zone);
@@ -36,13 +37,33 @@ const closed: Record<string, string[]> = {
   XTKS: ['2026-11-03','2026-11-23','2026-12-31','2027-01-01','2027-01-02','2027-01-03','2027-01-11','2027-02-11','2027-02-23','2027-03-21','2027-03-22','2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19','2027-08-11','2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23','2027-12-31'],
 };
 const early: Record<string, Record<string, number>> = { XLON: {'2026-12-24':750,'2026-12-31':750,'2027-12-24':750,'2027-12-31':750}, XNYS: {'2026-11-27':780,'2026-12-24':780,'2027-11-26':780} };
+function hoursOnDate(session:TvSession,date:string) {
+  const hours=session.exceptions?.[date] ?? session.weekdayHours?.[new Date(`${date}T12:00:00Z`).getUTCDay()] ?? session.monthHours?.[Number(date.slice(5,7))] ?? session.hours;
+  const close=early[session.id]?.[date];
+  if(close===undefined)return hours;
+  const limit=`${String(Math.floor(close/60)).padStart(2,'0')}:${String(close%60).padStart(2,'0')}`;
+  return hours.split(' · ').flatMap(pair=>{const [a,b]=pair.split('–'),end=b<limit?b:limit;return end>a?[`${a}–${end}`]:[];}).join(' · ');
+}
+/** Period labels use the same dated schedule and local zone as the countdown. */
+export function sessionHoursAt(session:TvSession,instant:number) {
+  if(!Number.isFinite(instant)||instant<=0)return session.hours;
+  const zone=session.scheduleZone||session.zone,date=dateInZone(instant,zone);
+  let format=timeFormats.get(session.zone);
+  if(!format){format=new Intl.DateTimeFormat('en-GB',{timeZone:session.zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});timeFormats.set(session.zone,format);}
+  return hoursOnDate(session,date).split(' · ').map(period=>period.split('–').map(time=>{
+    const [h,m]=time.split(':').map(Number);
+    return format.format(zonedInstant(date,h*60+m,zone));
+  }).join('–')).join(' · ');
+}
 function periods(session: TvSession, date: string) {
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-  if (closed[session.id]?.includes(date) || (session.days === 'sundayThursday' ? weekday === 5 || weekday === 6 : weekday === 0 || weekday === 6)) return [];
+  if (closed[session.id]?.includes(date) || session.holidays?.includes(date) || session.exceptions?.[date]===null
+    || (session.days === 'sundayThursday' ? weekday === 5 || weekday === 6 : session.days === 'saturdayWednesday' ? weekday === 4 || weekday === 5 : weekday === 0 || weekday === 6)) return [];
   const minute = (time: string) => { const [h,m] = time.split(':').map(Number); return h*60+m; };
-  return session.hours.split(' · ').flatMap(period => {
+  const zone=session.scheduleZone || session.zone;
+  return hoursOnDate(session,date).split(' · ').flatMap(period => {
     const [start,end] = period.split('–').map(minute), close = Math.min(end, early[session.id]?.[date] ?? end);
-    return close > start ? [{ start: zonedInstant(date,start,session.zone), end:zonedInstant(date,close,session.zone) }] : [];
+    return close > start ? [{ start: zonedInstant(date,start,zone), end:zonedInstant(date,close,zone) }] : [];
   });
 }
 export function sessionTimeline(session: TvSession, instant: number) {
@@ -50,12 +71,12 @@ export function sessionTimeline(session: TvSession, instant: number) {
   if (!Number.isFinite(instant) || instant <= 0) return { open:false, remaining:null, nextOpen:null, closesAt:null, nowPercent:0, bars:[] };
   const now = instant, kuwaitDate = dateInZone(now,'Asia/Kuwait');
   const start = zonedInstant(kuwaitDate,0,'Asia/Kuwait'), end = start + dayMs;
-  const localDate = dateInZone(now,session.zone), localMidday = Date.parse(`${localDate}T12:00:00Z`);
+  const localDate = dateInZone(now,session.scheduleZone || session.zone), localMidday = Date.parse(`${localDate}T12:00:00Z`);
   const cacheKey=`${session.id}:${localDate}`;
   let windows=scheduleCache.get(cacheKey);
   if (!windows) {
-    windows=Array.from({length:12},(_,i) => periods(session,new Date(localMidday + (i-1)*dayMs).toISOString().slice(0,10))).flat();
-    if(scheduleCache.size>=60)scheduleCache.delete(scheduleCache.keys().next().value!);
+    windows=Array.from({length:35},(_,i) => periods(session,new Date(localMidday + (i-1)*dayMs).toISOString().slice(0,10))).flat();
+    if(scheduleCache.size>=512)scheduleCache.delete(scheduleCache.keys().next().value!);
     scheduleCache.set(cacheKey,windows);
   }
   const active = windows.find(w => now >= w.start && now < w.end);

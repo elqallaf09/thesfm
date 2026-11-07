@@ -109,10 +109,10 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     const opener = page.locator('.tv-viewing-footer button').first();
     await opener.click();
     const dialog = page.getByRole('dialog');
-    await expect(page.locator('.tv-session')).toHaveCount(5);
+    await expect(page.locator('.tv-session')).toHaveCount(2);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
-      expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+      await expect.poll(()=>dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
       await containedContent(page, '.tv-session');
     }
     for (const [market, clock] of [['XKUW', '12:52'], ['XSAU', '12:52'], ['XNYS', '04:52'], ['XTKS', '18:52']]) {
@@ -123,19 +123,20 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.clock.runFor(10_000);
     await expect(page.locator('[data-market="XNYS"] header time')).toHaveText('05:52');
     await page.setViewportSize({ width: 960, height: 540 });
-    const kuwait = page.locator('[data-tv-focus-key="session:XKUW"]');
+    await expect(page.locator('.tv-session')).toHaveCount(2);
+    const nextPage = page.locator('[data-tv-focus-key=sessions-next]');
+    await nextPage.focus();await page.keyboard.press('Enter');
+    const london = page.locator('[data-tv-focus-key="session:XLON"]');
     const nyse = page.locator('[data-tv-focus-key="session:XNYS"]');
-    await kuwait.focus();
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
+    await london.focus();
+    await page.keyboard.press(language === 'ar' ? 'ArrowLeft' : 'ArrowRight');
     await expect(nyse).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(nyse).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('[data-tv-focus-key=session-source-back]')).toBeFocused();
     await expect(page.locator('.tv-session-qr canvas')).toBeVisible();
     await expect(page.locator('.tv-session-qr canvas')).toBeInViewport({ ratio: 1 });
     await page.keyboard.press('Enter');
-    await expect(nyse).toHaveAttribute('aria-expanded', 'false');
+    await expect(nyse).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
     await expect(opener).toBeFocused();

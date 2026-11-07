@@ -5,15 +5,16 @@ import { obsText } from '@/lib/markets-tv/obsidian';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 
 /** Only the mounted sessions panel ticks; quote tables keep their slower clock. */
-export function useTvSessionClock(initial: number) {
+export function useTvSessionClock(initial: number, enabled = true) {
   const [now, setNow] = useState(initial);
   useEffect(() => {
+    if (!enabled) return;
     const tick = () => { if (!document.hidden) setNow(Date.now()); };
     tick();
     const timer = setInterval(tick, 1000);
     document.addEventListener('visibilitychange', tick);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick); };
-  }, []);
+  }, [enabled]);
   return now;
 }
 

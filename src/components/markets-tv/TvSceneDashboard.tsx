@@ -14,7 +14,7 @@ import { TvSceneSidebar } from './TvSceneSidebar';
 
 type SceneSnapshot = TvSnapshot & { summary?: TvQuote[]; selectionTotal?: number };
 type Props = {
-  overview?: boolean; snapshot: SceneSnapshot | null; loading: boolean; error: string | null; language: TvLanguage;
+  overview?: boolean; sessionIds?: string[]; snapshot: SceneSnapshot | null; loading: boolean; error: string | null; language: TvLanguage;
   now: number; news: TvNews[]; linked: boolean; watchlist: boolean;
   ticker: boolean; tickerPaused: boolean; speed: number;
   onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void;
@@ -43,7 +43,7 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
   </button>;
 }
 
-export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, snapshot, loading, error, language, now, news, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
+export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, sessionIds, snapshot, loading, error, language, now, news, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
   const [view, setView] = useState<'list' | 'heatmap'>('list');
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(language, key);
@@ -68,7 +68,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
 
   return <>
     {error && <div className="tv-scene-notice" role="status"><span>{snapshot ? s('retainedDuringRetry') : t('error')}</span><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
-    {overview ? <TvOverview quotes={all} language={language} now={now} news={news} loading={loading} onQuote={onQuote} onStory={onStory} onRefresh={onRefresh}/> : <>
+    {overview ? <TvOverview sessionIds={sessionIds} quotes={all} language={language} now={now} news={news} loading={loading} onQuote={onQuote} onStory={onStory} onRefresh={onRefresh}/> : <>
     <section className="tv-scene-summaries" aria-label={t('markets')} aria-busy={loading && !snapshot}>
       {summaries.map(quote => <SummaryQuote key={quoteKey(quote)} quote={quote} language={language} now={now} select={onQuote}/>)}
       {!summaries.length && (loading ? Array.from({ length: 4 }, (_, index) => <div key={index} className="tv-scene-summary tv-scene-skeleton" aria-hidden="true"><span/><span/><span/></div>)
@@ -82,7 +82,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
             <button onClick={() => setView('heatmap')} aria-pressed={view === 'heatmap'} aria-label={s('heatmap')} data-tv-focus-key="scene-heatmap"><LayoutGrid aria-hidden="true"/></button>
           </div>
         </div>
-        {view==='heatmap'&&!showHeatmap&&Boolean(snapshot)&&<p className="tv-scene-map-notice" role="status">{s('noHeatmap')} · {s('quoteList')}</p>}
+        {view==='heatmap'&&!showHeatmap&&Boolean(snapshot)&&<p className="tv-scene-map-notice" role="status"><span>{s('noHeatmap')}</span> · {s('quoteList')}</p>}
         {loading && !snapshot ? <div className="tv-scene-loading" role="status"><RefreshCw className="tv-spin" aria-hidden="true"/><span>{t('loading')}</span></div> : showHeatmap ? <>
           {heatmap.length ? <div className="tv-scene-heatmap">{heatmap.map(quote => <button key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`heatmap:${quoteKey(quote)}`} data-trend={quote.changePercent! > 0 ? 'up' : quote.changePercent! < 0 ? 'down' : 'flat'}>
             <TvAssetIcon quote={quote}/><span className="tv-scene-heatmap-name">{language === 'ar' ? quote.nameAr : quote.name}</span><strong dir="ltr">{quote.displaySymbol || quote.symbol}</strong>

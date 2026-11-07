@@ -21,14 +21,14 @@ async function contained(page:Page,selector:string){
  }));expect(bad).toEqual([]);
 }
 test('Arabic weekend countdown ticks every second, shows units, and reaches the exact Sunday opening',async({page})=>{
- await open(page);
+ await page.setViewportSize({width:1536,height:1009});await open(page);
  await page.locator('.tv-scene-tabs button').nth(5).click();
  await page.clock.runFor(500);
  const kw=page.locator('.tv-session[data-market=XKUW]'),ny=page.locator('.tv-session[data-market=XNYS]');
  await expect(kw.locator('.tv-session-countdown bdi')).toHaveText(['00','19','35','55']);
  await expect(ny.locator('.tv-session-countdown bdi')).toHaveText(['02','04','05','55']);
  await expect(kw.locator('.tv-session-countdown small')).toHaveText(['يوم','ساعة','دقيقة','ثانية']);
- await expect(kw.locator('.tv-timeline-closed')).toHaveText('لا توجد جلسة اليوم');
+ await expect(kw.locator('.tv-world-status')).toHaveText('مغلقة حسب الجدول');
  await expect(kw.locator('.tv-session-target')).toContainText('08/11');
  await page.clock.fastForward(1000);
  await expect(kw.locator('.tv-session-countdown bdi')).toHaveText(['00','19','35','54']);
@@ -36,8 +36,8 @@ test('Arabic weekend countdown ticks every second, shows units, and reaches the 
   await page.setViewportSize({width,height});await page.evaluate(()=>document.fonts.ready);
   await contained(page,'.tv-session,.tv-timeline-state,.tv-session-countdown');
   await expect(page.locator('.tv-sessions-note')).toBeInViewport({ratio:1});
-  const alignment=await page.evaluate(()=>{const a=document.querySelector('.tv-timeline-axis')!.getBoundingClientRect(),r=document.querySelector('.tv-timeline-row')!.getBoundingClientRect();return Math.abs(a.left-r.left)+Math.abs(a.width-r.width);});
-  expect(alignment).toBeLessThan(2);
+  await expect(page.locator('.tv-world-pages')).toBeInViewport({ratio:1});
+  await expect(page.locator('.tv-world-grid')).toBeInViewport({ratio:1});
  }
  await page.clock.fastForward(Date.parse('2026-11-08T06:00:00Z')-Date.parse(saturday)-1000);
  await expect(kw).toHaveAttribute('data-open','true');

@@ -11,7 +11,7 @@ import { TvSessionChart } from './TvSessionChart';
 export function TvPriceError({quote,language,retry}:{quote:TvQuote;language:TvLanguage;retry:()=>void}) {
   return <div className="tv-price-error"><span>{tvSceneText(language,tvSceneIssue(quote.issue))}</span><button onClick={retry}><RefreshCw aria-hidden="true"/>{tvText(language,'retry')}</button></div>;
 }
-export function TvOverview({quotes,language,now,news,loading,onQuote,onStory,onRefresh}:{quotes:TvQuote[];language:TvLanguage;now:number;news:TvNews[];loading:boolean;onQuote:(quote:TvQuote)=>void;onStory:(story:TvNews)=>void;onRefresh:()=>void}) {
+export function TvOverview({sessionIds,quotes,language,now,news,loading,onQuote,onStory,onRefresh}:{sessionIds?:string[];quotes:TvQuote[];language:TvLanguage;now:number;news:TvNews[];loading:boolean;onQuote:(quote:TvQuote)=>void;onStory:(story:TvNews)=>void;onRefresh:()=>void}) {
   const hero=quotes.find(q=>q.symbol==='^GSPC'),indices=quotes.filter(q=>q.symbol!=='^GSPC').slice(0,5);
   return <main className="tv-overview" aria-busy={loading&&!quotes.length}>
     <div className="tv-overview-primary"><section className="tv-index-hero">
@@ -22,6 +22,6 @@ export function TvOverview({quotes,language,now,news,loading,onQuote,onStory,onR
     </section>
     <section className="tv-index-five" aria-label={tvText(language,'global')}>{indices.map(quote=><article key={quote.symbol} data-priced={tvSceneHasPrice(quote)}><button className="tv-index-value" onClick={()=>onQuote(quote)} data-tv-focus-key={`summary:${quote.exchange||''}:${quote.symbol}:${quote.currency||''}`}><span>{language==='ar'?quote.nameAr:quote.name}</span><strong dir="ltr">{tvQuotePrice(quote)}</strong>{tvSceneHasPrice(quote)&&<bdi data-trend={(quote.changePercent||0)>0?'up':(quote.changePercent||0)<0?'down':'flat'}>{tvSceneChange(quote)}</bdi>}</button>{tvSceneHasPrice(quote)?<TvQuoteEvidence quote={quote} language={language} now={now}/>:<TvPriceError quote={quote} language={language} retry={onRefresh}/>}</article>)}</section>
     </div>
-    <aside className="tv-overview-sidebar"><TvSessionsNow language={language} now={now}/><section className="tv-overview-news"><TvHeadlines news={news} language={language} now={now} onStory={onStory}/></section></aside>
+    <aside className="tv-overview-sidebar"><TvSessionsNow selected={sessionIds} language={language} now={now}/><section className="tv-overview-news"><TvHeadlines news={news} language={language} now={now} onStory={onStory}/></section></aside>
   </main>;
 }
