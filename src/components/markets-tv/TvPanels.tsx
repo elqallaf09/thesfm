@@ -85,6 +85,7 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
   }, [pair, onLinked]);
   const link = pair && typeof window !== 'undefined' ? `${tvOrigin()}/tv/pair#${pair.code}` : '';
   return <div className="tv-pair-content">
+    <p>{t('pairScope')}</p>
     {pair && !expired ? <><TvQr value={link} label={t('scan')} /><p>{t('scan')}</p><strong className="tv-pair-code" dir="ltr">{pair.code.match(/.{1,4}/g)?.join(' — ')}</strong><p>{t('waiting')}</p><p dir="ltr" className="tv-muted">{typeof window !== 'undefined' ? `${tvOrigin()}/tv/pair` : '/tv/pair'}</p></> : <>
       <p>{t(error ? 'pairUnavailable' : expired ? 'pairExpired' : 'scan')}</p><button disabled={busy} onClick={() => void create()}>{t(busy ? 'loading' : 'newCode')}</button>
     </>}

@@ -19,6 +19,7 @@ import {
 import { realEstateInvestmentHref } from '@/lib/investments/realEstateHandoff';
 import { useCurrency } from '@/lib/useCurrency';
 import type { Investment } from '@/types/investment';
+import { recordedValue, recordedBaseValue, recordedBaseCost, valuationTimestamp, freshness } from '@/lib/investments/recordedPortfolio';
 import styles from './InvestmentCenter.module.css';
 
 type Copy = Record<'ar' | 'en' | 'fr', string>;
@@ -86,48 +87,6 @@ const LABEL_KEY_BY_CLASS: Record<InvestmentCenterAssetClass, keyof typeof COPY> 
 // Real estate market research lives in Global Markets. Owned properties remain
 // visible in the overview and still contribute to portfolio totals.
 const INVESTMENT_NAV_ASSET_CLASSES = INVESTMENT_CENTER_ASSET_CLASSES.filter(entry => entry !== 'real-estate');
-
-function finite(value: unknown) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function currencyOf(investment: Investment) {
-  const value = String(investment.userCurrency ?? investment.currency ?? investment.priceCurrency ?? '').trim().toUpperCase();
-  return /^[A-Z]{3}$/.test(value) ? value : null;
-}
-
-function recordedValue(investment: Investment) {
-  const amount = finite(investment.convertedMarketValue) ?? finite(investment.currentValue) ?? finite(investment.currentMarketValue);
-  const currency = currencyOf(investment);
-  return amount === null || !currency ? null : { amount, currency };
-}
-
-function recordedBaseValue(investment: Investment, baseCurrency: string) {
-  const normalizedBase = baseCurrency.toUpperCase();
-  const explicitConverted = finite(investment.convertedMarketValue);
-  const fxState = String(investment.fxSource ?? '').toLowerCase();
-  if (String(investment.userCurrency ?? '').toUpperCase() === normalizedBase && explicitConverted !== null && !/(stale|unavailable|failed)/.test(fxState)) {
-    return explicitConverted;
-  }
-  const direct = recordedValue(investment);
-  return direct?.currency === normalizedBase ? direct.amount : null;
-}
-
-function recordedBaseCost(investment: Investment, baseCurrency: string) {
-  const amount = finite(investment.purchaseTotal);
-  return amount !== null && String(investment.currency ?? '').toUpperCase() === baseCurrency.toUpperCase() ? amount : null;
-}
-
-function valuationTimestamp(investment: Investment) {
-  return investment.valuationLastUpdatedAt ?? investment.lastPriceUpdatedAt ?? null;
-}
-
-function freshness(investment: Investment) {
-  const value = valuationTimestamp(investment);
-  if (!value || !Number.isFinite(Date.parse(value))) return 'missing' as const;
-  return Date.now() - Date.parse(value) > 7 * 24 * 60 * 60 * 1000 ? 'stale' as const : 'recorded' as const;
-}
 
 function classHref(assetClass: InvestmentCenterAssetClass) {
   return assetClass === 'overview' ? '/investments' : `/investments/${assetClass}`;

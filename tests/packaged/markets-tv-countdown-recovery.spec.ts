@@ -6,7 +6,6 @@ const saved={symbol:'^GSPC',name:'S&P 500',nameAr:'إس آند بي 500',price:7
  source:'QA source',observedAt:'2026-11-06T21:00:00Z',receivedAt:saturday,status:'stale',changeBasis:'session'};
 async function open(page:Page,scene='world'){
  await page.clock.install({time:new Date(saturday)});
- await page.clock.pauseAt(new Date(saturday));
  await page.addInitScript(scene=>localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language:'ar',scene})),scene);
  await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[]}}));
  await page.route('**/api/tv/history',r=>r.fulfill({json:{points:[]}}));
@@ -23,15 +22,20 @@ async function contained(page:Page,selector:string){
 test('Arabic weekend countdown ticks every second, shows units, and reaches the exact Sunday opening',async({page})=>{
  await page.setViewportSize({width:1536,height:1009});await open(page);
  await page.locator('.tv-scene-tabs button').nth(5).click();
- await page.clock.runFor(500);
+ await expect(page.locator('.tv-session')).toHaveCount(5);
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+100));
  const kw=page.locator('.tv-session[data-market=XKUW]'),ny=page.locator('.tv-session[data-market=XNYS]');
- await expect(kw.locator('.tv-session-countdown bdi')).toHaveText(['00','19','35','55']);
- await expect(ny.locator('.tv-session-countdown bdi')).toHaveText(['02','04','05','55']);
- await expect(kw.locator('.tv-session-countdown small')).toHaveText(['يوم','ساعة','دقيقة','ثانية']);
- await expect(kw.locator('.tv-world-status')).toHaveText('مغلقة حسب الجدول');
- await expect(kw.locator('.tv-session-target')).toContainText('08/11');
+ await page.clock.setSystemTime(new Date(saturday));
  await page.clock.fastForward(1000);
- await expect(kw.locator('.tv-session-countdown bdi')).toHaveText(['00','19','35','54']);
+ await expect(kw.locator('.tv-compact-countdown bdi')).toHaveText('00ي 19:35:54');
+ await expect(ny.locator('.tv-compact-countdown bdi')).toHaveText('02ي 04:05:54');
+ await kw.locator('header button').click();
+ await expect(page.locator('.tv-session-qr .tv-session-countdown small')).toHaveText(['يوم','ساعة','دقيقة','ثانية']);
+ await expect(page.locator('.tv-session-qr')).toContainText('08/11');
+ await page.locator('[data-tv-focus-key=session-source-back]').click();
+ await expect(kw).toHaveAttribute('data-open','false');
+ await page.clock.fastForward(1000);
+ await expect(kw.locator('.tv-compact-countdown bdi')).toHaveText('00ي 19:35:53');
  for(const [width,height] of [[960,540],[1280,720],[1536,1009],[1920,1080]]){
   await page.setViewportSize({width,height});await page.evaluate(()=>document.fonts.ready);
   await contained(page,'.tv-session,.tv-timeline-state,.tv-session-countdown');
@@ -39,10 +43,10 @@ test('Arabic weekend countdown ticks every second, shows units, and reaches the 
   await expect(page.locator('.tv-world-pages')).toBeInViewport({ratio:1});
   await expect(page.locator('.tv-world-grid')).toBeInViewport({ratio:1});
  }
- await page.clock.fastForward(Date.parse('2026-11-08T06:00:00Z')-Date.parse(saturday)-1000);
+ await page.clock.fastForward(Date.parse('2026-11-08T06:00:00Z')-await page.evaluate(()=>Date.now()));
  await expect(kw).toHaveAttribute('data-open','true');
- await expect(kw.locator('.tv-timeline-state > strong')).toHaveText('تغلق بعد');
- await expect(kw.locator('.tv-session-countdown bdi')).toHaveText(['00','04','00','00']);
+ await expect(kw.locator('.tv-world-count > small')).toHaveText('يغلق');
+ await expect(kw.locator('.tv-compact-countdown bdi')).toHaveText('00ي 04:00:00');
 });
 test('brief shows dated saved prices with working detail actions instead of empty ranking panels',async({page})=>{
  await open(page);await page.locator('.tv-scene-tabs button').nth(6).click();

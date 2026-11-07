@@ -102,7 +102,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await page.getByRole('button', { name: 'Market map', exact: true }).click();
   await expect(page.getByRole('group', { name: 'Market map', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Market hours', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Market hours', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'World market hours', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Market brief', exact: true }).click();
   await expect(page.locator('.tv-brief-dashboard')).toBeVisible();
   await page.getByRole('link', { name: 'Viewing mode', exact: true }).click();

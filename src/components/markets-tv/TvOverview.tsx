@@ -1,13 +1,14 @@
 'use client';
+import { lazy, Suspense } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
 import { obsText } from '@/lib/markets-tv/obsidian';
 import { tvSceneChange, tvSceneHasPrice, tvSceneIssue, tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage, TvNews, TvQuote } from '@/lib/markets-tv/types';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
-import { TvHeadlines } from './TvSceneSidebar';
+import { TvHeadlines, TvSceneMovers } from './TvSceneSidebar';
 import { TvSessionsNow } from './TvSessions';
-import { TvSessionChart } from './TvSessionChart';
+const TvSessionChart = lazy(() => import('./TvSessionChart').then(module => ({ default: module.TvSessionChart })));
 export function TvPriceError({quote,language,retry}:{quote:TvQuote;language:TvLanguage;retry:()=>void}) {
   return <div className="tv-price-error"><span>{tvSceneText(language,tvSceneIssue(quote.issue))}</span><button onClick={retry}><RefreshCw aria-hidden="true"/>{tvText(language,'retry')}</button></div>;
 }
@@ -18,10 +19,10 @@ export function TvOverview({sessionIds,quotes,language,now,news,loading,onQuote,
       <header><div><p className="tv-eyebrow">{tvText(language,'global')}</p><h1 dir="ltr">S&P 500</h1></div><span className="tv-hero-code" dir="ltr">SPX · ^GSPC</span></header>
       {hero&&tvSceneHasPrice(hero)?<button className="tv-hero-price" onClick={()=>onQuote(hero)} data-tv-focus-key="summary:sp500"><strong dir="ltr">{tvQuotePrice(hero)}</strong><span dir="ltr" data-trend={(hero.changePercent||0)>0?'up':(hero.changePercent||0)<0?'down':'flat'}>{tvSceneChange(hero)}</span></button>:<div className="tv-hero-unavailable"><strong>—</strong>{hero?<TvPriceError quote={hero} language={language} retry={onRefresh}/>:<span>{loading?tvText(language,'loading'):obsText(language,'unavailable')}</span>}</div>}
       {hero&&tvSceneHasPrice(hero)&&<TvQuoteEvidence quote={hero} language={language} now={now}/>}
-      <TvSessionChart language={language}/>
+      <Suspense fallback={<div className="tv-chart-missing" role="status">{tvText(language,'loading')}</div>}><TvSessionChart language={language}/></Suspense>
     </section>
     <section className="tv-index-five" aria-label={tvText(language,'global')}>{indices.map(quote=><article key={quote.symbol} data-priced={tvSceneHasPrice(quote)}><button className="tv-index-value" onClick={()=>onQuote(quote)} data-tv-focus-key={`summary:${quote.exchange||''}:${quote.symbol}:${quote.currency||''}`}><span>{language==='ar'?quote.nameAr:quote.name}</span><strong dir="ltr">{tvQuotePrice(quote)}</strong>{tvSceneHasPrice(quote)&&<bdi data-trend={(quote.changePercent||0)>0?'up':(quote.changePercent||0)<0?'down':'flat'}>{tvSceneChange(quote)}</bdi>}</button>{tvSceneHasPrice(quote)?<TvQuoteEvidence quote={quote} language={language} now={now}/>:<TvPriceError quote={quote} language={language} retry={onRefresh}/>}</article>)}</section>
     </div>
-    <aside className="tv-overview-sidebar"><TvSessionsNow selected={sessionIds} language={language} now={now}/><section className="tv-overview-news"><TvHeadlines news={news} language={language} now={now} onStory={onStory}/></section></aside>
+    <aside className="tv-overview-sidebar"><TvSessionsNow selected={sessionIds} language={language} now={now}/><TvHeadlines news={news} language={language} now={now} onStory={onStory}/><TvSceneMovers quotes={quotes} language={language} now={now} onQuote={onQuote}/></aside>
   </main>;
 }

@@ -17,7 +17,7 @@ async function contained(page:Page){
   const box=el.getBoundingClientRect();return [...el.children].filter(child=>{const r=child.getBoundingClientRect();return r.width>0&&(r.left<box.left-2||r.right>box.right+2||r.top<box.top-2||r.bottom>box.bottom+2);}).map(child=>({parent:el.className,child:child.className}));
  }))).toEqual([]);
 }
-for(const language of ['ar','en','fr'])test(`world sessions ${language}: select all, paginate, filter, persist and clear`,async({page})=>{
+for(const language of ['ar','en','fr'])test(`world sessions ${language}: select all, paginate, filter, persist and clear`,async({page},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.setViewportSize({width:1536,height:1009});await open(page,language);
  await page.locator('.tv-scene-tabs button').nth(5).click();
@@ -28,10 +28,10 @@ for(const language of ['ar','en','fr'])test(`world sessions ${language}: select 
  await page.locator('.tv-session-picker-actions button').first().click();
  await expect(page.getByRole('checkbox',{checked:true})).toHaveCount(81);
  await page.locator('[data-tv-focus-key=sessions-done]').click();
- await expect(page.locator('.tv-session')).toHaveCount(6);
- if(language==='ar')await page.screenshot({path:'/workspace/scratch/26a5d1c37dfc/output/world-sessions-1536.png'});
+ await expect(page.locator('.tv-session')).toHaveCount(17);
+ if(language==='ar')await page.screenshot({path:testInfo.outputPath('world-sessions-1536.png')});
  const visited=new Set<string>();
- for(let i=0;i<14;i++){
+ for(let i=0;i<5;i++){
   for(const id of await page.locator('.tv-session').evaluateAll(elements=>elements.map(e=>e.getAttribute('data-market')!)))visited.add(id);
   await contained(page);await page.locator('[data-tv-focus-key=sessions-next]').click();
  }
