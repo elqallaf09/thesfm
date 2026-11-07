@@ -3,7 +3,7 @@ import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Monitor, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper } from 'lucide-react';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
-import { TvMarketStrips } from './TvMarketStrips';
+const TvMarketStrips = lazy(() => import('./TvMarketStrips').then(module => ({ default: module.TvMarketStrips })));
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
@@ -183,7 +183,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const shown = quotes.slice(0, pageSize);
   // Freshness is independent of the clock and updates at most every 15 seconds.
   const stripNow = now;
-  const strips = <TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || (!stripsOnly && modal)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} />;
+  const strips = <Suspense fallback={<div className="tv-loading" role="status">{t('loading')}</div>}><TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || (!stripsOnly && modal)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} /></Suspense>;
   return <div ref={root} data-tv-root data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     <TvHeader language={settings.language} mode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} ready={ready} paired={Boolean(token)} fullscreen={fullscreen} hidden={controls.hidden} paused={stripsPaused} wake={controls.wake} changeMode={changeDisplayMode} pair={() => setDialog(token ? 'device' : 'pair')} settings={() => setDialog('settings')} customize={() => setDialog('markets')} channels={() => setDialog('channels')} toggleFullscreen={() => void toggleFullscreen()} togglePause={toggleTicker} refresh={refresh}/>
     {stripsOnly ? <>
