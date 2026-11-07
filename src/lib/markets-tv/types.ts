@@ -1,8 +1,9 @@
+import { isTvReceiverChannel, type TvReceiverChannel } from './receiver';
 import { normalizeTvSessionIds } from './sessionSelection';
 export type TvLanguage = 'ar' | 'en' | 'fr';
 export type TvAccent = 'champagne' | 'blue' | 'green' | 'purple';
 export type TvGroup = 'world' | 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
-export type TvView = 'markets' | 'map' | 'sessions' | 'brief' | 'investments' | 'allStocks' | 'technology' | 'kuwait';
+export type TvView = 'markets' | 'map' | 'brief' | TvReceiverChannel;
 export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'watchlist';
 export type TvDisplayMode = 'viewing' | 'browse' | 'strips';
 export type TvSettings = {
@@ -13,7 +14,7 @@ export type TvSettings = {
   marketIds?: string[]; stripDensity?: 'comfortable' | 'balanced' | 'compact'; stripSpeed?: number;
   pricedOnly?: boolean; autoHideControls?: boolean; marketSpeeds?: Record<string, number>;
   sessionIds?: string[]; sessionAutoRotate?: boolean;
-  broadcastChannel?: 'allStocks' | 'technology' | 'kuwait' | 'sessions' | 'investments';
+  broadcastChannel?: TvReceiverChannel;
 };
 export type TvQuote = {
   symbol: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
@@ -36,7 +37,7 @@ export type TvSnapshot = {
   /** total/available describe quotes only; summary is separate and never duplicated. */
   group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number;
 };
-export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string };
+export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string; screening?: 'compliant' | 'needs_review' | 'non_compliant' | 'unclassified' };
 export type TvDevice = { id: string; name: string; expiresAt: string; settings: TvSettings; };
 export type TvAlert = { id: string; symbol: string; alert_type: string; threshold: number; currency: string | null; status: string };
 export const TV_GROUPS: TvGroup[] = ['world', 'global', 'us', 'gulf', 'europe', 'asia', 'crypto', 'forex', 'commodities', 'watchlist'];
@@ -74,6 +75,6 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     stripDensity: row.stripDensity === 'compact' || row.stripDensity === 'comfortable' ? row.stripDensity : 'balanced',
     stripSpeed, marketSpeeds, pricedOnly: row.pricedOnly === true, autoHideControls: row.autoHideControls === true,
     sessionIds: normalizeTvSessionIds(row.sessionIds), sessionAutoRotate: row.sessionAutoRotate!==false,
-    broadcastChannel: typeof row.broadcastChannel === 'string' && ['allStocks','technology','kuwait','sessions','investments'].includes(row.broadcastChannel) ? row.broadcastChannel as TvSettings['broadcastChannel'] : undefined,
+    broadcastChannel: isTvReceiverChannel(row.broadcastChannel) ? row.broadcastChannel : undefined,
   };
 }

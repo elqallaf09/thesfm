@@ -4,7 +4,7 @@ import { Play, Save, Trash2 } from 'lucide-react';
 import { normalizeTvChannels, TV_CHANNELS_KEY, TV_CHANNEL_LIMIT, type TvChannel } from '@/lib/markets-tv/channels';
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import type { TvSettings, TvView } from '@/lib/markets-tv/types';
-import { receiverText, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
+import { isTvReceiverChannel, receiverText, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
 import { TvReceiverNav } from './TvReceiverNav';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
@@ -41,7 +41,7 @@ export function TvChannels({ channels, change, settings, selections, apply, view
     <p className="tv-muted">{channels.length} / {TV_CHANNEL_LIMIT} · {t('channelsLocal')}</p>
     {message && <p role="status">{message}</p>}
     <div className="tv-channel-list">{channels.map(channel => <div className="tv-channel" key={channel.id}>
-      <div><strong dir="auto">{channel.name}</strong><small>{tvSceneText(settings.language, channel.settings.displayMode || 'strips')} · {channel.settings.displayMode === 'viewing' ? channel.view && channel.view !== 'markets' ? t(channel.view) : tvSceneText(settings.language, channel.settings.scene || 'overview') : t(!channel.settings.stripDensity || channel.settings.stripDensity === 'balanced' ? 'balancedDensity' : channel.settings.stripDensity)} · {channel.settings.language.toUpperCase()} · {t('stripSpeed')}: {t(channel.settings.stripSpeed === 36 ? 'slow' : channel.settings.stripSpeed === 80 ? 'fast' : 'normal')}</small></div>
+      <div><strong dir="auto">{channel.name}</strong><small>{tvSceneText(settings.language, channel.settings.displayMode || 'strips')} · {channel.settings.displayMode === 'viewing' ? channel.view && channel.view !== 'markets' ? isTvReceiverChannel(channel.view) ? receiverText(settings.language, channel.view) : t(channel.view) : tvSceneText(settings.language, channel.settings.scene || 'overview') : t(!channel.settings.stripDensity || channel.settings.stripDensity === 'balanced' ? 'balancedDensity' : channel.settings.stripDensity)} · {channel.settings.language.toUpperCase()} · {t('stripSpeed')}: {t(channel.settings.stripSpeed === 36 ? 'slow' : channel.settings.stripSpeed === 80 ? 'fast' : 'normal')}</small></div>
       <div className="tv-channel-actions">
         <button onClick={() => apply(channel)} aria-label={`${t('applyChannel')}: ${channel.name}`}><Play aria-hidden="true"/>{t('applyChannel')}</button>
         <button onClick={() => persist(channels.map(item => item.id === channel.id ? { ...item, settings, selections, view } : item))} aria-label={`${t('updateChannel')}: ${channel.name}`}><Save aria-hidden="true"/>{t('updateChannel')}</button>

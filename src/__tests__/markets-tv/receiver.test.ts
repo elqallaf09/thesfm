@@ -7,10 +7,10 @@ import { tvCorsHeaders } from '@/lib/markets-tv/cors';
 
 describe('SFM TV receiver channels', () => {
   it('wraps channels in both directions and preserves the chosen view in saved presets', () => {
-    expect(nextTvReceiverChannel('investments', 1)).toBe('allStocks');
-    expect(nextTvReceiverChannel('allStocks', -1)).toBe('investments');
+    expect(nextTvReceiverChannel('investments', 1)).toBe('europeNews');
+    expect(nextTvReceiverChannel('allStocks', -1)).toBe('incomeNews');
     expect(nextTvReceiverChannel('markets', 1)).toBe('allStocks');
-    expect(nextTvReceiverChannel('markets', -1)).toBe('investments');
+    expect(nextTvReceiverChannel('markets', -1)).toBe('incomeNews');
     for (const channel of TV_RECEIVER_CHANNELS) {
       const settings = normalizeTvSettings({ broadcastChannel: channel });
       const [saved] = normalizeTvChannels([{ id: 'custom', name: 'Custom', view: channel, settings, selections: {} }]);

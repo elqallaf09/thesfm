@@ -17,7 +17,7 @@ import { TV_SCENE_ORDER, tvSceneHasPrice, tvSceneIssue, tvSceneQuoteUnit, tvScen
 const TvSceneDashboard = lazy(() => import('./TvSceneDashboard').then(module => ({ default: module.TvSceneDashboard })));
 const TvReceiverScreen = lazy(() => import('./TvReceiverScreen'));
 import { TvReceiverNav } from './TvReceiverNav';
-import { TV_RECEIVER_CHANNELS, isTvReceiverChannel, nextTvReceiverChannel, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
+import { TV_RECEIVER_CHANNELS, isTvReceiverChannel, nextTvReceiverChannel, receiverText, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
 import { TV_SESSION_IDS } from '@/lib/markets-tv/sessionSelection';
 import { TvDataNotice } from './TvDataNotice';
 import { TvHeader } from './TvHeader';
@@ -63,7 +63,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const stripsOnly = routeStrips || settings.displayMode === 'strips';
   const viewing = !stripsOnly && settings.displayMode !== 'browse';
   const scene = settings.scene || 'overview';
-  const receiverScreen = view === 'allStocks' || view === 'technology' || view === 'kuwait';
+  const receiverScreen = isTvReceiverChannel(view) && view !== 'sessions' && view !== 'investments';
   const receiverActive = viewing && settings.broadcastChannel === view;
   const pagePlaying=(view==='sessions'||view==='investments'||receiverScreen)?settings.sessionAutoRotate!==false:settings.autoRotate;
   // The market brief always summarizes the global benchmark sample, even
@@ -226,7 +226,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
 
     {(view === 'markets' || view === 'brief') && <nav className="tv-markets-nav" aria-label={t('markets')}>{settings.groups.map(g => <button key={g} aria-pressed={group === g} onClick={() => choose(g)}>{t(g)}</button>)}</nav>}
     <div className="tv-section-heading"><div>{view === 'markets' ? <span className="tv-eyebrow">{t('directory')}: {market.data?.directoryTotal?.toLocaleString('en-US') ?? '—'}</span> : view === 'brief' && <span className="tv-eyebrow">{t(group)}</span>}
-      <h1>{t(view === 'markets' ? group : view)}</h1></div>
+      <h1>{isTvReceiverChannel(view) ? receiverText(settings.language, view) : t(view === 'markets' ? group : view)}</h1></div>
       {view === 'markets' && catalog.data && !['global','crypto','forex','commodities','watchlist'].includes(group) && <label className="tv-exchange-select">{t('markets')}<select value={selectedMarket} onChange={event => { setSelectedMarket(event.target.value); setPage(0); }}><option value="">{t('allMarkets')}</option>{catalog.data.markets.filter(m => group === 'world' ? !['global','crypto','forex','commodities'].includes(m.group) : m.group === group).map(m => <option key={m.id} value={m.id}>{settings.language === 'ar' ? m.labelAr : settings.language === 'fr' ? m.labelFr : m.labelEn} ({m.count.toLocaleString('en-US')})</option>)}</select></label>}
       <div className="tv-view-actions"><a className="tv-world-stocks-link" href={ready ? `${tvOrigin()}/world-stocks` : "/world-stocks"} onClick={event => { if (tvOrigin() !== window.location.origin) { event.preventDefault(); setDialog("worldStocks"); } }} aria-label={t('worldStocks')}><Globe2 aria-hidden="true"/></a>{(['markets','map','sessions','brief','investments'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => setView(v)}>{v === 'map' ? <Globe2 aria-hidden="true"/> : v === 'brief' ? <Newspaper aria-hidden="true"/> : <Monitor aria-hidden="true"/>}{t(v)}</button>)}<button aria-label={t(settings.autoRotate ? 'pause' : 'resume')} aria-pressed={settings.autoRotate} onClick={() => setSettings(s => ({ ...s, autoRotate: !s.autoRotate }))}>{settings.autoRotate ? <Pause/> : <Play/>}</button></div></div>
     {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
