@@ -52,7 +52,7 @@ test('receiver numbers and channel keys select separate feeds, respect dialogs a
 
 test('all-stock broadcast gives each exchange airtime every forty seconds and remembers batches', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page);
-  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 5000));
   const pause = page.locator('.tv-receiver-actions button[aria-pressed]');
   await pause.click(); await pause.click();
   await page.clock.runFor(39999); await expect(page.locator('.tv-strip-symbol b').first()).toHaveText('US0');
@@ -64,7 +64,7 @@ test('all-stock broadcast gives each exchange airtime every forty seconds and re
 
 test('automatic channel batches wait for provider retry windows', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page);
-  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 5000));
   let requests = 0;
   await page.route('**/api/tv/snapshot?*', route => { requests++; return route.fulfill({ status: 429, headers: { 'Retry-After': '120', 'Access-Control-Expose-Headers': 'Retry-After' }, json: { code: 'RATE_LIMITED' } }); });
   await page.locator('.tv-receiver-actions button').last().click();

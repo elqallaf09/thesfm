@@ -54,7 +54,7 @@ test('portfolio synchronizes changes and clears all private values immediately o
  let data=fixture(),unauthorized=false,calls=0;
  await page.route('**/api/tv/portfolio**',r=>{calls++;return r.fulfill({status:unauthorized?401:200,json:unauthorized?{code:'UNAUTHORIZED'}:data});});
  await open(page,'en');await expect(page.locator('.tv-portfolio-metrics article').first()).toContainText('13,078.00');
- await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+100));
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+5000));
  const firstCalls=calls;data=fixture(1500);await page.clock.runFor(16000);
  await expect(page.locator('.tv-portfolio-metrics article').first()).toContainText('19,578.00');expect(calls).toBeGreaterThan(firstCalls);
  unauthorized=true;await page.clock.runFor(16000);

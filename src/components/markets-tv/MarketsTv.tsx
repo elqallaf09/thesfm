@@ -86,10 +86,13 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const refresh = useCallback(() => setRevision(value => value + 1), []);
   const toggleTicker = useCallback(() => setStripsPaused(value => !value), []);
   const chooseBroadcast = useCallback((channel: TvReceiverChannel) => {
+    const next: TvSettings = { ...settings, displayMode: 'viewing', broadcastChannel: channel,
+      sessionIds: channel === 'sessions' && !settings.sessionIds ? [...TV_SESSION_IDS] : settings.sessionIds };
+    // Save during selection so closing/reloading immediately retains the channel.
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* In-memory selection remains usable. */ }
     setView(channel); setRouteStrips(false); setDialog(null); setDetail(null); setStory(null);
-    setSettings(value => ({ ...value, displayMode: 'viewing', broadcastChannel: channel,
-      sessionIds: channel === 'sessions' && !value.sessionIds ? [...TV_SESSION_IDS] : value.sessionIds })); activity.current = Date.now();
-  }, []);
+    setSettings(next); activity.current = Date.now();
+  }, [settings]);
   useTvRemote(() => { if (modal) close(); else setDialog('settings'); }, interact, modal, action => {
     const play = action === 'play' || action === 'toggle' && (stripsOnly ? stripsPaused : !pagePlaying);
     if((view==='sessions'||view==='investments'||receiverScreen)&&!stripsOnly){setSettings(value=>({...value,sessionAutoRotate:action==='play'||action==='toggle'&&value.sessionAutoRotate===false}));return;}
