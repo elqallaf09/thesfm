@@ -55,6 +55,10 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
   if (asset.currency && row.currency !== asset.currency) return false;
   const requested = asset.symbol.toUpperCase(), supplied = row.provenance.providerSymbol?.toUpperCase();
   if (!supplied) return false;
+  // Continuous contracts must never accept a spot quote or a dated month.
+  const continuous = tvCommodityIdentity(asset);
+  if (continuous && (row.assetType !== 'commodity' || supplied !== continuous.symbol
+    || row.symbol !== continuous.symbol || row.exchange !== continuous.exchange)) return false;
   if (row.symbol && row.symbol.toUpperCase() !== requested && (!asset.assetType || asset.assetType === 'stock')) return false;
   if (asset.assetType === 'crypto' || asset.assetType === 'forex') {
     const compact = (symbol: string) => symbol.split(':').at(-1)!.replace(/=X$/, '').replace(/[-/_]/g, '');
