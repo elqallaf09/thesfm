@@ -5,10 +5,13 @@ import { tvAssetsAll } from '@/lib/markets-tv/catalog';
 import { TV_GROUPS, type TvGroup, type TvMarket } from '@/lib/markets-tv/types';
 import { MARKET_EXCHANGE_OPTIONS } from '@/lib/market/marketExchangeOptions';
 import { tvText } from '@/lib/markets-tv/i18n';
+import { TV_COMMODITIES } from '@/lib/markets-tv/commodityQuote';
 import type { WorldStock } from '@/lib/world-stocks/types';
+import { isSupportedWorldStockRegion } from '@/lib/world-stocks/regions';
 import { tvInstrumentAssets } from './instruments';
 import { tvStockAssets } from './stockDirectory';
 import { localizeTvAsset } from './names';
+import { tvConfiguredMarketAssets } from './sceneCatalog';
 export type TvAsset = { symbol: string; displaySymbol?: string; name: string; nameAr?: string; region?: string; exchange?: string; currency?: string | null; country?: string | null; mic?: string; providerSymbol?: string; baseCurrency?: string; assetType?: 'stock' | 'index' | 'commodity' | 'crypto' | 'forex' };
 const GULF = new Set(['KW', 'SA', 'AE', 'QA', 'BH', 'OM']);
 const EUROPE = new Set(['GB','DE','FR','CH','NL','BE','ES','IT','PT','AT','DK','SE','NO','FI','IE','PL','GR','TR','CZ','HU','RO']);
@@ -27,13 +30,22 @@ async function universe() {
 function stockAsset(stock: WorldStock): TvAsset {
   return localizeTvAsset({ symbol: stock.providerSymbol, name: stock.displayName, region: stock.region, exchange: stock.exchangeCode, currency: stock.currency, country: stock.countryCode, assetType: 'stock' });
 }
+const commodityAssets = (): TvAsset[] => TV_COMMODITIES.map(asset => ({ ...asset, assetType:'commodity', country:'US' }));
 export async function tvDirectoryAssets(group: TvGroup, market?: string): Promise<TvAsset[]> {
   if (group === 'crypto' || group === 'forex') return tvInstrumentAssets(group);
-  if (['global','commodities'].includes(group)) return tvAssetsAll(group);
-  if (market) return (await tvStockAssets(market)).map(localizeTvAsset);
+  if (group === 'commodities') return commodityAssets();
+  if (group === 'global') return tvAssetsAll(group);
+  if (market) {
+    const fallback = tvConfiguredMarketAssets(market);
+    if (fallback.length && !isSupportedWorldStockRegion(market)) return fallback.map(localizeTvAsset);
+    try {
+      const assets = await tvStockAssets(market);
+      return (assets.length ? assets : fallback).map(localizeTvAsset);
+    } catch (error) { if (fallback.length) return fallback.map(localizeTvAsset); throw error; }
+  }
   const data = await universe();
   const rows = data.results.filter(stock => (!market || stock.region === market) && (group === 'world' || tvCountryGroup(stock.countryCode) === group));
-  return rows.map(stockAsset);
+  return rows.length ? rows.map(stockAsset) : group === 'europe' ? tvConfiguredMarketAssets('europe') : [];
 }
 async function equityMarkets(): Promise<TvMarket[]> {
   const data = await universe();
@@ -46,14 +58,18 @@ async function equityMarkets(): Promise<TvMarket[]> {
     if (!connected.has(aliases[option.id])) markets.push({ id: option.id, group: 'gulf', labelAr: option.labelAr, labelEn: option.labelEn, labelFr: option.labelEn, count: 0, status: 'unavailable' });
   }
   if (!markets.some(m => m.group === 'europe')) markets.push({ id: 'europe', group: 'europe', labelAr: tvText('ar','europe'), labelEn: tvText('en','europe'), labelFr: tvText('fr','europe'), count: 0, status: 'unavailable' });
-  return markets;
+  return markets.map(market => {
+    if (market.count > 0) return market;
+    const fallback = tvConfiguredMarketAssets(market.id);
+    return fallback.length ? { ...market, count:fallback.length, status:'selected' } : market;
+  });
 }
 const cachedEquities = unstable_cache(async () => {
   const markets = await equityMarkets();
   // Do not persist a failed worldwide refresh as an empty market directory.
   if (!markets.some(m => m.id.startsWith('TD_'))) throw new Error('WORLD_DIRECTORY_UNAVAILABLE');
   return markets;
-}, ['tv-market-counts-v2'], { revalidate: 3600 });
+}, ['tv-market-counts-v3'], { revalidate: 3600 });
 export async function tvMarkets(): Promise<TvMarket[]> {
   const [markets, crypto, forex] = await Promise.all([
     cachedEquities().catch(() => equityMarkets()),
@@ -62,7 +78,7 @@ export async function tvMarkets(): Promise<TvMarket[]> {
   const result = [...markets];
   for (const group of TV_GROUPS.filter(g => ['global','crypto','forex','commodities'].includes(g))) {
     const directory = group === 'crypto' || group === 'forex';
-    const assets = group === 'crypto' ? crypto : group === 'forex' ? forex : tvAssetsAll(group);
+    const assets = group === 'crypto' ? crypto : group === 'forex' ? forex : group === 'commodities' ? commodityAssets() : tvAssetsAll(group);
     result.push({ id: group, group, labelAr: tvText('ar', group), labelEn: tvText('en', group), labelFr: tvText('fr', group), count: assets.length, status: assets.length ? directory ? 'directory' : 'selected' : 'unavailable' });
   }
   return result;

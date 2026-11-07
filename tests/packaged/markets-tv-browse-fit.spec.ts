@@ -56,7 +56,7 @@ for (const density of ['balanced', 'comfortable', 'compact']) {
       await expect(page.locator('.tv-pagination')).toBeInViewport({ ratio: 1 });
     }
     await page.setViewportSize({ width: 960, height: 540 });
-    for (const [name, selector] of [['ساعات الأسواق', '.tv-session, .tv-sessions-note'], ['خريطة الأسواق', '.tv-map-point'], ['موجز السوق', '.tv-ranking-empty']]) {
+    for (const [name, selector] of [['ساعات الأسواق', '.tv-session, .tv-sessions-note'], ['خريطة الأسواق', '.tv-map-point'], ['موجز السوق', '.tv-brief-saved']]) {
       await page.locator('.tv-view-actions').getByRole('button', { name, exact: true }).click();
       await expect(body.locator(selector).first()).toBeVisible();
       await fits(body, body.locator(selector));
