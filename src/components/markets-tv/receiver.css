@@ -28,7 +28,7 @@
 .tv-receiver-notice{font-size:max(13px,.75em);margin:0}
 .tv-receiver-news{display:flex;flex-direction:column;min-height:0;flex:1}
 .tv-screen .tv-receiver-news .tv-scene-headlines{flex:1;font-size:1em}
-.tv-screen .tv-receiver-technology .tv-headline-items>button{padding:.8em;border-bottom:1px solid var(--tv-line);border-radius:var(--radius-xs);background:var(--tv-panel)}
-.tv-screen .tv-receiver-technology .tv-headline-items>button>span{font-size:1.4em;line-height:1.6}
+.tv-screen .tv-receiver-news-only .tv-headline-items>button{padding:.8em;border-bottom:1px solid var(--tv-line);border-radius:var(--radius-xs);background:var(--tv-panel)}
+.tv-screen .tv-receiver-news-only .tv-headline-items>button>span{font-size:1.4em;line-height:1.6}
 @media(min-width:761px) and (max-height:650px){.tv-receiver-screen{font-size:16px;gap:.35em}.tv-receiver-heading p{max-width:43em}.tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item{padding:.4em}.tv-receiver-kuwait .tv-receiver-content{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}.tv-screen .tv-receiver-kuwait .tv-strip-price{font-size:1.4em}.tv-screen .tv-receiver-nav button{padding:.25em .4em}}
-@media(max-width:760px){.tv-receiver-nav{flex-wrap:wrap}.tv-screen .tv-receiver-nav button{flex:1 0 30%}.tv-receiver-screen{min-height:650px;padding:.5em;font-size:16px}.tv-receiver-heading{flex-wrap:wrap}.tv-receiver-actions{width:100%;flex-wrap:wrap}.tv-receiver-kuwait .tv-receiver-content{grid-template-columns:minmax(0,1fr)}.tv-receiver-quotes{grid-auto-rows:minmax(170px,auto)}.tv-receiver-news{min-height:360px}.tv-receiver-screen .tv-strip-price{font-size:1.4em}}
+@media(max-width:760px){.tv-receiver-screen{min-height:650px;padding:.5em;font-size:16px}.tv-receiver-heading{flex-wrap:wrap}.tv-receiver-actions{width:100%;flex-wrap:wrap}.tv-receiver-kuwait .tv-receiver-content{grid-template-columns:minmax(0,1fr)}.tv-receiver-quotes{grid-auto-rows:minmax(170px,auto)}.tv-receiver-news{min-height:360px}.tv-receiver-screen .tv-strip-price{font-size:1.4em}}

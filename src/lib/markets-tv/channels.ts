@@ -1,4 +1,5 @@
 import { normalizeTvSelections, type TvSelections } from './selections';
+import { isTvReceiverChannel } from './receiver';
 import { normalizeTvSettings, type TvSettings, type TvView } from './types';
 
 export const TV_CHANNELS_KEY = 'sfm-markets-tv-channels-v1';
@@ -20,7 +21,7 @@ export function normalizeTvChannels(value: unknown): TvChannel[] {
     if (!item.settings || typeof item.settings !== 'object' || !('displayMode' in item.settings)) settings.displayMode = 'strips';
     const channel: TvChannel = { id: item.id, name: item.name.trim().slice(0, 60),
       settings, selections: normalizeTvSelections(item.selections),
-      view: ['markets','map','sessions','brief','investments','allStocks','technology','kuwait'].includes(item.view) ? item.view : undefined };
+      view: (['markets','map','brief'].includes(item.view) || isTvReceiverChannel(item.view)) ? item.view : undefined };
     size += JSON.stringify(channel).length + 1;
     if (size > TV_CHANNEL_STORAGE_LIMIT) break;
     result.push(channel);

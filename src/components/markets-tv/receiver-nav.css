@@ -4,3 +4,4 @@
 .tv-receiver-nav button[aria-pressed=true]{border-color:var(--tv-accent);background:var(--tv-panel2)}
 .tv-receiver-nav button span{overflow-wrap:anywhere}
 @media(max-width:760px){.tv-receiver-nav{flex-wrap:wrap}.tv-screen .tv-receiver-nav button{flex:1 0 30%}}
+.tv-screen .tv-receiver-nav .tv-channel-page{flex:0 0 auto}
