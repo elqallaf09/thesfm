@@ -79,9 +79,9 @@ export function tvSceneText(language: TvLanguage, key: TvSceneTextKey) {
 export function tvSceneQuoteUnit(quote: TvQuote, language: TvLanguage) {
   if (quote.symbol.startsWith('^')) return tvSceneText(language, 'points');
   // Unit labels are restricted to the exact contracts whose units are known.
-  if (quote.currency === 'USD' && ['GC=F', 'SI=F', 'XAUUSD', 'XAGUSD'].includes(quote.symbol)) return 'USD / oz';
-  if (quote.currency === 'USD' && ['CL=F', 'BZ=F'].includes(quote.symbol)) return 'USD / bbl';
-  if (quote.currency === 'USD' && quote.symbol === 'NG=F') return 'USD / MMBtu';
+  if (quote.currency === 'USD' && ['GC=F', 'SI=F', 'XAUUSD', 'XAGUSD', 'COMEX:GC1!', 'COMEX:SI1!'].includes(quote.symbol)) return 'USD / oz';
+  if (quote.currency === 'USD' && ['CL=F', 'BZ=F', 'NYMEX:CL1!'].includes(quote.symbol)) return 'USD / bbl';
+  if (quote.currency === 'USD' && ['NG=F','NYMEX:NG1!'].includes(quote.symbol)) return 'USD / MMBtu';
   return quote.currency || '—';
 }
 

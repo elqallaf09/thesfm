@@ -182,3 +182,16 @@
   .tv-session-chart { margin-top: .35em; }
   .tv-overview-news .tv-scene-headlines button { font-size: max(12px, .75em); }
 }
+
+/* Asset identity remains visible even when a quote provider is unavailable. */
+.tv-asset-icon { display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; flex-direction:column; width:2em; height:2em; border-radius:.55em; background:var(--tv-panel2); border:1px solid var(--tv-line); overflow:hidden; color:var(--tv-accent); }
+.tv-asset-icon[data-metal=true] { width:3em; height:2.5em; background:transparent; border:0; }
+.tv-asset-icon[data-metal=true] > img { width:100%; height:100%; }
+.tv-scene-summary-name > .tv-asset-icon { flex-shrink:0; }
+.tv-scene-summary-name > span:nth-child(2) { flex:1; }
+.tv-scene-identity { display:grid; grid-template-columns:2.3em minmax(0,1fr); align-items:center; column-gap:.55em; }
+.tv-scene-identity > .tv-asset-icon { grid-row:1/3; font-size:1em; }
+.tv-scene-identity > strong,.tv-scene-identity > span[dir] { grid-column:2; }
+.tv-ticker-identity,.tv-unavailable-identity { display:flex; align-items:center; gap:.55em; min-width:0; }
+.tv-ticker-identity strong { overflow:hidden; text-overflow:ellipsis; }
+.tv-ticker-identity .tv-asset-icon { width:1.7em; height:1.7em; }

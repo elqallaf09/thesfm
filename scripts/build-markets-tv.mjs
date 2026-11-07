@@ -17,6 +17,7 @@ await writeFile(resolve(out, 'configuration.js'), `window.SFM_TV_ORIGIN = ${JSON
 await mkdir(resolve(out, 'markets-tv'), { recursive: true });
 await copyFile(resolve(root, 'public/markets-tv/world-dotted-map.png'), resolve(out, 'markets-tv/world-dotted-map.png'));
 await copyFile(resolve(root, 'public/brand/sfm-original-logo.png'), resolve(out, 'markets-tv/sfm-logo.png'));
+await cp(resolve(root, 'public/markets-tv/assets'), resolve(out, 'markets-tv/assets'), { recursive: true });
 // Keep the map bundled; packaged clients must not depend on an absolute file URL.
 for (const name of await readdir(resolve(out, 'assets'))) {
   if (name.endsWith('.css')) { const file = resolve(out,'assets',name); const css = await readFile(file,'utf8'); await writeFile(file,css.replaceAll('/markets-tv/world-dotted-map.png','../markets-tv/world-dotted-map.png')); }
