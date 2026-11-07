@@ -20,6 +20,6 @@ describe('TV receiver news endpoint', () => {
     expect(mocks.cache.mock.calls[0][2]).toBe('kuwait');
     expect(mocks.aggregate.mock.calls[0][0]).toMatchObject({ countries: ['KW'], exchangeCodes: ['Boursa Kuwait'] });
     expect(mocks.aggregate).toHaveBeenCalledTimes(1);
-    expect((await response.json()).stories).toEqual([]);
+    expect(await response.json()).toMatchObject({ channel: 'kuwait', stories: [] });
   });
 });

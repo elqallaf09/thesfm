@@ -22,6 +22,6 @@ export async function GET(request: Request) {
         return url ? [{ id: s.id, title: s.title, source: s.sourceName, publishedAt: s.publishedAt, url }] : [];
       });
     }, channel);
-    return tvJson(snapshot);
+    return tvJson({ ...snapshot, channel });
   } catch { return tvJson({ code: 'NEWS_UNAVAILABLE' }, 503); }
 }

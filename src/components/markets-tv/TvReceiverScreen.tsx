@@ -18,11 +18,12 @@ const EMPTY_MARKETS: TvMarket[] = [];
 const KUWAIT: TvMarket = { id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'بورصة الكويت', labelEn: 'Boursa Kuwait', labelFr: 'Bourse du Koweït', count: 0, status: 'unknown' };
 
 function ChannelNews({ language, channel, now, revision, onStory, onRefresh, playing }: Pick<Props, 'language' | 'now' | 'revision' | 'onStory' | 'onRefresh' | 'playing'> & { channel: 'technology' | 'kuwait' }) {
-  const news = useTvResource<{ stories: TvNews[] }>(`/api/tv/news?language=${language}&channel=${channel}`, 180000, '', revision);
+  const news = useTvResource<{ stories: TvNews[]; channel?: string }>(`/api/tv/news?language=${language}&channel=${channel}`, 180000, '', revision);
+  const compatible = news.data?.channel === channel;
   return <aside className="tv-receiver-news" aria-busy={news.loading}>
     {news.loading && !news.data ? <p role="status">{tvText(language, 'loading')}</p> : <>
-      {news.error && <p role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></p>}
-      <TvHeadlines news={news.data?.stories || []} language={language} now={now} onStory={onStory} playing={playing}/>
+      {(news.error || news.data && !compatible) && <p role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></p>}
+      <TvHeadlines news={compatible ? news.data!.stories : []} language={language} now={now} onStory={onStory} playing={playing}/>
     </>}
   </aside>;
 }

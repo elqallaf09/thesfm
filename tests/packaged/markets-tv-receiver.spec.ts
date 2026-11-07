@@ -21,7 +21,7 @@ async function open(page: Page, language = 'ar') {
   });
   await page.route('**/api/tv/news?*', route => {
     const channel = new URL(route.request().url()).searchParams.get('channel') || 'general';
-    return route.fulfill({ json: { stories: Array.from({ length: 6 }, (_, index) => ({ id: `${channel}-${index}`, title: `${channel} ${index} · أخبار الشركات المدرجة ونتائجها المالية وتطورات استثماراتها وأعمالها خلال جلسات التداول الأخيرة مع مصادر وتواريخ النشر الأصلية`, source: 'QA source', publishedAt: '2026-11-08T07:00:00Z', url: 'https://example.com/story' })) } });
+    return route.fulfill({ json: { channel, stories: Array.from({ length: 6 }, (_, index) => ({ id: `${channel}-${index}`, title: `${channel} ${index} · أخبار الشركات المدرجة ونتائجها المالية وتطورات استثماراتها وأعمالها خلال جلسات التداول الأخيرة مع مصادر وتواريخ النشر الأصلية`, source: 'QA source', publishedAt: '2026-11-08T07:00:00Z', url: 'https://example.com/story' })) } });
   });
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
   await expect(page.locator('.tv-receiver-quotes .tv-market-strip-item')).toHaveCount(6);
@@ -74,6 +74,14 @@ test('automatic channel batches wait for provider retry windows', async ({ page 
   await page.clock.runFor(100000);
   expect(requests).toBe(1);
   await expect(page.locator('.tv-strip-symbol b').first()).toHaveText('US0');
+});
+
+test('receiver refuses unscoped legacy news instead of mixing general stories into Kuwait', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 }); await open(page);
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'legacy', title: 'GENERAL LEGACY HEADLINE', source: 'QA', publishedAt: '2026-11-08T07:00:00Z', url: 'https://example.com/story' }] } }));
+  await page.keyboard.press('3');
+  await expect(page.locator('.tv-receiver-news [role=status]')).toBeVisible();
+  await expect(page.locator('.tv-headline-items')).not.toContainText('GENERAL LEGACY HEADLINE');
 });
 
 for (const language of ['ar','en','fr']) test(`receiver ${language}: complete cards and news fit TV and tablet canvases`, async ({ page }, testInfo) => {
