@@ -1,0 +1,73 @@
+/* Every broadcast panel has a bounded share of the visible television canvas. */
+.tv-screen .tv-overview-sidebar { display:grid; grid-template-rows:minmax(0,.9fr) minmax(0,1.3fr) minmax(0,.6fr); gap:.55em; overflow:hidden; }
+.tv-screen .tv-scene-sidebar { position:relative; display:grid; grid-template-rows:minmax(0,1fr) auto auto; gap:.45em; overflow:hidden; }
+.tv-screen .tv-now-panel,.tv-screen .tv-scene-headlines,.tv-screen .tv-scene-movers { display:flex; flex-direction:column; min-height:0; min-width:0; overflow:hidden; padding:.6em; border:1px solid var(--tv-line); border-radius:var(--radius-panel); background:var(--tv-panel); font-size:clamp(13px,min(.95vw,1.65vh),26px); }
+.tv-broadcast-heading { display:flex; align-items:center; justify-content:space-between; gap:.35em; min-width:0; flex-shrink:0; margin-bottom:.35em; }
+.tv-screen .tv-broadcast-heading h2 { display:flex; gap:.3em; align-items:center; font-size:max(13px,.98em); line-height:1.35; margin:0; min-width:0; }
+.tv-screen .tv-broadcast-heading h2 svg { width:1em; color:var(--tv-accent); }
+.tv-broadcast-pager { display:flex; align-items:center; gap:.15em; flex-shrink:0; }
+.tv-screen .tv-broadcast-pager button { padding:0 .15em; min-height:1.7em; min-width:1.65em; background:transparent; border:0; }
+.tv-broadcast-pager bdi { font:400 max(12px,.75em)/1 var(--font-data); white-space:nowrap; }
+.tv-screen .tv-now-row { padding:.25em 0; min-width:0; border-bottom:1px solid var(--tv-line); }
+.tv-screen .tv-now-row > span { font-size:max(13px,.95em); line-height:1.35; }
+.tv-now-count { display:flex; justify-content:space-between; gap:.4em; align-items:baseline; margin-top:.15em; }
+.tv-screen .tv-now-count small { font-size:max(12px,.8em); line-height:1.25; margin:0; }
+.tv-compact-countdown { font:500 1em/1.3 var(--font-data); color:var(--tv-accent); white-space:nowrap; }
+.tv-now-row[data-open=true] { border-inline-start:3px solid var(--tv-up); padding-inline-start:.4em; background:var(--tv-up-surface); }
+.tv-now-row[data-open=true] .tv-compact-countdown { color:var(--tv-up); }
+.tv-headline-items,.tv-mover-items,.tv-now-items { min-height:0; }
+.tv-screen .tv-scene-headlines button { padding:.3em 0; }
+.tv-screen .tv-scene-headlines button > span { font-size:max(13px,1em); line-height:1.4; overflow:visible; }
+.tv-screen .tv-scene-headlines .tv-news-evidence { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.15em .6em; font-size:max(12px,.8em); line-height:1.3; margin-top:.3em; }
+.tv-screen .tv-scene-headlines .tv-news-evidence bdi { overflow-wrap:anywhere; }
+.tv-screen .tv-scene-headlines > p,.tv-screen .tv-headline-items > p,.tv-screen .tv-mover-items > p { font-size:max(13px,.9em); color:var(--tv-muted); line-height:1.4; }
+.tv-screen .tv-scene-movers .tv-mover-items button { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:.1em .5em; width:100%; min-height:0; text-align:start; padding:.3em 0; border:0; border-top:1px solid var(--tv-line); border-radius:0; background:transparent; font-size:max(13px,.95em); }
+.tv-screen .tv-scene-movers button > span { overflow-wrap:anywhere; line-height:1.3; }
+.tv-screen .tv-scene-movers button > strong { font:500 1em/1.3 var(--font-data); align-self:start; }
+.tv-screen .tv-scene-movers button > small { grid-column:3; align-self:center; font-size:max(12px,.75em); line-height:1.25; }
+.tv-screen .tv-scene-health { padding:.35em .6em; }
+.tv-screen .tv-scene-health[open] { position:absolute; inset:0; z-index:4; overflow:auto; }
+.tv-screen .tv-brief-dashboard > header { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; column-gap:1em; }
+.tv-brief-dashboard > header .tv-eyebrow { grid-column:1/-1; }
+.tv-screen .tv-brief-dashboard > header h1 { font-size:1.65em; }
+.tv-screen .tv-brief-dashboard > header > button { grid-column:2; grid-row:2; font-size:.8em; }
+@media(min-width:761px) and (max-height:800px) {
+ .tv-screen .tv-overview { grid-template-columns:minmax(0,2.5fr) minmax(300px,1.3fr); }
+ .tv-screen .tv-scene-body { grid-template-columns:minmax(0,2.6fr) minmax(300px,1.2fr); }
+ .tv-screen .tv-now-panel,.tv-screen .tv-scene-headlines,.tv-screen .tv-scene-movers { padding:.4em .5em; }
+ .tv-broadcast-heading { margin-bottom:.2em; }
+ .tv-screen .tv-scene-headlines button { padding:.2em 0; }
+}
+@media(max-width:760px) {
+ .tv-screen .tv-overview-sidebar,.tv-screen .tv-scene-sidebar { grid-template-rows:200px 260px 180px; overflow:visible; }
+ .tv-screen .tv-scene-sidebar { grid-template-rows:260px 180px auto; }
+ .tv-screen .tv-now-panel,.tv-screen .tv-scene-headlines,.tv-screen .tv-scene-movers { font-size:15px; }
+}
+
+.tv-screen[data-tv-view=sessions] .tv-scene-playback { display:none; }
+.tv-screen .tv-scene-sidebar > .tv-scene-movers { min-height:4em; }
+.tv-screen .tv-headline-items,.tv-screen .tv-mover-items { flex:1; }
+.tv-screen .tv-headline-items > button { flex-shrink:0; }
+@media(min-width:761px) and (max-height:650px) {
+ .tv-screen .tv-scene-summaries .tv-scene-summary { padding-block:.2em; row-gap:.1em; }
+}
+
+.tv-screen .tv-broadcast-heading .tv-broadcast-pager button { display:inline-flex; width:auto; padding:0 .15em; min-height:1.6em; height:1.6em; min-width:1.6em; font-size:1em; border:0; background:transparent; }
+
+@media(min-width:761px) and (max-height:650px) {
+ .tv-screen .tv-scene-body { grid-template-columns:minmax(0,1fr) minmax(390px,.8fr); }
+ .tv-screen .tv-scene-health:not([open]) { padding:.1em .6em; }
+}
+
+@media(min-width:761px) and (max-height:650px) {
+ .tv-screen .tv-scene-sidebar { gap:.3em; }
+}
+
+.tv-screen .tv-scene-tabs { flex:1; flex-wrap:wrap; gap:.1em; }
+.tv-screen .tv-viewing-nav .tv-scene-tabs button { font-size:max(13px,.72em); padding:.35em .3em; }
+@media(min-width:761px) and (max-height:650px) {
+ .tv-screen:not([dir=rtl]) .tv-scene-headlines button > span { line-height:1.3; }
+ .tv-screen .tv-headline-items > button { padding:.1em 0; }
+}
+
+.tv-screen .tv-scene-table .tv-scene-table-head,.tv-screen .tv-scene-table .tv-scene-row { grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) minmax(0,.75fr) minmax(0,1.6fr); }

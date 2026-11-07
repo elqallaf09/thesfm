@@ -34,4 +34,16 @@ describe('TV keyboard and remote navigation contracts', () => {
     expect(tvRemoteCommand(key('Unidentified', 19))).toEqual({ kind: 'playback', action: 'pause' });
     expect(tvRemoteCommand(key('MediaPause'))).toEqual({ kind: 'playback', action: 'pause' });
   });
+  it('selects receiver channels without stealing digits from editable fields', () => {
+    for (let digit = 1; digit <= 5; digit++) {
+      expect(tvRemoteCommand(key(String(digit)))).toEqual({ kind: 'channelNumber', number: digit });
+      expect(tvRemoteCommand(key('Unidentified', 48 + digit))).toEqual({ kind: 'channelNumber', number: digit });
+      for (const target of [{ tagName: 'INPUT' }, { tagName: 'TEXTAREA' }, { tagName: 'SELECT' }, { isContentEditable: true }]) {
+        expect(tvRemoteCommand(key(String(digit)), target)).toBeNull();
+      }
+    }
+    expect(tvRemoteCommand(key('ChannelUp'))).toEqual({ kind: 'channel', step: 1 });
+    expect(tvRemoteCommand(key('Unidentified', 428))).toEqual({ kind: 'channel', step: -1 });
+    expect(tvRemoteCommand(key('9'))).toBeNull();
+  });
 });

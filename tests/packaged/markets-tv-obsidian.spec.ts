@@ -21,7 +21,7 @@ async function contained(page:Page,selector:string){
     const b=el.getBoundingClientRect();return [...el.children].filter(child=>{const r=child.getBoundingClientRect();return r.width>0 && (r.left<b.left-2||r.right>b.right+2||r.top<b.top-2||r.bottom>b.bottom+2);}).map(child=>({parent:el.className,child:child.className}));
   }));expect(bad).toEqual([]);
 }
-for(const language of ['ar','en','fr'] as const)test(`Obsidian ${language} overview, common timeline and brief fit TV/tablet`,async({page})=>{
+for(const language of ['ar','en','fr'] as const)test(`Obsidian ${language} overview, world market cards and brief fit TV/tablet`,async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await open(page,language);
   for(const [width,height] of [[960,540],[1280,720],[1536,1009],[1920,1080],[3840,2160]]){
@@ -34,8 +34,8 @@ for(const language of ['ar','en','fr'] as const)test(`Obsidian ${language} overv
   await page.setViewportSize({width:1920,height:1080});
   const tabs=page.locator('.tv-scene-tabs button');await tabs.nth(5).click();
   await expect(page.locator('.tv-session')).toHaveCount(5);
-  const alignment=await page.evaluate(()=>{const axis=document.querySelector('.tv-timeline-axis')!.getBoundingClientRect(),row=document.querySelector('.tv-timeline-row')!.getBoundingClientRect();return Math.abs(axis.left-row.left)+Math.abs(axis.width-row.width);});
-  expect(alignment).toBeLessThan(2);
+  await contained(page,'.tv-session,.tv-session-countdown');
+  await expect(page.locator('.tv-world-pages')).toBeInViewport({ratio:1});
   await tabs.nth(6).click();
   await expect(page.locator('.tv-brief-metrics article')).toHaveCount(4);
   await expect(page.locator('.tv-ranking-empty')).toBeVisible();

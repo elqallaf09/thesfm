@@ -1,7 +1,8 @@
+import { normalizeTvSessionIds } from './sessionSelection';
 export type TvLanguage = 'ar' | 'en' | 'fr';
 export type TvAccent = 'champagne' | 'blue' | 'green' | 'purple';
 export type TvGroup = 'world' | 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
-export type TvView = 'markets' | 'map' | 'sessions' | 'brief';
+export type TvView = 'markets' | 'map' | 'sessions' | 'brief' | 'investments' | 'allStocks' | 'technology' | 'kuwait';
 export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'watchlist';
 export type TvDisplayMode = 'viewing' | 'browse' | 'strips';
 export type TvSettings = {
@@ -11,6 +12,8 @@ export type TvSettings = {
   groups: TvGroup[]; autoRotate: boolean; rotationSeconds: number; ticker: boolean; sound: boolean;
   marketIds?: string[]; stripDensity?: 'comfortable' | 'balanced' | 'compact'; stripSpeed?: number;
   pricedOnly?: boolean; autoHideControls?: boolean; marketSpeeds?: Record<string, number>;
+  sessionIds?: string[]; sessionAutoRotate?: boolean;
+  broadcastChannel?: 'allStocks' | 'technology' | 'kuwait' | 'sessions' | 'investments';
 };
 export type TvQuote = {
   symbol: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
@@ -70,5 +73,7 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     marketIds: Array.isArray(row.marketIds) ? [...new Set(row.marketIds.filter((id): id is string => typeof id === 'string' && /^[A-Za-z0-9_]{1,32}$/.test(id)))].slice(0, 150) : undefined,
     stripDensity: row.stripDensity === 'compact' || row.stripDensity === 'comfortable' ? row.stripDensity : 'balanced',
     stripSpeed, marketSpeeds, pricedOnly: row.pricedOnly === true, autoHideControls: row.autoHideControls === true,
+    sessionIds: normalizeTvSessionIds(row.sessionIds), sessionAutoRotate: row.sessionAutoRotate!==false,
+    broadcastChannel: typeof row.broadcastChannel === 'string' && ['allStocks','technology','kuwait','sessions','investments'].includes(row.broadcastChannel) ? row.broadcastChannel as TvSettings['broadcastChannel'] : undefined,
   };
 }

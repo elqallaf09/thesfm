@@ -1,14 +1,19 @@
-import { TV_SESSIONS } from './sessions';
-export type TvSession = typeof TV_SESSIONS[number];
+import type { TvSession } from './sessionTypes';
+export type { TvSession } from './sessionTypes';
 const dayMs = 86_400_000;
 const wallFormats = new Map<string, Intl.DateTimeFormat>();
+const timeFormats = new Map<string, Intl.DateTimeFormat>();
 const scheduleCache = new Map<string, {start:number;end:number}[]>();
+function wallFormat(zone: string) {
+  let format = wallFormats.get(zone);
+  if (!format) { format = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); wallFormats.set(zone,format); }
+  return format;
+}
 /** Converts an exchange wall clock to UTC, including seasonal DST offsets. */
 export function zonedInstant(date: string, minutes: number, zone: string): number {
   const target = Date.parse(`${date}T00:00:00Z`) + minutes * 60_000;
   let guess = target;
-  let format = wallFormats.get(zone);
-  if (!format) { format = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); wallFormats.set(zone,format); }
+  const format = wallFormat(zone);
   for (let i = 0; i < 3; i++) {
     const p = Object.fromEntries(format.formatToParts(guess).map(part => [part.type, part.value]));
     const wall = Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:00Z`);
@@ -17,7 +22,7 @@ export function zonedInstant(date: string, minutes: number, zone: string): numbe
   return guess;
 }
 function dateInZone(instant: number, zone: string) {
-  const p = new Intl.DateTimeFormat('en-CA', { timeZone: zone, year:'numeric', month:'2-digit', day:'2-digit' }).formatToParts(instant);
+  const p = wallFormat(zone).formatToParts(instant);
   const get = (type: string) => p.find(part => part.type === type)!.value;
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
@@ -32,37 +37,63 @@ const closed: Record<string, string[]> = {
   XTKS: ['2026-11-03','2026-11-23','2026-12-31','2027-01-01','2027-01-02','2027-01-03','2027-01-11','2027-02-11','2027-02-23','2027-03-21','2027-03-22','2027-04-29','2027-05-03','2027-05-04','2027-05-05','2027-07-19','2027-08-11','2027-09-20','2027-09-23','2027-10-11','2027-11-03','2027-11-23','2027-12-31'],
 };
 const early: Record<string, Record<string, number>> = { XLON: {'2026-12-24':750,'2026-12-31':750,'2027-12-24':750,'2027-12-31':750}, XNYS: {'2026-11-27':780,'2026-12-24':780,'2027-11-26':780} };
+function hoursOnDate(session:TvSession,date:string) {
+  const hours=session.exceptions?.[date] ?? session.weekdayHours?.[new Date(`${date}T12:00:00Z`).getUTCDay()] ?? session.monthHours?.[Number(date.slice(5,7))] ?? session.hours;
+  const close=early[session.id]?.[date];
+  if(close===undefined)return hours;
+  const limit=`${String(Math.floor(close/60)).padStart(2,'0')}:${String(close%60).padStart(2,'0')}`;
+  return hours.split(' · ').flatMap(pair=>{const [a,b]=pair.split('–'),end=b<limit?b:limit;return end>a?[`${a}–${end}`]:[];}).join(' · ');
+}
+/** Period labels use the same dated schedule and local zone as the countdown. */
+export function sessionHoursAt(session:TvSession,instant:number) {
+  if(!Number.isFinite(instant)||instant<=0)return session.hours;
+  const zone=session.scheduleZone||session.zone,date=dateInZone(instant,zone);
+  let format=timeFormats.get(session.zone);
+  if(!format){format=new Intl.DateTimeFormat('en-GB',{timeZone:session.zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});timeFormats.set(session.zone,format);}
+  return hoursOnDate(session,date).split(' · ').map(period=>period.split('–').map(time=>{
+    const [h,m]=time.split(':').map(Number);
+    return format.format(zonedInstant(date,h*60+m,zone));
+  }).join('–')).join(' · ');
+}
 function periods(session: TvSession, date: string) {
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-  if (closed[session.id]?.includes(date) || (session.days === 'sundayThursday' ? weekday === 5 || weekday === 6 : weekday === 0 || weekday === 6)) return [];
+  if (closed[session.id]?.includes(date) || session.holidays?.includes(date) || session.exceptions?.[date]===null
+    || (session.days === 'sundayThursday' ? weekday === 5 || weekday === 6 : session.days === 'saturdayWednesday' ? weekday === 4 || weekday === 5 : weekday === 0 || weekday === 6)) return [];
   const minute = (time: string) => { const [h,m] = time.split(':').map(Number); return h*60+m; };
-  return session.hours.split(' · ').flatMap(period => {
+  const zone=session.scheduleZone || session.zone;
+  return hoursOnDate(session,date).split(' · ').flatMap(period => {
     const [start,end] = period.split('–').map(minute), close = Math.min(end, early[session.id]?.[date] ?? end);
-    return close > start ? [{ start: zonedInstant(date,start,session.zone), end:zonedInstant(date,close,session.zone) }] : [];
+    return close > start ? [{ start: zonedInstant(date,start,zone), end:zonedInstant(date,close,zone) }] : [];
   });
 }
 export function sessionTimeline(session: TvSession, instant: number) {
   // Server markup and the first client render share an unknown clock.
-  if (!Number.isFinite(instant) || instant <= 0) return { open:false, remaining:null, nowPercent:0, bars:[] };
+  if (!Number.isFinite(instant) || instant <= 0) return { open:false, remaining:null, nextOpen:null, closesAt:null, nowPercent:0, bars:[] };
   const now = instant, kuwaitDate = dateInZone(now,'Asia/Kuwait');
   const start = zonedInstant(kuwaitDate,0,'Asia/Kuwait'), end = start + dayMs;
-  const localDate = dateInZone(now,session.zone), localMidday = Date.parse(`${localDate}T12:00:00Z`);
+  const localDate = dateInZone(now,session.scheduleZone || session.zone), localMidday = Date.parse(`${localDate}T12:00:00Z`);
   const cacheKey=`${session.id}:${localDate}`;
   let windows=scheduleCache.get(cacheKey);
   if (!windows) {
-    windows=Array.from({length:12},(_,i) => periods(session,new Date(localMidday + (i-1)*dayMs).toISOString().slice(0,10))).flat();
-    if(scheduleCache.size>=60)scheduleCache.delete(scheduleCache.keys().next().value!);
+    windows=Array.from({length:35},(_,i) => periods(session,new Date(localMidday + (i-1)*dayMs).toISOString().slice(0,10))).flat();
+    if(scheduleCache.size>=512)scheduleCache.delete(scheduleCache.keys().next().value!);
     scheduleCache.set(cacheKey,windows);
   }
   const active = windows.find(w => now >= w.start && now < w.end);
   const next = windows.find(w => w.start > now);
   return { open: Boolean(active), remaining: active ? active.end-now : next ? next.start-now : null,
+    nextOpen: next?.start ?? null, closesAt: active?.end ?? null,
     nowPercent: (now-start)/dayMs*100,
     bars: windows.filter(w => w.end>start && w.start<end).map(w => ({ left:Math.max(0,(w.start-start)/dayMs*100), width:(Math.min(end,w.end)-Math.max(start,w.start))/dayMs*100, start:w.start, end:w.end })),
   };
 }
 export function durationClock(ms: number | null) {
-  if (ms === null) return '—';
-  const total = Math.max(0,Math.ceil(ms/60_000));
-  return `${Math.floor(total/60)}:${String(total%60).padStart(2,'0')}`;
+  const parts = countdownParts(ms);
+  if (!parts) return '—';
+  return [parts.days * 24 + parts.hours, parts.minutes, parts.seconds].map(value => String(value).padStart(2,'0')).join(':');
+}
+export function countdownParts(ms: number | null) {
+  if (ms === null || !Number.isFinite(ms)) return null;
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return { days: Math.floor(total / 86400), hours: Math.floor(total % 86400 / 3600), minutes: Math.floor(total % 3600 / 60), seconds: total % 60 };
 }

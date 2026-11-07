@@ -7,6 +7,10 @@ const copy = {
   sessionsNow: ['جلسات الآن', 'Sessions now', 'Séances en cours'],
   scheduledOpen: ['مفتوحة حسب الجدول', 'Open by schedule', 'Ouverte selon le calendrier'],
   opensIn: ['تفتح بعد', 'Opens in', 'Ouverture dans'], closesIn: ['تغلق بعد', 'Closes in', 'Clôture dans'],
+  days: ['يوم', 'days', 'jours'], hours: ['ساعة', 'hours', 'heures'], minutes: ['دقيقة', 'min', 'min'], seconds: ['ثانية', 'sec', 's'],
+  noSessionToday: ['لا توجد جلسة اليوم', 'No session today', 'Aucune séance aujourd’hui'],
+  savedBrief: ['آخر الأسعار المحفوظة', 'Last saved prices', 'Derniers cours conservés'],
+  savedBriefNote: ['الأسعار أدناه محفوظة مع تاريخها ومصدرها؛ يُستأنف ترتيب الصعود والهبوط عند وصول تغيّرات جلسة قابلة للمقارنة.', 'Saved observations with their original time and source. Rankings resume when comparable session changes arrive.', 'Observations conservées avec leur heure et leur source. Le classement reprendra avec des variations comparables.'],
   now: ['الآن', 'Now', 'Maintenant'], kuwait: ['بتوقيت الكويت · UTC+3', 'Kuwait time · UTC+3', 'Heure du Koweït · UTC+3'],
   scheduleNote: ['المواعيد حسب الجدول المعتاد؛ قد تتغير في العطل والإغلاقات الاستثنائية. الحالة ليست تأكيدًا مباشرًا من البورصة.', 'Regular schedules; holidays and exceptional closures may differ. Status is not a live exchange confirmation.', 'Horaires habituels ; jours fériés et fermetures exceptionnelles possibles. Statut non confirmé en direct.'],
   sessionChart: ['مسار الجلسة', 'Session chart', 'Courbe de séance'],
@@ -43,6 +47,7 @@ export function briefMetrics(quotes: TvQuote[], now: number) {
   return { total: unique.length, available: available.length, recent: recent.length, comparable: comparable.length, basis,
     rising: rising.length, falling: falling.length, average,
     headline: !comparable.length ? 'waitingDay' : falling.length > rising.length ? 'redDay' : rising.length > falling.length ? 'greenDay' : 'mixedDay',
+    saved: available,
     gainers: rising.sort((a,b) => b.changePercent! - a.changePercent!).slice(0,5), losers: falling.sort((a,b) => a.changePercent! - b.changePercent!).slice(0,5),
   } as const;
 }

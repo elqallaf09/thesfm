@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { tvText } from '@/lib/markets-tv/i18n';
 import type { TvGroup, TvLanguage, TvQuote } from '@/lib/markets-tv/types';
 import { TvStripQuote } from './TvStripQuote';
+import { tvCardColumns, tvPagination } from '@/lib/markets-tv/pagination';
 
 type Props = {
   quotes: TvQuote[]; group: TvGroup; language: TvLanguage; now: number; speed: number;
@@ -22,14 +23,13 @@ export function TvBrowseStripPage({ quotes, group, language, now, speed, paused,
       const style = getComputedStyle(element);
       const gap = parseFloat(style.columnGap) || 0;
       const cardEm = parseFloat(style.getPropertyValue('--tv-card-width'));
-      const minWidth = parseFloat(style.fontSize) * Math.max(17, cardEm || 0);
-      setColumns(Math.max(1, Math.floor((element.clientWidth + gap) / (minWidth + gap))));
+      const next = tvCardColumns(element.clientWidth, parseFloat(style.fontSize), Math.max(17, cardEm || 0), gap, 8);
+      if (next !== null) setColumns(next);
     });
     resize.observe(element);
     return () => resize.disconnect();
   }, []);
-  const pages = Math.ceil(quotes.length / columns);
-  const index = Math.min(page, pages - 1);
+  const { pages, current:index, count } = tvPagination(quotes.length, columns, page);
   const advance = useCallback((automatic: boolean) => {
     if (index < pages - 1) setPage(index + 1);
     else {
@@ -48,8 +48,8 @@ export function TvBrowseStripPage({ quotes, group, language, now, speed, paused,
     return () => window.clearInterval(timer);
   }, [advance, pages, speed, paused, hasNextBatch, sourceCooling]);
   return <>
-    <div className="tv-browse-strip-page" ref={grid} style={{ gridTemplateColumns: `repeat(${columns},minmax(0,1fr))` }} dir="ltr">
-      {quotes.slice(index * columns, (index + 1) * columns).map(quote => <TvStripQuote key={`${quote.exchange}:${quote.symbol}`}
+    <div className="tv-browse-strip-page" ref={grid} style={{ gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }} dir="ltr">
+      {quotes.slice(index * count, (index + 1) * count).map(quote => <TvStripQuote key={`${quote.exchange}:${quote.symbol}`}
         quote={quote} group={group} language={language} now={now} duplicate={false} onQuote={onQuote}/>)}
     </div>
     <button className="tv-strip-next" aria-label={tvText(language, 'next')} onClick={() => advance(false)} disabled={pages === 1 && !hasNextBatch}>

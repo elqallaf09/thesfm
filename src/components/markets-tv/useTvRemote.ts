@@ -1,14 +1,15 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { nearestTvTarget } from '@/lib/markets-tv/navigation';
-import { tvRemoteCommand, type TvPlaybackCommand } from './tvRemoteKeys';
+import { tvRemoteCommand, type TvPlaybackCommand, type TvRemoteCommand } from './tvRemoteKeys';
 
 type TvInputDevice = { registerKey: (name: string) => void; unregisterKey?: (name: string) => void };
 
-export function useTvRemote(back: () => void, interact: () => void, modal: boolean, playback?: (command: TvPlaybackCommand) => void) {
-  const actions = useRef({ back, interact, playback });
+type ChannelCommand = Extract<TvRemoteCommand, { kind: 'channel' | 'channelNumber' }>;
+export function useTvRemote(back: () => void, interact: () => void, modal: boolean, playback?: (command: TvPlaybackCommand) => void, channel?: (command: ChannelCommand) => void) {
+  const actions = useRef({ back, interact, playback, channel });
   const hasPlayback = Boolean(playback);
-  useEffect(() => { actions.current = { back, interact, playback }; }, [back, interact, playback]);
+  useEffect(() => { actions.current = { back, interact, playback, channel }; }, [back, interact, playback, channel]);
   useEffect(() => {
     if (!hasPlayback) return;
     // Samsung delivers navigation automatically; media keys need registration.
@@ -16,7 +17,7 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
     const input = (window as Window & { tizen?: { tvinputdevice?: TvInputDevice } }).tizen?.tvinputdevice;
     if (!input) return;
     const registered: string[] = [];
-    for (const name of ['MediaPlayPause', 'MediaPlay', 'MediaPause']) {
+    for (const name of ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'ChannelUp', 'ChannelDown', '1', '2', '3', '4', '5']) {
       try { input.registerKey(name); registered.push(name); } catch { /* On-screen playback remains available. */ }
     }
     return () => { for (const name of registered) { try { input.unregisterKey?.(name); } catch { /* Platform is shutting down. */ } } };
@@ -77,6 +78,10 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         if (actions.current.playback && !modal) {
           event.preventDefault(); if (!event.repeat) actions.current.playback(command.action);
         }
+        return;
+      }
+      if (command.kind === 'channel' || command.kind === 'channelNumber') {
+        if (actions.current.channel && !modal) { event.preventDefault(); if (!event.repeat) actions.current.channel(command); }
         return;
       }
       const elements = items();
