@@ -22,4 +22,12 @@ describe('TV receiver news endpoint', () => {
     expect(mocks.aggregate).toHaveBeenCalledTimes(1);
     expect(await response.json()).toMatchObject({ channel: 'kuwait', stories: [] });
   });
+  it('keeps qualified original-language technology headlines available in an Arabic interface', async () => {
+    mocks.aggregate.mockResolvedValue({ stories: [{ id: 'tech', title: 'Technology company earnings', sourceName: 'QA source', originalLanguage: 'en', originalUrl: 'https://example.com/tech', publishedAt: '2026-11-07T00:00:00Z' }] });
+    const response = await GET(new Request('https://example.com/api/tv/news?channel=technology&language=ar'));
+    const params = mocks.aggregate.mock.calls[0][0];
+    expect(params.strictEntityFilter).toBe(true);
+    expect(params.languages).toBeUndefined(); expect(params.query).toBeUndefined();
+    expect(await response.json()).toMatchObject({ channel: 'technology', stories: [{ title: 'Technology company earnings', source: 'QA source' }] });
+  });
 });

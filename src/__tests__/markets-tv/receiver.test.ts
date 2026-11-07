@@ -22,7 +22,9 @@ describe('SFM TV receiver channels', () => {
   });
   it('constrains Kuwait news to Kuwait market metadata and technology to actual stock entities', () => {
     expect(tvNewsParams('ar', 'kuwait')).toMatchObject({ languages: ['ar'], countries: ['KW'], exchangeCodes: ['Boursa Kuwait'], marketCodes: ['KW','KUWAIT'] });
-    expect(tvNewsParams('en', 'technology')).toMatchObject({ languages: ['en'], marketCodes: ['US'], strictEntityFilter: true, symbols: expect.arrayContaining(['AAPL','NVDA']) });
+    expect(tvNewsParams('en', 'technology')).toMatchObject({ language: 'en', marketCodes: ['US'], strictEntityFilter: true, symbols: expect.arrayContaining(['AAPL','NVDA']) });
+    expect(tvNewsParams('ar', 'technology').languages).toBeUndefined();
+    expect(tvNewsParams('ar', 'technology').query).toBeUndefined();
     expect(tvNewsParams('fr', 'all').marketCodes).toBeUndefined();
     expect(tvCorsHeaders('https://appassets.androidplatform.net')).toMatchObject({ 'Access-Control-Expose-Headers': 'Retry-After' });
   });
