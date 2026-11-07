@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { openAndroidTvPackage } from './packageHarness';
 const instant='2026-11-07T10:24:05Z';
 async function open(page:Page,language='ar'){
  await page.addInitScript(language=>{
@@ -10,7 +9,7 @@ async function open(page:Page,language='ar'){
  await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[]}}));
  await page.route('**/api/tv/history',r=>r.fulfill({json:{points:[]}}));
  await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{summary:Array.from({length:8},(_,i)=>({symbol:`QA${i}`,name:`Test ${i}`,nameAr:`اختبار ${i}`,price:100+i,currency:'USD',changePercent:1,source:'QA',observedAt:instant,receivedAt:instant,status:'available',changeBasis:'session'})),quotes:[],total:0,available:0,generatedAt:instant}}));
- await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+ await openAndroidTvPackage(page);
 }
 async function contained(page:Page){
  await expect.poll(()=>page.locator('.tv-world-grid,.tv-session,.tv-timeline-state,.tv-session-countdown').evaluateAll(elements=>elements.flatMap(el=>{

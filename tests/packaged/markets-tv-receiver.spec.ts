@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { pathToFileURL } from 'node:url';
-import { resolve } from 'node:path';
+import { openAndroidTvPackage } from './packageHarness';
 
 // Financial values below are isolated browser fixtures, never app fallbacks.
 async function open(page: Page, language = 'ar') {
@@ -23,7 +22,7 @@ async function open(page: Page, language = 'ar') {
     const channel = new URL(route.request().url()).searchParams.get('channel') || 'general';
     return route.fulfill({ json: { channel, stories: Array.from({ length: 6 }, (_, index) => ({ id: `${channel}-${index}`, title: `${channel} ${index} · أخبار الشركات المدرجة ونتائجها المالية وتطورات استثماراتها وأعمالها خلال جلسات التداول الأخيرة مع مصادر وتواريخ النشر الأصلية`, source: 'QA source', publishedAt: '2026-11-08T07:00:00Z', url: 'https://example.com/story' })) } });
   });
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await openAndroidTvPackage(page);
   await expect(page.locator('.tv-receiver-quotes .tv-market-strip-item')).toHaveCount(6);
   await page.evaluate(() => document.fonts.ready);
 }
@@ -46,7 +45,9 @@ test('receiver numbers and channel keys select separate feeds, respect dialogs a
   await page.keyboard.press('5'); await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'investments');
   await expect(page.locator('.tv-portfolio-gate')).toBeVisible();
   await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ChannelDown', bubbles: true }))); await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'sessions');
-  await page.keyboard.press('3'); await page.reload();
+  await page.keyboard.press('3');
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'kuwait');
+  await page.reload();
   await expect(page.locator('.tv-receiver-kuwait .tv-strip-symbol b').first()).toHaveText('KW0');
 });
 
