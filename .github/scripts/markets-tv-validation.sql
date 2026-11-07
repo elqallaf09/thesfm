@@ -20,7 +20,14 @@ begin
     where user_id='11111111-1111-4111-8111-111111111111' order by created_at desc limit 50;
   perform id,symbol,alert_type,threshold,currency,status from public.market_price_alerts
     where user_id='11111111-1111-4111-8111-111111111111' and status in ('saved','active') limit 50;
+  perform preferred_currency,default_currency,currency from public.profiles
+    where id='11111111-1111-4111-8111-111111111111';
+  perform * from public.investment_items
+    where user_id='11111111-1111-4111-8111-111111111111' order by created_at desc,id asc limit 500;
   device_id := public.create_markets_tv_pair('CI TV', repeat('a',64), repeat('b',64), repeat('c',64));
+  if (select portfolio_consent_at is not null from public.markets_tv_devices where id=device_id) then raise exception 'Pair defaults to investment access'; end if;
+  update public.markets_tv_devices set settings='{"portfolioConsent":true,"portfolio_consent_at":"2099-01-01"}' where id=device_id;
+  if (select portfolio_consent_at is not null from public.markets_tv_devices where id=device_id) then raise exception 'Settings granted investment access'; end if;
   update public.markets_tv_devices set user_id='11111111-1111-4111-8111-111111111111', state='approved', code_hash=null
     where id=device_id and code_hash=repeat('b',64) and state='pending' and user_id is null and expires_at>now();
   get diagnostics affected=row_count;
@@ -33,6 +40,7 @@ begin
     where id=device_id and secret_hash=repeat('a',64) and state='approved' and expires_at>now();
   get diagnostics affected=row_count;
   if affected<>1 then raise exception 'Claim failed'; end if;
+  if (select portfolio_consent_at is not null from public.markets_tv_devices where id=device_id) then raise exception 'Legacy active device gained consent'; end if;
   if exists(select 1 from public.markets_tv_devices where secret_hash=repeat('a',64)) then raise exception 'Poll credential survived claim'; end if;
   update public.markets_tv_devices set state='revoked' where id=device_id and user_id='22222222-2222-4222-8222-222222222222';
   get diagnostics affected=row_count;
@@ -51,11 +59,24 @@ begin
   if exists(select 1 from public.markets_tv_devices where secret_hash=repeat('d',64) and state='active' and expires_at>now()) then raise exception 'Expired token accepted'; end if;
   update public.markets_tv_devices set state='revoked' where id=device_id and user_id='11111111-1111-4111-8111-111111111111';
   if exists(select 1 from public.markets_tv_devices where secret_hash=repeat('d',64) and state='active') then raise exception 'Revoked device accepted'; end if;
+
+  -- A separate fresh pairing explicitly grants consent; claiming preserves it.
+  device_id := public.create_markets_tv_pair('Consented CI TV',repeat('3',64),repeat('4',64),repeat('5',64));
+  update public.markets_tv_devices set user_id='11111111-1111-4111-8111-111111111111',state='approved',approved_at=now(),portfolio_consent_at=now(),code_hash=null
+    where id=device_id and code_hash=repeat('4',64) and state='pending' and user_id is null and expires_at>now();
+  get diagnostics affected=row_count;
+  if affected<>1 then raise exception 'Consented approval failed'; end if;
+  update public.markets_tv_devices set state='active',secret_hash=repeat('6',64)
+    where id=device_id and secret_hash=repeat('3',64) and state='approved' and expires_at>now();
+  if not exists(select 1 from public.markets_tv_devices where id=device_id and portfolio_consent_at is not null and state='active' and expires_at>now()) then raise exception 'Explicit consent lost'; end if;
+  update public.markets_tv_devices set state='revoked' where id=device_id and user_id='11111111-1111-4111-8111-111111111111';
+  if exists(select 1 from public.markets_tv_devices where secret_hash=repeat('6',64) and state='active' and expires_at>now() and portfolio_consent_at is not null) then raise exception 'Consent bypassed revocation'; end if;
 end $$;
 reset role;
 do $$ begin
   if not (select relrowsecurity from pg_class where oid='public.markets_tv_devices'::regclass) then raise exception 'RLS missing'; end if;
   if has_table_privilege('anon','public.markets_tv_devices','SELECT') or has_table_privilege('authenticated','public.markets_tv_devices','SELECT,INSERT,UPDATE,DELETE') then raise exception 'Client table access leaked'; end if;
+  if has_column_privilege('anon','public.markets_tv_devices','portfolio_consent_at','UPDATE') or has_column_privilege('authenticated','public.markets_tv_devices','portfolio_consent_at','UPDATE') then raise exception 'Client consent write leaked'; end if;
   if has_function_privilege('anon','public.create_markets_tv_pair(text,text,text,text)','EXECUTE') or has_function_privilege('authenticated','public.create_markets_tv_pair(text,text,text,text)','EXECUTE') then raise exception 'Client RPC access leaked'; end if;
 end $$;
 rollback;

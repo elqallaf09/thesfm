@@ -1,5 +1,9 @@
 import type { TvLanguage } from './types';
 const COPY = {
+  consentRequired: ['عرض الاستثمارات يحتاج موافقتك', 'Investment access needs your approval', 'Votre accord est nécessaire pour afficher les investissements'],
+  consentHelp: ['ألغ ربط هذا التلفزيون، ثم اربطه مجددًا وحدد مربع الموافقة على عرض الاستثمارات في حسابك.', 'Unlink this TV, then link it again and select the investment access checkbox on your account.', 'Dissociez ce téléviseur, puis associez-le à nouveau et cochez l’accès aux investissements dans votre compte.'],
+  privateHidden: ['تم إخفاء بيانات الاستثمارات لحماية خصوصيتك', 'Private investment data is hidden', 'Les données privées du portefeuille sont masquées'],
+  privateHiddenHelp: ['يلزم اتصال نشط وتحقق جديد من صلاحية الجهاز لعرض البيانات. لا نحتفظ بها للعرض دون اتصال.', 'An active connection and a fresh access check are required. Private values are not kept for offline display.', 'Une connexion active et une nouvelle vérification d’accès sont requises. Les valeurs privées ne sont pas conservées hors ligne.'],
   title: ['استثماراتي', 'My investments', 'Mes investissements'],
   subtitle: ['محفظتك المسجلة في THE SFM · مزامنة كل 15 ثانية', 'Your THE SFM portfolio · Syncs every 15 seconds', 'Votre portefeuille THE SFM · Synchronisation toutes les 15 secondes'],
   value: ['القيمة المسجلة', 'Recorded value', 'Valeur enregistrée'],

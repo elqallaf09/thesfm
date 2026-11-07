@@ -22,9 +22,13 @@ export async function POST(request: Request) {
   const access = await authorize(request); if (access.response) return access.response;
   const body = await tvBody(request); const code = cleanTvCode(body?.code);
   if (!/^[A-F0-9]{12}$/.test(code)) return tvJson({ code: 'INVALID_CODE' }, 400);
+  if (body?.portfolioConsent !== undefined && typeof body.portfolioConsent !== 'boolean') {
+    return tvJson({ code: 'INVALID_REQUEST' }, 400);
+  }
   try {
+    const approvedAt = new Date().toISOString();
     const { data, error } = await tvDb().from('markets_tv_devices')
-      .update({ user_id: access.user!.userId, state: 'approved', approved_at: new Date().toISOString(), code_hash: null })
+      .update({ user_id: access.user!.userId, state: 'approved', approved_at: approvedAt, portfolio_consent_at: body?.portfolioConsent === true ? approvedAt : null, code_hash: null })
       .eq('code_hash', tvHash(code)).eq('state', 'pending').is('user_id', null)
       .gt('expires_at', new Date().toISOString()).select('name').maybeSingle();
     if (error) return tvJson({ code: 'PAIR_UNAVAILABLE' }, 503);

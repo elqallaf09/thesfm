@@ -23,9 +23,10 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
 }) {
   const [currency, setCurrency] = useState(''), [assetClass, setAssetClass] = useState('all');
   useEffect(() => { try { const saved = localStorage.getItem('sfm_currency'); if (saved && /^[A-Z]{3}$/.test(saved)) setCurrency(saved); } catch { /* Account preference remains the default. */ } }, []);
-  const resource = useTvResource<TvPortfolioSnapshot>(token ? `/api/tv/portfolio${currency ? `?currency=${currency}` : ''}` : null, 15000, token, revision);
+  const resource = useTvResource<TvPortfolioSnapshot>(token ? `/api/tv/portfolio${currency ? `?currency=${currency}` : ''}` : null, 15000, token, revision, true);
   const playing = autoRotate;
-  const data = resource.data, expired = resource.errorStatus === 401 || resource.errorStatus === 403;
+  const data = resource.data, consentRequired = resource.errorStatus === 403 && resource.error === 'PORTFOLIO_CONSENT_REQUIRED';
+  const expired = resource.errorStatus === 401 || resource.errorStatus === 403 && !consentRequired;
   const { ref, count } = useTvPanelCount(6, 5.8, 2.7);
   const positions = data?.positions.filter(item => assetClass === 'all' || item.assetClass === assetClass) || [];
   const pages = Math.max(1, Math.ceil(positions.length / count));
@@ -40,9 +41,9 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
       {token && !expired && <><label>{text('assetClass')}<select aria-label={text('assetClass')} value={assetClass} onChange={event => { setAssetClass(event.target.value); move(0); }}><option value="all">{text('all')}</option>{CLASSES.map(value => <option key={value} value={value}>{text(value)}</option>)}</select></label><label>{text('currency')}<select aria-label={text('currency')} value={displayCurrency} onChange={event => { setCurrency(event.target.value); try { localStorage.setItem('sfm_currency', event.target.value); } catch { /* In-memory selection remains available. */ } }}>{currencies.map(code => <option key={code}>{code}</option>)}</select></label></>}
       <button aria-label={tvText(language, 'refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/></button>
     </div></header>
-    {!token || expired ? <div className="tv-portfolio-gate"><ShieldCheck aria-hidden="true"/><h2>{text(expired ? 'expired' : 'pair')}</h2><p>{text('pairHelp')}</p><button onClick={onPair}>{tvText(language, 'pair')}</button></div>
+    {!token || expired || consentRequired ? <div className="tv-portfolio-gate"><ShieldCheck aria-hidden="true"/><h2>{text(consentRequired ? 'consentRequired' : expired ? 'expired' : 'pair')}</h2><p>{text(consentRequired ? 'consentHelp' : 'pairHelp')}</p><button onClick={onPair}>{tvText(language, 'pair')}</button></div>
       : !data && resource.loading ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/>{tvText(language, 'loading')}</div>
-        : !data ? <div className="tv-portfolio-gate" role="status"><h2>{tvText(language, 'error')}</h2><button onClick={onRefresh}>{tvText(language, 'retry')}</button></div>
+        : !data ? <div className="tv-portfolio-gate" role="status"><h2>{text('privateHidden')}</h2><p>{text('privateHiddenHelp')}</p><button onClick={onRefresh}>{tvText(language, 'retry')}</button></div>
           : <>
             {resource.error && <p className="tv-portfolio-error" role="status">{text('failed')}</p>}
             <div className="tv-portfolio-metrics">

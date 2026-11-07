@@ -8,7 +8,7 @@ export const tvCode = () => randomBytes(6).toString('hex').toUpperCase();
 export function cleanTvCode(input: unknown) {
   return typeof input === 'string' ? input.replace(/[\s-]/g, '').toUpperCase() : '';
 }
-export type DeviceRow = { id: string; user_id: string | null; name: string; state: string; expires_at: string; settings: unknown };
+export type DeviceRow = { id: string; user_id: string | null; name: string; state: string; expires_at: string; portfolio_consent_at: string | null; settings: unknown };
 export function tvDb() {
   const db = createServerSupabaseAdmin();
   if (!db) throw new Error('TV_STORAGE_UNAVAILABLE');
@@ -18,7 +18,7 @@ export async function getTvDevice(request: Request): Promise<DeviceRow | null> {
   const secret = request.headers.get('x-sfm-tv-token');
   if (!secret || !/^[a-f0-9]{64}$/.test(secret)) return null;
   const { data, error } = await tvDb().from('markets_tv_devices')
-    .select('id,user_id,name,state,expires_at,settings').eq('secret_hash', tvHash(secret))
+    .select('id,user_id,name,state,expires_at,portfolio_consent_at,settings').eq('secret_hash', tvHash(secret))
     .eq('state', 'active').gt('expires_at', new Date().toISOString()).maybeSingle();
   if (error) throw new Error('TV_STORAGE_UNAVAILABLE');
   return data as DeviceRow | null;

@@ -18,14 +18,15 @@ function database(rows: DbInvestmentRow[] = [row(), row({ id: 'private-b', user_
   return { from(table: string) {
     const query: typeof queries[number] = { table, filters: [] }; queries.push(query);
     const source: Record<string, unknown>[] = table === 'investment_items' ? rows : table === 'profiles' ? [{ id: 'owner-a', preferred_currency: 'USD' }, { id: 'owner-b', preferred_currency: 'KWD' }] : [
-      { id: 'device-a', user_id: 'owner-a', secret_hash: hash(secret), state: 'active', expires_at: '2099-01-01T00:00:00Z' },
-      { id: 'device-b', user_id: 'owner-b', secret_hash: hash(otherSecret), state: 'active', expires_at: '2099-01-01T00:00:00Z' },
+      { id: 'device-a', user_id: 'owner-a', secret_hash: hash(secret), state: 'active', portfolio_consent_at: '2026-11-08T00:00:00Z', expires_at: '2099-01-01T00:00:00Z' },
+      { id: 'device-b', user_id: 'owner-b', secret_hash: hash(otherSecret), state: 'active', portfolio_consent_at: '2026-11-08T00:00:00Z', expires_at: '2099-01-01T00:00:00Z' },
     ];
-    const filtered = () => source.filter(item => query.filters.every(([key, value]) => item[key] === value));
+    const greaterThan: [string, string][] = [];
+    const filtered = () => source.filter(item => query.filters.every(([key, value]) => item[key] === value) && greaterThan.every(([key, value]) => String(item[key]) > value));
     const builder = {
       select: () => builder,
       eq: (key: string, value: unknown) => { query.filters.push([key, value]); return builder; },
-      gt: () => builder,
+      gt: (key: string, value: string) => { greaterThan.push([key, value]); return builder; },
       order: () => builder,
       maybeSingle: async () => ({ data: filtered()[0] ?? null, error: null }),
       range: async (first: number, last: number) => { query.range = [first, last]; return { data: fail ? null : filtered().slice(first, last + 1), error: fail ? { message: 'unavailable' } : null }; },
