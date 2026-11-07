@@ -57,6 +57,9 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const stripsOnly = routeStrips || settings.displayMode === 'strips';
   const viewing = !stripsOnly && settings.displayMode !== 'browse';
   const scene = settings.scene || 'overview';
+  // The market brief always summarizes the global benchmark sample, even
+  // after visiting an unpaired/empty watchlist or a rate-limited scene.
+  const resourceScene = view === 'brief' ? 'overview' : scene;
   const scenes = TV_SCENE_ORDER.filter(value => value !== 'watchlist' || token);
   const nextScene = scenes[(scenes.indexOf(scene) + 1) % scenes.length];
   const previousScene = scenes[scenes.indexOf(scene) > 0 ? scenes.indexOf(scene) - 1 : scenes.length - 1];
@@ -64,7 +67,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
   const device = useTvResource<{ device: TvDevice; symbols: string[]; alerts: TvAlert[] }>(token ? '/api/tv/device' : null, 60000, token);
   const catalog = useTvResource<{ markets: TvMarket[] }>(ready && (!viewing || dialog === 'markets' || dialog === 'instruments') ? '/api/tv/catalog' : null, 300000, '', revision);
   const market = useTvResource<TvSnapshot>(ready && !stripsOnly && !viewing && (group !== 'watchlist' || token) ? `/api/tv/snapshot?group=${group}&page=${page}&pageSize=${pageSize}${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
-  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && (scene !== 'watchlist' || token) ? tvScenePath(scene) : null, scene === 'assets' ? 15000 : 30000, scene === 'watchlist' ? token : '', revision);
+  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && (resourceScene !== 'watchlist' || token) ? tvScenePath(resourceScene) : null, resourceScene === 'assets' ? 15000 : 30000, resourceScene === 'watchlist' ? token : '', revision);
   useTvScenePrefetch(ready && viewing && settings.autoRotate && !modal && online && nextScene !== 'watchlist' ? tvScenePath(nextScene) : null, 30000);
   const news = useTvResource<{ stories: TvNews[] }>(ready && !stripsOnly ? `/api/tv/news?language=${settings.language}` : null, 180000);
   const controls = useTvControls(root, (stripsOnly || viewing) && Boolean(settings.autoHideControls), modal);
@@ -129,7 +132,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
     setSettings(next); activity.current = Date.now();
   }
   useEffect(() => {
-    if (stripsOnly || !settings.autoRotate || modal) return;
+    if (stripsOnly || view !== 'markets' || !settings.autoRotate || modal) return;
     const timer = setInterval(() => {
       const instant = Date.now();
       if (document.hidden || instant - activity.current < settings.rotationSeconds * 1000) return;
@@ -142,7 +145,7 @@ export function MarketsTv({ initialStripsOnly = false }: { initialStripsOnly?: b
       if (groups.length) { const index = groups.indexOf(group); setGroup(groups[(index + 1) % groups.length]); setSelectedMarket(''); setPage(0); activity.current = instant; }
     }, 1000);
     return () => clearInterval(timer);
-  }, [settings.autoRotate, settings.rotationSeconds, settings.groups, modal, group, token, stripsOnly, viewing, sceneMarket.data, sceneMarket.loading, nextScene]);
+  }, [settings.autoRotate, settings.rotationSeconds, settings.groups, modal, group, token, stripsOnly, viewing, view, sceneMarket.data, sceneMarket.loading, nextScene]);
   const activeSnapshot = viewing ? sceneMarket.data : market.data;
   useEffect(() => {
     if (!activeSnapshot || !device.data) return;

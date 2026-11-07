@@ -18,6 +18,8 @@ import { cachedTvQuote } from './quoteCache';
 import { withTvIndexFallback } from './indexFallback';
 import { withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
+import { tvWorldStockIdentity } from '@/lib/markets-tv/worldStockQuote';
+import { withTvWorldStockFallback } from './worldStockFallback';
 import { tvGulfBankIdentity } from '@/lib/markets-tv/gulfBankQuote';
 import { withTvGulfBankFallback } from './gulfBankFallback';
 
@@ -140,6 +142,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
   const work = cachedTvQuote(key, async () => {
     const primary = loadQuote(asset, group).catch(() => empty(asset));
+    if (tvWorldStockIdentity(asset)) return withTvWorldStockFallback(asset, primary);
     if (tvGulfBankIdentity(asset)) return withTvGulfBankFallback(asset, primary);
     if (assetType !== 'index') return withTvRegionalFallback(asset, primary);
     const quote = await withTvIndexFallback(asset.symbol, primary);
@@ -147,7 +150,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   }, usStock || assetType === 'forex' ? 30 : 300)
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
-  if (tvGulfBankIdentity(asset)) {
+  if (tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset)) {
     // Keep slow cold reads alive after the bounded snapshot response so the
     // next refresh can use a verified cached quote. Never extend the UI wait.
     try { after(async () => { await work; }); } catch { /* No request scope in offline callers. */ }
