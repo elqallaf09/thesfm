@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const { externalHistory } = vi.hoisted(() => ({ externalHistory: vi.fn() }));
 vi.mock('@/lib/market/fetchYahooHistory', () => ({ fetchYahooHistory: externalHistory }));
+vi.mock('@/lib/server/markets-tv/gulfBankFallback', () => ({ withTvGulfBankFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/server/markets-tv/instruments', () => ({ tvInstrumentAssets: vi.fn().mockResolvedValue([]), cryptoTvQuotes: vi.fn().mockResolvedValue([]), forexTvQuote: vi.fn() }));
