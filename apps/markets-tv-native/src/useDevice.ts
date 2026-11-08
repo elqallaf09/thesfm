@@ -37,6 +37,7 @@ export function useDevice() {
         if (stopped || version !== generation.current) return;
         if (result.state === 'active' && validToken(result.token)) {
           await SecureStore.setItemAsync(KEY, result.token, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
+          if (stopped || version !== generation.current) { await SecureStore.deleteItemAsync(KEY); return; }
           if (!stopped && version === generation.current) { setToken(result.token); setPair(null); setError(null); }
           return;
         }

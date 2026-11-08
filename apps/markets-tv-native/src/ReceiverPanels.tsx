@@ -60,9 +60,9 @@ export function SessionsPanel({ page, changePage }: { page: number; changePage: 
   const { language, row, colors } = usePresentation();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
-  const pages = Math.ceil(TV_WORLD_SESSIONS.length / 9), current = page % pages;
+  const pages = Math.ceil(TV_WORLD_SESSIONS.length / 6), current = page % pages;
   return <View style={s.fill}><Label muted>{`${r(language, 'schedule')}  ${kuwaitDate(now)}`}</Label>
-    <View style={[s.grid, row]}>{TV_WORLD_SESSIONS.slice(current * 9, current * 9 + 9).map(session => {
+    <View style={[s.grid, row]}>{TV_WORLD_SESSIONS.slice(current * 6, current * 6 + 6).map(session => {
       const timeline = sessionTimeline(session, now);
       return <View key={session.id} style={[s.session, { backgroundColor: colors.panel, borderColor: timeline.open ? colors.up : colors.muted }]}>
         <Label>{`${session.region} · ${session.names[language === 'ar' ? 0 : language === 'fr' ? 2 : 1]}`}</Label>
