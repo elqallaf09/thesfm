@@ -18,9 +18,9 @@ describe('native receiver account and directory contracts', () => {
   });
   it('crosses market boundaries and wraps without requesting nonexistent pages', () => {
     const markets = [{ id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'الكويت', labelEn: 'Kuwait', labelFr: 'Koweït', count: 7 }, { id: 'global', group: 'global', labelAr: 'العالم', labelEn: 'World', labelFr: 'Monde', count: 6 }];
-    expect(directoryLocation(markets, 1)).toMatchObject({ market: markets[0], page: 1, total: 3 });
-    expect(directoryLocation(markets, 2)).toMatchObject({ market: markets[1], page: 0 });
-    expect(directoryLocation(markets, 3)).toMatchObject({ market: markets[0], page: 0 });
+    expect(directoryLocation(markets, 2)).toMatchObject({ market: markets[0], page: 2, total: 5 });
+    expect(directoryLocation(markets, 3)).toMatchObject({ market: markets[1], page: 0 });
+    expect(directoryLocation(markets, 5)).toMatchObject({ market: markets[0], page: 0 });
     expect(directoryLocation([], 500)).toMatchObject({ market: undefined, page: 0, total: 1 });
   });
   it('pins private requests to SFM, sends device credentials only in headers, and refuses redirects', async () => {

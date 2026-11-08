@@ -15,7 +15,7 @@ import { TvButton } from './TvControls';
 export function Pages({ page, pages, change }: { page: number; pages: number; change: (page: number) => void }) {
   const { language, row } = usePresentation();
   return <View style={[s.row, row]}><TvButton onPress={() => change((page + pages - 1) % pages)}>{r(language, 'previous')}</TvButton>
-    <Label>{`${r(language, 'page')} ${page + 1} / ${pages}`}</Label><TvButton onPress={() => change((page + 1) % pages)}>{r(language, 'next')}</TvButton></View>;
+    <Label>{`${r(language, 'page')} \u2066${page + 1} / ${pages}\u2069`}</Label><TvButton onPress={() => change((page + 1) % pages)}>{r(language, 'next')}</TvButton></View>;
 }
 function Status({ loading, error }: { loading: boolean; error: number | null }) {
   const { language, colors } = usePresentation();
@@ -25,11 +25,11 @@ export function NewsPanel({ channel, page, changePage, revision }: { channel: Tv
   const { language } = usePresentation();
   const load = useCallback((signal: AbortSignal) => readNews(channel, language, signal), [channel, language]);
   const result = useResource(`${channel}:${language}:${revision}`, load, 180_000);
-  const data = result.data, pages = Math.max(1, Math.ceil((data?.stories.length || 0) / 2)), current = page % pages;
+  const data = result.data, pages = Math.max(1, data?.stories.length || 0), current = page % pages;
   return <View style={s.fill}><Status {...result}/><Label muted>{r(language, 'sourceLanguage')}</Label>
     {data?.partial && <Label muted>{receiverText(language, 'partial')}</Label>}
     {data?.stored && <Label muted>{receiverText(language, 'stored')}</Label>}
-    <View style={s.stories}>{data?.stories.slice(current * 2, current * 2 + 2).map(story => <Panel key={story.id}>
+    <View style={s.stories}>{data?.stories.slice(current, current + 1).map(story => <Panel key={story.id}>
       <Label large>{story.title}</Label><Label muted>{`${story.source} · ${kuwaitDate(story.publishedAt)}`}</Label>
       {story.screening && <Label muted>{receiverText(language, story.screening)}</Label>}
     </Panel>)}</View>
@@ -43,11 +43,11 @@ export function PortfolioPanel({ token, page, changePage, revision, revoked }: {
   const result = useResource(`${token || 'none'}:${revision}`, load, 15_000, Boolean(token), true);
   useEffect(() => { if (result.error === 401) void revoked().catch(() => {}); }, [result.error, revoked]);
   if (!token) return <Label>{r(language, 'signIn')}</Label>;
-  const data = result.data, pages = Math.max(1, Math.ceil((data?.positions.length || 0) / 4)), current = page % pages;
+  const data = result.data, pages = Math.max(1, Math.ceil((data?.positions.length || 0) / 2)), current = page % pages;
   return <View style={s.fill}><Status {...result}/><Label muted>{r(language, 'recorded')}</Label>
     {data && <><View style={[s.row, row]}><Label large>{`${r(language, 'total')}: ${money(data.totalValue, data.currency)}`}</Label>
       <Label>{`${r(language, 'coverage')} ${data.valueCoverage} / ${data.total}`}</Label></View>
-      <View style={[s.grid, row]}>{data.positions.slice(current * 4, current * 4 + 4).map(position => <View key={position.id} style={s.half}><Panel>
+      <View style={[s.grid, row]}>{data.positions.slice(current * 2, current * 2 + 2).map(position => <View key={position.id} style={s.half}><Panel>
         <Label large>{position.name}</Label><Label>{`${position.symbol || ''}  ${money(position.amount, position.currency)}`}</Label>
         <Label muted>{`${r(language, position.freshness === 'recorded' ? 'recordedStatus' : position.freshness === 'stale' ? 'stale' : 'missing')} · ${kuwaitDate(position.valuedAt)}`}</Label>
       </Panel></View>)}</View>

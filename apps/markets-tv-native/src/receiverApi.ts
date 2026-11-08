@@ -44,19 +44,20 @@ export async function readCatalog(signal: AbortSignal): Promise<Market[]> {
   });
 }
 export type Directory = { quotes: Quote[]; pages: number; generatedAt: string | null };
+export const NATIVE_QUOTES_PER_PAGE = 3;
 export function directoryLocation(markets: Market[], cursor: number) {
-  const counts = markets.map(m => Math.max(1, Math.ceil(m.count / 6)));
+  const counts = markets.map(m => Math.max(1, Math.ceil(m.count / NATIVE_QUOTES_PER_PAGE)));
   const total = counts.reduce((sum, count) => sum + count, 0);
   let page = ((cursor % Math.max(1, total)) + Math.max(1, total)) % Math.max(1, total), index = 0, start = 0;
   while (index < counts.length - 1 && page >= counts[index]) { page -= counts[index]; start += counts[index]; index++; }
   return { market: markets[index], page, start, pages: counts[index] || 1, total: Math.max(1, total) };
 }
 export async function readDirectory(market: Market, page: number, signal: AbortSignal): Promise<Directory> {
-  const query = `group=${encodeURIComponent(market.group)}&market=${encodeURIComponent(market.id)}&page=${page}&pageSize=6`;
+  const query = `group=${encodeURIComponent(market.group)}&market=${encodeURIComponent(market.id)}&page=${page}&pageSize=${NATIVE_QUOTES_PER_PAGE}`;
   const body = record(await request(`/api/tv/snapshot?${query}`, signal));
   if (body.group !== market.group || body.market !== market.id || !Array.isArray(body.quotes)) throw new Error('INVALID_DIRECTORY');
-  return { quotes: body.quotes.slice(0, 6).flatMap(value => { const q = parseQuote(value); return q ? [q] : []; }),
-    pages: Math.max(1, Math.ceil((numeric(body.directoryTotal) || 0) / 6)), generatedAt: text(body.generatedAt) };
+  return { quotes: body.quotes.slice(0, NATIVE_QUOTES_PER_PAGE).flatMap(value => { const q = parseQuote(value); return q ? [q] : []; }),
+    pages: Math.max(1, Math.ceil((numeric(body.directoryTotal) || 0) / NATIVE_QUOTES_PER_PAGE)), generatedAt: text(body.generatedAt) };
 }
 export async function readNews(channel: TvReceiverNewsChannel, language: 'ar' | 'en' | 'fr', signal: AbortSignal) {
   const data = receiverNewsPayload(await request(receiverNewsPath(channel, language), signal), channel);
