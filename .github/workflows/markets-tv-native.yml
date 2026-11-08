@@ -63,9 +63,9 @@ jobs:
   tvos:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
     needs: validate
-    runs-on: macos-15
+    runs-on: macos-26
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7

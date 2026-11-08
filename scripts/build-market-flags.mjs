@@ -1,5 +1,5 @@
 import {createRequire} from 'node:module';
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {mkdir} from 'node:fs/promises';
 const require=createRequire(import.meta.url);
 const sharp=createRequire(require.resolve('next/package.json'))('sharp');
 const regions=["ae","ar","at","au","be","bh","bm","br","ca","ch","cl","cn","co","cy","cz","de","dk","ee","eg","es","fi","fr","gb","gr","hk","hr","hu","id","ie","in","iq","is","it","jo","jp","kr","kw","kz","lt","lu","lv","ma","mx","my","ng","nl","no","nz","om","pe","ph","pk","pl","ps","pt","qa","ro","rs","ru","sa","se","sg","si","sk","th","tn","tr","tw","us","za"];
