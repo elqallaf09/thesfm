@@ -5,7 +5,7 @@ const config: ExpoConfig = {
   orientation: 'landscape',
   platforms: ['ios', 'android'], icon: './assets/icon.png',
   ios: { bundleIdentifier: 'com.thesfm.marketstv.native', buildNumber: '1', supportsTablet: false },
-  android: { package: 'com.thesfm.marketstv.native', versionCode: 1, allowBackup: false,
+  android: { package: 'com.thesfm.marketstv.tvnative', versionCode: 1, allowBackup: false,
     permissions: ['INTERNET', 'ACCESS_NETWORK_STATE'],
     blockedPermissions: ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.VIBRATE', 'android.permission.SYSTEM_ALERT_WINDOW'] },
   plugins: [['@react-native-tvos/config-tv', { isTV: true, tvosDeploymentTarget: '17.0', androidTVBanner: './assets/banner.png',

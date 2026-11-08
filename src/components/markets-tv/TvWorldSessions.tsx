@@ -45,7 +45,7 @@ export default function TvWorldSessions({language,now:initial,selected,onSelecti
    return <article className={`tv-session tv-session-compact${index===0?' tv-session-featured':''}`} key={session.id} data-market={session.id} data-open={state.open}>
     <header><button onClick={()=>{focusAfter.current='session-source-back';setSource(session.id);}} aria-label={`${name} · ${t('details')}`} data-tv-focus-key={`session:${session.id}`}><TvMarketFlag region={session.region}/><h2>{name}</h2><span className="tv-world-status"><i className="tv-world-dot" aria-hidden="true"/>{t(state.open?'openShort':'closedShort')}</span></button></header>
     <div className="tv-world-data"><span className="tv-world-local"><small>{t('local')}</small><time dir="ltr">{now?clocks.get(session.zone)!.format(now):'—'}</time></span><span className="tv-world-count"><small>{t(state.open?'untilClose':'untilOpen')}</small><TvCompactCountdown remaining={state.remaining} language={language}/></span></div>
-    {roomy&&<div className="tv-world-periods" dir="ltr">{sessionHoursAt(session,next??now).split(' · ').map(period=><bdi key={period}>{period}</bdi>)}</div>}
+    {roomy&&index!==0&&<div className="tv-world-periods" dir="ltr">{sessionHoursAt(session,next??now).split(' · ').map(period=><bdi key={period}>{period}</bdi>)}</div>}
     {index===0&&roomy&&<p className="tv-world-target">{t(state.open?'close':'next')} · {t('kuwait')} <bdi>{next?targetClock.format(next):'—'}</bdi></p>}
    </article>;
   })}</div>:<div className="tv-world-empty"><Clock3 aria-hidden="true"/><p>{t('empty')}</p><button onClick={()=>setEditing(true)}>{t('choose')}</button></div>}
