@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { Check, Search } from 'lucide-react';
+import { TvMarketFlag } from './TvMarketFlag';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import type { TvSession, TvSessionRegion } from '@/lib/markets-tv/sessionTypes';
 import { sessionNameIndex, sessionText } from '@/lib/markets-tv/sessionCopy';
@@ -18,7 +19,7 @@ export function TvSessionPicker({sessions,selected,language,onChange,onDone}:{se
   <label className="tv-session-search"><Search aria-hidden="true"/><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('search')} aria-label={t('search')}/></label>
   <div className="tv-session-regions" role="group" aria-label={t('allRegions')}>{(['all',...regions] as const).map(id=><button key={id} aria-pressed={area===id} onClick={()=>setArea(id)}>{t(id==='all'?'allRegions':id)}</button>)}</div>
   <div className="tv-session-picker-actions"><button onClick={()=>onChange(sessions.map(s=>s.id))}>{t('all')}</button><button onClick={()=>onChange([])}>{t('clear')}</button><button onClick={()=>onChange([...new Set([...selected,...matches.map(s=>s.id)])])}>{t('selectRegion')}</button></div>
-  <div className="tv-session-options">{matches.map(s=><button role="checkbox" aria-checked={chosen.has(s.id)} key={s.id} onClick={()=>onChange(chosen.has(s.id)?selected.filter(id=>id!==s.id):[...selected,s.id])} data-tv-focus-key={`choose-session:${s.id}`}><span className="tv-session-check" aria-hidden="true">{chosen.has(s.id)&&<Check/>}</span><span><strong>{s.names[sessionNameIndex(language)]}</strong><small>{countries.of(s.region)} · <bdi>{s.id}</bdi></small></span></button>)}{!matches.length&&<p>{t('noResults')}</p>}</div>
+  <div className="tv-session-options">{matches.map(s=><button role="checkbox" aria-checked={chosen.has(s.id)} key={s.id} onClick={()=>onChange(chosen.has(s.id)?selected.filter(id=>id!==s.id):[...selected,s.id])} data-tv-focus-key={`choose-session:${s.id}`}><TvMarketFlag region={s.region}/><span className="tv-session-check" aria-hidden="true">{chosen.has(s.id)&&<Check/>}</span><span><strong>{s.names[sessionNameIndex(language)]}</strong><small>{countries.of(s.region)} · <bdi>{s.id}</bdi></small></span></button>)}{!matches.length&&<p>{t('noResults')}</p>}</div>
   <small className="tv-session-saved">{t('saved')}</small>
  </div>;
 }

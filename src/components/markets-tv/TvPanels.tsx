@@ -1,6 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Also rendered from offline APK assets. */
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
+import { tvPairErrorText, tvPairHttpError, validTvPair, type TvPairError } from '@/lib/markets-tv/pairing';
 import { useEffect, useRef, useState } from 'react';
 import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvGroup, type TvLanguage, type TvQuote, type TvSettings } from '@/lib/markets-tv/types';
 import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
@@ -44,7 +45,7 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
 }
 export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLinked: (token: string) => void }) {
   const [pair, setPair] = useState<{ code: string; secret: string; expiresAt: string } | null>(null);
-  const [error, setError] = useState(false), [expired, setExpired] = useState(false), [busy, setBusy] = useState(false);
+  const [error, setError] = useState<TvPairError|null>(null), [expired, setExpired] = useState(false), [busy, setBusy] = useState(false);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const creation = useRef<AbortController | null>(null);
   useEffect(() => () => creation.current?.abort(), []);
@@ -52,14 +53,14 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
     creation.current?.abort();
     const controller = new AbortController(); creation.current = controller;
     const timeout = setTimeout(() => controller.abort(), 15000);
-    setBusy(true); setError(false); setExpired(false); setPair(null);
+    setBusy(true); setError(null); setExpired(false); setPair(null);
     try {
       const response = await tvFetch('/api/tv/pair', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'The SFM TV' }), signal: controller.signal });
-      if (!response.ok) throw new Error('PAIR_UNAVAILABLE');
+      if (!response.ok) { if (creation.current === controller) setError(tvPairHttpError(response.status)); return; }
       const payload = await response.json();
-      if (!payload || typeof payload.code !== 'string' || typeof payload.secret !== 'string' || typeof payload.expiresAt !== 'string' || !/^[A-F0-9]{12}$/.test(payload.code) || !/^[a-f0-9]{64}$/.test(payload.secret) || !Number.isFinite(Date.parse(payload.expiresAt)) || Date.parse(payload.expiresAt) <= Date.now()) throw new Error('INVALID_PAIR');
+      if (!validTvPair(payload)) { setError('invalid'); return; }
       if (!controller.signal.aborted) setPair(payload);
-    } catch { setError(true); } finally { clearTimeout(timeout); if (creation.current === controller) { creation.current = null; setBusy(false); } }
+    } catch { if (creation.current === controller) setError('network'); } finally { clearTimeout(timeout); if (creation.current === controller) { creation.current = null; setBusy(false); } }
   }
   useEffect(() => {
     if (!pair) return; let stopped = false; let timer: ReturnType<typeof setTimeout>; let pending = false;
@@ -74,8 +75,8 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
         const response = await tvFetch('/api/tv/pair', { headers: { 'x-sfm-tv-token': pair!.secret }, cache: 'no-store', signal: controller.signal });
         const payload = await response.json();
         if (stopped) return;
-        if (response.ok && payload.state === 'active' && typeof payload.token === 'string') { onLinked(payload.token); return; }
-        if (response.status === 410) { setExpired(true); return; }
+        if (response.ok && payload.state === 'active' && typeof payload.token === 'string' && /^[a-f0-9]{64}$/.test(payload.token)) { onLinked(payload.token); return; }
+        if ([401,403,410].includes(response.status)) { setExpired(true); return; }
       } catch { /* Recover on the next bounded poll until the code expires. */ }
       finally { clearTimeout(timeout); pending = false; }
       if (!stopped) timer = setTimeout(() => void poll(), 5000);
@@ -87,7 +88,7 @@ export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLi
   return <div className="tv-pair-content">
     <p>{t('pairScope')}</p>
     {pair && !expired ? <><TvQr value={link} label={t('scan')} /><p>{t('scan')}</p><strong className="tv-pair-code" dir="ltr">{pair.code.match(/.{1,4}/g)?.join(' — ')}</strong><p>{t('waiting')}</p><p dir="ltr" className="tv-muted">{typeof window !== 'undefined' ? `${tvOrigin()}/tv/pair` : '/tv/pair'}</p></> : <>
-      <p>{t(error ? 'pairUnavailable' : expired ? 'pairExpired' : 'scan')}</p><button disabled={busy} onClick={() => void create()}>{t(busy ? 'loading' : 'newCode')}</button>
+      <p role={error?'alert':undefined}>{error?tvPairErrorText(language,error):t(expired?'pairExpired':'scan')}</p><button disabled={busy} onClick={() => void create()}>{t(busy ? 'loading' : 'newCode')}</button>
     </>}
   </div>;
 }

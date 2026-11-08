@@ -32,6 +32,8 @@ for(const language of ['ar','en','fr'])test(`world sessions ${language}: select 
  const visited=new Set<string>();
  for(let i=0;i<5;i++){
   for(const id of await page.locator('.tv-session').evaluateAll(elements=>elements.map(e=>e.getAttribute('data-market')!)))visited.add(id);
+  await expect(page.locator('.tv-session .tv-market-flag')).toHaveCount(await page.locator('.tv-session').count());
+  await expect.poll(()=>page.locator('.tv-session .tv-market-flag').evaluateAll(async elements=>{const images=await Promise.all(elements.map(el=>new Promise<boolean>(resolve=>{const image=new Image();image.onload=()=>resolve(image.naturalWidth===1600&&image.naturalHeight===840);image.onerror=()=>resolve(false);image.src=getComputedStyle(el).backgroundImage.slice(5,-2);})));return images.every(Boolean);})).toBe(true);
   await contained(page);await page.locator('[data-tv-focus-key=sessions-next]').click();
  }
  expect(visited.size).toBe(81);

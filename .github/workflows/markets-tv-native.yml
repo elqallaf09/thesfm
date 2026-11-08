@@ -36,7 +36,7 @@ jobs:
       - run: pnpm prebuild:android && pnpm prebuild:tvos
       - run: pnpm exec expo export --platform android --platform ios --output-dir dist/validation
   android:
-    if: github.event_name == 'workflow_dispatch' && inputs.compile_native
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -61,9 +61,11 @@ jobs:
           path: apps/markets-tv-native/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
   tvos:
-    if: github.event_name == 'workflow_dispatch' && inputs.compile_native
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
     needs: validate
-    runs-on: macos-15
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -76,8 +78,24 @@ jobs:
       - run: pnpm install --frozen-lockfile && pnpm prebuild:tvos
       - run: pod install --project-directory=ios
       - run: xcodebuild -workspace ios/SFMMarketsTV.xcworkspace -scheme SFMMarketsTV -sdk appletvsimulator -configuration Release -derivedDataPath .native-build CODE_SIGNING_ALLOWED=NO build
+      - name: Launch on an Apple TV simulator
+        run: |
+          mkdir -p .native-build/smoke
+          TV_SIMULATOR_UDID="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(v["udid"] for k,vs in d.items() if "tvOS" in k for v in vs if v.get("isAvailable") and "Apple TV" in v["name"]))')"
+          xcrun simctl boot "$TV_SIMULATOR_UDID"
+          xcrun simctl bootstatus "$TV_SIMULATOR_UDID" -b
+          TV_APP_PATH="$(find .native-build/Build/Products/Release-appletvsimulator -maxdepth 1 -name '*.app' -type d -print -quit)"
+          test -n "$TV_APP_PATH"
+          xcrun simctl install "$TV_SIMULATOR_UDID" "$TV_APP_PATH"
+          xcrun simctl launch --terminate-running-process "$TV_SIMULATOR_UDID" com.thesfm.marketstv.native > .native-build/smoke/launch.txt
+          sleep 10
+          xcrun simctl spawn "$TV_SIMULATOR_UDID" launchctl list | grep -F com.thesfm.marketstv.native > .native-build/smoke/process.txt
+          xcrun simctl io "$TV_SIMULATOR_UDID" screenshot .native-build/smoke/tvos-launch.png
+          xcrun simctl shutdown "$TV_SIMULATOR_UDID"
       - uses: actions/upload-artifact@v7
         with:
           name: sfm-native-tv-tvos-simulator-NOT-DEVICE-INSTALLABLE
-          path: apps/markets-tv-native/.native-build/Build/Products/Release-appletvsimulator/*.app
+          path: |
+            apps/markets-tv-native/.native-build/Build/Products/Release-appletvsimulator/*.app
+            apps/markets-tv-native/.native-build/smoke
           if-no-files-found: error
