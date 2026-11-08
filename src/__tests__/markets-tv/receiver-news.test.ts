@@ -10,7 +10,7 @@ describe('website news channels on TV', () => {
     expect(new Set(Object.values(TV_NEWS_FEEDS)).size).toBe(20);
     for (const channel of TV_RECEIVER_CHANNELS) for (const language of ['ar','en','fr'] as const) expect(receiverText(language,channel)).toBeTruthy();
     expect(receiverNewsPath('underDollarNews','ar')).toBe('/api/market/special-news?topic=stocks-under-1&lang=ar&limit=24');
-    expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24');
+    expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24&view=headlines');
   });
   it('rejects wrong scopes, unsafe or undated items and deduplicates source URLs', () => {
     expect(receiverNewsPayload({ items: [story], topic: 'metals-news' }, 'underDollarNews').invalid).toBe(true);

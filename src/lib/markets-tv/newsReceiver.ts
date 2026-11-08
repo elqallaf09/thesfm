@@ -1,5 +1,5 @@
 import type { TvLanguage, TvNews } from './types';
-import { safeTvUrl } from './quotes';
+import { safeTvUrl } from './safeUrl';
 
 // Reuse the website's public feeds, including its price and screening checks.
 export const TV_NEWS_FEEDS = {
@@ -55,7 +55,8 @@ export function isTvExtraNewsChannel(value: unknown): value is TvExtraNewsChanne
 export function receiverNewsPath(channel: TvReceiverNewsChannel, language: TvLanguage) {
   if (!isTvExtraNewsChannel(channel)) return `/api/tv/news?language=${language}&channel=${channel}`;
   const path = TV_NEWS_FEEDS[channel];
-  return `${path}${path.includes('?') ? '&' : '?'}lang=${language}&limit=24`;
+  const headlinesOnly = /^\/api\/[a-z]+-stocks\/news$/.test(path) || path === '/api/europe-news';
+  return `${path}${path.includes('?') ? '&' : '?'}lang=${language}&limit=24${headlinesOnly ? '&view=headlines' : ''}`;
 }
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};

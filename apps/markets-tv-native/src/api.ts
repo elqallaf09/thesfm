@@ -13,7 +13,7 @@ const object = (v: unknown): Record<string, unknown> => v && typeof v === 'objec
 const text = (v: unknown) => typeof v === 'string' && v.trim() ? v : null;
 const numeric = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : null;
 export const snapshotPath = (scene: Scene) => `/api/tv/snapshot?group=${groups[scene]}&scene=${scene}&pageSize=10`;
-function parseQuote(input: unknown): Quote | null {
+export function parseQuote(input: unknown): Quote | null {
   const row = object(input), symbol = text(row.symbol);
   if (!symbol) return null;
   const price = numeric(row.price), source = text(row.source), observedAt = text(row.observedAt);

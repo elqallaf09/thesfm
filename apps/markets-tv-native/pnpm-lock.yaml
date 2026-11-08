@@ -14,6 +14,9 @@ importers:
       expo-font:
         specifier: 57.0.4
         version: 57.0.4(expo@57.0.27)(react-native-tvos@0.86.3-0)(react@19.2.3)
+      expo-secure-store:
+        specifier: 57.0.4
+        version: 57.0.4(expo@57.0.27)
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -1083,6 +1086,11 @@ packages:
     resolution: {integrity: sha512-pwVO1gvObX2tpIjfJzGn86yBOmOBhMLxAD81n2SHnfZk6lvbbqQhag64MHEeh29E/8vg23/Dzmf3JTmJSwbQYQ==}
     peerDependencies:
       react-native: '*'
+
+  expo-secure-store@57.0.4:
+    resolution: {integrity: sha512-7zBA1RThURTXdP4w65kBzZNbcSsfArqVd+p+ETAnPRWXO8J296Qd0YaCVyRpJ0HSwlCnGdvOnqO+NgSreHsOhA==}
+    peerDependencies:
+      expo: '*'
 
   expo-server@57.0.3:
     resolution: {integrity: sha512-aK+LdKzauHSGmsOStZtyxdzv0zWssCkxTw3m4QuOhfDSJsZaMRTd9O41d8ixU/QfELTbaJ0oRNcF7JFV/7O9YQ==}
@@ -3504,6 +3512,10 @@ snapshots:
   expo-modules-jsi@57.1.3(react-native-tvos@0.86.3-0):
     dependencies:
       react-native: react-native-tvos@0.86.3-0(@babel/core@7.29.13(supports-color@8.1.1))(@types/react@19.2.2)(react-native-tvos@0.86.3-0)(react@19.2.3)(supports-color@8.1.1)
+
+  expo-secure-store@57.0.4(expo@57.0.27):
+    dependencies:
+      expo: 57.0.27(@babel/core@7.29.13(supports-color@8.1.1))(@expo/dom-webview@57.0.1)(react-native-tvos@0.86.3-0)(react@19.2.3)(supports-color@8.1.1)(typescript@6.0.3)
 
   expo-server@57.0.3: {}
 
