@@ -36,7 +36,7 @@ jobs:
       - run: pnpm prebuild:android && pnpm prebuild:tvos
       - run: pnpm exec expo export --platform android --platform ios --output-dir dist/validation
   android:
-    if: github.event_name == 'workflow_dispatch' && inputs.compile_native
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -61,7 +61,7 @@ jobs:
           path: apps/markets-tv-native/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
   tvos:
-    if: github.event_name == 'workflow_dispatch' && inputs.compile_native
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
     needs: validate
     runs-on: macos-15
     timeout-minutes: 45

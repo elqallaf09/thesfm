@@ -1,4 +1,5 @@
 import { tvFetch } from '@/lib/markets-tv/client';
+import { receiverNewsPath, TV_EXTRA_NEWS_CHANNELS } from '@/lib/markets-tv/newsReceiver';
 import { mergeStripSnapshot } from '@/lib/markets-tv/stripQuotes';
 import type { TvSnapshot } from '@/lib/markets-tv/types';
 import { queuedTvSnapshot } from './snapshotQueue';
@@ -30,6 +31,22 @@ function publicSnapshotKey(path: string, token: string): string | null {
 
 export const isPublicTvSnapshot = (path: string) => publicSnapshotKey(path, '') !== null;
 
+const publicNewsPaths=new Set(['ar','en','fr'].flatMap(language=>
+ [...TV_EXTRA_NEWS_CHANNELS,'technology','kuwait'].map(channel=>{
+  const url=new URL(receiverNewsPath(channel as Parameters<typeof receiverNewsPath>[0],language as Parameters<typeof receiverNewsPath>[1]),'https://tv.invalid');
+  url.searchParams.sort();return url.pathname+'?'+url.searchParams;
+ })));
+export function isPublicTvNews(path:string) {
+ if(!path.startsWith('/')||path.startsWith('//')||path.length>1024)return false;
+ const url=new URL(path,'https://tv.invalid');url.searchParams.sort();
+ return url.origin==='https://tv.invalid'&&!url.hash&&publicNewsPaths.has(url.pathname+'?'+url.searchParams);
+}
+function publicResourceKey(path:string,token:string):string|null {
+ if(token)return null;
+ if(isPublicTvNews(path)){const url=new URL(path,'https://tv.invalid');url.searchParams.sort();return url.pathname+'?'+url.searchParams;}
+ return publicSnapshotKey(path,token);
+}
+
 function isSnapshot(value: unknown): value is TvSnapshot {
   if (!value || typeof value !== 'object') return false;
   const item = value as Partial<TvSnapshot>;
@@ -52,14 +69,14 @@ type CacheEntry = { data: unknown; fetchedAt: number; failures: number; retryAt:
 type Flight = { controller: AbortController; promise: Promise<unknown>; consumers: number; settled: boolean };
 type RequestOptions = { signal: AbortSignal; token?: string; ttlMs: number; force?: boolean };
 
-/** Only public snapshots are shared. Account/device/intelligence resources stay local to their hook. */
+/** Only allowlisted public snapshots and news are shared. Account/device/intelligence resources stay local to their hook. */
 export class TvResourceCache {
   private readonly entries = new Map<string, CacheEntry>();
   private readonly flights = new Map<string, Flight>();
   constructor(private readonly maxEntries = 32, private readonly clock = Date.now) {}
 
   peek<T>(path: string, token = ''): T | null {
-    const key = publicSnapshotKey(path, token);
+    const key = publicResourceKey(path, token);
     return key ? this.entries.get(key)?.data as T ?? null : null;
   }
 
@@ -71,7 +88,7 @@ export class TvResourceCache {
 
   request<T>(path: string, options: RequestOptions, load: (signal: AbortSignal) => Promise<T>): Promise<T> {
     if (options.signal.aborted) return Promise.reject(aborted());
-    const key = publicSnapshotKey(path, options.token || '');
+    const key = publicResourceKey(path, options.token || '');
     // Never store tokens, private responses, or private requests in shared maps.
     if (!key) return load(options.signal);
     const cached = this.entries.get(key), now = this.clock();
