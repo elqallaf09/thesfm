@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowUpRight, Calculator, ChevronDown, Lightbulb, RotateCcw, Target, X } from 'lucide-react';
 import { formatMoney } from '@/lib/formatMoney';
+import { calculateDebtPlan } from '@/lib/debts/calculateDebtPlan';
 import {
   type FinancialTheory, type FinancialTheoryLang, type TheoryCalculatorDefinition,
   THEORY_CALCULATOR_TEXT,
@@ -14,7 +15,7 @@ import {
 } from '@/lib/financial-theories';
 import {
   type CalculatorId, type FinancialHealthSnapshot, type DebtRow,
-  THEORY_ICONS, LEARNING_LEVELS,
+  THEORY_ICONS, LEARNING_LEVELS, UI_COPY,
   applyCopy, calculatorForTheory, commonMistakeCopy,
   financialHealthScore, formatPercent, ratioPercent, theoryLevel,
 } from './_lib';
@@ -205,7 +206,9 @@ export function SmartCalculatorPanel({
   healthSnapshot: FinancialHealthSnapshot;
   onClose: () => void;
 }) {
-  const copy = THEORY_CALCULATOR_TEXT[lang];
+  const copy = activeId === 'debt-plan'
+    ? { ...UI_COPY[lang], ...THEORY_CALCULATOR_TEXT[lang] }
+    : THEORY_CALCULATOR_TEXT[lang];
   const [currency, setCurrency] = useState(defaultCurrency);
   const [compound, setCompound] = useState({ initial: '', monthly: '', returnRate: '', years: '' });
   const [loan, setLoan] = useState({ amount: '', rate: '', months: '', income: '' });
@@ -294,18 +297,7 @@ export function SmartCalculatorPanel({
   const emergGap = emergReady ? Math.max(0, emergTarget - emergCurrentSavings) : 0;
   const emergMonthsCovered = emergReady && emergMonthlyExp! > 0 ? emergCurrentSavings / emergMonthlyExp! : 0;
   // debt-plan
-  const debtPlanBalance = positiveNumber(debtPlan.balance);
-  const debtPlanRate = positiveNumber(debtPlan.rate) ?? 0;
-  const debtPlanMonthly = positiveNumber(debtPlan.monthly);
-  const debtPlanReady = hasPositive(debtPlanBalance) && hasPositive(debtPlanMonthly);
-  const debtPlanMonthlyRate = debtPlanRate / 100 / 12;
-  const debtPlanMonths = debtPlanReady && debtPlanMonthly! > debtPlanBalance! * debtPlanMonthlyRate
-    ? Math.ceil(debtPlanMonthlyRate > 0
-        ? -Math.log(1 - (debtPlanBalance! * debtPlanMonthlyRate) / debtPlanMonthly!) / Math.log(1 + debtPlanMonthlyRate)
-        : debtPlanBalance! / debtPlanMonthly!)
-    : null;
-  const debtPlanTotalPaid = debtPlanMonths !== null ? debtPlanMonths * debtPlanMonthly! : null;
-  const debtPlanTotalInterest = debtPlanTotalPaid !== null ? debtPlanTotalPaid - debtPlanBalance! : null;
+  const debtPlanResult = calculateDebtPlan(debtPlan);
   // goal-plan
   const goalPlanTarget = positiveNumber(goalPlan.target);
   const goalPlanCurrent = positiveNumber(goalPlan.current) ?? 0;
@@ -684,13 +676,13 @@ export function SmartCalculatorPanel({
         ) : null}
 
         {activeId === 'debt-plan' ? (
-          debtPlanReady && debtPlanMonths !== null ? (
-            <ResultSection copy={copy} summary={`${copy.debtAmount}: ${money(debtPlanBalance!)} · ${copy.monthlyPayment}: ${money(debtPlanMonthly!)}`} theory={relatedTheoryText} interpretation={copy.simplifiedEstimateNote}>
-              <ResultCard label={copy.estimatedMonths} value={formatDuration(debtPlanMonths, copy)} />
-              <ResultCard label={copy.totalPaid} value={money(debtPlanTotalPaid!)} />
-              <ResultCard label={copy.estimatedInterest} value={money(debtPlanTotalInterest!)} tone={debtPlanTotalInterest! > debtPlanBalance! * 0.2 ? 'warning' : 'default'} />
+          debtPlanResult.status === 'ready' ? (
+            <ResultSection copy={copy} summary={`${copy.debtAmount}: ${money(debtPlanResult.balance)} · ${copy.monthlyPayment}: ${money(debtPlanResult.monthly)}`} theory={relatedTheoryText} interpretation={copy.simplifiedEstimateNote}>
+              <ResultCard label={copy.estimatedMonths} value={formatDuration(debtPlanResult.months, copy)} />
+              <ResultCard label={copy.totalPaid} value={money(debtPlanResult.totalPaid)} />
+              <ResultCard label={copy.estimatedInterest} value={money(debtPlanResult.totalInterest)} tone={debtPlanResult.totalInterest > debtPlanResult.balance * 0.2 ? 'warning' : 'default'} />
             </ResultSection>
-          ) : debtPlanReady ? (
+          ) : debtPlanResult.status === 'unpayable' ? (
             <p className="calculator-error">{copy.debtPaymentTooLow}</p>
           ) : <p className="calculator-error">{copy.enterValues}</p>
         ) : null}
