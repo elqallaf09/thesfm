@@ -99,7 +99,7 @@
   },
   "devDependencies": {
     "@types/qrcode": "1.5.6",
-    "@next/eslint-plugin-next": "16.4.3",
+    "@next/eslint-plugin-next": "16.4.5",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26",
@@ -109,12 +109,12 @@
     "@vitest/coverage-v8": "4.1.11",
     "@vitest/ui": "4.1.11",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.5",
     "eslint-plugin-react-hooks": "5.2.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vite": "8.3.5",
+    "vite": "8.3.6",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "4.1.11"
   }
