@@ -23,6 +23,8 @@ export function analyzePortfolioSeries(input: {
   weights: number[];
   currency: string;
   periodsPerYear?: number;
+  /** Exact expected valuation dates for the selected market/portfolio calendar. */
+  expectedDates?: string[];
 }): PortfolioRiskSnapshot | SnapshotFailure {
   const { points, weights, currency } = input;
   if (!/^[A-Z]{3}$/.test(currency)) return { error: "INVALID_CURRENCY" };
@@ -33,6 +35,13 @@ export function analyzePortfolioSeries(input: {
     !Number.isFinite(p.nav) || p.nav <= 0 ||
     !Number.isFinite(p.netExternalFlow)
   ) || points.some((p,i) => i > 0 && p.date <= points[i-1].date)) return { error: "INVALID_NAV_SERIES" };
+  // Never silently treat sparse snapshots as consecutive daily observations.
+  // A verified market calendar is mandatory before annualizing daily returns.
+  const expectedDates = input.expectedDates;
+  if (!expectedDates || expectedDates.length !== points.length ||
+      expectedDates.some((date, index) => date !== points[index].date)) {
+    return { error: "INVALID_NAV_SERIES" };
+  }
   const exposure = concentration(weights);
   if ("error" in exposure) return { error: "INVALID_POSITIONS" };
   const returns = points.slice(1).map((p,i) => (p.nav - p.netExternalFlow)/points[i].nav - 1);
