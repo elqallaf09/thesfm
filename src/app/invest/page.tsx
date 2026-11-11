@@ -1347,7 +1347,7 @@ export default function InvestPage() {
 
             {activeTab === 'risk' && (
             <>
-            <PortfolioRiskLive locale={lang === 'ar' ? 'ar' : 'en'} />
+            {process.env.NEXT_PUBLIC_SFM_PORTFOLIO_RISK_ENABLED === '1' && <PortfolioRiskLive locale={lang === 'ar' ? 'ar' : 'en'} />}
             <section className="invest-analysis-grid" ref={insightsRef}>
               <div className="invest-panel invest-insights">
                 <div className="invest-section-head">
