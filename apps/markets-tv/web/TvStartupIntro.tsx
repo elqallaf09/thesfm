@@ -13,7 +13,7 @@ export function TvStartupIntro({ children }: { children: React.ReactNode }) {
     {children}
     {visible && <div className="sfm-startup" role="presentation" onClick={() => setVisible(false)}>
       <div className="sfm-startup-brand">
-        <span className="sfm-startup-logo" aria-hidden="true" />
+        <span className="sfm-startup-logo" style={{ backgroundImage: "url('./markets-tv/sfm-logo.png')" }} aria-hidden="true" />
         <div className="sfm-startup-wordmark"><strong>THE SFM</strong><span>MARKETS TV</span></div>
       </div>
     </div>}
