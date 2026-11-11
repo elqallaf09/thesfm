@@ -11,6 +11,7 @@ const respond = (body: unknown, status: number) => NextResponse.json(body, { sta
 
 /** Read-only, authenticated snapshot. Historical metrics remain unavailable until verified NAV history exists. */
 export async function GET(request: Request) {
+  if (process.env.SFM_PORTFOLIO_RISK_ENABLED !== "1") return respond({ code: "RISK_FEATURE_DISABLED" }, 404);
   const bearer = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
   const token = bearer || (await cookies()).get("sfm_access_token")?.value;
   if (!token) return respond({ code: "UNAUTHENTICATED" }, 401);
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
     const now = Date.now();
     const values: number[] = [];
     let currency: string | null = null;
+    let oldestValuation = now;
     for (const position of positions) {
       const v = position.valuation;
       const amount = v.valueInBaseCurrency;
@@ -30,10 +32,12 @@ export async function GET(request: Request) {
       if (amount === null || !Number.isFinite(amount) || amount <= 0 ||
           !base || !/^[A-Z]{3}$/.test(base) ||
           !Number.isFinite(at) || at > now || now-at > 7*86400000 ||
-          !v.source || !v.sourceQuality || (currency && base !== currency)) {
+          !v.source || !v.sourceQuality || /stale|failed|unavailable|unknown/i.test(v.sourceQuality) ||
+          (currency && base !== currency)) {
         return respond({ code: "INCOMPLETE_OR_STALE_VALUATIONS", data: null }, 422);
       }
       currency = base;
+      oldestValuation = Math.min(oldestValuation, at);
       values.push(amount);
     }
     const total = values.reduce((a,b)=>a+b,0);
@@ -42,7 +46,7 @@ export async function GET(request: Request) {
     return respond({
       methodologyVersion: "risk-v1",
       currency,
-      asOf: new Date().toISOString(),
+      asOf: new Date(oldestValuation).toISOString(),
       holdingsCount: positions.length,
       concentration: result,
       historicalMetrics: null,
