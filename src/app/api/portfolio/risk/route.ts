@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getUserFromBearerToken } from "@/lib/server/adminAccess";
 import { loadCanonicalInvestmentPositions, InvestmentCanonicalNotReadyError } from "@/lib/investments/canonicalPositions.server";
 import { concentration } from "@/lib/portfolio-risk/core";
+import { validatePositionValuations } from "@/lib/portfolio-risk/valuation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,33 +21,17 @@ export async function GET(request: Request) {
   try {
     const { positions } = await loadCanonicalInvestmentPositions(user.id);
     if (!positions.length) return respond({ code: "NO_VERIFIED_POSITIONS", data: null }, 422);
-    const now = Date.now();
-    const values: number[] = [];
-    let currency: string | null = null;
-    let oldestValuation = now;
-    for (const position of positions) {
-      const v = position.valuation;
-      const amount = v.valueInBaseCurrency;
-      const base = v.baseCurrency?.toUpperCase();
-      const at = v.valuedAt ? Date.parse(v.valuedAt) : NaN;
-      if (amount === null || !Number.isFinite(amount) || amount <= 0 ||
-          !base || !/^[A-Z]{3}$/.test(base) ||
-          !Number.isFinite(at) || at > now || now-at > 7*86400000 ||
-          !v.source || !v.sourceQuality || /stale|failed|unavailable|unknown/i.test(v.sourceQuality) ||
-          (currency && base !== currency)) {
-        return respond({ code: "INCOMPLETE_OR_STALE_VALUATIONS", data: null }, 422);
-      }
-      currency = base;
-      oldestValuation = Math.min(oldestValuation, at);
-      values.push(amount);
-    }
-    const total = values.reduce((a,b)=>a+b,0);
-    const result = concentration(values.map(v=>v/total));
+    const valuations = validatePositionValuations(
+      positions.map(position => position.valuation),
+      Date.now(),
+    );
+    if (!valuations.ok) return respond({ code: valuations.code, data: null }, 422);
+    const result = concentration(valuations.weights);
     if ("error" in result) return respond({ code: result.error, data: null }, 422);
     return respond({
       methodologyVersion: "risk-v1",
-      currency,
-      asOf: new Date(oldestValuation).toISOString(),
+      currency: valuations.currency,
+      asOf: valuations.oldestValuationAt,
       holdingsCount: positions.length,
       concentration: result,
       historicalMetrics: null,
