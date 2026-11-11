@@ -10,7 +10,7 @@ function points(): NavPoint[] {
 }
 describe("portfolio NAV series",()=>{
   it("subtracts contributions instead of treating them as investment returns",()=>{
-    const result=analyzePortfolioSeries({points:points(),weights:[0.4,0.6],currency:"KWD"});
+    const result=analyzePortfolioSeries({points:points(),weights:[0.4,0.6],currency:"KWD",expectedDates:points().map(p=>p.date)});
     expect(result).not.toHaveProperty("error");
     if("error" in result)return;
     expect(result.metrics.volatilityAnnualized).toBeCloseTo(0);
@@ -22,6 +22,8 @@ describe("portfolio NAV series",()=>{
     const duplicates=points();duplicates[2].date=duplicates[1].date;
     expect(analyzePortfolioSeries({points:duplicates,weights:[1],currency:"KWD"})).toEqual({error:"INVALID_NAV_SERIES"});
     expect(analyzePortfolioSeries({points:points(),weights:[1],currency:"kwd"})).toEqual({error:"INVALID_CURRENCY"});
-    expect(analyzePortfolioSeries({points:points(),weights:[0.7],currency:"KWD"})).toEqual({error:"INVALID_POSITIONS"});
+    expect(analyzePortfolioSeries({points:points(),weights:[0.7],currency:"KWD",expectedDates:points().map(p=>p.date)})).toEqual({error:"INVALID_POSITIONS"});
+    expect(analyzePortfolioSeries({points:points(),weights:[1],currency:"KWD"})).toEqual({error:"INVALID_NAV_SERIES"});
+    expect(analyzePortfolioSeries({points:points(),weights:[1],currency:"KWD",expectedDates:points().map((p,i)=>i===10?"2025-01-20":p.date)})).toEqual({error:"INVALID_NAV_SERIES"});
   });
 });
