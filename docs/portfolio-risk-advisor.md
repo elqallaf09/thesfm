@@ -27,3 +27,11 @@ Issue #354. Branch: `feat/portfolio-risk-advisor`.
 
 ## Proposed API
 `POST /api/portfolio/risk/analyze` (not implemented yet): authenticated portfolio selector only; returns `metrics`, `dataQuality`, `asOf`, `methodologyVersion` or a typed insufficiency error.
+
+
+## Production isolation (added 2026-11-11)
+- Both flags default to disabled. The UI is visible only with `NEXT_PUBLIC_SFM_PORTFOLIO_RISK_ENABLED=1`, and the API returns 404 unless `SFM_PORTFOLIO_RISK_ENABLED=1`.
+- Keep both flags unset in production until security, data-quality and integration checks pass. A public flag does **not** secure the API; the server flag and user authentication are separate safeguards.
+- The current endpoint returns **partial concentration only** from user-scoped verified canonical positions. It does not calculate historical metrics or risk scores. The `asOf` timestamp represents the oldest position valuation in the response, not the request time.
+- Do not enable the UI for production users before verifying access controls, cookie/session assurance, position completeness, zero-value positions, valuation freshness across market holidays, source-quality enumerations, and end-to-end tests.
+- CI/typecheck/build status must be explicitly confirmed. A skipped Supabase Preview check is not a passing build.
