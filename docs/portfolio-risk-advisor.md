@@ -35,3 +35,8 @@ Issue #354. Branch: `feat/portfolio-risk-advisor`.
 - The current endpoint returns **partial concentration only** from user-scoped verified canonical positions. It does not calculate historical metrics or risk scores. The `asOf` timestamp represents the oldest position valuation in the response, not the request time.
 - Do not enable the UI for production users before verifying access controls, cookie/session assurance, position completeness, zero-value positions, valuation freshness across market holidays, source-quality enumerations, and end-to-end tests.
 - CI/typecheck/build status must be explicitly confirmed. A skipped Supabase Preview check is not a passing build.
+
+## Historical calendar integrity gate
+- `analyzePortfolioSeries` now requires `expectedDates` from a verified portfolio valuation calendar. The date array must exactly match each NAV point, preventing missing market sessions from being misrepresented as consecutive daily observations.
+- This is a **calculation contract**, not a connected data source. An authoritative calendar and historical NAV adapter remain to be implemented. Do not manufacture expected dates by copying input NAV dates in production.
+- For mixed-market portfolios, construct an explicit unified valuation calendar and documented holiday/weekend policy; review any stale-close treatment and FX synchronization before enabling annualization.
