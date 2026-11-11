@@ -1,7 +1,7 @@
 /* Match the existing TV shell: dark navy, white lettering and restrained violet. */
 .sfm-startup{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:#080a12;animation:sfm-intro-exit 2.7s ease-in-out forwards;pointer-events:auto}
 .sfm-startup-brand{display:flex;align-items:center;gap:22px;direction:ltr;animation:sfm-intro-ident 2.7s ease-in-out forwards}
-.sfm-startup-brand img{width:94px;height:94px;object-fit:contain}
+.sfm-startup-logo{display:block;flex:none;width:94px;height:94px;background:url('./markets-tv/sfm-logo.png') center / contain no-repeat}
 .sfm-startup-wordmark{display:flex;flex-direction:column;gap:8px;color:#f3f4f8;text-align:left;font-family:Arial,sans-serif}
 .sfm-startup-wordmark strong{font-size:clamp(32px,4vw,68px);font-weight:750;letter-spacing:.075em;line-height:1}
 .sfm-startup-wordmark span{font-size:clamp(14px,1.4vw,23px);font-weight:400;letter-spacing:.21em;color:#aeb1c0}
