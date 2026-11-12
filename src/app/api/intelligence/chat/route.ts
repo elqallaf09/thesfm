@@ -6,6 +6,8 @@ import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.se
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
 import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
 import { implicitMarketAssetCandidates } from '@/lib/ai-analyst/marketAssetCandidate';
+import { isPortfolioRiskQuestion } from '@/lib/portfolio-risk/advisor';
+import { portfolioRiskChatResponse } from '@/lib/portfolio-risk/chat.server';
 import {
   ChatDomainMismatchError,
   MARKET_CHAT_DOMAINS,
@@ -127,6 +129,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof ChatDomainMismatchError) return errorResponse(400, 'DOMAIN_MISMATCH', correlationId);
     throw error;
+  }
+
+  // Private portfolio requests use the same MFA-protected, user-scoped service
+  // as the dashboard. No LLM call or AI quota is needed for verified arithmetic.
+  if (isPortfolioRiskQuestion(parsed.data.messages)) {
+    return portfolioRiskChatResponse(request, parsed.data.locale, correlationId);
   }
 
   const user = await getCurrentUserFromRequest(request).catch(() => null);

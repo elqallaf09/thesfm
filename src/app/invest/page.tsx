@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Brain, Layers3, LineChart as LineChartIcon, PieChart as PieChartIcon, Plus, RefreshCw, ShieldAlert, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
-import { PortfolioRiskLive } from '@/components/investments/PortfolioRiskLive';
 import { PageTabPanel, PageTabs } from '@/components/layout/PageTabs';
 import type { InvestmentPriceRefreshStatus } from '@/components/invest/InvestmentRow';
 import { InvestmentDetailsController, type InvestmentDetailsControllerHandle } from '@/components/invest/InvestmentDetailsController';
@@ -1346,8 +1345,6 @@ export default function InvestPage() {
             )}
 
             {activeTab === 'risk' && (
-            <>
-            {process.env.NEXT_PUBLIC_SFM_PORTFOLIO_RISK_ENABLED === '1' && <PortfolioRiskLive locale={lang === 'ar' ? 'ar' : 'en'} />}
             <section className="invest-analysis-grid" ref={insightsRef}>
               <div className="invest-panel invest-insights">
                 <div className="invest-section-head">
@@ -1393,7 +1390,6 @@ export default function InvestPage() {
                 )}
               </div>
             </section>
-            </>
             )}
 
             {activeTab === 'reports' && (
