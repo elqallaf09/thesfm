@@ -6,22 +6,18 @@ import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
 import { loadCanonicalInvestmentPositions, InvestmentCanonicalNotReadyError } from '@/lib/investments/canonicalPositions.server';
 import { buildCurrentRisk, type CurrentRiskSnapshot } from './current';
 
-export type RiskServiceResult =
-  | { ok: true; snapshot: CurrentRiskSnapshot }
-  | { ok: false; code: string; status: number; retryAfter?: number };
+export type RiskServiceFailure = { ok: false; code: string; status: number; retryAfter?: number };
+export type RiskServiceResult = { ok: true; snapshot: CurrentRiskSnapshot } | RiskServiceFailure;
 
-/** Same authorization and calculation path for the dashboard and assistant. No writes. */
-export async function loadCurrentRiskForRequest(request: Request): Promise<RiskServiceResult> {
+/** Shared by current and historical reads. Identity never comes from URL/body fields. */
+export async function authorizeRiskRequest(request: Request): Promise<{ ok: true; userId: string } | RiskServiceFailure> {
   if (process.env.SFM_PORTFOLIO_RISK_ENABLED !== '1') return { ok: false, code: 'RISK_FEATURE_DISABLED', status: 404 };
-
   const authorization = request.headers.get('authorization');
   const hasAuthorization = authorization !== null;
-  // RFC 6750 section 2.1: reject empty, joined or malformed credentials before
-  // any cookie/provider access. An explicit header can never fall back to a cookie.
+  // Reject malformed/joined credentials before cookie/provider access. Never downgrade to a cookie.
   const bearer = authorization?.match(/^Bearer +([A-Za-z0-9._~+\/-]+=*)$/i)?.[1];
   if (hasAuthorization && !bearer) return { ok: false, code: 'UNAUTHENTICATED', status: 401 };
   if (!hasAuthorization && request.headers.get('sec-fetch-site') === 'cross-site') return { ok: false, code: 'FORBIDDEN_ORIGIN', status: 403 };
-
   try {
     const jar = await cookies();
     const token = hasAuthorization ? bearer : jar.get(AUTH_ACCESS_COOKIE)?.value;
@@ -32,8 +28,18 @@ export async function loadCurrentRiskForRequest(request: Request): Promise<RiskS
     if (session.mfaRequirement !== 'none') return { ok: false, code: 'MFA_REQUIRED', status: 403 };
     const limit = checkRateLimitWithMetadata(session.userId, { max: 10, windowMs: 60_000, prefix: 'portfolio-risk' });
     if (!limit.allowed) return { ok: false, code: 'RATE_LIMITED', status: 429, retryAfter: limit.retryAfterSeconds };
-    // Identity comes only from the verified session, never URL/body fields.
-    const { positions } = await loadCanonicalInvestmentPositions(session.userId);
+    return { ok: true, userId: session.userId };
+  } catch {
+    return { ok: false, code: 'AUTH_SERVICE_UNAVAILABLE', status: 503 };
+  }
+}
+
+/** Same authorization and calculation path for the dashboard and assistant. No writes. */
+export async function loadCurrentRiskForRequest(request: Request): Promise<RiskServiceResult> {
+  const access = await authorizeRiskRequest(request);
+  if (!access.ok) return access;
+  try {
+    const { positions } = await loadCanonicalInvestmentPositions(access.userId);
     const result = buildCurrentRisk(positions, Date.now());
     return result.ok ? result : { ...result, status: 422 };
   } catch (error) {
