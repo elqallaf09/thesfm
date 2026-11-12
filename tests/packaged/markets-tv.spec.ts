@@ -4,9 +4,16 @@ import { pathToFileURL } from 'node:url';
 import type { TvLanguage, TvQuote, TvSnapshot } from '../../src/lib/markets-tv/types';
 
 // Synthetic values exist only in this browser fixture, never in packaged assets.
-// Keep fixture observations fresh so production stale-price protection remains enabled.
-const observedAt = new Date().toISOString();
-function snapshot(): TvSnapshot {
+// Pin both observations and the browser clock; wall-clock dates must not age fixtures.
+const fixtureNow = '2026-11-03T09:00:00.000Z';
+const observedAt = '2026-11-02T21:00:00.000Z';
+
+test.beforeEach(async ({ page }) => {
+  // Install once before navigation; individual timing tests can move this clock.
+  await page.clock.install({ time: new Date(fixtureNow) });
+});
+
+function snapshot(asOf = Date.parse(fixtureNow)): TvSnapshot {
   const quote = (index: number): TvQuote => ({
     symbol: `QA${index}`, name: `Test instrument ${index}`, nameAr: `أداة الاختبار ${index}`,
     price: 338.32 + index, currency: 'USD', changePercent: -1.83,
@@ -14,19 +21,20 @@ function snapshot(): TvSnapshot {
     status: 'closed', exchange: 'NASDAQ', country: 'US', changeBasis: 'session',
   });
   return {
-    group: 'global', scene: 'overview', generatedAt: new Date().toISOString(),
+    group: 'global', scene: 'overview', generatedAt: new Date(asOf).toISOString(),
     available: 6, total: 6, selectionTotal: 10,
     summary: Array.from({ length: 4 }, (_, index) => index < 3 ? { ...quote(index),
       price: null, changePercent: null, source: null, observedAt: null, receivedAt: null,
-      issue: 'rate_limited', status: 'unavailable', retryAt: new Date(Date.now() + 300_000).toISOString(),
+      issue: 'rate_limited', status: 'unavailable', retryAt: new Date(asOf + 300_000).toISOString(),
     } : quote(index)),
     quotes: Array.from({ length: 6 }, (_, index) => quote(index + 4)),
   };
 }
 
 async function openTv(page: Page, language: TvLanguage, settings: Record<string, unknown> = {}) {
+  const asOf = await page.evaluate(() => Date.now());
   await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, scene: 'world', ...settings })), { language, settings });
-  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot() }));
+  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot(asOf) }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
@@ -77,6 +85,19 @@ for (const language of ['ar', 'en', 'fr'] as const) {
   });
 }
 
+test('heatmap excludes stale closed quotes without dropping the saved quote list', async ({ page }) => {
+  await openTv(page, 'en', { autoRotate: false });
+  const heatmap = page.locator('[data-tv-focus-key="scene-heatmap"]');
+  await heatmap.click();
+  await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(6);
+  await page.clock.setSystemTime(new Date('2026-11-11T09:00:00Z'));
+  await page.reload();
+  await heatmap.click();
+  await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-map-notice')).toBeVisible();
+  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+});
+
 test('remote reaches every clipped row and restores focus after quote details', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 });
   await openTv(page, 'ar');
@@ -104,7 +125,7 @@ test('remote reaches every clipped row and restores focus after quote details', 
 
 for (const language of ['ar', 'en', 'fr'] as const) {
   test(`packaged ${language} sessions fit the TV and preserve remote focus and local clocks`, async ({ page }) => {
-    await page.clock.install({ time: new Date('2026-11-03T09:52:00Z') });
+    await page.clock.setSystemTime(new Date('2026-11-03T09:52:00Z'));
     await page.setViewportSize({ width: 960, height: 540 });
     await openTv(page, language);
     const opener = page.locator('.tv-viewing-footer button').first();
@@ -176,7 +197,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
 }
 
 test('wall-clock ticks do not render the dashboard and quote freshness remains scheduled', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-11-03T09:59:58Z') });
+  await page.clock.setSystemTime(new Date('2026-11-03T09:59:58Z'));
   await page.addInitScript(() => {
     type Fiber = { memoizedProps?: Record<string, unknown>; memoizedState?: unknown; child?: Fiber; sibling?: Fiber; return?: Fiber };
     const scope = window as typeof window & { tvRootRenders: number; tvCommits: number; __REACT_DEVTOOLS_GLOBAL_HOOK__: unknown };
@@ -212,7 +233,7 @@ test('wall-clock ticks do not render the dashboard and quote freshness remains s
 });
 
 test('full Arabic news, isolated quote evidence and legacy-compatible colors', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-11-03T09:00:00Z') });
+  await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await openTv(page, 'ar');
   const title = 'عنوان خبري طويل لاختبار ظهور النص كاملاً في العمود الجانبي وإمكانية فتح تفاصيله بالريموت دون إخفاء بقية الكلمات أو قص السطر الأخير من الخبر';
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'full', title, source: 'مصدر الاختبار', publishedAt: '2026-11-03T08:30:00Z', url: 'https://example.com/story' }] } }));
@@ -229,7 +250,7 @@ test('full Arabic news, isolated quote evidence and legacy-compatible colors', a
 });
 
 test('pairing rejects malformed responses, times out, and accepts a valid activation', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-11-03T09:00:00Z') });
+  await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await openTv(page, 'en');
   let state: 'invalid' | 'timeout' | 'valid' = 'invalid';
   await page.route('**/api/tv/pair', route => {
@@ -259,7 +280,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
 });
 
 test('strips use index points, show compatible tick colors and keep unavailable instruments moving', async ({ page }) => {
-  await page.clock.install({ time: new Date('2026-11-03T09:00:00Z') });
+  await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', displayMode: 'strips', marketIds: ['US'], groups: ['us'], autoHideControls: false })));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US', labelFr: 'US', count: 24 }] } }));
