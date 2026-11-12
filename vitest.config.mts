@@ -31,6 +31,7 @@ export default defineConfig({
       // Specialist engine/adapter regressions live beside their implementation.
       'src/lib/investments/intelligence/**/*.test.ts',
       'src/lib/market/**/*.test.ts',
+      'src/lib/portfolio-risk/**/*.test.ts',
     ],
     fileParallelism: false,
     coverage: {

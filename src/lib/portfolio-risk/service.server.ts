@@ -1,7 +1,7 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { AUTH_ACCESS_COOKIE, EMAIL_MFA_PROOF_COOKIE } from '@/lib/auth/sessionSecurity';
-import { inspectSessionSecurity, bearerToken } from '@/lib/server/authSession';
+import { inspectSessionSecurity } from '@/lib/server/authSession';
 import { checkRateLimitWithMetadata } from '@/lib/server/rateLimiter';
 import { loadCanonicalInvestmentPositions, InvestmentCanonicalNotReadyError } from '@/lib/investments/canonicalPositions.server';
 import { buildCurrentRisk, type CurrentRiskSnapshot } from './current';
@@ -13,13 +13,19 @@ export type RiskServiceResult =
 /** Same authorization and calculation path for the dashboard and assistant. No writes. */
 export async function loadCurrentRiskForRequest(request: Request): Promise<RiskServiceResult> {
   if (process.env.SFM_PORTFOLIO_RISK_ENABLED !== '1') return { ok: false, code: 'RISK_FEATURE_DISABLED', status: 404 };
+
+  const authorization = request.headers.get('authorization');
+  const hasAuthorization = authorization !== null;
+  // RFC 6750 section 2.1: reject empty, joined or malformed credentials before
+  // any cookie/provider access. An explicit header can never fall back to a cookie.
+  const bearer = authorization?.match(/^Bearer +([A-Za-z0-9._~+\/-]+=*)$/i)?.[1];
+  if (hasAuthorization && !bearer) return { ok: false, code: 'UNAUTHENTICATED', status: 401 };
+  if (!hasAuthorization && request.headers.get('sec-fetch-site') === 'cross-site') return { ok: false, code: 'FORBIDDEN_ORIGIN', status: 403 };
+
   try {
     const jar = await cookies();
-    const hasAuthorization = request.headers.has('authorization');
-    // An explicitly malformed/expired header must not fall back to another session.
-    const token = hasAuthorization ? bearerToken(request) : jar.get(AUTH_ACCESS_COOKIE)?.value;
+    const token = hasAuthorization ? bearer : jar.get(AUTH_ACCESS_COOKIE)?.value;
     if (!token) return { ok: false, code: 'UNAUTHENTICATED', status: 401 };
-    if (!hasAuthorization && request.headers.get('sec-fetch-site') === 'cross-site') return { ok: false, code: 'FORBIDDEN_ORIGIN', status: 403 };
     const session = await inspectSessionSecurity(token, jar.get(EMAIL_MFA_PROOF_COOKIE)?.value);
     if (session.status === 'unauthenticated') return { ok: false, code: 'UNAUTHENTICATED', status: 401 };
     if (session.status !== 'ok') return { ok: false, code: 'AUTH_SERVICE_UNAVAILABLE', status: 503 };
