@@ -1,0 +1,66 @@
+name: Portfolio risk source isolation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/portfolio-risk/**'
+      - 'src/lib/investments/canonical*'
+      - 'src/app/api/portfolio/risk/**'
+      - 'supabase/migrations/**'
+      - 'tests/database/portfolio-risk-security.sql'
+      - '.github/scripts/bootstrap-supabase-stubs.sql'
+      - '.github/workflows/portfolio-risk-security.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-isolation:
+    name: Portfolio risk / PostgreSQL account isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: postgres
+      PGPASSWORD: postgres
+      PGOPTIONS: '-c sfm.disposable_ci=1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+      - name: Bootstrap disposable Supabase stand-ins
+        run: psql -v ON_ERROR_STOP=1 -f .github/scripts/bootstrap-supabase-stubs.sql
+      - name: Apply full migration chain once
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Prove portfolio source ownership and MFA isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/database/portfolio-risk-security.sql
+      - name: Record scope of evidence
+        shell: bash
+        run: |
+          {
+            echo '### Portfolio risk source isolation'
+            echo 'Passed real PostgreSQL RLS checks with two synthetic owners after the full migration chain.'
+            echo 'Covered positions, historical valuations, transactions, cross-owner writes, anonymous access, enrolled MFA and session revocation.'
+            echo 'Fixtures and auth stand-ins were rolled back. No production or Preview credentials were used.'
+            echo 'This is database-policy evidence, not a full authenticated browser journey or a proof of live historical data completeness.'
+          } >> "$GITHUB_STEP_SUMMARY"

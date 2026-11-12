@@ -1,8 +1,8 @@
-import { analyzeDailyReturns, concentration, type RiskFailure, type RiskResult } from './core';
+import { analyzeDailyReturns, concentration, HISTORICAL_RISK_METHODOLOGY, type RiskFailure, type RiskResult } from './core';
 
 export type NavPoint = { date: string; nav: number; netExternalFlow: number };
 export type PortfolioRiskSnapshot = {
-  methodologyVersion: 'risk-v1'; periodStart: string; periodEnd: string; currency: string;
+  methodologyVersion: typeof HISTORICAL_RISK_METHODOLOGY; periodStart: string; periodEnd: string; currency: string;
   metrics: RiskResult; concentration: { hhi: number; largestWeight: number };
   dataQuality: { status: 'complete'; observations: number };
 };
@@ -37,7 +37,7 @@ export function analyzePortfolioSeries(input: {
   const metrics = analyzeDailyReturns(returns, input.periodsPerYear);
   if ('error' in metrics) return metrics;
   return {
-    methodologyVersion: 'risk-v1', periodStart: points[0].date, periodEnd: points[points.length - 1].date,
+    methodologyVersion: HISTORICAL_RISK_METHODOLOGY, periodStart: points[0].date, periodEnd: points[points.length - 1].date,
     currency, metrics, concentration: exposure, dataQuality: { status: 'complete', observations: metrics.observations },
   };
 }
