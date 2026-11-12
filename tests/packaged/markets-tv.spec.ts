@@ -4,7 +4,8 @@ import { pathToFileURL } from 'node:url';
 import type { TvLanguage, TvQuote, TvSnapshot } from '../../src/lib/markets-tv/types';
 
 // Synthetic values exist only in this browser fixture, never in packaged assets.
-const observedAt = '2026-11-02T21:00:00.000Z';
+// Keep fixture observations fresh so production stale-price protection remains enabled.
+const observedAt = new Date().toISOString();
 function snapshot(): TvSnapshot {
   const quote = (index: number): TvQuote => ({
     symbol: `QA${index}`, name: `Test instrument ${index}`, nameAr: `أداة الاختبار ${index}`,
