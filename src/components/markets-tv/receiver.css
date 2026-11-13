@@ -25,7 +25,7 @@
 .tv-screen .tv-receiver-quotes .tv-evidence-origin{display:flex;flex-wrap:wrap;gap:.4em;white-space:normal}
 .tv-screen .tv-receiver-quotes .tv-scene-source{overflow-wrap:anywhere;white-space:normal}
 .tv-receiver-empty{display:grid;place-items:center;flex:1;color:var(--tv-muted)}
-.tv-receiver-notice{font-size:max(13px,.75em);margin:0}
+.tv-screen .tv-receiver-notice{font-size:max(13px,.75em);margin:0 0 .4em;color:var(--tv-muted)}
 .tv-receiver-news{display:flex;flex-direction:column;min-height:0;flex:1}
 .tv-screen .tv-receiver-news .tv-scene-headlines{flex:1;font-size:1em}
 .tv-screen .tv-receiver-news-only .tv-headline-items>button{padding:.8em;border-bottom:1px solid var(--tv-line);border-radius:var(--radius-xs);background:var(--tv-panel)}

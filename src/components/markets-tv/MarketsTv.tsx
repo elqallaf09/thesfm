@@ -3,6 +3,7 @@ import '@/app/tv/broadcast.css';
 import { hallText } from '@/lib/markets-tv/hallText';
 const TvTradingHall = lazy(() => import('./TvTradingHall').then(module => ({ default: module.TvTradingHall })));
 const TvAllStocks = lazy(() => import('./TvAllStocks').then(module => ({ default: module.TvAllStocks })));
+const TvWelcomeIntro = lazy(() => import('./TvWelcomeIntro'));
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Monitor, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper } from 'lucide-react';
@@ -95,6 +96,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       sessionIds: channel === 'sessions' && !settings.sessionIds ? [...TV_SESSION_IDS] : settings.sessionIds };
     // Save during selection so closing/reloading immediately retains the channel.
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* In-memory selection remains usable. */ }
+    const url = new URL(window.location.href); if (url.searchParams.has('channel')) { url.searchParams.set('channel', channel); window.history.replaceState(window.history.state, '', url); }
     setView(channel); setRouteStrips(false); setDialog(null); setDetail(null); setStory(null);
     setSettings(next); activity.current = Date.now();
   }, [settings]);
@@ -108,6 +110,8 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     try { const saved = normalizeTvSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); setSettings(initialAllStocks ? { ...saved, displayMode: 'browse', broadcastChannel: undefined } : saved); if (saved.broadcastChannel && !initialStripsOnly && !initialAllStocks) setView(saved.broadcastChannel); setToken(localStorage.getItem(TOKEN_KEY) || ''); } catch { /* Device storage can be unavailable. */ }
     try { setSelections(normalizeTvSelections(JSON.parse(localStorage.getItem(TV_SELECTIONS_KEY) || '{}'))); } catch { /* Keep defaults if device storage is corrupt. */ }
     try { setChannels(normalizeTvChannels(JSON.parse(localStorage.getItem(TV_CHANNELS_KEY) || '[]'))); } catch { /* Stored channels may be unavailable. */ }
+    const requested = new URLSearchParams(window.location.search).get('channel');
+    if (!initialStripsOnly && !initialAllStocks && isTvReceiverChannel(requested)) { setView(requested); setSettings(current => ({ ...current, displayMode: 'viewing', broadcastChannel: requested })); }
     activity.current = Date.now(); setReady(true); setNow(Date.now()); setOnline(navigator.onLine);
     const freshness = () => { if (!document.hidden) setNow(Date.now()); };
     const timer = setInterval(freshness, 15000);
@@ -209,6 +213,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const stripNow = now;
   const strips = <Suspense fallback={<div className="tv-loading" role="status">{t('loading')}</div>}><TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} pricedOnly={settings.pricedOnly} revision={revision} paused={stripsPaused || (!stripsOnly && modal)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} /></Suspense>;
   return <div ref={root} data-tv-root data-tv-view={view} data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${hall || allStocks ? ' tv-hall-screen' : ''}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
+    <Suspense fallback={null}><TvWelcomeIntro language={settings.language}/></Suspense>
     <TvHeader language={settings.language} mode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} ready={ready} paired={Boolean(token)} fullscreen={fullscreen} hidden={controls.hidden} paused={stripsPaused} wake={controls.wake} changeMode={changeDisplayMode} pair={() => setDialog(token ? 'device' : 'pair')} settings={() => setDialog('settings')} customize={() => setDialog('markets')} channels={() => setDialog('channels')} toggleFullscreen={() => void toggleFullscreen()} togglePause={toggleTicker} refresh={refresh}/>
     {stripsOnly ? <>
 

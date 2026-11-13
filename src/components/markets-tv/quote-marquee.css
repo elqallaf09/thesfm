@@ -2,7 +2,7 @@
 .tv-quote-marquee .tv-marquee-toggle { border: 0; border-inline-end: 1px solid var(--tv-line); border-radius: 0; flex-shrink: 0; width: 2.8em; }
 .tv-marquee-viewport { min-width: 0; flex: 1; overflow: hidden; }
 .tv-marquee-track { position: relative; display: flex; width: max-content; height: 100%; animation: tv-quote-scroll var(--ticker-duration, 40s) linear infinite; will-change: transform; }
-.tv-marquee-set { display: flex; flex-shrink: 0; align-items: center; min-width: 90vw; justify-content: space-around; }
+.tv-marquee-set { display: flex; flex-shrink: 0; align-items: center; }
 .tv-quote-marquee .tv-marquee-set button { display: grid; grid-template-columns: auto auto auto; align-items: center; gap: .1em .8em; padding: .2em 1em; flex-shrink: 0; border: 0; border-inline-end: 1px solid var(--tv-line); border-radius: 0; background: transparent; font-size: .85em; }
 .tv-marquee-set .tv-quote-evidence { grid-column: 1 / -1; font-size: max(13px, .7em); justify-content: center; }
 .tv-marquee-set bdi, .tv-marquee-set [data-trend] { font-family: var(--font-data), monospace; font-variant-numeric: tabular-nums; }
