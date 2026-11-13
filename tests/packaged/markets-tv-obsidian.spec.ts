@@ -12,8 +12,7 @@ async function open(page:Page,language:TvLanguage){
   await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[{id:'qa',title:'خبر اختبار عن الأسواق العالمية / Market news fixture',source:'QA',publishedAt:now,url:'https://example.com/news'}]}}));
   await page.route('**/api/tv/history',r=>r.fulfill({json:{symbol:'^GSPC',sessionDate:'2026-11-06',source:'QA source',fetchedAt:now,points:[{at:'2026-11-06T14:30:00Z',price:5999},{at:'2026-11-06T14:35:00Z',price:6002},{at:'2026-11-06T14:40:00Z',price:6000}]}}));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-  await expect(page.locator('.tv-index-five article')).toHaveCount(5);
-  await expect(page.locator('.tv-session-chart polyline')).toBeVisible();
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.evaluate(()=>document.fonts.ready);
 }
 async function contained(page:Page,selector:string){
@@ -26,8 +25,8 @@ for(const language of ['ar','en','fr'] as const)test(`Obsidian ${language} overv
   await open(page,language);
   for(const [width,height] of [[960,540],[1280,720],[1536,1009],[1920,1080],[3840,2160]]){
     await page.setViewportSize({width,height});
-    await contained(page,'.tv-index-hero,.tv-session-chart,.tv-index-five article,.tv-overview,.tv-whole-ticker');
-    await expect(page.locator('.tv-index-five')).toBeInViewport({ratio:1});
+    await contained(page,'.tv-hall-market-table,.tv-hall-row,.tv-hall-sessions');
+    await expect(page.locator('.tv-hall-market-table')).toBeInViewport({ratio:1});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width+1);
     expect(await page.evaluate(()=>document.documentElement.scrollHeight)).toBeLessThanOrEqual(height+1);
   }
@@ -57,14 +56,14 @@ test('Tweaks persists all four accents across views, reload and light mode',asyn
   await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-light/);
   await page.reload();await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-accent','champagne');
 });
-test('missing prices and unavailable history show retry without a fabricated chart',async({page})=>{
+test('missing prices remain explicit without a fabricated chart',async({page})=>{
   await open(page,'en');
   await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{group:'global',scene:'overview',summary:quotes().map(q=>({...q,price:null,changePercent:null,source:null,status:'unavailable',issue:'rate_limited'})),quotes:[],total:0,available:0,generatedAt:now}}));
   await page.route('**/api/tv/history',r=>r.fulfill({json:{symbol:'^GSPC',points:[],issue:'access_denied'}}));
   await page.reload();
-  await expect(page.locator('.tv-price-error')).toHaveCount(6);
-  await expect(page.locator('.tv-chart-missing button')).toBeEnabled();
+  await expect(page.locator('.tv-hall-row [data-status=unavailable].tv-quote-evidence')).toHaveCount(6);
   await expect(page.locator('.tv-session-chart svg')).toHaveCount(0);
-  await page.locator('.tv-price-error button').first().focus();await page.keyboard.press('Enter');
-  await expect(page.locator('.tv-hero-unavailable')).toBeVisible();
+  await page.locator('.tv-hall-identity button').first().focus();await page.keyboard.press('Enter');
+  await expect(page.locator('[data-tv-dialog]')).toBeVisible();
+  await expect(page.locator('.tv-hall-price strong').first()).toHaveText('—');
 });

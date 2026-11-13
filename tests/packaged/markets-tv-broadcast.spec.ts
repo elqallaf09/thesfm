@@ -44,10 +44,11 @@ for(const language of ['ar','en','fr'] as const)test(`TV ${language}: full news 
  await page.setViewportSize({width:1536,height:1009});await open(page,language);
  for(const scene of ['overview','world']){
   await page.locator(`[data-tv-focus-key="scene:${scene}"]`).click();
-  await expect(page.locator('.tv-scene-movers')).toBeVisible();await expect(page.locator('.tv-scene-headlines button[data-tv-focus-key^="story:"]').first()).toContainText(title[language]);
+  if(scene==='world') await expect(page.locator('.tv-scene-movers')).toBeVisible();
+  await expect(page.locator(scene==='overview'?'.tv-headline-story':'.tv-scene-headlines button[data-tv-focus-key^="story:"]').first()).toContainText(title[language]);
   for(const [width,height] of [[960,540],[1280,720],[1536,1009],[1920,1080],[3840,2160]]){
-   await page.setViewportSize({width,height});await fits(page,'.tv-overview-sidebar,.tv-scene-sidebar,.tv-now-panel,.tv-scene-headlines,.tv-scene-movers,.tv-broadcast-heading,.tv-headline-items,.tv-mover-items');
-   for(const selector of ['.tv-scene-headlines','.tv-scene-movers']){
+   await page.setViewportSize({width,height});await fits(page,scene==='overview'?'.tv-hall-market-table,.tv-hall-row,.tv-hall-sessions,.tv-headline-band':'.tv-scene-sidebar,.tv-now-panel,.tv-scene-headlines,.tv-scene-movers,.tv-broadcast-heading,.tv-headline-items,.tv-mover-items');
+   for(const selector of scene==='overview'?['.tv-headline-band','.tv-hall-market-table']:['.tv-scene-headlines','.tv-scene-movers']){
     await expect(page.locator(selector)).toBeInViewport({ratio:1});
     expect(await page.locator(selector).evaluate(el=>el.scrollHeight<=el.clientHeight+1)).toBe(true);
    }

@@ -801,3 +801,17 @@
 
 .tv-screen { --tv-active-shadow: inset 0 -2px 0 var(--tv-accent); --tv-focus-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 5px var(--tv-accent); }
 .tv-screen { --tv-hero-background: radial-gradient(ellipse at 80% 0%, var(--tv-hero-tint), transparent 60%), var(--tv-panel); --tv-timeline-grid: repeating-linear-gradient(to right, var(--tv-line) 0 1px, transparent 1px 12.5%); }
+
+/* SFM TV trading hall and the complete stock directory. */
+.tv-screen.tv-hall-screen {
+  --tv-bg: #111517; --tv-panel: #1a2023; --tv-panel2: #232b2e; --tv-line: #353e42;
+  --tv-text: #f2f4ef; --tv-muted: #b3bdbb; --tv-up: #7ae2b5; --tv-down: #ff8b8c;
+  --tv-news-background: #f0eee6; --tv-news-text: #18201e; --tv-news-muted: #53625b;
+  --tv-news-accent: #f19150; --tv-news-line: #b5beb9;
+}
+.tv-screen.tv-hall-screen[data-accent=champagne] { --tv-accent: #f19150; }
+.tv-screen.tv-hall-screen.tv-light {
+  --tv-bg: #eeeae2; --tv-panel: #fffef9; --tv-panel2: #e4e3db; --tv-line: #b5beb9;
+  --tv-text: #18201e; --tv-muted: #53625b; --tv-up: #08734c; --tv-down: #b22839;
+}
+.tv-screen.tv-hall-screen.tv-light[data-accent=champagne] { --tv-accent: #9c4310; }

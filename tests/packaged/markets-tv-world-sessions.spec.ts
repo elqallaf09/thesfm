@@ -53,26 +53,22 @@ for(const language of ['ar','en','fr'])test(`world sessions ${language}: select 
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')||'{}').sessionIds)).toEqual(['XPAE']);
  await page.reload();await expect(page.locator('[data-tv-focus-key="scene:world"]')).toHaveAttribute('aria-pressed','true');
  await page.locator('.tv-scene-tabs button').first().click();
- await expect(page.locator('.tv-now-row')).toHaveCount(1);await expect(page.locator('.tv-now-row')).toContainText(language==='ar'?'بورصة فلسطين':language==='fr'?'Bourse de Palestine':'Palestine Exchange');
+ await expect(page.locator('.tv-hall-session')).toHaveCount(1);await expect(page.locator('.tv-hall-session')).toContainText(language==='ar'?'بورصة فلسطين':language==='fr'?'Bourse de Palestine':'Palestine Exchange');
  await page.locator('.tv-scene-tabs button').nth(5).click();
  await expect(page.locator('.tv-session')).toHaveCount(1);await expect(page.locator('.tv-session')).toHaveAttribute('data-market','XPAE');
  await page.locator('[data-tv-focus-key=sessions-choose]').click();await page.locator('.tv-session-picker-actions button').nth(1).click();await page.locator('[data-tv-focus-key=sessions-done]').click();
  await expect(page.locator('.tv-world-empty')).toBeVisible();await expect(page.locator('.tv-world-pages bdi')).toHaveText('1 / 1');
  expect(errors).toEqual([]);
 });
-test('ticker survives invalid WebView font measurements and returns to automatic paging',async({page})=>{
+test('ticker survives invalid WebView font measurements and resizes without NaN',async({page})=>{
  await page.setViewportSize({width:960,height:540});await open(page,'en');
- const counter=page.locator('.tv-ticker-pages small');await expect(counter).toHaveText(/^\d+\/\d+$/);
- await page.evaluate(()=>{
-  const original=window.getComputedStyle.bind(window);
-  window.getComputedStyle=(element,pseudo)=>{
-   const result=original(element,pseudo);
-   return element.matches('.tv-whole-ticker-cards')?new Proxy(result,{get(target,key){return key==='fontSize'?'unavailable':Reflect.get(target,key,target);}}):result;
-  };
- });
- await page.setViewportSize({width:1000,height:560});await page.clock.runFor(100);
- await expect(counter).toHaveText(/^\d+\/\d+$/);await expect(page.locator('.tv-whole-ticker-cards > button').first()).toBeVisible();
- await page.clock.runFor(9000);await expect(counter).toHaveText(/^2\/\d+$/);
- await page.setViewportSize({width:1280,height:720});await expect(counter).not.toContainText('NaN');
- await page.locator('.tv-ticker-pages button').last().click();await expect(counter).toHaveText(/^\d+\/\d+$/);
+ const ticker=page.locator('.tv-quote-marquee'),track=ticker.locator('.tv-marquee-track');
+ await expect(ticker).toBeVisible();
+ await page.evaluate(()=>{const original=window.getComputedStyle.bind(window);window.getComputedStyle=(element,pseudo)=>{const result=original(element,pseudo);return element.matches('.tv-marquee-set')?new Proxy(result,{get(target,key){return key==='fontSize'?'unavailable':Reflect.get(target,key,target);}}):result;};});
+ for(const [width,height] of [[1000,560],[1280,720]]){
+   await page.setViewportSize({width,height});
+   await expect.poll(()=>track.evaluate(el=>getComputedStyle(el).animationDuration)).toMatch(/^[0-9.]+s$/);
+   await expect(ticker).not.toHaveAttribute('style',/NaN/);
+ }
+ await ticker.locator('.tv-marquee-toggle').click();await expect(track).toHaveCSS('animation-play-state','paused');
 });

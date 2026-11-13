@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   if (params.has('symbols')) {
     try {
       const raw = params.get('symbols')!;
-      if (raw.length > 1024 || !market || group === 'watchlist') throw new Error();
+      if (raw.length > 1024 || (!market && group !== 'world') || group === 'watchlist') throw new Error();
       const values: unknown = JSON.parse(raw);
       if (!Array.isArray(values) || !values.length || values.length > 12 || !values.every(validTvSymbol)) throw new Error();
       selected = [...new Set(values)];

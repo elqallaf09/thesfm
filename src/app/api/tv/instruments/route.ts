@@ -9,8 +9,8 @@ export async function GET(request: Request) {
   const limited = rateLimitRequest(request, { prefix: 'tv-instruments', max: 60 }); if (limited) return limited;
   const params = new URL(request.url).searchParams;
   const group = params.get('group') as TvGroup, market = params.get('market') || '';
-  const query = params.get('q') || '', page = Number(params.get('page') || 0), pageSize = 50;
-  if (!TV_GROUPS.includes(group) || group === 'watchlist' || !/^[A-Za-z0-9_]{1,32}$/.test(market) || query.length > 120 || !Number.isInteger(page) || page < 0 || page > 1000000) return tvJson({ code: 'INVALID_QUERY' }, 400);
+  const query = params.get('q') || '', page = Number(params.get('page') || 0), pageSize = Number(params.get('pageSize') || 50);
+  if (!TV_GROUPS.includes(group) || group === 'watchlist' || (market ? !/^[A-Za-z0-9_]{1,32}$/.test(market) : group !== 'world') || query.length > 120 || !Number.isInteger(page) || page < 0 || page > 1000000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 50) return tvJson({ code: 'INVALID_QUERY' }, 400);
   try {
     const all = await tvDirectoryAssets(group, market), needle = normalizeAssetSearchText(query);
     const matching = needle ? all.filter(a => normalizeAssetSearchText(`${a.symbol} ${a.name} ${a.nameAr || ''}`).includes(needle)) : all;

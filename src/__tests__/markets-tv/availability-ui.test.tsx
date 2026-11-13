@@ -32,7 +32,7 @@ describe('TV unavailable-price presentation', () => {
     expect(html).not.toContain('class="tv-scene-no-data"');
     expect(html).not.toContain('class="tv-scene-price"');
     expect(html).not.toContain('class="tv-scene-summary-value"');
-    expect(html).not.toContain('class="tv-scene-ticker tv-whole-ticker"');
+    expect(html).not.toContain('class="tv-quote-marquee"');
   });
 
   it('never renders private instrument names before the device is linked', () => {
@@ -94,7 +94,7 @@ describe('TV unavailable-price presentation', () => {
     expect(html).toContain('class="tv-data-notice"');
     expect(html).toContain(`dateTime="${retryAt}"`);
     expect(html).toContain('Retry after');
-    expect(html).toContain('class="tv-scene-ticker tv-whole-ticker"');
+    expect(html).toContain('class="tv-quote-marquee"');
     expect(html).not.toContain('Verified quotes are currently unavailable');
     expect(html).not.toContain('Showing the last retained reading');
   });

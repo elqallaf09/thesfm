@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- Shared with offline packaged TV clients. */
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Globe2, Maximize, Monitor, Pause, Play, RefreshCw, Rows3, Settings2, SlidersHorizontal, Smartphone } from 'lucide-react';
+import { hallText } from '@/lib/markets-tv/hallText';
 import { obsText } from '@/lib/markets-tv/obsidian';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
@@ -40,9 +41,9 @@ export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, pa
     <div className="tv-header-actions" hidden={hidden}>
       <nav className="tv-mode-switch" aria-label={t('dashboard')}>
         {(['viewing', 'browse', 'strips'] as const).map(value => {
-          const label = value === 'strips' ? t('stripsOnly') : tvSceneText(language, value);
-          return <a key={value} className={`tv-display-link tv-mode-${value}`} href={value === 'strips' ? '/tv/strips' : '/tv'} aria-label={label} aria-current={mode === value ? 'page' : undefined} data-tv-focus-key={value} onClick={event => {
-            if (tvOrigin() !== window.location.origin || (value === 'strips') === window.location.pathname.endsWith('/strips')) event.preventDefault();
+          const label = value === 'strips' ? t('stripsOnly') : hallText(language, value === 'browse' ? 'allStocks' : 'hall');
+          return <a key={value} className={`tv-display-link tv-mode-${value}`} href={value === 'strips' ? '/tv/strips' : value === 'browse' ? '/tv/all-stocks' : '/tv'} aria-label={label} aria-current={mode === value ? 'page' : undefined} data-tv-focus-key={value} onClick={event => {
+            if (tvOrigin() !== window.location.origin || (value === 'strips' ? '/tv/strips' : value === 'browse' ? '/tv/all-stocks' : '/tv') === window.location.pathname) event.preventDefault();
             changeMode(value);
           }}>{value === 'viewing' ? <Monitor aria-hidden="true"/> : value === 'browse' ? <Globe2 aria-hidden="true"/> : <Rows3 aria-hidden="true"/>}<span>{label}</span></a>;
         })}
