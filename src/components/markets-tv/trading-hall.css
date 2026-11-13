@@ -1,5 +1,7 @@
 /* Trading hall: one TV viewport, explicit evidence, generous reading sizes. */
 .tv-screen.tv-hall-screen[data-accent] {
+  --control-font-size: 1em; --input-foreground: var(--tv-text); --input-background: var(--tv-panel); --input-border: var(--tv-line); --control-placeholder: var(--tv-muted); --input-focus-border: var(--tv-accent); --input-disabled-background: var(--tv-panel2); --input-disabled-foreground: var(--tv-muted);
+  --control-background: var(--tv-panel); --control-disabled: var(--tv-panel2); --foreground: var(--tv-text); --foreground-muted: var(--tv-muted); --foreground-subtle: var(--tv-muted); --border: var(--tv-line); --border-strong: var(--tv-line); --input: var(--tv-line); --primary: var(--tv-accent); --ring: var(--tv-accent); --focus-ring: var(--tv-accent); --focus-shadow: var(--tv-focus-shadow);
   background: var(--tv-bg); color: var(--tv-text); height: 100vh; height: 100dvh; min-height: 0;
   display: flex; flex-direction: column; padding: 1.6vh 2vw; gap: .45em; overflow: hidden;
   font-size: clamp(16px, min(1.35vw, 2.35vh), 44px); line-height: 1.4;
@@ -39,6 +41,8 @@
 .tv-screen .tv-hall-identity button:disabled { opacity: 1; color: inherit; }
 .tv-screen .tv-hall-identity strong { font-size: .9em; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-screen .tv-hall-identity bdi { font: 500 .7em var(--font-data), monospace; color: var(--tv-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tv-screen .tv-hall-listing { display: flex; align-items: baseline; gap: .5em; min-width: 0; max-width: 100%; }
+.tv-screen .tv-hall-listing small { color: var(--tv-muted); font-size: max(13px, .6em); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-screen .tv-hall-price { display: flex; align-items: baseline; gap: .3em; white-space: nowrap; }
 .tv-screen .tv-hall-price strong { font: 500 1.15em var(--font-data), monospace; font-variant-numeric: tabular-nums; }
 .tv-screen .tv-hall-price small { font-size: max(13px, .55em); color: var(--tv-muted); }
