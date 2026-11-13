@@ -3,7 +3,7 @@ import path from 'node:path';
 
 // The repository is CommonJS. Do not mix import.meta with Playwright's .ts loader.
 export default defineConfig({
-  testDir: __dirname, testMatch: 'history.spec.ts',
+  testDir: __dirname, testMatch: ['history.spec.ts', 'import.spec.ts'],
   fullyParallel: false, workers: 1, retries: 0, timeout: 30_000,
   outputDir: path.resolve(__dirname, '../../test-results/portfolio-risk-history'), reporter: 'list',
   use: { baseURL: 'http://127.0.0.1:4175', browserName: 'chromium', trace: 'off', screenshot: 'only-on-failure' },

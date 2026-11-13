@@ -7,12 +7,12 @@ import { adaptVerifiedHistory, HISTORY_SCHEMA, HISTORY_VERIFICATION, isRecord, t
 const SELECT = 'id,user_id,source,observed_at,received_at,payload';
 const unavailable = (code: string, status = 422): RiskServiceFailure => ({ ok: false, code, status });
 
-/** Read-only, no fallback to raw connector data, current-price proxies or older failed batches. */
-export async function loadHistoricalRiskForRequest(request: Request): Promise<{ ok: true; snapshot: HistoricalRiskSnapshot } | RiskServiceFailure> {
-  const access = await authorizeRiskRequest(request);
-  if (!access.ok) return access;
+/** Reused by the protected reader and untrusted-file preflight; never takes identity from JSON. */
+export async function loadHistoryPositionContext(ownerId: string): Promise<
+  { ok: true; expectedPositions: Array<{ id: string; assetId: string }>; currency: string } | RiskServiceFailure
+> {
   try {
-    const { positions } = await loadCanonicalInvestmentPositions(access.userId);
+    const { positions } = await loadCanonicalInvestmentPositions(ownerId);
     if (!positions.length || positions.length >= 5000) return unavailable('HISTORY_POSITION_COVERAGE_MISMATCH');
     const currencies = new Set(positions.map(position => position.valuation.baseCurrency));
     const currency = positions[0].valuation.baseCurrency;
@@ -27,6 +27,20 @@ export async function loadHistoricalRiskForRequest(request: Request): Promise<{ 
       return { id: position.id, assetId };
     });
     if (expectedPositions.some(position => !position.assetId)) return unavailable('HISTORY_POSITION_IDENTITY_MISMATCH');
+    return { ok: true, expectedPositions, currency };
+  } catch (error) {
+    return unavailable(error instanceof InvestmentCanonicalNotReadyError ? 'CANONICAL_INVESTMENTS_NOT_READY' : 'HISTORY_DATA_UNAVAILABLE', 503);
+  }
+}
+
+/** Read-only, no fallback to raw connector data, current-price proxies or older failed batches. */
+export async function loadHistoricalRiskForRequest(request: Request): Promise<{ ok: true; snapshot: HistoricalRiskSnapshot } | RiskServiceFailure> {
+  const access = await authorizeRiskRequest(request);
+  if (!access.ok) return access;
+  try {
+    const context = await loadHistoryPositionContext(access.userId);
+    if (!context.ok) return context;
+    const { expectedPositions, currency } = context;
     const db = createServerSupabaseAdmin();
     if (!db) return unavailable('HISTORY_DATA_UNAVAILABLE', 503);
     // Authenticated clients have SELECT/DELETE only. The public connector forces

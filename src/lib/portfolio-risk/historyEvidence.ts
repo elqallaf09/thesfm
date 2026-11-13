@@ -23,7 +23,7 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
 const uuid = (value: unknown): value is string => typeof value === 'string' && /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(value);
 const instant = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 export const historyDate = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
-const fail = (code: string): HistoricalRiskResult => ({ ok: false, code });
+const fail = (code: string): { ok: false; code: string } => ({ ok: false, code });
 
 /**
  * A server-only reader supplies these records after session/MFA authorization.
@@ -50,6 +50,24 @@ export function adaptVerifiedHistory(input: {
     if (!instant(row.observed_at) || !instant(row.received_at) || !instant(payload.verifiedAt) ||
         Date.parse(row.observed_at) > Date.parse(payload.verifiedAt) || Date.parse(payload.verifiedAt) > Date.parse(row.received_at) || Date.parse(row.received_at) > now) return fail('HISTORY_INVALID_TIMESTAMPS');
   }
+  const result = calculateHistoryContents({ h, c, expectedPositions, now, valuedAt: history.observed_at });
+  return result.ok ? { ok: true, snapshot: {
+    ...result.snapshot, evidence: { ...result.snapshot.evidence, verifiedAt: h.verifiedAt as string },
+  } } : result;
+}
+
+type HistoryContentsResult = {
+  ok: true;
+  snapshot: Omit<HistoricalRiskSnapshot, 'evidence'> & {
+    evidence: Omit<HistoricalRiskSnapshot['evidence'], 'verifiedAt'>;
+  };
+} | { ok: false; code: string };
+
+/** Arithmetic/consistency only. The caller must separately establish source trust. */
+function calculateHistoryContents({ h, c, expectedPositions, now, valuedAt }: {
+  h: Record<string, unknown>; c: Record<string, unknown>;
+  expectedPositions: Array<{ id: string; assetId: string }>; now: number; valuedAt: string;
+}): HistoryContentsResult {
   const coverage = h.coverage;
   if (!isRecord(coverage) || coverage.positions !== 'complete_over_time' || coverage.cash !== 'included' ||
       coverage.externalFlows !== 'complete' || coverage.corporateActions !== 'accounted_for' ||
@@ -78,7 +96,7 @@ export function adaptVerifiedHistory(input: {
     points.push({ date: session.date, nav: point.nav, netExternalFlow: point.netExternalFlow });
     previousCutoff = Date.parse(session.at);
   }
-  if (previousCutoff !== Date.parse(history.observed_at)) return fail('HISTORY_INVALID_TIMESTAMPS');
+  if (previousCutoff !== Date.parse(valuedAt)) return fail('HISTORY_INVALID_TIMESTAMPS');
   // Do not invent a zero for a missing cash balance, absent position or missing flow.
   if (!Array.isArray(expectedPositions) || !expectedPositions.length || expectedPositions.length >= 5000 ||
       !Array.isArray(h.endPositions) || h.endPositions.length !== expectedPositions.length || !finite(h.endCashBase) || h.endCashBase < 0) return fail('HISTORY_POSITION_COVERAGE_MISMATCH');
@@ -101,13 +119,60 @@ export function adaptVerifiedHistory(input: {
   const total = [...grouped.values()].reduce((sum, value) => sum + value, 0);
   const lastNav = points[points.length - 1].nav;
   if (!Number.isFinite(total) || total <= 0 || Math.abs(total - lastNav) > Math.max(1e-6, lastNav * 1e-8)) return fail('HISTORY_NAV_RECONCILIATION_FAILED');
-  const result = analyzePortfolioSeries({ points, weights: [...grouped.values()].map(value => value / total), currency: h.currency, periodsPerYear: c.periodsPerYear, expectedDates });
+  const result = analyzePortfolioSeries({ points, weights: [...grouped.values()].map(value => value / total), currency: h.currency as string, periodsPerYear: c.periodsPerYear, expectedDates });
   if ('error' in result) return fail('HISTORY_INVALID_VALUES');
   return { ok: true, snapshot: { ...result, evidence: {
-    sourceName: h.sourceName, calendarName: c.sourceName, timeZone: c.timeZone, periodsPerYear: c.periodsPerYear,
-    verifiedAt: h.verifiedAt as string, valuedAt: history.observed_at, fxPolicy: h.fxPolicy, valuationPolicy: c.valuationPolicy,
+    sourceName: h.sourceName as string, calendarName: c.sourceName as string, timeZone: c.timeZone, periodsPerYear: c.periodsPerYear,
+    valuedAt, fxPolicy: h.fxPolicy, valuationPolicy: c.valuationPolicy,
     scope: 'all_recorded_investments_long_only', flowTiming: 'end_of_period', concentrationBasis: 'period_end_assets_and_cash',
   } } };
+}
+
+export type HistoryImportPreview = {
+  status: 'requires_independent_review'; currency: string;
+  periodStart: string; periodEnd: string; pointCount: number; positionCount: number;
+  sourceName: string; calendarName: string;
+};
+const onlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).every(key => keys.includes(key));
+
+/**
+ * Read-only preflight of UNTRUSTED normalized import JSON. Never returns metrics,
+ * approval markers or database rows. Passing consistency is not source approval.
+ */
+export function inspectHistoryCandidate(input: {
+  candidate: unknown; expectedPositions: Array<{ id: string; assetId: string }>;
+  expectedCurrency: string; now: number;
+}): { ok: true; preview: HistoryImportPreview } | { ok: false; code: string } {
+  const { candidate, expectedPositions, expectedCurrency, now } = input;
+  if (!Number.isFinite(now) || !isRecord(candidate) || candidate.schema !== 'portfolio-history-review-v1' ||
+      !onlyKeys(candidate, ['schema', 'history', 'calendar']) || !isRecord(candidate.history) || !isRecord(candidate.calendar)) return fail('HISTORY_IMPORT_FORMAT');
+  const h = candidate.history; const c = candidate.calendar;
+  if (!onlyKeys(h, ['currency', 'scope', 'sourceName', 'sourceReference', 'rights', 'observedAt', 'flowTiming', 'coverage', 'fxPolicy', 'points', 'endPositions', 'endCashBase']) ||
+      !onlyKeys(c, ['currency', 'scope', 'sourceName', 'sourceReference', 'rights', 'observedAt', 'periodsPerYear', 'timeZone', 'valuationPolicy', 'sessions'])) return fail('HISTORY_IMPORT_FORMAT');
+  if (h.scope !== 'all_recorded_investments_long_only' || c.scope !== h.scope ||
+      !text(h.currency, 3) || !/^[A-Z]{3}$/.test(h.currency) || h.currency !== expectedCurrency || c.currency !== h.currency) return fail('HISTORY_SCOPE_MISMATCH');
+  if (!text(h.sourceName) || !text(h.sourceReference, 500) || !text(c.sourceName) || !text(c.sourceReference, 500) ||
+      h.sourceReference === c.sourceReference || h.rights !== 'account_analytics_permitted' || c.rights !== 'account_analytics_permitted') return fail('HISTORY_UNVERIFIED_SOURCE');
+  if (!instant(h.observedAt) || !instant(c.observedAt) || Date.parse(h.observedAt) > now || Date.parse(c.observedAt) > now) return fail('HISTORY_INVALID_TIMESTAMPS');
+  const result = calculateHistoryContents({ h, c, expectedPositions, now, valuedAt: h.observedAt });
+  if (!result.ok) return result;
+  return { ok: true, preview: {
+    status: 'requires_independent_review', currency: result.snapshot.currency,
+    periodStart: result.snapshot.periodStart, periodEnd: result.snapshot.periodEnd,
+    pointCount: result.snapshot.metrics.observations + 1, positionCount: expectedPositions.length,
+    sourceName: h.sourceName, calendarName: c.sourceName,
+  } };
+}
+
+/** Summary-only browser boundary; no metrics or approval status are accepted. */
+export function isHistoryImportPreview(value: unknown): value is HistoryImportPreview {
+  return isRecord(value) && value.status === 'requires_independent_review' &&
+    text(value.currency, 3) && /^[A-Z]{3}$/.test(value.currency) &&
+    historyDate(value.periodStart) && historyDate(value.periodEnd) && value.periodStart < value.periodEnd &&
+    finite(value.pointCount) && Number.isSafeInteger(value.pointCount) && value.pointCount >= 61 && value.pointCount <= MAX_HISTORY_POINTS &&
+    finite(value.positionCount) && Number.isSafeInteger(value.positionCount) && value.positionCount > 0 && value.positionCount < 5000 &&
+    text(value.sourceName) && text(value.calendarName) &&
+    !('metrics' in value) && !('verification' in value) && !('verifiedAt' in value);
 }
 
 /** Defensive browser boundary. Does not establish the source's authenticity. */

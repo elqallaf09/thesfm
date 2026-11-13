@@ -39,3 +39,14 @@ export function historyFixture() {
   return { ownerId: 'owner-a', history, calendar, expectedPositions: history.payload.endPositions.map(position => ({ id: position.positionId, assetId: position.assetId })), expectedCurrency: 'KWD', now: Date.parse('2025-04-02T00:00:00Z') };
 }
 
+
+/** Explicitly synthetic untrusted import file, never a server-approved record. */
+export function historyImportFixture() {
+  const fixture = historyFixture();
+  const history: Record<string, unknown> = { ...fixture.history.payload, observedAt: fixture.history.observed_at };
+  const calendar: Record<string, unknown> = { ...fixture.calendar.payload, observedAt: fixture.calendar.observed_at };
+  for (const key of ['schema', 'verification', 'verifiedAt', 'calendarId']) {
+    Reflect.deleteProperty(history, key); Reflect.deleteProperty(calendar, key);
+  }
+  return { fixture, candidate: { schema: 'portfolio-history-review-v1', history, calendar } };
+}

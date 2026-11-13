@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { DashboardPageShell } from '@/components/DashboardPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import { PortfolioRiskLive } from './PortfolioRiskLive';
+import { PortfolioRiskHistoryImport } from './PortfolioRiskHistoryImport';
 import { PortfolioRiskHistoryLive } from './PortfolioRiskHistoryLive';
 import { RISK_COPY } from './portfolioRiskCopy';
 import styles from './PortfolioRisk.module.css';
@@ -26,6 +27,7 @@ export function PortfolioRiskWorkspace() {
       <h1>{copy.title}</h1>
       <PortfolioRiskLive locale={locale} />
       <PortfolioRiskHistoryLive locale={locale} />
+      <PortfolioRiskHistoryImport locale={locale} />
     </div>
   </DashboardPageShell>;
 }
