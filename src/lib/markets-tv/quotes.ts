@@ -48,6 +48,4 @@ export function tvMovers(quotes: TvQuote[], now = Date.now()) {
     losers: eligible.filter(q => q.changePercent! < 0).sort((a, b) => a.changePercent! - b.changePercent!).slice(0, 3),
   };
 }
-export function safeTvUrl(value: string): string | null {
-  try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : null; } catch { return null; }
-}
+export { safeTvUrl } from './safeUrl';

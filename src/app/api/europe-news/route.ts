@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { europeMarketDataToApiMarkets, fetchEuropeDelayedMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const language = normalizeNewsLanguage(url.searchParams.get('lang'));
   const limit = parseNewsLimit(url.searchParams.get('limit'));
+  const headlinesOnly = url.searchParams.get('view') === 'headlines';
   const [newsResult, marketDataResult] = await Promise.allSettled([
     aggregateFinancialNews({
       query: 'European stock markets listed companies economy central bank',
@@ -35,8 +36,9 @@ export async function GET(request: Request) {
       to: new Date().toISOString().slice(0, 10),
       language,
       limit: 180,
-    }, { page: 1, pageSize: limit, sort: 'importance' }),
-    fetchEuropeDelayedMarketData(),
+    }, { page: 1, pageSize: limit, sort: 'importance',
+      ...(headlinesOnly ? { providerBudgetMs: 6500, schedulePersistence: (task: () => Promise<void>) => after(task) } : {}) }),
+    headlinesOnly ? Promise.resolve({}) : fetchEuropeDelayedMarketData(),
   ]);
   const aggregated = newsResult.status === 'fulfilled' ? newsResult.value : null;
   const rawItems = (aggregated?.stories ?? []).map(story => ({
@@ -71,7 +73,7 @@ export async function GET(request: Request) {
     conflictSummary: story.conflictSummary,
     whyItMatters: story.whyItMatters,
   }));
-  const items = await translateNewsItems(rawItems, language);
+  const items = headlinesOnly ? rawItems : await translateNewsItems(rawItems, language);
   const marketData = marketDataResult.status === 'fulfilled' ? marketDataResult.value : {};
 
   return NextResponse.json({

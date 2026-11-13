@@ -1,5 +1,5 @@
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { fetchStockCategoryNews } from '@/lib/market/fetchStockCategoryNews';
 import { compactNewsItem, parseNewsLimit } from '@/lib/news/apiPayload';
 
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const limit = parseNewsLimit(url.searchParams.get('limit'));
-    const payload = await fetchStockCategoryNews('dividend', url.searchParams.get('lang'));
+    const payload = await fetchStockCategoryNews('dividend', url.searchParams.get('lang'), { headlinesOnly: url.searchParams.get('view') === 'headlines', schedulePersistence: task => after(task) });
     const items = payload.items.slice(0, limit).map(item => ({
       ...compactNewsItem(item),
       companyName: item.companyName,

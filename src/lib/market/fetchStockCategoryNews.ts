@@ -147,7 +147,11 @@ async function categoryUniverse(config: NonNullable<ReturnType<typeof getStockCa
   };
 }
 
-export async function fetchStockCategoryNews(categoryInput: string | null | undefined, languageInput?: string | null) {
+export type CategoryNewsOptions = {
+  headlinesOnly?: boolean;
+  schedulePersistence?: (task: () => Promise<void>) => void;
+};
+export async function fetchStockCategoryNews(categoryInput: string | null | undefined, languageInput?: string | null, options: CategoryNewsOptions = {}) {
   const config = getStockCategoryConfig(categoryInput);
   if (!config) throw new Error('Unsupported stock category');
 
@@ -155,7 +159,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
   const apiKey = process.env.FINNHUB_API_KEY?.trim();
   const universe = await categoryUniverse(config);
   const newsStocks = universe.stocks.slice(0, NEWS_SYMBOL_LIMIT);
-  const priceStocks = newsStocks.slice(0, PRICE_SYMBOL_LIMIT);
+  const priceStocks = options.headlinesOnly ? [] : newsStocks.slice(0, PRICE_SYMBOL_LIMIT);
 
   const [newsResult, priceResult] = await Promise.allSettled([
     aggregateFinancialNews({
@@ -170,8 +174,9 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       to: new Date().toISOString().slice(0, 10),
       language,
       limit: 240,
-    }, { page: 1, pageSize: 80, sort: 'importance' }),
-    fetchStockPrices(priceStocks, apiKey),
+    }, { page: 1, pageSize: 80, sort: 'importance',
+      ...(options.headlinesOnly ? { providerBudgetMs: 6500, schedulePersistence: options.schedulePersistence } : {}) }),
+    options.headlinesOnly ? Promise.resolve(new Map<string, TechStockPrice>()) : fetchStockPrices(priceStocks, apiKey),
   ]);
 
   const aggregated = newsResult.status === 'fulfilled'
@@ -245,7 +250,9 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
     };
   });
 
-  const items = await translateNewsItems(normalizedItems, language) as StockCategoryNewsItem[];
+  // TV displays original headlines and source times; unused prices and bulk
+  // translation must not delay the first frame. Category/screening logic stays intact.
+  const items = options.headlinesOnly ? normalizedItems : await translateNewsItems(normalizedItems, language) as StockCategoryNewsItem[];
   const priceList = priceStocks.map(stock => prices.get(stock.symbol) ?? {
     symbol: stock.symbol,
     price: null,

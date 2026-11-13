@@ -1,6 +1,6 @@
 # SFM Markets TV — native TV client
 
-This Expo client targets Android TV and Apple TV using React Native TV. It reads the existing public SFM TV scene API and preserves the reported source, observation time, currency and unavailable states. It is an initial native client: public scenes, quote details, sample brief, AR/EN/FR and remote-controlled scene rotation. Account pairing, private watchlists, session charts, news and saved settings remain in the existing web/Android client; they are not implemented here.
+This Expo client targets Android TV and Apple TV using React Native TV. Version 0.2.0/build 2 adds the shared 25-channel receiver guide, public stock directories, source news, scheduled market hours, secure device pairing and the account's recorded investment valuations. It preserves source times and unavailable values, supports AR/EN/FR and light/dark themes, and pages content every 40 seconds. Portfolio data refreshes every 15 seconds while visible and is never stored on disk. The active device token and small display preferences use platform SecureStore. Watchlist editing, QR scanning, historical charts and detailed market customization remain in the web/Android client.
 
 ## Development
 
@@ -22,18 +22,18 @@ For Android TV, use `pnpm android` with an Android SDK/device. For Apple TV, use
 ## Remote behavior
 
 - Focusable controls use native Pressable focus/blur states.
-- TVFocusGuideView remembers focus across the scene menu and quote grid.
-- Quote details trap directional focus; Back/Menu closes them before changing scenes.
-- At the overview root, Back/Menu falls through to the platform.
-- Play/Pause toggles scene rotation; button press/release events do not toggle twice.
-- Rotation pauses during details, the brief, backgrounding and recent user interaction.
+- TVFocusGuideView remembers focus across navigation controls.
+- Channel and pairing dialogs trap focus; Back/Menu closes them before returning to all stocks.
+- At the all-stocks root, Back/Menu falls through to the platform.
+- Play/Pause toggles 40-second paging; CH+/CH− select channels. Button press/release events do not toggle twice.
+- Paging pauses during dialogs, backgrounding and recent user interaction.
 - Fetches stop in the background, retain the original source clock on failures and respect source retry times.
 
-The native package is `com.thesfm.marketstv.native`, distinct from both the existing production package and `.preview`. This is a development client and does not update either existing application.
+The Apple bundle is `com.thesfm.marketstv.native`; the native Android package is `com.thesfm.marketstv.tvnative`. Both are distinct from the Java/WebView Android host `com.thesfm.marketstv` and its `.preview` variant. A native debug build does not update those applications.
 
 ## Validation and release
 
-The Native Markets TV validation workflow checks types, both generated platforms and both Hermes bundles on pull requests. Its manual `compile_native` option also builds an Android Debug APK and an unsigned tvOS simulator application. Neither job uploads to a store. A simulator `.app` cannot be installed on a physical Apple TV.
+The Native Markets TV validation workflow checks types, both generated platforms and both Hermes bundles on pull requests, then compiles Android Debug and tvOS simulator apps. The tvOS job installs and launches the app and captures a screenshot. Neither job uploads to a store. A simulator `.app` cannot be installed on a physical Apple TV. Manual workflow runs compile native artifacts when `compile_native` is selected.
 
 `eas.json` separates internal Android APK/tvOS simulator profiles from production Android AAB/tvOS device profiles. EAS project linking, Apple device signing/provisioning, permanent Android release signing, physical remote testing and store submission are separate release steps. No EAS project/account or store listing is created by these files.
 
