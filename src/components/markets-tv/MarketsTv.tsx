@@ -1,6 +1,5 @@
 'use client';
 import '@/app/tv/broadcast.css';
-import './trading-hall.css';
 import { hallText } from '@/lib/markets-tv/hallText';
 const TvTradingHall = lazy(() => import('./TvTradingHall').then(module => ({ default: module.TvTradingHall })));
 const TvAllStocks = lazy(() => import('./TvAllStocks').then(module => ({ default: module.TvAllStocks })));

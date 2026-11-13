@@ -1,4 +1,5 @@
 'use client';
+import './trading-hall.css';
 import { useState } from 'react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';

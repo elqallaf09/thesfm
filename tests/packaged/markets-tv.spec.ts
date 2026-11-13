@@ -174,6 +174,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await openTv(page, language, { displayMode: 'browse', autoRotate: false });
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
+      await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
       await containedContent(page, '.tv-hall-row');
       const measurements = await page.evaluate(() => {
         const grid = document.querySelector('.tv-hall-rows')!, pager = document.querySelector('.tv-stock-pagination')!;
