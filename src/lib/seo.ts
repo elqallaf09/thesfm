@@ -74,5 +74,6 @@ export const publicRoutes = [
   '/guides/budget-800-kwd',
   '/global-markets',
   '/privacy',
+  '/account-deletion',
   '/terms',
 ] as const;

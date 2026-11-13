@@ -12,10 +12,11 @@ const TEXT = {
   ar: {
     title: 'سياسة الخصوصية',
     subtitle: 'تشرح هذه السياسة كيف يتعامل THE SFM مع بياناتك المالية والشخصية داخل المنصة. هدفنا أن تبقى التحليلات والتقارير مبنية على بياناتك الحقيقية فقط.',
-    updated: 'آخر تحديث: مايو 2026',
+    updated: 'آخر تحديث: نوفمبر 2026',
     home: 'العودة إلى الرئيسية',
     contact: 'تواصل معنا',
     contactAria: 'تواصل معنا بخصوص سياسة الخصوصية',
+    deleteAccount: 'حذف الحساب والبيانات',
     sections: [
       ['ما البيانات التي نجمعها؟', 'نجمع بيانات الحساب الأساسية مثل البريد الإلكتروني واسم المستخدم والتفضيلات، والبيانات التي تضيفها أنت داخل المنصة مثل الدخل والمصروفات والأهداف والاستثمارات والزكاة والمشاريع والمستندات والتقارير.'],
       ['كيف تُستخدم البيانات؟', 'تُستخدم بياناتك لتشغيل وظائف المنصة، عرض الملخصات، إنشاء التقارير، تنظيم التنبيهات، وتحسين تجربة الاستخدام داخل حسابك. لا نستخدم بيانات وهمية داخل حسابات المستخدمين الحقيقيين.'],
@@ -25,15 +26,17 @@ const TEXT = {
       ['الأطراف الثالثة', 'قد تعتمد المنصة على مزودي خدمات مثل الاستضافة، قاعدة البيانات، المصادقة، وقراءة المستندات. لا نشارك مفاتيحك أو بياناتك الحساسة علناً، ويجب عدم إرسال كلمات المرور عبر رسائل الدعم.'],
       ['حقوقك', 'يمكنك طلب تصدير بياناتك أو حذفها أو تصحيحها عند الحاجة. قد تتطلب بعض الطلبات تحققاً من الهوية لحماية الحساب.'],
       ['القانون الحاكم', 'تُفسّر هذه السياسة وفق القوانين والأنظمة المطبقة على تشغيل الخدمة ومكان تقديمها، مع احترام المتطلبات النظامية ذات الصلة بحماية البيانات.'],
+      ['SFM TV', 'يمكن عرض بيانات الأسواق العامة دون حساب. تُرسل عبارات البحث إلى خدمتنا للعثور على الأدوات المالية، ويُستخدم عنوان IP لتطبيق حدود الطلبات وحماية الخدمة. تُحمّل بعض شعارات الأصول مباشرة من Google أو Simple Icons أو Financial Modeling Prep. يتلقى هؤلاء المزوّدون عنوان IP للجهاز ومعلومات المتصفح وهوية الشعار المطلوب لتقديم الصورة، ولا يرسل التطبيق عنوان الصفحة المُحيلة. عند بدء ربط التلفزيون، نخزّن سجل جهاز يتضمن معرّفه واسمه وبصمات تجزئة لبيانات الربط والوصول وعنوان IP لطلب الربط. بعد موافقتك، يرتبط الجهاز بحسابك وتُزامَن إعداداته معه. يحتفظ التلفزيون برمز الوصول وتفضيلاته محلياً. إذا اخترت عرض المحفظة على جهاز مرتبط، تُجلب بيانات محفظتك الموجودة في حسابك للعرض فقط. إلغاء الربط يوقف وصول الجهاز؛ أما حذف الحساب فهو إجراء منفصل موضح أدناه.'],
     ],
   },
   en: {
     title: 'Privacy Policy',
     subtitle: 'This policy explains how THE SFM handles your financial and personal data. The platform is designed so analysis and reports rely on your real data only.',
-    updated: 'Last updated: May 2026',
+    updated: 'Last updated: November 2026',
     home: 'Back to home',
     contact: 'Contact us',
     contactAria: 'Contact us about the privacy policy',
+    deleteAccount: 'Delete your account and data',
     sections: [
       ['What data do we collect?', 'We collect basic account data such as email, username, and preferences, plus the data you add inside the platform, including income, expenses, goals, investments, zakat, projects, documents, and reports.'],
       ['How is data used?', 'Your data is used to run platform features, show summaries, generate reports, organize notifications, and improve your account experience. We do not use fake data inside real user accounts.'],
@@ -43,15 +46,17 @@ const TEXT = {
       ['Third parties', 'The platform may rely on providers for hosting, database, authentication, and document reading. We do not publicly expose keys or sensitive data, and passwords should not be sent in support messages.'],
       ['Your rights', 'You may request export, deletion, or correction of your data. Some requests may require identity verification to protect the account.'],
       ['Governing law', 'This policy is interpreted under the laws and regulations applicable to operating and providing the service, including relevant data protection requirements.'],
+      ['SFM TV', 'Public market data can be viewed without an account. Search terms are sent to our service to find financial instruments, and the IP address is used to apply request limits and protect the service. Some asset logos load directly from Google, Simple Icons or Financial Modeling Prep. These providers receive the device’s IP address, browser information and the identity of the requested logo to deliver the image; the app suppresses the referrer header. When you start linking a TV, we store a device record with its identifier and name, hashes of pairing and access credentials, and a hash of the pairing request’s IP address. After your approval, the device is associated with your account and its settings are synchronized. The TV keeps its access token and preferences locally. If you open the portfolio view on a linked device, existing portfolio data is retrieved from your account for read-only display. Unlinking stops the device’s access; account deletion is a separate action explained below.'],
     ],
   },
   fr: {
     title: 'Politique de confidentialité',
     subtitle: 'Cette politique explique comment THE SFM traite vos données financières et personnelles. Les analyses et rapports reposent uniquement sur vos données réelles.',
-    updated: 'Dernière mise à jour : mai 2026',
+    updated: 'Dernière mise à jour : novembre 2026',
     home: 'Retour à l’accueil',
     contact: 'Nous contacter',
     contactAria: 'Nous contacter à propos de la politique de confidentialité',
+    deleteAccount: 'Supprimer votre compte et vos données',
     sections: [
       ['Quelles données collectons-nous ?', 'Nous collectons les données de compte de base comme e-mail, nom d’utilisateur et préférences, ainsi que les données ajoutées dans la plateforme : revenus, dépenses, objectifs, investissements, zakat, projets, documents et rapports.'],
       ['Comment les données sont-elles utilisées ?', 'Vos données servent à faire fonctionner la plateforme, afficher des synthèses, générer des rapports, organiser les notifications et améliorer l’expérience de votre compte. Nous n’utilisons pas de données fictives dans les comptes réels.'],
@@ -61,6 +66,7 @@ const TEXT = {
       ['Tiers', 'La plateforme peut utiliser des fournisseurs pour hébergement, base de données, authentification et lecture de documents. Nous n’exposons pas publiquement les clés ou données sensibles, et les mots de passe ne doivent pas être envoyés au support.'],
       ['Vos droits', 'Vous pouvez demander l’export, la suppression ou la correction de vos données. Certaines demandes peuvent exiger une vérification d’identité pour protéger le compte.'],
       ['Droit applicable', 'Cette politique est interprétée selon les lois et règles applicables à l’exploitation et à la fourniture du service, y compris les exigences de protection des données.'],
+      ['SFM TV', 'Les données publiques des marchés sont accessibles sans compte. Les termes de recherche sont envoyés à notre service pour trouver des instruments financiers, et l’adresse IP sert à limiter les requêtes et à protéger le service. Certains logos d’actifs sont chargés directement depuis Google, Simple Icons ou Financial Modeling Prep. Ces fournisseurs reçoivent l’adresse IP de l’appareil, des informations sur le navigateur et l’identité du logo demandé pour fournir l’image ; l’application ne transmet pas l’en-tête de provenance. Lorsque vous lancez l’association d’un téléviseur, nous conservons une fiche avec son identifiant et son nom, les empreintes des données d’association et d’accès, ainsi que l’empreinte de l’adresse IP de la demande. Après votre accord, l’appareil est associé à votre compte et ses paramètres sont synchronisés. Le téléviseur conserve localement son jeton d’accès et ses préférences. Si vous ouvrez le portefeuille sur un appareil associé, les données existantes de votre compte sont récupérées pour un affichage en lecture seule. Dissocier l’appareil met fin à son accès ; la suppression du compte est une action distincte expliquée ci-dessous.'],
     ],
   },
 } as const;
@@ -99,6 +105,7 @@ export default function PrivacyPage() {
           );
         })}
         <footer>
+          <Link className="privacy-contact-link" href="/account-deletion"><Trash2 size={16} aria-hidden="true" /><span>{text.deleteAccount}</span></Link>
           <a className="privacy-email" href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           <Link className="privacy-contact-link" href="/contact" aria-label={text.contactAria}>
             <Mail size={16} aria-hidden="true" />
