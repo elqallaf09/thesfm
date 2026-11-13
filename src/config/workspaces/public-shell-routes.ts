@@ -18,6 +18,7 @@ const PUBLIC_SHELL_EXACT = new Set([
   '/guides/zakat-kuwait-stocks',
   '/terms',
   '/privacy',
+  '/account-deletion',
 ]);
 
 const PUBLIC_SHELL_PREFIXES = ['/investor'] as const;

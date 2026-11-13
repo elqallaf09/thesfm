@@ -16,6 +16,7 @@ const TEXT = {
     home: 'العودة إلى الرئيسية',
     contact: 'تواصل معنا',
     contactAria: 'تواصل معنا بخصوص سياسة الخصوصية',
+    deleteAccount: 'حذف الحساب والبيانات',
     sections: [
       ['ما البيانات التي نجمعها؟', 'نجمع بيانات الحساب الأساسية مثل البريد الإلكتروني واسم المستخدم والتفضيلات، والبيانات التي تضيفها أنت داخل المنصة مثل الدخل والمصروفات والأهداف والاستثمارات والزكاة والمشاريع والمستندات والتقارير.'],
       ['كيف تُستخدم البيانات؟', 'تُستخدم بياناتك لتشغيل وظائف المنصة، عرض الملخصات، إنشاء التقارير، تنظيم التنبيهات، وتحسين تجربة الاستخدام داخل حسابك. لا نستخدم بيانات وهمية داخل حسابات المستخدمين الحقيقيين.'],
@@ -34,6 +35,7 @@ const TEXT = {
     home: 'Back to home',
     contact: 'Contact us',
     contactAria: 'Contact us about the privacy policy',
+    deleteAccount: 'Delete your account and data',
     sections: [
       ['What data do we collect?', 'We collect basic account data such as email, username, and preferences, plus the data you add inside the platform, including income, expenses, goals, investments, zakat, projects, documents, and reports.'],
       ['How is data used?', 'Your data is used to run platform features, show summaries, generate reports, organize notifications, and improve your account experience. We do not use fake data inside real user accounts.'],
@@ -52,6 +54,7 @@ const TEXT = {
     home: 'Retour à l’accueil',
     contact: 'Nous contacter',
     contactAria: 'Nous contacter à propos de la politique de confidentialité',
+    deleteAccount: 'Supprimer votre compte et vos données',
     sections: [
       ['Quelles données collectons-nous ?', 'Nous collectons les données de compte de base comme e-mail, nom d’utilisateur et préférences, ainsi que les données ajoutées dans la plateforme : revenus, dépenses, objectifs, investissements, zakat, projets, documents et rapports.'],
       ['Comment les données sont-elles utilisées ?', 'Vos données servent à faire fonctionner la plateforme, afficher des synthèses, générer des rapports, organiser les notifications et améliorer l’expérience de votre compte. Nous n’utilisons pas de données fictives dans les comptes réels.'],
@@ -99,6 +102,7 @@ export default function PrivacyPage() {
           );
         })}
         <footer>
+          <Link className="privacy-contact-link" href="/account-deletion"><Trash2 size={16} aria-hidden="true" /><span>{text.deleteAccount}</span></Link>
           <a className="privacy-email" href={SUPPORT_EMAIL_SUPPORT_MAILTO} aria-label={SUPPORT_EMAIL_ARIA_LABEL}>{SUPPORT_EMAIL}</a>
           <Link className="privacy-contact-link" href="/contact" aria-label={text.contactAria}>
             <Mail size={16} aria-hidden="true" />

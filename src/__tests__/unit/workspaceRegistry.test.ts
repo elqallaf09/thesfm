@@ -149,9 +149,10 @@ describe('route-to-workspace resolution', () => {
   });
 
   it('detects public-shell and admin routes without granting anything', () => {
-    for (const publicPath of ['/', '/login', '/about', '/investor/some-token']) {
+    for (const publicPath of ['/', '/login', '/about', '/account-deletion', '/account-deletion/?from=play#request', '/investor/some-token']) {
       expect(isPublicShellRoute(publicPath), publicPath).toBe(true);
     }
+    expect(isPublicShellRoute('/account-deletion-record')).toBe(false);
     expect(isPublicShellRoute('/dashboard')).toBe(false);
     expect(isAdminWorkspaceRoute('/sfm-admin-control/shariah')).toBe(true);
     expect(isAdminWorkspaceRoute('/dashboard')).toBe(false);

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 const read = (relativePath: string) => readFileSync(join(process.cwd(), relativePath), 'utf8');
 
 const assignedFiles = [
+  'src/app/account-deletion/page.tsx',
   'src/app/privacy/page.tsx',
   'src/app/terms/page.tsx',
   'src/app/site-map/page.tsx',
