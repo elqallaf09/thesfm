@@ -88,13 +88,13 @@ test('a late file check cannot replace a newer account summary', async ({ page }
   } finally { release(); }
 });
 
-for (const locale of ['ar', 'en', 'fr']) {
+for (const locale of ['ar', 'en', 'fr'] as const) {
   test(`import form remains usable on mobile in ${locale}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.route('**/api/portfolio/risk/history/preview', route => route.fulfill({ json: preview() }));
     await page.goto('/?locale=' + locale);
     await page.locator('#history-import-file').setInputFiles(file());
-    await page.getByTestId('history-import').getByRole('button').click();
+    await page.getByTestId('history-import').getByRole('button', { name: { ar: 'فحص الملف', en: 'Check file', fr: 'Vérifier le fichier' }[locale], exact: true }).click();
     await expect(page.getByTestId('history-import-summary')).toBeVisible();
     await expect(page.getByTestId('history-import')).toHaveAttribute('dir', locale === 'ar' ? 'rtl' : 'ltr');
     expect(await page.getByTestId('history-import').evaluate(element => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1);

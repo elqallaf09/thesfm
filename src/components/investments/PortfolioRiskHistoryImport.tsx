@@ -62,7 +62,7 @@ export function PortfolioRiskHistoryImport({ locale = 'ar' }: { locale?: RiskLoc
       const payload: unknown = await response.json();
       if (controller.signal.aborted || active.current !== controller) return;
       if (response.ok && isRecord(payload) && payload.ok === true && isHistoryImportPreview(payload.preview) &&
-          isRecord(payload.preview) && typeof payload.preview.sha256 === 'string' && /^[a-f0-9]{64}$/.test(payload.preview.sha256)) {
+          'sha256' in payload.preview && typeof payload.preview.sha256 === 'string' && /^[a-f0-9]{64}$/.test(payload.preview.sha256)) {
         setState({ owner, token, kind: 'ready', preview: payload.preview as Preview });
       } else {
         setState({ owner, token, kind: 'error', code: isRecord(payload) && typeof payload.code === 'string' ? payload.code : 'HISTORY_DATA_UNAVAILABLE' });
@@ -78,7 +78,7 @@ export function PortfolioRiskHistoryImport({ locale = 'ar' }: { locale?: RiskLoc
     <form className={styles.scenario} onSubmit={event => void check(event)}>
       <label htmlFor="history-import-file">{copy.file}</label>
       <input ref={fileInput} id="history-import-file" className={styles.input} type="file" accept=".json,application/json" required disabled={!owner || loading}
-        onChange={() => { active.current?.abort(); setState(null); }} />
+        onChange={() => { active.current?.abort(); active.current = null; setState(null); }} />
       <div className={styles.actions}><button className={styles.button} type="submit" disabled={!owner || loading}>{loading ? copy.checking : copy.check}</button></div>
     </form>
     {!owner ? <p role="status">{copy.auth}</p> : null}

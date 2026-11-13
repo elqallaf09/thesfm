@@ -14,7 +14,7 @@ async function readCandidate(request: Request): Promise<{ text: string; value: u
   if (length !== null && (!/^\d+$/.test(length) || Number(length) > MAX_HISTORY_IMPORT_BYTES)) throw new Error('HISTORY_IMPORT_TOO_LARGE');
   const reader = request.body?.getReader();
   if (!reader) throw new Error('HISTORY_IMPORT_FORMAT');
-  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
   let bytes = 0; let text = '';
   try {
     while (true) {

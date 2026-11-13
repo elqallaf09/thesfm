@@ -57,6 +57,19 @@ describe('authenticated read-only historical import preview', () => {
     mocks.context.mockRejectedValue(new Error('secret-token'));
     expect(await previewHistoryImport(request())).toEqual({ ok: false, status: 503, code: 'HISTORY_DATA_UNAVAILABLE' });
   });
+  it('preserves whitespace in the exact submitted fingerprint', async () => {
+    const body = '  ' + payload() + '\n';
+    expect(await previewHistoryImport(request(body))).toMatchObject({ ok: true, preview: {
+      sha256: createHash('sha256').update(body, 'utf8').digest('hex'),
+    } });
+  });
+  it('rejects a BOM or malformed UTF-8 rather than silently rewriting the hashed input', async () => {
+    expect(await previewHistoryImport(request('\uFEFF' + payload()))).toMatchObject({ ok: false, status: 400 });
+    const invalid = new Request('https://app.example/preview', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: new Uint8Array([0xc3, 0x28]),
+    });
+    expect(await previewHistoryImport(invalid)).toMatchObject({ ok: false, status: 400 });
+  });
   it('rejects payload ownership and forged approval rather than publishing it', async () => {
     const candidate = { ...historyImportFixture().candidate, ownerId: 'owner-b' };
     expect(await previewHistoryImport(request(JSON.stringify(candidate)))).toMatchObject({ ok: false, status: 422 });
