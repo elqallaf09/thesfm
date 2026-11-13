@@ -33,14 +33,14 @@ for (const density of ['balanced', 'comfortable', 'compact']) {
       return route.fulfill({ json: { group: query.get('group'), available: quotes.length, total: quotes.length, directoryTotal: 24, quotes } });
     });
     await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-    await expect(page.locator('.tv-hall-row')).toHaveCount(4);
+    await expect(page.locator('.tv-hall-row')).toHaveCount(3);
     await page.keyboard.press('Shift');
     const next = page.locator('[data-tv-focus-key=stocks-next]'); await next.focus();
     const first = await page.locator('.tv-hall-identity').first().innerText();
     await page.keyboard.press('Enter'); await expect(page.locator('.tv-hall-identity').first()).not.toHaveText(first);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
-      await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 4 : 6);
+      await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
       await fits(page.locator('.tv-hall-rows'), page.locator('.tv-hall-row'));
       await expect(page.locator('.tv-stock-pagination')).toBeInViewport({ ratio: 1 });
       await expect(page.locator('.tv-quote-marquee')).toBeInViewport({ ratio: 1 });
@@ -53,6 +53,6 @@ for (const density of ['balanced', 'comfortable', 'compact']) {
     await page.locator('.tv-scene-tabs button').nth(6).click();
     await expect(page.locator('.tv-brief-dashboard')).toBeInViewport({ratio:1});
     await page.locator('.tv-mode-browse').click();
-    await expect(page.locator('.tv-hall-row')).toHaveCount(4);
+    await expect(page.locator('.tv-hall-row')).toHaveCount(3);
   });
 }

@@ -21,7 +21,7 @@ async function open(page: Page, language = 'ar', mode = 'viewing') {
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [headline, 'عنوان الخبر الثاني كاملًا', 'عنوان الخبر الثالث'].map((title, i) => ({ id: String(i), title, source: 'مصدر اختبار', publishedAt: new Date().toISOString(), url: 'https://example.com/news' })) } }));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-  await expect(page.locator('.tv-hall-row')).toHaveCount((page.viewportSize()?.height ?? 1080) <= 650 ? 4 : 6);
+  await expect(page.locator('.tv-hall-row')).toHaveCount((page.viewportSize()?.height ?? 1080) <= 650 ? 3 : 6);
   await page.keyboard.press('Shift');
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   await page.evaluate(() => document.fonts.ready);
@@ -33,7 +33,7 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
     await expect(page.locator('.tv-headline-story')).toContainText(headline);
     for (const mode of ['viewing', 'browse']) {
       if (mode === 'browse') await page.locator('.tv-mode-browse').click();
-      await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 4 : 6);
+      await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
       const overflow = await page.evaluate(() => {
         const root = document.querySelector('.tv-hall-screen')!;
         const targets = [...document.querySelectorAll('.tv-hall-row, .tv-headline-band, .tv-quote-marquee, .tv-stock-pagination')];
