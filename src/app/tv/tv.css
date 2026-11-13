@@ -62,8 +62,8 @@
 .tv-strip-symbol>span,.tv-density-compact .tv-strip-symbol>span{display:block;max-width:none;font-family:var(--font-ui);font-size:.68em;line-height:1.35;white-space:normal;overflow:hidden;max-height:2.7em}
 .tv-screen .tv-market-strip-item>.tv-strip-price{grid-column:1/3;grid-row:2;font-size:.92em;white-space:nowrap;text-align:start}
 .tv-screen .tv-market-strip-item>.tv-strip-change{grid-column:3;grid-row:2;justify-content:center;border-radius:var(--radius-pill);padding:.2em .4em;font-size:.66em;white-space:nowrap}
-.tv-strip-change[data-trend=up]{background:var(--tv-up-tint)}
-.tv-strip-change[data-trend=down]{background:var(--tv-down-tint)}
+.tv-strip-change[data-trend=up]{background:var(--tv-up-surface)}
+.tv-strip-change[data-trend=down]{background:var(--tv-down-surface)}
 .tv-screen .tv-market-strip-item>.tv-strip-evidence{grid-column:1/-1;grid-row:3;font-size:.6em;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tv-screen.tv-density-compact .tv-market-strip-item{min-height:5.2em;row-gap:.2em;padding-block:.3em}
 .tv-language-setting select{font:inherit;min-width:10em;max-width:100%;background:var(--tv-panel2);color:var(--tv-text);border:1px solid var(--tv-accent);border-radius:var(--radius-sm);padding:.55em .8em}
