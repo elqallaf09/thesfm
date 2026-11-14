@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import { tvOrigin } from '@/lib/markets-tv/client';
 import { TV_WELCOME_EVENT, welcomeText } from '@/lib/markets-tv/welcome';
+import { claimTvWelcome } from '@/lib/markets-tv/welcome-session';
 import './welcome.css';
 
 export default function TvWelcomeIntro({ language }: { language: TvLanguage }) {
-  const [visible, setVisible] = useState(true), [revision, setRevision] = useState(0), [sound, setSound] = useState<'pending' | 'blocked' | 'playing' | 'unavailable'>('pending');
+  const [visible, setVisible] = useState(false), [revision, setRevision] = useState(0), [sound, setSound] = useState<'pending' | 'blocked' | 'playing' | 'unavailable'>('pending');
+  const startup = useRef<boolean | null>(null);
   const context = useRef<AudioContext | null>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const text = welcomeText(language);
   const stopSound = useCallback(() => { const active = context.current; context.current = null; if (active && active.state !== 'closed') void active.close().catch(() => {}); }, []);
@@ -39,7 +41,9 @@ export default function TvWelcomeIntro({ language }: { language: TvLanguage }) {
     timer.current = setTimeout(finish, 3600);
   }, [finish, play]);
   useEffect(() => {
-    start(false);
+    // Keep the claim across Strict Mode's effect replay, but not component remounts.
+    if (startup.current === null) startup.current = claimTvWelcome();
+    if (startup.current) start(false);
     const replay = () => start(true);
     const dismiss = (event: Event) => { if (event.defaultPrevented) return; if (event.target instanceof Element && event.target.closest('.sfm-startup-actions') && (event.type === 'pointerdown' || event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key))) return; finish(); };
     window.addEventListener(TV_WELCOME_EVENT, replay);

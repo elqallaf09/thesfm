@@ -16,8 +16,8 @@ async function open(page: Page, language = 'ar', mode = 'viewing') {
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams, symbols: string[] = JSON.parse(params.get('symbols') || '[]');
     const selected = symbols.length ? items.filter(item => symbols.includes(item.symbol)) : items.slice(0, 6);
-    const quotes = selected.map((item, i) => ({ ...item, price: i === 5 ? null : 1.234 + i, changePercent: i % 2 ? -1.2 : 2.1, source: 'Browser test source', observedAt: new Date().toISOString(), receivedAt: new Date().toISOString(), status: i === 5 ? 'unavailable' : 'delayed', delayType: 'delayed', exchange: 'KW', country: 'KW', changeBasis: 'session' }));
-    return route.fulfill({ json: { quotes, group: params.get('group'), total: quotes.length, available: quotes.length - 1, generatedAt: new Date().toISOString() } });
+    const quotes = selected.map((item, i) => ({ ...item, price: 1.234 + i, changePercent: i % 2 ? -1.2 : 2.1, source: 'Browser test source', observedAt: new Date().toISOString(), receivedAt: new Date().toISOString(), status: 'delayed', delayType: 'delayed', exchange: 'KW', country: 'KW', changeBasis: 'session' }));
+    return route.fulfill({ json: { quotes, group: params.get('group'), total: quotes.length, available: quotes.length, generatedAt: new Date().toISOString() } });
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [headline, 'عنوان الخبر الثاني كاملًا', 'عنوان الخبر الثالث'].map((title, i) => ({ id: String(i), title, source: 'مصدر اختبار', publishedAt: new Date().toISOString(), url: 'https://example.com/news' })) } }));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);

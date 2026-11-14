@@ -11,8 +11,8 @@ import { useTvResource } from './useTvResource';
 import { hasTvPrice, tvStripCoverage } from '@/lib/markets-tv/coverage';
 import { tvSceneIssue, tvSceneText, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 
-type Props = { browse?: boolean; selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; pricedOnly?: boolean; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
-const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, browse = false, selections, pricedOnly = false }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
+type Props = { browse?: boolean; selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
+const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, browse = false, selections }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
   const root = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false), [page, setPage] = useState(0), [duration, setDuration] = useState(90), [paused, setPaused] = useState(false);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -36,8 +36,10 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   const sourceCooling = tvStripSourceCooling(quotes, snapshot?.retryAt, now);
   const emptyPrices = quotes.length > 0 && !coverage.priced;
   const failure = tvSceneText(language, quotes.length > 0 && quotes.every(quote => quote.issue === quotes[0].issue) ? tvSceneIssue(quotes[0].issue) : 'updatesUnavailable');
-  const displayed = pricedOnly ? quotes.filter(hasTvPrice) : quotes;
+  const displayed = quotes.filter(hasTvPrice);
   const pages = Math.max(1, Math.ceil((custom ? selection.length : snapshot?.directoryTotal ?? market.count) / 12));
+  const directoryCount = snapshot?.directoryTotal ?? market.count;
+  const batchRange = coverage.loaded ? `${page * 12 + 1}–${page * 12 + coverage.loaded}` : '—';
   useEffect(() => {
     const element = track.current, viewport = element?.parentElement;
     if (!element || !viewport) return;
@@ -51,22 +53,24 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
     resize.observe(element); resize.observe(viewport); return () => resize.disconnect();
   }, [displayed.length, speed, emptyPrices, browse]);
   useEffect(() => {
-    if (!pricedOnly || displayed.length || !visible || paused || manualPause || sourceCooling || resource.loading || resource.error || !resource.data || pages <= 1) return;
+    if (displayed.length || !visible || paused || manualPause || sourceCooling || resource.loading || resource.error || !resource.data || pages <= 1) return;
     // Empty batches have no animation cycle to advance them. Keep scanning bounded
     // and stop while hidden, paused or disconnected instead of requesting the whole exchange.
     const timer = setTimeout(() => { if (!document.hidden && navigator.onLine) setPage(value => (value + 1) % pages); }, 8000);
     return () => clearTimeout(timer);
-  }, [pricedOnly, displayed.length, visible, paused, manualPause, sourceCooling, resource.loading, resource.error, resource.data, pages]);
+  }, [displayed.length, visible, paused, manualPause, sourceCooling, resource.loading, resource.error, resource.data, pages]);
   useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
   const health = market.status === 'unavailable' || resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
   const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = useCallback(() => { if (!resource.loading) setPage(value => (value + 1) % pages); }, [resource.loading, pages]);
-  const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pricedOnly && pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
+  const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
   return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-directory-empty={market.count===0} data-source-cooling={sourceCooling} data-paged={pages > 1}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
-      <small dir="ltr" title={t(market.status==='selected'?'selectedCoverage':'directory')}>{custom ? `${selection.length.toLocaleString('en-US')} / ` : ''}{market.count.toLocaleString('en-US')}</small>
-      {market.count>0&&<span className="tv-strip-coverage">{market.status==='selected'&&`${t('selectedCoverage')} · `}{t('pageCoverage')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>}
+      <small><bdi>{directoryCount.toLocaleString('en-US')}</bdi> {t('catalogCount')}</small>
+      {market.status==='selected'&&<span className="tv-strip-coverage">{t('partialMarket')}</span>}
+      {custom&&<span className="tv-strip-coverage">{t('selectedCount')}: <bdi>{selection.length.toLocaleString('en-US')}</bdi></span>}
+      {market.count>0&&<span className="tv-strip-coverage">{t('batchRange')}: <b dir="ltr">{batchRange}</b> · {t('availableBatch')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>}
       <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{market.count===0?t('directoryUnavailable'):emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
     </button>
     {browse && displayed.length > 0 ? <TvBrowseStripPage key={page} quotes={displayed} group={market.group} language={language}

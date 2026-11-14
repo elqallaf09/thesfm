@@ -56,13 +56,73 @@ test('one quote fills the ticker continuously without a viewport-sized gap', asy
   expect(await page.locator('.tv-marquee-set[aria-hidden=true] [tabindex="0"]').count()).toBe(0);
 });
 
-test('unavailable stocks remain in the ticker and news has no boxed transport controls', async ({ page }) => {
+test('welcome plays once per app session, survives navigation and reload, and still allows manual replay', async ({ page, context }) => {
+  await page.addInitScript(() => {
+    const original = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key === 'sfm-tv-welcome-shown') (window as Window & { welcomeChecked?: boolean }).welcomeChecked = true;
+      return original.call(this, key);
+    };
+  });
+  await setup(page);
+  await expect(page.locator('.sfm-startup')).toBeVisible();
+  await page.keyboard.press('Shift');
+  await page.locator('.tv-mode-viewing').click();
+  await page.locator('.tv-mode-browse').click();
+  await expect(page.locator('.sfm-startup')).toHaveCount(0);
+  for (const navigate of [() => page.reload(), () => page.goto('https://appassets.androidplatform.net/index.html?channel=newStocksNews')]) {
+    await navigate();
+    await expect.poll(() => page.evaluate(() => (window as Window & { welcomeChecked?: boolean }).welcomeChecked)).toBe(true);
+    await expect(page.locator('.sfm-startup')).toHaveCount(0);
+  }
+  await page.locator('.tv-intro-replay').click();
+  await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
+  const freshSession = await context.newPage();
+  await setup(freshSession);
+  await expect(freshSession.locator('.sfm-startup')).toBeVisible();
+  await freshSession.close();
+});
+
+test('unpriced stocks stay hidden until a refresh supplies a price, and news has no boxed transport controls', async ({ page }) => {
+  await page.clock.install();
   await setup(page, 2); await page.keyboard.press('Shift');
+  await expect(page.locator('.tv-marquee-set').first().locator('button')).toHaveCount(1);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(1);
+  await expect(page.locator('.tv-hall-rows')).not.toContainText('QA1');
+  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { quotes: [0, 1].map(i => ({ symbol: `QA${i}`, name: `Test ${i}`, price: 10, currency: 'USD', changePercent: 1, source: 'QA source', observedAt: new Date().toISOString(), status: 'delayed', exchange: 'US' })), available: 2, total: 2 } }));
+  await page.clock.fastForward(61_000);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(2);
   await expect(page.locator('.tv-marquee-set').first().locator('button')).toHaveCount(2);
-  await expect(page.locator('.tv-marquee-set').first().locator('button').last().locator('bdi').first()).toContainText('—');
   await expect(page.locator('.tv-headline-controls')).toHaveCount(0);
   await page.locator('.tv-headline-label').click();
   await expect(page.locator('.tv-headline-label')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('market strips distinguish the directory, displayed batch and priced coverage', async ({ page }) => {
+  await setup(page);
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [
+    { id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'بورصة الكويت', labelEn: 'Kuwait', labelFr: 'Koweït', count: 138, status: 'snapshot' },
+    { id: 'TADAWUL', group: 'gulf', labelAr: 'السعودية', labelEn: 'Saudi Arabia', labelFr: 'Arabie saoudite', count: 6, status: 'selected' },
+  ] } }));
+  await page.route('**/api/tv/snapshot?*', route => {
+    const params = new URL(route.request().url()).searchParams, sample = params.get('market') === 'TADAWUL', batch = Number(params.get('page') || 0);
+    const quotes = Array.from({ length: sample ? 6 : 12 }, (_, i) => ({ symbol: `QA${batch * 12 + i}`, name: `Test ${i}`, nameAr: `اختبار ${i}`, price: i === 0 ? null : 1, source: i === 0 ? null : 'QA source', currency: 'KWD', changePercent: 1, status: i === 0 ? 'unavailable' : 'delayed', observedAt: new Date().toISOString(), exchange: params.get('market'), country: 'KW' }));
+    return route.fulfill({ json: { group: params.get('group'), market: params.get('market'), generatedAt: new Date().toISOString(), quotes, total: quotes.length, directoryTotal: sample ? 6 : 138, available: quotes.length - 1, page: batch } });
+  });
+  await page.reload();
+  await page.locator('.tv-mode-strips').click();
+  const market = page.locator('[data-market="BOURSA_KUWAIT"]');
+  await expect(market.locator('.tv-market-strip-heading small')).toContainText('138');
+  await expect(market.locator('.tv-strip-coverage')).toContainText('1–12');
+  await expect(market.locator('.tv-strip-coverage')).toContainText('11 / 12');
+  await expect(market.locator('.tv-market-strip-set').first().locator('button')).toHaveCount(11);
+  await expect(page.locator('[data-market="TADAWUL"] .tv-strip-coverage').first()).toContainText('تغطية السوق غير مكتملة');
+  await market.locator('.tv-strip-next').click();
+  await expect(market.locator('.tv-strip-coverage')).toContainText('13–24');
+  for (const [width, height] of [[1920, 1080], [1280, 720]]) {
+    await page.setViewportSize({ width, height });
+    expect(await market.locator('.tv-market-strip-heading').evaluate(el => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  }
 });
 
 test('news desk uses the TV area with a readable lead and a queue in 1080p and 540p', async ({ page }) => {

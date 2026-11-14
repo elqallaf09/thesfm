@@ -21,15 +21,15 @@ const snapshot: TvSnapshot = {
 const noop = () => undefined;
 
 describe('TV unavailable-price presentation', () => {
-  it('keeps every selected instrument visible and actionable when the source is limited', () => {
+  it('hides instruments without prices while retaining honest aggregate source health', () => {
     const html = renderToStaticMarkup(<TvSceneDashboard snapshot={snapshot} loading={false} error={null}
       language="en" now={now} news={[]} linked={false} watchlist={false} ticker tickerPaused={false} speed={56}
       onQuote={noop} onStory={noop} onPair={noop} onRefresh={noop} onTickerPause={noop}/>);
-    for (let index = 0; index < 10; index++) expect(html).toContain(`Unavailable instrument ${index}`);
-    expect(html.match(/class="tv-unavailable-card"/g)).toHaveLength(6);
+    for (let index = 0; index < 10; index++) expect(html).not.toContain(`Unavailable instrument ${index}`);
+    expect(html).not.toContain('class="tv-unavailable-card"');
     expect(html).toContain('Source request limit reached');
     expect(html).toContain('0 / 10');
-    expect(html).not.toContain('class="tv-scene-no-data"');
+    expect(html).toContain('class="tv-scene-no-data"');
     expect(html).not.toContain('class="tv-scene-price"');
     expect(html).not.toContain('class="tv-scene-summary-value"');
     expect(html).not.toContain('class="tv-quote-marquee"');

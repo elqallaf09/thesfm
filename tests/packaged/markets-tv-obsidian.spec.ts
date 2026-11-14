@@ -56,14 +56,14 @@ test('Tweaks persists all four accents across views, reload and light mode',asyn
   await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-light/);
   await page.reload();await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-accent','champagne');
 });
-test('missing prices remain explicit without a fabricated chart',async({page})=>{
+test('missing prices stay hidden without a fabricated chart',async({page})=>{
   await open(page,'en');
   await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{group:'global',scene:'overview',summary:quotes().map(q=>({...q,price:null,changePercent:null,source:null,status:'unavailable',issue:'rate_limited'})),quotes:[],total:0,available:0,generatedAt:now}}));
   await page.route('**/api/tv/history',r=>r.fulfill({json:{symbol:'^GSPC',points:[],issue:'access_denied'}}));
   await page.reload();
-  await expect(page.locator('.tv-hall-row [data-status=unavailable].tv-quote-evidence')).toHaveCount(6);
+  await expect(page.locator('.tv-hall-empty')).toBeVisible();
+  await expect(page.locator('.tv-hall-row')).toHaveCount(0);
+  await expect(page.locator('.tv-quote-marquee')).toHaveCount(0);
   await expect(page.locator('.tv-session-chart svg')).toHaveCount(0);
-  await page.locator('.tv-hall-identity button').first().focus();await page.keyboard.press('Enter');
-  await expect(page.locator('[data-tv-dialog]')).toBeVisible();
-  await expect(page.locator('.tv-hall-price strong').first()).toHaveText('—');
+  await expect(page.locator('.tv-hall-price')).toHaveCount(0);
 });

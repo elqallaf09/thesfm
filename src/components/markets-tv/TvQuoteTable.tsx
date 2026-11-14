@@ -10,9 +10,10 @@ export function TvQuoteTable({ items, quotes, markets = [], language, now, loadi
   items: TvInstrument[]; quotes: TvQuote[]; markets?: TvMarket[]; language: TvLanguage; now: number; loading: boolean; select: (quote: TvQuote) => void;
 }) {
   const bySymbol = new Map(quotes.map(quote => [quote.symbol, quote]));
+  const pricedItems = items.filter(item => { const quote = bySymbol.get(item.symbol); return quote && tvSceneHasPrice(quote); });
   return <div className="tv-hall-table" role="table" aria-label={hallText(language, 'directory')} aria-busy={loading}>
     <div className="tv-hall-columns" role="row">{(['company', 'price', 'change', 'source'] as const).map(key => <span role="columnheader" key={key}>{hallText(language, key)}</span>)}</div>
-    <div className="tv-hall-rows" role="rowgroup">{items.map(item => {
+    <div className="tv-hall-rows" role="rowgroup">{pricedItems.map(item => {
       const quote = bySymbol.get(item.symbol), priced = Boolean(quote && tvSceneHasPrice(quote));
       const change = priced ? quote?.changePercent : null;
       const market = markets.find(value => value.id === item.region);
@@ -24,6 +25,6 @@ export function TvQuoteTable({ items, quotes, markets = [], language, now, loadi
         <div role="cell">{quote ? <TvQuoteEvidence quote={quote} language={language} now={now}/> : <small className="tv-hall-muted">{loading ? tvText(language, 'loading') : hallText(language, 'unavailable')}</small>}</div>
       </div>;
     })}</div>
-    {!items.length && <p className="tv-hall-empty" role="status">{loading ? tvText(language, 'loading') : hallText(language, 'noResults')}</p>}
+    {!pricedItems.length && <p className="tv-hall-empty" role="status">{loading ? tvText(language, 'loading') : items.length ? tvText(language, 'waitingPrices') : hallText(language, 'noResults')}</p>}
   </div>;
 }

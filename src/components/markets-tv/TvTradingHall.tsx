@@ -3,6 +3,7 @@ import './trading-hall.css';
 import { useState } from 'react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';
+import { tvSceneHasPrice } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import { TvQuoteTable } from './TvQuoteTable';
 import { TvHallSessions } from './TvHallSessions';
@@ -15,7 +16,7 @@ export function TvTradingHall({ snapshot, loading, error, language, now, news, s
   snapshot: TvSnapshot | null; loading: boolean; error: string | null; language: TvLanguage; now: number; news: TvNews[]; selected?: string[];
   paused: boolean; ticker: boolean; speed: number; onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onAllStocks: () => void; onTickerPause: () => void;
 }) {
-  const rows = (snapshot?.quotes.length ? snapshot.quotes : snapshot?.summary ?? []).slice(0, 6);
+  const rows = (snapshot?.quotes.length ? snapshot.quotes : snapshot?.summary ?? []).filter(tvSceneHasPrice).slice(0, 6);
   const size = useTvTableSize(), pages = Math.max(1, Math.ceil(rows.length / size));
   const [focused, setFocused] = useState(false);
   const { current, move } = useTvBroadcastPage(pages, !paused && !focused);

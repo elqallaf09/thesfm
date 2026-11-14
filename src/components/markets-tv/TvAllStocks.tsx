@@ -11,6 +11,7 @@ import { TvQuoteTable } from './TvQuoteTable';
 import { TvHeadlineBand } from './TvHeadlineBand';
 import { TvQuoteMarquee } from './TvQuoteMarquee';
 import { useTvTableSize } from './useTvTableSize';
+import { tvSceneHasPrice, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 
 export function TvAllStocks({ language, now, markets, ready, revision, news, paused, ticker, speed, onQuote, onStory, onRefresh, onTickerPause }: {
   language: TvLanguage; now: number; markets: TvMarket[]; ready: boolean; revision: number; news: TvNews[]; paused: boolean; ticker: boolean; speed: number;
@@ -26,6 +27,15 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, pau
   const quotePath = items.length ? `/api/tv/snapshot?${new URLSearchParams({ group: 'world', ...(market ? { market } : {}), pageSize: String(PAGE_SIZE), symbols: JSON.stringify(items.map(item => item.symbol)) })}` : null;
   const quotes = useTvResource<TvSnapshot>(quotePath, 60000, '', revision);
   const pages = Math.max(1, Math.ceil((directory.data?.total ?? 0) / PAGE_SIZE));
+  const priced = quotes.data?.quotes.filter(tvSceneHasPrice).length ?? 0;
+  const cooling = tvStripSourceCooling(quotes.data?.quotes ?? [], quotes.data?.retryAt, now);
+  useEffect(() => {
+    if (paused || priced || !items.length || !quotes.data || quotes.loading || quotes.error || directory.loading || directory.error || cooling || pages <= 1) return;
+    const timer = setTimeout(() => {
+      if (!document.hidden && navigator.onLine && !document.activeElement?.closest('.tv-all-stocks')) setPage(value => (value + 1) % pages);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [paused, priced, items.length, quotes.data, quotes.loading, quotes.error, directory.loading, directory.error, cooling, pages]);
   // A catalog refresh can shrink the last page. Clamp only after that response arrives.
   useEffect(() => { if (directory.data && page >= pages) setPage(pages - 1); }, [directory.data, page, pages]);
   const exchanges = markets.filter(item => !['global', 'crypto', 'forex', 'commodities', 'watchlist'].includes(item.group));

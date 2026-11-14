@@ -12,7 +12,7 @@ export function TvQuoteMarquee({ quotes, language, now, paused, speed, select, t
 }) {
   const group = useRef<HTMLDivElement>(null), viewport = useRef<HTMLDivElement>(null);
   const [distance, setDistance] = useState(0), [copies, setCopies] = useState(2), [hidden, setHidden] = useState(false);
-  const available = quotes;
+  const available = quotes.filter(tvSceneHasPrice);
   const identity = available.map(quote => `${quote.exchange}:${quote.symbol}:${quote.currency}`).join('|');
   useEffect(() => {
     const node = group.current; if (!node) return;

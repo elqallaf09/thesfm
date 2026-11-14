@@ -281,7 +281,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe('b'.repeat(64));
 });
 
-test('strips use index points, show compatible tick colors and keep unavailable instruments moving', async ({ page }) => {
+test('strips use index points and hide unpriced instruments until the provider recovers', async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', displayMode: 'strips', marketIds: ['US'], groups: ['us'], autoHideControls: false })));
@@ -305,10 +305,9 @@ test('strips use index points, show compatible tick colors and keep unavailable 
   price = null;
   await page.reload();
   await expect(strip).toHaveAttribute('data-empty', 'true');
-  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(0);
   await expect(strip.locator('.tv-strip-price')).toHaveCount(0);
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'running');
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCount(0);
   await expect(strip).toHaveAttribute('data-source-cooling', 'true');
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
@@ -317,4 +316,8 @@ test('strips use index points, show compatible tick colors and keep unavailable 
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
   }
+  price = 5962.2;
+  await page.clock.fastForward(301_000);
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
 });

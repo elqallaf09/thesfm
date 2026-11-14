@@ -17,6 +17,17 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await page.goto('/tv/all-stocks');
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar')).toHaveCount(0);
+  await page.keyboard.press('Shift');
+  await page.locator('.tv-mode-viewing').click();
+  await expect(page).toHaveURL(/\/tv$/);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
+  await page.locator('.tv-mode-browse').click();
+  await expect(page).toHaveURL(/\/tv\/all-stocks$/);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
+  await expect(page.locator('.sfm-startup')).toHaveCount(0);
+  await page.locator('.tv-intro-replay').click();
+  await expect(page.locator('.sfm-startup')).toBeVisible();
+  await page.keyboard.press('Shift');
   await expect(page.locator('.tv-hall-listing small').first()).toHaveText('الولايات المتحدة');
   await expect.poll(() => page.locator('.tv-screen').evaluate(root => {
     const box = root.getBoundingClientRect();
