@@ -189,8 +189,10 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
       quotes: [], total: 0, available: 0, selectionTotal: empty ? 0 : 2 } });
   });
   await page.goto('/tv');
-  await expect(page.locator('.tv-scene-summary')).toHaveCount(2);
   await expect(page.locator('.tv-scene-row')).toHaveCount(2);
+  await expect(page.locator('.tv-scene-summary')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-row').nth(0)).toContainText('123.45');
+  await expect(page.locator('.tv-scene-row').nth(1)).toContainText('124.45');
   await expect(page.locator('.tv-scene-coverage-total')).toContainText('2 / 2');
   await expect(page.getByText('لا تتوفر أسعار موثقة لهذا المشهد الآن', { exact: true })).toHaveCount(0);
   empty = true;
