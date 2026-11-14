@@ -15,7 +15,7 @@ import { TvSceneSidebar } from './TvSceneSidebar';
 type SceneSnapshot = TvSnapshot & { summary?: TvQuote[]; selectionTotal?: number };
 type Props = {
   overview?: boolean; sessionIds?: string[]; snapshot: SceneSnapshot | null; loading: boolean; error: string | null; language: TvLanguage;
-  now: number; news: TvNews[]; linked: boolean; watchlist: boolean;
+  now: number; news: TvNews[]; newsLoading?: boolean; newsError?: string | null; linked: boolean; watchlist: boolean;
   ticker: boolean; tickerPaused: boolean; speed: number;
   onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void;
   onPair: () => void; onRefresh: () => void; onTickerPause: () => void;
@@ -43,7 +43,7 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
   </button>;
 }
 
-export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, sessionIds, snapshot, loading, error, language, now, news, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
+export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, sessionIds, snapshot, loading, error, language, now, news, newsLoading, newsError, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
   const [view, setView] = useState<'list' | 'heatmap'>('list');
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(language, key);
@@ -57,6 +57,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
       tickerQuotes: all.filter(tvSceneHasPrice),
     };
   }, [snapshot, watchlist, overview]);
+  const summariesRepeatRows = watchlist && summaries.length > 0 && summaries.every(summary => rows.some(row => quoteKey(row) === quoteKey(summary)));
   const emptyWatchlist = watchlist && Boolean(snapshot) && all.length === 0;
   const rowsPriced = rows.some(tvSceneHasPrice);
   const heatmap = rows.filter(quote => tvSceneHasPrice(quote) && quote.changePercent !== null && Number.isFinite(quote.changePercent)
@@ -69,11 +70,11 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
   return <>
     {error && <div className="tv-scene-notice" role="status"><span>{snapshot ? s('retainedDuringRetry') : t('error')}</span><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
     {overview ? <TvOverview sessionIds={sessionIds} quotes={all} language={language} now={now} news={news} loading={loading} onQuote={onQuote} onStory={onStory} onRefresh={onRefresh}/> : <>
-    <section className="tv-scene-summaries" aria-label={t('markets')} aria-busy={loading && !snapshot}>
+    {!summariesRepeatRows && <section className="tv-scene-summaries" aria-label={t('markets')} aria-busy={loading && !snapshot}>
       {summaries.filter(tvSceneHasPrice).map(quote => <SummaryQuote key={quoteKey(quote)} quote={quote} language={language} now={now} select={onQuote}/>)}
       {!summaries.length && (loading ? Array.from({ length: 4 }, (_, index) => <div key={index} className="tv-scene-summary tv-scene-skeleton" aria-hidden="true"><span/><span/><span/></div>)
         : <p className="tv-scene-summary-empty">{s('noSummaries')}</p>)}
-    </section>
+    </section>}
     <main className="tv-scene-body" aria-busy={loading && !snapshot}>
       <section className="tv-scene-quotes" aria-labelledby="tv-scene-quotes-title">
         <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s('marketSample')}</p></div>
@@ -90,14 +91,14 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
           </button>)}</div> : <div className="tv-scene-no-data"><p>{emptyWatchlist ? t('emptyWatchlist') : s('noHeatmap')}</p>{rows.length > 0 && <button onClick={() => setView('list')}>{s('quoteList')}</button>}</div>}
         </> : rowsPriced ? <div className="tv-scene-table" data-empty={!rowsPriced}>
           <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span>{rowsPriced ? <><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></> : <span>{t('provider')}</span>}</div>
-          <div className="tv-scene-rows">{rows.filter(tvSceneHasPrice).map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
+          <div className="tv-scene-rows" data-sparse={rows.filter(tvSceneHasPrice).length <= 3}>{rows.filter(tvSceneHasPrice).map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
             <span className="tv-scene-identity"><TvAssetIcon quote={quote}/><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span dir="ltr">{quote.displaySymbol || quote.symbol}</span></span>
             {tvSceneHasPrice(quote) && <><span className="tv-scene-price" dir="ltr"><strong>{tvQuotePrice(quote)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
               <QuoteChange quote={quote} language={language}/></>}<QuoteEvidence quote={quote} language={language} now={now}/>
           </button>)}</div>
         </div> : <div className="tv-scene-no-data"><h3>{emptyWatchlist ? t('emptyWatchlist') : s('noScenePrices')}</h3><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
       </section>
-      <TvSceneSidebar quotes={all} news={news} language={language} now={now} snapshot={snapshot} loading={loading} onStory={onStory} onQuote={onQuote} onRefresh={onRefresh}/>
+      <TvSceneSidebar quotes={all} news={news} newsLoading={newsLoading} newsError={newsError} language={language} now={now} snapshot={snapshot} loading={loading} onStory={onStory} onQuote={onQuote} onRefresh={onRefresh}/>
     </main></>}
     {ticker && <SceneTicker quotes={tickerQuotes} language={language} now={now} paused={tickerPaused} speed={speed} select={onQuote} toggle={onTickerPause}/>}
   </>;

@@ -13,8 +13,8 @@ import { TvQuoteMarquee } from './TvQuoteMarquee';
 import { useTvTableSize } from './useTvTableSize';
 import { tvSceneHasPrice, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 
-export function TvAllStocks({ language, now, markets, ready, revision, news, paused, ticker, speed, onQuote, onStory, onRefresh, onTickerPause }: {
-  language: TvLanguage; now: number; markets: TvMarket[]; ready: boolean; revision: number; news: TvNews[]; paused: boolean; ticker: boolean; speed: number;
+export function TvAllStocks({ language, now, markets, ready, revision, news, newsLoading, newsError, paused, ticker, speed, onQuote, onStory, onRefresh, onTickerPause }: {
+  language: TvLanguage; now: number; markets: TvMarket[]; ready: boolean; revision: number; news: TvNews[]; newsLoading?: boolean; newsError?: string | null; paused: boolean; ticker: boolean; speed: number;
   onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onTickerPause: () => void;
 }) {
   const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [market, setMarket] = useState(''), [page, setPage] = useState(0);
@@ -46,9 +46,9 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, pau
       <span className="tv-stock-results">{hallText(language, 'matches')} <bdi>{directory.data?.total.toLocaleString('en-US') ?? '—'}</bdi></span>
     </div>
     {(directory.error || quotes.error) && <div className="tv-hall-error" role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></div>}
-    <section className="tv-hall-market-table"><TvQuoteTable items={items} markets={markets} quotes={quotes.data?.quotes ?? []} language={language} now={now} loading={directory.loading || quotes.loading} select={onQuote}/></section>
+    <section className="tv-hall-market-table"><TvQuoteTable items={items} markets={markets} quotes={quotes.data?.quotes ?? []} language={language} now={now} loading={directory.loading || quotes.loading} emptyReason={directory.error || quotes.error ? 'error' : undefined} select={onQuote}/></section>
     <div className="tv-stock-pagination"><button disabled={page === 0 || directory.loading} onClick={() => setPage(value => value - 1)} aria-label={tvText(language, 'previous')} data-tv-focus-key="stocks-previous">{language === 'ar' ? <ChevronRight/> : <ChevronLeft/>}{tvText(language, 'previous')}</button><span dir="ltr">{page + 1} / {pages.toLocaleString('en-US')}</span><button disabled={page >= pages - 1 || directory.loading} onClick={() => setPage(value => value + 1)} aria-label={tvText(language, 'next')} data-tv-focus-key="stocks-next">{tvText(language, 'next')}{language === 'ar' ? <ChevronLeft/> : <ChevronRight/>}</button></div>
-    <TvHeadlineBand news={news} language={language} paused={paused} onStory={onStory}/>
+    <TvHeadlineBand newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} news={news} language={language} paused={paused} onStory={onStory}/>
     {ticker && <TvQuoteMarquee quotes={quotes.data?.quotes ?? []} language={language} now={now} paused={paused} speed={speed} select={onQuote} toggle={onTickerPause}/>}
   </main>;
 }

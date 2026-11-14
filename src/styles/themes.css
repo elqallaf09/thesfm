@@ -733,8 +733,8 @@
   --sidebar-accent-foreground: var(--sidebar-foreground);
 }
 
-/* Markets TV: independently selectable display theme, also bundled on TVs.
- * Static shadows retain compatibility with Chromium 85 television engines. */
+/* One independently selectable TV palette for every mode and channel.
+ * Static colors and shadows also support older television WebViews. */
 .tv-screen {
   --tv-up-surface: #1e393a;
   --tv-down-surface: #372d35;
@@ -743,42 +743,48 @@
   --tv-toast-shadow: 0 15px 50px #0006;
   --tv-dialog-shadow: 0 24px 100px #0008;
   --tv-map-shadow: 0 8px 24px #0007;
+  --tv-news-background: var(--tv-panel2);
+  --tv-news-text: var(--tv-text);
+  --tv-news-muted: var(--tv-muted);
+  --tv-news-accent: var(--tv-accent);
+  --tv-news-line: var(--tv-line);
 }
-.tv-light {
-  --tv-bg: #f1f5f7;
-  --tv-panel: #fff;
-  --tv-panel2: #e7edf0;
-  --tv-text: #14222d;
-  --tv-muted: #516472;
-  --tv-line: #ccd8df;
-  --tv-up: #0a7052;
-  --tv-down: #b22537;
+.tv-screen.tv-light {
+  --tv-bg: #eeeae2;
+  --tv-panel: #fffef9;
+  --tv-panel2: #e4e3db;
+  --tv-text: #18201e;
+  --tv-muted: #53625b;
+  --tv-line: #b5beb9;
+  --tv-up: #08734c;
+  --tv-down: #b22839;
   --tv-up-surface: #d8eee7;
   --tv-down-surface: #f4dde0;
   color-scheme: light;
 }
 
-/* Markets TV Obsidian palette, shared by all three display modes. */
 .tv-screen.tv-dark {
-  --tv-bg: #06080c;
-  --tv-panel: #0e131b;
-  --tv-panel2: #151d29;
-  --tv-text: #edf0f5;
-  --tv-muted: #a5b0bf;
-  --tv-line: #283140;
-  --tv-accent: #d4af6a;
-  --tv-up: #74c6a6;
-  --tv-down: #e3919a;
+  --tv-bg: #111517;
+  --tv-panel: #1a2023;
+  --tv-panel2: #232b2e;
+  --tv-text: #f2f4ef;
+  --tv-muted: #b3bdbb;
+  --tv-line: #353e42;
+  --tv-accent: #f19150;
+  --tv-up: #7ae2b5;
+  --tv-down: #ff8b8c;
+  color-scheme: dark;
 }
 .tv-screen[data-accent=blue] { --tv-accent: #81b4ee; }
 .tv-screen[data-accent=green] { --tv-accent: #78c8ab; }
 .tv-screen[data-accent=purple] { --tv-accent: #b49ce0; }
-.tv-screen.tv-light { --tv-accent: #86601e; }
+.tv-screen.tv-light { --tv-accent: #9c4310; }
 .tv-screen.tv-light[data-accent=blue] { --tv-accent: #285b98; }
 .tv-screen.tv-light[data-accent=green] { --tv-accent: #236d53; }
 .tv-screen.tv-light[data-accent=purple] { --tv-accent: #70529c; }
 
-.tv-screen { --tv-palette-champagne: #d4af6a; --tv-accent-choice-2: #81b4ee; --tv-accent-choice-3: #78c8ab; --tv-accent-choice-4: #b49ce0; --tv-hero-tint: #d4af6a09; }
+.tv-screen { --tv-palette-champagne: #f19150; --tv-accent-choice-2: #81b4ee; --tv-accent-choice-3: #78c8ab; --tv-accent-choice-4: #b49ce0; --tv-hero-tint: #f1915009; }
+.tv-screen.tv-light { --tv-palette-champagne: #9c4310; --tv-accent-choice-2: #285b98; --tv-accent-choice-3: #236d53; --tv-accent-choice-4: #70529c; }
 .tv-screen[data-accent=blue] { --tv-hero-tint: #81b4ee09; }
 .tv-screen[data-accent=green] { --tv-hero-tint: #78c8ab09; }
 .tv-screen[data-accent=purple] { --tv-hero-tint: #b49ce009; }
@@ -786,16 +792,14 @@
 .tv-screen { --tv-active-shadow: inset 0 -2px 0 var(--tv-accent); --tv-focus-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 5px var(--tv-accent); }
 .tv-screen { --tv-hero-background: radial-gradient(ellipse at 80% 0%, var(--tv-hero-tint), transparent 60%), var(--tv-panel); --tv-timeline-grid: repeating-linear-gradient(to right, var(--tv-line) 0 1px, transparent 1px 12.5%); }
 
-/* SFM TV trading hall and the complete stock directory. */
-.tv-screen.tv-hall-screen {
-  --tv-bg: #111517; --tv-panel: #1a2023; --tv-panel2: #232b2e; --tv-line: #353e42;
-  --tv-text: #f2f4ef; --tv-muted: #b3bdbb; --tv-up: #7ae2b5; --tv-down: #ff8b8c;
-  --tv-news-background: #f0eee6; --tv-news-text: #18201e; --tv-news-muted: #53625b;
-  --tv-news-accent: #f19150; --tv-news-line: #b5beb9;
+/* Keep host-site control and focus styles inside the selected TV theme. */
+.tv-screen[data-accent] {
+  --control-font-size: 1em;
+  --input-foreground: var(--tv-text); --input-background: var(--tv-panel); --input-border: var(--tv-line);
+  --control-placeholder: var(--tv-muted); --input-focus-border: var(--tv-accent);
+  --input-disabled-background: var(--tv-panel2); --input-disabled-foreground: var(--tv-muted);
+  --control-background: var(--tv-panel); --control-disabled: var(--tv-panel2);
+  --foreground: var(--tv-text); --foreground-muted: var(--tv-muted); --foreground-subtle: var(--tv-muted);
+  --border: var(--tv-line); --border-strong: var(--tv-line); --input: var(--tv-line);
+  --primary: var(--tv-accent); --ring: var(--tv-accent); --focus-ring: var(--tv-accent); --focus-shadow: var(--tv-focus-shadow);
 }
-.tv-screen.tv-hall-screen[data-accent=champagne] { --tv-accent: #f19150; }
-.tv-screen.tv-hall-screen.tv-light {
-  --tv-bg: #eeeae2; --tv-panel: #fffef9; --tv-panel2: #e4e3db; --tv-line: #b5beb9;
-  --tv-text: #18201e; --tv-muted: #53625b; --tv-up: #08734c; --tv-down: #b22839;
-}
-.tv-screen.tv-hall-screen.tv-light[data-accent=champagne] { --tv-accent: #9c4310; }
