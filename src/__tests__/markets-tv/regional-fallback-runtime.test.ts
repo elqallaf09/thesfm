@@ -11,6 +11,14 @@ const external = { success: true, providerSymbol: 'KFH.KW', retrievedAt: new Dat
   quoteSnapshot: { symbol: 'KFH.KW', assetType: 'EQUITY', exchangeCode: 'KUW', currency: 'KWF', price: 755, previousClose: 752,
     marketTime: new Date(observed).toISOString(), regularSession: { start: observed - 15000000, end: observed - 1000000 } } };
 beforeEach(() => { vi.resetModules(); vi.useFakeTimers(); vi.setSystemTime(now); fetchHistory.mockReset(); });
+it.each([['605336.SS', 'SSE', 'SHH'], ['000001.SZ', 'SZSE', 'SHZ']])('recovers %s when the configured directory provider has no price', async (symbol, region, exchangeCode) => {
+  fetchHistory.mockResolvedValue({ ...external, providerSymbol: symbol, quoteSnapshot: { ...external.quoteSnapshot, symbol, exchangeCode, currency: 'CNY', price: 9.2, previousClose: 9 } });
+  const { withTvRegionalFallback } = await import('@/lib/server/markets-tv/regionalFallback');
+  const result = await withTvRegionalFallback({ symbol, name: symbol, region, currency: 'CNY' }, Promise.resolve({ ...original, symbol, currency: 'CNY' }));
+  expect(result).toMatchObject({ symbol, price: 9.2, currency: 'CNY', source: 'Yahoo Finance' });
+  expect(result.issue).toBeUndefined();
+  expect(fetchHistory).toHaveBeenCalledWith(symbol, 'stock', '5d', '1d', false, 3500);
+});
 afterEach(() => vi.useRealTimers());
 it('recovers the exact Kuwait listing and declared unit after the primary fails', async () => {
   fetchHistory.mockResolvedValue(external);

@@ -2,6 +2,7 @@ import { searchBundledMarketSymbols, listBundledMarketSymbols } from '@/lib/mark
 import { filterUsSymbolUniverse, getBundledUsSymbolUniverse, getUSSymbolUniverse } from '@/lib/market/usSymbolResolver';
 import type { MarketSearchItem } from '@/lib/market/marketService';
 import { globalDirectoryMarketItems } from './globalDirectory';
+import { reconcileKuwaitDirectory } from './kuwaitDirectory';
 import { getProviderDirectory } from './providerDirectory';
 import { WORLD_STOCK_REGIONS } from './regions';
 import type { WorldStockMarket } from './types';
@@ -112,7 +113,9 @@ export async function collectCandidates(params: WorldStockSearchParams): Promise
 
   const sources = [globalDirectory.length ? 'official-directory-snapshot' : '', bundled.length ? 'bundled' : '', wantsUS ? usSource : '']
     .filter(Boolean);
-  return { items: [...globalDirectory, ...bundled, ...us], source: sources.join('+') || 'none' };
+  const items = [...globalDirectory, ...bundled, ...us];
+  const wantsKuwait = !hasRegionFilter || region === 'BOURSA_KUWAIT';
+  return { items: wantsKuwait ? reconcileKuwaitDirectory(items, query) : items, source: sources.join('+') || 'none' };
 }
 
 export async function searchWorldStocks(params: WorldStockSearchParams): Promise<WorldStockSearchResult> {

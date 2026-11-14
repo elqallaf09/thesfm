@@ -6,6 +6,7 @@ import { receiverText } from '@/lib/markets-tv/receiver';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
 import { TvHeadlines } from './TvSceneSidebar';
+import { TvNewsDesk } from './TvNewsDesk';
 import { requestTvResource } from './tvResourceCache';
 
 export function TvReceiverNews({ language, channel, now, revision, onStory, onRefresh, playing }: {
@@ -33,7 +34,7 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
         {tvText(language, 'available')}: {feed.updatedAt ? <time dateTime={feed.updatedAt}>{tvQuoteTime(feed.updatedAt, language, now)}</time> : '—'}
         {feed.partial && ` · ${receiverText(language, 'partial')}`}{feed.stored && ` · ${receiverText(language, 'stored')}`}
       </p>
-      <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/>
+      {channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/>}
     </>}
   </aside>;
 }

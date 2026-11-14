@@ -157,7 +157,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   }, usStock || assetType === 'forex' ? 30 : 300)
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
-  if (tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset)) {
+  if (tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset)) {
     // Keep slow cold reads alive after the bounded snapshot response so the
     // next refresh can use a verified cached quote. Never extend the UI wait.
     try { after(async () => { await work; }); } catch { /* No request scope in offline callers. */ }

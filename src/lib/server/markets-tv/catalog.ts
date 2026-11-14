@@ -69,7 +69,7 @@ const cachedEquities = unstable_cache(async () => {
   // Do not persist a failed worldwide refresh as an empty market directory.
   if (!markets.some(m => m.id.startsWith('TD_'))) throw new Error('WORLD_DIRECTORY_UNAVAILABLE');
   return markets;
-}, ['tv-market-counts-v3'], { revalidate: 3600 });
+}, ['tv-market-counts-v4'], { revalidate: 3600 });
 export async function tvMarkets(): Promise<TvMarket[]> {
   const [markets, crypto, forex] = await Promise.all([
     cachedEquities().catch(() => equityMarkets()),

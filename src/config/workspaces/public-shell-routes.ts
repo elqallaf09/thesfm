@@ -3,6 +3,7 @@ const PUBLIC_SHELL_EXACT = new Set([
   '/login',
   '/tv',
   '/tv/strips',
+  '/tv/all-stocks',
   '/tv/pair',
   '/reset-password',
   '/about',

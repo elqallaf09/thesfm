@@ -36,10 +36,11 @@ async function openTv(page: Page, language: TvLanguage, settings: Record<string,
   await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, scene: 'world', ...settings })), { language, settings });
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot(asOf) }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
+  await page.route('**/api/tv/instruments?*', route => { const params = new URL(route.request().url()).searchParams; const size = Number(params.get('pageSize') || 50); const items = snapshot(asOf).quotes; return route.fulfill({ json: { items: items.slice(0, size), total: items.length, directoryTotal: items.length, page: 0, pageSize: size } }); });
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-  await expect(page.locator(settings.displayMode === 'browse' ? '.tv-quote-grid > button' : '.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator(settings.displayMode === 'browse' ? '.tv-hall-row' : '.tv-scene-row')).toHaveCount(6);
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -67,7 +68,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
         panelBottom: document.querySelector('.tv-scene-quotes')!.getBoundingClientRect().bottom,
         lastRowBottom: document.querySelector('.tv-scene-row:last-child')!.getBoundingClientRect().bottom,
         rowsBottom: document.querySelector('.tv-scene-rows')!.getBoundingClientRect().bottom,
-        tickerTop: document.querySelector('.tv-scene-ticker')!.getBoundingClientRect().top,
+        tickerTop: document.querySelector('.tv-quote-marquee')!.getBoundingClientRect().top,
       }));
       expect(bounds.width).toBeLessThanOrEqual(width + 2);
       expect(bounds.height).toBeLessThanOrEqual(height + 2);
@@ -120,7 +121,7 @@ test('remote reaches every clipped row and restores focus after quote details', 
   await expect(rows.last().locator('time')).toHaveAttribute('datetime', observedAt);
   await expect(page.locator('.tv-scene-coverage-total')).toContainText('7 / 10');
   await expect(page.locator('.tv-data-notice time')).toBeAttached();
-  await expect(page.locator('.tv-scene-ticker')).toBeVisible();
+  await expect(page.locator('.tv-quote-marquee')).toBeVisible();
 });
 
 for (const language of ['ar', 'en', 'fr'] as const) {
@@ -169,13 +170,14 @@ for (const language of ['ar', 'en', 'fr'] as const) {
 }
 
 for (const language of ['ar', 'en', 'fr'] as const) {
-  test(`packaged ${language} browse fits both card rows and reachable pagination`, async ({ page }) => {
+  test(`packaged ${language} browse fits directory rows and reachable pagination`, async ({ page }) => {
     await openTv(page, language, { displayMode: 'browse', autoRotate: false });
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
-      await containedContent(page, '.tv-quote-grid > button');
+      await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
+      await containedContent(page, '.tv-hall-row');
       const measurements = await page.evaluate(() => {
-        const grid = document.querySelector('.tv-quote-grid')!, pager = document.querySelector('.tv-pagination')!;
+        const grid = document.querySelector('.tv-hall-rows')!, pager = document.querySelector('.tv-stock-pagination')!;
         const cards = [...grid.children];
         return { gridBottom: grid.getBoundingClientRect().bottom, lastBottom: cards.at(-1)!.getBoundingClientRect().bottom,
           pagerBottom: pager.getBoundingClientRect().bottom, width: document.documentElement.scrollWidth };
@@ -183,16 +185,16 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       expect(measurements.width).toBeLessThanOrEqual(width + 2);
       expect(measurements.pagerBottom).toBeLessThan(height);
       if (width >= 1280) expect(measurements.lastBottom).toBeLessThanOrEqual(measurements.gridBottom + 1);
-      await expect(page.locator('.tv-pagination')).toBeInViewport({ ratio: 1 });
+      await expect(page.locator('.tv-stock-pagination')).toBeInViewport({ ratio: 1 });
     }
     await page.locator('.tv-mode-viewing').click();
-    await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+    await expect(page.locator('.tv-hall-row')).toHaveCount(6);
     await expect(page.locator('.tv-unified-brand img')).toHaveAttribute('alt', 'THE SFM');
     await page.locator('.tv-mode-strips').click();
     await expect(page.locator('.tv-strips-only')).toBeVisible();
     await expect(page.locator('.tv-unified-brand img')).toHaveAttribute('alt', 'THE SFM');
     await page.locator('.tv-mode-browse').click();
-    await expect(page.locator('.tv-quote-grid > button')).toHaveCount(6);
+    await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   });
 }
 
@@ -241,8 +243,8 @@ test('full Arabic news, isolated quote evidence and legacy-compatible colors', a
   await expect(page.locator('.tv-scene-headlines button > span')).toHaveText(title);
   expect(await page.locator('.tv-scene-headlines button > span').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
   await expect(page.locator('.tv-scene-row time').first()).toHaveText('00:00');
-  await expect(page.locator('.tv-scene-ticker-evidence').first()).toHaveAttribute('dir', 'rtl');
-  await expect(page.locator('.tv-scene-ticker-evidence time').first()).toHaveAttribute('dir', 'ltr');
+  await expect(page.locator('.tv-quote-marquee .tv-quote-evidence').first()).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('.tv-quote-marquee .tv-quote-evidence time').first()).toHaveAttribute('dir', 'ltr');
   await page.locator('[data-tv-focus-key="scene-heatmap"]').click();
   expect(await page.locator('.tv-scene-heatmap > button').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(55, 45, 53)');
   await page.locator('[data-tv-focus-key="settings"]').click();
@@ -279,7 +281,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe('b'.repeat(64));
 });
 
-test('strips use index points, show compatible tick colors and keep unavailable instruments moving', async ({ page }) => {
+test('strips use index points and hide unpriced instruments until the provider recovers', async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', displayMode: 'strips', marketIds: ['US'], groups: ['us'], autoHideControls: false })));
@@ -303,10 +305,9 @@ test('strips use index points, show compatible tick colors and keep unavailable 
   price = null;
   await page.reload();
   await expect(strip).toHaveAttribute('data-empty', 'true');
-  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(0);
   await expect(strip.locator('.tv-strip-price')).toHaveCount(0);
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'running');
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCount(0);
   await expect(strip).toHaveAttribute('data-source-cooling', 'true');
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
@@ -315,4 +316,8 @@ test('strips use index points, show compatible tick colors and keep unavailable 
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
   }
+  price = 5962.2;
+  await page.clock.fastForward(301_000);
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
 });

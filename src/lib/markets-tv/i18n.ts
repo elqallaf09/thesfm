@@ -1,5 +1,10 @@
 import type { TvLanguage, TvQuote } from './types';
 export const TV_TEXT = {
+  catalogCount: ['في الدليل', 'In directory', 'Au répertoire'],
+  partialMarket: ['قائمة مختارة؛ تغطية السوق غير مكتملة', 'Selected list; market coverage is incomplete', 'Sélection ; couverture du marché incomplète'],
+  batchRange: ['المعروض', 'Showing', 'Affichage'],
+  availableBatch: ['بأسعار', 'With prices', 'Avec cours'],
+  selectedCount: ['اختيارك', 'Your selection', 'Votre sélection'],
   allStocks: ['كل الأسهم', 'All stocks', 'Toutes les actions'],
   technology: ['أخبار أسهم التقنية', 'Technology stocks news', 'Actualités des valeurs technologiques'],
   kuwait: ['بورصة الكويت', 'Boursa Kuwait', 'Bourse du Koweït'],

@@ -4,7 +4,7 @@ import { useId } from 'react';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
-import { tvSceneChange, tvSceneHasPrice, tvSceneIssue, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { tvSceneChange, tvSceneHasPrice, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { TvDataNotice } from './TvDataNotice';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage, useTvPanelCount } from './useTvBroadcastPage';
@@ -32,6 +32,5 @@ export function TvSceneSidebar({ quotes, news, language, now, snapshot, loading,
  const s=(key:Parameters<typeof tvSceneText>[1])=>tvSceneText(language,key),missing=quotes.filter(quote=>!tvSceneHasPrice(quote));
  return <aside className="tv-scene-sidebar"><TvHeadlines news={news} language={language} now={now} onStory={onStory}/><TvSceneMovers quotes={quotes} language={language} now={now} onQuote={onQuote}/>
  <details className="tv-scene-health"><summary>{tvText(language,'provider')}</summary><p>{s('selectedCoverage')}</p><div className="tv-scene-coverage-total"><strong dir="ltr">{snapshot?`${quotes.length-missing.length} / ${quotes.length}`:'—'}</strong><span>{s('quoted')}</span></div>
- {missing.length>0&&<details className="tv-scene-unavailable"><summary data-tv-focus-key="scene-unavailable">{s('missing')} <bdi>{missing.length}</bdi></summary><ul>{missing.map(quote=><li key={`${quote.exchange}:${quote.symbol}`}><button onClick={()=>onQuote(quote)} data-tv-focus-key={`unavailable:${quote.exchange||''}:${quote.symbol}:${quote.currency||''}`}><strong>{language==='ar'?quote.nameAr:quote.name}</strong><span>{s(tvSceneIssue(quote.issue))}</span></button></li>)}</ul></details>}
  <TvDataNotice quotes={missing.length?missing:quotes} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/></details></aside>;
 }

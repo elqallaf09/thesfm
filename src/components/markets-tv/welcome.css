@@ -1,0 +1,11 @@
+.sfm-startup { position: fixed; inset: 0; z-index: 99999; display: grid; place-content: center; gap: 2em; background: var(--tv-bg); color: var(--tv-text); pointer-events: none; animation: sfm-welcome-exit 3.6s ease-in-out forwards; }
+.sfm-startup-brand { display: flex; flex-direction: column; align-items: center; direction: ltr; animation: sfm-welcome-ident 3.6s ease-in-out forwards; }
+.sfm-startup-brand img { width: clamp(100px, 11vw, 220px); height: auto; object-fit: contain; margin-bottom: .9em; }
+.sfm-startup-brand strong { font: 600 clamp(30px, 3.4vw, 66px)/1.2 var(--font-ui); letter-spacing: .12em; }
+.sfm-startup-brand > span { color: var(--tv-muted); font-size: clamp(14px, 1.4vw, 26px); letter-spacing: .25em; margin-top: .4em; }
+.sfm-startup-actions { display: flex; justify-content: center; align-items: center; gap: .7em; pointer-events: auto; font-size: clamp(14px, 1.1vw, 22px); }
+.tv-screen .sfm-startup-actions button { padding: .45em 1em; min-height: 2.6em; border-color: var(--tv-line); background: var(--tv-panel); color: var(--tv-text); }
+.tv-screen .tv-unified-brand .tv-intro-replay { min-height: 0; padding: 0; border: 0; background: transparent; }
+@keyframes sfm-welcome-ident { 0%, 6% { opacity: 0; transform: scale(.9); } 28%, 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes sfm-welcome-exit { 0%, 86% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .sfm-startup, .sfm-startup-brand { animation: none; } }

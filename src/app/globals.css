@@ -1011,7 +1011,7 @@ body :where(input, textarea, select):not(
 input,input[type="text"],input[type="email"],input[type="password"],
 input[type="number"],input[type="tel"],input[type="search"],
 textarea,select{
-  font-size:15px !important;
+  font-size:var(--control-font-size,15px) !important;
   font-weight:400 !important;
   color:var(--input-foreground) !important;
   -webkit-text-fill-color:var(--input-foreground) !important;
@@ -1192,7 +1192,7 @@ tbody tr[data-state="selected"] td{background:var(--table-row-selected)}
 /* iOS/iPad Safari fixes */
 @supports (-webkit-touch-callout:none){
   input,textarea,select{
-    font-size:16px !important;
+    font-size:var(--control-font-size,16px) !important;
     -webkit-text-fill-color:var(--foreground) !important;
     transform:translateZ(0);
   }

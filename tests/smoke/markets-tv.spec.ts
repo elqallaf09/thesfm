@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
+});
+
 test('instrument choices search beyond the first page, persist and restore all stocks', async ({ page }) => {
   const markets = [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US Markets', labelFr: 'Marchés américains', count: 2000, status: 'directory' }];
   const instruments = Array.from({ length: 2000 }, (_, i) => ({ symbol: `QA${i}`, name: `Synthetic company ${i}`, nameAr: `شركة اختبار ${i}`, region: 'US', currency: 'USD' }));
@@ -13,7 +17,8 @@ test('instrument choices search beyond the first page, persist and restore all s
     const params = new URL(route.request().url()).searchParams;
     const selection: string[] | null = params.has('symbols') ? JSON.parse(params.get('symbols')!) : null;
     const rows = (selection ? instruments.filter(a => selection.includes(a.symbol)) : instruments).slice(0, 12);
-    return route.fulfill({ json: { group: 'us', directoryTotal: selection?.length ?? 2000, total: rows.length, available: 0, quotes: rows.map(a => ({ ...a, exchange: 'US', price: null, changePercent: null, observedAt: null, source: null, status: 'unavailable' })) } });
+    const observedAt = new Date().toISOString();
+    return route.fulfill({ json: { group: 'us', directoryTotal: selection?.length ?? 2000, total: rows.length, available: rows.length, quotes: rows.map((a, index) => ({ ...a, exchange: 'US', price: 10 + index, changePercent: 1, observedAt, receivedAt: observedAt, source: 'Synthetic QA fixture', status: 'available' })) } });
   });
   await page.goto('/tv/strips');
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
@@ -75,6 +80,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
     })),
   } }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US Markets', labelFr: 'Marchés américains', count: 1035, status: 'directory' }, { id: 'SSE', group: 'asia', labelAr: 'شنغهاي', labelEn: 'Shanghai', labelFr: 'Shanghai', count: 2359, status: 'snapshot' }] } }));
+  await page.route('**/api/tv/instruments?*', route => route.fulfill({ json: { items: Array.from({ length: 12 }, (_, index) => ({ symbol: `QA${index}`, name: 'Synthetic QA asset', nameAr: 'أصل اختبار اصطناعي', region: 'US', currency: 'USD' })), total: 12, directoryTotal: 3394, page: 0, pageSize: 12 } }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
   await page.goto('/tv');
@@ -98,14 +104,10 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await expect(page.locator('canvas.tv-qr')).toBeVisible();
   await expect(page.getByText('No valid saved analysis for this asset')).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.getByRole('link', { name: 'Browse all markets', exact: true }).click();
-  await page.getByRole('button', { name: 'Market map', exact: true }).click();
-  await expect(page.getByRole('group', { name: 'Market map', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Market hours', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'World market hours', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Market brief', exact: true }).click();
-  await expect(page.locator('.tv-brief-dashboard')).toBeVisible();
-  await page.getByRole('link', { name: 'Viewing mode', exact: true }).click();
+  await page.getByRole('link', { name: 'All stocks', exact: true }).click();
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
+  await expect(page.locator('.tv-hall-row')).toHaveCount(12);
+  await page.getByRole('link', { name: 'Trading hall', exact: true }).click();
   await page.getByRole('button', { name: 'Display settings', exact: true }).click();
   await page.locator('.tv-language-setting select').selectOption('fr');
   await page.keyboard.press('Escape');
@@ -132,24 +134,28 @@ test('TV market selection changes the main screen and promotes its independent t
   ];
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets } }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
+  await page.route('**/api/tv/instruments?*', route => {
+    const params = new URL(route.request().url()).searchParams, market = params.get('market') || 'US';
+    const pageNumber = Number(params.get('page') || 0), pageSize = Number(params.get('pageSize') || 6);
+    const items = Array.from({ length: pageSize }, (_, index) => ({ symbol: `${market}-${pageNumber * pageSize + index}`, name: 'Synthetic QA', nameAr: 'اختبار', region: market, currency: 'USD' }));
+    return route.fulfill({ json: { items, total: 12, directoryTotal: market === 'SSE' ? 2359 : 1035, page: pageNumber, pageSize } });
+  });
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams;
     const group = params.get('group'), market = params.get('market') || group, pageNumber = Number(params.get('page') || 0);
-    return route.fulfill({ json: { group, page: pageNumber, pageSize: Number(params.get('pageSize')), total: 6, directoryTotal: 1035, available: 0,
-      quotes: Array.from({ length: 6 }, (_, index) => ({ symbol: `${market}-${pageNumber * 6 + index}`, name: 'Synthetic QA', nameAr: 'اختبار', price: null, changePercent: null, currency: 'USD', source: null, observedAt: null, status: 'unavailable' })) } });
+    const symbols: string[] = params.has('symbols') ? JSON.parse(params.get('symbols')!) : Array.from({ length: 6 }, (_, index) => `${market}-${pageNumber * 6 + index}`);
+    const observedAt = new Date().toISOString();
+    return route.fulfill({ json: { group, page: pageNumber, pageSize: Number(params.get('pageSize')), total: symbols.length, directoryTotal: 1035, available: symbols.length,
+      quotes: symbols.map((symbol, index) => ({ symbol, name: 'Synthetic QA', nameAr: 'اختبار', price: 20 + index, changePercent: 1, currency: 'USD', source: 'Synthetic QA fixture', observedAt, receivedAt: observedAt, status: 'available', exchange: market })) } });
   });
   await page.goto('/tv');
-  await page.getByRole('link', { name: 'تصفح كل الأسواق', exact: true }).click();
-  await expect(page.locator('.tv-market-strip')).toHaveCount(2);
-  await page.locator('[data-market="SSE"] .tv-market-strip-heading').click();
-  await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','SSE');
-  await expect(page.locator('.tv-quote').first()).toContainText('SSE-0');
-  await page.locator('.tv-pagination').getByRole('button', { name: 'التالي', exact: true }).click();
-  await expect(page.locator('.tv-quote').first()).toContainText('SSE-6');
-  await page.locator('[data-market="US"] .tv-market-strip-heading').click();
-  await expect(page.locator('.tv-quote').first()).toContainText('US-0');
-  await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market','US');
-  await expect(page.locator('.tv-world-stocks-link')).toHaveAttribute('href', /\/world-stocks$/);
+  await page.getByRole('link', { name: 'كل الأسهم', exact: true }).click();
+  await page.locator('[data-tv-focus-key="stock-market"]').selectOption('SSE');
+  await expect(page.locator('.tv-hall-row').first()).toContainText('SSE-0');
+  await page.locator('.tv-stock-pagination').getByRole('button', { name: 'التالي', exact: true }).click();
+  await expect(page.locator('.tv-hall-row').first()).toContainText(/SSE-\d+/);
+  await page.locator('[data-tv-focus-key="stock-market"]').selectOption('US');
+  await expect(page.locator('.tv-hall-row').first()).toContainText('US-0');
   await page.getByRole('link', { name: 'الأشرطة فقط', exact: true }).click();
   await expect(page).toHaveURL(/\/tv\/strips$/);
   await expect(page.locator('.tv-strips-only')).toBeVisible();
@@ -228,7 +234,7 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'paused');
   await page.getByRole('button', { name: 'Resume strips', exact: true }).click();
   await expect(page.locator('.tv-strip-change svg').first()).toBeVisible();
-  await page.getByRole('link', { name: 'Viewing mode', exact: true }).click();
+  await page.getByRole('link', { name: 'Trading hall', exact: true }).click();
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.locator('.tv-strips-only')).toHaveCount(0);
 });

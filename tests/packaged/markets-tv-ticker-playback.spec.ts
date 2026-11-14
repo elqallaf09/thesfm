@@ -12,40 +12,25 @@ async function open(page:Page,language:TvLanguage){
   await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[{id:'qa',title:'خبر اختبار عن الأسواق العالمية / Market news fixture',source:'QA',publishedAt:now,url:'https://example.com/news'}]}}));
   await page.route('**/api/tv/history',r=>r.fulfill({json:{symbol:'^GSPC',sessionDate:'2026-11-06',source:'QA source',fetchedAt:now,points:[{at:'2026-11-06T14:30:00Z',price:5999},{at:'2026-11-06T14:35:00Z',price:6002},{at:'2026-11-06T14:40:00Z',price:6000}]}}));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-  await expect(page.locator('.tv-index-five article')).toHaveCount(5);
-  await expect(page.locator('.tv-session-chart polyline')).toBeVisible();
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.evaluate(()=>document.fonts.ready);
 }
 
-test('ticker resumes after touch playback and page controls',async({page})=>{
-  await page.setViewportSize({width:1536,height:1009});
-  await open(page,'en');
-  const ticker=page.locator('.tv-whole-ticker');
-  const position=ticker.locator('.tv-ticker-pages small');
-  const playback=ticker.locator(':scope > button');
-  await playback.click();
-  const paused=await position.textContent();
-  await page.clock.runFor(15000);
-  await expect(position).toHaveText(paused!);
-  await playback.click();
-  await page.clock.runFor(15000);
-  await expect(position).not.toHaveText(paused!);
-  await ticker.locator('.tv-ticker-pages button').last().click();
-  const manual=await position.textContent();
-  await page.clock.runFor(15000);
-  await expect(position).not.toHaveText(manual!);
+test('ticker resumes continuous movement after touch playback',async({page})=>{
+  await page.setViewportSize({width:1536,height:1009}); await open(page,'en');
+  const ticker=page.locator('.tv-quote-marquee'), track=ticker.locator('.tv-marquee-track'), playback=ticker.locator('.tv-marquee-toggle');
+  await playback.click(); await expect(track).toHaveCSS('animation-play-state','paused');
+  await playback.click(); await page.mouse.move(0,0);
+  await expect(track).toHaveCSS('animation-play-state','running');
+  const before=await track.evaluate(el=>getComputedStyle(el).transform);
+  await expect.poll(()=>track.evaluate(el=>getComputedStyle(el).transform)).not.toBe(before);
 });
-test('remote quote focus holds its page but playback focus does not',async({page})=>{
-  await page.setViewportSize({width:1536,height:1009});
-  await open(page,'en');
-  const ticker=page.locator('.tv-whole-ticker');
-  const position=ticker.locator('.tv-ticker-pages small');
-  await page.keyboard.press('Tab');
-  await ticker.locator('.tv-whole-ticker-cards button').first().focus();
-  const focused=await position.textContent();
-  await page.clock.runFor(15000);
-  await expect(position).toHaveText(focused!);
-  await ticker.locator(':scope > button').focus();
-  await page.clock.runFor(15000);
-  await expect(position).not.toHaveText(focused!);
+test('remote quote focus holds the strip but playback focus does not',async({page})=>{
+  await page.setViewportSize({width:1536,height:1009}); await open(page,'en');
+  const ticker=page.locator('.tv-quote-marquee'), track=ticker.locator('.tv-marquee-track');
+  await ticker.locator('.tv-marquee-set:not([aria-hidden]) button').first().focus();
+  await expect(track).toHaveCSS('animation-name','none');
+  await ticker.locator('.tv-marquee-toggle').focus();
+  await expect(track).toHaveCSS('animation-name','tv-quote-scroll');
+  await expect(track).toHaveCSS('animation-play-state','running');
 });

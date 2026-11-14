@@ -6,7 +6,7 @@ android {
   namespace 'com.thesfm.marketstv'
   compileSdk 36
   buildFeatures { buildConfig true }
-  defaultConfig { applicationId 'com.thesfm.marketstv'; minSdk 26; targetSdk 36; versionCode 22; versionName '1.0.16'; manifestPlaceholders = [appLabel: 'The SFM Markets TV'] }
+  defaultConfig { applicationId 'com.thesfm.marketstv'; minSdk 26; targetSdk 36; versionCode 23; versionName '1.0.17'; manifestPlaceholders = [appLabel: 'The SFM Markets TV'] }
   flavorDimensions 'distribution'
   productFlavors {
     play { dimension 'distribution' }

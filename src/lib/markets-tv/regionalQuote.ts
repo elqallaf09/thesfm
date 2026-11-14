@@ -5,8 +5,15 @@ import { quoteStatus } from './quotes';
 
 /** These are listing identities, not interchangeable company-name aliases. */
 export function tvRegionalIdentity(asset: TvAsset) {
+  if (asset.assetType && asset.assetType !== 'stock') return null;
   const symbol = asset.symbol.toUpperCase();
   const listing = asset.mic || asset.region || asset.exchange;
+  if (/^\d{6}\.SS$/.test(symbol) && ['XSHG', 'SSE', 'TD_XSHG'].includes(listing || '')) {
+    return { symbol, exchange: 'SHH', currency: 'CNY', sourceCurrencies: ['CNY'] };
+  }
+  if (/^\d{6}\.SZ$/.test(symbol) && ['XSHE', 'SZSE', 'TD_XSHE'].includes(listing || '')) {
+    return { symbol, exchange: 'SHZ', currency: 'CNY', sourceCurrencies: ['CNY'] };
+  }
   if (/^[A-Z0-9][A-Z0-9.-]*\.KW$/.test(symbol) && ['XKUW', 'BOURSA_KUWAIT', 'TD_XKUW'].includes(listing || '')) {
     return { symbol, exchange: 'KUW', currency: 'KWD', sourceCurrencies: ['KWF', 'KWD'] };
   }
