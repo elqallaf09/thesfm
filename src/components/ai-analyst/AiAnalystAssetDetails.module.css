@@ -8,3 +8,7 @@
 .facts > div { min-inline-size: 0; }
 .facts dt { color: var(--foreground-muted); font-size: var(--fs-caption, 12px);line-height:var(--lh-caption, 18px); }
 .facts dd { margin: 5px 0 0; overflow-wrap: anywhere; color: var(--foreground); font-weight: 700; font-variant-numeric: tabular-nums; }
+.profile { border-block-start: 1px solid var(--border); margin-block-start: 20px; padding-block-start: 20px; min-inline-size: 0; }
+.profile .facts { margin-block: 16px; }
+.wideFact { grid-column: 1 / -1; }
+.wideFact dd { font-weight: 400; line-height: 1.7; }
