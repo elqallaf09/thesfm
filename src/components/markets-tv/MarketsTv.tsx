@@ -5,6 +5,7 @@ const TvTradingHall = lazy(() => import('./TvTradingHall').then(module => ({ def
 const TvAllStocks = lazy(() => import('./TvAllStocks').then(module => ({ default: module.TvAllStocks })));
 const TvWelcomeIntro = lazy(() => import('./TvWelcomeIntro'));
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
+import { pushTvDisplayMode, tvDisplayModeFromPath } from '@/lib/markets-tv/display-navigation';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Monitor, Smartphone, X, RefreshCw, Globe2, Pause, Play, Newspaper } from 'lucide-react';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
@@ -149,6 +150,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const choose = useCallback((next: TvGroup, market = '') => { setGroup(next); setSelectedMarket(market); setPage(0); activity.current = Date.now(); }, []);
   const chooseScene = useCallback((next: TvScene) => { setView('markets'); setSettings(value => ({ ...value, scene: next, broadcastChannel: undefined })); activity.current = Date.now(); }, []);
   function changeDisplayMode(displayMode: TvDisplayMode) {
+    pushTvDisplayMode(displayMode);
     const next: TvSettings = { ...settings, displayMode, scene: displayMode === 'viewing' ? 'overview' : settings.scene, broadcastChannel: undefined };
     setView('markets');
     setRouteStrips(false); setSettings(next); activity.current = Date.now();
@@ -159,6 +161,19 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     if (next.displayMode !== settings.displayMode) { setRouteStrips(false); if (receiverScreen) setView('markets'); }
     setSettings(next); activity.current = Date.now();
   }
+  useEffect(() => {
+    const restore = () => {
+      const displayMode = tvDisplayModeFromPath(window.location.pathname);
+      if (!displayMode) return;
+      const channel = new URLSearchParams(window.location.search).get('channel');
+      const broadcastChannel = displayMode === 'viewing' && isTvReceiverChannel(channel) ? channel : undefined;
+      setView(broadcastChannel || 'markets'); setRouteStrips(false); close();
+      setSettings(current => ({ ...current, displayMode, scene: displayMode === 'viewing' ? 'overview' : current.scene, broadcastChannel }));
+      activity.current = Date.now();
+    };
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
+  }, [close]);
   useEffect(() => {
     if (stripsOnly || allStocks || view !== 'markets' || !settings.autoRotate || modal) return;
     const timer = setInterval(() => {

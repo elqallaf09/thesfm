@@ -8,6 +8,7 @@ import { obsText } from '@/lib/markets-tv/obsidian';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import { tvOrigin } from '@/lib/markets-tv/client';
+import { TV_DISPLAY_PATHS } from '@/lib/markets-tv/display-navigation';
 import type { TvDisplayMode, TvLanguage } from '@/lib/markets-tv/types';
 
 // Clock updates stay inside this leaf; quote cards never subscribe to its timer.
@@ -43,8 +44,9 @@ export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, pa
       <nav className="tv-mode-switch" aria-label={t('dashboard')}>
         {(['viewing', 'browse', 'strips'] as const).map(value => {
           const label = value === 'strips' ? t('stripsOnly') : hallText(language, value === 'browse' ? 'allStocks' : 'hall');
-          return <a key={value} className={`tv-display-link tv-mode-${value}`} href={value === 'strips' ? '/tv/strips' : value === 'browse' ? '/tv/all-stocks' : '/tv'} aria-label={label} aria-current={mode === value ? 'page' : undefined} data-tv-focus-key={value} onClick={event => {
-            if (tvOrigin() !== window.location.origin || (value === 'strips' ? '/tv/strips' : value === 'browse' ? '/tv/all-stocks' : '/tv') === window.location.pathname) event.preventDefault();
+          return <a key={value} className={`tv-display-link tv-mode-${value}`} href={TV_DISPLAY_PATHS[value]} aria-label={label} aria-current={mode === value ? 'page' : undefined} data-tv-focus-key={value} onClick={event => {
+            if (tvOrigin() === window.location.origin && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)) return;
+            event.preventDefault();
             changeMode(value);
           }}>{value === 'viewing' ? <Monitor aria-hidden="true"/> : value === 'browse' ? <Globe2 aria-hidden="true"/> : <Rows3 aria-hidden="true"/>}<span>{label}</span></a>;
         })}

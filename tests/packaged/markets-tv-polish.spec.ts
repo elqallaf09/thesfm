@@ -40,6 +40,24 @@ test('welcome uses the official logo and plays an actual audio graph after a cli
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
 });
 
+test('display navigation retains the packaged document, focus, language and startup session', async ({ page }) => {
+  await setup(page); await page.keyboard.press('Shift');
+  const originalUrl = page.url(), documents: string[] = [];
+  page.on('request', request => { if (request.resourceType() === 'document') documents.push(request.url()); });
+  await page.locator('.tv-screen').evaluate(root => root.setAttribute('data-navigation-marker', 'original'));
+  for (const mode of ['viewing', 'strips', 'browse', 'viewing', 'browse']) {
+    const link = page.locator(`.tv-mode-${mode}`);
+    await link.focus(); await page.keyboard.press('Enter');
+    await expect(link).toHaveAttribute('aria-current', 'page');
+    await expect(link).toBeFocused();
+    await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
+    await expect(page.locator('.tv-screen')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('.sfm-startup')).toHaveCount(0);
+    expect(page.url()).toBe(originalUrl);
+  }
+  expect(documents).toEqual([]);
+});
+
 test('one quote fills the ticker continuously without a viewport-sized gap', async ({ page }) => {
   await setup(page); await page.keyboard.press('Shift');
   await expect(page.locator('.tv-marquee-set').first().locator('button')).toHaveCount(1);
