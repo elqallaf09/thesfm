@@ -35,6 +35,9 @@
 @media (max-width: 760px) {
   .tv-screen::before { background-size: auto 100vh; }
 }
+@media (min-width: 761px) and (max-height: 650px) {
+  .tv-screen .tv-scene-tabs { padding-block: 0; }
+}
 @media (forced-colors: active) {
   .tv-screen::before { display: none; }
 }
