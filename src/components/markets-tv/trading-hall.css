@@ -54,7 +54,8 @@
 .tv-screen .tv-hall-row .tv-quote-evidence time { grid-column: 2; grid-row: 2; }
 .tv-screen .tv-hall-row .tv-quote-evidence { display: grid; grid-template-columns: auto auto; justify-content: start; gap: 0 .4em; font-size: max(13px, .6em); line-height: 1.25; overflow-wrap: anywhere; }
 .tv-screen .tv-hall-muted { color: var(--tv-muted); font-size: max(13px, .7em); }
-.tv-screen .tv-hall-empty { margin: auto; padding: 1em; color: var(--tv-muted); }
+.tv-screen .tv-hall-empty { margin: auto; padding: 1em; color: var(--tv-muted); max-width: 40em; text-align: center; font-size: 1em; }
+.tv-screen .tv-hall-rows:empty { flex: 0; }
 .tv-screen .tv-hall-sessions { min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--tv-line); background: var(--tv-panel); padding: .65em .8em; }
 .tv-screen .tv-hall-sessions h2 { font-size: 1em; margin: 0; }
 .tv-screen .tv-hall-sessions header small { color: var(--tv-muted); font-size: max(13px, .55em); }

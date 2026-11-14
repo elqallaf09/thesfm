@@ -25,6 +25,6 @@ export function TvQuoteTable({ items, quotes, markets = [], language, now, loadi
         <div role="cell">{quote ? <TvQuoteEvidence quote={quote} language={language} now={now}/> : <small className="tv-hall-muted">{loading ? tvText(language, 'loading') : hallText(language, 'unavailable')}</small>}</div>
       </div>;
     })}</div>
-    {!pricedItems.length && <p className="tv-hall-empty" role="status">{loading ? tvText(language, 'loading') : items.length ? tvText(language, 'waitingPrices') : hallText(language, 'noResults')}</p>}
+    {!pricedItems.length && <p className="tv-hall-empty" role="status">{loading ? tvText(language, 'loading') : items.length ? hallText(language, 'pricesUnavailable') : hallText(language, 'noResults')}</p>}
   </div>;
 }

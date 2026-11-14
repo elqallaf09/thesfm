@@ -17,6 +17,20 @@ function history(meta: Record<string, unknown> = {}, previous = 752) {
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); });
 afterEach(() => vi.useRealTimers());
 describe('verified TV Gulf fallback', () => {
+  it.each([
+    ['605336.SS', 'SSE', 'SHH'], ['000001.SZ', 'SZSE', 'SHZ'],
+  ])('recovers the qualified Chinese listing %s without changing its currency or clock', (symbol, region, exchangeName) => {
+    const listing: TvAsset = { symbol, name: symbol, region, currency: 'CNY', country: 'CN', assetType: 'stock' };
+    const sample = history({ symbol, exchangeName, currency: 'CNY', regularMarketPrice: 9.2, previousClose: 9 });
+    if (!sample.success) throw new Error('Invalid test fixture');
+    const data = { ...sample, providerSymbol: symbol };
+    expect(verifiedTvRegionalQuote(listing, data, now)).toMatchObject({ symbol, price: 9.2, currency: 'CNY', source: 'Yahoo Finance', observedAt: new Date(observed).toISOString() });
+    expect(verifiedTvRegionalQuote({ ...listing, currency: 'USD' }, data, now)).toBeNull();
+    expect(verifiedTvRegionalQuote(listing, { ...data, quoteSnapshot: { ...data.quoteSnapshot!, exchangeCode: exchangeName === 'SHH' ? 'SHZ' : 'SHH' } }, now)).toBeNull();
+    expect(tvRegionalIdentity({ ...listing, assetType: 'index' })).toBeNull();
+    expect(tvRegionalIdentity({ ...listing, region: region === 'SSE' ? 'SZSE' : 'SSE' })).toBeNull();
+    expect(tvRegionalIdentity({ ...listing, symbol: symbol.split('.')[0] })).toBeNull();
+  });
   it('converts explicitly denominated Kuwait fils to dinars and retains source clocks and daily change', () => {
     const q = verifiedTvRegionalQuote(asset, history(), now);
     expect(q).toMatchObject({ symbol: 'KFH.KW', price: .755, currency: 'KWD', source: 'Yahoo Finance',

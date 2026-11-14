@@ -1,6 +1,7 @@
 import type { TvLanguage } from './types';
 
 const ar = {
+  pricesUnavailable: 'لم يصل سعر موثّق لهذه الدفعة بعد. تُعاد المحاولة تلقائيًا، ويمكنك اختيار دفعة أو بورصة أخرى.',
   hall: 'صالة البورصة', allStocks: 'كل الأسهم', search: 'ابحث باسم الشركة أو رمز السهم',
   directory: 'دليل الأسهم', matches: 'نتائج البحث', company: 'الشركة / الرمز', price: 'السعر', change: 'التغيّر',
   source: 'المصدر / وقت السعر', sample: 'مختارات الأسواق', allMarkets: 'جميع البورصات',
@@ -12,6 +13,7 @@ const ar = {
 };
 type HallKey = keyof typeof ar;
 const en: Record<HallKey, string> = {
+  pricesUnavailable: 'Verified prices for this batch have not arrived yet. Retrying automatically; you can select another batch or exchange.',
   hall: 'Trading hall', allStocks: 'All stocks', search: 'Search company or symbol',
   directory: 'Stock directory', matches: 'Search results', company: 'Company / symbol', price: 'Price', change: 'Change',
   source: 'Source / price time', sample: 'Market selection', allMarkets: 'All exchanges',
@@ -22,6 +24,7 @@ const en: Record<HallKey, string> = {
   newsPause: 'Pause news rotation', newsPlay: 'Resume news rotation', unknown: 'Unknown',
 };
 const fr: Record<HallKey, string> = {
+  pricesUnavailable: 'Les cours vérifiés de ce lot ne sont pas encore disponibles. Nouvelle tentative automatique ; vous pouvez choisir un autre lot ou une autre bourse.',
   hall: 'Salle de marché', allStocks: 'Toutes les actions', search: 'Rechercher une société ou un symbole',
   directory: 'Répertoire des actions', matches: 'Résultats', company: 'Société / symbole', price: 'Cours', change: 'Variation',
   source: 'Source / heure du cours', sample: 'Sélection de marchés', allMarkets: 'Toutes les bourses',
