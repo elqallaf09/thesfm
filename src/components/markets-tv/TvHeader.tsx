@@ -25,8 +25,8 @@ export const TvClock = memo(function TvClock({ language }: { language: TvLanguag
     document.addEventListener('visibilitychange', update);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
   }, []);
-  return <div className="tv-unified-clock"><strong dir="ltr">{instant ? formats.clock.format(instant) : '-'}</strong>
-    <small>{tvSceneText(language, 'kuwaitTime')}<span>{instant ? formats.date.format(instant) : '-'}</span></small></div>;
+  return <div className="tv-unified-clock"><strong dir="ltr">{instant ? formats.clock.format(instant) : '—'}</strong>
+    <small>{tvSceneText(language, 'kuwaitTime')}<span>{instant ? formats.date.format(instant) : '—'}</span></small></div>;
 });
 
 type Props = {

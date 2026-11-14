@@ -14,7 +14,7 @@ async function open(page: Page, theme: string, accent: string, fileBased = false
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'en', theme, accent, displayMode: 'viewing', scene: 'overview', autoRotate: false }));
   }, { theme, accent });
   await page.route('**/api/**', route => route.fulfill({ status: 503, json: { code: 'QA_UNAVAILABLE' } }));
-  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'KW', group: 'gulf', labelAr: 'Kuwait', labelEn: 'Kuwait', labelFr: 'Kowe�t', count: 6, status: 'directory' }] } }));
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'KW', group: 'gulf', labelAr: 'Kuwait', labelEn: 'Kuwait', labelFr: 'Koweït', count: 6, status: 'directory' }] } }));
   await page.route('**/api/tv/instruments?*', route => route.fulfill({ json: { items, total: 6, directoryTotal: 6, page: 0, pageSize: 6 } }));
   await page.route('**/api/tv/snapshot?*', route => {
     const now = new Date().toISOString();

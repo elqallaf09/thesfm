@@ -9,7 +9,7 @@ import '../obsidian.css';
 import '../brand.css';
 
 export const metadata: Metadata = {
-  title: '????? ??????? | The SFM Markets TV',
+  title: 'أشرطة الأسواق | The SFM Markets TV',
   description: 'Full-screen scrolling market strips with source-backed prices and update times.',
 };
 

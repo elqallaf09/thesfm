@@ -6,7 +6,7 @@ import type { TvPortfolioSnapshot } from '../../src/lib/markets-tv/portfolio';
 const token = 'a'.repeat(64), instant = '2026-11-08T07:10:00Z';
 const logoFixture = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><path fill="#111" d="M8 8h48v48H40V24H8Z"/></svg>';
 function fixture(amount = 1000, total = 13): TvPortfolioSnapshot {
- const positions = Array.from({length:total}, (_, i) => ({id:`record-${i}`,name:`${i+1} � ????? ?????? ???????? Global equity portfolio`,symbol:`QA${i}`,assetClass:i%2?'gold-silver':'stocks',quantity:12.75,value:{amount:amount+i,currency:'USD'},baseValue:amount+i,baseCost:900,platform:'THE SFM',source:'Recorded source',valuedAt:'2026-11-07T12:10:00Z',freshness:'recorded' as const}));
+ const positions = Array.from({length:total}, (_, i) => ({id:`record-${i}`,name:`${i+1} · محفظة الأسهم العالمية Global equity portfolio`,symbol:`QA${i}`,assetClass:i%2?'gold-silver':'stocks',quantity:12.75,value:{amount:amount+i,currency:'USD'},baseValue:amount+i,baseCost:900,platform:'THE SFM',source:'Recorded source',valuedAt:'2026-11-07T12:10:00Z',freshness:'recorded' as const}));
  const stocks=positions.filter(p=>p.assetClass==='stocks').reduce((sum,p)=>sum+p.baseValue,0),gold=positions.filter(p=>p.assetClass==='gold-silver').reduce((sum,p)=>sum+p.baseValue,0);
  return {currency:'USD',generatedAt:instant,total,positions,totalValue:stocks+gold,totalCost:900*total,valueCoverage:total,costCoverage:total,allocation:[{assetClass:'stocks',amount:stocks,count:Math.ceil(total/2)},{assetClass:'gold-silver',amount:gold,count:Math.floor(total/2)}]};
 }
@@ -67,7 +67,7 @@ test('portfolio synchronizes changes and clears all private values immediately o
 });
 for(const language of ['ar','en','fr'])test(`twelve investments ${language} fit together without pagination at TV sizes`,async({page},testInfo)=>{
  const data=fixture(1000,12);
- data.positions.forEach((position,index)=>{position.name=index%2?'Advanced Micro Devices Inc.':'???? ???';position.symbol=index%2?'AMD':null;position.assetClass=index%2?'stocks':'gold-silver';position.source='Yahoo Finance';});
+ data.positions.forEach((position,index)=>{position.name=index%2?'Advanced Micro Devices Inc.':'ليرة فضة';position.symbol=index%2?'AMD':null;position.assetClass=index%2?'stocks':'gold-silver';position.source='Yahoo Finance';});
  // An unpriced record is still an investment and must remain visible.
  data.positions[11].baseValue=null;data.positions[11].value=null;data.positions[11].baseCost=null;
  data.totalValue=data.positions.reduce((sum,position)=>sum+(position.baseValue??0),0);data.valueCoverage=11;data.costCoverage=11;data.totalCost=9900;
@@ -95,7 +95,7 @@ for(const language of ['ar','en','fr'])test(`twelve investments ${language} fit 
 
 test('every asset class has an icon and missing company artwork keeps a visible symbol',async({page})=>{
  const data=fixture(1000,10);
- const assets=[['stocks','AMD','Advanced Micro Devices Inc.'],['gold-silver',null,'???? ???'],['gold-silver','XAU/KWD','????? ???'],['real-estate',null,'Property'],['funds',null,'Fund'],['bonds',null,'Bond'],['commodities',null,'Oil or Gas'],['overview',null,'Investment'],['stocks',null,'Unknown company'],['crypto','BTC','Bitcoin']];
+ const assets=[['stocks','AMD','Advanced Micro Devices Inc.'],['gold-silver',null,'ليرة فضة'],['gold-silver','XAU/KWD','سبيكة ذهب'],['real-estate',null,'Property'],['funds',null,'Fund'],['bonds',null,'Bond'],['commodities',null,'Oil or Gas'],['overview',null,'Investment'],['stocks',null,'Unknown company'],['crypto','BTC','Bitcoin']];
  data.positions.forEach((position,index)=>{[position.assetClass,position.symbol,position.name]=assets[index] as [string,string|null,string];});
  await page.route('**/api/tv/portfolio**',r=>r.fulfill({json:data}));
  await page.setViewportSize({width:1920,height:1080});await open(page,'en');

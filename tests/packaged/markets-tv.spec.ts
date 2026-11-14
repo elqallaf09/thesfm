@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 function snapshot(asOf = Date.parse(fixtureNow)): TvSnapshot {
   const quote = (index: number): TvQuote => ({
-    symbol: `QA${index}`, name: `Test instrument ${index}`, nameAr: `???? ???????? ${index}`,
+    symbol: `QA${index}`, name: `Test instrument ${index}`, nameAr: `أداة الاختبار ${index}`,
     price: 338.32 + index, currency: 'USD', changePercent: -1.83,
     source: 'Verified test source', observedAt, receivedAt: observedAt,
     status: 'closed', exchange: 'NASDAQ', country: 'US', changeBasis: 'session',
@@ -237,8 +237,8 @@ test('wall-clock ticks do not render the dashboard and quote freshness remains s
 test('full Arabic news, isolated quote evidence and legacy-compatible colors', async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await openTv(page, 'ar');
-  const title = '????? ???? ???? ??????? ???? ???? ?????? ?? ?????? ??????? ???????? ??? ??????? ???????? ??? ????? ???? ??????? ?? ?? ????? ?????? ?? ?????';
-  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'full', title, source: '???? ????????', publishedAt: '2026-11-03T08:30:00Z', url: 'https://example.com/story' }] } }));
+  const title = 'عنوان خبري طويل لاختبار ظهور النص كاملاً في العمود الجانبي وإمكانية فتح تفاصيله بالريموت دون إخفاء بقية الكلمات أو قص السطر الأخير من الخبر';
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'full', title, source: 'مصدر الاختبار', publishedAt: '2026-11-03T08:30:00Z', url: 'https://example.com/story' }] } }));
   await page.reload();
   await expect(page.locator('.tv-scene-headlines button > span')).toHaveText(title);
   expect(await page.locator('.tv-scene-headlines button > span').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
@@ -275,7 +275,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   await expect(create).toBeEnabled();
   state = 'valid';
   await create.click();
-  await expect(page.locator('.tv-pair-code')).toHaveText('ABCD - EF12 - 3456');
+  await expect(page.locator('.tv-pair-code')).toHaveText('ABCD — EF12 — 3456');
   await page.clock.runFor(5100);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe('b'.repeat(64));
@@ -285,7 +285,7 @@ test('strips use index points and hide unpriced instruments until the provider r
   await page.clock.setSystemTime(new Date('2026-11-03T09:00:00Z'));
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', displayMode: 'strips', marketIds: ['US'], groups: ['us'], autoHideControls: false })));
-  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: '??????? ?????????', labelEn: 'US', labelFr: 'US', count: 24 }] } }));
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US', labelFr: 'US', count: 24 }] } }));
   let price: number | null = 5961.2;
   let observed = '2026-11-03T09:00:00Z';
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { ...snapshot(), summary: undefined, directoryTotal: 24,
@@ -294,12 +294,12 @@ test('strips use index points and hide unpriced instruments until the provider r
     retryAt: price ? undefined : '2026-11-03T09:05:00Z' } }));
   await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
   const strip = page.locator('[data-market="US"]');
-  await expect(strip.locator('.tv-strip-price').first()).toContainText('5,961.20 ????');
+  await expect(strip.locator('.tv-strip-price').first()).toContainText('5,961.20 نقطة');
   await expect(strip.locator('.tv-strip-evidence').first()).toHaveAttribute('dir', 'rtl');
   await expect(strip.locator('.tv-strip-evidence time').first()).toHaveText('12:00');
   await page.clock.runFor(2000);
   price = 5962.2; observed = '2026-11-03T09:00:02Z';
-  await page.getByRole('button', { name: '?????', exact: true }).click();
+  await page.getByRole('button', { name: 'تحديث', exact: true }).click();
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveCSS('background-color', 'rgb(216, 238, 231)');
   price = null;
