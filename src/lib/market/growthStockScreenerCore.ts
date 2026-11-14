@@ -1,3 +1,5 @@
+import { uniqueSymbolListings } from './screenerPagination';
+
 export type GrowthScreenPeriod = {
   year: number;
   period: `Q${1 | 2 | 3 | 4}`;
@@ -7,6 +9,8 @@ export type GrowthUniverseRow = {
   symbol: string;
   name: string;
   exchange: string | null;
+  primaryExchange?: string | null;
+  requestedExchange?: string | null;
   sector: string | null;
   industry: string | null;
   country: string | null;
@@ -101,12 +105,15 @@ export function normalizeGrowthUniverseRows(rows: Array<Record<string, unknown>>
 
   for (const row of rows) {
     const symbol = normalizeSymbol(row.symbol ?? row.ticker);
-    if (!symbol || bySymbol.has(symbol)) continue;
+    const key = JSON.stringify([String(row.exchangeShortName ?? row.exchange ?? '').trim().toUpperCase(), symbol]);
+    if (!symbol || bySymbol.has(key)) continue;
     const name = String(row.companyName ?? row.name ?? symbol).trim() || symbol;
-    bySymbol.set(symbol, {
+    bySymbol.set(key, {
       symbol,
       name,
       exchange: String(row.exchangeShortName ?? row.exchange ?? '').trim() || null,
+      primaryExchange: String(row.primaryExchange ?? '').trim() || null,
+      requestedExchange: String(row.requestedExchange ?? '').trim() || null,
       sector: String(row.sector ?? '').trim() || null,
       industry: String(row.industry ?? '').trim() || null,
       country: String(row.country ?? '').trim() || null,
@@ -156,7 +163,9 @@ export function selectGrowthCandidates(
   const growthBySymbol = new Map(statementRows.map(row => [row.symbol, row]));
   const candidates: GrowthScreenCandidate[] = [];
 
+  const uniqueSymbols = uniqueSymbolListings(universeRows);
   for (const company of universeRows) {
+    if (!uniqueSymbols.has(company.symbol)) continue;
     const growth = growthBySymbol.get(company.symbol);
     if (!growth || growth.revenueGrowth === null) continue;
     const revenueGrowth = growth.revenueGrowth;

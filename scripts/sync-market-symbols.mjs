@@ -1,3 +1,4 @@
+import { syncMarketSymbols } from './lib/market-symbol-sync.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -165,6 +166,7 @@ async function fetchDfmRows() {
       ? String(nextLink).replace('http://assets.dfm.ae/api/default', 'https://api2.dfm.ae/web/sf/v1')
       : '';
   }
+  if (url) throw new Error('dfm_pagination_incomplete');
   return rows;
 }
 
@@ -176,25 +178,7 @@ async function upsertSupabase(records) {
     return;
   }
 
-  const endpoint = `${supabaseUrl.replace(/\/$/, '')}/rest/v1/market_symbols?on_conflict=exchange,symbol`;
-  const chunkSize = 500;
-  for (let index = 0; index < records.length; index += chunkSize) {
-    const chunk = records.slice(index, index + chunkSize);
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        apikey: serviceRoleKey,
-        authorization: `Bearer ${serviceRoleKey}`,
-        'content-type': 'application/json',
-        prefer: 'resolution=merge-duplicates',
-      },
-      body: JSON.stringify(chunk),
-    });
-    if (!response.ok) {
-      throw new Error(`Supabase upsert failed with HTTP ${response.status}: ${await response.text()}`);
-    }
-    console.log(`Upserted ${Math.min(index + chunk.length, records.length)}/${records.length}`);
-  }
+  console.log(await syncMarketSymbols(records, { url: supabaseUrl, serviceRoleKey }));
 }
 
 async function writeJson(fileName, records) {

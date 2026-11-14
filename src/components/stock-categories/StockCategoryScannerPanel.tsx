@@ -436,7 +436,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
           <div className={styles.empty}>{copy.noData}</div>
         ) : (
           <div className={styles.grid}>
-            {pageRows.map(item => <ScannerCard key={item.symbol} item={item} copy={copy} lang={lang} locale={locale} reported={fundamentals.data[item.symbol]} />)}
+            {pageRows.map(item => <ScannerCard key={`${item.exchange ?? "unknown"}:${item.symbol}`} item={item} copy={copy} lang={lang} locale={locale} reported={fundamentals.data[item.symbol]} />)}
           </div>
         )}
 

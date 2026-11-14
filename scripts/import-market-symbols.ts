@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { syncMarketSymbols } from './lib/market-symbol-sync.mjs';
 import { createReadStream } from 'fs';
 import { readFile } from 'fs/promises';
 import readline from 'readline';
@@ -6,6 +6,8 @@ import readline from 'readline';
 type MarketSymbolCsvRow = {
   symbol: string;
   provider_symbol?: string;
+  primary_exchange?: string | null;
+  requested_exchange?: string | null;
   name: string;
   asset_type?: string;
   exchange?: string;
@@ -60,6 +62,8 @@ function normalizeRow(headers: string[], cells: string[]): MarketSymbolCsvRow | 
 
   return {
     symbol,
+    primary_exchange: row.primary_exchange?.trim() || row.primaryExchange?.trim() || null,
+    requested_exchange: row.requested_exchange?.trim() || row.requestedExchange?.trim() || null,
     provider_symbol: (row.provider_symbol || row.providerSymbol || symbol).trim().toUpperCase(),
     name,
     asset_type: normalizedType,
@@ -92,7 +96,8 @@ async function readCsv(filePath: string) {
       continue;
     }
     const row = normalizeRow(headers, cells);
-    if (row) rows.push(row);
+    if (!row) throw new Error('symbol_sync_invalid_csv_row');
+    rows.push(row);
   }
 
   return rows;
@@ -112,24 +117,8 @@ async function main() {
     throw new Error('Missing SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
   const rows = await readCsv(csvPath);
-  const chunkSize = 500;
-  let imported = 0;
-
-  for (let index = 0; index < rows.length; index += chunkSize) {
-    const chunk = rows.slice(index, index + chunkSize);
-    const { error } = await supabase
-      .from('market_symbols')
-      .upsert(chunk, { onConflict: 'exchange,symbol', ignoreDuplicates: false });
-
-    if (error) throw error;
-    imported += chunk.length;
-    console.log(`Imported ${imported}/${rows.length}`);
-  }
+  console.log(await syncMarketSymbols(rows, { url: supabaseUrl, serviceRoleKey }));
 }
 
 main().catch(error => {

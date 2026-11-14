@@ -200,6 +200,12 @@ jobs:
             echo ""
             echo "Applied all $count files in \`supabase/migrations/\` once, in order, against a genuinely empty Postgres 17 database. No second replay is performed — historical apply-once migration files are not required to be idempotent against an already-populated schema."
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify atomic market symbol synchronization
+        env:
+          PGPASSWORD: postgres
+          PGOPTIONS: '-c sfm.disposable_ci=1'
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/database/market-symbol-sync.sql
+
       - name: Validate TV pairing, token lifecycle and access isolation
         env:
           PGPASSWORD: postgres

@@ -1,4 +1,5 @@
 import 'server-only';
+import { collectScreenerPages, uniqueSymbolListings } from '@/lib/market/screenerPagination';
 import { unstable_cache } from 'next/cache';
 
 import { getStockCategoryConfig } from '@/lib/market/stockCategoryConfigs';
@@ -35,6 +36,8 @@ export type GrowthScreenerItem = {
   sector: string | null;
   industry: string | null;
   exchange: string | null;
+  primaryExchange?: string | null;
+  requestedExchange?: string | null;
   marketCap: number | null;
   volume?: number | null;
   beta?: number | null;
@@ -108,7 +111,7 @@ async function fetchFmpArray(endpoint: string, params: Record<string, string | n
 }
 
 async function fetchUsUniverse() {
-  const result = await Promise.all(US_EXCHANGES.map(exchange => fetchFmpArray('company-screener', {
+  const result = await Promise.all(US_EXCHANGES.map(exchange => collectScreenerPages(paging => fetchFmpArray('company-screener', {
     exchange,
     country: 'US',
     isEtf: false,
@@ -117,9 +120,9 @@ async function fetchUsUniverse() {
     marketCapMoreThan: GROWTH_SCREEN_CRITERIA.minimumMarketCap,
     priceMoreThan: GROWTH_SCREEN_CRITERIA.minimumPrice,
     volumeMoreThan: GROWTH_SCREEN_CRITERIA.minimumVolume,
-    limit: 10_000,
-  })));
-  return normalizeGrowthUniverseRows(result.flat());
+    ...paging,
+  }), { exchange })));
+  return normalizeGrowthUniverseRows(result.flatMap(group => group.rows.filter(row => row.exchange === row.requestedExchange)));
 }
 
 async function fetchRecentGrowthRows(periods: GrowthScreenPeriod[]) {
@@ -161,6 +164,8 @@ function mapCandidate(candidate: GrowthScreenCandidate, quote: TraderQuote | und
     sector: candidate.sector,
     industry: candidate.industry,
     exchange: candidate.exchange,
+    primaryExchange: candidate.primaryExchange ?? null,
+    requestedExchange: candidate.requestedExchange ?? null,
     marketCap: finite(quote?.marketCap) ?? candidate.marketCap,
     volume: finite(quote?.volume) ?? candidate.volume,
     beta: candidate.beta ?? null,
@@ -246,7 +251,8 @@ async function loadGrowthStocks(): Promise<GrowthScreenerResult> {
       includeNews: false,
     }).catch(() => []);
     const quoteBySymbol = new Map(quotes.map(quote => [quote.symbol.toUpperCase(), quote]));
-    const items = selected.map(candidate => mapCandidate(candidate, quoteBySymbol.get(candidate.symbol)));
+    const uniqueSymbols = uniqueSymbolListings(universe);
+    const items = selected.map(candidate => mapCandidate(candidate, uniqueSymbols.has(candidate.symbol) ? quoteBySymbol.get(candidate.symbol) : undefined));
 
     return {
       mode: 'fundamental_screener',

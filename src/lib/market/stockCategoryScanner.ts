@@ -1,4 +1,5 @@
 import 'server-only';
+import { collectScreenerPages, uniqueSymbolListings } from '@/lib/market/screenerPagination';
 
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { getStockCategoryConfig, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
@@ -37,6 +38,8 @@ export type StockCategoryScannerItem = {
   sector: string | null;
   industry: string | null;
   exchange: string | null;
+  primaryExchange?: string | null;
+  requestedExchange?: string | null;
   country: string | null;
   marketCap: number | null;
   volume: number | null;
@@ -81,6 +84,8 @@ type UniverseRow = {
   beta: number | null;
   volume: number | null;
   exchange: string | null;
+  primaryExchange?: string | null;
+  requestedExchange?: string | null;
   country: string | null;
   lastAnnualDividend: number | null;
 };
@@ -147,13 +152,14 @@ function normalizeUniverseRows(rows: Array<Record<string, unknown>>) {
 
   for (const row of rows) {
     const symbol = text(row.symbol).toUpperCase();
-    if (!validSymbol(symbol) || seen.has(symbol)) continue;
+    const key = JSON.stringify([text(row.exchangeShortName ?? row.exchange).toUpperCase(), symbol]);
+    if (!validSymbol(symbol) || seen.has(key)) continue;
     if (row.isEtf === true || row.isFund === true || row.isActivelyTrading === false) continue;
 
     const country = text(row.country || 'US') || 'US';
     if (country && !/^US$|United States/i.test(country)) continue;
 
-    seen.add(symbol);
+    seen.add(key);
     output.push({
       symbol,
       name: text(row.companyName ?? row.name) || symbol,
@@ -165,6 +171,8 @@ function normalizeUniverseRows(rows: Array<Record<string, unknown>>) {
       beta: finite(row.beta),
       volume: finite(row.volume),
       exchange: text(row.exchangeShortName ?? row.exchange) || null,
+      primaryExchange: text(row.primaryExchange) || null,
+      requestedExchange: text(row.requestedExchange) || null,
       country,
       lastAnnualDividend: finite(row.lastAnnualDividend ?? row.dividend),
     });
@@ -212,18 +220,18 @@ async function fetchFmpArray(
 
 async function fetchUsUniverse(forceRefresh: boolean) {
   if (universeRequest && Date.now() < universeExpiresAt && (!forceRefresh || universeExpiresAt === Infinity)) return universeRequest;
-  const request = Promise.allSettled(US_EXCHANGES.map(exchange => fetchFmpArray('company-screener', {
+  const request = Promise.allSettled(US_EXCHANGES.map(exchange => collectScreenerPages(paging => fetchFmpArray('company-screener', {
     exchange,
     country: 'US',
     isEtf: false,
     isFund: false,
     isActivelyTrading: true,
-    limit: 10_000,
-  }, forceRefresh))).then(groups => {
-    const rows = normalizeUniverseRows(groups.flatMap(group => group.status === 'fulfilled' ? group.value : []));
+    ...paging,
+  }, forceRefresh), { exchange }))).then(groups => {
+    const rows = normalizeUniverseRows(groups.flatMap(group => group.status === 'fulfilled' ? group.value.rows.filter(row => row.exchange === row.requestedExchange) : []));
     const missing = US_EXCHANGES.filter((_, index) => {
       const group = groups[index];
-      return group.status === 'rejected' || group.value.length === 0;
+      return group.status === 'rejected' || !group.value.rows.some(row => row.exchange === row.requestedExchange);
     });
     if (!rows.length) {
       const failed = groups.find(group => group.status === 'rejected');
@@ -320,7 +328,9 @@ function mapUniverseItem(
     ...(!available ? { unavailableReason: quote?.unavailableReason ?? 'price_unavailable' } : {}),
     sector: row.sector,
     industry: row.industry,
-    exchange: quote?.exchange ?? row.exchange,
+    exchange: row.exchange,
+    primaryExchange: row.primaryExchange ?? null,
+    requestedExchange: row.requestedExchange ?? null,
     country: row.country,
     marketCap: finite(quote?.marketCap) ?? row.marketCap,
     volume: finite(quote?.volume) ?? row.volume,
@@ -353,7 +363,8 @@ async function dynamicUsScanner(
     ? await fetchTraderQuotes(quoteCandidates.map(row => row.symbol), { includeHistory: false, includeNews: false }).catch(() => [])
     : [];
   const bySymbol = quoteMap(quotes);
-  const items = selected.map(row => mapUniverseItem(category, row, bySymbol.get(row.symbol)));
+  const uniqueSymbols = uniqueSymbolListings(universe);
+  const items = selected.map(row => mapUniverseItem(category, row, uniqueSymbols.has(row.symbol) ? bySymbol.get(row.symbol) : undefined));
 
   return {
     category,

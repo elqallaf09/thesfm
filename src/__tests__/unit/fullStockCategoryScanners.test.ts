@@ -27,7 +27,7 @@ describe('full stock-category scanners', () => {
     const source = read('src/lib/market/stockCategoryScanner.ts');
     expect(source).toContain("const US_EXCHANGES = ['NASDAQ', 'NYSE', 'AMEX'] as const");
     expect(source).toContain("fetchFmpArray('company-screener'");
-    expect(source).toContain('limit: 10_000');
+    expect(source).toContain('collectScreenerPages');
     expect(source).toContain("mode: 'dynamic_market_screener'");
     expect(source).toContain("return await shariaScanner");
     expect(source).toContain('screenGrowthStocks()');

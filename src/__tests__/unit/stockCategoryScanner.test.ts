@@ -15,7 +15,7 @@ afterEach(() => { vi.unstubAllEnvs(); });
 
 describe('category scanner provider resilience', () => {
   it('preserves real quote volume and company names instead of replacing them with the ticker', async () => {
-    mocks.fetch.mockResolvedValue(new Response(JSON.stringify([{ symbol: 'TEST', companyName: 'Test Energy', sector: 'Energy', price: 10, volume: 30 }])));
+    mocks.fetch.mockImplementation(async (url: URL) => new Response(JSON.stringify(Number(url.searchParams.get('page')) ? [] : [{ symbol: 'TEST', exchange: 'NASDAQ', companyName: 'Test Energy', sector: 'Energy', price: 10, volume: 30 }])));
     mocks.quotes.mockResolvedValue([{ symbol: 'TEST', name: 'TEST', price: 11, available: true, volume: 500, marketCap: 12000 }]);
     const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
     expect((await screenStockCategory('energy')).items[0]).toMatchObject({ name: 'Test Energy', volume: 500, marketCap: 12000 });
@@ -29,22 +29,22 @@ describe('category scanner provider resilience', () => {
   });
   it('shares a scan across simultaneous ticker and panel requests and keeps their limits', async () => {
     mocks.fetch.mockImplementation(async (url: URL) => new Response(JSON.stringify(
-      Array.from({ length: 30 }, (_, index) => ({ symbol: `${url.searchParams.get('exchange')}${index}`, companyName: `Energy ${index}`, sector: 'Energy', country: 'US', price: 10, marketCap: index + 1 })),
+      Number(url.searchParams.get('page')) ? [] : Array.from({ length: 30 }, (_, index) => ({ symbol: `${url.searchParams.get('exchange')}${index}`, exchange: url.searchParams.get('exchange'), companyName: `Energy ${index}`, sector: 'Energy', country: 'US', price: 10, marketCap: index + 1 })),
     ), { status: 200 }));
     const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
     const [ticker, panel] = await Promise.all([screenStockCategory('energy', { limit: 24 }), screenStockCategory('energy', { limit: 80 })]);
-    expect(mocks.fetch).toHaveBeenCalledTimes(3);
+    expect(mocks.fetch).toHaveBeenCalledTimes(6);
     expect(mocks.quotes).toHaveBeenCalledTimes(1);
     expect(ticker.returnedCount).toBe(24); expect(panel.returnedCount).toBe(80);
     expect(ticker.matchedCount).toBe(90); expect(panel.availableCount).toBe(80);
     await screenStockCategory('banking');
-    expect(mocks.fetch).toHaveBeenCalledTimes(3);
+    expect(mocks.fetch).toHaveBeenCalledTimes(6);
   });
 
   it('keeps successful exchanges when one provider request fails', async () => {
     mocks.fetch.mockImplementation(async (url: URL) => url.searchParams.get('exchange') === 'NYSE'
       ? new Response('', { status: 429 })
-      : new Response(JSON.stringify([{ symbol: url.searchParams.get('exchange'), sector: 'Energy', price: 25 }])));
+      : new Response(JSON.stringify(Number(url.searchParams.get('page')) ? [] : [{ symbol: url.searchParams.get('exchange'), exchange: url.searchParams.get('exchange'), sector: 'Energy', price: 25 }])));
     const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
     const result = await screenStockCategory('energy');
     expect(result.mode).toBe('dynamic_market_screener');
