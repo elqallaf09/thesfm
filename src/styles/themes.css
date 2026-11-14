@@ -1,5 +1,5 @@
 /*
- * The SFM semantic colour system — "Royal Indigo" identity.
+ * The SFM semantic colour system - "Royal Indigo" identity.
  *
  * This is the only browser palette source. Components consume intent-based
  * roles so light and dark mode can be designed independently without local
@@ -141,7 +141,7 @@
   --sidebar-footer-bg: linear-gradient(150deg, color-mix(in srgb, #FFFFFF 66%, transparent), color-mix(in srgb, #EAECFC 54%, transparent));
   --sidebar-active-indicator: #C7D2FE;
   /* Institutional navy dock (Variant A): the header is a solid navy bar in
-     BOTH themes — a persistent brand strip, not a translucent glass card —
+     BOTH themes - a persistent brand strip, not a translucent glass card -
      so its content needs theme-invariant light tokens instead of the normal
      --foreground family, which flips dark/light with the page theme. */
   --header-dock-bg: #0B1334;
@@ -159,7 +159,7 @@
      whichever item is active - now rendered as a slim underline rather than
      a filled surface, since the items sit flush on the navy dock rather
      than inside a separately-elevated track (Variant A has no track). */
-  /* Alpha mask, not a themed color — identical in both scopes, declared
+  /* Alpha mask, not a themed color - identical in both scopes, declared
      once here since gradient values are only permitted in this foundation
      file. Fades both rail edges to hint horizontal scrollability. */
   --workspace-switcher-rail-fade: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
@@ -174,7 +174,7 @@
   --workspace-switcher-icon: var(--header-dock-icon);
   --workspace-switcher-icon-hover: var(--header-dock-text);
   /* THE SFM's own teal brand accent (--accent), not the indigo --primary
-     used everywhere else in the app (buttons, links, focus rings) — this is
+     used everywhere else in the app (buttons, links, focus rings) - this is
      the header's one distinctive, unmistakably-branded moment. */
   --workspace-switcher-icon-active: var(--accent);
   --workspace-switcher-focus: var(--focus-ring);
@@ -508,7 +508,7 @@
   --sidebar-search-shadow: inset 0 1px 0 rgba(208, 226, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.32), 0 6px 16px rgba(0, 6, 22, 0.3);
   --sidebar-footer-bg: linear-gradient(150deg, rgba(25, 34, 86, 0.52), rgba(9, 16, 44, 0.7));
   --sidebar-active-indicator: #C7D2FE;
-  /* Institutional navy dock (Variant A) — see :root for the rationale.
+  /* Institutional navy dock (Variant A) - see :root for the rationale.
      Deliberately even deeper than the page's own navy background so the
      header still reads as a distinct strip in dark mode. */
   --header-dock-bg: #080D26;
@@ -521,7 +521,7 @@
   --header-dock-search-border: color-mix(in srgb, white 13%, transparent);
   --header-dock-control-divider: color-mix(in srgb, white 12%, transparent);
   --header-surface: var(--header-dock-bg);
-  /* Global workspace switcher — see :root for the sliding-indicator rationale. */
+  /* Global workspace switcher - see :root for the sliding-indicator rationale. */
   --workspace-switcher-bg: transparent;
   --workspace-switcher-border: transparent;
   --workspace-switcher-item-bg: transparent;
@@ -533,7 +533,7 @@
   --workspace-switcher-icon: var(--header-dock-icon);
   --workspace-switcher-icon-hover: var(--header-dock-text);
   /* THE SFM's own bright teal brand accent (--accent), not the indigo
-     --primary used everywhere else — see :root for the rationale. */
+     --primary used everywhere else - see :root for the rationale. */
   --workspace-switcher-icon-active: var(--accent);
   --workspace-switcher-focus: var(--focus-ring);
   --workspace-switcher-frame-shadow: none;
@@ -736,6 +736,10 @@
 /* One independently selectable TV palette for every mode and channel.
  * Static colors and shadows also support older television WebViews. */
 .tv-screen {
+  --tv-brand-tile: #fffefa;
+  --tv-brand-champagne: #b59a69;
+  --tv-art-opacity: .42;
+  --tv-card-shadow: 0 3px 10px #253b2d0a;
   --tv-up-surface: #1e393a;
   --tv-down-surface: #372d35;
   --tv-backdrop: #000b;
@@ -750,12 +754,12 @@
   --tv-news-line: var(--tv-line);
 }
 .tv-screen.tv-light {
-  --tv-bg: #eeeae2;
-  --tv-panel: #fffef9;
-  --tv-panel2: #e4e3db;
-  --tv-text: #18201e;
-  --tv-muted: #53625b;
-  --tv-line: #b5beb9;
+  --tv-bg: #f4f2eb;
+  --tv-panel: #fffefa;
+  --tv-panel2: #e5e9e0;
+  --tv-text: #1d3029;
+  --tv-muted: #4c6157;
+  --tv-line: #bdc7bb;
   --tv-up: #08734c;
   --tv-down: #b22839;
   --tv-up-surface: #d8eee7;
@@ -764,12 +768,14 @@
 }
 
 .tv-screen.tv-dark {
-  --tv-bg: #111517;
-  --tv-panel: #1a2023;
-  --tv-panel2: #232b2e;
+  --tv-art-opacity: .045;
+  --tv-card-shadow: 0 3px 10px #0002;
+  --tv-bg: #111a16;
+  --tv-panel: #18231e;
+  --tv-panel2: #213029;
   --tv-text: #f2f4ef;
-  --tv-muted: #b3bdbb;
-  --tv-line: #353e42;
+  --tv-muted: #bac5bd;
+  --tv-line: #3b4a41;
   --tv-accent: #f19150;
   --tv-up: #7ae2b5;
   --tv-down: #ff8b8c;

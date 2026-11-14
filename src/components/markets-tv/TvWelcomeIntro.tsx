@@ -1,11 +1,11 @@
 'use client';
-/* eslint-disable @next/next/no-img-element -- Official brand asset shared with offline TV clients. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import { tvOrigin } from '@/lib/markets-tv/client';
 import { TV_WELCOME_EVENT, welcomeText } from '@/lib/markets-tv/welcome';
 import { claimTvWelcome } from '@/lib/markets-tv/welcome-session';
 import './welcome.css';
+import { TvBrandMark } from './TvBrandMark';
 
 export default function TvWelcomeIntro({ language }: { language: TvLanguage }) {
   const [visible, setVisible] = useState(false), [revision, setRevision] = useState(0), [sound, setSound] = useState<'pending' | 'blocked' | 'playing' | 'unavailable'>('pending');
@@ -53,7 +53,7 @@ export default function TvWelcomeIntro({ language }: { language: TvLanguage }) {
   if (!visible) return null;
   const packaged = typeof window !== 'undefined' && tvOrigin() !== window.location.origin;
   return <div key={revision} className="sfm-startup" data-sound={sound} aria-label="THE SFM Markets TV">
-    <div className="sfm-startup-brand"><img src={packaged ? './markets-tv/sfm-logo.png' : '/brand/sfm-original-logo.png'} alt="THE SFM" width="160" height="160"/><strong>THE SFM</strong><span>MARKETS TV</span></div>
+    <div className="sfm-startup-brand"><TvBrandMark packaged={packaged}/><strong>THE SFM</strong><span>MARKETS TV</span></div>
     <div className="sfm-startup-actions">{sound !== 'playing' && sound !== 'unavailable' && <button onClick={event => { event.stopPropagation(); start(true); }}>{text.sound}</button>}{sound === 'unavailable' && <small role="status">{text.unavailable}</small>}<button onClick={finish}>{text.skip}</button></div>
   </div>;
 }

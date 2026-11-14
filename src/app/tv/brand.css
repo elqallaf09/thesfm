@@ -1,0 +1,40 @@
+/* The approved ivory/emerald broadcast identity. Artwork is decoration only;
+   market values always remain HTML on opaque, theme-aware surfaces. */
+.tv-screen {
+  position: relative;
+  isolation: isolate;
+}
+.tv-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url('/markets-tv/exchange-panorama.webp') center top / cover no-repeat;
+  opacity: var(--tv-art-opacity);
+}
+.tv-screen .tv-brand-mark {
+  background: var(--tv-brand-tile);
+  border-radius: var(--radius-control);
+  object-fit: contain;
+}
+.tv-screen .tv-unified-brand strong { font-weight: 700; letter-spacing: .08em; }
+.tv-screen .tv-unified-brand span { color: var(--tv-muted); }
+.tv-screen .tv-unified-clock { border-inline-start: 1px solid var(--tv-brand-champagne); padding-inline-start: .8em; }
+.tv-screen .tv-scene-tabs {
+  background: var(--tv-panel);
+  border: 1px solid var(--tv-line);
+  border-radius: var(--radius-panel);
+  padding: .16em;
+}
+.tv-screen :is(.tv-scene-summary,.tv-scene-table,.tv-scene-headlines,.tv-scene-movers,.tv-scene-health,.tv-hall-market-table,.tv-hall-sessions,.tv-portfolio-positions,.tv-portfolio-allocation,.tv-receiver-news) {
+  box-shadow: var(--tv-card-shadow);
+}
+.tv-screen :is(.tv-hall-market-table,.tv-hall-sessions,.tv-headline-band,.tv-quote-marquee) { border-radius: var(--radius-panel); }
+.tv-screen .tv-viewing-footer { border-top: 1px solid var(--tv-brand-champagne); }
+@media (max-width: 760px) {
+  .tv-screen::before { background-size: auto 100vh; }
+}
+@media (forced-colors: active) {
+  .tv-screen::before { display: none; }
+}

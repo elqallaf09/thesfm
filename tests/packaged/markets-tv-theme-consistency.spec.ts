@@ -1,18 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
 import { openAndroidTvPackage } from './packageHarness';
 
 // Deterministic browser fixtures only; product builds contain no sample prices.
 const items = Array.from({ length: 6 }, (_, i) => ({ symbol: `THEME${i}`, name: `Theme check ${i}`, nameAr: `Theme check ${i}`, currency: 'KWD', region: 'KW' }));
 const paletteKeys = ['bg', 'panel', 'panel2', 'text', 'muted', 'accent', 'up', 'down', 'up-surface', 'down-surface', 'news-background', 'news-text', 'news-muted'] as const;
 
-async function open(page: Page, theme: string, accent: string) {
+async function open(page: Page, theme: string, accent: string, fileBased = false) {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(({ theme, accent }) => {
     sessionStorage.setItem('sfm-tv-welcome-shown', '1');
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'en', theme, accent, displayMode: 'viewing', scene: 'overview', autoRotate: false }));
   }, { theme, accent });
   await page.route('**/api/**', route => route.fulfill({ status: 503, json: { code: 'QA_UNAVAILABLE' } }));
-  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'KW', group: 'gulf', labelAr: 'Kuwait', labelEn: 'Kuwait', labelFr: 'Koweït', count: 6, status: 'directory' }] } }));
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'KW', group: 'gulf', labelAr: 'Kuwait', labelEn: 'Kuwait', labelFr: 'Kowe�t', count: 6, status: 'directory' }] } }));
   await page.route('**/api/tv/instruments?*', route => route.fulfill({ json: { items, total: 6, directoryTotal: 6, page: 0, pageSize: 6 } }));
   await page.route('**/api/tv/snapshot?*', route => {
     const now = new Date().toISOString();
@@ -20,7 +22,8 @@ async function open(page: Page, theme: string, accent: string) {
     return route.fulfill({ json: { quotes, summary: quotes, group: 'global', total: 6, available: 6, generatedAt: now } });
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'theme-news', title: 'A complete financial news headline for contrast verification', source: 'Theme QA', publishedAt: new Date().toISOString(), url: 'https://example.com/news' }] } }));
-  await openAndroidTvPackage(page);
+  if (fileBased) await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  else await openAndroidTvPackage(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.evaluate(() => document.fonts.ready);
 }
@@ -48,8 +51,23 @@ function contrast(a: string, b: string) {
 }
 
 for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue', 'green', 'purple']) {
-  test(`TV ${theme}/${accent} colors remain coherent across modes, scenes and dialogs`, async ({ page }) => {
+  test(`TV ${theme}/${accent} colors remain coherent across modes, scenes and dialogs`, async ({ page }, testInfo) => {
     await open(page, theme, accent);
+    const mark = page.locator('.tv-unified-brand .tv-brand-mark');
+    await expect(mark).toHaveAttribute('src', './markets-tv/sfm-emerald-mark.webp');
+    await expect.poll(() => mark.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    const decoration = await page.locator('[data-tv-root]').evaluate(root => {
+      const style = getComputedStyle(root, '::before');
+      return { image: style.backgroundImage, pointerEvents: style.pointerEvents, position: style.position };
+    });
+    expect(decoration.image).toContain('exchange-panorama.webp');
+    expect(decoration.pointerEvents).toBe('none');
+    expect(decoration.position).toBe('absolute');
+    expect(await page.evaluate(url => new Promise<boolean>(resolve => {
+      const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false);
+      image.src = url;
+    }), decoration.image.slice(5, -2))).toBe(true);
+    if (accent === 'green') await page.screenshot({ path: testInfo.outputPath(`tv-brand-${theme}.png`) });
     const baseline = await palette(page);
     expect(baseline.scheme).toBe(theme);
     expect(baseline.background).toBe(baseline.colors.bg);
@@ -108,3 +126,13 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
     await page.keyboard.press('Escape');
   });
 }
+
+for (const theme of ['light', 'dark']) test(`TV ${theme} artwork loads from a file-based package`, async ({ page }) => {
+  await open(page, theme, 'green', true);
+  const loaded = await page.locator('[data-tv-root]').evaluate(root => new Promise<boolean>(resolve => {
+    const image = new Image(); image.onload = () => resolve(image.naturalWidth > 0); image.onerror = () => resolve(false);
+    image.src = getComputedStyle(root, '::before').backgroundImage.slice(5, -2);
+  }));
+  expect(loaded).toBe(true);
+  await expect.poll(() => page.locator('.tv-brand-mark').first().evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+});
