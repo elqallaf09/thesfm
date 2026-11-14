@@ -28,7 +28,7 @@
 .tv-scene-playback { display: flex; align-items: center; gap: .3em; color: var(--tv-muted); font-size: .75em; }
 .tv-screen .tv-scene-playback button { padding: .35em .5em; min-height: 2.2em; }
 .tv-scene-playback span { margin-inline: .4em; white-space: nowrap; }
-.tv-scene-summaries { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6em; flex: 0 0 auto; }
+.tv-scene-summaries { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc((100% - 1.8em) / 4), 1fr)); gap: .6em; flex: 0 0 auto; }
 .tv-screen .tv-scene-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; justify-content: stretch; gap: .3em .5em; text-align: start; min-width: 0; padding: .65em .8em; border-radius: var(--radius-panel); border-color: transparent; border-top: 2px solid var(--tv-line); }
 .tv-screen .tv-scene-summary[data-priced=true] { border-top-color: var(--tv-accent); }
 .tv-scene-summary-name { display: flex; align-items: center; justify-content: space-between; gap: .5em; grid-column: 1/-1; font-size: .88em; line-height: 1.3; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -143,6 +143,9 @@
 .tv-scene-notice { display: flex; justify-content: space-between; align-items: center; gap: .5em; padding: .3em .6em; border: 1px solid var(--tv-accent); color: var(--tv-accent); font-size: .7em; flex: 0 0 auto; }
 .tv-scene-notice button { padding: .2em .4em; }
 .tv-browse-viewing-button { color: var(--tv-accent); }
+@media (min-width: 761px) {
+  .tv-scene-rows[data-sparse=true] { grid-auto-rows: minmax(min-content, 5.5em); align-content: start; }
+}
 @media (max-width: 1400px) and (min-width: 761px) {
   .tv-viewing .tv-viewing-header .tv-header-actions button > span { display: none; }
   .tv-viewing .tv-viewing-header .tv-display-link > span { display: none; }
@@ -165,7 +168,7 @@
   .tv-scene-tabs { flex-wrap: wrap; }
   .tv-scene-tabs button { flex: 1 1 auto; }
   .tv-scene-playback { justify-content: center; }
-  .tv-scene-summaries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tv-scene-summaries { grid-template-columns: repeat(auto-fit, minmax(calc((100% - .6em) / 2), 1fr)); }
   .tv-scene-summary-value { font-size: 1.35em; overflow-wrap: anywhere; }
   .tv-scene-summary-value small { display: block; margin: 0; }
   .tv-screen .tv-scene-summary { padding: .65em; grid-template-columns: minmax(0, 1fr); }

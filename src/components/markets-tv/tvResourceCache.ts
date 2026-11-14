@@ -32,10 +32,10 @@ function publicSnapshotKey(path: string, token: string): string | null {
 export const isPublicTvSnapshot = (path: string) => publicSnapshotKey(path, '') !== null;
 
 const publicNewsPaths=new Set(['ar','en','fr'].flatMap(language=>
- [...TV_EXTRA_NEWS_CHANNELS,'technology','kuwait'].map(channel=>{
+ [`/api/tv/news?language=${language}`, ...[...TV_EXTRA_NEWS_CHANNELS,'technology','kuwait'].map(channel=>{
   const url=new URL(receiverNewsPath(channel as Parameters<typeof receiverNewsPath>[0],language as Parameters<typeof receiverNewsPath>[1]),'https://tv.invalid');
   url.searchParams.sort();return url.pathname+'?'+url.searchParams;
- })));
+ })]));
 export function isPublicTvNews(path:string) {
  if(!path.startsWith('/')||path.startsWith('//')||path.length>1024)return false;
  const url=new URL(path,'https://tv.invalid');url.searchParams.sort();

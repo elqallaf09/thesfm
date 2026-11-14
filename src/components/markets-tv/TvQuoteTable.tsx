@@ -3,11 +3,11 @@ import type { TvLanguage, TvMarket, TvQuote } from '@/lib/markets-tv/types';
 import type { TvInstrument } from '@/lib/markets-tv/selections';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
-import { tvSceneChange, tvSceneHasPrice, tvSceneQuoteUnit } from '@/lib/markets-tv/scene-display';
+import { tvSceneChange, tvSceneHasPrice, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
 
-export function TvQuoteTable({ items, quotes, markets = [], language, now, loading, select }: {
-  items: TvInstrument[]; quotes: TvQuote[]; markets?: TvMarket[]; language: TvLanguage; now: number; loading: boolean; select: (quote: TvQuote) => void;
+export function TvQuoteTable({ items, quotes, markets = [], language, now, loading, emptyReason, select }: {
+  items: TvInstrument[]; quotes: TvQuote[]; markets?: TvMarket[]; language: TvLanguage; now: number; loading: boolean; emptyReason?: 'error' | 'prices'; select: (quote: TvQuote) => void;
 }) {
   const bySymbol = new Map(quotes.map(quote => [quote.symbol, quote]));
   const pricedItems = items.filter(item => { const quote = bySymbol.get(item.symbol); return quote && tvSceneHasPrice(quote); });
@@ -25,6 +25,6 @@ export function TvQuoteTable({ items, quotes, markets = [], language, now, loadi
         <div role="cell">{quote ? <TvQuoteEvidence quote={quote} language={language} now={now}/> : <small className="tv-hall-muted">{loading ? tvText(language, 'loading') : hallText(language, 'unavailable')}</small>}</div>
       </div>;
     })}</div>
-    {!pricedItems.length && <p className="tv-hall-empty" role="status">{loading ? tvText(language, 'loading') : items.length ? hallText(language, 'pricesUnavailable') : hallText(language, 'noResults')}</p>}
+    {!pricedItems.length && <p className="tv-hall-empty" role="status">{loading ? tvText(language, 'loading') : emptyReason === 'error' ? tvText(language, 'error') : emptyReason === 'prices' ? tvSceneText(language, 'noScenePrices') : items.length ? hallText(language, 'pricesUnavailable') : hallText(language, 'noResults')}</p>}
   </div>;
 }

@@ -3,6 +3,8 @@ import { isPublicTvNews,TvResourceCache,TvResourceError } from '@/components/mar
 import { receiverNewsPath,TV_EXTRA_NEWS_CHANNELS } from '@/lib/markets-tv/newsReceiver';
 const options=()=>({signal:new AbortController().signal,ttlMs:180000});
 it('allowlists exact public channel/language requests and excludes private or tampered paths',()=>{
+ for(const language of ['ar','en','fr'])expect(isPublicTvNews(`/api/tv/news?language=${language}`)).toBe(true);
+ for(const path of ['/api/tv/news?language=ar&token=private','/api/tv/news?language=ar&ownerId=other','/api/tv/news?language=unknown'])expect(isPublicTvNews(path)).toBe(false);
  for(const language of ['ar','en','fr'] as const)for(const channel of [...TV_EXTRA_NEWS_CHANNELS,'technology','kuwait'] as const)expect(isPublicTvNews(receiverNewsPath(channel,language))).toBe(true);
  for(const path of ['/api/tv/portfolio','/api/tv/device','/api/tv/pair','/api/europe-news?lang=ar&limit=24&ownerId=other','//evil.example/api/europe-news?lang=ar&limit=24','/api/europe-news?lang=invalid&limit=24'])expect(isPublicTvNews(path)).toBe(false);
 });

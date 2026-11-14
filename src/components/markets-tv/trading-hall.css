@@ -1,7 +1,5 @@
 /* Trading hall: one TV viewport, explicit evidence, generous reading sizes. */
 .tv-screen.tv-hall-screen[data-accent] {
-  --control-font-size: 1em; --input-foreground: var(--tv-text); --input-background: var(--tv-panel); --input-border: var(--tv-line); --control-placeholder: var(--tv-muted); --input-focus-border: var(--tv-accent); --input-disabled-background: var(--tv-panel2); --input-disabled-foreground: var(--tv-muted);
-  --control-background: var(--tv-panel); --control-disabled: var(--tv-panel2); --foreground: var(--tv-text); --foreground-muted: var(--tv-muted); --foreground-subtle: var(--tv-muted); --border: var(--tv-line); --border-strong: var(--tv-line); --input: var(--tv-line); --primary: var(--tv-accent); --ring: var(--tv-accent); --focus-ring: var(--tv-accent); --focus-shadow: var(--tv-focus-shadow);
   background: var(--tv-bg); color: var(--tv-text); height: 100vh; height: 100dvh; min-height: 0;
   display: flex; flex-direction: column; padding: 1.6vh 2vw; gap: .45em; overflow: hidden;
   font-size: clamp(16px, min(1.35vw, 2.35vh), 44px); line-height: 1.4;

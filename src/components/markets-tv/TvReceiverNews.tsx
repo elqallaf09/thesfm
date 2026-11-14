@@ -7,6 +7,7 @@ import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
 import { TvHeadlines } from './TvSceneSidebar';
 import { TvNewsDesk } from './TvNewsDesk';
+import { TvNewsStatus } from './TvNewsStatus';
 import { requestTvResource } from './tvResourceCache';
 
 export function TvReceiverNews({ language, channel, now, revision, onStory, onRefresh, playing }: {
@@ -29,12 +30,13 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
   },[channel,language,news.data,news.error]);
   return <aside className="tv-receiver-news" aria-busy={news.loading}>
     {news.loading && !news.data ? <p role="status">{tvText(language, 'loading')}</p> : <>
-      {(news.error || feed.invalid) && <p role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></p>}
+      {(news.error || feed.invalid) && feed.stories.length > 0 && <p role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></p>}
       <p className="tv-receiver-notice">
         {tvText(language, 'available')}: {feed.updatedAt ? <time dateTime={feed.updatedAt}>{tvQuoteTime(feed.updatedAt, language, now)}</time> : '—'}
         {feed.partial && ` · ${receiverText(language, 'partial')}`}{feed.stored && ` · ${receiverText(language, 'stored')}`}
       </p>
-      {channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/>}
+      {!feed.stories.length && (news.error || feed.invalid) ? <div className="tv-headline-items"><TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/></div>
+        : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/>}
     </>}
   </aside>;
 }

@@ -6,6 +6,25 @@ import { tvRemoteCommand, type TvPlaybackCommand, type TvRemoteCommand } from '.
 type TvInputDevice = { registerKey: (name: string) => void; unregisterKey?: (name: string) => void };
 
 type ChannelCommand = Extract<TvRemoteCommand, { kind: 'channel' | 'channelNumber' }>;
+
+function revealVertically(focused: HTMLElement, root: HTMLElement | null) {
+  // A loaded quote can grow a strip after focus scrolled to it. Recheck its
+  // vertical viewport without disturbing the continuous horizontal ticker.
+  let panel = focused.parentElement;
+  while (panel && panel !== root) {
+    if (panel.scrollHeight > panel.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(panel).overflowY)) {
+      const box = panel.getBoundingClientRect(), target = focused.getBoundingClientRect();
+      const top = box.top + panel.clientTop, bottom = top + panel.clientHeight;
+      if (target.height <= panel.clientHeight) {
+        if (target.bottom > bottom + 1) panel.scrollTop += target.bottom - bottom;
+        else if (target.top < top - 1) panel.scrollTop -= top - target.top;
+      }
+      break;
+    }
+    panel = panel.parentElement;
+  }
+}
+
 export function useTvRemote(back: () => void, interact: () => void, modal: boolean, playback?: (command: TvPlaybackCommand) => void, channel?: (command: ChannelCommand) => void) {
   const actions = useRef({ back, interact, playback, channel });
   const hasPlayback = Boolean(playback);
@@ -45,7 +64,11 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
     // Price text updates leave the same DOM element focused. Restore only a
     // removed/hidden target, such as after an explicit scene or page change.
     const observer = new MutationObserver(() => {
-      if (!lastFocused || lastFocused.isConnected && items().includes(lastFocused)) return;
+      if (!lastFocused) return;
+      if (lastFocused.isConnected && items().includes(lastFocused)) {
+        if (document.activeElement === lastFocused) revealVertically(lastFocused, scope());
+        return;
+      }
       const focused = document.activeElement;
       if (focused && focused !== document.body && focused !== lastFocused && !scope()?.contains(focused)) return;
       const elements = items();
@@ -100,9 +123,25 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       }
       event.preventDefault();
       if (!focused || !elements.includes(focused)) { elements[0]?.focus(); return; }
-      const index = nearestTvTarget(focused.getBoundingClientRect(), elements.map(e => e.getBoundingClientRect()), command.direction);
+      // Finish a scrollable panel before jumping to a geometrically closer
+      // ticker/header outside it. At its edge, normal spatial navigation resumes.
+      const vertical = command.direction === 'ArrowUp' || command.direction === 'ArrowDown';
+      let panel = focused.parentElement;
+      let candidates = elements;
+      while (panel && panel !== scope()) {
+        const style = getComputedStyle(panel);
+        const scrollable = vertical ? panel.scrollHeight > panel.clientHeight + 1 && /auto|scroll/.test(style.overflowY)
+          : panel.scrollWidth > panel.clientWidth + 1 && /auto|scroll/.test(style.overflowX);
+        if (scrollable) {
+          const local = elements.filter(element => panel!.contains(element));
+          if (nearestTvTarget(focused.getBoundingClientRect(), local.map(element => element.getBoundingClientRect()), command.direction) >= 0) candidates = local;
+          break;
+        }
+        panel = panel.parentElement;
+      }
+      const index = nearestTvTarget(focused.getBoundingClientRect(), candidates.map(e => e.getBoundingClientRect()), command.direction);
       if (index >= 0) {
-        elements[index].focus(); elements[index].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+        candidates[index].focus(); candidates[index].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
       }
     }
     document.addEventListener('keydown', onKey);

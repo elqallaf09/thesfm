@@ -9,7 +9,12 @@ import './news-desk.css';
 
 export function TvNewsDesk({ news, language, now, playing, onStory }: { news: TvNews[]; language: TvLanguage; now: number; playing: boolean; onStory: (story: TvNews) => void }) {
   const [size, setSize] = useState(6), [focused, setFocused] = useState(false);
-  useEffect(() => { const media = window.matchMedia('(max-height: 650px)'); const update = () => setSize(media.matches ? 3 : 6); update(); media.addListener(update); return () => media.removeListener(update); }, []);
+  useEffect(() => {
+    const compact = window.matchMedia('(max-height: 650px)'), medium = window.matchMedia('(max-height: 800px)');
+    const update = () => setSize(compact.matches ? 3 : medium.matches ? 4 : 6);
+    update(); compact.addListener(update); medium.addListener(update);
+    return () => { compact.removeListener(update); medium.removeListener(update); };
+  }, []);
   const pages = Math.max(1, Math.ceil(news.length / size));
   const { current, move } = useTvBroadcastPage(pages, playing && !focused, news.map(story => story.id).join('|'));
   const batch = news.slice(current * size, (current + 1) * size);
