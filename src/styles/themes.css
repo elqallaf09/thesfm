@@ -736,10 +736,6 @@
 /* One independently selectable TV palette for every mode and channel.
  * Static colors and shadows also support older television WebViews. */
 .tv-screen {
-  --tv-brand-tile: #fffefa;
-  --tv-brand-champagne: #b59a69;
-  --tv-art-opacity: .42;
-  --tv-card-shadow: 0 3px 10px #253b2d0a;
   --tv-up-surface: #1e393a;
   --tv-down-surface: #372d35;
   --tv-backdrop: #000b;
@@ -768,8 +764,6 @@
 }
 
 .tv-screen.tv-dark {
-  --tv-art-opacity: .045;
-  --tv-card-shadow: 0 3px 10px #0002;
   --tv-bg: #111a16;
   --tv-panel: #18231e;
   --tv-panel2: #213029;

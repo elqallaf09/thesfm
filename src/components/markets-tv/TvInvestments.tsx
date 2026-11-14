@@ -1,18 +1,35 @@
 'use client';
 import '@/app/tv/portfolio.css';
 import { useEffect, useState } from 'react';
-import { RefreshCw, ShieldCheck, WalletCards } from 'lucide-react';
+import { Building2, ChartPie, Coins, Landmark, Layers3, Package, RefreshCw, ShieldCheck, WalletCards } from 'lucide-react';
 import type { TvLanguage } from '@/lib/markets-tv/types';
-import type { TvPortfolioSnapshot } from '@/lib/markets-tv/portfolio';
+import type { TvPortfolioPosition, TvPortfolioSnapshot } from '@/lib/markets-tv/portfolio';
+import { metalFromSymbol } from '@/lib/metalVisuals';
 import { portfolioText, type PortfolioTextKey } from '@/lib/markets-tv/portfolioCopy';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage } from './useTvBroadcastPage';
+import { TvAssetIcon } from './TvAssetIcon';
 
 const CLASSES = ['stocks', 'real-estate', 'gold-silver', 'crypto', 'funds', 'bonds', 'commodities', 'overview'] as const;
 const CURRENCIES = ['KWD', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'QAR', 'BHD', 'OMR', 'JPY'];
 const formats = new Map<string, Intl.NumberFormat>();
+function InvestmentIcon({ position }: { position: TvPortfolioPosition }) {
+  const symbol = position.symbol?.trim().toUpperCase() || '';
+  if (position.assetClass === 'stocks' || position.assetClass === 'crypto') {
+    return <TvAssetIcon quote={{ symbol, name: position.name, exchange: null }} group={position.assetClass === 'crypto' ? 'crypto' : 'world'}/>;
+  }
+  if (position.assetClass === 'gold-silver' || position.assetClass === 'commodities') {
+    // Only classify physical holdings by metal name; a stock called Gold keeps its company identity.
+    const name = position.name.normalize('NFKC').replace(/[\u064b-\u065f\u0670]/g, '');
+    const metal = metalFromSymbol(symbol, 'commodity') || (/\bsilver\b|\bargent\b|??[??]/i.test(name) ? 'silver' : /\bgold\b|???/i.test(name) || (position.assetClass === 'gold-silver' && /\bor\b/i.test(name)) ? 'gold' : null);
+    if (metal === 'gold' || metal === 'silver') return <TvAssetIcon quote={{ symbol: metal === 'gold' ? 'XAUUSD' : 'XAGUSD', name: position.name, exchange: null }} group="commodities"/>;
+    if (symbol) return <TvAssetIcon quote={{ symbol, name: position.name, exchange: null }} group="commodities"/>;
+  }
+  const Icon = position.assetClass === 'real-estate' ? Building2 : position.assetClass === 'funds' ? ChartPie : position.assetClass === 'bonds' ? Landmark : position.assetClass === 'gold-silver' ? Coins : position.assetClass === 'commodities' ? Package : Layers3;
+  return <span className="tv-asset-icon" aria-hidden="true" data-kind={position.assetClass}><Icon/></span>;
+}
 function money(value: number | null, currency: string) {
   if (value === null || !Number.isFinite(value)) return '-';
   if (!formats.has(currency)) formats.set(currency, new Intl.NumberFormat('en-US', { minimumFractionDigits: ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2, maximumFractionDigits: ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2 }));
@@ -51,7 +68,7 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
             {!data.total ? <div className="tv-portfolio-gate"><WalletCards aria-hidden="true"/><h2>{text('empty')}</h2><p>{text('emptyHelp')}</p></div> : <div className="tv-portfolio-body">
               <section className="tv-portfolio-positions" aria-label={text('positions')}><header className="tv-broadcast-heading"><h2>{text('positions')} <bdi>{positions.length}</bdi></h2></header>
                 <div key={assetClass} className="tv-portfolio-list">{positions.length ? positions.map(item => <article key={item.id} className="tv-portfolio-position" data-position={item.id} data-tv-focus-key={`position:${item.id}`} tabIndex={0}>
-                  <div className="tv-portfolio-identity"><h3>{item.name || item.symbol || '-'}</h3><p><bdi>{item.symbol}</bdi>{item.quantity !== null && <span>{text('quantity')} <bdi>{new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(item.quantity)}</bdi></span>}</p></div>
+                  <div className="tv-portfolio-identity"><InvestmentIcon position={item}/><div className="tv-portfolio-identity-text"><h3>{item.name || item.symbol || '-'}</h3><p><bdi>{item.symbol}</bdi>{item.quantity !== null && <span>{text('quantity')} <bdi>{new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(item.quantity)}</bdi></span>}</p></div></div>
                   <div className="tv-portfolio-amount"><small>{text('value')}</small><strong dir="ltr">{money(item.baseValue ?? item.value?.amount ?? null, item.baseValue !== null ? data.currency : item.value?.currency || data.currency)}</strong><bdi>{item.baseValue !== null ? data.currency : item.value?.currency || '-'}</bdi></div>
                   <div className="tv-portfolio-amount"><small>{text('capital')}</small><strong dir="ltr">{money(item.baseCost, data.currency)}</strong><bdi>{item.baseCost !== null ? data.currency : '-'}</bdi></div>
                   <footer><span>{item.platform || text(item.assetClass as PortfolioTextKey)}</span><span data-freshness={item.freshness}>{item.source || text('manual')} � {item.valuedAt ? `${text(item.freshness)} � ${tvQuoteTime(item.valuedAt, language, now)}` : text('missing')}</span></footer>
