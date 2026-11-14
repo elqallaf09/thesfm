@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
+});
+
 // Synthetic prices are confined to this browser test. Production scenes use the
 // same source-backed snapshot API as the existing market browser.
 function snapshot(scene = 'overview', observedAt = new Date().toISOString(), missing = false) {
@@ -37,10 +41,10 @@ test('default viewing requests a bounded scene and keeps watchlist access privat
   page.on('request', request => { if (request.url().includes('/api/tv/')) requests.push(new URL(request.url())); });
   await page.goto('/tv');
   await expect(page.locator('.tv-viewing')).toBeVisible();
-  await expect(page.locator('.tv-index-hero')).toContainText('123.45');
-  await expect(page.locator('.tv-index-five article')).toHaveCount(5);
-  await expect(page.locator('.tv-index-five article').last()).toContainText('128.45');
-  await expect(page.locator('.tv-scene-ticker')).toHaveCount(1);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
+  await expect(page.locator('.tv-hall-price').first()).toContainText('123.45');
+  await expect(page.locator('.tv-hall-price').last()).toContainText('128.45');
+  await expect(page.locator('.tv-quote-marquee')).toHaveCount(1);
   expect(requests.filter(url => url.pathname === '/api/tv/catalog')).toHaveLength(0);
   expect(requests.filter(url => url.pathname === '/api/tv/snapshot').map(url => url.search)).toEqual(['?group=global&scene=overview&pageSize=10']);
 
@@ -94,7 +98,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
     await page.setViewportSize(viewport);
     const metrics = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
       last: document.querySelector('.tv-scene-row:last-child')?.getBoundingClientRect().bottom,
-      ticker: document.querySelector('.tv-scene-ticker')?.getBoundingClientRect().top }));
+      ticker: document.querySelector('.tv-quote-marquee')?.getBoundingClientRect().top }));
     expect(metrics.width).toBeLessThanOrEqual(viewport.width + 2);
     expect(metrics.height).toBeLessThanOrEqual(viewport.height + 2);
     expect(metrics.last).toBeLessThan(metrics.ticker!);
@@ -151,7 +155,7 @@ test('remote media keys control rotation and interaction postpones the next scen
   await fixtures(page);
   await page.clock.install();
   await page.goto('/tv');
-  await expect(page.locator('.tv-index-five article')).toHaveCount(5);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   const overview = page.locator('[data-tv-focus-key="scene:overview"]');
   await page.keyboard.press('MediaPlayPause');
   await expect(page.locator('[data-tv-focus-key="scene-playback"]')).toHaveAttribute('aria-pressed', 'true');
@@ -164,7 +168,7 @@ test('remote media keys control rotation and interaction postpones the next scen
   await expect(page.locator('[data-tv-focus-key="scene:gulf"]')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('MediaPlayPause');
   await expect(page.locator('[data-tv-focus-key="scene-playback"]')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('.tv-scene-ticker')).toHaveAttribute('data-paused', 'true');
+  await expect(page.locator('.tv-quote-marquee')).toHaveAttribute('data-paused', 'true');
 });
 
 test('a short linked watchlist keeps its prices visible and counts each instrument once', async ({ page }) => {
@@ -195,7 +199,7 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
   await expect(page.locator('.tv-scene-row')).toHaveCount(0);
 });
 
-test('an unavailable scene keeps instruments readable and explains the source cooldown', async ({ page }) => {
+test('an unavailable scene hides unpriced instruments and explains the source cooldown', async ({ page }) => {
   await fixtures(page, 'gulf');
   const retryAt = new Date(Date.now() + 300_000).toISOString();
   await page.route('**/api/tv/snapshot?*', route => {
@@ -205,25 +209,19 @@ test('an unavailable scene keeps instruments readable and explains the source co
   });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/tv');
-  await expect(page.locator('.tv-unavailable-card')).toHaveCount(6);
-  await expect(page.locator('.tv-unavailable-card button')).toHaveCount(6);
+  await expect(page.locator('.tv-scene-summary')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-row')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-no-data')).toBeVisible();
+  await page.locator('.tv-scene-health').evaluate(element => { (element as HTMLDetailsElement).open = true; });
   await expect(page.locator('.tv-data-notice')).toContainText('حد الطلبات لدى المصدر');
   await expect(page.locator('.tv-data-notice time')).toHaveAttribute('dateTime', retryAt);
   await expect(page.locator('[data-tv-focus-key="source-retry"]')).toBeDisabled();
-  await expect(page.locator('.tv-scene-no-data')).toHaveCount(0);
-  await expect(page.locator('.tv-scene-row .tv-scene-price')).toHaveCount(0);
-  await expect(page.locator('.tv-scene-summary .tv-status')).toHaveCount(4);
   for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
-    const lastRow = await page.locator('.tv-unavailable-card').last().boundingBox();
-    expect(lastRow!.y + lastRow!.height).toBeLessThan(viewport.height);
+    const empty = await page.locator('.tv-scene-no-data').boundingBox();
+    expect(empty!.y + empty!.height).toBeLessThan(viewport.height);
   }
-  const row = page.locator('.tv-scene-summary').first();
-  await row.click();
-  await expect(page.getByRole('dialog')).toContainText('حد الطلبات لدى المصدر');
-  await page.keyboard.press('Escape');
-  await expect(row).toBeFocused();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(392);
 });
