@@ -4,11 +4,16 @@ import { intelligenceResult, stubApis } from './fixtures/intelligence-analysis';
 test.use({ trace: 'off', screenshot: 'off', video: 'off' });
 test.setTimeout(90_000);
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
+});
+
 test('the TV asset QR link opens its analysis on a phone viewport', async ({ page }) => {
   await stubApis(page, 'partial');
   await page.addInitScript(() => localStorage.setItem('sfm_lang', 'ar'));
-  const quote = { symbol: '^GDAXI', name: 'DAX 40', nameAr: 'داكس 40', price: null, currency: null, changePercent: null,
-    source: null, observedAt: null, receivedAt: null, exchange: null, country: null, status: 'unavailable', issue: 'rate_limited' };
+  const observedAt = new Date().toISOString();
+  const quote = { symbol: '^GDAXI', name: 'DAX 40', nameAr: 'داكس 40', price: 18650.25, currency: null, changePercent: 0.8,
+    source: 'Synthetic browser fixture', observedAt, receivedAt: observedAt, exchange: null, country: null, status: 'available' };
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { group: 'global', scene: 'overview', summary: [quote],
     quotes: [], generatedAt: new Date().toISOString(), available: 0, total: 0, selectionTotal: 1 } }));
@@ -19,7 +24,7 @@ test('the TV asset QR link opens its analysis on a phone viewport', async ({ pag
     return route.fulfill({ status: 503, json: { ok: false, error: { code: 'PROVIDER_UNAVAILABLE' } } });
   });
   await page.goto('/tv');
-  await page.locator('.tv-index-value').first().click();
+  await page.locator('[data-tv-focus-key="hall:^GDAXI"]').click();
   const handoff = page.locator('.tv-phone-link a');
   await expect(handoff).toHaveAttribute('href', /\/ai-analyst\/analyze\/%5EGDAXI\?assetType=INDEX&autoRun=1&source=markets-tv$/);
   await page.setViewportSize({ width: 390, height: 844 });
