@@ -8,9 +8,10 @@ const now=Date.parse('2026-11-06T15:00:00Z');
 const quote=(symbol:string,change:number):TvQuote=>({symbol,name:symbol,nameAr:symbol,price:100,currency:'USD',changePercent:change,source:'QA',observedAt:new Date(now-60000).toISOString(),receivedAt:new Date(now).toISOString(),status:'delayed',delayType:'delayed',changeBasis:'session',exchange:null,country:null});
 describe('Obsidian market data',()=>{
   it('persists only supported accents and upgrades existing device settings',()=>{
-    expect(normalizeTvSettings({}).accent).toBe('champagne');
+    expect(normalizeTvSettings({})).toMatchObject({accent:'green',theme:'light'});
     for(const accent of ['champagne','blue','green','purple'])expect(normalizeTvSettings({accent}).accent).toBe(accent);
-    expect(normalizeTvSettings({accent:'url(external)'}).accent).toBe('champagne');
+    expect(normalizeTvSettings({accent:'url(external)',theme:'invalid'})).toMatchObject({accent:'green',theme:'light'});
+    for(const theme of ['light','dark'])expect(normalizeTvSettings({accent:'champagne',theme})).toMatchObject({accent:'champagne',theme});
   });
   it('uses unique comparable session changes, never stale/unknown/reference or rolling changes',()=>{
     const a=quote('A',-2),b=quote('B',1);

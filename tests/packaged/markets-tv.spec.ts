@@ -246,7 +246,7 @@ test('full Arabic news, isolated quote evidence and legacy-compatible colors', a
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence').first()).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence time').first()).toHaveAttribute('dir', 'ltr');
   await page.locator('[data-tv-focus-key="scene-heatmap"]').click();
-  expect(await page.locator('.tv-scene-heatmap > button').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(55, 45, 53)');
+  expect(await page.locator('.tv-scene-heatmap > button').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(244, 221, 224)');
   await page.locator('[data-tv-focus-key="settings"]').click();
   expect(await page.locator('.tv-modal-backdrop').evaluate(el => getComputedStyle(el).backdropFilter)).toBe('none');
 });
@@ -301,7 +301,7 @@ test('strips use index points and hide unpriced instruments until the provider r
   price = 5962.2; observed = '2026-11-03T09:00:02Z';
   await page.getByRole('button', { name: 'تحديث', exact: true }).click();
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
-  await expect(strip.locator('.tv-market-strip-item').first()).toHaveCSS('background-color', 'rgb(30, 57, 58)');
+  await expect(strip.locator('.tv-market-strip-item').first()).toHaveCSS('background-color', 'rgb(216, 238, 231)');
   price = null;
   await page.reload();
   await expect(strip).toHaveAttribute('data-empty', 'true');

@@ -17,11 +17,22 @@ await writeFile(resolve(out, 'configuration.js'), `window.SFM_TV_ORIGIN = ${JSON
 await mkdir(resolve(out, 'markets-tv'), { recursive: true });
 await copyFile(resolve(root, 'public/markets-tv/world-dotted-map.png'), resolve(out, 'markets-tv/world-dotted-map.png'));
 await copyFile(resolve(root, 'public/brand/sfm-original-logo.png'), resolve(out, 'markets-tv/sfm-logo.png'));
+// Static, locally bundled decoration and TV-specific brand asset. No remote artwork requests.
+for (const name of ['sfm-emerald-mark.webp', 'exchange-panorama.webp']) {
+  await copyFile(resolve(root, 'public/markets-tv', name), resolve(out, 'markets-tv', name));
+}
 await cp(resolve(root, 'public/markets-tv/assets'), resolve(out, 'markets-tv/assets'), { recursive: true });
 await cp(resolve(root, 'public/markets-tv/flags'), resolve(out, 'markets-tv/flags'), { recursive: true });
-// Keep the map bundled; packaged clients must not depend on an absolute file URL.
+// CSS files resolve relative to assets/. The IIFE's injected styles resolve
+// relative to index.html instead, including on file-based Tizen/webOS clients.
 for (const name of await readdir(resolve(out, 'assets'))) {
-  if (name.endsWith('.css')) { const file = resolve(out,'assets',name); const css = await readFile(file,'utf8'); await writeFile(file,css.replaceAll('/markets-tv/world-dotted-map.png','../markets-tv/world-dotted-map.png')); }
+  if (!name.endsWith('.css') && !name.endsWith('.js')) continue;
+  const file = resolve(out, 'assets', name), prefix = name.endsWith('.css') ? '..' : '.';
+  let content = await readFile(file, 'utf8');
+  for (const image of ['world-dotted-map.png', 'exchange-panorama.webp']) {
+    content = content.replaceAll(`/markets-tv/${image}`, `${prefix}/markets-tv/${image}`);
+  }
+  await writeFile(file, content);
 }
 for (const platform of ['tizen','webos']) {
   const target = resolve(root, `.tv-build/${platform}`);

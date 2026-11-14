@@ -6,6 +6,7 @@ import '../viewing.css';
 import '../sessions.css';
 import '../chrome.css';
 import '../obsidian.css';
+import '../brand.css';
 
 export const metadata: Metadata = { title: 'كل الأسهم | THE SFM TV', description: 'ابحث في دليل الأسهم والبورصات العالمي وتصفح الأسعار مع مصادرها على شاشة التلفزيون.' };
 export default function AllStocksPage() { return <MarketsTv initialAllStocks/>; }

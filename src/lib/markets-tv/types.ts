@@ -44,7 +44,7 @@ export const TV_GROUPS: TvGroup[] = ['world', 'global', 'us', 'gulf', 'europe', 
 export const TV_STRIP_SPEEDS = [36, 56, 80] as const;
 export const DEFAULT_TV_STRIP_SPEED = TV_STRIP_SPEEDS[1];
 export const DEFAULT_TV_SETTINGS: TvSettings = {
-  language: 'ar', accent: 'champagne', theme: 'dark', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
+  language: 'ar', accent: 'green', theme: 'light', layout: 'balanced', groups: ['world', 'global', 'gulf', 'us', 'europe', 'asia', 'crypto', 'forex', 'commodities'],
   displayMode: 'viewing', scene: 'overview',
   autoRotate: false, rotationSeconds: 30, ticker: true, sound: false, stripSpeed: DEFAULT_TV_STRIP_SPEED,
   stripDensity: 'balanced', pricedOnly: false, autoHideControls: false,
@@ -63,9 +63,9 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     }
   }
   return {
-    accent: row.accent === 'blue' || row.accent === 'green' || row.accent === 'purple' ? row.accent : 'champagne',
+    accent: row.accent === 'blue' || row.accent === 'green' || row.accent === 'purple' || row.accent === 'champagne' ? row.accent : DEFAULT_TV_SETTINGS.accent,
     language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
-    theme: row.theme === 'light' ? 'light' : 'dark', layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
+    theme: row.theme === 'dark' || row.theme === 'light' ? row.theme : DEFAULT_TV_SETTINGS.theme, layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
     displayMode: row.displayMode === 'browse' || row.displayMode === 'strips' ? row.displayMode : 'viewing',
     scene: row.scene === 'gulf' || row.scene === 'world' || row.scene === 'assets' || row.scene === 'watchlist' ? row.scene : 'overview',
     groups: groups.length ? groups : [...DEFAULT_TV_SETTINGS.groups], autoRotate: row.autoRotate === true,

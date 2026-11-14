@@ -6,6 +6,7 @@ import '../viewing.css';
 import '../sessions.css';
 import '../chrome.css';
 import '../obsidian.css';
+import '../brand.css';
 
 export const metadata: Metadata = {
   title: 'أشرطة الأسواق | The SFM Markets TV',

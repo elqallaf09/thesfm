@@ -10,4 +10,5 @@ import '@/app/tv/viewing.css';
 import '@/app/tv/sessions.css';
 import '@/app/tv/chrome.css';
 import '@/app/tv/obsidian.css';
+import '@/app/tv/brand.css';
 createRoot(document.getElementById('root')!).render(<MarketsTv />);

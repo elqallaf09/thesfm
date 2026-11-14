@@ -750,12 +750,12 @@
   --tv-news-line: var(--tv-line);
 }
 .tv-screen.tv-light {
-  --tv-bg: #eeeae2;
-  --tv-panel: #fffef9;
-  --tv-panel2: #e4e3db;
-  --tv-text: #18201e;
-  --tv-muted: #53625b;
-  --tv-line: #b5beb9;
+  --tv-bg: #f4f2eb;
+  --tv-panel: #fffefa;
+  --tv-panel2: #e5e9e0;
+  --tv-text: #1d3029;
+  --tv-muted: #4c6157;
+  --tv-line: #bdc7bb;
   --tv-up: #08734c;
   --tv-down: #b22839;
   --tv-up-surface: #d8eee7;
@@ -764,12 +764,12 @@
 }
 
 .tv-screen.tv-dark {
-  --tv-bg: #111517;
-  --tv-panel: #1a2023;
-  --tv-panel2: #232b2e;
+  --tv-bg: #111a16;
+  --tv-panel: #18231e;
+  --tv-panel2: #213029;
   --tv-text: #f2f4ef;
-  --tv-muted: #b3bdbb;
-  --tv-line: #353e42;
+  --tv-muted: #bac5bd;
+  --tv-line: #3b4a41;
   --tv-accent: #f19150;
   --tv-up: #7ae2b5;
   --tv-down: #ff8b8c;
