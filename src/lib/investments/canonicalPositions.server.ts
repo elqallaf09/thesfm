@@ -73,9 +73,9 @@ export async function loadCanonicalInvestmentPositions(userId: string) {
   const admin = createServerSupabaseAdmin();
   if (!admin) throw new Error('INVESTMENT_CANONICAL_SERVER_NOT_CONFIGURED');
 
-  const { data, error } = await admin
+  const { data, error, count } = await admin
     .from('investment_positions')
-    .select(CANONICAL_POSITION_SELECT)
+    .select(CANONICAL_POSITION_SELECT, { count: 'exact' })
     .eq('user_id', userId)
     .eq('migration_state', 'VERIFIED')
     .order('created_at', { ascending: false, nullsFirst: false })
@@ -84,6 +84,13 @@ export async function loadCanonicalInvestmentPositions(userId: string) {
   if (error) throw error;
 
   const rows = (data ?? []) as unknown as CanonicalInvestmentPositionRow[];
+  // The Data API can impose a lower cap than our requested limit. Also reject
+  // count drift between the readiness scan and this value read. Never compute
+  // a portfolio total or concentration from a silently truncated subset.
+  if (typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0 ||
+      count !== rows.length || count !== readiness.verifiedCount) {
+    throw new Error('INVESTMENT_CANONICAL_SCAN_INCOMPLETE');
+  }
   return {
     readiness,
     positions: rows.map(toCanonicalInvestmentPosition),

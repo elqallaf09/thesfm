@@ -13,12 +13,20 @@ import styles from './AiAnalystWorkspace.module.css';
 
 type LatestAssetResponse = { ok?: boolean; result?: { asset?: { name: string; displaySymbol: string; assetType: IntelligenceAssetType } } };
 type ChatApiResponse = { ok?: boolean; text?: string; error?: { code?: string }; correlationId?: string };
+type ChatProps = { symbol?: string; assetType?: IntelligenceAssetType };
 
-export function AiAnalystChat({ symbol, assetType }: { symbol?: string; assetType?: IntelligenceAssetType }) {
+export function AiAnalystChat(props: ChatProps) {
+  const { user, isGuest } = useAuth();
+  // Personal risk responses must never survive sign-out or an account switch.
+  const owner = !isGuest && user?.id ? user.id : 'signed-out';
+  return <AccountScopedChat key={owner} {...props} />;
+}
+
+function AccountScopedChat({ symbol, assetType }: ChatProps) {
   const { lang, dir } = useLanguage();
   const locale = aiAnalystLocale(lang);
   const copy = AI_ANALYST_COPY[locale].chat;
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, session } = useAuth();
   const canChat = Boolean(user) && !isGuest;
 
   const [resolvedAsset, setResolvedAsset] = useState<WelcomeAssetSummary | null>(null);
@@ -70,7 +78,7 @@ export function AiAnalystChat({ symbol, assetType }: { symbol?: string; assetTyp
       const response = await fetch('/api/intelligence/chat', {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        headers: { 'content-type': 'application/json', accept: 'application/json', ...(session?.access_token ? { authorization: `Bearer ${session.access_token}` } : {}) },
         body: JSON.stringify({
           domain: symbol ? 'market' : 'finance',
           messages: nextMessages,

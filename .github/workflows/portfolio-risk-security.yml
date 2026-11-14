@@ -1,0 +1,117 @@
+name: Portfolio risk source isolation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/portfolio-risk/**'
+      - 'src/lib/investments/canonical*'
+      - 'src/components/investments/PortfolioRisk*'
+      - 'src/components/investments/portfolioRisk*'
+      - 'src/__tests__/fixtures/portfolioRiskHistory.ts'
+      - 'src/__tests__/unit/portfolioRisk*'
+      - 'src/app/api/portfolio/risk/**'
+      - 'supabase/migrations/**'
+      - 'tests/database/portfolio-risk*.sql'
+      - 'tests/portfolio-risk-browser/**'
+      - '.github/scripts/bootstrap-supabase-stubs.sql'
+      - '.github/workflows/portfolio-risk-security.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-isolation:
+    name: Portfolio risk / PostgreSQL account isolation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGDATABASE: postgres
+      PGPASSWORD: postgres
+      PGOPTIONS: '-c sfm.disposable_ci=1'
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+      - name: Bootstrap disposable Supabase stand-ins
+        run: psql -v ON_ERROR_STOP=1 -f .github/scripts/bootstrap-supabase-stubs.sql
+      - name: Apply full migration chain once
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Prove portfolio source ownership and MFA isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/database/portfolio-risk-security.sql
+      - name: Prove historical approval markers cannot be forged by account clients
+        run: psql -v ON_ERROR_STOP=1 -f tests/database/portfolio-risk-history-security.sql
+      - name: Record scope of evidence
+        shell: bash
+        run: |
+          {
+            echo '### Portfolio risk source isolation'
+            echo 'Passed real PostgreSQL RLS checks with two synthetic owners after the full migration chain.'
+            echo 'Covered positions, valuations, transactions, approved history/calendar evidence, cross-owner access, anonymous access, MFA and revocation.'
+            echo 'Authenticated clients cannot INSERT or UPDATE approval markers. Fixtures and auth stand-ins rolled back.'
+            echo 'No production or Preview credentials were used. This is not a live browser login or proof of historical source completeness.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  history-contract:
+    name: Portfolio risk / Historical source contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit --pretty false
+      - run: pnpm exec vitest run src/lib/portfolio-risk src/__tests__/unit/portfolioRiskHistoryConnection.test.ts src/__tests__/unit/portfolioRiskHistoricalPresentation.test.tsx
+      - run: node scripts/check-visual-system.mjs
+      - run: pnpm check:maintainability
+
+  history-browser:
+    name: Portfolio risk / Isolated browser account switching
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install isolated Chromium test runtime
+        run: bash .github/scripts/install-playwright-browsers.sh chromium
+      - name: Test real component with synthetic auth and HTTP responses
+        run: pnpm exec playwright test --config tests/portfolio-risk-browser/playwright.config.ts
+      - name: Preserve synthetic-only failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: portfolio-risk-isolated-browser
+          path: test-results/portfolio-risk-history/
