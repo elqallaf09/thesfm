@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   mark: { width: 30, height: 30, marginHorizontal: 4 }, title: { flex: 1, fontSize: 15, fontWeight: '700' },
   control: { minWidth: 48, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderRadius: 8 },
   controlText: { fontSize: 14, fontWeight: '600' }, controlGlyph: { fontSize: 25, fontWeight: '500' }, content: { flex: 1 },
-  cover: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 18 },
+  cover: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 18 },
   heroMark: { width: 96, height: 96 }, heading: { fontSize: 22, fontWeight: '700', textAlign: 'center' },
   detail: { fontSize: 16, lineHeight: 24, textAlign: 'center', maxWidth: 360 },
   retry: { minHeight: 48, minWidth: 160, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, borderWidth: 1, borderRadius: 12 },
