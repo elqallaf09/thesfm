@@ -15,6 +15,8 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { quotes: items.map(item => ({ ...item, price: 10, changePercent: 1, source: 'Browser test source', observedAt: now, receivedAt: now, status: 'delayed', exchange: 'US' })), total: 6, available: 6, generatedAt: now } }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.goto('/tv/all-stocks');
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
+  await expect(page.locator('.tv-mode-browse')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar')).toHaveCount(0);
   await page.keyboard.press('Shift');
@@ -23,13 +25,20 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await page.locator('.tv-screen').evaluate(root => root.setAttribute('data-navigation-marker', 'original'));
   await page.locator('.tv-mode-viewing').click();
   await expect(page).toHaveURL(/\/tv$/);
+  // pushState changes the URL before React commits the mode. The row count is
+  // shared by viewing and browse, so require the destination mode as well.
+  await expect(page.locator('.tv-mode-viewing')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.tv-hall-content')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.locator('.tv-mode-browse').click();
   await expect(page).toHaveURL(/\/tv\/all-stocks$/);
+  await expect(page.locator('.tv-mode-browse')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   await page.locator('.tv-mode-strips').click();
   await expect(page).toHaveURL(/\/tv\/strips$/);
+  await expect(page.locator('.tv-mode-strips')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.tv-strips-only')).toBeVisible();
   await page.goBack();
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
