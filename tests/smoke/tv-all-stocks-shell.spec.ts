@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-test.use({ storageState: { cookies: [], origins: [] } });
+// Keep fresh anonymous contexts while inheriting the selected configuration's
+// deployment-only Preview protection state. An empty override drops that cookie.
 
 test('TV stock directory occupies the web viewport and keeps its own controls in a light application theme', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
