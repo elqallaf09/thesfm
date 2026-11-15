@@ -28,7 +28,7 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   // pushState changes the URL before React commits the mode. The row count is
   // shared by viewing and browse, so require the destination mode as well.
   await expect(page.locator('.tv-mode-viewing')).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('.tv-hall-content')).toBeVisible();
+  await expect(page.locator('.tv-viewing .tv-hall-content')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.locator('.tv-mode-browse').click();
   await expect(page).toHaveURL(/\/tv\/all-stocks$/);
@@ -41,10 +41,16 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await expect(page.locator('.tv-mode-strips')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.tv-strips-only')).toBeVisible();
   await page.goBack();
+  await expect(page).toHaveURL(/\/tv\/all-stocks$/);
+  await expect(page.locator('.tv-mode-browse')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await page.goBack();
-  await expect(page.locator('.tv-hall-content')).toBeVisible();
+  await expect(page).toHaveURL(/\/tv$/);
+  await expect(page.locator('.tv-mode-viewing')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('.tv-viewing .tv-hall-content')).toBeVisible();
   await page.goForward();
+  await expect(page).toHaveURL(/\/tv\/all-stocks$/);
+  await expect(page.locator('.tv-mode-browse')).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   expect(documents).toEqual([]);
