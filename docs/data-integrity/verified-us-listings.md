@@ -79,3 +79,43 @@ row has been added yet; supported venue validation is not a coverage claim.
    quote rights, and complete market coverage are distinct acceptance criteria.
 
 Rollback: revert this application change; no data/schema changes need reversal.
+
+## Advisory freshness audit
+
+Run `node scripts/market-listings/audit-freshness.mjs` locally and
+`node --test scripts/market-listings/audit-freshness.test.mjs` for boundary tests.
+The weekly Wednesday 06:17 UTC/manual `Reviewed listings freshness (advisory)`
+workflow reports date-current, review-due within seven calendar days, expired,
+aged-out, and invalid-date rows in its job summary. Date-current is not a fresh
+verification of evidence or a promise that a row passes all runtime identity checks.
+Expiry is exclusive at midnight UTC; the 90-day first-trade window is inclusive.
+Aged-out rows take precedence over expired rows and do not need renewal.
+
+The audit makes no provider requests, uses no secrets, changes no registry data,
+and never renews evidence. Freshness warnings remain advisory, separate from
+required PR checks; malformed files or broken audit code can still fail its job.
+Scheduled runs start only after this workflow reaches the default branch. GitHub
+scheduling can be delayed, and warning annotations do not guarantee someone is
+notified or completes a review. Use the manual procedure above to review evidence
+before the deadline. The initial three records are due for attention December 9,
+2026 and expire December 16, 2026 unless genuinely reviewed again. This audit is
+not automatic listing discovery and grants no provider or quote-display rights.
+
+## Font-budget investigation (2026-11-16)
+
+The first PR build completed but the unchanged 380,000-byte font budget failed
+at approximately 387.3 KiB. Base `676c0591` and candidate `649fb691` have identical
+font declarations, lockfile and Next configuration. With Node 22.13.0 and Next
+16.4.3, isolated production font fixtures extracted from each exact revision
+emitted identical 31-file SHA-256 manifests (368,120 bytes) when replaying the
+same captured Google CSS and real WOFF2 bytes. This controlled font-only check
+is not a full application build or a reproduction of the failed runner's assets.
+The original CI run did not retain font identities, so its larger total cannot
+be attributed confidently to a particular font or to this feature.
+
+The performance guard now prints per-file sizes and SHA-256 identities when the
+font budget fails, allowing a subsequent failure to be diagnosed without
+relaxing the budget or removing languages/weights speculatively. No font family,
+weight, language subset, or performance threshold was changed. A fresh exact-head
+CI build remains required; diagnostics alone are not a claim that the regression
+has been fixed.
