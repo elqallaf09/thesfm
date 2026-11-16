@@ -39,9 +39,19 @@ function envInt(name: string, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.floor(raw)));
 }
 
-const SCANNER_CONCURRENCY = envInt('SCANNER_CONCURRENCY', 10, 1, 15);
-const SCANNER_TIME_BUDGET_MS = envInt('SCANNER_TIME_BUDGET_MS', 240_000, 30_000, 280_000);
-const SCANNER_MAX_SLICE_SIZE = envInt('SCANNER_MAX_SLICE_SIZE', 6000, 1, 50_000);
+// Cycle budget: the US universe is ~12.3k symbols and a run is cut short by the
+// time budget, not by the slice cap, so the full universe takes several runs.
+// At concurrency 10 / 240s a run cleared ~4.3k symbols, which with the old
+// 2-hourly cron meant three slices -- a six-hour round trip before a symbol was
+// looked at again. Concurrency 13 and a 270s budget clear ~6.3k, so two slices
+// close a cycle; paired with the hourly cron in vercel.json that is a ~2h cycle.
+// The slice cap has to sit above half the universe or it becomes the limiter and
+// forces a third run regardless of throughput. All three stay env-overridable so
+// the cycle can be slowed down without a deploy if the provider pushes back; the
+// circuit breaker and the 300s route maxDuration are the backstops.
+const SCANNER_CONCURRENCY = envInt('SCANNER_CONCURRENCY', 13, 1, 15);
+const SCANNER_TIME_BUDGET_MS = envInt('SCANNER_TIME_BUDGET_MS', 270_000, 30_000, 280_000);
+const SCANNER_MAX_SLICE_SIZE = envInt('SCANNER_MAX_SLICE_SIZE', 7000, 1, 50_000);
 const SCANNER_MAX_RETRIES = envInt('SCANNER_MAX_RETRIES', 2, 0, 5);
 const SCANNER_RETRY_BASE_DELAY_MS = envInt('SCANNER_RETRY_BASE_DELAY_MS', 300, 50, 5_000);
 const SCANNER_RETRY_MAX_DELAY_MS = envInt('SCANNER_RETRY_MAX_DELAY_MS', 4_000, 200, 15_000);
