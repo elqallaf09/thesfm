@@ -1,7 +1,7 @@
 import 'server-only';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
-export type SpecialQuote = TechStockPrice & { name?: string; currency?: string; assetType?: string };
+export type SpecialQuote = TechStockPrice & { name?: string; currency?: string; assetType?: string; exchange?: string };
 const cache = new Map<string, { quote: SpecialQuote; expires: number }>();
 const pending = new Map<string, Promise<SpecialQuote>>();
 
@@ -39,7 +39,7 @@ async function fetchQuote(symbol: string): Promise<SpecialQuote> {
         changePercent: change !== null && previous !== null && previous > 0 ? change / previous * 100 : null,
         asOf: time && time > 0 ? new Date(time * 1000).toISOString() : null,
         name: meta.longName || meta.shortName || symbol, currency: meta.currency,
-        assetType: meta.instrumentType,
+        assetType: meta.instrumentType, exchange: meta.exchangeName,
       };
     }
   } catch { /* Fall through to the configured provider within the same budget. */ }
