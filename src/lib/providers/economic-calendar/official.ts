@@ -106,7 +106,12 @@ export function parseBocSchedule(text: string, source: OfficialCalendarSource): 
 }
 
 export async function fetchOfficialCalendar(source: OfficialCalendarSource, force = false): Promise<EconomicCalendarEvent[]> {
-  const response = await fetch(source.url, { ...(force ? { cache: 'no-store' as const } : { next: { revalidate: 1800 } }), signal: AbortSignal.timeout(4000), headers: { accept: 'text/calendar,text/html;q=0.9' } });
+  // bls.gov answers 403 to a request that carries no User-Agent, which kept the
+  // BLS source permanently `failed` (not one successful update on record) and
+  // left the calendar without a single US CPI/jobs release while the remaining
+  // sources reported healthy. The identifying UA is the one the rest of the app
+  // already sends to third-party data publishers.
+  const response = await fetch(source.url, { ...(force ? { cache: 'no-store' as const } : { next: { revalidate: 1800 } }), signal: AbortSignal.timeout(4000), headers: { accept: 'text/calendar,text/html;q=0.9', 'user-agent': 'THE-SFM/1.0 (+https://www.the-sfm.com)' } });
   if (!response.ok) throw new Error(`http_${response.status}`);
   const text = await response.text();
   if (text.length > 2_000_000) throw new Error('calendar_too_large');

@@ -28,7 +28,9 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 function network() {
-  return vi.fn(async (input: string | URL | Request) => {
+  // The signature is declared wider than the implementation so `mock.calls`
+  // carries the request options each source was fetched with, not just its URL.
+  return vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(async (input) => {
     const url = String(input);
     if (url.includes('bea.gov')) return new Response(beaHtml);
     if (url.includes('bankofcanada')) return new Response(bocHtml);
@@ -75,6 +77,16 @@ describe('THE SFM multi-source discovery', () => {
     const second = await getEconomicCalendar(query);
     expect(second.data).toHaveLength(2);
     expect(fetch).toHaveBeenCalledTimes(4);
+  });
+  it('identifies itself to official publishers, which is what bls.gov answers 403 without', async () => {
+    const fetch = network(); vi.stubGlobal('fetch', fetch);
+    const { getEconomicCalendar } = await import('@/lib/providers/economic-calendar');
+    await getEconomicCalendar(query);
+    expect(fetch).toHaveBeenCalledTimes(4);
+    for (const [url, init] of fetch.mock.calls) {
+      const headers = init?.headers as Record<string, string> | undefined;
+      expect(headers?.['user-agent'], `missing user-agent for ${String(url)}`).toBe('THE-SFM/1.0 (+https://www.the-sfm.com)');
+    }
   });
   it('uses persistent source copies after process restart and labels failed refreshes stale', async () => {
     vi.stubGlobal('fetch', network());
