@@ -4,6 +4,7 @@ import { NextRequest } from 'next/server';
 const mocks = vi.hoisted(() => ({
   user: vi.fn(), usage: vi.fn(), rate: vi.fn(), resolve: vi.fn(), canonical: vi.fn(),
   grounding: vi.fn(), economicPrompt: vi.fn(),
+  writeUsage: vi.fn(),
 }));
 
 vi.mock('@/domain/economic-intelligence/advisors.server', () => ({ loadAdvisorGrounding: mocks.grounding }));
@@ -16,6 +17,10 @@ vi.mock('@/lib/server/aiUsage', () => ({
 vi.mock('@/lib/server/rateLimiter', () => ({ checkRateLimitWithMetadata: mocks.rate }));
 vi.mock('@/lib/market/symbolResolver', () => ({ resolveMarketSymbol: mocks.resolve }));
 vi.mock('@/services/intelligence/assetResolver', () => ({ resolveCanonicalIntelligenceAsset: mocks.canonical }));
+vi.mock('@/lib/server/openAiAdvisorUsage', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/server/openAiAdvisorUsage')>(),
+  writeOpenAiAdvisorUsage: mocks.writeUsage,
+}));
 
 import { POST, maxDuration } from '@/app/api/intelligence/chat/route';
 
@@ -23,6 +28,8 @@ const ENV_KEYS = [
   'SFM_AI_BASE_URL', 'SFM_AI_MODEL', 'SFM_AI_API_KEY', 'SFM_AI_FALLBACK_BASE_URL',
   'SFM_AI_FALLBACK_MODEL', 'SFM_AI_FALLBACK_API_KEY', 'SFM_AI_TIMEOUT_MS',
   'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'AI_GATEWAY_API_KEY', 'AI_GATEWAY_TOKEN',
+  'SFM_ADVISOR_PROVIDER', 'SFM_OPENAI_PILOT_USER_IDS', 'SFM_OPENAI_API_KEY',
+  'SFM_OPENAI_MODEL', 'SFM_OPENAI_ORGANIZATION', 'SFM_OPENAI_PROJECT',
 ];
 
 const fetchMock = vi.fn();
@@ -57,6 +64,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   mocks.user.mockResolvedValue({ id: 'test-user' });
   mocks.usage.mockResolvedValue({ allowed: true });
+  mocks.writeUsage.mockResolvedValue(true);
   mocks.rate.mockReturnValue({ allowed: true });
   mocks.resolve.mockResolvedValue({ ok: false });
   mocks.grounding.mockResolvedValue({ advisor: 'finance', facts: [] });
@@ -72,7 +80,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('intelligence chat on SFM Private AI only', () => {
+describe('intelligence chat preserves SFM Private AI by default', () => {
   it('rejects anonymous requests before private context, quota or provider calls', async () => {
     configureBoth(); mocks.user.mockResolvedValue(null);
     expect((await POST(request())).status).toBe(401);
@@ -241,5 +249,43 @@ describe('intelligence chat on SFM Private AI only', () => {
     mocks.canonical.mockResolvedValue({ canonicalSymbol: 'NVDA', displaySymbol: 'NVDA', name: 'NVIDIA', assetType: 'STOCK', quoteCurrency: 'USD', exchange: 'NASDAQ', market: 'US' });
     expect(await (await POST(request({ messages: [{ role: 'user', content: 'NVDA' }] }))).json()).toMatchObject({ domain: 'market', assetResolvedFromMessage: true, advisorGrounded: false });
     expect(mocks.grounding).not.toHaveBeenCalled();
+  });
+});
+
+describe('intelligence chat with explicit OpenAI pilot', () => {
+  beforeEach(() => {
+    vi.stubEnv('SFM_ADVISOR_PROVIDER', 'openai');
+    vi.stubEnv('SFM_OPENAI_PILOT_USER_IDS', 'test-user');
+    vi.stubEnv('SFM_OPENAI_API_KEY', 'pilot-key');
+    vi.stubEnv('SFM_OPENAI_MODEL', 'gpt-6.1-sol');
+    mocks.usage.mockResolvedValue({ allowed: true, tracking: { eventId: 'quota-event', userId: 'test-user', metadata: {} } });
+    fetchMock.mockResolvedValue(Response.json({
+      id: 'resp_test', status: 'completed', model: 'gpt-6.1-sol',
+      usage: { input_tokens: 20, output_tokens: 10, total_tokens: 30 },
+      output: [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Measured OpenAI reply' }] }],
+    }));
+  });
+
+  it('preserves authenticated owner grounding and writes the reserved event for a real provider result', async () => {
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ provider: 'openai', source: 'ai', advisorGrounded: true, text: 'Measured OpenAI reply' });
+    expect(mocks.grounding).toHaveBeenCalledWith({ userId: 'test-user', advisor: 'finance' });
+    expect(mocks.usage).toHaveBeenCalledWith(expect.objectContaining({ userId: 'test-user', feature: 'market_ai_insight' }));
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://api.openai.com/v1/responses');
+    expect(JSON.parse(String(init.body)).instructions).toContain('Owner-scoped grounding fixture.');
+    expect(mocks.writeUsage).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'quota-event', userId: 'test-user' }), expect.objectContaining({ outcome: 'success', usage: expect.objectContaining({ totalTokens: 30 }) }));
+  });
+
+  it('cannot bypass authentication or the existing allowance even when a paid provider is configured', async () => {
+    mocks.user.mockResolvedValueOnce(null);
+    expect((await POST(request())).status).toBe(401);
+    expect(mocks.grounding).not.toHaveBeenCalled();
+    expect(mocks.writeUsage).not.toHaveBeenCalled();
+    mocks.usage.mockResolvedValueOnce({ allowed: false });
+    expect((await POST(request())).status).toBe(429);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.writeUsage).not.toHaveBeenCalled();
   });
 });
