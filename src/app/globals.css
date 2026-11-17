@@ -6111,13 +6111,11 @@ body :is(
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+  /* TV broadcast motion resumes only after the viewer explicitly presses Play. */
+  *:not([data-tv-motion="play"]), *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }
 /* Shared provider health header and capability drawer. */

@@ -1,10 +1,11 @@
 'use client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { tvText } from '@/lib/markets-tv/i18n';
 import type { TvGroup, TvLanguage, TvQuote } from '@/lib/markets-tv/types';
 import { TvStripQuote } from './TvStripQuote';
 import { tvCardColumns, tvPagination } from '@/lib/markets-tv/pagination';
+import { TvMotionOverride } from './useTvPlayback';
 
 type Props = {
   quotes: TvQuote[]; group: TvGroup; language: TvLanguage; now: number; speed: number;
@@ -14,6 +15,7 @@ type Props = {
 
 // The browse footer holds on complete cards. The dedicated strip wall still scrolls continuously.
 export function TvBrowseStripPage({ quotes, group, language, now, speed, paused, hasNextBatch, sourceCooling, nextBatch, onQuote }: Props) {
+  const explicitPlay = useContext(TvMotionOverride);
   const grid = useRef<HTMLDivElement>(null);
   const [columns, setColumns] = useState(1), [page, setPage] = useState(0);
   useEffect(() => {
@@ -41,12 +43,12 @@ export function TvBrowseStripPage({ quotes, group, language, now, speed, paused,
     if (paused || (pages === 1 && (!hasNextBatch || sourceCooling))) return;
     const timer = window.setInterval(() => {
       const row = grid.current?.parentElement;
-      if (!row || document.hidden || row.contains(document.activeElement) || row.matches(':hover')
-        || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      if (!row || document.hidden || row.contains(document.activeElement) || row.matches(':hover') && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+        || !explicitPlay && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       advance(true);
     }, 360000 / speed);
     return () => window.clearInterval(timer);
-  }, [advance, pages, speed, paused, hasNextBatch, sourceCooling]);
+  }, [advance, pages, speed, paused, hasNextBatch, sourceCooling, explicitPlay]);
   return <>
     <div className="tv-browse-strip-page" ref={grid} style={{ gridTemplateColumns: `repeat(${count},minmax(0,1fr))` }} dir="ltr">
       {quotes.slice(index * count, (index + 1) * count).map(quote => <TvStripQuote key={`${quote.exchange}:${quote.symbol}`}

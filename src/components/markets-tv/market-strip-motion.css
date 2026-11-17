@@ -1,0 +1,18 @@
+/* Explicit playback overrides only the broadcast track, never other reduced
+   motion preferences. A focused quote remains stationary for remote selection. */
+.tv-market-strip-track[data-tv-motion=play] {
+  animation-name: tv-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.tv-market-strip-window[data-tv-motion=play] { overflow: hidden; }
+.tv-market-strip-window:focus-within { overflow-x: auto; }
+.tv-market-strip-window:focus-within .tv-market-strip-track {
+  animation-name: none;
+  transform: none;
+  will-change: auto;
+}
+@media (hover: none), (pointer: coarse) {
+  .tv-market-strip-window:hover .tv-market-strip-track { animation-play-state: inherit; }
+}

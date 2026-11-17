@@ -764,15 +764,22 @@
 }
 
 .tv-screen.tv-dark {
-  --tv-bg: #111a16;
-  --tv-panel: #18231e;
-  --tv-panel2: #213029;
-  --tv-text: #f2f4ef;
-  --tv-muted: #bac5bd;
-  --tv-line: #3b4a41;
+  --tv-bg: #071014;
+  --tv-panel: #101c23;
+  --tv-panel2: #162730;
+  --tv-text: #f2f7f6;
+  --tv-muted: #adc0c6;
+  --tv-line: #324852;
   --tv-accent: #f19150;
-  --tv-up: #7ae2b5;
-  --tv-down: #ff8b8c;
+  --tv-up: #70deb4;
+  --tv-down: #ff919b;
+  --tv-up-surface: #12392f;
+  --tv-down-surface: #3b232b;
+  --tv-row-alternate: #132129;
+  --tv-ticker-background: #0b171e;
+  --tv-selected-background: #183b37;
+  --tv-warning: #f1c477;
+  --tv-news-background: #12242b;
   color-scheme: dark;
 }
 .tv-screen[data-accent=blue] { --tv-accent: #81b4ee; }
