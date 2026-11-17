@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 
@@ -15,6 +16,13 @@ export const AI_USAGE_FEATURES = [
 ] as const;
 
 export type AiUsageFeature = typeof AI_USAGE_FEATURES[number];
+
+/** Internal ledger reference. Never accepted from an API request body. */
+export type AiUsageTracking = {
+  eventId: string;
+  userId: string;
+  metadata: Record<string, unknown>;
+};
 
 type AiUsageLimitRow = {
   feature: string;
@@ -41,6 +49,7 @@ export type AiUsageDecision = {
   untracked?: boolean;
   messageArabic?: string;
   messageEnglish?: string;
+  tracking?: AiUsageTracking;
 };
 
 type ConsumeAiUsageOptions = {
@@ -249,15 +258,18 @@ export async function consumeAiUsage(options: ConsumeAiUsageOptions): Promise<Ai
     return limitReachedDecision(feature, feature, specificLimit, featureUsed, usageDate, resetAt);
   }
 
+  const tracking: AiUsageTracking = {
+    eventId: randomUUID(),
+    userId: options.userId,
+    metadata: { ...(options.metadata ?? {}), consumedAt: new Date().toISOString() },
+  };
   const { error: insertError } = await admin.from('ai_usage_events').insert({
+    id: tracking.eventId,
     user_id: options.userId,
     feature,
     units,
     usage_date: usageDate,
-    metadata: {
-      ...(options.metadata ?? {}),
-      consumedAt: new Date().toISOString(),
-    },
+    metadata: tracking.metadata,
   });
 
   if (insertError) {
@@ -286,6 +298,7 @@ export async function consumeAiUsage(options: ConsumeAiUsageOptions): Promise<Ai
     remaining: Math.min(remainingTotal, remainingFeature),
     usageDate,
     resetAt,
+    tracking,
   };
 }
 

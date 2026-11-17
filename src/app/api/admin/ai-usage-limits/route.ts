@@ -1,6 +1,7 @@
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
 import { createAdminApiRoute } from '@/lib/server/adminApiRoute';
 import { AI_USAGE_FEATURES, isAiUsageFeature, type AiUsageFeature } from '@/lib/server/aiUsage';
+import { summarizeOpenAiAdvisorUsage } from '@/lib/server/openAiAdvisorUsage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -125,5 +126,6 @@ export const GET = createAdminApiRoute({
     usageDate: today,
     limits: limits ?? [],
     events: events ?? [],
+    openaiUsage: summarizeOpenAiAdvisorUsage(events ?? []),
   });
 });

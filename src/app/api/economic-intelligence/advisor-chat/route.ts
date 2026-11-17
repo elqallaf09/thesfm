@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { aiProviderConfigured, generateAssistantReply } from '@/lib/server/aiProvider';
+import { advisorProviderConfigured, generateAdvisorReply } from '@/lib/server/advisorProvider';
 import { z } from 'zod';
 import { advisorRequestSchema } from '@/domain/economic-intelligence/advisorCapabilities';
 import { loadCapabilityReport } from '@/domain/economic-intelligence/advisorCapabilities.server';
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: { code: 'GROUNDING_UNAVAILABLE' }, correlationId }, { status: 502, headers: NO_STORE });
   }
 
-  if (!aiProviderConfigured()) {
+  if (!advisorProviderConfigured(user.id)) {
     return NextResponse.json({
       ok: false,
       error: { code: 'AI_PROVIDER_NOT_CONFIGURED' },
@@ -114,7 +114,9 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
-  const generation = await generateAssistantReply({
+  const generation = await generateAdvisorReply({
+    userId: user.id,
+    tracking: usage.tracking,
     system: buildEconomicAdvisorPrompt(grounding, locale) + planContext,
     messages: messages.map(message => ({ role: message.role, content: message.content })),
     correlationId,

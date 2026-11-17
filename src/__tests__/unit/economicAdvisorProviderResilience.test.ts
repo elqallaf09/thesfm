@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   user: vi.fn(), rate: vi.fn(), usage: vi.fn(), grounding: vi.fn(), configured: vi.fn(), reply: vi.fn(), plan: vi.fn(),
 }));
 
-vi.mock('@/lib/server/aiProvider', () => ({ aiProviderConfigured: mocks.configured, generateAssistantReply: mocks.reply }));
+vi.mock('@/lib/server/advisorProvider', () => ({ advisorProviderConfigured: mocks.configured, generateAdvisorReply: mocks.reply }));
 vi.mock('@/lib/server/adminAccess', () => ({ getCurrentUserFromRequest: mocks.user }));
 vi.mock('@/lib/server/rateLimiter', () => ({ checkRateLimitWithMetadata: mocks.rate }));
 vi.mock('@/lib/server/aiUsage', () => ({ consumeAiUsage: mocks.usage, aiUsageLimitResponse: () => Response.json({ ok: false }, { status: 429 }) }));
