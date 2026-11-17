@@ -736,8 +736,8 @@
 /* One independently selectable TV palette for every mode and channel.
  * Static colors and shadows also support older television WebViews. */
 .tv-screen {
-  --tv-up-surface: #1e393a;
-  --tv-down-surface: #372d35;
+  --tv-up-surface: #12392f;
+  --tv-down-surface: #3b232b;
   --tv-backdrop: #000b;
   --tv-qr-background: #fff;
   --tv-toast-shadow: 0 15px 50px #0006;
@@ -764,15 +764,15 @@
 }
 
 .tv-screen.tv-dark {
-  --tv-bg: #111a16;
-  --tv-panel: #18231e;
-  --tv-panel2: #213029;
-  --tv-text: #f2f4ef;
-  --tv-muted: #bac5bd;
-  --tv-line: #3b4a41;
+  --tv-bg: #071014;
+  --tv-panel: #101c23;
+  --tv-panel2: #162730;
+  --tv-text: #f2f7f6;
+  --tv-muted: #adc0c6;
+  --tv-line: #324852;
   --tv-accent: #f19150;
-  --tv-up: #7ae2b5;
-  --tv-down: #ff8b8c;
+  --tv-up: #70deb4;
+  --tv-down: #ff919b;
   color-scheme: dark;
 }
 .tv-screen[data-accent=blue] { --tv-accent: #81b4ee; }
@@ -791,15 +791,3 @@
 
 .tv-screen { --tv-active-shadow: inset 0 -2px 0 var(--tv-accent); --tv-focus-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 5px var(--tv-accent); }
 .tv-screen { --tv-hero-background: radial-gradient(ellipse at 80% 0%, var(--tv-hero-tint), transparent 60%), var(--tv-panel); --tv-timeline-grid: repeating-linear-gradient(to right, var(--tv-line) 0 1px, transparent 1px 12.5%); }
-
-/* Keep host-site control and focus styles inside the selected TV theme. */
-.tv-screen[data-accent] {
-  --control-font-size: 1em;
-  --input-foreground: var(--tv-text); --input-background: var(--tv-panel); --input-border: var(--tv-line);
-  --control-placeholder: var(--tv-muted); --input-focus-border: var(--tv-accent);
-  --input-disabled-background: var(--tv-panel2); --input-disabled-foreground: var(--tv-muted);
-  --control-background: var(--tv-panel); --control-disabled: var(--tv-panel2);
-  --foreground: var(--tv-text); --foreground-muted: var(--tv-muted); --foreground-subtle: var(--tv-muted);
-  --border: var(--tv-line); --border-strong: var(--tv-line); --input: var(--tv-line);
-  --primary: var(--tv-accent); --ring: var(--tv-accent); --focus-ring: var(--tv-accent); --focus-shadow: var(--tv-focus-shadow);
-}

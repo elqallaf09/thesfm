@@ -183,9 +183,16 @@ test('strip movement respects reduced motion, and pause remains keyboard accessi
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(track).toHaveCSS('animation-name', 'none');
   const pause = page.locator('.tv-header-actions button[aria-pressed]').first();
+  await expect(pause).toHaveAttribute('aria-pressed', 'true');
   await pause.focus(); await page.keyboard.press('Enter');
   await expect(pause).toBeFocused();
+  await expect(pause).toHaveAttribute('aria-pressed', 'false');
+  await expect(track).toHaveCSS('animation-play-state', 'running');
+  const resumed = await track.evaluate(element => getComputedStyle(element).transform);
+  await expect.poll(() => track.evaluate(element => getComputedStyle(element).transform)).not.toBe(resumed);
+  await page.keyboard.press('Enter');
   await expect(pause).toHaveAttribute('aria-pressed', 'true');
+  await expect(track).toHaveCSS('animation-play-state', 'paused');
 });
 
 test('many market strips stay reachable by remote without scrolling the whole screen', async ({ page }) => {

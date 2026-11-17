@@ -201,13 +201,18 @@ for (const language of ['ar', 'en', 'fr'] as const) {
 test('wall-clock ticks do not render the dashboard and quote freshness remains scheduled', async ({ page }) => {
   await page.clock.setSystemTime(new Date('2026-11-03T09:59:58Z'));
   await page.addInitScript(() => {
-    type Fiber = { memoizedProps?: Record<string, unknown>; memoizedState?: unknown; child?: Fiber; sibling?: Fiber; return?: Fiber };
+    type Fiber = { type?: unknown; memoizedProps?: Record<string, unknown>; memoizedState?: unknown; child?: Fiber; sibling?: Fiber; return?: Fiber };
     const scope = window as typeof window & { tvRootRenders: number; tvCommits: number; __REACT_DEVTOOLS_GLOBAL_HOOK__: unknown };
     scope.tvRootRenders = 0; scope.tvCommits = 0;
     let previous: unknown;
     const find = (fiber?: Fiber): Fiber | undefined => {
       if (!fiber) return;
-      if (fiber.memoizedProps && 'data-tv-root' in fiber.memoizedProps) return fiber.return;
+      if (fiber.memoizedProps && 'data-tv-root' in fiber.memoizedProps) {
+        // Context providers can sit between the host root and its function owner.
+        let owner = fiber.return;
+        while (owner && typeof owner.type !== 'function') owner = owner.return;
+        return owner;
+      }
       return find(fiber.child) || find(fiber.sibling);
     };
     scope.__REACT_DEVTOOLS_GLOBAL_HOOK__ = { supportsFiber: true, inject: () => 1, onCommitFiberUnmount: () => {},

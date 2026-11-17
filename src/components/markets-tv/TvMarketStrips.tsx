@@ -1,8 +1,9 @@
 'use client';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TvBrowseStripPage } from './TvBrowseStripPage';
+import { TvMotionOverride } from './useTvPlayback';
 import { TvStripQuote } from './TvStripQuote';
 import { retainVisibleTvSnapshot } from './retainedSnapshot';
 import { ChevronRight, RefreshCw } from 'lucide-react';
@@ -13,8 +14,14 @@ import { tvSceneIssue, tvSceneText, tvStripSourceCooling } from '@/lib/markets-t
 
 type Props = { browse?: boolean; selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
 const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, browse = false, selections }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
+  const explicitPlay = useContext(TvMotionOverride);
   const root = useRef<HTMLDivElement>(null), track = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false), [page, setPage] = useState(0), [duration, setDuration] = useState(90), [paused, setPaused] = useState(false);
+  const [visible, setVisible] = useState(false), [page, setPage] = useState(0), [duration, setDuration] = useState(90), [hovered, setHovered] = useState(false), [focused, setFocused] = useState(false);
+  const paused = hovered || focused;
+  useEffect(() => {
+    const viewport = track.current?.parentElement;
+    if (!focused && !manualPause && viewport) viewport.scrollLeft = 0;
+  }, [explicitPlay, focused, manualPause]);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   useEffect(() => {
     if (!root.current) return;
@@ -76,9 +83,9 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
     {browse && displayed.length > 0 ? <TvBrowseStripPage key={page} quotes={displayed} group={market.group} language={language}
       now={now} onQuote={onQuote} speed={speed} paused={manualPause || !visible || resource.loading}
       hasNextBatch={pages > 1} sourceCooling={sourceCooling} nextBatch={next}/> : <>
-      <div className="tv-market-strip-window" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(Boolean(root.current?.contains(document.activeElement)))} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-        {displayed.length ? <div ref={track} className="tv-market-strip-track" onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
-          {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1}>
+      <div className="tv-market-strip-window" data-tv-motion={explicitPlay ? 'play' : undefined} onPointerEnter={event => { if (event.pointerType === 'mouse' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) setHovered(true); }} onPointerLeave={() => setHovered(false)} onFocus={() => setFocused(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
+        {displayed.length ? <div ref={track} className="tv-market-strip-track" data-tv-motion={explicitPlay ? 'play' : undefined} onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
+          {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1} inert={Boolean(copy) || undefined}>
             {displayed.map(q => <TvStripQuote key={`${q.exchange}:${q.symbol}`} quote={q} group={market.group} language={language} now={Math.floor(now / 15000) * 15000} duplicate={Boolean(copy)} onQuote={onQuote}/>)}
           </div>)}
         </div> : empty}

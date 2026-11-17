@@ -1,0 +1,29 @@
+/* Dark broadcast surfaces use the shared palette; light mode stays unchanged. */
+.tv-screen.tv-dark .tv-mode-switch .tv-display-link[aria-current=page],
+.tv-screen.tv-dark.tv-hall-screen .tv-scene-tabs button[aria-pressed=true] {
+  background: var(--tv-up-surface);
+  border-color: var(--tv-accent);
+}
+.tv-screen.tv-dark .tv-hall-columns {
+  color: var(--tv-text);
+  border-start-start-radius: var(--radius-panel);
+  border-start-end-radius: var(--radius-panel);
+}
+.tv-screen.tv-dark .tv-hall-row:nth-child(even),
+.tv-screen.tv-dark .tv-hall-row:focus-within {
+  background: var(--tv-panel2);
+}
+.tv-screen.tv-dark .tv-hall-table:last-child .tv-hall-row:last-child {
+  border-end-start-radius: var(--radius-panel);
+  border-end-end-radius: var(--radius-panel);
+}
+.tv-screen.tv-dark .tv-headline-label strong { color: var(--tv-news-accent); }
+.tv-screen.tv-dark .tv-quote-marquee,
+.tv-screen.tv-dark .tv-market-strip-window { background: var(--tv-bg); }
+.tv-screen.tv-dark .tv-strip-evidence,
+.tv-screen.tv-dark .tv-status:is([data-status=delayed], [data-status=reference]) {
+  color: var(--tv-muted);
+}
+.tv-screen.tv-dark .tv-status:is([data-status=stale], [data-status=unknown_time], [data-status=unknown_delay]) {
+  color: var(--tv-palette-champagne);
+}

@@ -9,8 +9,9 @@
 .tv-marquee-set small { font-size: .7em; color: var(--tv-muted); }
 .tv-quote-marquee [data-trend=up] { color: var(--tv-up); }
 .tv-quote-marquee [data-trend=down] { color: var(--tv-down); }
-.tv-quote-marquee[data-paused=true] .tv-marquee-track, .tv-marquee-viewport:hover .tv-marquee-track { animation-play-state: paused; }
+.tv-quote-marquee[data-paused=true] .tv-marquee-track { animation-play-state: paused; }
+@media (hover: hover) and (pointer: fine) { .tv-marquee-viewport:hover .tv-marquee-track { animation-play-state: paused; } }
 .tv-marquee-viewport:focus-within { overflow-x: auto; }
 .tv-marquee-viewport:focus-within .tv-marquee-track { animation: none; transform: none; will-change: auto; }
 @keyframes tv-quote-scroll { to { transform: translateX(calc(-1 * var(--ticker-distance))); } }
-@media (prefers-reduced-motion: reduce) { .tv-marquee-track { animation: none; will-change: auto; } .tv-marquee-viewport { overflow-x: auto; } .tv-marquee-set[aria-hidden=true] { display: none; } }
+@media (prefers-reduced-motion: reduce) { .tv-marquee-track:not([data-tv-motion=play]) { animation: none; will-change: auto; } .tv-quote-marquee:not([data-tv-motion=play]) .tv-marquee-viewport { overflow-x: auto; } .tv-quote-marquee:not([data-tv-motion=play]) .tv-marquee-set[aria-hidden=true] { display: none; } }
