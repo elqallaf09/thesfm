@@ -2,6 +2,11 @@
 
 THE SFM tracks paid AI usage per Supabase account so OpenAI / AI Gateway calls do not run without a daily cap.
 
+The optional [OpenAI advisor pilot](openai-advisor-pilot.md) records real
+provider usage in the existing event metadata. The admin GET response includes
+an `openaiUsage` summary with observed tokens and explicit measurement gaps.
+Request allowances are not dollar caps or a promotional-credit balance.
+
 ## Tables
 
 - `ai_usage_limits`: optional per-user overrides.

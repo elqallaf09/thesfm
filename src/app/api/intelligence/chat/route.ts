@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import type { AnalysisRequest, CanonicalAssetIdentity } from '@/domain/intelligence/contracts';
-import { aiProviderConfigured, generateAssistantReply, type ChatMessage } from '@/lib/server/aiProvider';
+import type { ChatMessage } from '@/lib/server/aiProvider';
+import { advisorProviderConfigured, generateAdvisorReply } from '@/lib/server/advisorProvider';
 import { loadAdvisorGrounding } from '@/domain/economic-intelligence/advisors.server';
 import { intelligenceChatInputSchema } from '@/domain/intelligence/schemas';
 import { buildEconomicAdvisorPrompt } from '@/lib/ai-analyst/economicAdvisorPrompt';
@@ -26,8 +27,8 @@ import { resolveCanonicalIntelligenceAsset } from '@/services/intelligence/asset
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-// Two bounded provider paths leave room for verified identity, owner
-// grounding and quota storage. No third-party model-vendor credential is used.
+// Bounded provider requests leave room for verified identity, owner grounding
+// and quota storage. OpenAI is an explicit, owner-scoped advisor pilot.
 export const maxDuration = 60;
 
 type ChatLocale = 'ar' | 'en' | 'fr';
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
   const { domain, messages, asset: requestedAsset, locale, analysisId } = parsed.data;
   // Missing server configuration is not a user's AI usage. Check it before
   // external identity lookup and before consuming the account allowance.
-  if (!aiProviderConfigured()) {
+  if (!advisorProviderConfigured(user.id)) {
     return errorResponse(503, 'AI_PROVIDER_NOT_CONFIGURED', correlationId, unavailableResponse(locale));
   }
   const resolved = await resolveChatAsset({ requestedAsset, messages });
@@ -201,7 +202,7 @@ export async function POST(request: NextRequest) {
     locale,
   });
   const system = advisorPrompt ? `${baseSystemPrompt} ${advisorPrompt}` : baseSystemPrompt;
-  const generation = await generateAssistantReply({ system, messages, correlationId });
+  const generation = await generateAdvisorReply({ system, messages, correlationId, userId: user.id, tracking: usage.tracking });
 
   if (!generation) {
     return errorResponse(503, 'AI_PROVIDER_UNAVAILABLE', correlationId, unavailableResponse(locale));
