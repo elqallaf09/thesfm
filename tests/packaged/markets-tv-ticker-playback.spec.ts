@@ -68,6 +68,38 @@ test('remote quote focus holds the strip but playback focus does not',async({pag
   await expect(track).toHaveCSS('animation-play-state','running');
 });
 
+test('strips keep moving behind quote details and preserve explicit Pause through the overlay',async({page})=>{
+  await page.setViewportSize({width:1536,height:1009});
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await open(page,'en','strips');
+  const track=page.locator('.tv-market-strip-track'),playback=page.locator('.tv-header-actions button[aria-pressed]');
+  const quote=page.locator('.tv-market-strip-set[aria-hidden=false] .tv-market-strip-item').first(),dialog=page.getByRole('dialog');
+  await page.mouse.move(0,0);
+  await expectContinuousMovement(track);
+  await quote.focus(); await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+  // Selecting a quote holds its track only until remote focus enters details.
+  await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeFocused();
+  await expect(playback).toHaveAttribute('aria-pressed','false');
+  await expectContinuousMovement(track);
+  await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible();
+  await playback.focus(); await page.keyboard.press('Enter');
+  await expect(playback).toHaveAttribute('aria-pressed','true');
+  await expect(track).toHaveCSS('animation-play-state','paused');
+  await quote.focus(); await page.keyboard.press('Enter');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeFocused();
+  await expect(track).toHaveCSS('animation-name','tv-scroll');
+  await expect(track).toHaveCSS('animation-play-state','paused');
+  await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible();
+  await playback.focus();
+  await expect(playback).toHaveAttribute('aria-pressed','true');
+  await expect(track).toHaveCSS('animation-play-state','paused');
+  await page.keyboard.press('Enter');
+  await expect(playback).toHaveAttribute('aria-pressed','false');
+  await expectContinuousMovement(track);
+});
+
 for(const mode of ['viewing','browse','strips'] as const) test(`${mode} first Play restores continuous motion under the website reduced-motion guard`,async({page})=>{
   await page.setViewportSize({width:960,height:720});
   await page.emulateMedia({reducedMotion:'reduce'});
