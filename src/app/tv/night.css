@@ -1,77 +1,29 @@
-/* Dark broadcast surfaces share the central TV palette. The ivory daytime
-   presentation and every motion/focus preference keep their existing rules. */
-.tv-screen.tv-dark .tv-scene-tabs {
-  background: var(--tv-panel);
-}
-.tv-screen.tv-dark .tv-mode-switch {
-  background: var(--tv-bg);
-  border: 1px solid var(--tv-line);
-}
+/* Dark broadcast surfaces use the shared palette; light mode stays unchanged. */
 .tv-screen.tv-dark .tv-mode-switch .tv-display-link[aria-current=page],
 .tv-screen.tv-dark.tv-hall-screen .tv-scene-tabs button[aria-pressed=true] {
-  background: var(--tv-selected-background);
-  color: var(--tv-accent);
+  background: var(--tv-up-surface);
   border-color: var(--tv-accent);
 }
-
-/* Opaque, alternating rows keep small source labels separate from artwork. */
 .tv-screen.tv-dark .tv-hall-columns {
   color: var(--tv-text);
   border-start-start-radius: var(--radius-panel);
   border-start-end-radius: var(--radius-panel);
 }
-.tv-screen.tv-dark .tv-hall-row:nth-child(even) {
-  background: var(--tv-row-alternate);
+.tv-screen.tv-dark .tv-hall-row:nth-child(even),
+.tv-screen.tv-dark .tv-hall-row:focus-within {
+  background: var(--tv-panel2);
 }
 .tv-screen.tv-dark .tv-hall-table:last-child .tv-hall-row:last-child {
   border-end-start-radius: var(--radius-panel);
   border-end-end-radius: var(--radius-panel);
 }
-.tv-screen.tv-dark .tv-hall-row:focus-within {
-  background: var(--tv-panel2);
-}
-.tv-screen.tv-dark .tv-hall-sessions > header {
-  padding-bottom: .45em;
-  border-bottom: 1px solid var(--tv-line);
-}
-
-/* News and quote rails form distinct bands without tinting the price text. */
-.tv-screen.tv-dark .tv-headline-band {
-  border: 1px solid var(--tv-news-line);
-  border-inline-start: .3em solid var(--tv-news-accent);
-}
-.tv-screen.tv-dark .tv-headline-label strong {
-  color: var(--tv-news-accent);
-}
-.tv-screen.tv-dark .tv-headline-story > span {
-  font-weight: 500;
-}
+.tv-screen.tv-dark .tv-headline-label strong { color: var(--tv-news-accent); }
 .tv-screen.tv-dark .tv-quote-marquee,
-.tv-screen.tv-dark .tv-market-strip-window {
-  background: var(--tv-ticker-background);
-}
-.tv-screen.tv-dark .tv-quote-marquee .tv-marquee-toggle {
-  background: var(--tv-panel2);
-  color: var(--tv-accent);
-}
-.tv-screen.tv-dark .tv-market-strip-heading {
-  border-inline-end: 1px solid var(--tv-line);
-}
-
-/* Provider/time stay neutral; only stale or uncertain data asks for attention. */
+.tv-screen.tv-dark .tv-market-strip-window { background: var(--tv-bg); }
 .tv-screen.tv-dark .tv-strip-evidence,
 .tv-screen.tv-dark .tv-status:is([data-status=delayed], [data-status=reference]) {
   color: var(--tv-muted);
 }
 .tv-screen.tv-dark .tv-status:is([data-status=stale], [data-status=unknown_time], [data-status=unknown_delay]) {
-  color: var(--tv-warning);
-}
-.tv-screen.tv-dark .tv-hall-session[data-open=false] .tv-hall-countdown {
-  color: var(--tv-muted);
-}
-
-@media (hover: hover) {
-  .tv-screen.tv-dark .tv-hall-row:hover {
-    background: var(--tv-panel2);
-  }
+  color: var(--tv-palette-champagne);
 }

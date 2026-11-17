@@ -4,7 +4,6 @@ import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, t
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TvBrowseStripPage } from './TvBrowseStripPage';
 import { TvMotionOverride } from './useTvPlayback';
-import './market-strip-motion.css';
 import { TvStripQuote } from './TvStripQuote';
 import { retainVisibleTvSnapshot } from './retainedSnapshot';
 import { ChevronRight, RefreshCw } from 'lucide-react';
