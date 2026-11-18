@@ -28,13 +28,14 @@
 }
 .tv-screen .tv-unified-header.tv-labelled-header .tv-header-actions span {
   display: block;
+  font-size: inherit;
   white-space: normal;
   max-width: 10em;
   text-align: center;
 }
 .tv-screen .tv-labelled-header .tv-header-actions svg { width: 1.25em; height: 1.25em; flex-shrink: 0; }
 .tv-screen .tv-labelled-header .tv-header-actions :focus { outline-offset: -2px; }
-.tv-screen .tv-top-shortcuts { align-self: flex-start; font-size: .85em; }
+.tv-screen .tv-top-shortcuts { flex: 0 0 auto; align-self: flex-start; font-size: .85em; }
 .tv-screen .tv-viewing-footer { min-height: 1.8em; }
 .tv-screen .tv-viewing-footer button { gap: .35em; }
 @media (min-width: 761px) and (max-width: 1150px) {
@@ -42,7 +43,8 @@
   .tv-screen .tv-labelled-header .tv-header-actions { grid-column: 1 / -1; justify-content: space-between; width: 100%; }
   .tv-screen .tv-labelled-header .tv-header-actions button,
   .tv-screen .tv-labelled-header .tv-display-link { flex-direction: row; min-height: 2.6em; min-width: 0; padding-inline: .35em; }
-  .tv-screen .tv-labelled-header .tv-unified-brand img { width: 1.8em; height: 1.8em; }
+  .tv-screen .tv-labelled-header .tv-unified-brand img { width: 1.6em; height: 1.6em; }
+  .tv-screen .tv-labelled-header .tv-unified-brand .tv-intro-replay { min-height: 0; }
   .tv-screen .tv-labelled-header .tv-unified-brand > div { display: flex; align-items: center; gap: .6em; }
 }
 @media (max-width: 760px) {

@@ -16,12 +16,12 @@ export function TvSessionPicker({ sessions, selected, language, onChange, onDone
   const root = useRef<HTMLDivElement>(null), done = useRef<HTMLButtonElement>(null);
   const [search, setSearch] = useState(''), [area, setArea] = useState<TvSessionRegion | 'all'>('all');
   const [page, setPage] = useState(0), [focusedName, setFocusedName] = useState('');
-  const [layout, setLayout] = useState({ columns: 6, full: true });
+  const [layout, setLayout] = useState({ columns: 6, full: true, pageRows: 5 });
   const t = (key: Parameters<typeof sessionText>[1]) => sessionText(language, key);
   const countries = useMemo(() => new Intl.DisplayNames([language], { type: 'region' }), [language]);
   const query = clean(search.trim());
   const matches = sessions.filter(s => (area === 'all' || s.area === area) && clean([...s.names, s.region, s.id, countries.of(s.region) || ''].join(' ')).includes(query));
-  const size = layout.full ? Math.max(1, matches.length) : layout.columns * 5;
+  const size = layout.full ? Math.max(1, matches.length) : layout.columns * layout.pageRows;
   const pages = Math.max(1, Math.ceil(matches.length / size)), current = Math.min(page, pages - 1);
   const visible = matches.slice(current * size, (current + 1) * size), chosen = new Set(selected);
   const rows = Math.max(1, Math.ceil(visible.length / layout.columns));
@@ -32,9 +32,10 @@ export function TvSessionPicker({ sessions, selected, language, onChange, onDone
     const element = root.current;
     if (!element) return;
     const measure = () => {
-      const full = window.innerWidth >= 1200;
+      const full = window.innerWidth >= 900 && window.innerHeight >= 500;
       const columns = full ? 6 : element.clientWidth >= 800 ? 4 : element.clientWidth >= 520 ? 3 : 2;
-      setLayout(previous => previous.columns === columns && previous.full === full ? previous : { columns, full });
+      const pageRows = window.innerHeight < 500 ? 4 : 5;
+      setLayout(previous => previous.columns === columns && previous.full === full && previous.pageRows === pageRows ? previous : { columns, full, pageRows });
     };
     measure();
     const observer = new ResizeObserver(measure);

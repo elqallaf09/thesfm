@@ -19,7 +19,12 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
   const [activeId, setActiveId] = useState(initialMarketId || '');
   const doneButton = useRef<HTMLButtonElement>(null);
   const visibilityButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => { doneButton.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => {
+    // Let the dialog's remote handler capture its opener before moving focus.
+    // A cached lazy component mounts its effects before the parent's effects.
+    const timer = setTimeout(() => doneButton.current?.focus({ preventScroll: true }), 0);
+    return () => clearTimeout(timer);
+  }, []);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
   const selected = selectedTvMarkets(markets, settings);
   const label = (market: TvMarket) => settings.language === 'ar' ? market.labelAr : settings.language === 'fr' ? market.labelFr : market.labelEn;

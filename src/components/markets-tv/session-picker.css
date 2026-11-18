@@ -21,7 +21,7 @@
 }
 .tv-screen .tv-session-picker[data-tv-page-fit] .tv-session-options {
   display:grid; flex:1; grid-template-columns:repeat(var(--tv-picker-columns),minmax(0,1fr)); grid-template-rows:repeat(var(--tv-picker-rows),minmax(0,1fr));
-  max-height:none; min-height:0; gap:4px; overflow:hidden; padding:4px;
+  max-height:none; min-height:0; gap:3px; overflow:hidden; padding:4px;
 }
 .tv-screen .tv-session-picker[data-tv-page-fit] .tv-session-options button {
   min-height:0; min-width:0; padding:2px 5px; gap:5px; font-size:1em; border-radius:var(--radius-xs); overflow:hidden;
@@ -46,4 +46,8 @@
   .tv-screen .tv-session-picker[data-tv-page-fit] .tv-session-regions { flex-wrap:wrap; }
   .tv-screen .tv-session-picker[data-tv-page-fit] .tv-session-picker-heading { flex-wrap:wrap; }
   .tv-screen .tv-session-picker[data-tv-page-fit] .tv-session-picker-heading h2 { display:none; }
+}
+@media (min-width:900px) and (max-width:1199px) and (min-height:500px) {
+  .tv-screen .tv-session-picker[data-tv-page-fit] { position:fixed; inset:8px; z-index:20; padding:8px; background:var(--tv-bg); border:1px solid var(--tv-line); }
+  .tv-screen .tv-session-picker[data-tv-page-fit] .tv-session-options button { padding-block:1px; }
 }

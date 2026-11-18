@@ -19,7 +19,7 @@ async function openPicker(page: Page, language: TvLanguage, theme = 'light') {
 }
 
 for (const language of ['ar', 'en', 'fr'] as const) {
-  for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }]) {
+  for (const viewport of [{ width: 900, height: 500 }, { width: 960, height: 540 }, { width: 1280, height: 720 }, { width: 1920, height: 1080 }]) {
     test(`${language} session chooser shows all 81 exchanges and Save on one ${viewport.width} screen`, async ({ page }, testInfo) => {
       await page.setViewportSize(viewport);
       await openPicker(page, language, viewport.width === 1280 ? 'light' : 'dark');
@@ -37,7 +37,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
         font: parseFloat(getComputedStyle(element.querySelector('strong')!).fontSize),
       }));
       expect(grid.scrollHeight).toBeLessThanOrEqual(grid.height + 1);
-      expect(grid.minCell).toBeGreaterThanOrEqual(24);
+      expect(grid.minCell).toBeGreaterThanOrEqual(viewport.width < 1200 ? 20 : 24);
       expect(grid.font).toBeGreaterThanOrEqual(13);
       expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 1);
       if (language === 'ar') await page.screenshot({ path: testInfo.outputPath(`sessions-${viewport.width}.png`) });
@@ -100,24 +100,24 @@ test('chooser keeps Tab and channel keys scoped while search retains native edit
   await expect(page.locator('[data-tv-focus-key=sessions-choose]')).toBeFocused();
 });
 
-test('960p-width remote reaches the next exchange page and saves with arrows and OK only', async ({ page }) => {
-  await page.setViewportSize({ width: 960, height: 540 });
+test('small-screen remote reaches the next exchange page and saves with arrows and OK only', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 450 });
   await openPicker(page, 'ar');
   const cells = page.getByRole('checkbox'), next = page.locator('[data-tv-focus-key=session-picker-next]');
-  await expect(cells).toHaveCount(20);
+  await expect(cells).toHaveCount(12);
   await page.keyboard.press('ArrowDown');
   for (let step = 0; step < 3 && !(await cells.first().evaluate(element => element === document.activeElement)); step++) await page.keyboard.press('ArrowDown');
   await expect(cells.first()).toBeFocused();
-  for (let row = 1; row < 5; row++) await page.keyboard.press('ArrowDown');
-  await expect(cells.nth(16)).toBeFocused();
+  for (let row = 1; row < 4; row++) await page.keyboard.press('ArrowDown');
+  await expect(cells.nth(9)).toBeFocused();
   await page.keyboard.press('ArrowDown'); await expect(next).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.locator('.tv-session-picker-pages bdi')).toHaveText('2 / 5');
-  await page.keyboard.press('ArrowUp'); await expect(cells.nth(16)).toBeFocused();
-  const key = await cells.nth(16).getAttribute('data-tv-focus-key');
-  const id = key!.replace('choose-session:', ''), wasChecked = await cells.nth(16).getAttribute('aria-checked');
+  await expect(page.locator('.tv-session-picker-pages bdi')).toHaveText('2 / 7');
+  await page.keyboard.press('ArrowUp'); await expect(cells.nth(9)).toBeFocused();
+  const key = await cells.nth(9).getAttribute('data-tv-focus-key');
+  const id = key!.replace('choose-session:', ''), wasChecked = await cells.nth(9).getAttribute('aria-checked');
   await page.keyboard.press('Enter');
-  await expect(cells.nth(16)).toHaveAttribute('aria-checked', wasChecked === 'true' ? 'false' : 'true');
+  await expect(cells.nth(9)).toHaveAttribute('aria-checked', wasChecked === 'true' ? 'false' : 'true');
   await page.keyboard.press('ArrowDown'); await expect(next).toBeFocused();
   await page.keyboard.press('ArrowDown'); await expect(page.locator('[data-tv-focus-key=sessions-done]')).toBeFocused();
   await page.keyboard.press('Enter');

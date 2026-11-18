@@ -25,7 +25,6 @@
 .tv-evidence-inline { display: flex; align-items: center; justify-content: flex-start; gap: .75em; font-size: max(12px, .65em); line-height: 1.5; }
 .tv-evidence-inline .tv-evidence-origin { flex-wrap: nowrap; }
 .tv-screen .tv-market-strip-item > .tv-strip-evidence { display: flex; grid-column: 1/-1; grid-row: 3; font-size: max(12px, .6em); overflow: visible; }
-.tv-brief-evidence { grid-column: 1/-1; flex-wrap: wrap; }
 .tv-scene-ticker-evidence { grid-column: 1/-1; }
 .tv-screen .tv-scene-summary > .tv-evidence-stacked { font-size: max(12px, .62em); }
 .tv-scene-summary .tv-evidence-stacked .tv-status, .tv-scene-summary .tv-evidence-stacked .tv-scene-source, .tv-scene-summary .tv-evidence-stacked time { font-size: inherit; }
@@ -41,9 +40,6 @@
 .tv-scene-health > summary { cursor: pointer; font-size: .75em; padding-block: .15em; }
 .tv-scene-health > p { margin-top: .5em; }
 .tv-scene-sidebar > section, .tv-scene-sidebar > details { flex: 0 0 auto; }
-.tv-scene-headlines button > span { display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
-.tv-news-evidence { display: flex; flex-wrap: wrap; gap: .25em .6em; color: var(--tv-muted); }
-.tv-scene-headlines .tv-news-evidence { display: flex; }
 .tv-news-panel > .tv-scene-headlines { border: 0; background: transparent; }
 .tv-news-panel .tv-scene-headlines h2 { font-size: 1em; }
 .tv-browsing .tv-quote > .tv-quote-evidence { margin-top: .65em; }
@@ -102,11 +98,6 @@
   .tv-browsing .tv-section-heading > div:first-child { display: flex; flex-direction: column-reverse; }
   .tv-browsing .tv-section-heading h1 { line-height: 1.3; }
   .tv-browsing .tv-layout-feature { grid-template-columns: minmax(0,1fr); }
-  .tv-browsing .tv-brief { grid-template-columns: minmax(0,.8fr) repeat(2,minmax(0,1fr)); gap: .6em; }
-  .tv-browsing .tv-brief-lead { grid-column: auto; padding: .8em; }
-  .tv-browsing .tv-brief > section { padding: .7em; }
-  .tv-browsing .tv-brief h3 { margin-bottom: .35em; }
-  .tv-browsing .tv-brief .tv-mover { padding: .4em .6em; margin-block: .3em; }
   .tv-browsing .tv-map-panel { flex: 1; min-height: 0; }
   .tv-browsing .tv-map { min-height: 10em; }
   .tv-browsing > .tv-market-strips:not(:empty) { height: 7.4em; max-height: none; padding: 0; border: 0; display: flex; flex-direction: column; scroll-snap-type: y mandatory; }

@@ -39,23 +39,35 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeFocused();
       for (const [width, height] of [[1280, 720], [1920, 1080]]) {
         await page.setViewportSize({ width, height });
-        await expect.poll(() => page.locator('.tv-market-picker-fit').evaluate(element => {
-          const dialog = element.closest('[role="dialog"]')!;
-          const bounds = dialog.getBoundingClientRect();
-          const clipped = [...element.querySelectorAll('button,input')].filter(control => {
-            if (!control.getClientRects().length) return false;
-            const box = control.getBoundingClientRect();
-            return box.left < bounds.left || box.right > bounds.right || box.top < bounds.top || box.bottom > bounds.bottom;
-          });
-          const scroller = element.querySelector('.tv-picker-scroll')!;
-          const grid = element.querySelector('.tv-market-list')!;
-          return {
-            clipped: clipped.map(control => control.getAttribute('data-tv-focus-key') || control.textContent),
-            dialogScroll: dialog.scrollHeight > dialog.clientHeight + 1,
-            pickerScroll: scroller.scrollHeight > scroller.clientHeight + 1,
-            gridScroll: grid.scrollHeight > grid.clientHeight + 1,
-          };
-        })).toEqual({ clipped: [], dialogScroll: false, pickerScroll: false, gridScroll: false });
+        // The unavailable market adds a status paragraph; its editor must
+        // also stay above Save instead of silently overlapping the footer.
+        for (const index of [0, 80]) {
+          await page.locator(`[data-tv-focus-key="market-QA_${index}"]`).click();
+          await expect(page.locator('.tv-market-editor h3')).toHaveText(language === 'ar' ? markets[index].labelAr : language === 'en' ? markets[index].labelEn : markets[index].labelFr);
+          await expect.poll(() => page.locator('.tv-market-picker-fit').evaluate(element => {
+            const dialog = element.closest('[role="dialog"]')!;
+            const bounds = dialog.getBoundingClientRect();
+            const footer = element.querySelector('.tv-picker-footer')!;
+            const footerTop = footer.getBoundingClientRect().top;
+            const editor = element.querySelector('.tv-market-editor')!;
+            const clipped = [...element.querySelectorAll('button,input')].filter(control => {
+              if (!control.getClientRects().length) return false;
+              const box = control.getBoundingClientRect();
+              return box.left < bounds.left || box.right > bounds.right || box.top < bounds.top || box.bottom > bounds.bottom;
+            });
+            const scroller = element.querySelector('.tv-picker-scroll')!;
+            const grid = element.querySelector('.tv-market-list')!;
+            return {
+              clipped: clipped.map(control => control.getAttribute('data-tv-focus-key') || control.textContent),
+              dialogScroll: dialog.scrollHeight > dialog.clientHeight + 1,
+              pickerScroll: scroller.scrollHeight > scroller.clientHeight + 1,
+              gridScroll: grid.scrollHeight > grid.clientHeight + 1,
+              editorOverFooter: editor.getBoundingClientRect().bottom > footerTop + 1,
+              controlsOverFooter: [...element.querySelectorAll('button,input')].some(control =>
+                control.getClientRects().length > 0 && !footer.contains(control) && control.getBoundingClientRect().bottom > footerTop + 1),
+            };
+          })).toEqual({ clipped: [], dialogScroll: false, pickerScroll: false, gridScroll: false, editorOverFooter: false, controlsOverFooter: false });
+        }
         await expect(page.locator('.tv-market-row')).toHaveCount(81);
         const sizes = await page.locator('.tv-market-row strong').evaluateAll(elements =>
           elements.map(element => parseFloat(getComputedStyle(element).fontSize)));
@@ -109,10 +121,12 @@ test('market controls keep selection, speed, order and save reachable with the r
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
   const updated = await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')!));
   expect(updated.marketIds).not.toContain('QA_1');
   expect(updated.marketIds.indexOf('QA_2')).toBe(1);
   await page.keyboard.press('Enter');
+  await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeFocused();
   await page.locator('[data-tv-focus-key="markets-search"]').fill('missing-market');
   await expect(page.locator('.tv-market-row')).toHaveCount(0);
   await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeInViewport({ ratio: 1 });

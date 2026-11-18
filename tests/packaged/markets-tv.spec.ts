@@ -316,8 +316,15 @@ test('strips use index points and hide unpriced instruments until the provider r
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
     const bounds = await page.locator('.tv-market-strips').boundingBox();
-    expect(bounds!.height).toBeGreaterThan(viewport.height * .85);
+    const main = await page.locator('.tv-strips-main').boundingBox();
+    const header = await page.locator('.tv-labelled-header').boundingBox();
+    // Named controls use two rows on phones; the strip wall fills the remaining canvas.
+    expect(main!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
+    expect(bounds!.height).toBeGreaterThanOrEqual(main!.height - 1);
+    expect(bounds!.y).toBeGreaterThanOrEqual(main!.y - 1);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
+    const bottomInset = await page.locator('.tv-strips-only').evaluate(element => parseFloat(getComputedStyle(element).paddingBottom));
+    expect(bounds!.y + bounds!.height).toBeGreaterThanOrEqual(viewport.height - bottomInset - 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
   }
   price = 5962.2;
