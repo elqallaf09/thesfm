@@ -110,6 +110,11 @@
   padding: .55em .65em;
 }
 .tv-screen .tv-labelled-header .tv-header-more-dialog button:focus { outline-offset: -2px; }
+.tv-screen .tv-labelled-header .tv-header-more-dialog button > span {
+  display: block;
+  font-size: inherit;
+  white-space: normal;
+}
 @media (min-width: 761px) and (max-width: 1100px) {
   .tv-screen .tv-unified-header.tv-labelled-header { gap: .45em; }
   .tv-screen .tv-labelled-header .tv-unified-brand > div,

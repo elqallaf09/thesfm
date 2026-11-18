@@ -43,9 +43,12 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
   const groups = [...new Set(markets.map(market => market.group))];
   const regions: Array<'all' | TvMarket['group']> = ['all', ...groups];
 
-  // The picker is lazy-loaded after its dialog. Establish a useful initial
-  // target even if the remote hook already focused the dialog's close button.
-  useEffect(() => { doneRef.current?.focus(); }, []);
+  // Let the dialog's remote handler capture its opener before moving focus.
+  // Cached lazy components run child effects before that parent effect on reopen.
+  useEffect(() => {
+    const timer = setTimeout(() => doneRef.current?.focus(), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   function openMarket(market: TvMarket) {
     setActiveId(market.id);

@@ -33,8 +33,12 @@ Completed locally:
 - TV packaged production build.
 - 313 focused TV unit tests across 53 files.
 - Targeted ESLint, aligned AR/EN/FR translations, maintainability guard, diff check.
+- Focused TV TypeScript check. The full TypeScript gate passed in GitHub CI.
+- Visual inspection of Arabic 720p/1080p light/dark picker and strip captures from
+  candidate c8a7947. That iteration passed 131/133 packaged cases; its remaining
+  two small-screen news-fit failures and CSS budget were addressed for rerun.
 
-Pending on the current GitHub head before release:
+Required on the final GitHub head before release:
 
 - Pinned Node 22.13.0/pnpm 11.1.3 frozen installation and all protected-main checks.
 - Full packaged Playwright suite, including 24 new readability/picker/remote cases.

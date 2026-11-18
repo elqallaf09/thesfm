@@ -149,6 +149,15 @@ test('remote opens market options, reaches save, and preserves selection and spe
   expect(settings.marketIds).toContain('QA_0');
   expect(settings.marketIds).toContain('QA_16');
   expect(settings.marketSpeeds.QA_5).toBe(TV_STRIP_SPEEDS[2]);
+  // Reopening uses the cached lazy component. Its focus effect must not replace
+  // the persistent opener captured by the parent dialog's remote handler.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.keyboard.press('Enter');
+    await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
+  }
 });
 
 test('remote skips disabled options and still reaches save for a single empty market', async ({ page }) => {

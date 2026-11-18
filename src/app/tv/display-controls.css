@@ -20,8 +20,6 @@
 .tv-strip-coverage { grid-column: 1/-1; font-size: .57em; line-height: 1.6; color: var(--tv-muted); font-weight: 400; }
 .tv-strip-coverage b { font-family: var(--font-data); color: var(--tv-text); font-weight: 500; }
 .tv-strip-health[data-state=retained] i { background: var(--tv-accent); }
-.tv-strips-toolbar .tv-header-actions[hidden] { display: none; }
-.tv-strips-toolbar[data-controls-hidden=true] { padding-block: .1em; }
 .tv-setting-help { font-size: .75em; line-height: 1.8; }
 .tv-market-controls { display: flex; align-items: center; flex-wrap: wrap; gap: .35em; padding: .5em; font-size: .68em; background: var(--tv-panel2); }
 .tv-market-controls > span { font-family: var(--font-data); color: var(--tv-accent); }
@@ -59,7 +57,6 @@
 .tv-browsing .tv-eyebrow { font-size: max(12px, .7em); }
 .tv-browsing .tv-pagination { font-size: max(12px, .76em); }
 .tv-browsing .tv-data-health p { font-size: max(12px, .65em); }
-.tv-browsing .tv-brand small, .tv-browsing .tv-clock small { font-size: max(12px, .76em); }
 .tv-screen .tv-story small { font-size: max(12px, .65em); }
 .tv-footer { font-size: max(12px, .63em); }
 /* Keep unavailable tools readable without animating rows of empty prices. */

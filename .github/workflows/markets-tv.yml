@@ -98,7 +98,7 @@ jobs:
           sha256sum "$TV_APK_NAME" > "$TV_APK_NAME.sha256"
           cat > release-notes.md <<'NOTES'
           SFM TV preview for Huawei tablets and Android TV. Version and build are embedded in the APK.
-          Includes 25 receiver channels, offline market flags, compact market cards, clearer pairing errors and public-news caching.
+          Fixes overlapping quote status/date text and repeated sparse listings. Includes six named header actions, a labelled More menu, and paged market customization with a persistent Save and view action and clearer remote navigation.
           
           This is a signed debug test APK with application ID com.thesfm.marketstv. It installs separately from the earlier com.thesfm.marketstv.huaweitest package; existing settings in that older test package are not migrated. The APK is not an AppGallery or Google Play release.
           NOTES

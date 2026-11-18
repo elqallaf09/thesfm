@@ -39,7 +39,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     test(`readable strips ${language} ${theme}: named controls, distinct metadata and sparse cards`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: 1280, height: 720 });
       await openStrips(page, language, theme);
-      for (const [width, height] of [[1280, 720], [1920, 1080]]) {
+      for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080]]) {
         await page.setViewportSize({ width, height });
         const controls = page.locator('.tv-header-actions button, .tv-header-actions a');
         await expect(controls).toHaveCount(6);
