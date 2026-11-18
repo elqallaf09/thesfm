@@ -6,7 +6,7 @@ import type { TvLanguage, TvQuote, TvSnapshot } from '../../src/lib/markets-tv/t
 // Synthetic values exist only in this browser fixture, never in packaged assets.
 // Pin both observations and the browser clock; wall-clock dates must not age fixtures.
 const fixtureNow = '2026-11-03T09:00:00.000Z';
-const observedAt = '2026-11-02T21:00:00.000Z';
+const observedAt = '2026-11-02T18:00:00.000Z'; // Previous Kuwait day, not midnight on fixtureNow's day.
 
 test.beforeEach(async ({ page }) => {
   // Install once before navigation; individual timing tests can move this clock.
@@ -55,6 +55,29 @@ async function containedContent(page: Page, selector: string) {
   expect(overflow).toEqual([]);
 }
 
+async function containedQuoteEvidence(page: Page) {
+  const issues = await page.locator('.tv-scene-row .tv-quote-evidence').evaluateAll(items => items.flatMap(item => {
+    const bounds = item.getBoundingClientRect();
+    const parts = [...item.querySelectorAll('.tv-scene-source,.tv-status,time')];
+    return parts.flatMap((part, index) => {
+      const rect = part.getBoundingClientRect(), range = document.createRange();
+      range.selectNodeContents(part);
+      const outside = (box: DOMRect, parent: DOMRect) => box.left < parent.left - 1 || box.right > parent.right + 1
+        || box.top < parent.top - 1 || box.bottom > parent.bottom + 1;
+      // Source names retain their existing ellipsis; date and status must render in full.
+      const clipped = outside(rect, bounds) || !part.classList.contains('tv-scene-source')
+        && [...range.getClientRects()].some(box => box.left < rect.left - 1 || box.right > rect.right + 1);
+      const overlap = parts.slice(index + 1).some(next => {
+        const other = next.getBoundingClientRect();
+        return Math.min(rect.right, other.right) - Math.max(rect.left, other.left) > 1
+          && Math.min(rect.bottom, other.bottom) - Math.max(rect.top, other.top) > 1;
+      });
+      return clipped || overlap ? [part.textContent] : [];
+    });
+  }));
+  expect(issues).toEqual([]);
+}
+
 for (const language of ['ar', 'en', 'fr'] as const) {
   test(`packaged ${language} prices remain readable from 540p through 4K`, async ({ page }) => {
     const errors: string[] = [];
@@ -63,6 +86,8 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
       await containedContent(page, '.tv-scene-row');
+      await containedQuoteEvidence(page);
+      await expect(page.locator('.tv-scene-row time').first()).toHaveText('2026-11-02 · 21:00');
       const bounds = await page.evaluate(() => ({
         width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
         panelBottom: document.querySelector('.tv-scene-quotes')!.getBoundingClientRect().bottom,
@@ -87,7 +112,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
 }
 
 test('heatmap excludes stale closed quotes without dropping the saved quote list', async ({ page }) => {
-  await openTv(page, 'en', { autoRotate: false });
+  await openTv(page, 'fr', { autoRotate: false });
   const heatmap = page.locator('[data-tv-focus-key="scene-heatmap"]');
   await heatmap.click();
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(6);
@@ -97,6 +122,12 @@ test('heatmap excludes stale closed quotes without dropping the saved quote list
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
   await expect(page.locator('.tv-scene-map-notice')).toBeVisible();
   await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(page.locator('.tv-scene-row .tv-status').first()).toHaveText('Dernier cours connu');
+  await containedContent(page, '.tv-scene-row');
+  await containedQuoteEvidence(page);
+  const fit = await page.locator('.tv-scene-rows').evaluate(rows => rows.lastElementChild!.getBoundingClientRect().bottom <= rows.getBoundingClientRect().bottom + 1);
+  expect(fit).toBe(true);
 });
 
 test('remote reaches every clipped row and restores focus after quote details', async ({ page }) => {

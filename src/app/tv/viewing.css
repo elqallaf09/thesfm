@@ -123,8 +123,9 @@
   .tv-scene-rows[data-sparse=true] { grid-auto-rows: minmax(min-content, 5.5em); align-content: start; }
   .tv-screen .tv-scene-row .tv-quote-evidence { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .08em .35em; }
   .tv-scene-row .tv-evidence-origin { display: contents; }
-  .tv-screen .tv-scene-row .tv-scene-source { grid-column: 1/-1; }
-  .tv-screen .tv-scene-row .tv-quote-evidence time { grid-column: 2; grid-row: 2; }
+  .tv-screen .tv-scene-row .tv-scene-source { grid-column: 1; }
+  .tv-screen .tv-scene-row .tv-status { white-space: normal; overflow-wrap: anywhere; }
+  .tv-screen .tv-scene-row .tv-quote-evidence time { grid-column: 2; grid-row: 1 / span 2; align-self: end; width: max-content; max-width: 10ch; white-space: normal; overflow: visible; }
   .tv-screen .tv-scene-row .tv-evidence-origin > .tv-status::before { content: none; }
 }
 @media (max-width: 1400px) and (min-width: 761px) {

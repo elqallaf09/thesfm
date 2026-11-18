@@ -1,14 +1,14 @@
 'use client';
-import { receiverText } from '@/lib/markets-tv/receiver';
 import { useId } from 'react';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
-import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
+import { tvText } from '@/lib/markets-tv/i18n';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvSceneChange, tvSceneHasPrice, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { TvNewsStatus } from './TvNewsStatus';
 import { TvDataNotice } from './TvDataNotice';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage, useTvPanelCount } from './useTvBroadcastPage';
+import { TvNewsEvidence } from './TvNewsEvidence';
 import './news-board.css';
 
 export function TvHeadlines({ news, language, now, onStory, newsLoading, newsError, onRetry }: { news: TvNews[]; language: TvLanguage; now: number; onStory: (story: TvNews) => void; playing?: boolean; newsLoading?: boolean; newsError?: string | null; onRetry?: () => void }) {
@@ -17,7 +17,7 @@ export function TvHeadlines({ news, language, now, onStory, newsLoading, newsErr
   <header className="tv-broadcast-heading"><h2 id={id}>{tvText(language,'news')}</h2><bdi className="tv-news-total">{news.length || ''}</bdi></header>
   <div className="tv-headline-items tv-news-board-grid">{news.length ? news.map(story=><button className="tv-news-board-card" key={story.id} onClick={()=>onStory(story)} data-tv-focus-key={`story:${story.id}`}>
    <span className="tv-news-board-title" dir="auto">{story.title}</span>
-   <small className="tv-news-evidence"><bdi>{story.source}</bdi>{story.screening && <span>{receiverText(language, story.screening)}</span>}<time dir="ltr" dateTime={story.publishedAt}>{tvQuoteTime(story.publishedAt,language,now)}</time></small>
+   <TvNewsEvidence story={story} language={language} now={now}/>
   </button>):<TvNewsStatus language={language} loading={newsLoading} error={newsError} onRetry={onRetry}/>}</div>
  </section>;
 }
