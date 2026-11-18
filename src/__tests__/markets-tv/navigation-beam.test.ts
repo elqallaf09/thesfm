@@ -9,3 +9,18 @@ it('keeps horizontal remote movement on the same row instead of jumping to a clo
   expect(nearestTvTarget(origin, [origin, diagonal], 'ArrowDown')).toBe(1);
   expect(nearestTvTarget(origin, [diagonal], 'invalid')).toBe(-1);
 });
+
+it('stops at the visual grid row edge instead of jumping to another row in RTL or LTR', () => {
+  const left = { left: 0, top: 0, width: 100, height: 32 };
+  const right = { left: 110, top: 0, width: 100, height: 32 };
+  const lowerLeft = { left: 0, top: 38, width: 100, height: 32 };
+  const lowerRight = { left: 110, top: 38, width: 100, height: 32 };
+  const targets = [left, right, lowerLeft, lowerRight];
+  expect(nearestTvTarget(right, targets, 'ArrowLeft', true)).toBe(0);
+  expect(nearestTvTarget(left, targets, 'ArrowRight', true)).toBe(1);
+  expect(nearestTvTarget(right, targets, 'ArrowRight', true)).toBe(-1);
+  expect(nearestTvTarget(left, [lowerRight], 'ArrowRight', true)).toBe(-1);
+  expect(nearestTvTarget(right, [lowerLeft], 'ArrowLeft', true)).toBe(-1);
+  expect(nearestTvTarget(right, targets, 'ArrowDown', true)).toBe(3);
+  expect(nearestTvTarget(lowerLeft, targets, 'ArrowUp', true)).toBe(0);
+});

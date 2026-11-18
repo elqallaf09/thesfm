@@ -21,13 +21,14 @@ export function tvRemoteCommand(event: Key, target: Target = {}): TvRemoteComman
   if (key === 'MediaPlayPause' || key === 'MediaPlay' || key === 'MediaPause' || key === 'Pause') {
     return { kind: 'playback', action: key === 'MediaPlayPause' ? 'toggle' : key === 'MediaPlay' ? 'play' : 'pause' };
   }
-  if (key === 'Enter' && tag === 'INPUT' && ['checkbox', 'radio', 'button', 'submit', 'reset'].includes(target.type || '')) return { kind: 'activate' };
+  const activate = ['Enter', 'Select', 'Accept', 'OK'].includes(key);
+  if (activate && tag === 'INPUT' && ['checkbox', 'radio', 'button', 'submit', 'reset'].includes(target.type || '')) return { kind: 'activate' };
   if (!editing && (key === 'ChannelUp' || key === 'ChannelDown')) return { kind: 'channel', step: key === 'ChannelUp' ? 1 : -1 };
   const digit = /^[1-5]$/.test(key || '') ? Number(key) : !event.key || event.key === 'Unidentified' ? event.keyCode - 48 : 0;
   if (!editing && digit >= 1 && digit <= 5) return { kind: 'channelNumber', number: digit };
   if (editing && (tag !== 'INPUT' || target.expanded || ['range', 'number', 'radio'].includes(target.type || '')
     || !['ArrowUp', 'ArrowDown'].includes(key))) return null;
-  if (key === 'Enter') return { kind: 'activate' };
+  if (activate || key === ' ' || key === 'Spacebar') return { kind: 'activate' };
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) return { kind: 'arrow', direction: key };
   return null;
 }

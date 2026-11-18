@@ -59,8 +59,8 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
         {channel === 'allStocks' && <label>{receiverText(language, 'market')}<select value={selected} onChange={event => { setSelected(event.target.value); setCursors({}); }}>
           <option value="">{t('allMarkets')}</option>{markets.map(m => <option key={m.id} value={m.id}>{language === 'ar' ? m.labelAr : language === 'fr' ? m.labelFr : m.labelEn}</option>)}
         </select></label>}
-        <button aria-label={t(playing ? 'pause' : 'resume')} aria-pressed={playing} onClick={togglePlay}>{playing ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}</button>
-        <button aria-label={t('refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/></button>
+        {!newsOnly && <button aria-label={t(playing ? 'pause' : 'resume')} aria-pressed={playing} onClick={togglePlay}>{playing ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}<span>{t(playing ? 'pause' : 'resume')}</span></button>}
+        <button aria-label={t('refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/><span>{t('refresh')}</span></button>
       </div>
     </header>
     {newsOnly ? <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing}/> : <div className="tv-receiver-content">

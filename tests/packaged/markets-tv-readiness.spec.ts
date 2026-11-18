@@ -71,7 +71,7 @@ async function fixture(page: Page, theme: 'light' | 'dark', linked = true, langu
       } });
     }
     if (url.pathname.includes('news')) return route.fulfill({ json: {
-      stories, items: stories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'),
+      stories: url.pathname === '/api/tv/news' && !url.searchParams.get('channel') ? stories.slice(0, 8) : stories, items: stories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'),
       success: true, generatedAt: instant, lastSuccessfulUpdate: instant,
     } });
     return route.fulfill({ json: { result: null } });
@@ -144,11 +144,11 @@ for (const theme of ['light', 'dark'] as const) {
         await fits(page, label, selector);
       }
       await page.keyboard.press('2');
-      await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(height <= 650 ? 3 : height <= 800 ? 4 : 6);
-      await fits(page, 'news', '.tv-receiver-heading,.tv-news-desk,.tv-news-desk-grid > button');
+      await expect(page.locator('.tv-news-desk .tv-news-board-grid > button')).toHaveCount(stories.length);
+      await fits(page, 'news', '.tv-receiver-heading,.tv-news-desk,.tv-news-desk .tv-news-board-grid > button');
       await capture('news');
-      expect.soft(await page.locator('.tv-news-desk-grid > button').evaluateAll(buttons => buttons.filter(button => button.scrollHeight > button.clientHeight + 2).length), 'News is readable without clipping').toBe(0);
-      await page.locator('.tv-news-desk-grid > button').first().click();
+      expect.soft(await page.locator('.tv-news-desk .tv-news-board-grid > button').evaluateAll(buttons => buttons.filter(button => button.scrollHeight > button.clientHeight + 2).length), 'News is readable without clipping').toBe(0);
+      await page.locator('.tv-news-desk .tv-news-board-grid > button').first().click();
       await fits(page, 'news dialog', '.tv-dialog');
       await page.keyboard.press('Escape');
       await expect(page.locator('.tv-dialog')).toHaveCount(0);

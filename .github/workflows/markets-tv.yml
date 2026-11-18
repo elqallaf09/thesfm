@@ -31,6 +31,16 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Verify packaged TV layout and remote navigation
         run: pnpm exec playwright test --config=playwright.tv.config.ts
+      - name: Retain TV browser verification evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: markets-tv-browser-${{ github.sha }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            test-results
+            playwright-report
       - uses: actions/setup-java@v6
         with:
           distribution: temurin

@@ -43,13 +43,22 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
   }, [hasPlayback]);
   useEffect(() => {
     const prior = document.activeElement as HTMLElement | null;
-    const scope = () => document.querySelector<HTMLElement>('[data-tv-dialog]') || document.querySelector<HTMLElement>('[data-tv-root]');
+    const scope = () => {
+      const container = document.querySelector<HTMLElement>('[data-tv-dialog]') || document.querySelector<HTMLElement>('[data-tv-root]');
+      return container?.querySelector<HTMLElement>('[data-tv-focus-scope]') || container;
+    };
     const items = () => Array.from(scope()?.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]') || [])
       .filter(e => e.getClientRects().length && !e.matches(':disabled') && e.getAttribute('aria-disabled') !== 'true'
         && !e.closest('[hidden],[aria-hidden="true"],[inert]') && e.getAttribute('tabindex') !== '-1');
     let lastFocused: HTMLElement | null = null;
     let lastRect: DOMRect | null = null;
     let lastKey: string | null = null;
+    let lastArrow = '', lastArrowAt = 0;
+    const focus = (element?: HTMLElement) => {
+      if (!element) return;
+      element.focus({ preventScroll: true });
+      if (!element.closest('[data-tv-page-fit]')) element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    };
     const rememberFocus = () => {
       const focused = document.activeElement as HTMLElement | null;
       if (!focused || !scope()?.contains(focused)) return;
@@ -58,7 +67,7 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
     };
     const focusTimer = setTimeout(() => {
       const elements = items();
-      if (!elements.includes(document.activeElement as HTMLElement)) (elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0])?.focus();
+      if (!elements.includes(document.activeElement as HTMLElement)) focus(elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]);
       rememberFocus();
     }, 0);
     // Price text updates leave the same DOM element focused. Restore only a
@@ -81,9 +90,10 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         };
         return !best || distance(item) < distance(best) ? item : best;
       }, null);
-      (replacement || nearest || elements[0])?.focus();
+      focus(replacement || nearest || elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]);
     });
-    const root = scope();
+    // Keep observing the parent when an embedded editor later unmounts.
+    const root = document.querySelector<HTMLElement>('[data-tv-dialog]') || document.querySelector<HTMLElement>('[data-tv-root]');
     if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'aria-hidden', 'inert', 'disabled'] });
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
@@ -94,26 +104,39 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         type: focused?.getAttribute('type') || undefined, isContentEditable: focused?.isContentEditable,
         expanded: focused?.getAttribute('aria-expanded') === 'true' });
       if (!command) return;
+      const activeScope = scope();
+      const scopedEditor = activeScope?.hasAttribute('data-tv-focus-scope');
+      const trapped = modal || scopedEditor;
       if (command.kind === 'back') {
-        event.preventDefault(); if (!event.repeat) actions.current.back(); return;
+        event.preventDefault();
+        if (!event.repeat) {
+          const returnKey = focused?.closest<HTMLElement>('[data-tv-back-focus]')?.dataset.tvBackFocus;
+          const returnTarget = returnKey && items().find(element => element.dataset.tvFocusKey === returnKey);
+          const localBack = scopedEditor && activeScope?.querySelector<HTMLElement>('[data-tv-back]');
+          if (returnTarget) focus(returnTarget);
+          else if (localBack) localBack.click(); else actions.current.back();
+        }
+        return;
       }
       if (command.kind === 'playback') {
-        if (actions.current.playback && !modal) {
+        if (trapped) event.preventDefault();
+        else if (actions.current.playback) {
           event.preventDefault(); if (!event.repeat) actions.current.playback(command.action);
         }
         return;
       }
       if (command.kind === 'channel' || command.kind === 'channelNumber') {
-        if (actions.current.channel && !modal) { event.preventDefault(); if (!event.repeat) actions.current.channel(command); }
+        if (trapped) event.preventDefault();
+        else if (actions.current.channel) { event.preventDefault(); if (!event.repeat) actions.current.channel(command); }
         return;
       }
       const elements = items();
       if (command.kind === 'tab') {
-        if (modal) {
+        if (trapped) {
           event.preventDefault();
           const index = elements.indexOf(focused!);
           const next = index < 0 ? event.shiftKey ? elements.length - 1 : 0 : (index + (event.shiftKey ? -1 : 1) + elements.length) % elements.length;
-          elements[next]?.focus();
+          focus(elements[next]);
         }
         return;
       }
@@ -122,10 +145,28 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         return;
       }
       event.preventDefault();
-      if (!focused || !elements.includes(focused)) { elements[0]?.focus(); return; }
+      if (event.repeat && command.direction === lastArrow && event.timeStamp - lastArrowAt < 110) return;
+      lastArrow = command.direction; lastArrowAt = event.timeStamp;
+      if (!focused || !elements.includes(focused)) { focus(elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]); return; }
+      const explicitKey = focused.getAttribute(`data-tv-nav-${command.direction.slice(5).toLowerCase()}`);
+      const explicit = explicitKey && elements.find(element => element.dataset.tvFocusKey === explicitKey);
+      if (explicit) { focus(explicit); return; }
+      const vertical = command.direction === 'ArrowUp' || command.direction === 'ArrowDown';
+      const group = focused.closest<HTMLElement>('[data-tv-focus-grid],[data-tv-focus-row]');
+      if (group && activeScope?.contains(group)) {
+        const local = elements.filter(element => group.contains(element));
+        const localIndex = nearestTvTarget(focused.getBoundingClientRect(), local.map(element => element.getBoundingClientRect()), command.direction, !vertical);
+        if (localIndex >= 0) { focus(local[localIndex]); return; }
+        // A row boundary is a stop, not a shortcut to another row or toolbar.
+        if (!vertical) {
+          const exitKey = group.getAttribute(`data-tv-grid-exit-${command.direction.slice(5).toLowerCase()}`);
+          const exit = exitKey && elements.find(element => element.dataset.tvFocusKey === exitKey);
+          if (exit) focus(exit);
+          return;
+        }
+      }
       // Finish a scrollable panel before jumping to a geometrically closer
       // ticker/header outside it. At its edge, normal spatial navigation resumes.
-      const vertical = command.direction === 'ArrowUp' || command.direction === 'ArrowDown';
       let panel = focused.parentElement;
       let candidates = elements;
       while (panel && panel !== scope()) {
@@ -141,7 +182,7 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       }
       const index = nearestTvTarget(focused.getBoundingClientRect(), candidates.map(e => e.getBoundingClientRect()), command.direction);
       if (index >= 0) {
-        candidates[index].focus(); candidates[index].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+        focus(candidates[index]);
       }
     }
     document.addEventListener('keydown', onKey);

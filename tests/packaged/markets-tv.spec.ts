@@ -129,13 +129,13 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.clock.setSystemTime(new Date('2026-11-03T09:52:00Z'));
     await page.setViewportSize({ width: 960, height: 540 });
     await openTv(page, language);
-    const opener = page.locator('.tv-viewing-footer button').first();
+    const opener = page.locator('[data-tv-focus-key="view:sessions"]');
     await opener.click();
-    const dialog = page.getByRole('dialog');
+    const surface = page.locator('.tv-feature-view');
     await expect(page.locator('.tv-session')).toHaveCount(5);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
-      await expect.poll(()=>dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+      await expect.poll(()=>surface.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
       await containedContent(page, '.tv-session');
     }
     for (const [market, clock] of [['XKUW', '12:52'], ['XSAU', '12:52'], ['XNYS', '04:52'], ['XTKS', '18:52']]) {
@@ -157,11 +157,10 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expect(page.locator('[data-tv-focus-key=session-source-back]')).toBeFocused();
     await expect(page.locator('.tv-session-qr canvas')).toBeVisible();
     await expect(page.locator('.tv-session-qr canvas')).toBeInViewport({ ratio: 1 });
-    await page.keyboard.press('Enter');
-    await expect(nyse).toBeFocused();
     await page.keyboard.press('Escape');
-    await expect(dialog).not.toBeVisible();
-    await expect(opener).toBeFocused();
+    await expect(nyse).toBeFocused();
+    await expect(page.locator('.tv-session-qr')).toHaveCount(0);
+    await page.locator('[data-tv-focus-key="scene:world"]').click();
     await expect(page.locator('.tv-scene-health')).not.toHaveAttribute('open', '');
     await page.locator('.tv-scene-health > summary').click();
     await expect(page.locator('.tv-scene-coverage-total')).toBeVisible();

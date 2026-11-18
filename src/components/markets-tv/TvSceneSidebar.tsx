@@ -9,12 +9,16 @@ import { TvNewsStatus } from './TvNewsStatus';
 import { TvDataNotice } from './TvDataNotice';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage, useTvPanelCount } from './useTvBroadcastPage';
+import './news-board.css';
 
-export function TvHeadlines({ news, language, now, onStory, playing = true, newsLoading, newsError, onRetry }: { news: TvNews[]; language: TvLanguage; now: number; onStory: (story: TvNews) => void; playing?: boolean; newsLoading?: boolean; newsError?: string | null; onRetry?: () => void }) {
- const id=useId(),{ref,count}=useTvPanelCount(2,8,3.7),pages=Math.max(1,Math.ceil(news.length/count));
- const {current,move}=useTvBroadcastPage(pages,playing,news.map(s=>s.id).join(','));
- return <section ref={ref} className="tv-scene-headlines" aria-labelledby={id}><header className="tv-broadcast-heading"><h2 id={id}>{tvText(language,'news')}</h2><TvBroadcastPager page={current} pages={pages} language={language} move={move}/></header>
-  <div className="tv-headline-items">{news.length ? news.slice(current*count,(current+1)*count).map(story=><button key={story.id} onClick={()=>onStory(story)} data-tv-focus-key={`story:${story.id}`}><span>{story.title}</span><small className="tv-news-evidence"><bdi>{story.source}</bdi>{story.screening && <span>{receiverText(language, story.screening)}</span>}<time dir="ltr" dateTime={story.publishedAt}>{tvQuoteTime(story.publishedAt,language,now)}</time></small></button>):<TvNewsStatus language={language} loading={newsLoading} error={newsError} onRetry={onRetry}/>}</div>
+export function TvHeadlines({ news, language, now, onStory, newsLoading, newsError, onRetry }: { news: TvNews[]; language: TvLanguage; now: number; onStory: (story: TvNews) => void; playing?: boolean; newsLoading?: boolean; newsError?: string | null; onRetry?: () => void }) {
+ const id=useId();
+ return <section className="tv-scene-headlines tv-news-board" aria-labelledby={id} data-news-count={news.length}>
+  <header className="tv-broadcast-heading"><h2 id={id}>{tvText(language,'news')}</h2><bdi className="tv-news-total">{news.length || ''}</bdi></header>
+  <div className="tv-headline-items tv-news-board-grid">{news.length ? news.map(story=><button className="tv-news-board-card" key={story.id} onClick={()=>onStory(story)} data-tv-focus-key={`story:${story.id}`}>
+   <span className="tv-news-board-title" dir="auto">{story.title}</span>
+   <small className="tv-news-evidence"><bdi>{story.source}</bdi>{story.screening && <span>{receiverText(language, story.screening)}</span>}<time dir="ltr" dateTime={story.publishedAt}>{tvQuoteTime(story.publishedAt,language,now)}</time></small>
+  </button>):<TvNewsStatus language={language} loading={newsLoading} error={newsError} onRetry={onRetry}/>}</div>
  </section>;
 }
 export function TvSceneMovers({quotes,language,now,onQuote}:{quotes:TvQuote[];language:TvLanguage;now:number;onQuote:(quote:TvQuote)=>void}){

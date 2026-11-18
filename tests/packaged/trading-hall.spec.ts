@@ -30,7 +30,7 @@ async function open(page: Page, language = 'ar', mode = 'viewing') {
 for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   test(`hall and all stocks fit ${width}×${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height }); await open(page);
-    await expect(page.locator('.tv-headline-story')).toContainText(headline);
+    await expect(page.locator('.tv-headline-story').first()).toContainText(headline);
     for (const mode of ['viewing', 'browse']) {
       if (mode === 'browse') await page.locator('.tv-mode-browse').click();
       await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
@@ -70,14 +70,16 @@ test('ticker really moves, pauses, and exposes no duplicate focus targets', asyn
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(track).toHaveCSS('animation-name', 'none');
 });
-test('one complete headline rotates and remote focus holds it', async ({ page }) => {
+test('all received headlines remain visible together and remote selection opens the full story', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await page.clock.install(); await open(page);
-  await expect(page.locator('.tv-headline-story')).toHaveCount(1);
-  await page.clock.fastForward(12500);
-  await expect(page.locator('.tv-headline-story')).toContainText('عنوان الخبر الثاني');
-  await page.locator('.tv-headline-story').focus();
-  await page.clock.fastForward(24000);
-  await expect(page.locator('.tv-headline-story')).toContainText('عنوان الخبر الثاني');
+  const stories = page.locator('.tv-headline-story');
+  await expect(stories).toHaveCount(3);
+  const titles = await stories.allTextContents();
+  await page.clock.fastForward(36500);
+  await expect(stories).toHaveText(titles);
+  await stories.nth(1).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('عنوان الخبر الثاني كاملًا');
 });
 for (const language of ['en', 'fr']) test(`hall supports ${language} layout`, async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page, language);

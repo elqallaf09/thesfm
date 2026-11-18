@@ -43,11 +43,10 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await page.reload();
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','cyclicalNews');
   await expect(nav.locator('[aria-pressed=true]')).toHaveAttribute('data-tv-focus-key','channel:cyclicalNews');
+  await expect(page.locator('.tv-headline-items button')).toHaveCount(24);
+  await expect(page.locator('.tv-news-desk .tv-broadcast-pager')).toHaveCount(0);
   await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
-  const pause=page.locator('.tv-receiver-actions button[aria-pressed]');await pause.click();await pause.click();
-  const first=(await page.locator('.tv-headline-items button').first().textContent())!;
-  await page.clock.runFor(39999);await expect(page.locator('.tv-headline-items button').first()).toHaveText(first);
-  await page.clock.runFor(1);await expect(page.locator('.tv-headline-items button').first()).not.toHaveText(first);
-  await pause.click();const held=(await page.locator('.tv-headline-items button').first().textContent())!;
-  await page.clock.runFor(80000);await expect(page.locator('.tv-headline-items button').first()).toHaveText(held);
+  const headlines=await page.locator('.tv-headline-items button').allTextContents();
+  await page.clock.runFor(80000);
+  await expect(page.locator('.tv-headline-items button')).toHaveText(headlines);
 });
