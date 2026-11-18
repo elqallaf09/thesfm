@@ -255,6 +255,7 @@ async function requestCompletion(input: {
   maxTokens: number;
   messages: unknown[];
   capability: 'text' | 'vision';
+  attemptTimeoutMs?: number;
 }): Promise<GenerationResult | null> {
   const startedAt = Date.now();
   const identity = aiGenerationIdentity(input.candidates, input.capability);
@@ -263,6 +264,8 @@ async function requestCompletion(input: {
     try {
       // A provider can send headers and then stall while generating its body.
       // The deadline must cover consumption too, before trying the next node.
+      const attemptTimeoutMs = input.attemptTimeoutMs === undefined || !Number.isFinite(input.attemptTimeoutMs)
+        ? undefined : Math.min(providerTimeoutMs(), Math.max(1, Math.trunc(input.attemptTimeoutMs)));
       const text = await withProviderTimeout(async signal => {
         const response = await fetch(completionURL(current.baseURL), {
           method: 'POST', headers: headers(current.apiKey), redirect: 'error', cache: 'no-store', signal,
@@ -270,7 +273,7 @@ async function requestCompletion(input: {
         });
         if (!response.ok) throw providerHttpError(response.status);
         return textFromCompletion(await response.json().catch(() => null));
-      });
+      }, attemptTimeoutMs);
       if (!text) throw new Error('AI_PROVIDER_EMPTY_RESPONSE');
       recordAiGenerationOutcome({
         ...identity, provider: current.provider, outcome: 'success',
@@ -303,12 +306,15 @@ export async function generateAssistantReply(input: {
   messages: ChatMessage[];
   correlationId: string;
   maxTokens?: number;
+  /** A smaller per-node budget when this is an explicitly permitted fallback. */
+  attemptTimeoutMs?: number;
 }): Promise<GenerationResult | null> {
   return requestCompletion({
     candidates: configuredCandidates(),
     correlationId: input.correlationId,
     maxTokens: input.maxTokens ?? MAX_RESPONSE_TOKENS,
     capability: 'text',
+    attemptTimeoutMs: input.attemptTimeoutMs,
     messages: [{ role: 'system', content: input.system }, ...input.messages],
   });
 }
