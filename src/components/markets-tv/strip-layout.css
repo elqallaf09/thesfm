@@ -1,0 +1,152 @@
+/* Keep each market summary and its moving quotes inside separate grid cells.
+   A quote's provenance occupies two real lines, including an older full date. */
+.tv-screen .tv-readable-strips .tv-market-strip {
+  min-width: 0;
+  grid-template-columns: minmax(0, 14em) minmax(0, 1fr) 2em;
+}
+.tv-screen .tv-readable-strips .tv-market-strip:not([data-paged=true]) {
+  grid-template-columns: minmax(0, 14em) minmax(0, 1fr);
+}
+.tv-screen .tv-readable-strips .tv-market-strip-heading {
+  min-width: 0;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  justify-content: stretch;
+  gap: .25em;
+  padding: .55em .7em;
+  border-inline-end: 1px solid var(--tv-line);
+}
+.tv-screen .tv-readable-strips .tv-market-strip-heading > * {
+  grid-column: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-heading > strong {
+  font-size: max(15px, .9em);
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-heading > small {
+  margin: 0;
+  font-size: max(13px, .65em);
+  font-family: var(--font-ui);
+  white-space: normal;
+}
+.tv-screen .tv-readable-strips .tv-strip-coverage,
+.tv-screen .tv-readable-strips .tv-strip-health {
+  font-family: var(--font-ui);
+  font-size: max(13px, .65em);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.tv-screen .tv-readable-strips .tv-strip-health > i { flex-shrink: 0; }
+.tv-screen .tv-readable-strips .tv-strip-batch { display: block; }
+.tv-screen .tv-readable-strips .tv-strip-partial { color: var(--tv-accent); }
+.tv-screen .tv-readable-strips .tv-market-strip-window {
+  min-width: 0;
+  overflow: hidden;
+  padding-block: .1em;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-window:focus-within {
+  overflow-x: auto;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-track[data-marquee=false] {
+  animation: none;
+  transform: none;
+  will-change: auto;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-item {
+  align-content: center;
+  row-gap: .3em;
+  min-height: 6.4em;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-set .tv-market-strip-item {
+  width: 17.5em;
+  min-width: 17.5em;
+}
+.tv-screen .tv-readable-strips .tv-strip-symbol > b { font-size: max(16px, .9em); }
+.tv-screen .tv-readable-strips .tv-strip-symbol > span { font-size: max(14px, .7em); }
+.tv-screen .tv-readable-strips .tv-market-strip-item > .tv-strip-price { font-size: max(20px, 1.1em); }
+.tv-screen .tv-readable-strips .tv-market-strip-item > .tv-strip-change { font-size: max(13px, .7em); }
+.tv-screen .tv-readable-strips .tv-market-strip-item > .tv-strip-evidence {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: .15em;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: normal;
+  font-family: var(--font-ui);
+  font-size: max(13px, .65em);
+  line-height: 1.35;
+}
+.tv-screen .tv-readable-strips .tv-strip-evidence .tv-evidence-origin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 .45em;
+  min-width: 0;
+}
+.tv-screen .tv-readable-strips .tv-strip-evidence .tv-evidence-origin > * {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tv-screen .tv-readable-strips .tv-strip-evidence .tv-scene-source {
+  flex: 0 1 auto;
+  max-width: 40%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tv-screen .tv-readable-strips .tv-strip-evidence .tv-status { flex: 1; }
+.tv-screen .tv-readable-strips .tv-strip-evidence time {
+  flex: none;
+  align-self: flex-start;
+  max-width: 100%;
+  font-family: var(--font-data);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-empty {
+  padding: .65em 1em;
+  font-size: max(14px, .8em);
+  line-height: 1.45;
+}
+.tv-screen.tv-strips-only .tv-readable-strips .tv-market-strip[data-priced-count="0"] {
+  min-height: 0;
+}
+@media (max-width: 760px) {
+  .tv-screen .tv-readable-strips .tv-market-strip {
+    grid-template-columns: minmax(0, 1fr) 2em;
+  }
+  .tv-screen .tv-readable-strips .tv-market-strip:not([data-paged=true]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tv-screen .tv-readable-strips .tv-market-strip-heading {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--tv-line);
+  }
+  .tv-screen .tv-readable-strips .tv-market-strip-heading > small {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .tv-screen .tv-readable-strips .tv-market-strip-heading > .tv-strip-coverage,
+  .tv-screen .tv-readable-strips .tv-market-strip-heading > .tv-strip-health {
+    grid-column: 1 / -1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tv-screen .tv-readable-strips .tv-market-strip-window:not([data-tv-motion=play]) {
+    overflow-x: auto;
+  }
+}

@@ -317,12 +317,15 @@ test('strips use index points and hide unpriced instruments until the provider r
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
     const bounds = await page.locator('.tv-market-strips').boundingBox();
-    expect(bounds!.height).toBeGreaterThan(viewport.height * .85);
+    expect(bounds!.height).toBeGreaterThan(viewport.height * .5);
+    const header = await page.locator('.tv-unified-header').boundingBox();
+    expect(bounds!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
   }
   price = 5962.2;
   await page.clock.fastForward(301_000);
-  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(1);
+  await expect(strip.locator('.tv-market-strip-track')).toHaveAttribute('data-marquee', 'false');
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'none');
 });

@@ -19,6 +19,17 @@ describe('TV keyboard and remote navigation contracts', () => {
     expect(tvRemoteCommand(key('ArrowDown'), input)).toEqual({ kind: 'arrow', direction: 'ArrowDown' });
   });
 
+  it('maps remote OK aliases and keyboard Space without stealing native text editing', () => {
+    for (const value of ['Enter', 'Select', 'Accept', 'OK', ' ', 'Spacebar']) {
+      expect(tvRemoteCommand(key(value), { tagName: 'BUTTON' })).toEqual({ kind: 'activate' });
+      expect(tvRemoteCommand(key(value), { tagName: 'INPUT', type: 'search' })).toBeNull();
+    }
+    expect(tvRemoteCommand(key('Unidentified', 23), { tagName: 'BUTTON' })).toEqual({ kind: 'activate' });
+    expect(tvRemoteCommand(key('Unidentified', 66), { tagName: 'BUTTON' })).toEqual({ kind: 'activate' });
+    expect(tvRemoteCommand(key('Unidentified', 4), { tagName: 'BUTTON' })).toEqual({ kind: 'back' });
+    expect(tvRemoteCommand(key('OK'), { tagName: 'INPUT', type: 'checkbox' })).toEqual({ kind: 'activate' });
+  });
+
   it('lets native selects, sliders, number fields and expanded suggestions keep their arrow keys', () => {
     for (const target of [{ tagName: 'SELECT' }, { tagName: 'TEXTAREA' }, { tagName: 'INPUT', type: 'range' },
       { tagName: 'INPUT', type: 'number' }, { tagName: 'INPUT', expanded: true }, { tagName: 'DIV', isContentEditable: true }]) {

@@ -134,7 +134,8 @@ test('market strips distinguish the directory, displayed batch and priced covera
   await expect(market.locator('.tv-strip-coverage')).toContainText('1–12');
   await expect(market.locator('.tv-strip-coverage')).toContainText('11 / 12');
   await expect(market.locator('.tv-market-strip-set').first().locator('button')).toHaveCount(11);
-  await expect(page.locator('[data-market="TADAWUL"] .tv-strip-coverage').first()).toContainText('تغطية السوق غير مكتملة');
+  await expect(page.locator('[data-market="TADAWUL"] .tv-strip-partial')).toContainText('تغطية جزئية');
+  await expect(page.locator('[data-market="TADAWUL"] .tv-strip-partial')).toHaveAttribute('aria-label', /تغطية السوق غير مكتملة/);
   await market.locator('.tv-strip-next').click();
   await expect(market.locator('.tv-strip-coverage')).toContainText('13–24');
   for (const [width, height] of [[1920, 1080], [1280, 720]]) {
