@@ -34,6 +34,10 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
   const active = rows.find(market => market.id === activeId) || rows[0];
   const position = active ? selected.indexOf(active.id) : -1;
   const groups = [...new Set(markets.map(market => market.group))];
+  const accessibleMarketName = (market: TvMarket) => {
+    const order = selected.indexOf(market.id);
+    return `${label(market)} · ${t(order >= 0 ? 'marketVisible' : 'marketHidden')}${order >= 0 ? ` · ${t('displayOrder')} ${order + 1} / ${selected.length}` : ''}`;
+  };
   return <div className="tv-picker tv-market-picker tv-market-picker-fit">
     <div className="tv-picker-scroll">
       <div className="tv-market-picker-top" data-tv-focus-row>
@@ -47,7 +51,7 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
       </div>
       {loading && !markets.length ? <p className="tv-picker-empty" role="status">{t('loading')}</p> : error && !markets.length ? <div className="tv-picker-empty" role="status"><p>{t('directoryUnavailable')}</p><button onClick={retry}>{t('retry')}</button></div> : <div className="tv-picker-workspace">
         {rows.length > 0 && <label className="tv-picker-mobile-market"><span>{t('marketList')}</span><select value={active?.id || ''} onChange={event => setActiveId(event.target.value)}>{rows.map(market => <option key={market.id} value={market.id}>{label(market)}{selected.includes(market.id) ? ` · #${selected.indexOf(market.id) + 1}` : ''}</option>)}</select></label>}
-        <div className="tv-market-list" data-empty={!rows.length} data-many={rows.length > 24} data-tv-focus-grid data-tv-grid-exit-left={settings.language === 'ar' ? 'markets-visibility' : undefined} data-tv-grid-exit-right={settings.language === 'ar' ? undefined : 'markets-visibility'} role="group" aria-label={t('marketList')}>{rows.map(market => <button key={market.id} className="tv-market-row" aria-pressed={active?.id === market.id} aria-controls="tv-market-editor" title={label(market)} data-tv-focus-key={`market-${market.id}`} onFocus={() => setActiveId(market.id)} onClick={() => { setActiveId(market.id); visibilityButton.current?.focus({ preventScroll: true }); }}>
+        <div className="tv-market-list" data-empty={!rows.length} data-many={rows.length > 24} data-tv-focus-grid data-tv-grid-exit-left={settings.language === 'ar' ? 'markets-visibility' : undefined} data-tv-grid-exit-right={settings.language === 'ar' ? undefined : 'markets-visibility'} role="group" aria-label={t('marketList')}>{rows.map(market => <button key={market.id} className="tv-market-row" aria-label={accessibleMarketName(market)} aria-pressed={active?.id === market.id} aria-controls="tv-market-editor" title={label(market)} data-tv-focus-key={`market-${market.id}`} onFocus={() => setActiveId(market.id)} onClick={() => { setActiveId(market.id); visibilityButton.current?.focus({ preventScroll: true }); }}>
           <span className="tv-market-check" data-selected={selected.includes(market.id)} aria-hidden="true">{selected.includes(market.id) && <Check/>}</span>
           <span className="tv-picker-identity"><strong>{label(market)}</strong><small>{t(market.group)} · {market.count.toLocaleString('en-US')} · {t(selected.includes(market.id) ? 'marketVisible' : 'marketHidden')}</small></span>
           {selected.includes(market.id) && <span className="tv-market-position" dir="ltr">#{selected.indexOf(market.id) + 1}</span>}

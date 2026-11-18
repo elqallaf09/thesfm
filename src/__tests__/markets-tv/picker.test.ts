@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { TvMarketPicker } from '@/components/markets-tv/TvMarketPicker';
 import { matchesTvSearch, moveTvMarket, selectedTvInstruments, selectedTvMarkets } from '@/lib/markets-tv/picker';
 import { DEFAULT_TV_SETTINGS, type TvMarket } from '@/lib/markets-tv/types';
 
@@ -7,6 +10,21 @@ const markets: TvMarket[] = [
   { id: 'US', group: 'us', labelAr: 'أمريكا', labelEn: 'US', labelFr: 'États-Unis', count: 20, status: 'directory' },
 ];
 describe('TV customization', () => {
+  it('announces each market visibility and saved order independently of the active editor', () => {
+    for (const [language, names] of [
+      ['ar', ['بورصة الكويت · غير معروض', 'أمريكا · ظاهر على الشاشة · ترتيب الظهور 1 / 1']],
+      ['en', ['Kuwait · Not displayed', 'US · Shown on screen · Display order 1 / 1']],
+      ['fr', ['Koweït · Non affiché', 'États-Unis · Affiché à l’écran · Ordre d’affichage 1 / 1']],
+    ] as const) {
+      const noop = () => undefined;
+      const html = renderToStaticMarkup(createElement(TvMarketPicker, {
+        markets, settings: { ...DEFAULT_TV_SETTINGS, language, marketIds: ['US'] },
+        selections: {}, change: noop, customize: noop, done: noop, retry: noop, loading: false, error: false,
+      }));
+      const rows = (html.match(/<button\b[^>]+>/g) || []).filter(tag => tag.includes('class="tv-market-row"'));
+      expect(rows.map(tag => tag.match(/aria-label="([^"]+)"/)?.[1])).toEqual(names);
+    }
+  });
   it('keeps explicit empty choices and order while ignoring obsolete markets', () => {
     expect(selectedTvMarkets(markets, { ...DEFAULT_TV_SETTINGS, marketIds: [] })).toEqual([]);
     expect(selectedTvMarkets(markets, { ...DEFAULT_TV_SETTINGS, marketIds: ['US', 'OLD', 'KW'] })).toEqual(['US', 'KW']);

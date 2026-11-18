@@ -53,7 +53,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(cards).toHaveCount(count);
       await expect(board.locator('.tv-broadcast-pager,.tv-headline-playback')).toHaveCount(0);
       const headlines = await cards.allTextContents();
-      const viewports = view === 'hall' || view === 'allStocks'
+      const viewports = view === 'hall' || view === 'allStocks' || view === 'world'
         ? [[960, 540], [1280, 720], [1920, 1080]] : [[1280, 720], [1920, 1080]];
       for (const [width, height] of viewports) {
         await page.setViewportSize({ width, height });
@@ -63,6 +63,15 @@ for (const theme of ['light', 'dark'] as const) {
           const boxes = [element, ...element.querySelectorAll('.tv-news-board-grid,.tv-news-board-card')];
           return boxes.filter(box => box.scrollHeight > box.clientHeight + 2 || box.scrollWidth > box.clientWidth + 2).map(box => box.className);
         })).toEqual([]);
+        await expect.poll(() => cards.evaluateAll(elements => elements.flatMap(card => {
+          const bounds = card.getBoundingClientRect();
+          return [...card.querySelectorAll('.tv-news-board-title,.tv-news-evidence > bdi,.tv-news-evidence > time')].filter(leaf => {
+            const box = leaf.getBoundingClientRect(), size = parseFloat(getComputedStyle(leaf).fontSize);
+            return size < 13 || box.width < size || box.height < size
+              || box.left < bounds.left - 1 || box.right > bounds.right + 1
+              || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1;
+          }).map(leaf => ({ element: leaf.className || leaf.tagName, text: leaf.textContent }));
+        })), 'Each headline, source and time keeps a readable line inside its card').toEqual([]);
         if (view === 'hall' || view === 'allStocks') {
           const rows = page.locator('.tv-hall-row');
           await expect(rows).toHaveCount(height <= 650 ? 3 : 6);
