@@ -80,6 +80,24 @@ for (const theme of ['light', 'dark'] as const) {
           return Math.min(source.right, clock.right) - Math.max(source.left, clock.left) > 1
             && Math.min(source.bottom, clock.bottom) - Math.max(source.top, clock.top) > 1;
         }).length), 'The full date never pushes the clock across the source').toBe(0);
+        if (view === 'kuwait') {
+          const quotes = page.locator('.tv-receiver-quotes .tv-market-strip-item');
+          await expect(quotes).toHaveCount(height <= 650 ? 4 : 6);
+          await expect.poll(() => quotes.evaluateAll(elements => elements.flatMap(card => {
+            const bounds = card.getBoundingClientRect(), parts = [...card.children].filter(part => part.getClientRects().length);
+            return parts.filter((part, index) => {
+              const box = part.getBoundingClientRect();
+              return box.left < bounds.left - 1 || box.right > bounds.right + 1
+                || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1
+                || parts.slice(index + 1).some(next => {
+                  const other = next.getBoundingClientRect();
+                  return Math.min(box.right, other.right) - Math.max(box.left, other.left) > 1
+                    && Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top) > 1;
+                });
+            }).map(part => part.className);
+          })), 'Quote identity, price, change and evidence occupy separate space inside each card').toEqual([]);
+          expect(await quotes.locator('.tv-strip-price').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(28);
+        }
         if (view === 'hall' || view === 'allStocks') {
           const rows = page.locator('.tv-hall-row');
           await expect(rows).toHaveCount(height <= 650 ? 3 : 6);

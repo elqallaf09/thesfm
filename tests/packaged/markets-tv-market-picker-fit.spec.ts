@@ -6,7 +6,9 @@ import { openAndroidTvPackage } from './packageHarness';
 const groups: TvGroup[] = ['global', 'gulf', 'us', 'europe', 'asia', 'world', 'crypto', 'forex', 'commodities'];
 const markets: TvMarket[] = Array.from({ length: 81 }, (_, index) => ({
   id: `QA_${index}`, group: groups[index % groups.length], count: index === 80 ? 0 : 120,
-  labelAr: `بورصة الاختبار ${index + 1}`, labelEn: `Test exchange ${index + 1}`, labelFr: `Bourse de test ${index + 1}`,
+  labelAr: index === 0 || index === 80 ? `بورصة الاختبار الدولية للأوراق المالية ${index + 1}` : `بورصة الاختبار ${index + 1}`,
+  labelEn: index === 0 || index === 80 ? `International test securities exchange ${index + 1}` : `Test exchange ${index + 1}`,
+  labelFr: index === 0 || index === 80 ? `Bourse internationale des valeurs de test ${index + 1}` : `Bourse de test ${index + 1}`,
   status: index === 80 ? 'unavailable' : 'directory',
 }));
 
@@ -33,11 +35,11 @@ async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'da
 
 for (const language of ['ar', 'en', 'fr'] as const) {
   for (const theme of ['light', 'dark'] as const) {
-    test(`market customization ${language} ${theme}: directory and actions fit one TV page`, async ({ page }) => {
+    test(`market customization ${language} ${theme}: directory and actions fit one TV page`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: 1280, height: 720 });
       await openPicker(page, language, theme);
       await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeFocused();
-      for (const [width, height] of [[1280, 720], [1920, 1080]]) {
+      for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080]]) {
         await page.setViewportSize({ width, height });
         // The unavailable market adds a status paragraph; its editor must
         // also stay above Save instead of silently overlapping the footer.
@@ -59,6 +61,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
             const grid = element.querySelector('.tv-market-list')!;
             return {
               clipped: clipped.map(control => control.getAttribute('data-tv-focus-key') || control.textContent),
+              dialogOutsideViewport: bounds.top < 0 || bounds.left < 0 || bounds.right > innerWidth + 1 || bounds.bottom > innerHeight + 1,
               dialogScroll: dialog.scrollHeight > dialog.clientHeight + 1,
               pickerScroll: scroller.scrollHeight > scroller.clientHeight + 1,
               gridScroll: grid.scrollHeight > grid.clientHeight + 1,
@@ -66,12 +69,15 @@ for (const language of ['ar', 'en', 'fr'] as const) {
               controlsOverFooter: [...element.querySelectorAll('button,input')].some(control =>
                 control.getClientRects().length > 0 && !footer.contains(control) && control.getBoundingClientRect().bottom > footerTop + 1),
             };
-          })).toEqual({ clipped: [], dialogScroll: false, pickerScroll: false, gridScroll: false, editorOverFooter: false, controlsOverFooter: false });
+          })).toEqual({ clipped: [], dialogOutsideViewport: false, dialogScroll: false, pickerScroll: false, gridScroll: false, editorOverFooter: false, controlsOverFooter: false });
+          const name = page.locator('.tv-market-editor h3');
+          expect(await name.evaluate(element => element.scrollHeight <= element.clientHeight + 1 && element.scrollWidth <= element.clientWidth + 1)).toBe(true);
         }
         await expect(page.locator('.tv-market-row')).toHaveCount(81);
         const sizes = await page.locator('.tv-market-row strong').evaluateAll(elements =>
           elements.map(element => parseFloat(getComputedStyle(element).fontSize)));
         expect(Math.min(...sizes)).toBeGreaterThanOrEqual(14);
+        await page.screenshot({ path: testInfo.outputPath(`customize-${language}-${theme}-${width}.png`) });
       }
     });
   }

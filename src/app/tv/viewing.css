@@ -83,9 +83,6 @@
 .tv-scene-coverage-total { display: flex; align-items: center; gap: .6em; margin-block: .2em; }
 .tv-scene-coverage-total strong { font: 500 1.6em/1.4 var(--font-data); color: var(--tv-accent); }
 .tv-scene-coverage-total span { font-size: .7em; }
-.tv-scene-coverage-meter { display: flex; gap: .2em; margin-block: .4em; height: .3em; }
-.tv-scene-coverage-meter span { flex: 1; border-radius: var(--radius-xs); background: var(--tv-line); }
-.tv-scene-coverage-meter span[data-priced=true] { background: var(--tv-accent); }
 .tv-scene-health > p { line-height: 1.5; color: var(--tv-muted); font-size: max(12px, .65em); }
 .tv-scene-health .tv-data-notice { flex-direction: column; align-items: stretch; margin-block: .5em 0; }
 .tv-scene-health .tv-data-notice > button { align-self: flex-start; }
@@ -93,13 +90,6 @@
 .tv-scene-health dl > div { display: flex; justify-content: space-between; gap: .5em; align-items: baseline; font-size: .7em; }
 .tv-scene-health dd { margin: 0; font-family: var(--font-data); }
 .tv-scene-health dt { color: var(--tv-muted); }
-.tv-scene-unavailable { margin-top: .5em; border-top: 1px solid var(--tv-line); padding-top: .4em; font-size: .7em; }
-.tv-scene-unavailable summary { color: var(--tv-accent); cursor: pointer; padding: .2em 0; }
-.tv-scene-unavailable ul { padding-inline-start: 1em; margin: .4em 0 0; }
-.tv-scene-unavailable li { margin-block: .4em; }
-.tv-scene-unavailable strong, .tv-scene-unavailable li span { display: block; line-height: 1.5; }
-.tv-screen .tv-scene-unavailable li button { display: block; min-height: 0; width: 100%; font-size: 1em; text-align: start; border: 0; border-radius: 0; padding: .3em; background: transparent; }
-.tv-scene-unavailable li span { color: var(--tv-muted); }
 .tv-scene-headlines { flex: 1 1 auto; }
 .tv-screen .tv-scene-headlines button { display: block; min-height: 0; width: 100%; padding: .45em 0; border: 0; border-top: 1px solid var(--tv-line); border-radius: 0; background: transparent; text-align: start; }
 .tv-scene-no-data, .tv-scene-loading, .tv-viewing-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em; text-align: center; padding: 1em; flex: 1; min-height: 0; color: var(--tv-muted); }
