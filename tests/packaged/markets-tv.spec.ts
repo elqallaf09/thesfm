@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
 import type { TvLanguage, TvQuote, TvSnapshot } from '../../src/lib/markets-tv/types';
 
 // Synthetic values exist only in this browser fixture, never in packaged assets.
@@ -252,6 +253,7 @@ test('full Arabic news, isolated quote evidence and legacy-compatible colors', a
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence time').first()).toHaveAttribute('dir', 'ltr');
   await page.locator('[data-tv-focus-key="scene-heatmap"]').click();
   expect(await page.locator('.tv-scene-heatmap > button').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(244, 221, 224)');
+  await openTvHeaderActions(page);
   await page.locator('[data-tv-focus-key="settings"]').click();
   expect(await page.locator('.tv-modal-backdrop').evaluate(el => getComputedStyle(el).backdropFilter)).toBe('none');
 });
@@ -268,6 +270,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
       : { state: 'active', token: 'b'.repeat(64) } });
   });
   await page.route('**/api/tv/device', route => route.fulfill({ json: { device: { name: 'Test TV', settings: { language: 'en' } }, symbols: ['QA4'], alerts: [] } }));
+  await openTvHeaderActions(page);
   await page.locator('[data-tv-focus-key="pair"]').click();
   const create = page.locator('.tv-pair-content button');
   await create.click();
@@ -284,6 +287,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   await page.clock.runFor(5100);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe('b'.repeat(64));
+  await expect(page.locator('[data-tv-focus-key=more]')).toBeFocused();
 });
 
 test('strips use index points and hide unpriced instruments until the provider recovers', async ({ page }) => {
@@ -304,7 +308,9 @@ test('strips use index points and hide unpriced instruments until the provider r
   await expect(strip.locator('.tv-strip-evidence time').first()).toHaveText('12:00');
   await page.clock.runFor(2000);
   price = 5962.2; observed = '2026-11-03T09:00:02Z';
-  await page.getByRole('button', { name: 'تحديث', exact: true }).click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=refresh]').click();
+  await closeTvHeaderActions(page);
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveCSS('background-color', 'rgb(216, 238, 231)');
   price = null;

@@ -123,6 +123,9 @@
   min-height: 0;
 }
 @media (max-width: 760px) {
+  .tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-window {
+    grid-column: 1;
+  }
   .tv-screen .tv-readable-strips .tv-market-strip {
     grid-template-columns: minmax(0, 1fr) 2em;
   }

@@ -18,7 +18,7 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
   loading?: boolean; error?: boolean; retry: () => void;
 }) {
   const [search, setSearch] = useState('');
-  const [region, setRegion] = useState('all');
+  const [region, setRegion] = useState<'all' | TvMarket['group']>('all');
   const [selectedOnly, setSelectedOnly] = useState(false);
   const [activeId, setActiveId] = useState(initialMarketId || '');
   const [page, setPage] = useState(() => Math.max(0, Math.floor(markets.findIndex(market => market.id === initialMarketId) / MARKETS_PER_PAGE)));
@@ -36,7 +36,12 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
   const visibleRows = rows.slice(currentPage * MARKETS_PER_PAGE, (currentPage + 1) * MARKETS_PER_PAGE);
   const active = visibleRows.find(market => market.id === activeId) || visibleRows[0];
   const position = active ? selected.indexOf(active.id) : -1;
+  const firstOrderControl = position > 0 ? 'market-up' : position >= 0 && position < selected.length - 1 ? 'market-down' : 'market-speed-inherit';
+  const optionsAfterInstruments = position >= 0 ? firstOrderControl : 'markets-done';
+  const optionsBeforeOrder = active?.count ? 'market-instruments' : 'market-visible';
+  const speedFocusKeys = ['market-speed-inherit', ...TV_STRIP_SPEEDS.map(speed => `market-speed-${speed}`)];
   const groups = [...new Set(markets.map(market => market.group))];
+  const regions: Array<'all' | TvMarket['group']> = ['all', ...groups];
 
   // The picker is lazy-loaded after its dialog. Establish a useful initial
   // target even if the remote hook already focused the dialog's close button.
@@ -53,11 +58,23 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
     if (editorRef.current) editorRef.current.scrollTop = 0;
   }
 
+  function moveRegion(direction: -1 | 1) {
+    const current = Math.max(0, regions.indexOf(region));
+    setRegion(regions[(current + direction + regions.length) % regions.length]);
+    setPage(0);
+    setActiveId('');
+    if (editorRef.current) editorRef.current.scrollTop = 0;
+  }
+
   return <div className="tv-picker tv-market-picker tv-market-picker-tv">
     <div className="tv-market-picker-controls">
       <div className="tv-market-picker-top">
         <label className="tv-market-search"><Search aria-hidden="true"/><input value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} placeholder={t('searchMarkets')} aria-label={t('searchMarkets')} data-tv-focus-key="markets-search"/></label>
-        <label className="tv-picker-region"><span>{t('marketRegion')}</span><select aria-label={t('marketRegion')} value={region} onChange={event => { setRegion(event.target.value); setPage(0); }} data-tv-focus-key="markets-region"><option value="all">{t('allMarkets')}</option>{groups.map(group => <option key={group} value={group}>{t(group)}</option>)}</select></label>
+        <div className="tv-market-region-cycle" role="group" aria-labelledby="tv-market-region-label">
+          <button disabled={!groups.length} onClick={() => moveRegion(-1)} aria-label={`${t('marketRegion')}: ${t('previous')}`} data-tv-focus-key="region-prev" data-tv-nav-down="markets-all" data-tv-nav-left={rtl ? 'region-next' : undefined} data-tv-nav-right={rtl ? undefined : 'region-next'}>{rtl ? <ChevronRight aria-hidden="true"/> : <ChevronLeft aria-hidden="true"/>}{t('previous')}</button>
+          <span className="tv-market-region-current"><small id="tv-market-region-label">{t('marketRegion')}</small><strong aria-live="polite" aria-atomic="true">{t(region === 'all' ? 'allMarkets' : region)}</strong></span>
+          <button disabled={!groups.length} onClick={() => moveRegion(1)} aria-label={`${t('marketRegion')}: ${t('next')}`} data-tv-focus-key="region-next" data-tv-nav-down="markets-all" data-tv-nav-left={rtl ? undefined : 'region-prev'} data-tv-nav-right={rtl ? 'region-prev' : undefined}>{t('next')}{rtl ? <ChevronLeft aria-hidden="true"/> : <ChevronRight aria-hidden="true"/>}</button>
+        </div>
         <span className="tv-picker-count"><b dir="ltr">{selected.length} / {markets.length}</b>{t('selectedMarkets')}</span>
       </div>
       <div className="tv-picker-toolbar"><div className="tv-segment" role="group" aria-label={t('marketList')}><button aria-pressed={!selectedOnly} onClick={() => { setSelectedOnly(false); setPage(0); }} data-tv-focus-key="markets-all">{t('allMarkets')}</button><button aria-pressed={selectedOnly} onClick={() => { setSelectedOnly(true); setPage(0); }} data-tv-focus-key="markets-selected">{t('selectedMarkets')} · {selected.length}</button></div>
@@ -84,13 +101,14 @@ export function TvMarketPicker({ markets, settings, change, selections, customiz
       {active && <section ref={editorRef} id="tv-market-editor" className="tv-market-editor" aria-label={`${t('marketOptions')}: ${label(active)}`}>
         <div className="tv-market-editor-title"><small>{t('marketOptions')}</small><h3>{label(active)}</h3></div>
         <button className="tv-picker-primary" role="switch" aria-checked={position >= 0} aria-label={`${t('showMarket')}: ${label(active)}`} data-tv-focus-key="market-visible"
+          data-tv-nav-down={active.count ? 'market-instruments' : optionsAfterInstruments} data-tv-nav-up="markets-all"
           data-tv-nav-right={rtl ? `market-${active.id}` : undefined} data-tv-nav-left={rtl ? undefined : `market-${active.id}`}
           onClick={() => change({ ...settings, marketIds: position >= 0 ? selected.filter(id => id !== active.id) : [...selected, active.id] })}><Check aria-hidden="true"/>{t(position >= 0 ? 'marketVisible' : 'addMarket')}</button>
-        <button className="tv-market-customize" disabled={!active.count} onClick={() => customize(active)} aria-label={`${t('customizeInstruments')}: ${label(active)}`} data-tv-focus-key="market-instruments" data-tv-nav-down={position < 0 ? 'markets-done' : undefined}><ListFilter aria-hidden="true"/><span>{t('customizeInstruments')}<small>{selections[active.id] ? `${selections[active.id].length.toLocaleString('en-US')} ${t('selectedInstruments')}` : t('allInstruments')}</small></span></button>
+        <button className="tv-market-customize" disabled={!active.count} onClick={() => customize(active)} aria-label={`${t('customizeInstruments')}: ${label(active)}`} data-tv-focus-key="market-instruments" data-tv-nav-down={optionsAfterInstruments} data-tv-nav-up="market-visible"><ListFilter aria-hidden="true"/><span>{t('customizeInstruments')}<small>{selections[active.id] ? `${selections[active.id].length.toLocaleString('en-US')} ${t('selectedInstruments')}` : t('allInstruments')}</small></span></button>
         {active.status === 'unavailable' && <p className="tv-picker-help">{t('directoryUnavailable')}</p>}
         {position >= 0 && <>
-          <div className="tv-picker-control"><span>{t('displayOrder')} <b dir="ltr">{position + 1} / {selected.length}</b></span><div className="tv-picker-actions"><button disabled={position === 0} aria-label={`${t('moveMarketUp')}: ${label(active)}`} data-tv-focus-key="market-up" onClick={() => change({ ...settings, marketIds: moveTvMarket(selected, active.id, -1) })}><ArrowUp aria-hidden="true"/>{t('moveMarketUp')}</button><button disabled={position === selected.length - 1} aria-label={`${t('moveMarketDown')}: ${label(active)}`} data-tv-focus-key="market-down" onClick={() => change({ ...settings, marketIds: moveTvMarket(selected, active.id, 1) })}><ArrowDown aria-hidden="true"/>{t('moveMarketDown')}</button></div></div>
-          <div className="tv-picker-control"><span>{t('stripSpeed')}</span><div className="tv-speed-options" role="group" aria-label={`${t('stripSpeed')}: ${label(active)}`}>{[undefined, ...TV_STRIP_SPEEDS].map((speed, index) => <button key={speed ?? 'inherit'} aria-pressed={settings.marketSpeeds?.[active.id] === speed} data-tv-focus-key={`market-speed-${speed ?? 'inherit'}`} data-tv-nav-down={index >= 2 ? 'markets-done' : undefined} onClick={() => {
+          <div className="tv-picker-control"><span>{t('displayOrder')} <b dir="ltr">{position + 1} / {selected.length}</b></span><div className="tv-picker-actions"><button disabled={position === 0} aria-label={`${t('moveMarketUp')}: ${label(active)}`} data-tv-focus-key="market-up" data-tv-nav-down="market-speed-inherit" data-tv-nav-up={optionsBeforeOrder} onClick={() => change({ ...settings, marketIds: moveTvMarket(selected, active.id, -1) })}><ArrowUp aria-hidden="true"/>{t('moveMarketUp')}</button><button disabled={position === selected.length - 1} aria-label={`${t('moveMarketDown')}: ${label(active)}`} data-tv-focus-key="market-down" data-tv-nav-down={speedFocusKeys[1]} data-tv-nav-up={optionsBeforeOrder} onClick={() => change({ ...settings, marketIds: moveTvMarket(selected, active.id, 1) })}><ArrowDown aria-hidden="true"/>{t('moveMarketDown')}</button></div></div>
+          <div className="tv-picker-control"><span>{t('stripSpeed')}</span><div className="tv-speed-options" data-tv-focus-grid role="group" aria-label={`${t('stripSpeed')}: ${label(active)}`}>{[undefined, ...TV_STRIP_SPEEDS].map((speed, index) => <button key={speed ?? 'inherit'} aria-pressed={settings.marketSpeeds?.[active.id] === speed} data-tv-focus-key={speedFocusKeys[index]} data-tv-nav-down={index >= 2 ? 'markets-done' : speedFocusKeys[index + 2]} data-tv-nav-up={index >= 2 ? speedFocusKeys[index - 2] : index === 1 && position < selected.length - 1 ? 'market-down' : position > 0 ? 'market-up' : position < selected.length - 1 ? 'market-down' : optionsBeforeOrder} onClick={() => {
             const marketSpeeds = { ...settings.marketSpeeds };
             if (speed === undefined) delete marketSpeeds[active.id]; else marketSpeeds[active.id] = speed;
             change({ ...settings, marketSpeeds });

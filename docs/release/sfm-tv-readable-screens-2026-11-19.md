@@ -11,8 +11,9 @@ version is reserved as 1.0.21/build 27, above the parallel build 26 in PR #372.
 Retain the companion news/session improvements when integrating that PR.
 No schema, provider, authentication, recorded financial value, or account change.
 
-- Header actions retain their localized names on TV widths, with distinct icons
-  for strip mode and My channels. Directional focus stays in the action row.
+- Six primary header actions retain their localized names in one TV row, with
+  distinct icons for strip mode and My channels. More opens named secondary
+  controls with a remote focus scope; Back returns to More on web and Android.
 - Quote metadata stacks provider/status above observation time. Old observations
   retain their date and freshness. Market summaries have their own grid cell.
 - Sparse quote sets display once without a scrolling duplicate. Their batches
@@ -36,7 +37,7 @@ Completed locally:
 Pending on the current GitHub head before release:
 
 - Pinned Node 22.13.0/pnpm 11.1.3 frozen installation and all protected-main checks.
-- Full packaged Playwright suite, including 22 new readability/picker/remote cases.
+- Full packaged Playwright suite, including 24 new readability/picker/remote cases.
 - Visual review of 720p/1080p AR/EN/FR light/dark screenshots retained by CI.
 - Android compile/lint and installable preview artifact verification.
 

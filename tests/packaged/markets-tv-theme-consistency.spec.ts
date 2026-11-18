@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { openAndroidTvPackage } from './packageHarness';
+import { openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 
 // Deterministic browser fixtures only; product builds contain no sample prices.
 const items = Array.from({ length: 6 }, (_, i) => ({ symbol: `THEME${i}`, name: `Theme check ${i}`, nameAr: `Theme check ${i}`, currency: 'KWD', region: 'KW' }));
@@ -114,6 +114,7 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
         await page.locator('[data-tv-focus-key=scene-list]').click();
       }
     }
+    await openTvHeaderActions(page);
     await page.locator('[data-tv-focus-key=settings]').click();
     await expect(page.locator('.tv-dialog')).toBeVisible();
     expect(await palette(page)).toEqual(baseline);
@@ -124,6 +125,7 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
     await selected.focus();
     await expect(selected).toHaveCSS('outline-color', baseline.colors.accent);
     await page.keyboard.press('Escape');
+    await expect(page.locator('[data-tv-focus-key=more]')).toBeFocused();
   });
 }
 

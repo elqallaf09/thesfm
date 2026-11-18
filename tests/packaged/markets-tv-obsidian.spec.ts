@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { openTvHeaderActions } from './packageHarness';
 import type { TvLanguage, TvQuote } from '../../src/lib/markets-tv/types';
 const now='2026-11-06T15:00:00Z';
 const symbols=['^GSPC','^DJI','^NDX','^FTSE','^GDAXI','^N225'];
@@ -46,13 +47,14 @@ for(const language of ['ar','en','fr'] as const)test(`Obsidian ${language} overv
   expect(errors).toEqual([]);
 });
 test('Tweaks persists all four accents across views, reload and light mode',async({page})=>{
-  await open(page,'en');await page.locator('[data-tv-focus-key=settings]').click();
+  await open(page,'en');await openTvHeaderActions(page);await page.locator('[data-tv-focus-key=settings]').click();
   for(const accent of ['blue','green','purple','champagne']){
     await page.locator(`.tv-accent-options [data-accent=${accent}]`).click();
     await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-accent',accent);
     expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')!).accent)).toBe(accent);
   }
   await page.getByRole('button',{name:'Light',exact:true}).click();await page.keyboard.press('Escape');
+  await expect(page.locator('[data-tv-focus-key=more]')).toBeFocused();
   await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-light/);
   await page.reload();await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-accent','champagne');
 });

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { TvGroup, TvLanguage, TvMarket } from '../../src/lib/markets-tv/types';
 import { TV_STRIP_SPEEDS } from '../../src/lib/markets-tv/types';
+import { tvText } from '../../src/lib/markets-tv/i18n';
 import { sessionText } from '../../src/lib/markets-tv/sessionCopy';
 import { openAndroidTvPackage } from './packageHarness';
 
@@ -14,14 +15,14 @@ const markets: TvMarket[] = Array.from({ length: 17 }, (_, index) => ({
   status: 'directory',
 }));
 
-async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'dark') {
+async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'dark', directory = markets) {
   await page.addInitScript(({ language, theme }) => {
     sessionStorage.setItem('sfm-tv-welcome-shown', '1');
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, theme, scene: 'world', autoRotate: false }));
   }, { language, theme });
   await page.route('**/api/**', route => {
     const pathname = new URL(route.request().url()).pathname;
-    if (pathname.endsWith('/catalog')) return route.fulfill({ json: { markets } });
+    if (pathname.endsWith('/catalog')) return route.fulfill({ json: { markets: directory } });
     if (pathname.endsWith('/news')) return route.fulfill({ json: { stories: [] } });
     if (pathname.endsWith('/snapshot')) return route.fulfill({ json: {
       group: 'world', scene: 'world', quotes: [], summary: [], total: 0, available: 0, generatedAt: new Date().toISOString(),
@@ -31,7 +32,7 @@ async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'da
   await openAndroidTvPackage(page);
   await page.locator('[data-tv-focus-key="customize"]').click();
   await expect(page.locator('.tv-market-picker-tv')).toBeVisible();
-  await expect(page.locator('.tv-market-row')).toHaveCount(4);
+  await expect(page.locator('.tv-market-row')).toHaveCount(Math.min(4, directory.length));
   await page.evaluate(() => document.fonts.ready);
 }
 
@@ -94,6 +95,27 @@ test('market pagination reaches the entire directory without shrinking or duplic
   await expect(page.locator('[data-tv-focus-key="markets-previous"]')).toBeDisabled();
 });
 
+test('remote changes the region and exits its filter with arrows and OK without Tab', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openPicker(page, 'ar', 'light');
+  await expect(page.locator('.tv-market-region-current strong')).toHaveText(tvText('ar', 'allMarkets'));
+  // Establish the starting control, then exercise only physical-remote keys.
+  // A native select used to consume every arrow and trap focus in this filter.
+  await page.locator('[data-tv-focus-key="region-prev"]').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('[data-tv-focus-key="region-next"]')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-market-region-current strong')).toHaveText(tvText('ar', 'gulf'));
+  await expect(page.locator('.tv-market-row')).toHaveCount(4);
+  await expect(page.locator('.tv-market-row').first()).toHaveAttribute('data-tv-focus-key', 'market-QA_0');
+  await expect(page.locator('.tv-market-row').last()).toHaveAttribute('data-tv-focus-key', 'market-QA_12');
+  await expect(page.locator('[data-tv-focus-key="markets-previous"]')).toBeDisabled();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-tv-focus-key="markets-all"]')).toBeFocused();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeInViewport({ ratio: 1 });
+});
+
 test('remote opens market options, reaches save, and preserves selection and speed across pages', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await openPicker(page, 'ar', 'dark');
@@ -105,15 +127,11 @@ test('remote opens market options, reaches save, and preserves selection and spe
   await expect(page.locator('[data-tv-focus-key="market-visible"]')).toBeFocused();
   const fast = page.locator(`[data-tv-focus-key="market-speed-${TV_STRIP_SPEEDS[2]}"]`);
   // Traversal must expose the bottom options without letting the footer scroll.
-  const bottomSpeed = page.locator('.tv-speed-options button:nth-child(n+3):focus');
-  for (let step = 0; step < 6; step++) {
-    if (await bottomSpeed.count()) break;
+  for (const key of ['market-instruments', 'market-up', 'market-speed-inherit', `market-speed-${TV_STRIP_SPEEDS[1]}`]) {
     await page.keyboard.press('ArrowDown');
+    await expect(page.locator(`[data-tv-focus-key="${key}"]`)).toBeFocused();
   }
-  await expect(bottomSpeed).toHaveCount(1);
-  if (!(await fast.evaluate(element => document.activeElement === element))) {
-    await page.keyboard.press('ArrowLeft');
-  }
+  await page.keyboard.press('ArrowLeft');
   await expect(fast).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(fast).toHaveAttribute('aria-pressed', 'true');
@@ -131,4 +149,24 @@ test('remote opens market options, reaches save, and preserves selection and spe
   expect(settings.marketIds).toContain('QA_0');
   expect(settings.marketIds).toContain('QA_16');
   expect(settings.marketSpeeds.QA_5).toBe(TV_STRIP_SPEEDS[2]);
+});
+
+test('remote skips disabled options and still reaches save for a single empty market', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await openPicker(page, 'ar', 'light', [{ ...markets[0], count: 0, status: 'unavailable' }]);
+  await page.locator('[data-tv-focus-key="market-QA_0"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-tv-focus-key="market-visible"]')).toBeFocused();
+  await expect(page.locator('[data-tv-focus-key="market-instruments"]')).toBeDisabled();
+  await expect(page.locator('[data-tv-focus-key="market-up"]')).toBeDisabled();
+  await expect(page.locator('[data-tv-focus-key="market-down"]')).toBeDisabled();
+  for (const key of ['market-speed-inherit', `market-speed-${TV_STRIP_SPEEDS[1]}`, 'markets-done']) {
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator(`[data-tv-focus-key="${key}"]`)).toBeFocused();
+  }
+  await page.locator('[data-tv-focus-key="market-visible"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-tv-focus-key="market-visible"]')).toHaveAttribute('aria-checked', 'false');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeFocused();
 });

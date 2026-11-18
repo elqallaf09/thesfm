@@ -1,6 +1,6 @@
 'use client';
-import { memo, useEffect, useMemo, useState } from 'react';
-import { Globe2, Maximize, Monitor, Pause, Play, RefreshCw, Rows3, Settings2, SlidersHorizontal, Smartphone, Tv } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { Globe2, Maximize, Monitor, Pause, Play, RefreshCw, Rows3, Settings2, SlidersHorizontal, Smartphone, Tv, MoreHorizontal, X } from 'lucide-react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { TV_WELCOME_EVENT, welcomeText } from '@/lib/markets-tv/welcome';
 import { tvText } from '@/lib/markets-tv/i18n';
@@ -35,12 +35,37 @@ type Props = {
   pair: () => void; settings: () => void; customize: () => void; channels: () => void;
   toggleFullscreen: () => void; togglePause: () => void; refresh: () => void;
 };
+const HEADER_COPY = {
+  ar: { more: 'المزيد', controls: 'أدوات الشاشة' },
+  en: { more: 'More', controls: 'Screen controls' },
+  fr: { more: 'Plus', controls: 'Commandes de l’écran' },
+} satisfies Record<TvLanguage, { more: string; controls: string }>;
+
 export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, paused, wake, changeMode, pair, settings, customize, channels, toggleFullscreen, togglePause, refresh }: Props) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
-  return <header className="tv-unified-header tv-labelled-header" data-controls-hidden={hidden}>
+  const copy = HEADER_COPY[language];
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreButton = useRef<HTMLButtonElement>(null);
+  const moreDialog = useRef<HTMLElement>(null);
+  const controlsHidden = hidden && !moreOpen;
+  useEffect(() => {
+    if (moreOpen) moreDialog.current?.querySelector<HTMLButtonElement>('[data-tv-initial-focus]')?.focus({ preventScroll: true });
+  }, [moreOpen]);
+  function closeMore() {
+    setMoreOpen(false);
+    wake();
+    moreButton.current?.focus({ preventScroll: true });
+  }
+  function openGlobalDialog(open: () => void) {
+    // The global dialog must remember a persistent header target, not a button
+    // in this popup which disappears in the same React update.
+    closeMore();
+    open();
+  }
+  return <header className="tv-unified-header tv-labelled-header" data-controls-hidden={controlsHidden} data-tv-focus-row>
     <div className="tv-unified-brand"><button className="tv-intro-replay" aria-label={welcomeText(language).replay} title={welcomeText(language).replay} onClick={() => window.dispatchEvent(new Event(TV_WELCOME_EVENT))}><TvBrandMark packaged={ready && tvOrigin() !== window.location.origin}/></button><div><strong dir="ltr">THE SFM</strong><span dir="ltr">MARKETS TV</span></div></div>
     <TvClock language={language}/>
-    <div className="tv-header-actions" hidden={hidden} data-tv-focus-row>
+    <div className="tv-header-actions" hidden={controlsHidden}>
       <nav className="tv-mode-switch" aria-label={t('dashboard')}>
         {(['viewing', 'browse', 'strips'] as const).map(value => {
           const label = value === 'strips' ? t('stripsOnly') : hallText(language, value === 'browse' ? 'allStocks' : 'hall');
@@ -53,11 +78,19 @@ export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, pa
       </nav>
       <button onClick={channels} aria-label={t('channels')} data-tv-focus-key="channels"><Tv aria-hidden="true"/><span>{t('channels')}</span></button>
       <button className="tv-customize-button" onClick={customize} aria-label={t('customizeMarkets')} data-tv-focus-key="customize"><SlidersHorizontal aria-hidden="true"/><span>{t('customizeMarkets')}</span></button>
-      <button onClick={pair} aria-label={t(paired ? 'paired' : 'pair')} data-tv-focus-key="pair"><Smartphone aria-hidden="true"/><span>{t(paired ? 'paired' : 'pair')}</span></button>
-      <button className="tv-tweaks-button" onClick={settings} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button>
-      <button onClick={toggleFullscreen} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')} data-tv-focus-key="fullscreen"><Maximize aria-hidden="true"/><span>{t(fullscreen ? 'exitFullscreen' : 'fullscreen')}</span></button>
-      {mode === 'strips' && <><button onClick={togglePause} aria-label={t(paused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={paused} data-tv-focus-key="ticker-playback">{paused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}<span>{t(paused ? 'resumeStrips' : 'pauseStrips')}</span></button><button onClick={refresh} aria-label={t('refresh')} data-tv-focus-key="refresh"><RefreshCw aria-hidden="true"/><span>{t('refresh')}</span></button></>}
+      <button ref={moreButton} className="tv-header-more" onClick={() => { wake(); setMoreOpen(true); }} aria-haspopup="dialog" aria-expanded={moreOpen} aria-controls={moreOpen ? 'tv-header-more-dialog' : undefined} data-tv-focus-key="more"><MoreHorizontal aria-hidden="true"/><span>{copy.more}</span></button>
     </div>
-    {hidden && <button onClick={wake} aria-label={t('showControls')}><Settings2 aria-hidden="true"/><span>{t('showControls')}</span></button>}
+    {controlsHidden && <button className="tv-header-wake" onClick={wake} aria-label={t('showControls')}><Settings2 aria-hidden="true"/><span>{t('showControls')}</span></button>}
+    {moreOpen && <div className="tv-header-more-backdrop" onClick={event => { if (event.target === event.currentTarget) closeMore(); }}>
+      <section ref={moreDialog} id="tv-header-more-dialog" className="tv-header-more-dialog" role="dialog" aria-modal="true" aria-labelledby="tv-header-more-title" data-tv-focus-scope>
+        <header><h2 id="tv-header-more-title">{copy.controls}</h2><button className="tv-header-more-close" onClick={closeMore} data-tv-focus-key="more-close" data-tv-back><X aria-hidden="true"/><span>{t('close')}</span></button></header>
+        <div className="tv-header-more-actions" data-tv-focus-grid>
+          <button onClick={() => openGlobalDialog(pair)} aria-label={t(paired ? 'paired' : 'pair')} data-tv-focus-key="pair" data-tv-initial-focus><Smartphone aria-hidden="true"/><span>{t(paired ? 'paired' : 'pair')}</span></button>
+          <button className="tv-tweaks-button" onClick={() => openGlobalDialog(settings)} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button>
+          <button onClick={toggleFullscreen} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')} data-tv-focus-key="fullscreen"><Maximize aria-hidden="true"/><span>{t(fullscreen ? 'exitFullscreen' : 'fullscreen')}</span></button>
+          {mode === 'strips' && <><button onClick={togglePause} aria-label={t(paused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={paused} data-tv-focus-key="ticker-playback">{paused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}<span>{t(paused ? 'resumeStrips' : 'pauseStrips')}</span></button><button onClick={refresh} aria-label={t('refresh')} data-tv-focus-key="refresh"><RefreshCw aria-hidden="true"/><span>{t('refresh')}</span></button></>}
+        </div>
+      </section>
+    </div>}
   </header>;
 }

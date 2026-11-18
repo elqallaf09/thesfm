@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
+import { closeTvHeaderActions, openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 import type { TvLanguage, TvQuote } from '../../src/lib/markets-tv/types';
 
 const now = '2026-11-19T00:00:00Z';
@@ -85,7 +85,9 @@ test('sparse batches advance without duplicates and wait for remote reading to f
   await page.clock.runFor(7500);
   await expect(quote.locator('.tv-strip-symbol b')).toHaveText('QA12');
   await expect(quote).toHaveCount(1);
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'Pause strips', exact: true }).click();
+  await closeTvHeaderActions(page);
   await page.clock.runFor(15000);
   await expect(quote.locator('.tv-strip-symbol b')).toHaveText('QA12');
 });

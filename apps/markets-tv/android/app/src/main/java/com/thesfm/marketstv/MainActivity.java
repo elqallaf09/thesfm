@@ -53,7 +53,7 @@ public final class MainActivity extends ComponentActivity {
     screen.loadUrl(APP);
   }
   private void handleTvBack() {
-    screen.evaluateJavascript("Boolean(document.querySelector('[data-tv-dialog]'))", result -> {
+    screen.evaluateJavascript("Boolean(document.querySelector('[data-tv-dialog],[data-tv-focus-scope]'))", result -> {
       if ("true".equals(result)) screen.evaluateJavascript("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}))", null);
       else new AlertDialog.Builder(this).setTitle("The SFM Markets TV").setMessage("Exit / خروج / Quitter ?")
         .setPositiveButton(android.R.string.ok, (dialog, which) -> finish())

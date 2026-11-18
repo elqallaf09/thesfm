@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
+import { openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 
 // Browser-only fixtures. Product data always comes from the configured providers.
 const instant = '2026-11-14T10:00:00Z';
@@ -152,6 +152,7 @@ for (const theme of ['light', 'dark'] as const) {
       await fits(page, 'news dialog', '.tv-dialog');
       await page.keyboard.press('Escape');
       await expect(page.locator('.tv-dialog')).toHaveCount(0);
+      await openTvHeaderActions(page);
       await page.locator('[data-tv-focus-key="settings"]').click();
       await fits(page, 'settings', '.tv-dialog');
       const close = page.locator('.tv-dialog > header button');
@@ -164,6 +165,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(close).toBeFocused();
       await page.keyboard.press('Escape');
       await expect(page.locator('.tv-dialog')).toHaveCount(0);
+      await expect(page.locator('[data-tv-focus-key="more"]')).toBeFocused();
       await expect(page.locator('[data-tv-root]')).toHaveClass(new RegExp(`tv-${theme}`));
       await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-accent', 'green');
       expect(errors).toEqual([]);
@@ -182,7 +184,8 @@ test('strip movement respects reduced motion, and pause remains keyboard accessi
   await expect.poll(() => track.evaluate(element => getComputedStyle(element).transform)).not.toBe(initial);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(track).toHaveCSS('animation-name', 'none');
-  const pause = page.locator('.tv-header-actions button[aria-pressed]').first();
+  await openTvHeaderActions(page);
+  const pause = page.locator('[data-tv-focus-key=ticker-playback]');
   await expect(pause).toHaveAttribute('aria-pressed', 'true');
   await pause.focus(); await page.keyboard.press('Enter');
   await expect(pause).toBeFocused();
@@ -224,6 +227,7 @@ test('many market strips stay reachable by remote without scrolling the whole sc
   }
   expect(await page.locator('.tv-market-strips').evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   await fits(page, 'scrolled strips', '.tv-unified-header,.tv-market-strips');
+  await openTvHeaderActions(page);
   await page.locator('[data-tv-focus-key="settings"]').focus();
   await page.keyboard.press('Enter');
   await fits(page, 'settings after strip scrolling', '.tv-dialog');
