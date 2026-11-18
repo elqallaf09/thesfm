@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 const mocks = vi.hoisted(() => ({
   user: vi.fn(), usage: vi.fn(), rate: vi.fn(), resolve: vi.fn(), canonical: vi.fn(),
   grounding: vi.fn(), economicPrompt: vi.fn(),
-  writeUsage: vi.fn(),
+  writeUsage: vi.fn(), creditPaused: vi.fn(),
 }));
 
 vi.mock('@/domain/economic-intelligence/advisors.server', () => ({ loadAdvisorGrounding: mocks.grounding }));
@@ -20,6 +20,10 @@ vi.mock('@/services/intelligence/assetResolver', () => ({ resolveCanonicalIntell
 vi.mock('@/lib/server/openAiAdvisorUsage', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/server/openAiAdvisorUsage')>(),
   writeOpenAiAdvisorUsage: mocks.writeUsage,
+}));
+vi.mock('@/lib/server/openAiAdvisorCircuit', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/server/openAiAdvisorCircuit')>(),
+  openAiAdvisorCreditPaused: mocks.creditPaused,
 }));
 
 import { POST, maxDuration } from '@/app/api/intelligence/chat/route';
@@ -65,6 +69,7 @@ beforeEach(() => {
   mocks.user.mockResolvedValue({ id: 'test-user' });
   mocks.usage.mockResolvedValue({ allowed: true });
   mocks.writeUsage.mockResolvedValue(true);
+  mocks.creditPaused.mockResolvedValue(false);
   mocks.rate.mockReturnValue({ allowed: true });
   mocks.resolve.mockResolvedValue({ ok: false });
   mocks.grounding.mockResolvedValue({ advisor: 'finance', facts: [] });
@@ -276,6 +281,44 @@ describe('intelligence chat with explicit OpenAI pilot', () => {
     expect(url).toBe('https://api.openai.com/v1/responses');
     expect(JSON.parse(String(init.body)).instructions).toContain('Owner-scoped grounding fixture.');
     expect(mocks.writeUsage).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'quota-event', userId: 'test-user' }), expect.objectContaining({ outcome: 'success', usage: expect.objectContaining({ totalTokens: 30 }) }));
+  });
+
+  it('returns the existing private advisor after a settled credit failure with one allowance and the same owner grounding', async () => {
+    configurePrimary();
+    fetchMock.mockResolvedValueOnce(Response.json({ error: { code: 'credit_balance_exhausted', message: 'private billing detail' } }, { status: 429 }))
+      .mockResolvedValueOnce(completion('Grounded private continuation'));
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ source: 'ai', provider: 'sfm-private-primary', model: 'sfm-primary', advisorGrounded: true, text: 'Grounded private continuation' });
+    expect(mocks.usage).toHaveBeenCalledTimes(1);
+    expect(mocks.grounding).toHaveBeenCalledWith({ userId: 'test-user', advisor: 'finance' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.map(call => String(call[0]))).toEqual(['https://api.openai.com/v1/responses', 'https://primary.sfm.test/v1/chat/completions']);
+    const privateBody = JSON.parse(String(fetchMock.mock.calls[1][1].body));
+    expect(privateBody.messages[0].content).toContain('Owner-scoped grounding fixture.');
+    expect(privateBody.messages.at(-1)).toEqual({ role: 'user', content: 'Explain diversification' });
+    expect(mocks.writeUsage).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'quota-event', userId: 'test-user' }), expect.objectContaining({ outcome: 'failure', httpStatus: 429, reasonCode: 'CREDIT_BALANCE_EXHAUSTED', usage: null }));
+    expect(mocks.writeUsage.mock.invocationCallOrder[1]).toBeLessThan(fetchMock.mock.invocationCallOrder[1]);
+    expect(maxDuration * 1000).toBeGreaterThan(22_000 + 2 * 7_000);
+  });
+
+  it('uses the old provider during a durable pause without inventing an OpenAI attempt', async () => {
+    configurePrimary(); mocks.creditPaused.mockResolvedValue(true);
+    fetchMock.mockResolvedValue(completion('Private during credit pause'));
+    expect(await (await POST(request())).json()).toMatchObject({ provider: 'sfm-private-primary', text: 'Private during credit pause' });
+    expect(mocks.usage).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://primary.sfm.test/v1/chat/completions');
+    expect(mocks.writeUsage).not.toHaveBeenCalled();
+  });
+
+  it('does not reinterpret a generic provider throttle as exhausted credit', async () => {
+    configurePrimary();
+    fetchMock.mockResolvedValue(Response.json({ error: { code: 'rate_limit_exceeded' } }, { status: 429 }));
+    const response = await POST(request());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: { code: 'AI_PROVIDER_UNAVAILABLE' } });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('cannot bypass authentication or the existing allowance even when a paid provider is configured', async () => {
