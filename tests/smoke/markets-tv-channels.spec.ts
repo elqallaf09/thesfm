@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openTvHeaderActions } from './helpers/tv-controls';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
@@ -27,11 +28,10 @@ async function fixtures(page: Page, emptyFirstBatch = false) {
 }
 
 async function chooseMarket(page: Page, marketId: string) {
-  const mobilePicker = page.locator('.tv-picker-mobile-market select');
-  // Both layouts mount the select once the market catalog is ready.
-  await expect(mobilePicker.locator(`option[value="${marketId}"]`)).toBeAttached();
-  if (await mobilePicker.isVisible()) await mobilePicker.selectOption(marketId);
-  else await page.locator(`[data-tv-focus-key="market-${marketId}"]`).click();
+  // Both fixture markets fit the same readable page on TV and mobile.
+  const market = page.locator(`[data-tv-focus-key="market-${marketId}"]`);
+  await expect(market).toBeVisible();
+  await market.click();
 }
 
 test('TV channels restore stock choices, order, per-market speed, density and language after reload', async ({ page }) => {
@@ -50,6 +50,7 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.getByRole('group', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).getByRole('button', { name: 'سريعة', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
   await page.getByRole('button', { name: 'مضغوط', exact: true }).click();
   await page.locator('.tv-language-setting select').selectOption('fr');
@@ -59,6 +60,7 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.getByRole('button', { name: 'Enregistrer l’affichage actuel', exact: true }).click();
   await expect(page.getByText('Chaînes enregistrées', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'Réglages de l’écran', exact: true }).click();
   await page.getByRole('button', { name: 'Confortable', exact: true }).click();
   await page.locator('.tv-language-setting select').selectOption('en');
@@ -87,6 +89,7 @@ test('TV density preserves source evidence, batch coverage and responsive layout
   const heights: number[] = [];
   await page.setViewportSize({ width: 1920, height: 1080 });
   for (const density of ['مريح', 'متوازن', 'مضغوط']) {
+    await openTvHeaderActions(page);
     await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
     await page.getByRole('button', { name: density, exact: true }).click();
     await page.keyboard.press('Escape');
@@ -125,11 +128,12 @@ test('priced-only mode advances an empty batch and idle controls wake without hi
   await page.goto('/tv/strips');
   await expect(page.locator('.tv-market-strip-empty')).toContainText('continuing to the next batch');
   await expect(page.locator('.tv-market-strip-set').first().locator('button')).toHaveCount(2, { timeout: 18000 });
-  await expect(page.locator('.tv-strip-coverage')).toContainText('2 / 2');
+  await expect(page.locator('.tv-strip-coverage')).toContainText('2 / 3');
   await page.locator('.tv-market-strip-heading').focus();
   await expect(page.locator('.tv-unified-header')).toHaveAttribute('data-controls-hidden', 'true', { timeout: 16000 });
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('.tv-unified-header')).toHaveAttribute('data-controls-hidden', 'false');
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'Display settings', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();

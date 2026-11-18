@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { closeTvHeaderActions, openTvHeaderActions } from './helpers/tv-controls';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
@@ -21,6 +22,7 @@ test('instrument choices search beyond the first page, persist and restore all s
     return route.fulfill({ json: { group: 'us', directoryTotal: selection?.length ?? 2000, total: rows.length, available: rows.length, quotes: rows.map((a, index) => ({ ...a, exchange: 'US', price: 10 + index, changePercent: 1, observedAt, receivedAt: observedAt, source: 'Synthetic QA fixture', status: 'available' })) } });
   });
   await page.goto('/tv/strips');
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
   await expect(page.locator('.tv-language-setting select')).toHaveValue('ar');
   await page.locator('.tv-language-setting select').selectOption('fr');
@@ -89,6 +91,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await page.setViewportSize({ width: 1280, height: 720 });
   expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(722);
   await page.setViewportSize({ width: 1920, height: 1080 });
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -99,7 +102,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Display settings', exact: true })).toBeFocused();
+  await expect(page.locator('[data-tv-focus-key="more"]')).toBeFocused();
   await page.locator('.tv-quote').first().click();
   await expect(page.locator('canvas.tv-qr')).toBeVisible();
   await expect(page.getByText('No valid saved analysis for this asset')).toBeVisible();
@@ -108,6 +111,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(12);
   await page.getByRole('link', { name: 'Trading hall', exact: true }).click();
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'Display settings', exact: true }).click();
   await page.locator('.tv-language-setting select').selectOption('fr');
   await page.keyboard.press('Escape');
@@ -182,7 +186,13 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
     const bounds = await page.locator('.tv-market-strips').boundingBox();
-    expect(bounds!.height).toBeGreaterThan(viewport.height * .85);
+    const header = await page.locator('.tv-unified-header').boundingBox();
+    // Named controls occupy the header; the strips fill the remaining content
+    // area without overlapping that header or leaving unused space at the foot.
+    expect(bounds!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
+    expect(bounds!.height).toBeGreaterThan((viewport.height - header!.y - header!.height) * .85);
+    const contentBottom = await page.locator('[data-tv-root]').evaluate(element => element.getBoundingClientRect().bottom - parseFloat(getComputedStyle(element).paddingBottom));
+    expect(bounds!.y + bounds!.height).toBeGreaterThanOrEqual(contentBottom - 2);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(viewport.height + 2);
@@ -200,6 +210,7 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-0');
   await page.locator('.tv-strip-next').first().click();
   await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-1');
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
   await page.locator('.tv-language-setting select').selectOption('en');
   await page.keyboard.press('Escape');
@@ -227,12 +238,14 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip-track').first()).toHaveCSS('animation-play-state', 'running');
   await page.keyboard.press('Escape');
   quotePrice = 124.45;
+  await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.locator('.tv-strip-price').first()).toContainText('124.45');
   await expect(page.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
   await page.getByRole('button', { name: 'Pause strips', exact: true }).click();
   await expect(page.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'paused');
   await page.getByRole('button', { name: 'Resume strips', exact: true }).click();
+  await closeTvHeaderActions(page);
   await expect(page.locator('.tv-strip-change svg').first()).toBeVisible();
   await page.getByRole('link', { name: 'Trading hall', exact: true }).click();
   await expect(page).toHaveURL(/\/tv$/);

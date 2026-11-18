@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openTvHeaderActions } from './helpers/tv-controls';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
@@ -119,13 +120,14 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
   const settings = page.locator('[data-tv-focus-key="settings"]');
+  await openTvHeaderActions(page);
   await settings.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.locator('.tv-language-setting select').selectOption('en');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.keyboard.press('Escape');
-  await expect(settings).toBeFocused();
+  await expect(page.locator('[data-tv-focus-key="more"]')).toBeFocused();
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
   await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-light/);
 
@@ -140,6 +142,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   })).toBe(true);
   await page.keyboard.press('Escape');
   await expect(row).toBeFocused();
+  await openTvHeaderActions(page);
   await settings.click();
   await page.locator('.tv-language-setting select').selectOption('fr');
   await page.keyboard.press('Escape');
