@@ -2,7 +2,15 @@ import type { YahooHistoryResult } from '@/lib/market/fetchYahooHistory';
 import { quoteStatus } from './quotes';
 import type { TvQuote } from './types';
 
-const INDEX_CURRENCIES = { '^GSPC': 'USD', '^GDAXI': 'EUR', '^NDX': 'USD' } as const;
+// Cash indices whose primary feeds (FMP, Twelve Data) can pause for a whole
+// quota window. Currency must match exactly, so an ETF or a differently
+// denominated listing is rejected instead of shown.
+const INDEX_CURRENCIES = {
+  '^GSPC': 'USD', '^GDAXI': 'EUR', '^NDX': 'USD', '^DJI': 'USD', '^FTSE': 'GBP', '^N225': 'JPY',
+} as const;
+const INDEX_COUNTRIES: Record<keyof typeof INDEX_CURRENCIES, string> = {
+  '^GSPC': 'US', '^GDAXI': 'DE', '^NDX': 'US', '^DJI': 'US', '^FTSE': 'GB', '^N225': 'JP',
+};
 export type TvExternalIndex = keyof typeof INDEX_CURRENCIES;
 export function isTvExternalIndex(symbol: string): symbol is TvExternalIndex {
   return Object.hasOwn(INDEX_CURRENCIES, symbol);
@@ -23,7 +31,7 @@ export function verifiedTvIndex(symbol: TvExternalIndex, data: YahooHistoryResul
     price: snapshot.price, changePercent: previous !== null && Number.isFinite(previous) && previous > 0
       ? (snapshot.price - previous) / previous * 100 : null,
     source: 'Yahoo Finance', observedAt: snapshot.marketTime, receivedAt: data.retrievedAt || null,
-    exchange: snapshot.exchange, country: symbol === '^GDAXI' ? 'DE' : 'US',
+    exchange: snapshot.exchange, country: INDEX_COUNTRIES[symbol],
     delayType: 'delayed', changeBasis: 'session', status: 'delayed',
   };
   quote.status = quoteStatus(quote, now);

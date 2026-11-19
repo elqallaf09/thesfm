@@ -48,3 +48,20 @@ it('retains the primary failure when both sources are unavailable', async () => 
   const { withTvIndexFallback } = await import('@/lib/server/markets-tv/indexFallback');
   expect(await withTvIndexFallback('^GDAXI', Promise.resolve(original))).toBe(original);
 });
+it('recovers ^DJI from verified external evidence while FMP is rate limited', async () => {
+  const dji = { ...external, providerSymbol: '^DJI', currency: 'USD',
+    quoteSnapshot: { ...external.quoteSnapshot, symbol: '^DJI', currency: 'USD', price: 50198.17, previousClose: 50000, name: 'Dow Jones Industrial Average', exchange: 'DJI' } };
+  fetchHistory.mockResolvedValue(dji);
+  const { withTvIndexFallback } = await import('@/lib/server/markets-tv/indexFallback');
+  const limited: TvQuote = { ...original, symbol: '^DJI', country: 'US', issue: 'rate_limited' };
+  expect(await withTvIndexFallback('^DJI', Promise.resolve(limited))).toMatchObject({
+    symbol: '^DJI', price: 50198.17, source: 'Yahoo Finance', country: 'US', observedAt: dji.quoteSnapshot.marketTime });
+  expect(fetchHistory).toHaveBeenCalledWith('^DJI', 'index', '1d', '5m', false, 3500);
+});
+it('keeps the primary failure when external ^FTSE evidence has the wrong unit', async () => {
+  fetchHistory.mockResolvedValue({ ...external, providerSymbol: '^FTSE', currency: 'GBp',
+    quoteSnapshot: { ...external.quoteSnapshot, symbol: '^FTSE', currency: 'GBp' } });
+  const { withTvIndexFallback } = await import('@/lib/server/markets-tv/indexFallback');
+  const limited: TvQuote = { ...original, symbol: '^FTSE', country: 'GB', issue: 'rate_limited' };
+  expect(await withTvIndexFallback('^FTSE', Promise.resolve(limited))).toBe(limited);
+});
