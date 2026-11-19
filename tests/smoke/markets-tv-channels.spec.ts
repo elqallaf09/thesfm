@@ -30,6 +30,7 @@ async function fixtures(page: Page, emptyFirstBatch = false) {
 async function chooseMarket(page: Page, marketId: string) {
   await expect(page.locator('.tv-market-picker')).toBeVisible();
   const mobileMarket = page.locator('.tv-picker-mobile-market select');
+  await expect(mobileMarket.locator(`option[value="${marketId}"]`)).toBeAttached();
   if (await mobileMarket.isVisible()) {
     await mobileMarket.selectOption(marketId);
     await expect(mobileMarket).toHaveValue(marketId);
