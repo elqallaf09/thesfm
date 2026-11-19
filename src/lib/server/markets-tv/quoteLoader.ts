@@ -25,11 +25,14 @@ import { tvWorldStockIdentity } from '@/lib/markets-tv/worldStockQuote';
 import { withTvWorldStockFallback } from './worldStockFallback';
 import { tvGulfBankIdentity } from '@/lib/markets-tv/gulfBankQuote';
 import { withTvGulfBankFallback } from './gulfBankFallback';
+import { tvNasdaqDubaiIdentity } from '@/lib/markets-tv/nasdaqDubaiQuote';
+import { withTvNasdaqDubaiFallback } from './nasdaqDubaiFallback';
 
 const PRIMARY_MIC: Record<string, string> = {
   BOURSA_KUWAIT: 'XKUW', DFM: 'XDFM', NASDAQ_DUBAI: 'DIFX', SSE: 'XSHG', SZSE: 'XSHE',
   TADAWUL: 'XSAU', ADX: 'XADS', QSE: 'DSMD', BAHRAIN_BOURSE: 'XBAH', BAHRAIN: 'XBAH', MUSCAT: 'XMUS', MSX: 'XMUS',
 };
+const NASDAQ_DUBAI_VENUES = ['DIFX', 'NASDAQ_DUBAI', 'NASDAQDUBAI', 'NASDAQ DUBAI', 'NDXB'];
 const empty = (asset: TvAsset, issue: TvQuote['issue'] = 'provider_unavailable'): TvQuote => ({
   ...toTvQuote(asset.symbol, null, asset.nameAr), displaySymbol: asset.displaySymbol,
   name: asset.name, nameAr: asset.nameAr || asset.name, currency: asset.currency || null,
@@ -58,6 +61,16 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
   if (asset.currency && row.currency !== asset.currency) return false;
   const requested = asset.symbol.toUpperCase(), supplied = row.provenance.providerSymbol?.toUpperCase();
   if (!supplied) return false;
+  // Nasdaq Dubai uses bare symbols that also exist in the US and London.
+  // A matching ticker and USD denomination are not evidence of the same venue.
+  const assetVenues = [asset.mic, asset.region, asset.exchange].filter((value): value is string => Boolean(value));
+  if (assetVenues.some(value => NASDAQ_DUBAI_VENUES.includes(value))) {
+    if (asset.mic && asset.mic !== 'DIFX' || asset.country && asset.country !== 'AE'
+      || assetVenues.some(value => !NASDAQ_DUBAI_VENUES.includes(value))
+      || !NASDAQ_DUBAI_VENUES.includes(row.exchange?.toUpperCase() || '') || row.country && row.country !== 'AE'
+      || !['stock', 'etf'].includes(row.assetType)
+      || supplied !== requested && supplied !== `${requested}:DIFX`) return false;
+  }
   // Continuous contracts must never accept a spot quote or a dated month.
   const continuous = tvCommodityIdentity(asset);
   if (continuous && (row.assetType !== 'commodity' || supplied !== continuous.symbol
@@ -146,10 +159,13 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
 }
 function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const assetType = asset.assetType || (group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : group === 'forex' ? 'forex' : 'stock');
-  const key = JSON.stringify([asset.symbol, asset.region, asset.exchange, asset.mic, asset.providerSymbol, asset.currency, assetType]);
+  const nasdaqDubai = [asset.mic, asset.region, asset.exchange].some(value => NASDAQ_DUBAI_VENUES.includes(value || ''));
+  // Do not reuse an earlier bare-symbol cache entry that lacked venue checks.
+  const key = JSON.stringify([asset.symbol, asset.region, asset.exchange, asset.mic, asset.providerSymbol, asset.currency, assetType,
+    ...(nasdaqDubai ? ['nasdaq-dubai-identity-v1'] : [])]);
   const running = pendingQuotes.get(key); if (running) return running;
   const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
-  const work = cachedTvQuote(key, async () => {
+  const verified = cachedTvQuote(key, async () => {
     const primary = loadQuote(asset, group).catch(() => empty(asset));
     if (tvCommodityIdentity(asset)) return withTvCommodityFallback(asset, primary);
     if (tvWorldStockIdentity(asset)) return withTvWorldStockFallback(asset, primary);
@@ -159,13 +175,16 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
     return { ...quote, displaySymbol: asset.displaySymbol, name: asset.name, nameAr: asset.nameAr || asset.name };
   // Forex shares a per-minute source budget: reuse each verified pair for the
   // full minute across viewers and scenes, retaining its actual observation time.
-  }, assetType === 'forex' ? 60 : usStock ? 30 : 300)
+  }, assetType === 'forex' ? 60 : usStock ? 30 : 300).catch(() => empty(asset));
+  // Nasdaq Dubai's fallback has a verified listing/price but no trade clock.
+  // Keep it outside the dated-observation cache and disclose unknown timing.
+  const work = (tvNasdaqDubaiIdentity(asset) ? withTvNasdaqDubaiFallback(asset, verified) : verified)
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
-  if (assetType === 'forex' || tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset)) {
+  if (assetType === 'forex' || tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset) || tvNasdaqDubaiIdentity(asset)) {
     // Keep slow cold reads alive after the bounded snapshot response so the
     // next refresh can use a verified cached quote. Never extend the UI wait.
-    try { after(async () => { await work; }); } catch { /* No request scope in offline callers. */ }
+    try { after(async () => { await Promise.allSettled([verified, work]); }); } catch { /* No request scope in offline callers. */ }
   }
   return work;
 }

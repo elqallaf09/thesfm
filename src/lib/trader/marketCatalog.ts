@@ -1089,7 +1089,7 @@ export async function getTraderMarketCatalog(options: { forceFresh?: boolean; in
   const bundledUsSymbols = await getBundledUsSymbolCatalog();
   bundledUsSymbols.rows.forEach(record => addRecord(bySymbol, normalizeRecord(record, 'bundled')));
   for (const group of STATIC_SOURCE_RECORDS) {
-    group.records.forEach(record => addRecord(bySymbol, normalizeRecord(record, group.source)));
+    group.records.filter(record => record.is_active !== false).forEach(record => addRecord(bySymbol, normalizeRecord(record, group.source)));
   }
 
   const supabase = await fetchSupabaseCatalogSymbols();

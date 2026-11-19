@@ -686,6 +686,24 @@
   {
     "exchange": "DFM",
     "market": "Dubai Financial Market",
+    "symbol": "ETIHADENERGY",
+    "display_symbol": "ETIHADENERGY",
+    "provider_symbol": "ETIHADENERGY.DU",
+    "name": "Etihad Energy Holding PJSC",
+    "company_name_ar": null,
+    "company_name_en": "Etihad Energy Holding PJSC",
+    "asset_type": "stock",
+    "sector": "Equities",
+    "currency": "AED",
+    "country": "AE",
+    "price_unit": "major",
+    "is_active": true,
+    "source": "https://feeds.dfm.ae/documents/2026/Jun/20/ec8d2986-adcc-4281-bd12-a35d999573e7/Etihad%20Energy%20Holding%20PJSC%20Press%20Release%2020%20June%202.pdf",
+    "last_synced_at": "2026-11-19T14:59:45.132Z"
+  },
+  {
+    "exchange": "DFM",
+    "market": "Dubai Financial Market",
     "symbol": "GFH",
     "display_symbol": "GFH",
     "provider_symbol": "GFH.DU",
@@ -715,9 +733,9 @@
     "currency": "AED",
     "country": "AE",
     "price_unit": "major",
-    "is_active": true,
-    "source": "https://api2.dfm.ae/web/sf/v1/securities",
-    "last_synced_at": "2026-06-08T12:23:49.312Z"
+    "is_active": false,
+    "source": "https://feeds.dfm.ae/documents/2026/Jun/20/ec8d2986-adcc-4281-bd12-a35d999573e7/Etihad%20Energy%20Holding%20PJSC%20Press%20Release%2020%20June%202.pdf",
+    "last_synced_at": "2026-11-19T14:59:45.132Z"
   },
   {
     "exchange": "DFM",
@@ -1288,12 +1306,12 @@
     "company_name_en": "Depa Limited",
     "asset_type": "stock",
     "sector": "Equities",
-    "currency": "USD",
+    "currency": "AED",
     "country": "AE",
     "price_unit": "major",
     "is_active": true,
-    "source": "https://api2.dfm.ae/web/sf/v1/securities",
-    "last_synced_at": "2026-06-08T12:23:49.312Z"
+    "source": "https://depa.com/investors/market-announcements/depa-rings-market-bell-with-nasdaq-dubai-to-celebrate-start-of-share-trading-in-uae-dirhams/",
+    "last_synced_at": "2026-11-19T14:59:45.132Z"
   },
   {
     "exchange": "NASDAQ_DUBAI",
@@ -1306,12 +1324,12 @@
     "company_name_en": "DEPA PLC CLASS A Shares",
     "asset_type": "stock",
     "sector": "Equities",
-    "currency": "USD",
+    "currency": "AED",
     "country": "AE",
     "price_unit": "major",
     "is_active": true,
-    "source": "https://api2.dfm.ae/web/sf/v1/securities",
-    "last_synced_at": "2026-06-08T12:23:49.312Z"
+    "source": "https://www.nasdaqdubai.com/trading/disclosures/503a5beb-7a78-4343-9291-818549634b3d",
+    "last_synced_at": "2026-11-19T14:59:45.132Z"
   },
   {
     "exchange": "NASDAQ_DUBAI",
@@ -1358,14 +1376,14 @@
     "name": "INDONESIA III 5.000% 01 Dec 35 - RegS",
     "company_name_ar": null,
     "company_name_en": "INDONESIA III 5.000% 01 Dec 35 - RegS",
-    "asset_type": "etf",
-    "sector": "Funds",
+    "asset_type": "bond",
+    "sector": "Sukuk",
     "currency": "USD",
     "country": "AE",
     "price_unit": "major",
-    "is_active": true,
-    "source": "https://api2.dfm.ae/web/sf/v1/securities",
-    "last_synced_at": "2026-06-08T12:23:49.312Z"
+    "is_active": false,
+    "source": "https://www.nasdaqdubai.com/listing/listed-securities/d36f199d-10b2-49cb-a288-181b72db2bed",
+    "last_synced_at": "2026-11-19T14:59:45.132Z"
   },
   {
     "exchange": "NASDAQ_DUBAI",
@@ -1399,9 +1417,9 @@
     "currency": "USD",
     "country": "AE",
     "price_unit": "major",
-    "is_active": true,
-    "source": "https://api2.dfm.ae/web/sf/v1/securities",
-    "last_synced_at": "2026-06-08T12:23:49.312Z"
+    "is_active": false,
+    "source": "https://www.newswire.ca/news-releases/3iq-to-delist-fund-on-nasdaq-dubai-834254913.html",
+    "last_synced_at": "2026-11-19T14:59:45.132Z"
   },
   {
     "exchange": "NASDAQ_DUBAI",

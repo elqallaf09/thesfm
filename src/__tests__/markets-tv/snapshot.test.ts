@@ -4,6 +4,7 @@ vi.mock('@/lib/market/fetchYahooHistory', () => ({ fetchYahooHistory: externalHi
 vi.mock('@/lib/server/markets-tv/gulfBankFallback', () => ({ withTvGulfBankFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
 vi.mock('@/lib/server/markets-tv/worldStockFallback', () => ({ withTvWorldStockFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
 vi.mock('@/lib/server/markets-tv/commodityFallback', () => ({ withTvCommodityFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
+vi.mock('@/lib/server/markets-tv/nasdaqDubaiFallback', () => ({ withTvNasdaqDubaiFallback: (_asset: unknown, primary: Promise<unknown>) => primary }));
 vi.mock('server-only', () => ({}));
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/server/markets-tv/instruments', () => ({ tvInstrumentAssets: vi.fn().mockResolvedValue([]), cryptoTvQuotes: vi.fn().mockResolvedValue([]), forexTvQuote: vi.fn() }));
@@ -143,6 +144,33 @@ describe('TV canonical market snapshots', () => {
     expect(tvQuoteIdentityMatches(fx, { ...row, symbol: 'EURUSD', currency: 'USD', provenance: { ...row.provenance, providerSymbol: 'OANDA:EUR_USD' } })).toBe(true);
     expect(tvQuoteIdentityMatches(fx, { ...row, symbol: 'EURUSD', currency: 'CHF', provenance: { ...row.provenance, providerSymbol: 'OANDA:EUR_USD' } })).toBe(false);
     expect(tvQuoteIdentityMatches({ symbol: 'BTC/USD', name: 'Bitcoin', assetType: 'crypto' }, { ...row, symbol: 'BTCUSD', currency: 'USD', provenance: { ...row.provenance, providerSymbol: 'BINANCE:BTCUSDT' } })).toBe(false);
+  });
+  it('requires Nasdaq Dubai venue evidence for bare symbols even when a foreign listing uses USD', () => {
+    const asset = { symbol: 'NDAQ', name: 'Nasdaq Inc.', region: 'NASDAQ_DUBAI', country: 'AE', currency: 'USD' };
+    const row = { symbol: 'NDAQ', assetType: 'stock', currency: 'USD', exchange: 'DIFX', country: 'AE',
+      provenance: { providerSymbol: 'NDAQ', upstreamProvider: 'eodhd' } } as SfmMarketQuote;
+    expect(tvQuoteIdentityMatches(asset, row)).toBe(true);
+    for (const exchange of ['NASDAQ', 'XNAS', 'NYSE', 'LSE', 'DFM', null]) {
+      expect(tvQuoteIdentityMatches(asset, { ...row, exchange })).toBe(false);
+    }
+    expect(tvQuoteIdentityMatches(asset, { ...row, country: 'US' })).toBe(false);
+    expect(tvQuoteIdentityMatches(asset, { ...row, assetType: 'index' })).toBe(false);
+    expect(tvQuoteIdentityMatches(asset, { ...row, provenance: { ...row.provenance, providerSymbol: 'NDAQ.US' } })).toBe(false);
+    expect(tvQuoteIdentityMatches({ ...asset, mic: 'XNAS' }, row)).toBe(false);
+    expect(tvQuoteIdentityMatches({ ...asset, exchange: 'DFM' }, row)).toBe(false);
+    expect(tvQuoteIdentityMatches({ ...asset, symbol: 'DEPA', currency: 'AED' },
+      { ...row, symbol: 'DEPA', provenance: { ...row.provenance, providerSymbol: 'DEPA' } })).toBe(false);
+  });
+  it('does not publish a US NDAQ fallback as a Nasdaq Dubai quote after the regional source is limited', async () => {
+    vi.spyOn(catalog, 'tvDirectoryAssets').mockResolvedValue([{ symbol: 'NDAQ', name: 'Nasdaq Inc.', region: 'NASDAQ_DUBAI', country: 'AE', currency: 'USD' }]);
+    vi.mocked(providerStockQuote).mockResolvedValue({ price: null, change: null, changePercent: null, currency: 'USD',
+      quoteTimestamp: null, delayed: true, dataSource: null, status: 'unavailable', issue: 'rate_limited' });
+    vi.mocked(getSfmMarketQuote).mockResolvedValue({ symbol: 'NDAQ', assetType: 'stock', price: 99, currency: 'USD', exchange: 'NASDAQ',
+      country: 'US', quality: { state: 'complete' }, provenance: { providerSymbol: 'NDAQ', upstreamProvider: 'fmp',
+        observedAt: new Date().toISOString(), receivedAt: new Date().toISOString() } } as SfmMarketQuote);
+    const result = await loadTvSnapshot('gulf', [], { market: 'NASDAQ_DUBAI' });
+    expect(result.available).toBe(0);
+    expect(result.quotes[0]).toMatchObject({ symbol: 'NDAQ', price: null, issue: 'identity_mismatch' });
   });
   it('batches only the selected crypto assets and keeps forex outside that batch', async () => {
     const directory = vi.spyOn(catalog, 'tvDirectoryAssets');
