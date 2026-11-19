@@ -16,6 +16,7 @@ import { providerSymbolsForProviderAlias } from '@/lib/market/providerSymbolAlia
 import { cryptoQuoteRejectionReason, resolveCanonicalCryptoSymbol } from '@/lib/market/canonicalSymbols';
 import { classifyRuntimeFailure, logReliabilityEvent } from '@/lib/runtime/reliability';
 import { observationIso as toIso, type QuoteObservation } from '@/lib/market/quoteObservation';
+import { eodhdIndexCode } from '@/lib/market/indexIdentities';
 export type MarketDataProviderName = 'twelve_data' | 'finnhub' | 'eodhd' | 'marketstack' | 'fmp' | 'yahoo' | 'gold_api';
 export type MarketDelayType = 'realtime' | 'delayed' | 'eod' | 'cached' | 'unknown';
 export type MarketDataProviderContext = {
@@ -542,6 +543,11 @@ function eodhdCandidates(symbol: string, context?: MarketDataProviderContext) {
   const s = upper(symbol);
   const assetType = normalizeAssetType(context?.assetType);
   const base = stripSuffix(s);
+  if (assetType === 'index') {
+    // Only verified INDX codes; never fall through to a stock or ETF ticker.
+    const code = eodhdIndexCode(s);
+    return code ? [code] : [];
+  }
   if (assetType === 'forex') return [`${compactPair(s)}.FOREX`, compactPair(s)];
   if (assetType === 'crypto') {
     const canonical = canonicalCryptoFor(s, context);
@@ -847,6 +853,9 @@ class EodhdProvider extends BaseProvider {
   name = 'eodhd' as const;
   displayName = 'EODHD';
   configured() { return Boolean(apiKey('EODHD_API_KEY')); }
+  supports(symbol: string, context: MarketDataProviderContext) {
+    return normalizeAssetType(context.assetType) !== 'index' || eodhdIndexCode(symbol) !== null;
+  }
 
   private tokenParams() {
     return new URLSearchParams({ api_token: apiKey('EODHD_API_KEY'), fmt: 'json' });
@@ -866,6 +875,11 @@ class EodhdProvider extends BaseProvider {
       if ([401, 402, 403, 429].includes(result.status)) throw new QuoteProviderError(result.status, 'provider_error', null, candidate);
       if (!result.ok || !body) {
         logProviderFailure(this.name, 'quote', symbol, providerError(this.name, `http_${result.status}`, 'provider_error', candidate, result.status));
+        continue;
+      }
+      // An index answer must name the exact INDX code that was requested.
+      if (normalizeAssetType(context?.assetType) === 'index' && String(body.code ?? '').toUpperCase() !== candidate) {
+        logProviderFailure(this.name, 'quote', symbol, providerError(this.name, 'identity_mismatch', 'provider_returned_empty', candidate, result.status));
         continue;
       }
       const quote = normalizeQuote({
@@ -1011,7 +1025,9 @@ class MarketstackProvider extends BaseProvider {
   async getQuote(symbol: string, market?: string | null, context?: MarketDataProviderContext) {
     const key = apiKey('MARKETSTACK_API_KEY');
     if (!key) return null;
-    const candidates = uniqueStrings(eodhdCandidates(symbol, context).concat(upper(symbol)));
+    // EODHD's INDX codes are not Marketstack tickers; keep the requested index symbol.
+    const candidates = normalizeAssetType(context?.assetType) === 'index' ? [upper(symbol)]
+      : uniqueStrings(eodhdCandidates(symbol, context).concat(upper(symbol)));
     for (const candidate of candidates) {
       const params = new URLSearchParams({ access_key: key, symbols: candidate, limit: '1' });
       const result = await fetchJson(`https://api.marketstack.com/v2/eod/latest?${params.toString()}`, {

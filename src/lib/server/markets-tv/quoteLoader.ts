@@ -8,6 +8,7 @@ import { persistSfmMarketObservation, SFM_MARKET_OBSERVATIONS_TABLE } from '@/li
 import { getSfmMarketQuote } from '@/lib/sfm-market/engine';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 import type { ProviderAttemptFailure } from '@/lib/market/marketDataProviders';
+import { eodhdIndexCode } from '@/lib/market/indexIdentities';
 import { providerRegion } from '@/lib/world-stocks/providerDirectory';
 import { providerStockQuote } from '@/lib/world-stocks/providerQuote';
 import { quoteStatus, toTvQuote } from '@/lib/markets-tv/quotes';
@@ -38,8 +39,10 @@ const empty = (asset: TvAsset, issue: TvQuote['issue'] = 'provider_unavailable')
 export function matchesIndex(requested: string, supplied: string, provider: string | null) {
   // Legacy Finnhub aliases can identify an ETF instead of the cash index.
   // Apply this allowlist to saved observations as well as fresh responses.
-  if (!['fmp', 'twelve_data', 'yahoo'].includes(provider || '')) return false;
+  if (!['fmp', 'twelve_data', 'yahoo', 'eodhd'].includes(provider || '')) return false;
   if (provider === 'fmp' || provider === 'yahoo') return supplied === requested;
+  // EODHD lists cash indices on its INDX exchange; accept only the verified code.
+  if (provider === 'eodhd') return supplied === eodhdIndexCode(requested);
   const indices: Record<string, string[]> = { '^GSPC': ['^GSPC', 'GSPC', 'SPX'], '^DJI': ['^DJI', 'DJI'], '^NDX': ['^NDX', 'NDX'],
     '^FTSE': ['^FTSE', 'FTSE'], '^GDAXI': ['^GDAXI', 'GDAXI', 'DAX'], '^N225': ['^N225', 'N225', 'NIKKEI225'] };
   if (supplied.includes(':')) {
