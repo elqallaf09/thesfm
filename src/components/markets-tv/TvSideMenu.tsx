@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';
-import { receiverText } from '@/lib/markets-tv/receiver';
+import { receiverText, TV_RECEIVER_CHANNELS, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
+import type { TvChannel } from '@/lib/markets-tv/channels';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import './side-menu.css';
@@ -23,7 +24,9 @@ type Props = {
   deviceName?: string;
   onClose: () => void;
   onNavigate: (destination: TvSideDestination) => void;
-  onChannels: () => void;
+  channels: TvChannel[];
+  onBroadcast: (channel: TvReceiverChannel) => void;
+  onSavedChannel: (channel: TvChannel) => void;
   onCustomize: () => void;
   onSettings: () => void;
   onAccount: () => void;
@@ -40,7 +43,7 @@ export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => C
 
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
-export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, onChannels, onCustomize, onSettings, onAccount, onTools }: Props) {
+export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onBroadcast, onSavedChannel, onCustomize, onSettings, onAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const copy = COPY[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -57,7 +60,8 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     route('sessions', receiverText(language, 'sessions'), Clock3),
     route('watchlist', tvSceneText(language, 'watchlist'), Star),
     route('investments', t('investments'), WalletCards),
-    { key: 'channels', label: t('channels'), icon: Tv, action: onChannels },
+    ...TV_RECEIVER_CHANNELS.filter(channel => !['allStocks', 'kuwait', 'sessions', 'investments'].includes(channel)).map(channel => ({ key: `broadcast:${channel}`, label: receiverText(language, channel), icon: Tv, action: () => onBroadcast(channel) })),
+    ...channels.map(channel => ({ key: `saved:${channel.id}`, label: channel.name, icon: Tv, action: () => onSavedChannel(channel) })),
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },
   ];
