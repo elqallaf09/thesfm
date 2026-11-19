@@ -40,7 +40,7 @@
 @media(min-width:761px) and (min-height:801px){
   /* Tall tablet/desktop windows should not turn a 16-market directory into a
      mostly empty full-height sheet. Keep space for the complete TV editor. */
-  .tv-screen .tv-dialog.tv-market-picker-dialog{height:min(92vh,max(900px,38em))}
+  .tv-screen .tv-dialog.tv-market-picker-dialog{height:min(92vh,max(900px,42em))}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]){grid-auto-rows:minmax(68px,max-content);gap:.5em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]) .tv-market-row{padding:.65em .5em;gap:.5em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]) .tv-picker-identity strong{font-size:max(18px,1em)}

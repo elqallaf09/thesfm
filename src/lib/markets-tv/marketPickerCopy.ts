@@ -4,7 +4,7 @@ const COPY = {
   of: ['من', 'of', 'sur'],
   directoryAssets: ['الأصول في الدليل', 'Directory assets', 'Actifs du répertoire'],
   clearSelection: ['إلغاء تحديد الكل', 'Deselect all', 'Tout désélectionner'],
-  inheritSpeed: ['حسب إعداد الشاشة', 'Use screen setting', 'Selon le réglage de l’écran'],
+  inheritSpeed: ['حسب إعداد الشاشة', 'Use screen setting', 'Réglage de l’écran'],
   moveUp: ['تقديم', 'Move up', 'Monter'],
   moveDown: ['تأخير', 'Move down', 'Descendre'],
 } satisfies Record<string, [string, string, string]>;
