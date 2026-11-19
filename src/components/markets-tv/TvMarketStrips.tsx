@@ -74,7 +74,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   // A sparse page may not have enough content to animate. Advance it on a
   // bounded timer instead of waiting for a marquee iteration that never occurs.
   useEffect(() => {
-    if (displayed.length > 2 || pages <= 1 || !visible || paused || manualPause ||
+    if (displayed.length === 0 || displayed.length > 2 || pages <= 1 || !visible || paused || manualPause ||
         sourceCooling || resource.loading || resource.error || !resource.data) return;
     const timer = setTimeout(() => {
       if (!document.hidden && navigator.onLine) setPage(value => (value + 1) % pages);
