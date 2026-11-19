@@ -3,7 +3,7 @@ import { hasTvPrice } from './coverage';
 const identity = (q: TvQuote) => `${q.exchange || ''}:${q.symbol}:${q.currency || ''}`;
 /** Never erase a proven quote on transient failure, or move its source clock forward. */
 export function mergeStripSnapshot(previous: TvSnapshot | null, next: TvSnapshot): TvSnapshot {
-  const sameView = previous?.group === next.group && previous?.market === next.market && previous?.scene === next.scene;
+  const sameView = previous !== null && previous.group === next.group && previous.market === next.market && previous.scene === next.scene;
   const saved = new Map(sameView ? [...previous.quotes, ...(previous.summary || [])].map(q => [identity(q), q]) : []);
   const merge = (q: TvQuote) => {
     let old = saved.get(identity(q));

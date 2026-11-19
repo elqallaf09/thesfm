@@ -48,7 +48,18 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.getByRole('button', { name: 'تقديم السوق: بورصة الكويت' }).click();
   await chooseMarket(page, 'US');
   await page.getByRole('group', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).getByRole('button', { name: 'سريعة', exact: true }).click();
+  const marketRow = page.locator('[data-tv-focus-key="market-US"]');
+  // TV Back first returns to the visible market grid. Phones use a select
+  // instead, so there is no visible row to restore before closing the dialog.
+  const hasMarketGrid = await marketRow.isVisible();
   await page.keyboard.press('Escape');
+  if (hasMarketGrid) {
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(marketRow).toBeFocused();
+    await page.keyboard.press('Escape');
+  }
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  if (hasMarketGrid) await expect(page.getByRole('button', { name: 'تخصيص الأسواق', exact: true })).toBeFocused();
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
   await page.getByRole('button', { name: 'مضغوط', exact: true }).click();

@@ -44,4 +44,41 @@ for (const language of ['ar', 'en', 'fr']) {
     await page.setViewportSize({ width: 1280, height: 720 });
     if (language === 'ar') await page.screenshot({ path: testInfo.outputPath('tv-labelled-header-720.png') });
   });
+
+  test(`portrait strips retain their viewport share and labelled ${language} actions`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(language => {
+      sessionStorage.setItem('sfm-tv-welcome-shown', '1');
+      localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, theme: 'light', displayMode: 'strips', ticker: false, autoRotate: false }));
+    }, language);
+    await page.route('**/api/**', route => {
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/catalog')) return route.fulfill({ json: { markets: Array.from({ length: 30 }, (_, index) => ({
+        id: `QA${index}`, group: 'us', labelAr: `سوق اختبار ${index}`, labelEn: `QA market ${index}`, labelFr: `Marché test ${index}`, count: 120, status: 'directory',
+      })) } });
+      const observedAt = new Date().toISOString();
+      return route.fulfill({ json: { quotes: [{ symbol: `${url.searchParams.get('market')}-0`, name: 'Synthetic QA', nameAr: 'اختبار', price: 123.45,
+        currency: 'USD', changePercent: 1.2, source: 'Synthetic QA fixture', observedAt, receivedAt: observedAt, status: 'available', exchange: 'QA' }],
+      total: 1, directoryTotal: 120, available: 1, stories: [], items: [], summary: [] } });
+    });
+    await openAndroidTvPackage(page);
+    await expect(page.locator('.tv-market-strip')).toHaveCount(30);
+    await page.evaluate(() => document.fonts.ready);
+    const strips = await page.locator('.tv-market-strips').boundingBox();
+    expect(strips!.height).toBeGreaterThan(844 * .85);
+    expect(strips!.y + strips!.height).toBeLessThanOrEqual(844);
+    const actions = page.locator('.tv-labelled-header .tv-header-actions button,.tv-labelled-header .tv-display-link');
+    for (const action of await actions.all()) {
+      await action.focus();
+      await expect(action).toBeInViewport({ ratio: 1 });
+      expect(await action.evaluate(element => {
+        const label = element.querySelector('span')!, box = element.getBoundingClientRect(), text = label.getBoundingClientRect();
+        return !!label.textContent?.trim() && parseFloat(getComputedStyle(label).fontSize) >= 13 && text.height > 0
+          && text.left >= box.left && text.right <= box.right && text.top >= box.top && text.bottom <= box.bottom;
+      })).toBe(true);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(392);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(846);
+    await page.screenshot({ path: testInfo.outputPath(`strips-portrait-${language}.png`) });
+  });
 }

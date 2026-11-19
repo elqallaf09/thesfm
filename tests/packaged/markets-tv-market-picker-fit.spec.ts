@@ -63,7 +63,11 @@ for (const language of ['ar', 'en', 'fr'] as const) {
               clipped: clipped.map(control => control.getAttribute('data-tv-focus-key') || control.textContent),
               dialogOutsideViewport: bounds.top < 0 || bounds.left < 0 || bounds.right > innerWidth + 1 || bounds.bottom > innerHeight + 1,
               dialogScroll: dialog.scrollHeight > dialog.clientHeight + 1,
-              pickerScroll: scroller.scrollHeight > scroller.clientHeight + 1,
+              pickerScroll: scroller.scrollHeight > scroller.clientHeight + 1 ? {
+                clientHeight: scroller.clientHeight, scrollHeight: scroller.scrollHeight,
+                scrollerBottom: scroller.getBoundingClientRect().bottom, editorBottom: editor.getBoundingClientRect().bottom,
+                paddingBottom: getComputedStyle(scroller).paddingBottom, footerTop,
+              } : false,
               gridScroll: grid.scrollHeight > grid.clientHeight + 1,
               editorOverFooter: editor.getBoundingClientRect().bottom > footerTop + 1,
               controlsOverFooter: [...element.querySelectorAll('button,input')].some(control =>

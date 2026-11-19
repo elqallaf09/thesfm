@@ -28,6 +28,12 @@ describe('TV expanded currency feeds', () => {
     expect(q).toMatchObject({ changeBasis: 'reference', issue: undefined });
     expect(referenceForexQuote({ symbol: 'KWD/USD', name: 'Test' }, days).price).toBeNull();
   });
+  it('accepts a first snapshot when the response omits view metadata at runtime', () => {
+    const quote = { symbol: 'TEST', exchange: 'ONE', name: 'Test', nameAr: 'Test', country: null, currency: 'USD', price: 10, changePercent: 1, observedAt: new Date(now).toISOString(), receivedAt: null, source: 'Source', status: 'available' as const };
+    // Network JSON can omit the required group; it must not make null look like a matching previous view.
+    const incoming = { quotes: [quote], generatedAt: quote.observedAt, available: 0, total: 1 } as TvSnapshot;
+    expect(mergeStripSnapshot(null, incoming)).toEqual({ ...incoming, available: 1 });
+  });
   it('retains evidence only for the same listing and never advances its source clock on failure', () => {
     const quote = { symbol: 'TEST', exchange: 'ONE', name: 'Test', nameAr: 'Test', country: null, currency: 'USD', price: 10, changePercent: 1, observedAt: new Date(now).toISOString(), receivedAt: null, source: 'Source', status: 'available' as const };
     const old: TvSnapshot = { group: 'world', quotes: [quote], generatedAt: '', available: 1, total: 1 };
