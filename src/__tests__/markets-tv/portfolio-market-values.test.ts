@@ -6,7 +6,8 @@ import { normalizeInvestment, type DbInvestmentRow } from '@/lib/investments/inv
 import { tvPortfolioSnapshot } from '@/lib/markets-tv/portfolio';
 import { portfolioMarketTarget } from '@/lib/server/markets-tv/portfolioAssets';
 
-const mocks = vi.hoisted(() => ({ quotes: vi.fn(), special: vi.fn(), fx: vi.fn() }));
+const mocks = vi.hoisted(() => ({ quotes: vi.fn(), special: vi.fn(), fx: vi.fn(), after: vi.fn() }));
+vi.mock('next/server', () => ({ after: mocks.after }));
 vi.mock('@/lib/server/markets-tv/quoteLoader', () => ({ resolveTvQuotes: mocks.quotes }));
 vi.mock('@/lib/sfm-market/engine', () => ({ getSfmMarketQuote: mocks.special }));
 vi.mock('@/lib/market/fxRates', () => ({ getFxRate: mocks.fx }));
@@ -164,6 +165,26 @@ describe('holding identity and units', () => {
     const result = await pending;
     expect(result.positions[0]).toMatchObject({ valuationKind: 'recorded', valuedAt: OLD });
     expect(result.marketCoverage).toBe(0);
+    const background = mocks.after.mock.calls[0][0]();
+    await vi.advanceTimersByTimeAsync(21000);
+    await expect(background).resolves.toBeUndefined();
+  });
+
+  it('warms a late public quote after the response and reuses it without sharing holdings', async () => {
+    let finishQuote!: (value: SfmMarketQuote) => void;
+    mocks.special.mockReturnValue(new Promise<SfmMarketQuote>(resolve => { finishQuote = resolve; }));
+    const first = [item({ type: 'crypto', symbol: 'BTC', provider_symbol: 'BTC-USD', quantity: 2 })];
+    const response = withPortfolioMarketValues(first, snapshot(first));
+    await vi.advanceTimersByTimeAsync(9001);
+    expect((await response).positions[0]).toMatchObject({ valuationKind: 'recorded', baseValue: 120, valuedAt: OLD });
+    expect(mocks.after).toHaveBeenCalledTimes(1);
+    const background = mocks.after.mock.calls[0][0]();
+    finishQuote(special('BTC/USD', 'BTCUSD', 'crypto'));
+    await background;
+    const next = [item({ id: 'later-account', type: 'crypto', symbol: 'BTC', provider_symbol: 'BTC-USD', quantity: 5 })];
+    const refreshed = await withPortfolioMarketValues(next, snapshot(next));
+    expect(refreshed.positions[0]).toMatchObject({ id: 'later-account', valuationKind: 'market', baseValue: 500, quantity: 5, valuedAt: OBSERVED });
+    expect(mocks.special).toHaveBeenCalledTimes(1);
   });
 
   it('requires exact FX pair evidence even when the rate and timestamp look valid', () => {

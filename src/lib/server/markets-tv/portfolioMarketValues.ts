@@ -1,4 +1,5 @@
 import 'server-only';
+import { after } from 'next/server';
 import type { Investment } from '@/types/investment';
 import type { SfmMarketQuote } from '@/lib/sfm-market/types';
 import type { TvQuote } from '@/lib/markets-tv/types';
@@ -11,6 +12,7 @@ import { portfolioMarketTarget, portfolioTargetKey, type PortfolioMarketTarget }
 
 const MAX_LISTINGS = 100;
 const BUDGET_MS = 9_000;
+const BACKGROUND_BUDGET_MS = 30_000;
 const MAX_FX_AGE_MS = 36 * 60 * 60_000;
 const cache = new Map<string, { expires: number; quote: TvQuote | null }>();
 const pending = new Map<string, Promise<TvQuote | null>>();
@@ -37,6 +39,7 @@ function specialQuote(target: PortfolioMarketTarget): Promise<TvQuote | null> {
   const key = portfolioTargetKey(target), previous = cache.get(key);
   if (previous && previous.expires > Date.now()) return Promise.resolve(previous.quote);
   const running = pending.get(key); if (running) return running;
+  const backgroundDeadline = Date.now() + BACKGROUND_BUDGET_MS;
   const work = getSfmMarketQuote(target.asset.symbol, {
     assetType: target.kind === 'crypto-usd' ? 'crypto' : 'commodity',
     preferredProviders: target.kind === 'metal' ? ['gold_api', 'twelve_data', 'eodhd'] : ['fmp', 'twelve_data', 'eodhd'],
@@ -49,7 +52,12 @@ function specialQuote(target: PortfolioMarketTarget): Promise<TvQuote | null> {
       cache.set(key, { quote, expires: Date.now() + 30_000 });
       return quote;
     }).finally(() => pending.delete(key));
-  pending.set(key, work); return work;
+  pending.set(key, work);
+  // A sequential provider fallback can outlast the TV response budget. Keep
+  // this public quote alive for the next refresh without prolonging the UI
+  // wait or retaining the invocation indefinitely after a provider failure.
+  try { after(async () => { await beforeDeadline(work, backgroundDeadline, null); }); } catch { /* No request scope in offline callers. */ }
+  return work;
 }
 
 function sharedFx(from: string, to: string) {
