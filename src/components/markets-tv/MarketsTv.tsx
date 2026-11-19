@@ -41,7 +41,12 @@ const TvSessions = lazy(() => import('./TvWorldSessions'));
 const TvMarketPicker = lazy(() => import('./TvMarketPicker').then(module => ({ default: module.TvMarketPicker })));
 const TvInstrumentPicker = lazy(() => import('./TvInstrumentPicker').then(module => ({ default: module.TvInstrumentPicker })));
 const TvChannels = lazy(() => import('./TvChannels').then(module => ({ default: module.TvChannels })));
-const SETTINGS_KEY = 'sfm-markets-tv-settings-v1', TOKEN_KEY = 'sfm-markets-tv-device-v1';
+const SETTINGS_KEY = 'sfm-markets-tv-settings-v1', TOKEN_KEY = 'sfm-markets-tv-device-v1', PROFILES_KEY = 'sfm-markets-tv-profiles-v1';
+type TvLocalProfile = { token: string; name: string };
+function readProfiles(): TvLocalProfile[] {
+  try { const raw: unknown = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]'); return Array.isArray(raw) ? raw.filter((item): item is TvLocalProfile => Boolean(item && typeof item.token === 'string' && item.token.length > 0 && typeof item.name === 'string')).slice(0, 8) : []; } catch { return []; }
+}
+function writeProfiles(profiles: TvLocalProfile[]) { try { localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles.slice(0, 8))); } catch { /* No persistence on restricted devices. */ } }
 const EMPTY_NEWS: TvNews[] = [];
 const EMPTY_MARKETS: TvMarket[] = [];
 type Dialog = 'tools' | 'settings' | 'pair' | 'device' | 'worldStocks' | 'markets' | 'instruments' | 'channels' | 'sessions' | null;
@@ -62,7 +67,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     return () => shortScreen.removeListener(fit);
   }, []);
   const [group, setGroup] = useState<TvGroup>('global'), [view, setView] = useState<TvView>('markets');
-  const [menuOpen, setMenuOpen] = useState(true), [accountChoice, setAccountChoice] = useState(false), [guestMode, setGuestMode] = useState(false), [unlinking, setUnlinking] = useState(false), [unlinkError, setUnlinkError] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(true), [accountChoice, setAccountChoice] = useState(false), [guestMode, setGuestMode] = useState(false), [profiles, setProfiles] = useState<TvLocalProfile[]>([]), [unlinking, setUnlinking] = useState(false), [unlinkError, setUnlinkError] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null), [detail, setDetail] = useState<TvQuote | null>(null), [story, setStory] = useState<TvNews | null>(null);
   const [token, updateToken] = useState(''), [now, setNow] = useState(0), [page, setPage] = useState(0), [revision, setRevision] = useState(0);
   const currentToken = useRef(''), unlinkRequest = useRef<AbortController | null>(null);
@@ -116,7 +121,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     if (!stripsOnly && !allStocks) setSettings(value => view==='sessions'?{...value,sessionAutoRotate:play}:{...value,autoRotate:play});
   }, command => chooseBroadcast(command.kind === 'channelNumber' ? TV_RECEIVER_CHANNELS[command.number - 1] : nextTvReceiverChannel(view, command.step)));
   useEffect(() => {
-    try { const saved = normalizeTvSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); setSettings(initialAllStocks ? { ...saved, displayMode: 'browse', broadcastChannel: undefined } : saved); if (saved.broadcastChannel && !initialStripsOnly && !initialAllStocks) setView(saved.broadcastChannel); const savedToken = localStorage.getItem(TOKEN_KEY) || ''; setToken(savedToken); if (savedToken && !initialAllStocks && !initialStripsOnly) { setAccountChoice(true); setMenuOpen(false); } } catch { /* Device storage can be unavailable. */ }
+    try { const saved = normalizeTvSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); setSettings(initialAllStocks ? { ...saved, displayMode: 'browse', broadcastChannel: undefined } : saved); if (saved.broadcastChannel && !initialStripsOnly && !initialAllStocks) setView(saved.broadcastChannel); const savedToken = localStorage.getItem(TOKEN_KEY) || ''; const savedProfiles = readProfiles(); const restored = savedProfiles.length ? savedProfiles : savedToken ? [{ token: savedToken, name: 'SFM TV' }] : []; setProfiles(restored); writeProfiles(restored); setToken(''); if (restored.length && !initialAllStocks && !initialStripsOnly) { setAccountChoice(true); setMenuOpen(false); } } catch { /* Device storage can be unavailable. */ }
     try { setSelections(normalizeTvSelections(JSON.parse(localStorage.getItem(TV_SELECTIONS_KEY) || '{}'))); } catch { /* Keep defaults if device storage is corrupt. */ }
     try { setChannels(normalizeTvChannels(JSON.parse(localStorage.getItem(TV_CHANNELS_KEY) || '[]'))); } catch { /* Stored channels may be unavailable. */ }
     const requested = new URLSearchParams(window.location.search).get('channel');
@@ -136,11 +141,13 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     try { localStorage.setItem(TV_SELECTIONS_KEY, JSON.stringify(selections)); } catch { setMessage(tvText(settings.language, 'selectionStorageUnavailable')); }
   }, [selections, ready, settings.language]);
   useEffect(() => {
-    if (device.error === 'UNAUTHORIZED') {
+    if (device.error === 'UNAUTHORIZED' && token) {
+      setProfiles(previous => { const next = previous.filter(profile => profile.token !== token); writeProfiles(next); return next; });
       setToken(''); syncLoaded.current = ''; alertSeen.current.clear(); setGroup(g => g === 'watchlist' ? 'global' : g);
       setSettings(value => ({ ...value, scene: value.scene === 'watchlist' ? 'overview' : value.scene }));
       try { localStorage.removeItem(TOKEN_KEY); } catch { /* No persistent storage. */ }
     }
+    if (token && device.data) { setProfiles(previous => { const next = previous.map(profile => profile.token === token ? { ...profile, name: device.data!.device.name || profile.name } : profile); if (next.every((profile, index) => profile.name === previous[index]?.name)) return previous; writeProfiles(next); return next; }); }
     if (token && device.data && syncLoaded.current !== token) { syncLoaded.current = token; const synced = normalizeTvSettings(device.data.device.settings); setSettings(initialAllStocks ? { ...synced, displayMode: 'browse', broadcastChannel: undefined } : synced); if (synced.broadcastChannel && !initialAllStocks) setView(synced.broadcastChannel); }
   }, [device.error, device.data, token, initialAllStocks, setToken]);
   useEffect(() => {
@@ -245,6 +252,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 9000); return () => clearTimeout(timer); }, [message]);
   const linked = useCallback((value: string) => {
     setGuestMode(false); setAccountChoice(false);
+    setProfiles(previous => { const next = [...previous.filter(profile => profile.token !== value), { token: value, name: 'SFM TV' }].slice(-8); writeProfiles(next); return next; });
     try { localStorage.setItem(TOKEN_KEY, value); } catch { /* Session remains usable in memory. */ }
     syncLoaded.current = value; setToken(value); setDialog(null); setMenuOpen(false); setGroup('watchlist');
     setSettings(s => ({ ...s, scene: 'watchlist', groups: Array.from(new Set([...s.groups, 'watchlist' as const])) }));
@@ -263,6 +271,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         setToken(''); syncLoaded.current = ''; alertSeen.current.clear(); setGroup('global'); setView('markets'); setRouteStrips(false);
         setSettings(value => ({ ...value, displayMode: 'viewing', scene: 'overview', broadcastChannel: undefined }));
         pushTvDisplayMode('viewing'); close(); setMessage(t('disconnected'));
+        setProfiles(previous => { const next = previous.filter(profile => profile.token !== requestedToken); writeProfiles(next); return next; });
         try { localStorage.removeItem(TOKEN_KEY); } catch { /* No storage. */ }
       } else setUnlinkError(true);
     } finally {
@@ -282,7 +291,11 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       <section role="dialog" aria-modal="true" aria-label={settings.language === 'ar' ? 'اختيار الحساب' : 'Choose account'} className="tv-side-menu" style={{position:'relative',maxHeight:'85vh',minWidth:'min(90vw,420px)'}}>
         <h2>{settings.language === 'ar' ? 'من يشاهد الآن؟' : 'Who is watching?'}</h2>
         <nav className="tv-side-menu-items">
-          <button autoFocus onClick={() => { setGuestMode(false); setAccountChoice(false); setMenuOpen(true); }}><span aria-hidden="true" style={{borderRadius:'50%',padding:12,background:'#d4af6a',color:'#111'}}>●</span><span>{device.data?.device.name || (settings.language === 'ar' ? 'حسابي' : 'My account')}</span></button>
+          {profiles.map((profile, index) => <button key={profile.token} autoFocus={index === 0} onClick={() => {
+            setGuestMode(false); syncLoaded.current = ''; setToken(profile.token);
+            try { localStorage.setItem(TOKEN_KEY, profile.token); } catch { /* Memory session remains active. */ }
+            setAccountChoice(false); setMenuOpen(true);
+          }}><span aria-hidden="true" style={{borderRadius:'50%',width:44,height:44,display:'inline-flex',alignItems:'center',justifyContent:'center',background:'#d4af6a',color:'#111'}}>{profile.name.slice(0, 1).toUpperCase()}</span><span>{profile.name}</span></button>)}
           <button onClick={() => { setGuestMode(true); setToken(''); setAccountChoice(false); setMenuOpen(true); }}>{settings.language === 'ar' ? 'المشاهدة كضيف' : 'Watch as guest'}</button>
           <button onClick={() => { setGuestMode(true); setToken(''); setAccountChoice(false); openPair(); }}>{settings.language === 'ar' ? 'إضافة حساب' : 'Add account'}</button>
         </nav>
@@ -298,7 +311,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         setMenuOpen(false);
         setMessage(`${tvText(channel.settings.language, 'channelApplied')}: ${channel.name}`);
       }} onCustomize={() => openMenuDialog('markets')}
-      onSettings={() => openMenuDialog('settings')} onAccount={() => { if (token && guestMode) { setGuestMode(false); setToken(localStorage.getItem(TOKEN_KEY) || ''); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
+      onSettings={() => openMenuDialog('settings')} onAccount={() => { if (token && guestMode) { setGuestMode(false); setToken(''); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
