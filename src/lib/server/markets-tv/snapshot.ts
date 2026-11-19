@@ -14,7 +14,7 @@ async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: Tv
     const selection = tvSceneAssets(options.scene, ownedSymbols);
     const combined = await resolveTvQuotes([...selection.summary, ...selection.rows], group);
     const summary = combined.slice(0, selection.summary.length), quotes = combined.slice(selection.summary.length);
-    return { group, scene: options.scene, summary, quotes, retryAt: tvSnapshotRetryAt(combined), generatedAt: new Date().toISOString(),
+    return { group, scene: options.scene, summary, quotes, retryAt: tvSnapshotRetryAt(combined, Date.now(), group), generatedAt: new Date().toISOString(),
       total: quotes.length, available: quotes.filter(hasTvPrice).length, selectionTotal: combined.length };
   }
   const directory: TvAsset[] = group === 'watchlist'
@@ -26,7 +26,7 @@ async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: Tv
   const page = Math.max(0, Math.min(options.page ?? 0, Math.max(0, Math.ceil(selected.length / pageSize) - 1)));
   const assets = selected.slice(page * pageSize, (page + 1) * pageSize);
   const quotes = await resolveTvQuotes(assets, group);
-  return { group, quotes, retryAt: tvSnapshotRetryAt(quotes), generatedAt: new Date().toISOString(), available: quotes.filter(hasTvPrice).length,
+  return { group, quotes, retryAt: tvSnapshotRetryAt(quotes, Date.now(), group), generatedAt: new Date().toISOString(), available: quotes.filter(hasTvPrice).length,
     total: assets.length, directoryTotal: directory.length, selectionTotal: selected.length, page, pageSize, market: options.market };
 }
 

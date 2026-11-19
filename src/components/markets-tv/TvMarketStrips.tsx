@@ -1,7 +1,7 @@
 'use client';
 import { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
-import { tvText } from '@/lib/markets-tv/i18n';
+import { tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { TvBrowseStripPage } from './TvBrowseStripPage';
 import { TvMotionOverride } from './useTvPlayback';
 import { TvStripQuote } from './TvStripQuote';
@@ -10,7 +10,7 @@ import { ChevronRight, RefreshCw } from 'lucide-react';
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import { useTvResource } from './useTvResource';
 import { hasTvPrice, tvStripCoverage } from '@/lib/markets-tv/coverage';
-import { tvSceneIssue, tvSceneText, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
+import { tvSceneIssue, tvSceneText, tvStripRetryAt, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 
 type Props = { browse?: boolean; selections: TvSelections; marketIds?: string[]; speed?: number; marketSpeeds?: Record<string, number>; revision?: number; paused?: boolean; watchlistCount: number; markets: TvMarket[]; groups: TvGroup[]; language: TvLanguage; token: string; activeGroup: TvGroup; activeMarket: string; now: number; onSelect: (group: TvGroup, market?: string) => void; onQuote: (quote: TvQuote) => void };
 const Strip = memo(function Strip({ market, active, language, token, now, onSelect, onQuote, speed = DEFAULT_TV_STRIP_SPEED, revision = 0, paused: manualPause = false, browse = false, selections }: Omit<Props, 'watchlistCount' | 'markets' | 'groups' | 'activeGroup' | 'activeMarket'> & { market: TvMarket; active: boolean }) {
@@ -33,14 +33,17 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   const params = new URLSearchParams({ group: market.group, market: market.id, page: String(custom ? 0 : page), pageSize: '12' });
   if (selectedPage) params.set('symbols', JSON.stringify(selectedPage));
   const path = visible && market.count > 0 && (!custom || selectedPage!.length > 0) ? `/api/tv/snapshot?${params}` : null;
-  const resource = useTvResource<TvSnapshot>(path, market.group === 'crypto' ? 15000 : 30000, market.group === 'watchlist' ? token : '', revision);
+  const resource = useTvResource<TvSnapshot>(path, market.group === 'crypto' ? 15000 : market.group === 'forex' ? 60000 : 30000, market.group === 'watchlist' ? token : '', revision);
   const [retained, setRetained] = useState<TvSnapshot | null>(null);
   const resourceData = resource.data, errorStatus = resource.errorStatus;
   useEffect(() => { setRetained(previous => retainVisibleTvSnapshot(previous, { data: resourceData, errorStatus })); }, [resourceData, errorStatus]);
   // Hide revoked data in this render as well as clearing the retained state.
   const snapshot = retainVisibleTvSnapshot(retained, resource), quotes = snapshot?.quotes || [];
   const coverage = tvStripCoverage(quotes, now);
-  const sourceCooling = tvStripSourceCooling(quotes, snapshot?.retryAt, now);
+  const sourceCooling = tvStripSourceCooling(quotes, snapshot?.retryAt, now, market.group);
+  const retryAt = market.group === 'forex' ? tvStripRetryAt(quotes, snapshot?.retryAt, now) : null;
+  const forexWaiting = market.group === 'forex' && (sourceCooling || quotes.some(quote => quote.issue === 'rate_limited'));
+  const forexFailure = tvSceneText(language, coverage.priced ? 'currencyUpdatesPartial' : 'currencyUpdatesPaused');
   const emptyPrices = quotes.length > 0 && !coverage.priced;
   const failure = tvSceneText(language, quotes.length > 0 && quotes.every(quote => quote.issue === quotes[0].issue) ? tvSceneIssue(quotes[0].issue) : 'updatesUnavailable');
   const displayed = quotes.filter(hasTvPrice);
@@ -67,10 +70,10 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
     return () => clearTimeout(timer);
   }, [displayed.length, visible, paused, manualPause, sourceCooling, resource.loading, resource.error, resource.data, pages]);
   useEffect(() => { if (page >= pages) setPage(0); }, [page, pages]);
-  const health = market.status === 'unavailable' || resource.error ? 'error' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
+  const health = market.status === 'unavailable' || resource.error ? 'error' : forexWaiting ? coverage.priced ? 'retained' : 'waiting' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
   const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = useCallback(() => { if (!resource.loading) setPage(value => (value + 1) % pages); }, [resource.loading, pages]);
-  const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : sourceCooling ? failure : pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
+  const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : forexWaiting ? forexFailure : sourceCooling ? failure : pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
   return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-directory-empty={market.count===0} data-source-cooling={sourceCooling} data-paged={pages > 1}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
@@ -78,7 +81,8 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
       {market.status==='selected'&&<span className="tv-strip-coverage">{t('partialMarket')}</span>}
       {custom&&<span className="tv-strip-coverage">{t('selectedCount')}: <bdi>{selection.length.toLocaleString('en-US')}</bdi></span>}
       {market.count>0&&<span className="tv-strip-coverage">{t('batchRange')}: <b dir="ltr">{batchRange}</b> · {t('availableBatch')}: <b dir="ltr">{snapshot ? `${coverage.priced} / ${coverage.loaded}` : '—'}</b> · {t('batchPage')} <b dir="ltr">{page + 1} / {pages}</b></span>}
-      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{market.count===0?t('directoryUnavailable'):emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
+      <span className="tv-strip-health" data-state={health} title={evidenceSummary}>{resource.loading ? <RefreshCw className="tv-spin"/> : <i/>}{market.count===0?t('directoryUnavailable'):forexWaiting && !resource.loading ? forexFailure : emptyPrices && !resource.loading ? failure : t(resource.error ? 'retrying' : resource.loading ? 'loading' : coverage.recent ? 'recentPrices' : coverage.closed ? 'closed' : coverage.stale ? 'stale' : coverage.reference ? 'reference' : coverage.unknown ? 'unknown_time' : 'waitingPrices')}</span>
+      {retryAt && <span className="tv-strip-coverage" role="status">{tvSceneText(language, 'automaticRetryAfter')} <time dateTime={retryAt}>{tvTime(retryAt, language, true)}</time> · {tvSceneText(language, 'kuwaitTime')}</span>}
     </button>
     {browse && displayed.length > 0 ? <TvBrowseStripPage key={page} quotes={displayed} group={market.group} language={language}
       now={now} onQuote={onQuote} speed={speed} paused={manualPause || !visible || resource.loading}

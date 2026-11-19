@@ -63,6 +63,125 @@ describe('shared Twelve Data quota protection', () => {
     expect((await twelveDataFetch(url('NBK'))).status).toBe(200);
     expect((await twelveDataFetch(url('KFH'))).status).toBe(429); expect(fetch).toHaveBeenCalledTimes(1);
   });
+  it('reserves the reported credits before dispatching a concurrent quote burst', async () => {
+    const release: Array<(response: Response) => void> = [];
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ symbol: 'NBK', close: 1 }, { headers: { 'api-credits-left': '2' } }))
+      .mockImplementation(() => new Promise<Response>(resolve => { release.push(resolve); })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch, TWELVE_RETRY_HEADER } = await import('@/lib/server/twelve-data-fetch');
+    await twelveDataFetch(url('NBK'));
+    const work = Promise.all(Array.from({ length: 8 }, (_, i) => twelveDataFetch(url(`TEST${i}`))));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    for (const resolve of release) resolve(Response.json({ close: 1 }));
+    const results = await work;
+    expect(results.filter(response => response.ok)).toHaveLength(2);
+    expect(results.filter(response => response.status === 429)).toHaveLength(6);
+    expect(results[7].headers.get(TWELVE_RETRY_HEADER)).toBe('2026-10-28T05:16:01.000Z');
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
+  it('rejects a batch exceeding the known budget while allowing smaller documented requests', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ close: 1 }, { headers: { 'api-credits-left': '2' } }))
+      .mockResolvedValueOnce(Response.json({ values: [] }, { headers: { 'api-credits-left': '0' } })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch } = await import('@/lib/server/twelve-data-fetch');
+    await twelveDataFetch(url('NBK'));
+    expect((await twelveDataFetch(url('AAPL,MSFT,AMZN'))).status).toBe(429);
+    expect(fetch).toHaveBeenCalledTimes(1); expect(shared.publish).not.toHaveBeenCalled();
+    expect((await twelveDataFetch('https://api.twelvedata.com/time_series?symbol=EUR/USD,GBP/USD&interval=1min&apikey=test-only')).status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect((await twelveDataFetch(url('KFH'))).status).toBe(429);
+  });
+  it('does not refill reserved credits from an older parallel response', async () => {
+    const release: Array<(response: Response) => void> = [];
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ close: 1 }, { headers: { 'api-credits-left': '4' } }))
+      .mockImplementation(() => new Promise<Response>(resolve => { release.push(resolve); })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch } = await import('@/lib/server/twelve-data-fetch');
+    await twelveDataFetch(url('NBK'));
+    const older = twelveDataFetch(url('AAPL')), newer = twelveDataFetch(url('MSFT'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    release[1](Response.json({ close: 1 }, { headers: { 'api-credits-left': '2' } })); await newer;
+    release[0](Response.json({ close: 1 }, { headers: { 'api-credits-left': '3' } })); await older;
+    expect((await twelveDataFetch(url('AMZN,META'))).status).toBe(429);
+    expect(fetch).toHaveBeenCalledTimes(3);
+    const single = twelveDataFetch(url('GOOGL'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(4));
+    release[2](Response.json({ close: 1 })); expect((await single).status).toBe(200);
+    expect((await twelveDataFetch(url('TSLA'))).status).toBe(429);
+  });
+  it('does not apply a preceding minute\'s delayed zero-credit response to the new minute', async () => {
+    let release!: (response: Response) => void;
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ close: 1 }, { headers: { 'api-credits-left': '1' } }))
+      .mockImplementationOnce(() => new Promise<Response>(resolve => { release = resolve; }))
+      .mockResolvedValueOnce(Response.json({ close: 1 })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch } = await import('@/lib/server/twelve-data-fetch');
+    await twelveDataFetch(url('NBK'));
+    const old = twelveDataFetch(url('KFH'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    vi.setSystemTime(Date.parse('2026-10-28T05:16:02Z'));
+    release(Response.json({ close: 1 }, { headers: { 'api-credits-left': '0' } })); await old;
+    expect((await twelveDataFetch(url('AAPL'))).status).toBe(200); expect(fetch).toHaveBeenCalledTimes(3);
+    expect(shared.publish).not.toHaveBeenCalled();
+  });
+  it('does not extend a preceding minute\'s final credit across an extra minute during reset grace', async () => {
+    vi.setSystemTime(Date.parse('2026-10-28T05:15:59.500Z'));
+    let release!: (response: Response) => void;
+    const fetch = vi.fn().mockImplementationOnce(() => new Promise<Response>(resolve => { release = resolve; }))
+      .mockResolvedValueOnce(Response.json({ close: 1 })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch, TWELVE_RETRY_HEADER } = await import('@/lib/server/twelve-data-fetch');
+    const old = twelveDataFetch(url('NBK'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    vi.setSystemTime(Date.parse('2026-10-28T05:16:00.500Z'));
+    release(Response.json({ close: 1 }, { headers: { 'api-credits-left': '0' } }));
+    const response = await old;
+    expect(response.status).toBe(200);
+    expect(response.headers.get(TWELVE_RETRY_HEADER)).toBe('2026-10-28T05:16:01.000Z');
+    vi.setSystemTime(Date.parse('2026-10-28T05:16:01.001Z'));
+    expect((await twelveDataFetch(url('KFH'))).status).toBe(200); expect(fetch).toHaveBeenCalledTimes(2);
+  });
+  it('uses a trustworthy source date when the provider processes a request in the next minute', async () => {
+    vi.setSystemTime(Date.parse('2026-10-28T05:15:59.500Z'));
+    let release!: (response: Response) => void;
+    const fetch = vi.fn().mockImplementation(() => new Promise<Response>(resolve => { release = resolve; })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch, TWELVE_RETRY_HEADER } = await import('@/lib/server/twelve-data-fetch');
+    const work = twelveDataFetch(url('NBK'));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    vi.setSystemTime(Date.parse('2026-10-28T05:16:00.500Z'));
+    release(Response.json({ close: 1 }, { headers: { 'api-credits-left': '0', date: 'Wed, 28 Oct 2026 05:16:00 GMT' } }));
+    expect((await work).headers.get(TWELVE_RETRY_HEADER)).toBe('2026-10-28T05:17:01.000Z');
+    expect((await twelveDataFetch(url('KFH'))).status).toBe(429); expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it.each(['', ' ', '-1', 'NaN', '1.5'])('does not turn a malformed remaining-credit header %j into a quota block', async header => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ close: 1 }, { headers: { 'api-credits-left': header } })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch } = await import('@/lib/server/twelve-data-fetch');
+    await twelveDataFetch(url('NBK'));
+    expect((await twelveDataFetch(url('KFH'))).status).toBe(200); expect(fetch).toHaveBeenCalledTimes(2);
+    expect(shared.publish).not.toHaveBeenCalled();
+  });
+  it('honors the source Retry-After even when the final allowed response succeeds', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ close: 1 }, { headers: { 'api-credits-left': '0', 'retry-after': '120' } })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch, TWELVE_RETRY_HEADER } = await import('@/lib/server/twelve-data-fetch');
+    const response = await twelveDataFetch(url('NBK'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get(TWELVE_RETRY_HEADER)).toBe(new Date(now + 120_000).toISOString());
+    expect((await twelveDataFetch(url('KFH'))).headers.get(TWELVE_RETRY_HEADER)).toBe(new Date(now + 120_000).toISOString());
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it('removes cancelled waiters so they cannot exhaust the bounded provider queue', async () => {
+    const release: Array<(response: Response) => void> = [];
+    const fetch = vi.fn().mockImplementation(() => new Promise<Response>(resolve => { release.push(resolve); })); vi.stubGlobal('fetch', fetch);
+    const { twelveDataFetch } = await import('@/lib/server/twelve-data-fetch');
+    const active = [twelveDataFetch(url('NBK')), twelveDataFetch(url('KFH'))];
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    const controllers = Array.from({ length: 48 }, () => new AbortController());
+    const cancelled = controllers.map((controller, i) => expect(twelveDataFetch(url(`CANCEL${i}`), { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' }));
+    await vi.advanceTimersByTimeAsync(1);
+    for (const controller of controllers) controller.abort();
+    await Promise.all(cancelled);
+    const next = twelveDataFetch(url('AAPL'));
+    release[0](Response.json({ close: 1 })); release[1](Response.json({ close: 1 }));
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+    release[2](Response.json({ close: 1 }));
+    expect((await next).status).toBe(200); await Promise.all(active);
+    expect(fetch).toHaveBeenCalledTimes(3);
+  });
   it('scopes a denied exchange without blocking a separately authorized market', async () => {
     const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 403 })).mockResolvedValueOnce(Response.json({ symbol: 'DIB', close: 1 })); vi.stubGlobal('fetch', fetch);
     const { twelveDataFetch } = await import('@/lib/server/twelve-data-fetch');
