@@ -129,7 +129,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   await settings.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.locator('.tv-language-setting select').selectOption('en');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
@@ -149,7 +149,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   await expect(row).toBeFocused();
   await openTvMenu(page);
   await settings.click();
-  await page.locator('.tv-language-setting select').selectOption('fr');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'Français', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('lang', 'fr');
   await page.setViewportSize({ width: 390, height: 844 });
