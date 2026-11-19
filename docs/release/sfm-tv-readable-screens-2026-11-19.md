@@ -23,6 +23,10 @@ No schema, provider, authentication, recorded financial value, or account change
   targets connect market selection, editing, pagination and Save.
 - Existing remote improvements are preserved: OK/Select/Accept/Space activation,
   bounded directional repeat, focus restoration, grid boundaries and modal scope.
+- The web display routes share a persistent layout so browser Back/Forward
+  cannot replace the TV root. Initial route settings are captured once; the
+  phone pairing page stays outside the display layout. The packaged entry is
+  unaffected by this web-only routing change.
 - The unchanged SheetJS tarball has its verified SHA-512 recorded, matching #372;
   no dependency version changes.
 
@@ -34,9 +38,15 @@ Completed locally:
 - 313 focused TV unit tests across 53 files.
 - Targeted ESLint, aligned AR/EN/FR translations, maintainability guard, diff check.
 - Focused TV TypeScript check. The full TypeScript gate passed in GitHub CI.
-- Visual inspection of Arabic 720p/1080p light/dark picker and strip captures from
-  candidate c8a7947. That iteration passed 131/133 packaged cases; its remaining
-  two small-screen news-fit failures and CSS budget were addressed for rerun.
+- Visual inspection of Arabic 720p/1080p light/dark picker and strip captures.
+  The final shared UI passed all 133 packaged browser tests on candidate
+  71e34a0, including the 24 new readability/picker/remote cases. Android
+  debug/release/AAB compilation and lint passed in workflow 44412936789.
+- The independent preview APK from that workflow was verified before delivery:
+  com.thesfm.marketstv.preview, 1.0.21/build 27, SHA-256
+  2f03ecd51f50edfc9ffcc95345f8178e8c97a9a752246c00cc09f91d8c29055a.
+  Its signing identity differs from the earlier main APK, so it is distributed
+  as the independent SFM TV Obsidian app with separate settings and pairing.
 
 Required on the final GitHub head before release:
 
