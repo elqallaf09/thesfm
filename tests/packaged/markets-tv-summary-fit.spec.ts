@@ -17,6 +17,7 @@ const summary: TvQuote[] = [
 ].map(quote => ({ ...quote, status: quote.status as TvQuote['status'], currency: null,
   source: 'Yahoo Finance', receivedAt: now, changeBasis: 'session', delayType: 'delayed' }));
 const prices = ['7,175.83', '10,452.68', '25,463.81', '59,444.21'];
+const changes = ['-2.02%', '-0.93%', '-1.06%', '+0.71%'];
 const times = ['23:45', '19:35', '20:00', '09:45'];
 const statusLabels = {
   ar: ['متأخر', 'آخر إغلاق', 'آخر سعر محفوظ', 'آخر سعر محفوظ'],
@@ -80,13 +81,25 @@ async function expectSummaryGeometry(cards: Locator) {
     if (card.scrollWidth > card.clientWidth + 2 || card.scrollHeight > card.clientHeight + 2) issues.push(label + 'card overflow');
     const parts = [...card.querySelectorAll(':scope > .tv-scene-summary-name, :scope > .tv-scene-summary-value, :scope > .tv-scene-change, :scope > .tv-quote-evidence')];
     if (parts.length !== 4) issues.push(label + 'missing name, price, change or evidence');
-    const textBoxes: { text: string; box: DOMRect }[] = [];
     for (const part of parts) {
       const box = part.getBoundingClientRect();
       if (!box.width || !box.height || outside(box, bounds)) issues.push(label + part.className + ' outside card');
-      // Range rectangles detect overflowing/clipped glyphs that a min-width:0
-      // parent rectangle alone would miss, including an ellipsized index name.
-      const walker = document.createTreeWalker(part, NodeFilter.SHOW_TEXT);
+    }
+    // These leaves are independent layout boxes, never ancestors of each other.
+    // Raw Range heights include font ascent/descent, not painted glyph bounds;
+    // neighbouring line boxes can be separate while those font boxes intersect.
+    const leaves = [...card.querySelectorAll([
+      '.tv-scene-summary-name > span:not(.tv-asset-icon)', '.tv-scene-summary-price',
+      '.tv-scene-summary-value > small', '.tv-scene-change > span', '.tv-scene-change > small',
+      '.tv-quote-evidence .tv-scene-source', '.tv-quote-evidence .tv-status', '.tv-quote-evidence time',
+    ].join(','))];
+    if (leaves.length !== 8) issues.push(label + 'missing name, numeric price, unit, change, basis, source, status or time');
+    for (const leaf of leaves) {
+      const leafBox = leaf.getBoundingClientRect();
+      if (!leafBox.width || !leafBox.height || outside(leafBox, bounds)) issues.push(label + leaf.className + ' outside card');
+      // Keep Range's horizontal checks: a clipped title or overflowing digits
+      // can exceed their min-width:0 container even when its own box fits.
+      const walker = document.createTreeWalker(leaf, NodeFilter.SHOW_TEXT);
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const content = node.textContent || '', text = content.trim();
         if (!text || node.parentElement?.closest('[aria-hidden="true"]')) continue;
@@ -95,19 +108,22 @@ async function expectSummaryGeometry(cards: Locator) {
         range.setEnd(node, start + text.length);
         const rects = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
         if (!rects.length) issues.push(label + `invisible text: ${text}`);
-        if (part.matches('.tv-scene-summary-value') && /\d/.test(text)
+        if (leaf.matches('.tv-scene-summary-price')
           && rects.some(rect => Math.abs(rect.top - rects[0].top) > 1)) issues.push(label + 'price digits wrap');
         for (const rect of rects) {
-          if (outside(rect, bounds)) issues.push(label + `text outside card: ${text}`);
+          if (rect.left < leafBox.left - 1 || rect.right > leafBox.right + 1) issues.push(label + `text outside its leaf: ${text}`);
+          // Check the line's position, rather than treating ascent/descent as
+          // visible ink. Hidden additional lines still lie beyond the leaf.
+          const lineCenter = (rect.top + rect.bottom) / 2;
+          if (lineCenter < leafBox.top - 1 || lineCenter > leafBox.bottom + 1) issues.push(label + `text line outside its leaf: ${text}`);
           for (let ancestor = node.parentElement; ancestor && ancestor !== card.parentElement; ancestor = ancestor.parentElement) {
             const style = getComputedStyle(ancestor), clip = ancestor.getBoundingClientRect();
             if ((/(hidden|clip|auto|scroll)/.test(style.overflowX) && (rect.left < clip.left - 1 || rect.right > clip.right + 1))
-              || (/(hidden|clip|auto|scroll)/.test(style.overflowY) && (rect.top < clip.top - 1 || rect.bottom > clip.bottom + 1))) {
+              || (/(hidden|clip|auto|scroll)/.test(style.overflowY) && (lineCenter < clip.top - 1 || lineCenter > clip.bottom + 1))) {
               issues.push(label + `clipped text: ${text}`);
               break;
             }
           }
-          textBoxes.push({ text, box: rect });
         }
       }
     }
@@ -116,8 +132,10 @@ async function expectSummaryGeometry(cards: Locator) {
         issues.push(label + parts[i].className + ' overlaps ' + parts[j].className);
       }
     }
-    for (let i = 0; i < textBoxes.length; i++) for (let j = i + 1; j < textBoxes.length; j++) {
-      if (overlaps(textBoxes[i].box, textBoxes[j].box)) issues.push(label + `text overlap: ${textBoxes[i].text} / ${textBoxes[j].text}`);
+    for (let i = 0; i < leaves.length; i++) for (let j = i + 1; j < leaves.length; j++) {
+      if (overlaps(leaves[i].getBoundingClientRect(), leaves[j].getBoundingClientRect())) {
+        issues.push(label + `text layout overlap: ${leaves[i].textContent} / ${leaves[j].textContent}`);
+      }
     }
     return issues;
   })), 'Full names, significant price digits, units and evidence remain separate and unclipped').toEqual([]);
@@ -132,12 +150,15 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
       const card = cards.nth(index), quote = summary[index];
       await expect(card.locator('.tv-scene-summary-name')).toHaveText(language === 'ar' ? quote.nameAr : quote.name);
       await expect(card.locator('.tv-scene-summary-value')).toContainText(prices[index]);
+      await expect(card.locator('.tv-scene-summary-price')).toHaveText(prices[index]);
+      await expect(card.locator('.tv-scene-summary-value > small')).toHaveText(language === 'ar' ? 'نقطة' : 'points');
+      await expect(card.locator('.tv-scene-change > span')).toHaveText(changes[index]);
       await expect(card.locator('.tv-scene-source')).toHaveText('Yahoo Finance');
       await expect(card.locator('.tv-status')).toHaveText(statusLabels[language][index]);
       await expect(card.locator('.tv-quote-evidence time')).toHaveText(`2026-11-19 · ${times[index]}`);
       await expect(card.locator('.tv-quote-evidence time')).toHaveAttribute('dateTime', quote.observedAt!);
     }
-    for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
+    for (const [width, height] of [[1920, 1080], [1280, 720], [1152, 768], [1024, 768], [960, 540]]) {
       await page.setViewportSize({ width, height });
       await expectSummaryGeometry(cards);
       for (const selector of ['.tv-scene-summaries', '.tv-scene-quotes', '.tv-scene-headlines', '.tv-quote-marquee']) {
@@ -146,10 +167,10 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
       for (const story of await page.locator('.tv-scene-headlines .tv-news-card').all()) {
         await expect(story).toBeInViewport({ ratio: 0.99 });
       }
-      if (height >= 720) {
+      if (height >= 720 && width >= 1280) {
         for (const row of await page.locator('.tv-scene-row').all()) await expect(row).toBeInViewport({ ratio: 0.99 });
       } else {
-        // Short TVs may scroll their existing price-table region, while all
+        // Short or narrow TVs may scroll their existing price-table region, while all
         // summaries, news cards and the ticker still remain on one canvas.
         await expect(page.locator('.tv-scene-row').first()).toBeInViewport({ ratio: 0.99 });
       }

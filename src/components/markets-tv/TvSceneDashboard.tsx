@@ -37,7 +37,7 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
   const priced = tvSceneHasPrice(quote);
   return <button className="tv-scene-summary" data-priced={priced} onClick={() => select(quote)} data-tv-focus-key={`summary:${quoteKey(quote)}`}>
     <span className="tv-scene-summary-name"><TvAssetIcon quote={quote}/><span>{language === 'ar' ? quote.nameAr : quote.name}</span><i className="tv-scene-quote-dot" data-status={priced ? quoteStatus(quote, now) : 'unavailable'} aria-hidden="true"/></span>
-    {priced ? <><span className="tv-scene-summary-value" dir="ltr">{tvQuotePrice(quote)}<small>{tvSceneQuoteUnit(quote, language)}</small></span>
+    {priced ? <><span className="tv-scene-summary-value" dir="ltr"><span className="tv-scene-summary-price">{tvQuotePrice(quote)}</span><small>{tvSceneQuoteUnit(quote, language)}</small></span>
       <QuoteChange quote={quote} language={language}/></> : <span className="tv-scene-summary-placeholder" dir="ltr"><strong>—</strong><span className="tv-scene-summary-code">{quote.displaySymbol || quote.symbol}</span></span>}
     <QuoteEvidence quote={quote} language={language} now={now}/>
   </button>;
