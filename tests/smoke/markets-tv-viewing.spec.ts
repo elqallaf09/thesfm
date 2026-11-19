@@ -1,3 +1,4 @@
+import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './helpers/tv-controls';
 import { expect, test, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -40,6 +41,7 @@ test('default viewing requests a bounded scene and keeps watchlist access privat
   const requests: URL[] = [];
   page.on('request', request => { if (request.url().includes('/api/tv/')) requests.push(new URL(request.url())); });
   await page.goto('/tv');
+  await closeTvMenu(page);
   await expect(page.locator('.tv-viewing')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.tv-hall-price').first()).toContainText('123.45');
@@ -48,15 +50,15 @@ test('default viewing requests a bounded scene and keeps watchlist access privat
   expect(requests.filter(url => url.pathname === '/api/tv/catalog')).toHaveLength(0);
   expect(requests.filter(url => url.pathname === '/api/tv/snapshot').map(url => url.search)).toEqual(['?group=global&scene=overview&pageSize=10']);
 
-  await page.locator('[data-tv-focus-key="scene:gulf"]').click();
-  await expect(page.locator('[data-tv-focus-key="scene:gulf"]')).toHaveAttribute('aria-pressed', 'true');
+  await chooseTvDestination(page, 'gulf');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').scene)).toBe('gulf');
   await expect.poll(() => requests.filter(url => url.searchParams.get('scene') === 'gulf').length).toBe(1);
   await expect(page.locator('.tv-scene-row')).toHaveCount(6);
   await page.getByRole('button', { name: 'خريطة التغيّر', exact: true }).click();
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(6);
   await expect(page.locator('.tv-scene-panel-heading')).toContainText('عينة المشهد');
 
-  await page.locator('[data-tv-focus-key="scene:watchlist"]').click();
+  await chooseTvDestination(page, 'watchlist');
   await expect(page.locator('.tv-viewing-empty')).toBeVisible();
   expect(requests.some(url => url.searchParams.get('scene') === 'watchlist')).toBe(false);
 });
@@ -68,6 +70,7 @@ test('partial quote failure retains both row and summary source times without be
   let failed = false;
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot('gulf', observedAt, failed) }));
   await page.goto('/tv');
+  await closeTvMenu(page);
   const row = page.locator('.tv-scene-row').first();
   const summary = page.locator('.tv-scene-summary').first();
   await expect(row).toContainText('127.45');
@@ -75,7 +78,9 @@ test('partial quote failure retains both row and summary source times without be
   await expect(row.locator('time')).toHaveAttribute('dateTime', observedAt);
   await expect(summary.locator('time')).toHaveAttribute('dateTime', observedAt);
   failed = true;
-  await page.getByRole('button', { name: 'تحديث الأسعار', exact: true }).click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=refresh]').click();
+  await closeTvHeaderActions(page);
   await expect(row.locator('.tv-status')).toHaveAttribute('data-status', 'stale');
   await expect(summary.locator('.tv-status')).toHaveAttribute('data-status', 'stale');
   await expect(row).toContainText('127.45');
@@ -93,6 +98,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/tv');
+  await closeTvMenu(page);
   await expect(page.locator('.tv-scene-row')).toHaveCount(6);
   for (const viewport of [{ width: 1280, height: 720 }, { width: 1920, height: 1080 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
@@ -113,19 +119,20 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
     expect(overflowingRows).toEqual([]);
     const captionSizes = await page.locator([
       '.tv-scene-source', '.tv-scene-evidence time', '.tv-scene-change small',
-      '.tv-scene-price small', '.tv-scene-summary-value small', '.tv-viewing-footer',
+      '.tv-scene-price small', '.tv-scene-summary-value small', '.tv-news-evidence',
     ].join(',')).evaluateAll(elements => elements.map(element => Number.parseFloat(getComputedStyle(element).fontSize)));
     expect(Math.min(...captionSizes)).toBeGreaterThanOrEqual(12);
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
   const settings = page.locator('[data-tv-focus-key="settings"]');
+  await openTvMenu(page);
   await settings.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.locator('.tv-language-setting select').selectOption('en');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.keyboard.press('Escape');
-  await expect(settings).toBeFocused();
+  await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
   await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-light/);
 
@@ -140,6 +147,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   })).toBe(true);
   await page.keyboard.press('Escape');
   await expect(row).toBeFocused();
+  await openTvMenu(page);
   await settings.click();
   await page.locator('.tv-language-setting select').selectOption('fr');
   await page.keyboard.press('Escape');
@@ -155,19 +163,20 @@ test('remote media keys control rotation and interaction postpones the next scen
   await fixtures(page);
   await page.clock.install();
   await page.goto('/tv');
+  await closeTvMenu(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
-  const overview = page.locator('[data-tv-focus-key="scene:overview"]');
+  const menuToggle = page.locator('[data-tv-focus-key=menu-toggle]');
   await page.keyboard.press('MediaPlayPause');
-  await expect(page.locator('[data-tv-focus-key="scene-playback"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').autoRotate)).toBe(true);
   await page.clock.fastForward(20_000);
-  await overview.focus();
-  await page.keyboard.press('ArrowLeft');
+  await menuToggle.focus();
+  await page.keyboard.press('ArrowUp');
   await page.clock.fastForward(20_000);
-  await expect(overview).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').scene)).toBe('overview');
   await page.clock.fastForward(11_000);
-  await expect(page.locator('[data-tv-focus-key="scene:gulf"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').scene)).toBe('gulf');
   await page.keyboard.press('MediaPlayPause');
-  await expect(page.locator('[data-tv-focus-key="scene-playback"]')).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').autoRotate)).toBe(false);
   await expect(page.locator('.tv-quote-marquee')).toHaveAttribute('data-paused', 'true');
 });
 
@@ -189,6 +198,7 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
       quotes: [], total: 0, available: 0, selectionTotal: empty ? 0 : 2 } });
   });
   await page.goto('/tv');
+  await closeTvMenu(page);
   await expect(page.locator('.tv-scene-row')).toHaveCount(2);
   await expect(page.locator('.tv-scene-summary')).toHaveCount(0);
   await expect(page.locator('.tv-scene-row').nth(0)).toContainText('123.45');
@@ -196,7 +206,9 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
   await expect(page.locator('.tv-scene-coverage-total')).toContainText('2 / 2');
   await expect(page.getByText('لا تتوفر أسعار موثقة لهذا المشهد الآن', { exact: true })).toHaveCount(0);
   empty = true;
-  await page.getByRole('button', { name: 'تحديث الأسعار', exact: true }).click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=refresh]').click();
+  await closeTvHeaderActions(page);
   await expect(page.getByText('قائمة المتابعة فارغة. أضف أصولك من الموقع أو الهاتف.', { exact: true })).toBeVisible();
   await expect(page.locator('.tv-scene-row')).toHaveCount(0);
 });
@@ -211,6 +223,7 @@ test('an unavailable scene hides unpriced instruments and explains the source co
   });
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/tv');
+  await closeTvMenu(page);
   await expect(page.locator('.tv-scene-summary')).toHaveCount(0);
   await expect(page.locator('.tv-scene-row')).toHaveCount(0);
   await expect(page.locator('.tv-scene-no-data')).toBeVisible();

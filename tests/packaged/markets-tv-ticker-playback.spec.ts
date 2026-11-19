@@ -1,3 +1,4 @@
+import { closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -17,7 +18,7 @@ async function open(page:Page,language:TvLanguage,displayMode:TvDisplayMode='vie
   await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{group:'global',scene:'overview',summary:quotes(),quotes:quotes(),available:6,total:6,selectionTotal:6,generatedAt:now}}));
   await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[0,1,2].map(index=>({id:`qa-${index}`,title:`خبر اختبار عن الأسواق العالمية / Market news fixture ${index+1}`,source:'QA',publishedAt:now,url:`https://example.com/news/${index}`}))}}));
   await page.route('**/api/tv/history',r=>r.fulfill({json:{symbol:'^GSPC',sessionDate:'2026-11-06',source:'QA source',fetchedAt:now,points:[{at:'2026-11-06T14:30:00Z',price:5999},{at:'2026-11-06T14:35:00Z',price:6002},{at:'2026-11-06T14:40:00Z',price:6000}]}}));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
   if(displayMode==='strips') await expect(page.locator('.tv-market-strip-track')).toHaveCount(1);
   else await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.evaluate(()=>document.fonts.ready);
@@ -72,26 +73,32 @@ test('strips keep moving behind quote details and preserve explicit Pause throug
   await page.setViewportSize({width:1536,height:1009});
   await page.emulateMedia({reducedMotion:'no-preference'});
   await open(page,'en','strips');
-  const track=page.locator('.tv-market-strip-track'),playback=page.locator('.tv-header-actions button[aria-pressed]');
-  const quote=page.locator('.tv-market-strip-set[aria-hidden=false] .tv-market-strip-item').first(),dialog=page.getByRole('dialog');
+  const track=page.locator('.tv-market-strip-track'),playback=page.locator('[data-tv-focus-key=ticker-playback]');
+  const quote=page.locator('.tv-market-strip-set[aria-hidden=false] .tv-market-strip-item').first(),dialog=page.locator('[data-tv-dialog]');
   await page.mouse.move(0,0);
   await expectContinuousMovement(track);
+  await openTvHeaderActions(page);
+  await expect(playback).toHaveAttribute('aria-pressed','false');
+  await closeTvHeaderActions(page);
   await quote.focus(); await page.keyboard.press('Enter');
   await expect(dialog).toBeVisible();
   // Selecting a quote holds its track only until remote focus enters details.
   await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeFocused();
-  await expect(playback).toHaveAttribute('aria-pressed','false');
   await expectContinuousMovement(track);
   await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible();
+  await openTvHeaderActions(page);
+  await expect(playback).toHaveAttribute('aria-pressed','false');
   await playback.focus(); await page.keyboard.press('Enter');
   await expect(playback).toHaveAttribute('aria-pressed','true');
   await expect(track).toHaveCSS('animation-play-state','paused');
+  await closeTvHeaderActions(page);
   await quote.focus(); await page.keyboard.press('Enter');
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button',{name:'Close',exact:true})).toBeFocused();
   await expect(track).toHaveCSS('animation-name','tv-scroll');
   await expect(track).toHaveCSS('animation-play-state','paused');
   await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible();
+  await openTvHeaderActions(page);
   await playback.focus();
   await expect(playback).toHaveAttribute('aria-pressed','true');
   await expect(track).toHaveCSS('animation-play-state','paused');
@@ -107,8 +114,9 @@ for(const mode of ['viewing','browse','strips'] as const) test(`${mode} first Pl
   await includeWebsiteMotionGuard(page);
   const track=page.locator(mode==='strips'?'.tv-market-strip-track':'.tv-marquee-track');
   const viewport=page.locator(mode==='strips'?'.tv-market-strip-window':'.tv-marquee-viewport');
-  const playback=page.locator(mode==='strips'?'.tv-header-actions button[aria-pressed]':'.tv-marquee-toggle');
+  const playback=page.locator(mode==='strips'?'[data-tv-focus-key=ticker-playback]':'.tv-marquee-toggle');
   await expect(track).toHaveCSS('animation-name','none');
+  if(mode==='strips') await openTvHeaderActions(page);
   await expect(playback).toHaveAttribute('aria-pressed','true');
   // Scrollbar/touch scrolling need not focus a quote or emit a blur event.
   expect(await viewport.evaluate(element=>{element.scrollLeft=100;return element.scrollLeft;})).toBeGreaterThan(0);
@@ -123,48 +131,36 @@ for(const mode of ['viewing','browse','strips'] as const) test(`${mode} first Pl
   expect(await page.locator('[aria-hidden=true] [tabindex="0"]').count()).toBe(0);
 });
 
-test('news resumes while its Play control keeps remote focus and remains independent of the ticker',async({page})=>{
+test('all news stays visible across display changes while ticker playback remains independent',async({page})=>{
   await page.setViewportSize({width:1536,height:1009});
   await page.emulateMedia({reducedMotion:'reduce'});
   await open(page,'en');
   await includeWebsiteMotionGuard(page);
-  const band=page.locator('.tv-headline-band'),label=band.locator('.tv-headline-label'),story=band.locator('.tv-headline-story');
-  await expect(story).toContainText('fixture 1');
-  await expect(label).toHaveAttribute('aria-label','Resume news rotation');
-  await label.focus(); await page.keyboard.press('Enter');
-  await expect(label).toBeFocused();
-  await expect(band).toHaveAttribute('data-paused','false');
-  await expect(label).toHaveAttribute('aria-label','Pause news rotation');
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 2');
-  // The ticker remains reduced while news has received its own explicit Play.
+  const band=page.locator('.tv-headline-band'),cards=band.locator('.tv-headline-story');
+  await expect(cards).toHaveCount(3);
+  await expect(band.locator('.tv-headline-playback,button.tv-headline-label')).toHaveCount(0);
+  const headlines=await cards.locator('.tv-news-title').allTextContents();
+  await cards.nth(1).focus();
+  await page.clock.runFor(80000);
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await expect(cards.nth(1)).toBeFocused();
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
-  await story.focus();
-  await page.clock.runFor(24_100);
-  await expect(story).toContainText('fixture 2');
-  await label.focus();
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 3');
   await page.keyboard.press('Enter');
-  await expect(label).toHaveAttribute('aria-label','Resume news rotation');
-  await page.clock.runFor(24_100);
-  await expect(story).toContainText('fixture 3');
-  // Keep the explicit news preference when this component unmounts between
-  // display modes, without opting the independently paused ticker into motion.
-  await page.keyboard.press('Enter');
-  await page.locator('.tv-mode-browse').click();
+  await expect(page.getByRole('dialog')).toContainText('fixture 2');
+  await page.keyboard.press('Escape');
+  await expect(cards.nth(1)).toBeFocused();
+  await chooseTvDestination(page, 'allStocks');
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
-  await expect(label).toHaveAttribute('aria-label','Pause news rotation');
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
-  await expect(story).toContainText('fixture 1');
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 2');
-  await label.click();
-  await page.locator('.tv-mode-viewing').click();
-  await expect(label).toHaveAttribute('aria-label','Resume news rotation');
-  await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 1');
+  await page.locator('.tv-marquee-toggle').focus();
+  await page.keyboard.press('Enter');
+  await expectContinuousMovement(page.locator('.tv-marquee-track'));
+  await page.clock.runFor(80000);
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await chooseTvDestination(page, 'hall');
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','false');
 });
 
 test('all-stocks media play/pause follows ticker state while the scene is fixed',async({page})=>{

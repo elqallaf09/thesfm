@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Locator } from '@playwright/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -32,7 +33,7 @@ for (const density of ['balanced', 'comfortable', 'compact']) {
       const quotes = symbols.map(symbol => ({ symbol, name: 'QA instrument', nameAr: 'شركة اختبار', source: 'QA', currency: 'USD', price: 122.05, changePercent: 1.3, exchange: 'QA', observedAt: new Date().toISOString(), status: 'delayed' }));
       return route.fulfill({ json: { group: query.get('group'), available: quotes.length, total: quotes.length, directoryTotal: 24, quotes } });
     });
-    await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+    await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
     await expect(page.locator('.tv-hall-row')).toHaveCount(3);
     await page.keyboard.press('Shift');
     const next = page.locator('[data-tv-focus-key=stocks-next]'); await next.focus();
@@ -46,13 +47,13 @@ for (const density of ['balanced', 'comfortable', 'compact']) {
       await expect(page.locator('.tv-quote-marquee')).toBeInViewport({ ratio: 1 });
     }
     await page.setViewportSize({ width: 960, height: 540 });
-    await page.locator('.tv-mode-viewing').click();
+    await chooseTvDestination(page, 'hall');
     await expect(page.locator('.tv-hall-main')).toBeVisible();
-    await page.locator('.tv-scene-tabs button').nth(5).click();
+    await chooseTvDestination(page, 'sessions');
     await expect(page.locator('.tv-world-sessions')).toBeInViewport({ratio:1});
-    await page.locator('.tv-scene-tabs button').nth(6).click();
+    await chooseTvDestination(page, 'brief');
     await expect(page.locator('.tv-brief-dashboard')).toBeInViewport({ratio:1});
-    await page.locator('.tv-mode-browse').click();
+    await chooseTvDestination(page, 'allStocks');
     await expect(page.locator('.tv-hall-row')).toHaveCount(3);
   });
 }

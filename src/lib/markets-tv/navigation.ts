@@ -1,5 +1,5 @@
 export type FocusRect = { left: number; top: number; width: number; height: number };
-export function nearestTvTarget(origin: FocusRect, targets: FocusRect[], direction: string): number {
+export function nearestTvTarget(origin: FocusRect, targets: FocusRect[], direction: string, sameRow = false): number {
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(direction)) return -1;
   const ox = origin.left + origin.width / 2, oy = origin.top + origin.height / 2;
   let best = -1, score = Infinity, alignedBest = false;
@@ -12,6 +12,9 @@ export function nearestTvTarget(origin: FocusRect, targets: FocusRect[], directi
     const overlap = horizontal ? Math.min(origin.top + origin.height, rect.top + rect.height) - Math.max(origin.top, rect.top)
       : Math.min(origin.left + origin.width, rect.left + rect.width) - Math.max(origin.left, rect.left);
     const aligned = overlap > 1;
+    // In a remote-controlled grid, left/right at a row boundary must not
+    // unexpectedly move to a diagonal item on another row.
+    if (sameRow && horizontal && !aligned) return;
     const next = forward + cross * 3;
     if (aligned && !alignedBest || aligned === alignedBest && next < score) { best = index; score = next; alignedBest = aligned; }
   });

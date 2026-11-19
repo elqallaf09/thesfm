@@ -1,5 +1,5 @@
+import { openAndroidTvPackage, closeTvMenu, chooseTvBroadcast } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
 
 // Financial values below are isolated browser fixtures, never app fallbacks.
 async function open(page: Page, language = 'ar') {
@@ -47,7 +47,7 @@ test('receiver numbers and channel keys select separate feeds, respect dialogs a
   await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ChannelDown', bubbles: true }))); await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'sessions');
   await page.keyboard.press('3');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'kuwait');
-  await page.reload();
+  await page.reload();await closeTvMenu(page);
   await expect(page.locator('.tv-receiver-kuwait .tv-strip-symbol b').first()).toHaveText('KW0');
 });
 
@@ -88,7 +88,7 @@ test('receiver refuses unscoped legacy news instead of mixing general stories in
 for (const language of ['ar','en','fr']) test(`receiver ${language}: complete cards and news fit TV and tablet canvases`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page, language);
   for (const channel of ['allStocks','kuwait','technology']) {
-    await page.locator(`[data-tv-focus-key="channel:${channel}"]`).click();
+    await chooseTvBroadcast(page, channel);
     for (const [width, height] of [[960,540],[1280,720],[1536,1009],[1920,1080],[3840,2160]]) {
       await page.setViewportSize({ width, height });
       await expect(page.locator('.tv-receiver-screen')).toBeInViewport({ ratio: 1 });
@@ -100,5 +100,5 @@ for (const language of ['ar','en','fr']) test(`receiver ${language}: complete ca
       if (channel !== 'allStocks') await expect(page.locator('.tv-headline-items button').first()).toBeInViewport({ ratio: 1 });
     }
   }
-  if (language === 'ar') { await page.setViewportSize({ width: 1920, height: 1080 }); await page.locator('[data-tv-focus-key="channel:kuwait"]').click(); await page.screenshot({ path: testInfo.outputPath('receiver-kuwait.png') }); }
+  if (language === 'ar') { await page.setViewportSize({ width: 1920, height: 1080 }); await chooseTvBroadcast(page, 'kuwait'); await page.screenshot({ path: testInfo.outputPath('receiver-kuwait.png') }); }
 });

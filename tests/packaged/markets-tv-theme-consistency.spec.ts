@@ -1,7 +1,7 @@
+import { openAndroidTvPackage, openTvMenu, closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { openAndroidTvPackage } from './packageHarness';
 
 // Deterministic browser fixtures only; product builds contain no sample prices.
 const items = Array.from({ length: 6 }, (_, i) => ({ symbol: `THEME${i}`, name: `Theme check ${i}`, nameAr: `Theme check ${i}`, currency: 'KWD', region: 'KW' }));
@@ -22,7 +22,7 @@ async function open(page: Page, theme: string, accent: string, fileBased = false
     return route.fulfill({ json: { quotes, summary: quotes, group: 'global', total: 6, available: 6, generatedAt: now } });
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'theme-news', title: 'A complete financial news headline for contrast verification', source: 'Theme QA', publishedAt: new Date().toISOString(), url: 'https://example.com/news' }] } }));
-  if (fileBased) await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  if (fileBased) { await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href); await closeTvMenu(page); }
   else await openAndroidTvPackage(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.evaluate(() => document.fonts.ready);
@@ -80,7 +80,7 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
     await expect(page.locator('.tv-headline-band')).toHaveCSS('background-color', baseline.colors['news-background']);
     await expect(page.locator('.tv-headline-story')).toHaveCSS('color', baseline.colors['news-text']);
 
-    await page.locator('.tv-mode-browse').click();
+    await chooseTvDestination(page, 'allStocks');
     await expect(page.locator('.tv-all-stocks')).toBeVisible();
     expect(await palette(page)).toEqual(baseline);
     const input = page.getByRole('searchbox');
@@ -94,17 +94,16 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
     await expect(disabled).toHaveCSS('color', baseline.colors.muted);
     await expect(disabled).toHaveCSS('background-color', baseline.colors.panel2);
 
-    await page.locator('.tv-mode-strips').click();
+    await chooseTvDestination(page, 'strips');
     await expect(page.locator('.tv-strips-only')).toBeVisible();
     expect(await palette(page)).toEqual(baseline);
     await expect(page.locator('.tv-market-strip').first()).toHaveCSS('background-color', baseline.colors.panel);
 
-    await page.locator('.tv-mode-viewing').click();
-    await expect(page.locator('.tv-scene-tabs')).toBeVisible();
-    for (const index of [1, 2, 3, 4, 5, 6, 7]) {
-      await page.locator('.tv-scene-tabs button').nth(index).click();
+    await chooseTvDestination(page, 'hall');
+    for (const destination of ['gulf', 'world', 'assets', 'watchlist', 'sessions', 'brief', 'investments']) {
+      await chooseTvDestination(page, destination);
       expect(await palette(page)).toEqual(baseline);
-      if (index === 1) {
+      if (destination === 'gulf') {
         await page.locator('[data-tv-focus-key=scene-heatmap]').click();
         for (const trend of ['up', 'down']) {
           const tile = page.locator(`.tv-scene-heatmap > button[data-trend=${trend}]`).first();
@@ -114,6 +113,7 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
         await page.locator('[data-tv-focus-key=scene-list]').click();
       }
     }
+    await openTvMenu(page);
     await page.locator('[data-tv-focus-key=settings]').click();
     await expect(page.locator('.tv-dialog')).toBeVisible();
     expect(await palette(page)).toEqual(baseline);
@@ -124,6 +124,7 @@ for (const theme of ['light', 'dark']) for (const accent of ['champagne', 'blue'
     await selected.focus();
     await expect(selected).toHaveCSS('outline-color', baseline.colors.accent);
     await page.keyboard.press('Escape');
+    await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
   });
 }
 

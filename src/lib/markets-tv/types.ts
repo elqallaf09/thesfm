@@ -38,7 +38,7 @@ export type TvSnapshot = {
   /** total/available describe quotes only; summary is separate and never duplicated. */
   group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number;
 };
-export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string; screening?: 'compliant' | 'needs_review' | 'non_compliant' | 'unclassified' };
+export type TvNews = { id: string; title: string; source: string; publishedAt: string; url: string; imageUrl?: string; screening?: 'compliant' | 'needs_review' | 'non_compliant' | 'unclassified' };
 export type TvDevice = { id: string; name: string; expiresAt: string; settings: TvSettings; };
 export type TvAlert = { id: string; symbol: string; alert_type: string; threshold: number; currency: string | null; status: string };
 export const TV_GROUPS: TvGroup[] = ['world', 'global', 'us', 'gulf', 'europe', 'asia', 'crypto', 'forex', 'commodities', 'watchlist'];

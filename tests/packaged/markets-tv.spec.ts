@@ -1,3 +1,4 @@
+import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -33,13 +34,13 @@ function snapshot(asOf = Date.parse(fixtureNow)): TvSnapshot {
 
 async function openTv(page: Page, language: TvLanguage, settings: Record<string, unknown> = {}) {
   const asOf = await page.evaluate(() => Date.now());
-  await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, scene: 'world', ...settings })), { language, settings });
+  await page.addInitScript(({ language, settings }) => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, scene: 'world', sessionIds: ['XKUW','XSAU','XLON','XNYS','XTKS'], ...settings })), { language, settings });
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: snapshot(asOf) }));
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/instruments?*', route => { const params = new URL(route.request().url()).searchParams; const size = Number(params.get('pageSize') || 50); const items = snapshot(asOf).quotes; return route.fulfill({ json: { items: items.slice(0, size), total: items.length, directoryTotal: items.length, page: 0, pageSize: size } }); });
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: { code: 'NO_SAVED_ANALYSIS' } }));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
   await expect(page.locator(settings.displayMode === 'browse' ? '.tv-hall-row' : '.tv-scene-row')).toHaveCount(6);
   await page.evaluate(() => document.fonts.ready);
 }
@@ -92,7 +93,7 @@ test('heatmap excludes stale closed quotes without dropping the saved quote list
   await heatmap.click();
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(6);
   await page.clock.setSystemTime(new Date('2026-11-11T09:00:00Z'));
-  await page.reload();
+  await page.reload();await closeTvMenu(page);
   await heatmap.click();
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
   await expect(page.locator('.tv-scene-map-notice')).toBeVisible();
@@ -103,6 +104,12 @@ test('remote reaches every clipped row and restores focus after quote details', 
   await page.setViewportSize({ width: 960, height: 540 });
   await openTv(page, 'ar');
   const rows = page.locator('.tv-scene-row');
+  // The side menu frees enough height for this six-row fixture. Constrain its
+  // panel to three rows so this test still exercises remote scroll recovery.
+  await rows.first().evaluate(row => {
+    row.parentElement!.style.maxHeight = `${Math.floor(row.getBoundingClientRect().height * 3)}px`;
+  });
+  await expect.poll(() => page.locator('.tv-scene-rows').evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
   await rows.first().focus();
   for (let index = 0; index < 6; index++) {
     if (index) await page.keyboard.press('ArrowDown');
@@ -129,13 +136,12 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.clock.setSystemTime(new Date('2026-11-03T09:52:00Z'));
     await page.setViewportSize({ width: 960, height: 540 });
     await openTv(page, language);
-    const opener = page.locator('.tv-viewing-footer button').first();
-    await opener.click();
-    const dialog = page.getByRole('dialog');
+    await chooseTvDestination(page, 'sessions');
+    const sessions = page.locator('.tv-world-sessions');
     await expect(page.locator('.tv-session')).toHaveCount(5);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
-      await expect.poll(()=>dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+      await expect.poll(()=>sessions.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1)).toBe(true);
       await containedContent(page, '.tv-session');
     }
     for (const [market, clock] of [['XKUW', '12:52'], ['XSAU', '12:52'], ['XNYS', '04:52'], ['XTKS', '18:52']]) {
@@ -160,8 +166,8 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.keyboard.press('Enter');
     await expect(nyse).toBeFocused();
     await page.keyboard.press('Escape');
-    await expect(dialog).not.toBeVisible();
-    await expect(opener).toBeFocused();
+    await expect(page.locator('.tv-side-menu')).toBeVisible();
+    await chooseTvDestination(page, 'world');
     await expect(page.locator('.tv-scene-health')).not.toHaveAttribute('open', '');
     await page.locator('.tv-scene-health > summary').click();
     await expect(page.locator('.tv-scene-coverage-total')).toBeVisible();
@@ -187,13 +193,13 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       if (width >= 1280) expect(measurements.lastBottom).toBeLessThanOrEqual(measurements.gridBottom + 1);
       await expect(page.locator('.tv-stock-pagination')).toBeInViewport({ ratio: 1 });
     }
-    await page.locator('.tv-mode-viewing').click();
+    await chooseTvDestination(page, 'hall');
     await expect(page.locator('.tv-hall-row')).toHaveCount(6);
     await expect(page.locator('.tv-unified-brand img')).toHaveAttribute('alt', 'THE SFM');
-    await page.locator('.tv-mode-strips').click();
+    await chooseTvDestination(page, 'strips');
     await expect(page.locator('.tv-strips-only')).toBeVisible();
     await expect(page.locator('.tv-unified-brand img')).toHaveAttribute('alt', 'THE SFM');
-    await page.locator('.tv-mode-browse').click();
+    await chooseTvDestination(page, 'allStocks');
     await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   });
 }
@@ -244,14 +250,15 @@ test('full Arabic news, isolated quote evidence and legacy-compatible colors', a
   await openTv(page, 'ar');
   const title = 'عنوان خبري طويل لاختبار ظهور النص كاملاً في العمود الجانبي وإمكانية فتح تفاصيله بالريموت دون إخفاء بقية الكلمات أو قص السطر الأخير من الخبر';
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'full', title, source: 'مصدر الاختبار', publishedAt: '2026-11-03T08:30:00Z', url: 'https://example.com/story' }] } }));
-  await page.reload();
-  await expect(page.locator('.tv-scene-headlines button > span')).toHaveText(title);
-  expect(await page.locator('.tv-scene-headlines button > span').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  await page.reload();await closeTvMenu(page);
+  await expect(page.locator('.tv-scene-headlines .tv-news-title')).toHaveText(title);
+  expect(await page.locator('.tv-scene-headlines .tv-news-title').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
   await expect(page.locator('.tv-scene-row time').first()).toHaveText('00:00');
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence').first()).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence time').first()).toHaveAttribute('dir', 'ltr');
   await page.locator('[data-tv-focus-key="scene-heatmap"]').click();
   expect(await page.locator('.tv-scene-heatmap > button').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(244, 221, 224)');
+  await openTvMenu(page);
   await page.locator('[data-tv-focus-key="settings"]').click();
   expect(await page.locator('.tv-modal-backdrop').evaluate(el => getComputedStyle(el).backdropFilter)).toBe('none');
 });
@@ -268,6 +275,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
       : { state: 'active', token: 'b'.repeat(64) } });
   });
   await page.route('**/api/tv/device', route => route.fulfill({ json: { device: { name: 'Test TV', settings: { language: 'en' } }, symbols: ['QA4'], alerts: [] } }));
+  await openTvMenu(page);
   await page.locator('[data-tv-focus-key="pair"]').click();
   const create = page.locator('.tv-pair-content button');
   await create.click();
@@ -284,6 +292,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   await page.clock.runFor(5100);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe('b'.repeat(64));
+  await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
 });
 
 test('strips use index points and hide unpriced instruments until the provider recovers', async ({ page }) => {
@@ -297,18 +306,20 @@ test('strips use index points and hide unpriced instruments until the provider r
     quotes: [{ ...snapshot().quotes[0], symbol: '^GSPC', price, status: price ? 'available' : 'unavailable',
       source: price ? 'Verified source' : null, observedAt: price ? observed : null, issue: price ? undefined : 'rate_limited' }],
     retryAt: price ? undefined : '2026-11-03T09:05:00Z' } }));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
   const strip = page.locator('[data-market="US"]');
   await expect(strip.locator('.tv-strip-price').first()).toContainText('5,961.20 نقطة');
   await expect(strip.locator('.tv-strip-evidence').first()).toHaveAttribute('dir', 'rtl');
   await expect(strip.locator('.tv-strip-evidence time').first()).toHaveText('12:00');
   await page.clock.runFor(2000);
   price = 5962.2; observed = '2026-11-03T09:00:02Z';
-  await page.getByRole('button', { name: 'تحديث', exact: true }).click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=refresh]').click();
+  await closeTvHeaderActions(page);
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
   await expect(strip.locator('.tv-market-strip-item').first()).toHaveCSS('background-color', 'rgb(216, 238, 231)');
   price = null;
-  await page.reload();
+  await page.reload();await closeTvMenu(page);
   await expect(strip).toHaveAttribute('data-empty', 'true');
   await expect(strip.locator('.tv-market-strip-item')).toHaveCount(0);
   await expect(strip.locator('.tv-strip-price')).toHaveCount(0);
@@ -317,12 +328,15 @@ test('strips use index points and hide unpriced instruments until the provider r
   for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 720 }, { width: 3840, height: 2160 }]) {
     await page.setViewportSize(viewport);
     const bounds = await page.locator('.tv-market-strips').boundingBox();
-    expect(bounds!.height).toBeGreaterThan(viewport.height * .85);
+    expect(bounds!.height).toBeGreaterThan(viewport.height * .5);
+    const header = await page.locator('.tv-unified-header').boundingBox();
+    expect(bounds!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width + 2);
   }
   price = 5962.2;
   await page.clock.fastForward(301_000);
-  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(2);
-  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'tv-scroll');
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(1);
+  await expect(strip.locator('.tv-market-strip-track')).toHaveAttribute('data-marquee', 'false');
+  await expect(strip.locator('.tv-market-strip-track')).toHaveCSS('animation-name', 'none');
 });

@@ -1,5 +1,5 @@
+import { openAndroidTvPackage, openTvMenu, openTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
 
 // Browser-only fixtures. Product data always comes from the configured providers.
 const instant = '2026-11-14T10:00:00Z';
@@ -70,10 +70,14 @@ async function fixture(page: Page, theme: 'light' | 'dark', linked = true, langu
         allocation: [{ assetClass: 'stocks', amount: 8028, count: 8 }],
       } });
     }
-    if (url.pathname.includes('news')) return route.fulfill({ json: {
-      stories, items: stories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'),
-      success: true, generatedAt: instant, lastSuccessfulUpdate: instant,
-    } });
+    if (url.pathname.includes('news')) {
+      const selectedStories = url.pathname === '/api/tv/news'
+        ? stories.slice(0, ['technology', 'kuwait'].includes(url.searchParams.get('channel') || '') ? 12 : 8) : stories;
+      return route.fulfill({ json: {
+        stories: selectedStories, items: selectedStories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'),
+        success: true, generatedAt: instant, lastSuccessfulUpdate: instant,
+      } });
+    }
     return route.fulfill({ json: { result: null } });
   });
   await openAndroidTvPackage(page);
@@ -107,16 +111,16 @@ for (const theme of ['light', 'dark'] as const) {
       await page.setViewportSize({ width, height }); await fixture(page, theme);
       await fits(page, 'hall', '.tv-hall-market-table,.tv-hall-sessions,.tv-headline-band,.tv-quote-marquee');
       await capture('hall');
-      await page.locator('.tv-mode-browse').click();
+      await chooseTvDestination(page, 'allStocks');
       await fits(page, 'all stocks', '.tv-stock-filters,.tv-hall-market-table,.tv-stock-pagination,.tv-headline-band,.tv-quote-marquee');
       await capture('all-stocks');
-      await page.locator('.tv-mode-strips').click();
+      await chooseTvDestination(page, 'strips');
       await expect(page.locator('.tv-market-strip')).toHaveCount(3);
       await fits(page, 'strips', '.tv-unified-header,.tv-market-strips');
       await capture('strips');
-      await page.locator('.tv-mode-viewing').click();
+      await chooseTvDestination(page, 'hall');
       for (const scene of ['gulf', 'world', 'assets', 'watchlist']) {
-        await page.locator(`[data-tv-focus-key="scene:${scene}"]`).click();
+        await chooseTvDestination(page, scene === 'overview' ? 'hall' : scene);
         await expect(page.locator('.tv-scene-row').first()).toBeVisible();
         await fits(page, scene, '.tv-scene-summaries,.tv-scene-body,.tv-quote-marquee');
         if (scene === 'watchlist') await capture('watchlist');
@@ -135,16 +139,16 @@ for (const theme of ['light', 'dark'] as const) {
       await page.locator('.tv-scene-heatmap > button').first().click();
       await fits(page, 'quote detail', '.tv-dialog');
       await page.keyboard.press('Escape');
-      for (const [index, label, selector] of [
-        [5, 'hours', '.tv-world-grid,.tv-world-pages,.tv-sessions-note'],
-        [6, 'brief', '.tv-brief-dashboard,.tv-brief-rankings'],
-        [7, 'investments', '.tv-portfolio,.tv-portfolio-footer'],
+      for (const [destination, label, selector] of [
+        ['sessions', 'hours', '.tv-world-grid,.tv-world-pages,.tv-sessions-note'],
+        ['brief', 'brief', '.tv-brief-dashboard,.tv-brief-rankings'],
+        ['investments', 'investments', '.tv-portfolio,.tv-portfolio-footer'],
       ] as const) {
-        await page.locator('.tv-scene-tabs button').nth(index).click();
+        await chooseTvDestination(page, destination);
         await fits(page, label, selector);
       }
       await page.keyboard.press('2');
-      await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(height <= 650 ? 3 : height <= 800 ? 4 : 6);
+      await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(12);
       await fits(page, 'news', '.tv-receiver-heading,.tv-news-desk,.tv-news-desk-grid > button');
       await capture('news');
       expect.soft(await page.locator('.tv-news-desk-grid > button').evaluateAll(buttons => buttons.filter(button => button.scrollHeight > button.clientHeight + 2).length), 'News is readable without clipping').toBe(0);
@@ -152,6 +156,7 @@ for (const theme of ['light', 'dark'] as const) {
       await fits(page, 'news dialog', '.tv-dialog');
       await page.keyboard.press('Escape');
       await expect(page.locator('.tv-dialog')).toHaveCount(0);
+      await openTvMenu(page);
       await page.locator('[data-tv-focus-key="settings"]').click();
       await fits(page, 'settings', '.tv-dialog');
       const close = page.locator('.tv-dialog > header button');
@@ -164,6 +169,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(close).toBeFocused();
       await page.keyboard.press('Escape');
       await expect(page.locator('.tv-dialog')).toHaveCount(0);
+      await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
       await expect(page.locator('[data-tv-root]')).toHaveClass(new RegExp(`tv-${theme}`));
       await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-accent', 'green');
       expect(errors).toEqual([]);
@@ -174,7 +180,7 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('strip movement respects reduced motion, and pause remains keyboard accessible', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 }); await fixture(page, 'dark');
-  await page.locator('.tv-mode-strips').click();
+  await chooseTvDestination(page, 'strips');
   const track = page.locator('.tv-market-strip-track').first();
   await expect(track).toBeVisible();
   const initial = await track.evaluate(element => getComputedStyle(element).transform);
@@ -182,7 +188,8 @@ test('strip movement respects reduced motion, and pause remains keyboard accessi
   await expect.poll(() => track.evaluate(element => getComputedStyle(element).transform)).not.toBe(initial);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(track).toHaveCSS('animation-name', 'none');
-  const pause = page.locator('.tv-header-actions button[aria-pressed]').first();
+  await openTvHeaderActions(page);
+  const pause = page.locator('[data-tv-focus-key=ticker-playback]');
   await expect(pause).toHaveAttribute('aria-pressed', 'true');
   await pause.focus(); await page.keyboard.press('Enter');
   await expect(pause).toBeFocused();
@@ -201,7 +208,7 @@ test('many market strips stay reachable by remote without scrolling the whole sc
   }))];
   await page.setViewportSize({ width: 960, height: 540 });
   await fixture(page, 'light', true, 'ar', { marketList });
-  await page.locator('.tv-mode-strips').click();
+  await chooseTvDestination(page, 'strips');
   await expect(page.locator('.tv-market-strip')).toHaveCount(marketList.length);
   const headings = page.locator('.tv-market-strip-heading');
   await headings.first().focus();
@@ -224,6 +231,7 @@ test('many market strips stay reachable by remote without scrolling the whole sc
   }
   expect(await page.locator('.tv-market-strips').evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   await fits(page, 'scrolled strips', '.tv-unified-header,.tv-market-strips');
+  await openTvMenu(page);
   await page.locator('[data-tv-focus-key="settings"]').focus();
   await page.keyboard.press('Enter');
   await fits(page, 'settings after strip scrolling', '.tv-dialog');
@@ -232,7 +240,7 @@ test('many market strips stay reachable by remote without scrolling the whole sc
 for (const theme of ['light', 'dark'] as const) test(`two holding watchlist remains usable in ${theme}`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1536, height: 1009 });
   await fixture(page, theme, true, 'ar', { watchlistSize: 2 });
-  await page.locator('[data-tv-focus-key="scene:watchlist"]').click();
+  await chooseTvDestination(page, 'watchlist');
   await expect(page.locator('.tv-scene-row')).toHaveCount(2);
   await expect(page.locator('.tv-scene-summary'), 'A small watchlist does not repeat the same holdings in hero cards').toHaveCount(0);
   await fits(page, 'two holding watchlist', '.tv-scene-summaries,.tv-scene-body,.tv-quote-marquee');
@@ -244,13 +252,13 @@ for (const theme of ['light', 'dark'] as const) test(`two holding watchlist rema
 
 for (const theme of ['light', 'dark'] as const) test(`empty stocks and unpaired investments remain explicit in ${theme}`, async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 }); await fixture(page, theme, false, 'en');
-  await page.locator('.tv-mode-browse').click();
+  await chooseTvDestination(page, 'allStocks');
   await page.getByRole('searchbox').fill('no-such-company');
   await page.clock.runFor(350);
   await expect(page.locator('.tv-hall-row')).toHaveCount(0);
   await expect(page.getByText('No matching stocks', { exact: true })).toBeVisible();
-  await page.locator('.tv-mode-viewing').click();
-  await page.locator('.tv-scene-tabs button').nth(7).click();
+  await chooseTvDestination(page, 'hall');
+  await chooseTvDestination(page, 'investments');
   await expect(page.locator('.tv-portfolio-gate')).toContainText('Link this TV');
   await expect(page.locator('.tv-portfolio-metrics,.tv-portfolio-position')).toHaveCount(0);
 });

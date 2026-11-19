@@ -49,12 +49,13 @@ describe('special news data and independent quotes', () => {
   });
   it('returns relevant articles before quote or translation providers finish', async () => {
     mocked.aggregate.mockResolvedValue({
-      stories: [story('Apple quarterly earnings exceed expectations', { symbols: ['AAPL'] })],
+      stories: [story('Apple quarterly earnings exceed expectations', { symbols: ['AAPL'], imageUrl: 'https://images.example.com/earnings.jpg' })],
       liveUpdatesAvailable: true, lastSuccessfulUpdate: '2026-09-18T12:00:00.000Z',
     });
     const response = await GET(request('topic=earnings-news&lang=ar'));
     const payload = await response.json();
     expect(payload.items).toHaveLength(1);
+    expect(payload.items[0]).toMatchObject({ title: 'Apple quarterly earnings exceed expectations', source: 'Reuters', imageUrl: 'https://images.example.com/earnings.jpg' });
     expect(payload.tickerItems[0].symbol).toBe('AAPL');
     expect(payload.updatedAt).toBe('2026-09-18T12:00:00.000Z');
     expect(mocked.quotes).not.toHaveBeenCalled();

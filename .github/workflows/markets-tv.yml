@@ -31,6 +31,13 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - name: Verify packaged TV layout and remote navigation
         run: pnpm exec playwright test --config=playwright.tv.config.ts
+      - name: Keep TV browser evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: markets-tv-browser-${{ github.sha }}
+          if-no-files-found: ignore
+          path: test-results/
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -91,7 +98,7 @@ jobs:
           sha256sum "$TV_APK_NAME" > "$TV_APK_NAME.sha256"
           cat > release-notes.md <<'NOTES'
           SFM TV preview for Huawei tablets and Android TV. Version and build are embedded in the APK.
-          Includes 25 receiver channels, offline market flags, compact market cards, clearer pairing errors and public-news caching.
+          Includes a labelled side menu with sign in/sign out, direct market/watchlist/investment destinations, and remote navigation. News cards show photos, sources and dates together. Market customization stays on one TV page with a persistent Save and view action.
           
           This is a signed debug test APK with application ID com.thesfm.marketstv. It installs separately from the earlier com.thesfm.marketstv.huaweitest package; existing settings in that older test package are not migrated. The APK is not an AppGallery or Google Play release.
           NOTES

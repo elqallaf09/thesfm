@@ -47,7 +47,6 @@
 .tv-portfolio-gate h2 { font-size:1.25em; margin:0; }
 .tv-portfolio-gate p,.tv-portfolio-empty { color:var(--tv-muted); margin:0; }
 .tv-portfolio-error { font-size:max(13px,.7em); color:var(--tv-accent); margin:0; }
-.tv-screen[data-tv-view=investments] .tv-scene-playback { display:none; }
 @media(min-width:761px) and (max-width:1099px) {
  .tv-portfolio-list { grid-template-columns:minmax(0,1fr); }
 }

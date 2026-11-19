@@ -23,7 +23,7 @@ const COPY = {
   allHelp: ['يتناوب دليل الأسهم المتاح على صفحات كل 40 ثانية. توفر السعر ووقته موضحان لكل سهم.', 'Available stock directories cycle in pages every 40 seconds. Each quote retains its availability and time.', 'Les répertoires disponibles défilent toutes les 40 secondes. Chaque cours conserve son état et sa date.'],
   technologyHelp: ['أخبار مرتبطة بأسهم شركات التقنية من مصادر الموقع.', 'News linked to technology stocks from the website’s sources.', 'Actualités des valeurs technologiques provenant des sources du site.'],
   kuwaitHelp: ['أسهم بورصة الكويت وأخبارها فقط · تحديث الأسعار حسب توفر المصدر', 'Kuwait listings and news only · Prices refresh as sources permit', 'Titres et actualités du Koweït · Actualisation selon les sources'],
-  newsHelp: ['أخبار قسم الموقع · تتبدل الصفحات كل 40 ثانية', 'Website section news · Pages change every 40 seconds', 'Actualités du site · Pages toutes les 40 secondes'],
+  newsHelp: ['أخبار القسم مع الصور والمصدر ووقت النشر', 'Section news with photos, source and publication time', 'Actualités avec photo, source et date de publication'],
   shariaHelp: ['الحالة الشرعية موضحة لكل خبر حسب تصنيف الموقع', 'Each story shows the website’s screening status', 'Chaque article indique le statut de conformité du site'],
   partial: ['تغطية جزئية', 'Partial coverage', 'Couverture partielle'],
   stored: ['أخبار محفوظة من المصدر', 'Stored source news', 'Actualités conservées de la source'],

@@ -17,10 +17,10 @@ import { TvSessionCountdown, useTvSessionClock } from './TvSessionCountdown';
 import { TvCompactCountdown } from './TvCompactCountdown';
 import { useTvBroadcastPage } from './useTvBroadcastPage';
 import '@/app/tv/world-sessions.css';
-export type TvWorldSessionsProps={language:TvLanguage;now:number;selected?:string[];onSelectionChange?:(ids:string[])=>void;autoRotate?:boolean;onAutoRotateChange?:(enabled:boolean)=>void};
+export type TvWorldSessionsProps={language:TvLanguage;now:number;selected?:string[];onSelectionChange?:(ids:string[])=>void;autoRotate?:boolean;suspended?:boolean;onAutoRotateChange?:(enabled:boolean)=>void};
 const targetClock=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kuwait',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const clocks=new Map(TV_WORLD_SESSIONS.map(s=>[s.zone,new Intl.DateTimeFormat('en-GB',{timeZone:s.zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'})]));
-export default function TvWorldSessions({language,now:initial,selected,onSelectionChange,autoRotate=true,onAutoRotateChange}:TvWorldSessionsProps){
+export default function TvWorldSessions({language,now:initial,selected,onSelectionChange,autoRotate=true,suspended=false,onAutoRotateChange}:TvWorldSessionsProps){
  const root=useRef<HTMLElement>(null),focusAfter=useRef<string|null>(null);
  const [local,setLocal]=useState(DEFAULT_TV_SESSION_IDS),[editing,setEditing]=useState(false),[source,setSource]=useState<string|null>(null),[localPlaying,setLocalPlaying]=useState(true),[roomy,setRoomy]=useState(false);
  const now=useTvSessionClock(initial,!editing);
@@ -29,7 +29,7 @@ export default function TvWorldSessions({language,now:initial,selected,onSelecti
  const sessions=TV_WORLD_SESSIONS.filter(s=>chosen.has(s.id));
  const size=tvSessionPageSize(sessions.length),pages=tvPagination(sessions.length,size,0).pages;
  const playing=onAutoRotateChange?autoRotate:localPlaying;
- const {current,move}=useTvBroadcastPage(pages,playing&&!editing&&!source,ids.join(','));
+ const {current,move}=useTvBroadcastPage(pages,playing&&!editing&&!source&&!suspended,ids.join(','));
  const t=(key:Parameters<typeof sessionText>[1])=>sessionText(language,key);
  useEffect(()=>{const element=root.current;if(!element)return;const fit=()=>setRoomy(element.clientHeight>=620);fit();const observer=new ResizeObserver(fit);observer.observe(element);return()=>observer.disconnect();},[]);
  useEffect(()=>{if(focusAfter.current){root.current?.querySelector<HTMLButtonElement>(`[data-tv-focus-key="${focusAfter.current}"]`)?.focus();focusAfter.current=null;}},[editing,source]);

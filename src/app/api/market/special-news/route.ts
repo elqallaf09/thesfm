@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import { safePublicHttpUrl } from '@/lib/market-news/security';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchSpecialQuotes, verifiedUnderOne, type SpecialQuote } from '@/lib/market-news/specialQuotes';
 import { createSpecialNewsProviders } from '@/lib/market-news/specialProviders';
@@ -152,6 +153,7 @@ function rawUiItem(story: ConsolidatedNewsStory, price: SpecialQuote | null) {
     publishedAt: story.publishedAt,
     updatedAt: story.latestUpdatedAt,
     url: story.originalUrl,
+    imageUrl: safePublicHttpUrl(story.imageUrl),
     symbols: story.symbols,
     companyNames: story.companyNames,
     sectors: story.sectors,

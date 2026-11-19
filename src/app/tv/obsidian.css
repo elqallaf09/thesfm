@@ -42,10 +42,10 @@
 .tv-index-five .tv-evidence-stacked { display: flex; flex-direction: column; align-items: start; font-size: .85em; }
 .tv-index-five .tv-scene-source { max-width: 100%; }
 .tv-price-error { color: var(--tv-muted); font-size: max(12px, .65em); display: flex; flex-wrap: wrap; align-items: center; gap: .5em; line-height: 1.6; }
-.tv-index-five article[data-priced=false], .tv-unavailable-card { border-style: dashed; }
+.tv-index-five article[data-priced=false] { border-style: dashed; }
 .tv-price-error svg { width: 1em; height: 1em; }
 .tv-overview-sidebar { display: flex; flex-direction: column; gap: .7em; min-height: 0; min-width: 0; }
-.tv-now-panel, .tv-overview-news { border: 1px solid var(--tv-line); border-radius: var(--radius-panel); background: var(--tv-panel); padding: .8em; min-height: 0; }
+.tv-now-panel { border: 1px solid var(--tv-line); border-radius: var(--radius-panel); background: var(--tv-panel); padding: .8em; min-height: 0; }
 .tv-now-panel h2 { display: flex; gap: .5em; align-items: center; font-size: .95em; margin-bottom: .65em; }
 .tv-now-panel h2 svg { color: var(--tv-accent); width: 1em; }
 .tv-now-row { padding-block: .4em; border-bottom: 1px solid var(--tv-line); }
@@ -55,12 +55,6 @@
 .tv-now-row small { display: block; color: var(--tv-muted); font-size: max(12px, .6em); margin-top: .2em; }
 .tv-now-row bdi { color: var(--tv-accent); font-family: var(--font-data); }
 .tv-now-panel p { font-size: max(12px, .55em); color: var(--tv-muted); line-height: 1.5; margin-top: .65em; }
-.tv-overview-news { flex: 1; overflow: auto; }
-.tv-overview-news h2 { font-size: .95em; }
-.tv-overview-news .tv-headline { font-size: .75em; }
-.tv-overview-news .tv-headline:nth-of-type(n+3) { display: none; }
-.tv-unavailable-card { padding: .7em; border: 1px dashed var(--tv-line); border-radius: var(--radius-control); background: var(--tv-panel); display: flex; align-items: center; justify-content: space-between; gap: .8em; }
-.tv-unavailable-card > strong { font-size: .8em; }
 .tv-scene-table[data-empty=true] .tv-scene-table-head { display: none; }
 .tv-screen .tv-scene-table[data-empty=true] .tv-scene-rows { gap: .45em; }
 /* One aligned Kuwait-time axis, with a single now marker over every row. */
@@ -68,9 +62,6 @@
 .tv-session-board { --label-width: 12em; --state-width: 12em; position: relative; padding-top: 1.6em; direction: ltr; }
 .tv-timeline-axis { position: absolute; top: 0; left: var(--label-width); right: var(--state-width); height: 1.5em; font: 400 .65em var(--font-data); color: var(--tv-muted); }
 .tv-timeline-axis span { position: absolute; transform: translateX(-50%); }
-.tv-timeline-now-area { position: absolute; left: var(--label-width); right: var(--state-width); top: 1.5em; bottom: 0; pointer-events: none; z-index: 2; }
-.tv-timeline-now { position: absolute; height: 100%; border-left: 2px solid var(--tv-accent); }
-.tv-timeline-now span { position: absolute; top: -1.9em; transform: translateX(-50%); font-size: .65em; padding: .2em .5em; border-radius: var(--radius-sm); background: var(--tv-accent); color: var(--tv-bg); white-space: nowrap; }
 .tv-unified-sessions .tv-session { display: grid; grid-template-columns: var(--label-width) minmax(0, 1fr) calc(var(--state-width) - 2.8em) 2.8em; gap: 0; padding: .35em 0; border: 0; border-bottom: 1px solid var(--tv-line); border-radius: 0; background: transparent; align-items: center; }
 .tv-unified-sessions .tv-session header { padding-inline: .5em; justify-content: start; }
 .tv-unified-sessions .tv-session h2 { font-size: .75em; }
@@ -89,11 +80,9 @@
 .tv-timeline-state .tv-session-countdown bdi { font-size: 1em; line-height:1.2; }
 .tv-timeline-state .tv-session-countdown small { font-size: max(12px,.48em); line-height:1.2; }
 .tv-timeline-state .tv-session-target { color: var(--tv-muted); font: 400 max(12px,.5em)/1.4 var(--font-data); }
-.tv-session-regular-hours { display: block; margin-top: .2em; }
 .tv-now-row .tv-session-countdown { margin-top: .15em; font-size: .8em; }
 .tv-now-row .tv-session-countdown bdi { font-size: 1em; }
 .tv-now-row .tv-session-countdown small { margin: 0; font-size: max(12px,.6em); }
-.tv-timeline-closed { position: absolute; inset: 0; display: grid; place-items: center; color: var(--tv-muted); font-size: max(12px,.55em); }
 .tv-scene-map-notice { color: var(--tv-muted); font-size: max(12px,.65em); padding: .5em .8em; }
 .tv-scene-heatmap-price { font: 500 1.15em/1.4 var(--font-data); }
 .tv-scene-heatmap-price small { font-size: .55em; color: var(--tv-muted); }
@@ -108,7 +97,6 @@
 .tv-brief-saved .tv-quote-evidence { grid-column: 1/-1; font-size: max(12px,.6em); }
 .tv-screen .tv-market-strip[data-directory-empty=true] { min-height: 3.1em; }
 .tv-market-strip[data-directory-empty=true] .tv-market-strip-window { grid-column: 2/-1; }
-.tv-screen .tv-session-source-button { padding: .35em; margin-inline: .2em; }
 .tv-unified-sessions .tv-session-qr { padding: .5em; }
 .tv-brief-dashboard { display: flex; flex-direction: column; gap: 1em; min-height: 0; }
 .tv-brief-dashboard header h1 { font-size: 2.2em; line-height: 1.6; }
@@ -127,16 +115,12 @@
 .tv-ranked-quote .tv-evidence-stacked { grid-column: 1/-1; }
 .tv-ranking-empty { font-size: .85em; color: var(--tv-muted); line-height: 1.8; padding-block: 1em; }
 @media (max-width: 1200px), (max-height: 650px) {
-  .tv-viewing-nav { gap: .35em; }
-  .tv-screen .tv-scene-tabs button { font-size: .7em; padding-inline: .5em; }
-  .tv-scene-playback > span { display: none; }
   .tv-tweaks-button span { display: none; }
   .tv-index-hero { padding: .7em .9em; }
   .tv-hero-price strong, .tv-hero-unavailable > strong { font-size: 2.4em; }
   .tv-index-five article { padding: .5em; }
   .tv-index-five .tv-index-value > strong { font-size: .9em; }
   .tv-index-five .tv-price-error > span { display: none; }
-  .tv-overview-news { padding: .6em; }
   .tv-now-row { padding-block: .2em; }
   .tv-now-panel p { font-size: 12px; }
   .tv-now-panel { padding: .55em; }
@@ -149,8 +133,6 @@
 }
 @media (max-width: 760px) {
   .tv-screen.tv-viewing { height: auto; min-height: 100dvh; overflow: visible; }
-  .tv-viewing-nav { flex-wrap: wrap; }
-  .tv-scene-tabs { flex-wrap: wrap; }
   .tv-overview { display: flex; flex-direction: column; }
   .tv-index-hero { min-height: 22em; }
   .tv-index-five { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -163,8 +145,6 @@
 }
 .tv-map { background: none; }
 .tv-map-image { position: absolute; inset: 10% 0; width: 100%; height: 80%; object-fit: contain; opacity: .65; pointer-events: none; }
-.tv-overview-news .tv-scene-headlines { padding: 0; border: 0; border-radius: 0; }
-.tv-overview-news .tv-scene-headlines button { font-size: .75em; }
 .tv-chart-plot { position: relative; min-height: 1.8em; }
 .tv-chart-plot svg { position: absolute; inset: 0 0 0 auto; width: calc(100% - 4.5em); height: 100%; min-height: 0; }
 .tv-chart-range { width: 6em; }
@@ -196,7 +176,6 @@
   .tv-screen.tv-overview-screen { font-size: 14px; gap: .45em; }
   .tv-index-hero .tv-eyebrow { display: none; }
   .tv-session-chart { margin-top: .35em; }
-  .tv-overview-news .tv-scene-headlines button { font-size: max(12px, .75em); }
 }
 
 /* Asset identity remains visible even when a quote provider is unavailable. */
@@ -208,9 +187,6 @@
 .tv-scene-identity { display:grid; grid-template-columns:2.3em minmax(0,1fr); align-items:center; column-gap:.55em; }
 .tv-scene-identity > .tv-asset-icon { grid-row:1/3; font-size:1em; }
 .tv-scene-identity > strong,.tv-scene-identity > span[dir] { grid-column:2; }
-.tv-ticker-identity,.tv-unavailable-identity { display:flex; align-items:center; gap:.55em; min-width:0; }
-.tv-ticker-identity strong { overflow:hidden; text-overflow:ellipsis; }
-.tv-ticker-identity .tv-asset-icon { width:1.7em; height:1.7em; }
 @media (min-width:761px) and (max-height:800px) {
   .tv-screen .tv-scene-summary { padding-block:.4em; row-gap:.2em; }
   .tv-scene-identity { grid-template-columns:1.9em minmax(0,1fr); }
@@ -222,7 +198,6 @@
   .tv-unified-sessions { gap:.3em; }
   .tv-unified-sessions .tv-session { padding-block:.15em; }
   .tv-session-board { --state-width:14em; }
-  .tv-session-regular-hours { display:none; }
   .tv-timeline-state { grid-template-columns:minmax(0,1fr) auto; gap:.15em .25em; }
   .tv-timeline-state > strong { grid-column:1; grid-row:1; font-size:12px; line-height:1.2; white-space:nowrap; }
   .tv-timeline-state .tv-session-target { grid-column:2; grid-row:1; font-size:12px; line-height:1.2; white-space:nowrap; }

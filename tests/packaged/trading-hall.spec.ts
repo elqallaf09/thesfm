@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -20,7 +21,7 @@ async function open(page: Page, language = 'ar', mode = 'viewing') {
     return route.fulfill({ json: { quotes, group: params.get('group'), total: quotes.length, available: quotes.length, generatedAt: new Date().toISOString() } });
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [headline, 'عنوان الخبر الثاني كاملًا', 'عنوان الخبر الثالث'].map((title, i) => ({ id: String(i), title, source: 'مصدر اختبار', publishedAt: new Date().toISOString(), url: 'https://example.com/news' })) } }));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount((page.viewportSize()?.height ?? 1080) <= 650 ? 3 : 6);
   await page.keyboard.press('Shift');
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
@@ -30,9 +31,9 @@ async function open(page: Page, language = 'ar', mode = 'viewing') {
 for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
   test(`hall and all stocks fit ${width}×${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height }); await open(page);
-    await expect(page.locator('.tv-headline-story')).toContainText(headline);
+    await expect(page.locator('.tv-headline-story').first()).toContainText(headline);
     for (const mode of ['viewing', 'browse']) {
-      if (mode === 'browse') await page.locator('.tv-mode-browse').click();
+      if (mode === 'browse') await chooseTvDestination(page, 'allStocks');
       await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
       const overflow = await page.evaluate(() => {
         const root = document.querySelector('.tv-hall-screen')!;
@@ -57,6 +58,42 @@ test('search finds remote directory pages, resets paging and limits quote reques
   await expect(page.locator('.tv-hall-row')).toHaveCount(0);
   await expect(page.getByText('No matching stocks')).toBeVisible();
 });
+test('initial and equivalent directory searches do not undo Next', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.clock.install();
+  await open(page, 'en');
+  // Load the hall normally, then freeze time before All Stocks first mounts.
+  // Its initial search timer cannot elapse before we deliberately press Next.
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
+  await chooseTvDestination(page, 'allStocks');
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
+  const next = page.locator('[data-tv-focus-key="stocks-next"]');
+  const first = page.locator('.tv-hall-identity').first();
+  const pagination = page.locator('.tv-stock-pagination');
+  const search = page.getByRole('searchbox');
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(first).toContainText('QA6');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA6');
+  await expect(pagination).toContainText('2 / 14');
+  await search.fill('   ');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA6');
+  await expect(pagination).toContainText('2 / 14');
+  // A genuinely changed query still resets to its first page.
+  await search.fill('QA');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA0');
+  await expect(pagination).toContainText('1 / 14');
+  await next.click();
+  await expect(first).toContainText('QA6');
+  await search.fill(' QA ');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA6');
+  await expect(pagination).toContainText('2 / 14');
+});
+
 test('ticker really moves, pauses, and exposes no duplicate focus targets', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page);
   const track = page.locator('.tv-marquee-track');
@@ -70,14 +107,21 @@ test('ticker really moves, pauses, and exposes no duplicate focus targets', asyn
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(track).toHaveCSS('animation-name', 'none');
 });
-test('one complete headline rotates and remote focus holds it', async ({ page }) => {
+test('all headlines remain visible and remote OK opens the full story', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await page.clock.install(); await open(page);
-  await expect(page.locator('.tv-headline-story')).toHaveCount(1);
-  await page.clock.fastForward(12500);
-  await expect(page.locator('.tv-headline-story')).toContainText('عنوان الخبر الثاني');
-  await page.locator('.tv-headline-story').focus();
-  await page.clock.fastForward(24000);
-  await expect(page.locator('.tv-headline-story')).toContainText('عنوان الخبر الثاني');
+  const cards = page.locator('.tv-headline-story');
+  await expect(cards).toHaveCount(3);
+  await expect(page.locator('.tv-headline-playback,.tv-headline-band .tv-broadcast-pager')).toHaveCount(0);
+  const headlines = await cards.locator('.tv-news-title').allTextContents();
+  await cards.nth(1).focus();
+  await page.clock.fastForward(80000);
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await expect(cards.nth(1)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('عنوان الخبر الثاني كاملًا');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(cards.nth(1)).toBeFocused();
 });
 for (const language of ['en', 'fr']) test(`hall supports ${language} layout`, async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page, language);

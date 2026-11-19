@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -21,8 +22,8 @@ async function open(page:Page, language='ar', linked=true) {
  await page.route('**/api/tv/news?*', r=>r.fulfill({json:{stories:[]}}));
  await page.route('https://cdn.simpleicons.org/**', r=>r.fulfill({contentType:'image/svg+xml',body:logoFixture}));
  await page.route('https://financialmodelingprep.com/image-stock/**', r=>r.abort());
- await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
- await page.locator('.tv-scene-tabs button').nth(7).click();
+ await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
+ await chooseTvDestination(page, 'investments');
  await page.evaluate(()=>document.fonts.ready);
 }
 async function fits(page:Page) {
@@ -62,7 +63,7 @@ test('portfolio synchronizes changes and clears all private values immediately o
  await expect(page.locator('.tv-portfolio-metrics article').first()).toContainText('19,578.00');expect(calls).toBeGreaterThan(firstCalls);
  unauthorized=true;await page.clock.runFor(16000);
  await expect(page.locator('.tv-portfolio-gate')).toContainText('expired');await expect(page.locator('.tv-portfolio-position')).toHaveCount(0);await expect(page.locator('.tv-portfolio-metrics')).toHaveCount(0);
- await page.locator('[data-tv-focus-key="scene:overview"]').click();await page.locator('.tv-scene-tabs button').nth(7).click();
+ await chooseTvDestination(page, 'hall');await chooseTvDestination(page, 'investments');
  await expect(page.locator('.tv-portfolio-position')).toHaveCount(0);expect(await page.evaluate(()=>Object.values(localStorage).join(' '))).not.toContain('Recorded source');
 });
 for(const language of ['ar','en','fr'])test(`twelve investments ${language} fit together without pagination at TV sizes`,async({page},testInfo)=>{

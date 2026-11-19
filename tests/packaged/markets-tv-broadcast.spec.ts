@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -12,7 +13,7 @@ async function open(page:Page,language:'ar'|'en'|'fr'='ar',scene='overview'){
  await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{summary:Array.from({length:6},(_,i)=>quote(i)),quotes:Array.from({length:6},(_,i)=>quote(i+6)),total:6,available:6,generatedAt:instant}}));
  await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:Array.from({length:5},(_,i)=>({id:`news${i}`,title:`${i+1} · ${title[language]}`,source:'Asharq Al-Awsat Economy',publishedAt:instant,url:'https://example.com/news'}))}}));
  await page.route('**/api/tv/history',r=>r.fulfill({json:{sessionDate:'2026-11-06',source:'QA source',points:[{at:'2026-11-06T14:30:00Z',price:6000},{at:'2026-11-06T21:00:00Z',price:6005}]}}));
- await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await page.evaluate(()=>document.fonts.ready);
+ await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);await page.evaluate(()=>document.fonts.ready);
 }
 async function fits(page:Page,selector:string){
  await expect.poll(()=>page.locator(selector).evaluateAll(elements=>elements.flatMap(element=>{
@@ -20,7 +21,7 @@ async function fits(page:Page,selector:string){
  }))).toEqual([]);
 }
 for(const language of ['ar','en','fr'] as const)test(`TV ${language}: all markets use five pages and advance at exactly forty seconds`,async({page})=>{
- await page.setViewportSize({width:1536,height:1009});await open(page,language);await page.locator('.tv-scene-tabs button').nth(5).click();
+ await page.setViewportSize({width:1536,height:1009});await open(page,language);await chooseTvDestination(page, 'sessions');
  await expect(page.locator('.tv-world-pages > bdi')).toHaveText('1 / 5');await expect(page.locator('.tv-session')).toHaveCount(17);
  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+100));
  const kw=page.locator('[data-market=XKUW]'),ny=page.locator('[data-market=XNYS]');
@@ -43,7 +44,7 @@ for(const language of ['ar','en','fr'] as const)test(`TV ${language}: all market
 for(const language of ['ar','en','fr'] as const)test(`TV ${language}: full news and movers remain visible without sidebar scrolling`,async({page},testInfo)=>{
  await page.setViewportSize({width:1536,height:1009});await open(page,language);
  for(const scene of ['overview','world']){
-  await page.locator(`[data-tv-focus-key="scene:${scene}"]`).click();
+  await chooseTvDestination(page, scene === 'overview' ? 'hall' : scene);
   if(scene==='world') await expect(page.locator('.tv-scene-movers')).toBeVisible();
   await expect(page.locator(scene==='overview'?'.tv-headline-story':'.tv-scene-headlines button[data-tv-focus-key^="story:"]').first()).toContainText(title[language]);
   for(const [width,height] of [[960,540],[1280,720],[1536,1009],[1920,1080],[3840,2160]]){
@@ -54,5 +55,5 @@ for(const language of ['ar','en','fr'] as const)test(`TV ${language}: full news 
    }
   }
  }
- if(language==='ar'){await page.setViewportSize({width:1536,height:1009});await page.locator('[data-tv-focus-key="scene:overview"]').click();await page.screenshot({path:testInfo.outputPath('tv18-overview.png')});}
+ if(language==='ar'){await page.setViewportSize({width:1536,height:1009});await chooseTvDestination(page, 'hall');await page.screenshot({path:testInfo.outputPath('tv18-overview.png')});}
 });

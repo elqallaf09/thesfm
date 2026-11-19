@@ -1,3 +1,4 @@
+import { closeTvMenu } from './packageHarness';
 import {expect,test} from '@playwright/test';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
@@ -8,7 +9,7 @@ test('bundled gold, silver and company logos render offline at tablet sizes',asy
  const summary=[['COMEX:GC1!','Gold','الذهب · عقد مستمر','COMEX'],['COMEX:SI1!','Silver','الفضة · عقد مستمر','COMEX'],['NYMEX:CL1!','WTI','نفط WTI · عقد مستمر','NYMEX'],['NYMEX:NG1!','Gas','الغاز · عقد مستمر','NYMEX']].map(([symbol,name,nameAr,exchange])=>({...base,symbol,name,nameAr,exchange}));
  const quotes=['TSLA','AAPL','MSFT'].map(symbol=>({...base,symbol,name:symbol,nameAr:symbol,exchange:'NASDAQ'}));
  await page.route('https://**/*',r=>{const u=r.request().url();return u.includes('/api/tv/snapshot?')?r.fulfill({json:{group:'commodities',scene:'assets',summary,quotes,total:3,available:3,generatedAt:new Date().toISOString()}}):u.includes('/api/tv/news?')?r.fulfill({json:{stories:[]}}):r.abort();});
- await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+ await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
  await expect(page.locator('.tv-scene-summaries img')).toHaveCount(2);
  await expect(page.locator('.tv-scene-row img')).toHaveCount(3);
  await expect.poll(()=>page.locator('.tv-scene-summaries img,.tv-scene-row img').evaluateAll(nodes=>nodes.every(n=>(n as HTMLImageElement).complete&&(n as HTMLImageElement).naturalWidth>0))).toBe(true);

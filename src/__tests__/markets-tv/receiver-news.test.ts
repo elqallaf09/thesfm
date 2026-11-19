@@ -28,6 +28,22 @@ describe('website news channels on TV', () => {
     expect(receiverNewsPayload({ items:[story], partialFailure:true, storedFallbackUsed:true, lastSuccessfulUpdate:story.publishedAt },'europeNews')).toMatchObject({partial:true,stored:true,updatedAt:story.publishedAt});
     expect(receiverNewsPayload({ success:false,items:[] },'europeNews').invalid).toBe(true);
   });
+  it('retains provider thumbnails across TV and website feed formats without changing attribution', () => {
+    const imageUrl = 'https://images.example.com/markets.jpg';
+    for (const field of ['imageUrl', 'image', 'thumbnail']) {
+      expect(receiverNewsPayload({ items: [{ ...story, [field]: imageUrl }] }, 'europeNews').stories).toEqual([{ ...story, imageUrl }]);
+    }
+    for (const channel of ['technology', 'kuwait'] as const) {
+      expect(receiverNewsPayload({ channel, stories: [{ ...story, imageUrl }] }, channel).stories).toEqual([{ ...story, imageUrl }]);
+    }
+  });
+  it('keeps stories without an image and omits malformed, insecure or credential-bearing image URLs', () => {
+    for (const imageUrl of [undefined, null, '', {}, '/photo.jpg', 'not a URL', 'http://images.example.com/photo.jpg', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>', 'https://user:password@images.example.com/photo.jpg']) {
+      expect(receiverNewsPayload({ items: [{ ...story, imageUrl }] }, 'europeNews').stories).toEqual([story]);
+    }
+    const imageUrl = 'https://images.example.com/fallback.jpg';
+    expect(receiverNewsPayload({ items: [{ ...story, imageUrl: 'bad', image: imageUrl }] }, 'europeNews').stories).toEqual([{ ...story, imageUrl }]);
+  });
   it('allows packaged news reads and their preflight without exposing account or mutation APIs', () => {
     for(const origin of ['null','https://appassets.androidplatform.net']) for(const path of Object.values(TV_NEWS_FEEDS)) {
       expect(tvPackagedOrigin(new Request(`https://www.the-sfm.com${path}`,{headers:{origin}}))).toBe(true);

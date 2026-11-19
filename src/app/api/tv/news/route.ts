@@ -19,7 +19,8 @@ export async function GET(request: Request) {
       const result = await aggregateFinancialNews(filters, { pageSize: filters.limit, sort: 'latest', providerBudgetMs: 6000 });
       return result.stories.flatMap(s => {
         const url = safeTvUrl(s.originalUrl);
-        return url ? [{ id: s.id, title: s.title, source: s.sourceName, publishedAt: s.publishedAt, url }] : [];
+        const imageUrl = typeof s.imageUrl === 'string' ? safeTvUrl(s.imageUrl) : null;
+        return url ? [{ id: s.id, title: s.title, source: s.sourceName, publishedAt: s.publishedAt, url, ...(imageUrl ? { imageUrl } : {}) }] : [];
       });
     }, channel);
     return tvJson({ ...snapshot, channel });

@@ -1,4 +1,5 @@
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import { safePublicHttpUrl } from '@/lib/market-news/security';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
 import { screenStockCategory } from '@/lib/market/stockCategoryScanner';
@@ -215,7 +216,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       publishedAt: story.publishedAt,
       updatedAt: story.latestUpdatedAt,
       url: story.originalUrl,
-      image: null,
+      image: safePublicHttpUrl(story.imageUrl),
       price: price?.price ?? null,
       changePercent: price?.changePercent ?? null,
       change: price?.change ?? null,
