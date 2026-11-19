@@ -3,6 +3,20 @@ import type { TvAsset } from '@/lib/server/markets-tv/catalog';
 import type { TvQuote } from './types';
 import { quoteStatus } from './quotes';
 
+const DAY_MS = 86_400_000;
+// The official DFM bulletin of 19 Nov 2026 still lists these securities, with
+// last trades on 6 Nov, 9 Nov and 7 May respectively:
+// https://service.dfm.ae/Bulletins
+// Retain their verified Yahoo trade clocks as old observations, never the
+// current date of a carried daily bar or a scanner's feed update_time.
+const DFM_LAST_KNOWN = new Set(['EIBANK.AE', 'IFA.AE', 'NAHO.AE']);
+function canRetainDfmLastKnown(asset: TvAsset, symbol: string): boolean {
+  if (!DFM_LAST_KNOWN.has(symbol) || asset.currency !== 'AED' || asset.country && asset.country !== 'AE') return false;
+  if (asset.mic && asset.mic !== 'XDFM') return false;
+  if ([asset.region, asset.exchange].some(value => value && !['DFM', 'XDFM', 'TD_XDFM'].includes(value))) return false;
+  return !asset.providerSymbol || [asset.symbol, symbol, symbol.slice(0, -3)].includes(asset.providerSymbol);
+}
+
 /** These are listing identities, not interchangeable company-name aliases. */
 export function tvRegionalIdentity(asset: TvAsset) {
   if (asset.assetType && asset.assetType !== 'stock') return null;
@@ -36,8 +50,10 @@ export function verifiedTvRegionalQuote(asset: TvAsset, data: YahooHistoryResult
   if (!snapshot || snapshot.symbol !== identity.symbol || snapshot.exchangeCode !== identity.exchange
     || snapshot.assetType !== 'EQUITY' || !snapshot.currency || !identity.sourceCurrencies.includes(snapshot.currency)) return null;
   const observed = Date.parse(snapshot.marketTime || '');
-  if (!Number.isFinite(observed) || observed > now + 60_000 || now - observed > 7 * 86_400_000
+  const retainKnown = identity.exchange === 'DFM' && canRetainDfmLastKnown(asset, identity.symbol);
+  if (!Number.isFinite(observed) || observed > now + 60_000 || now - observed > (retainKnown ? 366 : 7) * DAY_MS
     || snapshot.price === null || !Number.isFinite(snapshot.price) || snapshot.price <= 0) return null;
+  const retained = now - observed > 7 * DAY_MS;
   // Yahoo's Kuwait feed explicitly denominates its values in KWF (fils).
   // Convert only that declared unit; a KWD response is already in dinars.
   const divisor = snapshot.currency === 'KWF' ? 1000 : 1;
@@ -47,11 +63,11 @@ export function verifiedTvRegionalQuote(asset: TvAsset, data: YahooHistoryResult
   const quote: TvQuote = {
     symbol: asset.symbol, displaySymbol: asset.displaySymbol, name: asset.name, nameAr: asset.nameAr || asset.name,
     price: snapshot.price / divisor, currency: identity.currency,
-    changePercent: changePercent !== null && Number.isFinite(changePercent) && Math.abs(changePercent) < 200 ? changePercent : null,
+    changePercent: !retained && changePercent !== null && Number.isFinite(changePercent) && Math.abs(changePercent) < 200 ? changePercent : null,
     source: 'Yahoo Finance', observedAt: snapshot.marketTime, receivedAt: data.retrievedAt || null,
     exchange: asset.exchange || asset.region || identity.exchange, country: asset.country || null,
     observation: { precision: 'instant', marketOpen: closed ? false : null },
-    delayType: 'delayed', changeBasis: 'session', status: closed ? 'closed' : 'delayed',
+    delayType: 'delayed', changeBasis: retained ? 'reference' : 'session', status: retained ? 'stale' : closed ? 'closed' : 'delayed',
   };
   return { ...quote, status: quoteStatus(quote, now) };
 }

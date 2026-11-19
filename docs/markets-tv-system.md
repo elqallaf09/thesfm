@@ -247,6 +247,40 @@ Market-specific access failures do not disable unrelated exchanges. Foreign
 equities require matching MIC, symbol and currency; unsupported Finnhub index/
 commodity fallback is excluded to prevent lookalike equity prices.
 
+### Dubai listing and quote recovery — 19 November 2026
+
+DFM directory corrections follow exchange and issuer notices: `GULFNAV` is
+retained as an inactive historical identity and `ETIHADENERGY` is the active
+ticker. Nasdaq Dubai has seven active stock/ETP entries in this directory.
+`DEPA` and `DEPACLA` trade in AED; the delisted `QBTC` and the incorrectly
+classified Indonesian sukuk are excluded from active stock/fund discovery.
+The sync normalizer preserves these corrections even when the upstream CMS
+retains obsolete active flags or omits a trading currency. Source links accompany
+the exact corrections in `scripts/lib/dfm-symbols.mjs`; portfolios and historical
+transactions are not rewritten.
+
+The three independently verified, illiquid DFM listings `EIBANK`, `IFA` and
+`NAHO` may retain a Yahoo observation up to 366 days old. Their actual last-trade
+clock stays intact. Beyond seven days the quote is explicitly last-known, with
+no current-session percentage change. Other regional listings keep the existing
+seven-day limit; venue, currency, type and positive-price validation still apply.
+
+Nasdaq Dubai has a separately bounded, coalesced TradingView fallback for the
+seven exact venue/ticker/currency/type/ISIN identities. It never substitutes a US
+`NDAQ`, a London `HIK`, or another venue's ETP. The scanner's `update_time` is a
+feed-update clock, not proof of the last trade; accepted values therefore retain
+`observedAt: null`, `status: unknown_time` and `changePercent: null`. The existing
+AR/EN/FR UI discloses the unavailable source time. A dated valid primary quote
+takes preference. A separate shared batch cache revalidates after four minutes
+and expires five minutes after the original receipt time, including during a
+failed refresh. Provider backoff remains process-local, and a secondary retry
+can precede the exhausted primary's daily deadline. Cold work continues under
+`after()` without extending the snapshot response deadline. This cache remains
+outside the cache reserved for verified dated observations. Existing
+Nasdaq cache keys are versioned to avoid reusing a former bare-symbol match.
+These recovery paths do not create live-data entitlement or relabel an older
+trade as current.
+
 Source contracts: [Binance market data](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints),
 [Twelve Data forex directory](https://api.twelvedata.com/forex_pairs),
 [Twelve Data usage headers](https://support.twelvedata.com/en/articles/5713553-control-over-api-usage),

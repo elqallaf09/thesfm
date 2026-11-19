@@ -58,3 +58,68 @@ describe('verified TV Gulf fallback', () => {
     expect(verifiedTvRegionalQuote(asset, data, now)?.status).toBe('stale');
   });
 });
+
+describe('last known prices for verified illiquid DFM listings', () => {
+  const checkedAt = Date.parse('2026-11-19T15:00:00Z');
+  const day = 86_400_000;
+  const listing = (ticker: string): TvAsset => ({ symbol: `${ticker}.DU`, name: ticker, region: 'DFM',
+    mic: 'XDFM', currency: 'AED', country: 'AE', assetType: 'stock' });
+  function sample(ticker: string, lastTrade: number, price = 52) {
+    const symbol = `${ticker}.AE`;
+    const data = normalizeYahooChartHistory({ chart: { result: [{
+      meta: { symbol, exchangeName: 'DFM', instrumentType: 'EQUITY', currency: 'AED',
+        regularMarketPrice: price, regularMarketTime: lastTrade / 1000, previousClose: price * .9,
+        currentTradingPeriod: { regular: { start: checkedAt / 1000 - 32_400, end: checkedAt / 1000 - 14_400 } } },
+      // A current carried-forward daily bar cannot replace the actual trade clock.
+      timestamp: [checkedAt / 1000 - 32_400], indicators: { quote: [{ close: [price], volume: [0] }] },
+    }] } }, { symbol, providerSymbol: symbol, assetType: 'stock', period: '5d', interval: '1d' });
+    if (!data.success || !data.quoteSnapshot) throw new Error('Invalid DFM fixture');
+    return data;
+  }
+  beforeEach(() => vi.setSystemTime(checkedAt));
+
+  // https://service.dfm.ae/Bulletins, official bulletin dated 19 Nov 2026:
+  // these active listings carry older last-trade dates, not new trades today.
+  it.each([
+    ['EIBANK', '2026-11-06T10:42:54.000Z', 52],
+    ['IFA', '2026-11-09T06:00:03.000Z', 5.95],
+    ['NAHO', '2026-05-07T06:05:19.000Z', 1.85],
+  ])('retains %s with its original old trade time and no current-session change', (ticker, date, price) => {
+    const quote = verifiedTvRegionalQuote(listing(ticker), sample(ticker, Date.parse(date), price), checkedAt);
+    expect(quote).toMatchObject({ symbol: `${ticker}.DU`, price, currency: 'AED', source: 'Yahoo Finance',
+      observedAt: date, receivedAt: new Date(checkedAt).toISOString(), status: 'stale',
+      changePercent: null, changeBasis: 'reference', observation: { precision: 'instant', marketOpen: null } });
+  });
+
+  it('bounds the historical exception at 366 days and retains the normal seven-day limit elsewhere', () => {
+    expect(verifiedTvRegionalQuote(listing('EIBANK'), sample('EIBANK', checkedAt - 366 * day), checkedAt)?.status).toBe('stale');
+    expect(verifiedTvRegionalQuote(listing('EIBANK'), sample('EIBANK', checkedAt - 366 * day - 1), checkedAt)).toBeNull();
+    expect(verifiedTvRegionalQuote(listing('EMAAR'), sample('EMAAR', checkedAt - 8 * day), checkedAt)).toBeNull();
+  });
+
+  it('still requires matching venue, currency, equity type and provider identity', () => {
+    const asset = listing('EIBANK'), data = sample('EIBANK', checkedAt - 13 * day);
+    for (const changed of [
+      { currency: 'USD' }, { currency: undefined }, { country: 'KW' }, { mic: 'DIFX' },
+      { region: 'NASDAQ_DUBAI' }, { exchange: 'ADX' }, { providerSymbol: 'IFA' }, { assetType: 'commodity' as const },
+    ]) expect(verifiedTvRegionalQuote({ ...asset, ...changed }, data, checkedAt)).toBeNull();
+    for (const changed of [
+      { symbol: 'IFA.AE' }, { exchangeCode: 'NASDAQ' }, { currency: 'USD' }, { assetType: 'ETF' },
+    ]) expect(verifiedTvRegionalQuote(asset, { ...data, quoteSnapshot: { ...data.quoteSnapshot!, ...changed } }, checkedAt)).toBeNull();
+    expect(verifiedTvRegionalQuote(asset, { ...data, providerSymbol: 'IFA.AE' }, checkedAt)).toBeNull();
+  });
+
+  it.each([NaN, Infinity, -Infinity, 0, -1])('rejects invalid historical prices %s', price => {
+    const data = sample('EIBANK', checkedAt - 13 * day);
+    expect(verifiedTvRegionalQuote(listing('EIBANK'), {
+      ...data, quoteSnapshot: { ...data.quoteSnapshot!, price },
+    }, checkedAt)).toBeNull();
+  });
+
+  it.each(['invalid', new Date(checkedAt + 120_000).toISOString()])('rejects invalid or future trade clocks %s', marketTime => {
+    const data = sample('EIBANK', checkedAt - 13 * day);
+    expect(verifiedTvRegionalQuote(listing('EIBANK'), {
+      ...data, quoteSnapshot: { ...data.quoteSnapshot!, marketTime },
+    }, checkedAt)).toBeNull();
+  });
+});
