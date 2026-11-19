@@ -1,6 +1,7 @@
 import { tvFetch } from '@/lib/markets-tv/client';
 import { receiverNewsPath, TV_EXTRA_NEWS_CHANNELS } from '@/lib/markets-tv/newsReceiver';
 import { mergeStripSnapshot } from '@/lib/markets-tv/stripQuotes';
+import { tvStripRetryAt } from '@/lib/markets-tv/scene-display';
 import type { TvSnapshot } from '@/lib/markets-tv/types';
 import { queuedTvSnapshot } from './snapshotQueue';
 
@@ -55,8 +56,12 @@ function isSnapshot(value: unknown): value is TvSnapshot {
 
 /** Recheck provider status at least every five minutes, without advancing quote timestamps. */
 export function tvSnapshotRetryDelay(value: unknown, now = Date.now()): number {
-  if (!isSnapshot(value) || typeof value.retryAt !== 'string') return 0;
-  const delay = Date.parse(value.retryAt) - now;
+  if (!isSnapshot(value)) return 0;
+  // Forex's source budget is shared even if a daily reference or a retained
+  // price is available. Other groups may have independent healthy providers.
+  const retryAt = value.group === 'forex' ? tvStripRetryAt(value.quotes, value.retryAt, now) : value.retryAt;
+  if (typeof retryAt !== 'string') return 0;
+  const delay = Date.parse(retryAt) - now;
   return Number.isFinite(delay) ? Math.max(0, Math.min(MAX_RETRY_MS, delay)) : 0;
 }
 

@@ -6,6 +6,7 @@ import type { TvQuote } from '@/lib/markets-tv/types';
 import { twelveDataObservation } from '@/lib/market/quoteObservation';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { twelveDataFetch, TWELVE_RETRY_HEADER } from '@/lib/server/twelve-data-fetch';
+import { dailyForexReference, isCurrentReferenceDate } from './forexReference';
 
 const BINANCE = 'https://data-api.binance.vision/api/v3';
 const ECB = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml';
@@ -87,24 +88,71 @@ export function parseEcbRates(xml: string): ReferenceDay[] {
   return days.sort((a,b) => b.date.localeCompare(a.date));
 }
 const referenceRates = unstable_cache(async () => {
-  const response = await fetch(ECB, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+  const response = await fetch(ECB, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
   if (!response.ok) throw new Error('REFERENCE_UNAVAILABLE');
   const days = parseEcbRates(await response.text());
   if (!days.length) throw new Error('REFERENCE_UNAVAILABLE');
   return days.slice(0, 2);
 }, ['tv-ecb-reference-v1'], { revalidate: 3600 });
 let pendingReference: Promise<ReferenceDay[]> | null = null;
+let cachedReference: { days: ReferenceDay[]; expiresAt: number } | null = null;
+let referenceFailedUntil = 0;
 function sharedReference() {
-  if (!pendingReference) pendingReference = referenceRates().finally(() => { pendingReference = null; });
+  if (cachedReference && cachedReference.expiresAt > Date.now()) return Promise.resolve(cachedReference.days);
+  if (referenceFailedUntil > Date.now()) return Promise.resolve(cachedReference?.days ?? []);
+  if (!pendingReference) pendingReference = referenceRates().then(days => {
+    cachedReference = { days, expiresAt: Date.now() + 3600_000 };
+    referenceFailedUntil = 0;
+    return days;
+  }).catch(() => {
+    referenceFailedUntil = Date.now() + 60_000;
+    return cachedReference?.days ?? [];
+  }).finally(() => { pendingReference = null; });
   return pendingReference;
 }
-export function referenceForexQuote(asset: TvAsset, days: ReferenceDay[]): TvQuote {
+export function __resetTvInstrumentReferenceForTests() {
+  pendingReference = null;
+  cachedReference = null;
+  referenceFailedUntil = 0;
+}
+export function referenceForexQuote(asset: TvAsset, days: ReferenceDay[], now = Date.now()): TvQuote {
   const [base, currency] = asset.symbol.split('/'), [latest, previous] = days;
-  const ratio = (day?: ReferenceDay) => day?.rates[base] && day?.rates[currency] ? day.rates[currency] / day.rates[base] : null;
+  const ratio = (day?: ReferenceDay) => day && isCurrentReferenceDate(day.date, now)
+    && Number.isFinite(day.rates[base]) && day.rates[base] > 0
+    && Number.isFinite(day.rates[currency]) && day.rates[currency] > 0 ? day.rates[currency] / day.rates[base] : null;
   const price = ratio(latest), before = ratio(previous), quote = emptyInstrument(asset);
-  if (price === null || !latest || Date.parse(latest.date) > Date.now()) return quote;
-  return { ...quote, issue: undefined, price, changePercent: before ? (price / before - 1) * 100 : null, source: 'ECB · reference', observedAt: latest.date, receivedAt: new Date().toISOString(),
+  if (price === null || !Number.isFinite(price) || price <= 0 || !latest
+    || !/^[A-Z]{3}\/[A-Z]{3}$/.test(asset.symbol) || base === currency
+    || asset.currency && asset.currency !== currency || asset.baseCurrency && asset.baseCurrency !== base) return quote;
+  const change = before && previous.date < latest.date ? (price / before - 1) * 100 : null;
+  return { ...quote, currency, issue: undefined, price, changePercent: change !== null && Number.isFinite(change) ? change : null, source: 'ECB · reference', observedAt: latest.date, receivedAt: new Date(now).toISOString(),
     observation: { precision: 'date', marketOpen: null }, delayType: 'eod', changeBasis: 'reference', status: 'reference' };
+}
+async function fallbackForexReference(asset: TvAsset): Promise<TvQuote | null> {
+  const preferred = sharedReference().then(days => {
+    const quote = referenceForexQuote(asset, days);
+    return quote.price === null ? null : quote;
+  }).catch(() => null);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const quick = await Promise.race([
+    preferred,
+    new Promise<undefined>(resolve => { timer = setTimeout(() => resolve(undefined), 100); }),
+  ]);
+  if (timer) clearTimeout(timer);
+  if (quick) return quick;
+  const broader = dailyForexReference(asset).catch(() => null);
+  if (quick === null) return broader;
+  // A slow ECB must not consume the snapshot budget before a ready broader
+  // reference can be used. Fast/cached ECB quotes retain first preference.
+  return new Promise(resolve => {
+    let remaining = 2;
+    const accept = (quote: TvQuote | null) => {
+      remaining--;
+      if (quote || remaining === 0) resolve(quote);
+    };
+    void preferred.then(accept);
+    void broader.then(accept);
+  });
 }
 export async function forexTvQuote(asset: TvAsset): Promise<TvQuote> {
   const key = process.env.TWELVE_DATA_API_KEY?.trim();
@@ -123,11 +171,11 @@ export async function forexTvQuote(asset: TvAsset): Promise<TvQuote> {
       if (response.ok && row.status !== 'error' && row.symbol === asset.symbol && (!row.currency || row.currency === asset.currency) && price !== null && price > 0 && time && Date.parse(time) <= Date.now() + 60000) {
         const quote: TvQuote = { ...emptyInstrument(asset), issue: undefined, price, changePercent: numeric(row.percent_change), source: 'Twelve Data', observedAt: time,
           receivedAt: new Date().toISOString(), observation, delayType, changeBasis: 'session', status: delayType === 'eod' ? 'closed' : 'delayed' };
-        quote.status = quoteStatus(quote); return quote;
+        quote.status = quoteStatus(quote); return { ...quote, retryAt };
       }
       if (response.ok && row.status !== 'error') issue = row.symbol && row.symbol !== asset.symbol || row.currency && row.currency !== asset.currency ? 'identity_mismatch' : 'invalid_quote';
     } catch (error) { issue = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name) ? 'timeout' : 'provider_unavailable'; }
   }
-  try { const quote = referenceForexQuote(asset, await sharedReference()); return quote.price === null ? { ...quote, issue, retryAt } : quote; }
-  catch { return { ...emptyInstrument(asset, issue), retryAt }; }
+  const reference = await fallbackForexReference(asset);
+  return reference ? { ...reference, retryAt } : { ...emptyInstrument(asset, issue), retryAt };
 }

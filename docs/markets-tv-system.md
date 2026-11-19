@@ -19,9 +19,11 @@ Database failure leaves the in-process guard active. No new schema is required.
 Retry-After takes precedence; explicit minute/day exhaustion uses the documented
 reset, while unspecified throttling backs off from 90 seconds to 15 minutes.
 
-`TvQuote.retryAt` is independent of `observedAt`. The snapshot exposes a retry
-time only when no selected quote is healthy, so a blocked source cannot suspend
-another provider's available stream. Public clients honor successful snapshots
+`TvQuote.retryAt` is independent of `observedAt`. Mixed-source snapshots expose a
+retry time only when no selected quote is healthy, so a blocked source cannot
+suspend another provider's available stream. Forex snapshots retain their shared
+account deadline even when some pairs have retained or daily reference prices.
+Public clients honor successful snapshots
 with a cooldown, including forced refresh/remount, and recheck status at least
 every five minutes. Private devices retain their regular authorization polling.
 
@@ -216,9 +218,27 @@ Crypto discovery uses all active Binance Spot trading pairs from exchangeInfo,
 and each page uses one batch 24-hour ticker request. USDT, USDC, BTC and other
 quote denominations remain explicit and are never relabelled USD. Forex discovery
 uses the entire Twelve Data forex_pairs directory. Quotes use matching provider
-pairs; the fallback is an explicitly dated daily ECB reference cross rate where
-both currencies are published, never labelled live. This does not promise every
-coin on every venue or price entitlement for every discovered pair.
+pairs. Forex strips and verified pair caches refresh at most once per minute.
+The shared transport reserves documented per-symbol credits against observed
+`api-credits-left` headers; reservations are per process and the existing private
+cooldown marker remains shared across instances. No subscription allowance or
+unknown endpoint charge is assumed.
+
+Fallbacks are explicitly dated daily references. A fast ECB result is preferred
+where both currencies are published. After 100 ms, a slow ECB request is hedged
+with Frankfurter's blended USD table; the first usable reference wins. Whole
+reference tables are shared and cached for an hour, including process caching
+because nested Next cache reads can be bypassed. Failed table refreshes back off
+for a minute. A valid cross requires the same nonfuture source date for both
+currencies, at most seven days old. Frankfurter results are labelled
+`Frankfurter · reference`, with no invented intraday change. Only its blended
+endpoint is used; provider-specific endpoints have separate terms. Cold Forex
+reads use the existing bounded response plus `after()` cache-warming pattern.
+
+AR/EN/FR strip notices show partial update status and the earliest permitted
+automatic retry in Kuwait time. Available prices keep their original evidence,
+and an expired deadline releases batch scanning. This does not promise price
+entitlement or a current intraday observation for every discovered pair.
 
 Exchange snapshots fetch only their own MIC-scoped directory, with persistent
 directory caches, instead of downloading the 42 MB global list per visible row.
@@ -229,7 +249,9 @@ commodity fallback is excluded to prevent lookalike equity prices.
 
 Source contracts: [Binance market data](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/market-data-endpoints),
 [Twelve Data forex directory](https://api.twelvedata.com/forex_pairs),
-[ECB daily reference history](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml).
+[Twelve Data usage headers](https://support.twelvedata.com/en/articles/5713553-control-over-api-usage),
+[ECB daily reference history](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml),
+[Frankfurter reference data, commercial use and caching](https://frankfurter.dev/#faq).
 
 `/tv/strips` is a dedicated full-height market-strip page, linked from `/tv` by
 “Strips only”. It keeps a compact toolbar for the dashboard, pairing, settings
