@@ -28,7 +28,13 @@ async function fixtures(page: Page, emptyFirstBatch = false) {
 }
 
 async function chooseMarket(page: Page, marketId: string) {
-  // Both fixture markets fit the same readable page on TV and mobile.
+  await expect(page.locator('.tv-market-picker')).toBeVisible();
+  const mobileMarket = page.locator('.tv-picker-mobile-market select');
+  if (await mobileMarket.isVisible()) {
+    await mobileMarket.selectOption(marketId);
+    await expect(mobileMarket).toHaveValue(marketId);
+    return;
+  }
   const market = page.locator(`[data-tv-focus-key="market-${marketId}"]`);
   await expect(market).toBeVisible();
   await market.click();
@@ -50,7 +56,7 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.getByRole('button', { name: 'تقديم السوق: بورصة الكويت' }).click();
   await chooseMarket(page, 'US');
   await page.getByRole('group', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).getByRole('button', { name: 'سريعة', exact: true }).click();
-  await page.keyboard.press('Escape');
+  await page.locator('[data-tv-focus-key=markets-done]').click();
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();

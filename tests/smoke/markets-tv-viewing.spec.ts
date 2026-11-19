@@ -1,4 +1,4 @@
-import { openTvMenu, closeTvMenu, chooseTvDestination } from './helpers/tv-controls';
+import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './helpers/tv-controls';
 import { expect, test, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -78,7 +78,9 @@ test('partial quote failure retains both row and summary source times without be
   await expect(row.locator('time')).toHaveAttribute('dateTime', observedAt);
   await expect(summary.locator('time')).toHaveAttribute('dateTime', observedAt);
   failed = true;
-  await page.getByRole('button', { name: 'تحديث الأسعار', exact: true }).click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=refresh]').click();
+  await closeTvHeaderActions(page);
   await expect(row.locator('.tv-status')).toHaveAttribute('data-status', 'stale');
   await expect(summary.locator('.tv-status')).toHaveAttribute('data-status', 'stale');
   await expect(row).toContainText('127.45');
@@ -204,7 +206,9 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
   await expect(page.locator('.tv-scene-coverage-total')).toContainText('2 / 2');
   await expect(page.getByText('لا تتوفر أسعار موثقة لهذا المشهد الآن', { exact: true })).toHaveCount(0);
   empty = true;
-  await page.getByRole('button', { name: 'تحديث الأسعار', exact: true }).click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=refresh]').click();
+  await closeTvHeaderActions(page);
   await expect(page.getByText('قائمة المتابعة فارغة. أضف أصولك من الموقع أو الهاتف.', { exact: true })).toBeVisible();
   await expect(page.locator('.tv-scene-row')).toHaveCount(0);
 });
