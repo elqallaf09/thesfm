@@ -28,10 +28,19 @@ async function fixtures(page: Page, emptyFirstBatch = false) {
 }
 
 async function chooseMarket(page: Page, marketId: string) {
-  // Both fixture markets fit the same readable page on TV and mobile.
-  const market = page.locator(`[data-tv-focus-key="market-${marketId}"]`);
-  await expect(market).toBeVisible();
-  await market.click();
+  const picker = page.locator('.tv-market-picker');
+  await expect(picker).toBeVisible();
+  const mobileMarket = picker.locator('.tv-picker-mobile-market select');
+  // Mobile uses a native selector; the TV market grid is intentionally hidden.
+  if (await mobileMarket.isVisible()) {
+    await mobileMarket.selectOption(marketId);
+    await expect(mobileMarket).toHaveValue(marketId);
+  } else {
+    const market = picker.locator(`[data-tv-focus-key="market-${marketId}"]`);
+    await expect(market).toBeVisible();
+    await market.click();
+  }
+  await expect(picker.locator('#tv-market-editor')).toHaveAttribute('data-tv-back-focus', `market-${marketId}`);
 }
 
 test('TV channels restore stock choices, order, per-market speed, density and language after reload', async ({ page }) => {
@@ -48,7 +57,9 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.getByRole('button', { name: 'تقديم السوق: بورصة الكويت' }).click();
   await chooseMarket(page, 'US');
   await page.getByRole('group', { name: 'سرعة حركة الأشرطة: الأسواق الأمريكية', exact: true }).getByRole('button', { name: 'سريعة', exact: true }).click();
-  await page.keyboard.press('Escape');
+  // Back returns from the editor to its market; Save and view closes the picker.
+  await page.locator('[data-tv-focus-key="markets-done"]').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await openTvHeaderActions(page);
   await page.getByRole('button', { name: 'إعدادات الشاشة', exact: true }).click();
