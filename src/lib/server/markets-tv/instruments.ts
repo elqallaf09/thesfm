@@ -7,6 +7,7 @@ import { twelveDataObservation } from '@/lib/market/quoteObservation';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { twelveDataFetch, TWELVE_RETRY_HEADER } from '@/lib/server/twelve-data-fetch';
 import { dailyForexReference, isCurrentReferenceDate } from './forexReference';
+import { tiingoForexQuote, yahooForexQuote } from './forexProviders';
 
 const BINANCE = 'https://data-api.binance.vision/api/v3';
 const ECB = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml';
@@ -154,7 +155,15 @@ async function fallbackForexReference(asset: TvAsset): Promise<TvQuote | null> {
     void broader.then(accept);
   });
 }
+/** Forex chain: Tiingo (batched) → Yahoo → Twelve Data → ECB/Frankfurter reference.
+ * Twelve Data answers last among live sources because its daily credits are
+ * shared with Gulf stock quotes, which have no other verified source. */
 export async function forexTvQuote(asset: TvAsset): Promise<TvQuote> {
+  const live = await tiingoForexQuote(asset) ?? await yahooForexQuote(asset);
+  if (live) return live;
+  return twelveDataForexQuote(asset);
+}
+async function twelveDataForexQuote(asset: TvAsset): Promise<TvQuote> {
   const key = process.env.TWELVE_DATA_API_KEY?.trim();
   let issue: TvQuote['issue'] = key ? 'provider_unavailable' : 'not_configured';
   let retryAt: string | null = null;

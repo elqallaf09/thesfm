@@ -3,6 +3,9 @@ vi.mock('server-only', () => ({}));
 // Deliberately bypass Next's cache, as happens when nested in the quote cache.
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/server/twelve-data-fetch', () => ({ twelveDataFetch: vi.fn(), TWELVE_RETRY_HEADER: 'x-sfm-provider-retry-at' }));
+// These cases cover the reference layer after every live source is out; the
+// live Tiingo/Yahoo layers have their own tests in forex-live-chain.test.ts.
+vi.mock('@/lib/server/markets-tv/forexProviders', () => ({ tiingoForexQuote: vi.fn(async () => null), yahooForexQuote: vi.fn(async () => null) }));
 import { __resetForexReferenceForTests, dailyForexReference, forexReferenceQuote, isCurrentReferenceDate, parseForexReferenceTable } from '@/lib/server/markets-tv/forexReference';
 import { __resetTvInstrumentReferenceForTests, forexTvQuote, referenceForexQuote } from '@/lib/server/markets-tv/instruments';
 import { twelveDataFetch } from '@/lib/server/twelve-data-fetch';

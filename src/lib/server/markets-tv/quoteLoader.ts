@@ -18,6 +18,7 @@ import { cryptoTvQuotes, forexTvQuote } from './instruments';
 import { tvProviderFailure } from './quoteAvailability';
 import { finnhubUsMarketOpen } from './finnhubMarketStatus';
 import { cachedTvQuote } from './quoteCache';
+import { isOwnableQuote, readOwnedTvQuote, saveOwnedTvQuote } from './ownedQuoteStore';
 import { withTvIndexFallback } from './indexFallback';
 import { withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
@@ -179,6 +180,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   // Nasdaq Dubai's fallback has a verified listing/price but no trade clock.
   // Keep it outside the dated-observation cache and disclose unknown timing.
   const work = (tvNasdaqDubaiIdentity(asset) ? withTvNasdaqDubaiFallback(asset, verified) : verified)
+    .then(quote => withOwnedQuote(key, asset, quote))
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
   if (assetType === 'forex' || tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset) || tvNasdaqDubaiIdentity(asset)) {
@@ -187,6 +189,19 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
     try { after(async () => { await Promise.allSettled([verified, work]); }); } catch { /* No request scope in offline callers. */ }
   }
   return work;
+}
+
+/** Keeps every verified quote in THE SFM's own store, and answers from it when
+ * every upstream source is out. The stored quote keeps its source and clock. */
+async function withOwnedQuote(key: string, asset: TvAsset, quote: TvQuote): Promise<TvQuote> {
+  if (isOwnableQuote(quote)) {
+    const save = () => saveOwnedTvQuote(key, quote);
+    try { after(save); } catch { void save(); }
+    return quote;
+  }
+  if (quote.price !== null) return quote;
+  const owned = await readOwnedTvQuote(key, asset.symbol);
+  return owned ? { ...owned, displaySymbol: asset.displaySymbol, name: asset.name, nameAr: asset.nameAr || asset.name, retryAt: quote.retryAt } : quote;
 }
 
 async function archivedIndex(quote: TvQuote): Promise<TvQuote> {

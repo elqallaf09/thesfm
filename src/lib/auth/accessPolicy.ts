@@ -2,6 +2,7 @@ const protectedApiPrefixes = [
   '/api/integrations',
   '/api/account',
   '/api/tv/account',
+  '/api/tv/collect',
   '/api/admin',
   '/api/ai/receipt-scan',
   '/api/business',
@@ -60,6 +61,7 @@ const cronApiPaths = new Set([
   '/api/market-news/ingest',
   '/api/thesfm-trader/scanner/run',
   '/api/trader/scanner/run',
+  '/api/tv/collect',
 ]);
 
 export function isCronApiPath(pathname: string) {
