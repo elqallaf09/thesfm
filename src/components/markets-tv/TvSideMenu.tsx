@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import {
-  Building2, ChartNoAxesCombined, Clock3, Globe2, LogIn, LogOut, Monitor, Newspaper,
+  Building2, ChartNoAxesCombined, Clock3, Coins, Globe2, Landmark, LogIn, LogOut, Map, Monitor, Newspaper,
   Rows3, Settings2, SlidersHorizontal, Star, Tv, WalletCards, Wrench, X,
   type LucideIcon,
 } from 'lucide-react';
@@ -13,7 +13,7 @@ import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import './side-menu.css';
 
-export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments';
+export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map';
 
 type Props = {
   language: TvLanguage;
@@ -52,11 +52,15 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     route('allStocks', hallText(language, 'allStocks'), ChartNoAxesCombined),
     route('strips', copy.strips, Rows3),
     route('world', copy.world, Globe2),
+    route('gulf', tvSceneText(language, 'gulf'), Landmark),
+    route('assets', tvSceneText(language, 'assets'), Coins),
     route('kuwait', receiverText(language, 'kuwait'), Building2),
     route('news', copy.news, Newspaper),
     route('sessions', receiverText(language, 'sessions'), Clock3),
     route('watchlist', tvSceneText(language, 'watchlist'), Star),
     route('investments', t('investments'), WalletCards),
+    route('brief', t('brief'), Newspaper),
+    route('map', t('map'), Map),
     { key: 'channels', label: t('channels'), icon: Tv, action: onChannels },
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },
@@ -89,7 +93,7 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
         <div><strong dir="ltr">SFM TV</strong><h2 id="tv-side-menu-title">{copy.menu}</h2></div>
         <button type="button" className="tv-side-menu-close" onClick={() => leave(onClose)} data-tv-focus-key="menu-close" data-tv-back {...neighbors('menu-close')}><X aria-hidden="true"/><span>{t('close')}</span></button>
       </header>
-      <nav className="tv-side-menu-items" aria-label={copy.menu}>
+      <nav className="tv-side-menu-items" aria-label={copy.menu} style={{ '--tv-menu-rows': items.length } as CSSProperties}>
         {items.map(({ key, label, icon: Icon, destination, action }) => <button key={key} type="button" onClick={() => leave(action)} data-tv-focus-key={key} {...neighbors(key)}
           aria-current={destination && active === destination ? 'page' : undefined}
           data-tv-initial-focus={destination === (active || 'hall') ? '' : undefined}>
