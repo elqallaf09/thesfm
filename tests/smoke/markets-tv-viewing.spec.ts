@@ -114,7 +114,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
     expect(overflowingRows).toEqual([]);
     const captionSizes = await page.locator([
       '.tv-scene-source', '.tv-scene-evidence time', '.tv-scene-change small',
-      '.tv-scene-price small', '.tv-scene-summary-value small', '.tv-viewing-footer',
+      '.tv-scene-price small', '.tv-scene-summary-value small', '.tv-news-evidence',
     ].join(',')).evaluateAll(elements => elements.map(element => Number.parseFloat(getComputedStyle(element).fontSize)));
     expect(Math.min(...captionSizes)).toBeGreaterThanOrEqual(12);
   }

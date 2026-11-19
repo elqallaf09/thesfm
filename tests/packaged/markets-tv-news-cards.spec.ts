@@ -3,7 +3,7 @@ import { openAndroidTvPackage } from './packageHarness';
 
 type Language = 'ar' | 'en' | 'fr';
 type Theme = 'light' | 'dark';
-type View = 'hall' | 'allStocks' | 'world' | 'kuwait' | 'europeNews';
+type View = 'hall' | 'allStocks' | 'world' | 'kuwait' | 'europeNews' | 'shariaNews';
 const instant = '2026-11-18T21:05:00Z';
 const previousKuwaitDay = '2026-11-18T20:26:00Z';
 const imageOrigin = 'https://news-images.example.test';
@@ -12,6 +12,17 @@ const titles = {
   ar: 'الأسواق العالمية تتابع نتائج الشركات وتطورات أسعار الفائدة مع ترقب المستثمرين بيانات الاقتصاد والسيولة',
   en: 'Global markets assess company earnings and interest rate expectations as investors await economic and liquidity data',
   fr: 'Les marchés évaluent les résultats des entreprises et les perspectives des taux avant les prochaines données économiques',
+};
+const screeningStatuses = ['compliant', 'needs_review', 'non_compliant', 'unclassified'] as const;
+const screeningLabels = {
+  ar: ['متوافق حسب المصدر', 'يحتاج مراجعة شرعية', 'غير متوافق', 'الحالة الشرعية غير معروفة'],
+  en: ['Compliant per source', 'Screening needs review', 'Non-compliant', 'Screening status unknown'],
+  fr: ['Conforme selon la source', 'Conformité à revoir', 'Non conforme', 'Conformité inconnue'],
+};
+const compactScreeningLabels = {
+  ar: ['متوافق', 'يحتاج مراجعة', 'غير متوافق', 'غير مصنّف'],
+  en: ['Compliant', 'Review needed', 'Non-compliant', 'Unclassified'],
+  fr: ['Conforme', 'À vérifier', 'Non conforme', 'Non classé'],
 };
 
 function newsItems(count: number, language: Language) {
@@ -32,7 +43,7 @@ async function openNews(page: Page, language: Language, theme: Theme, view: View
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
       language, theme, displayMode: view === 'allStocks' ? 'browse' : 'viewing',
       autoRotate: false, sessionAutoRotate: false, scene: view === 'world' ? 'world' : 'overview',
-      ...(view === 'kuwait' || view === 'europeNews' ? { broadcastChannel: view } : {}),
+      ...(view === 'kuwait' || view === 'europeNews' || view === 'shariaNews' ? { broadcastChannel: view } : {}),
     }));
   }, { language, theme, view });
   await page.route(imageOrigin + '/**', async route => {
@@ -46,8 +57,12 @@ async function openNews(page: Page, language: Language, theme: Theme, view: View
     const url = new URL(route.request().url()), channel = url.searchParams.get('channel') || 'all';
     if (url.pathname.includes('news')) {
       const count = url.pathname === '/api/tv/news' ? channel === 'all' ? 8 : 12 : 24;
-      const stories = newsItems(count, language);
+      const sharia = url.pathname === '/api/sharia-stocks/news';
+      const stories = newsItems(count, language).map((story, index) => ({ ...story,
+        ...(sharia ? { shariahStatus: screeningStatuses[index % screeningStatuses.length] } : {}),
+      }));
       return route.fulfill({ json: { stories, items: stories, channel, success: true,
+        ...(sharia ? { category: 'sharia' } : {}),
         generatedAt: instant, lastSuccessfulUpdate: instant } });
     }
     if (url.pathname === '/api/tv/catalog') return route.fulfill({ json: { markets: [
@@ -75,7 +90,7 @@ async function openNews(page: Page, language: Language, theme: Theme, view: View
   });
   await openAndroidTvPackage(page);
   await page.evaluate(() => document.fonts.ready);
-  const count = view === 'kuwait' ? 12 : view === 'europeNews' ? 24 : 8;
+  const count = view === 'kuwait' ? 12 : view === 'europeNews' || view === 'shariaNews' ? 24 : 8;
   const cards = page.locator('.tv-news-card');
   await expect(cards).toHaveCount(count);
   return cards;
@@ -101,15 +116,45 @@ async function expectCardGeometry(cards: Locator, direction: 'rtl' | 'ltr', view
       const a = parts[i].getBoundingClientRect(), b = parts[j].getBoundingClientRect();
       if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) violations.push(name + parts[i].className + ' overlaps ' + parts[j].className);
     }
-    const leaves = card.querySelectorAll('.tv-news-title,.tv-news-evidence > bdi,.tv-news-evidence time,.tv-news-evidence time > span');
+    const leaves = card.querySelectorAll('.tv-news-title,.tv-news-evidence > bdi,.tv-news-evidence time,.tv-news-evidence time > span,.tv-news-screening');
     for (const leaf of leaves) {
       const box = leaf.getBoundingClientRect(), size = parseFloat(getComputedStyle(leaf).fontSize);
       if (size < 13 || box.width < size || box.height < size || box.left < bounds.left - 1 || box.right > bounds.right + 1 || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) violations.push(name + leaf.className + ' unreadable or clipped');
+      if (leaf.matches('.tv-news-screening') && (leaf.scrollWidth > leaf.clientWidth + 1 || leaf.scrollHeight > leaf.clientHeight + 1)) violations.push(name + 'screening label clipped');
     }
-    const source = evidence.querySelector('bdi')!.getBoundingClientRect(), time = evidence.querySelector('time')!.getBoundingClientRect();
-    if (Math.min(source.right, time.right) - Math.max(source.left, time.left) > 1 && Math.min(source.bottom, time.bottom) - Math.max(source.top, time.top) > 1) violations.push(name + 'source overlaps date');
+    const metadata = [...evidence.children];
+    for (let i = 0; i < metadata.length; i++) for (let j = i + 1; j < metadata.length; j++) {
+      const a = metadata[i].getBoundingClientRect(), b = metadata[j].getBoundingClientRect();
+      if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) violations.push(name + 'source, date or screening overlap');
+    }
     return violations;
   }), { direction, viewport }), 'Thumbnail, headline, source and full date each retain their own readable space').toEqual([]);
+}
+
+async function expectKuwaitQuoteGeometry(page: Page, count: number) {
+  const quotes = page.locator('.tv-receiver-quotes .tv-market-strip-item');
+  await expect(quotes).toHaveCount(count);
+  await expect.poll(() => quotes.evaluateAll(elements => elements.flatMap(card => {
+    const violations: string[] = [], bounds = card.getBoundingClientRect();
+    const symbol = card.querySelector('.tv-strip-symbol b')!.textContent || '';
+    const price = card.querySelector('.tv-strip-price')!, change = card.querySelector('.tv-strip-change')!;
+    const evidence = card.querySelector('.tv-strip-evidence')!;
+    const index = Number(symbol.replace('TEST', '')), expectedPrice = (20 + index).toFixed(2);
+    if (price.textContent?.trim().replace(/\s+/g, ' ') !== expectedPrice + ' USD') violations.push(symbol + ': incomplete price');
+    if (change.textContent?.trim() !== (index % 2 ? '+1.10%' : '-1.30%')) violations.push(symbol + ': incomplete change');
+    if (!evidence.textContent?.includes('QA provider') || !evidence.textContent?.includes('00:05')) violations.push(symbol + ': incomplete source or time');
+    const parts = [price, change, evidence];
+    for (const part of parts) {
+      const box = part.getBoundingClientRect();
+      if (!box.width || !box.height || box.left < bounds.left - 1 || box.right > bounds.right + 1 || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) violations.push(symbol + ': ' + part.className + ' outside quote');
+      if (part.scrollWidth > part.clientWidth + 1 || part.scrollHeight > part.clientHeight + 1) violations.push(symbol + ': ' + part.className + ' clipped');
+    }
+    for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+      const a = parts[i].getBoundingClientRect(), b = parts[j].getBoundingClientRect();
+      if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1) violations.push(symbol + ': price, change or evidence overlap');
+    }
+    return violations;
+  })), 'Kuwait quotes retain the complete number, change and evidence in separate visible spaces').toEqual([]);
 }
 
 async function expectRemoteStory(page: Page, cards: Locator, title: string) {
@@ -167,6 +212,32 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
   });
 }
 
+for (const language of ['ar', 'en', 'fr'] as const) {
+  test('news cards ' + language + '/sharia: all 24 screening labels and full dates fit compact TVs', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 960, height: 540 });
+    const cards = await openNews(page, language, 'light', 'shariaNews');
+    await expect(cards.locator('.tv-news-title')).toHaveText(newsItems(24, language).map(story => story.title));
+    await expect(cards.locator('.tv-news-screening')).toHaveCount(24);
+    await expect(cards.locator('.tv-news-screening')).toHaveText(Array.from({ length: 24 }, (_, index) => compactScreeningLabels[language][index % 4]));
+    for (let index = 0; index < 24; index++) {
+      await expect(cards.nth(index).locator('.tv-news-screening')).toHaveAttribute('title', screeningLabels[language][index % 4]);
+    }
+    await expect(cards.first().locator('time')).toHaveAttribute('aria-label', '2026-11-18 · 23:26');
+    await expect(cards.first().locator('time')).toContainText('2026-11-18');
+    for (const [width, height] of [[960, 540], [1280, 720]]) {
+      await page.setViewportSize({ width, height });
+      await expectCardGeometry(cards, language === 'ar' ? 'rtl' : 'ltr');
+      await page.screenshot({ path: testInfo.outputPath('news-sharia-' + language + '-' + width + '.png') });
+    }
+    await cards.first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('dialog')).toContainText(screeningLabels[language][0]);
+    await expect(page.getByRole('dialog')).toContainText(newsItems(24, language)[0].title);
+    await page.keyboard.press('Escape');
+    await expect(cards.first()).toBeFocused();
+  });
+}
+
 for (const theme of ['light', 'dark'] as const) for (const view of ['hall', 'allStocks', 'world', 'kuwait'] as const) {
   test('news cards ' + theme + '/' + view + ': every received story remains visible with quotes', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
@@ -183,6 +254,7 @@ for (const theme of ['light', 'dark'] as const) for (const view of ['hall', 'all
         await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
         for (const selector of ['.tv-hall-market-table', '.tv-quote-marquee']) await expect(page.locator(selector)).toBeInViewport({ ratio: 1 });
       }
+      if (view === 'kuwait') await expectKuwaitQuoteGeometry(page, height <= 650 ? 4 : 6);
       await page.screenshot({ path: testInfo.outputPath('news-' + view + '-' + theme + '-' + width + '.png') });
     }
     await cards.last().focus();

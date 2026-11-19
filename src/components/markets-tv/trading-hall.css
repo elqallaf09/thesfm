@@ -15,7 +15,6 @@
 .tv-screen.tv-hall-screen .tv-scene-tabs button { font-size: max(13px, .8em); padding: .35em .75em; min-height: 2.4em; background: transparent; border-color: transparent; }
 .tv-screen.tv-hall-screen .tv-scene-tabs button[aria-pressed=true] { background: var(--tv-panel2); color: var(--tv-accent); border-color: var(--tv-line); }
 .tv-screen.tv-hall-screen .tv-scene-playback { font-size: max(13px, .75em); }
-.tv-screen.tv-hall-screen .tv-viewing-footer { flex: 0 0 auto; font-size: max(13px, .58em); min-height: 1.8em; padding: 0; }
 .tv-screen .tv-hall-content { display: flex; flex-direction: column; gap: .5em; flex: 1; min-height: 0; min-width: 0; }
 .tv-screen .tv-hall-title { display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; gap: 1em; }
 .tv-screen .tv-hall-title h1 { font-size: 1.5em; line-height: 1.25; margin: 0; letter-spacing: 0; }
@@ -84,12 +83,14 @@
 .tv-screen .tv-hall-error { flex: 0 0 auto; font-size: max(13px, .7em); color: var(--tv-down); }
 .tv-screen .tv-hall-error button { padding: .1em .6em; min-height: 0; }
 @media (min-width: 761px) and (max-height: 760px) {
-  .tv-screen.tv-hall-screen { font-size: 16px; gap: .3em; }
+  .tv-screen.tv-hall-screen[data-accent] { font-size: 16px; gap: .25em; }
+  .tv-screen.tv-hall-screen .tv-unified-header { padding-bottom: .15em; }
   .tv-screen.tv-hall-screen .tv-scene-tabs { gap: .1em; }
   .tv-screen.tv-hall-screen .tv-scene-tabs button { padding-inline: .25em; flex: 0 1 auto; }
   .tv-screen .tv-hall-title h1 { font-size: 1.3em; }
+  .tv-screen .tv-hall-title > button { min-height: 1.8em; padding: .2em .6em; }
   .tv-screen .tv-hall-title > div > span { display: none; }
-  .tv-screen .tv-hall-content { gap: .35em; }
+  .tv-screen .tv-hall-content { gap: .25em; }
 }
 @media (max-width: 760px) {
   .tv-screen.tv-hall-screen { height: auto; min-height: 100dvh; overflow: visible; font-size: 18px; }

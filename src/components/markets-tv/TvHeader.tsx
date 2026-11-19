@@ -1,6 +1,6 @@
 'use client';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Globe2, Maximize, Monitor, Pause, Play, RefreshCw, Rows3, Settings2, SlidersHorizontal, Smartphone, Tv, MoreHorizontal, X } from 'lucide-react';
+import { Clock3, Globe2, Maximize, Monitor, Pause, Play, RefreshCw, Rows3, Settings2, SlidersHorizontal, Smartphone, Tv, MoreHorizontal, X } from 'lucide-react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { TV_WELCOME_EVENT, welcomeText } from '@/lib/markets-tv/welcome';
 import { tvText } from '@/lib/markets-tv/i18n';
@@ -30,9 +30,10 @@ export const TvClock = memo(function TvClock({ language }: { language: TvLanguag
 });
 
 type Props = {
-  language: TvLanguage; mode: TvDisplayMode; ready: boolean; paired: boolean; fullscreen: boolean;
+  language: TvLanguage; mode: TvDisplayMode; ready: boolean; paired: boolean; fullscreen: boolean; online: boolean;
   hidden: boolean; paused: boolean; wake: () => void; changeMode: (mode: TvDisplayMode) => void;
   pair: () => void; settings: () => void; customize: () => void; channels: () => void;
+  sessions?: () => void;
   toggleFullscreen: () => void; togglePause: () => void; refresh: () => void;
 };
 const HEADER_COPY = {
@@ -41,7 +42,7 @@ const HEADER_COPY = {
   fr: { more: 'Plus', controls: 'Commandes de l’écran' },
 } satisfies Record<TvLanguage, { more: string; controls: string }>;
 
-export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, paused, wake, changeMode, pair, settings, customize, channels, toggleFullscreen, togglePause, refresh }: Props) {
+export function TvHeader({ language, mode, ready, paired, fullscreen, online, hidden, paused, wake, changeMode, pair, settings, customize, channels, sessions, toggleFullscreen, togglePause, refresh }: Props) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const copy = HEADER_COPY[language];
   const [moreOpen, setMoreOpen] = useState(false);
@@ -88,8 +89,12 @@ export function TvHeader({ language, mode, ready, paired, fullscreen, hidden, pa
           <button onClick={() => openGlobalDialog(pair)} aria-label={t(paired ? 'paired' : 'pair')} data-tv-focus-key="pair" data-tv-initial-focus><Smartphone aria-hidden="true"/><span>{t(paired ? 'paired' : 'pair')}</span></button>
           <button className="tv-tweaks-button" onClick={() => openGlobalDialog(settings)} aria-label={t('settings')} data-tv-focus-key="settings"><Settings2 aria-hidden="true"/><span>{t('settings')}</span></button>
           <button onClick={toggleFullscreen} aria-label={t(fullscreen ? 'exitFullscreen' : 'fullscreen')} data-tv-focus-key="fullscreen"><Maximize aria-hidden="true"/><span>{t(fullscreen ? 'exitFullscreen' : 'fullscreen')}</span></button>
-          {mode === 'strips' && <><button onClick={togglePause} aria-label={t(paused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={paused} data-tv-focus-key="ticker-playback">{paused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}<span>{t(paused ? 'resumeStrips' : 'pauseStrips')}</span></button><button onClick={refresh} aria-label={t('refresh')} data-tv-focus-key="refresh"><RefreshCw aria-hidden="true"/><span>{t('refresh')}</span></button></>}
+          {mode !== 'strips' && sessions && <button onClick={() => openGlobalDialog(sessions)} aria-label={t('sessions')} data-tv-focus-key="sessions"><Clock3 aria-hidden="true"/><span>{t('sessions')}</span></button>}
+          {mode === 'strips' && <button onClick={togglePause} aria-label={t(paused ? 'resumeStrips' : 'pauseStrips')} aria-pressed={paused} data-tv-focus-key="ticker-playback">{paused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}<span>{t(paused ? 'resumeStrips' : 'pauseStrips')}</span></button>}
+          <button onClick={refresh} aria-label={t('refresh')} data-tv-focus-key="refresh"><RefreshCw aria-hidden="true"/><span>{t('refresh')}</span></button>
         </div>
+        <p className="tv-muted">{t('remoteHelp')}</p>
+        <p className="tv-muted" role="status">{t(online ? 'connected' : 'offline')}</p>
       </section>
     </div>}
   </header>;

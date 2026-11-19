@@ -26,6 +26,10 @@ record. The six named header controls and readable price strips are retained.
 - Layouts adapt to available TV space; portrait uses stacked cards. Long titles
   can truncate on dense boards while remaining complete in the accessible name
   and story dialog.
+- Duplicate bottom navigation is removed; named Market hours and Refresh actions
+  remain in More. The world sidebar spans the full content height, and compact
+  Kuwait quote cards reserve separate price/change rows. Directory search no
+  longer resets a newly selected page when the normalized query is unchanged.
 - Superseded headline/lead-queue styles are removed. Existing performance limits
   are unchanged. Android reserves version 1.0.22 / build 28.
 
@@ -47,8 +51,13 @@ An attempted source upload to a temporary Vercel QA sandbox was rejected by
 automatic approval review. The sandbox was stopped and no new source was
 uploaded. Browser and production verification use the existing repository CI.
 
-Current-candidate browser, TypeScript, full build, budgets and required CI
-results must be recorded before merge and deployment.
+The first illustrated candidate (`6b3c7d4`) passed TypeScript and all 12 one-page
+picker browser cases, but its TV matrix exposed 28 layout/navigation failures
+(122 passed). Its CSS was 78.5 KiB against the unchanged 78.1 KiB limit. This
+revision reserves image/title tracks, uses explicit date/source rows, reclaims
+duplicate chrome, removes dead CSS, and covers the search timer regression.
+Current-candidate browser, full build, budgets and required CI results must be
+recorded before merge and deployment.
 
 ## Release and recovery
 

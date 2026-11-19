@@ -130,8 +130,10 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.clock.setSystemTime(new Date('2026-11-03T09:52:00Z'));
     await page.setViewportSize({ width: 960, height: 540 });
     await openTv(page, language);
-    const opener = page.locator('.tv-viewing-footer button').first();
-    await opener.click();
+    const opener = page.locator('[data-tv-focus-key="more"]');
+    const controls = await openTvHeaderActions(page);
+    await controls.getByRole('button', { name: { ar: 'ساعات الأسواق', en: 'Market hours', fr: 'Horaires' }[language], exact: true }).focus();
+    await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog');
     await expect(page.locator('.tv-session')).toHaveCount(5);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {

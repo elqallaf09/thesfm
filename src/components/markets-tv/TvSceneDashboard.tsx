@@ -69,13 +69,12 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
 
   return <>
     {error && <div className="tv-scene-notice" role="status"><span>{snapshot ? s('retainedDuringRetry') : t('error')}</span><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
-    {overview ? <TvOverview sessionIds={sessionIds} quotes={all} language={language} now={now} news={news} loading={loading} onQuote={onQuote} onStory={onStory} onRefresh={onRefresh}/> : <>
+    {overview ? <TvOverview sessionIds={sessionIds} quotes={all} language={language} now={now} news={news} loading={loading} onQuote={onQuote} onStory={onStory} onRefresh={onRefresh}/> : <main className="tv-scene-body" aria-busy={loading && !snapshot} data-news-many={news.length > 4}>
     {!summariesRepeatRows && <section className="tv-scene-summaries" aria-label={t('markets')} aria-busy={loading && !snapshot}>
       {summaries.filter(tvSceneHasPrice).map(quote => <SummaryQuote key={quoteKey(quote)} quote={quote} language={language} now={now} select={onQuote}/>)}
       {!summaries.length && (loading ? Array.from({ length: 4 }, (_, index) => <div key={index} className="tv-scene-summary tv-scene-skeleton" aria-hidden="true"><span/><span/><span/></div>)
         : <p className="tv-scene-summary-empty">{s('noSummaries')}</p>)}
     </section>}
-    <main className="tv-scene-body" aria-busy={loading && !snapshot}>
       <section className="tv-scene-quotes" aria-labelledby="tv-scene-quotes-title">
         <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s('marketSample')}</p></div>
           <div className="tv-scene-view-buttons" role="group" aria-label={t('layout')}>
@@ -99,7 +98,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
         </div> : <div className="tv-scene-no-data"><h3>{emptyWatchlist ? t('emptyWatchlist') : s('noScenePrices')}</h3><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
       </section>
       <TvSceneSidebar quotes={all} news={news} newsLoading={newsLoading} newsError={newsError} language={language} now={now} snapshot={snapshot} loading={loading} onStory={onStory} onQuote={onQuote} onRefresh={onRefresh}/>
-    </main></>}
+    </main>}
     {ticker && <SceneTicker quotes={tickerQuotes} language={language} now={now} paused={tickerPaused} speed={speed} select={onQuote} toggle={onTickerPause}/>}
   </>;
 });

@@ -101,9 +101,6 @@
 .tv-screen .tv-scene-unavailable li button { display: block; min-height: 0; width: 100%; font-size: 1em; text-align: start; border: 0; border-radius: 0; padding: .3em; background: transparent; }
 .tv-scene-unavailable li span { color: var(--tv-muted); }
 .tv-scene-headlines { flex: 1 1 auto; }
-.tv-screen .tv-scene-headlines button { display: block; min-height: 0; width: 100%; padding: .45em 0; border: 0; border-top: 1px solid var(--tv-line); border-radius: 0; background: transparent; text-align: start; }
-.tv-scene-headlines button > span { font-size: .78em; line-height: 1.55; display: block; overflow-wrap: anywhere; }
-.tv-scene-headlines small { display: block; line-height: 1.4; font-size: max(12px, .6em); margin-top: .25em; }
 .tv-scene-headlines > p { line-height: 1.5; color: var(--tv-muted); font-size: .75em; margin-top: .5em; }
 .tv-scene-no-data, .tv-scene-loading, .tv-viewing-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em; text-align: center; padding: 1em; flex: 1; min-height: 0; color: var(--tv-muted); }
 .tv-scene-no-data h3 { font-size: 1em; font-weight: 500; }
@@ -117,8 +114,6 @@
 .tv-scene-heatmap .tv-scene-change { font-size: 1.3em; }
 .tv-scene-heatmap .tv-scene-change small { font-size: max(12px, .5em); }
 .tv-scene-heatmap .tv-evidence-stacked { font-size: .85em; width: 100%; }
-.tv-viewing-footer { padding-top: .2em; display: flex; align-items: center; justify-content: space-between; gap: .6em; font-size: max(12px, .65em); color: var(--tv-muted); flex: 0 0 auto; }
-.tv-screen .tv-viewing-footer button { font-size: 1em; min-height: 0; padding: 0 .2em; border: 0; background: transparent; }
 .tv-scene-notice { display: flex; justify-content: space-between; align-items: center; gap: .5em; padding: .3em .6em; border: 1px solid var(--tv-accent); color: var(--tv-accent); font-size: .7em; flex: 0 0 auto; }
 .tv-scene-notice button { padding: .2em .4em; }
 .tv-browse-viewing-button { color: var(--tv-accent); }
@@ -156,9 +151,6 @@
   .tv-scene-rows { grid-auto-rows: auto; overflow: visible; }
   .tv-scene-sidebar { overflow: visible; }
   .tv-scene-health, .tv-scene-headlines { padding: .85em; }
-  .tv-scene-headlines button > span { font-size: .9em; }
-  .tv-scene-headlines small { font-size: .7em; }
   .tv-scene-heatmap { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; overflow: visible; }
   .tv-screen .tv-scene-heatmap > button { min-height: 10em; }
-  .tv-viewing-footer { flex-wrap: wrap; font-size: .7em; }
 }

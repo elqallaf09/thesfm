@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
+import { closeTvHeaderActions, openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 
 test('hall retries prices and general news together, retaining real prior values during later errors', async ({ page }) => {
   let fail = true, version = 0, newsRequests = 0;
@@ -35,10 +35,14 @@ test('hall retries prices and general news together, retaining real prior values
   await expect(page.locator('.tv-headline-story')).toContainText('Verified headline 0');
   expect(newsRequests).toBeGreaterThan(firstRequests);
   version = 1;
-  await page.locator('.tv-viewing-footer button').last().click();
+  const controls = await openTvHeaderActions(page);
+  await controls.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await closeTvHeaderActions(page);
   await expect(page.locator('.tv-headline-story')).toContainText('Verified headline 1');
   fail = true;
-  await page.locator('.tv-viewing-footer button').last().click();
+  await openTvHeaderActions(page);
+  await controls.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await closeTvHeaderActions(page);
   await expect(page.locator('.tv-hall-error')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(1);
   await expect(page.locator('.tv-headline-story')).toContainText('Verified headline 1');

@@ -18,12 +18,17 @@ export function TvNewsThumbnail({ imageUrl }: { imageUrl?: string }) {
   </span>;
 }
 
-export function TvNewsEvidence({ story, language, now }: { story: TvNews; language: TvLanguage; now: number }) {
+const SCREENING_LABELS = {
+  ar: { compliant: 'متوافق', needs_review: 'يحتاج مراجعة', non_compliant: 'غير متوافق', unclassified: 'غير مصنّف' },
+  en: { compliant: 'Compliant', needs_review: 'Review needed', non_compliant: 'Non-compliant', unclassified: 'Unclassified' },
+  fr: { compliant: 'Conforme', needs_review: 'À vérifier', non_compliant: 'Non conforme', unclassified: 'Non classé' },
+};
+export function TvNewsEvidence({ story, language, now, compact = false }: { story: TvNews; language: TvLanguage; now: number; compact?: boolean }) {
   const label = tvQuoteTime(story.publishedAt, language, now), [date, clock] = label.split(' · ');
   return <small className="tv-news-evidence" data-dated={clock ? 'true' : undefined}>
     <bdi title={story.source}>{story.source}</bdi>
     <time dir="ltr" dateTime={story.publishedAt} aria-label={label}>{clock ? <><span>{clock}</span><span>{date}</span></> : label}</time>
-    {story.screening && <span className="tv-news-screening">{receiverText(language, story.screening)}</span>}
+    {story.screening && <span className="tv-news-screening" title={receiverText(language, story.screening)}>{compact ? SCREENING_LABELS[language][story.screening] : receiverText(language, story.screening)}</span>}
   </small>;
 }
 
@@ -31,9 +36,9 @@ export function TvNewsCard({ story, language, now, onStory, hall = false }: {
   story: TvNews; language: TvLanguage; now: number; onStory: (story: TvNews) => void; hall?: boolean;
 }) {
   return <button className={`tv-news-card${hall ? ' tv-headline-story' : ''}`} onClick={() => onStory(story)}
-    data-tv-focus-key={`${hall ? 'hall-story' : 'story'}:${story.id}`} title={story.title}>
+    data-tv-focus-key={`${hall ? 'hall-story' : 'story'}:${story.id}`} title={story.title} data-news-screened={Boolean(story.screening)}>
     <TvNewsThumbnail imageUrl={story.imageUrl}/>
     <span className="tv-news-title" dir="auto">{story.title}</span>
-    <TvNewsEvidence story={story} language={language} now={now}/>
+    <TvNewsEvidence story={story} language={language} now={now} compact/>
   </button>;
 }

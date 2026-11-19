@@ -57,6 +57,42 @@ test('search finds remote directory pages, resets paging and limits quote reques
   await expect(page.locator('.tv-hall-row')).toHaveCount(0);
   await expect(page.getByText('No matching stocks')).toBeVisible();
 });
+test('initial and equivalent directory searches do not undo Next', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.clock.install();
+  await open(page, 'en');
+  // Load the hall normally, then freeze time before All Stocks first mounts.
+  // Its initial search timer cannot elapse before we deliberately press Next.
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
+  await page.locator('.tv-mode-browse').click();
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
+  const next = page.locator('[data-tv-focus-key="stocks-next"]');
+  const first = page.locator('.tv-hall-identity').first();
+  const pagination = page.locator('.tv-stock-pagination');
+  const search = page.getByRole('searchbox');
+  await expect(next).toBeEnabled();
+  await next.click();
+  await expect(first).toContainText('QA6');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA6');
+  await expect(pagination).toContainText('2 / 14');
+  await search.fill('   ');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA6');
+  await expect(pagination).toContainText('2 / 14');
+  // A genuinely changed query still resets to its first page.
+  await search.fill('QA');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA0');
+  await expect(pagination).toContainText('1 / 14');
+  await next.click();
+  await expect(first).toContainText('QA6');
+  await search.fill(' QA ');
+  await page.clock.runFor(301);
+  await expect(first).toContainText('QA6');
+  await expect(pagination).toContainText('2 / 14');
+});
+
 test('ticker really moves, pauses, and exposes no duplicate focus targets', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 }); await open(page);
   const track = page.locator('.tv-marquee-track');

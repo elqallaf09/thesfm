@@ -25,7 +25,6 @@
 .tv-evidence-inline { display: flex; align-items: center; justify-content: flex-start; gap: .75em; font-size: max(12px, .65em); line-height: 1.5; }
 .tv-evidence-inline .tv-evidence-origin { flex-wrap: nowrap; }
 .tv-screen .tv-market-strip-item > .tv-strip-evidence { display: flex; grid-column: 1/-1; grid-row: 3; font-size: max(12px, .6em); overflow: visible; }
-.tv-scene-ticker-evidence { grid-column: 1/-1; }
 .tv-screen .tv-scene-summary > .tv-evidence-stacked { font-size: max(12px, .62em); }
 .tv-scene-summary .tv-evidence-stacked .tv-status, .tv-scene-summary .tv-evidence-stacked .tv-scene-source, .tv-scene-summary .tv-evidence-stacked time { font-size: inherit; }
 .tv-scene-row .tv-evidence-origin { gap: .35em; }
@@ -40,7 +39,6 @@
 .tv-scene-health > summary { cursor: pointer; font-size: .75em; padding-block: .15em; }
 .tv-scene-health > p { margin-top: .5em; }
 .tv-scene-sidebar > section, .tv-scene-sidebar > details { flex: 0 0 auto; }
-.tv-scene-headlines button > span { display: block; overflow: visible; -webkit-line-clamp: unset; overflow-wrap: anywhere; }
 .tv-news-evidence { display: flex; flex-wrap: wrap; gap: .25em .6em; color: var(--tv-muted); }
 .tv-scene-headlines .tv-news-evidence { display: flex; }
 .tv-news-panel > .tv-scene-headlines { border: 0; background: transparent; }
