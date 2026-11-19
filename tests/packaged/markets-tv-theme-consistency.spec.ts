@@ -136,3 +136,42 @@ for (const theme of ['light', 'dark']) test(`TV ${theme} artwork loads from a fi
   expect(loaded).toBe(true);
   await expect.poll(() => page.locator('.tv-brand-mark').first().evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
 });
+
+
+// Regression for sparse Gulf exchange rows seen on tablet/TV in both palettes.
+for (const theme of ['light', 'dark']) {
+  test(`TV ${theme}: sparse exchange rows fit and do not repeat quotes`, async ({ page }) => {
+    await page.setViewportSize({ width: 1536, height: 1024 });
+    await page.addInitScript(theme => {
+      sessionStorage.setItem('sfm-tv-welcome-shown', '1');
+      localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
+        language: 'ar', theme, displayMode: 'strips', autoRotate: false,
+        groups: ['gulf'], marketIds: ['QA_GULF'],
+      }));
+    }, theme);
+    await page.route('**/api/**', route => route.fulfill({ status: 503, json: { code: 'QA_UNAVAILABLE' } }));
+    await page.route('**/api/tv/catalog', route => route.fulfill({ json: {
+      markets: [{ id: 'QA_GULF', group: 'gulf', labelAr: 'سوق الاختبار', labelEn: 'QA exchange', labelFr: 'Marché QA', count: 1, status: 'directory' }],
+    } }));
+    await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: {
+      quotes: [{ symbol: 'QA.AE', exchange: 'QA_GULF', name: 'Test bank', nameAr: 'بنك الاختبار', currency: 'AED',
+        price: 21.92, changePercent: -1.08, source: 'QA', observedAt: new Date().toISOString(), status: 'delayed' }],
+      total: 1, available: 1, directoryTotal: 1,
+    } }));
+    await openAndroidTvPackage(page);
+    const strip = page.locator('.tv-market-strip[data-market=QA_GULF]');
+    await expect(strip).toHaveAttribute('data-sparse', 'true');
+    await expect(strip.locator('.tv-market-strip-set[aria-hidden=false] .tv-market-strip-item')).toHaveCount(1);
+    await expect(strip.locator('.tv-market-strip-set[aria-hidden=true]')).toBeHidden();
+    const geometry = await strip.evaluate(element => {
+      const row = element.getBoundingClientRect();
+      const viewport = element.querySelector('.tv-market-strip-window')!.getBoundingClientRect();
+      const card = element.querySelector('.tv-market-strip-set:not([aria-hidden=true]) .tv-market-strip-item')!.getBoundingClientRect();
+      return { rowRight: row.right, viewportRight: viewport.right, cardRight: card.right, cardLeft: card.left, viewportLeft: viewport.left };
+    });
+    expect(geometry.cardLeft).toBeGreaterThanOrEqual(geometry.viewportLeft - 1);
+    expect(geometry.cardRight).toBeLessThanOrEqual(geometry.viewportRight + 1);
+    expect(geometry.viewportRight).toBeLessThanOrEqual(geometry.rowRight + 1);
+    expect(await palette(page)).toMatchObject({ scheme: theme });
+  });
+}
