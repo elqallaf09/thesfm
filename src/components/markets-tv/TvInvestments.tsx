@@ -35,8 +35,8 @@ function money(value: number | null, currency: string) {
   if (!formats.has(currency)) formats.set(currency, new Intl.NumberFormat('en-US', { minimumFractionDigits: ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2, maximumFractionDigits: ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2 }));
   return formats.get(currency)!.format(value);
 }
-export default function TvInvestments({ token, language, revision, now, onPair, onRefresh, autoRotate }: {
-  token: string; language: TvLanguage; revision: number; now: number; onPair: () => void; onRefresh: () => void; autoRotate: boolean; onAutoRotateChange: (enabled: boolean) => void;
+export default function TvInvestments({ token, language, revision, now, onPair, onRefresh, autoRotate, suspended = false }: {
+  token: string; language: TvLanguage; revision: number; now: number; onPair: () => void; onRefresh: () => void; autoRotate: boolean; suspended?: boolean; onAutoRotateChange: (enabled: boolean) => void;
 }) {
   const [currency, setCurrency] = useState(''), [assetClass, setAssetClass] = useState('all');
   useEffect(() => { try { const saved = localStorage.getItem('sfm_currency'); if (saved && /^[A-Z]{3}$/.test(saved)) setCurrency(saved); } catch { /* Account preference remains the default. */ } }, []);
@@ -45,7 +45,7 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
   const data = resource.data, expired = resource.errorStatus === 401 || resource.errorStatus === 403;
   const positions = data?.positions.filter(item => assetClass === 'all' || item.assetClass === assetClass) || [];
   const allocation = data?.allocation || [], allocationPages = Math.max(1, Math.ceil(allocation.length / 4));
-  const allocationPage = useTvBroadcastPage(allocationPages, playing && !expired);
+  const allocationPage = useTvBroadcastPage(allocationPages, playing && !expired && !suspended);
   const text = (key: PortfolioTextKey) => portfolioText(language, key);
   const displayCurrency = currency || data?.currency || 'KWD';
   const currencies = [...new Set([displayCurrency, ...CURRENCIES])];

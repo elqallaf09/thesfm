@@ -4,7 +4,7 @@ import { parseOpenAiTokenUsage, summarizeOpenAiAdvisorUsage, writeOpenAiAdvisorU
 
 const mocks = vi.hoisted(() => ({
   fetch: vi.fn(), update: vi.fn(), eq: vi.fn(), finish: vi.fn(), after: [] as Array<() => Promise<void>>,
-  privateReply: vi.fn(), privateConfigured: vi.fn(),
+  privateReply: vi.fn(), privateConfigured: vi.fn(), read: vi.fn(), readEq: vi.fn(), readScope: vi.fn(),
 }));
 vi.mock('@/lib/server/aiProvider', async importOriginal => {
   const original = await importOriginal<typeof import('@/lib/server/aiProvider')>();
@@ -13,6 +13,15 @@ vi.mock('@/lib/server/aiProvider', async importOriginal => {
 vi.mock('next/server', () => ({ after: (task: () => Promise<void>) => { mocks.after.push(task); } }));
 vi.mock('@/lib/server/adminAccess', () => ({
   createServerSupabaseAdmin: () => ({ from: () => ({
+    select: () => {
+      const query = {
+        eq: (...args: unknown[]) => { mocks.readEq(...args); return query; },
+        contains: (...args: unknown[]) => { mocks.readScope(...args); return query; },
+        in: () => query, gte: () => query, order: () => query, limit: () => query,
+        abortSignal: () => query, maybeSingle: mocks.read,
+      };
+      return query;
+    },
     update: (value: unknown) => {
       mocks.update(JSON.parse(JSON.stringify(value)));
       const query = {
@@ -56,6 +65,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', mocks.fetch);
   mocks.fetch.mockResolvedValue(response());
   mocks.finish.mockResolvedValue({ data: { id: tracking.eventId }, error: null });
+  mocks.read.mockResolvedValue({ data: null, error: null });
   mocks.privateConfigured.mockReturnValue(true);
   mocks.privateReply.mockResolvedValue({ text: 'private reply', provider: 'sfm-private-primary', model: 'sfm-model' });
 });
@@ -142,7 +152,7 @@ describe('explicit OpenAI advisor pilot', () => {
     expect(mocks.privateReply).not.toHaveBeenCalled();
   });
 
-  it('sanitizes HTTP failure and never retries or switches providers automatically', async () => {
+  it('sanitizes an unclassified HTTP throttle without retrying or switching providers', async () => {
     enablePilot();
     mocks.fetch.mockResolvedValue(response({ error: { message: 'private upstream details' } }, 429));
     expect(await generateAdvisorReply(input)).toBeNull();
@@ -150,6 +160,75 @@ describe('explicit OpenAI advisor pilot', () => {
     expect(JSON.stringify(mocks.update.mock.calls)).not.toContain('private upstream details');
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
     expect(mocks.privateReply).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['credit_balance_exhausted', 'CREDIT_BALANCE_EXHAUSTED'],
+    ['insufficient_quota', 'USAGE_LIMIT_REACHED'],
+    ['project_spend_limit_exceeded', 'USAGE_LIMIT_REACHED'],
+    ['organization_spend_limit_exceeded', 'USAGE_LIMIT_REACHED'],
+    ['organization_usage_limit_exceeded', 'USAGE_LIMIT_REACHED'],
+  ])('records %s before falling back once to the old provider', async (code, reasonCode) => {
+    enablePilot();
+    mocks.fetch.mockResolvedValue(response({ error: { code, message: 'private upstream details' }, usage: tokenUsage }, 429));
+    expect(await generateAdvisorReply({ ...input, maxTokens: 99_999 })).toEqual({ text: 'private reply', provider: 'sfm-private-primary', model: 'sfm-model' });
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.privateReply).toHaveBeenCalledExactlyOnceWith({
+      system: input.system, messages: input.messages, correlationId: input.correlationId,
+      maxTokens: 2_000, attemptTimeoutMs: 7_000,
+    });
+    expect(mocks.update.mock.calls[1][0].metadata.openaiUsage).toMatchObject({ outcome: 'failure', httpStatus: 429, reasonCode, usage: { totalTokens: 140 } });
+    expect(mocks.update.mock.invocationCallOrder[1]).toBeLessThan(mocks.privateReply.mock.invocationCallOrder[0]);
+    expect(JSON.stringify(mocks.update.mock.calls)).not.toMatch(/private upstream details|private financial facts|private question|sfm-project-secret/);
+  });
+
+  it('uses durable credit evidence on later requests without another OpenAI attempt or fabricated usage', async () => {
+    enablePilot();
+    mocks.fetch.mockResolvedValue(response({ error: { code: 'credit_balance_exhausted' } }, 429));
+    await generateAdvisorReply(input);
+    const persistedFailure = mocks.update.mock.calls[1][0].metadata.openaiUsage;
+    mocks.read.mockResolvedValue({ data: { metadata: { openaiUsage: persistedFailure } }, error: null });
+    expect((await generateAdvisorReply({ ...input, tracking: { ...tracking, eventId: 'next-reserved-event' } }))?.provider).toBe('sfm-private-primary');
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.privateReply).toHaveBeenCalledTimes(2);
+    expect(mocks.update).toHaveBeenCalledTimes(2);
+    expect(mocks.readEq).toHaveBeenCalledWith('user_id', input.userId);
+    expect(mocks.readScope).toHaveBeenCalledWith('metadata', { openaiUsage: {
+      version: 1, application: 'sfm', provider: 'openai', requestedModel: 'gpt-6.1-sol', organizationId: 'org_selected', projectId: 'proj_sfm',
+    } });
+  });
+
+  it('does not call either provider when the durable pause check is unavailable', async () => {
+    enablePilot();
+    mocks.read.mockResolvedValue({ data: null, error: { code: 'ledger-unavailable' } });
+    expect(await generateAdvisorReply(input)).toBeNull();
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.privateReply).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('does not hide failed final accounting by continuing to the old provider', async () => {
+    enablePilot();
+    mocks.fetch.mockResolvedValue(response({ error: { code: 'insufficient_quota' } }, 429));
+    mocks.finish.mockResolvedValueOnce({ data: { id: tracking.eventId }, error: null }).mockResolvedValueOnce({ data: null, error: {} });
+    expect(await generateAdvisorReply(input)).toBeNull();
+    expect(mocks.privateReply).not.toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.after).toHaveLength(1);
+    await mocks.after[0]();
+    expect(mocks.privateReply).not.toHaveBeenCalled();
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([null, 'throw'])('returns unavailable if the private fallback fails (%s), without another paid attempt', async failure => {
+    enablePilot();
+    mocks.fetch.mockResolvedValue(response({ error: { code: 'credit_balance_exhausted' } }, 429));
+    if (failure === 'throw') mocks.privateReply.mockRejectedValue(new Error('private details'));
+    else mocks.privateReply.mockResolvedValue(null);
+    expect(await generateAdvisorReply(input)).toBeNull();
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.privateReply).toHaveBeenCalledTimes(1);
+    expect(mocks.update.mock.calls[1][0].metadata.openaiUsage).toMatchObject({ outcome: 'failure', reasonCode: 'CREDIT_BALANCE_EXHAUSTED' });
   });
 
   it('times out stalled response bodies and preserves an unknown usage outcome', async () => {

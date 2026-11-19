@@ -1,9 +1,4 @@
 /* Dark broadcast surfaces use the shared palette; light mode stays unchanged. */
-.tv-screen.tv-dark .tv-mode-switch .tv-display-link[aria-current=page],
-.tv-screen.tv-dark.tv-hall-screen .tv-scene-tabs button[aria-pressed=true] {
-  background: var(--tv-up-surface);
-  border-color: var(--tv-accent);
-}
 .tv-screen.tv-dark .tv-hall-columns {
   color: var(--tv-text);
   border-start-start-radius: var(--radius-panel);

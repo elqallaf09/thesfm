@@ -1,5 +1,5 @@
+import { openAndroidTvPackage, openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
-import { closeTvHeaderActions, openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 import type { TvLanguage, TvQuote } from '../../src/lib/markets-tv/types';
 
 const now = '2026-11-19T00:00:00Z';
@@ -81,7 +81,7 @@ test('sparse batches advance without duplicates and wait for remote reading to f
   await quote.focus();
   await page.clock.runFor(7500);
   await expect(quote.locator('.tv-strip-symbol b')).toHaveText('QA0');
-  await page.locator('.tv-mode-strips').focus();
+  await page.locator('[data-tv-focus-key=menu-toggle]').focus();
   await page.clock.runFor(7500);
   await expect(quote.locator('.tv-strip-symbol b')).toHaveText('QA12');
   await expect(quote).toHaveCount(1);

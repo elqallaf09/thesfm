@@ -52,7 +52,6 @@
 .tv-quote-grid .tv-status { font-size: max(12px, .6em); line-height: 1.5; }
 .tv-browsing .tv-eyebrow { font-size: max(12px, .7em); }
 .tv-browsing .tv-pagination { font-size: max(12px, .76em); }
-.tv-footer { font-size: max(12px, .63em); }
 /* Keep unavailable tools readable without animating rows of empty prices. */
 .tv-data-notice { display: flex; align-items: center; justify-content: space-between; gap: .7em; padding: .55em .7em; margin-bottom: .5em; border: 1px solid var(--tv-line); border-inline-start-color: var(--tv-accent); border-radius: var(--radius-sm); background: var(--tv-panel2); flex-shrink: 0; }
 .tv-data-notice strong { font-size: max(12px, .75em); line-height: 1.5; font-weight: 500; color: var(--tv-accent); }

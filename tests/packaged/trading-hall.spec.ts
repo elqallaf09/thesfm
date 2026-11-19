@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -20,7 +21,7 @@ async function open(page: Page, language = 'ar', mode = 'viewing') {
     return route.fulfill({ json: { quotes, group: params.get('group'), total: quotes.length, available: quotes.length, generatedAt: new Date().toISOString() } });
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [headline, 'عنوان الخبر الثاني كاملًا', 'عنوان الخبر الثالث'].map((title, i) => ({ id: String(i), title, source: 'مصدر اختبار', publishedAt: new Date().toISOString(), url: 'https://example.com/news' })) } }));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount((page.viewportSize()?.height ?? 1080) <= 650 ? 3 : 6);
   await page.keyboard.press('Shift');
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
@@ -32,7 +33,7 @@ for (const [width, height] of [[1920, 1080], [1280, 720], [960, 540]]) {
     await page.setViewportSize({ width, height }); await open(page);
     await expect(page.locator('.tv-headline-story').first()).toContainText(headline);
     for (const mode of ['viewing', 'browse']) {
-      if (mode === 'browse') await page.locator('.tv-mode-browse').click();
+      if (mode === 'browse') await chooseTvDestination(page, 'allStocks');
       await expect(page.locator('.tv-hall-row')).toHaveCount(height <= 650 ? 3 : 6);
       const overflow = await page.evaluate(() => {
         const root = document.querySelector('.tv-hall-screen')!;
@@ -64,7 +65,7 @@ test('initial and equivalent directory searches do not undo Next', async ({ page
   // Load the hall normally, then freeze time before All Stocks first mounts.
   // Its initial search timer cannot elapse before we deliberately press Next.
   await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 1000));
-  await page.locator('.tv-mode-browse').click();
+  await chooseTvDestination(page, 'allStocks');
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   const next = page.locator('[data-tv-focus-key="stocks-next"]');
   const first = page.locator('.tv-hall-identity').first();

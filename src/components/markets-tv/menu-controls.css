@@ -1,0 +1,18 @@
+.tv-screen .tv-side-menu-header { display: flex; gap: .75em; min-width: 0; flex-wrap: nowrap; }
+.tv-screen .tv-side-menu-header .tv-unified-brand { margin-inline-end: auto; }
+.tv-screen .tv-side-menu-header .tv-menu-toggle { display: inline-flex; gap: .5em; font-size: max(14px, .85em); min-height: 2.5em; flex-shrink: 0; }
+.tv-screen .tv-side-menu-header .tv-menu-toggle > span { display: inline; }
+.tv-screen .tv-side-menu-header[data-controls-hidden=true] .tv-unified-brand > div { visibility: hidden; }
+.tv-screen .tv-tools-panel { display: grid; gap: 1em; }
+.tv-screen .tv-tools-panel > p { font-size: max(14px, .8em); line-height: 1.5; }
+.tv-screen .tv-tools-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6em; padding: 4px; }
+.tv-screen .tv-tools-grid button { justify-content: flex-start; text-align: start; min-width: 0; padding: .6em .8em; }
+.tv-screen .tv-tools-grid button > span { min-width: 0; overflow-wrap: anywhere; }
+.tv-screen .tv-sign-out-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: .7em; }
+@media (max-width: 760px) {
+  .tv-screen .tv-side-menu-header { gap: .4em; }
+  .tv-screen .tv-side-menu-header .tv-unified-brand > div { display: none; }
+  .tv-screen .tv-side-menu-header .tv-unified-clock { gap: .3em; }
+  .tv-screen .tv-side-menu-header .tv-unified-clock small { white-space: normal; }
+  .tv-screen .tv-tools-grid { grid-template-columns: minmax(0, 1fr); }
+}

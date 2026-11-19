@@ -11,7 +11,7 @@ export function useTvControls(root: RefObject<HTMLDivElement | null>, enabled: b
     const timer = setInterval(() => {
       // Never remove a keyboard/remote target while it has focus.
       if (!document.hidden && Date.now() - lastActivity.current >= 12000
-        && !root.current?.querySelector('.tv-header-actions')?.contains(document.activeElement)) setHidden(true);
+        && !document.activeElement?.closest('.tv-menu-toggle, .tv-side-menu')) setHidden(true);
     }, 1000);
     document.addEventListener('keydown', wake, true);
     document.addEventListener('pointermove', wake, { passive: true });

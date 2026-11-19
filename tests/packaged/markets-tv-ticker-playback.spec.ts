@@ -1,8 +1,8 @@
+import { closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
 import type { TvDisplayMode, TvLanguage, TvQuote } from '../../src/lib/markets-tv/types';
 const now='2026-11-06T15:00:00Z';
 const symbols=['^GSPC','^DJI','^NDX','^FTSE','^GDAXI','^N225'];
@@ -18,7 +18,7 @@ async function open(page:Page,language:TvLanguage,displayMode:TvDisplayMode='vie
   await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{group:'global',scene:'overview',summary:quotes(),quotes:quotes(),available:6,total:6,selectionTotal:6,generatedAt:now}}));
   await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[0,1,2].map(index=>({id:`qa-${index}`,title:`خبر اختبار عن الأسواق العالمية / Market news fixture ${index+1}`,source:'QA',publishedAt:now,url:`https://example.com/news/${index}`}))}}));
   await page.route('**/api/tv/history',r=>r.fulfill({json:{symbol:'^GSPC',sessionDate:'2026-11-06',source:'QA source',fetchedAt:now,points:[{at:'2026-11-06T14:30:00Z',price:5999},{at:'2026-11-06T14:35:00Z',price:6002},{at:'2026-11-06T14:40:00Z',price:6000}]}}));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
   if(displayMode==='strips') await expect(page.locator('.tv-market-strip-track')).toHaveCount(1);
   else await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await page.evaluate(()=>document.fonts.ready);
@@ -149,7 +149,7 @@ test('all news stays visible across display changes while ticker playback remain
   await expect(page.getByRole('dialog')).toContainText('fixture 2');
   await page.keyboard.press('Escape');
   await expect(cards.nth(1)).toBeFocused();
-  await page.locator('.tv-mode-browse').click();
+  await chooseTvDestination(page, 'allStocks');
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
@@ -158,7 +158,7 @@ test('all news stays visible across display changes while ticker playback remain
   await expectContinuousMovement(page.locator('.tv-marquee-track'));
   await page.clock.runFor(80000);
   await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
-  await page.locator('.tv-mode-viewing').click();
+  await chooseTvDestination(page, 'hall');
   await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','false');
 });

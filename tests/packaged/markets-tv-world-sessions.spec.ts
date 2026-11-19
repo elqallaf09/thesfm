@@ -1,9 +1,9 @@
+import { openAndroidTvPackage, closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
 const instant='2026-11-07T10:24:05Z';
 async function open(page:Page,language='ar'){
  await page.addInitScript(language=>{
-  if(!localStorage.getItem('sfm-markets-tv-settings-v1'))localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language,scene:'world'}));
+  if(!localStorage.getItem('sfm-markets-tv-settings-v1'))localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language,scene:'world',sessionIds:['XKUW','XSAU','XLON','XNYS','XTKS']}));
  },language);
  await page.clock.install({time:new Date(instant)});
  await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[]}}));
@@ -19,7 +19,7 @@ async function contained(page:Page){
 for(const language of ['ar','en','fr'])test(`world sessions ${language}: select all, paginate, filter, persist and clear`,async({page},testInfo)=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.setViewportSize({width:1536,height:1009});await open(page,language);
- await page.locator('.tv-scene-tabs button').nth(5).click();
+ await chooseTvDestination(page, 'sessions');
  await expect(page.locator('.tv-session')).toHaveCount(5);
  await page.locator('[data-tv-focus-key=sessions-choose]').click();
  await expect(page.getByRole('checkbox')).toHaveCount(81);
@@ -51,10 +51,10 @@ for(const language of ['ar','en','fr'])test(`world sessions ${language}: select 
  await page.locator('[data-tv-focus-key=sessions-done]').click();
  await expect(page.locator('.tv-session')).toHaveCount(1);await expect(page.locator('.tv-session')).toHaveAttribute('data-market','XPAE');
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')||'{}').sessionIds)).toEqual(['XPAE']);
- await page.reload();await expect(page.locator('[data-tv-focus-key="scene:world"]')).toHaveAttribute('aria-pressed','true');
- await page.locator('.tv-scene-tabs button').first().click();
+ await page.reload();await closeTvMenu(page);await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').scene)).toBe('world');
+ await chooseTvDestination(page, 'hall');
  await expect(page.locator('.tv-hall-session')).toHaveCount(1);await expect(page.locator('.tv-hall-session')).toContainText(language==='ar'?'بورصة فلسطين':language==='fr'?'Bourse de Palestine':'Palestine Exchange');
- await page.locator('.tv-scene-tabs button').nth(5).click();
+ await chooseTvDestination(page, 'sessions');
  await expect(page.locator('.tv-session')).toHaveCount(1);await expect(page.locator('.tv-session')).toHaveAttribute('data-market','XPAE');
  await page.locator('[data-tv-focus-key=sessions-choose]').click();await page.locator('.tv-session-picker-actions button').nth(1).click();await page.locator('[data-tv-focus-key=sessions-done]').click();
  await expect(page.locator('.tv-world-empty')).toBeVisible();await expect(page.locator('.tv-world-pages bdi')).toHaveText('1 / 1');

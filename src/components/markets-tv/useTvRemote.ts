@@ -27,6 +27,7 @@ function revealVertically(focused: HTMLElement, root: HTMLElement | null) {
 
 export function useTvRemote(back: () => void, interact: () => void, modal: boolean, playback?: (command: TvPlaybackCommand) => void, channel?: (command: ChannelCommand) => void) {
   const actions = useRef({ back, interact, playback, channel });
+  const broadcastFocus = useRef<HTMLElement | null>(null);
   const hasPlayback = Boolean(playback);
   useEffect(() => { actions.current = { back, interact, playback, channel }; }, [back, interact, playback, channel]);
   useEffect(() => {
@@ -64,6 +65,7 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       if (!focused || !scope()?.contains(focused)) return;
       lastFocused = focused; lastRect = focused.getBoundingClientRect();
       lastKey = focused.dataset.tvFocusKey || focused.id || null;
+      if (!modal && !focused.closest('.tv-side-menu, .tv-unified-header, [data-tv-focus-scope]')) broadcastFocus.current = focused;
     };
     const focusTimer = setTimeout(() => {
       const elements = items();
@@ -148,6 +150,17 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       if (event.repeat && command.direction === lastArrow && event.timeStamp - lastArrowAt < 110) return;
       lastArrow = command.direction; lastArrowAt = event.timeStamp;
       if (!focused || !elements.includes(focused)) { focus(elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]); return; }
+      // The drawer sits beside the content: one inward arrow closes it and
+      // returns to the last broadcast target, while Up/Down stays in its list.
+      if (activeScope?.id === 'tv-side-menu'
+        && command.direction === (activeScope.dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight')) {
+        activeScope.querySelector<HTMLElement>('[data-tv-back]')?.click();
+        requestAnimationFrame(() => {
+          const candidates = items().filter(element => !element.closest('.tv-unified-header'));
+          focus(candidates.includes(broadcastFocus.current!) ? broadcastFocus.current! : candidates[0]);
+        });
+        return;
+      }
       const explicitKey = focused.getAttribute(`data-tv-nav-${command.direction.slice(5).toLowerCase()}`);
       const explicit = explicitKey && elements.find(element => element.dataset.tvFocusKey === explicitKey);
       if (explicit) { focus(explicit); return; }
@@ -183,6 +196,10 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       const index = nearestTvTarget(focused.getBoundingClientRect(), candidates.map(e => e.getBoundingClientRect()), command.direction);
       if (index >= 0) {
         focus(candidates[index]);
+      } else if (!trapped && command.direction === (scope()?.dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft')) {
+        // At the outer edge of any page the remote can reopen the labeled
+        // menu without traversing every quote back to the header.
+        scope()?.querySelector<HTMLElement>('[data-tv-focus-key="menu-toggle"]')?.click();
       }
     }
     document.addEventListener('keydown', onKey);

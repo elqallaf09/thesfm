@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -14,8 +15,8 @@ test('brief distinguishes loading and errors from a real empty selection and sup
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.route('**/api/tv/history', route => route.fulfill({ json: { points: [] } }));
-  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
-  await page.locator('.tv-scene-tabs button').nth(6).click();
+  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
+  await chooseTvDestination(page, 'brief');
   await expect(page.getByRole('heading', { name: 'Loading brief data' })).toBeVisible();
   await expect(page.locator('.tv-brief-metrics')).toHaveCount(0);
   finish!();
@@ -31,8 +32,8 @@ test('brief loads benchmark data after an unpaired watchlist',async({page})=>{
  await page.addInitScript(()=>localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language:'en',scene:'watchlist'})));
  await page.route('**/api/tv/snapshot?*',route=>route.fulfill({json:{group:'global',scene:'overview',quotes:[],summary:[{symbol:'^GSPC',name:'S&P 500',nameAr:'مؤشر',price:6000,currency:null,changePercent:1,source:'QA',observedAt:new Date().toISOString(),status:'delayed',delayType:'delayed',changeBasis:'session'}],total:0,available:0,selectionTotal:1,generatedAt:new Date().toISOString()}}));
  await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[]}}));
- await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
- await page.locator('.tv-scene-tabs button').nth(6).click();
+ await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
+ await chooseTvDestination(page, 'brief');
  await expect(page.locator('.tv-brief-metrics')).toBeVisible();
  await expect(page.getByRole('heading',{name:'No instruments selected for this brief'})).toHaveCount(0);
 });

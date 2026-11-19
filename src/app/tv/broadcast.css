@@ -38,8 +38,6 @@
  .tv-screen .tv-scene-sidebar { grid-template-rows:260px 180px auto; }
  .tv-screen .tv-now-panel,.tv-screen .tv-scene-headlines,.tv-screen .tv-scene-movers { font-size:15px; }
 }
-
-.tv-screen[data-tv-view=sessions] .tv-scene-playback { display:none; }
 .tv-screen .tv-scene-sidebar > .tv-scene-movers { min-height:4em; }
 .tv-screen .tv-headline-items,.tv-screen .tv-mover-items { flex:1; }
 @media(min-width:761px) and (max-height:650px) {
@@ -57,11 +55,6 @@
  .tv-screen .tv-scene-sidebar { gap:.3em; }
  .tv-screen .tv-scene-sidebar > .tv-scene-headlines,
  .tv-screen .tv-scene-sidebar > .tv-scene-movers { padding-block:.2em; }
-}
-
-.tv-screen .tv-scene-tabs { flex:1; flex-wrap:wrap; gap:.1em; }
-.tv-screen .tv-viewing-nav .tv-scene-tabs button { font-size:max(13px,.72em); padding:.35em .3em; }
-@media(min-width:761px) and (max-height:650px) {
 }
 
 .tv-screen .tv-scene-table .tv-scene-table-head,.tv-screen .tv-scene-table .tv-scene-row { grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) minmax(0,.75fr) minmax(0,1.6fr); }

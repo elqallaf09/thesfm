@@ -1,3 +1,4 @@
+import { closeTvMenu } from './helpers/tv-controls';
 import { expect, test } from '@playwright/test';
 import { intelligenceResult, stubApis } from './fixtures/intelligence-analysis';
 
@@ -24,6 +25,7 @@ test('the TV asset QR link opens its analysis on a phone viewport', async ({ pag
     return route.fulfill({ status: 503, json: { ok: false, error: { code: 'PROVIDER_UNAVAILABLE' } } });
   });
   await page.goto('/tv');
+  await closeTvMenu(page);
   await page.locator('[data-tv-focus-key="hall:^GDAXI"]').click();
   const handoff = page.locator('.tv-phone-link a');
   await expect(handoff).toHaveAttribute('href', /\/ai-analyst\/analyze\/%5EGDAXI\?assetType=INDEX&autoRun=1&source=markets-tv$/);

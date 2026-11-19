@@ -1,9 +1,9 @@
+import { openAndroidTvPackage, openTvMenu } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import type { TvGroup, TvLanguage, TvMarket } from '../../src/lib/markets-tv/types';
 import { TV_STRIP_SPEEDS, TV_GROUPS } from '../../src/lib/markets-tv/types';
 import { tvText } from '../../src/lib/markets-tv/i18n';
 import { sessionText } from '../../src/lib/markets-tv/sessionCopy';
-import { openAndroidTvPackage } from './packageHarness';
 
 // Synthetic directory fixtures exercise large catalogs without live providers.
 const groups: TvGroup[] = ['gulf', 'us', 'europe', 'asia'];
@@ -31,6 +31,7 @@ async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'da
     return route.fulfill({ json: { items: [], total: 0, directoryTotal: 0, points: [] } });
   });
   await openAndroidTvPackage(page);
+  await openTvMenu(page);
   await page.locator('[data-tv-focus-key="customize"]').click();
   await expect(page.locator('.tv-market-picker-tv')).toBeVisible();
   await expect(page.locator('.tv-market-row')).toHaveCount(directory.length);
@@ -168,7 +169,7 @@ test('remote opens market options, reaches save, and preserves order, selection 
   await page.locator('[data-tv-focus-key="markets-done"]').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
+  await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
   const settings = await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')!));
   expect(settings.marketIds).not.toContain('QA_5');
   expect(settings.marketIds).toContain('QA_0');
@@ -178,10 +179,13 @@ test('remote opens market options, reaches save, and preserves order, selection 
   // the persistent opener captured by the parent dialog's remote handler.
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.keyboard.press('Enter');
+    await expect(page.locator('.tv-side-menu')).toBeVisible();
+    await page.locator('[data-tv-focus-key="customize"]').focus();
+    await page.keyboard.press('Enter');
     await expect(page.locator('[data-tv-focus-key="markets-done"]')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
+    await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
   }
 });
 

@@ -1,3 +1,4 @@
+import { closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './helpers/tv-controls';
 import { expect, test } from '@playwright/test';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -23,22 +24,23 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.goto('/tv/all-stocks');
+  await closeTvMenu(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar')).toHaveCount(0);
   await page.keyboard.press('Shift');
   const documents: string[] = [];
   page.on('request', request => { if (request.resourceType() === 'document') documents.push(request.url()); });
   await page.locator('.tv-screen').evaluate(root => root.setAttribute('data-navigation-marker', 'original'));
-  await page.locator('.tv-mode-viewing').click();
+  await chooseTvDestination(page, 'hall');
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
-  await page.locator('.tv-mode-browse').click();
+  await chooseTvDestination(page, 'allStocks');
   await expect(page).toHaveURL(/\/tv\/all-stocks$/);
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
-  await page.locator('.tv-mode-strips').click();
+  await chooseTvDestination(page, 'strips');
   await expect(page).toHaveURL(/\/tv\/strips$/);
   await expect(page.locator('.tv-strips-only')).toBeVisible();
   await expect(page.locator('.tv-market-strip-item[data-priced="true"]').first()).toBeVisible();
@@ -54,9 +56,11 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   expect(documents).toEqual([]);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar, .sfm-route-loading')).toHaveCount(0);
-  await page.locator('.tv-intro-replay').click();
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await page.keyboard.press('Shift');
+  await closeTvHeaderActions(page);
   await expect(page.locator('.tv-hall-listing small').first()).toHaveText('الولايات المتحدة');
   await expect.poll(() => page.locator('.tv-screen').evaluate(root => {
     const box = root.getBoundingClientRect();
@@ -67,7 +71,7 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   expect(style.size).toBeGreaterThanOrEqual(18);
   expect(style.background).not.toBe('rgb(255, 255, 255)');
   await expect(page.locator('.tv-headline-band')).toBeInViewport({ ratio: 1 });
-  await page.reload();
+  await page.reload(); await closeTvMenu(page);
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar')).toHaveCount(0);
   expect(pageErrors).toEqual([]);

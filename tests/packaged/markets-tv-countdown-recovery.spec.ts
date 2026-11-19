@@ -1,3 +1,4 @@
+import { closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -6,11 +7,11 @@ const saved={symbol:'^GSPC',name:'S&P 500',nameAr:'إس آند بي 500',price:7
  source:'QA source',observedAt:'2026-11-06T21:00:00Z',receivedAt:saturday,status:'stale',changeBasis:'session'};
 async function open(page:Page,scene='world'){
  await page.clock.install({time:new Date(saturday)});
- await page.addInitScript(scene=>localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language:'ar',scene})),scene);
+ await page.addInitScript(scene=>localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language:'ar',scene,sessionIds:['XKUW','XSAU','XLON','XNYS','XTKS']})),scene);
  await page.route('**/api/tv/news?*',r=>r.fulfill({json:{stories:[]}}));
  await page.route('**/api/tv/history',r=>r.fulfill({json:{points:[]}}));
  await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{summary:[saved],quotes:[{...saved,symbol:'ASML.AS',name:'ASML',nameAr:'إيه إس إم إل',currency:'EUR',price:1200}],total:1,available:1,generatedAt:saturday}}));
- await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);
+ await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
 }
 async function contained(page:Page,selector:string){
  const bad=await page.locator(selector).evaluateAll(elements=>elements.flatMap(element=>{
@@ -21,7 +22,7 @@ async function contained(page:Page,selector:string){
 }
 test('Arabic weekend countdown ticks every second, shows units, and reaches the exact Sunday opening',async({page})=>{
  await page.setViewportSize({width:1536,height:1009});await open(page);
- await page.locator('.tv-scene-tabs button').nth(5).click();
+ await chooseTvDestination(page, 'sessions');
  await expect(page.locator('.tv-session')).toHaveCount(5);
  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+100));
  const kw=page.locator('.tv-session[data-market=XKUW]'),ny=page.locator('.tv-session[data-market=XNYS]');
@@ -49,7 +50,7 @@ test('Arabic weekend countdown ticks every second, shows units, and reaches the 
  await expect(kw.locator('.tv-compact-countdown bdi')).toHaveText('00ي 04:00:00');
 });
 test('brief shows dated saved prices with working detail actions instead of empty ranking panels',async({page})=>{
- await open(page);await page.locator('.tv-scene-tabs button').nth(6).click();
+ await open(page);await chooseTvDestination(page, 'brief');
  await expect(page.locator('.tv-brief-dashboard h1')).toHaveText('آخر الأسعار المحفوظة');
  await expect(page.locator('.tv-brief-rankings')).toHaveCount(0);
  await expect(page.locator('.tv-brief-saved button')).toHaveCount(2);
@@ -66,7 +67,7 @@ test('change map falls back to saved price rows and displays prices when verifie
  await expect(page.locator('.tv-scene-map-notice')).toBeVisible();
  await expect(page.locator('.tv-scene-row')).toHaveCount(1);
  await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{summary:[{...saved,status:'closed',observation:{precision:'instant',marketOpen:false}}],quotes:[{...saved,symbol:'ASML.AS',currency:'EUR',price:1200,status:'closed',observation:{precision:'instant',marketOpen:false}}],available:1,total:1,generatedAt:saturday}}));
- await page.reload();await page.locator('[data-tv-focus-key=scene-heatmap]').click();
+ await page.reload();await closeTvMenu(page);await page.locator('[data-tv-focus-key=scene-heatmap]').click();
  await expect(page.locator('.tv-scene-heatmap-price')).toHaveCount(1);
  await expect(page.locator('.tv-scene-heatmap-price').first()).toContainText('1,200');
  await expect(page.locator('.tv-scene-map-notice')).toHaveCount(0);

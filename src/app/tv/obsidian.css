@@ -115,9 +115,6 @@
 .tv-ranked-quote .tv-evidence-stacked { grid-column: 1/-1; }
 .tv-ranking-empty { font-size: .85em; color: var(--tv-muted); line-height: 1.8; padding-block: 1em; }
 @media (max-width: 1200px), (max-height: 650px) {
-  .tv-viewing-nav { gap: .35em; }
-  .tv-screen .tv-scene-tabs button { font-size: .7em; padding-inline: .5em; }
-  .tv-scene-playback > span { display: none; }
   .tv-tweaks-button span { display: none; }
   .tv-index-hero { padding: .7em .9em; }
   .tv-hero-price strong, .tv-hero-unavailable > strong { font-size: 2.4em; }
@@ -136,8 +133,6 @@
 }
 @media (max-width: 760px) {
   .tv-screen.tv-viewing { height: auto; min-height: 100dvh; overflow: visible; }
-  .tv-viewing-nav { flex-wrap: wrap; }
-  .tv-scene-tabs { flex-wrap: wrap; }
   .tv-overview { display: flex; flex-direction: column; }
   .tv-index-hero { min-height: 22em; }
   .tv-index-five { grid-template-columns: repeat(2,minmax(0,1fr)); }

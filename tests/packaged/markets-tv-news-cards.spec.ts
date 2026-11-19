@@ -1,5 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openAndroidTvPackage } from './packageHarness';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 type Language = 'ar' | 'en' | 'fr';
 type Theme = 'light' | 'dark';

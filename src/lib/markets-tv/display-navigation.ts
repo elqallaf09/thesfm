@@ -1,4 +1,5 @@
 import type { TvDisplayMode } from './types';
+import type { TvReceiverChannel } from './receiver';
 
 export const TV_DISPLAY_PATHS: Record<TvDisplayMode, string> = {
   viewing: '/tv', browse: '/tv/all-stocks', strips: '/tv/strips',
@@ -15,6 +16,17 @@ export function pushTvDisplayMode(mode: TvDisplayMode): void {
   const url = new URL(window.location.href);
   url.pathname = TV_DISPLAY_PATHS[mode];
   url.searchParams.delete('channel');
+  url.hash = '';
+  if (url.href !== window.location.href) window.history.pushState(null, '', url);
+}
+
+// A broadcast is its own history entry, including when selected from /tv.
+// Keep the packaged asset URL unchanged; its settings store the selection.
+export function pushTvBroadcastChannel(channel: TvReceiverChannel): void {
+  if (typeof window === 'undefined' || !tvDisplayModeFromPath(window.location.pathname)) return;
+  const url = new URL(window.location.href);
+  url.pathname = TV_DISPLAY_PATHS.viewing;
+  url.searchParams.set('channel', channel);
   url.hash = '';
   if (url.href !== window.location.href) window.history.pushState(null, '', url);
 }

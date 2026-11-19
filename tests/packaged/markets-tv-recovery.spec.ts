@@ -1,5 +1,5 @@
+import { openAndroidTvPackage, openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
 import { expect, test } from '@playwright/test';
-import { closeTvHeaderActions, openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 
 test('hall retries prices and general news together, retaining real prior values during later errors', async ({ page }) => {
   let fail = true, version = 0, newsRequests = 0;

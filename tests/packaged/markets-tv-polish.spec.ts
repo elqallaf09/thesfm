@@ -1,8 +1,8 @@
+import { openAndroidTvPackage, openTvMenu, closeTvMenu, openTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
-import { openAndroidTvPackage } from './packageHarness';
 
 const title = 'Goldman Sachs looks to cash in on a new technology listing: what investors are watching across the global stock markets';
-async function setup(page: Page, count = 1, news = false) {
+async function setup(page: Page, count = 1, news = false, keepMenu = false) {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(news => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', displayMode: news ? 'viewing' : 'browse', ...(news ? { broadcastChannel: 'europeNews' } : {}) })), news);
   await page.route('**/api/**', route => {
@@ -15,7 +15,7 @@ async function setup(page: Page, count = 1, news = false) {
     const stories = Array.from({ length: storyCount }, (_, i) => ({ id: String(i), title: `${title} ${i}`, source: 'QA source', publishedAt: now, url: `https://example.com/${i}` }));
     return route.fulfill({ json: { stories, items: stories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'), success: true, lastSuccessfulUpdate: now } });
   });
-  await openAndroidTvPackage(page);
+  await openAndroidTvPackage(page, { keepMenu });
 }
 
 test('welcome uses the official logo and plays an actual audio graph after a click or remote activation', async ({ page }) => {
@@ -27,17 +27,20 @@ test('welcome uses the official logo and plays an actual audio graph after a cli
       return node;
     };
   });
-  await setup(page);
+  await setup(page, 1, false, true);
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await expect.poll(() => page.locator('.sfm-startup img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
-  await page.locator('.tv-intro-replay').click();
+  await closeTvMenu(page);
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
   expect(await page.evaluate(() => (window as Window & { sfmToneCount?: number }).sfmToneCount)).toBeGreaterThanOrEqual(3);
   await expect.poll(() => page.locator('.sfm-startup-brand').evaluate(el => Number(getComputedStyle(el).opacity))).toBeGreaterThan(.9);
   await page.screenshot({ path: test.info().outputPath('welcome.png') });
   await page.getByRole('button', { name: 'تخطي', exact: true }).click();
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
-  await page.locator('.tv-intro-replay').focus(); await page.keyboard.press('Enter');
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=replay-intro]').focus(); await page.keyboard.press('Enter');
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
 });
 
@@ -46,11 +49,15 @@ test('display navigation retains the packaged document, focus, language and star
   const originalUrl = page.url(), documents: string[] = [];
   page.on('request', request => { if (request.resourceType() === 'document') documents.push(request.url()); });
   await page.locator('.tv-screen').evaluate(root => root.setAttribute('data-navigation-marker', 'original'));
-  for (const mode of ['viewing', 'strips', 'browse', 'viewing', 'browse']) {
-    const link = page.locator(`.tv-mode-${mode}`);
+  for (const destination of ['hall', 'strips', 'allStocks', 'hall', 'allStocks']) {
+    await openTvMenu(page);
+    const link = page.locator(`[data-tv-focus-key="menu:${destination}"]`);
     await link.focus(); await page.keyboard.press('Enter');
+    await expect(page.locator('.tv-side-menu')).not.toBeVisible();
+    await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
+    await openTvMenu(page);
     await expect(link).toHaveAttribute('aria-current', 'page');
-    await expect(link).toBeFocused();
+    await closeTvMenu(page);
     await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
     await expect(page.locator('.tv-screen')).toHaveAttribute('dir', 'rtl');
     await expect(page.locator('.sfm-startup')).toHaveCount(0);
@@ -83,21 +90,24 @@ test('welcome plays once per app session, survives navigation and reload, and st
       return original.call(this, key);
     };
   });
-  await setup(page);
+  await setup(page, 1, false, true);
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await page.keyboard.press('Shift');
-  await page.locator('.tv-mode-viewing').click();
-  await page.locator('.tv-mode-browse').click();
+  await chooseTvDestination(page, 'hall');
+  await chooseTvDestination(page, 'allStocks');
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   for (const navigate of [() => page.reload(), () => page.goto('https://appassets.androidplatform.net/index.html?channel=newStocksNews')]) {
     await navigate();
+    await closeTvMenu(page);
     await expect.poll(() => page.evaluate(() => (window as Window & { welcomeChecked?: boolean }).welcomeChecked)).toBe(true);
     await expect(page.locator('.sfm-startup')).toHaveCount(0);
   }
-  await page.locator('.tv-intro-replay').click();
+  await closeTvMenu(page);
+  await openTvHeaderActions(page);
+  await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
   const freshSession = await context.newPage();
-  await setup(freshSession);
+  await setup(freshSession, 1, false, true);
   await expect(freshSession.locator('.sfm-startup')).toBeVisible();
   await freshSession.close();
 });
@@ -131,7 +141,7 @@ test('market strips distinguish the directory, displayed batch and priced covera
     return route.fulfill({ json: { group: params.get('group'), market: params.get('market'), generatedAt: new Date().toISOString(), quotes, total: quotes.length, directoryTotal: sample ? 6 : 138, available: quotes.length - 1, page: batch } });
   });
   await page.reload();
-  await page.locator('.tv-mode-strips').click();
+  await chooseTvDestination(page, 'strips');
   const market = page.locator('[data-market="BOURSA_KUWAIT"]');
   await expect(market.locator('.tv-market-strip-heading small')).toContainText('138');
   await expect(market.locator('.tv-strip-coverage')).toContainText('1–12');
@@ -148,7 +158,7 @@ test('market strips distinguish the directory, displayed batch and priced covera
 });
 
 test('news desk shows all received cards with readable evidence in 1080p and 540p', async ({ page }) => {
-  await setup(page, 1, true); await page.getByRole('button', { name: 'تخطي', exact: true }).click();
+  await setup(page, 1, true);
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   for (const [width, height] of [[1920, 1080], [960, 540]]) {
     await page.setViewportSize({ width, height });
@@ -165,10 +175,12 @@ test('news desk shows all received cards with readable evidence in 1080p and 540
 test('direct news links open the channel and retain subsequent remote selections on reload', async ({ page }) => {
   await setup(page);
   await page.goto('https://appassets.androidplatform.net/index.html?channel=europeNews');
+  await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'europeNews');
   await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(24);
   await page.keyboard.press('2');
   await expect(page).toHaveURL(/channel=technology/);
   await page.reload();
+  await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'technology');
 });

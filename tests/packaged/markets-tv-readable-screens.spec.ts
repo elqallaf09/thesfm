@@ -1,6 +1,6 @@
+import { openAndroidTvPackage, openTvMenu, closeTvMenu } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import type { TvLanguage, TvMarket, TvQuote } from '../../src/lib/markets-tv/types';
-import { closeTvHeaderActions, openAndroidTvPackage, openTvHeaderActions } from './packageHarness';
 
 // Layout fixtures only. Synthetic prices are never included in the application.
 const markets: TvMarket[] = [
@@ -41,40 +41,25 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       await openStrips(page, language, theme);
       for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080]]) {
         await page.setViewportSize({ width, height });
-        const controls = page.locator('.tv-header-actions button, .tv-header-actions a');
-        await expect(controls).toHaveCount(6);
+        const menu = await openTvMenu(page);
+        const controls = menu.locator('button');
+        await expect(controls).toHaveCount(15);
         for (const control of await controls.all()) {
-          await expect(control.locator('span')).toBeVisible();
+          await expect(control.locator('span').first()).toBeVisible();
           await expect(control).toBeInViewport({ ratio: 1 });
         }
-        await expect.poll(() => page.locator('.tv-header-actions').evaluate(header => {
-          const controls = [...header.querySelectorAll('button,a')];
-          return controls.every((control, index) => {
-            const a = control.getBoundingClientRect();
-            return controls.slice(index + 1).every(other => {
-              const b = other.getBoundingClientRect();
-              return a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1;
-            });
+        await expect.poll(() => controls.evaluateAll(elements => elements.every((control, index) => {
+          const a = control.getBoundingClientRect();
+          return elements.slice(index + 1).every(other => {
+            const b = other.getBoundingClientRect();
+            return a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1;
           });
-        })).toBe(true);
-        // Secondary actions keep their names in a remote-accessible popup,
-        // leaving one compact header row for the market content below it.
-        await expect.poll(() => controls.evaluateAll(elements => {
-          const rects = elements.map(element => element.getBoundingClientRect());
-          return Math.max(...rects.map(rect => rect.top)) < Math.min(...rects.map(rect => rect.bottom));
-        })).toBe(true);
-        await openTvHeaderActions(page);
-        const more = page.locator('#tv-header-more-dialog');
-        await expect(more).toBeInViewport({ ratio: 1 });
-        await expect(more.locator('.tv-header-more-actions button')).toHaveCount(5);
-        for (const action of await more.locator('button').all()) {
-          await expect(action.locator('span')).toBeVisible();
-          await expect(action).toBeInViewport({ ratio: 1 });
-        }
+        }))).toBe(true);
+        await expect(page.locator('.tv-header-actions,.tv-viewing-nav,.tv-footer')).toHaveCount(0);
         await page.keyboard.press('Tab');
-        await expect.poll(() => more.evaluate(element => element.contains(document.activeElement))).toBe(true);
-        await closeTvHeaderActions(page);
-        await expect(page.locator('.tv-header-more')).toBeFocused();
+        await expect.poll(() => menu.evaluate(element => element.contains(document.activeElement))).toBe(true);
+        await closeTvMenu(page);
+        await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
         await expect(page.locator('[data-market="sparse"] .tv-market-strip-item')).toHaveCount(1);
         await expect(page.locator('[data-market="sparse"] .tv-market-strip-track')).toHaveCSS('animation-name', 'none');
         const card = page.locator('[data-market="kuwait"] .tv-market-strip-item').first();
@@ -90,22 +75,15 @@ for (const language of ['ar', 'en', 'fr'] as const) {
         expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(height + 1);
         if (width === 1920 && language === 'ar') await page.screenshot({ path: testInfo.outputPath(`strips-${theme}.png`) });
       }
-      // The single-row header includes the replay logo in its directional group.
-      // Returning to it must not require Tab or a pointer after entering actions.
-      const firstMode = page.locator('.tv-mode-viewing');
-      await firstMode.focus();
-      await page.keyboard.press(language === 'ar' ? 'ArrowRight' : 'ArrowLeft');
-      await expect(page.locator('.tv-intro-replay')).toBeFocused();
-      await page.keyboard.press(language === 'ar' ? 'ArrowLeft' : 'ArrowRight');
-      await expect(firstMode).toBeFocused();
-      // Direction keys can identify and open the labelled customization action.
+      // Vertical navigation follows the named actions without requiring Tab.
+      await openTvMenu(page);
       await page.locator('[data-tv-focus-key="channels"]').focus();
-      await page.keyboard.press(language === 'ar' ? 'ArrowLeft' : 'ArrowRight');
+      await page.keyboard.press('ArrowDown');
       await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
       await page.keyboard.press('Enter');
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.locator('[data-tv-dialog]')).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
+      await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
     });
   }
 }
