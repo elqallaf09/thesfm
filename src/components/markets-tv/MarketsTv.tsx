@@ -62,7 +62,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     return () => shortScreen.removeListener(fit);
   }, []);
   const [group, setGroup] = useState<TvGroup>('global'), [view, setView] = useState<TvView>('markets');
-  const [menuOpen, setMenuOpen] = useState(true), [unlinking, setUnlinking] = useState(false), [unlinkError, setUnlinkError] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(true), [accountChoice, setAccountChoice] = useState(false), [guestMode, setGuestMode] = useState(false), [unlinking, setUnlinking] = useState(false), [unlinkError, setUnlinkError] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null), [detail, setDetail] = useState<TvQuote | null>(null), [story, setStory] = useState<TvNews | null>(null);
   const [token, updateToken] = useState(''), [now, setNow] = useState(0), [page, setPage] = useState(0), [revision, setRevision] = useState(0);
   const currentToken = useRef(''), unlinkRequest = useRef<AbortController | null>(null);
@@ -86,7 +86,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const nextScene = scenes[(scenes.indexOf(scene) + 1) % scenes.length];
   const previousScene = scenes[scenes.indexOf(scene) > 0 ? scenes.indexOf(scene) - 1 : scenes.length - 1];
   const modal = Boolean(dialog || detail || story);
-  const overlayOpen = modal || menuOpen;
+  const overlayOpen = modal || menuOpen || accountChoice;
   const device = useTvResource<{ device: TvDevice; symbols: string[]; alerts: TvAlert[] }>(token ? '/api/tv/device' : null, 60000, token);
   const catalog = useTvResource<{ markets: TvMarket[] }>(ready && (!viewing || dialog === 'markets' || dialog === 'instruments') ? '/api/tv/catalog' : null, 300000, '', revision);
   const market = useTvResource<TvSnapshot>(ready && !stripsOnly && !viewing && !allStocks && !receiverScreen && view !== 'investments' && view !== 'sessions' && (group !== 'watchlist' || token) ? `/api/tv/snapshot?group=${group}&page=${page}&pageSize=${pageSize}${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
@@ -109,14 +109,14 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     setView(channel); setRouteStrips(false); setDialog(null); setDetail(null); setStory(null);
     setSettings(next); activity.current = Date.now();
   }, [settings]);
-  useTvRemote(() => { if (modal) close(); else setMenuOpen(value => !value); }, interact, modal, action => {
+  useTvRemote(() => { if (accountChoice) return; if (modal) close(); else setMenuOpen(value => !value); }, interact, modal, action => {
     const play = action === 'play' || action === 'toggle' && (stripsOnly || allStocks ? stripsPaused : !pagePlaying);
     if((view==='sessions'||view==='investments'||receiverScreen)&&!stripsOnly){setSettings(value=>({...value,sessionAutoRotate:action==='play'||action==='toggle'&&value.sessionAutoRotate===false}));return;}
     setTickerPlaying(play);
     if (!stripsOnly && !allStocks) setSettings(value => view==='sessions'?{...value,sessionAutoRotate:play}:{...value,autoRotate:play});
   }, command => chooseBroadcast(command.kind === 'channelNumber' ? TV_RECEIVER_CHANNELS[command.number - 1] : nextTvReceiverChannel(view, command.step)));
   useEffect(() => {
-    try { const saved = normalizeTvSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); setSettings(initialAllStocks ? { ...saved, displayMode: 'browse', broadcastChannel: undefined } : saved); if (saved.broadcastChannel && !initialStripsOnly && !initialAllStocks) setView(saved.broadcastChannel); setToken(localStorage.getItem(TOKEN_KEY) || ''); } catch { /* Device storage can be unavailable. */ }
+    try { const saved = normalizeTvSettings(JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); setSettings(initialAllStocks ? { ...saved, displayMode: 'browse', broadcastChannel: undefined } : saved); if (saved.broadcastChannel && !initialStripsOnly && !initialAllStocks) setView(saved.broadcastChannel); const savedToken = localStorage.getItem(TOKEN_KEY) || ''; setToken(savedToken); if (savedToken && !initialAllStocks && !initialStripsOnly) { setAccountChoice(true); setMenuOpen(false); } } catch { /* Device storage can be unavailable. */ }
     try { setSelections(normalizeTvSelections(JSON.parse(localStorage.getItem(TV_SELECTIONS_KEY) || '{}'))); } catch { /* Keep defaults if device storage is corrupt. */ }
     try { setChannels(normalizeTvChannels(JSON.parse(localStorage.getItem(TV_CHANNELS_KEY) || '[]'))); } catch { /* Stored channels may be unavailable. */ }
     const requested = new URLSearchParams(window.location.search).get('channel');
@@ -244,6 +244,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   }, [activeSnapshot, device.data, settings.sound, settings.language]);
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 9000); return () => clearTimeout(timer); }, [message]);
   const linked = useCallback((value: string) => {
+    setGuestMode(false); setAccountChoice(false);
     try { localStorage.setItem(TOKEN_KEY, value); } catch { /* Session remains usable in memory. */ }
     syncLoaded.current = value; setToken(value); setDialog(null); setMenuOpen(false); setGroup('watchlist');
     setSettings(s => ({ ...s, scene: 'watchlist', groups: Array.from(new Set([...s.groups, 'watchlist' as const])) }));
@@ -277,8 +278,18 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const strips = <Suspense fallback={<div className="tv-loading" role="status">{t('loading')}</div>}><TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} revision={revision} paused={stripsPaused || (!stripsOnly && overlayOpen)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} /></Suspense>;
   return <TvMotionOverride.Provider value={explicitPlay}><div ref={root} data-tv-root data-tv-menu-open={menuOpen} data-tv-motion={explicitPlay ? 'play' : undefined} data-tv-view={view} data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${hall || allStocks ? ' tv-hall-screen' : ''}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     <Suspense fallback={null}><TvWelcomeIntro language={settings.language}/></Suspense>
+    {accountChoice && <div className="tv-side-menu-backdrop" style={{zIndex: 10000, display:'flex', alignItems:'center', justifyContent:'center'}}>
+      <section role="dialog" aria-modal="true" aria-label={settings.language === 'ar' ? 'اختيار الحساب' : 'Choose account'} className="tv-side-menu" style={{position:'relative',maxHeight:'85vh',minWidth:'min(90vw,420px)'}}>
+        <h2>{settings.language === 'ar' ? 'من يشاهد الآن؟' : 'Who is watching?'}</h2>
+        <nav className="tv-side-menu-items">
+          <button autoFocus onClick={() => { setGuestMode(false); setAccountChoice(false); setMenuOpen(true); }}><span aria-hidden="true" style={{borderRadius:'50%',padding:12,background:'#d4af6a',color:'#111'}}>●</span><span>{device.data?.device.name || (settings.language === 'ar' ? 'حسابي' : 'My account')}</span></button>
+          <button onClick={() => { setGuestMode(true); setAccountChoice(false); setMenuOpen(true); }}>{settings.language === 'ar' ? 'المشاهدة كضيف' : 'Watch as guest'}</button>
+          <button onClick={() => { setGuestMode(true); setAccountChoice(false); openPair(); }}>{settings.language === 'ar' ? 'إضافة حساب' : 'Add account'}</button>
+        </nav>
+      </section>
+    </div>}
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
-    <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} paired={Boolean(token)} deviceName={device.data?.device.name}
+    <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} paired={Boolean(token) && !guestMode} deviceName={device.data?.device.name}
       onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onBroadcast={chooseBroadcast} onSavedChannel={channel => {
         setSettings(normalizeTvSettings(channel.settings));
         setSelections(normalizeTvSelections(channel.selections));
@@ -287,7 +298,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         setMenuOpen(false);
         setMessage(`${tvText(channel.settings.language, 'channelApplied')}: ${channel.name}`);
       }} onCustomize={() => openMenuDialog('markets')}
-      onSettings={() => openMenuDialog('settings')} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
+      onSettings={() => openMenuDialog('settings')} onAccount={() => { if (token && guestMode) { setGuestMode(false); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
