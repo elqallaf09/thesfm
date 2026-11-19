@@ -311,7 +311,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         setMenuOpen(false);
         setMessage(`${tvText(channel.settings.language, 'channelApplied')}: ${channel.name}`);
       }} onCustomize={() => openMenuDialog('markets')}
-      onSettings={() => openMenuDialog('settings')} onAccount={() => { if (token && guestMode) { setGuestMode(false); setToken(''); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
+      onSettings={() => openMenuDialog('settings')} onSwitchAccount={() => { setToken(''); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => { if (token && guestMode) { setGuestMode(false); setToken(''); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
