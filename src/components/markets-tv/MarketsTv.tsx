@@ -279,7 +279,14 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     <Suspense fallback={null}><TvWelcomeIntro language={settings.language}/></Suspense>
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
     <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} paired={Boolean(token)} deviceName={device.data?.device.name}
-      onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} onChannels={() => openMenuDialog('channels')} onCustomize={() => openMenuDialog('markets')}
+      onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onBroadcast={chooseBroadcast} onSavedChannel={channel => {
+        setSettings(normalizeTvSettings(channel.settings));
+        setSelections(normalizeTvSelections(channel.selections));
+        setView(channel.view || (isTvReceiverChannel(channel.settings.broadcastChannel) ? channel.settings.broadcastChannel : 'markets'));
+        setRouteStrips(channel.settings.displayMode === 'strips');
+        setMenuOpen(false);
+        setMessage(`${tvText(channel.settings.language, 'channelApplied')}: ${channel.name}`);
+      }} onCustomize={() => openMenuDialog('markets')}
       onSettings={() => openMenuDialog('settings')} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
