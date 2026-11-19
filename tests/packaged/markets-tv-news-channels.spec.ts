@@ -35,7 +35,20 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
       for (const button of await nav.locator('button').all()) await expect(button).toBeInViewport({ratio:1});
       await expect(page.locator('.tv-headline-items button').last()).toBeInViewport({ratio:1});
     }
-    if(channel==='shariaNews') await expect(page.locator('.tv-headline-items')).toContainText(receiverText(language,'unclassified'));
+    if(channel==='shariaNews') {
+      const firstCard=page.locator('.tv-headline-items button').first();
+      const screening=firstCard.locator('.tv-news-screening');
+      const fullStatus=receiverText(language,'unclassified');
+      await expect(screening).toHaveText({ar:'غير مصنّف',en:'Unclassified',fr:'Non classé'}[language]);
+      await expect(screening).toHaveAttribute('title',fullStatus);
+      await firstCard.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('dialog').locator('.tv-news-screening')).toHaveText(fullStatus);
+      await expect(page.getByRole('dialog')).toContainText('QA source');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(firstCard).toBeFocused();
+    }
   }
   expect(requested.some(path=>path.includes('snapshot')||path.includes('portfolio'))).toBe(false);
   // Native channel keys traverse the additional channels and wrap to the originals.

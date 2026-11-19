@@ -103,7 +103,7 @@ async function expectCardGeometry(cards: Locator, direction: 'rtl' | 'ltr', view
     const evidence = card.querySelector('.tv-news-evidence')!;
     const thumbBox = thumbnail.getBoundingClientRect(), titleBox = title.getBoundingClientRect();
     const parts = [thumbnail, title, evidence];
-    const name = 'Card ' + (index + 1) + ': ';
+    const name = innerWidth + '×' + innerHeight + ' card ' + (index + 1) + ': ';
     if (bounds.left < -1 || bounds.right > innerWidth + 1 || (viewport && (bounds.top < -1 || bounds.bottom > innerHeight + 1))) violations.push(name + 'outside viewport');
     if (card.scrollHeight > card.clientHeight + 2 || card.scrollWidth > card.clientWidth + 2) violations.push(name + 'card overflow');
     if (thumbBox.width < 24 || thumbBox.height < 18) violations.push(name + 'thumbnail too small');
