@@ -45,15 +45,13 @@ export default function TvWelcomeIntro({ language }: { language: TvLanguage }) {
     if (startup.current === null) startup.current = claimTvWelcome();
     if (startup.current) start(false);
     const replay = () => start(true);
-    const dismiss = (event: Event) => { if (event.defaultPrevented) return; if (event.target instanceof Element && event.target.closest('.sfm-startup-actions') && (event.type === 'pointerdown' || event instanceof KeyboardEvent && ['Enter', ' '].includes(event.key))) return; finish(); };
     window.addEventListener(TV_WELCOME_EVENT, replay);
-    document.addEventListener('keydown', dismiss); document.addEventListener('pointerdown', dismiss);
-    return () => { if (timer.current) clearTimeout(timer.current); stopSound(); window.removeEventListener(TV_WELCOME_EVENT, replay); document.removeEventListener('keydown', dismiss); document.removeEventListener('pointerdown', dismiss); };
+    return () => { if (timer.current) clearTimeout(timer.current); stopSound(); window.removeEventListener(TV_WELCOME_EVENT, replay); };
   }, [start, finish, stopSound]);
   if (!visible) return null;
   const packaged = typeof window !== 'undefined' && tvOrigin() !== window.location.origin;
   return <div key={revision} className="sfm-startup" data-sound={sound} aria-label="THE SFM Markets TV">
     <div className="sfm-startup-brand"><TvBrandMark packaged={packaged}/><strong>THE SFM</strong><span>MARKETS TV</span></div>
-    <div className="sfm-startup-actions">{sound !== 'playing' && sound !== 'unavailable' && <button onClick={event => { event.stopPropagation(); start(true); }}>{text.sound}</button>}{sound === 'unavailable' && <small role="status">{text.unavailable}</small>}<button onClick={finish}>{text.skip}</button></div>
+    <div className="sfm-startup-actions">{sound !== 'playing' && sound !== 'unavailable' && <button onClick={event => { event.stopPropagation(); start(true); }}>{text.sound}</button>}{sound === 'unavailable' && <small role="status">{text.unavailable}</small>}</div>
   </div>;
 }
