@@ -1,0 +1,14 @@
+/* Sparse exchange rows should not show a huge unused marquee or duplicate a lone quote. */
+.tv-market-strip[data-single-quote=true] .tv-market-strip-track{animation:none!important;transform:none!important;will-change:auto;width:100%;min-width:0}
+.tv-market-strip[data-single-quote=true] .tv-market-strip-set{width:100%;min-width:0;flex:1}
+.tv-market-strip[data-single-quote=true] .tv-market-strip-set[aria-hidden=true]{display:none}
+.tv-market-strip[data-single-quote=true] .tv-market-strip-item{flex:1;min-width:0;max-width:none}
+.tv-market-strip[data-single-quote=true] .tv-market-strip-window{min-width:0}
+.tv-market-strip-heading{min-width:0}
+.tv-market-strip-heading .tv-strip-coverage{overflow:hidden;text-overflow:ellipsis}
+.tv-market-strip-window .tv-market-strip-item{min-width:0}
+.tv-market-strip-window .tv-market-strip-item small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:900px){
+ .tv-market-strip{grid-template-columns:minmax(7em,11em) minmax(0,1fr) 2em}
+ .tv-market-strip-heading .tv-strip-coverage{font-size:max(12px,.55em)}
+}
