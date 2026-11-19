@@ -40,11 +40,11 @@
 @media(min-width:761px) and (min-height:801px){
   /* Tall tablet/desktop windows should not turn a 16-market directory into a
      mostly empty full-height sheet. Keep space for the complete TV editor. */
-  .tv-screen .tv-dialog.tv-market-picker-dialog{height:min(92vh,900px)}
+  .tv-screen .tv-dialog.tv-market-picker-dialog{height:min(92vh,max(900px,38em))}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]){grid-auto-rows:minmax(68px,max-content);gap:.5em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]) .tv-market-row{padding:.65em .5em;gap:.5em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]) .tv-picker-identity strong{font-size:max(18px,1em)}
-  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-editor{gap:.4em;padding:.65em}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-editor{gap:.3em;padding:.5em}
 }
 @media(min-width:761px) and (max-width:1100px){
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -70,6 +70,7 @@
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-search input{font-size:14px;line-height:1.35}
   .tv-screen .tv-picker.tv-market-picker-tv button{min-height:24px;padding:1px 3px}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options{grid-column:1;grid-row:2;gap:2px}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options button{padding-inline:.4em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-workspace{display:contents}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list{grid-column:1;grid-row:3}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list[data-many=true]{grid-auto-rows:minmax(22px,max-content);gap:1px}

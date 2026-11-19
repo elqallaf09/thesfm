@@ -100,7 +100,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       const done = page.locator('[data-tv-focus-key="markets-done"]');
       await expect(done).toHaveText(sessionText(language, 'done'));
       await expect(done).toBeFocused();
-      for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [1610, 1293]]) {
+      for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [1610, 1293], [2560, 1440]]) {
         await page.setViewportSize({ width, height });
         for (const index of [0, 16]) {
           await page.locator(`[data-tv-focus-key="market-QA_${index}"]`).click();
@@ -128,7 +128,7 @@ test(`large market directory ${language}: one canvas with full selected names an
   }));
   await page.setViewportSize({ width: 1280, height: 720 });
   await openPicker(page, language, 'light', directory);
-  for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080]]) {
+  for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [2560, 1440]]) {
     await page.setViewportSize({ width, height });
     await page.locator('[data-tv-focus-key="market-QA_80"]').click();
     await expect(page.locator('.tv-market-editor h3')).toHaveText(language === 'ar' ? directory[80].labelAr : language === 'en' ? directory[80].labelEn : directory[80].labelFr);
