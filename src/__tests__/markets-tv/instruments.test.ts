@@ -22,11 +22,11 @@ describe('TV expanded currency feeds', () => {
     const assets = parseForexDirectory({ data: [{ symbol: 'GBP/USD', currency_base: 'Pound', currency_quote: 'Dollar' }, { symbol: 'EUR/USD' }, { symbol: 'EUR/USD' }, { symbol: 'USD/USD' }] });
     expect(assets.map(a => a.symbol)).toEqual(['EUR/USD', 'GBP/USD']);
     const days = parseEcbRates('<gesmes><Cube><Cube time="2026-09-18"><Cube currency="USD" rate="1.2"/><Cube currency="GBP" rate="0.8"/></Cube><Cube time="2026-09-17"><Cube currency="USD" rate="1.1"/><Cube currency="GBP" rate="0.8"/></Cube></Cube></gesmes>');
-    const q = referenceForexQuote(assets[1], days);
+    const q = referenceForexQuote(assets[1], days, now);
     expect(q.price).toBeCloseTo(1.5); expect(q.changePercent).toBeCloseTo(9.0909); expect(q.observedAt).toBe('2026-09-18'); expect(q.source).toBe('ECB · reference');
     expect(quoteStatus(q, now)).toBe('reference');
     expect(q).toMatchObject({ changeBasis: 'reference', issue: undefined });
-    expect(referenceForexQuote({ symbol: 'KWD/USD', name: 'Test' }, days).price).toBeNull();
+    expect(referenceForexQuote({ symbol: 'KWD/USD', name: 'Test' }, days, now).price).toBeNull();
   });
   it('accepts an initial snapshot without view metadata', () => {
     // Responses without view metadata must not match a missing retained snapshot.

@@ -18,6 +18,7 @@ const environment = [
   'SFM_AI_FALLBACK_BASE_URL', 'SFM_AI_FALLBACK_MODEL', 'SFM_AI_FALLBACK_API_KEY',
   'SFM_AI_VISION_BASE_URL', 'SFM_AI_VISION_MODEL', 'SFM_AI_VISION_API_KEY',
   'SFM_AI_VISION_FALLBACK_BASE_URL', 'SFM_AI_VISION_FALLBACK_MODEL', 'SFM_AI_VISION_FALLBACK_API_KEY',
+  'SFM_AI_TIMEOUT_MS',
 ];
 const completion = (text: string, status = 200) => new Response(JSON.stringify({ choices: [{ message: { content: text } }] }), { status });
 
@@ -112,6 +113,34 @@ describe('private AI operational telemetry', () => {
       { reachable: false, reasonCode: 'AI_PROVIDER_TIMEOUT' },
       { reachable: false, reasonCode: 'AI_PROVIDER_TIMEOUT' },
     ]);
+    for (const call of mocks.fetch.mock.calls) expect((call[1] as RequestInit).signal?.aborted).toBe(true);
+  });
+
+  it.each([[undefined, 22_000], [7_000, 7_000]])('uses a bounded attempt budget %s without changing the normal private deadline', async (attemptTimeoutMs, deadline) => {
+    vi.useFakeTimers();
+    mocks.fetch.mockImplementation(async () => ({ ok: true, status: 200, json: () => new Promise(() => undefined) }));
+    let settled = false;
+    const result = generateAssistantReply({ system: 'test', messages: [], correlationId: 'test', attemptTimeoutMs }).then(value => { settled = true; return value; });
+    await vi.advanceTimersByTimeAsync(deadline - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await result).toBeNull();
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect((mocks.fetch.mock.calls[0][1] as RequestInit).signal?.aborted).toBe(true);
+  });
+
+  it('bounds both old-provider nodes to fourteen seconds total when used after OpenAI', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('SFM_AI_FALLBACK_BASE_URL', 'https://fallback.example.test/v1');
+    vi.stubEnv('SFM_AI_FALLBACK_API_KEY', 'fallback-key');
+    mocks.fetch.mockImplementation(async () => ({ ok: true, status: 200, json: () => new Promise(() => undefined) }));
+    const result = generateAssistantReply({ system: 'test', messages: [], correlationId: 'test', attemptTimeoutMs: 7_000 });
+    await vi.advanceTimersByTimeAsync(6_999);
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(7_000);
+    expect(await result).toBeNull();
     for (const call of mocks.fetch.mock.calls) expect((call[1] as RequestInit).signal?.aborted).toBe(true);
   });
 });

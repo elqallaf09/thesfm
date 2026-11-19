@@ -154,10 +154,12 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
     if (assetType !== 'index') return withTvRegionalFallback(asset, primary);
     const quote = await withTvIndexFallback(asset.symbol, primary);
     return { ...quote, displaySymbol: asset.displaySymbol, name: asset.name, nameAr: asset.nameAr || asset.name };
-  }, usStock || assetType === 'forex' ? 30 : 300)
+  // Forex shares a per-minute source budget: reuse each verified pair for the
+  // full minute across viewers and scenes, retaining its actual observation time.
+  }, assetType === 'forex' ? 60 : usStock ? 30 : 300)
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
-  if (tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset)) {
+  if (assetType === 'forex' || tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset)) {
     // Keep slow cold reads alive after the bounded snapshot response so the
     // next refresh can use a verified cached quote. Never extend the UI wait.
     try { after(async () => { await work; }); } catch { /* No request scope in offline callers. */ }

@@ -3,11 +3,13 @@ import { after } from 'next/server';
 import { aiProviderConfigured, aiProviderEnv, generateAssistantReply, type ChatMessage, type GenerationResult } from './aiProvider';
 import type { AiUsageTracking } from './aiUsage';
 import { parseOpenAiTokenUsage, writeOpenAiAdvisorUsage, type OpenAiAdvisorUsage } from './openAiAdvisorUsage';
+import { openAiAdvisorCreditPaused, openAiCreditFailure } from './openAiAdvisorCircuit';
 
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const MAX_INPUT_CHARS = 48_000;
 const MAX_OUTPUT_TOKENS = 2_000;
 const TIMEOUT_MS = 22_000;
+const PRIVATE_FALLBACK_ATTEMPT_MS = 7_000;
 
 type OpenAiConfiguration = { apiKey: string; model: string; organizationId: string | null; projectId: string | null };
 
@@ -57,7 +59,7 @@ function responseText(payload: Record<string, unknown>) {
 }
 
 async function persistFinal(tracking: AiUsageTracking, entry: OpenAiAdvisorUsage) {
-  if (await writeOpenAiAdvisorUsage(tracking, entry)) return;
+  if (await writeOpenAiAdvisorUsage(tracking, entry)) return true;
   // Preserve pending evidence if final recording fails; never call the model again.
   // The retry writes the same owner-bound record and contains no prompt or response text.
   try {
@@ -65,6 +67,7 @@ async function persistFinal(tracking: AiUsageTracking, entry: OpenAiAdvisorUsage
   } catch {
     console.warn('[sfm-openai-advisor] final usage recording unavailable');
   }
+  return false;
 }
 
 export async function generateAdvisorReply(input: {
@@ -82,6 +85,17 @@ export async function generateAdvisorReply(input: {
   if (input.system.length + input.messages.reduce((total, message) => total + message.content.length, 0) > MAX_INPUT_CHARS) return null;
   const requestedTokens = input.maxTokens ?? 1_200;
   const maxOutputTokens = Number.isFinite(requestedTokens) ? Math.min(MAX_OUTPUT_TOKENS, Math.max(256, Math.trunc(requestedTokens))) : 1_200;
+  const privateFallback = () => generateAssistantReply({
+    system: input.system, messages: input.messages, correlationId: input.correlationId,
+    maxTokens: maxOutputTokens, attemptTimeoutMs: PRIVATE_FALLBACK_ATTEMPT_MS,
+  }).catch(() => null);
+  const creditPaused = await openAiAdvisorCreditPaused({
+    userId: input.userId, model: config.model, organizationId: config.organizationId, projectId: config.projectId,
+  });
+  if (creditPaused === null) return null;
+  // This question already consumed the ordinary authenticated daily allowance.
+  // No OpenAI attempt means no fabricated OpenAI usage record for this event.
+  if (creditPaused) return privateFallback();
   const started = Date.now();
   const entry: OpenAiAdvisorUsage = {
     version: 1, application: 'sfm', provider: 'openai', endpoint: 'responses', requestedModel: config.model, model: null,
@@ -98,6 +112,8 @@ export async function generateAdvisorReply(input: {
     timeout.unref?.();
   });
   let result: { text: string; provider: 'openai'; model: string } | null = null;
+  let creditFailure = false;
+  let finalRecorded = false;
   try {
     const request = async () => {
       const response = await fetch(OPENAI_RESPONSES_URL, {
@@ -134,7 +150,9 @@ export async function generateAdvisorReply(input: {
       result = { text, provider: 'openai', model: entry.model ?? config.model };
     } else {
       entry.outcome = response.ok && payload.status === 'incomplete' ? 'incomplete' : 'failure';
-      entry.reasonCode = !response.ok ? `HTTP_${response.status}` : payload.status === 'incomplete' ? 'RESPONSE_INCOMPLETE' : 'RESPONSE_UNAVAILABLE';
+      const creditReason = openAiCreditFailure(response.status, payload);
+      creditFailure = creditReason !== null;
+      entry.reasonCode = creditReason ?? (!response.ok ? `HTTP_${response.status}` : payload.status === 'incomplete' ? 'RESPONSE_INCOMPLETE' : 'RESPONSE_UNAVAILABLE');
     }
   } catch {
     entry.outcome = 'failure';
@@ -143,7 +161,10 @@ export async function generateAdvisorReply(input: {
     if (timeout) clearTimeout(timeout);
     entry.completedAt = new Date().toISOString();
     entry.latencyMs = Date.now() - started;
-    await persistFinal(tracking, entry);
+    finalRecorded = await persistFinal(tracking, entry);
   }
+  // Retain the attempted request's actual usage before trying the old provider.
+  // Generic throttles, timeouts and accounting failures never trigger this path.
+  if (creditFailure && finalRecorded) return privateFallback();
   return result;
 }
