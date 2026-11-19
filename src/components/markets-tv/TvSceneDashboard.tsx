@@ -1,11 +1,12 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, LayoutGrid, List, RefreshCw } from 'lucide-react';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
-import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
+import { tvQuotePrice, tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
-import { tvSceneChange, tvSceneHasPrice, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { tvSceneChange, tvSceneHasPrice, tvSceneQuoteUnit, tvSceneText, tvStripRetryAt } from '@/lib/markets-tv/scene-display';
+import { tvSceneHasComparableChange, tvSceneQuoteKey as quoteKey, tvSceneQuotes } from '@/lib/markets-tv/scene-quotes';
 import { TvQuoteEvidence as QuoteEvidence } from './TvQuoteEvidence';
 import { TvOverview } from './TvOverview';
 import { TvWholeTicker as SceneTicker } from './TvWholeTicker';
@@ -21,10 +22,8 @@ type Props = {
   onPair: () => void; onRefresh: () => void; onTickerPause: () => void;
 };
 
-function quoteKey(quote: TvQuote) { return `${quote.exchange || ''}:${quote.symbol}:${quote.currency || ''}`; }
-
 function QuoteChange({ quote, language }: { quote: TvQuote; language: TvLanguage }) {
-  const change = tvSceneHasPrice(quote) ? quote.changePercent : null;
+  const change = tvSceneHasPrice(quote) && Number.isFinite(quote.changePercent) ? quote.changePercent : null;
   const basis = quote.changeBasis === '24h' ? 'day' : quote.changeBasis === 'session' ? 'session'
     : quote.changeBasis === 'reference' ? 'referenceBasis' : 'unknownBasis';
   return <span className="tv-scene-change" data-trend={change === null || change === 0 ? 'flat' : change > 0 ? 'up' : 'down'}>
@@ -45,53 +44,47 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
 
 export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, sessionIds, snapshot, loading, error, language, now, news, newsLoading, newsError, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
   const [view, setView] = useState<'list' | 'heatmap'>('list');
+  const listButton = useRef<HTMLButtonElement>(null);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(language, key);
-  const { summaries, rows, all, tickerQuotes } = useMemo(() => {
-    const summaries = snapshot?.summary?.slice(0, overview ? 6 : 4) ?? snapshot?.quotes.slice(0, overview ? 6 : 4) ?? [];
-    const snapshotRows = snapshot?.summary ? snapshot.quotes.slice(0, 6) : snapshot?.quotes.slice(4, 10) ?? [];
-    const rows = watchlist && !snapshotRows.length ? summaries : snapshotRows;
-    const all = Array.from(new Map([...summaries, ...rows].map(quote => [quoteKey(quote), quote])).values());
-    return {
-      summaries, rows, all,
-      tickerQuotes: all.filter(tvSceneHasPrice),
-    };
-  }, [snapshot, watchlist, overview]);
-  const summariesRepeatRows = watchlist && summaries.length > 0 && summaries.every(summary => rows.some(row => quoteKey(row) === quoteKey(summary)));
+  const { summaries, rows, all, tickerQuotes } = useMemo(() => tvSceneQuotes(snapshot, overview, watchlist), [snapshot, watchlist, overview]);
   const emptyWatchlist = watchlist && Boolean(snapshot) && all.length === 0;
-  const rowsPriced = rows.some(tvSceneHasPrice);
-  const heatmap = rows.filter(quote => tvSceneHasPrice(quote) && quote.changePercent !== null && Number.isFinite(quote.changePercent)
-    && ['session','24h'].includes(quote.changeBasis||'')
-    && ['available', 'delayed', 'closed'].includes(quoteStatus(quote, now)));
-  const showHeatmap = view === 'heatmap' && heatmap.length > 0;
+  const rowsPriced = rows.length > 0;
+  const heatmap = rows.filter(quote => tvSceneHasComparableChange(quote, now));
+  const retryAt = tvStripRetryAt(all, snapshot?.retryAt, now);
 
   if (watchlist && !linked) return <main className="tv-viewing-empty"><h1>{t('linkForWatchlist')}</h1><button onClick={onPair}>{t('pair')}</button></main>;
 
   return <>
     {error && <div className="tv-scene-notice" role="status"><span>{snapshot ? s('retainedDuringRetry') : t('error')}</span><button onClick={onRefresh}><RefreshCw aria-hidden="true"/>{t('retry')}</button></div>}
     {overview ? <TvOverview sessionIds={sessionIds} quotes={all} language={language} now={now} news={news} loading={loading} onQuote={onQuote} onStory={onStory} onRefresh={onRefresh}/> : <main className="tv-scene-body" aria-busy={loading && !snapshot} data-news-many={news.length > 4}>
-    {!summariesRepeatRows && <section className="tv-scene-summaries" aria-label={t('markets')} aria-busy={loading && !snapshot}>
-      {summaries.filter(tvSceneHasPrice).map(quote => <SummaryQuote key={quoteKey(quote)} quote={quote} language={language} now={now} select={onQuote}/>)}
+    {(summaries.length > 0 || !snapshot && !watchlist) && <section className="tv-scene-summaries" aria-label={t('markets')} aria-busy={loading && !snapshot}>
+      {summaries.map(quote => <SummaryQuote key={quoteKey(quote)} quote={quote} language={language} now={now} select={onQuote}/>)}
       {!summaries.length && (loading ? Array.from({ length: 4 }, (_, index) => <div key={index} className="tv-scene-summary tv-scene-skeleton" aria-hidden="true"><span/><span/><span/></div>)
         : <p className="tv-scene-summary-empty">{s('noSummaries')}</p>)}
     </section>}
       <section className="tv-scene-quotes" aria-labelledby="tv-scene-quotes-title">
-        <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s('marketSample')}</p></div>
+        <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s(watchlist ? 'watchlistPrices' : 'marketSample')}</p></div>
           <div className="tv-scene-view-buttons" role="group" aria-label={t('layout')}>
-            <button onClick={() => setView('list')} aria-pressed={view === 'list'} aria-label={s('quoteList')} data-tv-focus-key="scene-list"><List aria-hidden="true"/></button>
-            <button onClick={() => setView('heatmap')} aria-pressed={view === 'heatmap'} aria-label={s('heatmap')} data-tv-focus-key="scene-heatmap"><LayoutGrid aria-hidden="true"/></button>
+            <button ref={listButton} onClick={() => setView('list')} aria-pressed={view === 'list'} aria-label={s('quoteList')} data-tv-focus-key="scene-list"><List aria-hidden="true"/><span>{s('quoteList')}</span></button>
+            <button onClick={() => setView('heatmap')} aria-pressed={view === 'heatmap'} aria-label={s('heatmap')} data-tv-focus-key="scene-heatmap"><LayoutGrid aria-hidden="true"/><span>{s('heatmap')}</span></button>
           </div>
         </div>
-        {view==='heatmap'&&!showHeatmap&&Boolean(snapshot)&&<p className="tv-scene-map-notice" role="status"><span>{s('noHeatmap')}</span> · {s('quoteList')}</p>}
-        {loading && !snapshot ? <div className="tv-scene-loading" role="status"><RefreshCw className="tv-spin" aria-hidden="true"/><span>{t('loading')}</span></div> : showHeatmap ? <>
+        {loading && !snapshot ? <div className="tv-scene-loading" role="status"><RefreshCw className="tv-spin" aria-hidden="true"/><span>{t('loading')}</span></div> : view === 'heatmap' ? <>
           {heatmap.length ? <div className="tv-scene-heatmap">{heatmap.map(quote => <button key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`heatmap:${quoteKey(quote)}`} data-trend={quote.changePercent! > 0 ? 'up' : quote.changePercent! < 0 ? 'down' : 'flat'}>
             <TvAssetIcon quote={quote}/><span className="tv-scene-heatmap-name">{language === 'ar' ? quote.nameAr : quote.name}</span><strong dir="ltr">{quote.displaySymbol || quote.symbol}</strong>
             <span className="tv-scene-heatmap-price" dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote,language)}</small></span><QuoteChange quote={quote} language={language}/><QuoteEvidence quote={quote} language={language} now={now}/>
-          </button>)}</div> : <div className="tv-scene-no-data"><p>{emptyWatchlist ? t('emptyWatchlist') : s('noHeatmap')}</p>{rows.length > 0 && <button onClick={() => setView('list')}>{s('quoteList')}</button>}</div>}
+          </button>)}</div> : <div className="tv-scene-no-data">
+            <h3 role="status">{emptyWatchlist ? t('emptyWatchlist') : s('noHeatmap')}</h3>
+            {rowsPriced && <p>{s('heatmapNeedsChanges')}</p>}
+            <div className="tv-scene-empty-actions">{rowsPriced && <button onClick={() => { setView('list'); listButton.current?.focus(); }} data-tv-focus-key="scene-show-quotes"><List aria-hidden="true"/>{s('viewQuotes')}</button>}
+              {!emptyWatchlist && <button onClick={onRefresh} disabled={loading || Boolean(retryAt)} data-tv-focus-key="scene-map-refresh"><RefreshCw aria-hidden="true"/>{t(loading ? 'loading' : 'retry')}</button>}</div>
+            {retryAt && <small>{s('retryAfter')} <time dateTime={retryAt} dir="ltr">{tvQuoteTime(retryAt, language, now)}</time></small>}
+          </div>}
         </> : rowsPriced ? <div className="tv-scene-table" data-empty={!rowsPriced}>
           <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span>{rowsPriced ? <><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></> : <span>{t('provider')}</span>}</div>
-          <div className="tv-scene-rows" data-sparse={rows.filter(tvSceneHasPrice).length <= 3}>{rows.filter(tvSceneHasPrice).map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
-            <span className="tv-scene-identity"><TvAssetIcon quote={quote}/><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong><span dir="ltr">{quote.displaySymbol || quote.symbol}</span></span>
+          <div className="tv-scene-rows" data-sparse={rows.length <= 3}>{rows.map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
+            <span className="tv-scene-identity"><TvAssetIcon quote={quote}/><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong>{(language === 'ar' ? quote.nameAr : quote.name) !== (quote.displaySymbol || quote.symbol) && <span dir="ltr">{quote.displaySymbol || quote.symbol}</span>}</span>
             {tvSceneHasPrice(quote) && <><span className="tv-scene-price" dir="ltr"><strong>{tvQuotePrice(quote)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
               <QuoteChange quote={quote} language={language}/></>}<QuoteEvidence quote={quote} language={language} now={now}/>
           </button>)}</div>

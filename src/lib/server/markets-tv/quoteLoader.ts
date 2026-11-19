@@ -17,6 +17,7 @@ import type { TvAsset } from './catalog';
 import { cryptoTvQuotes, forexTvQuote } from './instruments';
 import { tvProviderFailure } from './quoteAvailability';
 import { finnhubUsMarketOpen } from './finnhubMarketStatus';
+import { verifiedFinnhubUsListing } from './finnhubListing';
 import { cachedTvQuote } from './quoteCache';
 import { withTvIndexFallback } from './indexFallback';
 import { withTvRegionalFallback } from './regionalFallback';
@@ -139,15 +140,19 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   if (!row) return regionalFailure || { ...empty(asset), ...tvProviderFailure(attempts) };
   const resolvedType = assetType || (row.assetType === 'gold' ? 'commodity' : row.assetType === 'etf' ? 'stock' : row.assetType);
   if (!tvQuoteIdentityMatches({ ...asset, assetType: resolvedType }, row)) return empty(asset, 'identity_mismatch');
-  const marketOpen = row.provenance.upstreamProvider === 'finnhub' && knownUsStock ? await finnhubUsMarketOpen() : null;
+  const usListing = await verifiedFinnhubUsListing(asset, row).catch(() => null);
+  const marketOpen = usListing && row.provenance.observedAt && Number.isFinite(Date.parse(row.provenance.observedAt))
+    && !['date', 'unknown'].includes(row.provenance.observation?.precision || '') ? await finnhubUsMarketOpen() : null;
   const observedRow = marketOpen === null ? row : { ...row, provenance: { ...row.provenance,
     observation: { precision: row.provenance.observedAt ? 'instant' as const : 'unknown' as const, marketOpen } } };
   const result = toTvQuote(asset.symbol, observedRow, asset.nameAr);
   const retainedFailure = row.provenance.cached && attempts.some(attempt => attempt.provider === row.provenance.upstreamProvider)
     ? tvProviderFailure(attempts) : {};
-  const quote = { ...result, ...retainedFailure, displaySymbol: asset.displaySymbol, name: asset.name || row.name || asset.symbol,
-    nameAr: asset.nameAr || row.name || asset.name, currency: result.currency || asset.currency || null,
-    country: asset.country || result.country, exchange: asset.exchange || asset.region || result.exchange,
+  const hasName = (value: string | null | undefined) => Boolean(value?.trim() && value.trim().toUpperCase() !== asset.symbol.toUpperCase());
+  const name = hasName(asset.name) ? asset.name : hasName(row.name) ? row.name! : usListing?.name || asset.name || asset.symbol;
+  const quote = { ...result, ...retainedFailure, displaySymbol: asset.displaySymbol, name,
+    nameAr: hasName(asset.nameAr) ? asset.nameAr! : name, currency: result.currency || asset.currency || null,
+    country: asset.country || result.country || usListing?.country || null, exchange: asset.exchange || asset.region || result.exchange || usListing?.exchange || null,
     ...(result.price === null ? { issue: 'invalid_quote' as const } : {}),
   };
   quote.status = quoteStatus(quote);

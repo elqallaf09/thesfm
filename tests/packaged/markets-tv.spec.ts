@@ -61,6 +61,10 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await openTv(page, language);
+    const viewLabels = language === 'ar' ? ['الأسعار', 'خريطة التغيّر']
+      : language === 'fr' ? ['Cours', 'Carte des variations'] : ['Quotes', 'Change map'];
+    await expect(page.locator('[data-tv-focus-key="scene-list"]')).toHaveText(viewLabels[0]);
+    await expect(page.locator('[data-tv-focus-key="scene-heatmap"]')).toHaveText(viewLabels[1]);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [3840, 2160]]) {
       await page.setViewportSize({ width, height });
       await containedContent(page, '.tv-scene-row');
@@ -96,9 +100,54 @@ test('heatmap excludes stale closed quotes without dropping the saved quote list
   await page.reload();await closeTvMenu(page);
   await heatmap.click();
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
-  await expect(page.locator('.tv-scene-map-notice')).toBeVisible();
+  await expect(page.locator('.tv-scene-no-data')).toContainText('Not enough verified changes for the map');
+  await expect(page.locator('.tv-scene-table')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-row')).toHaveCount(0);
+  await page.locator('[data-tv-focus-key="scene-show-quotes"]').focus();
+  await page.keyboard.press('Enter');
   await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(page.locator('[data-tv-focus-key="scene-list"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.tv-scene-row').first()).toContainText('342.32');
+  await expect(page.locator('.tv-scene-row time').first()).toHaveAttribute('datetime', observedAt);
+  await expect(page.locator('.tv-scene-row time').last()).toHaveAttribute('datetime', observedAt);
 });
+
+for (const { language, theme, showQuotes } of [
+  { language: 'ar', theme: 'dark', showQuotes: 'عرض الأسعار' },
+  { language: 'en', theme: 'light', showQuotes: 'View quotes' },
+  { language: 'fr', theme: 'light', showQuotes: 'Voir les cours' },
+] as const) {
+  test(`same-day retained midnight quotes stay dated in ${language}/${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openTv(page, language, { theme, autoRotate: false });
+    const retained = snapshot();
+    retained.quotes = retained.quotes.map(quote => ({ ...quote, status: 'stale', issue: 'timeout' }));
+    await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: retained }));
+    await page.reload();
+    await closeTvMenu(page);
+    const rows = page.locator('.tv-scene-row');
+    await expect(rows).toHaveCount(6);
+    // Midnight is a real Kuwait time. Its date makes the retained observation
+    // explicit even though the quote and viewer are on the same local day.
+    await expect(rows.first().locator('time')).toHaveText('2026-11-03 · 00:00');
+    await expect(rows.first().locator('time')).toHaveAttribute('datetime', observedAt);
+    await expect(rows.first().locator('.tv-status')).toHaveAttribute('data-status', 'stale');
+    await containedContent(page, '.tv-scene-row');
+    await page.locator('[data-tv-focus-key="scene-heatmap"]').click();
+    await expect(page.locator('.tv-scene-no-data')).toBeVisible();
+    await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
+    await expect(rows).toHaveCount(0);
+    const returnToQuotes = page.locator('[data-tv-focus-key="scene-show-quotes"]');
+    await expect(returnToQuotes).toHaveText(showQuotes);
+    await returnToQuotes.focus();
+    await page.keyboard.press('Enter');
+    await expect(rows).toHaveCount(6);
+    await expect(rows.first()).toContainText('342.32');
+    await expect(rows.first()).toContainText('Verified test source');
+    await expect(rows.first().locator('time')).toHaveText('2026-11-03 · 00:00');
+    await expect(rows.last().locator('time')).toHaveAttribute('datetime', observedAt);
+  });
+}
 
 test('remote reaches every clipped row and restores focus after quote details', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 540 });

@@ -191,12 +191,12 @@ export function tvQuotePrice(quote: Pick<TvQuote, 'price' | 'currency' | 'exchan
 
 // Compare days in the displayed timezone, not the device timezone or UTC.
 const quoteDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuwait', year: 'numeric', month: '2-digit', day: '2-digit' });
-export function tvQuoteTime(value: string | null, language: TvLanguage, now: number) {
+export function tvQuoteTime(value: string | null, language: TvLanguage, now: number, includeDate = false) {
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const instant = new Date(value);
   const time = tvTime(value, language);
-  if (Number.isFinite(now) && now > 0 && quoteDay.format(instant) === quoteDay.format(now)) return time;
+  if (!includeDate && Number.isFinite(now) && now > 0 && quoteDay.format(instant) === quoteDay.format(now)) return time;
   // Keep the full date for an older observation, including its year.
   const parts = quoteDay.formatToParts(instant);
   const part = (type: string) => parts.find(value => value.type === type)?.value;
