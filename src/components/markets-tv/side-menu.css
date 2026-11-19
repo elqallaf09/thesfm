@@ -45,7 +45,7 @@
   min-height: 2em;
   padding: .25em .65em;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--tv-text);
   font: inherit;
