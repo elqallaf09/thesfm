@@ -1,5 +1,5 @@
 import type { ProviderAttemptFailure } from '@/lib/market/marketDataProviders';
-import type { TvQuote } from '@/lib/markets-tv/types';
+import type { TvGroup, TvQuote } from '@/lib/markets-tv/types';
 
 export function tvProviderFailure(attempts: ProviderAttemptFailure[]): Pick<TvQuote, 'issue' | 'retryAt'> {
   const limited = attempts.filter(attempt => attempt.code === 'RATE_LIMITED');
@@ -15,9 +15,11 @@ export function tvProviderFailure(attempts: ProviderAttemptFailure[]): Pick<TvQu
   return { issue: 'provider_unavailable' };
 }
 
-/** A blocked source cannot suspend another provider's healthy quote stream. */
-export function tvSnapshotRetryAt(quotes: TvQuote[], now = Date.now()): string | undefined {
-  if (quotes.some(quote => !quote.issue && quote.price !== null && Number.isFinite(quote.price) && quote.price > 0)) return undefined;
+/** Forex pairs share one primary account, including when a reference fallback
+ * supplies prices. Mixed-market snapshots must keep their healthy feeds moving.
+ */
+export function tvSnapshotRetryAt(quotes: TvQuote[], now = Date.now(), group?: TvGroup): string | undefined {
+  if (group !== 'forex' && quotes.some(quote => !quote.issue && quote.price !== null && Number.isFinite(quote.price) && quote.price > 0)) return undefined;
   const next = quotes.map(quote => Date.parse(quote.retryAt || '')).filter(time => Number.isFinite(time) && time > now);
   return next.length ? new Date(Math.min(...next)).toISOString() : undefined;
 }

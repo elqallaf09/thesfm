@@ -66,6 +66,9 @@ export const TV_SCENE_TEXT = {
   timeout: ['انتهت مهلة المصدر', 'Source timed out', 'Délai de la source dépassé'],
   identityMismatch: ['تعذر تأكيد هوية الأداة', 'Instrument identity could not be verified', 'Identité du titre non vérifiée'],
   rateLimited: ['حد الطلبات لدى المصدر', 'Source request limit reached', 'Limite de requêtes de la source atteinte'],
+  currencyUpdatesPaused: ['تحديث أسعار العملات متوقف مؤقتًا', 'Currency quote updates are temporarily paused', 'Actualisation des devises temporairement suspendue'],
+  currencyUpdatesPartial: ['بعض أسعار العملات بانتظار التحديث', 'Some currency quotes are awaiting updates', 'Certains cours de devises attendent une mise à jour'],
+  automaticRetryAfter: ['المحاولة التلقائية بعد', 'Automatic retry after', 'Nouvelle tentative automatique après'],
   accessDenied: ['رفض المصدر طلب البيانات', 'Source access denied', 'Accès à la source refusé'],
   notConfigured: ['مصدر السوق غير مهيأ', 'Market source is not configured', 'Source du marché non configurée'],
   invalidQuote: ['سعر أو وحدة غير صالحين', 'Invalid price or unit', 'Cours ou unité non valide'],
@@ -103,8 +106,21 @@ export function tvSceneIssue(issue: string | undefined): TvSceneTextKey {
   return issue ? keys[issue] || 'sourceUnavailable' : 'sourceUnavailable';
 }
 
-/** Keep an unavailable strip from scanning another batch during provider cooldown. */
-export function tvStripSourceCooling(quotes: TvQuote[], retryAt: string | null | undefined, now: number) {
-  return Boolean(retryAt && Date.parse(retryAt) > now)
-    || quotes.length > 0 && quotes.every(quote => quote.issue === 'rate_limited');
+/** A retry deadline is never a quote observation or a promise of recovery. */
+export function tvStripRetryAt(quotes: TvQuote[], retryAt: string | null | undefined, now: number): string | null {
+  return [retryAt, ...quotes.map(quote => quote.retryAt)].reduce<string | null>((earliest, value) => {
+    if (!value || !(Date.parse(value) > now)) return earliest;
+    return !earliest || Date.parse(value) < Date.parse(earliest) ? value : earliest;
+  }, null);
+}
+
+/** Keep scanning bounded while a source waits, then allow the expired batch to recover. */
+export function tvStripSourceCooling(quotes: TvQuote[], retryAt: string | null | undefined, now: number, group?: TvGroup) {
+  if (retryAt && Date.parse(retryAt) > now) return true;
+  // Forex pairs share one source budget, including a partial/reference response.
+  // Other mixed-provider groups must keep their healthy price streams updating.
+  if (group === 'forex' && tvStripRetryAt(quotes, retryAt, now)) return true;
+  if (!quotes.length || !quotes.every(quote => quote.issue === 'rate_limited')) return false;
+  const deadlines = [retryAt, ...quotes.map(quote => quote.retryAt)].map(value => Date.parse(value || '')).filter(Number.isFinite);
+  return !deadlines.length || deadlines.some(deadline => deadline > now);
 }

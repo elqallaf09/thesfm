@@ -32,7 +32,8 @@ export type TvMarket = { id: string; group: TvGroup; labelAr: string; labelEn: s
 export type TvSnapshot = {
   page?: number; pageSize?: number; directoryTotal?: number; selectionTotal?: number; market?: string;
   scene?: TvScene; summary?: TvQuote[];
-  /** Earliest blocked-provider retry; omitted while any healthy quote needs updates. */
+  /** Earliest blocked-provider retry. Mixed feeds keep healthy sources updating;
+   * Forex retains the shared account deadline even when reference prices exist. */
   retryAt?: string | null;
   /** total/available describe quotes only; summary is separate and never duplicated. */
   group: TvGroup; quotes: TvQuote[]; generatedAt: string; available: number; total: number;

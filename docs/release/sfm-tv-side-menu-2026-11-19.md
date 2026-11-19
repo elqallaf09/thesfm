@@ -15,7 +15,9 @@ brand identity and Kuwait time. It contains no hidden replacement toolbar.
 
 - Build on the illustrated-news and single-page customization candidate from
   PR #373 (`2223e8b06673209258beb3a0a63054ba9de327cf`) and incorporate current
-  main `20863a6f71fe9c7c76c307d9aae1696cd9c88750`.
+  main `ff14c1ebc6761ddb890344da62e0371b8e38f307`, including PR #375's
+  Forex recovery. Preserve the drawer's pause/focus behavior and readable,
+  non-duplicating strips alongside Forex cooldown and retry information.
 - Keep all nine primary destinations, user channels, customization and settings
   in the drawer. Remaining scenes, market brief/map, playback, refresh,
   fullscreen and welcome replay are labelled in Screen tools. All 25 receiver
@@ -57,14 +59,25 @@ two delayed sign-out/re-pair cases and two deep-link unit cases. The original
 assertions for complete prices, evidence and focus remain in place. Current
 candidate status and exact-head evidence are recorded in PR #376.
 
+Follow-up candidate `3d6fc249895ef005bd20c229c74f332ad225dd7b` passed all
+169 packaged browser cases and Android debug/release/bundle/lint tasks in
+run 44519571255. All seven prerequisite required CI checks passed, including
+4532 unit/integration cases and 107 engine tests. Its final shared smoke job
+started while the Forex update landed on main. The combined candidate must
+pass its own required checks before merge; these earlier results are not
+substituted for that gate.
+
 Local Chromium cannot create its process-singleton socket in this environment;
 it aborts before navigation. Browser verification must come from the existing
 GitHub Actions gates. No local browser or physical-device pass is claimed.
 The candidate remains a draft until exact-head CI, browser layout, production
 build/budget and Android packaging checks complete.
 
-Android candidate: version 1.0.23, build 29. No application ID, signing identity,
-provider, database migration or authentication authorization policy is changed.
+Android combined candidate: version 1.0.24, build 30. The preceding version
+1.0.23 / build 29 was delivered as a test APK. The package ID and signing
+configuration remain unchanged, but CI debug signatures do not establish
+compatibility with the APK currently installed on the owner's device. The
+sidebar adds no provider, database migration or authentication policy change.
 An installed APK needs a new binary to receive this bundled interface; a web
 deployment alone does not update it. Store release and physical-device checks
 are separate from this candidate.
