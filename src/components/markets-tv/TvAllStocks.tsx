@@ -48,7 +48,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
     {(directory.error || quotes.error) && <div className="tv-hall-error" role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></div>}
     <section className="tv-hall-market-table"><TvQuoteTable items={items} markets={markets} quotes={quotes.data?.quotes ?? []} language={language} now={now} loading={directory.loading || quotes.loading} emptyReason={directory.error || quotes.error ? 'error' : undefined} select={onQuote}/></section>
     <div className="tv-stock-pagination"><button disabled={page === 0 || directory.loading} onClick={() => setPage(value => value - 1)} aria-label={tvText(language, 'previous')} data-tv-focus-key="stocks-previous">{language === 'ar' ? <ChevronRight/> : <ChevronLeft/>}{tvText(language, 'previous')}</button><span dir="ltr">{page + 1} / {pages.toLocaleString('en-US')}</span><button disabled={page >= pages - 1 || directory.loading} onClick={() => setPage(value => value + 1)} aria-label={tvText(language, 'next')} data-tv-focus-key="stocks-next">{tvText(language, 'next')}{language === 'ar' ? <ChevronLeft/> : <ChevronRight/>}</button></div>
-    <TvHeadlineBand newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} news={news} language={language} paused={newsPaused} onStory={onStory}/>
+    <TvHeadlineBand now={now} newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} news={news} language={language} paused={newsPaused} onStory={onStory}/>
     {ticker && <TvQuoteMarquee quotes={quotes.data?.quotes ?? []} language={language} now={now} paused={paused} speed={speed} select={onQuote} toggle={onTickerPause}/>}
   </main>;
 }

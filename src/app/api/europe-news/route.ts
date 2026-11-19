@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import { safePublicHttpUrl } from '@/lib/market-news/security';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { europeMarketDataToApiMarkets, fetchEuropeDelayedMarketData } from '@/lib/europe/fetchEuropeDelayedMarketData';
 import { EUROPE_MARKETS, type EuropeMarketId } from '@/lib/europe/europeMarkets';
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
     publishedAt: story.publishedAt,
     updatedAt: story.latestUpdatedAt,
     url: story.originalUrl,
+    imageUrl: safePublicHttpUrl(story.imageUrl),
     isOfficial: story.isOfficial,
     sourceReliability: story.sourceReliability,
     verificationStatus: story.verificationStatus,

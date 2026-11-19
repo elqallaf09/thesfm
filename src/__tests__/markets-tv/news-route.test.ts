@@ -30,4 +30,20 @@ describe('TV receiver news endpoint', () => {
     expect(params.languages).toBeUndefined(); expect(params.query).toBeUndefined();
     expect(await response.json()).toMatchObject({ channel: 'technology', stories: [{ title: 'Technology company earnings', source: 'QA source' }] });
   });
+  it.each(['all', 'technology', 'kuwait'])('preserves safe provider photos in the %s feed and keeps imageless articles', async channel => {
+    const sourceStory = { id: 'photo', title: 'Market update', sourceName: 'QA source', originalUrl: 'https://example.com/story', publishedAt: '2026-11-07T00:00:00Z' };
+    const imageUrl = 'https://images.example.com/market.jpg';
+    mocks.aggregate.mockResolvedValue({ stories: [
+      { ...sourceStory, imageUrl },
+      { ...sourceStory, id: 'missing', imageUrl: null },
+      { ...sourceStory, id: 'invalid', imageUrl: 'javascript:alert(1)' },
+      { ...sourceStory, id: 'credentials', imageUrl: 'https://user:password@images.example.com/market.jpg' },
+    ] });
+    const response = await GET(new Request(`https://example.com/api/tv/news?channel=${channel}`));
+    const data = await response.json();
+    expect(data.channel).toBe(channel);
+    expect(data.stories).toHaveLength(4);
+    expect(data.stories[0]).toEqual({ id: 'photo', title: sourceStory.title, source: sourceStory.sourceName, publishedAt: sourceStory.publishedAt, url: sourceStory.originalUrl, imageUrl });
+    for (const item of data.stories.slice(1)) expect(item).not.toHaveProperty('imageUrl');
+  });
 });

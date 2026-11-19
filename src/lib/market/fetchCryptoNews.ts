@@ -1,4 +1,5 @@
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import { safePublicHttpUrl } from '@/lib/market-news/security';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { isNewsTranslationEnabled, normalizeNewsLanguage, translateNewsItems, type AppNewsLanguage } from '@/lib/translation/translateNewsText';
 
@@ -17,6 +18,7 @@ export type CryptoNewsItem = {
   publishedAt: string;
   updatedAt?: string | null;
   url: string;
+  imageUrl?: string | null;
   categories: CryptoNewsCategory[];
   symbols: CryptoNewsSymbol[];
   isTranslated?: boolean;
@@ -98,6 +100,7 @@ export async function fetchCryptoNews(languageInput?: string | null) {
     publishedAt: story.publishedAt,
     updatedAt: story.latestUpdatedAt,
     url: story.originalUrl,
+    imageUrl: safePublicHttpUrl(story.imageUrl),
     categories: categoriesFor(story),
     symbols: story.symbols.filter((symbol): symbol is CryptoNewsSymbol => SYMBOLS.has(symbol as CryptoNewsSymbol)),
     verificationStatus: story.verificationStatus,

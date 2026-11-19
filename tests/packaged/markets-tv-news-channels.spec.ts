@@ -26,6 +26,7 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
     await expect(page.locator('.tv-receiver-heading h1')).toHaveText(receiverText(language,channel));
     const path=TV_NEWS_FEEDS[channel], parsed=new URL(path,'https://www.the-sfm.com');
     const label=parsed.searchParams.get('topic')||parsed.pathname.match(/\/([a-z]+)-stocks\/news/)?.[1]||parsed.pathname;
+    await expect(page.locator('.tv-headline-items button')).toHaveCount(24);
     await expect(page.locator('.tv-headline-items button').first()).toContainText(label);
     for(const [width,height] of [[960,540],[1920,1080]]) {
       await page.setViewportSize({width,height});
@@ -44,10 +45,17 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','cyclicalNews');
   await expect(nav.locator('[aria-pressed=true]')).toHaveAttribute('data-tv-focus-key','channel:cyclicalNews');
   await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
-  const pause=page.locator('.tv-receiver-actions button[aria-pressed]');await pause.click();await pause.click();
-  const first=(await page.locator('.tv-headline-items button').first().textContent())!;
-  await page.clock.runFor(39999);await expect(page.locator('.tv-headline-items button').first()).toHaveText(first);
-  await page.clock.runFor(1);await expect(page.locator('.tv-headline-items button').first()).not.toHaveText(first);
-  await pause.click();const held=(await page.locator('.tv-headline-items button').first().textContent())!;
-  await page.clock.runFor(80000);await expect(page.locator('.tv-headline-items button').first()).toHaveText(held);
+  const cards=page.locator('.tv-headline-items button');
+  await expect(cards).toHaveCount(24);
+  await expect(page.locator('.tv-news-desk .tv-broadcast-pager')).toHaveCount(0);
+  const headlines=await cards.locator('.tv-news-title').allTextContents();
+  await cards.last().focus();
+  await page.clock.runFor(80000);
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await expect(cards.last()).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText(headlines[headlines.length-1]);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(cards.last()).toBeFocused();
 });

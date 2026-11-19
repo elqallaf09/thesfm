@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import { safePublicHttpUrl } from '@/lib/market-news/security';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchYahooChartQuote } from '@/lib/market/fetchYahooQuote';
 import {
@@ -72,6 +73,7 @@ function rawUiItem(story: ConsolidatedNewsStory) {
     publishedAt: story.publishedAt,
     updatedAt: story.latestUpdatedAt,
     url: story.originalUrl,
+    imageUrl: safePublicHttpUrl(story.imageUrl),
     symbols: story.symbols,
     companyNames: story.companyNames,
     countries: story.countries,

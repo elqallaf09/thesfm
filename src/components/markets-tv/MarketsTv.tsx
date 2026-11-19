@@ -12,7 +12,7 @@ import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/l
 const TvMarketStrips = lazy(() => import('./TvMarketStrips').then(module => ({ default: module.TvMarketStrips })));
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
-import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
+import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
 import { TvQr } from './TvQr';
 import { useTvResource, useTvScenePrefetch } from './useTvResource';
 import { useTvRemote } from './useTvRemote';
@@ -29,6 +29,7 @@ import { TvDataNotice } from './TvDataNotice';
 import { TvHeader } from './TvHeader';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
 import { TvHeadlines } from './TvSceneSidebar';
+import { TvNewsEvidence, TvNewsThumbnail } from './TvNewsCard';
 const TvInvestments = lazy(() => import('./TvInvestments'));
 const TvBrief = lazy(() => import('./TvPanels').then(module => ({ default: module.TvBrief })));
 const TvMarketMap = lazy(() => import('./TvPanels').then(module => ({ default: module.TvMarketMap })));
@@ -282,7 +283,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     <footer className="tv-footer"><span>{t('remoteHelp')}</span><span>{t(online ? 'connected' : 'offline')}</span><button onClick={() => setRevision(v => v + 1)} aria-label={t('refresh')}><RefreshCw size={16}/></button></footer>
     </>}
     {message && <div className="tv-toast" role="status">{message}</div>}
-    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className={`tv-dialog${dialog === 'sessions' ? ' tv-sessions-dialog' : dialog === 'markets' || dialog === 'instruments' ? ' tv-picker-dialog' : ''}`}><header><h2 id="tv-dialog-title">{detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'channels' ? 'channels' : dialog === 'worldStocks' ? 'worldStocks' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : dialog === 'device' ? 'paired' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X/></button></header>
+    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className={`tv-dialog${dialog === 'sessions' ? ' tv-sessions-dialog' : dialog === 'markets' ? ' tv-picker-dialog tv-market-picker-dialog' : dialog === 'instruments' ? ' tv-picker-dialog' : ''}`}><header><h2 id="tv-dialog-title">{detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'channels' ? 'channels' : dialog === 'worldStocks' ? 'worldStocks' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : dialog === 'device' ? 'paired' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X/></button></header>
       <Suspense fallback={<p role="status">{t('loading')}</p>}>
       {dialog === 'channels' && <TvChannels view={view} chooseBroadcast={chooseBroadcast} channels={channels} change={setChannels} settings={{ ...settings, displayMode: stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse' }} selections={selections} apply={channel => {
         setSettings(normalizeTvSettings({ ...channel.settings, displayMode: channel.settings.displayMode || (stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse') })); setSelections(normalizeTvSelections(channel.selections)); setView(channel.view || (isTvReceiverChannel(channel.settings.broadcastChannel) ? channel.settings.broadcastChannel : 'markets')); if (channel.settings.displayMode) setRouteStrips(false);
@@ -297,7 +298,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       {dialog === 'worldStocks' && <TvQr value={`${tvOrigin()}/world-stocks`} label={t('worldStocks')}/>}
       {dialog === 'sessions' && <TvSessions autoRotate={settings.sessionAutoRotate!==false} onAutoRotateChange={enabled=>setSettings(value=>({...value,sessionAutoRotate:enabled}))} language={settings.language} now={now} selected={settings.sessionIds} onSelectionChange={ids=>setSettings(value=>({...value,sessionIds:ids}))}/>}
       {detail && <TvQuoteDetail quote={detail} language={settings.language} now={now}/>}
-      {story && <div className="tv-detail"><div><h3>{story.title}</h3><p>{story.source} · {tvTime(story.publishedAt,settings.language,true)}</p></div><div className="tv-phone-link"><TvQr value={story.url} label={t('openStory')}/><p>{t('openStory')}</p></div></div>}
+      {story && <div className="tv-detail"><div className="tv-news-detail"><TvNewsThumbnail imageUrl={story.imageUrl}/><h3>{story.title}</h3><TvNewsEvidence story={story} language={settings.language} now={now}/></div><div className="tv-phone-link"><TvQr value={story.url} label={t('openStory')}/><p>{t('openStory')}</p></div></div>}
       </Suspense>
     </section></div>}
   </div></TvMotionOverride.Provider>;

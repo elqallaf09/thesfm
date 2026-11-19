@@ -70,10 +70,14 @@ async function fixture(page: Page, theme: 'light' | 'dark', linked = true, langu
         allocation: [{ assetClass: 'stocks', amount: 8028, count: 8 }],
       } });
     }
-    if (url.pathname.includes('news')) return route.fulfill({ json: {
-      stories, items: stories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'),
-      success: true, generatedAt: instant, lastSuccessfulUpdate: instant,
-    } });
+    if (url.pathname.includes('news')) {
+      const selectedStories = url.pathname === '/api/tv/news'
+        ? stories.slice(0, ['technology', 'kuwait'].includes(url.searchParams.get('channel') || '') ? 12 : 8) : stories;
+      return route.fulfill({ json: {
+        stories: selectedStories, items: selectedStories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'),
+        success: true, generatedAt: instant, lastSuccessfulUpdate: instant,
+      } });
+    }
     return route.fulfill({ json: { result: null } });
   });
   await openAndroidTvPackage(page);
@@ -144,7 +148,7 @@ for (const theme of ['light', 'dark'] as const) {
         await fits(page, label, selector);
       }
       await page.keyboard.press('2');
-      await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(height <= 650 ? 3 : height <= 800 ? 4 : 6);
+      await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(12);
       await fits(page, 'news', '.tv-receiver-heading,.tv-news-desk,.tv-news-desk-grid > button');
       await capture('news');
       expect.soft(await page.locator('.tv-news-desk-grid > button').evaluateAll(buttons => buttons.filter(button => button.scrollHeight > button.clientHeight + 2).length), 'News is readable without clipping').toBe(0);

@@ -131,48 +131,36 @@ for(const mode of ['viewing','browse','strips'] as const) test(`${mode} first Pl
   expect(await page.locator('[aria-hidden=true] [tabindex="0"]').count()).toBe(0);
 });
 
-test('news resumes while its Play control keeps remote focus and remains independent of the ticker',async({page})=>{
+test('all news stays visible across display changes while ticker playback remains independent',async({page})=>{
   await page.setViewportSize({width:1536,height:1009});
   await page.emulateMedia({reducedMotion:'reduce'});
   await open(page,'en');
   await includeWebsiteMotionGuard(page);
-  const band=page.locator('.tv-headline-band'),label=band.locator('.tv-headline-label'),story=band.locator('.tv-headline-story');
-  await expect(story).toContainText('fixture 1');
-  await expect(label).toHaveAttribute('aria-label','Resume news rotation');
-  await label.focus(); await page.keyboard.press('Enter');
-  await expect(label).toBeFocused();
-  await expect(band).toHaveAttribute('data-paused','false');
-  await expect(label).toHaveAttribute('aria-label','Pause news rotation');
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 2');
-  // The ticker remains reduced while news has received its own explicit Play.
+  const band=page.locator('.tv-headline-band'),cards=band.locator('.tv-headline-story');
+  await expect(cards).toHaveCount(3);
+  await expect(band.locator('.tv-headline-playback,button.tv-headline-label')).toHaveCount(0);
+  const headlines=await cards.locator('.tv-news-title').allTextContents();
+  await cards.nth(1).focus();
+  await page.clock.runFor(80000);
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await expect(cards.nth(1)).toBeFocused();
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
-  await story.focus();
-  await page.clock.runFor(24_100);
-  await expect(story).toContainText('fixture 2');
-  await label.focus();
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 3');
   await page.keyboard.press('Enter');
-  await expect(label).toHaveAttribute('aria-label','Resume news rotation');
-  await page.clock.runFor(24_100);
-  await expect(story).toContainText('fixture 3');
-  // Keep the explicit news preference when this component unmounts between
-  // display modes, without opting the independently paused ticker into motion.
-  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toContainText('fixture 2');
+  await page.keyboard.press('Escape');
+  await expect(cards.nth(1)).toBeFocused();
   await page.locator('.tv-mode-browse').click();
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
-  await expect(label).toHaveAttribute('aria-label','Pause news rotation');
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
-  await expect(story).toContainText('fixture 1');
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 2');
-  await label.click();
+  await page.locator('.tv-marquee-toggle').focus();
+  await page.keyboard.press('Enter');
+  await expectContinuousMovement(page.locator('.tv-marquee-track'));
+  await page.clock.runFor(80000);
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
   await page.locator('.tv-mode-viewing').click();
-  await expect(label).toHaveAttribute('aria-label','Resume news rotation');
-  await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','true');
-  await page.clock.runFor(12_100);
-  await expect(story).toContainText('fixture 1');
+  await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+  await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','false');
 });
 
 test('all-stocks media play/pause follows ticker state while the scene is fixed',async({page})=>{

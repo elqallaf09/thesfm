@@ -246,8 +246,8 @@ test('full Arabic news, isolated quote evidence and legacy-compatible colors', a
   const title = 'عنوان خبري طويل لاختبار ظهور النص كاملاً في العمود الجانبي وإمكانية فتح تفاصيله بالريموت دون إخفاء بقية الكلمات أو قص السطر الأخير من الخبر';
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'full', title, source: 'مصدر الاختبار', publishedAt: '2026-11-03T08:30:00Z', url: 'https://example.com/story' }] } }));
   await page.reload();
-  await expect(page.locator('.tv-scene-headlines button > span')).toHaveText(title);
-  expect(await page.locator('.tv-scene-headlines button > span').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  await expect(page.locator('.tv-scene-headlines .tv-news-title')).toHaveText(title);
+  expect(await page.locator('.tv-scene-headlines .tv-news-title').evaluate(el => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
   await expect(page.locator('.tv-scene-row time').first()).toHaveText('00:00');
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence').first()).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('.tv-quote-marquee .tv-quote-evidence time').first()).toHaveAttribute('dir', 'ltr');

@@ -103,6 +103,20 @@ describe('news API payload compaction', () => {
     expect(JSON.stringify(result)).not.toContain('provider-secret-id');
   });
 
+  it('preserves only safe provider photos from current and legacy image fields', () => {
+    const imageUrl = 'https://images.example.com/rate-decision.jpg';
+    for (const field of ['imageUrl', 'image']) {
+      const result = compactNewsItem({ ...evidenceItem(), [field]: imageUrl });
+      expect(result.imageUrl).toBe(imageUrl);
+      expect(result.title).toBe(evidenceItem().title);
+      expect(result.source).toBe(evidenceItem().source);
+      expect(result.publishedAt).toBe(evidenceItem().publishedAt);
+    }
+    for (const imageUrl of [undefined, null, '', {}, 'not a URL', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>', 'https://127.0.0.1/photo.jpg', 'https://user:password@images.example.com/photo.jpg']) {
+      expect(compactNewsItem({ ...evidenceItem(), imageUrl })).not.toHaveProperty('imageUrl');
+    }
+  });
+
   it('removes unsafe URLs and invalid evidence values', () => {
     const result = compactNewsItem({
       ...evidenceItem(),

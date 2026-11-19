@@ -44,6 +44,8 @@ type NewsLike = {
   languageOriginal?: string;
   source: string;
   url: string;
+  imageUrl?: unknown;
+  image?: unknown;
   publishedAt: string;
   isTranslated?: boolean;
   translationSource?: string;
@@ -175,6 +177,8 @@ export function compactNewsItem<T extends NewsLike>(item: T) {
   const symbols = cleanCodeList(item.symbols);
   const ticker = cleanText(item.ticker, 32);
   const sectors = cleanCodeList(item.sectors);
+  const imageUrl = safePublicHttpUrl(item.imageUrl, 'news-api-payload')
+    ?? safePublicHttpUrl(item.image, 'news-api-payload');
 
   return {
     id: cleanText(item.id, 256),
@@ -185,6 +189,7 @@ export function compactNewsItem<T extends NewsLike>(item: T) {
     languageOriginal: cleanText(item.languageOriginal || 'unknown', 24),
     source: cleanText(item.source, 160),
     url: safePublicHttpUrl(item.url, 'news-api-payload') ?? '',
+    ...(imageUrl ? { imageUrl } : {}),
     publishedAt: cleanPublishedAt(item.publishedAt),
     isTranslated: Boolean(item.isTranslated),
     ...(item.translationSource ? { translationSource: cleanText(item.translationSource, 80) } : {}),

@@ -11,8 +11,9 @@ async function setup(page: Page, count = 1, news = false) {
     if (url.pathname.endsWith('/catalog')) return route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الأسواق الأمريكية', labelEn: 'US', labelFr: 'États-Unis', count, status: 'directory' }] } });
     if (url.pathname.endsWith('/instruments')) return route.fulfill({ json: { items, total: count, directoryTotal: count, page: 0, pageSize: 6 } });
     if (url.pathname.endsWith('/snapshot')) return route.fulfill({ json: { quotes: items.map((item, i) => ({ ...item, price: i ? null : 10, changePercent: i ? null : 1, source: 'QA source', observedAt: now, status: i ? 'unavailable' : 'delayed', issue: i ? 'no_price' : undefined, exchange: 'US' })), available: 1, total: count } });
-    const stories = Array.from({ length: 24 }, (_, i) => ({ id: String(i), title: `${title} ${i}`, source: 'QA source', publishedAt: now, url: `https://example.com/${i}` }));
-    return route.fulfill({ json: { stories, items: stories, topic: url.searchParams.get('topic'), success: true, lastSuccessfulUpdate: now } });
+    const storyCount = url.pathname === '/api/tv/news' ? (['technology', 'kuwait'].includes(url.searchParams.get('channel') || '') ? 12 : 8) : 24;
+    const stories = Array.from({ length: storyCount }, (_, i) => ({ id: String(i), title: `${title} ${i}`, source: 'QA source', publishedAt: now, url: `https://example.com/${i}` }));
+    return route.fulfill({ json: { stories, items: stories, channel: url.searchParams.get('channel'), topic: url.searchParams.get('topic'), success: true, lastSuccessfulUpdate: now } });
   });
   await openAndroidTvPackage(page);
 }
@@ -111,9 +112,11 @@ test('unpriced stocks stay hidden until a refresh supplies a price, and news has
   await page.clock.fastForward(61_000);
   await expect(page.locator('.tv-hall-row')).toHaveCount(2);
   await expect(page.locator('.tv-marquee-set').first().locator('button')).toHaveCount(2);
-  await expect(page.locator('.tv-headline-controls')).toHaveCount(0);
-  await page.locator('.tv-headline-label').click();
-  await expect(page.locator('.tv-headline-label')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.tv-headline-controls,.tv-headline-playback,button.tv-headline-label')).toHaveCount(0);
+  await expect(page.locator('.tv-headline-story')).toHaveCount(8);
+  const headlines = await page.locator('.tv-headline-story .tv-news-title').allTextContents();
+  await page.clock.fastForward(80000);
+  await expect(page.locator('.tv-headline-story .tv-news-title')).toHaveText(headlines);
 });
 
 test('market strips distinguish the directory, displayed batch and priced coverage', async ({ page }) => {
@@ -144,12 +147,12 @@ test('market strips distinguish the directory, displayed batch and priced covera
   }
 });
 
-test('news desk uses the TV area with a readable lead and a queue in 1080p and 540p', async ({ page }) => {
+test('news desk shows all received cards with readable evidence in 1080p and 540p', async ({ page }) => {
   await setup(page, 1, true); await page.getByRole('button', { name: 'تخطي', exact: true }).click();
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
-  for (const [width, height, count] of [[1920, 1080, 6], [960, 540, 3]]) {
+  for (const [width, height] of [[1920, 1080], [960, 540]]) {
     await page.setViewportSize({ width, height });
-    await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(count);
+    await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(24);
     await expect(page.locator('.tv-news-title').first()).toHaveCSS('direction', 'ltr');
     const clipped = await page.locator('.tv-news-desk-grid > button').evaluateAll(buttons => buttons.filter(button => {
       const r = button.getBoundingClientRect(); return r.bottom > innerHeight + 1 || r.right > innerWidth + 1 || r.left < -1 || button.scrollHeight > button.clientHeight + 2;
@@ -163,7 +166,7 @@ test('direct news links open the channel and retain subsequent remote selections
   await setup(page);
   await page.goto('https://appassets.androidplatform.net/index.html?channel=europeNews');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'europeNews');
-  await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(6);
+  await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(24);
   await page.keyboard.press('2');
   await expect(page).toHaveURL(/channel=technology/);
   await page.reload();

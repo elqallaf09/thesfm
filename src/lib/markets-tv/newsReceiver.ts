@@ -77,9 +77,11 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     const publishedAt = date(item.publishedAt);
     if (!url || typeof title !== 'string' || !title.trim() || typeof source !== 'string' || !source.trim() || !publishedAt || seen.has(url)) return [];
     seen.add(url);
+    const imageUrl = [item.imageUrl, item.image, item.thumbnail]
+      .map(value => typeof value === 'string' ? safeTvUrl(value) : null).find(Boolean);
     const status = item.shariahStatus;
     const screening: TvNews['screening'] = channel === 'shariaNews' ? status === 'compliant' || status === 'needs_review' || status === 'non_compliant' ? status : 'unclassified' : undefined;
-    return [{ id: typeof item.id === 'string' ? item.id : url, title, source, publishedAt, url, ...(screening ? { screening } : {}) }];
+    return [{ id: typeof item.id === 'string' ? item.id : url, title, source, publishedAt, url, ...(imageUrl ? { imageUrl } : {}), ...(screening ? { screening } : {}) }];
   }).slice(0, 60) : [];
   return { stories, invalid: !valid || body.success === false || body.ok === false,
     partial: body.partialFailure === true, stored: body.storedFallbackUsed === true,
