@@ -28,7 +28,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:tv
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium with network retries
+        timeout-minutes: 10
+        run: bash .github/scripts/install-playwright-browsers.sh chromium
       - name: Verify packaged TV layout and remote navigation
         run: pnpm exec playwright test --config=playwright.tv.config.ts
       - name: Keep TV browser evidence
