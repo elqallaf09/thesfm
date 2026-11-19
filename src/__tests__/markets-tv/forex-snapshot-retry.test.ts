@@ -38,3 +38,26 @@ describe('Forex snapshot account cooldown', () => {
     expect(tvSnapshotRetryAt([unavailable, later], now)).toBe(retryAt);
   });
 });
+
+describe('Forex live sources keep the screen updating', () => {
+  const live: TvQuote = { ...reference, symbol: 'EUR/USD', price: 1.0973, currency: 'USD', source: 'Yahoo Finance',
+    observedAt: new Date(now - 300_000).toISOString(), status: 'delayed', delayType: 'delayed', changeBasis: 'session' };
+  it('drops the shared Twelve Data deadline once a live source answers any pair', () => {
+    expect(tvSnapshotRetryAt([live, { ...reference, retryAt }, unavailable], now, 'forex')).toBeUndefined();
+  });
+  it('keeps the deadline when only the daily reference or retained prices answer', async () => {
+    const { tvForexHasLiveSource } = await import('@/lib/markets-tv/scene-display');
+    expect(tvForexHasLiveSource([{ ...reference, changeBasis: 'reference' }, unavailable])).toBe(false);
+    expect(tvForexHasLiveSource([{ ...live, status: 'stale' }])).toBe(false);
+    expect(tvForexHasLiveSource([{ ...live, issue: 'rate_limited' }])).toBe(false);
+    expect(tvForexHasLiveSource([live])).toBe(true);
+  });
+  it('does not slow or pause a client screen that receives live pairs', async () => {
+    const { tvSnapshotRetryDelay } = await import('@/components/markets-tv/tvResourceCache');
+    const { tvStripSourceCooling } = await import('@/lib/markets-tv/scene-display');
+    const snapshot = { group: 'forex', quotes: [live, { ...reference, retryAt }], generatedAt: new Date(now).toISOString(), available: 2, total: 2 };
+    expect(tvSnapshotRetryDelay(snapshot, now)).toBe(0);
+    expect(tvStripSourceCooling(snapshot.quotes, undefined, now, 'forex')).toBe(false);
+    expect(tvSnapshotRetryDelay({ ...snapshot, quotes: [{ ...reference, retryAt }] }, now)).toBe(61_000);
+  });
+});
