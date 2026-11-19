@@ -1,4 +1,5 @@
 'use client';
+import './strip-layout-fix.css';
 import { memo, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DEFAULT_TV_STRIP_SPEED, type TvGroup, type TvLanguage, type TvMarket, type TvQuote, type TvSnapshot } from '@/lib/markets-tv/types';
 import { tvText, tvTime } from '@/lib/markets-tv/i18n';
@@ -74,7 +75,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = useCallback(() => { if (!resource.loading) setPage(value => (value + 1) % pages); }, [resource.loading, pages]);
   const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : forexWaiting ? forexFailure : sourceCooling ? failure : pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
-  return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-directory-empty={market.count===0} data-source-cooling={sourceCooling} data-paged={pages > 1}>
+  return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-directory-empty={market.count===0} data-source-cooling={sourceCooling} data-paged={pages > 1} data-single-quote={displayed.length === 1}>
     <button className="tv-market-strip-heading" aria-pressed={active} onClick={() => onSelect(market.group, market.id)}>
       <strong>{language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn}</strong>
       <small><bdi>{directoryCount.toLocaleString('en-US')}</bdi> {t('catalogCount')}</small>
@@ -88,7 +89,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
       now={now} onQuote={onQuote} speed={speed} paused={manualPause || !visible || resource.loading}
       hasNextBatch={pages > 1} sourceCooling={sourceCooling} nextBatch={next}/> : <>
       <div className="tv-market-strip-window" data-tv-motion={explicitPlay ? 'play' : undefined} onPointerEnter={event => { if (event.pointerType === 'mouse' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) setHovered(true); }} onPointerLeave={() => setHovered(false)} onFocus={() => setFocused(true)} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}>
-        {displayed.length ? <div ref={track} className="tv-market-strip-track" data-tv-motion={explicitPlay ? 'play' : undefined} onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: visible && !paused && !manualPause ? 'running' : 'paused' }}>
+        {displayed.length ? <div ref={track} className="tv-market-strip-track" data-tv-motion={explicitPlay ? 'play' : undefined} onAnimationIteration={() => { if (!sourceCooling) next(); }} style={{ animationDuration: `${duration}s`, animationPlayState: displayed.length === 1 || !visible || paused || manualPause ? 'paused' : 'running', transform: displayed.length === 1 ? 'none' : undefined }}>
           {[0, 1].map(copy => <div className="tv-market-strip-set" key={copy} aria-hidden={copy === 1} inert={Boolean(copy) || undefined}>
             {displayed.map(q => <TvStripQuote key={`${q.exchange}:${q.symbol}`} quote={q} group={market.group} language={language} now={Math.floor(now / 15000) * 15000} duplicate={Boolean(copy)} onQuote={onQuote}/>)}
           </div>)}
