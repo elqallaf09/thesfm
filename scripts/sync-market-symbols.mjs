@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { DFM_SECURITIES_URL, normalizeDfmRows } from './lib/dfm-symbols.mjs';
 
 const ROOT = process.cwd();
 const OUT_DIR = path.join(ROOT, 'src', 'data', 'market-symbols');
 const BOURSA_RT306_EN = 'https://www.boursakuwait.com.kw/data-api/legacy-mix-services?RT=306&L=E&SRC=KSE';
-const DFM_SECURITIES_URL = 'https://api2.dfm.ae/web/sf/v1/securities';
 const SYNCED_AT = new Date().toISOString();
 
 const ARABIC_NAME_OVERRIDES = {
@@ -102,52 +102,6 @@ function parseBoursaRows(payload) {
   return Array.from(bySymbol.values()).sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
-function mapDfmAssetType(type) {
-  const normalized = cleanText(type).toLowerCase();
-  if (normalized.includes('exchange traded fund')) return 'etf';
-  if (normalized.includes('fund') || normalized.includes('trust')) return 'etf';
-  if (normalized.includes('equities')) return 'stock';
-  return null;
-}
-
-function dfmCurrency(row) {
-  const currency = cleanText(row.Currency).toUpperCase();
-  if (/^[A-Z]{3}$/.test(currency)) return currency;
-  if (row.Exchange === 'NASDAQ Dubai') return 'USD';
-  return 'AED';
-}
-
-function normalizeDfmRows(rows) {
-  return rows
-    .map(row => {
-      const assetType = mapDfmAssetType(row.SecurityType);
-      const symbol = cleanSymbol(row.SecuritySymbol || row.Symbol);
-      if (!assetType || !symbol || !row.Active || !row.ShowOnList) return null;
-      const exchange = row.Exchange === 'NASDAQ Dubai' ? 'NASDAQ_DUBAI' : 'DFM';
-      const providerSuffix = exchange === 'DFM' ? '.DU' : '';
-      return {
-        exchange,
-        market: row.Exchange === 'NASDAQ Dubai' ? 'Nasdaq Dubai' : 'Dubai Financial Market',
-        symbol,
-        display_symbol: symbol,
-        provider_symbol: `${symbol}${providerSuffix}`,
-        name: cleanText(row.FullName || row.SecurityName || symbol),
-        company_name_ar: null,
-        company_name_en: cleanText(row.FullName || row.SecurityName || symbol),
-        asset_type: assetType,
-        sector: cleanText(row.SecurityType) || null,
-        currency: dfmCurrency(row),
-        country: 'AE',
-        price_unit: 'major',
-        is_active: true,
-        source: DFM_SECURITIES_URL,
-        last_synced_at: SYNCED_AT,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => `${a.exchange}:${a.symbol}`.localeCompare(`${b.exchange}:${b.symbol}`));
-}
-
 async function fetchJson(url) {
   const response = await fetch(url, { headers: { accept: 'application/json' } });
   if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
@@ -216,11 +170,11 @@ async function main() {
   ]);
 
   const boursa = parseBoursaRows(boursaPayload);
-  const dfm = syncBoursaOnly ? [] : normalizeDfmRows(dfmRows);
+  const dfm = syncBoursaOnly ? [] : normalizeDfmRows(dfmRows, SYNCED_AT);
   const all = syncBoursaOnly ? boursa : [...boursa, ...dfm];
 
   console.log(`Boursa Kuwait active listed stocks: ${boursa.length}`);
-  if (!syncBoursaOnly) console.log(`DFM/Nasdaq Dubai listed equities and funds: ${dfm.length}`);
+  if (!syncBoursaOnly) console.log(`DFM/Nasdaq Dubai active equities and funds: ${dfm.filter(row => row.is_active).length}; historical identities: ${dfm.filter(row => !row.is_active).length}`);
 
   if (writeLocal) {
     await writeJson('boursa-kuwait.json', boursa);
