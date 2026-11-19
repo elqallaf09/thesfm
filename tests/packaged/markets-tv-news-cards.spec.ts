@@ -147,7 +147,7 @@ async function expectKuwaitQuoteGeometry(page: Page, count: number) {
     for (const part of parts) {
       const box = part.getBoundingClientRect();
       if (!box.width || !box.height || box.left < bounds.left - 1 || box.right > bounds.right + 1 || box.top < bounds.top - 1 || box.bottom > bounds.bottom + 1) violations.push(symbol + ': ' + part.className + ' outside quote');
-      if (part.scrollWidth > part.clientWidth + 1 || part.scrollHeight > part.clientHeight + 1) violations.push(symbol + ': ' + part.className + ' clipped');
+      if (part.scrollWidth > part.clientWidth + 1 || part.scrollHeight > part.clientHeight + 1) violations.push(`${innerWidth}×${innerHeight} ${symbol}: ${part.className} clipped (${part.scrollWidth}×${part.scrollHeight} content / ${part.clientWidth}×${part.clientHeight} box)`);
     }
     for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
       const a = parts[i].getBoundingClientRect(), b = parts[j].getBoundingClientRect();
