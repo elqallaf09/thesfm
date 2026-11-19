@@ -232,11 +232,15 @@ for (const status of [200, 401]) {
     await openTvMenu(page);
     await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign in');
     await page.locator('[data-tv-focus-key=pair]').click();
+    // Let React commit the first lazy panel while the test clock is paused.
+    await page.clock.runFor(500);
     await page.locator('.tv-pair-content button').click();
     await expect(page.locator('.tv-pair-code')).toBeVisible();
     await page.clock.runFor(5100);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe(nextToken);
     await chooseTvDestination(page, 'sessions');
+    await page.clock.runFor(500);
+    await expect(page.locator('.tv-world-sessions')).toBeVisible();
     await openTvMenu(page);
     await expect(page.locator('.tv-side-menu-account-name')).toHaveText('New living room QA');
     await page.locator('[data-tv-focus-key=pair]').click();
