@@ -30,6 +30,7 @@ type Props = {
   onCustomize: () => void;
   onSettings: () => void;
   onAccount: () => void;
+  onSwitchAccount: () => void;
   onTools: () => void;
 };
 
@@ -43,7 +44,7 @@ export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => C
 
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
-export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onBroadcast, onSavedChannel, onCustomize, onSettings, onAccount, onTools }: Props) {
+export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onBroadcast, onSavedChannel, onCustomize, onSettings, onAccount, onSwitchAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const copy = COPY[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -65,7 +66,7 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },
   ];
-  const keys = ['menu-close', ...items.map(item => item.key), 'pair', 'more'];
+  const keys = ['menu-close', ...items.map(item => item.key), 'switch-account', 'pair', 'more'];
   const neighbors = (key: string) => {
     const index = keys.indexOf(key);
     return { 'data-tv-nav-up': keys[Math.max(0, index - 1)], 'data-tv-nav-down': keys[Math.min(keys.length - 1, index + 1)] };
@@ -102,6 +103,7 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
       </nav>
       <footer className="tv-side-menu-account">
         <p className="tv-side-menu-account-name" title={paired && deviceName ? deviceName : undefined}>{paired && deviceName ? <bdi>{deviceName}</bdi> : paired ? copy.account : copy.guest}</p>
+        <button type="button" onClick={() => leave(onSwitchAccount)} data-tv-focus-key="switch-account" {...neighbors('switch-account')}><LogIn aria-hidden="true"/><span>{language === 'ar' ? 'تبديل الحساب / إضافة حساب' : language === 'fr' ? 'Changer / ajouter un compte' : 'Switch / add account'}</span></button>
         <button type="button" onClick={() => leave(onAccount)} data-tv-focus-key="pair" {...neighbors('pair')}><AccountIcon aria-hidden="true"/><span>{paired ? copy.signOut : copy.signIn}</span></button>
         <button type="button" onClick={() => leave(onTools)} data-tv-focus-key="more" {...neighbors('more')}><Wrench aria-hidden="true"/><span>{copy.tools}</span></button>
       </footer>
