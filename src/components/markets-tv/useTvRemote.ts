@@ -6,6 +6,14 @@ import { tvRemoteCommand, type TvPlaybackCommand, type TvRemoteCommand } from '.
 type TvInputDevice = { registerKey: (name: string) => void; unregisterKey?: (name: string) => void };
 
 type ChannelCommand = Extract<TvRemoteCommand, { kind: 'channel' | 'channelNumber' }>;
+const focusSelector = 'button,a[href],input,select,textarea,summary,[tabindex="0"]';
+
+function isFocusTarget(element: HTMLElement) {
+  // Reject inert loop copies before asking the browser for any layout data.
+  return element.matches(focusSelector) && !element.matches(':disabled') && element.getAttribute('aria-disabled') !== 'true'
+    && !element.closest('[hidden],[aria-hidden="true"],[inert]') && element.getAttribute('tabindex') !== '-1'
+    && element.getClientRects().length > 0;
+}
 
 function revealVertically(focused: HTMLElement, root: HTMLElement | null) {
   // A loaded quote can grow a strip after focus scrolled to it. Recheck its
@@ -48,10 +56,9 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
       const container = document.querySelector<HTMLElement>('[data-tv-dialog]') || document.querySelector<HTMLElement>('[data-tv-root]');
       return container?.querySelector<HTMLElement>('[data-tv-focus-scope]') || container;
     };
-    const items = () => Array.from(scope()?.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]') || [])
-      .filter(e => e.getClientRects().length && !e.matches(':disabled') && e.getAttribute('aria-disabled') !== 'true'
-        && !e.closest('[hidden],[aria-hidden="true"],[inert]') && e.getAttribute('tabindex') !== '-1');
+    const items = (activeScope = scope()) => Array.from(activeScope?.querySelectorAll<HTMLElement>(focusSelector) || []).filter(isFocusTarget);
     let lastFocused: HTMLElement | null = null;
+    let lastScope: HTMLElement | null = null;
     let lastRect: DOMRect | null = null;
     let lastKey: string | null = null;
     let lastArrow = '', lastArrowAt = 0;
@@ -62,7 +69,9 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
     };
     const rememberFocus = () => {
       const focused = document.activeElement as HTMLElement | null;
-      if (!focused || !scope()?.contains(focused)) return;
+      const activeScope = scope();
+      if (!focused || !activeScope?.contains(focused)) return;
+      lastScope = activeScope;
       lastFocused = focused; lastRect = focused.getBoundingClientRect();
       lastKey = focused.dataset.tvFocusKey || focused.id || null;
       if (!modal && !focused.closest('.tv-side-menu, .tv-unified-header, [data-tv-focus-scope]')) broadcastFocus.current = focused;
@@ -74,29 +83,44 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
     }, 0);
     // Price text updates leave the same DOM element focused. Restore only a
     // removed/hidden target, such as after an explicit scene or page change.
-    const observer = new MutationObserver(() => {
+    let focusFrame: number | null = null;
+    const restoreFocus = () => {
+      focusFrame = null;
       if (!lastFocused) return;
-      if (lastFocused.isConnected && items().includes(lastFocused)) {
-        if (document.activeElement === lastFocused) revealVertically(lastFocused, scope());
+      const activeScope = scope();
+      lastScope = activeScope;
+      if (lastFocused.isConnected && activeScope?.contains(lastFocused) && isFocusTarget(lastFocused)) {
+        if (document.activeElement === lastFocused) revealVertically(lastFocused, activeScope);
         return;
       }
       const focused = document.activeElement;
-      if (focused && focused !== document.body && focused !== lastFocused && !scope()?.contains(focused)) return;
-      const elements = items();
+      if (focused && focused !== document.body && focused !== lastFocused && !activeScope?.contains(focused)) return;
+      const elements = items(activeScope);
       if (elements.includes(focused as HTMLElement)) return;
       const replacement = lastKey ? elements.find(e => (e.dataset.tvFocusKey || e.id) === lastKey) : null;
-      const nearest = lastRect && elements.reduce<HTMLElement | null>((best, item) => {
-        const distance = (element: HTMLElement) => {
-          const rect = element.getBoundingClientRect();
-          return Math.abs(rect.left - lastRect!.left) + Math.abs(rect.top - lastRect!.top);
-        };
-        return !best || distance(item) < distance(best) ? item : best;
-      }, null);
+      let nearestDistance = Infinity;
+      const nearest = !replacement && lastRect ? elements.reduce<HTMLElement | null>((best, item) => {
+        const rect = item.getBoundingClientRect();
+        const distance = Math.abs(rect.left - lastRect!.left) + Math.abs(rect.top - lastRect!.top);
+        if (distance >= nearestDistance) return best;
+        nearestDistance = distance;
+        return item;
+      }, null) : null;
       focus(replacement || nearest || elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]);
+    };
+    const observer = new MutationObserver(records => {
+      if (!lastFocused || focusFrame !== null) return;
+      const activeScope = scope();
+      // Prices behind a menu/editor cannot affect its focus or scroll position.
+      // Other refreshes validate the existing target once per frame, never the
+      // entire quote grid unless a target was actually removed or hidden.
+      if (activeScope === lastScope && !records.some(record => activeScope?.contains(record.target)
+        || record.type === 'attributes' && record.target.contains(activeScope))) return;
+      focusFrame = requestAnimationFrame(restoreFocus);
     });
     // Keep observing the parent when an embedded editor later unmounts.
     const root = document.querySelector<HTMLElement>('[data-tv-dialog]') || document.querySelector<HTMLElement>('[data-tv-root]');
-    if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'aria-hidden', 'inert', 'disabled'] });
+    if (root) observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'aria-hidden', 'inert', 'disabled', 'aria-disabled', 'tabindex', 'data-tv-focus-scope'] });
     function onKey(event: KeyboardEvent) {
       if (event.defaultPrevented) return;
       const focused = document.activeElement as HTMLElement | null;
@@ -132,7 +156,17 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         else if (actions.current.channel) { event.preventDefault(); if (!event.repeat) actions.current.channel(command); }
         return;
       }
-      const elements = items();
+      if (command.kind === 'activate') {
+        if (focused && activeScope?.contains(focused) && isFocusTarget(focused)) { event.preventDefault(); if (!event.repeat) focused.click(); }
+        return;
+      }
+      if (command.kind === 'tab' && !trapped) return;
+      if (command.kind === 'arrow') {
+        event.preventDefault();
+        if (event.repeat && command.direction === lastArrow && event.timeStamp - lastArrowAt < 110) return;
+        lastArrow = command.direction; lastArrowAt = event.timeStamp;
+      }
+      const elements = items(activeScope);
       if (command.kind === 'tab') {
         if (trapped) {
           event.preventDefault();
@@ -142,13 +176,6 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         }
         return;
       }
-      if (command.kind === 'activate') {
-        if (focused && elements.includes(focused)) { event.preventDefault(); if (!event.repeat) focused.click(); }
-        return;
-      }
-      event.preventDefault();
-      if (event.repeat && command.direction === lastArrow && event.timeStamp - lastArrowAt < 110) return;
-      lastArrow = command.direction; lastArrowAt = event.timeStamp;
       if (!focused || !elements.includes(focused)) { focus(elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]); return; }
       // The drawer sits beside the content: one inward arrow closes it and
       // returns to the last broadcast target, while Up/Down stays in its list.
@@ -206,6 +233,7 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
     document.addEventListener('focusin', rememberFocus);
     return () => {
       clearTimeout(focusTimer); observer.disconnect(); document.removeEventListener('keydown', onKey);
+      if (focusFrame !== null) cancelAnimationFrame(focusFrame);
       document.removeEventListener('focusin', rememberFocus);
       if (modal && prior?.isConnected && prior.getClientRects().length && !prior.closest('[hidden],[inert]')) prior.focus();
     };
