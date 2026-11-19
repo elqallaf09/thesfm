@@ -87,3 +87,20 @@ describe('TV source recovery integration', () => {
     expect(tvSnapshotRetryAt([{ ...missing, price: 6000 }, later], now)).toBe(missing.retryAt);
   });
 });
+
+describe('THE SFM as last-resort provider', () => {
+  it('answers from the owned store with the original source when every upstream source is out', async () => {
+    const owned = { symbol: 'AMZN', name: 'Amazon', nameAr: 'أمازون', currency: 'USD', price: 199, changePercent: 0.5, source: 'Finnhub',
+      observedAt: '2026-10-27T20:00:00.000Z', receivedAt: '2026-10-27T20:01:00.000Z', status: 'stale' as const, exchange: 'US', country: 'US' };
+    const read = vi.fn().mockResolvedValue(owned), save = vi.fn();
+    vi.doMock('@/lib/server/markets-tv/ownedQuoteStore', async importOriginal => ({
+      ...await importOriginal<typeof import('@/lib/server/markets-tv/ownedQuoteStore')>(), readOwnedTvQuote: read, saveOwnedTvQuote: save }));
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('every upstream source is out'); }));
+    const { resolveTvQuotes } = await import('@/lib/server/markets-tv/quoteLoader');
+    const [quote] = await resolveTvQuotes([{ symbol: 'AMZN', name: 'Amazon', currency: 'USD', region: 'US', country: 'US', assetType: 'stock' }], 'us');
+    expect(quote).toMatchObject({ symbol: 'AMZN', price: 199, source: 'Finnhub', observedAt: owned.observedAt, status: 'stale' });
+    expect(read).toHaveBeenCalledOnce();
+    expect(save).not.toHaveBeenCalled();
+    vi.doUnmock('@/lib/server/markets-tv/ownedQuoteStore');
+  });
+});
