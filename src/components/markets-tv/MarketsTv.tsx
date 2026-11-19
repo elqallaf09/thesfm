@@ -64,7 +64,10 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const [group, setGroup] = useState<TvGroup>('global'), [view, setView] = useState<TvView>('markets');
   const [menuOpen, setMenuOpen] = useState(true), [unlinking, setUnlinking] = useState(false), [unlinkError, setUnlinkError] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null), [detail, setDetail] = useState<TvQuote | null>(null), [story, setStory] = useState<TvNews | null>(null);
-  const [token, setToken] = useState(''), [now, setNow] = useState(0), [page, setPage] = useState(0), [revision, setRevision] = useState(0);
+  const [token, updateToken] = useState(''), [now, setNow] = useState(0), [page, setPage] = useState(0), [revision, setRevision] = useState(0);
+  const currentToken = useRef(''), unlinkRequest = useRef<AbortController | null>(null);
+  const setToken = useCallback((value: string) => { currentToken.current = value; updateToken(value); }, []);
+  useEffect(() => () => { unlinkRequest.current?.abort(); unlinkRequest.current = null; }, []);
   const [online, setOnline] = useState(true), [message, setMessage] = useState(''), [fullscreen, setFullscreen] = useState(false);
   const activity = useRef(0), alertSeen = useRef(new Set<string>()), root = useRef<HTMLDivElement>(null), syncLoaded = useRef('');
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
@@ -126,7 +129,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     const screen = () => setFullscreen(Boolean(document.fullscreenElement));
     window.addEventListener('online', network); window.addEventListener('offline', network); document.addEventListener('fullscreenchange', screen);
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', freshness); window.removeEventListener('online', network); window.removeEventListener('offline', network); document.removeEventListener('fullscreenchange', screen); };
-  }, [initialStripsOnly, initialAllStocks]);
+  }, [initialStripsOnly, initialAllStocks, setToken]);
   useEffect(() => { if (ready) { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Keep in-memory settings usable. */ } } }, [settings, ready]);
   useEffect(() => {
     if (!ready) return;
@@ -139,7 +142,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       try { localStorage.removeItem(TOKEN_KEY); } catch { /* No persistent storage. */ }
     }
     if (token && device.data && syncLoaded.current !== token) { syncLoaded.current = token; const synced = normalizeTvSettings(device.data.device.settings); setSettings(initialAllStocks ? { ...synced, displayMode: 'browse', broadcastChannel: undefined } : synced); if (synced.broadcastChannel && !initialAllStocks) setView(synced.broadcastChannel); }
-  }, [device.error, device.data, token, initialAllStocks]);
+  }, [device.error, device.data, token, initialAllStocks, setToken]);
   useEffect(() => {
     if (!token || !ready || syncLoaded.current !== token) return;
     const controller = new AbortController();
@@ -244,20 +247,27 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     try { localStorage.setItem(TOKEN_KEY, value); } catch { /* Session remains usable in memory. */ }
     syncLoaded.current = value; setToken(value); setDialog(null); setMenuOpen(false); setGroup('watchlist');
     setSettings(s => ({ ...s, scene: 'watchlist', groups: Array.from(new Set([...s.groups, 'watchlist' as const])) }));
-  }, []);
+  }, [setToken]);
   async function unlink() {
-    if (unlinking || !token) return;
+    if (unlinkRequest.current || !currentToken.current) return;
+    const requestedToken = currentToken.current;
     setUnlinking(true); setUnlinkError(false);
     const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 15000);
-    const response = await tvFetch('/api/tv/device', { method: 'DELETE', headers: { 'x-sfm-tv-token': token }, signal: controller.signal }).catch(() => null);
-    clearTimeout(timeout);
-    if (response && (response.ok || response.status === 401)) {
-      setToken(''); syncLoaded.current = ''; alertSeen.current.clear(); setGroup('global'); setView('markets'); setRouteStrips(false);
-      setSettings(value => ({ ...value, displayMode: 'viewing', scene: 'overview', broadcastChannel: undefined }));
-      pushTvDisplayMode('viewing'); close(); setMessage(t('disconnected'));
-      try { localStorage.removeItem(TOKEN_KEY); } catch { /* No storage. */ }
-    } else setUnlinkError(true);
-    setUnlinking(false);
+    unlinkRequest.current = controller;
+    try {
+      const response = await tvFetch('/api/tv/device', { method: 'DELETE', headers: { 'x-sfm-tv-token': requestedToken }, signal: controller.signal }).catch(() => null);
+      // A delayed revocation must never clear a newly paired account.
+      if (unlinkRequest.current !== controller || currentToken.current !== requestedToken) return;
+      if (response && (response.ok || response.status === 401)) {
+        setToken(''); syncLoaded.current = ''; alertSeen.current.clear(); setGroup('global'); setView('markets'); setRouteStrips(false);
+        setSettings(value => ({ ...value, displayMode: 'viewing', scene: 'overview', broadcastChannel: undefined }));
+        pushTvDisplayMode('viewing'); close(); setMessage(t('disconnected'));
+        try { localStorage.removeItem(TOKEN_KEY); } catch { /* No storage. */ }
+      } else setUnlinkError(true);
+    } finally {
+      clearTimeout(timeout);
+      if (unlinkRequest.current === controller) { unlinkRequest.current = null; setUnlinking(false); }
+    }
   }
   async function toggleFullscreen() { try { if (document.fullscreenElement) await document.exitFullscreen(); else await root.current?.requestFullscreen(); } catch { setMessage(t('error')); } }
   const quotes = market.data?.quotes || [], pages = Math.max(1, Math.ceil((market.data?.directoryTotal ?? quotes.length) / pageSize));

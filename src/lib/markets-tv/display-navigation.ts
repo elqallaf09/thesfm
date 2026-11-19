@@ -10,23 +10,31 @@ export function tvDisplayModeFromPath(pathname: string): TvDisplayMode | null {
   return (Object.keys(TV_DISPLAY_PATHS) as TvDisplayMode[]).find(mode => TV_DISPLAY_PATHS[mode] === path) ?? null;
 }
 
-// Keep the TV document mounted. Packaged clients retain their asset URL.
+// Keep the TV document mounted. Packaged clients retain their asset path.
 export function pushTvDisplayMode(mode: TvDisplayMode): void {
-  if (typeof window === 'undefined' || !tvDisplayModeFromPath(window.location.pathname)) return;
+  if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
-  url.pathname = TV_DISPLAY_PATHS[mode];
+  const website = Boolean(tvDisplayModeFromPath(url.pathname));
+  if (!website && !url.searchParams.has('channel')) return;
+  if (website) { url.pathname = TV_DISPLAY_PATHS[mode]; url.hash = ''; }
   url.searchParams.delete('channel');
-  url.hash = '';
-  if (url.href !== window.location.href) window.history.pushState(null, '', url);
+  if (url.href !== window.location.href) {
+    if (website) window.history.pushState(null, '', url);
+    else window.history.replaceState(window.history.state, '', url);
+  }
 }
 
 // A broadcast is its own history entry, including when selected from /tv.
-// Keep the packaged asset URL unchanged; its settings store the selection.
+// Refresh an existing packaged deep link so it cannot override the new selection.
 export function pushTvBroadcastChannel(channel: TvReceiverChannel): void {
-  if (typeof window === 'undefined' || !tvDisplayModeFromPath(window.location.pathname)) return;
+  if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
-  url.pathname = TV_DISPLAY_PATHS.viewing;
+  const website = Boolean(tvDisplayModeFromPath(url.pathname));
+  if (!website && !url.searchParams.has('channel')) return;
+  if (website) { url.pathname = TV_DISPLAY_PATHS.viewing; url.hash = ''; }
   url.searchParams.set('channel', channel);
-  url.hash = '';
-  if (url.href !== window.location.href) window.history.pushState(null, '', url);
+  if (url.href !== window.location.href) {
+    if (website) window.history.pushState(null, '', url);
+    else window.history.replaceState(window.history.state, '', url);
+  }
 }

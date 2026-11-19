@@ -45,4 +45,20 @@ describe('TV document-preserving navigation', () => {
     vi.stubGlobal('window', undefined);
     expect(() => pushTvBroadcastChannel('sessions')).not.toThrow();
   });
+  it('refreshes packaged deep links without changing the asset path or adding native Back entries', () => {
+    for (const start of ['https://appassets.androidplatform.net/index.html', 'file:///app/index.html']) {
+      const pushState = vi.fn(), replaceState = vi.fn(), state = { native: true };
+      vi.stubGlobal('window', { location: new URL(`${start}?channel=europeNews&display=tv#app`), history: { pushState, replaceState, state } });
+      pushTvBroadcastChannel('technology');
+      expect(pushState).not.toHaveBeenCalled();
+      expect(replaceState).toHaveBeenCalledWith(state, '', new URL(`${start}?channel=technology&display=tv#app`));
+    }
+  });
+  it('clears an obsolete packaged channel when choosing a different display mode', () => {
+    const pushState = vi.fn(), replaceState = vi.fn();
+    vi.stubGlobal('window', { location: new URL('https://appassets.androidplatform.net/index.html?channel=europeNews&display=tv'), history: { pushState, replaceState, state: null } });
+    pushTvDisplayMode('browse');
+    expect(pushState).not.toHaveBeenCalled();
+    expect(replaceState).toHaveBeenCalledWith(null, '', new URL('https://appassets.androidplatform.net/index.html?display=tv'));
+  });
 });

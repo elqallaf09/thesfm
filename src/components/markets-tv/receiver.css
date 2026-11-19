@@ -18,7 +18,7 @@
 .tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-symbol{grid-column:2;grid-row:1;min-width:0;max-width:none;overflow:visible}
 .tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-symbol b{font-size:1em;line-height:1.25}
 .tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-symbol>span{font-size:max(13px,.8em);line-height:1.4;white-space:normal;max-width:none}
-.tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-price{grid-column:1/3;grid-row:2;font-size:max(28px,1.7em);line-height:1.2;white-space:nowrap;justify-self:start}
+.tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-price{grid-column:1/3;grid-row:2;font-size:max(28px,1.7em);line-height:1.3;white-space:nowrap;justify-self:start}
 .tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-price>span{font-size:max(12px,.45em)}
 .tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-change{grid-column:3;grid-row:2;font-size:max(13px,1em);white-space:nowrap}
 .tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item > .tv-strip-evidence{grid-column:1/-1;grid-row:3;display:flex;flex-wrap:wrap;gap:.25em .6em;overflow:visible;font-size:max(12px,.65em);line-height:1.35;white-space:normal}

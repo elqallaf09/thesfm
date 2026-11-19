@@ -196,6 +196,67 @@ test('failed sign out retains the paired state, shows an error and permits retry
   expect(deletions).toBe(2);
 });
 
+for (const status of [200, 401]) {
+  test(`an older sign-out response (${status}) cannot revoke a newly paired account or change its view`, async ({ page }) => {
+    await fixture(page, 'en', 'light', true);
+    await expect(page.locator('.tv-side-menu-account-name')).toHaveText('Living room QA');
+    await page.clock.pauseAt(new Date('2026-11-19T10:00:30Z'));
+    const nextToken = 'e'.repeat(64);
+    let releaseOldDelete = () => {};
+    const heldDelete = new Promise<void>(resolve => { releaseOldDelete = resolve; });
+    let deletions = 0;
+    await page.route('**/api/tv/device', async route => {
+      const request = route.request(), token = request.headers()['x-sfm-tv-token'];
+      if (request.method() === 'DELETE' && token === deviceToken) {
+        deletions++;
+        await heldDelete;
+        return route.fulfill({ status, json: status === 200 ? { success: true } : { code: 'UNAUTHORIZED' } });
+      }
+      if (request.method() === 'GET' && token === deviceToken) return route.fulfill({ status: 401, json: { code: 'UNAUTHORIZED' } });
+      if (request.method() === 'GET' && token === nextToken) return route.fulfill({ json: {
+        device: { id: 'new-device', name: 'New living room QA', settings: { language: 'en', theme: 'light', autoRotate: false, sessionAutoRotate: false } }, symbols: ['QA1'], alerts: [],
+      } });
+      return route.fallback();
+    });
+    await page.route('**/api/tv/pair', route => route.fulfill({ json: route.request().method() === 'POST'
+      ? { code: 'ABCDEF123456', secret: 'd'.repeat(64), expiresAt: '2026-11-19T10:10:00Z' }
+      : { state: 'active', token: nextToken } }));
+    await page.locator('[data-tv-focus-key=pair]').click();
+    await page.locator('[data-tv-focus-key=sign-out-confirm]').click();
+    await expect.poll(() => deletions).toBe(1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-tv-dialog]')).toHaveCount(0);
+    // A connection refresh rechecks authorization while the earlier DELETE is pending.
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBeNull();
+    await openTvMenu(page);
+    await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign in');
+    await page.locator('[data-tv-focus-key=pair]').click();
+    await page.locator('.tv-pair-content button').click();
+    await expect(page.locator('.tv-pair-code')).toBeVisible();
+    await page.clock.runFor(5100);
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe(nextToken);
+    await chooseTvDestination(page, 'sessions');
+    await openTvMenu(page);
+    await expect(page.locator('.tv-side-menu-account-name')).toHaveText('New living room QA');
+    await page.locator('[data-tv-focus-key=pair]').click();
+    const confirm = page.locator('[data-tv-focus-key=sign-out-confirm]');
+    await expect(confirm).toBeDisabled();
+    const oldResponse = page.waitForResponse(response => response.request().method() === 'DELETE'
+      && response.request().headers()['x-sfm-tv-token'] === deviceToken);
+    releaseOldDelete();
+    const response = await oldResponse;
+    expect(response.status()).toBe(status);
+    await response.finished();
+    await expect(confirm).toBeEnabled();
+    expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe(nextToken);
+    await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'sessions');
+    await expect(page.locator('.tv-sign-out')).toContainText('New living room QA');
+    await expect(page.locator('#tv-dialog-title')).toHaveText('Sign out');
+    expect(deletions).toBe(1);
+  });
+}
+
 test('side menu preserves all extra display tools and defaults market hours to the full directory', async ({ page }) => {
   await fixture(page, 'ar');
   const tools = await openTvHeaderActions(page);

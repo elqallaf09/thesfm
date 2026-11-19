@@ -104,6 +104,12 @@ test('remote reaches every clipped row and restores focus after quote details', 
   await page.setViewportSize({ width: 960, height: 540 });
   await openTv(page, 'ar');
   const rows = page.locator('.tv-scene-row');
+  // The side menu frees enough height for this six-row fixture. Constrain its
+  // panel to three rows so this test still exercises remote scroll recovery.
+  await rows.first().evaluate(row => {
+    row.parentElement!.style.maxHeight = `${Math.floor(row.getBoundingClientRect().height * 3)}px`;
+  });
+  await expect.poll(() => page.locator('.tv-scene-rows').evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
   await rows.first().focus();
   for (let index = 0; index < 6; index++) {
     if (index) await page.keyboard.press('ArrowDown');

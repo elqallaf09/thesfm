@@ -23,12 +23,15 @@ brand identity and Kuwait time. It contains no hidden replacement toolbar.
 - Preserve device pairing for sign in. Sign out confirms revocation of this
   TV's access; it does not sign out other website sessions. Failed revocation
   retains the token, reports an inline error and permits retry. Successful
-  revocation clears private state and returns to the public hall.
+  revocation clears private state and returns to the public hall. Completion
+  is scoped to the requested account, so an old delayed revocation cannot
+  remove a newly paired account. Unmount cancels the pending request.
 - Up/Down follows the menu order; Back restores the Menu handle; an inward
   arrow returns to the broadcast. The outer content edge reopens the menu.
   The existing Android Back bridge recognizes the drawer's focus scope.
 - Suspend paging while the drawer/dialog is open without rewriting the user's
-  playback preference. Preserve browser history for broadcast selections.
+  playback preference. Preserve browser history for broadcast selections and
+  refresh existing packaged deep-link queries without changing the asset path.
 - Remove retired navigation CSS. Correct inherited portrait news and compact
   Kuwait card cascade conflicts without changing the performance limits.
 
@@ -37,8 +40,22 @@ brand identity and Kuwait time. It contains no hidden replacement toolbar.
 Local development uses Node 22.13.0 and pnpm 11.1.3. The first local focused
 TV unit run passed all 319 cases across 53 files; two additional broadcast
 history cases were then added. Translations, maintainability, scoped ESLint
-and the standalone packaged build passed. The updated packaged browser suite
-collects 167 cases, including the new side-menu, focus and account scenarios.
+and the standalone packaged build passed.
+
+The first complete candidate, `36efd9403ea3d4c9a76aead666aee287dd300353`,
+passed the production build, unchanged route budgets, TypeScript, ESLint,
+translations, launch guards and clean migration/access checks in CI run
+44515077107. Its unit/integration result was 4530 passed and 23 skipped, with
+107 additional engine tests passed. The Vercel preview built successfully.
+
+Packaged CI run 44515076960 passed 163 of 167 cases, including all 13 new
+sidebar/layout/remote/account tests. Its real screenshots show the Arabic
+drawer and pinned account actions fitting in both themes. The four remaining
+findings led to a price-line-height correction, a packaged deep-link fix,
+and a genuinely constrained remote-scroll fixture. Follow-up coverage adds
+two delayed sign-out/re-pair cases and two deep-link unit cases. The original
+assertions for complete prices, evidence and focus remain in place. Current
+candidate status and exact-head evidence are recorded in PR #376.
 
 Local Chromium cannot create its process-singleton socket in this environment;
 it aborts before navigation. Browser verification must come from the existing

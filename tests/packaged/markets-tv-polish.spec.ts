@@ -183,4 +183,10 @@ test('direct news links open the channel and retain subsequent remote selections
   await page.reload();
   await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'technology');
+  await chooseTvDestination(page, 'allStocks');
+  expect(new URL(page.url()).searchParams.has('channel')).toBe(false);
+  await page.reload();
+  await closeTvMenu(page);
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'markets');
+  await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-browsing/);
 });
