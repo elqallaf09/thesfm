@@ -12,3 +12,17 @@
  .tv-market-strip{grid-template-columns:minmax(7em,11em) minmax(0,1fr) 2em}
  .tv-market-strip-heading .tv-strip-coverage{font-size:max(12px,.55em)}
 }
+
+/* Sparse pages show all available cards at once, rather than a clipped marquee. */
+.tv-market-strip[data-sparse=true] .tv-market-strip-track{animation:none!important;transform:none!important;will-change:auto;width:100%;min-width:0}
+.tv-market-strip[data-sparse=true] .tv-market-strip-set{display:flex;flex:1;min-width:0;width:100%}
+.tv-market-strip[data-sparse=true] .tv-market-strip-set[aria-hidden=true]{display:none}
+.tv-market-strip[data-sparse=true] .tv-market-strip-item{flex:1 1 0;min-width:0;max-width:none}
+.tv-market-strip[data-sparse=true] .tv-market-strip-window{min-width:0}
+@media(max-width:1100px){
+ .tv-unified-header{min-width:0;gap:.45em}
+ .tv-unified-brand{min-width:0}
+ .tv-unified-header .tv-header-actions{min-width:0;max-width:55vw;overflow-x:auto;scrollbar-width:none}
+ .tv-unified-header .tv-header-actions::-webkit-scrollbar{display:none}
+ .tv-unified-clock{flex-shrink:0}
+}
