@@ -56,3 +56,33 @@ describe('New York intraday session bars', () => {
     ], summer).points).toHaveLength(2);
   });
 });
+
+describe('TV external cash-index coverage for quota-paused primaries', () => {
+  function index(symbol: string, currency: string, overrides: Record<string, unknown> = {}) {
+    const payload = { chart: { result: [{ meta: {
+      symbol, currency, instrumentType: 'INDEX', regularMarketTime: now / 1000,
+      regularMarketPrice: 1000, previousClose: 990, ...overrides,
+    }, timestamp: [now / 1000], indicators: { quote: [{ close: [1000] }] } }] } };
+    return normalizeYahooChartHistory(payload, { symbol, providerSymbol: symbol, assetType: 'index', period: '1d', interval: '5m' });
+  }
+  it.each([
+    ['^DJI', 'USD', 'US'], ['^FTSE', 'GBP', 'GB'], ['^N225', 'JPY', 'JP'],
+  ])('verifies %s with its own currency and country', (symbol, currency, country) => {
+    expect(isTvExternalIndex(symbol)).toBe(true);
+    expect(verifiedTvIndex(symbol as never, index(symbol, currency), now)?.quote)
+      .toMatchObject({ symbol, price: 1000, currency: null, country, source: 'Yahoo Finance', status: 'delayed' });
+  });
+  it.each([
+    ['^FTSE', 'GBp'], ['^FTSE', 'USD'], ['^N225', 'USD'], ['^DJI', 'EUR'],
+  ])('rejects %s quoted in %s rather than relabelling it', (symbol, currency) => {
+    expect(verifiedTvIndex(symbol as never, index(symbol, currency), now)).toBeNull();
+  });
+  it('keeps ETF and futures aliases out of the external index path', () => {
+    for (const alias of ['DIA', 'EWU', 'EWJ', 'YM=F', 'NKD=F', 'DJI', 'FTSE', 'N225']) expect(isTvExternalIndex(alias)).toBe(false);
+  });
+  it('labels a closed-session observation as dated, never as live', () => {
+    const quote = verifiedTvIndex('^N225' as never, index('^N225', 'JPY', { regularMarketTime: now / 1000 - 6 * 3600 }), now)!.quote;
+    expect(quote.status).toBe('stale');
+    expect(quote.observedAt).toBe(new Date(now - 6 * 3600_000).toISOString());
+  });
+});
