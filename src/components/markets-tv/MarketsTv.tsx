@@ -283,8 +283,8 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         <h2>{settings.language === 'ar' ? 'من يشاهد الآن؟' : 'Who is watching?'}</h2>
         <nav className="tv-side-menu-items">
           <button autoFocus onClick={() => { setGuestMode(false); setAccountChoice(false); setMenuOpen(true); }}><span aria-hidden="true" style={{borderRadius:'50%',padding:12,background:'#d4af6a',color:'#111'}}>●</span><span>{device.data?.device.name || (settings.language === 'ar' ? 'حسابي' : 'My account')}</span></button>
-          <button onClick={() => { setGuestMode(true); setAccountChoice(false); setMenuOpen(true); }}>{settings.language === 'ar' ? 'المشاهدة كضيف' : 'Watch as guest'}</button>
-          <button onClick={() => { setGuestMode(true); setAccountChoice(false); openPair(); }}>{settings.language === 'ar' ? 'إضافة حساب' : 'Add account'}</button>
+          <button onClick={() => { setGuestMode(true); setToken(''); setAccountChoice(false); setMenuOpen(true); }}>{settings.language === 'ar' ? 'المشاهدة كضيف' : 'Watch as guest'}</button>
+          <button onClick={() => { setGuestMode(true); setToken(''); setAccountChoice(false); openPair(); }}>{settings.language === 'ar' ? 'إضافة حساب' : 'Add account'}</button>
         </nav>
       </section>
     </div>}
@@ -298,7 +298,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         setMenuOpen(false);
         setMessage(`${tvText(channel.settings.language, 'channelApplied')}: ${channel.name}`);
       }} onCustomize={() => openMenuDialog('markets')}
-      onSettings={() => openMenuDialog('settings')} onAccount={() => { if (token && guestMode) { setGuestMode(false); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
+      onSettings={() => openMenuDialog('settings')} onAccount={() => { if (token && guestMode) { setGuestMode(false); setToken(localStorage.getItem(TOKEN_KEY) || ''); setAccountChoice(true); setMenuOpen(false); } else openMenuDialog(token ? 'device' : 'pair'); }} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
