@@ -23,10 +23,10 @@ No schema, provider, authentication, recorded financial value, or account change
   targets connect market selection, editing, pagination and Save.
 - Existing remote improvements are preserved: OK/Select/Accept/Space activation,
   bounded directional repeat, focus restoration, grid boundaries and modal scope.
-- The web display routes share a persistent layout so browser Back/Forward
-  cannot replace the TV root. Initial route settings are captured once; the
-  phone pairing page stays outside the display layout. The packaged entry is
-  unaffected by this web-only routing change.
+- First-response quote retention explicitly checks for a previous snapshot.
+  Missing view metadata cannot make an absent snapshot appear to match. The
+  browser regression waits for strip prices and verifies the same TV root after
+  each display/history transition, with no runtime errors or document reloads.
 - The unchanged SheetJS tarball has its verified SHA-512 recorded, matching #372;
   no dependency version changes.
 
@@ -39,14 +39,18 @@ Completed locally:
 - Targeted ESLint, aligned AR/EN/FR translations, maintainability guard, diff check.
 - Focused TV TypeScript check. The full TypeScript gate passed in GitHub CI.
 - Visual inspection of Arabic 720p/1080p light/dark picker and strip captures.
-  The final shared UI passed all 133 packaged browser tests on candidate
-  71e34a0, including the 24 new readability/picker/remote cases. Android
-  debug/release/AAB compilation and lint passed in workflow 44412936789.
-- The independent preview APK from that workflow was verified before delivery:
-  com.thesfm.marketstv.preview, 1.0.21/build 27, SHA-256
+  All 133 packaged browser tests passed on candidates 71e34a0 and 66c0b0a,
+  including the 24 new readability/picker/remote cases. Android debug/release/AAB
+  compilation and lint passed in workflows 44412936789 and 44426049287.
+- The independent preview APK from workflow 44412936789 was verified before
+  delivery: com.thesfm.marketstv.preview, 1.0.21/build 27, SHA-256
   2f03ecd51f50edfc9ffcc95345f8178e8c97a9a752246c00cc09f91d8c29055a.
-  Its signing identity differs from the earlier main APK, so it is distributed
-  as the independent SFM TV Obsidian app with separate settings and pairing.
+  Its signer differs from the earlier main APK; it is the independent
+  SFM TV Obsidian app with separate settings and pairing.
+- A focused regression reproduced the initial-snapshot null dereference before
+  the explicit guard and passed after it. The original route architecture and
+  performance-budget lookup are retained; the shared-layout experiment was
+  reverted after the browser trace identified the actual failure.
 
 Required on the final GitHub head before release:
 

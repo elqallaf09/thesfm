@@ -28,6 +28,11 @@ describe('TV expanded currency feeds', () => {
     expect(q).toMatchObject({ changeBasis: 'reference', issue: undefined });
     expect(referenceForexQuote({ symbol: 'KWD/USD', name: 'Test' }, days).price).toBeNull();
   });
+  it('accepts an initial snapshot without view metadata', () => {
+    // Responses without view metadata must not match a missing retained snapshot.
+    const first = { quotes: [], generatedAt: new Date(now).toISOString(), available: 0, total: 0 } as unknown as TvSnapshot;
+    expect(mergeStripSnapshot(null, first)).toEqual(first);
+  });
   it('retains evidence only for the same listing and never advances its source clock on failure', () => {
     const quote = { symbol: 'TEST', exchange: 'ONE', name: 'Test', nameAr: 'Test', country: null, currency: 'USD', price: 10, changePercent: 1, observedAt: new Date(now).toISOString(), receivedAt: null, source: 'Source', status: 'available' as const };
     const old: TvSnapshot = { group: 'world', quotes: [quote], generatedAt: '', available: 1, total: 1 };

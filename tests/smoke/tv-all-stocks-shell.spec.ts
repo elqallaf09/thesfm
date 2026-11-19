@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test';
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test('TV stock directory occupies the web viewport and keeps its own controls in a light application theme', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.addInitScript(() => {
     localStorage.setItem('the-sfm-theme', 'light');
@@ -12,7 +14,13 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   const items = Array.from({ length: 6 }, (_, index) => ({ symbol: `QA${index}`, name: index ? '*ST Example' : '-1x Test ETF', nameAr: index ? '*ST Example' : '-1x Test ETF', currency: 'USD', region: 'US' }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{ id: 'US', group: 'us', labelAr: 'الولايات المتحدة', labelEn: 'United States', labelFr: 'États-Unis', count: 6, status: 'directory' }] } }));
   await page.route('**/api/tv/instruments?*', route => route.fulfill({ json: { items, total: 6, directoryTotal: 6, page: 0, pageSize: 6 } }));
-  await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { quotes: items.map(item => ({ ...item, price: 10, changePercent: 1, source: 'Browser test source', observedAt: now, receivedAt: now, status: 'delayed', exchange: 'US' })), total: 6, available: 6, generatedAt: now } }));
+  await page.route('**/api/tv/snapshot?*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    return route.fulfill({ json: {
+      group: params.get('group') || 'global', market: params.get('market') || undefined, scene: params.get('scene') || undefined,
+      quotes: items.map(item => ({ ...item, price: 10, changePercent: 1, source: 'Browser test source', observedAt: now, receivedAt: now, status: 'delayed', exchange: 'US' })), total: 6, available: 6, generatedAt: now,
+    } });
+  });
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.goto('/tv/all-stocks');
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
@@ -33,6 +41,7 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await page.locator('.tv-mode-strips').click();
   await expect(page).toHaveURL(/\/tv\/strips$/);
   await expect(page.locator('.tv-strips-only')).toBeVisible();
+  await expect(page.locator('.tv-market-strip-item[data-priced="true"]').first()).toBeVisible();
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   await page.goBack();
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
@@ -61,4 +70,5 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await page.reload();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar')).toHaveCount(0);
+  expect(pageErrors).toEqual([]);
 });
