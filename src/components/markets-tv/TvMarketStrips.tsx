@@ -42,7 +42,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   const snapshot = retainVisibleTvSnapshot(retained, resource), quotes = snapshot?.quotes || [];
   const coverage = tvStripCoverage(quotes, now);
   const sourceCooling = tvStripSourceCooling(quotes, snapshot?.retryAt, now, market.group);
-  const retryAt = market.group === 'forex' ? tvStripRetryAt(quotes, snapshot?.retryAt, now) : null;
+  const retryAt = sourceCooling ? tvStripRetryAt(quotes, snapshot?.retryAt, now) : null;
   const forexWaiting = market.group === 'forex' && (sourceCooling || quotes.some(quote => quote.issue === 'rate_limited'));
   const forexFailure = tvSceneText(language, coverage.priced ? 'currencyUpdatesPartial' : 'currencyUpdatesPaused');
   const emptyPrices = quotes.length > 0 && !coverage.priced;
@@ -82,7 +82,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
     return () => clearTimeout(timer);
   }, [displayed.length, pages, visible, paused, manualPause, sourceCooling, resource.loading, resource.error, resource.data]);
   const health = market.status === 'unavailable' || resource.error ? 'error' : forexWaiting ? coverage.priced ? 'retained' : 'waiting' : coverage.recent ? 'ready' : coverage.priced ? 'retained' : 'waiting';
-  const evidenceSummary = `${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
+  const evidenceSummary = `${t('catalogCount')}: ${directoryCount} · ${t('recentPrices')}: ${coverage.recent} · ${t('closed')}: ${coverage.closed} · ${t('retainedPrices')}: ${coverage.stale} · ${t('referencePrices')}: ${coverage.reference} · ${t('unknownPrices')}: ${coverage.unknown}`;
   const next = useCallback(() => { if (!resource.loading) setPage(value => (value + 1) % pages); }, [resource.loading, pages]);
   const empty = <span className="tv-market-strip-empty">{custom && !selection.length ? t('noSelectedInstruments') : market.status === 'unavailable' ? t('directoryUnavailable') : resource.loading ? t('loading') : resource.error ? t('error') : forexWaiting ? forexFailure : sourceCooling ? failure : pages > 1 ? t('nextPricedBatch') : t('noPrices')}</span>;
   return <div ref={root} className={`tv-market-strip ${active ? 'is-active' : ''}`} data-market={market.id} data-empty={emptyPrices} data-directory-empty={market.count===0} data-source-cooling={sourceCooling} data-paged={pages > 1} data-single-quote={displayed.length === 1} data-sparse={displayed.length > 0 && displayed.length <= 2}>
