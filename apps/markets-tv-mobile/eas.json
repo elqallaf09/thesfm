@@ -4,5 +4,5 @@
     "simulator": { "distribution": "internal", "ios": { "simulator": true } },
     "testflight": { "distribution": "store", "autoIncrement": true, "ios": { "simulator": false } }
   },
-  "submit": { "testflight": { "ios": {} } }
+  "submit": { "testflight": { "ios": { "ascAppId": "6837378137" } } }
 }
