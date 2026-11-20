@@ -22,7 +22,7 @@ import { cachedTvQuote } from './quoteCache';
 import { isOwnableQuote, readOwnedTvQuote, saveOwnedTvQuote } from './ownedQuoteStore';
 import { tvIndexAlternative, withTvIndexFallback } from './indexFallback';
 import { isTvExtraIndex } from '@/lib/markets-tv/catalog';
-import { tvRegionalAlternative, withTvRegionalFallback } from './regionalFallback';
+import { preferTvRegionalQuote, withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
 import { tvWorldStockIdentity } from '@/lib/markets-tv/worldStockQuote';
 import { tvWorldStockAlternative, withTvWorldStockFallback } from './worldStockFallback';
@@ -188,7 +188,7 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   return quote;
 }
 type TvAlternative = (asset: TvAsset) => Promise<TvQuote | null>;
-function tvAlternativeFirst(asset: TvAsset, assetType: string): TvAlternative | null {
+function tvAlternativeFirst(asset: TvAsset, assetType: string, group: TvGroup): TvAlternative | null {
   if (assetType === 'index') return isTvExtraIndex(asset.symbol)
     ? async item => { const quote = await tvIndexAlternative(item.symbol); return quote && { ...quote, displaySymbol: item.displaySymbol, name: item.name, nameAr: item.nameAr || item.name }; }
     : null;
@@ -196,7 +196,7 @@ function tvAlternativeFirst(asset: TvAsset, assetType: string): TvAlternative | 
   if (tvWorldStockIdentity(asset)) return tvWorldStockAlternative;
   // Gulf banks and Nasdaq Dubai keep their own established order.
   if (tvGulfBankIdentity(asset) || tvNasdaqDubaiIdentity(asset)) return null;
-  return tvRegionalIdentity(asset) ? tvRegionalAlternative : null;
+  return tvRegionalIdentity(asset) ? item => preferTvRegionalQuote(item, () => loadQuote(item, group).catch(() => empty(item))) : null;
 }
 function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const assetType = asset.assetType || (group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : group === 'forex' ? 'forex' : 'stock');
@@ -210,7 +210,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const verified = cachedTvQuote(key, async () => {
     // A listing with its own verified source asks it first, so Twelve Data's
     // per-minute credits stay with markets that have no other source.
-    const alternativeSource = tvAlternativeFirst(asset, assetType);
+    const alternativeSource = tvAlternativeFirst(asset, assetType, group);
     const alternative = alternativeSource ? await alternativeSource(asset).catch(() => null) : null;
     if (alternative) return alternative;
     const primary = loadQuote(asset, group).catch(() => empty(asset));
@@ -289,7 +289,10 @@ export async function resolveTvQuotes(assets: TvAsset[], group: TvGroup): Promis
   }
   const workers = ordinary.some(({ asset }) => tvRegionalIdentity(asset) || tvGulfBankIdentity(asset)) ? 6 : 4;
   await Promise.all([cryptoWork, ...Array.from({ length: Math.min(workers, ordinary.length) }, () => worker())]);
-  return Promise.all(quotes.map((quote, index) =>
-    quote.price === null && quote.symbol.startsWith('^') && (assets[index].assetType === 'index' || group === 'global')
-      ? archivedIndex(quote) : quote));
+  return Promise.all(quotes.map((quote, index) => {
+    const nameAr = assets[index].nameAr;
+    if (nameAr && /[\u0600-\u06ff]/.test(nameAr)) quote = { ...quote, nameAr };
+    return quote.price === null && quote.symbol.startsWith('^') && (assets[index].assetType === 'index' || group === 'global')
+      ? archivedIndex(quote) : quote;
+  }));
 }

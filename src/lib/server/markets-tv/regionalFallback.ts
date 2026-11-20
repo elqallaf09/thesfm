@@ -9,7 +9,7 @@ const pending = new Map<string, Promise<YahooHistoryResult | null>>();
 let blockedUntil = 0;
 let active = 0;
 const waiting: Array<() => void> = [];
-const usable = (quote: TvQuote | null): quote is TvQuote => quote !== null && quote.price !== null
+const usable = (quote: TvQuote | null): boolean => quote !== null && quote.price !== null
   && !quote.issue && !['unavailable', 'stale', 'unknown_time'].includes(quoteStatus(quote));
 
 async function read(symbol: string): Promise<YahooHistoryResult | null> {
@@ -26,11 +26,7 @@ async function read(symbol: string): Promise<YahooHistoryResult | null> {
   } finally { const next = waiting.shift(); if (next) next(); else active--; }
 }
 
-/** The existing listing cache retains only verified observations. This layer
- * shares in-flight reads and honours a provider-wide Retry-After on failure. */
-/** The verified Yahoo listing alone, for listings asked here before Twelve Data
- * so its per-minute credits stay with markets that have no other source. */
-export async function tvRegionalAlternative(asset: TvAsset): Promise<TvQuote | null> {
+async function verifiedRegionalQuote(asset: TvAsset): Promise<TvQuote | null> {
   const identity = tvRegionalIdentity(asset);
   if (!identity || blockedUntil > Date.now()) return null;
   let work = pending.get(identity.symbol);
@@ -39,8 +35,17 @@ export async function tvRegionalAlternative(asset: TvAsset): Promise<TvQuote | n
     pending.set(identity.symbol, work);
   }
   const data = await work.catch(() => null);
-  const quote = data ? verifiedTvRegionalQuote(asset, data) : null;
-  return usable(quote) ? quote : null;
+  return data ? verifiedTvRegionalQuote(asset, data) : null;
+}
+
+/** Ask the verified regional source only once, even when it has no quote or
+ * returns an older observation that the primary chain can improve on. */
+export async function preferTvRegionalQuote(asset: TvAsset, loadPrimary: () => Promise<TvQuote>): Promise<TvQuote> {
+  const regional = await verifiedRegionalQuote(asset);
+  if (regional && usable(regional)) return regional;
+  const primary = await loadPrimary();
+  if (!regional || usable(primary)) return primary;
+  return primary.price !== null && Date.parse(primary.observedAt || '') > Date.parse(regional.observedAt || '') ? primary : regional;
 }
 
 export async function withTvRegionalFallback(asset: TvAsset, primary: Promise<TvQuote>): Promise<TvQuote> {
@@ -51,15 +56,7 @@ export async function withTvRegionalFallback(asset: TvAsset, primary: Promise<Tv
   let timer: ReturnType<typeof setTimeout> | undefined;
   const early = await Promise.race([original, new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), 500); })]);
   clearTimeout(timer);
-  if (usable(early)) return early;
-  if (blockedUntil > Date.now()) return original;
-  let work = pending.get(identity.symbol);
-  if (!work) {
-    work = read(identity.symbol)
-      .finally(() => pending.delete(identity.symbol));
-    pending.set(identity.symbol, work);
-  }
-  const data = await work;
-  if (usable(latest)) return latest;
-  return data && verifiedTvRegionalQuote(asset, data) || original;
+  if (early && usable(early)) return early;
+  const regional = await verifiedRegionalQuote(asset);
+  return latest && usable(latest) ? latest : regional || original;
 }
