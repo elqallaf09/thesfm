@@ -1,7 +1,7 @@
 'use client';
 import './trading-hall.css';
 import './stock-rotation.css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight, CircleCheck, List, Search } from 'lucide-react';
 import type { TvLanguage, TvMarket, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import type { TvDirectoryCoverage, TvInstrumentPage } from '@/lib/markets-tv/selections';
@@ -29,7 +29,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
   const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [market, setMarket] = useState(''), [page, setPage] = useState(0);
   const [activity, setActivity] = useState(0), [filterFocused, setFilterFocused] = useState(false);
   const interact = useCallback(() => setActivity(value => value + 1), []);
-  const PAGE_SIZE = useTvTableSize();
+  const PAGE_SIZE = useTvTableSize(true);
   const scope = `${market}:${query}:${PAGE_SIZE}`;
   const [totals, setTotals] = useState<{ scope: string; total: number; directoryTotal: number } | null>(null);
   useEffect(() => setPage(0), [PAGE_SIZE]);
@@ -100,7 +100,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
     </div>
     <div className="tv-stock-coverage"><span role="status"><CircleCheck aria-hidden="true"/><bdi dir="ltr">{directory.loading || quotes.loading ? '—' : `${priced} / ${items.length}`}</bdi>{hallText(language, 'pricedOnPage')}</span><span className="tv-directory-coverage" data-coverage={coverage} role={coverageLabel ? 'status' : undefined}>{hallText(language, coverageLabel || 'directoryNote')}</span></div>
     {(directory.error || quotes.error) && <div className="tv-hall-error" role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></div>}
-    <section className="tv-hall-market-table tv-stock-page"><TvQuoteTable key={directoryPath} items={items} markets={markets} quotes={quotes.data?.quotes ?? []} language={language} now={now} loading={directory.loading || quotes.loading} emptyReason={directory.error || quotes.error ? 'error' : undefined} showUnavailable select={onQuote}/></section>
+    <section className="tv-hall-market-table tv-stock-page" style={{ '--tv-stock-page-size': PAGE_SIZE } as CSSProperties}><TvQuoteTable key={directoryPath} items={items} markets={markets} quotes={quotes.data?.quotes ?? []} language={language} now={now} loading={directory.loading || quotes.loading} emptyReason={directory.error || quotes.error ? 'error' : undefined} showUnavailable select={onQuote}/></section>
     <TvHeadlineBand now={now} newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} news={news} language={language} paused={newsPaused} onStory={onStory}/>
     {ticker && <TvQuoteMarquee quotes={quotes.data?.quotes ?? []} language={language} now={now} paused={paused} speed={speed} select={onQuote} toggle={onTickerPause}/>}
   </main>;

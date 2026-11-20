@@ -91,3 +91,44 @@ test('sparse batches advance without duplicates and wait for remote reading to f
   await page.clock.runFor(15000);
   await expect(quote.locator('.tv-strip-symbol b')).toHaveText('QA12');
 });
+
+test('a throttled exchange shows one compact notice and resumes on the same listing', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 872 });
+  await page.clock.install({ time: new Date(now) });
+  await page.addInitScript(() => {
+    sessionStorage.setItem('sfm-tv-welcome-shown', '1');
+    localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
+      language: 'ar', displayMode: 'strips', marketIds: ['TD_XETR'], groups: ['europe'],
+    }));
+  });
+  await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{
+    id: 'TD_XETR', group: 'europe', labelAr: 'زيترا ألمانيا', labelEn: 'Xetra', labelFr: 'Xetra', count: 24, status: 'directory',
+  }] } }));
+  const deadline = new Date(Date.parse(now) + 120_000).toISOString();
+  let recovered = false;
+  const batches: string[] = [];
+  await page.route('**/api/tv/snapshot?*', route => {
+    const params = new URL(route.request().url()).searchParams;
+    batches.push(params.get('page')!);
+    const quotes = [{ symbol: 'SAP', name: 'SAP', nameAr: 'إس إيه بي', currency: 'EUR', exchange: 'TD_XETR',
+      price: recovered ? 126 : null, source: recovered ? 'Yahoo Finance' : null, changePercent: null,
+      status: recovered ? 'delayed' : 'unavailable', observedAt: recovered ? now : null,
+      receivedAt: now, issue: recovered ? undefined : 'rate_limited' }];
+    return route.fulfill({ json: { group: 'europe', market: 'TD_XETR', page: 0, pageSize: 12, total: 1,
+      directoryTotal: 24, quotes, generatedAt: now, retryAt: recovered ? undefined : deadline } });
+  });
+  await openAndroidTvPackage(page);
+  const strip = page.locator('[data-market="TD_XETR"]');
+  await expect(strip.getByText('حد الطلبات لدى المصدر', { exact: true })).toHaveCount(1);
+  await expect(strip.locator('.tv-market-strip-empty time')).toHaveAttribute('datetime', deadline);
+  await expect(strip.locator('.tv-strip-next')).toBeDisabled();
+  const emptyHeight = (await strip.boundingBox())!.height;
+  await page.clock.fastForward(60_000);
+  expect(batches).toEqual(['0']);
+  recovered = true;
+  await page.clock.fastForward(61_000);
+  await expect(strip.locator('.tv-market-strip-item')).toHaveCount(1);
+  await expect(strip.locator('.tv-strip-evidence time')).toHaveAttribute('datetime', now);
+  expect(batches).toEqual(['0', '0']);
+  expect(emptyHeight).toBeLessThan((await strip.boundingBox())!.height * .8);
+});

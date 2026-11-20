@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ArrowDown, ArrowUp, LayoutGrid, List, RefreshCw } from 'lucide-react';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import { tvQuotePrice, tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
@@ -12,6 +12,7 @@ import { TvOverview } from './TvOverview';
 import { TvWholeTicker as SceneTicker } from './TvWholeTicker';
 import { TvAssetIcon } from './TvAssetIcon';
 import { TvSceneSidebar } from './TvSceneSidebar';
+import { useTvPanelCount } from './useTvBroadcastPage';
 
 type SceneSnapshot = TvSnapshot & { summary?: TvQuote[]; selectionTotal?: number };
 type Props = {
@@ -45,6 +46,7 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
 export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, sessionIds, snapshot, loading, error, language, now, news, newsLoading, newsError, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
   const [view, setView] = useState<'list' | 'heatmap'>('list');
   const listButton = useRef<HTMLButtonElement>(null);
+  const { ref: rowViewport, count: visibleRows } = useTvPanelCount(6, 2.25, 0);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(language, key);
   const { summaries, rows, all, tickerQuotes } = useMemo(() => tvSceneQuotes(snapshot, overview, watchlist), [snapshot, watchlist, overview]);
@@ -64,7 +66,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
         : <p className="tv-scene-summary-empty">{s('noSummaries')}</p>)}
     </section>}
       <section className="tv-scene-quotes" aria-labelledby="tv-scene-quotes-title">
-        <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s(watchlist ? 'watchlistPrices' : 'marketSample')}</p></div>
+        <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{snapshot?.scene && <>{s(snapshot.scene)} · </>}{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s(watchlist ? 'watchlistPrices' : 'marketSample')}</p></div>
           <div className="tv-scene-view-buttons" role="group" aria-label={t('layout')}>
             <button ref={listButton} onClick={() => setView('list')} aria-pressed={view === 'list'} aria-label={s('quoteList')} data-tv-focus-key="scene-list"><List aria-hidden="true"/><span>{s('quoteList')}</span></button>
             <button onClick={() => setView('heatmap')} aria-pressed={view === 'heatmap'} aria-label={s('heatmap')} data-tv-focus-key="scene-heatmap"><LayoutGrid aria-hidden="true"/><span>{s('heatmap')}</span></button>
@@ -83,7 +85,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
           </div>}
         </> : rowsPriced ? <div className="tv-scene-table" data-empty={!rowsPriced}>
           <div className="tv-scene-table-head" aria-hidden="true"><span>{s('identity')}</span>{rowsPriced ? <><span>{s('price')}</span><span>{s('change')}</span><span>{s('evidence')}</span></> : <span>{t('provider')}</span>}</div>
-          <div className="tv-scene-rows" data-sparse={rows.length <= 3}>{rows.map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
+          <div ref={rowViewport} className="tv-scene-rows" data-sparse={rows.length <= 3} style={{ '--tv-visible-quote-rows': Math.min(rows.length, visibleRows) } as CSSProperties}>{rows.map(quote => <button className="tv-quote tv-scene-row" data-priced={tvSceneHasPrice(quote)} key={quoteKey(quote)} onClick={() => onQuote(quote)} data-tv-focus-key={`quote:${quoteKey(quote)}`}>
             <span className="tv-scene-identity"><TvAssetIcon quote={quote}/><strong>{language === 'ar' ? quote.nameAr : quote.name}</strong>{(language === 'ar' ? quote.nameAr : quote.name) !== (quote.displaySymbol || quote.symbol) && <span dir="ltr">{quote.displaySymbol || quote.symbol}</span>}</span>
             {tvSceneHasPrice(quote) && <><span className="tv-scene-price" dir="ltr"><strong>{tvQuotePrice(quote)}</strong><small>{tvSceneQuoteUnit(quote, language)}</small></span>
               <QuoteChange quote={quote} language={language}/></>}<QuoteEvidence quote={quote} language={language} now={now}/>
