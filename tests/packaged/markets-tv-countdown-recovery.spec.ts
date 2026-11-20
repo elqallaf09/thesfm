@@ -62,13 +62,20 @@ test('brief shows dated saved prices with working detail actions instead of empt
  await page.locator('.tv-brief-saved button').first().focus();await page.keyboard.press('Enter');
  await expect(page.locator('[data-tv-dialog]')).toBeVisible();
 });
-test('change map falls back to saved price rows and displays prices when verified changes return',async({page})=>{
+test('change map offers saved prices and displays prices when verified changes return',async({page})=>{
  await open(page);await page.locator('[data-tv-focus-key=scene-heatmap]').click();
- await expect(page.locator('.tv-scene-map-notice')).toBeVisible();
+ await expect(page.locator('.tv-scene-no-data')).toContainText('لا توجد تغيّرات موثقة كافية للخريطة');
+ await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
+ await expect(page.locator('.tv-scene-row')).toHaveCount(0);
+ await page.locator('[data-tv-focus-key=scene-show-quotes]').focus();await page.keyboard.press('Enter');
  await expect(page.locator('.tv-scene-row')).toHaveCount(1);
+ await expect(page.locator('[data-tv-focus-key=scene-list]')).toBeFocused();
+ await expect(page.locator('.tv-scene-row')).toContainText('1,200');
+ await expect(page.locator('.tv-scene-row time')).toHaveAttribute('dateTime',saved.observedAt);
  await page.route('**/api/tv/snapshot?*',r=>r.fulfill({json:{summary:[{...saved,status:'closed',observation:{precision:'instant',marketOpen:false}}],quotes:[{...saved,symbol:'ASML.AS',currency:'EUR',price:1200,status:'closed',observation:{precision:'instant',marketOpen:false}}],available:1,total:1,generatedAt:saturday}}));
  await page.reload();await closeTvMenu(page);await page.locator('[data-tv-focus-key=scene-heatmap]').click();
  await expect(page.locator('.tv-scene-heatmap-price')).toHaveCount(1);
  await expect(page.locator('.tv-scene-heatmap-price').first()).toContainText('1,200');
- await expect(page.locator('.tv-scene-map-notice')).toHaveCount(0);
+ await expect(page.locator('.tv-scene-no-data')).toHaveCount(0);
+ await expect(page.locator('.tv-scene-row')).toHaveCount(0);
 });

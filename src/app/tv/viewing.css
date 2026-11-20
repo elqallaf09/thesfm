@@ -50,11 +50,11 @@
 .tv-scene-summary-empty { grid-column: 1/-1; padding: 1em; color: var(--tv-muted); background: var(--tv-panel); border-radius: var(--radius-control); }
 .tv-scene-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: .7em; flex: 1 1 auto; min-height: 0; }
 .tv-scene-quotes { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--tv-panel); border: 1px solid var(--tv-line); border-radius: var(--radius-panel); padding: .5em .7em; }
-.tv-scene-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: .6em; margin-bottom: .3em; flex: 0 0 auto; }
+.tv-scene-panel-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6em; margin-bottom: .3em; flex: 0 0 auto; }
 .tv-scene-panel-heading h2, .tv-scene-sidebar h2 { font-size: .95em; font-weight: 600; line-height: 1.5; }
 .tv-scene-panel-heading p { font-size: max(12px, .65em); color: var(--tv-muted); line-height: 1.5; }
-.tv-scene-view-buttons { display: flex; gap: .3em; }
-.tv-screen .tv-scene-view-buttons button { padding: .4em; min-height: 2.2em; font-size: .75em; }
+.tv-scene-view-buttons { display: flex; flex-wrap: wrap; gap: .3em; }
+.tv-screen .tv-scene-view-buttons button { padding: .4em .6em; min-height: 2.2em; font-size: max(13px,.7em); gap: .35em; }
 .tv-scene-table { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .tv-scene-table-head, .tv-screen .tv-scene-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .9fr) minmax(0, .85fr) minmax(0, 1.2fr); align-items: center; column-gap: .6em; }
 .tv-scene-table-head span:nth-child(2), .tv-scene-table-head span:nth-child(3) { text-align: center; }
@@ -101,7 +101,9 @@
 .tv-scene-headlines > p { line-height: 1.5; color: var(--tv-muted); font-size: .75em; margin-top: .5em; }
 .tv-scene-no-data, .tv-scene-loading, .tv-viewing-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em; text-align: center; padding: 1em; flex: 1; min-height: 0; color: var(--tv-muted); }
 .tv-scene-no-data h3 { font-size: 1em; font-weight: 500; }
-.tv-scene-heatmap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(min-content, 1fr); gap: .5em; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.tv-scene-no-data > p, .tv-scene-no-data > small { font-size: max(13px,.7em); max-width: 42em; }
+.tv-scene-empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .5em; }
+.tv-scene-heatmap { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc((100% - 1em) / 3), 1fr)); grid-auto-rows: minmax(min-content, 1fr); gap: .5em; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .tv-scene-heatmap > button:focus { outline-offset: -3px; }
 .tv-screen .tv-scene-heatmap > button { display: flex; flex-direction: column; align-items: start; justify-content: center; gap: .2em; min-width: 0; min-height: 0; padding: .6em; text-align: start; border: 0; color: var(--tv-text); background: var(--tv-panel2); }
 .tv-screen .tv-scene-heatmap > button[data-trend=up] { background: var(--tv-up-surface); }
@@ -120,6 +122,16 @@
 @media (min-width: 761px) and (max-height: 650px) {
   .tv-screen.tv-viewing { font-size: 16px; padding: 1.8vh 2.5vw; gap: .4em; }
   .tv-scene-panel-heading p { line-height: 1.25; }
+  /* A focused card must fit below two summary rows on a short TV. Keep the
+     identity beside its icon and the change basis beside its value. */
+  .tv-screen .tv-scene-heatmap > button { display: grid; grid-template-columns: 1.6em minmax(0, 1fr); align-content: start; gap: .05em .25em; padding: .2em; }
+  .tv-scene-heatmap > button > .tv-asset-icon { grid-column: 1; grid-row: 1/3; width: 1.6em; height: 1.6em; }
+  .tv-screen .tv-scene-heatmap-name, .tv-screen .tv-scene-heatmap > button > strong { grid-column: 2; font-size: 13px; line-height: 1.2; }
+  .tv-screen .tv-scene-heatmap-price { grid-column: 1/-1; font-size: max(14px, 1em); line-height: 1.2; }
+  .tv-screen .tv-scene-heatmap-price small { font-size: 13px; }
+  .tv-screen .tv-scene-heatmap .tv-scene-change { grid-column: 1/-1; flex-direction: row; align-items: baseline; gap: .3em; font-size: max(13px, .9em); line-height: 1.2; }
+  .tv-screen .tv-scene-heatmap .tv-scene-change small { font-size: 13px; line-height: 1.2; }
+  .tv-screen .tv-scene-heatmap .tv-evidence-stacked { grid-column: 1/-1; font-size: 13px; line-height: 1.2; gap: .05em; }
 }
 @media (min-width: 761px) and (max-height: 650px), (min-width: 761px) and (max-width: 1200px) {
   .tv-screen .tv-scene-summary { grid-template-columns: minmax(0, 1fr) auto; padding: .45em .7em; gap: .2em .4em; }
