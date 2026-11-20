@@ -6,6 +6,7 @@ import type { AssetDetailsResponse } from '@/domain/intelligence/assetDetails';
 import type { IntelligenceAssetType } from '@/domain/intelligence/contracts';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AiAnalystAssetPicker } from './AiAnalystAssetPicker';
+import { AiAnalystAssetProfile } from './AiAnalystAssetProfile';
 import { ASSET_TYPE_LABELS, aiAnalystLocale, aiAnalystTimestamp } from './copy';
 import styles from './AiAnalystWorkspace.module.css';
 import detailStyles from './AiAnalystAssetDetails.module.css';
@@ -75,6 +76,7 @@ export function AiAnalystAssetDetails({ symbol, assetType, embedded = false }: {
           <div className={styles.statusRail}><span>{copy.source}: {quote.source}</span><span>{copy[quote.delay]}</span><span>{copy.observed}: {quote.observedAt ? aiAnalystTimestamp(locale, quote.observedAt) : copy.unavailable}</span></div>
         </> : <p className={styles.statusRail} role="status">{copy.noQuote}</p>}
         <p className={styles.mutedText}>{copy.notice}</p>
+        {asset.assetType === 'STOCK' || asset.assetType === 'FUND' ? <AiAnalystAssetProfile key={`${asset.canonicalSymbol}:${asset.assetType}`} asset={asset} /> : null}
         {!embedded ? <div className={styles.statusRail}>
           <Link className={styles.linkAction} href={`/ai-analyst/analyze/${encodeURIComponent(asset.displaySymbol)}?assetType=${asset.assetType}`}>{copy.analyze}</Link>
           <Link className={styles.linkAction} href={`/ai-analyst/agent?symbol=${encodeURIComponent(asset.displaySymbol)}&assetType=${asset.assetType}`}>{copy.agent}</Link>
