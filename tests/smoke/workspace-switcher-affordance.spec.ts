@@ -59,6 +59,16 @@ async function styleSnapshot(locator: Locator) {
   });
 }
 
+async function waitForStyleTransitions(locator: Locator) {
+  // Hover and press start finite CSS transitions. Measure their final styles,
+  // not the same transparent interpolation frame at the start of both states.
+  await expect.poll(() => locator.evaluate(element => element.getAnimations()
+    .filter(animation => animation.pending || animation.playState === 'running').length), {
+    intervals: [25, 50, 100],
+    message: 'Workspace tab transitions finish before its styles are measured',
+  }).toBe(0);
+}
+
 // The active destination is marked by one shared sliding indicator (a
 // sibling <span class="sfm-workspace-indicator">), not a per-item
 // border/fill/::after — see WorkspaceSwitcher.tsx. Snapshot it separately
@@ -134,6 +144,7 @@ test.describe('mobile workspace switcher affordance', () => {
 
     const inactiveState = await styleSnapshot(inactive);
     await inactive.hover();
+    await waitForStyleTransitions(inactive);
     const hoverState = await styleSnapshot(inactive);
     expect(hoverState.background).not.toBe(inactiveState.background);
 
@@ -141,6 +152,7 @@ test.describe('mobile workspace switcher affordance', () => {
     expect(box).not.toBeNull();
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     await page.mouse.down();
+    await waitForStyleTransitions(inactive);
     const pressedState = await styleSnapshot(inactive);
     expect(pressedState.background).not.toBe(hoverState.background);
     await page.mouse.move(0, 0);

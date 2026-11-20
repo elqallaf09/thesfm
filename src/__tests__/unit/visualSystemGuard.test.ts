@@ -31,6 +31,12 @@ function probe(source: string, relativePath = 'src/probe.tsx') {
 }
 
 describe('visual-system source guard', () => {
+  it('keeps intentional guard probes out of generated application utilities', () => {
+    const globalCss = read('src/app/globals.css');
+    expect(globalCss).toContain('@source not "../__tests__/unit/visualSystemGuard.test.ts";');
+    expect(globalCss).not.toContain('@source not "../__tests__";');
+  });
+
   it('is part of the consolidated launch validation', () => {
     const packageJson = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
 

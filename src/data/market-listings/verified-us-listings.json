@@ -1,0 +1,23 @@
+[
+  {
+    "symbol": "AGLT", "name": "Agility Robotics, Inc.", "exchange": "NASDAQ", "cik": "2074973",
+    "securityType": "common-stock", "listingType": "business-combination", "firstTradeDate": "2026-11-05",
+    "evidence": "completed-first-trade", "sourceUrl": "https://www.sec.gov/Archives/edgar/data/2074973/000121390026119809/ea031195901ex99-4.htm",
+    "sourceLabel": "SEC EDGAR · 8-K/A Exhibit 99.4", "sourceSection": "Recent Developments / Business Combination",
+    "verifiedAt": "2026-11-16", "reviewAfter": "2026-12-16"
+  },
+  {
+    "symbol": "AMRO", "name": "Amaero Inc.", "exchange": "NASDAQ", "cik": "2141616",
+    "securityType": "common-stock", "listingType": "new-us-listing", "firstTradeDate": "2026-10-15",
+    "evidence": "completed-first-trade", "sourceUrl": "https://www.sec.gov/Archives/edgar/data/2141616/000119312526453527/ck0002141616-20260930.htm",
+    "sourceLabel": "SEC EDGAR · 10-Q", "sourceSection": "Subsequent Events / Initial public offering",
+    "verifiedAt": "2026-11-16", "reviewAfter": "2026-12-16"
+  },
+  {
+    "symbol": "ADRX", "name": "ADARx Pharmaceuticals, Inc.", "exchange": "NASDAQ", "cik": "1802369",
+    "securityType": "common-stock", "listingType": "ipo", "firstTradeDate": "2026-09-25",
+    "evidence": "completed-first-trade", "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1802369/000119312526458321/adrx-ex99_1.htm",
+    "sourceLabel": "SEC EDGAR · 8-K Exhibit 99.1", "sourceSection": "Third Quarter 2026 and Recent Business Highlights",
+    "verifiedAt": "2026-11-16", "reviewAfter": "2026-12-16"
+  }
+]

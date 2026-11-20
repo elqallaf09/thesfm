@@ -9,7 +9,16 @@ const ar = {
   sessions: 'أوقات الأسواق', scheduled: 'حسب جدول التداول — الحالة تقديرية', open: 'مفتوح حسب الجدول', closed: 'مغلق حسب الجدول',
   opens: 'يفتح بعد', closes: 'يغلق بعد', unavailable: 'السعر غير متوفر', chooseMarket: 'اختر البورصة',
   directoryNote: 'عدد الأسهم في الدليل؛ توفر الأسعار يختلف حسب السوق والمصدر.',
+  rising: 'صاعد', falling: 'هابط', unchanged: 'مستقر', changeUnavailable: 'التغيّر غير متوفر',
+  directoryCount: 'في الدليل', pricedOnPage: 'بسعر متوفر في هذه الصفحة', directoryPage: 'صفحة الدليل',
+  directorySelected: 'قائمة مختارة — التغطية غير مكتملة',
+  directoryPending: 'جارٍ تحميل دليل البورصات…',
+  directoryPartial: 'تغطية جزئية — جارٍ استكمال الدليل',
+  directorySnapshot: 'آخر دليل محفوظ — يجري التحقق من التحديثات',
+  directoryUnavailable: 'دليل البورصة غير متوفر حاليًا',
   newsPause: 'إيقاف تبديل الأخبار', newsPlay: 'تشغيل تبديل الأخبار', unknown: 'غير معروف',
+  pauseStocks: 'إيقاف التبديل', resumeStocks: 'تشغيل التبديل', stocksNextIn: 'التالية خلال {seconds} ث',
+  stocksPaused: 'التبديل متوقف', stocksBrowsing: 'متوقف أثناء البحث', stocksWaiting: 'بانتظار البيانات', stocksSinglePage: 'كل النتائج معروضة',
 };
 type HallKey = keyof typeof ar;
 const en: Record<HallKey, string> = {
@@ -21,7 +30,16 @@ const en: Record<HallKey, string> = {
   sessions: 'Market hours', scheduled: 'Scheduled hours — estimated status', open: 'Scheduled open', closed: 'Scheduled closed',
   opens: 'Opens in', closes: 'Closes in', unavailable: 'Price unavailable', chooseMarket: 'Choose exchange',
   directoryNote: 'Directory count; price coverage varies by exchange and source.',
+  rising: 'Rising', falling: 'Falling', unchanged: 'Unchanged', changeUnavailable: 'Change unavailable',
+  directoryCount: 'in directory', pricedOnPage: 'priced on this page', directoryPage: 'Directory page',
+  directorySelected: 'Selected stocks — coverage is incomplete',
+  directoryPending: 'Loading the exchange directory…',
+  directoryPartial: 'Partial coverage — completing the directory',
+  directorySnapshot: 'Last saved directory — checking for updates',
+  directoryUnavailable: 'The exchange directory is currently unavailable',
   newsPause: 'Pause news rotation', newsPlay: 'Resume news rotation', unknown: 'Unknown',
+  pauseStocks: 'Pause rotation', resumeStocks: 'Resume rotation', stocksNextIn: 'Next in {seconds}s',
+  stocksPaused: 'Rotation paused', stocksBrowsing: 'Paused while searching', stocksWaiting: 'Waiting for data', stocksSinglePage: 'All results shown',
 };
 const fr: Record<HallKey, string> = {
   pricesUnavailable: 'Les cours vérifiés de ce lot ne sont pas encore disponibles. Nouvelle tentative automatique ; vous pouvez choisir un autre lot ou une autre bourse.',
@@ -32,6 +50,15 @@ const fr: Record<HallKey, string> = {
   sessions: 'Horaires des marchés', scheduled: 'Horaires prévus — état estimé', open: 'Ouvert selon les horaires', closed: 'Fermé selon les horaires',
   opens: 'Ouverture dans', closes: 'Fermeture dans', unavailable: 'Cours indisponible', chooseMarket: 'Choisir une bourse',
   directoryNote: 'Nombre de titres du répertoire ; couverture variable selon la bourse et la source.',
+  rising: 'En hausse', falling: 'En baisse', unchanged: 'Stable', changeUnavailable: 'Variation indisponible',
+  directoryCount: 'dans le répertoire', pricedOnPage: 'avec un cours sur cette page', directoryPage: 'Page du répertoire',
+  directorySelected: 'Sélection d’actions — couverture incomplète',
+  directoryPending: 'Chargement du répertoire des bourses…',
+  directoryPartial: 'Couverture partielle — répertoire en cours de mise à jour',
+  directorySnapshot: 'Dernier répertoire enregistré — recherche de mises à jour',
+  directoryUnavailable: 'Le répertoire de la bourse est actuellement indisponible',
   newsPause: 'Suspendre les actualités', newsPlay: 'Reprendre les actualités', unknown: 'Inconnu',
+  pauseStocks: 'Suspendre la rotation', resumeStocks: 'Reprendre la rotation', stocksNextIn: 'Suite dans {seconds}s',
+  stocksPaused: 'Rotation suspendue', stocksBrowsing: 'Pause pendant la recherche', stocksWaiting: 'En attente des données', stocksSinglePage: 'Tous les résultats affichés',
 };
 export const hallText = (language: TvLanguage, key: HallKey) => ({ ar, en, fr })[language][key];

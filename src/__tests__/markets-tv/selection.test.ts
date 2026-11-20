@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
-vi.mock('@/lib/server/markets-tv/catalog', () => ({ tvDirectoryAssets: vi.fn() }));
+vi.mock('@/lib/server/markets-tv/catalog', () => ({ tvDirectory: vi.fn() }));
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: () => null }));
 import { normalizeTvSelections } from '@/lib/markets-tv/selections';
 import { localizeTvAsset } from '@/lib/server/markets-tv/names';
-import { tvDirectoryAssets } from '@/lib/server/markets-tv/catalog';
+import { tvDirectory } from '@/lib/server/markets-tv/catalog';
 import { GET } from '@/app/api/tv/instruments/route';
 import { resolveAssetIdentity } from '@/lib/assetVisuals';
 afterEach(() => { vi.resetAllMocks(); });
@@ -25,7 +25,7 @@ describe('TV market instrument choices', () => {
     expect(localizeTvAsset({ symbol: 'AAPL', name: 'Different issuer', region: 'TD_XPAR' }).nameAr).toBe('Different issuer');
   });
   it('paginates the full directory and searches Arabic names without loading quotes', async () => {
-    vi.mocked(tvDirectoryAssets).mockResolvedValue([...Array.from({ length: 2000 }, (_, i) => ({ symbol: `QA${i}`, name: 'QA' })), { symbol: 'NBK.KW', name: 'National Bank of Kuwait', nameAr: 'بنك الكويت الوطني' }]);
+    vi.mocked(tvDirectory).mockResolvedValue({ assets: [...Array.from({ length: 2000 }, (_, i) => ({ symbol: `QA${i}`, name: 'QA' })), { symbol: 'NBK.KW', name: 'National Bank of Kuwait', nameAr: 'بنك الكويت الوطني' }], coverage: 'directory', asOf: null });
     const page = await (await GET(new Request('https://www.the-sfm.com/api/tv/instruments?group=us&market=US&page=39'))).json();
     expect(page.total).toBe(2001); expect(page.items).toHaveLength(50); expect(page.items[49].symbol).toBe('QA1999');
     const query = new URLSearchParams({ group: 'gulf', market: 'BOURSA_KUWAIT', q: 'الكويت الوطني' });

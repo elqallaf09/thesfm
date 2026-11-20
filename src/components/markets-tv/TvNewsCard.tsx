@@ -1,8 +1,8 @@
 'use client';
-/* eslint-disable @next/next/no-img-element -- Provider photos also render in the packaged TV WebView. */
+/* eslint-disable @next/next/no-img-element -- Photos and bundled artwork also render in the packaged TV WebView. */
 import { useState } from 'react';
-import { Newspaper } from 'lucide-react';
 import type { TvLanguage, TvNews } from '@/lib/markets-tv/types';
+import { tvOrigin } from '@/lib/markets-tv/client';
 import { tvQuoteTime } from '@/lib/markets-tv/i18n';
 import { safeTvUrl } from '@/lib/markets-tv/quotes';
 import { receiverText } from '@/lib/markets-tv/receiver';
@@ -10,11 +10,15 @@ import './news-cards.css';
 
 export function TvNewsThumbnail({ imageUrl }: { imageUrl?: string }) {
   const [failed, setFailed] = useState<string | null>(null);
+  const [brandFailed, setBrandFailed] = useState(false);
   const url = imageUrl ? safeTvUrl(imageUrl) : null;
   const available = Boolean(url && url !== failed);
+  const packaged = typeof window !== 'undefined' && tvOrigin() !== window.location.origin;
+  const fallback = `${packaged ? '.' : ''}/markets-tv/sfm-news-fallback.webp`;
   return <span className="tv-news-thumbnail" data-news-image={available ? 'available' : 'fallback'} aria-hidden="true">
-    {available ? <img src={url!} alt="" width="240" height="180" loading="eager" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(url)}/>
-      : <Newspaper aria-hidden="true"/>}
+    {available ? <img key={url} src={url!} alt="" width="240" height="180" loading="eager" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(url)}/>
+      : brandFailed ? <span className="tv-news-fallback-label" dir="ltr">SFM <b>NEWS</b></span>
+      : <img key="sfm-news" src={fallback} alt="" width="960" height="400" loading="eager" decoding="async" onError={() => setBrandFailed(true)}/>}
   </span>;
 }
 

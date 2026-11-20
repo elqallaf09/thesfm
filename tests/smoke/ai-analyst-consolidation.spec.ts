@@ -220,7 +220,11 @@ test.describe('Phase 6.3 AI Analyst market-intelligence consolidation', () => {
     }
 
     await page.goto('/ai-analyst/markets?view=map', { waitUntil: 'domcontentloaded' });
-    await page.waitForURL(/\/ai-analyst\/markets(?:\?|$)/);
+    // The old regexp also matched ?view=map before its server redirect completed.
+    // Wait for the canonical destination, then retain both uniqueness assertions.
+    await page.waitForURL(url => url.pathname === '/ai-analyst/markets' && url.search === '');
+    await expectSingleAnalystWorkspace(page);
+    await expect(page.locator('[data-ai-analyst-surface="market-explorer"]')).toHaveCount(1);
     await expect(page.locator('[data-ai-analyst-surface="market-explorer"]')).toBeVisible();
     await page.goto('/ai-analyst/opportunities', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(/\/ai-analyst\/overview(?:\?|$)/);

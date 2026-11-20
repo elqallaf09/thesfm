@@ -2,7 +2,7 @@ name: Native Markets TV validation
 on:
   pull_request:
     branches: [main]
-    paths: ['apps/markets-tv-native/**', '.github/workflows/markets-tv-native.yml']
+    paths: ['apps/markets-tv-native/**', 'src/lib/markets-tv/**', '.github/workflows/markets-tv-native.yml']
   workflow_dispatch:
     inputs:
       compile_native:

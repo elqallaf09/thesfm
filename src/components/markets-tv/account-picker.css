@@ -1,0 +1,12 @@
+.tv-screen .tv-account-backdrop { display: flex; align-items: center; justify-content: center; }
+.tv-account-picker { width: min(900px, 92vw); max-height: 88vh; display: flex; flex-direction: column; gap: 1em; padding: clamp(16px, 2vw, 40px); border: 1px solid var(--tv-line); border-radius: var(--radius-card); background: var(--tv-panel); box-shadow: var(--tv-dialog-shadow); font-size: clamp(16px, 1.5vw, 28px); }
+.tv-account-picker h2 { font-size: 1.3em; line-height: 1.5; }
+.tv-account-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7em; overflow-y: auto; min-height: 0; padding: 5px; }
+.tv-screen .tv-account-picker button { min-width: 0; min-height: 52px; height: auto; padding: .6em; font-size: 1em; white-space: normal; line-height: 1.5; }
+.tv-account-list button { justify-content: flex-start; gap: .7em; }
+.tv-account-list button > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.tv-account-list small { display: block; font-size: max(14px, .75em); color: var(--tv-muted); }
+.tv-account-avatar { display: inline-flex; flex: 0 0 2em; width: 2em; height: 2em; align-items: center; justify-content: center; border-radius: var(--radius-circle); color: var(--tv-bg); background: var(--tv-accent); }
+.tv-account-actions { display: flex; flex-wrap: wrap; gap: .7em; }
+.tv-account-actions button { flex: 1 1 200px; }
+@media (max-width: 600px) { .tv-account-list { grid-template-columns: minmax(0, 1fr); } }

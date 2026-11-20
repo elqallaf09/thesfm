@@ -9,6 +9,27 @@ export function portfolioCurrency(value: unknown): string | null {
   const result = typeof value === 'string' ? value.trim().toUpperCase() : '';
   return /^[A-Z]{3}$/.test(result) ? result : null;
 }
+/** TV holdings retain their recorded denomination; USDT is never a USD alias. */
+export function recordedHoldingCurrency(value: unknown): string | null {
+  const result = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return result === 'USDT' ? result : portfolioCurrency(value);
+}
+function holdingMoney(amount: unknown, currency: unknown) {
+  const number = portfolioNumber(amount), code = recordedHoldingCurrency(currency);
+  return number !== null && number >= 0 && code ? { amount: number, currency: code } : null;
+}
+/** Prefer the holding's own recorded value without changing the website's
+ * reporting-currency preference or deriving an inverse saved FX conversion. */
+export function recordedHoldingValue(investment: Investment) {
+  const holding = investment.displayValueStatus === 'valid'
+    ? holdingMoney(investment.currentValue, investment.currency) : null;
+  const nativeCurrency = investment.nativeCurrency || investment.priceCurrency || investment.currency;
+  return holding
+    ?? holdingMoney(investment.currentMarketValue, nativeCurrency)
+    ?? holdingMoney(investment.nativeMarketValue, nativeCurrency)
+    ?? (!/(stale|unavailable|failed)/i.test(investment.fxSource || '')
+      ? holdingMoney(investment.convertedMarketValue, investment.userCurrency) : null);
+}
 function recordedValues(investment: Investment) {
   const values: { amount: number; currency: string }[] = [];
   const add = (amount: unknown, currency: unknown) => {

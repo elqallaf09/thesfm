@@ -22,7 +22,7 @@ function publicSnapshotKey(path: string, token: string): string | null {
   if (token || !path.startsWith('/api/tv/snapshot') || path.length > 4096) return null;
   const url = new URL(path, 'https://tv.invalid');
   if (url.pathname !== '/api/tv/snapshot' || url.origin !== 'https://tv.invalid') return null;
-  const allowed = new Set(['group', 'scene', 'market', 'page', 'pageSize', 'symbols']);
+  const allowed = new Set(['group', 'scene', 'market', 'page', 'pageSize', 'symbols', 'listingKeys']);
   for (const [name, value] of url.searchParams) {
     if (!allowed.has(name) || ['group', 'scene', 'market'].includes(name) && value.toLowerCase() === 'watchlist') return null;
   }
@@ -31,6 +31,17 @@ function publicSnapshotKey(path: string, token: string): string | null {
 }
 
 export const isPublicTvSnapshot = (path: string) => publicSnapshotKey(path, '') !== null;
+
+/** A partial directory can finish after the first response. Recheck promptly
+ * without letting its retry hint change private resources or quote budgets. */
+export function tvDirectoryRefreshDelay(path: string, value: unknown, interval: number, token = ''): number {
+  if (token || !path.startsWith('/') || path.startsWith('//') || path.length > 4096 || !value || typeof value !== 'object') return interval;
+  const url = new URL(path, 'https://tv.invalid');
+  if (url.origin !== 'https://tv.invalid' || !['/api/tv/instruments', '/api/tv/catalog'].includes(url.pathname)) return interval;
+  const delay = (value as { retryAfterMs?: unknown }).retryAfterMs;
+  return typeof delay === 'number' && Number.isFinite(delay) && delay > 0
+    ? Math.max(5_000, Math.min(MAX_RETRY_MS, delay)) : interval;
+}
 
 const publicNewsPaths=new Set(['ar','en','fr'].flatMap(language=>
  [`/api/tv/news?language=${language}`, ...[...TV_EXTRA_NEWS_CHANNELS,'technology','kuwait'].map(channel=>{

@@ -1,0 +1,50 @@
+name: TV stock directory rotation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/app/tv/**'
+      - 'src/components/markets-tv/**'
+      - 'src/lib/markets-tv/**'
+      - 'tests/packaged/markets-tv-stock-rotation.spec.ts'
+      - 'tests/packaged/markets-tv-ticker-playback.spec.ts'
+      - 'tests/packaged/markets-tv-browse-fit.spec.ts'
+      - 'tests/packaged/markets-tv-readiness.spec.ts'
+      - 'tests/packaged/trading-hall.spec.ts'
+      - '.github/workflows/tv-stock-rotation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tv-stock-rotation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  stock-rotation:
+    name: CI/Stock directory rotation and RTL layout
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:tv
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify stock rotation, reading controls and TV layouts
+        run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/markets-tv-stock-rotation.spec.ts tests/packaged/markets-tv-browse-fit.spec.ts --output=test-results/stock-rotation
+      - name: Verify independent media playback
+        run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/markets-tv-ticker-playback.spec.ts --grep 'all-stocks media' --output=test-results/stock-playback
+      - name: Verify empty search and compact screen remote visibility
+        run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/markets-tv-readiness.spec.ts tests/packaged/trading-hall.spec.ts --grep 'readiness (light|dark) 960x540|empty stocks and unpaired investments|search finds remote directory pages' --output=test-results/stock-integration
+      - name: Keep stock directory screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stock-rotation-browser-${{ github.sha }}
+          if-no-files-found: ignore
+          path: test-results/

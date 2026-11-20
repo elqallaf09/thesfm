@@ -6,7 +6,8 @@ import { TV_SCENE_GROUP, tvSceneAssets } from './sceneCatalog';
 import { resolveTvQuotes } from './quoteLoader';
 import { tvWatchlistAssets } from './watchlistAssets';
 import { tvSnapshotRetryAt } from './quoteAvailability';
-export type TvSnapshotOptions = { page?: number; pageSize?: number; market?: string; symbols?: string[]; scene?: TvScene };
+import { tvListingKey } from '@/lib/markets-tv/listingIdentity';
+export type TvSnapshotOptions = { page?: number; pageSize?: number; market?: string; symbols?: string[]; listingKeys?: string[]; scene?: TvScene };
 
 async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: TvSnapshotOptions): Promise<TvSnapshot> {
   if (options.scene) {
@@ -20,12 +21,17 @@ async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: Tv
   const directory: TvAsset[] = group === 'watchlist'
     ? tvWatchlistAssets(ownedSymbols)
     : await tvDirectoryAssets(group, options.market);
-  const bySymbol = new Map(directory.map(asset => [asset.symbol, asset]));
-  const selected = options.symbols ? [...new Set(options.symbols)].flatMap(symbol => bySymbol.has(symbol) ? [bySymbol.get(symbol)!] : []) : directory;
+  const byListing = new Map(directory.map(asset => [tvListingKey(asset), asset]));
+  const bySymbol = new Map<string, TvAsset[]>();
+  for (const asset of directory) bySymbol.set(asset.symbol, [...(bySymbol.get(asset.symbol) || []), asset]);
+  const selected = options.listingKeys ? [...new Set(options.listingKeys)].flatMap(key => byListing.has(key) ? [byListing.get(key)!] : [])
+    // Legacy clients can still select an unambiguous ticker. Never silently
+    // choose a venue when that symbol is listed on more than one exchange.
+    : options.symbols ? [...new Set(options.symbols)].flatMap(symbol => bySymbol.get(symbol)?.length === 1 ? bySymbol.get(symbol)! : []) : directory;
   const pageSize = Math.max(1, Math.min(12, options.pageSize ?? 6));
   const page = Math.max(0, Math.min(options.page ?? 0, Math.max(0, Math.ceil(selected.length / pageSize) - 1)));
   const assets = selected.slice(page * pageSize, (page + 1) * pageSize);
-  const quotes = await resolveTvQuotes(assets, group);
+  const quotes = (await resolveTvQuotes(assets, group)).map((quote, index) => ({ ...quote, listingKey: tvListingKey(assets[index]) }));
   return { group, quotes, retryAt: tvSnapshotRetryAt(quotes, Date.now(), group), generatedAt: new Date().toISOString(), available: quotes.filter(hasTvPrice).length,
     total: assets.length, directoryTotal: directory.length, selectionTotal: selected.length, page, pageSize, market: options.market };
 }

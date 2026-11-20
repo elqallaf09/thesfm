@@ -5,11 +5,11 @@ vi.mock('@/lib/market/usSymbolResolver', () => ({
   filterUsSymbolUniverse: vi.fn((rows) => rows),
   searchUSSymbols: vi.fn(async () => ({ results: [], source: 'qa-directory' })),
 }));
-vi.mock('@/lib/world-stocks/providerDirectory', () => ({ getProviderDirectory: vi.fn(async () => ({ status: 'directory', asOf: '2026-09-19', rows: [
+vi.mock('@/lib/world-stocks/providerDirectory', () => ({ providerDirectoryRevision: () => 0, peekProviderDirectory: vi.fn(() => null), getProviderDirectory: vi.fn(async () => ({ status: 'directory', asOf: '2026-09-19', rows: [
   { symbol: 'QA00001', name: 'Synthetic London listing', exchange: 'TD_XLON', exchangeName: 'London', country: 'GB', currency: 'GBP', assetType: 'stock' },
 ] })) }));
 import { searchWorldStocks } from '@/lib/world-stocks/search';
-import { getProviderDirectory } from '@/lib/world-stocks/providerDirectory';
+import { getProviderDirectory, peekProviderDirectory } from '@/lib/world-stocks/providerDirectory';
 import { getBundledUsSymbolUniverse, getUSSymbolUniverse } from '@/lib/market/usSymbolResolver';
 const base = { query: '', region: null, assetType: null, page: 1, pageSize: 25, locale: 'en' as const };
 
@@ -54,6 +54,24 @@ describe('complete world stock discovery', () => {
     expect(result.directoryStatus).toBe('pending');
     expect(result.results.some(row => row.region === 'US')).toBe(true);
     expect(result.results.some(row => row.region === 'BOURSA_KUWAIT')).toBe(true);
+  });
+
+  it('retains verified European listings while the worldwide directory refresh is slow', async () => {
+    vi.useFakeTimers();
+    vi.mocked(getProviderDirectory).mockImplementationOnce(() => new Promise(() => {}));
+    vi.mocked(peekProviderDirectory).mockReturnValueOnce({ status: 'snapshot', asOf: '2026-09-18T10:00:00Z', rows: [
+      { symbol: 'SAVED', providerSymbol: 'SAVED', name: 'Verified European company', exchange: 'TD_XPAR', exchangeName: 'Paris', country: 'FR', currency: 'EUR', assetType: 'stock', mic: 'XPAR', source: 'verified-directory' },
+    ] });
+
+    const response = searchWorldStocks({ ...base, region: 'TD_XPAR' });
+    await vi.advanceTimersByTimeAsync(1_500);
+
+    const result = await response;
+    expect(result.directoryStatus).toBe('snapshot');
+    expect(result.directoryAsOf).toBe('2026-09-18T10:00:00Z');
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0]).toMatchObject({ canonicalSymbol: 'SAVED', region: 'TD_XPAR', currency: 'EUR', price: null });
+    expect(result.markets.find(market => market.id === 'TD_XPAR')).toMatchObject({ count: 1, status: 'snapshot' });
   });
 
   it('uses the verified bundled US catalog rather than holding a slow remote directory', async () => {

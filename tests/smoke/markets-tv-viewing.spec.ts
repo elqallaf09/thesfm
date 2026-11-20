@@ -1,4 +1,4 @@
-import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './helpers/tv-controls';
+import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination, selectTvProfile } from './helpers/tv-controls';
 import { expect, test, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -138,7 +138,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   await settings.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await page.locator('.tv-language-setting select').selectOption('en');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-focus-key="menu-toggle"]')).toBeFocused();
@@ -158,7 +158,7 @@ test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three lan
   await expect(row).toBeFocused();
   await openTvMenu(page);
   await settings.click();
-  await page.locator('.tv-language-setting select').selectOption('fr');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'Français', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('lang', 'fr');
   await page.setViewportSize({ width: 390, height: 844 });
@@ -194,7 +194,7 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
   await fixtures(page);
   const settings = { displayMode: 'viewing', scene: 'watchlist', language: 'ar' };
   await page.addInitScript(value => {
-    localStorage.setItem('sfm-markets-tv-device-v1', 'synthetic-browser-device');
+    localStorage.setItem('sfm-markets-tv-device-v1', 'f'.repeat(64));
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify(value));
   }, settings);
   await page.route('**/api/tv/device', route => route.fulfill({ json: {
@@ -207,6 +207,7 @@ test('a short linked watchlist keeps its prices visible and counts each instrume
       quotes: [], total: 0, available: 0, selectionTotal: empty ? 0 : 2 } });
   });
   await page.goto('/tv');
+  await selectTvProfile(page, 0);
   await closeTvMenu(page);
   await expect(page.locator('.tv-scene-row')).toHaveCount(2);
   await expect(page.locator('.tv-scene-summary')).toHaveCount(0);

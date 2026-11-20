@@ -25,10 +25,11 @@ test('instrument choices search beyond the first page, persist and restore all s
   await closeTvMenu(page);
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
-  await expect(page.locator('.tv-language-setting select')).toHaveValue('ar');
-  await page.locator('.tv-language-setting select').selectOption('fr');
+  await expect(page.locator('.tv-language-options').getByRole('button', { name: 'العربية', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'Français', exact: true }).click();
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('lang', 'fr');
-  await page.locator('.tv-language-setting select').selectOption('ar');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'العربية', exact: true }).click();
+  await page.locator('#tv-settings-tab-display').click();
   await page.getByRole('dialog').getByRole('button', { name: 'تخصيص الأسواق', exact: true }).click();
   await page.getByRole('button', { name: 'تخصيص الأسهم والأصول: الأسواق الأمريكية', exact: true }).click();
   await expect(page.locator('.tv-picker-count')).toContainText('2,000');
@@ -101,7 +102,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Tab');
   expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[data-tv-dialog]')))).toBe(true);
-  await page.locator('.tv-language-setting select').selectOption('en');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
   await page.getByRole('button', { name: 'Light', exact: true }).click();
   await page.keyboard.press('Escape');
@@ -117,7 +118,7 @@ test('TV fits a television and supports remote focus, languages and QR details',
   await chooseTvDestination(page, 'hall');
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
-  await page.locator('.tv-language-setting select').selectOption('fr');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'Français', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('lang', 'fr');
   await page.setViewportSize({ width: 3840, height: 2160 });
@@ -218,7 +219,7 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-1');
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
-  await page.locator('.tv-language-setting select').selectOption('en');
+  await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
   expect(requests.some(url => url.includes('/news'))).toBe(false);

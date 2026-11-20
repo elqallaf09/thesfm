@@ -2,10 +2,10 @@ name: Markets TV packages
 on:
   push:
     branches: [main]
-    paths: ['apps/markets-tv/**', 'public/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', '.github/workflows/markets-tv.yml']
+    paths: ['apps/markets-tv/**', 'public/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', 'tests/helpers/**', '.github/scripts/install-playwright-browsers.sh', '.github/workflows/markets-tv.yml']
   pull_request:
     branches: [main]
-    paths: ['apps/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', 'tests/packaged/**', 'playwright.tv.config.ts', 'pnpm-lock.yaml', '.github/workflows/markets-tv.yml']
+    paths: ['apps/markets-tv/**', 'src/components/markets-tv/**', 'src/lib/markets-tv/**', 'src/app/tv/**', 'scripts/build-markets-tv.mjs', 'tests/packaged/**', 'tests/helpers/**', 'playwright.tv.config.ts', 'pnpm-lock.yaml', '.github/scripts/install-playwright-browsers.sh', '.github/workflows/markets-tv.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,9 +28,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:tv
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install Chromium with network retries
+        timeout-minutes: 10
+        run: bash .github/scripts/install-playwright-browsers.sh chromium
       - name: Verify packaged TV layout and remote navigation
-        run: pnpm exec playwright test --config=playwright.tv.config.ts
+        run: pnpm exec playwright test --config=playwright.tv.config.ts --reporter=line
       - name: Keep TV browser evidence
         if: always()
         uses: actions/upload-artifact@v7

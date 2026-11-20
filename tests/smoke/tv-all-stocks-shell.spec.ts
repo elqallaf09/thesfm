@@ -1,7 +1,8 @@
 import { closeTvMenu, openTvMenu, chooseTvDestination } from './helpers/tv-controls';
 import { expect, test } from '@playwright/test';
 
-test.use({ storageState: { cookies: [], origins: [] } });
+// Keep fresh anonymous contexts while inheriting the selected configuration's
+// deployment-only Preview protection state. An empty override drops that cookie.
 
 test('TV stock directory occupies the web viewport and keeps its own controls in a light application theme', async ({ page }) => {
   const pageErrors: string[] = [];
@@ -25,6 +26,8 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
   await page.goto('/tv/all-stocks');
   await closeTvMenu(page);
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-browsing\b/);
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar')).toHaveCount(0);
   await page.keyboard.press('Shift');
@@ -34,30 +37,45 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await chooseTvDestination(page, 'hall');
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
+  // pushState changes the URL before React commits the mode. The row count is
+  // shared by viewing and browse, so require the destination mode as well.
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-viewing\b/);
+  await expect(page.locator('.tv-viewing .tv-hall-content')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await chooseTvDestination(page, 'allStocks');
   await expect(page).toHaveURL(/\/tv\/all-stocks$/);
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-browsing\b/);
+  await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(page.locator('.tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   await chooseTvDestination(page, 'strips');
   await expect(page).toHaveURL(/\/tv\/strips$/);
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-strips-only\b/);
   await expect(page.locator('.tv-strips-only')).toBeVisible();
   await expect(page.locator('.tv-market-strip-item[data-priced="true"]').first()).toBeVisible();
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   await page.goBack();
+  await expect(page).toHaveURL(/\/tv\/all-stocks$/);
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-browsing\b/);
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   await page.goBack();
   await expect(page.locator('.tv-hall-content')).toBeVisible();
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
+  await expect(page).toHaveURL(/\/tv$/);
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-viewing\b/);
+  await expect(page.locator('.tv-viewing .tv-hall-content')).toBeVisible();
   await page.goForward();
+  await expect(page).toHaveURL(/\/tv\/all-stocks$/);
+  await expect(page.locator('.tv-screen')).toHaveClass(/\btv-browsing\b/);
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   expect(documents).toEqual([]);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar, .sfm-route-loading')).toHaveCount(0);
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('[data-tv-focus-key=settings-tab-playback]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await page.keyboard.press('Shift');

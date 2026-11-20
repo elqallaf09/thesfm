@@ -33,6 +33,7 @@
     "**/*_backup_*/**",
     "apps/expo-go/**",
     "apps/markets-tv-native/**",
+    "apps/markets-tv-mobile/**",
     "wakeel-admin/**",
     "wakeel-tracking/**"
   ]

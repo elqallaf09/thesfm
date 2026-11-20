@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ aggregate: vi.fn(), cache: vi.fn() }));
+const mocks = vi.hoisted(() => ({ aggregate: vi.fn(), cache: vi.fn(), resolveImage: vi.fn() }));
+vi.mock('@/lib/server/imageUrlResolver', () => ({ resolvePublicImageUrl: mocks.resolveImage }));
 vi.mock('@/lib/market-news/engine', () => ({ aggregateFinancialNews: mocks.aggregate }));
 vi.mock('@/lib/server/markets-tv/newsCache', () => ({ cachedTvNews: mocks.cache }));
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: () => null }));
 import { GET } from '@/app/api/tv/news/route';
 
 beforeEach(() => {
+  mocks.resolveImage.mockReset().mockResolvedValue({ ok: false, code: 'NO_IMAGE_FOUND' });
   mocks.aggregate.mockReset().mockResolvedValue({ stories: [] });
   mocks.cache.mockReset().mockImplementation(async (_language, load) => ({ stories: await load(), generatedAt: '2026-11-07T00:00:00Z' }));
 });
@@ -29,6 +31,13 @@ describe('TV receiver news endpoint', () => {
     expect(params.strictEntityFilter).toBe(true);
     expect(params.languages).toBeUndefined(); expect(params.query).toBeUndefined();
     expect(await response.json()).toMatchObject({ channel: 'technology', stories: [{ title: 'Technology company earnings', source: 'QA source' }] });
+  });
+  it('recovers missing article photos from publisher metadata', async () => {
+    mocks.resolveImage.mockResolvedValue({ ok: true, imageUrl: 'https://cdn.example.com/photo.jpg' });
+    mocks.aggregate.mockResolvedValue({ stories: [{ id: 'a', title: 'News', sourceName: 'Publisher', originalUrl: 'https://example.com/article', publishedAt: '2026-11-07T00:00:00Z' }] });
+    const response = await GET(new Request('https://example.com/api/tv/news?channel=technology'));
+    expect((await response.json()).stories[0].imageUrl).toBe('https://cdn.example.com/photo.jpg');
+    expect(mocks.resolveImage).toHaveBeenCalledWith('https://example.com/article');
   });
   it.each(['all', 'technology', 'kuwait'])('preserves safe provider photos in the %s feed and keeps imageless articles', async channel => {
     const sourceStory = { id: 'photo', title: 'Market update', sourceName: 'QA source', originalUrl: 'https://example.com/story', publishedAt: '2026-11-07T00:00:00Z' };

@@ -1,4 +1,4 @@
-import { openAndroidTvPackage } from './packageHarness';
+import { openAndroidTvPackage, openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 type Language = 'ar' | 'en' | 'fr';
@@ -96,6 +96,14 @@ async function openNews(page: Page, language: Language, theme: Theme, view: View
   return cards;
 }
 
+async function expectBrandedFallback(thumbnail: Locator) {
+  await expect(thumbnail).toHaveAttribute('data-news-image', 'fallback');
+  const image = thumbnail.locator('img');
+  await expect(image).toHaveAttribute('src', /^\.?\/markets-tv\/sfm-news-fallback\.webp$/);
+  await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+  await expect(image).toHaveCSS('object-fit', 'contain');
+}
+
 async function expectCardGeometry(cards: Locator, direction: 'rtl' | 'ltr', viewport = true) {
   await expect.poll(() => cards.evaluateAll((elements, { direction, viewport }) => elements.flatMap((card, index) => {
     const violations: string[] = [], bounds = card.getBoundingClientRect();
@@ -186,8 +194,10 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
     await expect(cards.first().locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'available');
     await expect.poll(() => cards.first().locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-    await expect(cards.nth(1).locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'fallback');
-    await expect(cards.nth(2).locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'fallback');
+    await expectBrandedFallback(cards.nth(1).locator('.tv-news-thumbnail'));
+    await expectBrandedFallback(cards.nth(2).locator('.tv-news-thumbnail'));
+    await expect(cards.nth(1).locator('.tv-news-evidence > bdi')).toHaveText('QA newsroom');
+    await expect(cards.nth(2).locator('.tv-news-evidence > bdi')).toHaveText('QA newsroom');
     await expect(cards.first().locator('time')).toHaveAttribute('aria-label', '2026-11-18 · 23:26');
     await expect(cards.first().locator('time')).toContainText('2026-11-18');
     await expect(cards.nth(1).locator('time')).toHaveAttribute('aria-label', '00:05');
@@ -277,14 +287,77 @@ test('a failed provider image keeps its reserved size and article readable', asy
   await expect(broken.locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'available');
   const before = await geometry();
   releaseBroken();
-  await expect(broken.locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'fallback');
-  await expect(broken.locator('img')).toHaveCount(0);
+  await expectBrandedFallback(broken.locator('.tv-news-thumbnail'));
   expect(await geometry()).toEqual(before);
   await expect(broken.locator('.tv-news-title')).toHaveText(newsItems(24, 'en')[2].title);
+  await expect(broken.locator('.tv-news-evidence > bdi')).toHaveText('QA newsroom');
   await expect(broken.locator('time')).toHaveAttribute('aria-label', '2026-11-18 · 23:26');
   await broken.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toContainText(newsItems(24, 'en')[2].title);
+  await expect(page.getByRole('dialog')).toContainText('QA newsroom');
+  await expectBrandedFallback(page.getByRole('dialog').locator('.tv-news-thumbnail'));
   await page.keyboard.press('Escape');
   await expect(broken).toBeFocused();
+});
+
+test('refreshed articles replace missing or failed images with the new provider photo', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const cards = await openNews(page, 'en', 'dark', 'europeNews');
+  for (const index of [1, 2]) await expectBrandedFallback(cards.nth(index).locator('.tv-news-thumbnail'));
+  const replacementUrl = imageOrigin + '/recovered.svg';
+  await page.route('**/api/europe-news?**', route => {
+    const stories = newsItems(24, 'en').map((story, index) => index === 1 || index === 2 ? { ...story, imageUrl: replacementUrl } : story);
+    return route.fulfill({ json: { items: stories, success: true, generatedAt: instant, lastSuccessfulUpdate: instant } });
+  });
+  const tools = await openTvHeaderActions(page);
+  await Promise.all([
+    page.waitForResponse('**/api/europe-news?**'),
+    tools.locator('[data-tv-focus-key="refresh"]').click(),
+  ]);
+  await closeTvHeaderActions(page);
+  for (const index of [1, 2]) {
+    const card = cards.nth(index), thumbnail = card.locator('.tv-news-thumbnail');
+    await expect(thumbnail).toHaveAttribute('data-news-image', 'available');
+    await expect(thumbnail.locator('img')).toHaveAttribute('src', replacementUrl);
+    await expect.poll(() => thumbnail.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    await expect(card.locator('.tv-news-evidence > bdi')).toHaveText('QA newsroom');
+  }
+  await expectCardGeometry(cards, 'ltr');
+});
+
+test('an unavailable bundled fallback keeps SFM NEWS visible without an image retry loop', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const cards = await openNews(page, 'en', 'light', 'europeNews');
+  await expectBrandedFallback(cards.nth(1).locator('.tv-news-thumbnail'));
+  let requests = 0;
+  // Register after the package harness so this precise failure overrides its asset route.
+  await page.route('**/markets-tv/sfm-news-fallback.webp', route => {
+    requests++;
+    return route.fulfill({ status: 404, body: '' });
+  });
+  await page.reload();
+  await expect(cards).toHaveCount(24);
+  for (const index of [1, 2]) {
+    const thumbnail = cards.nth(index).locator('.tv-news-thumbnail');
+    await expect(thumbnail).toHaveAttribute('data-news-image', 'fallback');
+    await expect(thumbnail.locator('img')).toHaveCount(0);
+    await expect(thumbnail).toHaveText(/SFM\s*NEWS/);
+    await expect(thumbnail).toBeVisible();
+    await expect(cards.nth(index).locator('.tv-news-evidence > bdi')).toHaveText('QA newsroom');
+  }
+  await expectCardGeometry(cards, 'ltr');
+  expect(requests).toBeGreaterThan(0);
+  const failedRequests = requests;
+  await page.clock.runFor(10000);
+  expect(requests).toBe(failedRequests);
+  const tools = await openTvHeaderActions(page);
+  await Promise.all([
+    page.waitForResponse('**/api/europe-news?**'),
+    tools.locator('[data-tv-focus-key="refresh"]').click(),
+  ]);
+  await closeTvHeaderActions(page);
+  await expect(cards.nth(1).locator('.tv-news-thumbnail')).toHaveText(/SFM\s*NEWS/);
+  await expect(cards.nth(2).locator('.tv-news-thumbnail')).toHaveText(/SFM\s*NEWS/);
+  expect(requests).toBe(failedRequests);
 });

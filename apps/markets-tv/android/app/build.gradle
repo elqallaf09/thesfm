@@ -6,12 +6,12 @@ android {
   namespace 'com.thesfm.marketstv'
   compileSdk 36
   buildFeatures { buildConfig true }
-  defaultConfig { applicationId 'com.thesfm.marketstv'; minSdk 26; targetSdk 36; versionCode 30; versionName '1.0.24'; manifestPlaceholders = [appLabel: 'The SFM Markets TV'] }
+  defaultConfig { applicationId 'com.thesfm.marketstv'; minSdk 26; targetSdk 36; versionCode 32; versionName '1.0.26'; manifestPlaceholders = [appLabel: 'The SFM Markets TV'] }
   flavorDimensions 'distribution'
   productFlavors {
     play { dimension 'distribution' }
     huawei { dimension 'distribution' }
-    preview { dimension 'distribution'; applicationIdSuffix '.preview'; manifestPlaceholders = [appLabel: 'SFM TV Obsidian'] }
+    preview { dimension 'distribution'; applicationIdSuffix '.preview'; manifestPlaceholders = [appLabel: 'SFM TV Preview'] }
   }
   compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
   signingConfigs {

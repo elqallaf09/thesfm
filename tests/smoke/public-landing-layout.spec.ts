@@ -10,6 +10,12 @@ for (const lang of ['ar', 'en', 'fr'] as const) {
         localStorage.setItem('the-sfm-theme', theme);
       }, { lang, theme });
       await page.goto('/');
+      const landing = page.locator('.landing-page');
+      // Retry both checks together while React removes hidden streamed markup.
+      await expect(async () => {
+        await expect(landing).toHaveCount(1);
+        await expect(landing).toBeVisible();
+      }).toPass({ timeout: 15_000 });
       await expect(page.locator('.landing-page')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
       await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${theme}\\b`));
       await page.evaluate(() => document.fonts.ready);

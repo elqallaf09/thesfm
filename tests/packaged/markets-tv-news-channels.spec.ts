@@ -2,6 +2,7 @@ import { openAndroidTvPackage, openTvMenu, closeTvMenu } from './packageHarness'
 import { expect, test } from '@playwright/test';
 import { TV_EXTRA_NEWS_CHANNELS, TV_NEWS_FEEDS } from '../../src/lib/markets-tv/newsReceiver';
 import { receiverText } from '../../src/lib/markets-tv/receiver';
+import { focusTvMenuAction } from '../helpers/tv-menu-layout';
 
 for (const language of ['ar','en','fr'] as const) test(`all news channels: ${language} navigation, source isolation and TV fit`, async ({page}) => {
   await page.setViewportSize({width:1920,height:1080});
@@ -18,19 +19,17 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await openAndroidTvPackage(page);
   await expect(page.locator('.tv-headline-items button').first()).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);
-  const nav=page.locator('.tv-receiver-nav');
+  const nav=page.locator('.tv-side-menu-items');
   for (let index=0;index<TV_EXTRA_NEWS_CHANNELS.length;index++) {
     const channel=TV_EXTRA_NEWS_CHANNELS[index];
     await openTvMenu(page);
-    await page.locator('[data-tv-focus-key=channels]').click();
-    const target = nav.locator(`[data-tv-focus-key="channel:${channel}"]`);
-    for (let turn = 0; turn < 6 && !await target.isVisible(); turn++) await nav.locator('.tv-channel-page').last().click();
+    const target = nav.locator(`[data-tv-focus-key="broadcast:${channel}"]`);
     for (const [width, height] of [[960,540],[1920,1080]]) {
       await page.setViewportSize({ width, height });
-      await expect.poll(() => nav.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-      for (const button of await nav.locator('button').all()) await expect(button).toBeInViewport({ ratio: 1 });
+      await focusTvMenuAction(page, `broadcast:${channel}`);
     }
-    await target.click();
+    await target.press('Enter');
+    await expect(page.locator('.tv-side-menu')).toHaveCount(0);
     await expect(page.locator('.tv-receiver-heading h1')).toHaveText(receiverText(language,channel));
     const path=TV_NEWS_FEEDS[channel], parsed=new URL(path,'https://www.the-sfm.com');
     const label=parsed.searchParams.get('topic')||parsed.pathname.match(/\/([a-z]+)-stocks\/news/)?.[1]||parsed.pathname;
@@ -53,8 +52,7 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await page.reload();await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','cyclicalNews');
   await openTvMenu(page);
-  await page.locator('[data-tv-focus-key=channels]').click();
-  await expect(nav.locator('[aria-pressed=true]')).toHaveAttribute('data-tv-focus-key','channel:cyclicalNews');
+  await expect(nav.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key','broadcast:cyclicalNews');
   await page.keyboard.press('Escape');
   await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
   const cards=page.locator('.tv-headline-items button');

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-vi.mock('@/lib/world-stocks/providerDirectory', () => ({ getProviderDirectory: async () => ({ rows: [], status: 'unavailable', asOf: null }) }));
+vi.mock('@/lib/world-stocks/providerDirectory', () => ({ providerDirectoryRevision: () => 0, peekProviderDirectory: () => null, getProviderDirectory: async () => ({ rows: [], status: 'unavailable', asOf: null }) }));
 import { searchWorldStocks } from '@/lib/world-stocks/search';
 import { reconcileKuwaitDirectory } from '@/lib/world-stocks/kuwaitDirectory';
 

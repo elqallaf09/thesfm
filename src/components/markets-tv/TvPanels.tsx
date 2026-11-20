@@ -1,50 +1,20 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Also rendered from offline APK assets. */
-import { RotateCcw } from 'lucide-react';
-import { welcomeText } from '@/lib/markets-tv/welcome';
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { tvPairErrorText, tvPairHttpError, validTvPair, type TvPairError } from '@/lib/markets-tv/pairing';
 import { useEffect, useRef, useState } from 'react';
-import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvGroup, type TvLanguage, type TvQuote, type TvSettings } from '@/lib/markets-tv/types';
+import type { TvGroup, TvLanguage, TvQuote } from '@/lib/markets-tv/types';
 import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
 import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
 import { useTvResource } from './useTvResource';
-import { TV_SCENE_ORDER, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
-import { obsText } from '@/lib/markets-tv/obsidian';
+import { tvSceneQuoteUnit } from '@/lib/markets-tv/scene-display';
 import { tvAnalysisAssetType, tvAnalysisHref } from '@/lib/markets-tv/analysisLink';
 
-export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels, onReplay }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void; onReplay?: () => void }) {
-  const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
-  const toggle = (key: 'autoRotate' | 'ticker' | 'sound') => change({ ...settings, [key]: !settings[key] });
-  return <div className="tv-settings">
-    <label className="tv-setting-row tv-language-setting"><span>{t('language')}</span><select value={settings.language} onChange={event => change({ ...settings, language: event.target.value as TvLanguage })}><option value="ar">العربية</option><option value="en">English</option><option value="fr">Français</option></select></label>
-    {changeDisplayMode && <div className="tv-setting-row"><span>{tvSceneText(settings.language, 'displayMode')}</span><div className="tv-segment">{(['viewing', 'browse', 'strips'] as const).map(mode => <button key={mode} aria-pressed={displayMode === mode} onClick={() => changeDisplayMode(mode)}>{tvSceneText(settings.language, mode)}</button>)}</div></div>}
-    {displayMode === 'viewing' && <div className="tv-setting-row"><span>{tvSceneText(settings.language, 'chooseScene')}</span><div className="tv-segment">{TV_SCENE_ORDER.map(scene => <button key={scene} aria-pressed={(settings.scene || 'overview') === scene} onClick={() => change({ ...settings, scene })}>{tvSceneText(settings.language, scene)}</button>)}</div></div>}
-    <div className="tv-setting-row"><span>{displayMode === 'viewing' ? tvSceneText(settings.language, 'browseCustomization') : t('displayInstruments')}</span><button onClick={customize}>{t('customizeMarkets')}</button></div>
-    <div className="tv-setting-row"><span>{t('channels')}</span><button onClick={channels}>{t('channels')}</button></div>
-    <div className="tv-setting-row"><span>{obsText(settings.language,'tweaks')}</span><div className="tv-segment tv-accent-options">{(['champagne','blue','green','purple'] as const).map(accent=><button key={accent} data-accent={accent} aria-pressed={(settings.accent||'champagne')===accent} onClick={()=>change({...settings,accent})}>{obsText(settings.language,accent)}</button>)}</div></div>
-    <div className="tv-setting-row"><span>{t('theme')}</span><div className="tv-segment">{(['dark','light'] as const).map(theme => <button key={theme} aria-pressed={settings.theme === theme} onClick={() => change({ ...settings, theme })}>{t(theme)}</button>)}</div></div>
-    {!stripsOnly && <>
-    {displayMode === 'browse' && <div className="tv-setting-row"><span>{t('layout')}</span><div className="tv-segment">{(['balanced','quotes'] as const).map(layout => <button key={layout} aria-pressed={settings.layout === layout} onClick={() => change({ ...settings, layout })}>{t(layout)}</button>)}</div></div>}
-    {(['autoRotate','ticker','sound'] as const).map(key => <div className="tv-setting-row" key={key}><span>{t(key)}</span><button role="switch" aria-checked={settings[key]} onClick={() => toggle(key)}>{t(settings[key] ? 'enabled' : 'disabled')}</button></div>)}
-    <div className="tv-setting-row"><span>{t('rotationSeconds')}</span><div className="tv-segment">{[20,30,60,120].map(seconds => <button key={seconds} aria-pressed={settings.rotationSeconds === seconds} onClick={() => change({ ...settings, rotationSeconds: seconds })}>{seconds}</button>)}</div></div>
-    </>}
-    {displayMode !== 'viewing' && <><div className="tv-setting-row"><span>{t('stripDensity')}</span><div className="tv-segment">{(['comfortable','balanced','compact'] as const).map(density => <button key={density} aria-pressed={(settings.stripDensity || 'balanced') === density} onClick={() => change({ ...settings, stripDensity: density })}>{t(density === 'balanced' ? 'balancedDensity' : density)}</button>)}</div></div>
-    <p className="tv-muted tv-setting-help">{t('pricedOnlyHelp')}</p></>}
-    {displayMode !== 'browse' && <div className="tv-setting-row"><span>{t('autoHideControls')}</span><button role="switch" aria-label={t('autoHideControls')} aria-checked={Boolean(settings.autoHideControls)} onClick={() => change({ ...settings, autoHideControls: !settings.autoHideControls })}>{t(settings.autoHideControls ? 'enabled' : 'disabled')}</button></div>}
-    <div className="tv-setting-row"><span>{t('stripSpeed')}</span><div className="tv-segment">{TV_STRIP_SPEEDS.map((speed,i) => <button key={speed} aria-pressed={(settings.stripSpeed || DEFAULT_TV_STRIP_SPEED) === speed} onClick={() => change({ ...settings, stripSpeed: speed })}>{t((['slow','normal','fast'] as const)[i])}</button>)}</div></div>
-    <p className="tv-muted tv-setting-help">{t('refreshCadence')}</p>
-    {displayMode !== 'viewing' && <><h3>{t('visibleMarkets')}</h3><div className="tv-group-options">{TV_GROUPS.map(group => <button key={group} aria-pressed={settings.groups.includes(group)} onClick={() => {
-      const groups = settings.groups.includes(group) ? settings.groups.filter(g => g !== group) : [...settings.groups, group];
-      if (groups.length) change({ ...settings, groups });
-    }}>{t(group)}</button>)}</div></>}
-    {onReplay && <div className="tv-setting-row"><button data-tv-focus-key="replay-intro" onClick={onReplay}><RotateCcw aria-hidden="true"/><span>{welcomeText(settings.language).replay}</span></button></div>}
-    {!stripsOnly && <p className="tv-muted">{t('alertScope')}</p>}
-  </div>;
-}
+export { TvSettingsPanel } from './TvSettingsPanel';
+
 export function TvPairPanel({ language, onLinked }: { language: TvLanguage; onLinked: (token: string) => void }) {
   const [pair, setPair] = useState<{ code: string; secret: string; expiresAt: string } | null>(null);
   const [error, setError] = useState<TvPairError|null>(null), [expired, setExpired] = useState(false), [busy, setBusy] = useState(false);

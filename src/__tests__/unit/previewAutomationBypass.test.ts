@@ -22,4 +22,18 @@ describe('external Preview automation bypass wiring', () => {
     expect(workflow).toContain('VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}');
     expect(workflow).toContain('playwright.preview.config.ts');
   });
+
+  it('keeps the public TV shell anonymous without discarding inherited deployment protection', () => {
+    const localConfig = read('playwright.config.ts');
+    const previewConfig = read('playwright.preview.config.ts');
+    const tvShell = read('tests/smoke/tv-all-stocks-shell.spec.ts');
+
+    // Local contexts start empty; remote contexts inherit only the state
+    // bootstrapped by Preview global setup, not an application user's session.
+    expect(localConfig).not.toMatch(/\bstorageState\s*:/);
+    expect(previewConfig).toContain('storageState: previewProtectionStatePath');
+    expect(previewConfig).not.toMatch(/(?:user|admin)AuthStatePath/);
+    expect(tvShell).not.toMatch(/\bstorageState\s*:/);
+    expect(tvShell).not.toMatch(/(?:user|admin)AuthStatePath/);
+  });
 });
