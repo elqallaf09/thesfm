@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { UserPlus, Users } from 'lucide-react';
 import type { TvLocalProfile } from '@/lib/markets-tv/localProfiles';
 import type { TvLanguage } from '@/lib/markets-tv/types';
@@ -14,8 +15,12 @@ export function TvAccountPicker({ language, profiles, onSelect, onGuest, onAdd }
   language: TvLanguage; profiles: TvLocalProfile[]; onSelect: (profile: TvLocalProfile) => void; onGuest: () => void; onAdd: () => void;
 }) {
   const copy = COPY[language];
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    panel.current?.querySelector<HTMLElement>('[data-tv-initial-focus]')?.focus({ preventScroll: true });
+  }, []);
   return <div className="tv-side-menu-backdrop tv-account-backdrop">
-    <section className="tv-account-picker" data-tv-dialog data-tv-focus-scope role="dialog" aria-modal="true" aria-labelledby="tv-accounts-title">
+    <section ref={panel} className="tv-account-picker" data-tv-dialog data-tv-focus-scope role="dialog" aria-modal="true" aria-labelledby="tv-accounts-title">
       <h2 id="tv-accounts-title">{copy.title}</h2>
       <nav aria-label={copy.choose} className="tv-account-list">
         {profiles.map((profile, index) => <button type="button" key={index} data-tv-focus-key={`account-${index}`}

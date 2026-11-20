@@ -25,7 +25,7 @@ import { TV_RECEIVER_CHANNELS, isTvReceiverChannel, nextTvReceiverChannel, recei
 import { TV_SESSION_IDS } from '@/lib/markets-tv/sessionSelection';
 import { TvDataNotice } from './TvDataNotice';
 import { TvHeader } from './TvHeader';
-import { TvAccountPicker } from './TvAccountPicker';
+const TvAccountPicker = lazy(() => import('./TvAccountPicker').then(module => ({ default: module.TvAccountPicker })));
 import { readTvProfiles, writeTvProfiles, validTvProfileToken, type TvLocalProfile } from '@/lib/markets-tv/localProfiles';
 import { TvSideMenu, tvMenuText, type TvSideDestination } from './TvSideMenu';
 const TvToolsPanel = lazy(() => import('./TvToolsPanel').then(module => ({ default: module.TvToolsPanel })));
@@ -330,12 +330,12 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const strips = <Suspense fallback={<div className="tv-loading" role="status">{t('loading')}</div>}><TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} revision={revision} paused={stripsPaused || (!stripsOnly && overlayOpen)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} /></Suspense>;
   return <TvMotionOverride.Provider value={explicitPlay}><div ref={root} data-tv-root data-tv-menu-open={menuOpen} data-tv-motion={explicitPlay ? 'play' : undefined} data-tv-view={view} data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${hall || allStocks ? ' tv-hall-screen' : ''}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     <Suspense fallback={null}><TvWelcomeIntro language={settings.language}/></Suspense>
-    {accountChoice && <TvAccountPicker language={settings.language} profiles={profiles} onSelect={profile => {
+    {accountChoice && <Suspense fallback={<div className="tv-modal-backdrop"><section className="tv-dialog" data-tv-dialog role="dialog" aria-modal="true" aria-label={t('loading')}><p role="status">{t('loading')}</p></section></div>}><TvAccountPicker language={settings.language} profiles={profiles} onSelect={profile => {
       clearAccountContext(); setToken(profile.token);
       try { localStorage.setItem(TOKEN_KEY, profile.token); } catch { /* Memory session remains usable. */ }
       setAccountChoice(false); setMenuOpen(true);
     }} onGuest={() => { clearAccountContext(); setAccountChoice(false); setMenuOpen(true); }}
-      onAdd={() => { clearAccountContext(); setAccountChoice(false); openPair(); }}/>}
+      onAdd={() => { clearAccountContext(); setAccountChoice(false); openPair(); }}/></Suspense>}
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
     <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} activeBroadcast={isTvReceiverChannel(view) ? view : undefined} paired={Boolean(token)} deviceName={device.data?.device.name}
       onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onChannels={() => openMenuDialog('channels')} onBroadcast={chooseBroadcast} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}

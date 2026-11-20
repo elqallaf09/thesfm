@@ -32,7 +32,7 @@ jobs:
         timeout-minutes: 10
         run: bash .github/scripts/install-playwright-browsers.sh chromium
       - name: Verify packaged TV layout and remote navigation
-        run: pnpm exec playwright test --config=playwright.tv.config.ts
+        run: pnpm exec playwright test --config=playwright.tv.config.ts --reporter=line
       - name: Keep TV browser evidence
         if: always()
         uses: actions/upload-artifact@v7

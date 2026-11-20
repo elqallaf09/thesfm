@@ -236,6 +236,8 @@ for (const status of [200, 401]) {
       ? { code: 'ABCDEF123456', secret: 'd'.repeat(64), expiresAt: '2026-11-19T10:10:00Z' }
       : { state: 'active', token: nextToken } }));
     await page.locator('[data-tv-focus-key=pair]').click();
+    // Commit the first lazy sign-out panel while the test clock is paused.
+    await page.clock.runFor(500);
     await page.locator('[data-tv-focus-key=sign-out-confirm]').click();
     await expect.poll(() => deletions).toBe(1);
     await page.keyboard.press('Escape');
@@ -313,8 +315,9 @@ for (const theme of ['light', 'dark'] as const) {
     await chooseTvDestination(page, 'investments');
     const allocationPage = page.locator('.tv-portfolio-allocation .tv-broadcast-pager > bdi');
     await expect(allocationPage).toHaveText('1/2');
-    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
+    // Let the first lazy tools panel mount before freezing playback time.
     const tools = await openTvHeaderActions(page);
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
     await expect(tools.locator('.tv-tools-grid button')).toHaveCount(3);
     const playback = tools.locator('[data-tv-focus-key=scene-playback]');
     await expect(playback).toHaveText('تشغيل تقليب صفحات التوزيع');

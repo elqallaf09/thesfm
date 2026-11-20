@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Building2, ChartNoAxesCombined, Clock3, Coins, Globe2, Landmark, LogIn, LogOut, Map, Monitor, Newspaper,
   Rows3, Settings2, SlidersHorizontal, Star, Tv, WalletCards, Wrench, X,
@@ -87,6 +87,21 @@ export function TvSideMenu({ language, open, active, activeBroadcast, paired, de
     target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
   }, [open, active, activeBroadcast]);
 
+  useEffect(() => {
+    if (!open) return;
+    const list = panel.current?.querySelector<HTMLElement>('.tv-side-menu-items');
+    const revealFocused = () => {
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && list?.contains(focused)) {
+        focused.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      }
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(revealFocused);
+    if (list) observer?.observe(list);
+    window.addEventListener('resize', revealFocused);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', revealFocused); };
+  }, [open]);
+
   function leave(action: () => void) {
     // A global dialog must remember this durable handle, not a drawer row
     // which disappears when its action closes the menu in the same update.
@@ -102,7 +117,7 @@ export function TvSideMenu({ language, open, active, activeBroadcast, paired, de
         <div><strong dir="ltr">SFM TV</strong><h2 id="tv-side-menu-title">{copy.menu}</h2></div>
         <button type="button" className="tv-side-menu-close" onClick={() => leave(onClose)} data-tv-focus-key="menu-close" data-tv-back {...neighbors('menu-close')}><X aria-hidden="true"/><span>{t('close')}</span></button>
       </header>
-      <nav className="tv-side-menu-items" aria-label={copy.menu} style={{ '--tv-menu-rows': items.length } as CSSProperties}>
+      <nav className="tv-side-menu-items" aria-label={copy.menu}>
         {items.map(({ key, label, icon: Icon, action }) => <button key={key} type="button" onClick={() => leave(action)} data-tv-focus-key={key} {...neighbors(key)}
           aria-current={key === selectedKey ? 'page' : undefined}
           data-tv-initial-focus={key === selectedKey ? '' : undefined}>
