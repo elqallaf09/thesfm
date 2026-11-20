@@ -14,18 +14,21 @@ type FixtureState = {
   directoryPages: number[];
 };
 
-async function open(page: Page, options: { reducedMotion?: boolean; snapshot?: FixtureState['snapshot'] } = {}) {
-  await page.setViewportSize({ width: 1920, height: 1080 });
+async function open(page: Page, options: {
+  reducedMotion?: boolean; snapshot?: FixtureState['snapshot']; theme?: 'light' | 'dark';
+  viewport?: { width: number; height: number }; news?: boolean;
+} = {}) {
+  await page.setViewportSize(options.viewport ?? { width: 1920, height: 1080 });
   await page.emulateMedia({ reducedMotion: options.reducedMotion ? 'reduce' : 'no-preference' });
   await page.clock.install({ time: new Date(instant) });
-  await page.addInitScript(() => {
+  await page.addInitScript(theme => {
     sessionStorage.setItem('sfm-tv-welcome-shown', '1');
     if (!localStorage.getItem('sfm-markets-tv-settings-v1')) {
       localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
-        language: 'ar', theme: 'dark', displayMode: 'browse', scene: 'overview', ticker: true,
+        language: 'ar', theme, displayMode: 'browse', scene: 'overview', ticker: true,
       }));
     }
-  });
+  }, options.theme ?? 'dark');
   const state: FixtureState = { directory: 'ready', snapshot: options.snapshot ?? 'prices', pendingDirectory: [], pendingSnapshots: [], directoryPages: [] };
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [
     { id: 'KW', group: 'gulf', labelAr: 'بورصة الكويت', labelEn: 'Kuwait', labelFr: 'Koweït', count: 12, status: 'directory' },
@@ -63,7 +66,12 @@ async function open(page: Page, options: { reducedMotion?: boolean; snapshot?: F
     if (state.snapshot === 'error') { await route.fulfill({ status: 503, json: { error: 'Fixture prices unavailable' } }); return; }
     await serveSnapshot(route);
   });
-  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: options.news ? [
+    'الأسواق العالمية تتابع نتائج الشركات وتوقعات النمو الاقتصادي',
+    'بورصة الكويت: متابعة أداء الشركات والقطاعات خلال جلسة التداول',
+    'أسهم التقنية وتطورات الذكاء الاصطناعي في الأسواق العالمية',
+    'المستثمرون يترقبون بيانات الاقتصاد وتوقعات أسعار الفائدة',
+  ].map((title, index) => ({ id: `rotation-news-${index}`, title, source: 'مصدر اختبار', publishedAt: instant, url: `https://example.com/rotation/${index}` })) : [] } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ status: 404, json: {} }));
   await openAndroidTvPackage(page);
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
@@ -87,6 +95,12 @@ async function expectPage(page: Page, current: number, total = 3) {
   await expect(page.locator('.tv-hall-table')).toHaveAttribute('aria-busy', 'false');
 }
 
+async function expectRunning(page: Page) {
+  // A changed page first fetches its directory and then its quotes. Wait for
+  // both to unblock rotation before advancing the otherwise frozen clock.
+  await expect(rotation(page)).toHaveAttribute('data-running', 'true');
+}
+
 test('priced stock groups count down, advance every twelve seconds and wrap to the first page', async ({ page }) => {
   await open(page);
   await expect(playback(page)).toHaveText('إيقاف التبديل');
@@ -100,8 +114,10 @@ test('priced stock groups count down, advance every twelve seconds and wrap to t
   await page.clock.runFor(1);
   await expectPage(page, 2);
   await expect(page.locator('.tv-hall-identity').first()).toContainText('ROT06');
+  await expectRunning(page);
   await page.clock.runFor(12_000);
   await expectPage(page, 3);
+  await expectRunning(page);
   await page.clock.runFor(12_000);
   await expectPage(page, 1);
   await expect(page.locator('.tv-hall-identity').first()).toContainText('ROT00');
@@ -116,6 +132,7 @@ test('stock playback survives reload and stays independent of ticker and retaine
   await next(page).click();
   await expectPage(page, 2);
   await expect(next(page)).toBeFocused();
+  await expectRunning(page);
   await page.clock.runFor(10_000);
   await page.keyboard.press('Shift');
   await page.clock.runFor(11_999);
@@ -133,6 +150,7 @@ test('stock playback survives reload and stays independent of ticker and retaine
   await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'MediaPlayPause', bubbles: true })));
   await expect(playback(page)).toHaveAttribute('aria-pressed', 'true');
   await expect(ticker).toHaveAttribute('aria-pressed', 'true');
+  await expectRunning(page);
   await page.clock.runFor(12_000);
   await expectPage(page, 2);
   await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'MediaPlayPause', bubbles: true })));
@@ -162,6 +180,7 @@ test('search and market selection reset the page and hold rotation during browsi
   await page.clock.runFor(24_000);
   await expectPage(page, 1, 2);
   await activity(page);
+  await expectRunning(page);
   await page.clock.runFor(12_000);
   await expectPage(page, 2, 2);
   await expect(page.locator('.tv-hall-identity').first()).toContainText('ROT06');
@@ -194,6 +213,7 @@ test('menus, quote details and offline state suspend pages without losing play i
   await context.setOffline(false);
   await activity(page);
   await expect(playback(page)).toHaveAttribute('aria-pressed', 'true');
+  await expectRunning(page);
   await page.clock.runFor(11_999); await expectPage(page, 1);
   await page.clock.runFor(1); await expectPage(page, 2);
 });
@@ -205,12 +225,14 @@ test('reduced motion keeps stocks still until explicit Play and preserves that c
   await page.clock.runFor(24_000); await expectPage(page, 1);
   await playback(page).click();
   await expect(playback(page)).toHaveAttribute('aria-pressed', 'true');
+  await expectRunning(page);
   await page.clock.runFor(12_000); await expectPage(page, 2);
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed', 'true');
   await page.reload(); await closeTvMenu(page);
   await expectPage(page, 1);
   await expect(playback(page)).toHaveAttribute('aria-pressed', 'true');
   await activity(page);
+  await expectRunning(page);
   await page.clock.runFor(12_000); await expectPage(page, 2);
 });
 
@@ -232,6 +254,7 @@ test('pending directory or quotes and request errors never skip an unread page',
   fixture.state.snapshot = 'prices';
   await fixture.serveSnapshot(fixture.state.pendingSnapshots.shift()!);
   await expectPage(page, 2);
+  await expectRunning(page);
   await page.clock.runFor(12_000); await expectPage(page, 3);
   for (const target of ['directory', 'snapshot'] as const) {
     fixture.state.directory = target === 'directory' ? 'error' : 'ready';
@@ -249,6 +272,7 @@ test('pending directory or quotes and request errors never skip an unread page',
 test('missing prices advance after eight seconds while a cooling provider stays on the same page', async ({ page }) => {
   const fixture = await open(page, { snapshot: 'empty' });
   await expect(page.locator('.tv-hall-row')).toHaveCount(0);
+  await expectRunning(page);
   await page.clock.runFor(7_999); await expectPage(page, 1);
   await page.clock.runFor(1); await expectPage(page, 2);
   fixture.state.snapshot = 'cooling';
@@ -259,3 +283,27 @@ test('missing prices advance after eight seconds while a cooling provider stays 
   await expectPage(page, 1);
   await expect(playback(page)).toHaveAttribute('aria-pressed', 'true');
 });
+
+for (const theme of ['dark', 'light'] as const) {
+  for (const viewport of [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }]) {
+    test(`Arabic stock rotation fits ${theme} ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+      await open(page, { theme, viewport, news: true });
+      await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'rtl');
+      await expect(page.locator('[data-tv-root]')).toHaveClass(new RegExp(`\\btv-${theme}\\b`));
+      await expect(page.locator('.tv-hall-row')).toHaveCount(6);
+      await expect(page.locator('.tv-headline-story')).toHaveCount(4);
+      for (const selector of ['.tv-stock-controls', '.tv-stock-filters', '.tv-stock-page', '.tv-headline-band']) {
+        const panel = page.locator(selector);
+        await expect(panel).toBeInViewport({ ratio: 1 });
+        expect(await panel.evaluate(element => element.scrollWidth - element.clientWidth), `${selector} horizontal overflow`).toBeLessThanOrEqual(1);
+      }
+      const fontSizes = await page.locator('.tv-stock-controls button').evaluateAll(buttons => buttons.map(button => parseFloat(getComputedStyle(button).fontSize)));
+      expect(fontSizes.length).toBeGreaterThanOrEqual(3);
+      expect(fontSizes.every(size => size >= 13), `stock control font sizes: ${fontSizes.join(', ')}`).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+      const screenshot = testInfo.outputPath(`stock-rotation-ar-${theme}-${viewport.width}x${viewport.height}.png`);
+      await page.screenshot({ path: screenshot, animations: 'disabled' });
+      await testInfo.attach('Arabic stock rotation layout', { path: screenshot, contentType: 'image/png' });
+    });
+  }
+}

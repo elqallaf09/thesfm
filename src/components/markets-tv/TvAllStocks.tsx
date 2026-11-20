@@ -61,7 +61,8 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
   }, [pages]);
   const waiting = !ready || !items.length || !quotes.data || quotes.loading || Boolean(quotes.error) || directory.loading || Boolean(directory.error) || cooling;
   const browsing = filterFocused || Boolean(search.trim()) || search.trim() !== query;
-  const rotationStatus = hallText(language, waiting ? 'stocksWaiting' : pages <= 1 ? 'stocksSinglePage' : browsing ? 'stocksBrowsing' : 'stocksPaused');
+  const rotationStatus = hallText(language, directory.data && total === 0 && !directory.error ? 'noResults'
+    : waiting ? 'stocksWaiting' : pages <= 1 ? 'stocksSinglePage' : browsing ? 'stocksBrowsing' : 'stocksPaused');
   // A catalog refresh can shrink the last page. Clamp only after that response arrives.
   useEffect(() => { if (directory.data && page >= pages) setPage(pages - 1); }, [directory.data, page, pages]);
   const exchanges = markets.filter(item => !['global', 'crypto', 'forex', 'commodities', 'watchlist'].includes(item.group));
