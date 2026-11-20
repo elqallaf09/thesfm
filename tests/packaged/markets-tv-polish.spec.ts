@@ -19,15 +19,7 @@ async function setup(page: Page, count = 1, news = false, keepMenu = false) {
   await openAndroidTvPackage(page, { keepMenu });
 }
 
-test('welcome uses the official logo and plays an actual audio graph after a click or remote activation', async ({ page }) => {
-  await page.addInitScript(() => {
-    const original = AudioContext.prototype.createOscillator;
-    AudioContext.prototype.createOscillator = function () {
-      const node = original.call(this), start = node.start.bind(node);
-      node.start = (when?: number) => { const scope = window as Window & { sfmToneCount?: number }; scope.sfmToneCount = (scope.sfmToneCount || 0) + 1; start(when); };
-      return node;
-    };
-  });
+test('welcome uses the official logo and plays the ident after a click or remote activation', async ({ page }) => {
   await setup(page, 1, false, true);
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await expect.poll(() => page.locator('.sfm-startup img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
@@ -37,7 +29,7 @@ test('welcome uses the official logo and plays an actual audio graph after a cli
   await page.locator('[data-tv-focus-key=settings-tab-playback]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
-  expect(await page.evaluate(() => (window as Window & { sfmToneCount?: number }).sfmToneCount)).toBeGreaterThanOrEqual(3);
+  expect(await page.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.endsWith('/markets-tv/sfm-ident.wav')))).toBe(true);
   await expect.poll(() => page.locator('.sfm-startup-brand').evaluate(el => Number(getComputedStyle(el).opacity))).toBeGreaterThan(.9);
   await page.screenshot({ path: test.info().outputPath('welcome.png') });
   await expect(page.getByRole('button', { name: /^(تخطي|Skip|Passer)$/ })).toHaveCount(0);

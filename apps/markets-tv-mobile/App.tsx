@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Image, Linking, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Image, Linking, Platform, Pressable, StatusBar, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { classifyLink, HOME_URL, PRESENTATION_BRIDGE, readPresentation, type Presentation } from './src/navigation';
@@ -7,6 +7,7 @@ import { messages, palettes } from './src/theme';
 import brandImage from './assets/brand.png';
 
 function MarketsPhone() {
+  const [launchId] = useState(() => Date.now().toString(36));
   const systemTheme = useColorScheme();
   const [presentation, setPresentation] = useState<Presentation>({ theme: systemTheme === 'light' ? 'light' : 'dark', language: 'ar' });
   const [phase, setPhase] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -65,7 +66,8 @@ function MarketsPhone() {
         // All navigation passes through classifyLink, including non-HTTPS schemes.
         originWhitelist={['*']} javaScriptEnabled domStorageEnabled sharedCookiesEnabled
         allowFileAccess={false} allowUniversalAccessFromFileURLs={false} mixedContentMode="never"
-        allowsInlineMediaPlayback mediaPlaybackRequiresUserAction allowsBackForwardNavigationGestures
+        allowsInlineMediaPlayback mediaPlaybackRequiresUserAction={Platform.OS !== 'ios'} allowsBackForwardNavigationGestures
+        injectedJavaScriptBeforeContentLoaded={Platform.OS === 'ios' ? `window.__sfmTvIosLaunch = ${JSON.stringify(launchId)}; true;` : undefined}
         automaticallyAdjustContentInsets={false} contentInsetAdjustmentBehavior="never" webviewDebuggingEnabled={__DEV__}
         injectedJavaScript={PRESENTATION_BRIDGE}
         onShouldStartLoadWithRequest={request => {
