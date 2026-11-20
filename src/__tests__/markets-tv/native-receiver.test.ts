@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { directoryLocation, parsePair, parsePortfolio, portfolioDisplayValue, readDirectory, request } from '../../../apps/markets-tv-native/src/receiverApi';
+import { directoryLocation, parsePair, parsePortfolio, portfolioDisplayValue, readDirectory, request, selectDirectoryMarkets, type Market } from '../../../apps/markets-tv-native/src/receiverApi';
+import { TV_ATLAS_CITIES } from '../../../src/lib/markets-tv/atlas';
 import { portfolioStatusLabel, r } from '../../../apps/markets-tv-native/src/receiverCopy';
 const now = Date.parse('2026-11-08T06:00:00Z');
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -84,6 +85,42 @@ describe('native receiver account and directory contracts', () => {
     expect(directoryLocation(markets, 3)).toMatchObject({ market: markets[1], page: 0 });
     expect(directoryLocation(markets, 5)).toMatchObject({ market: markets[0], page: 0 });
     expect(directoryLocation([], 500)).toMatchObject({ market: undefined, page: 0, total: 1 });
+  });
+  const regionalCatalog: Market[] = [
+    { id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'الكويت', labelEn: 'Kuwait', labelFr: 'Koweït', count: 7 },
+    { id: 'US', group: 'us', labelAr: 'أمريكا', labelEn: 'US', labelFr: 'États-Unis', count: 15 },
+    { id: 'TD_XSAU', group: 'gulf', labelAr: 'السعودية', labelEn: 'Saudi Arabia', labelFr: 'Arabie saoudite', count: 4 },
+    { id: 'TD_XLON', group: 'europe', labelAr: 'لندن', labelEn: 'London', labelFr: 'Londres', count: 6 },
+    { id: 'TD_XTKS', group: 'asia', labelAr: 'طوكيو', labelEn: 'Tokyo', labelFr: 'Tokyo', count: 9 },
+    { id: 'global', group: 'global', labelAr: 'العالم', labelEn: 'Global', labelFr: 'Monde', count: 8 },
+    { id: 'forex', group: 'forex', labelAr: 'العملات', labelEn: 'Forex', labelFr: 'Devises', count: 30 },
+  ];
+  it.each(TV_ATLAS_CITIES)('selects the $group atlas directory using catalog metadata', ({ group }) => {
+    const selected = selectDirectoryMarkets(regionalCatalog, false, group);
+    const expected = { gulf: ['BOURSA_KUWAIT', 'TD_XSAU'], us: ['US'], europe: ['TD_XLON'], asia: ['TD_XTKS'] };
+    expect(selected.map(market => market.id)).toEqual(expected[group]);
+    expect(selected.every(market => regionalCatalog.includes(market))).toBe(true);
+  });
+  it('keeps full-directory and Kuwait channel behavior without falling back from an empty region', () => {
+    expect(selectDirectoryMarkets(regionalCatalog, false)).toEqual(regionalCatalog);
+    expect(selectDirectoryMarkets(regionalCatalog, true, 'asia')).toEqual([regionalCatalog[0]]);
+    expect(selectDirectoryMarkets([regionalCatalog[0]], false, 'europe')).toEqual([]);
+    expect(selectDirectoryMarkets([], false, 'asia')).toEqual([]);
+  });
+  it('pages only within the selected region and preserves server directory counts', () => {
+    const markets = selectDirectoryMarkets(regionalCatalog, false, 'gulf');
+    expect(directoryLocation(markets, 2)).toMatchObject({ market: regionalCatalog[0], page: 2, total: 5 });
+    expect(directoryLocation(markets, 3)).toMatchObject({ market: regionalCatalog[2], page: 0, start: 3 });
+    expect(directoryLocation(markets, -1)).toMatchObject({ market: regionalCatalog[2], page: 1 });
+    expect(directoryLocation(markets, 5)).toMatchObject({ market: regionalCatalog[0], page: 0 });
+    expect(regionalCatalog.map(market => market.count)).toEqual([7, 15, 4, 6, 9, 8, 30]);
+  });
+  it('requests the selected catalog exchange and group without substituting a city or aggregate', async () => {
+    const fetch = vi.fn().mockResolvedValue(Response.json({ group: 'asia', market: 'TD_XTKS', quotes: [], directoryTotal: 9 }));
+    vi.stubGlobal('fetch', fetch);
+    const market = selectDirectoryMarkets(regionalCatalog, false, 'asia')[0];
+    expect(await readDirectory(market, 1, new AbortController().signal)).toMatchObject({ quotes: [], pages: 3 });
+    expect(fetch).toHaveBeenCalledWith('https://www.the-sfm.com/api/tv/snapshot?group=asia&market=TD_XTKS&page=1&pageSize=3', expect.objectContaining({ cache: 'no-store', redirect: 'error' }));
   });
   it('pins private requests to SFM, sends device credentials only in headers, and refuses redirects', async () => {
     const fetch = vi.fn().mockResolvedValue(Response.json({ state: 'pending' })); vi.stubGlobal('fetch', fetch);

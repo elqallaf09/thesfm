@@ -7,6 +7,7 @@ const instant = '2026-11-19T10:00:00Z';
 const deviceToken = 'c'.repeat(64);
 const signIn = { ar: 'تسجيل الدخول', en: 'Sign in', fr: 'Se connecter' };
 const signOut = { ar: 'تسجيل الخروج', en: 'Sign out', fr: 'Se déconnecter' };
+const myAccount = { ar: 'حسابي', en: 'My account', fr: 'Mon compte' };
 const orderedKeys = TV_MENU_KEYS;
 
 async function fixture(page: Page, language: TvLanguage = 'ar', theme: 'light' | 'dark' = 'light', paired = false, options: { allocationCount?: number; ticker?: boolean } = {}) {
@@ -113,6 +114,62 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
   });
 }
+
+for (const language of ['ar', 'en', 'fr'] as const) {
+  test(`side menu ${language}: My account opens the profile handoff with remote focus and Back`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 960, height: 540 });
+    await fixture(page, language);
+    await focusTvMenuAction(page, 'my-account');
+    await expect(page.locator('[data-tv-focus-key=my-account]')).toHaveText(myAccount[language]);
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#tv-dialog-title')).toHaveText(myAccount[language]);
+    await expect(page.locator('.tv-side-menu')).toHaveCount(0);
+    const profile = page.locator('[data-tv-focus-key=account-profile]');
+    await expect(profile).toHaveAttribute('href', 'https://www.the-sfm.com/profile');
+    await expect(profile).toBeFocused();
+    await expect(profile).toBeInViewport();
+    const qr = page.locator('.tv-my-account canvas[role=img]');
+    await expect(qr).toBeVisible();
+    await expect.poll(() => qr.evaluate(element => (element as HTMLCanvasElement).getContext('2d')?.getImageData(0, 0, 1, 1).data[3])).toBe(255);
+    const tvQrBounds = (await qr.boundingBox())!;
+    expect(tvQrBounds.width).toBeCloseTo(tvQrBounds.height, 0);
+    await expect(page.locator('.tv-my-account')).toContainText({ ar: 'الحساب الذي تريد تعديله', en: 'account you want to edit', fr: 'compte à modifier' }[language]);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(profile).toBeInViewport();
+    await expect(qr).toBeInViewport();
+    const phoneQrBounds = (await qr.boundingBox())!;
+    expect(phoneQrBounds.width).toBeCloseTo(phoneQrBounds.height, 0);
+    if (language === 'ar') await page.screenshot({ path: testInfo.outputPath('my-account-mobile.png') });
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-tv-dialog]')).toHaveCount(0);
+    await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
+    await openTvMenu(page);
+    await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText(signIn[language]);
+  });
+}
+
+test('My account opens the normal profile route without transferring a paired-TV credential', async ({ page }) => {
+  const requests = await fixture(page, 'en', 'dark', true);
+  await focusTvMenuAction(page, 'my-account');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-my-account')).not.toContainText('Living room QA');
+  expect(requests.filter(request => request.path === '/api/mobile/account' || request.path === '/api/tv/account')).toEqual([]);
+  let profileRequests = 0;
+  await page.route('https://www.the-sfm.com/profile', route => {
+    profileRequests++;
+    const request = route.request();
+    expect(request.method()).toBe('GET');
+    expect(request.postData()).toBeNull();
+    expect(request.headers()['x-sfm-tv-token']).toBeUndefined();
+    expect(request.headers().authorization).toBeUndefined();
+    expect(request.headers().referer).toBeUndefined();
+    return route.fulfill({ contentType: 'text/html', body: '<h1>Normal profile authentication entry</h1>' });
+  });
+  await expect(page.locator('[data-tv-focus-key=account-profile]')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL('https://www.the-sfm.com/profile');
+  expect(profileRequests).toBe(1);
+});
 
 test('existing saved shortcuts still play directly after the channel editor is removed', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-channels-v1', JSON.stringify([{

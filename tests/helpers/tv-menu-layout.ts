@@ -5,7 +5,7 @@ const destinations = ['hall', 'allStocks', 'strips', 'world', 'gulf', 'assets', 
 export const TV_MENU_KEYS = [
   'menu-close', ...destinations.map(key => `menu:${key}`),
   ...TV_RECEIVER_CHANNELS.filter(channel => !['allStocks', 'kuwait', 'sessions', 'investments'].includes(channel)).map(channel => `broadcast:${channel}`),
-  'customize', 'settings', 'switch-account', 'pair', 'more',
+  'customize', 'settings', 'my-account', 'switch-account', 'pair', 'more',
 ];
 
 /** Check the clipped viewport of the scrollable list, not only the document viewport. */

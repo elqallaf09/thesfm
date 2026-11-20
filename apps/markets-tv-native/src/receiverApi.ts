@@ -1,6 +1,7 @@
 import { ORIGIN, parseQuote, type Quote } from './api';
 import { receiverNewsPath, receiverNewsPayload, type TvReceiverNewsChannel } from '../../../src/lib/markets-tv/newsReceiver';
 import type { TvPortfolioPosition } from '../../../src/lib/markets-tv/portfolio';
+import type { TvAtlasRegion } from '../../../src/lib/markets-tv/atlas';
 
 export const record = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 export const text = (v: unknown) => typeof v === 'string' && v.trim() ? v : null;
@@ -36,6 +37,10 @@ export function parsePair(value: unknown, now = Date.now()): Pair {
   return { code: row.code, secret: row.secret, expiresAt: String(row.expiresAt) };
 }
 export type Market = { id: string; group: string; labelAr: string; labelEn: string; labelFr: string; count: number };
+/** The API catalog owns region membership; the Kuwait channel keeps its exact exchange. */
+export function selectDirectoryMarkets(markets: readonly Market[], kuwait: boolean, region?: TvAtlasRegion): Market[] {
+  return markets.filter(market => kuwait ? market.id === 'BOURSA_KUWAIT' : region === undefined || market.group === region);
+}
 export async function readCatalog(signal: AbortSignal): Promise<Market[]> {
   const body = record(await request('/api/tv/catalog', signal));
   if (!Array.isArray(body.markets)) throw new Error('INVALID_CATALOG');

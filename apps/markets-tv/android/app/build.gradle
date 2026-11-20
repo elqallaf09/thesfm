@@ -6,7 +6,7 @@ android {
   namespace 'com.thesfm.marketstv'
   compileSdk 36
   buildFeatures { buildConfig true }
-  defaultConfig { applicationId 'com.thesfm.marketstv'; minSdk 26; targetSdk 36; versionCode 33; versionName '1.0.27'; manifestPlaceholders = [appLabel: 'The SFM Markets TV'] }
+  defaultConfig { applicationId 'com.thesfm.marketstv'; minSdk 26; targetSdk 36; versionCode 34; versionName '1.0.28'; manifestPlaceholders = [appLabel: 'The SFM Markets TV'] }
   flavorDimensions 'distribution'
   productFlavors {
     play { dimension 'distribution' }
@@ -30,4 +30,8 @@ tasks.register('verifyReleaseSigning') {
     if (!file(signingValues.SFM_TV_KEYSTORE_PATH).isFile()) throw new GradleException('Release keystore file is not available.')
   }
 }
-dependencies { implementation 'androidx.webkit:webkit:1.12.1'; implementation 'androidx.activity:activity:1.11.0' }
+dependencies {
+  implementation 'androidx.webkit:webkit:1.12.1'
+  implementation 'androidx.activity:activity:1.11.0'
+  testImplementation 'junit:junit:4.13.2'
+}

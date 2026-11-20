@@ -91,6 +91,12 @@ jobs:
           sleep 10
           xcrun simctl spawn "$TV_SIMULATOR_UDID" launchctl list | grep -F com.thesfm.marketstv.native > .native-build/smoke/process.txt
           xcrun simctl io "$TV_SIMULATOR_UDID" screenshot .native-build/smoke/tvos-launch.png
+          for TV_SCENE in brief map account; do
+            xcrun simctl openurl "$TV_SIMULATOR_UDID" "sfm-tv-native://$TV_SCENE"
+            sleep 10
+            xcrun simctl spawn "$TV_SIMULATOR_UDID" launchctl list | grep -F com.thesfm.marketstv.native > ".native-build/smoke/$TV_SCENE-process.txt"
+            xcrun simctl io "$TV_SIMULATOR_UDID" screenshot ".native-build/smoke/tvos-$TV_SCENE.png"
+          done
           xcrun simctl shutdown "$TV_SIMULATOR_UDID"
       - uses: actions/upload-artifact@v7
         with:
@@ -98,4 +104,10 @@ jobs:
           path: |
             apps/markets-tv-native/.native-build/Build/Products/Release-appletvsimulator/*.app
             apps/markets-tv-native/.native-build/smoke
+          if-no-files-found: error
+      - name: Preserve native feature screenshots for review
+        uses: actions/upload-artifact@v7
+        with:
+          name: sfm-native-tv-feature-screenshots
+          path: apps/markets-tv-native/.native-build/smoke
           if-no-files-found: error

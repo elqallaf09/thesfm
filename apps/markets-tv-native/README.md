@@ -1,6 +1,8 @@
 # SFM Markets TV — native TV client
 
-This Expo client targets Android TV and Apple TV using React Native TV. Version 0.2.0/build 2 adds the shared 25-channel receiver guide, public stock directories, source news, scheduled market hours, secure device pairing and the account's recorded investment valuations. It preserves source times and unavailable values, supports AR/EN/FR and light/dark themes, and pages content every 40 seconds. Portfolio data refreshes every 15 seconds while visible and is never stored on disk. The active device token and small display preferences use platform SecureStore. Watchlist editing, QR scanning, historical charts and detailed market customization remain in the web/Android client.
+This Expo client targets Android TV and Apple TV using React Native TV. Version 0.2.1/build 3 adds the native market brief, Kuwait/world atlas with regional stock browsing, and a My Account phone handoff. The shared 25-channel receiver guide keeps its existing channel numbers, public stock directories, source news, scheduled market hours, secure device pairing and recorded investment valuations. The new destinations are available directly in the header and in the dynamically paged menu. Source times and unavailable values remain visible, with AR/EN/FR and light/dark themes. Portfolio data refreshes every 15 seconds while visible and is never stored on disk. The active device token and small display preferences use platform SecureStore. Watchlist editing, historical charts and detailed market customization remain in the web/Android client.
+
+The atlas uses pixel-preserving PNG copies of the existing Kuwait panorama and Robinson world artwork. Its pins, regions and clock time zones use the shared atlas contract. My Account displays a bundled, deterministic QR and the fixed `https://www.the-sfm.com/profile` URL. Editing happens on the phone through the existing authenticated profile page, including MFA when required; the TV token is never used for profile editing or placed in a URL. These three assets total less than 1 MiB and need no remote artwork service or additional native dependency.
 
 ## Development
 
@@ -23,11 +25,13 @@ For Android TV, use `pnpm android` with an Android SDK/device. For Apple TV, use
 
 - Focusable controls use native Pressable focus/blur states.
 - TVFocusGuideView remembers focus across navigation controls.
-- Channel and pairing dialogs trap focus; Back/Menu closes them before returning to all stocks.
+- Menu and pairing dialogs trap focus; Back/Menu closes them before returning to all stocks. Back from region-filtered stocks returns to the map first.
 - At the all-stocks root, Back/Menu falls through to the platform.
 - Play/Pause toggles 40-second paging; CH+/CH− select channels. Button press/release events do not toggle twice.
-- Paging pauses during dialogs, backgrounding and recent user interaction.
+- Paging pauses during dialogs, backgrounding and recent user interaction; the map and account screen never rotate away.
 - Fetches stop in the background, retain the original source clock on failures and respect source retry times.
+
+The app accepts only the exact public feature links `sfm-tv-native://brief`, `sfm-tv-native://map` and `sfm-tv-native://account`. Queries, fragments, credentials, extra paths and unknown destinations are rejected. Initial links are applied after saved preferences are restored; a newer link received during startup takes precedence. These links navigate to ordinary screens and cannot pair, unlink or authenticate a user.
 
 The Apple bundle is `com.thesfm.marketstv.native`; the native Android package is `com.thesfm.marketstv.tvnative`. Both are distinct from the Java/WebView Android host `com.thesfm.marketstv` and its `.preview` variant. A native debug build does not update those applications.
 
