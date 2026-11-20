@@ -34,6 +34,10 @@ describe('iShares source-backed holdings parsing', () => {
     expect(result.holdings).toHaveLength(1000);
     expect(result.totalWeight).toBeCloseTo(100);
   });
+  it('strips a leading byte-order mark before parsing', () => {
+    expect(parseHoldingsCsv(String.fromCharCode(0xFEFF) + 'a,b\n')).toEqual([['a','b']]);
+    expect(parseIwmCsv(String.fromCharCode(0xFEFF) + fixture(), now).holdings).toHaveLength(1000);
+  });
   it('still bounds a single cell beyond the parser limit', () => {
     expect(() => parseHoldingsCsv(`"${'x'.repeat(20_001)}"`)).toThrow('fund_csv_cell_limit');
   });
