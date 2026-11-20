@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TVTextScrollView, View } from 'react-native';
 import { TV_WORLD_SESSIONS } from '../../../src/lib/markets-tv/worldSessions';
 import { sessionTimeline, durationClock } from '../../../src/lib/markets-tv/sessionTimeline';
 import { receiverText } from '../../../src/lib/markets-tv/receiver';
@@ -39,7 +39,8 @@ export function NewsPanel({ channel, page, changePage, revision }: { channel: Tv
   </View>;
 }
 export function PortfolioPanel({ token, page, changePage, revision, revoked }: { token: string | null; page: number; changePage: (page: number) => void; revision: number; revoked: () => Promise<void> }) {
-  const { language, row } = usePresentation();
+  const { language, row, colors } = usePresentation();
+  const [focused, setFocused] = useState(false);
   const load = useCallback(async (signal: AbortSignal) => parsePortfolio(await request('/api/tv/portfolio', signal, token || undefined)), [token]);
   const result = useResource(`${token || 'none'}:${revision}`, load, 15_000, Boolean(token), true);
   useEffect(() => { if (result.error === 401) void revoked().catch(() => {}); }, [result.error, revoked]);
@@ -48,7 +49,10 @@ export function PortfolioPanel({ token, page, changePage, revision, revoked }: {
   return <View style={s.fill}><Status {...result}/><Label muted>{r(language, 'portfolioSync')}</Label>
     {data && <><View style={[s.row, row]}><Label large>{`${r(language, 'total')}: ${money(data.totalValue, data.currency)}`}</Label>
       <Label>{`${r(language, 'coverage')} ${data.valueCoverage} / ${data.total}`}</Label></View>
-      <View style={[s.grid, row]}>{data.positions.slice(current * 2, current * 2 + 2).map(position => {
+      <TVTextScrollView key={current} focusable accessibilityLabel={portfolioText(language, 'positions')}
+        style={[s.portfolioScroll, { borderColor: focused ? colors.border : 'transparent' }]} contentContainerStyle={[s.portfolioGrid, row]}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+        {data.positions.slice(current * 2, current * 2 + 2).map(position => {
         const value = portfolioDisplayValue(position, data.currency);
         const noFx = position.baseValue === null && position.amount !== null;
         return <View key={position.id} style={s.half}><Panel>
@@ -61,7 +65,8 @@ export function PortfolioPanel({ token, page, changePage, revision, revoked }: {
           {position.fxSource && <Label muted>{`${portfolioText(language, 'fxSource')}: ${position.fxSource}`}</Label>}
           {position.fxAt && <Label muted>{`${portfolioText(language, 'fxAt')}: ${kuwaitDate(position.fxAt)}`}</Label>}
         </Panel></View>;
-      })}</View>
+        })}
+      </TVTextScrollView>
       {!data.positions.length && <Label>{t(language, 'noData')}</Label>}
       <Label muted>{`${r(language, 'sync')}: ${kuwaitDate(data.generatedAt)}`}</Label></>}
     <Pages page={current} pages={pages} change={changePage}/>
@@ -103,4 +108,5 @@ export function StocksPanel({ kuwait, page, changePage, revision }: { kuwait: bo
   </View>;
 }
 const s = StyleSheet.create({ fill: { flex: 1, gap: 14 }, row: { alignItems: 'center', gap: 24 }, grid: { flex: 1, gap: 18, flexWrap: 'wrap', alignContent: 'flex-start' },
+  portfolioScroll: { flex: 1, minHeight: 0, borderWidth: 2, borderRadius: 18 }, portfolioGrid: { gap: 18, flexWrap: 'wrap', alignContent: 'flex-start', alignItems: 'flex-start' },
   half: { width: '49%' }, third: { width: '32.5%' }, session: { width: '32.5%', borderRadius: 16, borderWidth: 1, padding: 18, gap: 8 }, stories: { flex: 1, gap: 18 } });
