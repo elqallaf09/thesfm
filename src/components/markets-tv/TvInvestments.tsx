@@ -1,6 +1,6 @@
 'use client';
 import '@/app/tv/portfolio.css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Building2, ChartPie, Coins, Landmark, Layers3, Package, RefreshCw, ShieldCheck, WalletCards, X } from 'lucide-react';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import type { TvPortfolioPosition, TvPortfolioSnapshot } from '@/lib/markets-tv/portfolio';
@@ -38,6 +38,14 @@ function money(value: number | null, currency: string) {
   if (!formats.has(currency)) formats.set(currency, new Intl.NumberFormat('en-US', { minimumFractionDigits: ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2, maximumFractionDigits: ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2 }));
   return formats.get(currency)!.format(value);
 }
+function PortfolioAmount({ position, currency, language, capital = false }: { position: TvPortfolioPosition; currency: string; language: TvLanguage; capital?: boolean }) {
+  const value = capital ? position.baseCost : position.baseValue;
+  const native = capital ? position.cost : position.holdingValue ?? position.value;
+  const quote = !capital && !position.holdingValue && position.holdingCurrency !== undefined && position.holdingCurrency !== position.value?.currency;
+  return <span className="tv-portfolio-values"><strong className="tv-portfolio-display" dir="ltr">{money(value, currency)} <small>{currency}</small></strong>
+    {native && (native.currency !== currency || value === null || quote) && <span className="tv-portfolio-native" data-value-kind={quote ? 'quote' : 'original'}>{portfolioText(language, quote ? 'quoteCurrency' : 'originalValue')} <bdi>{money(native.amount, native.currency)} {native.currency}</bdi></span>}
+  </span>;
+}
 function statusLabel(position: TvPortfolioPosition, language: TvLanguage) {
   const text = (key: PortfolioTextKey) => portfolioText(language, key);
   if (position.value === null && position.baseValue === null) return text('unavailable');
@@ -64,7 +72,7 @@ function PortfolioDetails({ position, currency, language, now, close }: {
 }) {
   const initialFocus = useRef<HTMLButtonElement>(null);
   const text = (key: PortfolioTextKey) => portfolioText(language, key);
-  const valueCurrency = position.baseValue !== null ? currency : position.value?.currency || currency;
+  const holdingFxMissing = position.holdingCurrency && !position.holdingValue && position.value && position.holdingCurrency !== position.value.currency;
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     initialFocus.current?.focus({ preventScroll: true });
@@ -86,21 +94,24 @@ function PortfolioDetails({ position, currency, language, now, close }: {
         event.preventDefault();
         panel.scrollBy({ top: (down ? 1 : -1) * Math.max(48, panel.clientHeight * .6), behavior: 'auto' });
       }}>
-      <div className="tv-portfolio-detail-value"><InvestmentIcon position={position}/><div><strong dir="ltr">{money(position.baseValue ?? position.value?.amount ?? null, valueCurrency)} <small>{valueCurrency}</small></strong><PositionStatus position={position} language={language}/></div></div>
+      <div className="tv-portfolio-detail-value"><InvestmentIcon position={position}/><div><PortfolioAmount position={position} currency={currency} language={language}/><PositionStatus position={position} language={language}/></div></div>
       <dl className="tv-portfolio-detail-grid">
         <div><dt>{text('quantity')}</dt><dd><bdi>{position.quantity === null ? '—' : quantityFormat.format(position.quantity)}</bdi></dd></div>
-        <div><dt>{text('capital')}</dt><dd dir="ltr">{money(position.baseCost, currency)}{position.baseCost !== null ? ` ${currency}` : ''}</dd></div>
+        <div><dt>{text('capital')}</dt><dd><PortfolioAmount position={position} currency={currency} language={language} capital/>{position.cost && position.baseCost === null && <span className="tv-portfolio-fx-missing">{text('fxMissing')}</span>}</dd></div>
         <div><dt>{text('source')}</dt><dd><bdi>{position.source || text('manual')}</bdi></dd></div>
         <div><dt>{text('valuedAt')}</dt><dd>{position.valuedAt ? <time dateTime={position.valuedAt} dir="ltr">{tvQuoteTime(position.valuedAt, language, now)}</time> : text('missing')}</dd></div>
         {position.valuationIssue && <div className="tv-portfolio-detail-note"><dt>{text('valuationNote')}</dt><dd>{text(position.valuationIssue)}</dd></div>}
         {position.baseValue === null && position.value !== null && <div className="tv-portfolio-detail-note"><dt>{text('currency')}</dt><dd>{text('noFx')}</dd></div>}
+        {holdingFxMissing && <div className="tv-portfolio-detail-note"><dt>{text('holdingCurrency')} · <bdi>{position.holdingCurrency}</bdi></dt><dd>{text('fxMissing')}</dd></div>}
         {position.valuationKind === 'market' && position.recordedValue && <>
           <div><dt>{text('savedValue')}</dt><dd dir="ltr">{money(position.recordedValue.amount, position.recordedValue.currency)} {position.recordedValue.currency}</dd></div>
           <div><dt>{text('savedAt')}</dt><dd>{position.recordedValuedAt ? <time dateTime={position.recordedValuedAt} dir="ltr">{tvQuoteTime(position.recordedValuedAt, language, now)}</time> : text('missing')}</dd></div>
           {position.recordedSource && <div><dt>{text('savedSource')}</dt><dd><bdi>{position.recordedSource}</bdi></dd></div>}
         </>}
-        {position.fxSource && <div><dt>{text('fxSource')}</dt><dd><bdi>{position.fxSource}</bdi></dd></div>}
-        {position.fxAt && <div><dt>{text('fxAt')}</dt><dd><time dateTime={position.fxAt} dir="ltr">{tvQuoteTime(position.fxAt, language, now)}</time></dd></div>}
+        {[[position.fxSource, position.fxAt, currency], [position.holdingFxSource, position.holdingFxAt, position.holdingCurrency], [position.costFxSource, position.costFxAt, `${text('capital')} · ${currency}`]].map(([source, at, target], index) => <Fragment key={index}>
+          {source && <div><dt>{text('fxSource')} · <bdi>{target}</bdi></dt><dd><bdi>{source}</bdi></dd></div>}
+          {at && <div><dt>{text('fxAt')} · <bdi>{target}</bdi></dt><dd><time dateTime={at} dir="ltr">{tvQuoteTime(at, language, now)}</time></dd></div>}
+        </Fragment>)}
       </dl>
       <p className="tv-portfolio-detail-help">{text('detailNote')}</p>
       </div>
@@ -147,16 +158,13 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
             </div>
             {!data.total ? <div className="tv-portfolio-gate"><WalletCards aria-hidden="true"/><h2>{text('empty')}</h2><p>{text('emptyHelp')}</p></div> : <div className="tv-portfolio-body">
               <section className="tv-portfolio-positions" aria-label={text('positions')}><header className="tv-broadcast-heading"><h2>{text('positions')} <bdi>{positions.length}</bdi></h2><span className="tv-portfolio-open-hint">{text('openDetails')}</span></header>
-                <div key={assetClass} className="tv-portfolio-list" data-fit={positions.length > 8 && positions.length <= 12 ? 'true' : undefined}>{positions.length ? positions.map(item => {
-                  const valueCurrency = item.baseValue !== null ? data.currency : item.value?.currency || data.currency;
-                  return <article key={item.id} className="tv-portfolio-position" data-position={item.id}>
+                <div key={assetClass} className="tv-portfolio-list" data-fit={positions.length > 8 && positions.length <= 12 ? 'true' : undefined}>{positions.length ? positions.map(item => <article key={item.id} className="tv-portfolio-position" data-position={item.id}>
                     <button className="tv-portfolio-open" type="button" aria-haspopup="dialog" aria-controls={detail?.id === item.id ? 'tv-portfolio-dialog' : undefined}
                       data-tv-focus-key={`position:${item.id}`} onClick={() => setSelected({ id: item.id, token })}>
                       <span className="tv-portfolio-identity"><InvestmentIcon position={item}/><span className="tv-portfolio-identity-text"><span role="heading" aria-level={3} className="tv-portfolio-name" dir="auto">{item.name || item.symbol || '—'}</span><span className="tv-portfolio-meta"><bdi>{item.symbol}</bdi><bdi className="tv-portfolio-platform">{item.platform || text(item.assetClass as PortfolioTextKey)}</bdi></span></span></span>
-                      <span className="tv-portfolio-amount"><strong dir="ltr">{money(item.baseValue ?? item.value?.amount ?? null, valueCurrency)}{(item.baseValue !== null || item.value !== null) && <small> {valueCurrency}</small>}</strong><PositionStatus position={item} language={language}/></span>
+                      <span className="tv-portfolio-amount"><PortfolioAmount position={item} currency={data.currency} language={language}/><PositionStatus position={item} language={language}/></span>
                     </button>
-                  </article>;
-                }) : <p className="tv-portfolio-empty">{text('emptyFilter')}</p>}</div>
+                  </article>) : <p className="tv-portfolio-empty">{text('emptyFilter')}</p>}</div>
               </section>
               <aside className="tv-portfolio-allocation"><header className="tv-broadcast-heading"><h2>{text(marketCoverage ? 'allocation' : 'allocationRecorded')}</h2><TvBroadcastPager page={allocationPage.current} pages={allocationPages} language={language} move={allocationPage.move}/></header><p>{text(basis)} · <bdi>{data.currency}</bdi></p>
                 {allocation.length > 0 && (data.totalValue ?? 0) > 0 ? <div className="tv-allocation-list">{allocation.slice(allocationPage.current * 4, (allocationPage.current + 1) * 4).map(item => <div key={item.assetClass}><div><span>{text(item.assetClass as PortfolioTextKey)}</span><bdi>{((item.amount / data.totalValue!) * 100).toFixed(1)}%</bdi></div><meter min={0} max={data.totalValue!} value={item.amount} aria-label={text(item.assetClass as PortfolioTextKey)}/><bdi>{money(item.amount, data.currency)} {data.currency}</bdi></div>)}</div> : <p>{text('unavailable')}</p>}

@@ -1,17 +1,21 @@
 import type { Investment } from '@/types/investment';
 import type { TvQuote } from './types';
 import { investmentCenterAssetClassFor } from '@/lib/investments/center';
-import { freshness, portfolioNumber, recordedBaseCost, recordedBaseValue, recordedValue, valuationTimestamp } from '@/lib/investments/recordedPortfolio';
+import { freshness, portfolioNumber, recordedBaseCost, recordedBaseValue, recordedHoldingCurrency, recordedHoldingValue, valuationTimestamp } from '@/lib/investments/recordedPortfolio';
 
+export type TvPortfolioMoney = { amount: number; currency: string };
 export type TvPortfolioPosition = {
   id: string; name: string; symbol: string | null; assetClass: string; quantity: number | null;
-  value: { amount: number; currency: string } | null; baseValue: number | null; baseCost: number | null;
+  value: TvPortfolioMoney | null; baseValue: number | null; baseCost: number | null;
+  holdingCurrency?: string | null; holdingValue?: TvPortfolioMoney | null; cost?: TvPortfolioMoney | null;
   platform: string | null; source: string | null; valuedAt: string | null; freshness: 'recorded' | 'stale' | 'missing';
   valuationKind?: 'market' | 'recorded' | 'manual'; quoteStatus?: TvQuote['status'];
   valuationIssue?: 'identity_unverified' | 'quantity_unavailable' | 'units_unverified' | 'quote_unavailable' | 'fx_unavailable';
-  recordedValue?: { amount: number; currency: string } | null; recordedBaseValue?: number | null;
+  recordedValue?: TvPortfolioMoney | null; recordedBaseValue?: number | null;
   recordedValuedAt?: string | null; recordedSource?: string | null;
   fxSource?: string | null; fxAt?: string | null;
+  holdingFxSource?: string | null; holdingFxAt?: string | null;
+  costFxSource?: string | null; costFxAt?: string | null;
 };
 export type TvPortfolioSnapshot = {
   currency: string; generatedAt: string; total: number; positions: TvPortfolioPosition[];
@@ -21,13 +25,19 @@ export type TvPortfolioSnapshot = {
 };
 /** A minimal projection of the same normalized records used by the website. */
 export function tvPortfolioSnapshot(items: Investment[], currency: string, now = Date.now()): TvPortfolioSnapshot {
-  const positions = items.map(item => ({
-    id: item.id, name: item.name, symbol: item.symbol || item.providerSymbol || null,
-    assetClass: investmentCenterAssetClassFor(item.assetType || item.type), quantity: portfolioNumber(item.quantity),
-    value: recordedValue(item), baseValue: recordedBaseValue(item, currency), baseCost: recordedBaseCost(item, currency),
-    platform: item.purchasePlatformName || null, source: item.valuationSource || item.dataSource || null,
-    valuedAt: valuationTimestamp(item), freshness: freshness(item, now),
-  }));
+  const positions = items.map(item => {
+    const holdingCurrency = recordedHoldingCurrency(item.currency), value = recordedHoldingValue(item);
+    const purchaseTotal = portfolioNumber(item.purchaseTotal);
+    return {
+      id: item.id, name: item.name, symbol: item.symbol || item.providerSymbol || null,
+      assetClass: investmentCenterAssetClassFor(item.assetType || item.type), quantity: portfolioNumber(item.quantity),
+      value, baseValue: recordedBaseValue(item, currency), baseCost: recordedBaseCost(item, currency),
+      holdingCurrency, holdingValue: value?.currency === holdingCurrency ? value : null,
+      cost: holdingCurrency && purchaseTotal !== null && purchaseTotal >= 0 ? { amount: purchaseTotal, currency: holdingCurrency } : null,
+      platform: item.purchasePlatformName || null, source: item.valuationSource || item.dataSource || null,
+      valuedAt: valuationTimestamp(item), freshness: freshness(item, now),
+    };
+  });
   return summarizeTvPortfolioPositions(positions, currency, new Date(now).toISOString());
 }
 /** Sum the displayed positions without changing purchase costs or filling missing FX. */

@@ -34,9 +34,12 @@
 .tv-portfolio-meta > bdi { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
 .tv-portfolio-meta > bdi:empty { display:none; }
 .tv-portfolio-platform { font-weight:500; }
-.tv-portfolio-amount { display:grid; gap:.3em; justify-items:end; min-width:0; }
+.tv-portfolio-amount { display:grid; gap:.15em; justify-items:end; min-width:0; }
 .tv-portfolio-amount strong { white-space:nowrap; font:500 clamp(18px,1.4vw,38px)/1.3 var(--font-data); }
 .tv-portfolio-amount strong small { font-size:max(12px,.5em); color:var(--tv-muted); }
+.tv-portfolio-values { display:grid; justify-items:start; }
+.tv-portfolio-amount .tv-portfolio-values { justify-items:end; }
+.tv-portfolio-native { display:block; font-size:max(13px,.65em); line-height:1.35; color:var(--tv-muted); white-space:nowrap; }
 .tv-portfolio-status { display:block; font-size:max(13px,.68em); color:var(--tv-muted); line-height:1.4; }
 .tv-portfolio-status[data-status=stale],.tv-portfolio-status[data-status=missing],.tv-portfolio-status[data-status=unknown_time] { color:var(--tv-accent); }
 .tv-portfolio-fx-missing { display:block; color:var(--tv-accent); }
@@ -79,9 +82,9 @@
 @media(min-width:1300px) and (min-height:850px) {
  /* Let complete card content establish each row's minimum. A fixed button
     minimum inside zero-minimum tracks caused overlapping rows at 1080p. */
- .tv-portfolio-list[data-fit=true] { grid-auto-rows:minmax(min-content,1fr); align-content:stretch; }
+ .tv-portfolio-list[data-fit=true] { grid-auto-rows:minmax(min-content,1fr); align-content:stretch; row-gap:.1em; padding-block:0; }
  .tv-portfolio-list[data-fit=true] .tv-portfolio-position { display:flex; }
- .tv-screen .tv-portfolio-list[data-fit=true] .tv-portfolio-open { height:auto; min-height:0; padding-block:.4em; }
+ .tv-screen .tv-portfolio-list[data-fit=true] .tv-portfolio-open { height:auto; min-height:0; padding-block:.1em; }
 }
 @media(min-width:761px) and (max-width:1099px) {
  .tv-portfolio-list { grid-template-columns:minmax(0,1fr); }

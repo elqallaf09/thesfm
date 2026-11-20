@@ -14,24 +14,24 @@ function fixture(amount = 1000, total = 13): TvPortfolioSnapshot {
 function mixedValuations(): TvPortfolioSnapshot {
  const data=fixture(1000,7), quoteTime='2026-11-08T06:50:00Z';
  data.positions.forEach(position=>{position.assetClass='stocks';position.valuationKind='recorded';position.baseCost=null;});
- Object.assign(data.positions[0],{name:'Advanced Micro Devices Inc.',symbol:'AMD',platform:'XTB',valuationKind:'market',quoteStatus:'delayed',source:'QA exchange',valuedAt:quoteTime,baseCost:900,recordedValue:{amount:910,currency:'USD'},recordedBaseValue:910,recordedValuedAt:'2026-09-16T12:10:00Z',recordedSource:'Recorded source'});
+ Object.assign(data.positions[0],{name:'Advanced Micro Devices Inc.',symbol:'AMD',platform:'XTB',valuationKind:'market',quoteStatus:'delayed',source:'QA exchange',valuedAt:quoteTime,holdingCurrency:'KWD',holdingValue:{amount:307,currency:'KWD'},holdingFxSource:'QA holding FX',holdingFxAt:'2026-11-08T06:46:00Z',cost:{amount:800,currency:'EUR'},baseCost:900,costFxSource:'QA capital FX',costFxAt:'2026-11-08T06:47:00Z',recordedValue:{amount:910,currency:'USD'},recordedBaseValue:910,recordedValuedAt:'2026-09-16T12:10:00Z',recordedSource:'Recorded source'});
  Object.assign(data.positions[1],{name:'Advanced Micro Devices Inc.',symbol:'AMD',platform:'zad',freshness:'stale',valuedAt:'2026-09-16T12:10:00Z'});
  Object.assign(data.positions[2],{name:'قطعة أرض · Land valuation',symbol:null,assetClass:'real-estate',valuationKind:'manual',source:null,freshness:'stale',valuedAt:'2026-05-21T12:10:00Z',value:{amount:4100,currency:'USD'},baseValue:4100,baseCost:4000});
  Object.assign(data.positions[3],{name:'Native EUR investment',symbol:'EURQA',valuationKind:'market',quoteStatus:'available',valuationIssue:'fx_unavailable',source:'QA exchange',valuedAt:'2026-11-08T07:09:00Z',value:{amount:123.45,currency:'EUR'},baseValue:null,recordedValue:{amount:100,currency:'EUR'},recordedBaseValue:110,recordedValuedAt:'2026-09-16T12:10:00Z',recordedSource:'Recorded source'});
- Object.assign(data.positions[4],{name:'Closed market investment',valuationKind:'market',quoteStatus:'closed',source:'QA exchange',valuedAt:'2026-11-06T21:00:00Z'});
+ Object.assign(data.positions[4],{name:'Closed market investment',valuationKind:'market',quoteStatus:'closed',source:'QA exchange',valuedAt:'2026-11-06T21:00:00Z',holdingCurrency:'KWD',holdingValue:null});
  Object.assign(data.positions[5],{name:'Reference quote investment',valuationKind:'market',quoteStatus:'reference',source:'QA reference',valuedAt:quoteTime});
- Object.assign(data.positions[6],{name:'Undated saved valuation',freshness:'missing',valuedAt:null});
+ Object.assign(data.positions[6],{name:'Undated saved valuation',freshness:'missing',valuedAt:null,holdingCurrency:null,holdingValue:null});
  data.totalValue=data.positions.reduce((sum,position)=>sum+(position.baseValue??0),0);
  data.totalCost=4900;data.costCoverage=2;data.valueCoverage=6;data.marketCoverage=3;data.marketEligible=6;
  data.allocation=[{assetClass:'real-estate',amount:4100,count:1},{assetClass:'stocks',amount:data.totalValue-4100,count:5}];
  return data;
 }
-async function open(page:Page, language='ar', linked=true, theme: 'light' | 'dark' = 'light') {
+async function open(page:Page, language='ar', linked=true, theme: 'light' | 'dark' = 'light', currency='USD') {
  await page.clock.install({time:new Date(instant)});
- await page.addInitScript(({language,linked,token,theme})=>{
+ await page.addInitScript(({language,linked,token,theme,currency})=>{
   localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({language,theme,autoRotate:false}));
-  localStorage.setItem('sfm_currency','USD');if(linked)localStorage.setItem('sfm-markets-tv-device-v1',token);
- },{language,linked,token,theme});
+  localStorage.setItem('sfm_currency',currency);if(linked)localStorage.setItem('sfm-markets-tv-device-v1',token);
+ },{language,linked,token,theme,currency});
  await page.route('**/api/tv/device', r=>r.fulfill({json:{device:{id:'qa-device',name:'QA TV',expiresAt:'2099-01-01T00:00:00Z',settings:{language,theme,autoRotate:false}},symbols:[],alerts:[]}}));
  await page.route('**/api/tv/snapshot?*', r=>r.fulfill({json:{summary:[],quotes:[],total:0,available:0,generatedAt:instant}}));
  await page.route('**/api/tv/news?*', r=>r.fulfill({json:{stories:[]}}));
@@ -44,7 +44,7 @@ async function open(page:Page, language='ar', linked=true, theme: 'light' | 'dar
  await page.evaluate(()=>document.fonts.ready);
 }
 async function fits(page:Page) {
- await expect.poll(()=>page.locator('.tv-portfolio,.tv-portfolio-body,.tv-portfolio-positions,.tv-portfolio-position,.tv-portfolio-open,.tv-portfolio-identity,.tv-portfolio-allocation').evaluateAll(elements=>elements.flatMap(el=>{
+ await expect.poll(()=>page.locator('.tv-portfolio,.tv-portfolio-body,.tv-portfolio-positions,.tv-portfolio-position,.tv-portfolio-open,.tv-portfolio-identity,.tv-portfolio-amount,.tv-portfolio-values,.tv-portfolio-allocation').evaluateAll(elements=>elements.flatMap(el=>{
   const b=el.getBoundingClientRect();return [...el.children].filter(c=>{const r=c.getBoundingClientRect();return r.width>0&&r.height>0&&(r.left<b.left-2||r.right>b.right+2||r.top<b.top-2||r.bottom>b.bottom+2);}).map(c=>({parent:el.className,child:c.className}));
  }))).toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
@@ -86,14 +86,52 @@ test('portfolio synchronizes changes and clears all private values immediately o
  await chooseTvDestination(page, 'hall');await chooseTvDestination(page, 'investments');
  await expect(page.locator('.tv-portfolio-position')).toHaveCount(0);expect(await page.evaluate(()=>Object.values(localStorage).join(' '))).not.toContain('Recorded source');
 });
+test('display currency KWD to USD and back converts totals and manual holdings while preserving recorded currencies',async({page})=>{
+ const requested:string[]=[];
+ await page.route('**/api/tv/portfolio**',r=>{
+  const currency=new URL(r.request().url()).searchParams.get('currency')||'KWD',kwd=currency==='KWD',data=fixture(1000,2);
+  requested.push(currency);data.currency=currency;
+  Object.assign(data.positions[0],{name:'USD holding',assetClass:'stocks',holdingCurrency:'USD',holdingValue:{amount:1000,currency:'USD'},cost:{amount:800,currency:'USD'},baseValue:kwd?250:1000,baseCost:kwd?200:800});
+  Object.assign(data.positions[1],{name:'Manual KWD property',symbol:null,assetClass:'real-estate',valuationKind:'manual',value:{amount:100,currency:'KWD'},holdingCurrency:'KWD',holdingValue:{amount:100,currency:'KWD'},cost:{amount:90,currency:'KWD'},baseValue:kwd?100:400,baseCost:kwd?90:360});
+  data.totalValue=kwd?350:1400;data.totalCost=kwd?290:1160;
+  data.allocation=data.positions.map(position=>({assetClass:position.assetClass,amount:position.baseValue!,count:1}));
+  return r.fulfill({json:data});
+ });
+ await page.setViewportSize({width:1920,height:1080});await open(page,'en',true,'light','KWD');
+ const selector=page.getByRole('combobox',{name:'Display currency'}),usd=page.locator('[data-position="record-0"]'),kwd=page.locator('[data-position="record-1"]');
+ const values=page.locator('.tv-portfolio-metrics article').first(),capital=page.locator('.tv-portfolio-metrics article').nth(1);
+ for(const currency of ['KWD','USD','KWD']){
+  await selector.selectOption(currency);
+  const inKwd=currency==='KWD';
+  await expect(values.locator('strong')).toHaveText(inKwd?'350.000 KWD':'1,400.00 USD');
+  await expect(capital.locator('strong')).toHaveText(inKwd?'290.000 KWD':'1,160.00 USD');
+  await expect(usd.locator('.tv-portfolio-display')).toHaveText(inKwd?'250.000 KWD':'1,000.00 USD');
+  await expect(kwd.locator('.tv-portfolio-display')).toHaveText(inKwd?'100.000 KWD':'400.00 USD');
+  await expect((inKwd?usd:kwd).locator('.tv-portfolio-native')).toHaveAttribute('data-value-kind','original');
+  await expect((inKwd?usd:kwd).locator('.tv-portfolio-native')).toContainText(inKwd?'1,000.00 USD':'100.000 KWD');
+  await expect(kwd.locator('.tv-portfolio-status')).toHaveText('Manual valuation');
+  expect(requested.at(-1)).toBe(currency);
+  expect(await page.evaluate(()=>localStorage.getItem('sfm_currency'))).toBe(currency);
+  await fits(page);
+  await (inKwd?usd:kwd).locator('.tv-portfolio-open').click();
+  const cost=page.locator('.tv-portfolio-detail-grid > div').filter({has:page.locator('dt', {hasText:/^Recorded invested capital$/})});
+  await expect(cost.locator('.tv-portfolio-display')).toHaveText(inKwd?'200.000 KWD':'360.00 USD');
+  await expect(cost.locator('.tv-portfolio-native')).toContainText(inKwd?'800.00 USD':'90.000 KWD');
+  await page.keyboard.press('Escape');
+ }
+ expect(requested).toContain('USD');expect(requested.filter(currency=>currency==='KWD').length).toBeGreaterThanOrEqual(2);
+});
 for(const language of ['ar','en','fr'])for(const theme of ['light','dark'] as const)test(`twelve investments ${language}/${theme} fit together without pagination at TV sizes`,async({page},testInfo)=>{
  const data=fixture(1000,12);
  data.positions.forEach((position,index)=>{position.name=index%2?'Advanced Micro Devices Inc.':'ليرة فضة';position.symbol=index%2?'AMD':null;position.assetClass=index%2?'stocks':'gold-silver';position.source='Yahoo Finance';position.platform=index%4===1?'XTB':'zad';position.freshness='stale';position.valuedAt='2026-09-16T12:10:00Z';if(index>=6)position.baseCost=null;});
+ for(const index of [3,5,7,9,11])Object.assign(data.positions[index],{name:'Taiwan Semiconductor Manufacturing Co. Ltd. ADR',symbol:'TSM'});
+ data.positions.forEach(position=>{position.holdingCurrency='KWD';position.holdingValue={amount:position.baseValue!*.307,currency:'KWD'};position.value=position.holdingValue;});
  // An unpriced record is still an investment and must remain visible.
- data.positions[11].baseValue=null;data.positions[11].value=null;data.positions[11].baseCost=null;
+ data.positions[11].baseValue=null;data.positions[11].value=null;data.positions[11].holdingValue=null;data.positions[11].baseCost=null;
  data.totalValue=data.positions.reduce((sum,position)=>sum+(position.baseValue??0),0);data.valueCoverage=11;data.costCoverage=6;data.totalCost=5400;
  data.allocation.forEach(group=>{const known=data.positions.filter(position=>position.assetClass===group.assetClass&&position.baseValue!==null);group.amount=known.reduce((sum,position)=>sum+position.baseValue!,0);group.count=known.length;});
  await page.route('**/api/tv/portfolio**',r=>r.fulfill({json:data}));
+ await page.route('https://www.google.com/s2/favicons?domain_url=https://www.tsmc.com&sz=128',r=>r.fulfill({contentType:'image/svg+xml',body:logoFixture}));
  await page.setViewportSize({width:1920,height:1080});await open(page,language,true,theme);
  await expect(page.locator('[data-tv-root]')).toHaveCSS('color-scheme',theme);
  await expect(page.locator('.tv-portfolio-metrics article')).toHaveCount(3);
@@ -103,17 +141,23 @@ for(const language of ['ar','en','fr'])for(const theme of ['light','dark'] as co
  await expect(page.locator('.tv-portfolio-position .tv-asset-icon')).toHaveCount(12);
  await expect(page.locator('[data-position="record-0"] .tv-asset-icon img')).toHaveAttribute('src',/markets-tv\/assets\/silver\.webp$/);
  await expect(page.locator('[data-position="record-1"] .tv-asset-icon img')).toHaveAttribute('src','https://cdn.simpleicons.org/amd');
+ await expect(page.locator('[data-position="record-3"] .tv-portfolio-name')).toHaveText('Taiwan Semiconductor Manufacturing Co. Ltd. ADR');
+ await expect(page.locator('[data-position="record-3"] .tv-asset-icon img')).toHaveAttribute('src','https://www.google.com/s2/favicons?domain_url=https://www.tsmc.com&sz=128');
  await expect.poll(()=>page.locator('.tv-portfolio-position .tv-asset-icon img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth>0))).toBe(true);
  await expect(page.locator('.tv-portfolio-positions .tv-broadcast-pager,.tv-portfolio-pagination')).toHaveCount(0);
  await expect(page.locator('[data-position="record-11"] .tv-portfolio-amount strong')).toContainText('\u2014');
  await expect(page.locator('[data-position="record-1"] .tv-portfolio-open')).toContainText('XTB');
  await expect(page.locator('[data-position="record-3"] .tv-portfolio-open')).toContainText('zad');
  await expect(page.locator('.tv-portfolio-status')).toHaveCount(12);
+ await expect(page.locator('.tv-portfolio-native[data-value-kind="original"]')).toHaveCount(11);
+ await expect(page.locator('[data-position="record-0"] .tv-portfolio-display')).toHaveText('1,000.00 USD');
+ await expect(page.locator('[data-position="record-0"] .tv-portfolio-native')).toContainText('307.000 KWD');
  for(const [width,height] of [[1920,1080],[1536,1009]]){
   await page.setViewportSize({width,height});await fits(page);
   await expect.poll(()=>page.locator('.tv-portfolio-list').evaluate(el=>el.scrollHeight<=el.clientHeight+1)).toBe(true);
   for(const position of await page.locator('.tv-portfolio-position').all())await expect(position).toBeInViewport({ratio:1});
   for(const status of await page.locator('.tv-portfolio-status').all())await expect(status).toBeInViewport({ratio:1});
+  for(const original of await page.locator('.tv-portfolio-native').all())await expect(original).toBeInViewport({ratio:1});
   await page.screenshot({path:testInfo.outputPath(`portfolio-all-12-${language}-${theme}-${width}.png`)});
  }
  await page.clock.runFor(120000);
@@ -202,9 +246,9 @@ for(const theme of ['light','dark'] as const)test(`portfolio ${theme}: market ev
  for(const [id,status] of [['record-0','delayed'],['record-4','closed'],['record-5','reference']])await expect(page.locator(`[data-position="${id}"] .tv-portfolio-status`)).toHaveAttribute('data-status',status);
  for(const [id,label] of [['record-0','Delayed'],['record-1','Older valuation'],['record-2','Older manual valuation'],['record-4','Last close'],['record-5','Daily reference rate'],['record-6','Time unavailable']])await expect(page.locator(`[data-position="${id}"] .tv-portfolio-status`)).toHaveText(label);
  const native=page.locator('[data-position="record-3"]');
- await expect(native.locator('.tv-portfolio-amount')).toContainText('123.45');
- await expect(native.locator('.tv-portfolio-amount')).toContainText('EUR');
- await expect(native.locator('.tv-portfolio-amount')).not.toContainText('USD');
+ await expect(native.locator('.tv-portfolio-display')).toHaveText('— USD');
+ await expect(native.locator('.tv-portfolio-native')).toContainText('123.45 EUR');
+ await expect(native.locator('.tv-portfolio-native')).not.toContainText('USD');
  await expect(native.locator('.tv-portfolio-status')).toContainText('Conversion unavailable');
  await expect(page.locator('.tv-portfolio-footer')).toContainText('Portfolio fetched');
  await expect(page.locator('.tv-portfolio-footer time')).toHaveAttribute('datetime',instant);
@@ -215,7 +259,22 @@ for(const theme of ['light','dark'] as const)test(`portfolio ${theme}: market ev
  await expect(dialog.locator('time[datetime="2026-11-08T06:50:00Z"]')).toBeVisible();
  await expect(dialog.locator('time[datetime="2026-09-16T12:10:00Z"]')).toBeVisible();
  await expect(dialog).toContainText('910.00');
+ await expect(dialog.locator('.tv-portfolio-detail-value .tv-portfolio-display')).toHaveText('1,000.00 USD');
+ await expect(dialog.locator('.tv-portfolio-detail-value .tv-portfolio-native')).toContainText('307.000 KWD');
+ await expect(dialog).toContainText('800.00 EUR');await expect(dialog).toContainText('900.00 USD');
+ await expect(dialog).toContainText('QA holding FX');await expect(dialog).toContainText('QA capital FX');
+ await expect(dialog.locator('time[datetime="2026-11-08T06:46:00Z"]')).toHaveCount(1);
+ await expect(dialog.locator('time[datetime="2026-11-08T06:47:00Z"]')).toHaveCount(1);
  await page.keyboard.press('Escape');await expect(market).toBeFocused();
+ const quoteFallback=page.locator('[data-position="record-4"]');
+ await expect(quoteFallback.locator('.tv-portfolio-native')).toHaveAttribute('data-value-kind','quote');
+ await expect(quoteFallback.locator('.tv-portfolio-native')).toHaveText('Valuation currency 1,004.00 USD');
+ await expect(page.locator('[data-position="record-6"] .tv-portfolio-native')).toHaveAttribute('data-value-kind','quote');
+ await expect(page.locator('[data-position="record-6"] .tv-portfolio-native')).toHaveText('Valuation currency 1,006.00 USD');
+ await quoteFallback.locator('.tv-portfolio-open').click();
+ await expect(dialog.locator('.tv-portfolio-detail-note')).toContainText('Recorded currency · KWD');
+ await expect(dialog.locator('.tv-portfolio-detail-note')).toContainText('Conversion unavailable');
+ await page.keyboard.press('Escape');
 
  await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
  const before=calls, fetchedAt=new Date(await page.evaluate(()=>Date.now())+16000).toISOString();
@@ -236,6 +295,7 @@ test('short TV portfolio details scroll by remote without losing currency eviden
  const data=mixedValuations();
  Object.assign(data.positions[0],{
   value:{amount:900,currency:'EUR'},baseValue:1000,
+  holdingCurrency:'EUR',holdingValue:{amount:900,currency:'EUR'},holdingFxSource:null,holdingFxAt:null,costFxSource:null,costFxAt:null,
   recordedValue:{amount:800,currency:'EUR'},recordedBaseValue:910,
   fxSource:'QA official exchange rate',fxAt:'2026-11-08T06:45:00Z',
  });
