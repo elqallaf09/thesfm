@@ -6,11 +6,23 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import unicodedata
+
+
+def clean_log(value: str) -> str:
+    # Strip CSI, OSC and other ANSI control strings before inspecting captured
+    # logs. No raw log body is ever sent to a terminal or printed as evidence.
+    value = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]|\x9b[0-?]*[ -/]*[@-~]|"
+                   r"\x1b\][\s\S]*?(?:\x07|\x1b\\)|\x1b[PX^_][\s\S]*?\x1b\\|\x1b[@-_]", "", value)
+    return "".join(char for char in value if char in "\n\t" or not unicodedata.category(char).startswith("C"))
 
 
 def api(path: str, text: bool = False):
-    value = subprocess.check_output(["gh", "api", path], text=True)
-    return value if text else json.loads(value)
+    # gh rejects ANSI-bearing Actions logs by default. Opt in only for this
+    # captured plaintext response, then sanitize it before returning to parsing.
+    flags = ["--allow-escape-sequences"] if text else []
+    value = subprocess.check_output(["gh", "api", path, *flags], text=True)
+    return clean_log(value) if text else json.loads(value)
 
 
 def verify() -> dict:
