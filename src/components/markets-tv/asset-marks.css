@@ -1,0 +1,10 @@
+.tv-screen .tv-identity-mark { position: relative; isolation: isolate; }
+.tv-screen .tv-asset-icon.tv-identity-mark[data-index-mark] { background: var(--tv-mark-color); color: white; }
+.tv-index-lettering { display: grid; justify-items: center; line-height: 1; gap: .06em; font-family: var(--font-data), monospace; }
+.tv-index-lettering > span { font-size: .42em; font-weight: 700; }
+.tv-screen .tv-index-lettering > strong { font: 700 .83em/1 var(--font-data), monospace; color: inherit; }
+.tv-ticker-lettering { max-width: 96%; text-align: center; font: 700 .42em/1.08 var(--font-data), monospace; overflow-wrap: anywhere; }
+.tv-ticker-lettering[data-long=true] { font-size: .37em; }
+.tv-screen .tv-identity-mark > img.tv-mark-image { position: absolute; inset: 0; margin: auto; opacity: 0; object-fit: contain; }
+.tv-screen .tv-identity-mark[data-logo-state=loaded] > img.tv-mark-image { opacity: 1; }
+.tv-screen .tv-identity-mark[data-issuer=svix][data-logo-state=loaded] { background: #25384b; }
