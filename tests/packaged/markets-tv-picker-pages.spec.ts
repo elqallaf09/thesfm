@@ -65,15 +65,42 @@ async function expectOnePage(page: Page) {
     gridScroll: false, editorScroll: false, editorOverFooter: false, controlsOverFooter: false });
 }
 
+async function expectPickerLabelsInsideButtons(page: Page) {
+  // Button boxes can fit while their anonymous text nodes still overflow into
+  // neighboring filters. Measure each rendered text line, including the count.
+  await expect.poll(() => page.locator('.tv-market-picker-top button, .tv-market-region-options button, .tv-market-editor button, .tv-picker-footer button').evaluateAll(buttons =>
+    buttons.flatMap(button => {
+      const bounds = button.getBoundingClientRect();
+      const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+      const overflowing: string[] = [];
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.textContent?.trim()) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        if ([...range.getClientRects()].some(rect => rect.width > 0 && rect.height > 0
+          && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1
+            || rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1))) {
+          overflowing.push(`${button.getAttribute('data-tv-focus-key')}: ${node.textContent.trim()}`);
+        }
+      }
+      return overflowing;
+    }),
+  )).toEqual([]);
+}
+
 for (const language of ['ar', 'en', 'fr'] as const) {
   for (const theme of ['light', 'dark'] as const) {
     test(`market customization ${language} ${theme}: all markets and options fit one TV page`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: 1280, height: 720 });
-      await openPicker(page, language, theme);
+      // Include every group so long labels such as global indices, digital
+      // currencies and commodities compete for space as in the real catalog.
+      const allGroupMarkets = markets.map((market, index) => ({ ...market, group: directoryGroups[index % directoryGroups.length] }));
+      await openPicker(page, language, theme, allGroupMarkets);
+      await expect(page.locator('.tv-market-region-options button')).toHaveCount(directoryGroups.length + 1);
       const done = page.locator('[data-tv-focus-key="markets-done"]');
       await expect(done).toHaveText(sessionText(language, 'done'));
       await expect(done).toBeFocused();
-      for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080]]) {
+      for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [1610, 1293], [2560, 1440]]) {
         await page.setViewportSize({ width, height });
         for (const index of [0, 16]) {
           await page.locator(`[data-tv-focus-key="market-QA_${index}"]`).click();
@@ -81,6 +108,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
           const name = page.locator('.tv-market-editor h3');
           expect(await name.evaluate(element => element.scrollHeight <= element.clientHeight + 1 && element.scrollWidth <= element.clientWidth + 1)).toBe(true);
         }
+        await expectPickerLabelsInsideButtons(page);
         await expect(page.locator('.tv-market-row')).toHaveCount(markets.length);
         expect(await page.locator('.tv-market-row strong').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(16);
         await expect(done).toBeInViewport({ ratio: 1 });
@@ -100,7 +128,7 @@ test(`large market directory ${language}: one canvas with full selected names an
   }));
   await page.setViewportSize({ width: 1280, height: 720 });
   await openPicker(page, language, 'light', directory);
-  for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080]]) {
+  for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [2560, 1440]]) {
     await page.setViewportSize({ width, height });
     await page.locator('[data-tv-focus-key="market-QA_80"]').click();
     await expect(page.locator('.tv-market-editor h3')).toHaveText(language === 'ar' ? directory[80].labelAr : language === 'en' ? directory[80].labelEn : directory[80].labelFr);

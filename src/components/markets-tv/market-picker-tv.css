@@ -1,9 +1,14 @@
 /* Keep the market directory, its controls and Save on one TV screen. The
    selected market's full name and instrument count stay visible in the editor. */
-.tv-screen .tv-picker.tv-market-picker-tv .tv-market-picker-top{display:flex;align-items:center;gap:.5em}
-.tv-screen .tv-picker.tv-market-picker-tv .tv-market-picker-top .tv-market-search{flex:1;min-width:8em}
-.tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options{display:flex;flex-wrap:wrap;gap:.3em}
-.tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options button{flex:1;white-space:nowrap;padding-inline:.5em}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-picker-top{display:flex;align-items:center;flex-wrap:wrap;gap:.5em}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-picker-top .tv-market-search{flex:1 1 12em;min-width:8em}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-picker-top .tv-segment{flex-shrink:0;min-width:0}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options{display:flex;flex-wrap:wrap;gap:.4em}
+/* Size filters from their labels. Equal shrinking columns let Arabic and
+   French names paint over adjacent buttons even when the buttons fit. */
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options button{flex:0 0 auto;max-width:100%;white-space:normal;overflow-wrap:anywhere;padding-inline:.8em}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-row[aria-pressed=true]{border-color:var(--tv-accent);box-shadow:var(--tv-active-shadow)}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-row:focus{outline-offset:-3px}
 @media(min-width:761px){
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-scroll{display:flex;flex-direction:column;overflow:visible;padding:.3em;gap:.45em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-scroll>*+*{margin-top:0}
@@ -32,6 +37,15 @@
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-footer .tv-picker-actions{flex-wrap:nowrap}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-footer .tv-picker-primary{min-width:8em}
 }
+@media(min-width:761px) and (min-height:801px){
+  /* Tall tablet/desktop windows should not turn a 16-market directory into a
+     mostly empty full-height sheet. Keep space for the complete TV editor. */
+  .tv-screen .tv-dialog.tv-market-picker-dialog{height:min(92vh,max(900px,42em))}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]){grid-auto-rows:minmax(68px,max-content);gap:.5em}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]) .tv-market-row{padding:.65em .5em;gap:.5em}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list:not([data-many=true]) .tv-picker-identity strong{font-size:max(18px,1em)}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-editor{gap:.3em;padding:.5em}
+}
 @media(min-width:761px) and (max-width:1100px){
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list{grid-template-columns:repeat(3,minmax(0,1fr))}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-workspace{grid-template-columns:minmax(0,1fr) 200px}
@@ -56,6 +70,7 @@
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-search input{font-size:14px;line-height:1.35}
   .tv-screen .tv-picker.tv-market-picker-tv button{min-height:24px;padding:1px 3px}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options{grid-column:1;grid-row:2;gap:2px}
+  .tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options button{padding-inline:.4em}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-workspace{display:contents}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list{grid-column:1;grid-row:3}
   .tv-screen .tv-picker.tv-market-picker-tv .tv-market-list[data-many=true]{grid-auto-rows:minmax(22px,max-content);gap:1px}
