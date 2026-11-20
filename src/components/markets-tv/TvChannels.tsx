@@ -4,15 +4,14 @@ import { Play, Save, Trash2 } from 'lucide-react';
 import { normalizeTvChannels, TV_CHANNELS_KEY, TV_CHANNEL_LIMIT, type TvChannel } from '@/lib/markets-tv/channels';
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import type { TvSettings, TvView } from '@/lib/markets-tv/types';
-import { isTvReceiverChannel, receiverText, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
-import { TvReceiverNav } from './TvReceiverNav';
+import { isTvReceiverChannel, receiverText } from '@/lib/markets-tv/receiver';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 
-export function TvChannels({ channels, change, settings, selections, apply, view, chooseBroadcast }: {
+export function TvChannels({ channels, change, settings, selections, apply, view }: {
   channels: TvChannel[]; change: (channels: TvChannel[]) => void; settings: TvSettings;
   selections: TvSelections; apply: (channel: TvChannel) => void;
-  view: TvView; chooseBroadcast: (channel: TvReceiverChannel) => void;
+  view: TvView;
 }) {
   const [name, setName] = useState(''), [message, setMessage] = useState('');
   const [remove, setRemove] = useState('');
@@ -30,9 +29,6 @@ export function TvChannels({ channels, change, settings, selections, apply, view
     if (persist([...channels, channel])) setName('');
   }
   return <div className="tv-channels">
-    <h3>{receiverText(settings.language, 'receiver')}</h3>
-    <TvReceiverNav language={settings.language} active={settings.broadcastChannel} choose={chooseBroadcast}/>
-    <p className="tv-muted">{receiverText(settings.language, 'help')}</p>
     <p className="tv-muted">{t('channelsHelp')}</p>
     <form className="tv-channel-create" onSubmit={event => { event.preventDefault(); save(); }}>
       <label>{t('channelName')}<input value={name} maxLength={60} onChange={event => setName(event.target.value)} placeholder={t('channelExample')}/></label>

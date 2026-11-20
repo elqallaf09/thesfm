@@ -94,6 +94,7 @@ test.describe('Account Setup workspace layout', () => {
 
       const stickyOffset = await page.locator('.step-side').evaluate(element => {
         const rootStyle = getComputedStyle(document.documentElement);
+        const panelStyle = getComputedStyle(element);
         const workspaceContainer = document.querySelector<HTMLElement>('[data-workspace-page-container="true"]')!;
         const expected = [
           '--global-header-height',
@@ -101,12 +102,27 @@ test.describe('Account Setup workspace layout', () => {
           '--app-header-gap-block',
         ].reduce((sum, token) => sum + Number.parseFloat(rootStyle.getPropertyValue(token)), 0)
           + Number.parseFloat(getComputedStyle(workspaceContainer).paddingTop);
+        // A computed inset can remain a calc()/clamp() expression. Let layout
+        // resolve that CSS length instead of treating its serialization as a number.
+        let actual = Number.NaN;
+        if (panelStyle.top !== 'auto' && CSS.supports('top', panelStyle.top)) {
+          const probe = document.createElement('div');
+          Object.assign(probe.style, { all: 'initial', position: 'fixed', top: panelStyle.top, left: '0',
+            width: '0', height: '0', margin: '0', padding: '0', border: '0', visibility: 'hidden', pointerEvents: 'none' });
+          probe.setAttribute('aria-hidden', 'true');
+          document.documentElement.append(probe);
+          try { actual = probe.getBoundingClientRect().top; } finally { probe.remove(); }
+        }
         return {
-          actual: Number.parseFloat(getComputedStyle(element).top),
+          position: panelStyle.position,
+          actual,
           expected,
         };
       });
 
+      expect(stickyOffset.position).toBe('sticky');
+      expect(Number.isFinite(stickyOffset.actual)).toBe(true);
+      expect(Number.isFinite(stickyOffset.expected)).toBe(true);
       expect(Math.abs(stickyOffset.actual - stickyOffset.expected)).toBeLessThanOrEqual(1);
       await expectNoHorizontalOverflow(page);
     }

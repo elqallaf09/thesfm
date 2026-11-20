@@ -163,16 +163,23 @@ test('all news stays visible across display changes while ticker playback remain
   await expect(page.locator('.tv-marquee-toggle')).toHaveAttribute('aria-pressed','false');
 });
 
-test('all-stocks media play/pause follows ticker state while the scene is fixed',async({page})=>{
+test('all-stocks media play/pause controls stock pages independently of the ticker',async({page})=>{
   await page.setViewportSize({width:1536,height:1009});
   await page.emulateMedia({reducedMotion:'reduce'});
   await open(page,'en','browse');
-  const playback=page.locator('.tv-marquee-toggle'),track=page.locator('.tv-marquee-track');
-  await expect(playback).toHaveAttribute('aria-pressed','true');
+  const tickerPlayback=page.locator('.tv-marquee-toggle'),track=page.locator('.tv-marquee-track');
+  const stockPlayback=page.locator('[data-tv-focus-key="stocks-playback"]');
+  await expect(tickerPlayback).toHaveAttribute('aria-pressed','true');
+  await expect(stockPlayback).toHaveAttribute('aria-pressed','false');
   const mediaToggle=()=>page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'MediaPlayPause',bubbles:true})));
-  await mediaToggle(); await expect(playback).toHaveAttribute('aria-pressed','false');
+  await mediaToggle(); await expect(stockPlayback).toHaveAttribute('aria-pressed','true');
+  await expect(tickerPlayback).toHaveAttribute('aria-pressed','true');
+  await expect(track).toHaveCSS('animation-name','none');
+  await tickerPlayback.click();
+  await expect(tickerPlayback).toHaveAttribute('aria-pressed','false');
   await expectContinuousMovement(track);
-  await mediaToggle(); await expect(playback).toHaveAttribute('aria-pressed','true');
-  await expect(track).toHaveCSS('animation-play-state','paused');
+  await mediaToggle(); await expect(stockPlayback).toHaveAttribute('aria-pressed','false');
+  await expect(tickerPlayback).toHaveAttribute('aria-pressed','false');
+  await expectContinuousMovement(track);
   await expect(page.locator('.tv-all-stocks')).toBeVisible();
 });

@@ -25,4 +25,19 @@ describe('FX last-known-good fallback', () => {
     expect(fallback).toMatchObject({ available: true, stale: true, rate: 0.305 });
     expect(fallback.source).toContain('stale_cache');
   });
+
+  it.each([{}, { updated_at: 'invalid date' }])('retains unknown source time instead of using fetch time: %j', async time => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ base_code: 'USD', rates: { KWD: 0.305 }, ...time })));
+    expect(await getFxRate('USD', 'KWD')).toMatchObject({ available: true, rate: 0.305, identityVerified: true, lastUpdated: null });
+  });
+
+  it('keeps legacy payloads available but does not claim their currency pair is verified', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ rates: { KWD: 0.305 }, updated_at: '2026-11-19T12:00:00Z' })));
+    expect(await getFxRate('USD', 'KWD')).toMatchObject({ available: true, identityVerified: false });
+  });
+
+  it.each([{ base_code: 'EUR', rates: { KWD: 0.305 } }, { from: 'USD', to: 'EUR', rate: 0.305 }])('rejects explicit mismatched pair evidence: %j', async payload => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(payload)));
+    expect(await getFxRate('USD', 'KWD')).toMatchObject({ available: false, rate: null, error: 'FX_PAIR_MISMATCH' });
+  });
 });

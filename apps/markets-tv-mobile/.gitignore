@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+.expo-validation/
+ios/
+android/
+dist/
+*.ipa
+*.p12
+*.p8
+*.mobileprovision
+credentials.json
+.env
+.env.*
+!README.md

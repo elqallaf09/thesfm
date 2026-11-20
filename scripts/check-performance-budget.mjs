@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import { PERFORMANCE_MANIFEST_FILE, routeFilesForBudget } from './performance-build-manifest.mjs';
 
 const root = process.cwd();
@@ -71,6 +72,15 @@ console.table(results.map(result => ({
 })));
 
 const failures = results.filter(result => !result.passes);
+if (failures.some(result => result.label.startsWith('built font assets'))) {
+  // Google Fonts is fetched at build time. Preserve exact byte identities in CI
+  // logs so provider drift can be distinguished from a code or weight regression.
+  console.table(await Promise.all(fontFiles.sort().map(async file => ({
+    font: path.basename(file),
+    bytes: (await stat(file)).size,
+    sha256: createHash('sha256').update(await readFile(file)).digest('hex'),
+  }))));
+}
 if (failures.length > 0) {
   console.error(`Performance budget failed: ${failures.length} regression${failures.length === 1 ? '' : 's'} detected.`);
   process.exitCode = 1;

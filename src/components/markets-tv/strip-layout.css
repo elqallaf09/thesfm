@@ -1,5 +1,20 @@
 /* Keep each market summary and its moving quotes inside separate grid cells.
    A quote's provenance occupies two real lines, including an older full date. */
+.tv-readable-strips {
+  --tv-readable-card-width: 18.5em;
+  --tv-readable-card-height: 7em;
+  --tv-readable-card-padding: .55em .7em;
+}
+.tv-density-balanced .tv-readable-strips {
+  --tv-readable-card-width: 18em;
+  --tv-readable-card-height: 6.7em;
+  --tv-readable-card-padding: .45em .65em;
+}
+.tv-density-compact .tv-readable-strips {
+  --tv-readable-card-width: 17.5em;
+  --tv-readable-card-height: 6.4em;
+  --tv-readable-card-padding: .35em .6em;
+}
 .tv-screen .tv-readable-strips .tv-market-strip {
   min-width: 0;
   grid-template-columns: minmax(0, 14em) minmax(0, 1fr) 2em;
@@ -57,20 +72,72 @@
   transform: none;
   will-change: auto;
 }
-.tv-screen .tv-readable-strips .tv-market-strip-item {
+.tv-screen[dir=rtl] .tv-readable-strips .tv-market-strip-track[data-marquee=false] {
+  margin-inline-start: auto;
+}
+/* Own the entire grid, including child placement, in every density. The global
+   compact layout otherwise puts the price beside an identity column with no
+   remaining width. These selectors also survive packaged CSS import order. */
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item {
+  grid-template-columns: 2.1em minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
   align-content: center;
+  column-gap: .55em;
   row-gap: .3em;
-  min-height: 6.4em;
+  line-height: 1.3;
 }
 .tv-screen .tv-readable-strips .tv-market-strip-set .tv-market-strip-item {
-  width: 17.5em;
-  min-width: 17.5em;
+  width: max(320px, var(--tv-readable-card-width));
+  min-width: max(320px, var(--tv-readable-card-width));
+  min-height: var(--tv-readable-card-height);
+  padding: var(--tv-readable-card-padding);
 }
-.tv-screen .tv-readable-strips .tv-strip-symbol > b { font-size: max(16px, .9em); }
-.tv-screen .tv-readable-strips .tv-strip-symbol > span { font-size: max(14px, .7em); }
-.tv-screen .tv-readable-strips .tv-market-strip-item > .tv-strip-price { font-size: max(20px, 1.1em); }
-.tv-screen .tv-readable-strips .tv-market-strip-item > .tv-strip-change { font-size: max(13px, .7em); }
-.tv-screen .tv-readable-strips .tv-market-strip-item > .tv-strip-evidence {
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item > .tv-asset-icon {
+  grid-column: 1;
+  grid-row: 1;
+  width: 2.1em;
+  height: 2.1em;
+}
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item > .tv-strip-symbol {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  min-width: 0;
+  gap: .15em;
+}
+.tv-screen .tv-readable-strips .tv-strip-symbol > b {
+  font-size: max(16px, .9em);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.tv-screen .tv-readable-strips .tv-strip-symbol > span {
+  font-size: max(14px, .7em);
+  line-height: 1.4;
+  white-space: nowrap;
+  max-height: none;
+}
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item > .tv-strip-price {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .1em .3em;
+  min-width: 0;
+  font-size: max(22px, 1.1em);
+  line-height: 1.3;
+}
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item > .tv-strip-change {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+  align-self: start;
+  font-size: max(13px, .7em);
+  line-height: 1.5;
+}
+.tv-screen .tv-readable-strips .tv-strip-price > * { white-space: nowrap; }
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item > .tv-strip-evidence {
+  grid-column: 1 / -1;
+  grid-row: 3;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -84,6 +151,12 @@
   font-family: var(--font-ui);
   font-size: max(13px, .65em);
   line-height: 1.35;
+}
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item[data-priced=false] {
+  grid-template-rows: auto auto;
+}
+.tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item[data-priced=false] > .tv-strip-evidence {
+  grid-row: 2;
 }
 .tv-screen .tv-readable-strips .tv-strip-evidence .tv-evidence-origin {
   display: flex;

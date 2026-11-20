@@ -1,4 +1,10 @@
 /* Navigation overlays the broadcast so tables retain their full viewing width. */
+.tv-screen[data-tv-root][data-accent][data-tv-menu-open=true] {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
 .tv-screen .tv-side-menu-backdrop {
   position: fixed;
   inset: 0;
@@ -65,8 +71,8 @@
 .tv-screen .tv-side-menu button:focus { outline: 2px solid var(--tv-accent); outline-offset: 1px; box-shadow: none; }
 .tv-screen .tv-side-menu .tv-side-menu-close { flex: 0 0 auto; width: auto; padding-inline: .4em; }
 .tv-screen .tv-side-menu-items {
-  display: grid;
-  grid-template-rows: repeat(var(--tv-menu-rows), minmax(2em, 1fr));
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   gap: clamp(2px, .35vh, 5px);
   overflow-y: auto;
@@ -75,6 +81,7 @@
   scroll-padding-block: 4px;
   padding: 3px;
 }
+.tv-screen .tv-side-menu-items > button { flex: 0 0 auto; }
 .tv-screen .tv-side-menu-account {
   display: grid;
   gap: .2em;
@@ -94,12 +101,12 @@
 }
 @media (max-width: 760px) {
   .tv-screen .tv-side-menu { width: min(340px, 94vw); font-size: 16px; }
-  .tv-screen .tv-side-menu-items { grid-template-rows: repeat(var(--tv-menu-rows), minmax(34px, 1fr)); }
+  .tv-screen .tv-side-menu-items > button { min-height: 34px; }
   .tv-screen .tv-side-menu-account button, .tv-screen .tv-side-menu .tv-side-menu-close { min-height: 38px; }
 }
 @media (min-width: 761px) and (max-height: 650px) {
-  .tv-screen .tv-side-menu-items { grid-template-rows: repeat(var(--tv-menu-rows), minmax(1.5em, 1fr)); gap: 1px; }
-  .tv-screen .tv-side-menu-items button { min-height: 0; padding-block: 0; }
+  .tv-screen .tv-side-menu-items { gap: 1px; }
+  .tv-screen .tv-side-menu-items button { min-height: 1.5em; padding-block: 0; }
 }
 @media (forced-colors: active) {
   .tv-screen .tv-side-menu button[aria-current=page] { border-color: Highlight; }

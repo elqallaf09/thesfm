@@ -1,0 +1,8 @@
+.panel { border: 1px solid var(--border); border-radius: var(--radius-panel); padding: 1rem; margin-block: 1rem; background: var(--card); color: var(--foreground); }
+.panel h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
+.panel p { font-size: .875rem; line-height: 1.7; margin-block: .5rem; overflow-wrap: anywhere; }
+.panel ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .75rem; padding: 0; list-style: none; }
+.panel li { display: flex; flex-direction: column; gap: .5rem; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-card); overflow-wrap: anywhere; }
+.panel span, .panel a { font-size: .875rem; line-height: 1.6; }
+.panel a { color: inherit; text-decoration: underline; text-underline-offset: .2rem; }
+.panel a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }

@@ -71,8 +71,20 @@ test('ordinary analysis links remain read-only until the user runs analysis', as
   let posts = 0;
   await page.route('**/api/intelligence/analyze', route => { posts++; return route.fulfill({ status: 503, json: { ok: false } }); });
   await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&autoRun=1');
-  await expect(page.getByTestId('ai-analyst-research-workspace')).toBeVisible();
+  const workspace = page.getByTestId('ai-analyst-research-workspace');
+  // Streaming can expose a hidden staging tree before the visible route commits.
+  // Observe visibility and TOTAL uniqueness together: a count-only wait can pass
+  // the initial hidden node, while filtering visible nodes would hide duplicates.
+  await expect.poll(() => workspace.evaluateAll(nodes => ({
+    count: nodes.length,
+    visible: nodes.map(node => {
+      const { width, height } = node.getBoundingClientRect();
+      return width > 0 && height > 0 && getComputedStyle(node).visibility === 'visible';
+    }),
+  }))).toEqual({ count: 1, visible: [true] });
+  await expect(workspace).toBeVisible();
   await expect(page.getByTestId('ai-agent-task-status')).toBeVisible();
   await page.waitForTimeout(1000);
+  await expect(workspace).toHaveCount(1);
   expect(posts).toBe(0);
 });

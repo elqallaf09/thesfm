@@ -17,7 +17,7 @@ export type TvSettings = {
   broadcastChannel?: TvReceiverChannel;
 };
 export type TvQuote = {
-  symbol: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
+  symbol: string; listingKey?: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
   changePercent: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
   status: 'available' | 'delayed' | 'closed' | 'stale' | 'reference' | 'unknown_time' | 'unknown_delay' | 'unavailable';
   exchange: string | null; country: string | null;

@@ -12,7 +12,7 @@ function assetPath(file:string) {
   return `${packaged?'./':'/'}markets-tv/assets/${file}`;
 }
 export function TvAssetIcon({ quote, group }: { quote: Pick<TvQuote, 'symbol' | 'name' | 'exchange'>; group?: TvGroup }) {
-  const [failed, setFailed] = useState('');
+  const [failed, setFailed] = useState(''), [loaded, setLoaded] = useState('');
   const kind:TvGroup = quote.symbol.startsWith('^')?'global':/^(BTC|ETH|SOL|XRP|BNB|DOGE|ADA)[/-]/.test(quote.symbol)?'crypto':/^[A-Z]{3}\/[A-Z]{3}$/.test(quote.symbol)?'forex':metalFile[quote.symbol]||/^(CL=F|NG=F|BZ=F|NYMEX:)/.test(quote.symbol)?'commodities':group||'world';
   const visual = useMemo(() => {
     const input = { symbol: kind === 'crypto' ? `${quote.symbol.split(/[/-]/)[0]}-USD` : quote.symbol.replace('/', ''), name: quote.name, exchange: quote.exchange, assetType: ['crypto','forex'].includes(kind) ? kind : kind === 'global' ? 'index' : kind === 'commodities' ? 'commodity' : 'stock' };
@@ -23,7 +23,10 @@ export function TvAssetIcon({ quote, group }: { quote: Pick<TvQuote, 'symbol' | 
   const local=metalFile[quote.symbol] || (listingLogos[quote.symbol]?.includes(quote.exchange||'')?`${quote.symbol.toLowerCase()}.png`:null) || (companySymbols.has(quote.symbol)&&/^(US|NASDAQ|NYSE|XNAS|XNYS)$/.test(quote.exchange||'')?`${quote.symbol.toLowerCase()}.png`:null);
   const candidate=local?assetPath(local):visual.logoUrl;
   const logo=candidate&&candidate!==failed?candidate:null;
-  return <span className="tv-asset-icon" aria-hidden="true" data-kind={kind} data-metal={Boolean(metalFile[quote.symbol])}>
-    {logo ? <img src={logo} alt="" width="64" height="64" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(logo)}/> : kind === 'forex' ? <span className="tv-currency-icon" dir="ltr">{quote.symbol.split('/').map((s,i) => <b key={i}>{s}</b>)}</span> : kind === 'global' ? <Globe2/> : /NG/.test(quote.symbol)&&kind==='commodities'?<Flame/> : /CL|BZ/.test(quote.symbol)&&kind==='commodities'?<Droplets/> : kind === 'commodities' || kind === 'crypto' ? <Coins/> : <><Building2/><b>{quote.symbol.split(/[./-]/)[0].slice(0,4)}</b></>}
+  const showLogo=Boolean(logo&&loaded===logo);
+  return <span className="tv-asset-icon" aria-hidden="true" data-kind={kind} data-metal={Boolean(metalFile[quote.symbol])} data-logo-state={showLogo?'loaded':logo?'loading':'fallback'} style={{ position: 'relative' }}>
+    {!showLogo && (kind === 'forex' ? <span className="tv-currency-icon" dir="ltr">{quote.symbol.split('/').map((s,i) => <b key={i}>{s}</b>)}</span> : kind === 'global' ? <Globe2/> : /NG/.test(quote.symbol)&&kind==='commodities'?<Flame/> : /CL|BZ/.test(quote.symbol)&&kind==='commodities'?<Droplets/> : kind === 'commodities' || kind === 'crypto' ? <Coins/> : <><Building2/><b>{quote.symbol.split(/[./-]/)[0].slice(0,4)}</b></>)}
+    {logo && <img key={logo} src={logo} alt="" width="64" height="64" loading="lazy" decoding="async" referrerPolicy="no-referrer"
+      style={{ position: 'absolute', inset: 0, margin: 'auto', opacity: showLogo ? 1 : 0 }} onLoad={() => setLoaded(logo)} onError={() => setFailed(logo)}/>}
   </span>;
 }

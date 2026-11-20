@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { ArrowLeft, ArrowRight, Maximize, Pause, Play, RefreshCw } from 'lucide-react';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
@@ -15,6 +16,8 @@ type Props = {
 };
 
 export function TvToolsPanel({ language, fullscreen, online, tickerPaused, playing, tickerControls, rotation, onFullscreen, onRefresh, onTicker, onPlayback, onPrevious, onNext }: Props) {
+  const initialFocus = useRef<HTMLButtonElement>(null);
+  useEffect(() => { initialFocus.current?.focus({ preventScroll: true }); }, []);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const s = (key: Parameters<typeof tvSceneText>[1]) => tvSceneText(language, key);
   const Previous = language === 'ar' ? ArrowRight : ArrowLeft;
@@ -23,7 +26,7 @@ export function TvToolsPanel({ language, fullscreen, online, tickerPaused, playi
     : rotation === 'pages' ? t(playing ? 'pausePages' : 'resumePages') : `${t(playing ? 'pause' : 'resume')} · ${t('autoRotate')}`;
   return <div id="tv-tools-dialog" className="tv-tools-panel">
     <div className="tv-tools-grid" data-tv-focus-grid>
-      <button data-tv-focus-key="fullscreen" onClick={onFullscreen}><Maximize aria-hidden="true"/><span>{t(fullscreen ? 'exitFullscreen' : 'fullscreen')}</span></button>
+      <button ref={initialFocus} data-tv-focus-key="fullscreen" data-tv-initial-focus onClick={onFullscreen}><Maximize aria-hidden="true"/><span>{t(fullscreen ? 'exitFullscreen' : 'fullscreen')}</span></button>
       <button data-tv-focus-key="refresh" onClick={onRefresh}><RefreshCw aria-hidden="true"/><span>{t('refresh')}</span></button>
       {tickerControls && <button data-tv-focus-key="ticker-playback" aria-pressed={tickerPaused} onClick={onTicker}>{tickerPaused ? <Play aria-hidden="true"/> : <Pause aria-hidden="true"/>}<span>{t(tickerPaused ? 'resumeStrips' : 'pauseStrips')}</span></button>}
       {rotation && <button data-tv-focus-key="scene-playback" aria-pressed={playing} onClick={onPlayback}>{playing ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}<span>{rotationLabel}</span></button>}
@@ -40,13 +43,16 @@ export function TvToolsPanel({ language, fullscreen, online, tickerPaused, playi
 export function TvSignOutPanel({ language, deviceName, busy, error, onConfirm, onCancel }: {
   language: TvLanguage; deviceName?: string; busy: boolean; error: boolean; onConfirm: () => void; onCancel: () => void;
 }) {
+  const cancelFocus = useRef<HTMLButtonElement>(null);
+  // The dialog shell may already have focused Close while this lazy panel loaded.
+  useEffect(() => { if (!busy) cancelFocus.current?.focus({ preventScroll: true }); }, [busy]);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   return <div className="tv-pair-content tv-sign-out">
     {deviceName && <p><bdi>{deviceName}</bdi></p>}
     <p>{t('confirmDisconnect')}</p>
     {error && <p role="alert">{t('error')}</p>}
     <div className="tv-sign-out-actions" data-tv-focus-row>
-      <button data-tv-focus-key="sign-out-cancel" data-tv-initial-focus disabled={busy} onClick={onCancel}>{t('cancel')}</button>
+      <button ref={cancelFocus} data-tv-focus-key="sign-out-cancel" data-tv-initial-focus disabled={busy} onClick={onCancel}>{t('cancel')}</button>
       <button data-tv-focus-key="sign-out-confirm" disabled={busy} onClick={onConfirm}>{busy ? t('loading') : tvMenuText(language, 'signOut')}</button>
     </div>
   </div>;

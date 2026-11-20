@@ -1,0 +1,161 @@
+/* Settings have their own viewport: the title, close button and categories
+   remain available while a longer category scrolls on smaller televisions. */
+.tv-screen .tv-dialog.tv-settings-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1400px, 92vw);
+  max-height: 90vh;
+  max-height: 90dvh;
+  overflow: hidden;
+  padding: clamp(18px, 1.6vw, 32px);
+  font-size: clamp(18px, 1.25vw, 32px);
+  line-height: 1.5;
+}
+
+.tv-settings-dialog > header {
+  flex: 0 0 auto;
+  padding-bottom: .7em;
+  margin-bottom: .7em;
+}
+
+.tv-settings-dialog > header > button { flex: 0 0 auto; }
+
+.tv-settings.tv-settings-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: .75em;
+}
+
+.tv-settings-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 0 0 auto;
+  gap: .65em;
+  padding: 6px;
+}
+
+.tv-screen .tv-settings-tabs > button {
+  min-width: 0;
+  min-height: 2.8em;
+  padding: .5em .65em;
+  line-height: 1.5;
+  font-size: 1em;
+  white-space: normal;
+}
+
+.tv-screen .tv-settings-tabs > button[aria-selected=true] {
+  background: var(--tv-panel2);
+  border-color: var(--tv-accent);
+  color: var(--tv-accent);
+  font-weight: 600;
+}
+
+.tv-settings-content {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 7px;
+  scroll-padding-block: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tv-muted) var(--tv-panel);
+}
+
+.tv-settings-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75em;
+  align-items: stretch;
+}
+
+.tv-settings-section[hidden] { display: none; }
+.tv-setting-wide { grid-column: 1 / -1; }
+
+.tv-settings-panel .tv-setting-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-width: 0;
+  gap: .6em;
+  padding: .8em;
+  border: 1px solid var(--tv-line);
+  border-radius: var(--radius-control);
+  background: var(--tv-panel);
+  text-align: start;
+}
+
+.tv-settings-panel .tv-setting-row > h3 {
+  font-size: .9em;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--tv-text);
+}
+
+.tv-screen .tv-settings-panel .tv-setting-row button {
+  height: auto;
+  min-height: max(52px, 2.6em);
+  max-width: 100%;
+  padding: .45em .7em;
+  font-size: 1em;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  scroll-margin-block: 10px;
+}
+
+.tv-settings-panel .tv-segment,
+.tv-settings-panel .tv-group-options { gap: .55em; }
+.tv-settings-panel .tv-segment > button { flex: 1 1 auto; }
+.tv-settings-panel .tv-language-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tv-settings-panel .tv-accent-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.tv-screen .tv-settings-panel .tv-language-options > button {
+  min-height: max(56px, 2.8em);
+  font-size: 1.1em;
+  font-weight: 500;
+  overflow-wrap: normal;
+}
+
+.tv-settings-panel .tv-setting-check { width: .85em; height: .85em; opacity: 0; }
+.tv-settings-panel [aria-pressed=true] > .tv-setting-check { opacity: 1; }
+
+.tv-screen .tv-settings-panel .tv-settings-switch { align-self: flex-start; justify-content: flex-start; min-width: 7em; }
+.tv-settings-switch-track {
+  display: inline-flex;
+  align-items: center;
+  width: 2em;
+  height: 1.1em;
+  padding: .12em;
+  border: 1px solid var(--tv-muted);
+  border-radius: var(--radius-pill);
+  color: var(--tv-muted);
+}
+.tv-settings-switch-track > span { width: .7em; height: .7em; border-radius: var(--radius-circle); background: currentColor; }
+.tv-settings-switch[aria-checked=true] .tv-settings-switch-track { justify-content: flex-end; border-color: var(--tv-accent); color: var(--tv-accent); }
+
+.tv-settings-info { border-top: 1px solid var(--tv-line); padding: .5em .25em; }
+.tv-settings-info > summary { cursor: pointer; padding: .35em; font-size: .9em; line-height: 1.5; }
+/* Chromium can retain layout boxes inside closed details. Exclude those
+   paragraphs from the remote's geometry-based focus list until expanded. */
+.tv-settings-info:not([open]) > p { display: none; }
+.tv-settings-info > p { margin-top: .75em; padding: .35em; scroll-margin-block: 10px; }
+.tv-settings-panel .tv-setting-help { font-size: max(14px, .8em); line-height: 1.6; }
+.tv-settings-panel > .tv-settings-help { flex: 0 0 auto; font-size: max(14px, .75em); line-height: 1.5; padding-inline: 7px; }
+
+@media (max-width: 760px) {
+  .tv-screen .tv-dialog.tv-settings-dialog { width: 94vw; padding: 14px; font-size: 16px; }
+  .tv-settings-tabs { gap: 6px; }
+  .tv-screen .tv-settings-tabs > button { flex-direction: column; gap: .2em; padding: .4em .25em; font-size: 14px; }
+  .tv-settings-section { grid-template-columns: minmax(0, 1fr); }
+  .tv-settings-panel .tv-setting-row { padding: .65em; }
+  .tv-settings-panel .tv-language-options { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-height: 600px) and (min-width: 761px) {
+  .tv-screen .tv-dialog.tv-settings-dialog { font-size: 16px; padding: 14px; }
+  .tv-settings-dialog > header { margin-bottom: .4em; padding-bottom: .4em; }
+  .tv-settings.tv-settings-panel { gap: .4em; }
+  .tv-settings-panel .tv-setting-row { padding: .55em; }
+}

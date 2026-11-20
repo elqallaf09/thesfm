@@ -4,6 +4,7 @@ import { loadTvSnapshot } from '@/lib/server/markets-tv/snapshot';
 import { tvJson } from '@/lib/server/markets-tv/http';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { validTvSymbol } from '@/lib/markets-tv/selections';
+import { validTvListingKey } from '@/lib/markets-tv/listingIdentity';
 import { TV_SCENE_GROUP } from '@/lib/server/markets-tv/sceneCatalog';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -18,10 +19,21 @@ export async function GET(request: Request) {
   const scene = params.get('scene') as TvScene | null;
   if (!Number.isInteger(page) || page < 0 || page > 1_000_000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 12 || market && !/^[A-Z_a-z0-9]{1,32}$/.test(market)) return tvJson({ code: 'INVALID_QUERY' }, 400);
   if (!TV_GROUPS.includes(group as TvGroup)) return tvJson({ code: 'INVALID_GROUP' }, 400);
-  if (scene && (!Object.hasOwn(TV_SCENE_GROUP, scene) || TV_SCENE_GROUP[scene] !== group || market || params.has('symbols') || page !== 0)) {
+  if (scene && (!Object.hasOwn(TV_SCENE_GROUP, scene) || TV_SCENE_GROUP[scene] !== group || market || params.has('symbols') || params.has('listingKeys') || page !== 0)) {
     return tvJson({ code: 'INVALID_QUERY' }, 400);
   }
   let selected: string[] | undefined;
+  let listingKeys: string[] | undefined;
+  if (params.has('symbols') && params.has('listingKeys')) return tvJson({ code: 'INVALID_QUERY' }, 400);
+  if (params.has('listingKeys')) {
+    try {
+      const raw = params.get('listingKeys')!;
+      if (raw.length > 1400 || (!market && group !== 'world') || group === 'watchlist') throw new Error();
+      const values: unknown = JSON.parse(raw);
+      if (!Array.isArray(values) || !values.length || values.length > 12 || !values.every(validTvListingKey)) throw new Error();
+      listingKeys = [...new Set(values)];
+    } catch { return tvJson({ code: 'INVALID_QUERY' }, 400); }
+  }
   if (params.has('symbols')) {
     try {
       const raw = params.get('symbols')!;
@@ -38,6 +50,6 @@ export async function GET(request: Request) {
       if (!device?.user_id) return tvJson({ code: 'UNAUTHORIZED' }, 401);
       symbols = (await ownedTvData(device.user_id)).symbols;
     }
-    return tvJson(await loadTvSnapshot(group as TvGroup, symbols, { page, pageSize, market, symbols: selected, ...(scene ? { scene } : {}) }));
+    return tvJson(await loadTvSnapshot(group as TvGroup, symbols, { page, pageSize, market, symbols: selected, ...(listingKeys ? { listingKeys } : {}), ...(scene ? { scene } : {}) }));
   } catch { return tvJson({ code: 'MARKET_UNAVAILABLE' }, 503); }
 }

@@ -80,7 +80,7 @@ async function fixture(page: Page, theme: 'light' | 'dark', linked = true, langu
     }
     return route.fulfill({ json: { result: null } });
   });
-  await openAndroidTvPackage(page);
+  await openAndroidTvPackage(page, { profile: linked ? 0 : undefined });
   await expect(page.locator('.tv-hall-row')).toHaveCount((page.viewportSize()?.height || 1080) <= 650 ? 3 : 6);
   await page.evaluate(() => document.fonts.ready);
 }

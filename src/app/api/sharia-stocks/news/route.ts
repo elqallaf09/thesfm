@@ -1,5 +1,5 @@
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { fetchStockCategoryNews, type StockCategoryNewsItem } from '@/lib/market/fetchStockCategoryNews';
 import { compactNewsItem, parseNewsLimit } from '@/lib/news/apiPayload';
 import { SHARIAH_UNIVERSE } from '@/lib/market/shariahUniverse';
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = parseNewsLimit(url.searchParams.get('limit'));
     const [payload, catalog] = await Promise.all([
-      fetchStockCategoryNews('sharia', url.searchParams.get('lang')),
+      fetchStockCategoryNews('sharia', url.searchParams.get('lang'), { headlinesOnly: url.searchParams.get('view') === 'headlines', schedulePersistence: task => after(task) }),
       loadShariahPublicCatalog({ scope: 'universe', now }),
     ]);
     const items = payload.items.slice(0, limit).map(item => {

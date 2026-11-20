@@ -26,6 +26,7 @@ import { dedupeNewsItems, newsArticleKey, safeExternalNewsUrl } from '@/lib/news
 import { filterSpecialNews } from '@/lib/news/specialNewsSearch';
 import type { NewsPageBackgroundCategory } from '@/lib/news/pageBackground';
 import styles from './SpecialMarketNewsPage.module.css';
+import { NewListingsPanel } from './NewListingsPanel';
 
 export type SpecialNewsTopic =
   | 'federal-reserve'
@@ -675,7 +676,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
             durationSeconds={34}
             minimumItems={10}
           />
-        </section> : null}
+        </section> : <NewListingsPanel lang={lang} />}
 
         {partialFailure ? (
           <div className={styles.notice} role="status">

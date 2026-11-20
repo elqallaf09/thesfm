@@ -13,5 +13,9 @@ export function normalizeTvSelections(value: unknown): TvSelections {
   }
   return result;
 }
-export type TvInstrument = { symbol: string; displaySymbol?: string; name: string; nameAr?: string; currency?: string | null; region?: string };
-export type TvInstrumentPage = { items: TvInstrument[]; total: number; directoryTotal: number; page: number; pageSize: number };
+export type TvDirectoryCoverage = 'directory' | 'snapshot' | 'partial' | 'selected' | 'pending' | 'unavailable';
+export type TvInstrument = { symbol: string; listingKey?: string; displaySymbol?: string; name: string; nameAr?: string; currency?: string | null; region?: string };
+export type TvInstrumentPage = {
+  items: TvInstrument[]; total: number; directoryTotal: number; page: number; pageSize: number;
+  coverage?: TvDirectoryCoverage; asOf?: string | null; retryAfterMs?: number;
+};

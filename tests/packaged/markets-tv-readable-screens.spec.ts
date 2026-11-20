@@ -1,6 +1,7 @@
 import { openAndroidTvPackage, openTvMenu, closeTvMenu } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import type { TvLanguage, TvMarket, TvQuote } from '../../src/lib/markets-tv/types';
+import { expectTvMenuRemoteAccess } from '../helpers/tv-menu-layout';
 
 // Layout fixtures only. Synthetic prices are never included in the application.
 const markets: TvMarket[] = [
@@ -42,19 +43,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080]]) {
         await page.setViewportSize({ width, height });
         const menu = await openTvMenu(page);
-        const controls = menu.locator('button');
-        await expect(controls).toHaveCount(19);
-        for (const control of await controls.all()) {
-          await expect(control.locator('span').first()).toBeVisible();
-          await expect(control).toBeInViewport({ ratio: 1 });
-        }
-        await expect.poll(() => controls.evaluateAll(elements => elements.every((control, index) => {
-          const a = control.getBoundingClientRect();
-          return elements.slice(index + 1).every(other => {
-            const b = other.getBoundingClientRect();
-            return a.right <= b.left + 1 || b.right <= a.left + 1 || a.bottom <= b.top + 1 || b.bottom <= a.top + 1;
-          });
-        }))).toBe(true);
+        await expectTvMenuRemoteAccess(page);
         await expect(page.locator('.tv-header-actions,.tv-viewing-nav,.tv-footer')).toHaveCount(0);
         await page.keyboard.press('Tab');
         await expect.poll(() => menu.evaluate(element => element.contains(document.activeElement))).toBe(true);

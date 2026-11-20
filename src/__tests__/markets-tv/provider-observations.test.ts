@@ -40,6 +40,16 @@ describe('TV exchange-bound provider observations', () => {
     expect(await providerStockQuote('TD_XKUW', 'NBK', { ...listing, mic: 'XNAS' })).toMatchObject({ price: null, issue: 'identity_mismatch' });
     expect(fetch).toHaveBeenCalledTimes(3);
   });
+  it('keeps pence denomination exact and rejects a pounds quote for a pence listing', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json({ ...body, symbol: 'PENCE', mic_code: 'XLON', currency: 'GBp', close: '240' }))
+      .mockResolvedValueOnce(Response.json({ ...body, symbol: 'POUNDS', mic_code: 'XLON', currency: 'GBP', close: '2.4' }));
+    vi.stubGlobal('fetch', fetch);
+    const { providerStockQuote } = await import('@/lib/world-stocks/providerQuote');
+    expect(await providerStockQuote('TD_XLON', 'PENCE', { providerSymbol: 'PENCE', mic: 'XLON', currency: 'GBp' }))
+      .toMatchObject({ price: 240, currency: 'GBp' });
+    expect(await providerStockQuote('TD_XLON', 'POUNDS', { providerSymbol: 'POUNDS', mic: 'XLON', currency: 'GBp' }))
+      .toMatchObject({ price: null, currency: 'GBp', issue: 'identity_mismatch' });
+  });
   it('retains last good evidence on quota failure without advancing its timestamps', async () => {
     const fetch = vi.fn().mockResolvedValueOnce(Response.json(body))
       .mockResolvedValueOnce(Response.json({ code: 429, status: 'error' }, { status: 429 })); vi.stubGlobal('fetch', fetch);

@@ -12,6 +12,7 @@ import {
   translateNewsItems,
 } from '@/lib/translation/translateNewsText';
 import { TOPICS, type TopicId, type StaticTickerConfig, type MetalTickerConfig } from '@/lib/market-news/specialTopics';
+import { newListingTicker } from '@/lib/market-news/newListingTicker.server';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 
 export const revalidate = 300;
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
     // Prices have their own request budget and never hold up the news feed.
     if (part === 'ticker') {
       if (topic === 'new-stocks') {
-        return NextResponse.json({ success: true, topic, tickerItems: [] }, { headers });
+        return NextResponse.json(await newListingTicker(), { headers: { 'Cache-Control': 'no-store' } });
       }
       const symbols = (request.nextUrl.searchParams.get('symbols') ?? '').split(',')
         .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);

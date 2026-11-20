@@ -6,6 +6,8 @@ export type FxRateResult = {
   lastUpdated: string | null;
   available: boolean;
   stale?: boolean;
+  /** True only when the upstream payload identifies this exact currency pair. */
+  identityVerified?: boolean;
   error?: string;
 };
 
@@ -92,9 +94,21 @@ function parseTimestamp(payload: any) {
     'lastUpdated',
     'updated_at',
   ]);
-  if (typeof raw === 'number' && Number.isFinite(raw)) return new Date(raw * 1000).toISOString();
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    const date = new Date(raw * 1000);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
   const parsed = new Date(String(raw ?? ''));
-  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
+}
+
+function pairEvidence(payload: unknown, from: string, to: string) {
+  const row = payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+  const base = normalizeCurrency(row.base_code ?? row.base ?? row.baseCurrency ?? row.from);
+  const target = normalizeCurrency(row.target_code ?? row.target ?? row.to ?? row.quote);
+  const table = row.rates ?? row.conversion_rates ?? row.data;
+  const hasTarget = Boolean(table && typeof table === 'object' && Object.hasOwn(table, to));
+  return { mismatch: Boolean(base && base !== from || target && target !== to), verified: base === from && (target === to || hasTarget) };
 }
 
 function unavailable(from: string, to: string, error: string): FxRateResult {
@@ -114,6 +128,7 @@ export async function getFxRate(fromInput: unknown, toInput: unknown): Promise<F
       lastUpdated: new Date().toISOString(),
       available: true,
       stale: false,
+      identityVerified: true,
     };
   }
 
@@ -124,6 +139,8 @@ export async function getFxRate(fromInput: unknown, toInput: unknown): Promise<F
   try {
     const url = providerUrl(from, to);
     const payload = await fetchJson(url, providerHeaders(url));
+    const identity = pairEvidence(payload, from, to);
+    if (identity.mismatch) throw new Error('FX_PAIR_MISMATCH');
     const rate = parseRate(payload, to);
     if (!rate) throw new Error(`FX rate ${from}/${to} unavailable`);
     const result: FxRateResult = {
@@ -134,6 +151,7 @@ export async function getFxRate(fromInput: unknown, toInput: unknown): Promise<F
       lastUpdated: parseTimestamp(payload),
       available: true,
       stale: false,
+      identityVerified: identity.verified,
     };
     const cachedAt = Date.now();
     fxCache.set(cacheKey, { expiresAt: cachedAt + CACHE_TTL_MS, staleUntil: cachedAt + STALE_CACHE_TTL_MS, result });
