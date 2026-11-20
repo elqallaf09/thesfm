@@ -320,10 +320,16 @@ test('short TV portfolio details scroll by remote without losing currency eviden
 
 test('short landscape browser shows whole holdings and advances the visible range', async ({ page }, testInfo) => {
   const data = fixture(1000, 17);
-  for (const position of data.positions) {
+  const classes = ['stocks', 'real-estate', 'crypto', 'commodities'];
+  for (const [index, position] of data.positions.entries()) {
+    position.assetClass = classes[index % classes.length];
     position.holdingValue = { amount: 307, currency: 'KWD' };
     position.holdingCurrency = 'KWD';
   }
+  data.allocation = classes.map(assetClass => {
+    const group = data.positions.filter(item => item.assetClass === assetClass);
+    return { assetClass, count: group.length, amount: group.reduce((sum, item) => sum + (item.baseValue ?? 0), 0) };
+  });
   await page.route('**/api/tv/portfolio**', route => route.fulfill({ json: data }));
   await page.setViewportSize({ width: 1200, height: 690 });
   await open(page, 'ar');
@@ -353,7 +359,10 @@ test('short landscape browser shows whole holdings and advances the visible rang
   await page.setViewportSize({ width: 1536, height: 872 });
   await checkRows();
   await page.screenshot({ path: testInfo.outputPath('portfolio-huawei-browser.png') });
-  await page.locator('.tv-portfolio-actions select').first().selectOption('real-estate');
+  await page.setViewportSize({ width: 960, height: 540 });
+  await fits(page);
+  await expect(page.locator('.tv-allocation-list > div').last()).toBeInViewport({ ratio: 1 });
+  await page.locator('.tv-portfolio-actions select').first().selectOption('bonds');
   await expect(range).toHaveCount(0);
   await expect(page.locator('.tv-portfolio-empty')).toBeVisible();
 });

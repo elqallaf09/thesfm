@@ -331,6 +331,8 @@ test('investments deep link fits the actual tablet browser viewport', async ({ p
   await expect(page.locator('.tv-portfolio-position')).toHaveCount(12);
   await expect(page.locator('.tv-portfolio-native').first()).toContainText('100.00 USD');
   await page.evaluate(() => document.fonts.ready);
+  const latinName = page.locator('.tv-portfolio-name').filter({ hasText: 'Global Equity Fund' }).first();
+  expect(await latinName.evaluate(label => Math.abs(label.getBoundingClientRect().right - label.querySelector('bdi')!.getBoundingClientRect().right))).toBeLessThan(2);
   const list = page.locator('.tv-portfolio-list');
   for (const size of [{ width: 1536, height: 872 }, { width: 1228, height: 690 }]) {
     await page.setViewportSize(size);
