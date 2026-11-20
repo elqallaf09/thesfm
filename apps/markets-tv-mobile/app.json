@@ -5,7 +5,10 @@
     "owner": "elqallaf09",
     "version": "1.0.0",
     "orientation": "default",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
     "splash": {
@@ -17,13 +20,28 @@
       "bundleIdentifier": "com.thesfm.marketstv.mobile",
       "supportsTablet": true,
       "buildNumber": "1",
-      "infoPlist": { "ITSAppUsesNonExemptEncryption": false }
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.thesfm.marketstv.mobile",
       "allowBackup": false,
-      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"],
-      "blockedPermissions": ["android.permission.SYSTEM_ALERT_WINDOW", "android.permission.RECORD_AUDIO", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"]
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8485be12-6ddf-4954-85d0-c036fef0bae1"
+      }
     }
   }
 }
