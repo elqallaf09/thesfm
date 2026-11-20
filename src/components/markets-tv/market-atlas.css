@@ -93,11 +93,10 @@
 .tv-atlas-land {
   position: absolute;
   inset: 0;
-  background: var(--tv-atlas-land);
-  -webkit-mask-size: 100% 100%;
-  mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
+  width: 100%;
+  height: 100%;
+  /* File-based TV clients can display a local image even when a CSS mask URL is blocked. */
+  filter: brightness(0) saturate(100%) invert(47%) sepia(14%) saturate(883%) hue-rotate(109deg) brightness(99%) contrast(87%);
   pointer-events: none;
 }
 .tv-atlas-pin {
@@ -198,7 +197,8 @@
   .tv-atlas-clock-place strong { font-size: .94em; }
 }
 @media (forced-colors: active) {
-  .tv-atlas-land, .tv-atlas-dot { forced-color-adjust: none; background: CanvasText; }
+  .tv-atlas-dot { forced-color-adjust: none; background: CanvasText; }
+  .tv-atlas-land { filter: none; }
   .tv-atlas-pin-name { border: 1px solid ButtonText; }
 }
 

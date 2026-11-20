@@ -29,12 +29,9 @@ for (const [language, theme, width, height] of [
     await expect(page.locator('[data-region=asia] .tv-atlas-weekday')).toHaveText({ ar:'السبت', en:'Saturday', fr:'samedi' }[language]);
     await expect(page.locator('.tv-atlas-pin')).toHaveCount(12);
     await expect(page.locator('.tv-atlas-cover img')).toHaveJSProperty('naturalWidth', 1280);
-    expect(await page.locator('.tv-atlas-land').evaluate(async el => {
-      const img = new Image();
-      img.src = getComputedStyle(el).webkitMaskImage.slice(5,-2);
-      await img.decode();
-      return img.naturalWidth;
-    })).toBe(2200);
+    const geography = page.locator('img.tv-atlas-land');
+    await expect(geography).toBeVisible();
+    await expect(geography).toHaveJSProperty('naturalWidth', 2200);
     await page.evaluate(() => document.fonts.ready);
     expect(await page.locator('.tv-atlas-clock, .tv-atlas-pin-name').evaluateAll(nodes =>
       nodes.every(el => {

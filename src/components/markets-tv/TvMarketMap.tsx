@@ -73,9 +73,7 @@ export default function TvMarketMap({ language, group, now, select, suspended, a
       <div className="tv-atlas-chart">
         <Navigation2 aria-hidden="true" className="tv-atlas-north" strokeWidth={1.4}/>
         <div className="tv-atlas-projection">
-          <div className="tv-atlas-land" style={{
-            WebkitMaskImage: `url("${assets}/world-atlas.webp")`, maskImage: `url("${assets}/world-atlas.webp")`,
-          }}/>
+          <img className="tv-atlas-land" src={`${assets}/world-atlas.webp`} width="2200" height="1100" alt="" draggable={false}/>
           {clocks.map(city => {
             const labelled = representatives.includes(city);
             return <button key={city.code} type="button" data-tv-focus-key={`atlas-pin-${city.code}`} className="tv-atlas-pin" data-region={city.group} data-country={city.code}
