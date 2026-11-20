@@ -1,0 +1,11 @@
+name: Submit SFM Markets TV 0.2.1 (4)
+on:
+  push:
+    branches: ['publish/sfm-tv-native-testflight-0-2-1-build-4']
+    paths: ['apps/markets-tv-native/.eas/workflows/submit-tvos-0-2-1-build-4.yml']
+jobs:
+  submit_tvos:
+    type: submit
+    params:
+      profile: production
+      build_id: 74d9ea5f-8b8a-44ab-a044-00cdc78cf07f
