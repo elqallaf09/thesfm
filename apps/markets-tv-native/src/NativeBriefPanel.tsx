@@ -55,13 +55,13 @@ function QuoteCard({ quote, stats, now }: { quote: TvQuote; stats: TvBriefStats;
   const trend = movement.trend === 'up' ? colors.up : movement.trend === 'down' ? colors.down : colors.muted;
   return <View style={[s.quote, { backgroundColor: colors.panel }]}>
     <Text style={[s.quoteName, align, { color: colors.text }]}>{language === 'ar' ? quote.nameAr : quote.name}</Text>
-    <Text style={[s.caption, align, { color: colors.muted }]}>{[quote.displaySymbol || quote.symbol, quote.exchange, quote.country].filter(Boolean).join(' · ')}</Text>
+    <Text style={[s.caption, s.quoteCaption, align, { color: colors.muted }]}>{[quote.displaySymbol || quote.symbol, quote.exchange, quote.country].filter(Boolean).join(' · ')}</Text>
     <View style={[s.quoteNumbers, row]}>
       <Text style={[s.price, { color: colors.text }]}>{`${tvQuotePrice(quote)} ${tvSceneQuoteUnit(quote, language)}`}</Text>
       <Text style={[s.movement, { color: trend }]}>{movement.value}</Text>
     </View>
     {!comparable && <Text style={[s.note, align, { color: colors.muted }]}>{obsText(language, excluded)}</Text>}
-    <Text style={[s.caption, align, { color: colors.muted }]}>{`${quote.source || '—'} · ${tvText(language, status)}`}</Text>
+    <Text style={[s.caption, s.quoteCaption, align, { color: colors.muted }]}>{`${quote.source || '—'} · ${tvText(language, status)}`}</Text>
     <Text style={[s.timestamp, { color: colors.muted }]}>{tvQuoteTime(quote.observedAt, language, now, status === 'stale')}</Text>
   </View>;
 }
@@ -120,16 +120,17 @@ export function NativeBriefPanel({ revision, page, changePage }: {
 
 const s = StyleSheet.create({
   fill: { flex: 1, minHeight: 0, gap: 14 }, heading: { gap: 20, alignItems: 'center' }, headingText: { flex: 1, gap: 6 },
-  metrics: { gap: 16 }, metric: { flex: 1, minWidth: 0, borderRadius: 18, padding: 18, gap: 6 },
+  metrics: { gap: 16 }, metric: { flex: 1, minWidth: 0, borderRadius: 18, padding: 14, gap: 4 },
   metricValue: { fontFamily: 'SfmArabic', fontSize: 34, fontVariant: ['tabular-nums'], writingDirection: 'ltr', textAlign: 'center' },
   distribution: { height: 7, flexDirection: 'row', borderRadius: 4, overflow: 'hidden' },
   caption: { fontFamily: 'SfmArabic', fontSize: 24, flexShrink: 1 }, note: { fontFamily: 'SfmArabic', fontSize: 21, flexShrink: 1 },
   actionText: { fontFamily: 'SfmArabic', fontSize: 26 }, toolbar: { gap: 16, alignItems: 'center', flexWrap: 'wrap' },
   results: { flex: 1, minHeight: 0, borderWidth: 2, borderRadius: 18 }, quoteGrid: { gap: 18, alignItems: 'flex-start', padding: 6 },
-  quote: { flex: 1, minWidth: 0, padding: 22, borderRadius: 18, gap: 8 }, quoteName: { fontFamily: 'SfmArabic', fontSize: 29 },
+  quote: { flex: 1, minWidth: 0, padding: 12, borderRadius: 18, gap: 4 }, quoteName: { fontFamily: 'SfmArabic', fontSize: 27 },
+  quoteCaption: { fontSize: 22 },
   quoteNumbers: { alignItems: 'center', justifyContent: 'space-between', gap: 18 },
-  price: { fontFamily: 'SfmArabic', fontSize: 36, flexShrink: 1, writingDirection: 'ltr' },
-  movement: { fontFamily: 'SfmArabic', fontSize: 32, writingDirection: 'ltr' },
-  timestamp: { fontFamily: 'SfmArabic', fontSize: 23, writingDirection: 'ltr' },
+  price: { fontFamily: 'SfmArabic', fontSize: 34, flexShrink: 1, writingDirection: 'ltr' },
+  movement: { fontFamily: 'SfmArabic', fontSize: 30, writingDirection: 'ltr' },
+  timestamp: { fontFamily: 'SfmArabic', fontSize: 21, writingDirection: 'ltr' },
   footer: { alignItems: 'center', gap: 18 }, asOf: { flex: 1, gap: 2 },
 });

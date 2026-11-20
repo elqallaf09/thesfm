@@ -20,13 +20,13 @@ export function NativeAtlasPanel({ now, selected, onSelect }: { now: number; sel
   return <View style={s.root}>
     <View style={[s.heading, row]}><Label large>{tvText(language, 'map')}</Label><Label muted>{date.format(now)}</Label></View>
     <View style={[s.stage, row]}>
-      <View style={s.cover}><Image source={kuwaitArtwork} style={StyleSheet.absoluteFill} resizeMode="cover" alt="" accessible={false}/></View>
+      <View style={s.cover}><Image source={kuwaitArtwork} style={s.artwork} resizeMode="cover" alt="" accessible={false}/></View>
       <View style={[s.chart, { backgroundColor: colors.panel }]} onLayout={event => {
         const { width, height } = event.nativeEvent.layout;
         setChartSize(previous => previous.width === width && previous.height === height ? previous : { width, height });
       }}>
         <View style={[s.projection, projection]}>
-          <Image source={worldArtwork} style={[StyleSheet.absoluteFill, { tintColor: colors.muted, opacity: .6 }]} resizeMode="stretch" alt="" accessible={false}/>
+          <Image source={worldArtwork} style={[s.artwork, { tintColor: colors.muted, opacity: .6 }]} resizeMode="stretch" alt="" accessible={false}/>
           {cities.map(city => <View key={city.group} pointerEvents="none" accessible={false} style={[s.pin, { left: `${city.x}%`, top: `${city.y}%` }]}>
             <View style={[s.dot, { backgroundColor: active === city.group ? colors.border : colors.text }]}/>
             <Text style={[s.pinLabel, { color: colors.text, backgroundColor: colors.panel }]}>{tvText(language, city.city)}</Text>
@@ -52,6 +52,8 @@ export function NativeAtlasPanel({ now, selected, onSelect }: { now: number; sel
 const s = StyleSheet.create({
   root: { flex: 1, gap: 14 }, heading: { alignItems: 'center', justifyContent: 'space-between', gap: 24 },
   stage: { flex: 1, minHeight: 280, gap: 24 }, cover: { width: '32%', overflow: 'hidden', borderRadius: 18 },
+  // Bundled images otherwise retain their intrinsic width and height despite the insets.
+  artwork: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   chart: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 18, padding: 20, overflow: 'hidden' },
   projection: { direction: 'ltr' }, pin: { position: 'absolute', transform: [{ translateX: -8 }, { translateY: -8 }], gap: 3 },
   dot: { width: 16, height: 16, borderRadius: 8 }, pinLabel: { fontFamily: 'SfmArabic', fontSize: 22, borderRadius: 4, paddingHorizontal: 4 },
