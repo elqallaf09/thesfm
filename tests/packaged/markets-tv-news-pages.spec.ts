@@ -80,6 +80,8 @@ test('news pages rotate every 40 seconds and pause for the remote, story dialog,
   await page.clock.runFor(80000);
   await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
   await page.keyboard.press('Enter');
+  // The clock is paused: let React settle the lazy story dialog's fallback.
+  await page.clock.runFor(500);
   await expect(page.getByRole('dialog')).toContainText(headlines[0]);
   await page.clock.runFor(80000);
   await expect(desk).toHaveAttribute('data-news-page', '2');
