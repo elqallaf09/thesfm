@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, CircleCheck, List, Search } from 'lucide-react';
 import type { TvLanguage, TvMarket, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import type { TvDirectoryCoverage, TvInstrumentPage } from '@/lib/markets-tv/selections';
+import type { TvAtlasRegion } from '@/lib/markets-tv/atlas';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
@@ -21,16 +22,20 @@ const coverageLabels = {
   snapshot: 'directorySnapshot', unavailable: 'directoryUnavailable',
 } as const satisfies Partial<Record<TvDirectoryCoverage, Parameters<typeof hallText>[1]>>;
 
-export function TvAllStocks({ language, now, markets, ready, revision, news, newsLoading, newsError, paused, playing, suspended, newsPaused = false, ticker, speed, onQuote, onStory, onRefresh, onTickerPause, onPlayback }: {
+export function TvAllStocks({ language, now, markets, initialRegion, ready, revision, news, newsLoading, newsError, paused, playing, suspended, newsPaused = false, ticker, speed, onQuote, onStory, onRefresh, onTickerPause, onPlayback }: {
   language: TvLanguage; now: number; markets: TvMarket[]; ready: boolean; revision: number; news: TvNews[]; newsLoading?: boolean; newsError?: string | null; paused: boolean; newsPaused?: boolean; ticker: boolean; speed: number;
-  playing: boolean; suspended: boolean;
+  playing: boolean; suspended: boolean; initialRegion?: TvAtlasRegion;
   onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onTickerPause: () => void; onPlayback: () => void;
 }) {
-  const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [market, setMarket] = useState(''), [page, setPage] = useState(0);
+  const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [filter, setFilter] = useState<string>(initialRegion || ''), [page, setPage] = useState(0);
   const [activity, setActivity] = useState(0), [filterFocused, setFilterFocused] = useState(false);
   const interact = useCallback(() => setActivity(value => value + 1), []);
   const PAGE_SIZE = useTvTableSize();
-  const scope = `${market}:${query}:${PAGE_SIZE}`;
+  const regionSelected = initialRegion !== undefined && filter === initialRegion;
+  const group = regionSelected ? initialRegion : 'world';
+  const regionParams: Record<string, string> = regionSelected ? { scope: 'region' } : {};
+  const market = regionSelected ? '' : filter;
+  const scope = `${group}:${market}:${query}:${PAGE_SIZE}`;
   const [totals, setTotals] = useState<{ scope: string; total: number; directoryTotal: number } | null>(null);
   useEffect(() => setPage(0), [PAGE_SIZE]);
   useEffect(() => {
@@ -40,7 +45,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
     const timer = setTimeout(() => { setQuery(nextQuery); setPage(0); }, 300);
     return () => clearTimeout(timer);
   }, [search, query]);
-  const directoryPath = `/api/tv/instruments?${new URLSearchParams({ group: 'world', market, q: query, page: String(page), pageSize: String(PAGE_SIZE) })}`;
+  const directoryPath = `/api/tv/instruments?${new URLSearchParams({ group, ...regionParams, market, q: query, page: String(page), pageSize: String(PAGE_SIZE) })}`;
   const directory = useTvResource<TvInstrumentPage>(ready ? directoryPath : null, 300000, '', revision);
   const matchedTotal = directory.data?.total, directoryTotal = directory.data?.directoryTotal;
   useEffect(() => {
@@ -55,7 +60,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
   const quoteSelection: Record<string, string> = items.every(item => item.listingKey)
     ? { listingKeys: JSON.stringify(items.map(item => item.listingKey)) }
     : { symbols: JSON.stringify(items.map(item => item.symbol)) };
-  const quotePath = items.length ? `/api/tv/snapshot?${new URLSearchParams({ group: 'world', ...(market ? { market } : {}), pageSize: String(PAGE_SIZE), ...quoteSelection })}` : null;
+  const quotePath = items.length ? `/api/tv/snapshot?${new URLSearchParams({ group, ...regionParams, ...(market ? { market } : {}), pageSize: String(PAGE_SIZE), ...quoteSelection })}` : null;
   const quotes = useTvResource<TvSnapshot>(quotePath, 60000, '', revision);
   const pages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE));
   const itemQuote = createTvListingQuoteLookup(items, quotes.data?.quotes ?? []);
@@ -95,7 +100,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
       <TvStockRotation language={language} playing={playing} blocked={suspended || waiting || browsing || pages <= 1} status={rotationStatus} cycle={`${directoryPath}:${activity}`} seconds={priced ? 12 : 8} onToggle={onPlayback} onNext={nextPage}/>
     </div></div>
     <div className="tv-stock-filters"><label className="tv-stock-search"><Search aria-hidden="true"/><input type="search" value={search} maxLength={120} onChange={event => setSearch(event.target.value)} placeholder={hallText(language, 'search')} aria-label={hallText(language, 'search')} data-tv-focus-key="stock-search"/></label>
-      <label><span>{hallText(language, 'chooseMarket')}</span><select value={market} onChange={event => { setMarket(event.target.value); setPage(0); setFilterFocused(false); }} data-tv-focus-key="stock-market"><option value="">{hallText(language, 'allMarkets')}</option>{exchanges.map(item => <option key={item.id} value={item.id}>{language === 'ar' ? item.labelAr : language === 'fr' ? item.labelFr : item.labelEn} · {item.count.toLocaleString('en-US')}</option>)}</select></label>
+      <label><span>{hallText(language, 'chooseMarket')}</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(0); setFilterFocused(false); }} data-tv-focus-key="stock-market"><option value="">{hallText(language, 'allMarkets')}</option>{initialRegion && <option value={initialRegion}>{tvText(language, initialRegion)}</option>}{exchanges.filter(item => item.id !== initialRegion).map(item => <option key={item.id} value={item.id}>{language === 'ar' ? item.labelAr : language === 'fr' ? item.labelFr : item.labelEn} · {item.count.toLocaleString('en-US')}</option>)}</select></label>
       <span className="tv-stock-results">{hallText(language, 'matches')} <bdi>{total?.toLocaleString('en-US') ?? '—'}</bdi></span>
     </div>
     <div className="tv-stock-coverage"><span role="status"><CircleCheck aria-hidden="true"/><bdi dir="ltr">{directory.loading || quotes.loading ? '—' : `${priced} / ${items.length}`}</bdi>{hallText(language, 'pricedOnPage')}</span><span className="tv-directory-coverage" data-coverage={coverage} role={coverageLabel ? 'status' : undefined}>{hallText(language, coverageLabel || 'directoryNote')}</span></div>

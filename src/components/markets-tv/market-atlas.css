@@ -1,0 +1,204 @@
+.tv-screen[data-tv-view="map"]::before { background: none; }
+.tv-screen[data-tv-view="map"] .tv-side-menu-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.tv-screen[data-tv-view="map"] .tv-menu-toggle { justify-self: start; }
+.tv-screen[data-tv-view="map"] .tv-unified-brand { justify-self: center; margin: 0; }
+.tv-screen[data-tv-view="map"] .tv-unified-clock { justify-self: end; }
+.tv-screen[data-tv-view="map"] .tv-layout-feature {
+  grid-template-columns: minmax(0, 1fr);
+}
+.tv-atlas {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: .7em;
+}
+.tv-atlas-stage {
+  display: grid;
+  grid-template-columns: minmax(0, .92fr) minmax(0, 2fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--tv-line);
+  border-radius: var(--radius-panel);
+}
+.tv-atlas-cover {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  padding: clamp(18px, 2.15vw, 80px);
+  background: var(--tv-news-brand-background);
+  color: var(--tv-news-brand-text);
+}
+.tv-atlas-cover > img, .tv-atlas-cover::after {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+.tv-atlas-cover > img { object-fit: cover; object-position: 8% 48%; }
+.tv-atlas-cover::after { content: ''; background: var(--tv-atlas-cover-shade); }
+.tv-atlas-heading {
+  display: grid;
+  gap: .35em;
+  line-height: 1.4;
+  text-align: start;
+}
+.tv-atlas-heading::before {
+  content: '';
+  width: 2.45em;
+  height: 3px;
+  background: var(--tv-atlas-highlight);
+  margin-block-end: .25em;
+}
+.tv-atlas-heading h1 {
+  margin: 0;
+  color: inherit;
+  font: 600 clamp(30px, 3.15vw, 108px)/1.27 var(--font-ui);
+}
+.tv-atlas-heading time { color: var(--tv-news-brand-text); font-size: max(14px, .91em); }
+.tv-atlas-chart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: .75em;
+  background: var(--tv-atlas-ocean);
+  overflow: hidden;
+}
+.tv-atlas-north {
+  position: absolute;
+  top: .85em;
+  left: .9em;
+  width: 1.25em;
+  height: 1.25em;
+  color: var(--tv-atlas-label);
+  opacity: .75;
+}
+.tv-atlas-projection {
+  position: relative;
+  width: 100%;
+  max-width: 123vh;
+  direction: ltr;
+}
+.tv-atlas-projection::before { content: ''; display: block; padding-top: 50%; }
+.tv-atlas-land {
+  position: absolute;
+  inset: 0;
+  background: var(--tv-atlas-land);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  pointer-events: none;
+}
+.tv-atlas-pin {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  width: 44px;
+  height: 44px;
+  font-size: max(14px, .84em);
+  line-height: 1.4;
+}
+.tv-atlas-dot {
+  width: .88em;
+  height: .88em;
+  border-radius: var(--radius-pill);
+  background: var(--tv-atlas-label);
+  border: 2px solid var(--tv-atlas-ring);
+  outline: .22em solid var(--tv-atlas-halo);
+}
+.tv-atlas-pin-name {
+  position: absolute;
+  bottom: calc(50% + .9em);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--tv-atlas-label-text);
+  background: var(--tv-atlas-label);
+  border-radius: var(--radius-sm);
+  padding: .16em .58em .21em;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.tv-atlas-pin[data-region="gulf"] .tv-atlas-pin-name { bottom: auto; top: calc(50% + .9em); }
+.tv-atlas-pin[data-active="true"] .tv-atlas-dot,
+.tv-atlas-pin[data-region="gulf"] .tv-atlas-dot { background: var(--tv-atlas-highlight); }
+.tv-atlas-pin[data-active="true"] .tv-atlas-pin-name { outline: 2px solid var(--tv-atlas-highlight); }
+.tv-atlas-clock-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .75em;
+  padding-block-start: .24em;
+}
+.tv-atlas-clock-heading h2, .tv-atlas-clock-heading p { margin: 0; }
+.tv-atlas-clock-heading h2 { display: flex; align-items: center; gap: .4em; font-size: 1.08em; font-weight: 600; }
+.tv-atlas-clock-heading h2 svg { width: 1.05em; height: 1.05em; color: var(--tv-accent); }
+.tv-atlas-clock-heading p { color: var(--tv-muted); font-size: max(13px, .78em); }
+.tv-atlas-clocks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65em; }
+.tv-screen .tv-atlas-clock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: space-between;
+  align-items: start;
+  min-width: 0;
+  gap: .55em .4em;
+  padding: .8em 1em;
+  border: 1px solid var(--tv-line);
+  border-radius: var(--radius-panel);
+  background: var(--tv-panel);
+  color: var(--tv-text);
+  text-align: start;
+  line-height: 1.3;
+}
+.tv-atlas-clock-place { display: grid; gap: .15em; }
+.tv-atlas-clock-place strong { font-size: 1.06em; font-weight: 600; }
+.tv-atlas-clock-place > span { color: var(--tv-muted); font-size: max(14px, .8em); }
+.tv-atlas-clock > svg { width: 1.1em; height: 1.1em; color: var(--tv-muted); }
+.tv-atlas-clock > time {
+  grid-column: 1;
+  justify-self: start;
+  font: 500 clamp(29px, 2.55vw, 85px)/1.05 var(--font-data);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.055em;
+}
+.tv-atlas-weekday { align-self: end; justify-self: end; color: var(--tv-muted); font-size: max(13px, .74em); }
+.tv-screen .tv-atlas-clock[data-active="true"] { border-color: var(--tv-accent); background: var(--tv-panel2); }
+.tv-screen .tv-atlas-clock:focus { outline: 3px solid var(--tv-accent); outline-offset: -3px; }
+@media (max-width: 980px) {
+  .tv-atlas-stage { grid-template-columns: minmax(0, .78fr) minmax(0, 1.7fr); }
+  .tv-screen .tv-atlas-clock { padding: .65em .75em; }
+}
+@media (max-width: 760px) {
+  .tv-atlas { gap: .55em; }
+  .tv-atlas-stage { flex: none; grid-template-columns: 1fr; }
+  .tv-atlas-cover { min-height: 7.5em; padding: 1em; }
+  .tv-atlas-cover img { object-position: 50% 46%; }
+  .tv-atlas-chart { padding: .4em; }
+  .tv-atlas-north { height: 1em; width: 1em; top: .5em; left: .5em; }
+  .tv-atlas-clocks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5em; }
+  .tv-atlas-clock-heading { flex-wrap: wrap; gap: .25em; }
+  .tv-atlas-clock > time { font-size: 1.75em; }
+}
+@media (max-width: 760px) and (orientation: landscape) {
+  .tv-atlas-stage { grid-template-columns: minmax(0, .84fr) minmax(0, 1.7fr); }
+  .tv-atlas-clocks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tv-atlas-chart { padding: .15em; }
+  .tv-atlas-clock-heading { padding: 0; }
+  .tv-atlas-clock-place strong { font-size: .94em; }
+}
+@media (forced-colors: active) {
+  .tv-atlas-land, .tv-atlas-dot { forced-color-adjust: none; background: CanvasText; }
+  .tv-atlas-pin-name { border: 1px solid ButtonText; }
+}
