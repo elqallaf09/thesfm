@@ -14,11 +14,11 @@ import { TvStripQuote } from './TvStripQuote';
 
 type Channel = Exclude<TvReceiverChannel, 'sessions' | 'investments'>;
 type Props = { channel: Channel; language: TvLanguage; now: number; revision: number; playing: boolean;
-  togglePlay: () => void; onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void };
+  togglePlay: () => void; onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onPaginationAvailable?: (available: boolean) => void };
 const EMPTY_MARKETS: TvMarket[] = [];
 const KUWAIT: TvMarket = { id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'بورصة الكويت', labelEn: 'Boursa Kuwait', labelFr: 'Bourse du Koweït', count: 0, status: 'unknown' };
 
-export default function TvReceiverScreen({ channel, language, now, revision, playing, togglePlay, onQuote, onStory, onRefresh }: Props) {
+export default function TvReceiverScreen({ channel, language, now, revision, playing, togglePlay, onQuote, onStory, onRefresh, onPaginationAvailable }: Props) {
   const newsOnly = channel !== 'allStocks' && channel !== 'kuwait';
   const catalog = useTvResource<{ markets: TvMarket[] }>(channel === 'allStocks' ? '/api/tv/catalog' : null, 300000, '', revision);
   const sourceMarkets = catalog.data?.markets || EMPTY_MARKETS;
@@ -38,6 +38,8 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
     ? `/api/tv/snapshot?group=${market.group}&market=${market.id}&page=${page}&pageSize=${pageSize}` : null, 30000, '', revision);
   const pages = Math.max(1, Math.ceil((snapshot.data?.directoryTotal ?? market?.count ?? 0) / pageSize));
   const sourceCooling = tvStripSourceCooling(snapshot.data?.quotes || [], snapshot.data?.retryAt, now);
+  const canRotate = Boolean(!newsOnly && market && (pages > 1 || (channel === 'allStocks' && !selected && markets.length > 1)));
+  useEffect(() => { onPaginationAvailable?.(canRotate); }, [canRotate, onPaginationAvailable]);
   const step = useCallback((direction: number) => {
     if (!market) return;
     setCursors(current => ({ ...current, [market.id]: ((current[market.id] || 0) + direction + pages) % pages }));

@@ -1,4 +1,4 @@
-import { closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './helpers/tv-controls';
+import { closeTvMenu, openTvMenu, chooseTvDestination } from './helpers/tv-controls';
 import { expect, test } from '@playwright/test';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -56,11 +56,11 @@ test('TV stock directory occupies the web viewport and keeps its own controls in
   await expect(page.locator('.tv-screen')).toHaveAttribute('data-navigation-marker', 'original');
   expect(documents).toEqual([]);
   await expect(page.locator('.sfm-global-header, .sfm-shared-sidebar, .sfm-route-loading')).toHaveCount(0);
-  await openTvHeaderActions(page);
+  await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=settings]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await page.keyboard.press('Shift');
-  await closeTvHeaderActions(page);
   await expect(page.locator('.tv-hall-listing small').first()).toHaveText('الولايات المتحدة');
   await expect.poll(() => page.locator('.tv-screen').evaluate(root => {
     const box = root.getBoundingClientRect();

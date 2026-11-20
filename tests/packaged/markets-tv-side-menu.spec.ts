@@ -6,27 +6,31 @@ const instant = '2026-11-19T10:00:00Z';
 const deviceToken = 'c'.repeat(64);
 const signIn = { ar: 'تسجيل الدخول', en: 'Sign in', fr: 'Se connecter' };
 const signOut = { ar: 'تسجيل الخروج', en: 'Sign out', fr: 'Se déconnecter' };
-const routeKeys = ['hall', 'allStocks', 'strips', 'world', 'kuwait', 'news', 'sessions', 'watchlist', 'investments'];
+const routeKeys = ['hall', 'allStocks', 'strips', 'world', 'gulf', 'assets', 'kuwait', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
 const orderedKeys = ['menu-close', ...routeKeys.map(key => `menu:${key}`), 'channels', 'customize', 'settings', 'pair', 'more'];
 
-async function fixture(page: Page, language: TvLanguage = 'ar', theme: 'light' | 'dark' = 'light', paired = false) {
+async function fixture(page: Page, language: TvLanguage = 'ar', theme: 'light' | 'dark' = 'light', paired = false, options: { allocationCount?: number; ticker?: boolean } = {}) {
   await page.clock.install({ time: new Date(instant) });
-  await page.addInitScript(({ language, theme, paired, deviceToken }) => {
+  await page.addInitScript(({ language, theme, paired, deviceToken, ticker }) => {
     sessionStorage.setItem('sfm-tv-welcome-shown', '1');
-    localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, theme, accent: 'green', autoRotate: false, sessionAutoRotate: false }));
+    localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, theme, accent: 'green', autoRotate: false, sessionAutoRotate: false, ticker }));
     if (paired) localStorage.setItem('sfm-markets-tv-device-v1', deviceToken);
-  }, { language, theme, paired, deviceToken });
+  }, { language, theme, paired, deviceToken, ticker: options.ticker ?? true });
+  const assetClasses = ['stocks', 'real-estate', 'gold-silver', 'crypto', 'funds'].slice(0, options.allocationCount ?? 0);
+  const positions = (assetClasses.length ? assetClasses : ['stocks']).map((assetClass, index) => ({
+    id: `test-position-${index}`, name: 'Private fixture holding', symbol: `QA${index}`, assetClass, quantity: 10,
+    value: { amount: 1250, currency: 'USD' }, baseValue: 1250, baseCost: 1000, platform: 'QA', source: 'Recorded test source', valuedAt: instant, freshness: 'recorded',
+  }));
   const requests: { path: string; method: string; token?: string }[] = [];
   await page.route('**/api/**', route => {
     const url = new URL(route.request().url());
     requests.push({ path: url.pathname, method: route.request().method(), token: route.request().headers()['x-sfm-tv-token'] });
     if (url.pathname === '/api/tv/device') return route.fulfill({ json: {
-      device: { id: 'test-device', name: 'Living room QA', settings: { language, theme, accent: 'green', autoRotate: false, sessionAutoRotate: false } }, symbols: ['QA0'], alerts: [],
+      device: { id: 'test-device', name: 'Living room QA', settings: { language, theme, accent: 'green', autoRotate: false, sessionAutoRotate: false, ticker: options.ticker ?? true } }, symbols: ['QA0'], alerts: [],
     } });
     if (url.pathname === '/api/tv/portfolio') return route.fulfill({ json: {
-      currency: 'USD', generatedAt: instant, total: 1, totalValue: 1250, totalCost: 1000, valueCoverage: 1, costCoverage: 1,
-      positions: [{ id: 'test-position', name: 'Private fixture holding', symbol: 'QA0', assetClass: 'stocks', quantity: 10,
-        value: { amount: 1250, currency: 'USD' }, baseValue: 1250, baseCost: 1000, platform: 'QA', source: 'Recorded test source', valuedAt: instant, freshness: 'recorded' }], allocation: [],
+      currency: 'USD', generatedAt: instant, total: positions.length, totalValue: positions.length * 1250, totalCost: positions.length * 1000, valueCoverage: positions.length, costCoverage: positions.length,
+      positions, allocation: assetClasses.map(assetClass => ({ assetClass, amount: 1250, count: 1 })),
     } });
     if (url.pathname === '/api/tv/catalog') return route.fulfill({ json: { markets: [
       { id: 'QA', group: 'us', labelAr: 'سوق الاختبار', labelEn: 'QA market', labelFr: 'Marché test', count: 6, status: 'directory' },
@@ -50,7 +54,7 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     await page.setViewportSize({ width: 1920, height: 1080 });
     await fixture(page, language, theme);
     const menu = page.locator('.tv-side-menu');
-    await expect(menu.locator('button')).toHaveCount(15);
+    await expect(menu.locator('button')).toHaveCount(19);
     await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveText(signIn[language]);
     await expect(page.locator('.tv-header-actions,.tv-viewing-nav,.tv-scene-tabs,.tv-footer')).toHaveCount(0);
     await expect(menu.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key', 'menu:hall');
@@ -261,14 +265,112 @@ for (const status of [200, 401]) {
   });
 }
 
-test('side menu preserves all extra display tools and defaults market hours to the full directory', async ({ page }) => {
+test('side menu owns destinations and settings while market hours keep the full directory', async ({ page }) => {
   await fixture(page, 'ar');
+  for (const destination of ['gulf', 'assets', 'brief', 'map']) {
+    await chooseTvDestination(page, destination);
+    const menu = await openTvMenu(page);
+    await expect(menu.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key', `menu:${destination}`);
+  }
+  await chooseTvDestination(page, 'hall');
   const tools = await openTvHeaderActions(page);
-  for (const key of ['gulf', 'assets', 'brief', 'map', 'fullscreen', 'refresh', 'ticker-playback', 'scene-playback', 'scene-previous', 'scene-next', 'replay-intro', 'world-stocks-phone']) {
+  for (const key of ['fullscreen', 'refresh', 'ticker-playback', 'scene-playback', 'scene-previous', 'scene-next']) {
     await expect(tools.locator(`[data-tv-focus-key="${key}"] > span`)).toBeVisible();
   }
+  for (const key of ['gulf', 'assets', 'brief', 'map', 'replay-intro', 'world-stocks-phone']) {
+    await expect(tools.locator(`[data-tv-focus-key="${key}"]`)).toHaveCount(0);
+  }
+  await expect(tools.locator('.tv-tools-grid button')).toHaveCount(6);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
+  await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=settings]').click();
+  await expect(page.locator('.tv-settings [data-tv-focus-key=replay-intro]')).toBeVisible();
   await page.keyboard.press('Escape');
   await chooseTvDestination(page, 'sessions');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').sessionIds?.length)).toBe(81);
   await expect(page.locator('.tv-world-pages > bdi')).toHaveText('1 / 5');
+  const sessionTools = await openTvHeaderActions(page);
+  await expect(sessionTools.locator('[data-tv-focus-key=scene-playback]')).toHaveText('تشغيل تقليب الصفحات');
+  await expect(sessionTools.locator('[data-tv-focus-key=ticker-playback]')).toHaveCount(0);
+});
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`investment screen tools ${theme}: only current controls, correct page label and working pause`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const requests = await fixture(page, 'ar', theme, true, { allocationCount: 5 });
+    await chooseTvDestination(page, 'investments');
+    const allocationPage = page.locator('.tv-portfolio-allocation .tv-broadcast-pager > bdi');
+    await expect(allocationPage).toHaveText('1/2');
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 100));
+    const tools = await openTvHeaderActions(page);
+    await expect(tools.locator('.tv-tools-grid button')).toHaveCount(3);
+    const playback = tools.locator('[data-tv-focus-key=scene-playback]');
+    await expect(playback).toHaveText('تشغيل تقليب صفحات التوزيع');
+    await expect(playback).toHaveAttribute('aria-pressed', 'false');
+    for (const key of ['ticker-playback', 'scene-previous', 'scene-next', 'world-stocks-phone', 'gulf', 'assets', 'brief', 'map', 'replay-intro']) {
+      await expect(tools.locator(`[data-tv-focus-key="${key}"]`)).toHaveCount(0);
+    }
+    const refreshedBefore = requests.filter(request => request.path === '/api/tv/portfolio').length;
+    await tools.locator('[data-tv-focus-key=refresh]').click();
+    await expect.poll(() => requests.filter(request => request.path === '/api/tv/portfolio').length).toBeGreaterThan(refreshedBefore);
+    await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'investments');
+    expect(requests.filter(request => request.path === '/api/tv/portfolio').every(request => request.token === deviceToken)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`investment-screen-tools-${theme}.png`) });
+    await playback.focus();
+    await page.keyboard.press('Enter');
+    await expect(playback).toHaveText('إيقاف تقليب صفحات التوزيع');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
+    await page.clock.runFor(40000);
+    await expect(allocationPage).toHaveText('2/2');
+    await openTvHeaderActions(page);
+    await playback.click();
+    await expect(playback).toHaveText('تشغيل تقليب صفحات التوزيع');
+    await page.keyboard.press('Escape');
+    await page.clock.runFor(80000);
+    await expect(allocationPage).toHaveText('2/2');
+    await openTvHeaderActions(page);
+    await playback.click();
+    await page.keyboard.press('Escape');
+    await page.clock.runFor(40000);
+    await expect(allocationPage).toHaveText('1/2');
+  });
+}
+
+for (const allocationCount of [0, 1]) {
+  test(`investment tools hide page rotation with ${allocationCount} allocation groups`, async ({ page }) => {
+    await fixture(page, 'en', 'light', true, { allocationCount });
+    await chooseTvDestination(page, 'investments');
+    await expect(page.locator('.tv-portfolio-position')).toBeVisible();
+    const tools = await openTvHeaderActions(page);
+    await expect(tools.locator('.tv-tools-grid button')).toHaveCount(2);
+    await expect(tools.locator('[data-tv-focus-key=scene-playback], [data-tv-focus-key=ticker-playback]')).toHaveCount(0);
+  });
+}
+
+test('screen tools hide ineffective controls on static pages and respect ticker visibility', async ({ page }) => {
+  await fixture(page, 'en', 'dark', false, { ticker: false });
+  const tools = await openTvHeaderActions(page);
+  await expect(tools.locator('[data-tv-focus-key=ticker-playback]')).toHaveCount(0);
+  await expect(tools.locator('[data-tv-focus-key=scene-playback]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Start with a paginated screen to catch controls leaking into the next destination.
+  await chooseTvDestination(page, 'sessions');
+  await expect(page.locator('.tv-world-pages > bdi')).toHaveText('1 / 5');
+  await openTvHeaderActions(page);
+  await expect(tools.locator('[data-tv-focus-key=scene-playback]')).toHaveText('Resume page rotation');
+  await page.keyboard.press('Escape');
+  for (const destination of ['investments', 'news', 'brief', 'map', 'allStocks']) {
+    await chooseTvDestination(page, destination);
+    if (destination === 'investments') await expect(page.locator('.tv-portfolio-gate')).toBeVisible();
+    await openTvHeaderActions(page);
+    await expect(tools.locator('.tv-tools-grid button')).toHaveCount(2);
+    await expect(tools.locator('[data-tv-focus-key=scene-playback], [data-tv-focus-key=ticker-playback], [data-tv-focus-key=scene-previous], [data-tv-focus-key=scene-next]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+  }
+  await chooseTvDestination(page, 'strips');
+  await openTvHeaderActions(page);
+  await expect(tools.locator('[data-tv-focus-key=ticker-playback]')).toBeVisible();
+  await expect(tools.locator('[data-tv-focus-key=scene-playback], [data-tv-focus-key=scene-previous], [data-tv-focus-key=scene-next]')).toHaveCount(0);
 });

@@ -1,5 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Also rendered from offline APK assets. */
+import { RotateCcw } from 'lucide-react';
+import { welcomeText } from '@/lib/markets-tv/welcome';
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { tvPairErrorText, tvPairHttpError, validTvPair, type TvPairError } from '@/lib/markets-tv/pairing';
 import { useEffect, useRef, useState } from 'react';
@@ -14,7 +16,7 @@ import { TV_SCENE_ORDER, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/
 import { obsText } from '@/lib/markets-tv/obsidian';
 import { tvAnalysisAssetType, tvAnalysisHref } from '@/lib/markets-tv/analysisLink';
 
-export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void }) {
+export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels, onReplay }: { settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean; displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void; customize: () => void; channels: () => void; onReplay?: () => void }) {
   const t = (key: Parameters<typeof tvText>[1]) => tvText(settings.language, key);
   const toggle = (key: 'autoRotate' | 'ticker' | 'sound') => change({ ...settings, [key]: !settings[key] });
   return <div className="tv-settings">
@@ -39,6 +41,7 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
       const groups = settings.groups.includes(group) ? settings.groups.filter(g => g !== group) : [...settings.groups, group];
       if (groups.length) change({ ...settings, groups });
     }}>{t(group)}</button>)}</div></>}
+    {onReplay && <div className="tv-setting-row"><button data-tv-focus-key="replay-intro" onClick={onReplay}><RotateCcw aria-hidden="true"/><span>{welcomeText(settings.language).replay}</span></button></div>}
     {!stripsOnly && <p className="tv-muted">{t('alertScope')}</p>}
   </div>;
 }

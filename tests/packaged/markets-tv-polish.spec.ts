@@ -1,4 +1,4 @@
-import { openAndroidTvPackage, openTvMenu, closeTvMenu, openTvHeaderActions, chooseTvDestination } from './packageHarness';
+import { openAndroidTvPackage, openTvMenu, closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 
 const title = 'Goldman Sachs looks to cash in on a new technology listing: what investors are watching across the global stock markets';
@@ -31,7 +31,8 @@ test('welcome uses the official logo and plays an actual audio graph after a cli
   await expect(page.locator('.sfm-startup')).toBeVisible();
   await expect.poll(() => page.locator('.sfm-startup img').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
   await closeTvMenu(page);
-  await openTvHeaderActions(page);
+  await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=settings]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
   expect(await page.evaluate(() => (window as Window & { sfmToneCount?: number }).sfmToneCount)).toBeGreaterThanOrEqual(3);
@@ -39,7 +40,8 @@ test('welcome uses the official logo and plays an actual audio graph after a cli
   await page.screenshot({ path: test.info().outputPath('welcome.png') });
   await page.getByRole('button', { name: 'تخطي', exact: true }).click();
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
-  await openTvHeaderActions(page);
+  await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=settings]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').focus(); await page.keyboard.press('Enter');
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
 });
@@ -103,7 +105,8 @@ test('welcome plays once per app session, survives navigation and reload, and st
     await expect(page.locator('.sfm-startup')).toHaveCount(0);
   }
   await closeTvMenu(page);
-  await openTvHeaderActions(page);
+  await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=settings]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
   const freshSession = await context.newPage();
