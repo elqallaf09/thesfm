@@ -16,7 +16,8 @@ const fixtures: TvQuote[] = [
   { symbol: 'NYMEX:NG1!', name: 'Natural gas continuous contract', nameAr: 'الغاز الطبيعي — عقد مستمر', price: 3.381, currency: 'USD', changePercent: -2.60 },
   { symbol: 'GBP/USD', name: 'British pound / US dollar', nameAr: 'الجنيه الإسترليني / الدولار الأمريكي', price: 1.310600, currency: 'USD', changePercent: .11 },
   { symbol: 'LONG', displaySymbol: 'LONGLISTING.PREFERRED-A', name: 'A company with a deliberately long investment name', nameAr: 'شركة ذات اسم استثماري طويل لاختبار وضوح البطاقة', price: .183, currency: 'KWD', changePercent: 0 },
-].map(quote => ({ ...quote, source: 'Fixture source', observedAt, receivedAt: now, status: 'stale', exchange: quote.symbol === 'GBP/USD' ? 'FOREX' : 'QA', country: null }));
+  { symbol: 'IRR/USD', name: 'Tiny forex price fixture', nameAr: 'مثال لاختبار سعر صرف صغير', price: .0000000123456, currency: 'USD', changePercent: .35 },
+].map(quote => ({ ...quote, source: 'Fixture source', observedAt, receivedAt: now, status: 'stale', exchange: ['GBP/USD', 'IRR/USD'].includes(quote.symbol) ? 'FOREX' : 'QA', country: null }));
 
 async function openStrips(page: Page, language: TvLanguage, theme: Theme, stripDensity: Density, sparse = false) {
   await page.clock.install({ time: new Date(now) });
@@ -68,10 +69,12 @@ async function expectReadableCards(cards: Locator) {
       // box remains inside the card. Company-name truncation stays permitted.
       for (const selector of ['.tv-strip-symbol b', '.tv-strip-price', '.tv-strip-change', '.tv-strip-evidence time']) {
         const node = card.querySelector(selector)!;
+        const area = node.getBoundingClientRect();
         const range = document.createRange();
         range.selectNodeContents(node);
         for (const rect of Array.from(range.getClientRects())) {
           if (rect.width > 0 && rect.height > 0 && !fits(bounds, rect)) issues.push(`${symbol}: ${selector} text is clipped`);
+          if (rect.width > 0 && rect.height > 0 && !fits(area, rect)) issues.push(`${symbol}: ${selector} text escapes its own area`);
         }
       }
       const identity = card.querySelector('.tv-strip-symbol')!.getBoundingClientRect();
@@ -111,6 +114,7 @@ for (const { language, theme, stripDensity, width, height } of cases) {
     await expect(cards.nth(2).locator('.tv-strip-price')).toContainText('USD / oz');
     await expect(cards.nth(3).locator('.tv-strip-price')).toContainText('USD / MMBtu');
     await expect(cards.nth(4).locator('.tv-strip-price')).toContainText('1.310600');
+    await expect(cards.nth(6).locator('.tv-strip-price')).toContainText('0.0000000123456');
     await expect(cards.first().locator('.tv-strip-evidence time')).toContainText('2026-11-19');
     const summarySeparated = await strip.evaluate(element => {
       const summary = element.querySelector('.tv-market-strip-heading')!.getBoundingClientRect();
@@ -120,7 +124,9 @@ for (const { language, theme, stripDensity, width, height } of cases) {
     expect(summarySeparated).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     if (language === 'ar' && stripDensity === 'compact') {
-      await testInfo.attach(`strip-cards-${theme}-${width}`, { body: await page.screenshot(), contentType: 'image/png' });
+      const path = testInfo.outputPath(`strip-cards-${theme}-${width}.png`);
+      await page.screenshot({ path });
+      await testInfo.attach(`strip-cards-${theme}-${width}`, { path, contentType: 'image/png' });
     }
   });
 }
