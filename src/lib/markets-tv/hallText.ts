@@ -10,6 +10,8 @@ const ar = {
   opens: 'يفتح بعد', closes: 'يغلق بعد', unavailable: 'السعر غير متوفر', chooseMarket: 'اختر البورصة',
   directoryNote: 'عدد الأسهم في الدليل؛ توفر الأسعار يختلف حسب السوق والمصدر.',
   newsPause: 'إيقاف تبديل الأخبار', newsPlay: 'تشغيل تبديل الأخبار', unknown: 'غير معروف',
+  pauseStocks: 'إيقاف التبديل', resumeStocks: 'تشغيل التبديل', stocksNextIn: 'التالية خلال {seconds} ث',
+  stocksPaused: 'التبديل متوقف', stocksBrowsing: 'متوقف أثناء البحث', stocksWaiting: 'بانتظار البيانات', stocksSinglePage: 'كل النتائج معروضة',
 };
 type HallKey = keyof typeof ar;
 const en: Record<HallKey, string> = {
@@ -22,6 +24,8 @@ const en: Record<HallKey, string> = {
   opens: 'Opens in', closes: 'Closes in', unavailable: 'Price unavailable', chooseMarket: 'Choose exchange',
   directoryNote: 'Directory count; price coverage varies by exchange and source.',
   newsPause: 'Pause news rotation', newsPlay: 'Resume news rotation', unknown: 'Unknown',
+  pauseStocks: 'Pause rotation', resumeStocks: 'Resume rotation', stocksNextIn: 'Next in {seconds}s',
+  stocksPaused: 'Rotation paused', stocksBrowsing: 'Paused while searching', stocksWaiting: 'Waiting for data', stocksSinglePage: 'All results shown',
 };
 const fr: Record<HallKey, string> = {
   pricesUnavailable: 'Les cours vérifiés de ce lot ne sont pas encore disponibles. Nouvelle tentative automatique ; vous pouvez choisir un autre lot ou une autre bourse.',
@@ -33,5 +37,7 @@ const fr: Record<HallKey, string> = {
   opens: 'Ouverture dans', closes: 'Fermeture dans', unavailable: 'Cours indisponible', chooseMarket: 'Choisir une bourse',
   directoryNote: 'Nombre de titres du répertoire ; couverture variable selon la bourse et la source.',
   newsPause: 'Suspendre les actualités', newsPlay: 'Reprendre les actualités', unknown: 'Inconnu',
+  pauseStocks: 'Suspendre la rotation', resumeStocks: 'Reprendre la rotation', stocksNextIn: 'Suite dans {seconds}s',
+  stocksPaused: 'Rotation suspendue', stocksBrowsing: 'Pause pendant la recherche', stocksWaiting: 'En attente des données', stocksSinglePage: 'Tous les résultats affichés',
 };
 export const hallText = (language: TvLanguage, key: HallKey) => ({ ar, en, fr })[language][key];

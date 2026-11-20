@@ -1,11 +1,11 @@
 'use client';
 import { createContext, useCallback, useEffect, useState } from 'react';
 
-// Only an explicit Play action opts a TV ticker into motion. The system setting
+// Only an explicit Play action opts TV playback into motion. The system setting
 // remains the default, including when it changes while this screen is open.
 export const TvMotionOverride = createContext(false);
 
-export function useTvPlayback(channel: 'ticker' | 'news') {
+export function useTvPlayback(channel: 'ticker' | 'news' | 'stocks') {
   const storageKey = `sfm-tv-${channel}-playback-v1`;
   const [reduced, setReduced] = useState(false);
   const [intent, setIntent] = useState<'auto' | 'play' | 'pause'>('auto');

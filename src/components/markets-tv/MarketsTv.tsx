@@ -50,6 +50,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const [channels, setChannels] = useState<TvChannel[]>([]);
   const [instrumentMarket, setInstrumentMarket] = useState<TvMarket | null>(null);
   const { paused: stripsPaused, explicitPlay, toggle: toggleTicker, setPlaying: setTickerPlaying } = useTvPlayback('ticker');
+  const { paused: stocksPaused, toggle: toggleStocks, setPlaying: setStocksPlaying } = useTvPlayback('stocks');
   const [routeStrips, setRouteStrips] = useState(initialStripsOnly);
   const [settings, setSettings] = useState<TvSettings>(() => initialAllStocks ? { ...DEFAULT_TV_SETTINGS, displayMode: 'browse' } : DEFAULT_TV_SETTINGS), [ready, setReady] = useState(false);
   const [selectedMarket, setSelectedMarket] = useState('');
@@ -114,6 +115,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     setSettings(next); activity.current = Date.now();
   }, [settings]);
   useTvRemote(() => { if (modal) close(); else setMenuOpen(value => !value); }, interact, modal, action => {
+    if (allStocks) { setStocksPlaying(action === 'play' || action === 'toggle' && stocksPaused); return; }
     const play = action === 'play' || action === 'toggle' && (stripsOnly || allStocks ? stripsPaused : !pagePlaying);
     if((view==='sessions'||view==='investments'||receiverScreen)&&!stripsOnly){setSettings(value=>({...value,sessionAutoRotate:action==='play'||action==='toggle'&&value.sessionAutoRotate===false}));return;}
     setTickerPlaying(play);
@@ -293,7 +295,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       <main className="tv-strips-main">{!ready || (catalog.loading && !catalog.data) ? <div className="tv-loading" role="status"><RefreshCw className="tv-spin"/><span>{t('loading')}</span></div> : strips}</main>
     </> : allStocks ? <>
       {!online && <div className="tv-hall-error" role="status">{t('offline')}</div>}
-      <Suspense fallback={<main className="tv-feature-view" role="status">{t('loading')}</main>}><TvAllStocks language={settings.language} now={now} markets={catalog.data?.markets || EMPTY_MARKETS} ready={ready} revision={revision} news={news.data?.stories || EMPTY_NEWS} newsLoading={news.loading} newsError={news.error} paused={stripsPaused || overlayOpen} newsPaused={overlayOpen} ticker={settings.ticker} speed={settings.stripSpeed || 56} onQuote={setDetail} onStory={setStory} onRefresh={refresh} onTickerPause={toggleTicker}/></Suspense>
+      <Suspense fallback={<main className="tv-feature-view" role="status">{t('loading')}</main>}><TvAllStocks language={settings.language} now={now} markets={catalog.data?.markets || EMPTY_MARKETS} ready={ready} revision={revision} news={news.data?.stories || EMPTY_NEWS} newsLoading={news.loading} newsError={news.error} paused={stripsPaused || overlayOpen} playing={!stocksPaused} suspended={overlayOpen} onPlayback={toggleStocks} newsPaused={overlayOpen} ticker={settings.ticker} speed={settings.stripSpeed || 56} onQuote={setDetail} onStory={setStory} onRefresh={refresh} onTickerPause={toggleTicker}/></Suspense>
     </> : viewing ? <>
 
       {!online && <div className="tv-scene-notice" role="status">{t('offline')}</div>}
