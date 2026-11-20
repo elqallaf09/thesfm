@@ -78,9 +78,10 @@ export async function tvDirectory(group: TvGroup, market?: string): Promise<TvDi
       // Use the same verified directory for aggregate and individual European
       // markets; browsing a different exchange must not refetch every symbol.
       if (market.startsWith('TD_')) {
-        const data = await universe();
-        const rows = data.results.filter(stock => stock.region === market);
-        if (rows.length) return { assets: rows.map(stockAsset), ...directoryState(data) };
+        const data = await universe().catch(() => null);
+        const rows = data?.results.filter(stock => stock.region === market);
+        if (data && rows?.length) return { assets: rows.map(stockAsset), ...directoryState(data) };
+        // A cold or failed global index must still try the exchange's own cached directory.
       }
       const assets = (await tvStockAssets(market)).filter(asset => visibleTvCountry(asset.country));
       return assets.length ? { assets: assets.map(localizeTvAsset), coverage: 'directory', asOf: null } : configuredDirectory(market);

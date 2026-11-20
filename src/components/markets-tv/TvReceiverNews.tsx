@@ -10,13 +10,14 @@ import { TvNewsDesk } from './TvNewsDesk';
 import { TvNewsStatus } from './TvNewsStatus';
 import { requestTvResource } from './tvResourceCache';
 
-export function TvReceiverNews({ language, channel, now, revision, onStory, onRefresh, playing }: {
+export function TvReceiverNews({ language, channel, now, revision, onStory, onRefresh, playing, onPaginationAvailable }: {
   language: TvLanguage; channel: TvReceiverNewsChannel; now: number; revision: number; playing: boolean;
-  onStory: (story: TvNews) => void; onRefresh: () => void;
+  onStory: (story: TvNews) => void; onRefresh: () => void; onPaginationAvailable?: (available: boolean) => void;
 }) {
   // Fetch the selected feed first, then warm at most one adjacent public channel.
   const news = useTvResource<unknown>(receiverNewsPath(channel, language), 180000, '', revision);
   const feed = useMemo(() => receiverNewsPayload(news.data, channel), [news.data, channel]);
+  useEffect(() => { if (!feed.stories.length) onPaginationAvailable?.(false); }, [feed.stories.length, onPaginationAvailable]);
   useEffect(()=>{
     if(!news.data||news.error)return;
     const order:TvReceiverNewsChannel[]=['technology','kuwait',...TV_EXTRA_NEWS_CHANNELS];
@@ -36,7 +37,7 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
         {feed.partial && ` · ${receiverText(language, 'partial')}`}{feed.stored && ` · ${receiverText(language, 'stored')}`}
       </p>
       {!feed.stories.length && (news.error || feed.invalid) ? <div className="tv-headline-items"><TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/></div>
-        : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/>}
+        : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk key={`${channel}:${language}`} news={feed.stories} language={language} now={now} onStory={onStory} playing={playing} onPaginationAvailable={onPaginationAvailable}/>}
     </>}
   </aside>;
 }
