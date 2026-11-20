@@ -102,7 +102,8 @@ describe('TV forex chain order', () => {
   it('falls through to Twelve Data when Yahoo cannot verify the pair', async () => {
     vi.stubEnv('TWELVE_DATA_API_KEY', 'synthetic-key');
     fetchHistory.mockResolvedValue({ success: false, retryAfterMs: 120_000 });
-    vi.mocked(twelveDataFetch).mockResolvedValue(Response.json({ symbol: 'EUR/USD', currency: 'USD', close: '1.0970',
+    // Each provider request has its own body; a consumed Response is not reusable.
+    vi.mocked(twelveDataFetch).mockImplementation(async () => Response.json({ symbol: 'EUR/USD', currency: 'USD', close: '1.0970',
       percent_change: '0.1', last_quote_at: Math.floor(now / 1000) - 60, is_market_open: true }));
     const { forexTvQuote } = await import('@/lib/server/markets-tv/instruments');
     expect(await forexTvQuote(asset('EUR/USD'))).toMatchObject({ price: 1.097, source: 'Twelve Data' });

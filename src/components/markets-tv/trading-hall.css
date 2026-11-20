@@ -5,6 +5,7 @@
   font-size: clamp(16px, min(1.35vw, 2.35vh), 44px); line-height: 1.4;
 }
 .tv-screen.tv-hall-screen button, .tv-screen.tv-hall-screen select, .tv-screen.tv-hall-screen input, .tv-screen.tv-hall-screen a { font: inherit; }
+.tv-screen.tv-hall-screen.tv-light::before { opacity: .22; }
 .tv-screen.tv-hall-screen button, .tv-screen.tv-hall-screen select, .tv-screen.tv-hall-screen input { border-radius: var(--radius-control); box-shadow: none; }
 .tv-screen.tv-hall-screen :is(button,a,input,select):focus-visible { outline: 3px solid var(--tv-accent); outline-offset: 3px; }
 .tv-screen.tv-hall-screen .tv-unified-header { padding-bottom: .45em; border-bottom: 1px solid var(--tv-line); }
@@ -37,7 +38,7 @@
 .tv-screen .tv-hall-identity button:disabled { opacity: 1; color: inherit; }
 .tv-screen .tv-hall-identity .tv-asset-icon { width: 2.35em; height: 2.35em; border-radius: var(--radius-control); background: var(--tv-panel2); }
 .tv-screen .tv-hall-identity .tv-asset-icon > img { width: 80%; height: 80%; object-fit: contain; }
-.tv-screen .tv-hall-identity .tv-asset-icon > b { font: 600 max(10px, .43em) var(--font-data), monospace; }
+.tv-screen .tv-hall-identity .tv-asset-icon > b { font: 600 max(13px, .43em) var(--font-data), monospace; }
 .tv-screen .tv-hall-company-copy { display: flex; flex-direction: column; gap: .15em; flex: 1; min-width: 0; }
 .tv-screen .tv-hall-identity strong { display: block; font-size: .94em; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-screen .tv-hall-identity bdi { font: 600 max(13px, .68em) var(--font-data), monospace; color: var(--tv-accent); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
@@ -113,7 +114,7 @@
   .tv-screen .tv-hall-rows { --tv-hall-row-slots: 3; }
 }
 @media (max-width: 760px) {
-  .tv-screen.tv-hall-screen { height: auto; min-height: 100dvh; overflow: visible; font-size: 18px; }
+  .tv-screen.tv-hall-screen[data-accent] { height: auto; min-height: 100dvh; overflow: visible; font-size: 18px; }
   .tv-screen.tv-hall-screen .tv-unified-header { flex-wrap: wrap; }
   .tv-screen .tv-hall-main { grid-template-columns: minmax(0, 1fr); }
   .tv-screen .tv-hall-market-table { min-height: 24em; }

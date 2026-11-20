@@ -47,11 +47,15 @@ async function openStocks(page: Page, theme: 'light' | 'dark') {
       quotes, group: params.get('group'), total: quotes.length, available: quotes.length, generatedAt: now,
     } });
   });
-  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: Array.from({ length: 8 }, (_, index) => ({
+    id: `presentation-news-${index}`, title: `خبر تجريبي عن أسواق الأسهم ونتائج الشركات ${index + 1}`,
+    source: 'مصدر اختبار', publishedAt: now, url: `https://example.com/presentation-news/${index}`,
+  })) } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ json: { result: null } }));
   await openAndroidTvPackage(page);
   await chooseTvDestination(page, 'allStocks');
   await expect(page.locator('.tv-all-stocks .tv-hall-row')).toHaveCount(6);
+  await expect(page.locator('.tv-all-stocks .tv-headline-story')).toHaveCount(8);
   await page.evaluate(() => document.fonts.ready);
   return { retainedAt };
 }
@@ -124,6 +128,54 @@ for (const theme of ['light', 'dark'] as const) {
       expect(pageErrors).toEqual([]);
     });
   }
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`all-stocks ${theme} 390×844: cards remain readable and the page scrolls without horizontal overflow`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openStocks(page, theme);
+    await expect(page.locator('[data-tv-root]')).toHaveClass(new RegExp(`\\btv-${theme}\\b`));
+    const rows = page.locator('.tv-all-stocks .tv-hall-row');
+
+    // Exercise real page scrolling, rather than merely forcing an element into view.
+    const lastCard = await rows.last().boundingBox();
+    await page.mouse.move(195, 700);
+    await page.mouse.wheel(0, Math.max(300, lastCard!.y - (844 - lastCard!.height) / 2));
+    await expect.poll(() => page.evaluate(() => document.scrollingElement!.scrollTop)).toBeGreaterThan(0);
+    await expect(rows.last()).toBeInViewport({ ratio: 1 });
+    const pageWidth = await page.evaluate(() => ({
+      content: document.scrollingElement!.scrollWidth, viewport: document.documentElement.clientWidth,
+    }));
+    expect(pageWidth.content).toBeLessThanOrEqual(pageWidth.viewport + 1);
+
+    for (const row of await rows.all()) {
+      await row.scrollIntoViewIfNeeded();
+      for (const selector of ['.tv-asset-icon', '.tv-hall-company-copy strong', '.tv-hall-price', '.tv-hall-change', '.tv-hall-evidence']) {
+        await expect(row.locator(selector)).toBeVisible();
+        await expect(row.locator(selector)).toBeInViewport({ ratio: 1 });
+      }
+      const issues = await row.evaluate(card => {
+        const bounds = card.getBoundingClientRect(), errors: string[] = [];
+        const cells = Array.from(card.querySelectorAll(':scope > [role="cell"]'));
+        for (const [index, cell] of cells.entries()) {
+          const rect = cell.getBoundingClientRect();
+          if (rect.left < bounds.left - 1 || rect.right > bounds.right + 1
+            || rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1
+            || cell.scrollWidth > cell.clientWidth + 1 || cell.scrollHeight > cell.clientHeight + 1) errors.push(`clipped:${index}`);
+          for (const next of cells.slice(index + 1)) {
+            const other = next.getBoundingClientRect();
+            if (Math.min(rect.right, other.right) - Math.max(rect.left, other.left) > 1
+              && Math.min(rect.bottom, other.bottom) - Math.max(rect.top, other.top) > 1) errors.push(`overlap:${index}`);
+          }
+        }
+        return errors;
+      });
+      expect(issues).toEqual([]);
+    }
+    await testInfo.attach(`all-stocks-${theme}-mobile`, {
+      body: await page.screenshot({ fullPage: true }), contentType: 'image/png',
+    });
+  });
 }
 
 test('stock movements, logo failure, and remote selection stay understandable without color alone', async ({ page }) => {

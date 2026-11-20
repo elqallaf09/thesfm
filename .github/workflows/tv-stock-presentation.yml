@@ -1,0 +1,51 @@
+name: TV stock presentation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/markets-tv/TvAllStocks.tsx'
+      - 'src/components/markets-tv/TvQuoteTable.tsx'
+      - 'src/components/markets-tv/TvAssetIcon.tsx'
+      - 'src/components/markets-tv/trading-hall.css'
+      - 'src/components/markets-tv/useTvTableSize.ts'
+      - 'src/lib/markets-tv/quote-presentation.ts'
+      - 'src/lib/markets-tv/hallText.ts'
+      - 'tests/packaged/tv-stock-presentation.spec.ts'
+      - 'tests/packaged/trading-hall.spec.ts'
+      - '.github/workflows/tv-stock-presentation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tv-stock-presentation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  presentation:
+    name: TV stock layout, identity and remote controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.1.3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:tv
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify stock presentation on TV and mobile
+        run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/tv-stock-presentation.spec.ts tests/packaged/trading-hall.spec.ts
+      - name: Keep stock presentation evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tv-stock-presentation-${{ github.event.pull_request.head.sha || github.sha }}
+          if-no-files-found: ignore
+          path: test-results/
