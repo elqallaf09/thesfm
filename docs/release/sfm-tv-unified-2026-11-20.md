@@ -27,6 +27,11 @@ the exact candidate SHA; this document does not claim a completed deployment.
   metadata, source text and layout assertions remain intact.
 - Prepare Android version `1.0.26`, build `32`. The separate 45-minute cached
   debug workflow remains independent of packaged browser/release validation.
+- Preserve the later #393 build repair (`b29c7c0`): separate 45-minute browser,
+  debug APK and release/lint jobs, with pnpm/Gradle caches and debug artifacts
+  uploaded before the independent checks finish. The original required
+  aggregate check runs even after a failed/skipped dependency and explicitly
+  requires all three results to be `success`; skipped work cannot pass it.
 - Keep TV stock paging and playback on one header row, restoring the reading
   space needed by all six quote rows; mobile controls still stack.
 - Load article details/QR and the legacy balanced headlines panel when needed,
