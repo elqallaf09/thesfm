@@ -123,3 +123,35 @@ describe('last known prices for verified illiquid DFM listings', () => {
     }, checkedAt)).toBeNull();
   });
 });
+
+describe('Yahoo listings for the exchange directory', () => {
+  const share: TvAsset = { symbol: 'SAP', name: 'SAP', region: 'TD_XETR', mic: 'XETR', country: 'DE', currency: 'EUR' };
+  it.each([
+    ['XETR', 'DE', 'DE', 'GER'], ['XFRA', 'DE', 'F', 'FRA'], ['XDUS', 'DE', 'DU', 'DUS'],
+    ['XHAM', 'DE', 'HM', 'HAM'], ['XHAN', 'DE', 'HA', 'HAN'], ['XMUN', 'DE', 'MU', 'MUN'],
+    ['XSTU', 'DE', 'SG', 'STU'], ['XLON', 'GB', 'L', 'LSE'], ['XWAR', 'PL', 'WA', 'WSE'],
+    ['XASX', 'AU', 'AX', 'ASX'], ['CXAC', 'AU', 'XA', 'CXA'], ['XTAI', 'TW', 'TW', 'TAI'],
+    ['XNSE', 'IN', 'NS', 'NSI'], ['XJPX', 'JP', 'T', 'JPX'],
+  ])('binds %s to its own Yahoo venue', (mic, country, suffix, exchange) => {
+    expect(tvRegionalIdentity({ ...share, mic, region: `TD_${mic}`, country })).toMatchObject({ symbol: `SAP.${suffix}`, exchange });
+  });
+
+  it('recovers a bare Xetra quote with its original clock and rejects same-symbol Frankfurt evidence', () => {
+    const data = history({ symbol: 'SAP.DE', currency: 'EUR', exchangeName: 'GER' });
+    if (!data.success || !data.quoteSnapshot) throw new Error('Invalid fixture');
+    expect(verifiedTvRegionalQuote(share, data, now)).toMatchObject({ symbol: 'SAP', exchange: 'TD_XETR', price: 755,
+      source: 'Yahoo Finance', observedAt: new Date(observed).toISOString() });
+    expect(verifiedTvRegionalQuote(share, { ...data, quoteSnapshot: { ...data.quoteSnapshot, exchangeCode: 'FRA' } }, now)).toBeNull();
+    for (const patch of [{ region: 'TD_XFRA' }, { exchange: 'TD_XFRA' }, { providerSymbol: 'SAP.F' }, { country: 'FR' }, { symbol: 'SAP.F' }]) {
+      expect(tvRegionalIdentity({ ...share, ...patch })).toBeNull();
+    }
+  });
+
+  it('preserves the London listing unit for pence and pound directories', () => {
+    const london = { ...share, symbol: 'VOD', country: 'GB', region: 'TD_XLON', mic: 'XLON' };
+    const data = history({ symbol: 'VOD.L', exchangeName: 'LSE', currency: 'GBp', regularMarketPrice: 80, previousClose: 75 });
+    expect(verifiedTvRegionalQuote({ ...london, currency: 'GBP' }, data, now)).toMatchObject({ price: .8, currency: 'GBP' });
+    expect(verifiedTvRegionalQuote({ ...london, currency: 'GBp' }, data, now)).toMatchObject({ price: 80, currency: 'GBp' });
+    expect(verifiedTvRegionalQuote({ ...london, currency: 'USD' }, data, now)).toBeNull();
+  });
+});

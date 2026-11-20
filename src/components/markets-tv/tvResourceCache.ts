@@ -193,7 +193,8 @@ export function requestTvResource<T>(path: string, options: RequestOptions): Pro
     const cancel = () => controller.abort();
     signal.addEventListener('abort', cancel, { once: true });
     if (signal.aborted) controller.abort();
-    const timeout = setTimeout(cancel, 55_000);
+    // Reading an existing summary should resolve promptly while the quote stays visible.
+    const timeout = setTimeout(cancel, path.startsWith('/api/intelligence/latest?') ? 10_000 : 55_000);
     const load = async () => {
       const response = await tvFetch(path, { cache: 'no-store', signal: controller.signal,
         headers: options.token ? { 'x-sfm-tv-token': options.token } : {} });

@@ -8,7 +8,8 @@ import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
 import { useTvResource } from './useTvResource';
-import { tvSceneQuoteUnit } from '@/lib/markets-tv/scene-display';
+import { tvSceneHasPrice, tvSceneQuoteUnit, tvSceneText } from '@/lib/markets-tv/scene-display';
+import { tvQuoteMovement } from '@/lib/markets-tv/quote-presentation';
 import { tvAnalysisAssetType, tvAnalysisHref } from '@/lib/markets-tv/analysisLink';
 
 export { TvSettingsPanel } from './TvSettingsPanel';
@@ -71,15 +72,18 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
   const assetType = tvAnalysisAssetType(quote);
   const analysis = useTvResource<{ result: AnalysisResult }>(scoped || pair ? null : `/api/intelligence/latest?symbol=${encodeURIComponent(quote.symbol)}&assetType=${assetType}&locale=${language}`, 300000);
   const result = analysis.data?.result;
-  const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
+  const move = tvQuoteMovement(tvSceneHasPrice(quote) ? quote.changePercent : null);
+  const basis = quote.changeBasis === 'session' ? 'session' : quote.changeBasis === '24h' ? 'day' : quote.changeBasis === 'reference' ? 'referenceBasis' : 'unknownBasis';
+  const valid = result && result.status === 'COMPLETE' && result.confidenceCalculation?.minimumEvidenceMet && !result.staleData && Date.parse(result.expiresAt) > now;
   return <div className="tv-detail">
-    <div><span dir="ltr" className="tv-symbol">{quote.symbol}</span><h3>{language === 'ar' ? quote.nameAr : quote.name}</h3>
-      <div className="tv-detail-price" dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote, language)}</small></div>
+    <div className="tv-detail-facts"><bdi className="tv-symbol">{quote.displaySymbol || quote.symbol}</bdi>
+      <div className="tv-detail-values"><div className="tv-detail-price" dir="ltr">{tvQuotePrice(quote)} <small>{tvSceneQuoteUnit(quote, language)}</small></div>
+        {move.trend !== 'unknown' && <span className="tv-detail-change" data-trend={move.trend}><bdi dir="ltr">{move.value}</bdi> {tvSceneText(language, basis)}</span>}</div>
       <TvQuoteEvidence quote={quote} language={language} now={now}/>
-      <h3>{t('ai')}</h3>{analysis.loading ? <p>{t('loading')}</p> : valid ? <>
+      <h3>{t('ai')}</h3>{analysis.loading ? <p role="status">{t('loadingSavedAnalysis')}</p> : valid ? <>
         <p className="tv-recommendation">{t(result.recommendation)}</p><p>{t('confidence')}: {result.confidence} / 100 · {t('risk')}: {t(result.risk)}</p>
         <p>{t('source')}: The SFM AI Analyst · {result.confidenceCalculation.methodologyVersion}</p><p>{t('analysisTime')}: {tvTime(result.generatedAt, language, true)}</p>
-      </> : <p>{t(result ? 'analysisExpired' : 'noAnalysis')}</p>}
+      </> : <p role="status">{t(analysis.error && analysis.errorStatus !== 404 ? 'analysisUnavailable' : result ? 'analysisExpired' : 'noAnalysis')}</p>}
       <p className="tv-muted">{t('disclaimer')}</p>
     </div>
     <div className="tv-phone-link"><a href={phoneUrl} aria-label={t('openPhone')}><TvQr value={phoneUrl} label={t('openPhone')} /></a><p>{t('openPhone')}</p></div>

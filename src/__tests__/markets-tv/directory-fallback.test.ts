@@ -34,3 +34,13 @@ describe('TV exchange directory recovery',()=>{
     await expect(tvDirectoryAssets('world','TD_XXXX')).rejects.toThrow('DIRECTORY_UNAVAILABLE');
   });
 });
+
+it('reads the requested venue when the global directory throws', async () => {
+  mock.search.mockRejectedValue(new Error('Global catalog unavailable'));
+  mock.stocks.mockResolvedValue([{ symbol: 'DBK', name: 'Deutsche Bank', region: 'TD_XFRA', currency: 'EUR', country: 'DE' }]);
+  const { tvDirectory } = await import('@/lib/server/markets-tv/catalog');
+  const result = await tvDirectory('europe', 'TD_XFRA');
+  expect(mock.stocks).toHaveBeenCalledWith('TD_XFRA');
+  expect(result.coverage).toBe('directory');
+  expect(result.assets).toMatchObject([{ region: 'TD_XFRA', symbol: 'DBK' }]);
+});

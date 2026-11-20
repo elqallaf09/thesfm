@@ -1,14 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-/** Keep readable rows on smaller TV/WebView surfaces without vertical scrolling. */
-export function useTvTableSize() {
+/** Keep the page size stable while a quote page and its ticker are loading. */
+export function useTvTableSize(directory = false) {
   const [size, setSize] = useState(6);
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 761px) and (max-height: 650px)');
-    const fit = () => setSize(media.matches ? 3 : 6);
-    fit(); media.addListener(fit);
-    return () => media.removeListener(fit);
-  }, []);
+    const short = window.matchMedia('(min-width: 761px) and (max-height: 650px)');
+    const tablet = window.matchMedia('(min-width: 761px) and (max-height: 710px)');
+    const fit = () => setSize(short.matches ? 3 : directory && tablet.matches ? 4 : 6);
+    fit();
+    short.addListener(fit); tablet.addListener(fit);
+    return () => { short.removeListener(fit); tablet.removeListener(fit); };
+  }, [directory]);
   return size;
 }

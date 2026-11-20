@@ -145,6 +145,8 @@ export const TV_TEXT = {
   openPhone: ['افتح الأصل على هاتفك', 'Open asset on your phone', 'Ouvrir l’actif sur votre téléphone'],
   openStory: ['اقرأ الخبر على هاتفك', 'Read on your phone', 'Lire sur votre téléphone'],
   ai: ['ملخص المحلل الذكي', 'AI Analyst summary', 'Résumé de l’analyste IA'],
+  loadingSavedAnalysis: ['جارٍ جلب آخر تحليل محفوظ…', 'Loading the latest saved analysis…', 'Chargement de la dernière analyse enregistrée…'],
+  analysisUnavailable: ['تعذّر تحميل التحليل المحفوظ حاليًا.', 'The saved analysis could not be loaded.', 'L’analyse enregistrée est momentanément inaccessible.'],
   noAnalysis: ['لا يوجد تحليل محفوظ صالح لهذا الأصل', 'No valid saved analysis for this asset', 'Aucune analyse enregistrée valide pour cet actif'],
   analysisTime: ['وقت التحليل', 'Analysis time', 'Date de l’analyse'], confidence: ['ثقة المنهج', 'Method confidence', 'Confiance de la méthode'],
   risk: ['المخاطر', 'Risk', 'Risque'], analysisExpired: ['تحليل قديم — راجع التحليل المحدّث على هاتفك', 'Older analysis — check for an update on your phone', 'Analyse ancienne — consultez la mise à jour sur votre téléphone'],

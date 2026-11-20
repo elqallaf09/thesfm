@@ -1,0 +1,50 @@
+.tv-screen.tv-pair-page {
+  display:block;
+  min-height:100vh;
+  min-height:100dvh;
+  padding:clamp(16px,4vw,40px);
+  padding-bottom:max(32px,env(safe-area-inset-bottom));
+  background:var(--tv-bg);
+  font-size:16px;
+  line-height:1.6;
+}
+.tv-pair-header,.tv-pair-page .tv-account { width:min(100%,42rem); margin-inline:auto; }
+.tv-pair-header { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+.tv-screen .tv-pair-brand { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--tv-text); text-decoration:none; }
+.tv-pair-brand img { width:38px; height:38px; background:var(--tv-qr-background); border-radius:var(--radius-control); }
+.tv-pair-brand span { font:600 14px/1.3 var(--font-data); letter-spacing:.05em; }
+.tv-pair-languages { display:flex; align-items:center; padding:2px; background:var(--tv-panel); border:1px solid var(--tv-line); border-radius:var(--radius-control); }
+.tv-pair-languages button { min-height:44px; padding:.3em .65em; background:transparent; border:1px solid transparent; color:var(--tv-muted); font-size:14px; }
+.tv-pair-languages button[aria-pressed=true] { border-color:var(--tv-accent); }
+.tv-pair-page .tv-account { display:grid; gap:16px; margin-block:clamp(24px,7vh,72px) 0; }
+.tv-pair-card,.tv-pair-devices { display:grid; min-width:0; gap:16px; padding:clamp(20px,5vw,36px); border:1px solid var(--tv-line); border-radius:var(--radius-panel); background:var(--tv-panel); }
+.tv-pair-card { border-block-start:3px solid var(--tv-accent); }
+.tv-pair-page .tv-pair-emblem { display:grid; place-items:center; width:52px; height:52px; background:var(--tv-panel2); color:var(--tv-accent); border-radius:var(--radius-control); }
+.tv-pair-emblem svg { width:28px; height:28px; }
+.tv-pair-card h1 { font-size:clamp(25px,4vw,34px); line-height:1.35; color:var(--tv-text); }
+.tv-pair-card p,.tv-pair-devices p { color:var(--tv-muted); }
+.tv-pair-page .tv-pair-guidance { display:flex; align-items:flex-start; gap:.6em; color:var(--tv-text); }
+.tv-pair-guidance svg { margin-top:.22em; color:var(--tv-accent); }
+.tv-pair-preview { display:grid; gap:4px; padding:12px; border-radius:var(--radius-control); background:var(--tv-bg); text-align:center; }
+.tv-pair-preview span { font-size:14px; color:var(--tv-muted); }
+.tv-pair-preview bdi,.tv-pair-page #tv-pair-input { color:var(--tv-text); font:500 clamp(20px,5vw,28px)/1.4 var(--font-data); letter-spacing:.06em; }
+.tv-pair-page form { display:grid; gap:8px; }
+.tv-pair-page #tv-pair-input { width:100%; min-width:0; min-height:50px; background:var(--tv-bg); border:1px solid var(--tv-line); padding:8px; }
+.tv-pair-page :is(a,button).tv-pair-primary { display:flex; justify-content:center; align-items:center; gap:.6em; width:100%; min-height:50px; padding:.55em .8em; color:var(--tv-bg); background:var(--tv-accent); border:1px solid var(--tv-accent); border-radius:var(--radius-control); font-weight:600; text-decoration:none; }
+.tv-pair-page .tv-pair-primary:focus-visible,.tv-pair-page .tv-pair-primary:hover { text-decoration:underline; }
+.tv-pair-page .tv-pair-primary:disabled { background:var(--tv-panel2); color:var(--tv-muted); border-color:var(--tv-line); opacity:1; }
+.tv-pair-feedback,.tv-pair-result,.tv-pair-devices h2 { display:flex; gap:.65em; align-items:center; }
+.tv-pair-feedback { justify-content:space-between; }
+.tv-pair-page .tv-pair-result { color:var(--tv-palette-champagne); }
+.tv-pair-page .tv-pair-result[data-success=true] { color:var(--tv-accent); }
+.tv-pair-devices h2 { font-size:20px; }
+.tv-pair-devices ul { list-style:none; margin:0; padding:0; }
+.tv-pair-page .tv-device-row { flex-wrap:wrap; min-width:0; padding-block:12px; }
+.tv-device-row:last-child { border:0; padding-bottom:0; }
+.tv-device-row > div { min-width:0; overflow-wrap:anywhere; }
+.tv-device-row p { font-size:14px; }
+.tv-device-row button,.tv-pair-feedback button { min-height:44px; }
+@media (max-width:400px) {
+  .tv-pair-header { column-gap:6px; }
+  .tv-pair-languages button { padding-inline:.45em; }
+}

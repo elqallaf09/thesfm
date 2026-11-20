@@ -36,7 +36,7 @@ const COPY = {
   sync: ['آخر جلب للمحفظة', 'Portfolio fetched', 'Portefeuille récupéré'],
   note: ['وقت جلب المحفظة يختلف عن وقت تقييم الأصول.', 'Portfolio fetch time is separate from each asset’s valuation time.', 'La récupération du portefeuille est distincte de la date de valorisation des actifs.'],
   currency: ['عملة العرض', 'Display currency', 'Devise d’affichage'],
-  originalValue: ['الأصلية', 'Original', 'D’origine'],
+  originalValue: ['بعملة الأصل', 'Original', 'Devise d’origine'],
   holdingCurrency: ['عملة التسجيل', 'Recorded currency', 'Devise d’enregistrement'],
   quoteCurrency: ['عملة التقييم', 'Valuation currency', 'Devise de valorisation'],
   quantity: ['الكمية', 'Quantity', 'Quantité'],

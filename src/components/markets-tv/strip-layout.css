@@ -226,3 +226,30 @@
     overflow-x: auto;
   }
 }
+
+/* A market without quotes is a status row. Preserve the exchange button
+   and its count, and give the waiting reason one place in reading order. */
+.tv-screen .tv-readable-strips .tv-market-strip[data-priced-count="0"] {
+  min-height: 0;
+}
+.tv-screen .tv-readable-strips .tv-market-strip[data-priced-count="0"] .tv-market-strip-heading {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: .15em .65em;
+  padding-block: .45em;
+}
+.tv-screen .tv-readable-strips .tv-market-strip[data-priced-count="0"] .tv-market-strip-window {
+  display: flex;
+  align-items: center;
+  direction: inherit;
+}
+.tv-screen .tv-readable-strips .tv-market-strip-empty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .15em 1em;
+  align-items: baseline;
+  text-align: start;
+}
+.tv-screen .tv-readable-strips .tv-strip-retry { color: var(--tv-muted); font-size: max(13px, .85em); }
