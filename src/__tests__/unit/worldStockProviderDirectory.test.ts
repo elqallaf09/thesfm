@@ -11,4 +11,26 @@ describe('world provider directory validation', () => {
   it('fails closed on provider errors', () => {
     expect(() => parseProviderDirectory({ status: 'error', code: 429 })).toThrow('INVALID_DIRECTORY');
   });
+  it('deduplicates case variants within one venue and rejects incomplete metadata before persistence', () => {
+    const row = { symbol: 'QA', name: 'Synthetic QA listing', exchange: 'London', mic_code: 'XLON', currency: 'GBP', country: 'United Kingdom', type: 'Common Stock' };
+    const rows = parseProviderDirectory({ status: 'ok', data: [row, { ...row, symbol: 'qa' }, { ...row, symbol: 'EMPTY', country: '' }, { ...row, symbol: 'LONG', name: 'x'.repeat(1025) }] });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ symbol: 'QA', providerSymbol: 'qa', exchange: 'TD_XLON' });
+  });
+  it.each([
+    ['Czech Republic', 'CZ', 'XPRA'], ['Hungary', 'HU', 'XBUD'], ['Romania', 'RO', 'XBSE'],
+    ['Estonia', 'EE', 'XTAL'], ['Latvia', 'LV', 'XRIS'], ['Lithuania', 'LT', 'XLIT'],
+    ['Iceland', 'IS', 'XICE'], ['Russia', 'RU', 'MISX'],
+    ['Czechia', 'CZ', 'XPRA'], ['Luxembourg', 'LU', 'XLUX'], ['Croatia', 'HR', 'XZAG'], ['Slovenia', 'SI', 'XLJU'],
+    ['Slovakia', 'SK', 'XBRA'], ['Bulgaria', 'BG', 'XBUL'], ['Cyprus', 'CY', 'XCYS'], ['Ukraine', 'UA', 'UKEX'],
+  ])('normalizes the European provider country %s to %s', (country, iso, mic_code) => {
+    const [row] = parseProviderDirectory({ status: 'ok', data: [{ symbol: 'QA', name: 'Synthetic QA listing', exchange: mic_code,
+      mic_code, currency: 'EUR', country, type: 'Common Stock' }] });
+    expect(row).toMatchObject({ country: iso, exchange: `TD_${mic_code}` });
+  });
+  it('retains British-pence listings without relabeling them as pounds', () => {
+    const [row] = parseProviderDirectory({ status: 'ok', data: [{ symbol: 'PENCE', name: 'Synthetic London listing', exchange: 'London',
+      mic_code: 'XLON', currency: 'GBp', country: 'United Kingdom', type: 'Common Stock' }] });
+    expect(row).toMatchObject({ currency: 'GBp', country: 'GB', exchange: 'TD_XLON' });
+  });
 });

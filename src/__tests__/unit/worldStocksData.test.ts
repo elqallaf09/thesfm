@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-vi.mock('@/lib/world-stocks/providerDirectory', () => ({ getProviderDirectory: vi.fn(async () => ({ rows: [], status: 'unavailable', asOf: null })), providerRegion: (value: string) => /^TD_[A-Z0-9]{4}$/.test(value) }));
+vi.mock('@/lib/world-stocks/providerDirectory', () => ({ providerDirectoryRevision: () => 0, peekProviderDirectory: () => null, getProviderDirectory: vi.fn(async () => ({ rows: [], status: 'unavailable', asOf: null })), providerRegion: (value: string) => /^TD_[A-Z0-9]{4}$/.test(value) }));
 import type { MarketSearchItem } from '@/lib/market/marketService';
 import { isSupportedWorldStockRegion, WORLD_STOCK_REGIONS } from '@/lib/world-stocks/regions';
 import { marketSearchItemToWorldStock } from '@/lib/world-stocks/normalize';

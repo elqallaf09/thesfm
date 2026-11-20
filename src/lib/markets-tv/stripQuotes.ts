@@ -1,6 +1,7 @@
 import type { TvQuote, TvSnapshot } from './types';
 import { hasTvPrice } from './coverage';
-const identity = (q: TvQuote) => `${q.exchange || ''}:${q.symbol}:${q.currency || ''}`;
+const identity = (q: TvQuote) => q.listingKey ? `listing:${q.listingKey}:${q.currency || ''}`
+  : `legacy:${q.exchange || ''}:${q.symbol}:${q.currency || ''}`;
 /** Never erase a proven quote on transient failure, or move its source clock forward. */
 export function mergeStripSnapshot(previous: TvSnapshot | null, next: TvSnapshot): TvSnapshot {
   const sameView = previous !== null && previous.group === next.group && previous.market === next.market && previous.scene === next.scene;
@@ -11,15 +12,21 @@ export function mergeStripSnapshot(previous: TvSnapshot | null, next: TvSnapshot
     // one previously verified listing in this exact view, and only when the
     // failure supplied no contradictory identity. Keep the old tuple intact.
     if (!old && q.price === null && q.issue && q.issue !== 'identity_mismatch') {
-      const candidates = [...saved.values()].filter(value => value.symbol === q.symbol);
+      const candidates = [...saved.values()].filter(value => value.symbol === q.symbol
+        && (!q.listingKey || !value.listingKey || q.listingKey === value.listingKey));
       const candidate = candidates.length === 1 ? candidates[0] : undefined;
-      if (candidate && (!q.currency || q.currency === candidate.currency) && (!q.exchange || q.exchange === candidate.exchange)) old = candidate;
+      // A new/legacy API transition needs a complete matching venue tuple.
+      // Explicitly different listing keys never fall back to a shared ticker.
+      const compatibleKey = candidate && (q.listingKey === candidate.listingKey
+        || Boolean(q.exchange && q.currency && q.exchange === candidate.exchange && q.currency === candidate.currency));
+      if (candidate && compatibleKey && (!q.currency || q.currency === candidate.currency) && (!q.exchange || q.exchange === candidate.exchange)) old = candidate;
     }
     if (!old || !hasTvPrice(old)) return q;
-    if (!hasTvPrice(q)) return { ...old, status: 'stale' as const, issue: q.issue || 'provider_unavailable' as const, retryAt: q.retryAt };
+    const retained = q.listingKey && !old.listingKey ? { ...old, listingKey: q.listingKey } : old;
+    if (!hasTvPrice(q)) return { ...retained, status: 'stale' as const, issue: q.issue || 'provider_unavailable' as const, retryAt: q.retryAt };
     const before = old.observedAt ? Date.parse(old.observedAt) : NaN;
     const after = q.observedAt ? Date.parse(q.observedAt) : NaN;
-    if (Number.isFinite(before) && (!Number.isFinite(after) || after < before || after > Date.now() + 60_000)) return old;
+    if (Number.isFinite(before) && (!Number.isFinite(after) || after < before || after > Date.now() + 60_000)) return retained;
     return q;
   };
   const quotes = next.quotes.map(merge);

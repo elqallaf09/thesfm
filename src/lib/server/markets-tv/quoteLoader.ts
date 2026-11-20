@@ -63,6 +63,29 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
   if (asset.currency && row.currency !== asset.currency) return false;
   const requested = asset.symbol.toUpperCase(), supplied = row.provenance.providerSymbol?.toUpperCase();
   if (!supplied) return false;
+  const qualifiedListing = /\.(KW|DU|AD|AE|QA|SR|SA|OM|BH|T|SS|SZ|HK|AS|DE|SW|PA|L|CO|NS|KS)$/.test(requested);
+  const directoryMic = providerRegion(asset.region) ? asset.region.slice(3)
+    : providerRegion(asset.exchange) ? asset.exchange.slice(3) : null;
+  if (directoryMic && (!asset.assetType || asset.assetType === 'stock')) {
+    if (asset.mic && asset.mic !== directoryMic
+      || providerRegion(asset.exchange) && asset.exchange !== `TD_${directoryMic}`
+      || asset.country && row.country && asset.country !== row.country) return false;
+    const exchange = row.exchange?.toUpperCase();
+    if (!qualifiedListing) {
+      // Identical tickers and currencies can belong to different European
+      // exchanges. Only an explicit MIC proves the venue of a bare listing;
+      // names such as "Euronext" describe more than one exchange.
+      if (!['stock', 'etf'].includes(row.assetType)
+        || exchange !== directoryMic && exchange !== `TD_${directoryMic}`
+        || supplied !== requested && supplied !== `${requested}:${directoryMic}`) return false;
+    } else {
+      // Exact qualified symbols remain valid evidence for configured listings,
+      // but must not override a contradictory MIC returned by the provider.
+      const suppliedMic = providerRegion(exchange) ? exchange.slice(3)
+        : exchange && /^X[A-Z0-9]{3}$/.test(exchange) ? exchange : null;
+      if (suppliedMic && suppliedMic !== directoryMic) return false;
+    }
+  }
   // Nasdaq Dubai uses bare symbols that also exist in the US and London.
   // A matching ticker and USD denomination are not evidence of the same venue.
   const assetVenues = [asset.mic, asset.region, asset.exchange].filter((value): value is string => Boolean(value));
@@ -86,7 +109,7 @@ export function tvQuoteIdentityMatches(asset: TvAsset, row: SfmMarketQuote): boo
       : compact(requested).match(/(USDT|USD)$/)?.[0];
     if (quoteCurrency && row.currency !== quoteCurrency) return false;
   }
-  if (/\.(KW|DU|AD|AE|QA|SR|SA|OM|BH|T|SS|SZ|HK|AS|DE|SW|PA|L|CO|NS|KS)$/.test(requested)) {
+  if (qualifiedListing) {
     // Market-specific Twelve Data responses use the stricter MIC path below.
     // Generic provider fallbacks may only retain a fully qualified identity.
     if (supplied !== requested) return false;
@@ -168,7 +191,8 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const nasdaqDubai = [asset.mic, asset.region, asset.exchange].some(value => NASDAQ_DUBAI_VENUES.includes(value || ''));
   // Do not reuse an earlier bare-symbol cache entry that lacked venue checks.
   const key = JSON.stringify([asset.symbol, asset.region, asset.exchange, asset.mic, asset.providerSymbol, asset.currency, assetType,
-    ...(nasdaqDubai ? ['nasdaq-dubai-identity-v1'] : [])]);
+    ...(nasdaqDubai ? ['nasdaq-dubai-identity-v1'] : []),
+    ...(providerRegion(asset.region) || providerRegion(asset.exchange) ? ['directory-venue-identity-v1'] : [])]);
   const running = pendingQuotes.get(key); if (running) return running;
   const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
   const verified = cachedTvQuote(key, async () => {

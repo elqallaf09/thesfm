@@ -3,7 +3,7 @@ import { filterUsSymbolUniverse, getBundledUsSymbolUniverse, getUSSymbolUniverse
 import type { MarketSearchItem } from '@/lib/market/marketService';
 import { globalDirectoryMarketItems } from './globalDirectory';
 import { reconcileKuwaitDirectory } from './kuwaitDirectory';
-import { getProviderDirectory } from './providerDirectory';
+import { getProviderDirectory, peekProviderDirectory } from './providerDirectory';
 import { WORLD_STOCK_REGIONS } from './regions';
 import type { WorldStockMarket } from './types';
 import { normalizeAssetSearchText } from '@/lib/market/assetAliases';
@@ -26,6 +26,7 @@ export type WorldStockSearchResult = {
   source: string;
   markets: WorldStockMarket[];
   directoryStatus: string;
+  directoryAsOf?: string | null;
 };
 
 // The server paginates the complete synchronized directory in memory and
@@ -69,7 +70,12 @@ function respondWithinBudget<T>(work: Promise<T>, fallback: () => T | Promise<T>
 }
 
 function responsiveProviderDirectory(): Promise<TimelyProviderDirectory> {
-  return respondWithinBudget<TimelyProviderDirectory>(getProviderDirectory(), () => ({ rows: [], status: 'pending', asOf: null }));
+  return respondWithinBudget<TimelyProviderDirectory>(getProviderDirectory(), () => {
+    // Refreshing the directory must not temporarily erase verified exchanges.
+    // Keep its original observation time; pending is only an empty cold start.
+    const retained = peekProviderDirectory();
+    return retained?.rows.length ? { ...retained, status: 'snapshot' } : { rows: [], status: 'pending', asOf: null };
+  });
 }
 
 function responsiveUsSymbolUniverse() {
@@ -149,5 +155,5 @@ export async function searchWorldStocks(params: WorldStockSearchParams): Promise
   const start = (params.page - 1) * params.pageSize;
   const results = normalized.slice(start, start + params.pageSize);
 
-  return { results, totalCount, source: extended.length ? `${source}+twelve-data-directory` : source, markets, directoryStatus: provider.status };
+  return { results, totalCount, source: extended.length ? `${source}+twelve-data-directory` : source, markets, directoryStatus: provider.status, directoryAsOf: provider.asOf };
 }

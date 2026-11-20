@@ -14,6 +14,8 @@
 .tv-screen .tv-hall-title h1 { font-size: 1.5em; line-height: 1.25; margin: 0; letter-spacing: 0; }
 .tv-screen .tv-hall-title span, .tv-screen .tv-hall-title small { font-size: max(13px, .66em); color: var(--tv-muted); }
 .tv-screen .tv-hall-title h1 bdi { font: 500 .7em var(--font-data), monospace; color: var(--tv-accent); margin-inline-start: .6em; }
+.tv-screen .tv-hall-title .tv-directory-coverage { max-width: 30em; line-height: 1.4; }
+.tv-screen .tv-hall-title .tv-directory-coverage:is([data-coverage=selected], [data-coverage=partial], [data-coverage=unavailable]) { color: var(--tv-text); border-inline-start: 3px solid var(--tv-accent); padding-inline-start: .65em; }
 .tv-screen .tv-hall-title > button { background: var(--tv-accent); color: var(--tv-bg); border: 0; padding: .5em 1em; font-weight: 600; }
 .tv-screen .tv-hall-main { display: grid; grid-template-columns: minmax(0, 2.7fr) minmax(13em, 1fr); gap: .75em; flex: 1; min-height: 0; direction: ltr; }
 .tv-screen .tv-hall-main > * { direction: ltr; }

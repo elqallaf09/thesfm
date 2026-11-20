@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ directory: vi.fn(), snapshot: vi.fn(), limit: vi.fn() }));
-vi.mock('@/lib/server/markets-tv/catalog', () => ({ tvDirectoryAssets: mocks.directory }));
+vi.mock('@/lib/server/markets-tv/catalog', () => ({ tvDirectory: async (...args: unknown[]) => ({ assets: await mocks.directory(...args), coverage: 'directory', asOf: null }) }));
 vi.mock('@/lib/server/markets-tv/snapshot', () => ({ loadTvSnapshot: mocks.snapshot }));
 vi.mock('@/lib/server/markets-tv/devices', () => ({ getTvDevice: vi.fn(), ownedTvData: vi.fn() }));
 vi.mock('@/lib/server/rateLimiter', () => ({ rateLimitRequest: mocks.limit }));
@@ -30,5 +30,23 @@ describe('all stocks directory', () => {
     for (const symbols of [[], Array.from({ length: 13 }, (_, i) => `QA${i}`), ['<script>']]) { params.set('symbols', JSON.stringify(symbols)); expect((await snapshot(request(params.toString()))).status).toBe(400); }
     params.set('symbols', '["QA1"]'); params.set('group', 'watchlist');
     expect((await snapshot(request(params.toString()))).status).toBe(400);
+  });
+  it('selects exact listing identities and rejects mixed, malformed or private selections', async () => {
+    const params = new URLSearchParams({ group: 'world', market: 'europe', pageSize: '6', listingKeys: JSON.stringify(['TD_XAMS:SAME', 'TD_XPAR:SAME']) });
+    expect((await snapshot(request(params.toString()))).status).toBe(200);
+    expect(mocks.snapshot).toHaveBeenCalledWith('world', [], expect.objectContaining({ listingKeys: ['TD_XAMS:SAME', 'TD_XPAR:SAME'], pageSize: 6 }));
+    for (const values of [[], Array.from({ length: 13 }, (_, i) => `TD_XETR:QA${i}`), ['TD_XETR:<script>'], ['NO_EXCHANGE'], ['TD_XETR:' + 'A'.repeat(65)]]) {
+      params.set('listingKeys', JSON.stringify(values));
+      expect((await snapshot(request(params.toString()))).status).toBe(400);
+    }
+    params.set('listingKeys', '["TD_XETR:SAP"]'); params.set('symbols', '["SAP"]');
+    expect((await snapshot(request(params.toString()))).status).toBe(400);
+    params.delete('symbols'); params.set('group', 'watchlist');
+    expect((await snapshot(request(params.toString()))).status).toBe(400);
+    params.set('group', 'world'); params.set('scene', 'world'); params.delete('market');
+    expect((await snapshot(request(params.toString()))).status).toBe(400);
+    const page = await (await directory(request('group=world&pageSize=6'))).json();
+    expect(page.items[0].listingKey).toBe('US:QA0');
+    expect(page.coverage).toBe('directory');
   });
 });

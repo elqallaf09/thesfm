@@ -9,6 +9,11 @@ const ar = {
   sessions: 'أوقات الأسواق', scheduled: 'حسب جدول التداول — الحالة تقديرية', open: 'مفتوح حسب الجدول', closed: 'مغلق حسب الجدول',
   opens: 'يفتح بعد', closes: 'يغلق بعد', unavailable: 'السعر غير متوفر', chooseMarket: 'اختر البورصة',
   directoryNote: 'عدد الأسهم في الدليل؛ توفر الأسعار يختلف حسب السوق والمصدر.',
+  directorySelected: 'قائمة مختارة — التغطية غير مكتملة',
+  directoryPending: 'جارٍ تحميل دليل البورصات…',
+  directoryPartial: 'تغطية جزئية — جارٍ استكمال الدليل',
+  directorySnapshot: 'آخر دليل محفوظ — يجري التحقق من التحديثات',
+  directoryUnavailable: 'دليل البورصة غير متوفر حاليًا',
   newsPause: 'إيقاف تبديل الأخبار', newsPlay: 'تشغيل تبديل الأخبار', unknown: 'غير معروف',
 };
 type HallKey = keyof typeof ar;
@@ -21,6 +26,11 @@ const en: Record<HallKey, string> = {
   sessions: 'Market hours', scheduled: 'Scheduled hours — estimated status', open: 'Scheduled open', closed: 'Scheduled closed',
   opens: 'Opens in', closes: 'Closes in', unavailable: 'Price unavailable', chooseMarket: 'Choose exchange',
   directoryNote: 'Directory count; price coverage varies by exchange and source.',
+  directorySelected: 'Selected stocks — coverage is incomplete',
+  directoryPending: 'Loading the exchange directory…',
+  directoryPartial: 'Partial coverage — completing the directory',
+  directorySnapshot: 'Last saved directory — checking for updates',
+  directoryUnavailable: 'The exchange directory is currently unavailable',
   newsPause: 'Pause news rotation', newsPlay: 'Resume news rotation', unknown: 'Unknown',
 };
 const fr: Record<HallKey, string> = {
@@ -32,6 +42,11 @@ const fr: Record<HallKey, string> = {
   sessions: 'Horaires des marchés', scheduled: 'Horaires prévus — état estimé', open: 'Ouvert selon les horaires', closed: 'Fermé selon les horaires',
   opens: 'Ouverture dans', closes: 'Fermeture dans', unavailable: 'Cours indisponible', chooseMarket: 'Choisir une bourse',
   directoryNote: 'Nombre de titres du répertoire ; couverture variable selon la bourse et la source.',
+  directorySelected: 'Sélection d’actions — couverture incomplète',
+  directoryPending: 'Chargement du répertoire des bourses…',
+  directoryPartial: 'Couverture partielle — répertoire en cours de mise à jour',
+  directorySnapshot: 'Dernier répertoire enregistré — recherche de mises à jour',
+  directoryUnavailable: 'Le répertoire de la bourse est actuellement indisponible',
   newsPause: 'Suspendre les actualités', newsPlay: 'Reprendre les actualités', unknown: 'Inconnu',
 };
 export const hallText = (language: TvLanguage, key: HallKey) => ({ ar, en, fr })[language][key];
