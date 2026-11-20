@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { TV_EXTRA_NEWS_CHANNELS, TV_NEWS_FEEDS } from '../../src/lib/markets-tv/newsReceiver';
 import { receiverText } from '../../src/lib/markets-tv/receiver';
 import { focusTvMenuAction } from '../helpers/tv-menu-layout';
+import { expectNewsPage } from '../helpers/tv-news-pages';
 
 for (const language of ['ar','en','fr'] as const) test(`all news channels: ${language} navigation, source isolation and TV fit`, async ({page}) => {
   await page.setViewportSize({width:1920,height:1080});
@@ -33,10 +34,11 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
     await expect(page.locator('.tv-receiver-heading h1')).toHaveText(receiverText(language,channel));
     const path=TV_NEWS_FEEDS[channel], parsed=new URL(path,'https://www.the-sfm.com');
     const label=parsed.searchParams.get('topic')||parsed.pathname.match(/\/([a-z]+)-stocks\/news/)?.[1]||parsed.pathname;
-    await expect(page.locator('.tv-headline-items button')).toHaveCount(24);
+    await expectNewsPage(page, 24, 6);
     await expect(page.locator('.tv-headline-items button').first()).toContainText(label);
     for(const [width,height] of [[960,540],[1920,1080]]) {
       await page.setViewportSize({width,height});
+      await expectNewsPage(page, 24, height <= 650 ? 2 : 6);
       await expect(page.locator('.tv-receiver-screen')).toBeInViewport({ratio:1});
       await expect(page.locator('.tv-headline-items button').last()).toBeInViewport({ratio:1});
     }
@@ -56,8 +58,7 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await page.keyboard.press('Escape');
   await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
   const cards=page.locator('.tv-headline-items button');
-  await expect(cards).toHaveCount(24);
-  await expect(page.locator('.tv-news-desk .tv-broadcast-pager')).toHaveCount(0);
+  await expectNewsPage(page, 24, 6);
   const headlines=await cards.locator('.tv-news-title').allTextContents();
   await cards.last().focus();
   await page.clock.runFor(80000);

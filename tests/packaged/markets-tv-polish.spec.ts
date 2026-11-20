@@ -1,5 +1,6 @@
 import { openAndroidTvPackage, openTvMenu, closeTvMenu, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
+import { expectNewsPage } from '../helpers/tv-news-pages';
 
 const title = 'Goldman Sachs looks to cash in on a new technology listing: what investors are watching across the global stock markets';
 async function setup(page: Page, count = 1, news = false, keepMenu = false) {
@@ -170,12 +171,12 @@ test('market strips distinguish the directory, displayed batch and priced covera
   }
 });
 
-test('news desk shows all received cards with readable evidence in 1080p and 540p', async ({ page }) => {
+test('news desk pages every received story with readable evidence in 1080p and 540p', async ({ page }) => {
   await setup(page, 1, true);
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   for (const [width, height] of [[1920, 1080], [960, 540]]) {
     await page.setViewportSize({ width, height });
-    await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(24);
+    await expectNewsPage(page, 24, height <= 650 ? 2 : 6);
     await expect(page.locator('.tv-news-title').first()).toHaveCSS('direction', 'ltr');
     const clipped = await page.locator('.tv-news-desk-grid > button').evaluateAll(buttons => buttons.filter(button => {
       const r = button.getBoundingClientRect(); return r.bottom > innerHeight + 1 || r.right > innerWidth + 1 || r.left < -1 || button.scrollHeight > button.clientHeight + 2;
@@ -190,7 +191,7 @@ test('direct news links open the channel and retain subsequent remote selections
   await page.goto('https://appassets.androidplatform.net/index.html?channel=europeNews');
   await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'europeNews');
-  await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(24);
+  await expectNewsPage(page, 24, 6);
   await page.keyboard.press('2');
   await expect(page).toHaveURL(/channel=technology/);
   await page.reload();
