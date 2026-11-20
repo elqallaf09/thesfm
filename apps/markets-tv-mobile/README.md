@@ -30,18 +30,14 @@ in to Expo, initializes the dedicated project if necessary, and starts:
 npx eas-cli@27.9.0 build --platform ios --profile testflight --auto-submit
 ```
 
-At first setup, Expo/Apple can require interactive account login, 2FA, creating the
-bundle ID, signing credentials, and the App Store Connect app. Enter credentials
-only into the official CLI prompt, never into source files or chat. Select/create
-the **SFM TV iPhone** app with bundle ID **com.thesfm.marketstv.mobile**. Do not
-reuse the existing tvOS or Finance/Investor/Business app IDs. EAS stores its own
-project ID in `app.json`; save that change for subsequent builds. Once Apple has
-created the app, its numeric ID can be put in `submit.testflight.ios.ascAppId`.
+The mobile client is linked to the Expo project `@elqallaf09/sfm-tv-mobile`.
+The TestFlight profile submits to the **SFM TV Mobile** iOS app in App Store
+Connect (Apple ID `6837378137`, bundle ID `com.thesfm.marketstv.mobile`).
+The generated iOS target supports both iPhone and iPad.
 
-The script uploads to App Store Connect/TestFlight, not public App Store review.
-Apple processing must finish and the build must be enabled for an internal testing
-group before it appears in TestFlight. No project ID, Apple app ID, credentials,
-IPA, or completed submission is preconfigured or claimed by this source package.
+After Apple finishes processing, enable the build for the internal TestFlight
+group and accept the **SFM TV Mobile** invitation on the device. The Apple TV
+invitation opens the tvOS build.
 
 ## Validation boundaries
 
