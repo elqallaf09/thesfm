@@ -67,7 +67,7 @@ describe('TV source recovery integration', () => {
     const { loadTvSnapshot } = await import('@/lib/server/markets-tv/snapshot');
     const snapshot = await loadTvSnapshot('gulf', [], { scene: 'gulf' });
     expect(snapshot.retryAt).toBe('2026-10-28T05:16:01.000Z');
-    expect([...snapshot.summary!, ...snapshot.quotes].map(quote => ({symbol: quote.symbol, price: quote.price, issue: quote.issue, retryAt: quote.retryAt}))).toEqual(expect.arrayContaining([expect.objectContaining({ symbol: 'KFH.KW', price: null, issue: 'rate_limited', retryAt: snapshot.retryAt })]));
+    expect([...snapshot.summary!, ...snapshot.quotes].map(quote => ({symbol: quote.symbol, price: quote.price, issue: quote.issue, retryAt: quote.retryAt}))).toEqual(expect.arrayContaining([expect.objectContaining({ symbol: '1120.SR', price: null, issue: 'rate_limited', retryAt: snapshot.retryAt })]));
     expect([...snapshot.summary!, ...snapshot.quotes].filter(quote => quote.price !== null || quote.issue !== 'rate_limited' || quote.retryAt !== snapshot.retryAt)).toEqual([]);
     const requests = (host: string) => fetch.mock.calls.filter(call => new URL(String(call[0])).hostname === host).length;
     expect(requests('api.twelvedata.com')).toBeLessThanOrEqual(2);
