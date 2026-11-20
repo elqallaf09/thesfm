@@ -34,8 +34,17 @@ the exact candidate SHA; this document does not claim a completed deployment.
   requires all three results to be `success`; skipped work cannot pass it.
 - Keep TV stock paging and playback on one header row, restoring the reading
   space needed by all six quote rows; mobile controls still stack.
+- Keep the owner's TV country exclusion in both refreshed/saved world catalogs
+  and direct exchange reads, without changing the shared provider directory.
+  Exact-code/name checks retain Iceland and all other supported markets.
 - Load article details/QR and the legacy balanced headlines panel when needed,
   keeping the existing initial-JavaScript budget unchanged.
+- Constrain the page to the viewport while the sidebar is open, including on
+  phones; closing it restores the normal scrollable mobile layout. Empty news
+  bands use their content height, retaining room for complete French quote
+  provenance on compact screens.
+- Require exactly one TV root after streamed website reloads before interacting;
+  this retains the duplicate-tree assertion instead of selecting the first root.
 
 ## Verification
 

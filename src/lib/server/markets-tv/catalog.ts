@@ -25,17 +25,21 @@ export function tvCountryGroup(country: string | null): TvGroup {
   return country === 'US' ? 'us' : GULF.has(country || '') ? 'gulf' : EUROPE.has(country || '') ? 'europe' : ASIA.has(country || '') ? 'asia' : 'world';
 }
 let pending: Promise<WorldStockSearchResult> | null = null, saved: WorldStockSearchResult | null = null, expires = 0, revision = -1;
+// This is a TV selection rule; the shared provider directory remains unchanged.
+const visibleTvCountry = (country: string | null | undefined) => !/^(?:IL|ISR|Israel|إسرائيل|اسرائيل)$/iu.test(country?.trim() || '');
 async function universe() {
   const currentRevision = providerDirectoryRevision();
   if (saved && expires > Date.now() && revision === currentRevision) return saved;
   if (!pending) {
     pending = searchWorldStocks({ query: '', region: null, assetType: null, page: 1, pageSize: 1_000_000, locale: 'en' }).then(data => {
-      saved = data;
+      const results = data.results.filter(stock => visibleTvCountry(stock.countryCode));
+      const visible = { ...data, results, totalCount: results.length, markets: data.markets.filter(market => visibleTvCountry(market.countryCode)) };
+      saved = visible;
       // A budget-limited response is provisional. A completed background
       // refresh also changes the revision, immediately invalidating this copy.
       expires = Date.now() + (data.directoryStatus === 'pending' || data.directoryStatus === 'unavailable' ? 5000 : 300000);
       revision = currentRevision;
-      return data;
+      return visible;
     }).finally(() => { pending = null; });
   }
   return pending;
@@ -78,7 +82,7 @@ export async function tvDirectory(group: TvGroup, market?: string): Promise<TvDi
         const rows = data.results.filter(stock => stock.region === market);
         if (rows.length) return { assets: rows.map(stockAsset), ...directoryState(data) };
       }
-      const assets = await tvStockAssets(market);
+      const assets = (await tvStockAssets(market)).filter(asset => visibleTvCountry(asset.country));
       return assets.length ? { assets: assets.map(localizeTvAsset), coverage: 'directory', asOf: null } : configuredDirectory(market);
     } catch (error) { if (fallback.length) return configuredDirectory(market); throw error; }
   }

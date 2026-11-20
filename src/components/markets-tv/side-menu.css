@@ -1,4 +1,10 @@
 /* Navigation overlays the broadcast so tables retain their full viewing width. */
+.tv-screen[data-tv-root][data-accent][data-tv-menu-open=true] {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
 .tv-screen .tv-side-menu-backdrop {
   position: fixed;
   inset: 0;

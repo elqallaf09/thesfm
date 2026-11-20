@@ -20,6 +20,7 @@
 .tv-screen .tv-news-desk[data-news-dense=true] .tv-news-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
 .tv-screen .tv-news-desk[data-news-many=true] .tv-news-title { font-size:clamp(16px,min(1.15vw,2.2vh),24px); -webkit-line-clamp:2; }
 .tv-screen .tv-headline-band { flex:0 0 calc(var(--tv-news-rows)*clamp(64px,9vh,108px) + 3em); padding:.4em .6em; background:var(--tv-news-background); color:var(--tv-news-text); border-inline-start:.3em solid var(--tv-news-accent); }
+.tv-screen .tv-headline-band[data-news-count="0"] { flex-basis:auto; }
 .tv-screen .tv-headline-band .tv-news-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
 .tv-screen .tv-headline-band .tv-headline-label { font-size:max(13px,.8em); }
 .tv-screen .tv-headline-band .tv-news-card { grid-template-columns:clamp(36px,22%,72px) minmax(0,1fr); padding:.35em; gap:.15em .5em; background:var(--tv-news-background); color:var(--tv-news-text); }

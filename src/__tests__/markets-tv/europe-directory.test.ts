@@ -84,4 +84,30 @@ describe('European TV directory', () => {
     const { tvDirectory } = await import('@/lib/server/markets-tv/catalog');
     expect(await tvDirectory('europe')).toMatchObject({ coverage: 'snapshot', asOf: '2026-11-20T09:00:00Z', assets: expect.any(Array) });
   });
+
+  it.each(['IL', 'ISR', 'Israel', ' israel ', 'إسرائيل', 'اسرائيل'])('preserves the TV country exclusion for fresh and retained %s metadata', async countryCode => {
+    const excluded = { ...rows[0], providerSymbol: 'EXCLUDED', countryCode, region: 'TD_QAIL', exchangeCode: 'TD_QAIL' };
+    mocks.search.mockResolvedValue(result('snapshot', [...rows, excluded]));
+    const { tvDirectory, tvMarkets } = await import('@/lib/server/markets-tv/catalog');
+    const directory = await tvDirectory('world');
+    expect(directory.assets).toHaveLength(rows.length);
+    expect(directory.assets.some(asset => asset.symbol === 'EXCLUDED')).toBe(false);
+    expect((await tvMarkets()).some(market => market.id === 'TD_QAIL')).toBe(false);
+  });
+
+  it('applies the TV country exclusion to a direct exchange read without changing the shared source', async () => {
+    const source = [{ symbol: 'EXCLUDED', name: 'Synthetic excluded listing', region: 'TD_QAIL', country: 'Israel' }];
+    mocks.stocks.mockResolvedValue(source);
+    const { tvDirectory } = await import('@/lib/server/markets-tv/catalog');
+    expect(await tvDirectory('world', 'TD_QAIL')).toMatchObject({ assets: [], coverage: 'unavailable' });
+    expect(source).toHaveLength(1);
+  });
+
+  it('keeps Iceland and other supported countries visible', async () => {
+    const iceland = { ...rows[0], providerSymbol: 'ICELAND', countryCode: 'IS', region: 'TD_XICE', exchangeCode: 'TD_XICE' };
+    mocks.search.mockResolvedValue(result('directory', [...rows, iceland]));
+    const { tvDirectory, tvMarkets } = await import('@/lib/server/markets-tv/catalog');
+    expect((await tvDirectory('world')).assets.some(asset => asset.symbol === 'ICELAND')).toBe(true);
+    expect((await tvMarkets()).some(market => market.id === 'TD_XICE')).toBe(true);
+  });
 });

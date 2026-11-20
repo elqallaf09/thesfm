@@ -2,6 +2,13 @@ import { expect, type Page } from '@playwright/test';
 
 export type TvTestDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'gulf' | 'assets' | 'brief' | 'map';
 
+async function waitForTvRoot(page: Page) {
+  // Next's streamed response can briefly include a hidden replacement tree.
+  // Wait for exactly one root; a persistent duplicate must still fail.
+  await expect(page.locator('[data-tv-root]')).toHaveCount(1);
+  await expect(page.locator('[data-tv-root]')).toBeVisible();
+}
+
 export async function waitForTvIntro(page: Page) {
   await expect.poll(() => page.evaluate(() => Boolean(sessionStorage.getItem('sfm-tv-welcome-shown')))).toBe(true);
   const intro = page.locator('.sfm-startup');
@@ -21,7 +28,7 @@ export async function selectTvProfile(page: Page, index: number) {
 
 /** Open the same labelled side menu available to a TV remote or touch user. */
 export async function openTvMenu(page: Page) {
-  await expect(page.locator('[data-tv-root]')).toBeVisible();
+  await waitForTvRoot(page);
   await waitForTvIntro(page);
   const menu = page.locator('.tv-side-menu');
   if (!await menu.isVisible()) await page.locator('[data-tv-focus-key="menu-toggle"]').click();
@@ -30,7 +37,7 @@ export async function openTvMenu(page: Page) {
 }
 
 export async function closeTvMenu(page: Page) {
-  await expect(page.locator('[data-tv-root]')).toBeVisible();
+  await waitForTvRoot(page);
   await waitForTvIntro(page);
   const close = page.locator('[data-tv-focus-key="menu-close"]');
   if (await close.isVisible()) await close.click();
