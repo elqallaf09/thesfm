@@ -42,11 +42,10 @@ const TvSettingsPanel = lazy(() => import('./TvSettingsPanel').then(module => ({
 const TvSessions = lazy(() => import('./TvWorldSessions'));
 const TvMarketPicker = lazy(() => import('./TvMarketPicker').then(module => ({ default: module.TvMarketPicker })));
 const TvInstrumentPicker = lazy(() => import('./TvInstrumentPicker').then(module => ({ default: module.TvInstrumentPicker })));
-const TvChannels = lazy(() => import('./TvChannels').then(module => ({ default: module.TvChannels })));
 const SETTINGS_KEY = 'sfm-markets-tv-settings-v1', TOKEN_KEY = 'sfm-markets-tv-device-v1';
 const EMPTY_NEWS: TvNews[] = [];
 const EMPTY_MARKETS: TvMarket[] = [];
-type Dialog = 'tools' | 'settings' | 'pair' | 'device' | 'markets' | 'instruments' | 'channels' | 'sessions' | null;
+type Dialog = 'tools' | 'settings' | 'pair' | 'device' | 'markets' | 'instruments' | 'sessions' | null;
 export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false }: { initialStripsOnly?: boolean; initialAllStocks?: boolean }) {
   const [selections, setSelections] = useState<TvSelections>({});
   const [channels, setChannels] = useState<TvChannel[]>([]);
@@ -339,7 +338,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       onAdd={() => { clearAccountContext(); setAccountChoice(false); openPair(); }}/></Suspense>}
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
     <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} activeBroadcast={isTvReceiverChannel(view) ? view : undefined} paired={Boolean(token)} deviceName={device.data?.device.name}
-      onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onChannels={() => openMenuDialog('channels')} onBroadcast={chooseBroadcast} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}
+      onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onBroadcast={chooseBroadcast} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}
       onSettings={() => openMenuDialog('settings')} onSwitchAccount={() => { clearAccountContext(); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
@@ -383,11 +382,10 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     {view === 'markets' && settings.ticker && strips}
     </>}
     {message && <div className="tv-toast" role="status">{message}</div>}
-    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className={`tv-dialog${dialog === 'sessions' ? ' tv-sessions-dialog' : dialog === 'markets' ? ' tv-picker-dialog tv-market-picker-dialog' : dialog === 'instruments' ? ' tv-picker-dialog' : dialog === 'settings' ? ' tv-settings-dialog' : ''}`}><header><h2 id="tv-dialog-title">{dialog === 'tools' ? tvMenuText(settings.language, 'tools') : dialog === 'device' ? tvMenuText(settings.language, 'signOut') : dialog === 'pair' ? tvMenuText(settings.language, 'signIn') : detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'channels' ? 'channels' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X aria-hidden="true"/><span>{t('close')}</span></button></header>
+    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className={`tv-dialog${dialog === 'sessions' ? ' tv-sessions-dialog' : dialog === 'markets' ? ' tv-picker-dialog tv-market-picker-dialog' : dialog === 'instruments' ? ' tv-picker-dialog' : dialog === 'settings' ? ' tv-settings-dialog' : ''}`}><header><h2 id="tv-dialog-title">{dialog === 'tools' ? tvMenuText(settings.language, 'tools') : dialog === 'device' ? tvMenuText(settings.language, 'signOut') : dialog === 'pair' ? tvMenuText(settings.language, 'signIn') : detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X aria-hidden="true"/><span>{t('close')}</span></button></header>
       <Suspense fallback={<p role="status">{t('loading')}</p>}>
-      {dialog === 'channels' && <TvChannels view={view} channels={channels} change={setChannels} settings={{ ...settings, displayMode: stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse' }} selections={selections} apply={applySavedChannel}/> }
       {dialog === 'markets' && <TvMarketPicker markets={catalog.data?.markets || EMPTY_MARKETS} settings={settings} change={setSettings} selections={selections} done={close} initialMarketId={instrumentMarket?.id} loading={catalog.loading} error={Boolean(catalog.error)} retry={refresh} customize={market => { setInstrumentMarket(market); setDialog('instruments'); }}/>}
-      {dialog === 'settings' && <TvSettingsPanel onReplay={() => { close(); window.dispatchEvent(new Event(TV_WELCOME_EVENT)); }} settings={settings} change={changeSettings} stripsOnly={stripsOnly} displayMode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} changeDisplayMode={changeDisplayMode} customize={() => setDialog('markets')} channels={() => setDialog('channels')}/>}
+      {dialog === 'settings' && <TvSettingsPanel onReplay={() => { close(); window.dispatchEvent(new Event(TV_WELCOME_EVENT)); }} settings={settings} change={changeSettings} stripsOnly={stripsOnly} displayMode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} changeDisplayMode={changeDisplayMode} customize={() => setDialog('markets')}/>}
       {dialog === 'instruments' && instrumentMarket && <TvInstrumentPicker key={instrumentMarket.id} market={instrumentMarket} language={settings.language} selected={selections[instrumentMarket.id]} done={close} back={() => setDialog('markets')} change={symbols => setSelections(current => { const next = { ...current }; if (symbols === undefined) delete next[instrumentMarket.id]; else next[instrumentMarket.id] = symbols; return normalizeTvSelections(next); })}/>}
       {dialog === 'pair' && <TvPairPanel language={settings.language} onLinked={linked}/>}
       {dialog === 'device' && <TvSignOutPanel language={settings.language} deviceName={device.data?.device.name} busy={unlinking} error={unlinkError} onConfirm={() => void unlink()} onCancel={close}/>}

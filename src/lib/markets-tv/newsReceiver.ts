@@ -1,5 +1,6 @@
 import type { TvLanguage, TvNews } from './types';
 import { safeTvUrl } from './safeUrl';
+import { tvNewsPhotoUrl } from './newsPhoto';
 
 // Reuse the website's public feeds, including its price and screening checks.
 export const TV_NEWS_FEEDS = {
@@ -79,7 +80,7 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     if (!url || typeof title !== 'string' || !title.trim() || typeof source !== 'string' || !source.trim() || !publishedAt || seen.has(url)) return [];
     seen.add(url);
     const imageUrl = [item.imageUrl, item.image, item.thumbnail]
-      .map(value => typeof value === 'string' ? safeTvUrl(value) : null).find(Boolean);
+      .map(tvNewsPhotoUrl).find(Boolean);
     const status = item.shariahStatus;
     const screening: TvNews['screening'] = channel === 'shariaNews' ? status === 'compliant' || status === 'needs_review' || status === 'non_compliant' ? status : 'unclassified' : undefined;
     return [{ id: typeof item.id === 'string' ? item.id : url, title, source, publishedAt, url, ...(imageUrl ? { imageUrl } : {}), ...(screening ? { screening } : {}) }];

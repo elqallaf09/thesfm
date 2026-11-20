@@ -1,4 +1,4 @@
-import { openAndroidTvPackage, openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
+import { openAndroidTvPackage, openTvHeaderActions, closeTvHeaderActions, chooseTvBroadcast } from './packageHarness';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 type Language = 'ar' | 'en' | 'fr';
@@ -361,3 +361,46 @@ test('an unavailable bundled fallback keeps SFM NEWS visible without an image re
   await expect(cards.nth(2).locator('.tv-news-thumbnail')).toHaveText(/SFM\s*NEWS/);
   expect(requests).toBe(failedRequests);
 });
+
+for (const [channel, theme] of [['growthNews', 'light'], ['unusualNews', 'dark']] as const) {
+  test(`${channel} recovers publisher photos without showing a cropped logo or blocking headlines`, async ({ page }) => {
+    await page.setViewportSize({ width: 1536, height: 864 });
+    await openNews(page, 'ar', theme, 'europeNews');
+    const logo = 'https://s.yimg.com/rz/stage/p/yahoo_finance_en-US_h_p_finance_2.png';
+    const stories = newsItems(4, 'ar').map((item, index) => ({
+      ...item, id: 'story-' + String(index).padStart(24, '0'),
+      imageUrl: [logo, undefined, imageOrigin + '/broken.svg', imageOrigin + '/market.svg'][index],
+    }));
+    const growth = channel === 'growthNews';
+    await page.route(growth ? '**/api/growth-stocks/news?**' : '**/api/market/special-news?topic=unusual-moves-news**',
+      route => route.fulfill({ json: { items: stories, ...(growth ? { category: 'growth' } : { topic: 'unusual-moves-news' }), lastSuccessfulUpdate: instant } }));
+    const lookups = new Set<string>();
+    let release!: () => void;
+    const delayed = new Promise<void>(resolve => { release = resolve; });
+    await page.route('**/api/tv/news/photo/*', async route => {
+      const id = new URL(route.request().url()).pathname.split('/').pop()!;
+      lookups.add(id);
+      if (id === stories[1].id) return route.fulfill({ status: 404, body: '' });
+      await delayed;
+      return route.fulfill({ contentType: 'image/svg+xml', body: fixtureImage });
+    });
+    await chooseTvBroadcast(page, channel);
+    const cards = page.locator('.tv-news-card');
+    await expect(cards).toHaveCount(4);
+    await expect(cards.first().locator('.tv-news-title')).toHaveText(stories[0].title);
+    await expect(cards.locator(`img[src="${logo}"]`)).toHaveCount(0);
+    await expect(cards.first().locator('img[src$="sfm-news-fallback.webp"]')).toBeVisible();
+    release();
+    for (const index of [0, 2]) {
+      const thumbnail = cards.nth(index).locator('.tv-news-thumbnail');
+      await expect(thumbnail).toHaveAttribute('data-news-image', 'available');
+      await expect(thumbnail.locator('img')).toHaveAttribute('src', new RegExp('/api/tv/news/photo/' + stories[index].id + '$'));
+    }
+    await expectBrandedFallback(cards.nth(1).locator('.tv-news-thumbnail'));
+    await expect(cards.nth(3).locator('img')).toHaveAttribute('src', imageOrigin + '/market.svg');
+    expect([...lookups].sort()).toEqual(stories.slice(0, 3).map(item => item.id));
+    await cards.first().click();
+    await expect(page.getByRole('dialog').locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'available');
+    await expect(page.getByRole('dialog')).toContainText(stories[0].title);
+  });
+}

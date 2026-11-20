@@ -41,7 +41,7 @@ async function chooseMarket(page: Page, marketId: string) {
   await market.click();
 }
 
-test('TV channels restore stock choices, order, per-market speed, density and language after reload', async ({ page }) => {
+test('TV preferences remember stock choices, order, per-market speed, density and language after reload', async ({ page }) => {
   await fixtures(page);
   await page.addInitScript(() => {
     if (localStorage.getItem('tv-qa-initialized')) return;
@@ -66,34 +66,13 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.locator('#tv-settings-tab-appearance').click();
   await page.locator('.tv-language-options').getByRole('button', { name: 'Français', exact: true }).click();
   await page.keyboard.press('Escape');
-  await openTvMenu(page);
-  await page.locator('[data-tv-focus-key=channels]').click();
-  await page.getByRole('textbox', { name: 'Nom de la chaîne' }).fill('شاشة المكتب');
-  await page.getByRole('button', { name: 'Enregistrer l’affichage actuel', exact: true }).click();
-  await expect(page.getByText('Chaînes enregistrées', { exact: true })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await openTvMenu(page);
-  await page.locator('[data-tv-focus-key=settings]').click();
-  await page.locator('#tv-settings-tab-display').click();
-  await page.getByRole('button', { name: 'Confortable', exact: true }).click();
-  await page.locator('#tv-settings-tab-appearance').click();
-  await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
-  await page.keyboard.press('Escape');
-  await page.reload(); await closeTvMenu(page);
-  await openTvMenu(page);
-  await page.locator('[data-tv-focus-key=channels]').click();
-  await page.getByRole('button', { name: 'Show channel: شاشة المكتب', exact: true }).click();
+  await page.reload();
+  await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('lang', 'fr');
   await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-density-compact/);
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await expect(page.locator('[data-market="US"] .tv-market-strip-set').first().locator('button')).toHaveCount(1);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')!).marketSpeeds.US)).toBe(80);
-  await openTvMenu(page);
-  await page.locator('[data-tv-focus-key=channels]').click();
-  await page.getByRole('button', { name: 'Supprimer la chaîne: شاشة المكتب', exact: true }).click();
-  await page.getByRole('button', { name: 'Annuler', exact: true }).click();
-  await expect(page.locator('.tv-channel')).toHaveCount(1);
-  await page.keyboard.press('Escape');
 });
 
 test('TV density preserves source evidence, batch coverage and responsive layout', async ({ page }) => {

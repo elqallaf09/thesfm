@@ -25,7 +25,6 @@ type Props = {
   deviceName?: string;
   onClose: () => void;
   onNavigate: (destination: TvSideDestination) => void;
-  onChannels: () => void;
   channels: TvChannel[];
   onBroadcast: (channel: TvReceiverChannel) => void;
   onSavedChannel: (channel: TvChannel) => void;
@@ -46,7 +45,7 @@ export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => C
 
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
-export function TvSideMenu({ language, open, active, activeBroadcast, paired, deviceName, onClose, onNavigate, channels, onChannels, onBroadcast, onSavedChannel, onCustomize, onSettings, onAccount, onSwitchAccount, onTools }: Props) {
+export function TvSideMenu({ language, open, active, activeBroadcast, paired, deviceName, onClose, onNavigate, channels, onBroadcast, onSavedChannel, onCustomize, onSettings, onAccount, onSwitchAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const copy = COPY[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -69,7 +68,6 @@ export function TvSideMenu({ language, open, active, activeBroadcast, paired, de
     route('map', t('map'), Map),
     ...TV_RECEIVER_CHANNELS.filter(channel => !['allStocks', 'kuwait', 'sessions', 'investments'].includes(channel)).map(channel => ({ key: `broadcast:${channel}`, label: receiverText(language, channel), icon: Tv, action: () => onBroadcast(channel) })),
     ...channels.map(channel => ({ key: `saved:${channel.id}`, label: channel.name, icon: Tv, action: () => onSavedChannel(channel) })),
-    { key: 'channels', label: t('channels'), icon: Tv, action: onChannels },
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },
   ];

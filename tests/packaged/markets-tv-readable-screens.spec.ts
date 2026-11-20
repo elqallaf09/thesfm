@@ -66,7 +66,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       }
       // Vertical navigation follows the named actions without requiring Tab.
       await openTvMenu(page);
-      await page.locator('[data-tv-focus-key="channels"]').focus();
+      await page.locator('[data-tv-focus-key="broadcast:incomeNews"]').focus();
       await page.keyboard.press('ArrowDown');
       await expect(page.locator('[data-tv-focus-key="customize"]')).toBeFocused();
       await page.keyboard.press('Enter');

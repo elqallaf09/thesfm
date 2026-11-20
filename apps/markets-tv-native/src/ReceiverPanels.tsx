@@ -12,6 +12,7 @@ import { readCatalog, readDirectory, readNews, parsePortfolio, portfolioDisplayV
 import { useResource } from './useResource';
 import { portfolioStatusLabel, r } from './receiverCopy';
 import { TvButton } from './TvControls';
+import { NewsPhoto } from './NewsPhoto';
 
 export function Pages({ page, pages, change }: { page: number; pages: number; change: (page: number) => void }) {
   const { language, row } = usePresentation();
@@ -23,7 +24,7 @@ function Status({ loading, error }: { loading: boolean; error: number | null }) 
   return loading ? <ActivityIndicator color={colors.border} size="large"/> : error ? <Label>{error === 429 ? r(language, 'limit') : t(language, 'error')}</Label> : null;
 }
 export function NewsPanel({ channel, page, changePage, revision }: { channel: TvReceiverNewsChannel; page: number; changePage: (page: number) => void; revision: number }) {
-  const { language } = usePresentation();
+  const { language, row } = usePresentation();
   const load = useCallback((signal: AbortSignal) => readNews(channel, language, signal), [channel, language]);
   const result = useResource(`${channel}:${language}:${revision}`, load, 180_000);
   const data = result.data, pages = Math.max(1, data?.stories.length || 0), current = page % pages;
@@ -31,8 +32,12 @@ export function NewsPanel({ channel, page, changePage, revision }: { channel: Tv
     {data?.partial && <Label muted>{receiverText(language, 'partial')}</Label>}
     {data?.stored && <Label muted>{receiverText(language, 'stored')}</Label>}
     <View style={s.stories}>{data?.stories.slice(current, current + 1).map(story => <Panel key={story.id}>
-      <Label large>{story.title}</Label><Label muted>{`${story.source} · ${kuwaitDate(story.publishedAt)}`}</Label>
-      {story.screening && <Label muted>{receiverText(language, story.screening)}</Label>}
+      <View style={[s.row, row]}>
+        <NewsPhoto story={story}/>
+        <View style={s.storyText}><Label large>{story.title}</Label><Label muted>{`${story.source} · ${kuwaitDate(story.publishedAt)}`}</Label>
+          {story.screening && <Label muted>{receiverText(language, story.screening)}</Label>}
+        </View>
+      </View>
     </Panel>)}</View>
     {data && !data.stories.length && <Label>{t(language, 'noData')}</Label>}
     <Pages page={current} pages={pages} change={changePage}/>
@@ -109,4 +114,4 @@ export function StocksPanel({ kuwait, page, changePage, revision }: { kuwait: bo
 }
 const s = StyleSheet.create({ fill: { flex: 1, gap: 14 }, row: { alignItems: 'center', gap: 24 }, grid: { flex: 1, gap: 18, flexWrap: 'wrap', alignContent: 'flex-start' },
   portfolioScroll: { flex: 1, minHeight: 0, borderWidth: 2, borderRadius: 18 }, portfolioGrid: { gap: 18, flexWrap: 'wrap', alignContent: 'flex-start', alignItems: 'flex-start' },
-  half: { width: '49%' }, third: { width: '32.5%' }, session: { width: '32.5%', borderRadius: 16, borderWidth: 1, padding: 18, gap: 8 }, stories: { flex: 1, gap: 18 } });
+  half: { width: '49%' }, third: { width: '32.5%' }, session: { width: '32.5%', borderRadius: 16, borderWidth: 1, padding: 18, gap: 8 }, stories: { flex: 1, gap: 18 }, storyText: { flex: 1, gap: 12 } });

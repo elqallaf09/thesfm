@@ -6,6 +6,7 @@
 .tv-screen .tv-news-card:focus-visible { outline-offset:-3px; }
 .tv-news-thumbnail { grid-row:1/-1; width:100%; min-width:0; min-height:24px; max-height:100%; aspect-ratio:4/3; display:grid; place-items:center; overflow:hidden; border-radius:var(--radius-control); background:var(--tv-panel); color:var(--tv-accent); }
 .tv-news-thumbnail img { width:100%; height:100%; object-fit:cover; }
+.tv-news-thumbnail img[hidden] { display:none; }
 .tv-news-thumbnail[data-news-image=fallback] { background:var(--tv-news-brand-background); }
 .tv-news-thumbnail[data-news-image=fallback] img { object-fit:contain; }
 .tv-news-fallback-label { display:grid; text-align:center; color:var(--tv-news-brand-text); font-size:clamp(10px,1.1vw,22px); font-weight:700; line-height:1.1; }
