@@ -175,11 +175,13 @@ test('search and market selection reset the page and hold rotation during browsi
   await search.fill(''); await page.clock.runFor(301);
   await next(page).click(); await expectPage(page, 2);
   const market = page.locator('[data-tv-focus-key="stock-market"]');
-  await market.selectOption('KW'); await market.focus();
-  await expectPage(page, 1, 2);
+  await market.focus();
   await page.clock.runFor(24_000);
+  await expectPage(page, 2);
+  await market.selectOption('KW');
   await expectPage(page, 1, 2);
-  await activity(page);
+  await expect(market).toBeFocused();
+  // Completing a market choice resumes playback even if the remote stays here.
   await expectRunning(page);
   await page.clock.runFor(12_000);
   await expectPage(page, 2, 2);
