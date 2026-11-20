@@ -33,7 +33,7 @@ jobs:
       - name: Install Android SDK
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
       - name: Compile Play and Huawei variants
-        run: gradle -p apps/sfm-${{ matrix.product }}/android --no-daemon :app:assemblePlayDebug :app:assembleHuaweiDebug :app:bundlePlayRelease :app:bundleHuaweiRelease
+        run: gradle -p apps/sfm-${{ matrix.product }}/android --no-daemon --max-workers=2 -Dorg.gradle.jvmargs='-Xmx4096m -Dfile.encoding=UTF-8' :app:assemblePlayDebug :app:assembleHuaweiDebug :app:bundlePlayRelease :app:bundleHuaweiRelease
       - uses: actions/upload-artifact@v7
         with:
           name: native-android-${{ matrix.product }}
