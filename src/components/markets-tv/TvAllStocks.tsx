@@ -54,7 +54,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
   const nextPage = useCallback(() => {
     // After the reading interval, give a disappearing row a stable focus target.
     // Leaving the pager focused must never prevent the next automatic page.
-    if (document.activeElement?.closest('.tv-stock-page')) {
+    if (document.activeElement?.closest('.tv-stock-page, .tv-stock-pagination')) {
       document.querySelector<HTMLButtonElement>('[data-tv-focus-key="stocks-playback"]')?.focus({ preventScroll: true });
     }
     setPage(value => (value + 1) % pages);
@@ -63,6 +63,14 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
   const browsing = filterFocused || Boolean(search.trim()) || search.trim() !== query;
   const rotationStatus = hallText(language, directory.data && total === 0 && !directory.error ? 'noResults'
     : waiting ? 'stocksWaiting' : pages <= 1 ? 'stocksSinglePage' : browsing ? 'stocksBrowsing' : 'stocksPaused');
+  function movePage(step: number) {
+    const next = Math.max(0, Math.min(pages - 1, page + step));
+    // Only move focus when its button will become unavailable at an endpoint.
+    if (next === 0 && step < 0 || next === pages - 1 && step > 0) {
+      document.querySelector<HTMLButtonElement>('[data-tv-focus-key="stocks-playback"]')?.focus({ preventScroll: true });
+    }
+    setPage(next);
+  }
   // A catalog refresh can shrink the last page. Clamp only after that response arrives.
   useEffect(() => { if (directory.data && page >= pages) setPage(pages - 1); }, [directory.data, page, pages]);
   const exchanges = markets.filter(item => !['global', 'crypto', 'forex', 'commodities', 'watchlist'].includes(item.group));
@@ -70,7 +78,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
     onFocusCapture={event => setFilterFocused(event.target.matches('input,select'))}
     onBlurCapture={event => setFilterFocused(Boolean(event.relatedTarget instanceof HTMLElement && event.currentTarget.contains(event.relatedTarget) && event.relatedTarget.matches('input,select')))}>
     <div className="tv-hall-title"><div><span>{hallText(language, 'directory')}</span><h1>{hallText(language, 'allStocks')} <bdi>{fullTotal?.toLocaleString('en-US') ?? '—'}</bdi></h1></div><small>{hallText(language, 'directoryNote')}</small><div className="tv-stock-controls">
-      <div className="tv-stock-pagination"><button disabled={page === 0 || directory.loading} onClick={() => setPage(value => value - 1)} aria-label={tvText(language, 'previous')} data-tv-focus-key="stocks-previous">{language === 'ar' ? <ChevronRight/> : <ChevronLeft/>}{tvText(language, 'previous')}</button><span dir="ltr">{page + 1} / {pages.toLocaleString('en-US')}</span><button disabled={page >= pages - 1 || directory.loading} onClick={() => setPage(value => value + 1)} aria-label={tvText(language, 'next')} data-tv-focus-key="stocks-next">{tvText(language, 'next')}{language === 'ar' ? <ChevronLeft/> : <ChevronRight/>}</button></div>
+      <div className="tv-stock-pagination"><button disabled={page === 0} onClick={() => movePage(-1)} aria-label={tvText(language, 'previous')} data-tv-focus-key="stocks-previous">{language === 'ar' ? <ChevronRight/> : <ChevronLeft/>}{tvText(language, 'previous')}</button><span dir="ltr">{page + 1} / {pages.toLocaleString('en-US')}</span><button disabled={page >= pages - 1} onClick={() => movePage(1)} aria-label={tvText(language, 'next')} data-tv-focus-key="stocks-next">{tvText(language, 'next')}{language === 'ar' ? <ChevronLeft/> : <ChevronRight/>}</button></div>
       <TvStockRotation language={language} playing={playing} blocked={suspended || waiting || browsing || pages <= 1} status={rotationStatus} cycle={`${directoryPath}:${activity}`} seconds={priced ? 12 : 8} onToggle={onPlayback} onNext={nextPage}/>
     </div></div>
     <div className="tv-stock-filters"><label className="tv-stock-search"><Search aria-hidden="true"/><input type="search" value={search} maxLength={120} onChange={event => setSearch(event.target.value)} placeholder={hallText(language, 'search')} aria-label={hallText(language, 'search')} data-tv-focus-key="stock-search"/></label>
