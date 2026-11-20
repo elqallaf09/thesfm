@@ -5,6 +5,8 @@ import { receiverText } from '../../src/lib/markets-tv/receiver';
 import { expectNewsPage } from '../helpers/tv-news-pages';
 
 for (const language of ['ar','en','fr'] as const) test(`all news channels: ${language} navigation, source isolation and TV fit`, async ({page}) => {
+  // Exercise every topic at two TV sizes in each language.
+  test.setTimeout(120_000);
   await page.setViewportSize({width:1920,height:1080});
   await page.addInitScript(language => {
     if (!localStorage.getItem('sfm-markets-tv-settings-v1')) localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language,broadcastChannel:'europeNews'}));

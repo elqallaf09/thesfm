@@ -120,7 +120,8 @@ test('receiver refuses unscoped legacy news instead of mixing general stories in
   await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [{ id: 'legacy', title: 'GENERAL LEGACY HEADLINE', source: 'QA', publishedAt: '2026-11-08T07:00:00Z', url: 'https://example.com/story' }] } }));
   await page.keyboard.press('3');
   await expect(page.locator('.tv-receiver-news [role=status]')).toBeVisible();
-  await expect(page.locator('.tv-headline-items')).not.toContainText('GENERAL LEGACY HEADLINE');
+  await expect(page.locator('.tv-receiver-news')).not.toContainText('GENERAL LEGACY HEADLINE');
+  await expect(page.locator('.tv-receiver-news [role=status] button')).toBeVisible();
 });
 
 for (const language of ['ar','en','fr']) test(`receiver ${language}: complete cards and news fit TV and tablet canvases`, async ({ page }, testInfo) => {
