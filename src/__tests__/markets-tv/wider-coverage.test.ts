@@ -99,13 +99,13 @@ describe('verified alternative first', () => {
 });
 
 it('uses the Xetra chart before consuming listing credits and calls it only once on a miss', async () => {
-  const asset = { symbol: 'SAP', name: 'SAP', region: 'TD_XETR', mic: 'XETR', currency: 'EUR', country: 'DE' };
+  const asset = { symbol: 'DBK', name: 'DBK', region: 'TD_XETR', mic: 'XETR', currency: 'EUR', country: 'DE' };
   const time = new Date(now - 90_000).toISOString();
-  fetchHistory.mockResolvedValue({ success: true, providerSymbol: 'SAP.DE', retrievedAt: time,
-    quoteSnapshot: { symbol: 'SAP.DE', exchangeCode: 'GER', assetType: 'EQUITY', currency: 'EUR', price: 184.5, previousClose: 186, marketTime: time } });
+  fetchHistory.mockResolvedValue({ success: true, providerSymbol: 'DBK.DE', retrievedAt: time,
+    quoteSnapshot: { symbol: 'DBK.DE', exchangeCode: 'GER', assetType: 'EQUITY', currency: 'EUR', price: 184.5, previousClose: 186, marketTime: time } });
   const { resolveTvQuotes } = await import('@/lib/server/markets-tv/quoteLoader');
   const [quote] = await resolveTvQuotes([asset], 'europe');
-  expect(quote).toMatchObject({ symbol: 'SAP', exchange: 'TD_XETR', source: 'Yahoo Finance', price: 184.5, observedAt: time });
+  expect(quote).toMatchObject({ symbol: 'DBK', exchange: 'TD_XETR', source: 'Yahoo Finance', price: 184.5, observedAt: time });
   expect(providerQuote).not.toHaveBeenCalled();
   fetchHistory.mockReset().mockResolvedValue({ success: false, unavailableReason: 'provider_returned_empty' });
   providerQuote.mockResolvedValue({ price: null, issue: 'rate_limited', retryAt: new Date(now + 60_000).toISOString() });
