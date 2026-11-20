@@ -1,4 +1,4 @@
-import { openAndroidTvPackage, closeTvMenu, chooseTvBroadcast } from './packageHarness';
+import { openAndroidTvPackage, closeTvMenu, chooseTvDestination, chooseTvBroadcast } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 
 // Financial values below are isolated browser fixtures, never app fallbacks.
@@ -19,7 +19,7 @@ async function open(page: Page, language = 'ar') {
     return route.fulfill({ json: { quotes, available: size - 1, total: size, directoryTotal: kuwait ? 12 : 24, generatedAt: '2026-11-08T07:10:00Z' } });
   });
   await page.route('**/api/tv/news?*', route => {
-    const channel = new URL(route.request().url()).searchParams.get('channel') || 'general';
+    const channel = new URL(route.request().url()).searchParams.get('channel') || 'all';
     return route.fulfill({ json: { channel, stories: Array.from({ length: 6 }, (_, index) => ({ id: `${channel}-${index}`, title: `${channel} ${index} · أخبار الشركات المدرجة ونتائجها المالية وتطورات استثماراتها وأعمالها خلال جلسات التداول الأخيرة مع مصادر وتواريخ النشر الأصلية`, source: 'QA source', publishedAt: '2026-11-08T07:00:00Z', url: 'https://example.com/story' })) } });
   });
   await openAndroidTvPackage(page);
@@ -49,6 +49,44 @@ test('receiver numbers and channel keys select separate feeds, respect dialogs a
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'kuwait');
   await page.reload();await closeTvMenu(page);
   await expect(page.locator('.tv-receiver-kuwait .tv-strip-symbol b').first()).toHaveText('KW0');
+});
+
+test('News opens the general feed and keeps topics inside the news page', async ({ page }) => {
+  await open(page);
+  await chooseTvDestination(page, 'news');
+  await expect(page.locator('.tv-receiver-heading h1')).toHaveText('أخبار الأسواق');
+  await expect(page.locator('.tv-news-card').first()).toContainText('all 0');
+  await page.locator('[data-tv-focus-key="news-topics"]').click();
+  await expect(page.locator('[data-tv-focus-key="topic:news"]')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('[data-tv-focus-key="topic:technology"]')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-news-card').first()).toContainText('technology 0');
+  await chooseTvDestination(page, 'news');
+  await page.reload();
+  await closeTvMenu(page);
+  await expect(page.locator('.tv-news-card').first()).toContainText('all 0');
+});
+
+test('empty headlines are centered and readable on a television', async ({ page }) => {
+  await open(page);
+  await page.route('**/api/market/special-news?*', route => route.fulfill({ json: { topic: 'stocks-under-1', items: [], success: true } }));
+  await chooseTvBroadcast(page, 'underDollarNews');
+  const status = page.locator('.tv-news-desk [role="status"]');
+  await expect(status).toHaveText('لا توجد أخبار متاحة الآن');
+  for (const [width, height] of [[960, 540], [1920, 1080]]) {
+    await page.setViewportSize({ width, height });
+    const layout = await status.evaluate(node => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const text = range.getBoundingClientRect();
+      return { size: parseFloat(getComputedStyle(node).fontSize), x: text.x + text.width / 2, y: text.y + text.height / 2 };
+    });
+    expect(layout.size).toBeGreaterThanOrEqual(width >= 1920 ? 36 : 24);
+    expect(Math.abs(layout.x - width / 2)).toBeLessThan(width * .1);
+    expect(layout.y).toBeGreaterThan(height * .35);
+    expect(layout.y).toBeLessThan(height * .8);
+  }
 });
 
 test('all-stock broadcast gives each exchange airtime every forty seconds and remembers batches', async ({ page }) => {

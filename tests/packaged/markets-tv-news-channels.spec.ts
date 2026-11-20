@@ -2,7 +2,6 @@ import { openAndroidTvPackage, openTvMenu, closeTvMenu } from './packageHarness'
 import { expect, test } from '@playwright/test';
 import { TV_EXTRA_NEWS_CHANNELS, TV_NEWS_FEEDS } from '../../src/lib/markets-tv/newsReceiver';
 import { receiverText } from '../../src/lib/markets-tv/receiver';
-import { focusTvMenuAction } from '../helpers/tv-menu-layout';
 import { expectNewsPage } from '../helpers/tv-news-pages';
 
 for (const language of ['ar','en','fr'] as const) test(`all news channels: ${language} navigation, source isolation and TV fit`, async ({page}) => {
@@ -23,13 +22,15 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   const nav=page.locator('.tv-side-menu-items');
   for (let index=0;index<TV_EXTRA_NEWS_CHANNELS.length;index++) {
     const channel=TV_EXTRA_NEWS_CHANNELS[index];
-    await openTvMenu(page);
-    const target = nav.locator(`[data-tv-focus-key="broadcast:${channel}"]`);
+    await page.locator('[data-tv-focus-key="news-topics"]').click();
+    const target = page.locator(`[data-tv-focus-key="topic:${channel}"]`);
     for (const [width, height] of [[960,540],[1920,1080]]) {
       await page.setViewportSize({ width, height });
-      await focusTvMenuAction(page, `broadcast:${channel}`);
+      await target.focus();
+      await expect(target).toBeInViewport();
     }
     await target.press('Enter');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('.tv-side-menu')).toHaveCount(0);
     await expect(page.locator('.tv-receiver-heading h1')).toHaveText(receiverText(language,channel));
     const path=TV_NEWS_FEEDS[channel], parsed=new URL(path,'https://www.the-sfm.com');
@@ -54,7 +55,7 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await page.reload();await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','cyclicalNews');
   await openTvMenu(page);
-  await expect(nav.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key','broadcast:cyclicalNews');
+  await expect(nav.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key','menu:news');
   await page.keyboard.press('Escape');
   await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
   const cards=page.locator('.tv-headline-items button');

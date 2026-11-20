@@ -1,7 +1,7 @@
 import type { TvLanguage, TvView } from './types';
 import { TV_EXTRA_NEWS_CHANNELS, TV_NEWS_LABELS } from './newsReceiver';
 
-export const TV_RECEIVER_CHANNELS = ['allStocks', 'technology', 'kuwait', 'sessions', 'investments', ...TV_EXTRA_NEWS_CHANNELS] as const;
+export const TV_RECEIVER_CHANNELS = ['allStocks', 'technology', 'kuwait', 'sessions', 'investments', ...TV_EXTRA_NEWS_CHANNELS, 'news'] as const;
 export type TvReceiverChannel = typeof TV_RECEIVER_CHANNELS[number];
 export function isTvReceiverChannel(value: unknown): value is TvReceiverChannel {
   return TV_RECEIVER_CHANNELS.includes(value as TvReceiverChannel);
@@ -13,6 +13,8 @@ export function nextTvReceiverChannel(view: TvView, step: number): TvReceiverCha
 }
 const COPY = {
   ...TV_NEWS_LABELS,
+  news: ['أخبار الأسواق', 'Market news', 'Actualités des marchés'],
+  newsTopics: ['أقسام الأخبار', 'News sections', 'Rubriques d’actualité'],
   allStocks: ['كل الأسهم', 'All stocks', 'Toutes les actions'],
   technology: ['أخبار أسهم التقنية', 'Technology stocks news', 'Actualités des valeurs technologiques'],
   kuwait: ['بورصة الكويت', 'Boursa Kuwait', 'Bourse du Koweït'],
