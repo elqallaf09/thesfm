@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';
-import { receiverText } from '@/lib/markets-tv/receiver';
+import { receiverText, TV_RECEIVER_CHANNELS, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
+import type { TvChannel } from '@/lib/markets-tv/channels';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import './side-menu.css';
@@ -19,14 +20,19 @@ type Props = {
   language: TvLanguage;
   open: boolean;
   active?: TvSideDestination;
+  activeBroadcast?: TvReceiverChannel;
   paired: boolean;
   deviceName?: string;
   onClose: () => void;
   onNavigate: (destination: TvSideDestination) => void;
   onChannels: () => void;
+  channels: TvChannel[];
+  onBroadcast: (channel: TvReceiverChannel) => void;
+  onSavedChannel: (channel: TvChannel) => void;
   onCustomize: () => void;
   onSettings: () => void;
   onAccount: () => void;
+  onSwitchAccount: () => void;
   onTools: () => void;
 };
 
@@ -40,7 +46,7 @@ export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => C
 
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
-export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, onChannels, onCustomize, onSettings, onAccount, onTools }: Props) {
+export function TvSideMenu({ language, open, active, activeBroadcast, paired, deviceName, onClose, onNavigate, channels, onChannels, onBroadcast, onSavedChannel, onCustomize, onSettings, onAccount, onSwitchAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const copy = COPY[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -61,11 +67,14 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     route('investments', t('investments'), WalletCards),
     route('brief', t('brief'), Newspaper),
     route('map', t('map'), Map),
+    ...TV_RECEIVER_CHANNELS.filter(channel => !['allStocks', 'kuwait', 'sessions', 'investments'].includes(channel)).map(channel => ({ key: `broadcast:${channel}`, label: receiverText(language, channel), icon: Tv, action: () => onBroadcast(channel) })),
+    ...channels.map(channel => ({ key: `saved:${channel.id}`, label: channel.name, icon: Tv, action: () => onSavedChannel(channel) })),
     { key: 'channels', label: t('channels'), icon: Tv, action: onChannels },
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },
   ];
-  const keys = ['menu-close', ...items.map(item => item.key), 'pair', 'more'];
+  const keys = ['menu-close', ...items.map(item => item.key), 'switch-account', 'pair', 'more'];
+  const selectedKey = activeBroadcast && items.some(item => item.key === `broadcast:${activeBroadcast}`) ? `broadcast:${activeBroadcast}` : `menu:${active || 'hall'}`;
   const neighbors = (key: string) => {
     const index = keys.indexOf(key);
     return { 'data-tv-nav-up': keys[Math.max(0, index - 1)], 'data-tv-nav-down': keys[Math.min(keys.length - 1, index + 1)] };
@@ -76,7 +85,7 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     const target = panel.current?.querySelector<HTMLElement>('[data-tv-initial-focus]');
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
-  }, [open, active]);
+  }, [open, active, activeBroadcast]);
 
   function leave(action: () => void) {
     // A global dialog must remember this durable handle, not a drawer row
@@ -94,14 +103,15 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
         <button type="button" className="tv-side-menu-close" onClick={() => leave(onClose)} data-tv-focus-key="menu-close" data-tv-back {...neighbors('menu-close')}><X aria-hidden="true"/><span>{t('close')}</span></button>
       </header>
       <nav className="tv-side-menu-items" aria-label={copy.menu} style={{ '--tv-menu-rows': items.length } as CSSProperties}>
-        {items.map(({ key, label, icon: Icon, destination, action }) => <button key={key} type="button" onClick={() => leave(action)} data-tv-focus-key={key} {...neighbors(key)}
-          aria-current={destination && active === destination ? 'page' : undefined}
-          data-tv-initial-focus={destination === (active || 'hall') ? '' : undefined}>
+        {items.map(({ key, label, icon: Icon, action }) => <button key={key} type="button" onClick={() => leave(action)} data-tv-focus-key={key} {...neighbors(key)}
+          aria-current={key === selectedKey ? 'page' : undefined}
+          data-tv-initial-focus={key === selectedKey ? '' : undefined}>
           <Icon aria-hidden="true"/><span>{label}</span>
         </button>)}
       </nav>
       <footer className="tv-side-menu-account">
         <p className="tv-side-menu-account-name" title={paired && deviceName ? deviceName : undefined}>{paired && deviceName ? <bdi>{deviceName}</bdi> : paired ? copy.account : copy.guest}</p>
+        <button type="button" onClick={() => leave(onSwitchAccount)} data-tv-focus-key="switch-account" {...neighbors('switch-account')}><LogIn aria-hidden="true"/><span>{language === 'ar' ? 'تبديل الحساب / إضافة حساب' : language === 'fr' ? 'Changer / ajouter un compte' : 'Switch / add account'}</span></button>
         <button type="button" onClick={() => leave(onAccount)} data-tv-focus-key="pair" {...neighbors('pair')}><AccountIcon aria-hidden="true"/><span>{paired ? copy.signOut : copy.signIn}</span></button>
         <button type="button" onClick={() => leave(onTools)} data-tv-focus-key="more" {...neighbors('more')}><Wrench aria-hidden="true"/><span>{copy.tools}</span></button>
       </footer>

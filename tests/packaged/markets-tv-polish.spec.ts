@@ -33,17 +33,21 @@ test('welcome uses the official logo and plays an actual audio graph after a cli
   await closeTvMenu(page);
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('[data-tv-focus-key=settings-tab-playback]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
   expect(await page.evaluate(() => (window as Window & { sfmToneCount?: number }).sfmToneCount)).toBeGreaterThanOrEqual(3);
   await expect.poll(() => page.locator('.sfm-startup-brand').evaluate(el => Number(getComputedStyle(el).opacity))).toBeGreaterThan(.9);
   await page.screenshot({ path: test.info().outputPath('welcome.png') });
-  await page.getByRole('button', { name: 'تخطي', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^(تخطي|Skip|Passer)$/ })).toHaveCount(0);
   await expect(page.locator('.sfm-startup')).toHaveCount(0);
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('[data-tv-focus-key=settings-tab-playback]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').focus(); await page.keyboard.press('Enter');
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
+  await expect(page.getByRole('button', { name: /^(تخطي|Skip|Passer)$/ })).toHaveCount(0);
+  await expect(page.locator('.sfm-startup')).toHaveCount(0);
 });
 
 test('display navigation retains the packaged document, focus, language and startup session', async ({ page }) => {
@@ -107,6 +111,7 @@ test('welcome plays once per app session, survives navigation and reload, and st
   await closeTvMenu(page);
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('[data-tv-focus-key=settings-tab-playback]').click();
   await page.locator('[data-tv-focus-key=replay-intro]').click();
   await expect(page.locator('.sfm-startup')).toHaveAttribute('data-sound', 'playing');
   const freshSession = await context.newPage();

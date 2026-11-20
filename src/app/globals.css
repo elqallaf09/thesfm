@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Guard probes deliberately contain forbidden utilities, not application templates. */
+@source not "../__tests__/unit/visualSystemGuard.test.ts";
 @import "../styles/tokens.css";
 @import "../styles/themes.css";
 @import "../styles/scopes.css";

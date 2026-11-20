@@ -1,14 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { usePresentation } from './presentation';
 
-export function TvButton({ children, onPress, selected = false, initial = false, label, style }: {
-  children: ReactNode; onPress: () => void; selected?: boolean; initial?: boolean; label?: string; style?: StyleProp<ViewStyle>;
+export function TvButton({ children, onPress, selected = false, initial = false, label, style, disabled = false }: {
+  children: ReactNode; onPress: () => void; selected?: boolean; initial?: boolean; label?: string; style?: StyleProp<ViewStyle>; disabled?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected }}
+  const { colors } = usePresentation();
+  return <Pressable disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected, disabled }}
     hasTVPreferredFocus={initial} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onPress={onPress}
-    style={[styles.button, selected && styles.selected, focused && styles.focused, style]}>
-    {typeof children === 'string' ? <Text style={styles.label}>{children}</Text> : children}
+    style={[styles.button, { backgroundColor: colors.panel, borderColor: colors.muted, opacity: disabled ? .5 : 1 }, selected && { borderColor: colors.border }, focused && { borderColor: colors.border, borderWidth: 4 }, style]}>
+    {typeof children === 'string' ? <Text style={[styles.label, { color: colors.text, fontSize: 26 }]}>{children}</Text> : children}
   </Pressable>;
 }
 export function Metric({ label, value }: { label: string; value: string }) {

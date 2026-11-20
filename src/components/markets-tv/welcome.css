@@ -1,4 +1,4 @@
-.sfm-startup { position: fixed; inset: 0; z-index: 99999; display: grid; place-content: center; gap: 2em; background: var(--tv-bg); color: var(--tv-text); pointer-events: none; animation: sfm-welcome-exit 3.6s ease-in-out forwards; }
+.sfm-startup { position: fixed; inset: 0; z-index: 99999; display: grid; place-content: center; gap: 2em; background: var(--tv-bg); color: var(--tv-text); pointer-events: auto; animation: sfm-welcome-exit 3.6s ease-in-out forwards; }
 .sfm-startup-brand { display: flex; flex-direction: column; align-items: center; direction: ltr; animation: sfm-welcome-ident 3.6s ease-in-out forwards; }
 .sfm-startup-brand img { width: clamp(100px, 11vw, 220px); height: auto; object-fit: contain; margin-bottom: .9em; }
 .sfm-startup-brand strong { font: 600 clamp(30px, 3.4vw, 66px)/1.2 var(--font-ui); letter-spacing: .12em; }

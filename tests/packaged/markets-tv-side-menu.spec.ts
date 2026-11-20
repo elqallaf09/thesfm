@@ -1,13 +1,13 @@
 import { openAndroidTvPackage, openTvMenu, closeTvMenu, openTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page } from '@playwright/test';
 import type { TvLanguage } from '../../src/lib/markets-tv/types';
+import { expectTvMenuActionFits, expectTvMenuRemoteAccess, focusTvMenuAction, TV_MENU_KEYS } from '../helpers/tv-menu-layout';
 
 const instant = '2026-11-19T10:00:00Z';
 const deviceToken = 'c'.repeat(64);
 const signIn = { ar: 'تسجيل الدخول', en: 'Sign in', fr: 'Se connecter' };
 const signOut = { ar: 'تسجيل الخروج', en: 'Sign out', fr: 'Se déconnecter' };
-const routeKeys = ['hall', 'allStocks', 'strips', 'world', 'gulf', 'assets', 'kuwait', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
-const orderedKeys = ['menu-close', ...routeKeys.map(key => `menu:${key}`), 'channels', 'customize', 'settings', 'pair', 'more'];
+const orderedKeys = TV_MENU_KEYS;
 
 async function fixture(page: Page, language: TvLanguage = 'ar', theme: 'light' | 'dark' = 'light', paired = false, options: { allocationCount?: number; ticker?: boolean } = {}) {
   await page.clock.install({ time: new Date(instant) });
@@ -43,7 +43,7 @@ async function fixture(page: Page, language: TvLanguage = 'ar', theme: 'light' |
     } });
     return route.fulfill({ json: { stories: [], items: [], points: [], total: 0 } });
   });
-  await openAndroidTvPackage(page, { keepMenu: true });
+  await openAndroidTvPackage(page, { keepMenu: true, profile: paired ? 0 : undefined });
   await expect(page.locator('.tv-side-menu')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   return requests;
@@ -54,28 +54,13 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     await page.setViewportSize({ width: 1920, height: 1080 });
     await fixture(page, language, theme);
     const menu = page.locator('.tv-side-menu');
-    await expect(menu.locator('button')).toHaveCount(19);
+    await expect(menu.locator('button')).toHaveCount(orderedKeys.length);
     await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveText(signIn[language]);
     await expect(page.locator('.tv-header-actions,.tv-viewing-nav,.tv-scene-tabs,.tv-footer')).toHaveCount(0);
     await expect(menu.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key', 'menu:hall');
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [390, 844]]) {
       await page.setViewportSize({ width, height });
-      await expect(menu).toBeInViewport({ ratio: 1 });
-      await expect.poll(() => menu.evaluate(element => {
-        const bounds = element.getBoundingClientRect();
-        const buttons = [...element.querySelectorAll('button')];
-        const violations: string[] = [];
-        for (const button of buttons) {
-          const rect = button.getBoundingClientRect(), label = button.querySelector('span'), icon = button.querySelector('svg');
-          if (!label || !icon || !label.textContent?.trim()) violations.push('missing visible icon label');
-          if (label && (getComputedStyle(label).display === 'none' || label.getBoundingClientRect().width === 0 || parseFloat(getComputedStyle(label).fontSize) < 14)) violations.push('unreadable label');
-          if (rect.left < bounds.left - 1 || rect.right > bounds.right + 1 || rect.top < bounds.top - 1 || rect.bottom > bounds.bottom + 1) violations.push('offscreen action');
-          if (button.scrollWidth > button.clientWidth + 1 || button.scrollHeight > button.clientHeight + 1) violations.push('clipped action');
-        }
-        const list = element.querySelector('.tv-side-menu-items')!;
-        if (list.scrollHeight > list.clientHeight + 1) violations.push('scrolling primary list');
-        return violations;
-      })).toEqual([]);
+      await expectTvMenuRemoteAccess(page, orderedKeys);
       const box = (await menu.boundingBox())!;
       if (language === 'ar') expect(box.x + box.width).toBeCloseTo(width, 0);
       else expect(box.x).toBeCloseTo(0, 0);
@@ -95,13 +80,13 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await page.locator('[data-tv-focus-key=menu-close]').focus();
     for (const key of orderedKeys.slice(1)) {
       await page.keyboard.press('ArrowDown');
-      await expect(page.locator(`[data-tv-focus-key="${key}"]`)).toBeFocused();
+      await expectTvMenuActionFits(page, key);
     }
     await page.keyboard.press('ArrowDown');
     await expect(page.locator('[data-tv-focus-key=more]')).toBeFocused();
     for (const key of orderedKeys.slice(0, -1).reverse()) {
       await page.keyboard.press('ArrowUp');
-      await expect(page.locator(`[data-tv-focus-key="${key}"]`)).toBeFocused();
+      await expectTvMenuActionFits(page, key);
     }
     const before = await page.evaluate(() => localStorage.getItem('sfm-markets-tv-settings-v1'));
     for (const key of ['2', 'MediaPlayPause']) await page.keyboard.press(key);
@@ -128,6 +113,31 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
   });
 }
+
+test('saved channels open directly from the sidebar and their manager contains saved displays', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-channels-v1', JSON.stringify([{
+    id: 'office-screen', name: 'Saved office screen', view: 'technology', selections: {},
+    settings: { language: 'fr', theme: 'dark', displayMode: 'viewing', broadcastChannel: 'technology', autoRotate: false, sessionAutoRotate: false },
+  }])));
+  await page.setViewportSize({ width: 960, height: 540 });
+  await fixture(page, 'en');
+  const insertion = orderedKeys.indexOf('channels');
+  await expectTvMenuRemoteAccess(page, [...orderedKeys.slice(0, insertion), 'saved:office-screen', ...orderedKeys.slice(insertion)]);
+  await focusTvMenuAction(page, 'channels');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-channel')).toHaveCount(1);
+  await expect(page.locator('.tv-channel')).toContainText('Saved office screen');
+  await expect(page.locator('.tv-receiver-nav,[data-tv-focus-key^="channel:"]')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await openTvMenu(page);
+  await focusTvMenuAction(page, 'saved:office-screen');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-side-menu')).toHaveCount(0);
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', 'technology');
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('lang', 'fr');
+  await expect(page.locator('[data-tv-root]')).toHaveClass(/tv-dark/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').broadcastChannel)).toBe('technology');
+});
 
 test('guest signs in through the existing pairing flow and sees a labelled sign-out action', async ({ page }) => {
   await fixture(page, 'en');
@@ -285,6 +295,7 @@ test('side menu owns destinations and settings while market hours keep the full 
   await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('[data-tv-focus-key=settings-tab-playback]').click();
   await expect(page.locator('.tv-settings [data-tv-focus-key=replay-intro]')).toBeVisible();
   await page.keyboard.press('Escape');
   await chooseTvDestination(page, 'sessions');

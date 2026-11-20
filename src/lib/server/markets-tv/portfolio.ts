@@ -3,6 +3,7 @@ import { normalizeInvestment, type DbInvestmentRow } from '@/lib/investments/inv
 import { portfolioCurrency } from '@/lib/investments/recordedPortfolio';
 import { tvPortfolioSnapshot } from '@/lib/markets-tv/portfolio';
 import { tvDb } from './devices';
+import { withPortfolioMarketValues } from './portfolioMarketValues';
 
 export async function ownedTvPortfolio(userId: string, requestedCurrency?: string | null) {
   const db = tvDb();
@@ -21,5 +22,6 @@ export async function ownedTvPortfolio(userId: string, requestedCurrency?: strin
     if (!data || data.length < batch) break;
     if (rows.length >= 10000) throw new Error('PORTFOLIO_TOO_LARGE');
   }
-  return tvPortfolioSnapshot(rows.map(row => normalizeInvestment(row)), currency);
+  const items = rows.map(row => normalizeInvestment(row));
+  return withPortfolioMarketValues(items, tvPortfolioSnapshot(items, currency));
 }

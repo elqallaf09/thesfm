@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "SFM TV",
+    "slug": "sfm-tv-mobile",
+    "owner": "elqallaf09",
+    "version": "1.0.0",
+    "orientation": "default",
+    "platforms": ["ios", "android"],
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/brand.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#071A16"
+    },
+    "ios": {
+      "bundleIdentifier": "com.thesfm.marketstv.mobile",
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "infoPlist": { "ITSAppUsesNonExemptEncryption": false }
+    },
+    "android": {
+      "package": "com.thesfm.marketstv.mobile",
+      "allowBackup": false,
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE"],
+      "blockedPermissions": ["android.permission.SYSTEM_ALERT_WINDOW", "android.permission.RECORD_AUDIO", "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"]
+    }
+  }
+}

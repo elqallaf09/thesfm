@@ -61,8 +61,10 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('#tv-settings-tab-display').click();
   await page.getByRole('button', { name: 'مضغوط', exact: true }).click();
-  await page.locator('.tv-language-setting select').selectOption('fr');
+  await page.locator('#tv-settings-tab-appearance').click();
+  await page.locator('.tv-language-options').getByRole('button', { name: 'Français', exact: true }).click();
   await page.keyboard.press('Escape');
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=channels]').click();
@@ -72,8 +74,10 @@ test('TV channels restore stock choices, order, per-market speed, density and la
   await page.keyboard.press('Escape');
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
+  await page.locator('#tv-settings-tab-display').click();
   await page.getByRole('button', { name: 'Confortable', exact: true }).click();
-  await page.locator('.tv-language-setting select').selectOption('en');
+  await page.locator('#tv-settings-tab-appearance').click();
+  await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.reload(); await closeTvMenu(page);
   await openTvMenu(page);
@@ -104,6 +108,7 @@ test('TV density preserves source evidence, batch coverage and responsive layout
   for (const density of ['مريح', 'متوازن', 'مضغوط']) {
     await openTvMenu(page);
     await page.locator('[data-tv-focus-key=settings]').click();
+    await page.locator('#tv-settings-tab-display').click();
     await page.getByRole('button', { name: density, exact: true }).click();
     await page.keyboard.press('Escape');
     heights.push((await row.boundingBox())!.height);
