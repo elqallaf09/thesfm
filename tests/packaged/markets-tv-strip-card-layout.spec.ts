@@ -16,7 +16,7 @@ const fixtures: TvQuote[] = [
   { symbol: 'NYMEX:NG1!', name: 'Natural gas continuous contract', nameAr: 'الغاز الطبيعي — عقد مستمر', price: 3.381, currency: 'USD', changePercent: -2.60 },
   { symbol: 'GBP/USD', name: 'British pound / US dollar', nameAr: 'الجنيه الإسترليني / الدولار الأمريكي', price: 1.310600, currency: 'USD', changePercent: .11 },
   { symbol: 'LONG', displaySymbol: 'LONGLISTING.PREFERRED-A', name: 'A company with a deliberately long investment name', nameAr: 'شركة ذات اسم استثماري طويل لاختبار وضوح البطاقة', price: .183, currency: 'KWD', changePercent: 0 },
-].map(quote => ({ ...quote, source: 'Fixture source', observedAt, receivedAt: now, status: 'stale', exchange: 'QA', country: null }));
+].map(quote => ({ ...quote, source: 'Fixture source', observedAt, receivedAt: now, status: 'stale', exchange: quote.symbol === 'GBP/USD' ? 'FOREX' : 'QA', country: null }));
 
 async function openStrips(page: Page, language: TvLanguage, theme: Theme, stripDensity: Density, sparse = false) {
   await page.clock.install({ time: new Date(now) });
@@ -110,6 +110,7 @@ for (const { language, theme, stripDensity, width, height } of cases) {
     await expectReadableCards(cards);
     await expect(cards.nth(2).locator('.tv-strip-price')).toContainText('USD / oz');
     await expect(cards.nth(3).locator('.tv-strip-price')).toContainText('USD / MMBtu');
+    await expect(cards.nth(4).locator('.tv-strip-price')).toContainText('1.310600');
     await expect(cards.first().locator('.tv-strip-evidence time')).toContainText('2026-11-19');
     const summarySeparated = await strip.evaluate(element => {
       const summary = element.querySelector('.tv-market-strip-heading')!.getBoundingClientRect();

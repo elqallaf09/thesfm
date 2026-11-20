@@ -84,13 +84,13 @@
   align-content: center;
   column-gap: .55em;
   row-gap: .3em;
-  min-height: var(--tv-readable-card-height);
-  padding: var(--tv-readable-card-padding);
   line-height: 1.3;
 }
 .tv-screen .tv-readable-strips .tv-market-strip-set .tv-market-strip-item {
   width: var(--tv-readable-card-width);
   min-width: var(--tv-readable-card-width);
+  min-height: var(--tv-readable-card-height);
+  padding: var(--tv-readable-card-padding);
 }
 .tv-screen .tv-readable-strips .tv-market-strip .tv-market-strip-item > .tv-asset-icon {
   grid-column: 1;
