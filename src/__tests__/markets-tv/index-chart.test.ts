@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeYahooChartHistory } from '@/lib/market/fetchYahooHistory';
-import { isTvExternalIndex, tvIndexSessionPoints, verifiedTvIndex } from '@/lib/markets-tv/indexChart';
+import { isTvExternalIndex, tvIndexSessionClosed, tvIndexSessionPoints, verifiedTvIndex } from '@/lib/markets-tv/indexChart';
 
 const now = Date.parse('2026-11-06T15:00:00Z');
 function data(overrides: Record<string, unknown> = {}) {
@@ -84,5 +84,31 @@ describe('TV external cash-index coverage for quota-paused primaries', () => {
     const quote = verifiedTvIndex('^N225' as never, index('^N225', 'JPY', { regularMarketTime: now / 1000 - 6 * 3600 }), now)!.quote;
     expect(quote.status).toBe('stale');
     expect(quote.observedAt).toBe(new Date(now - 6 * 3600_000).toISOString());
+  });
+});
+
+describe('TV index session status', () => {
+  const session = (start: number, end: number) => ({ currentTradingPeriod: { regular: { start: start / 1000, end: end / 1000 } } });
+  it('marks an index closed after its session ends, keeping the closing clock', () => {
+    // DAX closed at 16:30 UTC; the last value is 16:35 and it is now 15:00 the next day.
+    const close = Date.parse('2026-11-05T16:35:00Z'), later = Date.parse('2026-11-06T15:00:00Z');
+    const quote = verifiedTvIndex('^GDAXI', data({ regularMarketTime: close / 1000, ...session(Date.parse('2026-11-05T08:00:00Z'), Date.parse('2026-11-05T16:30:00Z')) }), later)!.quote;
+    expect(quote).toMatchObject({ status: 'closed', observedAt: new Date(close).toISOString(), observation: { marketOpen: false } });
+  });
+  it('accepts a closing value a few minutes before Yahoo marks the session end', () => {
+    expect(tvIndexSessionClosed({ start: now - 25_000_000, end: now - 3_600_000 }, now - 3_720_000, now)).toBe(true);
+    expect(tvIndexSessionClosed({ start: now - 25_000_000, end: now - 3_600_000 }, now - 7_200_000, now)).toBe(false);
+  });
+  it('marks a value from before the next session as closed while it waits to open', () => {
+    expect(tvIndexSessionClosed({ start: now + 3_600_000, end: now + 30_000_000 }, now - 36_000_000, now)).toBe(true);
+  });
+  it('never claims closed during a session or without a session clock', () => {
+    expect(tvIndexSessionClosed({ start: now - 3_600_000, end: now + 3_600_000 }, now - 60_000, now)).toBe(false);
+    expect(tvIndexSessionClosed(undefined, now - 36_000_000, now)).toBe(false);
+    expect(verifiedTvIndex('^GDAXI', data({ regularMarketTime: now / 1000 - 600, ...session(now - 3_600_000, now + 3_600_000) }), now)!.quote.status).toBe('delayed');
+  });
+  it('still flags a week-old close as stale', () => {
+    const close = now - 8 * 86_400_000;
+    expect(verifiedTvIndex('^GDAXI', data({ regularMarketTime: close / 1000, ...session(close - 30_000_000, close - 60_000) }), now)!.quote.status).toBe('stale');
   });
 });
