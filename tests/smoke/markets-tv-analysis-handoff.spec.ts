@@ -71,8 +71,14 @@ test('ordinary analysis links remain read-only until the user runs analysis', as
   let posts = 0;
   await page.route('**/api/intelligence/analyze', route => { posts++; return route.fulfill({ status: 503, json: { ok: false } }); });
   await page.goto('/ai-analyst/analyze/AAPL?assetType=STOCK&autoRun=1');
-  await expect(page.getByTestId('ai-analyst-research-workspace')).toBeVisible();
+  const workspace = page.getByTestId('ai-analyst-research-workspace');
+  // A streamed root can be hidden before briefly coexisting with its hydrated replacement.
+  await expect(async () => {
+    await expect(workspace).toHaveCount(1);
+    await expect(workspace).toBeVisible();
+  }).toPass({ timeout: 15_000 });
   await expect(page.getByTestId('ai-agent-task-status')).toBeVisible();
   await page.waitForTimeout(1000);
+  await expect(workspace).toHaveCount(1);
   expect(posts).toBe(0);
 });
