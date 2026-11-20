@@ -132,6 +132,11 @@
   .tv-screen .tv-scene-heatmap .tv-scene-change { grid-column: 1/-1; flex-direction: row; align-items: baseline; gap: .3em; font-size: max(13px, .9em); line-height: 1.2; }
   .tv-screen .tv-scene-heatmap .tv-scene-change small { font-size: 13px; line-height: 1.2; }
   .tv-screen .tv-scene-heatmap .tv-evidence-stacked { grid-column: 1/-1; font-size: 13px; line-height: 1.2; gap: .05em; }
+  /* A wrapped provider/status row made a card taller than this scroll window.
+     Keep the status and time readable; the provider name can use its ellipsis. */
+  .tv-screen .tv-scene-heatmap .tv-evidence-origin { flex-wrap: nowrap; width: 100%; gap: .35em; }
+  .tv-screen .tv-scene-heatmap .tv-evidence-origin > .tv-scene-source { min-width: 0; flex: 1; }
+  .tv-screen .tv-scene-heatmap .tv-evidence-origin > .tv-status { flex-shrink: 0; }
 }
 @media (min-width: 761px) and (max-height: 650px), (min-width: 761px) and (max-width: 1200px) {
   .tv-screen .tv-scene-summary { grid-template-columns: minmax(0, 1fr) auto; padding: .45em .7em; gap: .2em .4em; }

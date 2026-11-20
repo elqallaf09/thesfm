@@ -3,11 +3,14 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'src/app/tv/**'
       - 'src/components/markets-tv/**'
       - 'src/lib/markets-tv/**'
       - 'tests/packaged/markets-tv-stock-rotation.spec.ts'
       - 'tests/packaged/markets-tv-ticker-playback.spec.ts'
       - 'tests/packaged/markets-tv-browse-fit.spec.ts'
+      - 'tests/packaged/markets-tv-readiness.spec.ts'
+      - 'tests/packaged/trading-hall.spec.ts'
       - '.github/workflows/tv-stock-rotation.yml'
   workflow_dispatch:
 permissions:
@@ -36,6 +39,8 @@ jobs:
         run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/markets-tv-stock-rotation.spec.ts tests/packaged/markets-tv-browse-fit.spec.ts --output=test-results/stock-rotation
       - name: Verify independent media playback
         run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/markets-tv-ticker-playback.spec.ts --grep 'all-stocks media' --output=test-results/stock-playback
+      - name: Verify empty search and compact screen remote visibility
+        run: pnpm exec playwright test --config=playwright.tv.config.ts tests/packaged/markets-tv-readiness.spec.ts tests/packaged/trading-hall.spec.ts --grep 'readiness (light|dark) 960x540|empty stocks and unpaired investments|search finds remote directory pages' --output=test-results/stock-integration
       - name: Keep stock directory screenshots and traces
         if: always()
         uses: actions/upload-artifact@v7

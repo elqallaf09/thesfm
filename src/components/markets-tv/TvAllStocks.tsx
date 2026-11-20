@@ -61,7 +61,7 @@ export function TvAllStocks({ language, now, markets, ready, revision, news, new
   }, [pages]);
   const waiting = !ready || !items.length || !quotes.data || quotes.loading || Boolean(quotes.error) || directory.loading || Boolean(directory.error) || cooling;
   const browsing = filterFocused || Boolean(search.trim()) || search.trim() !== query;
-  const rotationStatus = hallText(language, directory.data && total === 0 && !directory.error ? 'noResults'
+  const rotationStatus = hallText(language, directory.data && total === 0 && !directory.error ? 'stocksPaused'
     : waiting ? 'stocksWaiting' : pages <= 1 ? 'stocksSinglePage' : browsing ? 'stocksBrowsing' : 'stocksPaused');
   function movePage(step: number) {
     const next = Math.max(0, Math.min(pages - 1, page + step));

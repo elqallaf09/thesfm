@@ -192,6 +192,7 @@ test('search and market selection reset the page and hold rotation during browsi
   await expect(page.locator('.tv-hall-row')).toHaveCount(1);
   await search.fill('missing company'); await page.clock.runFor(301);
   await expect(page.locator('.tv-hall-row')).toHaveCount(0);
+  await expect(page.getByText('لا توجد أسهم مطابقة', { exact: true })).toHaveCount(1);
   await expect(rotation(page)).toHaveAttribute('data-running', 'false');
 });
 
