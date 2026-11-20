@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { resolve } from 'node:path';
 import { chooseTvDestination, openAndroidTvPackage } from './packageHarness';
 
 // Synthetic browser fixtures only; production never receives these quotes.
@@ -12,7 +13,7 @@ const items = changes.map((changePercent, index) => ({
   currency: 'USD', region: 'US', changePercent,
 }));
 
-async function openStocks(page: Page, theme: 'light' | 'dark') {
+async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>) {
   await page.addInitScript(theme => {
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
       language: 'ar', theme, accent: 'champagne', displayMode: 'viewing', autoRotate: false,
@@ -35,7 +36,8 @@ async function openStocks(page: Page, theme: 'light' | 'dark') {
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams;
     const symbols: string[] = JSON.parse(params.get('symbols') || '[]');
-    const selected = symbols.length ? items.filter(item => symbols.includes(item.symbol)) : items.slice(0, 6);
+    // Reserve AAPL for All Stocks so the logo test can intercept its first load.
+    const selected = symbols.length ? items.filter(item => symbols.includes(item.symbol)) : items.slice(1, 7);
     const quotes = selected.map(item => ({
       ...item, price: item.symbol === 'QA1' ? 0.939 : 123.45,
       source: 'Presentation QA source',
@@ -52,7 +54,9 @@ async function openStocks(page: Page, theme: 'light' | 'dark') {
     source: 'مصدر اختبار', publishedAt: now, url: `https://example.com/presentation-news/${index}`,
   })) } }));
   await page.route('**/api/intelligence/latest?*', route => route.fulfill({ json: { result: null } }));
+  await page.route('https://financialmodelingprep.com/image-stock/QA*.png', route => route.fulfill({ status: 404, body: '' }));
   await openAndroidTvPackage(page);
+  await beforeAllStocks?.();
   await chooseTvDestination(page, 'allStocks');
   await expect(page.locator('.tv-all-stocks .tv-hall-row')).toHaveCount(6);
   await expect(page.locator('.tv-all-stocks .tv-headline-story')).toHaveCount(8);
@@ -83,6 +87,18 @@ async function tableGeometry(page: Page) {
     return {
       alignmentErrors, overflow,
       rowHeights: rows.map(row => row.getBoundingClientRect().height),
+      rowMetrics: rows.map(row => {
+        const bounds = row.getBoundingClientRect();
+        return {
+          height: bounds.height, clientHeight: row.clientHeight, scrollHeight: row.scrollHeight,
+          children: Array.from(row.querySelectorAll('[role="cell"], .tv-hall-identity button, .tv-hall-company-copy, .tv-hall-listing, .tv-hall-change-badge, .tv-hall-change-label, .tv-hall-price strong, .tv-hall-price small')).map(child => ({
+            element: child.className || child.tagName,
+            top: child.getBoundingClientRect().top - bounds.top,
+            height: child.getBoundingClientRect().height,
+            clientHeight: child.clientHeight, scrollHeight: child.scrollHeight,
+          })),
+        };
+      }),
       bodyTop: table.querySelector('.tv-hall-rows')!.getBoundingClientRect().top,
       firstRowTop: rows[0].getBoundingClientRect().top,
     };
@@ -101,8 +117,8 @@ for (const theme of ['light', 'dark'] as const) {
       const rows = page.locator('.tv-all-stocks .tv-hall-row');
       await expect(rows.locator('.tv-asset-icon')).toHaveCount(6);
       const full = await tableGeometry(page);
-      expect(full.alignmentErrors).toEqual([]);
-      expect(full.overflow).toEqual([]);
+      expect(full.alignmentErrors, JSON.stringify(full, null, 2)).toEqual([]);
+      expect(full.overflow, JSON.stringify(full, null, 2)).toEqual([]);
       expect(Math.max(...full.rowHeights) - Math.min(...full.rowHeights)).toBeLessThanOrEqual(2);
 
       // Quote provenance remains visible even as the presentation changes.
@@ -119,8 +135,8 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(rows).toHaveCount(2);
       await expect(rows.first()).toContainText('QA6');
       const sparse = await tableGeometry(page);
-      expect(sparse.alignmentErrors).toEqual([]);
-      expect(sparse.overflow).toEqual([]);
+      expect(sparse.alignmentErrors, JSON.stringify(sparse, null, 2)).toEqual([]);
+      expect(sparse.overflow, JSON.stringify(sparse, null, 2)).toEqual([]);
       expect(Math.abs(sparse.rowHeights[0] - full.rowHeights[0])).toBeLessThanOrEqual(2);
       expect(Math.abs(sparse.firstRowTop - sparse.bodyTop)).toBeLessThanOrEqual(2);
       await expect(page.locator('.tv-headline-band')).toBeInViewport({ ratio: 1 });
@@ -180,7 +196,30 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('stock movements, logo failure, and remote selection stay understandable without color alone', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await openStocks(page, 'dark');
+  let releaseLogo = () => {}, logoRequested = false;
+  let loadingSize: { width: number; height: number } | null = null;
+  const logoGate = new Promise<void>(release => { releaseLogo = release; });
+  try {
+    await openStocks(page, 'dark', async () => {
+      await page.route('**/markets-tv/assets/aapl.png', async route => {
+        logoRequested = true;
+        await logoGate;
+        await route.fulfill({ path: resolve('.tv-build/web/markets-tv/assets/aapl.png') });
+      });
+    });
+    await expect.poll(() => logoRequested).toBe(true);
+    const pending = page.locator('.tv-all-stocks .tv-hall-row').first().locator('.tv-asset-icon');
+    await expect(pending).toHaveAttribute('data-logo-state', 'loading');
+    await expect(pending.locator(':scope > svg')).toBeVisible();
+    await expect(pending.locator(':scope > b')).toHaveText('AAPL');
+    await expect(pending.locator('img')).toHaveCSS('opacity', '0');
+    const box = await pending.boundingBox();
+    expect(box).not.toBeNull();
+    loadingSize = { width: box!.width, height: box!.height };
+  } finally {
+    // Always unblock the fixture, including after a failed pending-state assertion.
+    releaseLogo();
+  }
   const rows = page.locator('.tv-all-stocks .tv-hall-row');
   for (const [index, trend] of ['up', 'down', 'flat', 'flat', 'unknown', 'down'].entries()) {
     await expect(rows.nth(index)).toHaveAttribute('data-trend', trend);
@@ -200,10 +239,14 @@ test('stock movements, logo failure, and remote selection stay understandable wi
   // A verified local logo has the same footprint as its failure fallback.
   const apple = rows.first().locator('.tv-asset-icon');
   const logo = apple.locator('img');
+  await expect(apple).toHaveAttribute('data-logo-state', 'loaded');
   await expect(logo).toBeVisible();
   await expect.poll(() => logo.evaluate(image => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0)).toBe(true);
+  await expect(apple.locator(':scope > svg, :scope > b')).toHaveCount(0);
   const before = await apple.boundingBox();
+  expect({ width: before?.width, height: before?.height }).toEqual(loadingSize);
   await logo.dispatchEvent('error');
+  await expect(apple).toHaveAttribute('data-logo-state', 'fallback');
   await expect(apple.locator('img')).toHaveCount(0);
   await expect(apple.locator('svg')).toBeVisible();
   await expect(apple).toContainText('AAPL');

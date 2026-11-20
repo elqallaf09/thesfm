@@ -34,16 +34,17 @@
 .tv-screen .tv-hall-row:last-child { border-bottom-color: transparent; }
 .tv-screen .tv-hall-row:focus-within { background: var(--tv-panel2); }
 .tv-screen .tv-hall-identity { min-width: 0; }
-.tv-screen .tv-hall-identity button { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: .65em; text-align: start; width: 100%; min-height: 0; padding: .25em 0; border: 0; background: transparent; color: var(--tv-text); }
+.tv-screen .tv-hall-identity button { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: .65em; text-align: start; width: 100%; min-height: 0; padding: .12em 0; border: 0; background: transparent; color: var(--tv-text); }
 .tv-screen .tv-hall-identity button:disabled { opacity: 1; color: inherit; }
-.tv-screen .tv-hall-identity .tv-asset-icon { width: 2.35em; height: 2.35em; border-radius: var(--radius-control); background: var(--tv-panel2); }
+.tv-screen .tv-hall-identity .tv-asset-icon { box-sizing: border-box; width: 2.1em; height: 2.1em; border-radius: var(--radius-control); background: var(--tv-panel2); }
 .tv-screen .tv-hall-identity .tv-asset-icon > img { width: 80%; height: 80%; object-fit: contain; }
 .tv-screen .tv-hall-identity .tv-asset-icon > b { font: 600 max(13px, .43em) var(--font-data), monospace; }
-.tv-screen .tv-hall-company-copy { display: flex; flex-direction: column; gap: .15em; flex: 1; min-width: 0; }
-.tv-screen .tv-hall-identity strong { display: block; font-size: .94em; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-screen .tv-hall-company-copy { display: flex; flex-direction: column; gap: .08em; flex: 1; min-width: 0; }
+.tv-screen .tv-hall-identity strong { display: block; font-size: .9em; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-screen .tv-hall-identity bdi { font: 600 max(13px, .68em) var(--font-data), monospace; color: var(--tv-accent); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.tv-screen .tv-hall-listing { display: flex; align-items: baseline; gap: .55em; min-width: 0; max-width: 100%; }
-.tv-screen .tv-hall-listing small { color: var(--tv-muted); font-size: max(13px, .62em); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-screen .tv-hall-listing { font-size: max(13px, .68em); line-height: 1.2; display: flex; align-items: baseline; gap: .55em; min-width: 0; max-width: 100%; }
+.tv-screen .tv-hall-listing bdi { font: 600 1em var(--font-data), monospace; }
+.tv-screen .tv-hall-listing small { color: var(--tv-muted); font-size: max(13px, .92em); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-screen .tv-hall-price { display: flex; flex-direction: column; align-items: center; gap: .08em; min-width: 0; white-space: nowrap; }
 .tv-screen .tv-hall-price strong { font: 600 1.13em var(--font-data), monospace; font-variant-numeric: tabular-nums; }
 .tv-screen .tv-hall-price small { font: 500 max(13px, .6em) var(--font-data), monospace; color: var(--tv-muted); }

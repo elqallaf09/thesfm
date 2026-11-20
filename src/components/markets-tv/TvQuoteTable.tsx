@@ -1,5 +1,5 @@
 'use client';
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CircleHelp, Minus } from 'lucide-react';
 import type { TvLanguage, TvMarket, TvQuote } from '@/lib/markets-tv/types';
 import type { TvInstrument } from '@/lib/markets-tv/selections';
 import { hallText } from '@/lib/markets-tv/hallText';
@@ -21,7 +21,7 @@ export function TvQuoteTable({ items, quotes, markets = [], language, now, loadi
     <div className="tv-hall-columns" role="row">{(['company', 'price', 'change', 'source'] as const).map(key => <span role="columnheader" key={key}>{hallText(language, key)}</span>)}</div>
     <div className="tv-hall-rows" role="rowgroup">{pricedItems.map(({ item, quote }) => {
       const movement = tvQuoteMovement(quote.changePercent);
-      const MovementIcon = movement.trend === 'up' ? ArrowUpRight : movement.trend === 'down' ? ArrowDownRight : Minus;
+      const MovementIcon = movement.trend === 'up' ? ArrowUpRight : movement.trend === 'down' ? ArrowDownRight : movement.trend === 'unknown' ? CircleHelp : Minus;
       const market = markets.find(value => value.id === item.region);
       const marketName = market ? language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn : item.region;
       const companyName = language === 'ar' ? item.nameAr || item.name : item.name;
