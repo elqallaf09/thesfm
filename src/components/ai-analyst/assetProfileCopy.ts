@@ -1,0 +1,32 @@
+export const ASSET_PROFILE_COPY = {
+  ar: {
+    title: 'ملف الأصل', loading: 'جارٍ تحميل ملف الأصل…', unavailable: 'غير متوفر حاليًا',
+    empty: 'تفاصيل ملف الأصل غير متوفرة حاليًا في SFM. لم تُستخدم معلومات بديلة.',
+    partial: 'بعض تفاصيل ملف الأصل غير متوفرة حاليًا في SFM. تُعرض المعلومات التي أعادها مزود البيانات فقط.',
+    error: 'تعذر تحميل ملف الأصل حاليًا. يمكنك إعادة المحاولة دون تشغيل تحليل.', retry: 'إعادة تحميل ملف الأصل',
+    issuer: 'جهة الإصدار', objective: 'الهدف الاستثماري', indexTracked: 'المؤشر المتتبع',
+    sector: 'القطاع', industry: 'الصناعة', description: 'نبذة عن نشاط الشركة', website: 'الموقع الرسمي',
+    source: 'مصادر ملف الأصل', retrieved: 'وقت جلب ملف الأصل',
+    provenance: 'هذه المصادر تخص ملف الأصل المجمع. وقت الجلب ليس تاريخ نشر المعلومات لدى المزود.',
+  },
+  en: {
+    title: 'Asset profile', loading: 'Loading asset profile…', unavailable: 'Currently unavailable',
+    empty: 'Asset profile details are currently unavailable in SFM. No substitute information was used.',
+    partial: 'Some asset profile details are currently unavailable in SFM. Only information returned by the data provider is shown.',
+    error: 'The asset profile could not be loaded. You can retry without running an analysis.', retry: 'Reload asset profile',
+    issuer: 'Issuer', objective: 'Investment objective', indexTracked: 'Tracked index',
+    sector: 'Sector', industry: 'Industry', description: 'Company business overview', website: 'Official website',
+    source: 'Asset profile sources', retrieved: 'Profile retrieved at',
+    provenance: 'These sources apply to the combined asset profile. Retrieval time is not the provider’s publication date.',
+  },
+  fr: {
+    title: 'Profil de l’actif', loading: 'Chargement du profil de l’actif…', unavailable: 'Actuellement indisponible',
+    empty: 'Les détails du profil sont actuellement indisponibles dans SFM. Aucune information de remplacement n’a été utilisée.',
+    partial: 'Certains détails du profil sont actuellement indisponibles dans SFM. Seules les informations renvoyées par le fournisseur sont affichées.',
+    error: 'Impossible de charger le profil. Vous pouvez réessayer sans lancer d’analyse.', retry: 'Recharger le profil',
+    issuer: 'Émetteur', objective: 'Objectif d’investissement', indexTracked: 'Indice suivi',
+    sector: 'Secteur', industry: 'Industrie', description: 'Présentation de l’activité', website: 'Site officiel',
+    source: 'Sources du profil', retrieved: 'Profil récupéré le',
+    provenance: 'Ces sources concernent le profil agrégé. La date de récupération n’est pas la date de publication du fournisseur.',
+  },
+} as const;

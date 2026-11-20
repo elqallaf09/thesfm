@@ -226,7 +226,7 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.getByRole('img', { name: 'THE SFM', exact: true })).toBeVisible();
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=customize]').click();
-  await page.getByRole('button', { name: 'Clear all', exact: true }).click();
+  await page.getByRole('button', { name: 'Deselect all', exact: true }).click();
   await page.getByRole('textbox', { name: 'Search markets', exact: true }).fill('QA market 7');
   await page.locator('.tv-market-editor').getByRole('switch').click();
   await page.keyboard.press('Escape');
