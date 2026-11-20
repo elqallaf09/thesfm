@@ -25,6 +25,14 @@ export async function loadTvExternalIndex(symbol: string) {
   return work;
 }
 
+/** The verified external cash index alone, for indices asked here first. */
+export async function tvIndexAlternative(symbol: string): Promise<TvQuote | null> {
+  const external = await loadTvExternalIndex(symbol);
+  if (!external) return null;
+  const quote = { ...external.quote, status: quoteStatus(external.quote) };
+  return quote.price !== null && !['unavailable', 'stale', 'unknown_time'].includes(quote.status) ? quote : null;
+}
+
 /** A bounded primary-source head start keeps fallback inside the TV deadline. */
 export async function withTvIndexFallback(symbol: string, primary: Promise<TvQuote>): Promise<TvQuote> {
   if (!isTvExternalIndex(symbol)) return primary;

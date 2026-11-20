@@ -8,6 +8,14 @@ export const TV_COMMODITIES = [
  {symbol:'COMEX:SI1!',ticker:'SI1!',exchange:'COMEX',currency:'USD',name:'Silver · continuous futures',nameAr:'الفضة · عقد مستمر'},
  {symbol:'NYMEX:CL1!',ticker:'CL1!',exchange:'NYMEX',currency:'USD',name:'WTI oil · continuous futures',nameAr:'نفط WTI · عقد مستمر'},
  {symbol:'NYMEX:NG1!',ticker:'NG1!',exchange:'NYMEX',currency:'USD',name:'Natural gas · continuous futures',nameAr:'الغاز · عقد مستمر'},
+ // Checked on TradingView (futures, USD) on 20 Nov 2026; cent-quoted grains/softs are left out.
+ {symbol:'COMEX:HG1!',ticker:'HG1!',exchange:'COMEX',currency:'USD',name:'Copper · continuous futures',nameAr:'النحاس · عقد مستمر'},
+ {symbol:'NYMEX:PL1!',ticker:'PL1!',exchange:'NYMEX',currency:'USD',name:'Platinum · continuous futures',nameAr:'البلاتين · عقد مستمر'},
+ {symbol:'NYMEX:PA1!',ticker:'PA1!',exchange:'NYMEX',currency:'USD',name:'Palladium · continuous futures',nameAr:'البلاديوم · عقد مستمر'},
+ {symbol:'ICEEUR:BRN1!',ticker:'BRN1!',exchange:'ICEEUR',currency:'USD',name:'Brent oil · continuous futures',nameAr:'نفط برنت · عقد مستمر'},
+ {symbol:'NYMEX:RB1!',ticker:'RB1!',exchange:'NYMEX',currency:'USD',name:'Gasoline · continuous futures',nameAr:'البنزين · عقد مستمر'},
+ {symbol:'NYMEX:HO1!',ticker:'HO1!',exchange:'NYMEX',currency:'USD',name:'Heating oil · continuous futures',nameAr:'زيت التدفئة · عقد مستمر'},
+ {symbol:'ICEUS:CC1!',ticker:'CC1!',exchange:'ICEUS',currency:'USD',name:'Cocoa · continuous futures',nameAr:'الكاكاو · عقد مستمر'},
 ] as const;
 export const TV_COMMODITY_COLUMNS = ['name', 'description', 'exchange', 'type', 'currency', 'close', 'change', 'update_time', 'update_mode', 'current_session'];
 

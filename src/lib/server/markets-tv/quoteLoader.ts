@@ -1,5 +1,5 @@
 import { tvCommodityIdentity } from '@/lib/markets-tv/commodityQuote';
-import { withTvCommodityFallback } from './commodityFallback';
+import { tvCommodityAlternative, withTvCommodityFallback } from './commodityFallback';
 import 'server-only';
 import { after } from 'next/server';
 import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
@@ -20,11 +20,12 @@ import { finnhubUsMarketOpen } from './finnhubMarketStatus';
 import { verifiedFinnhubUsListing } from './finnhubListing';
 import { cachedTvQuote } from './quoteCache';
 import { isOwnableQuote, readOwnedTvQuote, saveOwnedTvQuote } from './ownedQuoteStore';
-import { withTvIndexFallback } from './indexFallback';
-import { withTvRegionalFallback } from './regionalFallback';
+import { tvIndexAlternative, withTvIndexFallback } from './indexFallback';
+import { isTvExtraIndex } from '@/lib/markets-tv/catalog';
+import { tvRegionalAlternative, withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
 import { tvWorldStockIdentity } from '@/lib/markets-tv/worldStockQuote';
-import { withTvWorldStockFallback } from './worldStockFallback';
+import { tvWorldStockAlternative, withTvWorldStockFallback } from './worldStockFallback';
 import { tvGulfBankIdentity } from '@/lib/markets-tv/gulfBankQuote';
 import { withTvGulfBankFallback } from './gulfBankFallback';
 import { tvNasdaqDubaiIdentity } from '@/lib/markets-tv/nasdaqDubaiQuote';
@@ -163,6 +164,17 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   }
   return quote;
 }
+type TvAlternative = (asset: TvAsset) => Promise<TvQuote | null>;
+function tvAlternativeFirst(asset: TvAsset, assetType: string): TvAlternative | null {
+  if (assetType === 'index') return isTvExtraIndex(asset.symbol)
+    ? async item => { const quote = await tvIndexAlternative(item.symbol); return quote && { ...quote, displaySymbol: item.displaySymbol, name: item.name, nameAr: item.nameAr || item.name }; }
+    : null;
+  if (tvCommodityIdentity(asset)) return tvCommodityAlternative;
+  if (tvWorldStockIdentity(asset)) return tvWorldStockAlternative;
+  // Gulf banks and Nasdaq Dubai keep their own established order.
+  if (tvGulfBankIdentity(asset) || tvNasdaqDubaiIdentity(asset)) return null;
+  return tvRegionalIdentity(asset) ? tvRegionalAlternative : null;
+}
 function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const assetType = asset.assetType || (group === 'global' ? 'index' : group === 'commodities' ? 'commodity' : group === 'forex' ? 'forex' : 'stock');
   const nasdaqDubai = [asset.mic, asset.region, asset.exchange].some(value => NASDAQ_DUBAI_VENUES.includes(value || ''));
@@ -172,6 +184,11 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const running = pendingQuotes.get(key); if (running) return running;
   const usStock = assetType === 'stock' && (asset.country === 'US' || asset.region === 'US' || ['NASDAQ', 'NYSE'].includes(asset.exchange || ''));
   const verified = cachedTvQuote(key, async () => {
+    // A listing with its own verified source asks it first, so Twelve Data's
+    // per-minute credits stay with markets that have no other source.
+    const alternativeSource = tvAlternativeFirst(asset, assetType);
+    const alternative = alternativeSource ? await alternativeSource(asset).catch(() => null) : null;
+    if (alternative) return alternative;
     const primary = loadQuote(asset, group).catch(() => empty(asset));
     if (tvCommodityIdentity(asset)) return withTvCommodityFallback(asset, primary);
     if (tvWorldStockIdentity(asset)) return withTvWorldStockFallback(asset, primary);

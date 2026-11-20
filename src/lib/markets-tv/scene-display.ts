@@ -1,4 +1,5 @@
 import type { TvGroup, TvLanguage, TvQuote, TvScene } from './types';
+import { isTvExternalIndex } from './indexChart';
 
 export const TV_SCENE_ORDER: TvScene[] = ['overview', 'gulf', 'world', 'assets', 'watchlist'];
 const SCENE_GROUP: Record<TvScene, TvGroup> = {
@@ -83,11 +84,14 @@ export function tvSceneText(language: TvLanguage, key: TvSceneTextKey) {
 }
 
 export function tvSceneQuoteUnit(quote: TvQuote, language: TvLanguage) {
-  if (quote.symbol.startsWith('^')) return tvSceneText(language, 'points');
+  if (quote.symbol.startsWith('^') || isTvExternalIndex(quote.symbol)) return tvSceneText(language, 'points');
   // Unit labels are restricted to the exact contracts whose units are known.
-  if (quote.currency === 'USD' && ['GC=F', 'SI=F', 'XAUUSD', 'XAGUSD', 'COMEX:GC1!', 'COMEX:SI1!'].includes(quote.symbol)) return 'USD / oz';
-  if (quote.currency === 'USD' && ['CL=F', 'BZ=F', 'NYMEX:CL1!'].includes(quote.symbol)) return 'USD / bbl';
+  if (quote.currency === 'USD' && ['GC=F', 'SI=F', 'XAUUSD', 'XAGUSD', 'COMEX:GC1!', 'COMEX:SI1!', 'NYMEX:PL1!', 'NYMEX:PA1!'].includes(quote.symbol)) return 'USD / oz';
+  if (quote.currency === 'USD' && ['CL=F', 'BZ=F', 'NYMEX:CL1!', 'ICEEUR:BRN1!'].includes(quote.symbol)) return 'USD / bbl';
   if (quote.currency === 'USD' && ['NG=F','NYMEX:NG1!'].includes(quote.symbol)) return 'USD / MMBtu';
+  if (quote.currency === 'USD' && quote.symbol === 'COMEX:HG1!') return 'USD / lb';
+  if (quote.currency === 'USD' && ['NYMEX:RB1!', 'NYMEX:HO1!'].includes(quote.symbol)) return 'USD / gal';
+  if (quote.currency === 'USD' && quote.symbol === 'ICEUS:CC1!') return 'USD / t';
   return quote.currency || '—';
 }
 

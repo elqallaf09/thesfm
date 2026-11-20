@@ -10,6 +10,24 @@ export const TV_WORLD_STOCKS = [
   { symbol: '7203.T', ticker: '7203', exchange: 'TSE', mic: 'XTKS', region: 'TD_XTKS', currency: 'JPY', country: 'JP', isin: 'JP3633400001' },
   { symbol: '6758.T', ticker: '6758', exchange: 'TSE', mic: 'XTKS', region: 'TD_XTKS', currency: 'JPY', country: 'JP', isin: 'JP3435000009' },
   { symbol: '0700.HK', ticker: '700', exchange: 'HKEX', mic: 'XHKG', region: 'TD_XHKG', currency: 'HKD', country: 'HK', isin: 'KYG875721634' },
+  // Europe, checked against TradingView's listing and ISIN on 20 Nov 2026.
+  { symbol: 'MC.PA', ticker: 'MC', exchange: 'EURONEXT', mic: 'XPAR', region: 'TD_XPAR', currency: 'EUR', country: 'FR', isin: 'FR0000121014' },
+  { symbol: 'TTE.PA', ticker: 'TTE', exchange: 'EURONEXT', mic: 'XPAR', region: 'TD_XPAR', currency: 'EUR', country: 'FR', isin: 'FR0000120271' },
+  { symbol: 'OR.PA', ticker: 'OR', exchange: 'EURONEXT', mic: 'XPAR', region: 'TD_XPAR', currency: 'EUR', country: 'FR', isin: 'FR0000120321' },
+  { symbol: 'AIR.PA', ticker: 'AIR', exchange: 'EURONEXT', mic: 'XPAR', region: 'TD_XPAR', currency: 'EUR', country: 'FR', isin: 'NL0000235190' },
+  { symbol: 'SAN.PA', ticker: 'SAN', exchange: 'EURONEXT', mic: 'XPAR', region: 'TD_XPAR', currency: 'EUR', country: 'FR', isin: 'FR0000120578' },
+  { symbol: 'BNP.PA', ticker: 'BNP', exchange: 'EURONEXT', mic: 'XPAR', region: 'TD_XPAR', currency: 'EUR', country: 'FR', isin: 'FR0000131104' },
+  { symbol: 'INGA.AS', ticker: 'INGA', exchange: 'EURONEXT', mic: 'XAMS', region: 'TD_XAMS', currency: 'EUR', country: 'NL', isin: 'NL0011821202' },
+  { symbol: 'SIE.DE', ticker: 'SIE', exchange: 'XETR', mic: 'XETR', region: 'TD_XETR', currency: 'EUR', country: 'DE', isin: 'DE0007236101' },
+  { symbol: 'ALV.DE', ticker: 'ALV', exchange: 'XETR', mic: 'XETR', region: 'TD_XETR', currency: 'EUR', country: 'DE', isin: 'DE0008404005' },
+  { symbol: 'DTE.DE', ticker: 'DTE', exchange: 'XETR', mic: 'XETR', region: 'TD_XETR', currency: 'EUR', country: 'DE', isin: 'DE0005557508' },
+  { symbol: 'SAN.MC', ticker: 'SAN', exchange: 'BME', mic: 'XMAD', region: 'TD_XMAD', currency: 'EUR', country: 'ES', isin: 'ES0113900J37' },
+  { symbol: 'ITX.MC', ticker: 'ITX', exchange: 'BME', mic: 'XMAD', region: 'TD_XMAD', currency: 'EUR', country: 'ES', isin: 'ES0148396007' },
+  { symbol: 'ENEL.MI', ticker: 'ENEL', exchange: 'MIL', mic: 'XMIL', region: 'TD_XMIL', currency: 'EUR', country: 'IT', isin: 'IT0003128367' },
+  { symbol: 'ISP.MI', ticker: 'ISP', exchange: 'MIL', mic: 'XMIL', region: 'TD_XMIL', currency: 'EUR', country: 'IT', isin: 'IT0000072618' },
+  { symbol: 'NOVO-B.CO', ticker: 'NOVO_B', exchange: 'OMXCOP', mic: 'XCSE', region: 'TD_XCSE', currency: 'DKK', country: 'DK', isin: 'DK0062498333' },
+  { symbol: 'NOVN.SW', ticker: 'NOVN', exchange: 'SIX', mic: 'XSWX', region: 'TD_XSWX', currency: 'CHF', country: 'CH', isin: 'CH0012005267' },
+  { symbol: 'UBSG.SW', ticker: 'UBSG', exchange: 'SIX', mic: 'XSWX', region: 'TD_XSWX', currency: 'CHF', country: 'CH', isin: 'CH0244767585' },
 ] as const;
 export const TV_WORLD_STOCK_COLUMNS = ['name', 'description', 'exchange', 'type', 'currency', 'close', 'change', 'update_time', 'isin', 'update_mode', 'current_session'];
 

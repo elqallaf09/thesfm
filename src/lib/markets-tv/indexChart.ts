@@ -7,9 +7,12 @@ import type { TvQuote } from './types';
 // denominated listing is rejected instead of shown.
 const INDEX_CURRENCIES = {
   '^GSPC': 'USD', '^GDAXI': 'EUR', '^NDX': 'USD', '^DJI': 'USD', '^FTSE': 'GBP', '^N225': 'JPY',
+  // Checked on Yahoo (symbol, INDEX type, currency) on 20 Nov 2026.
+  '^FCHI': 'EUR', '^STOXX50E': 'EUR', '^IBEX': 'EUR', 'FTSEMIB.MI': 'EUR', '^AEX': 'EUR', '^SSMI': 'CHF', '^RUT': 'USD', '^GSPTSE': 'CAD', '^HSI': 'HKD', '000001.SS': 'CNY', '^KS11': 'KRW', '^TWII': 'TWD', '^BSESN': 'INR', '^NSEI': 'INR', '^AXJO': 'AUD', '^STI': 'SGD', '^TASI.SR': 'SAR',
 } as const;
 const INDEX_COUNTRIES: Record<keyof typeof INDEX_CURRENCIES, string> = {
   '^GSPC': 'US', '^GDAXI': 'DE', '^NDX': 'US', '^DJI': 'US', '^FTSE': 'GB', '^N225': 'JP',
+  '^FCHI': 'FR', '^STOXX50E': 'EU', '^IBEX': 'ES', 'FTSEMIB.MI': 'IT', '^AEX': 'NL', '^SSMI': 'CH', '^RUT': 'US', '^GSPTSE': 'CA', '^HSI': 'HK', '000001.SS': 'CN', '^KS11': 'KR', '^TWII': 'TW', '^BSESN': 'IN', '^NSEI': 'IN', '^AXJO': 'AU', '^STI': 'SG', '^TASI.SR': 'SA',
 };
 export type TvExternalIndex = keyof typeof INDEX_CURRENCIES;
 export function isTvExternalIndex(symbol: string): symbol is TvExternalIndex {

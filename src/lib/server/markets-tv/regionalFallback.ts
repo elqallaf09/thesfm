@@ -28,6 +28,21 @@ async function read(symbol: string): Promise<YahooHistoryResult | null> {
 
 /** The existing listing cache retains only verified observations. This layer
  * shares in-flight reads and honours a provider-wide Retry-After on failure. */
+/** The verified Yahoo listing alone, for listings asked here before Twelve Data
+ * so its per-minute credits stay with markets that have no other source. */
+export async function tvRegionalAlternative(asset: TvAsset): Promise<TvQuote | null> {
+  const identity = tvRegionalIdentity(asset);
+  if (!identity || blockedUntil > Date.now()) return null;
+  let work = pending.get(identity.symbol);
+  if (!work) {
+    work = read(identity.symbol).finally(() => pending.delete(identity.symbol));
+    pending.set(identity.symbol, work);
+  }
+  const data = await work.catch(() => null);
+  const quote = data ? verifiedTvRegionalQuote(asset, data) : null;
+  return usable(quote) ? quote : null;
+}
+
 export async function withTvRegionalFallback(asset: TvAsset, primary: Promise<TvQuote>): Promise<TvQuote> {
   const identity = tvRegionalIdentity(asset);
   if (!identity || blockedUntil > Date.now()) return primary;
