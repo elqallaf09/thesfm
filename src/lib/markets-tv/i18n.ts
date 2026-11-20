@@ -11,6 +11,8 @@ export const TV_TEXT = {
   pairScope: ['يتيح الربط عرض قائمة المتابعة واستثمارات الحساب على هذا التلفزيون.', 'Linking allows this TV to display your watchlist and account investments.', 'L’association permet à ce téléviseur d’afficher votre liste de suivi et vos investissements.'],
   investments: ['استثماراتي', 'My investments', 'Mes investissements'],
   pausePages: ['إيقاف تقليب الصفحات', 'Pause page rotation', 'Arrêter le défilement des pages'],
+  newsPages: ['صفحات الأخبار', 'News pages', 'Pages des actualités'],
+  newsPage: ['الصفحة', 'Page', 'Page'],
   resumePages: ['تشغيل تقليب الصفحات', 'Resume page rotation', 'Reprendre le défilement des pages'],
   pauseAllocationPages: ['إيقاف تقليب صفحات التوزيع', 'Pause allocation pages', 'Arrêter les pages de répartition'],
   resumeAllocationPages: ['تشغيل تقليب صفحات التوزيع', 'Resume allocation pages', 'Reprendre les pages de répartition'],

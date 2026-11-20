@@ -1,5 +1,6 @@
 import { openAndroidTvPackage, openTvMenu, openTvHeaderActions, chooseTvDestination } from './packageHarness';
 import { expect, test, type Page, type Route } from '@playwright/test';
+import { expectNewsPage } from '../helpers/tv-news-pages';
 
 // Browser-only fixtures. Product data always comes from the configured providers.
 const instant = '2026-11-14T10:00:00Z';
@@ -148,7 +149,7 @@ for (const theme of ['light', 'dark'] as const) {
         await fits(page, label, selector);
       }
       await page.keyboard.press('2');
-      await expect(page.locator('.tv-news-desk-grid > button')).toHaveCount(12);
+      await expectNewsPage(page, 12, height <= 650 ? 2 : width < 1500 ? 4 : 6);
       await fits(page, 'news', '.tv-receiver-heading,.tv-news-desk,.tv-news-desk-grid > button');
       await capture('news');
       expect.soft(await page.locator('.tv-news-desk-grid > button').evaluateAll(buttons => buttons.filter(button => button.scrollHeight > button.clientHeight + 2).length), 'News is readable without clipping').toBe(0);

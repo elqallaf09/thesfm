@@ -1,5 +1,6 @@
 import { openAndroidTvPackage, openTvHeaderActions, closeTvHeaderActions } from './packageHarness';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expectNewsPage } from '../helpers/tv-news-pages';
 
 type Language = 'ar' | 'en' | 'fr';
 type Theme = 'light' | 'dark';
@@ -92,7 +93,10 @@ async function openNews(page: Page, language: Language, theme: Theme, view: View
   await page.evaluate(() => document.fonts.ready);
   const count = view === 'kuwait' ? 12 : view === 'europeNews' || view === 'shariaNews' ? 24 : 8;
   const cards = page.locator('.tv-news-card');
-  await expect(cards).toHaveCount(count);
+  if (view === 'europeNews' || view === 'shariaNews') {
+    const viewport = page.viewportSize()!;
+    await expectNewsPage(page, count, viewport.width >= 1500 ? 6 : viewport.height <= 650 ? 2 : 4);
+  } else await expect(cards).toHaveCount(count);
   return cards;
 }
 
@@ -191,7 +195,7 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     await page.setViewportSize({ width: 1920, height: 1080 });
     const cards = await openNews(page, language, theme, 'europeNews');
     const headlines = newsItems(24, language).map(story => story.title), direction = language === 'ar' ? 'rtl' : 'ltr';
-    await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+    await expect(cards.locator('.tv-news-title')).toHaveText(headlines.slice(0, 6));
     await expect(cards.first().locator('.tv-news-thumbnail')).toHaveAttribute('data-news-image', 'available');
     await expect.poll(() => cards.first().locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
     await expectBrandedFallback(cards.nth(1).locator('.tv-news-thumbnail'));
@@ -201,22 +205,25 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     await expect(cards.first().locator('time')).toHaveAttribute('aria-label', '2026-11-18 · 23:26');
     await expect(cards.first().locator('time')).toContainText('2026-11-18');
     await expect(cards.nth(1).locator('time')).toHaveAttribute('aria-label', '00:05');
-    await expect(page.locator('.tv-news-desk .tv-broadcast-pager,.tv-headline-playback')).toHaveCount(0);
+    await expect(page.locator('.tv-news-desk .tv-broadcast-pager')).toBeVisible();
+    await expect(page.locator('.tv-headline-playback')).toHaveCount(0);
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080]]) {
       await page.setViewportSize({ width, height });
+      await expectNewsPage(page, 24, height <= 650 ? 2 : width < 1500 ? 4 : 6);
       await expectCardGeometry(cards, direction);
       await expect(cards.first().locator('.tv-news-title')).toHaveCSS('direction', direction);
       await page.screenshot({ path: testInfo.outputPath('news-' + language + '-' + theme + '-' + width + '.png') });
     }
     await cards.first().focus();
     await page.clock.runFor(80000);
-    await expect(cards.locator('.tv-news-title')).toHaveText(headlines);
+    await expect(cards.locator('.tv-news-title')).toHaveText(headlines.slice(0, 6));
     await expect(cards.first()).toBeFocused();
-    await expectRemoteStory(page, cards, headlines[23]);
+    await expectRemoteStory(page, cards, headlines[5]);
     await page.setViewportSize({ width: 390, height: 844 });
+    await expectNewsPage(page, 24, 2);
     await expectCardGeometry(cards, direction, false);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-    await expectRemoteStory(page, cards, headlines[23]);
+    await expectRemoteStory(page, cards, headlines[1]);
     await page.screenshot({ path: testInfo.outputPath('news-' + language + '-' + theme + '-portrait.png') });
     expect(errors).toEqual([]);
   });
@@ -226,16 +233,21 @@ for (const language of ['ar', 'en', 'fr'] as const) {
   test('news cards ' + language + '/sharia: all 24 screening labels and full dates fit compact TVs', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 960, height: 540 });
     const cards = await openNews(page, language, 'light', 'shariaNews');
-    await expect(cards.locator('.tv-news-title')).toHaveText(newsItems(24, language).map(story => story.title));
-    await expect(cards.locator('.tv-news-screening')).toHaveCount(24);
-    await expect(cards.locator('.tv-news-screening')).toHaveText(Array.from({ length: 24 }, (_, index) => compactScreeningLabels[language][index % 4]));
-    for (let index = 0; index < 24; index++) {
-      await expect(cards.nth(index).locator('.tv-news-screening')).toHaveAttribute('title', screeningLabels[language][index % 4]);
+    const headlines = newsItems(24, language).map(story => story.title);
+    for (let offset = 0; offset < 24; offset += 2) {
+      await expect(cards.locator('.tv-news-title')).toHaveText(headlines.slice(offset, offset + 2));
+      await expect(cards.locator('.tv-news-screening')).toHaveText(Array.from({ length: 2 }, (_, index) => compactScreeningLabels[language][(offset + index) % 4]));
+      for (let index = 0; index < 2; index++) {
+        await expect(cards.nth(index).locator('.tv-news-screening')).toHaveAttribute('title', screeningLabels[language][(offset + index) % 4]);
+      }
+      await expectCardGeometry(cards, language === 'ar' ? 'rtl' : 'ltr');
+      await page.locator('[data-tv-focus-key="news-next"]').click();
     }
     await expect(cards.first().locator('time')).toHaveAttribute('aria-label', '2026-11-18 · 23:26');
     await expect(cards.first().locator('time')).toContainText('2026-11-18');
     for (const [width, height] of [[960, 540], [1280, 720]]) {
       await page.setViewportSize({ width, height });
+      await expectNewsPage(page, 24, height <= 650 ? 2 : 4);
       await expectCardGeometry(cards, language === 'ar' ? 'rtl' : 'ltr');
       await page.screenshot({ path: testInfo.outputPath('news-sharia-' + language + '-' + width + '.png') });
     }
@@ -337,7 +349,7 @@ test('an unavailable bundled fallback keeps SFM NEWS visible without an image re
     return route.fulfill({ status: 404, body: '' });
   });
   await page.reload();
-  await expect(cards).toHaveCount(24);
+  await expectNewsPage(page, 24, 4);
   for (const index of [1, 2]) {
     const thumbnail = cards.nth(index).locator('.tv-news-thumbnail');
     await expect(thumbnail).toHaveAttribute('data-news-image', 'fallback');
