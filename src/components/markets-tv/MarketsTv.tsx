@@ -5,7 +5,7 @@ const TvAllStocks = lazy(() => import('./TvAllStocks').then(module => ({ default
 const TvWelcomeIntro = lazy(() => import('./TvWelcomeIntro'));
 import { tvFetch } from '@/lib/markets-tv/client';
 import { pushTvBroadcastChannel, pushTvDisplayMode, pushTvFeature, tvDisplayModeFromPath, tvFeatureDisplayMode, tvFeatureFromLocation } from '@/lib/markets-tv/display-navigation';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Smartphone, X, RefreshCw } from 'lucide-react';
 import { normalizeTvSelections, TV_SELECTIONS_KEY, type TvSelections } from '@/lib/markets-tv/selections';
 const TvMarketStrips = lazy(() => import('./TvMarketStrips').then(module => ({ default: module.TvMarketStrips })));
@@ -23,6 +23,8 @@ const TvReceiverScreen = lazy(() => import('./TvReceiverScreen'));
 import { TV_RECEIVER_CHANNELS, isTvReceiverChannel, nextTvReceiverChannel, receiverText, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
 import { TV_SESSION_IDS } from '@/lib/markets-tv/sessionSelection';
 import { TvDataNotice } from './TvDataNotice';
+import { TvWallpaperPicker } from './TvWallpaperPicker';
+import { wallpaperPath } from '@/lib/markets-tv/wallpapers';
 import { TvHeader } from './TvHeader';
 const TvAccountPicker = lazy(() => import('./TvAccountPicker').then(module => ({ default: module.TvAccountPicker })));
 import { readTvProfiles, writeTvProfiles, validTvProfileToken, type TvLocalProfile } from '@/lib/markets-tv/localProfiles';
@@ -47,7 +49,7 @@ const TvInstrumentPicker = lazy(() => import('./TvInstrumentPicker').then(module
 const SETTINGS_KEY = 'sfm-markets-tv-settings-v1', TOKEN_KEY = 'sfm-markets-tv-device-v1';
 const EMPTY_NEWS: TvNews[] = [];
 const EMPTY_MARKETS: TvMarket[] = [];
-type Dialog = 'tools' | 'settings' | 'account' | 'pair' | 'device' | 'markets' | 'instruments' | 'sessions' | null;
+type Dialog = 'wallpapers' | 'tools' | 'settings' | 'account' | 'pair' | 'device' | 'markets' | 'instruments' | 'sessions' | null;
 export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false }: { initialStripsOnly?: boolean; initialAllStocks?: boolean }) {
   const [selections, setSelections] = useState<TvSelections>({});
   const [channels, setChannels] = useState<TvChannel[]>([]);
@@ -232,7 +234,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     const feature = nextView === 'brief' || nextView === 'map' ? nextView : null;
     const mode = feature ? tvFeatureDisplayMode(feature) : channel.settings.displayMode || (stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse');
     const broadcast = mode === 'viewing' && isTvReceiverChannel(nextView) ? nextView : undefined;
-    const nextSettings = normalizeTvSettings({ ...channel.settings, displayMode: mode, broadcastChannel: broadcast });
+    const nextSettings = normalizeTvSettings({ ...channel.settings, wallpaper: settings.wallpaper, displayMode: mode, broadcastChannel: broadcast });
     const nextSelections = normalizeTvSelections(channel.selections);
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(nextSettings)); localStorage.setItem(TV_SELECTIONS_KEY, JSON.stringify(nextSelections)); } catch { /* Apply in memory even on restricted devices. */ }
     setSettings(nextSettings); setSelections(nextSelections); setView(nextView); setRouteStrips(mode === 'strips');
@@ -343,7 +345,10 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   // Freshness is independent of the clock and updates at most every 15 seconds.
   const stripNow = now;
   const strips = <Suspense fallback={<div className="tv-loading" role="status">{t('loading')}</div>}><TvMarketStrips browse={!stripsOnly} selections={selections} marketIds={settings.marketIds} speed={settings.stripSpeed} marketSpeeds={settings.marketSpeeds} revision={revision} paused={stripsPaused || (!stripsOnly && overlayOpen)} markets={catalog.data?.markets || EMPTY_MARKETS} watchlistCount={device.data?.symbols.length || 0} activeMarket={selectedMarket} onQuote={setDetail} groups={settings.groups} language={settings.language} token={token} activeGroup={group} onSelect={choose} now={stripNow} /></Suspense>;
-  return <TvMotionOverride.Provider value={explicitPlay}><div ref={root} data-tv-root data-tv-menu-open={menuOpen} data-tv-motion={explicitPlay ? 'play' : undefined} data-tv-view={view} data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${hall || allStocks ? ' tv-hall-screen' : ''}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
+  const wallpaper = settings.wallpaper ?? 'original';
+  const packaged = ready && Boolean((window as Window & { SFM_TV_ORIGIN?: string }).SFM_TV_ORIGIN);
+  const wallpaperStyle = wallpaper === 'original' ? undefined : { '--tv-wallpaper': `url("${wallpaperPath(wallpaper, packaged)}")` } as CSSProperties;
+  return <TvMotionOverride.Provider value={explicitPlay}><div ref={root} style={wallpaperStyle} data-tv-wallpaper={wallpaper} data-tv-root data-tv-menu-open={menuOpen} data-tv-motion={explicitPlay ? 'play' : undefined} data-tv-view={view} data-accent={settings.accent || 'champagne'} className={`tv-screen tv-${settings.theme}${hall || allStocks ? ' tv-hall-screen' : ''}${viewing && scene === 'overview' && view === 'markets' ? ' tv-overview-screen' : ''}${stripsOnly ? ' tv-strips-only' : viewing ? ' tv-viewing' : ' tv-browsing'} tv-density-${settings.stripDensity || 'comfortable'}`} dir={settings.language === 'ar' ? 'rtl' : 'ltr'} lang={settings.language} onPointerDown={interact}>
     <Suspense fallback={null}><TvWelcomeIntro/></Suspense>
     {accountChoice && <Suspense fallback={<div className="tv-modal-backdrop"><section className="tv-dialog" data-tv-dialog role="dialog" aria-modal="true" aria-label={t('loading')}><p role="status">{t('loading')}</p></section></div>}><TvAccountPicker language={settings.language} profiles={profiles} onSelect={profile => {
       clearAccountContext(); setToken(profile.token);
@@ -354,7 +359,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
     <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} activeBroadcast={isTvReceiverChannel(view) ? view : undefined} paired={Boolean(token)} deviceName={device.data?.device.name}
       onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onBroadcast={chooseBroadcast} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}
-      onSettings={() => openMenuDialog('settings')} onMyAccount={() => openMenuDialog('account')} onSwitchAccount={() => { clearAccountContext(); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
+      onWallpapers={() => openMenuDialog('wallpapers')} onSettings={() => openMenuDialog('settings')} onMyAccount={() => openMenuDialog('account')} onSwitchAccount={() => { clearAccountContext(); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}
@@ -397,8 +402,9 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     {view === 'markets' && settings.ticker && strips}
     </>}
     {message && <div className="tv-toast" role="status">{message}</div>}
-    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className={`tv-dialog${detail ? ' tv-quote-dialog' : dialog === 'sessions' ? ' tv-sessions-dialog' : dialog === 'markets' ? ' tv-picker-dialog tv-market-picker-dialog' : dialog === 'instruments' ? ' tv-picker-dialog' : dialog === 'settings' ? ' tv-settings-dialog' : ''}`}><header><h2 id="tv-dialog-title">{dialog === 'account' ? tvMenuText(settings.language, 'myAccount') : dialog === 'tools' ? tvMenuText(settings.language, 'tools') : dialog === 'device' ? tvMenuText(settings.language, 'signOut') : dialog === 'pair' ? tvMenuText(settings.language, 'signIn') : detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X aria-hidden="true"/><span>{t('close')}</span></button></header>
+    {modal && <div className="tv-modal-backdrop"><section data-tv-dialog role="dialog" aria-modal="true" aria-labelledby="tv-dialog-title" className={`tv-dialog${detail ? ' tv-quote-dialog' : dialog === 'sessions' ? ' tv-sessions-dialog' : dialog === 'markets' ? ' tv-picker-dialog tv-market-picker-dialog' : dialog === 'instruments' ? ' tv-picker-dialog' : dialog === 'settings' ? ' tv-settings-dialog' : ''}`}><header><h2 id="tv-dialog-title">{dialog === 'wallpapers' ? tvMenuText(settings.language, 'wallpapers') : dialog === 'account' ? tvMenuText(settings.language, 'myAccount') : dialog === 'tools' ? tvMenuText(settings.language, 'tools') : dialog === 'device' ? tvMenuText(settings.language, 'signOut') : dialog === 'pair' ? tvMenuText(settings.language, 'signIn') : detail ? (settings.language === 'ar' ? detail.nameAr : detail.name) : story ? t('news') : t(dialog === 'sessions' ? 'sessions' : dialog === 'instruments' ? 'customizeInstruments' : dialog === 'markets' ? 'customizeMarkets' : dialog === 'settings' ? 'settings' : 'pair')}</h2><button onClick={close} aria-label={t('close')}><X aria-hidden="true"/><span>{t('close')}</span></button></header>
       <Suspense fallback={<p role="status">{t('loading')}</p>}>
+      {dialog === 'wallpapers' && <TvWallpaperPicker language={settings.language} selected={wallpaper} packaged={packaged} onSelect={value => { changeSettings({ ...settings, wallpaper: value }); close(); }}/>}
       {dialog === 'account' && <TvMyAccountPanel language={settings.language}/>}
       {dialog === 'markets' && <TvMarketPicker markets={catalog.data?.markets || EMPTY_MARKETS} settings={settings} change={setSettings} selections={selections} done={close} initialMarketId={instrumentMarket?.id} loading={catalog.loading} error={Boolean(catalog.error)} retry={refresh} customize={market => { setInstrumentMarket(market); setDialog('instruments'); }}/>}
       {dialog === 'settings' && <TvSettingsPanel onReplay={() => { close(); window.dispatchEvent(new Event(TV_WELCOME_EVENT)); }} settings={settings} change={changeSettings} stripsOnly={stripsOnly} displayMode={stripsOnly ? 'strips' : viewing ? 'viewing' : 'browse'} changeDisplayMode={changeDisplayMode} customize={() => setDialog('markets')}/>}

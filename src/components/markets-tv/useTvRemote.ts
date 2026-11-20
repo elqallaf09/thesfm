@@ -177,20 +177,21 @@ export function useTvRemote(back: () => void, interact: () => void, modal: boole
         return;
       }
       if (!focused || !elements.includes(focused)) { focus(elements.find(e => e.hasAttribute('data-tv-initial-focus')) || elements[0]); return; }
+      const explicitKey = focused.getAttribute(`data-tv-nav-${command.direction.slice(5).toLowerCase()}`);
+      const explicit = explicitKey && elements.find(element => element.dataset.tvFocusKey === explicitKey);
+      if (explicit) { focus(explicit); return; }
       // The drawer sits beside the content: one inward arrow closes it and
       // returns to the last broadcast target, while Up/Down stays in its list.
       if (activeScope?.id === 'tv-side-menu'
         && command.direction === (activeScope.dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight')) {
         activeScope.querySelector<HTMLElement>('[data-tv-back]')?.click();
+        if (activeScope.dataset.index === 'true') return;
         requestAnimationFrame(() => {
           const candidates = items().filter(element => !element.closest('.tv-unified-header'));
           focus(candidates.includes(broadcastFocus.current!) ? broadcastFocus.current! : candidates[0]);
         });
         return;
       }
-      const explicitKey = focused.getAttribute(`data-tv-nav-${command.direction.slice(5).toLowerCase()}`);
-      const explicit = explicitKey && elements.find(element => element.dataset.tvFocusKey === explicitKey);
-      if (explicit) { focus(explicit); return; }
       const vertical = command.direction === 'ArrowUp' || command.direction === 'ArrowDown';
       const group = focused.closest<HTMLElement>('[data-tv-focus-grid],[data-tv-focus-row]');
       if (group && activeScope?.contains(group)) {
