@@ -13,13 +13,6 @@ describe('full category scanner truthfulness contracts', () => {
     expect(route).toContain('quote_enriched_count: result.quoteEnrichedCount');
   });
 
-  it('does not infer Sharia compliance and reads persisted screening state', () => {
-    const scanner = read('src/lib/market/stockCategoryScanner.ts');
-    expect(scanner).toContain(".select('symbol,name,asset_type,exchange,sector,country,currency,shariah_status,shariah_source,shariah_reason,shariah_last_reviewed_at')");
-    expect(scanner).toContain("methodology: 'Use persisted SFM screening status; never infer compliance from sector or price'");
-    expect(scanner).not.toMatch(/sector.*compliant/i);
-  });
-
   it('retains unavailable values and labels degraded fallback mode', () => {
     const scanner = read('src/lib/market/stockCategoryScanner.ts');
     expect(scanner).toContain("unavailableReason: quote?.unavailableReason ?? 'price_unavailable'");

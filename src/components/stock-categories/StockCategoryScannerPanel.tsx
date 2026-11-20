@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -106,6 +106,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     source: 'المصدر',
     updated: 'آخر تحديث',
     degraded: 'السكانر يعمل بوضع احتياطي بسبب محدودية مزود البيانات؛ لا يتم إنشاء أسهم أو أرقام وهمية.',
+    incompleteCatalog: 'تعذّر التحقق من سجل التصنيف الكامل. ستظهر الأسهم المطابقة عند اكتمال التحقق.',
     noData: 'لا توجد نتائج متاحة حاليًا لهذا التصنيف.',
     unavailable: 'غير متاح',
     marketCap: 'القيمة السوقية',
@@ -143,6 +144,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     source: 'Source',
     updated: 'Last updated',
     degraded: 'The scanner is using a degraded fallback because a provider is limited. No stocks or values are fabricated.',
+    incompleteCatalog: 'The full screening catalog could not be verified. Matches will appear once verification completes.',
     noData: 'No scanner results are available for this category right now.',
     unavailable: 'Unavailable',
     marketCap: 'Market cap',
@@ -180,6 +182,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     source: 'Source',
     updated: 'Dernière mise à jour',
     degraded: 'Le scanner utilise un mode de secours à cause d’une limite fournisseur. Aucune valeur fictive n’est créée.',
+    incompleteCatalog: 'La vérification du registre est incomplète. Les actions conformes apparaîtront après vérification.',
     noData: 'Aucun résultat de scanner disponible pour cette catégorie actuellement.',
     unavailable: 'Indisponible',
     marketCap: 'Capitalisation',
@@ -232,7 +235,7 @@ function formatPrice(value: number | null, currency: string, locale: string) {
     return new Intl.NumberFormat(`${locale}-u-nu-latn`, {
       style: 'currency',
       currency: currency || 'USD',
-      maximumFractionDigits: value < 1 ? 4 : 2,
+      maximumFractionDigits: value < 1 ? 4 : ['KWD', 'BHD', 'OMR'].includes(currency) ? 3 : 2,
     }).format(value);
   } catch {
     return `${currency || 'USD'} ${value.toFixed(value < 1 ? 4 : 2)}`;
@@ -261,6 +264,29 @@ function statusLabel(status: string | null, lang: Lang) {
     unclassified: { ar: 'غير مصنف', en: 'Unclassified', fr: 'Non classé' },
   };
   return labels[status]?.[lang] ?? status.replaceAll('_', ' ');
+}
+
+/** The Sharia research tools and PDF links precede this second, quote-heavy scanner. */
+export function DeferredStockCategoryScannerPanel({ category }: { category: StockCategoryId }) {
+  const placeholder = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!placeholder.current || typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        observer.disconnect();
+        setVisible(true);
+      }
+    }, { rootMargin: '600px 0px' });
+    observer.observe(placeholder.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return visible ? <StockCategoryScannerPanel category={category} /> : <div ref={placeholder} aria-hidden="true" />;
 }
 
 export function StockCategoryScannerPanel({ category }: { category: StockCategoryId }) {
@@ -377,7 +403,7 @@ export function StockCategoryScannerPanel({ category }: { category: StockCategor
         </div>
 
         {data?.status === 'degraded' ? (
-          <div className={styles.warning}><AlertTriangle size={17} /><span>{copy.degraded}</span></div>
+          <div className={styles.warning}><AlertTriangle size={17} /><span>{data.degraded_reason === 'screening_catalog_incomplete' ? copy.incompleteCatalog : copy.degraded}</span></div>
         ) : null}
         {error && !data ? (
           <div className={styles.warning}><AlertTriangle size={17} /><span>{copy.noData}</span></div>

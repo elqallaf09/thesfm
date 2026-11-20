@@ -39,7 +39,7 @@ import { ShariaResearchPage } from '@/components/shariah-stocks/ShariaResearchPa
 import { useLanguage } from '@/hooks/useLanguage';
 import type { ShariahScreeningStatus } from '@/lib/market/shariahUniverse';
 import {
-  reconcileShariahSecurities, createShariahNewsLookup, securityKey, securityMarket,
+  compliantTickerQuotes, reconcileShariahSecurities, createShariahNewsLookup, securityKey, securityMarket,
   securityAnalysisSymbol, securityResearchQuery, screeningCatalogWarning, matchesSecurityAnalysisResult,
   type DataCompleteness, type ScreeningItem, type ScreeningResponse, type SecurityRow,
   type ShariahNewsItem, type ShariahNewsResponse, type ShariahTickerResponse,
@@ -1036,7 +1036,7 @@ export function ShariahStocksNewsPage() {
     });
     return `/market-analysis?${params.toString()}`;
   };
-  const shariaTickerItems = tickerResponse?.items ?? [];
+  const shariaTickerItems = useMemo(() => compliantTickerQuotes(screening, tickerResponse?.items ?? []), [screening, tickerResponse]);
   const shariaTickerLabel = locale === 'ar' ? 'شريط الأسهم الشرعية' : locale === 'fr' ? 'Ticker des actions charia' : 'Sharia stock ticker';
   const sourceLabel = locale === 'ar' ? 'المصدر' : locale === 'fr' ? 'Source' : 'Source';
   const unavailableLabel = locale === 'ar' ? 'غير متاح' : locale === 'fr' ? 'Indisponible' : 'Unavailable';
