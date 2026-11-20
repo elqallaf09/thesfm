@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { resolve } from 'node:path';
 import { chooseTvDestination, openAndroidTvPackage } from './packageHarness';
 
@@ -105,6 +105,12 @@ async function tableGeometry(page: Page) {
   });
 }
 
+async function capturePresentation(page: Page, testInfo: TestInfo, name: string, fullPage = false) {
+  const path = testInfo.outputPath(`${name}.png`);
+  await page.screenshot({ path, fullPage });
+  await testInfo.attach(name, { path, contentType: 'image/png' });
+}
+
 for (const theme of ['light', 'dark'] as const) {
   for (const [width, height] of [[1920, 1080], [1280, 720]]) {
     test(`all-stocks ${theme} ${width}×${height}: aligned readable rows keep their height on sparse pages`, async ({ page }, testInfo) => {
@@ -127,9 +133,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(retained.locator('time')).toHaveAttribute('datetime', retainedAt);
       await expect(retained.locator('.tv-scene-source')).toHaveText('Presentation QA source');
       await expect(retained.locator('.tv-hall-price')).toContainText('0.939');
-      if (width === 1920) await testInfo.attach(`all-stocks-${theme}-full`, {
-        body: await page.screenshot(), contentType: 'image/png',
-      });
+      await capturePresentation(page, testInfo, `all-stocks-${theme}-${width}x${height}-full`);
 
       await page.locator('[data-tv-focus-key="stocks-next"]').click();
       await expect(rows).toHaveCount(2);
@@ -141,6 +145,7 @@ for (const theme of ['light', 'dark'] as const) {
       expect(Math.abs(sparse.firstRowTop - sparse.bodyTop)).toBeLessThanOrEqual(2);
       await expect(page.locator('.tv-headline-band')).toBeInViewport({ ratio: 1 });
       await expect(page.locator('.tv-quote-marquee')).toBeInViewport({ ratio: 1 });
+      if (width === 1920) await capturePresentation(page, testInfo, `all-stocks-${theme}-${width}x${height}-sparse`);
       expect(pageErrors).toEqual([]);
     });
   }
@@ -188,9 +193,7 @@ for (const theme of ['light', 'dark'] as const) {
       });
       expect(issues).toEqual([]);
     }
-    await testInfo.attach(`all-stocks-${theme}-mobile`, {
-      body: await page.screenshot({ fullPage: true }), contentType: 'image/png',
-    });
+    await capturePresentation(page, testInfo, `all-stocks-${theme}-390x844-mobile`, true);
   });
 }
 
