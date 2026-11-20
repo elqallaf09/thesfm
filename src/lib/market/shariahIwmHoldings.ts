@@ -20,7 +20,7 @@ export function parseHoldingsCsv(text: string): string[][] {
   const rows: string[][] = []; let row: string[] = [], cell = '', quoted = false, closed = false;
   const pushCell = () => { row.push(cell); cell = ''; closed = false; if (row.length > 30) throw new Error('fund_csv_column_limit'); };
   const pushRow = () => { pushCell(); rows.push(row); row = []; if (rows.length > 10000) throw new Error('fund_csv_row_limit'); };
-  const input = text.replace(/^﻿/, '');
+  const input = text.replace(/^\\uFEFF/, '');
   for (let i = 0; i < input.length; i++) {
     const ch = input[i];
     if (quoted) {
