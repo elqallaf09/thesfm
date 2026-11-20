@@ -2,6 +2,7 @@ import type { YahooHistoryResult } from '@/lib/market/fetchYahooHistory';
 import type { TvAsset } from '@/lib/server/markets-tv/catalog';
 import type { TvQuote } from './types';
 import { quoteStatus } from './quotes';
+import { directoryYahooListing } from './directoryYahooListing';
 
 const DAY_MS = 86_400_000;
 // The official DFM bulletin of 19 Nov 2026 still lists these securities, with
@@ -40,7 +41,7 @@ export function tvRegionalIdentity(asset: TvAsset) {
   if (/^[A-Z][A-Z0-9-]*\.(DU|AE)$/.test(symbol) && ['XDFM', 'DFM', 'TD_XDFM'].includes(listing || '')) {
     return { symbol: symbol.replace(/\.DU$/, '.AE'), exchange: 'DFM', currency: 'AED', sourceCurrencies: ['AED'] };
   }
-  return null;
+  return directoryYahooListing(asset);
 }
 
 export function verifiedTvRegionalQuote(asset: TvAsset, data: YahooHistoryResult, now = Date.now()): TvQuote | null {
@@ -56,7 +57,9 @@ export function verifiedTvRegionalQuote(asset: TvAsset, data: YahooHistoryResult
   const retained = now - observed > 7 * DAY_MS;
   // Yahoo's Kuwait feed explicitly denominates its values in KWF (fils).
   // Convert only that declared unit; a KWD response is already in dinars.
-  const divisor = snapshot.currency === 'KWF' ? 1000 : 1;
+  const kuwaitFils = identity.currency === 'KWD' && snapshot.currency === 'KWF';
+  const londonPence = identity.exchange === 'LSE' && identity.currency === 'GBP' && ['GBp', 'GBX'].includes(snapshot.currency);
+  const divisor = kuwaitFils ? 1000 : londonPence ? 100 : 1;
   const previous = snapshot.previousClose;
   const changePercent = previous !== null && previous > 0 ? (snapshot.price - previous) / previous * 100 : null;
   const closed = snapshot.regularSession && now >= snapshot.regularSession.end && observed >= snapshot.regularSession.end;

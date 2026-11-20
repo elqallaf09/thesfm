@@ -143,3 +143,19 @@
   .tv-screen .tv-hall-title { flex-wrap: wrap; gap: .5em; }
   .tv-screen .tv-stock-coverage { flex-wrap: wrap; gap: .3em; }
 }
+
+@media (min-width: 761px) {
+  .tv-screen .tv-all-stocks .tv-hall-rows { --tv-hall-row-slots: var(--tv-stock-page-size, 6); }
+  .tv-screen .tv-all-stocks .tv-hall-row .tv-evidence-origin {
+    display: flex;
+    align-items: baseline;
+    gap: .35em;
+    min-width: 0;
+  }
+  .tv-screen .tv-all-stocks .tv-hall-row .tv-evidence-origin .tv-scene-source { flex: 0 1 auto; min-width: 0; }
+  .tv-screen .tv-all-stocks .tv-hall-row .tv-evidence-origin .tv-status { flex: 0 0 auto; }
+  .tv-screen .tv-all-stocks .tv-hall-change { flex-direction: row; justify-content: center; gap: .35em; }
+  .tv-screen .tv-all-stocks .tv-hall-price { line-height: 1.15; }
+  .tv-screen[dir=rtl] .tv-hall-company-copy > strong { text-align: right; }
+  .tv-screen[dir=ltr] .tv-hall-company-copy > strong { text-align: left; }
+}

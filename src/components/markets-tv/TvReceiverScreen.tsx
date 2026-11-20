@@ -39,7 +39,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
   const pages = Math.max(1, Math.ceil((snapshot.data?.directoryTotal ?? market?.count ?? 0) / pageSize));
   const sourceCooling = tvStripSourceCooling(snapshot.data?.quotes || [], snapshot.data?.retryAt, now);
   const canRotate = Boolean(!newsOnly && market && (pages > 1 || (channel === 'allStocks' && !selected && markets.length > 1)));
-  useEffect(() => { onPaginationAvailable?.(canRotate); }, [canRotate, onPaginationAvailable]);
+  useEffect(() => { if (!newsOnly) onPaginationAvailable?.(canRotate); }, [newsOnly, canRotate, onPaginationAvailable]);
   const step = useCallback((direction: number) => {
     if (!market) return;
     setCursors(current => ({ ...current, [market.id]: ((current[market.id] || 0) + direction + pages) % pages }));
@@ -65,7 +65,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
         <button aria-label={t('refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/></button>
       </div>
     </header>
-    {newsOnly ? <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing}/> : <div className="tv-receiver-content">
+    {newsOnly ? <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing} onPaginationAvailable={onPaginationAvailable}/> : <div className="tv-receiver-content">
       <section className="tv-receiver-market" aria-busy={snapshot.loading || catalog.loading}>
         <header><h2>{label}</h2><span>{t('coverage')}: <bdi>{snapshot.data ? `${snapshot.data.available} / ${snapshot.data.total}` : '—'}</bdi></span>
           <div><button aria-label={t('previous')} onClick={() => step(-1)} disabled={!market}><ChevronLeft aria-hidden="true"/></button><bdi>{page + 1} / {pages}</bdi><button aria-label={t('next')} onClick={() => step(1)} disabled={!market}><ChevronRight aria-hidden="true"/></button></div>

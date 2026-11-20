@@ -19,6 +19,19 @@ export function isTvExternalIndex(symbol: string): symbol is TvExternalIndex {
   return Object.hasOwn(INDEX_CURRENCIES, symbol);
 }
 
+// An index's last value can land a few minutes after its official close
+// (closing auctions); Yahoo's session clock may sit just after that value.
+const CLOSE_TOLERANCE_MS = 15 * 60_000;
+
+/** The session is over only when Yahoo's own regular-session clock proves it:
+ * now is past the close and the value is from the close, or the next session
+ * has not opened yet and the value predates it. Unknown session → not claimed. */
+export function tvIndexSessionClosed(session: { start: number; end: number } | undefined, observed: number, now = Date.now()) {
+  if (!session || !Number.isFinite(session.start) || !Number.isFinite(session.end) || session.end <= session.start) return false;
+  if (now >= session.end) return observed >= session.end - CLOSE_TOLERANCE_MS;
+  return now < session.start && observed < session.start;
+}
+
 /** A verified external cash index, never an ETF alias or an SFM-owned quote. */
 export function verifiedTvIndex(symbol: TvExternalIndex, data: YahooHistoryResult, now = Date.now()) {
   if (!data.success || data.providerSymbol !== symbol) return null;
@@ -29,13 +42,15 @@ export function verifiedTvIndex(symbol: TvExternalIndex, data: YahooHistoryResul
   if (!Number.isFinite(observed) || observed > now + 60_000 || now - observed > 10 * 86_400_000
     || snapshot.price === null || !Number.isFinite(snapshot.price) || snapshot.price <= 0) return null;
   const previous = snapshot.previousClose;
+  const closed = tvIndexSessionClosed(snapshot.regularSession, observed, now);
   const quote: TvQuote = {
     symbol, name: snapshot.name || symbol, nameAr: snapshot.name || symbol, currency: null,
     price: snapshot.price, changePercent: previous !== null && Number.isFinite(previous) && previous > 0
       ? (snapshot.price - previous) / previous * 100 : null,
     source: 'Yahoo Finance', observedAt: snapshot.marketTime, receivedAt: data.retrievedAt || null,
     exchange: snapshot.exchange, country: INDEX_COUNTRIES[symbol],
-    delayType: 'delayed', changeBasis: 'session', status: 'delayed',
+    observation: { precision: 'instant', marketOpen: closed ? false : null },
+    delayType: 'delayed', changeBasis: 'session', status: closed ? 'closed' : 'delayed',
   };
   quote.status = quoteStatus(quote, now);
   return { quote, history: data.history };
