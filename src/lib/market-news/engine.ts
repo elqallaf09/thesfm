@@ -353,6 +353,8 @@ function mergeStory(existing: ConsolidatedNewsStory, incoming: ConsolidatedNewsS
           : 'single_source';
   const result: ConsolidatedNewsStory = {
     ...primary,
+    // Preserve the publisher photo when the preferred duplicate has none.
+    imageUrl: primary.imageUrl || other.imageUrl || null,
     id: existing.id,
     duplicateGroupId: existing.id,
     symbols: [...new Set([...existing.symbols, ...incoming.symbols])],

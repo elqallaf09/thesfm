@@ -13,7 +13,7 @@ export function TvNewsThumbnail({ imageUrl }: { imageUrl?: string }) {
   const url = imageUrl ? safeTvUrl(imageUrl) : null;
   const available = Boolean(url && url !== failed);
   return <span className="tv-news-thumbnail" data-news-image={available ? 'available' : 'fallback'} aria-hidden="true">
-    {available ? <img src={url!} alt="" width="240" height="180" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(url)}/>
+    {available ? <img src={url!} alt="" width="240" height="180" loading="eager" decoding="async" referrerPolicy="no-referrer" onError={() => setFailed(url)}/>
       : <Newspaper aria-hidden="true"/>}
   </span>;
 }
