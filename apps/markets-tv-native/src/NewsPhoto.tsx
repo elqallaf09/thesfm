@@ -17,7 +17,7 @@ function Photo({ candidates }: { candidates: string[] }) {
   const uri = candidates[index];
   return <View style={styles.frame}>
     {index > candidates.length ? <Label>SFM NEWS</Label> : <Image
-      source={{ uri: uri ?? ORIGIN + '/markets-tv/sfm-news-fallback.webp' }} accessible={false}
+      source={{ uri: uri ?? ORIGIN + '/markets-tv/sfm-news-fallback.webp' }} alt="" accessible={false}
       resizeMode={uri ? 'cover' : 'contain'} style={styles.photo} onError={() => setIndex(index + 1)}/>}
   </View>;
 }
