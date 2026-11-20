@@ -12,7 +12,6 @@ const TvMarketStrips = lazy(() => import('./TvMarketStrips').then(module => ({ d
 import { DEFAULT_TV_SETTINGS, normalizeTvSettings, type TvMarket, type TvAlert, type TvDevice, type TvDisplayMode, type TvGroup, type TvNews, type TvQuote, type TvScene, type TvSettings, type TvSnapshot, type TvView } from '@/lib/markets-tv/types';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
-import { TvQr } from './TvQr';
 import { useTvResource, useTvScenePrefetch } from './useTvResource';
 import { useTvRemote } from './useTvRemote';
 import { normalizeTvChannels, TV_CHANNELS_KEY, type TvChannel } from '@/lib/markets-tv/channels';
@@ -32,8 +31,8 @@ const TvToolsPanel = lazy(() => import('./TvToolsPanel').then(module => ({ defau
 const TvSignOutPanel = lazy(() => import('./TvToolsPanel').then(module => ({ default: module.TvSignOutPanel })));
 import { TV_WELCOME_EVENT } from '@/lib/markets-tv/welcome';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
-import { TvHeadlines } from './TvSceneSidebar';
-import { TvNewsEvidence, TvNewsThumbnail } from './TvNewsCard';
+const TvHeadlines = lazy(() => import('./TvSceneSidebar').then(module => ({ default: module.TvHeadlines })));
+const TvNewsDetail = lazy(() => import('./TvNewsDetail'));
 const TvInvestments = lazy(() => import('./TvInvestments'));
 const TvBrief = lazy(() => import('./TvPanels').then(module => ({ default: module.TvBrief })));
 const TvMarketMap = lazy(() => import('./TvPanels').then(module => ({ default: module.TvMarketMap })));
@@ -379,7 +378,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         </>}
         </Suspense>
       </div>
-      {view === 'markets' && settings.layout === 'balanced' && <aside className="tv-news-panel"><TvHeadlines onRetry={refresh} news={news.data?.stories || EMPTY_NEWS} newsLoading={news.loading} newsError={news.error} language={settings.language} now={now} onStory={setStory}/></aside>}
+      {view === 'markets' && settings.layout === 'balanced' && <aside className="tv-news-panel"><Suspense fallback={<p role="status">{t('loading')}</p>}><TvHeadlines onRetry={refresh} news={news.data?.stories || EMPTY_NEWS} newsLoading={news.loading} newsError={news.error} language={settings.language} now={now} onStory={setStory}/></Suspense></aside>}
     </main>
     {view === 'markets' && settings.ticker && strips}
     </>}
@@ -398,7 +397,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
         onPrevious={() => chooseScene(previousScene)} onNext={() => chooseScene(nextScene)}/>}
       {dialog === 'sessions' && <TvSessions suspended={menuOpen || (modal && dialog !== 'sessions')} autoRotate={settings.sessionAutoRotate!==false} onAutoRotateChange={enabled=>setSettings(value=>({...value,sessionAutoRotate:enabled}))} language={settings.language} now={now} selected={settings.sessionIds} onSelectionChange={ids=>setSettings(value=>({...value,sessionIds:ids}))}/>}
       {detail && <TvQuoteDetail quote={detail} language={settings.language} now={now}/>}
-      {story && <div className="tv-detail"><div className="tv-news-detail"><TvNewsThumbnail imageUrl={story.imageUrl}/><h3>{story.title}</h3><TvNewsEvidence story={story} language={settings.language} now={now}/></div><div className="tv-phone-link"><TvQr value={story.url} label={t('openStory')}/><p>{t('openStory')}</p></div></div>}
+      {story && <TvNewsDetail story={story} language={settings.language} now={now}/>}
       </Suspense>
     </section></div>}
   </div></TvMotionOverride.Provider>;

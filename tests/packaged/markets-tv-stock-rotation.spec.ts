@@ -274,7 +274,10 @@ test('pending directory or quotes and request errors never skip an unread page',
 
 test('missing prices advance after eight seconds while a cooling provider stays on the same page', async ({ page }) => {
   const fixture = await open(page, { snapshot: 'empty' });
-  await expect(page.locator('.tv-hall-row')).toHaveCount(0);
+  await expect(page.locator('.tv-hall-row')).toHaveCount(6);
+  await expect(page.locator('.tv-hall-row').first()).toContainText('ROT00');
+  await expect(page.locator('.tv-hall-price strong')).toHaveText(Array(6).fill('—'));
+  await expect(page.locator('.tv-stock-coverage > span:first-child bdi')).toHaveText('0 / 6');
   await expectRunning(page);
   await page.clock.runFor(7_999); await expectPage(page, 1);
   await page.clock.runFor(1); await expectPage(page, 2);

@@ -27,6 +27,10 @@ the exact candidate SHA; this document does not claim a completed deployment.
   metadata, source text and layout assertions remain intact.
 - Prepare Android version `1.0.26`, build `32`. The separate 45-minute cached
   debug workflow remains independent of packaged browser/release validation.
+- Keep TV stock paging and playback on one header row, restoring the reading
+  space needed by all six quote rows; mobile controls still stack.
+- Load article details/QR and the legacy balanced headlines panel when needed,
+  keeping the existing initial-JavaScript budget unchanged.
 
 ## Verification
 
@@ -37,6 +41,15 @@ focused suite passed 742 cases and caught one obsolete three-stock European
 sample expectation, updated to the exact twenty verified symbols in current
 main. Full candidate unit/build results and the final browser/Android evidence
 must be recorded in the pull request before promotion.
+
+The first GitHub integration revision `eeb0413` compiled the whole application
+but exceeded the unchanged TV initial-JavaScript budget (201.2 KiB versus
+200.2 KiB). Its focused presentation workflow exposed the vertical space used
+by stacked stock controls. Both causes are addressed in the follow-up revision;
+their failed observations remain available in the prior Actions runs. The
+missing-price rotation regression now asserts six named unavailable rows,
+six exact dash placeholders and 0/6 coverage, retaining all eight-second and
+provider-cooldown assertions required by the combined directory contract.
 
 The local system Chromium cannot create its process-singleton socket in this
 execution environment (`Operation not permitted`). No local browser pass is
