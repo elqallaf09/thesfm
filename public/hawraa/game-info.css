@@ -1,8 +1,14 @@
-:root { color-scheme: light; font-family: system-ui, sans-serif; color: #33271f; background: #faf6ee; }
+:root {
+  color-scheme: light dark;
+  color: var(--foreground, CanvasText);
+  background-color: var(--surface, Canvas);
+  font-family: var(--font-ui);
+}
+
 body { margin: 0; }
 main { max-width: 43rem; margin: auto; padding: clamp(1.25rem, 5vw, 3.5rem); }
-h1 { font-size: clamp(2rem, 6vw, 3rem); color: #71384a; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); }
 h2, h3 { font-size: 1.2rem; margin: 1.75rem 0 .25rem; }
 p { line-height: 1.85; }
-a { color: #71384a; }
-footer { border-block-start: 1px solid #d8cdbf; margin-block-start: 2.5rem; padding-block-start: 1.25rem; }
+a { color: var(--link, LinkText); }
+footer { border-block-start: 1px solid var(--border, currentColor); margin-block-start: 2.5rem; padding-block-start: 1.25rem; }
