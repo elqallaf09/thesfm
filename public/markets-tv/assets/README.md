@@ -10,3 +10,5 @@ Bundled symbols: TSLA, AAPL, MSFT, NVDA, AMZN, GOOGL, ASML.AS, SAP.DE, NESN.SW, 
 Company trademarks remain owned by their respective companies. Used to identify the corresponding security; matching is constrained by listing/exchange. No logo implies sponsorship.
 
 The market atlas pairs an illustrated Kuwait waterfront generated with Higgsfield with a separate geographic layer. The latter uses the public-domain Natural Earth 1:110m land and land-boundary data in a Robinson projection centred on Greenwich. The 2:1 map extent is −17,400,000 to 17,400,000 m east and −7,800,000 to 9,600,000 m north. The interactive city positions use the same projection and extent.
+
+The country atlas adds eleven original AI-generated landmark illustrations in `atlas/`. Kuwait retains the original waterfront illustration. Clock pins identify financial cities; the cover illustrates a landmark from the same country. The Bahrain cover depicts Qal’at al-Bahrain, the archaeological site of the ancient harbour and capital of Dilmun (https://whc.unesco.org/en/list/1192/).

@@ -132,8 +132,7 @@
   font-weight: 600;
 }
 .tv-atlas-pin[data-region="gulf"] .tv-atlas-pin-name { bottom: auto; top: calc(50% + .9em); }
-.tv-atlas-pin[data-active="true"] .tv-atlas-dot,
-.tv-atlas-pin[data-region="gulf"] .tv-atlas-dot { background: var(--tv-atlas-highlight); }
+.tv-atlas-pin[data-active="true"] .tv-atlas-dot { background: var(--tv-atlas-highlight); }
 .tv-atlas-pin[data-active="true"] .tv-atlas-pin-name { outline: 2px solid var(--tv-atlas-highlight); }
 .tv-atlas-clock-heading {
   display: flex;
@@ -202,3 +201,30 @@
   .tv-atlas-land, .tv-atlas-dot { forced-color-adjust: none; background: CanvasText; }
   .tv-atlas-pin-name { border: 1px solid ButtonText; }
 }
+
+.tv-atlas-cover > img:not([data-country="kw"]) { object-position: 50% 42%; }
+.tv-atlas-kicker, .tv-atlas-landmark { font-size: max(14px, .92em); }
+.tv-atlas-kicker { font-weight: 500; }
+.tv-atlas-landmark { font-weight: 600; }
+.tv-screen button.tv-atlas-pin {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.tv-atlas-pin[data-labelled="false"] .tv-atlas-dot { width: .45em; height: .45em; outline: none; border-width: 1px; }
+.tv-atlas-pin[data-labelled="true"] { z-index: 1; }
+.tv-atlas-pin[data-active="true"] { z-index: 2; }
+.tv-atlas-tour { display: flex; align-items: center; gap: .4em; }
+.tv-atlas-tour > span { min-width: 5ch; text-align: center; font-variant-numeric: tabular-nums; }
+.tv-screen .tv-atlas-tour button {
+  display: grid; place-items: center; width: 2.4em; height: 2.1em; min-width: 36px; min-height: 32px;
+  border: 1px solid var(--tv-line); border-radius: var(--radius-sm); color: var(--tv-text); background: var(--tv-panel);
+}
+.tv-atlas-tour button:focus-visible { outline: 2px solid var(--tv-accent); }
+.tv-atlas-tour svg { width: 1em; height: 1em; }
+.tv-atlas-pin:focus-visible .tv-atlas-dot { outline: 3px solid var(--tv-accent); outline-offset: 2px; }
