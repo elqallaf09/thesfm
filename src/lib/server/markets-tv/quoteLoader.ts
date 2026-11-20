@@ -17,7 +17,9 @@ import type { TvAsset } from './catalog';
 import { cryptoTvQuotes, forexTvQuote } from './instruments';
 import { tvProviderFailure } from './quoteAvailability';
 import { finnhubUsMarketOpen } from './finnhubMarketStatus';
+import { verifiedFinnhubUsListing } from './finnhubListing';
 import { cachedTvQuote } from './quoteCache';
+import { isOwnableQuote, readOwnedTvQuote, saveOwnedTvQuote } from './ownedQuoteStore';
 import { withTvIndexFallback } from './indexFallback';
 import { withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
@@ -139,15 +141,19 @@ async function loadQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   if (!row) return regionalFailure || { ...empty(asset), ...tvProviderFailure(attempts) };
   const resolvedType = assetType || (row.assetType === 'gold' ? 'commodity' : row.assetType === 'etf' ? 'stock' : row.assetType);
   if (!tvQuoteIdentityMatches({ ...asset, assetType: resolvedType }, row)) return empty(asset, 'identity_mismatch');
-  const marketOpen = row.provenance.upstreamProvider === 'finnhub' && knownUsStock ? await finnhubUsMarketOpen() : null;
+  const usListing = await verifiedFinnhubUsListing(asset, row).catch(() => null);
+  const marketOpen = usListing && row.provenance.observedAt && Number.isFinite(Date.parse(row.provenance.observedAt))
+    && !['date', 'unknown'].includes(row.provenance.observation?.precision || '') ? await finnhubUsMarketOpen() : null;
   const observedRow = marketOpen === null ? row : { ...row, provenance: { ...row.provenance,
     observation: { precision: row.provenance.observedAt ? 'instant' as const : 'unknown' as const, marketOpen } } };
   const result = toTvQuote(asset.symbol, observedRow, asset.nameAr);
   const retainedFailure = row.provenance.cached && attempts.some(attempt => attempt.provider === row.provenance.upstreamProvider)
     ? tvProviderFailure(attempts) : {};
-  const quote = { ...result, ...retainedFailure, displaySymbol: asset.displaySymbol, name: asset.name || row.name || asset.symbol,
-    nameAr: asset.nameAr || row.name || asset.name, currency: result.currency || asset.currency || null,
-    country: asset.country || result.country, exchange: asset.exchange || asset.region || result.exchange,
+  const hasName = (value: string | null | undefined) => Boolean(value?.trim() && value.trim().toUpperCase() !== asset.symbol.toUpperCase());
+  const name = hasName(asset.name) ? asset.name : hasName(row.name) ? row.name! : usListing?.name || asset.name || asset.symbol;
+  const quote = { ...result, ...retainedFailure, displaySymbol: asset.displaySymbol, name,
+    nameAr: hasName(asset.nameAr) ? asset.nameAr! : name, currency: result.currency || asset.currency || null,
+    country: asset.country || result.country || usListing?.country || null, exchange: asset.exchange || asset.region || result.exchange || usListing?.exchange || null,
     ...(result.price === null ? { issue: 'invalid_quote' as const } : {}),
   };
   quote.status = quoteStatus(quote);
@@ -179,6 +185,7 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   // Nasdaq Dubai's fallback has a verified listing/price but no trade clock.
   // Keep it outside the dated-observation cache and disclose unknown timing.
   const work = (tvNasdaqDubaiIdentity(asset) ? withTvNasdaqDubaiFallback(asset, verified) : verified)
+    .then(quote => withOwnedQuote(key, asset, quote))
     .catch(() => empty(asset)).finally(() => pendingQuotes.delete(key));
   pendingQuotes.set(key, work);
   if (assetType === 'forex' || tvGulfBankIdentity(asset) || tvWorldStockIdentity(asset) || tvCommodityIdentity(asset) || tvRegionalIdentity(asset) || tvNasdaqDubaiIdentity(asset)) {
@@ -187,6 +194,19 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
     try { after(async () => { await Promise.allSettled([verified, work]); }); } catch { /* No request scope in offline callers. */ }
   }
   return work;
+}
+
+/** Keeps every verified quote in THE SFM's own store, and answers from it when
+ * every upstream source is out. The stored quote keeps its source and clock. */
+async function withOwnedQuote(key: string, asset: TvAsset, quote: TvQuote): Promise<TvQuote> {
+  if (isOwnableQuote(quote)) {
+    const save = () => saveOwnedTvQuote(key, quote);
+    try { after(save); } catch { void save(); }
+    return quote;
+  }
+  if (quote.price !== null) return quote;
+  const owned = await readOwnedTvQuote(key, asset.symbol);
+  return owned ? { ...owned, displaySymbol: asset.displaySymbol, name: asset.name, nameAr: asset.nameAr || asset.name, retryAt: quote.retryAt } : quote;
 }
 
 async function archivedIndex(quote: TvQuote): Promise<TvQuote> {

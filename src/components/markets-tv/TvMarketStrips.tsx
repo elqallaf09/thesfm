@@ -10,7 +10,7 @@ import { ChevronRight, RefreshCw } from 'lucide-react';
 import type { TvSelections } from '@/lib/markets-tv/selections';
 import { useTvResource } from './useTvResource';
 import { hasTvPrice, tvStripCoverage } from '@/lib/markets-tv/coverage';
-import { tvSceneIssue, tvSceneText, tvStripRetryAt, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
+import { tvForexHasLiveSource, tvSceneIssue, tvSceneText, tvStripRetryAt, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
 import { stripCopy } from './strip-copy';
 import './strip-layout.css';
 
@@ -44,7 +44,7 @@ const Strip = memo(function Strip({ market, active, language, token, now, onSele
   const snapshot = retainVisibleTvSnapshot(retained, resource), quotes = snapshot?.quotes || [];
   const coverage = tvStripCoverage(quotes, now);
   const sourceCooling = tvStripSourceCooling(quotes, snapshot?.retryAt, now, market.group);
-  const retryAt = market.group === 'forex' ? tvStripRetryAt(quotes, snapshot?.retryAt, now) : null;
+  const retryAt = market.group === 'forex' && !tvForexHasLiveSource(quotes) ? tvStripRetryAt(quotes, snapshot?.retryAt, now) : null;
   const forexWaiting = market.group === 'forex' && (sourceCooling || quotes.some(quote => quote.issue === 'rate_limited'));
   const forexFailure = tvSceneText(language, coverage.priced ? 'currencyUpdatesPartial' : 'currencyUpdatesPaused');
   const emptyPrices = quotes.length > 0 && !coverage.priced;

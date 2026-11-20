@@ -90,6 +90,15 @@ test('partial quote failure retains both row and summary source times without be
   await page.getByRole('button', { name: 'خريطة التغيّر', exact: true }).click();
   await expect(page.locator('.tv-scene-heatmap > button')).toHaveCount(0);
   await expect(page.getByText('لا توجد تغيّرات موثقة كافية للخريطة', { exact: true })).toBeVisible();
+  await expect(page.locator('.tv-scene-table')).toHaveCount(0);
+  await expect(page.locator('.tv-scene-row')).toHaveCount(0);
+  await page.getByRole('button', { name: 'عرض الأسعار', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tv-scene-row')).toHaveCount(6);
+  await expect(row).toContainText('127.45');
+  await expect(row.locator('.tv-status')).toHaveAttribute('data-status', 'stale');
+  await expect(row.locator('time')).toHaveAttribute('dateTime', observedAt);
+  await expect(summary.locator('time')).toHaveAttribute('dateTime', observedAt);
 });
 
 test('viewing fits 720p, 1080p and 4K, keeps remote focus and supports three languages', async ({ page }) => {

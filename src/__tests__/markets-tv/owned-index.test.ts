@@ -3,6 +3,8 @@ const { read, fresh } = vi.hoisted(() => ({ read: vi.fn(), fresh: vi.fn() }));
 vi.mock('next/cache', () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/sfm-market/engine', () => ({ getSfmMarketQuote: fresh }));
 vi.mock('@/lib/server/markets-tv/indexFallback', () => ({ withTvIndexFallback: (_symbol: string, primary: Promise<unknown>) => primary }));
+// This file covers the archived-observation layer behind the owned quote store.
+vi.mock('@/lib/server/markets-tv/ownedQuoteStore', () => ({ isOwnableQuote: () => false, readOwnedTvQuote: async () => null, saveOwnedTvQuote: async () => undefined }));
 vi.mock('@/lib/server/adminAccess', () => ({ createServerSupabaseAdmin: () => ({
   from: () => {
     const query = { select: () => query, eq: () => query, lte: () => query,

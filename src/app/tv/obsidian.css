@@ -83,7 +83,6 @@
 .tv-now-row .tv-session-countdown { margin-top: .15em; font-size: .8em; }
 .tv-now-row .tv-session-countdown bdi { font-size: 1em; }
 .tv-now-row .tv-session-countdown small { margin: 0; font-size: max(12px,.6em); }
-.tv-scene-map-notice { color: var(--tv-muted); font-size: max(12px,.65em); padding: .5em .8em; }
 .tv-scene-heatmap-price { font: 500 1.15em/1.4 var(--font-data); }
 .tv-scene-heatmap-price small { font-size: .55em; color: var(--tv-muted); }
 .tv-brief-saved { min-height: 0; overflow-y: auto; }

@@ -20,9 +20,12 @@ describe('consistent TV numeric and time display', () => {
     const now = Date.parse('2026-11-03T21:05:00Z'); // Already 4 November in Kuwait.
     expect(tvTime('2026-11-03T21:00:00Z', language)).toBe('00:00');
     expect(tvQuoteTime('2026-11-03T21:00:00Z', language, now)).toBe('00:00');
+    expect(tvQuoteTime('2026-11-03T21:00:00Z', language, now, true)).toBe('2026-11-04 · 00:00');
     expect(tvQuoteTime('2026-11-03T20:53:00Z', language, now)).toBe('2026-11-03 · 23:53');
     expect(tvQuoteTime('2025-11-04T12:30:00Z', language, now)).toBe('2025-11-04 · 15:30');
     expect(tvQuoteTime('2026-11-03', language, now)).toBe('2026-11-03');
     expect(tvQuoteTime(null, language, now)).toBe('—');
+    expect(tvQuoteTime(null, language, now, true)).toBe('—');
+    expect(tvQuoteTime('invalid', language, now, true)).toBe('—');
   });
 });

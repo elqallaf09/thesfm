@@ -43,7 +43,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
         await page.setViewportSize({ width, height });
         const menu = await openTvMenu(page);
         const controls = menu.locator('button');
-        await expect(controls).toHaveCount(15);
+        await expect(controls).toHaveCount(19);
         for (const control of await controls.all()) {
           await expect(control.locator('span').first()).toBeVisible();
           await expect(control).toBeInViewport({ ratio: 1 });

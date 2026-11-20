@@ -10,6 +10,10 @@ export const TV_TEXT = {
   kuwait: ['بورصة الكويت', 'Boursa Kuwait', 'Bourse du Koweït'],
   pairScope: ['يتيح الربط عرض قائمة المتابعة واستثمارات الحساب على هذا التلفزيون.', 'Linking allows this TV to display your watchlist and account investments.', 'L’association permet à ce téléviseur d’afficher votre liste de suivi et vos investissements.'],
   investments: ['استثماراتي', 'My investments', 'Mes investissements'],
+  pausePages: ['إيقاف تقليب الصفحات', 'Pause page rotation', 'Arrêter le défilement des pages'],
+  resumePages: ['تشغيل تقليب الصفحات', 'Resume page rotation', 'Reprendre le défilement des pages'],
+  pauseAllocationPages: ['إيقاف تقليب صفحات التوزيع', 'Pause allocation pages', 'Arrêter les pages de répartition'],
+  resumeAllocationPages: ['تشغيل تقليب صفحات التوزيع', 'Resume allocation pages', 'Reprendre les pages de répartition'],
   done: ['تم', 'Done', 'Terminé'],
   marketPickerHeading: ['شاشتك، على اختيارك', 'Your screen, your markets', 'Votre écran, vos marchés'],
   marketPickerHelp: ['اختر سوقًا من القائمة لضبط ظهوره وترتيبه وأسهمه وسرعة شريطه.', 'Choose a market to set its visibility, order, instruments and scroll speed.', 'Choisissez un marché pour régler sa visibilité, son ordre, ses titres et sa vitesse.'],
@@ -191,12 +195,12 @@ export function tvQuotePrice(quote: Pick<TvQuote, 'price' | 'currency' | 'exchan
 
 // Compare days in the displayed timezone, not the device timezone or UTC.
 const quoteDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuwait', year: 'numeric', month: '2-digit', day: '2-digit' });
-export function tvQuoteTime(value: string | null, language: TvLanguage, now: number) {
+export function tvQuoteTime(value: string | null, language: TvLanguage, now: number, includeDate = false) {
   if (!value || !Number.isFinite(Date.parse(value))) return '—';
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const instant = new Date(value);
   const time = tvTime(value, language);
-  if (Number.isFinite(now) && now > 0 && quoteDay.format(instant) === quoteDay.format(now)) return time;
+  if (!includeDate && Number.isFinite(now) && now > 0 && quoteDay.format(instant) === quoteDay.format(now)) return time;
   // Keep the full date for an older observation, including its year.
   const parts = quoteDay.formatToParts(instant);
   const part = (type: string) => parts.find(value => value.type === type)?.value;

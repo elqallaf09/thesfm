@@ -47,9 +47,8 @@ export async function closeTvHeaderActions(page: Page) {
 }
 
 export async function chooseTvDestination(page: Page, destination: string) {
-  const tools = ['gulf', 'assets', 'brief', 'map'].includes(destination);
-  if (tools) await openTvHeaderActions(page); else await openTvMenu(page);
-  await page.locator(`[data-tv-focus-key="${tools ? destination : `menu:${destination}`}"]`).click();
+  await openTvMenu(page);
+  await page.locator(`[data-tv-focus-key="menu:${destination}"]`).click();
   await expect(page.locator('.tv-side-menu')).not.toBeVisible();
   await expect(page.locator('#tv-tools-dialog')).toHaveCount(0);
 }

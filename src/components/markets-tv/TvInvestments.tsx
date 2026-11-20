@@ -108,8 +108,8 @@ function PortfolioDetails({ position, currency, language, now, close }: {
   </div>;
 }
 
-export default function TvInvestments({ token, language, revision, now, onPair, onRefresh, autoRotate, suspended = false }: {
-  token: string; language: TvLanguage; revision: number; now: number; onPair: () => void; onRefresh: () => void; autoRotate: boolean; suspended?: boolean; onAutoRotateChange: (enabled: boolean) => void;
+export default function TvInvestments({ token, language, revision, now, onPair, onRefresh, autoRotate, suspended = false, onPaginationAvailable }: {
+  token: string; language: TvLanguage; revision: number; now: number; onPair: () => void; onRefresh: () => void; autoRotate: boolean; suspended?: boolean; onAutoRotateChange: (enabled: boolean) => void; onPaginationAvailable?: (available: boolean) => void;
 }) {
   const [currency, setCurrency] = useState(''), [assetClass, setAssetClass] = useState('all');
   // Bind the selection to its paired account; a token change cannot reopen it.
@@ -122,6 +122,8 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
   const detail = token && !expired && selected?.token === token ? data?.positions.find(item => item.id === selected.id) : null;
   const allocation = data?.allocation || [], allocationPages = Math.max(1, Math.ceil(allocation.length / 4));
   const allocationPage = useTvBroadcastPage(allocationPages, autoRotate && !expired && !suspended && !detail);
+  const canRotate = Boolean(token && !expired && data?.total && (data.totalValue ?? 0) > 0 && allocationPages > 1);
+  useEffect(() => { onPaginationAvailable?.(canRotate); }, [canRotate, onPaginationAvailable]);
   const text = (key: PortfolioTextKey) => portfolioText(language, key);
   const displayCurrency = currency || data?.currency || 'KWD';
   const currencies = [...new Set([displayCurrency, ...CURRENCIES])];

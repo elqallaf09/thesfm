@@ -27,6 +27,8 @@ export const TV_SCENE_TEXT = {
   scenes: ['مشاهد الأسواق', 'Market scenes', 'Scènes de marché'],
   quoteList: ['الأسعار', 'Quotes', 'Cours'],
   heatmap: ['خريطة التغيّر', 'Change map', 'Carte des variations'],
+  viewQuotes: ['عرض الأسعار', 'View quotes', 'Voir les cours'],
+  heatmapNeedsChanges: ['تحتاج الخريطة إلى تغيّرات موثقة للجلسة أو لآخر 24 ساعة. يمكنك عرض الأسعار المحفوظة مع تاريخها.', 'The map needs verified session or 24-hour changes. You can view retained prices with their dates.', 'La carte nécessite des variations vérifiées de séance ou sur 24 h. Les cours conservés restent consultables avec leur date.'],
   sceneCoverage: ['تغطية المشهد', 'Scene coverage', 'Couverture de la scène'],
   quoted: ['أسعار متاحة', 'Quotes available', 'Cours disponibles'],
   missing: ['أسعار غير متاحة', 'Quotes unavailable', 'Cours indisponibles'],
@@ -36,6 +38,7 @@ export const TV_SCENE_TEXT = {
   otherPrices: ['أسعار محفوظة أو مرجعية', 'Retained or reference quotes', 'Cours conservés ou de référence'],
   selectedCoverage: ['من الأدوات المختارة لهذا المشهد', 'Of the instruments selected for this scene', 'Parmi les titres sélectionnés pour cette scène'],
   marketSample: ['عينة المشهد، وليست ترتيب السوق كله', 'Scene sample, not a whole-market ranking', 'Échantillon de la scène, pas un classement du marché'],
+  watchlistPrices: ['أسعار قائمة المتابعة', 'Watchlist prices', 'Cours de la liste'],
   chooseScene: ['اختر المشهد', 'Choose a scene', 'Choisir une scène'],
   kuwaitTime: ['توقيت الكويت', 'Kuwait time', 'Heure du Koweït'],
   identity: ['الأداة', 'Instrument', 'Instrument'],
@@ -107,6 +110,13 @@ export function tvSceneIssue(issue: string | undefined): TvSceneTextKey {
 }
 
 /** A retry deadline is never a quote observation or a promise of recovery. */
+/** A live forex source (not the daily reference) is answering, so the shared
+ * Twelve Data deadline must not slow or pause the screen. */
+export function tvForexHasLiveSource(quotes: TvQuote[]) {
+  return quotes.some(quote => quote.price !== null && Number.isFinite(quote.price) && quote.price > 0 && !quote.issue
+    && quote.changeBasis !== 'reference' && !['reference', 'stale', 'unavailable', 'unknown_time'].includes(quote.status));
+}
+
 export function tvStripRetryAt(quotes: TvQuote[], retryAt: string | null | undefined, now: number): string | null {
   return [retryAt, ...quotes.map(quote => quote.retryAt)].reduce<string | null>((earliest, value) => {
     if (!value || !(Date.parse(value) > now)) return earliest;
@@ -119,7 +129,7 @@ export function tvStripSourceCooling(quotes: TvQuote[], retryAt: string | null |
   if (retryAt && Date.parse(retryAt) > now) return true;
   // Forex pairs share one source budget, including a partial/reference response.
   // Other mixed-provider groups must keep their healthy price streams updating.
-  if (group === 'forex' && tvStripRetryAt(quotes, retryAt, now)) return true;
+  if (group === 'forex' && !tvForexHasLiveSource(quotes) && tvStripRetryAt(quotes, retryAt, now)) return true;
   if (!quotes.length || !quotes.every(quote => quote.issue === 'rate_limited')) return false;
   const deadlines = [retryAt, ...quotes.map(quote => quote.retryAt)].map(value => Date.parse(value || '')).filter(Number.isFinite);
   return !deadlines.length || deadlines.some(deadline => deadline > now);
