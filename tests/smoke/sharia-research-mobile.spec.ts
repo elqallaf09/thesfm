@@ -111,6 +111,30 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     }));
   });
 
+  test('opens the Kuwait reference before starting the lower market scan', async ({ page, context }) => {
+    let requests = 0;
+    await page.route('**/api/stock-categories/scanner?category=sharia&**', route => {
+      requests++;
+      return route.fulfill({ json: { ok: true, items: [], matched_count: 0, returned_count: 0 } });
+    });
+    await context.route('https://boubyancapital.com/**/*.pdf', route =>
+      route.fulfill({ contentType: 'text/html', body: '<title>Reference destination</title>' }));
+
+    await page.goto('/sharia-stocks');
+    await expect(page.getByTestId('sharia-stock-results')).toBeVisible();
+    const reference = page.getByTestId('boubyan-reference-panel').getByRole('link', { name: /بورصة الكويت.*PDF/ });
+    const href = await reference.getAttribute('href');
+    expect(href).toMatch(/^https:\/\/boubyancapital\.com\/.*\.pdf$/);
+    const [publication] = await Promise.all([page.waitForEvent('popup'), reference.click()]);
+    await expect(publication).toHaveURL(href!);
+    await publication.close();
+    expect(requests).toBe(0);
+
+    await page.locator('[data-deferred-stock-scanner="sharia"]').evaluate(element => element.scrollIntoView());
+    await expect(page.locator('section[data-category="sharia"] input[type="search"]')).toBeVisible();
+    await expect.poll(() => requests).toBe(1);
+  });
+
   test('keeps stocks and news visible and embeds research without horizontal overflow', async ({ page }) => {
     test.setTimeout(90_000);
     await page.goto('/sharia-stocks');

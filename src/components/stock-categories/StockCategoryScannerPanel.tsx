@@ -286,7 +286,7 @@ export function DeferredStockCategoryScannerPanel({ category }: { category: Stoc
     return () => observer.disconnect();
   }, []);
 
-  return visible ? <StockCategoryScannerPanel category={category} /> : <div ref={placeholder} aria-hidden="true" />;
+  return visible ? <StockCategoryScannerPanel category={category} /> : <div ref={placeholder} data-deferred-stock-scanner={category} aria-hidden="true" />;
 }
 
 export function StockCategoryScannerPanel({ category }: { category: StockCategoryId }) {
