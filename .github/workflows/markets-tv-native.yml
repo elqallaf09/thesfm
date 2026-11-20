@@ -2,13 +2,25 @@ name: Native Markets TV validation
 on:
   pull_request:
     branches: [main]
-    paths: ['apps/markets-tv-native/**', 'src/lib/markets-tv/**', '.github/workflows/markets-tv-native.yml']
+    paths: ['apps/markets-tv-native/**', 'src/lib/markets-tv/**', '.github/workflows/markets-tv-native.yml', '.github/scripts/native-tv-smoke/**']
   workflow_dispatch:
     inputs:
       compile_native:
         description: 'Compile unsigned tvOS simulator app and Android test APK (no store upload)'
         type: boolean
         default: false
+      runtime_artifact_id:
+        description: 'Replay only: existing tvOS simulator artifact ID (leave empty for normal validation)'
+        type: string
+        default: ''
+      runtime_run_id:
+        description: 'Replay only: successful native workflow run that produced the artifact'
+        type: string
+        default: ''
+      runtime_source_sha:
+        description: 'Replay only: exact 40-character application source head SHA'
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -19,6 +31,7 @@ defaults:
     working-directory: apps/markets-tv-native
 jobs:
   validate:
+    if: github.event_name != 'workflow_dispatch' || inputs.runtime_artifact_id == ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -36,7 +49,7 @@ jobs:
       - run: pnpm prebuild:android && pnpm prebuild:tvos
       - run: pnpm exec expo export --platform android --platform ios --output-dir dist/validation
   android:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native && inputs.runtime_artifact_id == '')
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -61,7 +74,7 @@ jobs:
           path: apps/markets-tv-native/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
   tvos:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native)
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.compile_native && inputs.runtime_artifact_id == '')
     needs: validate
     runs-on: macos-26
     env:
@@ -110,4 +123,54 @@ jobs:
         with:
           name: sfm-native-tv-feature-screenshots
           path: apps/markets-tv-native/.native-build/smoke
+          if-no-files-found: error
+
+  runtime-replay:
+    name: Verify existing native TV app screens
+    if: github.event_name == 'workflow_dispatch' && inputs.runtime_artifact_id != ''
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify the compiled app source and artifact provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TV_SOURCE_RUN_ID: ${{ inputs.runtime_run_id }}
+          TV_SOURCE_ARTIFACT_ID: ${{ inputs.runtime_artifact_id }}
+          TV_SOURCE_SHA: ${{ inputs.runtime_source_sha }}
+          TV_COMPILE_NATIVE: ${{ inputs.compile_native }}
+        run: python3 .github/scripts/native-tv-smoke/artifact_source.py .native-runtime/smoke/source.json
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          artifact-ids: ${{ inputs.runtime_artifact_id }}
+          run-id: ${{ inputs.runtime_run_id }}
+          github-token: ${{ github.token }}
+          path: .native-runtime/prebuilt
+      - name: Assert native feature rendering on Apple TV
+        run: bash .github/scripts/native-tv-smoke/run.sh .native-runtime/prebuilt .native-runtime
+      - name: Preserve feature screenshots and accessibility evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sfm-native-tv-feature-screenshots
+          path: |
+            .native-runtime/smoke
+            .native-runtime/attachments
+          if-no-files-found: error
+      - name: Preserve XCTest result and runner build log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sfm-native-tv-runtime-xcresult
+          path: |
+            .native-runtime/NativeTVSmoke.xcresult
+            .native-runtime/xcodebuild.log
           if-no-files-found: error
