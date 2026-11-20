@@ -11,12 +11,13 @@ const fetchMock = vi.fn();
 beforeEach(() => { vi.resetModules(); vi.useFakeTimers(); vi.setSystemTime(now); fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-it('recovers all six world listings with one shared request despite primary quota failure', async () => {
+it('recovers every world listing with one shared request despite primary quota failure', async () => {
   fetchMock.mockImplementation(async () => Response.json(body()));
   const { withTvWorldStockFallback } = await import('@/lib/server/markets-tv/worldStockFallback');
   const quotes = await Promise.all(assets.map(asset => withTvWorldStockFallback(asset, Promise.resolve(missing(asset.symbol)))));
-  expect(quotes.map(q => q.price)).toEqual([.5, .5, .5, .5, .5, .5]); expect(fetchMock).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(fetchMock.mock.calls[0][1].body).symbols.tickers).toEqual(['EURONEXT:ASML', 'XETR:SAP', 'SIX:NESN', 'TSE:7203', 'TSE:6758', 'HKEX:700']);
+  expect(quotes.map(q => q.price)).toEqual(assets.map(() => .5)); expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body).symbols.tickers).toEqual(TV_WORLD_STOCKS.map(bank => `${bank.exchange}:${bank.ticker}`));
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body).symbols.tickers.slice(0, 6)).toEqual(['EURONEXT:ASML', 'XETR:SAP', 'SIX:NESN', 'TSE:7203', 'TSE:6758', 'HKEX:700']);
   await vi.advanceTimersByTimeAsync(60_000);
   const cached = await withTvWorldStockFallback(assets[0], Promise.resolve(missing('ASML.AS')));
   expect(cached.receivedAt).toBe(new Date(now).toISOString()); expect(cached.observedAt).toBe(quotes[0].observedAt);
@@ -63,7 +64,7 @@ it('isolates malformed listings and returns primary errors for the affected bank
   const data = body(); data.data[1].d[8] = 'WRONG'; fetchMock.mockResolvedValue(Response.json(data));
   const { withTvWorldStockFallback } = await import('@/lib/server/markets-tv/worldStockFallback');
   const quotes = await Promise.all(assets.map(asset => withTvWorldStockFallback(asset, Promise.resolve(missing(asset.symbol)))));
-  expect(quotes.map(q => q.price)).toEqual([.5, null, .5, .5, .5, .5]); expect(quotes[1].issue).toBe('rate_limited');
+  expect(quotes.map(q => q.price)).toEqual(assets.map((_, i) => i === 1 ? null : .5)); expect(quotes[1].issue).toBe('rate_limited');
 });
 it.each(['throw', 'html', 'empty'])('uses a short negative cache after %s failure', async mode => {
   fetchMock.mockImplementation(async () => {

@@ -46,6 +46,14 @@ async function readBatch(): Promise<Batch | null> {
   return pending;
 }
 
+/** The verified TradingView batch alone, asked before Twelve Data (see quoteLoader). */
+export async function tvWorldStockAlternative(asset: TvAsset): Promise<TvQuote | null> {
+  if (!tvWorldStockIdentity(asset)) return null;
+  const data = await readBatch().catch(() => null);
+  const quote = data ? verifiedTvWorldStockQuote(asset, data.payload, data.receivedAt) : null;
+  return usable(quote) ? quote : null;
+}
+
 /** One bounded, shared request for the six world-scene listings.
  * Independent of Yahoo/Twelve Data cooldowns; existing verified quote caching
  * retains dated observations on refresh failure without relabelling them fresh. */
