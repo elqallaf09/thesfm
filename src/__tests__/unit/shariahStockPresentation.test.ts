@@ -152,7 +152,7 @@ describe('Published reference review dates and safe actions', () => {
 it('keeps the price strip aligned with verified stock decisions without trimming research results', () => {
   const items = [screening('PASS', 'NASDAQ'), screening('REVIEW', 'NYSE', { shariahStatus: 'needs_review' }),
     screening('FAIL', 'NYSE', { shariahStatus: 'non_compliant' }), screening('FUND', 'NASDAQ', { assetType: 'etf' })];
-  const quotes = [...items.map(row => quote(row.symbol, row.exchange)), quote('EXTRA', 'NYSE'), quote('PASS', 'QSE')];
+  const quotes = [...items.map(row => quote(row.symbol, row.exchange ?? null)), quote('EXTRA', 'NYSE'), quote('PASS', 'QSE')];
   const response = { ok: true, items } as ScreeningResponse;
   expect(compliantTickerQuotes(response, quotes).map(item => item.symbol)).toEqual(['PASS']);
   expect(compliantTickerQuotes(response, [quote('PASS', 'NASDAQ', { shariahStatus: 'needs_review' })])).toEqual([]);
