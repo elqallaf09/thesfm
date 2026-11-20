@@ -5,13 +5,22 @@ export const IWM_HOLDINGS_URL = 'https://www.ishares.com/us/products/239710/isha
 export type IwmHolding = { symbol: string; name: string; identifier: string; weight: number; currency: string;
   assetClass: string; exchange: string; notionalValue: number; marketValue: number };
 
+/**
+ * Per-cell bound. The holdings table's own cells are short (tickers, names,
+ * numbers), but published fund CSVs also carry multi-kilobyte free-text legal
+ * paragraphs inside a single quoted cell. Aborting the tokenizer there would
+ * discard an otherwise complete holdings table, so the bound only has to stay
+ * well inside the 2 MB total input limit asserted below.
+ */
+const MAX_CELL_LENGTH = 20_000;
+
 /** Bounded RFC-4180 parser. Text and cells are never executed as formulas. */
 export function parseHoldingsCsv(text: string): string[][] {
   if (text.length > 2_000_000 || text.includes('\0')) throw new Error('fund_csv_size_or_encoding');
   const rows: string[][] = []; let row: string[] = [], cell = '', quoted = false, closed = false;
   const pushCell = () => { row.push(cell); cell = ''; closed = false; if (row.length > 30) throw new Error('fund_csv_column_limit'); };
   const pushRow = () => { pushCell(); rows.push(row); row = []; if (rows.length > 10000) throw new Error('fund_csv_row_limit'); };
-  const input = text.replace(/^\uFEFF/, '');
+  const input = text.replace(/^﻿/, '');
   for (let i = 0; i < input.length; i++) {
     const ch = input[i];
     if (quoted) {
@@ -23,7 +32,7 @@ export function parseHoldingsCsv(text: string): string[][] {
       else { if (ch === '\r' && input[i + 1] === '\n') i++; pushRow(); }
     } else if (ch === '"' && !cell && !closed) quoted = true;
     else { if (closed || ch === '"') throw new Error('fund_csv_invalid_quotes'); cell += ch; }
-    if (cell.length > 2000) throw new Error('fund_csv_cell_limit');
+    if (cell.length > MAX_CELL_LENGTH) throw new Error('fund_csv_cell_limit');
   }
   if (quoted) throw new Error('fund_csv_unclosed_quote');
   if (cell || row.length || closed) pushRow();

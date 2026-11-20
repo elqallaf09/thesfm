@@ -27,6 +27,16 @@ describe('iShares source-backed holdings parsing', () => {
   it.each(['Sep 16, 2026', 'Aug 07, 2026', 'Feb 30, 2026'])('rejects future, stale or impossible dates: %s', date => {
     expect(() => parseIwmCsv(fixture('', date), now)).toThrow();
   });
+  it('parses a holdings table that carries a multi-kilobyte legal paragraph', () => {
+    const paragraph = 'The performance quoted represents past performance. '.repeat(120);
+    expect(paragraph.length).toBeGreaterThan(2000);
+    const result = parseIwmCsv(fixture().replace('\nTicker,', `\n"${paragraph}"\nTicker,`), now);
+    expect(result.holdings).toHaveLength(1000);
+    expect(result.totalWeight).toBeCloseTo(100);
+  });
+  it('still bounds a single cell beyond the parser limit', () => {
+    expect(() => parseHoldingsCsv(`"${'x'.repeat(20_001)}"`)).toThrow('fund_csv_cell_limit');
+  });
   it('rejects wrong identity, duplicate positions, malformed numbers and truncation', () => {
     expect(() => parseIwmCsv(fixture().replace('iShares Russell 2000 ETF','Different Fund'), now)).toThrow();
     expect(() => parseIwmCsv(fixture().replace('T999,Example 999','T0,Example 0'), now)).toThrow();
