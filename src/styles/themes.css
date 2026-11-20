@@ -751,6 +751,7 @@
   --tv-news-brand-background: #071e1b;
   --tv-news-brand-text: #f6f2e8;
   --tv-news-brand-accent: #d4af6a;
+  --tv-brief-photo-shade: linear-gradient(90deg, var(--tv-news-brand-background) 24%, transparent 118%);
 }
 .tv-screen.tv-light {
   --tv-bg: #f4f2eb;
@@ -794,3 +795,23 @@
 
 .tv-screen { --tv-active-shadow: inset 0 -2px 0 var(--tv-accent); --tv-focus-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 5px var(--tv-accent); }
 .tv-screen { --tv-hero-background: radial-gradient(ellipse at 80% 0%, var(--tv-hero-tint), transparent 60%), var(--tv-panel); --tv-timeline-grid: repeating-linear-gradient(to right, var(--tv-line) 0 1px, transparent 1px 12.5%); }
+
+/* Cartographic inks and photographic caption treatment for the TV market map. */
+.tv-screen {
+  --tv-atlas-cover-shade: linear-gradient(180deg, transparent 27%, #041e1b55 58%, #041e1bf5 100%);
+  --tv-atlas-ocean: radial-gradient(ellipse at 46% 37%, #f6f7ed 0%, #e7eee1 74%, #dce7d8 100%);
+  --tv-atlas-land: linear-gradient(145deg, #739b86 5%, #436f61 58%, #75977d 100%);
+  --tv-atlas-label: #123d33;
+  --tv-atlas-label-text: #fffbef;
+  --tv-atlas-highlight: #e2be7d;
+  --tv-atlas-ring: #fffdf0;
+  --tv-atlas-halo: #2f695358;
+}
+.tv-screen.tv-dark {
+  --tv-atlas-ocean: radial-gradient(ellipse at 46% 37%, #113b36 0%, #0b2828 72%, #081e21 100%);
+  --tv-atlas-land: linear-gradient(145deg, #5e9b83 5%, #4d877c 58%, #37675f 100%);
+  --tv-atlas-label: #e4eddf;
+  --tv-atlas-label-text: #092f28;
+  --tv-atlas-ring: #123c34;
+  --tv-atlas-halo: #abd5b465;
+}

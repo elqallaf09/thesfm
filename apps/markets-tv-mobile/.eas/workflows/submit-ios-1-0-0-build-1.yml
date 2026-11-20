@@ -1,0 +1,11 @@
+name: Submit SFM TV Mobile 1.0.0 (1)
+on:
+  push:
+    branches: ['release/sfm-tv-mobile-testflight-1-0-0']
+    paths: ['apps/markets-tv-mobile/.eas/workflows/submit-ios-1-0-0-build-1.yml']
+jobs:
+  submit_ios:
+    type: submit
+    params:
+      profile: testflight
+      build_id: 3faac64a-15e1-4c26-bf37-c7f0226a522f

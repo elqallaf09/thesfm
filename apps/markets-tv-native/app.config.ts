@@ -2,6 +2,7 @@ import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
   name: 'SFM Markets TV', slug: 'sfm-markets-tv-native', version: '0.2.0',
+  owner: 'elqallaf09',
   orientation: 'landscape',
   platforms: ['ios', 'android'], icon: './assets/icon.png',
   ios: { bundleIdentifier: 'com.thesfm.marketstv.native', buildNumber: '2', supportsTablet: false, infoPlist: { ITSAppUsesNonExemptEncryption: false } },
@@ -14,6 +15,6 @@ const config: ExpoConfig = {
       topShelf: './assets/tv/top-shelf-1920x720.png', topShelf2x: './assets/tv/top-shelf-3840x1440.png',
       topShelfWide: './assets/tv/top-shelf-2320x720.png', topShelfWide2x: './assets/tv/top-shelf-4640x1440.png',
     } }]],
-  extra: { apiOrigin: 'https://www.the-sfm.com' },
+  extra: { apiOrigin: 'https://www.the-sfm.com', eas: { projectId: '7ee7b69f-d967-42e9-b259-916469ab7f84' } },
 };
 export default config;

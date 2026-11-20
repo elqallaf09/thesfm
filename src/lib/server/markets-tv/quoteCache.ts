@@ -16,6 +16,8 @@ class UnavailableQuote extends Error {
  * Throwing on refresh failure lets Next retain the last successful observation.
  * An empty cold result is returned to its caller, never saved over a good price.
  */
+const CLOSED_RETENTION_MS = 30 * 60_000;
+
 export async function cachedTvQuote(identity: string, load: () => Promise<TvQuote>, revalidate = 300): Promise<TvQuote> {
   const read = unstable_cache(async () => {
     const quote = await load();
@@ -28,7 +30,10 @@ export async function cachedTvQuote(identity: string, load: () => Promise<TvQuot
     const { quote, verifiedAt } = await read();
     // Cached observations keep both original clocks and are never called live
     // merely because the snapshot containing them was generated just now.
-    const retained = Date.now() - verifiedAt > (revalidate + 15) * 1000;
+    const age = Date.now() - verifiedAt;
+    // A close from a shut session stays a close while the shared refresh runs;
+    // past a bounded window (a session may have reopened) it is called stale.
+    const retained = age > (revalidate + 15) * 1000 && !(quote.status === 'closed' && age <= CLOSED_RETENTION_MS);
     return { ...quote, status: quoteStatus({ ...quote, ...(retained ? { status: 'stale' as const } : {}) }) };
   } catch (error) {
     if (error instanceof UnavailableQuote) return error.quote;

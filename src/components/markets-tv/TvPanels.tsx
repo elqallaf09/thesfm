@@ -1,11 +1,9 @@
 'use client';
-/* eslint-disable @next/next/no-img-element -- Also rendered from offline APK assets. */
 import { tvFetch, tvOrigin } from '@/lib/markets-tv/client';
 import { tvPairErrorText, tvPairHttpError, validTvPair, type TvPairError } from '@/lib/markets-tv/pairing';
 import { useEffect, useRef, useState } from 'react';
-import type { TvGroup, TvLanguage, TvQuote } from '@/lib/markets-tv/types';
+import type { TvLanguage, TvQuote } from '@/lib/markets-tv/types';
 import { tvQuotePrice, tvText, tvTime } from '@/lib/markets-tv/i18n';
-import { TV_MAP_POINTS } from '@/lib/markets-tv/catalog';
 import type { AnalysisResult } from '@/domain/intelligence/contracts';
 import { TvQr } from './TvQr';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
@@ -90,14 +88,5 @@ export function TvQuoteDetail({ quote, language, now }: { quote: TvQuote; langua
     </div>
     <div className="tv-phone-link"><a href={phoneUrl} aria-label={t('openPhone')}><TvQr value={phoneUrl} label={t('openPhone')} /></a><p>{t('openPhone')}</p></div>
   </div>;
-}
-export function TvMarketMap({ language, group, select, now }: { language: TvLanguage; group: TvGroup; select: (group: TvGroup) => void; now: number }) {
-  const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
-  return <section className="tv-map-panel"><div className="tv-map" role="group" aria-label={t('map')}>
-    <img className="tv-map-image" src={typeof window !== 'undefined' && tvOrigin() !== window.location.origin ? './markets-tv/world-dotted-map.png' : '/markets-tv/world-dotted-map.png'} alt="" aria-hidden="true"/>
-    {TV_MAP_POINTS.map(point => <button key={point.group} className="tv-map-point" aria-pressed={group === point.group} style={{ left: `${point.x}%`, top: `${point.y}%` }} onClick={() => select(point.group)}>
-      <strong>{t(point.group)}</strong><span>{new Intl.DateTimeFormat(`${language}-u-nu-latn`, { timeZone: point.zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now)}</span>
-    </button>)}
-  </div><p className="tv-muted">{t('localTime')}</p></section>;
 }
 export { TvBrief } from './TvBrief';

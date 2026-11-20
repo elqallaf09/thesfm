@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { briefMetrics } from '@/lib/markets-tv/obsidian';
+import { briefMetrics, briefSummary } from '@/lib/markets-tv/obsidian';
 import { normalizeTvSettings, type TvQuote } from '@/lib/markets-tv/types';
 import { normalizeSessionHistory } from '@/lib/markets-tv/history';
 import { durationClock, sessionTimeline, zonedInstant } from '@/lib/markets-tv/sessionTimeline';
@@ -23,6 +23,24 @@ describe('Obsidian market data',()=>{
     expect(briefMetrics([quote('A',-2),quote('B',-1)],now)).toMatchObject({headline:'redDay',gainers:[],average:-1.5});
     expect(briefMetrics([{...quote('A',-2),price:null}],now)).toMatchObject({headline:'waitingDay',average:null,comparable:0});
     expect(briefMetrics([{...quote('BTC/USDT',3),changeBasis:'24h'}],now)).toMatchObject({basis:'24h',average:3});
+  });
+  it('measures breadth against comparable listings and includes unchanged prices in the headline', () => {
+    const rows = [quote('up', 1), quote('flat1', 0), quote('flat2', 0), { ...quote('old', -80), status: 'stale' as const }];
+    const stats = briefMetrics([...rows, rows[0]], now);
+    expect(stats).toMatchObject({ total: 4, comparable: 3, unchanged: 2, headline: 'mostlyFlatDay', magnitude: 1 });
+    expect(briefSummary(stats, 'en')).toContain('66.7%');
+    expect(briefSummary(stats, 'fr')).toContain('66,7');
+    expect(briefSummary(stats, 'ar')).toContain('بقيت مستقرة');
+    expect(briefMetrics([quote('up', 1), quote('flat', 0)], now).headline).toBe('mixedDay');
+  });
+  it('keeps every absolute leader across both directions before the rankings display limit', () => {
+    const rows = Array.from({ length: 6 }, (_, i) => quote(`up${i}`, 2));
+    const stats = briefMetrics([...rows, quote('down', -2), { ...quote('rolling', 80), changeBasis: '24h' }, quote('small', .001)], now);
+    expect(stats.gainers).toHaveLength(5);
+    expect(stats.leaders.map(q => q.symbol)).toEqual([...rows.map(q => q.symbol), 'down']);
+    expect(stats.comparableKeys.size).toBe(8);
+    expect(briefMetrics([quote('flat', 0)], now).leaders).toEqual([]);
+    expect(briefMetrics([], now).leaders).toEqual([]);
   });
   it('keeps server and first client schedules deterministic until the clock is ready',()=>{
     expect(sessionTimeline(TV_SESSIONS[0],0)).toEqual({open:false,remaining:null,nextOpen:null,closesAt:null,nowPercent:0,bars:[]});

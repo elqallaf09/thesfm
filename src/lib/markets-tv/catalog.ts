@@ -49,9 +49,3 @@ export function tvAssetsAll(group: TvGroup) {
   const items = GLOBAL_MARKET_STRIPS.filter(strip => selected.includes(strip.id)).flatMap(strip => strip.items);
   return group === 'global' ? [...items, ...TV_EXTRA_INDICES] : items;
 }
-export const TV_MAP_POINTS = [
-  { group: 'us', x: 20, y: 34, label: 'New York', zone: 'America/New_York' },
-  { group: 'europe', x: 48, y: 25, label: 'London', zone: 'Europe/London' },
-  { group: 'gulf', x: 60, y: 44, label: 'Kuwait', zone: 'Asia/Kuwait' },
-  { group: 'asia', x: 84, y: 39, label: 'Tokyo', zone: 'Asia/Tokyo' },
-] as const;

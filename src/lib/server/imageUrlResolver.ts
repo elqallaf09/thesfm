@@ -29,6 +29,7 @@ type RemoteResponse = {
 };
 
 export type ImageResolverDependencies = {
+  selectHtmlImage?: (html: string, baseUrl: string) => string | null;
   lookup?: (hostname: string) => Promise<ResolvedAddress[]>;
   request?: (url: URL, address: ResolvedAddress, signal: AbortSignal) => Promise<RemoteResponse>;
 };
@@ -194,25 +195,25 @@ function isDirectImageUrl(url: URL) {
   return IMAGE_EXTENSION_PATTERN.test(url.pathname);
 }
 
-function extractMetaImage(html: string, baseUrl: string) {
+export function extractMetaImage(html: string, baseUrl: string, accept: (url: string) => boolean = () => true) {
   const patterns = [
-    /<meta[^>]+(?:property|name)=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image(?::secure_url)?["'][^>]*>/i,
-    /<meta[^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]*>/i,
-    /<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["'][^>]*>/i,
-    /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']image_src["'][^>]*>/i,
+    /<meta[^>]+(?:property|name)=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["'][^>]*>/gi,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image(?::secure_url)?["'][^>]*>/gi,
+    /<meta[^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["'][^>]*>/gi,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]*>/gi,
+    /<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["'][^>]*>/gi,
+    /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']image_src["'][^>]*>/gi,
   ];
 
   for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (!match?.[1]) continue;
-    try {
-      const absolute = new URL(decodeHtmlAttribute(match[1]), baseUrl).toString();
-      const normalized = normalizePublicImageInput(absolute);
-      if (normalized) return normalized;
-    } catch {
-      // Try the next meta pattern.
+    for (const match of html.matchAll(pattern)) {
+      try {
+        const absolute = new URL(decodeHtmlAttribute(match[1]), baseUrl);
+        const normalized = normalizePublicImageInput(absolute.href);
+        if (normalized && accept(normalized)) return normalized;
+      } catch {
+        // Continue to the next candidate.
+      }
     }
   }
 
@@ -316,25 +317,19 @@ function defaultRequest(url: URL, address: ResolvedAddress, signal: AbortSignal)
         return;
       }
 
-      const declaredLength = Number(firstHeader(response.headers['content-length']));
-      if (Number.isFinite(declaredLength) && declaredLength > MAX_HTML_BYTES) {
-        settle(() => reject(new ImageResolverFailure('FETCH_FAILED')));
-        response.destroy();
-        return;
-      }
-
       const chunks: Buffer[] = [];
       let total = 0;
       response.on('data', (chunk: Buffer | string) => {
         if (settled) return;
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-        total += buffer.byteLength;
-        if (total > MAX_HTML_BYTES) {
-          settle(() => reject(new ImageResolverFailure('FETCH_FAILED')));
+        const prefix = buffer.subarray(0, MAX_HTML_BYTES - total);
+        chunks.push(prefix);
+        total += prefix.length;
+        // Article metadata lives near the beginning of even very large publisher pages.
+        if (total === MAX_HTML_BYTES) {
+          complete(Buffer.concat(chunks, total).toString('utf8'));
           response.destroy();
-          return;
         }
-        chunks.push(buffer);
       });
       response.on('end', () => {
         if (!settled) complete(Buffer.concat(chunks, total).toString('utf8'));
@@ -397,7 +392,8 @@ export async function resolvePublicImageUrl(
         return { ok: false, code: 'NO_IMAGE_FOUND' };
       }
 
-      const imageUrl = extractMetaImage(response.body, current.toString());
+      const selectImage = dependencies.selectHtmlImage ?? extractMetaImage;
+      const imageUrl = normalizePublicImageInput(selectImage(response.body, current.href));
       if (!imageUrl) return { ok: false, code: 'NO_IMAGE_FOUND' };
       return { ok: true, imageUrl };
     }
