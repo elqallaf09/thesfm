@@ -36,10 +36,10 @@ function Choice({ selected, children, ...props }: ButtonHTMLAttributes<HTMLButto
   </button>;
 }
 
-export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, channels, onReplay }: {
+export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, onReplay }: {
   settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean;
   displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void;
-  customize: () => void; channels: () => void; onReplay?: () => void;
+  customize: () => void; onReplay?: () => void;
 }) {
   const [section, setSection] = useState<SettingsSection>('appearance');
   const content = useRef<HTMLDivElement>(null);
@@ -123,9 +123,6 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
         </Setting>}
         <Setting label={displayMode === 'viewing' ? tvSceneText(settings.language, 'browseCustomization') : t('displayInstruments')}>
           <button type="button" onClick={customize}>{t('customizeMarkets')}</button>
-        </Setting>
-        <Setting label={t('channels')}>
-          <button type="button" onClick={channels}>{t('channels')}</button>
         </Setting>
         {!stripsOnly && displayMode === 'browse' && <Setting label={t('layout')}>
           <div className="tv-segment" role="group" aria-label={t('layout')}>

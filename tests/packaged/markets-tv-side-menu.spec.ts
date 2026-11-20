@@ -114,20 +114,21 @@ for (const language of ['ar', 'en', 'fr'] as const) {
   });
 }
 
-test('saved channels open directly from the sidebar and their manager contains saved displays', async ({ page }) => {
+test('existing saved shortcuts still play directly after the channel editor is removed', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-channels-v1', JSON.stringify([{
     id: 'office-screen', name: 'Saved office screen', view: 'technology', selections: {},
     settings: { language: 'fr', theme: 'dark', displayMode: 'viewing', broadcastChannel: 'technology', autoRotate: false, sessionAutoRotate: false },
   }])));
   await page.setViewportSize({ width: 960, height: 540 });
   await fixture(page, 'en');
-  const insertion = orderedKeys.indexOf('channels');
+  const insertion = orderedKeys.indexOf('customize');
   await expectTvMenuRemoteAccess(page, [...orderedKeys.slice(0, insertion), 'saved:office-screen', ...orderedKeys.slice(insertion)]);
-  await focusTvMenuAction(page, 'channels');
+  await expect(page.getByRole('button', { name: 'My channels', exact: true })).toHaveCount(0);
+  await focusTvMenuAction(page, 'settings');
   await page.keyboard.press('Enter');
-  await expect(page.locator('.tv-channel')).toHaveCount(1);
-  await expect(page.locator('.tv-channel')).toContainText('Saved office screen');
-  await expect(page.locator('.tv-receiver-nav,[data-tv-focus-key^="channel:"]')).toHaveCount(0);
+  await page.locator('#tv-settings-tab-display').click();
+  await expect(page.locator('#tv-settings-panel-display')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'My channels', exact: true })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await openTvMenu(page);
   await focusTvMenuAction(page, 'saved:office-screen');

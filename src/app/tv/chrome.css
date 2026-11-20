@@ -85,8 +85,6 @@
   .tv-browsing .tv-section-heading > div:first-child { display: flex; flex-direction: column-reverse; }
   .tv-browsing .tv-section-heading h1 { line-height: 1.3; }
   .tv-browsing .tv-layout-feature { grid-template-columns: minmax(0,1fr); }
-  .tv-browsing .tv-map-panel { flex: 1; min-height: 0; }
-  .tv-browsing .tv-map { min-height: 10em; }
   .tv-browsing > .tv-market-strips:not(:empty) { height: 7.4em; max-height: none; padding: 0; border: 0; display: flex; flex-direction: column; scroll-snap-type: y mandatory; }
   .tv-screen.tv-browsing .tv-market-strip { flex: 0 0 100%; min-height: 0; scroll-snap-align: start; }
   .tv-browsing .tv-quote-grid > button:focus, .tv-browsing .tv-markets-nav button:focus { outline-offset: -3px; }

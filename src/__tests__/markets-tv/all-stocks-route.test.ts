@@ -9,6 +9,13 @@ import { GET as snapshot } from '@/app/api/tv/snapshot/route';
 const request = (query: string) => new Request(`https://www.the-sfm.com/api/tv/instruments?${query}`);
 beforeEach(() => { vi.clearAllMocks(); mocks.limit.mockReturnValue(null); mocks.directory.mockResolvedValue(Array.from({ length: 83 }, (_, i) => ({ symbol: `QA${i}`, name: `Company ${i}`, nameAr: i === 82 ? 'بنك الاختبار' : `شركة ${i}`, region: 'US' }))); mocks.snapshot.mockResolvedValue({ quotes: [], total: 0 }); });
 describe('all stocks directory', () => {
+  it.each(['us', 'gulf', 'europe', 'asia'])('keeps %s as the directory and quote scope when selected on the atlas', async group => {
+    expect((await directory(request(`group=${group}&scope=region&pageSize=6`))).status).toBe(200);
+    expect(mocks.directory).toHaveBeenCalledWith(group, '');
+    const params = new URLSearchParams({ group, scope: 'region', listingKeys: '["US:QA0"]' });
+    expect((await snapshot(request(params.toString()))).status).toBe(200);
+    expect(mocks.snapshot).toHaveBeenCalledWith(group, [], expect.objectContaining({ listingKeys: ['US:QA0'] }));
+  });
   it('pages the complete directory and searches beyond the visible page', async () => {
     const page = await (await directory(request('group=world&page=13&pageSize=6'))).json();
     expect(page).toMatchObject({ total: 83, directoryTotal: 83, page: 13, pageSize: 6 });

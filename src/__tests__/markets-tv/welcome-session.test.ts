@@ -20,6 +20,21 @@ describe('TV welcome session', () => {
     expect(session.claimTvWelcome()).toBe(true);
   });
 
+  it('shares the iOS claim with a replacement WebView and plays again on a new launch', async () => {
+    const data = new Map<string, string>();
+    const localStorage = {
+      getItem: (key: string) => data.get(key) ?? null,
+      setItem: (key: string, value: string) => data.set(key, value),
+    };
+    for (const [launch, expected] of [['launch-one', true], ['launch-one', false], ['launch-two', true]] as const) {
+      vi.stubGlobal('window', { __sfmTvIosLaunch: launch, localStorage });
+      vi.resetModules();
+      const { claimTvWelcome } = await import('@/lib/markets-tv/welcome-session');
+      expect(claimTvWelcome()).toBe(expected);
+      expect(claimTvWelcome()).toBe(false);
+    }
+  });
+
   it('does not claim startup during server rendering', async () => {
     vi.stubGlobal('window', undefined);
     const session = await import('@/lib/markets-tv/welcome-session');

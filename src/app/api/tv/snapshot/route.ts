@@ -1,3 +1,4 @@
+import { isTvEquityAggregate } from '@/lib/markets-tv/atlas';
 import { TV_GROUPS, type TvGroup, type TvScene } from '@/lib/markets-tv/types';
 import { getTvDevice, ownedTvData } from '@/lib/server/markets-tv/devices';
 import { loadTvSnapshot } from '@/lib/server/markets-tv/snapshot';
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   if (params.has('listingKeys')) {
     try {
       const raw = params.get('listingKeys')!;
-      if (raw.length > 1400 || (!market && group !== 'world') || group === 'watchlist') throw new Error();
+      if (raw.length > 1400 || (!market && !isTvEquityAggregate(group, params.get('scope'))) || group === 'watchlist') throw new Error();
       const values: unknown = JSON.parse(raw);
       if (!Array.isArray(values) || !values.length || values.length > 12 || !values.every(validTvListingKey)) throw new Error();
       listingKeys = [...new Set(values)];
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   if (params.has('symbols')) {
     try {
       const raw = params.get('symbols')!;
-      if (raw.length > 1024 || (!market && group !== 'world') || group === 'watchlist') throw new Error();
+      if (raw.length > 1024 || (!market && !isTvEquityAggregate(group, params.get('scope'))) || group === 'watchlist') throw new Error();
       const values: unknown = JSON.parse(raw);
       if (!Array.isArray(values) || !values.length || values.length > 12 || !values.every(validTvSymbol)) throw new Error();
       selected = [...new Set(values)];

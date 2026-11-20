@@ -3,7 +3,7 @@ import { portfolioText } from '../../../src/lib/markets-tv/portfolioCopy';
 import { quoteLabel } from './copy';
 import type { Position } from './receiverApi';
 const copy = {
-  channels: ['قنواتي', 'Channels', 'Chaînes'], pair: ['ربط الحساب', 'Pair account', 'Associer le compte'], linked: ['جهاز مرتبط', 'Device linked', 'Appareil associé'],
+  channels: ['القنوات', 'Channels', 'Chaînes'], pair: ['ربط الحساب', 'Pair account', 'Associer le compte'], linked: ['جهاز مرتبط', 'Device linked', 'Appareil associé'],
   create: ['إنشاء رمز الربط', 'Create pairing code', 'Créer un code'], unlink: ['إلغاء ربط هذا الجهاز', 'Unlink this device', 'Dissocier cet appareil'],
   instructions: ['افتح www.the-sfm.com/tv/pair على هاتفك وسجّل دخولك، ثم أدخل الرمز ووافق على ربط هذا الجهاز.', 'On your phone, open www.the-sfm.com/tv/pair, sign in, enter the code and approve this device.', 'Sur votre téléphone, ouvrez www.the-sfm.com/tv/pair, connectez-vous, saisissez le code et autorisez cet appareil.'],
   expiry: ['ينتهي الرمز خلال', 'Code expires in', 'Expiration du code dans'],
