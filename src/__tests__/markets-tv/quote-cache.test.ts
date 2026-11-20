@@ -82,4 +82,16 @@ describe('shared verified TV observations', () => {
     await read('ASML:XAMS:EUR', load);
     expect(await read('ASML:XAMS:EUR', load)).toMatchObject({ price: 100, observedAt: quote.observedAt, status: 'stale' });
   });
+  it('keeps a closed session labelled closed while the shared refresh runs, then stale after 30 minutes', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { read } = await fixture();
+    const closed: TvQuote = { ...quote, status: 'closed', observation: { precision: 'instant', marketOpen: false } };
+    const load = vi.fn().mockResolvedValueOnce(closed).mockResolvedValue({ ...quote, price: null, issue: 'rate_limited' });
+    await read('HSI', load);
+    vi.setSystemTime(now + 320_000);
+    expect(await read('HSI', load)).toMatchObject({ price: 100, status: 'closed', observedAt: quote.observedAt });
+    vi.setSystemTime(now + 31 * 60_000);
+    expect(await read('HSI', load)).toMatchObject({ price: 100, status: 'stale' });
+  });
 });
+
